@@ -80,7 +80,7 @@ for (const layout of ["desktop", "mobile"]) {
       }));
     });
 
-    const alert = page.getByRole("alert").filter({ hasText: "This page could not finish loading." });
+    const alert = page.getByRole("alert").filter({ hasText: "The Entries page could not load." });
     await expect(alert).toBeVisible({ timeout: 20_000 });
     await expect(alert).toContainText("Your saved data is not affected.");
     await expect(alert).toContainText("Entries exploded");

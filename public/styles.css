@@ -3985,7 +3985,6 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
 .split-checkpoint-panel small {
   margin-top: 6px;
   opacity: 0.76;
-  text-transform: capitalize;
 }
 
 @media (max-width: 760px) {

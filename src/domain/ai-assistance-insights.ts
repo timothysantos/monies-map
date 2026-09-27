@@ -171,10 +171,12 @@ export function buildFinancialInsightFacts(input: {
       formatMoney: input.formatMoney,
       contextLabel,
       audienceKind,
-      audienceName
+      audienceName,
+      perspective
     }),
     ...buildFinancialDecisionPrompts({
       perspective,
+      audienceKind,
       spendMinor,
       incomeMinor,
       netMinor: incomeMinor - spendMinor,
@@ -305,6 +307,7 @@ function buildNotableEntryFact(input: {
   contextLabel: string;
   audienceKind: "person" | "household";
   audienceName: string;
+  perspective: "cash_flow" | "partial_view" | "split_obligation";
 }) {
   if (!input.expenses.length || input.spendMinor <= 0) {
     return "There are not enough expenses here to spot a pattern yet.";
@@ -330,7 +333,9 @@ function buildNotableEntryFact(input: {
       ? `Your ${input.topCategoryName} spending accounted for ${categoryShare}% of what you spent.`
       : `${input.topCategoryName} accounted for ${categoryShare}% of household spending.`,
     input.audienceKind === "person"
-      ? `Your largest purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`
+      // A Splits person view counts that person's share of each expense, which
+      // someone else may have paid, so it names a share, not a purchase.
+      ? `Your largest ${input.perspective === "split_obligation" ? "share" : "purchase"} was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`
       : `The largest household purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`,
     input.expenses.length >= 3
       ? input.audienceKind === "person"
@@ -392,6 +397,7 @@ function stableInsightIndex(value: string) {
 
 function buildFinancialDecisionPrompts(input: {
   perspective: "cash_flow" | "partial_view" | "split_obligation";
+  audienceKind: "person" | "household";
   spendMinor: number;
   incomeMinor: number;
   netMinor: number;
@@ -413,7 +419,11 @@ function buildFinancialDecisionPrompts(input: {
 
   if (input.incomeMinor === 0 && input.spendMinor > 0) {
     return {
-      cashFlowPrinciple: "This list has spending but no income, so it cannot show whether the household is saving.",
+      // A person view speaks to the person, in the check-in's second person;
+      // their name stays out of the facts the AI sees.
+      cashFlowPrinciple: input.audienceKind === "person"
+        ? "This list has spending but no income, so it cannot show whether you are saving."
+        : "This list has spending but no income, so it cannot show whether the household is saving.",
       nextSpendConsideration: "Before buying something non-essential, check the month or summary to make sure income still covers bills, transfers, and savings."
     };
   }
@@ -606,13 +616,19 @@ function buildConfidenceLane(input: {
   }
   const issues: string[] = [];
   if (input.mismatchCount) {
-    issues.push(`${input.mismatchCount} wallet ${input.mismatchCount === 1 ? "has" : "have"} a statement mismatch`);
+    issues.push(input.mismatchCount === 1
+      ? "1 wallet has a statement mismatch"
+      : `${input.mismatchCount} wallets have a statement mismatch`);
   }
   if (input.checkpointCount) {
-    issues.push(`${input.checkpointCount} wallet ${input.checkpointCount === 1 ? "needs" : "need"} a statement checkpoint`);
+    issues.push(input.checkpointCount === 1
+      ? "1 wallet needs a statement checkpoint"
+      : `${input.checkpointCount} wallets need a statement checkpoint`);
   }
   if (input.unresolvedTransferCount) {
-    issues.push(`${input.unresolvedTransferCount} transfer ${input.unresolvedTransferCount === 1 ? "is" : "are"} unresolved`);
+    issues.push(input.unresolvedTransferCount === 1
+      ? "1 transfer is unresolved"
+      : `${input.unresolvedTransferCount} transfers are unresolved`);
   }
   if (issues.length) {
     return {

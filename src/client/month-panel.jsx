@@ -55,7 +55,7 @@ function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
-export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false }) {
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false, isDemoEnvironment = false }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
@@ -217,7 +217,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     monthPage: view.monthPage,
     monthSummary: selectedMonthSummary,
     accounts: visibleAccounts,
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     formatMonthLabel: formatService.formatMonthLabel
   }), [selectedMonthSummary, view.id, view.label, view.monthPage, visibleAccounts]);
   const financialInsightActions = useMemo(() => {
@@ -1464,6 +1464,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         onDeleteMonthTextChange={setDeleteMonthText}
         onResetMonth={handleResetMonth}
         onDeleteMonth={handleDeleteMonth}
+        isDemoEnvironment={isDemoEnvironment}
       />
 
       <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />

@@ -115,7 +115,8 @@ npm run docs:screenshots -- summary-household  # only some
 The script starts its own isolated stack (Vite `5442`, Wrangler `8842`,
 inspector `9442`, D1 in `.wrangler/state-guide`), reseeds the demo data only,
 reveals money totals and captures desktop shots (1280×800, Chromium) and
-phone shots (iPhone 13 profile, WebKit). `tests/guide-content.test.mjs`
+phone shots (iPhone 13 profile, WebKit), including the "On your iPhone"
+gallery in `public/faq/guide/iphone/`. `tests/guide-content.test.mjs`
 checks that every link, anchor and image in both guides resolves.
 
 ## Supported Imports

@@ -332,3 +332,114 @@ test("a provider failure becomes an unavailable suggestion after the bounded all
   assert.match(result.reason, /temporarily unavailable/);
   assert.equal(usageUnits, 1);
 });
+
+// Owner-approved copy fixes: a person view talks to the person, a Splits
+// person view names their share, and counts agree with their nouns.
+const formatTestMoney = (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`;
+
+test("a person view with spending and no income asks whether you are saving; the household view keeps household wording", () => {
+  const records = [{ entryType: "expense", amountMinor: 4_000, categoryName: "Food & Drinks", description: "Dinner" }];
+  const personFacts = buildFinancialInsightFacts({
+    contextLabel: "August 2026 month",
+    audienceKind: "person",
+    audienceName: "Tim",
+    records,
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Keep the bank record current.",
+    perspective: "cash_flow"
+  });
+  const householdFacts = buildFinancialInsightFacts({
+    contextLabel: "August 2026 month",
+    records,
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Keep the bank record current.",
+    perspective: "cash_flow"
+  });
+
+  assert.equal(personFacts.cashFlowPrinciple, "This list has spending but no income, so it cannot show whether you are saving.");
+  assert.doesNotMatch(buildDeterministicFinancialInsight(personFacts), /household/);
+  // The person's name never goes into the facts text the AI sees.
+  assert.doesNotMatch(personFacts.cashFlowPrinciple, /Tim/);
+  assert.equal(householdFacts.cashFlowPrinciple, "This list has spending but no income, so it cannot show whether the household is saving.");
+});
+
+// The notable fact is one of several candidates picked by a stable hash of
+// the context, so the test walks context labels until the largest-item
+// candidate is the one shown.
+function findLargestItemFact(input) {
+  for (let index = 0; index < 60; index += 1) {
+    const facts = buildFinancialInsightFacts({ ...input, contextLabel: `${input.contextLabel} ${index}` });
+    if (/largest (share|purchase|household purchase) was/.test(facts.notableFact)) {
+      return facts;
+    }
+  }
+  throw new Error("No context label picked the largest-item fact.");
+}
+
+test("a Splits person view names the largest share, not the largest purchase; other views keep their wording", () => {
+  const records = [
+    { entryType: "expense", amountMinor: 3_000, categoryName: "Travel", description: "Shinjuku hotel" },
+    { entryType: "expense", amountMinor: 1_000, categoryName: "Food & Drinks", description: "Ramen" }
+  ];
+  const splitPerson = findLargestItemFact({
+    contextLabel: "Tokyo trip group",
+    audienceKind: "person",
+    audienceName: "Tim",
+    records,
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Record the settlement.",
+    perspective: "split_obligation"
+  });
+  assert.equal(splitPerson.notableFact, "Your largest share was Shinjuku hotel at $30.00.");
+
+  const monthPerson = findLargestItemFact({
+    contextLabel: "August 2026 month",
+    audienceKind: "person",
+    audienceName: "Tim",
+    records,
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Keep the bank record current.",
+    perspective: "cash_flow"
+  });
+  assert.equal(monthPerson.notableFact, "Your largest purchase was Shinjuku hotel at $30.00.");
+
+  const splitHousehold = findLargestItemFact({
+    contextLabel: "Tokyo trip group",
+    records,
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Record the settlement.",
+    perspective: "split_obligation"
+  });
+  assert.equal(splitHousehold.notableFact, "The largest household purchase was Shinjuku hotel at $30.00.");
+
+  // The AI template still accepts the new wording as its notable fact.
+  const template = "{{audienceName}}, {{notableFact}} In {{contextLabel}}, {{cashFlowPrinciple}} {{nextSpendConsideration}}";
+  assert.match(
+    parseFinancialInsightTemplate({ template }, { ...splitPerson, audienceName: "[selected person]" }),
+    /Your largest share was Shinjuku hotel at \$30\.00\./
+  );
+});
+
+test("the money consequence map agrees nouns and verbs with each count", () => {
+  const confidenceDetail = (confidence) => buildFinancialInsightFacts({
+    contextLabel: "August 2026 month",
+    records: [
+      { entryType: "income", amountMinor: 100_000, description: "Salary" },
+      { entryType: "expense", amountMinor: 20_000, categoryName: "Food & Drinks", description: "Groceries" }
+    ],
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Check the bank record.",
+    perspective: "cash_flow",
+    decisionMapContext: { confidence: { evaluated: true, ...confidence } }
+  }).decisionMap.lanes.find((lane) => lane.id === "confidence").detail;
+
+  assert.match(
+    confidenceDetail({ reconciliationMismatchCount: 2, needsCheckpointCount: 2, unresolvedTransferCount: 2 }),
+    /^2 wallets have a statement mismatch, 2 wallets need a statement checkpoint,? and 2 transfers are unresolved\./
+  );
+  assert.match(
+    confidenceDetail({ reconciliationMismatchCount: 1, needsCheckpointCount: 1, unresolvedTransferCount: 1 }),
+    /^1 wallet has a statement mismatch, 1 wallet needs a statement checkpoint,? and 1 transfer is unresolved\./
+  );
+  assert.doesNotMatch(confidenceDetail({ needsCheckpointCount: 2 }), /2 wallet need/);
+});

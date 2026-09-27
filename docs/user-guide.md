@@ -52,7 +52,8 @@ appear in this order:
 
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move between months or ranges and hide or show
-money totals.
+money totals. Imports, Settings and FAQ do not depend on a month, so they show
+no month or range controls there.
 
 ## The core idea: plan, record, import, reconcile, split
 
@@ -129,7 +130,8 @@ plan amounts. Amount fields you type into are masked too.
 
 The choice is remembered only in that browser. A different browser or a
 cleared browser starts hidden again. The Money check-in stays hidden while
-totals are hidden, because its sentences would reveal the same figures. Edit
+totals are hidden, because its sentences would reveal the same figures; it
+appears with the real figures as soon as you reveal totals. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -178,9 +180,9 @@ The app is designed for phones as well as desktops. The differences:
 
 ## On your iPhone
 
-These are real iPhone Safari screenshots of the demo data, so you know what
-to expect on your own phone. Add the site to your Home Screen from Safari's
-Share menu to open it like an app.
+These are iPhone-sized screenshots of the demo data, drawn with Safari's
+engine, so you know what to expect on your own phone. Add the site to your
+Home Screen from Safari's Share menu to open it like an app.
 
 ![iPhone: Summary for Tim](/faq/guide/iphone/thumbs/01-summary.webp)
 
@@ -577,8 +579,8 @@ Open **Month**, choose the month, then select **Actions**.
   changes nothing.
 - **Reset month** clears this month's plan rows, entries and totals. Type
   `reset month` and select **Confirm reset month**.
-- **Delete month** removes the month entirely. Type `delete month` and select
-  **Confirm delete month**.
+- **Delete month** removes the month entirely, including its summary
+  snapshot. Type `delete month` and select **Confirm delete month**.
 
 Reset and delete cannot be undone, which is why they ask you to type the
 words.
@@ -958,9 +960,9 @@ On an iPhone, a Shortcut can save each Apple Pay purchase as an entry and
 open it for you to check.
 
 1. Open **Settings → Apple Pay shortcut** on your iPhone.
-2. Under **Default account priority**, put the card you use most first. This
-   account is used when Wallet does not say which card paid. Changes save
-   straight away.
+2. Under **Default account priority**, put the card you use most first. If
+   the shortcut doesn't name an account, entries go to the first account in
+   this list. Changes save straight away.
 3. Select **Install Apple Shortcut**. The app copies your private connection
    and opens the Shortcut.
 4. Select **Add Shortcut** (or **Replace** if you installed it before).
@@ -980,15 +982,17 @@ the new entry opens so you can adjust it. The category comes from your
 category rules (otherwise Other). Each iPhone installs its own copy.
 
 Keep the private connection secret like a password: do not share screenshots
-of it. If it leaks, generate a new key in the same section and reinstall on
-every phone. If you used an older "Register Apple Pay transaction" Shortcut,
+of it. If it leaks, generate a new key under **More shortcut settings** in
+the same section and reinstall on every phone. If you used an older "Register Apple Pay transaction" Shortcut,
 remove it so one purchase cannot create two entries.
 
 ## Use the Money check-in
 
 Summary, Month, Entries and Splits each show a **Money check-in**: a short
 reading of the figures on screen, in plain words. In a person view it talks
-to that person.
+to that person (for example "it cannot show whether you are saving"). On
+Splits, a person's check-in names their share of an expense ("Your largest
+share was ..."), because someone else may have paid for it.
 
 1. Read the two-line preview and the highlighted pattern (for example your
    largest purchase or a category that dominated).
@@ -1109,9 +1113,10 @@ again.
 4. Still stuck? **Settings → Error diagnostics** keeps the details of failed
    requests for whoever looks after the app.
 
-## "This page could not finish loading"
+## "The Month page could not load" (or another page)
 
-The page you opened could not get its data. Your saved data is not affected.
+The page you opened could not get its data; the message names that page, for
+example "The Imports page could not load." Your saved data is not affected.
 The page shows this message instead of old figures, so you never mistake last
 month's numbers for this month's.
 

@@ -94,6 +94,44 @@ test("money values start hidden, reveal together, and cover individual activity"
   await expect(page.locator(".totals-visibility-toggle--month")).toBeVisible();
 });
 
+// A page that loaded with totals hidden used to keep "••••" in its money
+// check-in after totals were revealed, until a reload. Revealing shows the
+// real sentence at once; hiding masks it again.
+test("revealing totals after a hidden load shows the real money check-in on every page", async ({ page }) => {
+  await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({
+    status: 503,
+    contentType: "application/json",
+    body: JSON.stringify({ ok: false })
+  }));
+  await reseedDemo(page);
+
+  const pages = [
+    ["/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05", "/api/summary-page", "Summary", ".financial-insight-summary"],
+    ["/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", "Month", ".financial-insight-month"],
+    ["/entries?view=household&month=2026-05&scope=direct_plus_shared", "/api/entries-page", "Entries", ".financial-insight-entries"],
+    ["/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", "Splits", ".financial-insight-splits"]
+  ];
+  for (const [path, api, heading, insightClass] of pages) {
+    await gotoPageAfterApi(page, path, api, () => page.getByRole("heading", { name: heading, exact: true }));
+    const insight = page.locator(insightClass);
+    await expect(insight, heading).toContainText("Reveal money totals to read this insight.");
+
+    await page.getByRole("button", { name: "Show money totals" }).first().click();
+    const narrative = insight.locator(".financial-insight-narrative");
+    await expect(narrative, heading).toBeVisible();
+    await expect(narrative, heading).not.toContainText("••••");
+    await expect(narrative, heading).toContainText(/\$\d/);
+    await insight.getByRole("button", { name: "Read full insight" }).click();
+    await expect(insight, heading).not.toContainText("••••");
+    await insight.getByRole("button", { name: "Show less" }).click();
+
+    await page.getByRole("button", { name: "Hide money totals" }).first().click();
+    await expect(insight, heading).toContainText("Reveal money totals to read this insight.");
+    await expect(narrative, heading).toHaveCount(0);
+    await expect(insight, heading).not.toContainText("$");
+  }
+});
+
 test("entry and split editors include a local money visibility toggle", async ({ page }) => {
   await reseedDemo(page);
 
