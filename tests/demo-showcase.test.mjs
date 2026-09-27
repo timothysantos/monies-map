@@ -353,12 +353,18 @@ test("the showcase reseed stays well inside D1's per-invocation and per-statemen
           usage.queries += 1;
           usage.maxSqlBytes = Math.max(usage.maxSqlBytes, encoder.encode(sql).length);
           const statement = target.prepare(sql);
-          const bind = statement.bind.bind(statement);
-          statement.bind = (...values) => {
-            usage.maxBindings = Math.max(usage.maxBindings, values.length);
-            return bind(...values);
-          };
-          return statement;
+          return new Proxy(statement, {
+            get(inner, key) {
+              if (key === "bind") {
+                return (...values) => {
+                  usage.maxBindings = Math.max(usage.maxBindings, values.length);
+                  return inner.bind(...values);
+                };
+              }
+              const value = Reflect.get(inner, key);
+              return typeof value === "function" ? value.bind(inner) : value;
+            }
+          });
         };
       }
       if (property === "batch") {
