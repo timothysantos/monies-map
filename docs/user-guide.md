@@ -73,15 +73,15 @@ Monie's Map works best as a monthly loop:
 Summary then shows whether the month went as planned. You do not have to do
 every step: many households only plan, record and split.
 
-## Views: Household, Tim and Joyce
+## Views: Household, Ethan and Serene
 
 The switch at the top left changes whose money you see. The names come from
-Settings → People (the demo uses Tim and Joyce).
+Settings → People (the demo uses Ethan and Serene).
 
 - **Household** shows everything, for both people together. The Month plan is
   read-only here, because each person keeps their own plan and the household
   plan is the two combined.
-- **A person** (for example Tim) shows that person's own money: their own
+- **A person** (for example Ethan) shows that person's own money: their own
   entries, plus their share of anything on Splits. This is where you edit that
   person's plan.
 - **Splits always uses a person.** It opens on the person linked to your
@@ -103,13 +103,13 @@ In a person view, the scope buttons narrow what counts:
 - **Direct + Shared** (the default): both together. This is their real
   spending.
 
-A worked example: Tim pays $100.00 for groceries and $80.00 for a dinner split
-25% Tim / 75% Joyce. Joyce pays $30.00 for shopping.
+A worked example: Ethan pays $100.00 for groceries and $80.00 for a dinner
+split 25% Ethan / 75% Serene. Serene pays $30.00 for shopping.
 
-- Tim, Direct + Shared: $100.00 + $20.00 = **$120.00**
-- Joyce, Direct + Shared: $30.00 + $60.00 = **$90.00**
+- Ethan, Direct + Shared: $100.00 + $20.00 = **$120.00**
+- Serene, Direct + Shared: $30.00 + $60.00 = **$90.00**
 - Household: **$210.00** (every entry once)
-- Tim, Shared only: **$20.00**
+- Ethan, Shared only: **$20.00**
 
 Summary, Month and Entries all count the same way, so the numbers agree
 everywhere. The Household view has no scope buttons because it always counts
@@ -140,9 +140,10 @@ single figure without revealing the whole page.
 
 ## Try it safely with the demo data
 
-The demo household (Tim and Joyce, with sample accounts, a year of plans and
-some shared expenses) is the best way to learn. Everything in this guide was
-captured from it.
+The demo household (Ethan and Serene, with six bank accounts and cards, 17
+months of plans and bank statements, and shared expenses including a trip to
+Japan) is the best way to learn. Everything in this guide was captured from
+it.
 
 On the demo site, open **Settings** and use **Demo state**:
 
@@ -164,7 +165,7 @@ The app is designed for phones as well as desktops. The differences:
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
-  `Tim · Direct + Shared`). Month and Entries add previous and next month
+  `Ethan · Direct + Shared`). Month and Entries add previous and next month
   buttons beside it. Tap it to change the view first, then the scope.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
 - **Edit sheets.** Adding or editing a row opens a sheet from the bottom of
@@ -185,7 +186,7 @@ These are iPhone-sized screenshots of the demo data, drawn with Safari's
 engine, so you know what to expect on your own phone. Add the site to your
 Home Screen from Safari's Share menu to open it like an app.
 
-![iPhone: Summary for Tim](/faq/guide/iphone/thumbs/01-summary.webp)
+![iPhone: Summary for Ethan](/faq/guide/iphone/thumbs/01-summary.webp)
 
 ![iPhone: Month](/faq/guide/iphone/thumbs/02-month.webp)
 
@@ -264,9 +265,9 @@ change either.
   spend, Savings target and Spend gap (planned minus actual).
 - **Money check-in** for the month.
 - **Income**: planned income sources.
-- **Budget Buckets**: flexible budgets by category, such as Food or Taxi.
+- **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
-- **Planned Items**: fixed commitments such as savings, tithes, loans and
+- **Planned Items**: fixed commitments such as savings, insurance, loans and
   subscriptions. Their actual comes from the entries you link to them.
 - **Monthly Note**: why the month looked the way it did.
 - **Accounts**: the tracked accounts.
@@ -360,8 +361,8 @@ always know you are working on shared money rather than your bank ledger.
 ### What you see
 
 - **Group buttons**: **Non-group expenses** plus your named groups (for
-  example a trip or a baby fund). Each shows its currency, number of entries
-  and your balance, such as "You owe Joyce $260.25" or "Settled up". The **+**
+  example a trip or home bills). Each shows its currency, number of entries
+  and your balance, such as "You owe Serene $108.58" or "Settled up". The **+**
   creates a group.
 - **Money check-in** for the selected group.
 - **Search**, your balance, the group's spend, **Activity history** and
@@ -405,7 +406,7 @@ receipt button adds a shared expense.
 - **Import inbox**: your bank run, planned for you. It counts bank sessions to
   open, needed files, accounts that are current and split cleanup. For each
   bank it lists the steps, an **Open portal** link, and each file you still
-  need (for example "Citi Rewards Aug 2026 statement").
+  need (for example the OCBC 365 Card statement for Aug 2026).
 - **Review order**: statements are reviewed oldest month first; optional
   activity files come after.
 - **Import and certify**: where you add a file, in three steps: Select file,
@@ -536,7 +537,7 @@ Good to know:
 2. Under **Income**, select **+ Add income source** and enter each expected
    income.
 3. Under **Planned Items**, select **+ Add planned item** for each fixed
-   commitment: savings, loan, insurance, tithes, subscriptions. Give each a
+   commitment: savings, loan, insurance, subscriptions. Give each a
    category, date, name, planned amount and optionally an account.
    ![A new planned item opens as an editable row](/faq/guide/desktop/thumbs/month-add-planned.webp)
 4. Under **Budget Buckets**, select **+ Add budget bucket** for flexible
@@ -875,8 +876,8 @@ A split can be linked to only one bank row.
 ## Track a trip in another currency
 
 1. Open **Splits** and select **+** next to the groups.
-2. Type a **Group name** (for example "Japan trip") and choose the **Group
-   currency** (for example JPY).
+2. Type a **Group name** (for example "Seoul trip") and choose the **Group
+   currency** (for example KRW).
 3. Choose the **Purchase source**: **Cash only** for cash spending, or
    **Bank/card** for card purchases you will later match to your statement.
    Two groups (one of each) keep things simplest.
@@ -886,7 +887,8 @@ A split can be linked to only one bank row.
 ![Create group with a name and a trip currency](/faq/guide/desktop/thumbs/splits-create-group.webp)
 
 Inside a trip group every amount is shown in that currency (for example
-"You owe Joyce JP¥6,000"), and the category donut counts only that currency.
+"Serene owes you JP¥26,730" on the demo's Japan trip), and the category donut
+counts only that currency.
 Different currencies are never added together. A card expense can wait as
 "Card statement pending" until the statement row arrives. Outside Splits,
 the linked card row counts in dollars, split the same way.
@@ -991,7 +993,8 @@ remove it so one purchase cannot create two entries.
 
 Summary, Month, Entries and Splits each show a **Money check-in**: a short
 reading of the figures on screen, in plain words. In a person view it talks
-to that person (for example "it cannot show whether you are saving"). When a
+to that person (for example "Ethan, you received $8,300.00 and spent
+$1,369.25"). When a
 person's figures include their part of a shared or split expense, the
 check-in calls it a share ("Your largest share was ..."), because someone
 else may have paid for it. Summary's check-in works from category totals, so

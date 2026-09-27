@@ -164,9 +164,9 @@ link back to the bank rows is never lost."
 
 ## 8. FAQ (optional)
 
-Open **FAQ** to show the built-in user guide. Note that the guide's worked
-examples and screenshots use the default demo household (Tim and Joyce), not
-the showcase data.
+Open **FAQ** to show the built-in user guide. Its worked examples and
+screenshots use this showcase household (Ethan and Serene), captured around a
+fixed month, so its dates and amounts can differ from today's demo.
 
 ## Refresh the demo
 
