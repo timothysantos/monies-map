@@ -117,7 +117,7 @@ test("a required read joined to a request that is cancelled underneath it recove
   assert.deepEqual(await required, DTO);
 });
 
-test("a second cancellation during recovery propagates, and the lease is still released", async () => {
+test("every cancellation during recovery is recovered again, holding the lease until the data arrives", async () => {
   const { queryClient, leases, calls, fetcher } = setup();
   const key = entriesKey("person-tim");
   void queryClient.fetchQuery({ queryKey: key, queryFn: ({ signal }) => fetcher("other")({ signal }), retry: false }).catch(() => {});
@@ -127,9 +127,28 @@ test("a second cancellation during recovery propagates, and the lease is still r
   await queryClient.cancelQueries({ queryKey: key, exact: true });
   await flush();
   await queryClient.cancelQueries({ queryKey: key, exact: true });
-  await assert.rejects(required, (error) => error?.constructor?.name === "CancelledError" || error?.revert !== undefined);
+  await flush();
+  await queryClient.cancelQueries({ queryKey: key, exact: true });
+  await flush();
+  assert.equal(calls.length, 4, "one recovery fetch per cancellation");
+  assert.deepEqual(calls.slice(0, 3).map((call) => call.signal.aborted), [true, true, true]);
+  assert.equal(leases.isRequired(key), true, "still required while recovering");
+  calls[3].resolve(DTO);
+  assert.deepEqual(await required, DTO);
   assert.equal(leases.isRequired(key), false);
-  assert.equal(calls.length, 2);
+});
+
+test("a cancellation after the caller aborted is not recovered: the caller gets it and the lease is released", async () => {
+  const { queryClient, leases, calls, fetcher } = setup();
+  const key = entriesKey("person-tim");
+  const controller = new AbortController();
+  const required = fetchQueryWithLease(queryClient, { queryKey: key, fetcher: fetcher("required"), leases, signal: controller.signal });
+  await flush();
+  controller.abort();
+  await queryClient.cancelQueries({ queryKey: key, exact: true });
+  await assert.rejects(required, (error) => error?.constructor?.name === "CancelledError" || error?.revert !== undefined);
+  assert.equal(calls.length, 1, "no recovery fetch for an aborted caller");
+  assert.equal(leases.isRequired(key), false);
 });
 
 test("W13: a required read of another key starts immediately and cancelling the warm key cannot abort it", async () => {
