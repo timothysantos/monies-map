@@ -1344,7 +1344,9 @@ comparison, bank-record confidence, and sometimes a one-repeat scenario. A
 same-season comparison appears only when the matching calendar month is already
 loaded in the selected summary range. The one-repeat card is not a prediction:
 it simply shows the recorded cash-flow result if another expense equal to the
-largest expense shown happens before other future commitments. When statement
+largest expense shown happens before other future commitments. Summary never
+shows it, because its check-in works from category totals and a category total
+is not one expense. When statement
 or transfer evidence needs review, the map labels the snapshot as provisional
 and links to Imports. Entries and Splits say when they cannot assess that
 wallet-level confidence.

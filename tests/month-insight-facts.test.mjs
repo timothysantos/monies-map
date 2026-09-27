@@ -134,3 +134,25 @@ test("a scope the route does not know counts as Direct + Shared, and the househo
   assert.deepEqual(buildPersonScopes("household"), [{ key: "direct_plus_shared", label: "Combined" }]);
   assert.deepEqual(buildPersonScopes("person-joyce").map((scope) => scope.label), ["Direct ownership", "Shared", "Direct + Shared"]);
 });
+
+test("a person's Month check-in never calls a share of someone else's entry a purchase or payment", async () => {
+  const { buildFinancialInsightFacts } = await import("../src/domain/ai-assistance-insights.ts");
+  for (const scope of ["shared", "direct_plus_shared"]) {
+    const records = selectMonthInsightEntries(monthPageFor("person-tim", scope), "person-tim");
+    const facts = new Set();
+    for (let index = 0; index < 80; index += 1) {
+      facts.add(buildFinancialInsightFacts({
+        contextLabel: `${MONTH} month ${index}`,
+        audienceKind: "person",
+        audienceName: "Tim",
+        records,
+        formatMoney: (amountMinor) => String(amountMinor),
+        accountingAdvice: "Keep the bank record current.",
+        perspective: "cash_flow"
+      }).notableFact);
+    }
+    // Joyce paid the dinner; Tim's largest amount is his half of it.
+    assert.ok(facts.has("Your largest share was dining-split at 35659."), `${scope}: ${[...facts].join(" | ")}`);
+    assert.ok([...facts].every((fact) => !/largest purchase|three largest|\bpaid\b/.test(fact)), `${scope}: ${[...facts].join(" | ")}`);
+  }
+});
