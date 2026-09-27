@@ -58,3 +58,13 @@ test("a page that could not load is named in plain words", () => {
   assert.equal(messages.common.pageLoadErrorTitleFor(""), "This page could not load.");
 });
 
+test("the Apple Pay section uses plain words", () => {
+  assert.equal(messages.settings.shortcutAdvancedTitle, "More shortcut settings");
+  assert.equal(
+    messages.settings.shortcutDefaultAccountsDetail,
+    "If the shortcut doesn't name an account, entries go to the first account in this list."
+  );
+  for (const text of [messages.settings.shortcutAdvancedTitle, messages.settings.shortcutDefaultAccountsDetail]) {
+    assert.doesNotMatch(text, /API|accountId|accountName|account_id/);
+  }
+});
