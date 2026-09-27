@@ -123,7 +123,10 @@ export const messages = {
     resetMonthPlaceholder: "Type 'reset month'",
     resetMonthConfirm: "Confirm reset month",
     deleteMonth: "Delete month",
-    deleteMonthDetail: "This removes the current month entirely from the demo, including its summary snapshot.",
+    // Demo data is mentioned only on the demo site.
+    deleteMonthDetail: ({ isDemo = false } = {}) => isDemo
+      ? "This removes the current month entirely from the demo, including its summary snapshot."
+      : "This removes the current month entirely, including its summary snapshot.",
     deleteMonthPlaceholder: "Type 'delete month'",
     deleteMonthConfirm: "Confirm delete month",
     addIncomeSource: "+ Add income source",

@@ -26,7 +26,8 @@ export function MonthPanelHeader({
   onResetMonthTextChange,
   onDeleteMonthTextChange,
   onResetMonth,
-  onDeleteMonth
+  onDeleteMonth,
+  isDemoEnvironment = false
 }) {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -190,7 +191,7 @@ export function MonthPanelHeader({
             <Dialog.Content className="note-dialog-content">
               <div className="note-dialog-head">
                 <Dialog.Title>{messages.month.deleteMonth}</Dialog.Title>
-                <Dialog.Description>{messages.month.deleteMonthDetail}</Dialog.Description>
+                <Dialog.Description>{messages.month.deleteMonthDetail({ isDemo: isDemoEnvironment })}</Dialog.Description>
               </div>
               <input
                 className="table-edit-input"

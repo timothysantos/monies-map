@@ -52,6 +52,18 @@ test("count strings use the singular for one and the plural otherwise", () => {
   assert.match(messages.imports.deleteDiagnosticEntriesConfirm({ count: 2, amount: "$5.00" }), /^Delete all 2 unresolved ledger rows shown here now\? Together these rows net to \$5\.00\./);
 });
 
+test("the Delete month warning mentions the demo only on the demo site", () => {
+  assert.equal(
+    messages.month.deleteMonthDetail({ isDemo: true }),
+    "This removes the current month entirely from the demo, including its summary snapshot."
+  );
+  for (const isDemo of [false, undefined]) {
+    const detail = messages.month.deleteMonthDetail({ isDemo });
+    assert.equal(detail, "This removes the current month entirely, including its summary snapshot.");
+    assert.doesNotMatch(detail, /demo/i);
+  }
+});
+
 test("a page that could not load is named in plain words", () => {
   assert.equal(messages.common.pageLoadErrorTitleFor("Imports"), "The Imports page could not load.");
   assert.equal(messages.common.pageLoadErrorTitleFor("Settings"), "The Settings page could not load.");
