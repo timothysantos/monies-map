@@ -166,7 +166,7 @@ const SHOTS = [
       await open(page, `/summary?view=household&month=${MONTH}&summary_start=${OLDEST_MONTH}&summary_end=${MONTH}`);
       await page.locator(".summary-mix-months").getByRole("button", { name: monthChipLabel(MONTH), exact: true }).click();
       await waitUsable(page);
-      await page.getByRole("button", { name: "Read full insight" }).first().click();
+      await page.getByRole("button", { name: "See all insights" }).first().click();
       await scrollToLocator(page, page.locator(".financial-insight"), 20);
     }
   },

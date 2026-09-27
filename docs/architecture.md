@@ -532,17 +532,20 @@ Exit criteria:
 Workers AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
 path. Summary, Month, Entries, and Splits render a deterministic Money
-check-in from their already-loaded figures immediately, then may request a
-wording variation only after a stable page/filter state, while the route is
+check-in from their already-loaded figures immediately (see "Money insights"
+below), then may request a wording variation around its fact and think line
+only after a stable page/filter state, while the route is
 usable (no editor or save open), and on an in-memory cache miss. A response
 is kept only if it is OK, valid and still matches the facts on screen. Each request is capped by a shared D1 daily usage counter and returns an
 ordinary unavailable response when the binding is disabled, the allowance is
 exhausted, or a model response fails validation.
 
-The Worker receives bounded, redacted text only. Money-check-in wording sends
-the model placeholder names, including the selected person, rather than actual
-amounts, merchants, accounts, or ledger rows; the browser substitutes its
-already-computed figures and local person label after template validation.
+The Worker receives bounded, redacted text only. Money-check-in wording asks
+the model for a template with placeholders only: `{{fact}}` and `{{think}}`
+must each appear once and are filled with the computed sentences word for
+word, the selected person is a placeholder, and the template's own words may
+hold no figures and must pass the check-in's tone rules; the browser keeps
+AI wording only when it still carries the fact and think line.
 Statement fallback begins with
 browser-local PDF extraction and OCR; it sends extracted text after explicit
 consent and never uploads or stores the original binary. Model output is
@@ -560,6 +563,25 @@ proof gaps, and can show one clearly labelled repeat-expense scenario. It never
 creates a forecast or a safe-to-spend guarantee. Summary and Month own the
 confidence inputs and can route bank-record gaps to Imports; Entries and Splits
 explicitly state when that evidence is outside their page payload.
+
+## Money insights (the check-in)
+
+The check-in is a pure, deterministic domain module
+(`src/domain/money-signals/`): one small function per signal over data the
+page already loads (Summary: month totals, category totals per month, the
+view's account pills joined to reference account kinds; Month: entries, plan
+rows, income rows, the month's totals and account pills; Entries: the
+month's list for the view and scope; Splits: the selected group's balance,
+open activity and match candidates). It adds no endpoint and no payload; the
+same-season line shows only when last year's month is already in the range.
+`checkin.ts` ranks the signals (quick fix, bigger question, a moment, worth
+a look, going well; then money, then not recently seen), picks the phrasing
+and the long view, and decides rests, "what changed", sorted, quiet visits
+and the Just for fun line, from `nowMs`, `today`, a stable seed and the
+visit memory, which the client keeps only in localStorage
+(`checkin-visit-memory.js`). The quote library is a separate chunk loaded
+when "See all insights" opens. Every line passes the tone lint
+(`tone.ts`); all copy is listed in `docs/money-insights-copy.md`.
 
 ## Scenario Planning Standard
 

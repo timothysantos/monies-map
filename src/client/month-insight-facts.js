@@ -28,7 +28,6 @@ export function buildMonthInsightFacts({
   formatMonthLabel
 }) {
   const plannedSpendMinor = monthSummary?.estimatedExpensesMinor ?? 0;
-  const actualSpendMinor = monthSummary?.realExpensesMinor ?? 0;
   return buildFinancialInsightFacts({
     contextLabel: `${formatMonthLabel(monthPage.month)} month`,
     audienceKind: viewId === "household" ? "household" : "person",
@@ -36,9 +35,6 @@ export function buildMonthInsightFacts({
     records: selectMonthInsightEntries(monthPage, viewId),
     formatMoney,
     perspective: "cash_flow",
-    accountingAdvice: actualSpendMinor > plannedSpendMinor && plannedSpendMinor > 0
-      ? "Actual spending is above the planned budget. Check the largest category and any pending bank rows before changing the plan or assuming the overspend is a one-off."
-      : "Keep the plan, actual entries, and any pending bank rows current before reallocating unused budget or treating the remaining amount as free to spend.",
     decisionMapContext: {
       plannedSpendMinor,
       confidence: buildMonthConfidence(accountPills)

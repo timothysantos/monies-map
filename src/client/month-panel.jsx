@@ -9,6 +9,7 @@ import { EmptyState, InlineError } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
+import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
@@ -31,6 +32,7 @@ import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { buildMonthInsightFacts, selectMonthInsightEntries } from "./month-insight-facts";
+import { buildMonthSignals, monthCalmLine } from "../domain/money-signals/month-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
@@ -226,6 +228,29 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     formatMoney: formatService.unmaskedMoney,
     formatMonthLabel: formatService.formatMonthLabel
   }), [selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage]);
+  const checkInClock = useCheckInClock();
+  const checkIn = useMemo(() => ({
+    memoryKey: checkInMemoryKey("month", view.id),
+    contextKey: `${view.monthPage.month}|${view.monthPage.selectedScope}`,
+    signals: buildMonthSignals({
+      audience: view.id === "household" ? "household" : "person",
+      viewLabel: view.label,
+      month: view.monthPage.month,
+      today: checkInClock.today,
+      entries: insightEntries,
+      planSections,
+      incomeRows,
+      summary: selectedMonthSummary,
+      accountPills: view.accountPills,
+      formatMoney: formatService.unmaskedMoney
+    }),
+    calmLine: monthCalmLine(view.monthPage.month),
+    alsoLabel: "Also this month",
+    clock: checkInClock,
+    // Wallet health arrives beside the month page; until it does, nothing
+    // may be called sorted from a partial picture.
+    ready: Array.isArray(view.accountPills)
+  }), [checkInClock, incomeRows, insightEntries, planSections, selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage.month, view.monthPage.selectedScope]);
   const financialInsightActions = useMemo(() => {
     const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
     const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
@@ -1033,6 +1058,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
+  function handleCheckInAction(action) {
+    if (action.id === "review-statement") {
+      navigate("/imports");
+    } else if (action.id === "show-entries") {
+      handleOpenEntriesForActual({ entryIds: action.entryIds ?? [] });
+    } else if (action.id === "open-category") {
+      handleOpenEntriesForActual({ categoryName: action.categoryName });
+    }
+  }
+
   function handleOpenEntriesForActual({ categoryName = undefined, entryIds = [], entryType = "" }) {
     const next = new URLSearchParams();
     next.set("view", view.id);
@@ -1475,7 +1510,14 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
 
       <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-month" canRequestWording={canRequestWording} />
+      <FinancialInsight
+        facts={financialInsightFacts}
+        checkIn={checkIn}
+        actions={financialInsightActions}
+        onCheckInAction={handleCheckInAction}
+        className="financial-insight-month"
+        canRequestWording={canRequestWording}
+      />
 
       <MonthPlanStack
         view={view}
