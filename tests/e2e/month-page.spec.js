@@ -1098,4 +1098,32 @@ test.describe("month page", () => {
     await expect(sheets).toHaveCount(1);
     expect(await takeMonthRowOpenCount(page)).toBe(1);
   });
+
+  // A row with no actual entries shows its actual amount as a disabled
+  // button. A browser sends no click for a tap on a disabled button, not even
+  // to the row, so that part of the row did nothing. Which font a device uses
+  // decides whether the middle of the Actual cell lands on it.
+  test("mobile month plan rows open the edit sheet from a tap on an actual amount with no entries", async ({ page }) => {
+    await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
+    await spyOnMonthRowOpens(page);
+    await gotoMonthPage(page, { expectHeading: false });
+
+    const row = page.locator("tr").filter({ hasText: "Savings" }).first();
+    const actualAmount = row.locator("button.month-actual-drilldown");
+    await expect(actualAmount).toBeDisabled();
+    await expect(actualAmount).toHaveText("$0.00");
+    await actualAmount.scrollIntoViewIfNeeded();
+    const box = await actualAmount.boundingBox();
+    await takeMonthRowOpenCount(page);
+
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    await expect(editSheet).toBeVisible();
+    await expect(page.locator(".entry-mobile-sheet")).toHaveCount(1);
+    await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
+    // The amount still opens no entries list of its own.
+    await expect(page).toHaveURL(/\/month\?/);
+  });
 });
