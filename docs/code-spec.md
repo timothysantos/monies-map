@@ -537,6 +537,9 @@ These are defaults, not excuses for clever golfing.
 - persistence writes live in focused modules below the
   `app-repository.ts` re-export hub (H15): `app-repository-schema.ts`
   (runtime schema), `app-repository-seed.ts` (demo and empty-state seed),
+  `app-repository-showcase-seed.ts` (the public demo's showcase dataset from
+  `demo-showcase-data.ts`, written in one batch with its settings and month
+  refresh markers),
   `app-repository-entry-commands.ts`, `app-repository-month-commands.ts`,
   `app-repository-import-commit.ts` (commit and rollback) and
   `app-repository-snapshots.ts` (monthly snapshot recalculation, refresh
