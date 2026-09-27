@@ -235,7 +235,15 @@ needs them all), so `month-insight-facts.js` first keeps the entries the
 `effectiveScopeForView` (`src/domain/person-view-scope.ts`, over
 `person-entry-amount.ts`): every entry for the household, and a person's own
 entries in the scope at their own amounts. A scope change therefore changes
-the facts and the wording cache key. The Splits check-in follows the view
+the facts and the wording cache key. Month's "Snapshot confidence" reads
+the same wallet health as Summary's: the view's account pills
+(`/api/summary-account-pills`), which the Month route load fetches beside
+the month page (`fetchRoutePageData` in `App.jsx`) and hands to the panel
+as `view.accountPills`. The reference account list has no checkpoint status
+or transfer counts, so a check-in built from it always said "No visible
+proof gap"; without pills the lane says "Check the full month". The Month
+Accounts section shows the pills' balances and health too
+(`withMonthAccountHealth`). The Splits check-in follows the view
 too: `buildSplitInsightRecords` (`split-helpers.js`, exposed on the Splits
 model as `insightRecords`) gives a person view that person's split share of
 each expense of the active group, read from the activity's existing
@@ -651,6 +659,17 @@ so its rules win over base rules of the same specificity.
   and Note columns scroll inside the table, while Category, Item and the
   money columns stay on screen. Inline Save and Cancel stick to the visible
   edge of the table. On a portrait tablet the row sheet shows every field.
+- From 1,100 to 1,199 px the full-size tables need a little more than the
+  route grid: with the Mac's fonts the panel ran into the shell's 18 px
+  right gutter, and with wider fonts (Linux CI) the page scrolled sideways.
+  A last block in `month-mid-width.css` tightens cell padding to 6 px,
+  header letter spacing, the category gap and the note cut-off (160 px,
+  still one line), and the summary cards' gap and padding, so the tables
+  fit the grid whole with about 50 px spare under Verdana. The panel keeps
+  its automatic minimum width here: making it shrinkable instead clipped
+  the note edit icons. `header-tab-fit.spec.js` checks 1,100 to 1,279 px
+  with 0.05em extra letter spacing and money shown: no sideways scroll and
+  every note edit icon inside its table.
 
 `tests/e2e/month-mid-width-layout.spec.js` checks this at 820×1180 (full
 mobile emulation) and 1024×768. With mobile emulation, as on a real tablet,

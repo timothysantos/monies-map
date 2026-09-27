@@ -132,6 +132,40 @@ test.describe("header on a narrow desktop window", () => {
     }
   });
 
+  // Linux's default sans fonts set text wider than the Mac's, which once made
+  // the Month tables push the page sideways at 1,100 px on CI only. Extra
+  // letter spacing widens text the same way on any OS. Money is shown, as it
+  // is for most people, because amounts widen the table columns too. Below
+  // 1,200 px the Month tables tighten so they fit whole: nothing scrolls
+  // sideways and every note's edit icon stays fully on screen.
+  test("with wider text no page scrolls sideways from 1,100 to 1,279 px", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("monies-map:money-totals-visible", "true");
+      document.addEventListener("DOMContentLoaded", () => {
+        const style = document.createElement("style");
+        style.textContent = "body, body * { letter-spacing: 0.05em !important; }";
+        document.head.append(style);
+      });
+    });
+    for (const width of [1100, 1120, 1200, 1279]) {
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of PAGES) {
+        await openPage(page, path);
+        const where = `${path} at ${width} px`;
+        expect((await readHeader(page)).pageScrollsSideways, where).toBe(false);
+        if (path.startsWith("/month")) {
+          const noteIcons = await page.evaluate(() => [...document.querySelectorAll(".month-table-wrap .note-trigger svg")].map((icon) => {
+            const rect = icon.getBoundingClientRect();
+            const wrap = icon.closest(".month-table-wrap").getBoundingClientRect();
+            return rect.left >= wrap.left && rect.right <= wrap.right + 0.5 && rect.right <= document.documentElement.clientWidth;
+          }));
+          expect(noteIcons.length, where).toBeGreaterThan(10);
+          expect(noteIcons.filter((inside) => !inside).length, `note edit icons cut off: ${where}`).toBe(0);
+        }
+      }
+    }
+  });
+
   test("a 1,440 px desktop and a 390 px phone keep their own header spacing", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
     await openPage(page, "/summary?view=household&month=2026-05");
