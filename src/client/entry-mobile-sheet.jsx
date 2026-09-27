@@ -1,73 +1,168 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { FocusScope } from "@radix-ui/react-focus-scope";
+import { hideOthers } from "aria-hidden";
 import { X } from "lucide-react";
-import { createPortal } from "react-dom";
+import { RemoveScroll } from "react-remove-scroll";
 import { ResponsiveSelect } from "./responsive-select";
+import { findSheetOpener, returnFocusFromSheet } from "./sheet-focus-return";
+import { InlineError } from "./ui-states";
 
+// The mobile bottom sheet shared by Entries and Month. It behaves like the
+// modal desktop dialogs: focus moves into the sheet on open and stays inside
+// it, the rest of the page is hidden from screen readers and cannot be tapped
+// or scrolled, Escape or a tap on the backdrop closes it (discarding the
+// draft, as the desktop dialogs do), and focus returns to the control that
+// opened it (see sheet-focus-return.js: a tapped button is not focused on
+// iPhone or iPad, so the opener is the control the tap landed on). While `isSubmitting` a save or delete is in flight, so Escape
+// and backdrop taps are ignored rather than dropping the pending result.
+//
+// It does not use Radix's `modal` mode. That mode sets `pointer-events: none`
+// on <body> and a scroll-lock custom property on it; both inherit, so on a
+// 2,000-row month every row recomputed its style on open and again on close
+// (about 150 ms on a throttled phone). The same behaviours are assembled here
+// from the pieces Radix uses, without an inherited style change on <body>:
+// - FocusScope (trapped, looping) keeps focus inside.
+// - hideOthers sets aria-hidden on the page, an attribute no style reads.
+// - RemoveScroll without its scrollbar styles blocks touch and wheel scroll
+//   outside the sheet, and `overflow: hidden` on <html> (which does not
+//   inherit) stops keyboard scrolling of the page.
+// - The backdrop covers the viewport in every layout, so a tap outside the
+//   sheet lands on it and closes the sheet instead of reaching the page.
 export function EntryMobileSheet({
   title,
   description,
   errorMessage = "",
+  errorContent = null,
   saveLabel,
   cancelLabel = "Cancel",
   isSaveDisabled = false,
+  isSubmitting = false,
   secondaryAction = null,
   footerContent = null,
   onClose,
   onSave,
   children
 }) {
-  const sheet = (
-    <>
-      <button
-        type="button"
-        className="entry-composer-overlay"
-        aria-label={`Close ${title.toLowerCase()}`}
-        onClick={onClose}
-      />
-      <section className="entry-composer entry-mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
-        <form
-          className="entry-mobile-sheet-form"
-          onSubmit={(event) => {
+  // Captured during the first render, before Radix moves focus, so closing
+  // can hand focus back to the row or button that opened the sheet.
+  const openerRef = useRef(undefined);
+  if (openerRef.current === undefined) {
+    openerRef.current = findSheetOpener();
+  }
+  // The portal attaches the sheet after the first commit, so the node is
+  // state rather than a ref read in a mount effect.
+  const [sheet, setSheet] = useState(null);
+  useEffect(() => (sheet ? hideOthers(sheet) : undefined), [sheet]);
+  // Touch and wheel scrolling stay allowed inside the sheet.
+  const scrollShards = useMemo(() => (sheet ? [sheet] : []), [sheet]);
+  usePageKeyboardScrollLock();
+
+  return (
+    <Dialog.Root
+      open
+      modal={false}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
+      <Dialog.Portal>
+        <RemoveScroll forwardProps removeScrollBar={false} allowPinchZoom shards={scrollShards}>
+          <div className="entry-composer-overlay" />
+        </RemoveScroll>
+        <FocusScope
+          asChild
+          loop
+          trapped
+          onMountAutoFocus={(event) => {
+            // Focus the sheet itself, not its first field, so opening a sheet
+            // does not pop the phone keyboard. Editors that focus a field on
+            // purpose still do so (then this does not run).
             event.preventDefault();
-            if (!isSaveDisabled) {
-              onSave();
+            const container = event.currentTarget;
+            if (container instanceof HTMLElement) {
+              container.focus({ preventScroll: true });
             }
           }}
+          onUnmountAutoFocus={(event) => {
+            event.preventDefault();
+            returnFocusFromSheet(openerRef.current ?? null);
+          }}
         >
-        <div className="entry-mobile-sheet-scroll">
-          <div className="note-dialog-head split-dialog-head entry-composer-head">
-            <div className="entry-composer-copy">
-              <strong>{title}</strong>
-              <p>{description}</p>
-            </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel entry-composer-close"
-              aria-label={`Close ${title.toLowerCase()}`}
-              onClick={onClose}
+          <Dialog.Content
+            ref={setSheet}
+            className="entry-composer entry-mobile-sheet"
+            aria-label={title}
+            aria-modal="true"
+            // The FocusScope above owns focus on open and close.
+            onOpenAutoFocus={(event) => event.preventDefault()}
+            onCloseAutoFocus={(event) => event.preventDefault()}
+            // Focus cannot leave while trapped; never treat an attempt as a
+            // dismissal (the desktop modal dialogs behave the same way).
+            onFocusOutside={(event) => event.preventDefault()}
+          >
+            <form
+              className="entry-mobile-sheet-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!isSaveDisabled) {
+                  onSave();
+                }
+              }}
             >
-              <X size={16} />
-            </button>
-          </div>
-          {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
-          {children}
-        </div>
-        {footerContent ?? (
-          <div className="entry-inline-actions entry-mobile-sheet-actions">
-            {secondaryAction}
-            <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
-            <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
-          </div>
-        )}
-        </form>
-      </section>
-    </>
+            <div className="entry-mobile-sheet-scroll">
+              <div className="note-dialog-head split-dialog-head entry-composer-head">
+                <div className="entry-composer-copy">
+                  <Dialog.Title asChild><strong>{title}</strong></Dialog.Title>
+                  <Dialog.Description asChild><p>{description}</p></Dialog.Description>
+                </div>
+                <button
+                  type="button"
+                  className="icon-action subtle-cancel entry-composer-close"
+                  aria-label={`Close ${title.toLowerCase()}`}
+                  onClick={onClose}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              {errorContent ?? <InlineError message={errorMessage} className="entry-submit-error" />}
+              {children}
+            </div>
+            {footerContent ?? (
+              <div className="entry-inline-actions entry-mobile-sheet-actions">
+                {secondaryAction}
+                <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
+                <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+              </div>
+            )}
+            </form>
+          </Dialog.Content>
+        </FocusScope>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
+}
 
-  if (typeof document === "undefined") {
-    return sheet;
-  }
-
-  return createPortal(sheet, document.body);
+// `overflow: hidden` on <html> stops Space, Page Down and arrow keys from
+// scrolling the page behind the sheet. Unlike a change on <body>, it restyles
+// only the root. Where the page shows a classic scrollbar (a narrow desktop
+// window), a stable gutter keeps the page from shifting sideways.
+function usePageKeyboardScrollLock() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = { overflow: root.style.overflow, scrollbarGutter: root.style.scrollbarGutter };
+    const hasClassicScrollbar = window.innerWidth - root.clientWidth > 0;
+    root.style.overflow = "hidden";
+    if (hasClassicScrollbar) {
+      root.style.scrollbarGutter = "stable";
+    }
+    return () => {
+      root.style.overflow = previous.overflow;
+      root.style.scrollbarGutter = previous.scrollbarGutter;
+    };
+  }, []);
 }
 
 export function EntryMobileEditExpenseFooter({

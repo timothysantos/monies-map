@@ -175,7 +175,7 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
       income: isIncome ? minorToDecimal(amountMinor) : "",
       account: accountName,
       category: type === "transfer" ? "Transfer" : inferCategory(description, isIncome),
-      note: parsedHeader.postDate === parsedHeader.date ? "" : `posted date: ${parsedHeader.postDate}`,
+      note: parsedHeader.note,
       type
     });
     minDate = minDate && minDate < parsedHeader.date ? minDate : parsedHeader.date;
@@ -261,10 +261,11 @@ function parseOcbcCreditCardSection(lines: string[], statementDate: string, acco
 }
 
 function findOcbcCreditCardAccountName(lines: string[]) {
-  if (lines.some((line) => /^OCBC 365 CREDIT CARD$/i.test(line))) {
+  // The card name can share its line with a notice such as a past-due reminder.
+  if (lines.some((line) => /^OCBC 365 CREDIT CARD(?:\s|$)/i.test(line))) {
     return "OCBC 365 Credit Card";
   }
-  if (lines.some((line) => /^OCBC INFINITY CASHBACK$/i.test(line))) {
+  if (lines.some((line) => /^OCBC INFINITY CASHBACK(?:\s|$)/i.test(line))) {
     return "OCBC Infinity Cashback";
   }
   return undefined;
@@ -391,20 +392,27 @@ function parseOcbcCardTransactionLine(line: string, accountName: string, stateme
   };
 }
 
+// OCBC 360 statements print Transaction Date, then Value Date. The value
+// date is the bank-facing date the row is booked on (like the OCBC 360
+// activity CSV); the transaction date is the event date, carried as a
+// `transaction date:` note so import commit keeps both lanes (DOMAIN.md).
+function ocbcDepositDateLanes(transactionDate: string, valueDate: string) {
+  return {
+    date: valueDate,
+    transactionDate,
+    note: transactionDate === valueDate ? "" : `transaction date: ${transactionDate}`
+  };
+}
+
 function parseOcbc360TransactionHeader(line: string, statementStartDate: string, statementEndDate: string) {
   const match = line.match(/^(\d{2})\s+([A-Z]{3})\s+(\d{2})\s+([A-Z]{3})\s+(.+?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})\s+(\d{1,3}(?:,\d{3})*\.\d{2})$/);
   if (!match) {
     return null;
   }
-  const postDate = dateFromOcbc360StatementParts(match[1], match[2], statementStartDate, statementEndDate);
+  const transactionDate = dateFromOcbc360StatementParts(match[1], match[2], statementStartDate, statementEndDate);
   const valueDate = dateFromOcbc360StatementParts(match[3], match[4], statementStartDate, statementEndDate);
-  const date = postDate > statementEndDate && valueDate >= statementStartDate && valueDate <= statementEndDate
-    ? valueDate
-    : postDate;
   return {
-    date,
-    postDate,
-    valueDate,
+    ...ocbcDepositDateLanes(transactionDate, valueDate),
     description: match[5],
     amountMinor: parseOcbcMoneyToMinor(match[6]),
     balanceMinor: parseOcbcMoneyToMinor(match[7])

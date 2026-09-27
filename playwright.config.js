@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const shouldStartWebServer = !process.env.PLAYWRIGHT_USE_EXISTING_SERVER;
+// The sharded runner (scripts/run-e2e-sharded.mjs) starts its own isolated
+// stacks and points each Playwright run at one through E2E_BASE_URL.
+const isolatedBaseURL = process.env.E2E_BASE_URL;
+const baseURL = isolatedBaseURL ?? "http://127.0.0.1:5173";
+const shouldStartWebServer = !process.env.PLAYWRIGHT_USE_EXISTING_SERVER && !isolatedBaseURL;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -17,7 +21,7 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL,
     trace: "on-first-retry"
   },
   webServer: shouldStartWebServer

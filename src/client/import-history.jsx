@@ -1,6 +1,7 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight } from "lucide-react";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
@@ -141,7 +142,7 @@ export function ImportRecentHistorySection({
               </div>
             </section>
           ))}
-          {!recentImportGroups.length && !isRefreshing ? <p className="lede compact">{messages.imports.recentEmpty}</p> : null}
+          {!recentImportGroups.length && !isRefreshing ? <EmptyState>{messages.imports.recentEmpty}</EmptyState> : null}
           {shouldPaginate ? (
             <ImportRecentPagination
               className="import-history-pagination-bottom"
@@ -235,7 +236,7 @@ function ImportOverlapPopover({ item }) {
               ))}
             </div>
           ) : (
-            <p className="lede compact">{messages.imports.overlapPopoverEmpty}</p>
+            <EmptyState>{messages.imports.overlapPopoverEmpty}</EmptyState>
           )}
           <Popover.Arrow className="category-popover-arrow" />
         </Popover.Content>

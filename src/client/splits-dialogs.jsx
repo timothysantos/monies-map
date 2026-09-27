@@ -3,12 +3,15 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { messages } from "./copy/en-SG";
+import { focusFieldUnlessEditing } from "./deferred-focus";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
+import { InlineError } from "./ui-states";
+import { SettlementLockNotice } from "./settlement-lock-notice";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -71,7 +74,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
               </select>
               <small className="split-dialog-help">Use Cash only and Bank/card as separate groups for a holiday when you want settlements to stay easy to reconcile.</small>
             </label>
-            {formError ? <p className="form-error">{formError}</p> : null}
+            <InlineError message={formError} />
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
               <button type="submit" className="dialog-primary" disabled={isSubmitting}>
@@ -128,6 +131,7 @@ function OddCentChooser({ dialog, people, onChange }) {
   const extraCentName = preview.primaryAmountMinor > preview.secondaryAmountMinor
     ? preview.primaryName
     : preview.secondaryName;
+  const extraStep = formatService.moneyStep(dialog?.currency ?? "SGD");
 
   return (
     <div className="split-odd-cent-control">
@@ -144,14 +148,14 @@ function OddCentChooser({ dialog, people, onChange }) {
           className={extraCentName === preview.primaryName ? "is-selected" : ""}
           onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, higherHalf) : current)}
         >
-          {preview.primaryName} gets +$0.01
+          {preview.primaryName} gets +{extraStep}
         </button>
         <button
           type="button"
           className={extraCentName === preview.secondaryName ? "is-selected" : ""}
           onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, lowerHalf) : current)}
         >
-          {preview.secondaryName} gets +$0.01
+          {preview.secondaryName} gets +{extraStep}
         </button>
       </div>
     </div>
@@ -160,6 +164,8 @@ function OddCentChooser({ dialog, people, onChange }) {
 
 function SplitSharePreview({ dialog, people }) {
   const preview = splitSharePreview(dialog, people);
+  // Shares are in the expense's own currency (the group currency in a group).
+  const currency = dialog?.currency ?? "SGD";
 
   if (preview.totalAmountMinor <= 0 || people.length < 2) {
     return null;
@@ -169,11 +175,11 @@ function SplitSharePreview({ dialog, people }) {
     <div className="split-share-preview" aria-label="Split share amounts">
       <span>
         <span>{preview.primaryName} share</span>
-        <strong>{formatService.money(preview.primaryAmountMinor)}</strong>
+        <strong>{formatService.moneyWithCurrency(preview.primaryAmountMinor, currency)}</strong>
       </span>
       <span>
         <span>{preview.secondaryName} share</span>
-        <strong>{formatService.money(preview.secondaryAmountMinor)}</strong>
+        <strong>{formatService.moneyWithCurrency(preview.secondaryAmountMinor, currency)}</strong>
       </span>
     </div>
   );
@@ -194,8 +200,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
     }
 
     const timeout = window.setTimeout(() => {
-      amountInputRef.current?.focus({ preventScroll: true });
-      amountInputRef.current?.select?.();
+      focusFieldUnlessEditing(amountInputRef.current, { select: true });
     }, 80);
 
     return () => window.clearTimeout(timeout);
@@ -370,7 +375,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -394,7 +399,9 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
               </fieldset>
-              {formError ? <p className="form-error">{formError}</p> : null}
+              {settlementLock
+                ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                : <InlineError message={formError} />}
             </div>
             <div className="dialog-actions">
               {!readOnly && dialog?.id ? (
@@ -441,8 +448,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
     }
 
     const timeout = window.setTimeout(() => {
-      amountInputRef.current?.focus({ preventScroll: true });
-      amountInputRef.current?.select?.();
+      focusFieldUnlessEditing(amountInputRef.current, { select: true });
     }, 80);
 
     return () => window.clearTimeout(timeout);
@@ -545,7 +551,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
   );
 }
 
-export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitSettlementDialog({ dialog, groupOptions, people, formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -571,7 +577,9 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount={!readOnly} />
               </fieldset>
-              {formError ? <p className="form-error">{formError}</p> : null}
+              {settlementLock
+                ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                : <InlineError message={formError} />}
             </div>
             <div className="dialog-actions">
               {!readOnly && dialog?.id ? (
@@ -609,7 +617,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
   );
 }
 
-export function SplitDeleteDialog({ target, formError, isSubmitting, onClose, onConfirm }) {
+export function SplitDeleteDialog({ target, formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, onClose, onConfirm }) {
   const label = target?.description ?? target?.note ?? "this split row";
 
   return (
@@ -632,7 +640,9 @@ export function SplitDeleteDialog({ target, formError, isSubmitting, onClose, on
                 Delete {label}? This removes the split record only. Any linked bank ledger row stays in entries.
               </Dialog.Description>
             </div>
-            {formError ? <p className="form-error">{formError}</p> : null}
+            {settlementLock
+              ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+              : <InlineError message={formError} />}
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
               <button type="submit" className="dialog-danger" disabled={isSubmitting}>

@@ -1,6 +1,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouteWorkBusy } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
 
 export function ResponsiveSelect({
   value,
@@ -9,11 +11,11 @@ export function ResponsiveSelect({
   title,
   className = "table-edit-input",
   disabled = false,
-  open,
-  onOpenChange,
+  open = undefined,
+  onOpenChange = undefined,
   hideMobileTrigger = false
 }) {
-  const [useMobilePicker, setUseMobilePicker] = useState(false);
+  const useMobilePicker = useIsMobileLayout();
   const [isOpenInternal, setIsOpenInternal] = useState(false);
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? options[0] ?? null,
@@ -21,6 +23,8 @@ export function ResponsiveSelect({
   );
   const isControlledOpen = typeof open === "boolean";
   const isOpen = isControlledOpen ? open : isOpenInternal;
+  // An open mobile picker sheet covers the page, so it blocks optional work.
+  useRouteWorkBusy(isOpen);
 
   function updateOpen(nextOpen) {
     if (!isControlledOpen) {
@@ -28,18 +32,6 @@ export function ResponsiveSelect({
     }
     onOpenChange?.(nextOpen);
   }
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobilePicker(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   if (!useMobilePicker) {
     return (

@@ -10,6 +10,7 @@ import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const {
   categories: categoryService,
@@ -26,14 +27,14 @@ export function EntryEditorFields({
   accountOptions,
   ownerOptions,
   splitPercentValue,
-  amountMinorValue,
-  amountInputValue,
+  amountMinorValue = undefined,
+  amountInputValue = undefined,
   lockTransferCategory = false,
   bankFactsLocked = false,
   onChange,
-  onAmountChange,
+  onAmountChange = undefined,
   onCategoryAppearanceChange,
-  onCategoryQuickSave,
+  onCategoryQuickSave = undefined,
   isCategoryQuickSaving = false,
   onOwnerChange,
   onSplitPercentChange,
@@ -60,6 +61,7 @@ export function EntryEditorFields({
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
+  useRouteWorkBusy(categoryQuickSaveOpen);
   const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
   const quickSaveCategoryNameRef = useRef("");
   const bankFactsLockMessage = "This row is statement certified. Description, date, posted date, wallet, amount, and type are locked to the saved statement. Use note, category, owner, or splits for annotations.";
@@ -249,7 +251,7 @@ export function EntryEditorFields({
               enterKeyHint="next"
               onMouseDown={selectAllOnFocus}
               onFocus={selectAllOnFocus}
-              onInput={(event) => handleAmountDraftChange(event.target.value)}
+              onInput={(event) => handleAmountDraftChange(event.currentTarget.value)}
               onChange={(event) => handleAmountDraftChange(event.target.value)}
               onBlur={(event) => {
                 const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
@@ -365,14 +367,14 @@ export function EntryTransferTools({
   linkingTransferEntryId,
   settlingTransferEntryId,
   refreshingTransferCandidatesEntryId,
-  rankingTransferCandidatesEntryId,
+  rankingTransferCandidatesEntryId = undefined,
   transferAiScores = {},
   transferCandidatesError = "",
   onEnsureSettlementDraft,
   onTransferDialogEntryChange,
   onSettlementDraftChange,
   onRefreshCandidates,
-  onRankCandidates,
+  onRankCandidates = undefined,
   onLinkCandidate,
   onSettleTransfer,
   trigger = null,
@@ -489,14 +491,16 @@ export function EntryTransferTools({
                   >
                     {isRefreshingCandidates ? "Checking..." : "Recheck matches"}
                   </button>
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={isRankingCandidates || !transferCandidates.length}
-                    onClick={() => void onRankCandidates?.(entry)}
-                  >
-                    {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
-                  </button>
+                  {onRankCandidates ? (
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      disabled={isRankingCandidates || !transferCandidates.length}
+                      onClick={() => void onRankCandidates(entry)}
+                    >
+                      {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
+                    </button>
+                  ) : null}
                 </div>
                 <div className="transfer-match-stack">
                   {transferCandidatesError ? (

@@ -311,9 +311,9 @@ function toTitleCase(value: string) {
 }
 
 function cleanCitibankDescription(value: string) {
+  // Strip the trailing city and country once, so a merchant that ends in
+  // ".sg" (www.anywheel.sg, ROCKONLINE.SG) keeps it.
   return compactDescription(value
-    .replace(/SINGAPORESG$/i, "")
-    .replace(/SingaporeSG$/i, "")
-    .replace(/SG$/i, "")
+    .replace(/(?:SINGAPORE|Singapore)?SG$/, "")
     .replace(/([a-z])([A-Z])/g, "$1 $2"));
 }

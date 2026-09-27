@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { messages } from "./copy/en-SG";
 import { getIconComponent } from "./ui-components";
 import { useMoneyPrivacy } from "./money-privacy";
+import { isMobileLayout } from "./use-viewport";
 
 export function SplitsGroupsNav({
   groups,
@@ -22,7 +23,7 @@ export function SplitsGroupsNav({
       return;
     }
 
-    if (!window.matchMedia("(max-width: 760px)").matches) {
+    if (!isMobileLayout()) {
       return;
     }
 
@@ -60,7 +61,7 @@ export function SplitsGroupsNav({
               <span className="split-group-pill-content">
                 <strong>{group.name}</strong>
                 <span>{group.currency ?? "SGD"} · {group.expenseSource === "cash" ? "Cash only" : group.expenseSource === "ledger" ? "Bank/card" : "Mixed"}</span>
-                <span>{group.entryCount} {messages.splits.entries}</span>
+                <span>{messages.splits.entryCount(group.entryCount)}</span>
                 <span>{areTotalsVisible ? group.summaryText : "Balance hidden"}</span>
               </span>
             </button>

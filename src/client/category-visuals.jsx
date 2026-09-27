@@ -5,6 +5,8 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
+import { useRouteWorkBusy } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -17,12 +19,14 @@ export function SpendingMixChart({
   compact = false,
   height = 360,
   innerRadius = 70,
-  outerRadius = 120
+  outerRadius = 120,
+  // A Splits chart passes its split currency; other charts are SGD.
+  currency = ""
 }) {
   const total = typeof totalMinor === "number"
     ? totalMinor
     : data.reduce((sum, item) => sum + item.valueMinor, 0);
-  const isNarrowViewport = typeof window !== "undefined" && window.innerWidth <= 760;
+  const isNarrowViewport = useIsMobileLayout();
   const resolvedHeight = isNarrowViewport ? Math.min(height, compact ? 250 : 280) : height;
   const resolvedInnerRadius = isNarrowViewport ? Math.min(innerRadius, compact ? 54 : 62) : innerRadius;
   const resolvedOuterRadius = isNarrowViewport ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
@@ -33,10 +37,11 @@ export function SpendingMixChart({
 
   return (
     <div className={`spending-mix-chart-shell ${compact ? "is-compact" : ""}`}>
-      <Suspense fallback={<SpendingMixChartFallback total={total} totalLabel={totalLabel} compact={compact} resolvedHeight={resolvedHeight} />}>
+      <Suspense fallback={<SpendingMixChartFallback total={total} totalLabel={totalLabel} compact={compact} resolvedHeight={resolvedHeight} currency={currency} />}>
         <LazySpendingMixRecharts
           chartData={chartData}
           total={total}
+          currency={currency}
           totalLabel={totalLabel}
           compact={compact}
           isNarrowViewport={isNarrowViewport}
@@ -49,7 +54,7 @@ export function SpendingMixChart({
   );
 }
 
-function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }) {
+function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight, currency = "" }) {
   return (
     <div
       className={`spending-mix-chart spending-mix-chart-loading ${compact ? "is-compact" : ""}`}
@@ -59,7 +64,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
       <span className="chart-spinner" />
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong><PrivateMoney>{formatService.money(total)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{currency ? formatService.moneyWithCurrency(total, currency) : formatService.money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );
@@ -68,6 +73,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
 export function CategoryAppearancePopover({ category, onChange }) {
   const [dialog, setDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  useRouteWorkBusy(Boolean(dialog) || isSubmitting);
   const categoryDialog = useMemo(() => {
     if (!dialog || !category || dialog.categoryId !== category.id) {
       return dialog;
@@ -118,7 +124,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
             mode: "edit",
             categoryId: category.id,
             name: category.name,
-            slug: category.slug ?? slugify(category.name),
+            slug: category.slug ?? categoryService.slugify(category.name),
             iconKey: category.iconKey,
             colorHex: category.colorHex
           });
@@ -126,13 +132,16 @@ export function CategoryAppearancePopover({ category, onChange }) {
       >
         <CategoryGlyph iconKey={category.iconKey} />
       </button>
-      <CategoryEditDialog
-        dialog={categoryDialog}
-        isSubmitting={isSubmitting}
-        onChange={setDialog}
-        onClose={() => setDialog(null)}
-        onSave={handleSave}
-      />
+      {/* Mounted only while open: long lists render one of these per row. */}
+      {categoryDialog ? (
+        <CategoryEditDialog
+          dialog={categoryDialog}
+          isSubmitting={isSubmitting}
+          onChange={setDialog}
+          onClose={() => setDialog(null)}
+          onSave={handleSave}
+        />
+      ) : null}
     </>
   );
 }

@@ -36,6 +36,29 @@ async function openMonthBudgetEditor(page, label) {
   return row;
 }
 
+// Holds requestAnimationFrame callbacks so a test can type while a frame is
+// late, the way a busy browser or slow device delays it.
+async function installAnimationFrameHold(page) {
+  await page.addInitScript(() => {
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    const heldCallbacks = [];
+    window.__holdAnimationFrames = false;
+    window.requestAnimationFrame = (callback) => {
+      if (!window.__holdAnimationFrames) {
+        return nativeRequestAnimationFrame(callback);
+      }
+      heldCallbacks.push(callback);
+      return 0;
+    };
+    window.__releaseAnimationFrames = () => {
+      window.__holdAnimationFrames = false;
+      const released = heldCallbacks.splice(0);
+      released.forEach((callback) => callback(performance.now()));
+      return released.length;
+    };
+  });
+}
+
 async function replaceInputValue(input, nextValue) {
   const currentValue = await input.inputValue();
   await input.click();
@@ -87,6 +110,39 @@ test.describe("money field editability", () => {
     }).toBe(4876);
   });
 
+  test("leaving the inline entry amount field applies the amount without a page error", async ({ page }) => {
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    const description = `Playwright amount blur ${Date.now()}`;
+    await postJson(page, "/api/entries/create", {
+      date: "2026-05-24",
+      description,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 3210,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await page.goto("/entries?view=household&month=2026-05");
+    const editor = await openEntryEditor(page, description);
+    const amountInput = editor.getByLabel("Amount");
+    await amountInput.fill("48.5");
+    // Blur runs the editor's amount handler, which formats and applies the value.
+    await amountInput.press("Tab");
+    await expect(amountInput).toHaveValue("48.5");
+    const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+    await page.getByRole("button", { name: "Done editing entry" }).click();
+    await updateResponse;
+
+    await expect.poll(async () => {
+      const entriesPage = await loadEntriesPage(page, { view: "household", month: "2026-05" });
+      return entriesPage.monthPage.entries.find((entry) => entry.description === description)?.amountMinor ?? 0;
+    }).toBe(4850);
+    expect(pageErrors).toEqual([]);
+  });
+
   test("entries still allow note edits and persist them after save", async ({ page }) => {
     const description = `Playwright note edit ${Date.now()}`;
     await postJson(page, "/api/entries/create", {
@@ -101,7 +157,7 @@ test.describe("money field editability", () => {
     });
 
     await page.goto("/entries?view=person-tim&month=2026-05");
-    const editor = await openEntryEditor(page, description);
+    await openEntryEditor(page, description);
 
     const noteInput = page.getByRole("textbox", { name: "Note" });
     await noteInput.fill("receipt captured and itemized");
@@ -241,6 +297,40 @@ test.describe("money field editability", () => {
       const importsPage = await loadImportsPage(page);
       return importsPage.importsPage.recentImports.some((item) => item.sourceLabel?.includes("Playwright import"));
     }).toBe(true);
+  });
+
+  test("a late focus frame never selects and overwrites digits already typed", async ({ page }) => {
+    await installAnimationFrameHold(page);
+    await gotoPageAfterApi(
+      page,
+      "/settings?view=person-tim",
+      "/api/settings-page",
+      () => page.getByRole("heading", { name: "Settings" })
+    );
+    await page.getByRole("button", { name: "Show money totals" }).click();
+    await page.locator("button").filter({ hasText: "Accounts" }).first().click();
+    await page.locator(".settings-account-row").filter({ hasText: "UOB One" }).first().getByRole("button", { name: "Edit account" }).click();
+    const openingBalance = page.locator(".settings-account-dialog").getByLabel("Opening balance");
+    await expect(openingBalance).not.toHaveValue("");
+    const currentValue = await openingBalance.inputValue();
+
+    await page.evaluate(() => { window.__holdAnimationFrames = true; });
+    await openingBalance.click();
+    await openingBalance.press("End");
+    for (let index = 0; index < currentValue.length; index += 1) {
+      await openingBalance.press("Backspace");
+    }
+    await openingBalance.type("12");
+    await expect(openingBalance).toHaveValue("12");
+    const releasedFrames = await page.evaluate(() => window.__releaseAnimationFrames());
+    expect(releasedFrames).toBeGreaterThan(0);
+    await openingBalance.type("34.56");
+    await expect(openingBalance).toHaveValue("1234.56");
+
+    // Focusing an untouched field still selects the whole value for replacement.
+    await page.locator(".settings-account-dialog").getByLabel("Currency").focus();
+    await openingBalance.focus();
+    await expect.poll(() => openingBalance.evaluate((input) => [input.selectionStart, input.selectionEnd])).toEqual([0, 7]);
   });
 
   test("settings money fields replace the formatted value by typing and persist", async ({ page }) => {

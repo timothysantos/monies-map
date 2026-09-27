@@ -1,16 +1,8 @@
-import { queryKeys } from "./query-keys.js";
+import { buildPersonScopes, effectiveScopeForView } from "../domain/person-view-scope";
+import { queryKeys, summaryPageKeyFromParams } from "./query-keys.js";
+import { fetchQueryWithLease } from "./query-leases.js";
 import { buildRequestErrorMessage } from "./request-errors.js";
 import { fetchWithTimeout } from "./request-timeout.js";
-
-function getSummaryPageKeyFromParams(params) {
-  return queryKeys.summaryPage({
-    viewId: params.get("view") ?? "household",
-    month: params.get("month") ?? "",
-    scope: params.get("scope") ?? "direct_plus_shared",
-    startMonth: params.get("summary_start") ?? "",
-    endMonth: params.get("summary_end") ?? ""
-  });
-}
 
 function getSummaryAccountPillsKeyFromParams(params) {
   return queryKeys.summaryAccountPills({
@@ -46,53 +38,29 @@ export function buildSummaryAccountPillsParams({ viewId }) {
   return new URLSearchParams({ view: viewId });
 }
 
-async function fetchSummaryJson(queryClient, {
+function fetchSummaryJson(queryClient, {
   params,
   queryKey,
   path,
   bypassCache = false,
-  signal
+  signal = undefined
 }) {
-  if (signal?.aborted) {
-    throw new DOMException("Summary request aborted.", "AbortError");
-  }
-
-  if (!bypassCache) {
-    const cachedData = queryClient.getQueryData(queryKey);
-    if (cachedData) {
-      return cachedData;
+  return fetchQueryWithLease(queryClient, {
+    queryKey,
+    bypassCache,
+    signal,
+    abortMessage: "Summary request aborted.",
+    fetcher: async ({ signal: requestSignal }) => {
+      const response = await fetchWithTimeout(`${path}?${params.toString()}`, {
+        cache: "no-store",
+        signal: requestSignal
+      }, "Summary request");
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, `${path} failed.`));
+      }
+      return response.json();
     }
-  }
-
-  const fetcher = async () => {
-    const response = await fetchWithTimeout(`${path}?${params.toString()}`, {
-      cache: "no-store"
-    }, "Summary request");
-    if (!response.ok) {
-      throw new Error(await buildRequestErrorMessage(response, `${path} failed.`));
-    }
-    return response.json();
-  };
-
-  const data = bypassCache
-    ? await queryClient.fetchQuery({
-        queryKey,
-        queryFn: fetcher,
-        retry: false,
-        staleTime: 0
-      })
-    : await queryClient.ensureQueryData({
-        queryKey,
-        queryFn: fetcher,
-        retry: false,
-        revalidateIfStale: true
-      });
-
-  if (signal?.aborted) {
-    throw new DOMException("Summary request aborted.", "AbortError");
-  }
-
-  return data;
+  });
 }
 
 export async function fetchSummaryPageQuery(queryClient, params, options = {}) {
@@ -100,7 +68,7 @@ export async function fetchSummaryPageQuery(queryClient, params, options = {}) {
     ...options,
     params,
     path: "/api/summary-page",
-    queryKey: getSummaryPageKeyFromParams(params)
+    queryKey: summaryPageKeyFromParams(params)
   });
 }
 
@@ -117,7 +85,8 @@ export function buildSummaryPageView({
   appShell,
   selectedViewId,
   summaryPageData,
-  summaryAccountPillsData
+  summaryAccountPillsData,
+  summaryPageDataRequestKey = ""
 }) {
   if (!appShell || !summaryPageData) {
     return null;
@@ -127,9 +96,14 @@ export function buildSummaryPageView({
     ? "Household"
     : appShell.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";
 
+  const id = summaryPageData.viewId ?? selectedViewId ?? "household";
   return {
-    id: summaryPageData.viewId ?? selectedViewId ?? "household",
+    id,
     label: summaryPageData.label ?? fallbackLabel,
+    // The scope of the request these figures answer, not the route's latest
+    // one, so the scope control never runs ahead of the figures it labels.
+    selectedScope: effectiveScopeForView(id, new URLSearchParams(summaryPageDataRequestKey).get("scope")),
+    scopes: buildPersonScopes(id),
     summaryPage: {
       ...summaryPageData.summaryPage,
       accountPills: summaryAccountPillsData?.accountPills ?? []

@@ -192,6 +192,9 @@ export interface EntryDto {
   linkedSplitGroupName?: string;
   linkedSplitCategoryName?: string;
   linkedSplitNote?: string;
+  // The linked split's shares in this entry's own (home) currency: a travel
+  // split's shares are each person's share of the ledger amount, while the
+  // split itself keeps its own-currency shares.
   linkedSplitShares?: EntrySplitDto[];
   splits: EntrySplitDto[];
 }
@@ -210,14 +213,6 @@ export interface EntriesPageDto {
     scopes: Array<{ key: PersonScope; label: string }>;
     entries: EntryDto[];
   };
-}
-
-export interface EntryDeepLinkContextDto {
-  entryId: string;
-  month: string;
-  accountId?: string;
-  accountName?: string;
-  viewId: string;
 }
 
 export interface SplitGroupPillDto {
@@ -387,7 +382,11 @@ export interface SplitsPageDto {
   groups: SplitGroupPillDto[];
   activity: SplitActivityDto[];
   matches: SplitMatchCandidateDto[];
+  // Open expenses by category in the home currency (SGD).
   donutChart: DonutChartDatumDto[];
+  // The same chart for each other split currency with open expenses, in that
+  // currency's own amounts; absent when every open expense is in SGD.
+  donutChartsByCurrency?: Record<string, DonutChartDatumDto[]>;
   settlementCheckpoints: SplitSettlementCheckpointDto[];
   activityHistory: SplitActivityHistoryDto[];
 }

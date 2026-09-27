@@ -1,6 +1,6 @@
 import type { SummaryAccountPillDto } from "../../types/dto";
 import { loadAccounts } from "../app-repository";
-import { accountsForSummary } from "../app-shell";
+import { accountsForSummary } from "../summary-projection";
 import { loadRoutePageContext } from "../route-context";
 
 // Summary account pills are a separate slice query so note edits and range

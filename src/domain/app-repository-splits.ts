@@ -1,16 +1,19 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   groupSplits,
+  newSplitRecordId,
   slugify
 } from "./app-repository-helpers";
-import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
+import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSplitBatch, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
+import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
+import { assertSplitSettlementUnchanged, type SplitSettlementFacts } from "./split-settlement-lock";
 import {
   findBestCrossCurrencySplitExpenseLedgerCandidate,
   findBestCrossCurrencySplitSettlementLedgerCandidate,
   findBestSplitExpenseLedgerCandidate,
   findBestSplitSettlementLedgerCandidate
 } from "./split-matching";
-import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
+import { rebalanceSplitSharesForTotal, splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { calculateNetSettlement } from "./split-settlement-policy";
 import { calculateFxRateBasisPoints, convertMinorAmount, normalizeSplitCurrency } from "./split-currency";
 import { truncateReviewDescription } from "./review-description";
@@ -435,7 +438,7 @@ export async function createSplitSettlementCheckpoint(
     balances.set(groupId, (balances.get(groupId) ?? 0) + amount);
   }
   const net = calculateNetSettlement([...balances].map(([groupId, amountMinor]) => ({ groupId, amountMinor })), viewer.display_name, other.display_name);
-  const id = `split-checkpoint-${Date.now()}`;
+  const id = newSplitRecordId("split-checkpoint");
   const status = net.amountMinor === 0 ? "internally_offset" : "open";
   await db.prepare(`
     INSERT INTO split_settlement_checkpoints
@@ -656,7 +659,7 @@ export async function createSplitGroupRecord(
   db: D1Database,
   input: { name: string; currency?: string; expenseSource?: SplitGroupDto["expenseSource"] }
 ) {
-  const id = `split-group-${slugify(input.name)}-${Date.now()}`;
+  const id = newSplitRecordId(`split-group-${slugify(input.name)}`);
   await db
     .prepare(`
       INSERT INTO split_groups (
@@ -696,7 +699,7 @@ export async function createSplitExpenseRecord(
     input.payerPersonName
   );
 
-  const id = `split-expense-${Date.now()}`;
+  const id = newSplitRecordId("split-expense");
   const batchId = await getOrCreateActiveSplitBatch(db, {
     groupId: input.groupId || null,
     date: input.date
@@ -832,7 +835,7 @@ export async function createSplitSettlementRecord(
   const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
-  const id = `split-settlement-${Date.now()}`;
+  const id = newSplitRecordId("split-settlement");
   const batchId = await getOrCreateActiveSplitBatch(db, {
     groupId: input.groupId || null,
     date: input.date
@@ -906,59 +909,79 @@ export async function updateSplitExpenseRecord(
   }
 
   const nextGroupId = input.groupId || null;
-  const batchId = existing.split_group_id === nextGroupId
-    ? existing.split_batch_id
-    : await getOrCreateActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
-
-  await db
-    .prepare(`
-      UPDATE split_expenses
-      SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
-          category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
-          fx_rate_basis_points = ?, payment_method = ?, payment_status = ?, note = ?
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(
-      input.groupId || null,
-      batchId ?? null,
-      payerPersonId,
-      input.date,
-      input.description.trim(),
-      categoryId,
-      input.amountMinor,
-      currency,
-      input.homeAmountMinor ?? null,
-      input.fxRateBasisPoints ?? null,
-      input.paymentMethod ?? "cash",
-      input.paymentStatus ?? "recorded",
-      input.note ?? null,
-      input.splitExpenseId,
-      DEFAULT_HOUSEHOLD_ID
-    )
-    .run();
-
   const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints, input.splitAmountMinor);
+  await assertSplitSettlementUnchanged(db, {
+    recordKind: "expense",
+    recordId: input.splitExpenseId,
+    next: () => ({
+      date: input.date,
+      groupId: nextGroupId,
+      currency,
+      amountMinor: input.amountMinor,
+      partyIds: [payerPersonId],
+      shares: [
+        { personId: sharePeople[0].id, amountMinor: firstAmount },
+        { personId: sharePeople[1].id, amountMinor: secondAmount }
+      ]
+    })
+  });
 
-  await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId).run();
-  await db
-    .prepare(`
-      INSERT INTO split_expense_shares (
-        id, split_expense_id, person_id, ratio_basis_points, amount_minor
-      ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
-    `)
-    .bind(
-      `${input.splitExpenseId}-${sharePeople[0].id}`,
-      input.splitExpenseId,
-      sharePeople[0].id,
-      firstBasisPoints,
-      firstAmount,
-      `${input.splitExpenseId}-${sharePeople[1].id}`,
-      input.splitExpenseId,
-      sharePeople[1].id,
-      secondBasisPoints,
-      secondAmount
-    )
-    .run();
+  const batch = existing.split_group_id === nextGroupId
+    ? { batchId: existing.split_batch_id, statements: [] }
+    : await planActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
+  // A linked entry counts by its split shares in person views, so a share
+  // (or payer) change moves the stored month totals of the entry's month.
+  const months = existing.linked_transaction_id ? await linkedEntryMonths(db, input.splitExpenseId) : [];
+
+  await db.batch([
+    ...batch.statements,
+    db
+      .prepare(`
+        UPDATE split_expenses
+        SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
+            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
+            fx_rate_basis_points = ?, payment_method = ?, payment_status = ?, note = ?
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(
+        nextGroupId,
+        batch.batchId ?? null,
+        payerPersonId,
+        input.date,
+        input.description.trim(),
+        categoryId,
+        input.amountMinor,
+        currency,
+        input.homeAmountMinor ?? null,
+        input.fxRateBasisPoints ?? null,
+        input.paymentMethod ?? "cash",
+        input.paymentStatus ?? "recorded",
+        input.note ?? null,
+        input.splitExpenseId,
+        DEFAULT_HOUSEHOLD_ID
+      ),
+    db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId),
+    db
+      .prepare(`
+        INSERT INTO split_expense_shares (
+          id, split_expense_id, person_id, ratio_basis_points, amount_minor
+        ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
+      `)
+      .bind(
+        `${input.splitExpenseId}-${sharePeople[0].id}`,
+        input.splitExpenseId,
+        sharePeople[0].id,
+        firstBasisPoints,
+        firstAmount,
+        `${input.splitExpenseId}-${sharePeople[1].id}`,
+        input.splitExpenseId,
+        sharePeople[1].id,
+        secondBasisPoints,
+        secondAmount
+      ),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   if (existing.linked_transaction_id) {
     await syncLinkedTransactionToSplitExpense(db, {
@@ -1087,37 +1110,57 @@ export async function updateSplitSettlementRecord(
   }
 
   const nextGroupId = input.groupId || null;
-  const batchId = existing.split_group_id === nextGroupId
-    ? existing.split_batch_id
-    : await getOrCreateActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
-
-  await db
-    .prepare(`
-      UPDATE split_settlements
-      SET split_group_id = ?, split_batch_id = ?, from_person_id = ?, to_person_id = ?,
-          settlement_date = ?, amount_minor = ?, currency = ?, fx_rate_basis_points = ?,
-          payment_method = ?, payment_status = ?, note = ?
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(
-      input.groupId || null,
-      batchId ?? null,
-      fromPersonId,
-      toPersonId,
-      input.date,
-      input.amountMinor,
+  await assertSplitSettlementUnchanged(db, {
+    recordKind: "settlement",
+    recordId: input.settlementId,
+    next: () => ({
+      date: input.date,
+      groupId: nextGroupId,
       currency,
-      input.fxRateBasisPoints ?? null,
-      input.paymentMethod ?? "cash",
-      input.paymentStatus ?? "recorded",
-      input.note ?? null,
-      input.settlementId,
-      DEFAULT_HOUSEHOLD_ID
-    )
-    .run();
-  if (batchId) {
-    await closeSplitBatch(db, { batchId, closedOn: input.date });
-  }
+      amountMinor: input.amountMinor,
+      partyIds: [fromPersonId, toPersonId],
+      shares: []
+    })
+  });
+
+  const movesGroup = existing.split_group_id !== nextGroupId;
+  const batch = movesGroup
+    ? await planActiveSplitBatch(db, { groupId: nextGroupId, date: input.date })
+    : { batchId: existing.split_batch_id, statements: [] };
+  // A settle-up moved to another group settles that group's current batch.
+  // One that stays keeps its batch as it is: closed, or open again after
+  // Undo settle-up, where editing it must not settle the group again.
+  const closeBatchStatement = movesGroup && batch.batchId
+    ? await buildCloseSplitBatchStatement(db, { batchId: batch.batchId, groupId: nextGroupId, closedOn: input.date })
+    : null;
+
+  await db.batch([
+    ...batch.statements,
+    db
+      .prepare(`
+        UPDATE split_settlements
+        SET split_group_id = ?, split_batch_id = ?, from_person_id = ?, to_person_id = ?,
+            settlement_date = ?, amount_minor = ?, currency = ?, fx_rate_basis_points = ?,
+            payment_method = ?, payment_status = ?, note = ?
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(
+        nextGroupId,
+        batch.batchId ?? null,
+        fromPersonId,
+        toPersonId,
+        input.date,
+        input.amountMinor,
+        currency,
+        input.fxRateBasisPoints ?? null,
+        input.paymentMethod ?? "cash",
+        input.paymentStatus ?? "recorded",
+        input.note ?? null,
+        input.settlementId,
+        DEFAULT_HOUSEHOLD_ID
+      ),
+    ...(closeBatchStatement ? [closeBatchStatement] : [])
+  ]);
 
   return { settlementId: input.settlementId };
 }
@@ -1161,14 +1204,39 @@ export async function deleteSplitExpenseRecord(
     throw new Error("Split expense not found.");
   }
   if (existing.deleted_at) throw new Error("This split is already in activity history.");
+  await assertSplitSettlementUnchanged(db, { recordKind: "expense", recordId: existing.id, next: () => "deleted" });
 
-  await db
-    .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
-    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
-    .run();
-  await recordSplitHistory(db, { recordKind: "expense", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.total_amount_minor, currency: existing.currency });
+  // The archived split keeps its ledger link so a restore can bring it back,
+  // but it stops counting as the entry's split, so the entry's month totals
+  // go back to the full ledger amount.
+  const months = await linkedEntryMonths(db, input.splitExpenseId);
+  // A second delete that passed the check before the first committed
+  // archives nothing, so it records no history either.
+  await runGuardedBatch(db, archiveStatePrecondition(db, "split_expenses", existing.id, false, "This split is already in activity history."), [
+    db
+      .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+      .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID),
+    buildSplitHistoryStatement(db, { recordKind: "expense", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.total_amount_minor, currency: existing.currency }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return { splitExpenseId: input.splitExpenseId, deleted: true };
+}
+
+// The event month of the ledger entry a split expense is linked to: the only
+// month whose totals read that split's shares.
+async function linkedEntryMonths(db: D1Database, splitExpenseId: string) {
+  const entry = await db
+    .prepare(`
+      SELECT transactions.transaction_date
+      FROM split_expenses
+      INNER JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      WHERE split_expenses.id = ? AND split_expenses.household_id = ?
+    `)
+    .bind(splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ transaction_date: string }>();
+  return entry ? [entry.transaction_date.slice(0, 7)] : [];
 }
 
 export async function deleteSplitSettlementRecord(
@@ -1187,21 +1255,89 @@ export async function deleteSplitSettlementRecord(
     throw new Error("Split settlement not found.");
   }
   if (existing.deleted_at) throw new Error("This settlement is already in activity history.");
+  await assertSplitSettlementUnchanged(db, { recordKind: "settlement", recordId: existing.id, next: () => "deleted" });
 
-  await db
-    .prepare("UPDATE split_settlements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
-    .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
-    .run();
-  await recordSplitHistory(db, { recordKind: "settlement", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency });
+  await runGuardedBatch(db, archiveStatePrecondition(db, "split_settlements", existing.id, false, "This settlement is already in activity history."), [
+    db
+      .prepare("UPDATE split_settlements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+      .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID),
+    buildSplitHistoryStatement(db, { recordKind: "settlement", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency })
+  ]);
 
   return { settlementId: input.settlementId, deleted: true };
 }
 
-async function recordSplitHistory(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string; action: "created" | "updated" | "deleted" | "restored"; groupId?: string | null; groupName?: string | null; description: string; amountMinor: number; currency?: string | null; detail?: string }) {
-  await db.prepare(`INSERT INTO split_activity_history
+// Undo settle-up: reopens a group batch that a settle-up closed, so its
+// activity, the settle-up included, counts in the group balance again and
+// can be corrected (the settlement lock releases it). The settle-up is kept,
+// since it records a real payment that may be bank linked, and gets a history
+// event. A group keeps one open batch: when a newer batch is already open the
+// reopened activity (archived records too, so a restore lands there) joins
+// it, and the next settle-up closes all of it together.
+export async function reopenSplitBatchRecord(db: D1Database, input: { batchId: string }) {
+  const batch = await db
+    .prepare("SELECT id, split_group_id, closed_on FROM split_batches WHERE id = ? AND household_id = ?")
+    .bind(input.batchId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string; split_group_id: string | null; closed_on: string | null }>();
+  if (!batch) throw new Error("Settled batch not found.");
+  if (!batch.closed_on) throw new Error("This batch is not settled, so there is no settle-up to undo.");
+  // A batch whose activity was moved into the open batch by an earlier undo
+  // stays closed and empty.
+  const records = await db
+    .prepare("SELECT (SELECT COUNT(*) FROM split_expenses WHERE split_batch_id = ?1) + (SELECT COUNT(*) FROM split_settlements WHERE split_batch_id = ?1) AS count")
+    .bind(batch.id)
+    .first<{ count: number }>();
+  if (!records?.count) throw new Error("This settle-up was already undone.");
+
+  const [openBatchId, settlements] = await Promise.all([
+    findActiveSplitBatchId(db, batch.split_group_id),
+    db
+      .prepare(`
+        SELECT split_settlements.id, split_settlements.amount_minor, split_settlements.currency, split_groups.group_name
+        FROM split_settlements
+        LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
+        WHERE split_settlements.split_batch_id = ? AND split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL
+        ORDER BY split_settlements.settlement_date, split_settlements.id
+      `)
+      .bind(batch.id, DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; amount_minor: number; currency: string | null; group_name: string | null }>()
+  ]);
+  const reopen = openBatchId
+    ? [
+        db.prepare("UPDATE split_expenses SET split_batch_id = ? WHERE split_batch_id = ? AND household_id = ?").bind(openBatchId, batch.id, DEFAULT_HOUSEHOLD_ID),
+        db.prepare("UPDATE split_settlements SET split_batch_id = ? WHERE split_batch_id = ? AND household_id = ?").bind(openBatchId, batch.id, DEFAULT_HOUSEHOLD_ID)
+      ]
+    : [await buildReopenSplitBatchStatement(db, { batchId: batch.id, groupId: batch.split_group_id })];
+
+  await db.batch([
+    ...reopen,
+    ...settlements.results.map((settlement) => buildSplitHistoryStatement(db, {
+      recordKind: "settlement",
+      recordId: settlement.id,
+      action: "updated",
+      groupId: batch.split_group_id,
+      groupName: settlement.group_name,
+      description: "Settlement",
+      amountMinor: settlement.amount_minor,
+      currency: settlement.currency,
+      detail: "Settle-up undone; its activity is open again."
+    }))
+  ]);
+
+  return { batchId: input.batchId, reopened: true };
+}
+
+type SplitHistoryInput = { recordKind: "expense" | "settlement"; recordId: string; action: "created" | "updated" | "deleted" | "restored"; groupId?: string | null; groupName?: string | null; description: string; amountMinor: number; currency?: string | null; detail?: string };
+
+function buildSplitHistoryStatement(db: D1Database, input: SplitHistoryInput) {
+  return db.prepare(`INSERT INTO split_activity_history
     (id, household_id, record_kind, record_id, action, group_id, group_name, description, amount_minor, currency, detail)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(`split-history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null).run();
+    .bind(newSplitRecordId("split-history"), DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null);
+}
+
+async function recordSplitHistory(db: D1Database, input: SplitHistoryInput) {
+  await buildSplitHistoryStatement(db, input).run();
 }
 
 export async function loadSplitActivityHistory(db: D1Database): Promise<SplitActivityHistoryDto[]> {
@@ -1216,13 +1352,170 @@ export async function loadSplitActivityHistory(db: D1Database): Promise<SplitAct
 
 export async function restoreSplitRecord(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string }) {
   const table = input.recordKind === "expense" ? "split_expenses" : "split_settlements";
-  const existing = await db.prepare(`SELECT id, split_group_id, description, ${input.recordKind === "expense" ? "total_amount_minor" : "amount_minor"} AS amount_minor, currency, deleted_at FROM ${table} WHERE id = ? AND household_id = ?`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).first<{ id: string; split_group_id: string | null; description: string; amount_minor: number; currency: string | null; deleted_at: string | null }>();
+  const existing = await db.prepare(`SELECT id, split_group_id, description, ${input.recordKind === "expense" ? "total_amount_minor" : "amount_minor"} AS amount_minor, ${input.recordKind === "expense" ? "expense_date" : "settlement_date"} AS activity_date, currency, deleted_at, linked_transaction_id FROM ${table} WHERE id = ? AND household_id = ?`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).first<{ id: string; split_group_id: string | null; description: string; amount_minor: number; activity_date: string; currency: string | null; deleted_at: string | null; linked_transaction_id: string | null }>();
   if (!existing) throw new Error("Split record not found.");
   if (!existing.deleted_at) throw new Error("This split is already active.");
-  await db.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ? AND household_id = ? AND deleted_at IS NOT NULL`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).run();
+  if (existing.linked_transaction_id) {
+    await assertLedgerRowFreeForRestore(db, { recordId: input.recordId, transactionId: existing.linked_transaction_id });
+  }
   const group = existing.split_group_id ? await db.prepare("SELECT group_name FROM split_groups WHERE id = ?").bind(existing.split_group_id).first<{ group_name: string }>() : null;
-  await recordSplitHistory(db, { recordKind: input.recordKind, recordId: existing.id, action: "restored", groupId: existing.split_group_id, groupName: group?.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency });
+  // A record archived before its batch was settled was not paid by that
+  // settle-up, so it comes back as open activity in the group's open batch
+  // instead of hiding in the settled one.
+  const settledBatch = await db
+    .prepare(`SELECT split_batches.id FROM ${table} INNER JOIN split_batches ON split_batches.id = ${table}.split_batch_id WHERE ${table}.id = ? AND split_batches.closed_on IS NOT NULL`)
+    .bind(input.recordId)
+    .first<{ id: string }>();
+  const openBatch = settledBatch
+    ? await planActiveSplitBatch(db, { groupId: existing.split_group_id, date: existing.activity_date })
+    : null;
+  // A restored expense counts as its entry's split again.
+  const months = input.recordKind === "expense" ? await linkedEntryMonths(db, input.recordId) : [];
+  const linkedTransactionId = existing.linked_transaction_id;
+  const holder = linkedTransactionId
+    ? () => findActiveLedgerRowHolder(db, linkedTransactionId, input.recordId)
+    : async () => null;
+  await runLinkingBatch(db, RESTORE_LEDGER_ROW_TAKEN, holder, [
+    ...(openBatch?.statements ?? []),
+    openBatch
+      ? db.prepare(`UPDATE ${table} SET deleted_at = NULL, split_batch_id = ? WHERE id = ? AND household_id = ? AND deleted_at IS NOT NULL`).bind(openBatch.batchId, input.recordId, DEFAULT_HOUSEHOLD_ID)
+      : db.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ? AND household_id = ? AND deleted_at IS NOT NULL`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID),
+    buildSplitHistoryStatement(db, { recordKind: input.recordKind, recordId: existing.id, action: "restored", groupId: existing.split_group_id, groupName: group?.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  // A second restore of the same record that passed the check before the
+  // first committed restores nothing, so it records no history either.
+  ], archiveStatePrecondition(db, table, input.recordId, true, "This split is already active."));
+  await refreshMonthlySnapshotsAfterWrite(db, months);
   return { recordId: input.recordId, restored: true };
+}
+
+// An archived split record keeps its ledger link but no longer holds that
+// ledger row, which another split record may since have taken. Restoring
+// would give the row two active split records, so it is refused.
+async function assertLedgerRowFreeForRestore(db: D1Database, input: { recordId: string; transactionId: string }) {
+  if (await findActiveLedgerRowHolder(db, input.transactionId, input.recordId)) {
+    throw new Error(RESTORE_LEDGER_ROW_TAKEN);
+  }
+}
+
+const ENTRY_ALREADY_LINKED = "This entry is already linked to a split expense.";
+const LEDGER_ROW_ALREADY_LINKED = "This ledger row is already linked to another split record.";
+const RESTORE_LEDGER_ROW_TAKEN = "Its entry is now linked to another split. Delete that split first to restore this one.";
+
+async function findActiveLinkedSplitExpenseId(db: D1Database, transactionId: string) {
+  const split = await db
+    .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
+    .bind(DEFAULT_HOUSEHOLD_ID, transactionId)
+    .first<{ id: string }>();
+  return split?.id ?? null;
+}
+
+// The active split record (or settlement checkpoint match) that holds a
+// ledger row, other than `exceptRecordId`.
+async function findActiveLedgerRowHolder(db: D1Database, transactionId: string, exceptRecordId = "") {
+  const holder = await db
+    .prepare(`
+      SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
+      UNION ALL SELECT id FROM split_settlements WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
+      UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, transactionId, exceptRecordId, DEFAULT_HOUSEHOLD_ID, transactionId, exceptRecordId, transactionId)
+    .first<{ id: string }>();
+  return holder?.id ?? null;
+}
+
+// Whether a failed write lost the race for a ledger row to another split
+// record: the one-active-split index (schema.sql) rejected its batch.
+export function isActiveSplitLinkConflict(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /UNIQUE constraint failed: split_(expenses|settlements)\.linked_transaction_id/.test(message);
+}
+
+// A check a command made before its batch, which another request can make
+// stale by committing in between (two restores of one record, a split
+// matched to two entries at once). `guard` runs first in the batch and fails
+// it as a whole when the checked state no longer holds, so the later
+// request changes nothing (no second history event, month marker or batch);
+// `stillHolds` re-reads that state after a failure, and `message` is what
+// the check itself says.
+type BatchPrecondition = {
+  guard: D1PreparedStatement;
+  stillHolds: () => Promise<boolean>;
+  message: string;
+};
+
+// A batch guard statement that fails when `staleSql` (a SELECT of an `id`
+// column) finds a row. SQLite can raise an error only inside a trigger, so
+// the guard parses each found id as JSON text that is never valid
+// ('{' || id): one row fails the statement, and D1 rolls the batch back.
+function buildBatchGuard(db: D1Database, staleSql: string, ...params: unknown[]) {
+  return db.prepare(`SELECT json('{' || id) AS stale FROM (${staleSql})`).bind(...params);
+}
+
+// Runs a command's batch behind its precondition guard; a failure after
+// which the precondition no longer holds gets the check's own message.
+// (runLinkingBatch below does the same for batches that link a ledger row.)
+async function runGuardedBatch(db: D1Database, precondition: BatchPrecondition, statements: D1PreparedStatement[]) {
+  try {
+    return await db.batch([precondition.guard, ...statements]);
+  } catch (error) {
+    if (!(await precondition.stillHolds())) {
+      throw new Error(precondition.message);
+    }
+    throw error;
+  }
+}
+
+// Runs a batch that links a split record to a ledger row. The checks before
+// it cannot see a write that commits in between, so when the batch fails
+// and another split record now holds the row (the index turned the second
+// write away as a whole), the person gets the same "already linked" message
+// as the check gives. A precondition on the record itself (still archived,
+// still unlinked) is guarded first.
+async function runLinkingBatch(
+  db: D1Database,
+  alreadyLinkedMessage: string,
+  findHolder: () => Promise<string | null>,
+  statements: D1PreparedStatement[],
+  precondition?: BatchPrecondition
+) {
+  try {
+    return await db.batch(precondition ? [precondition.guard, ...statements] : statements);
+  } catch (error) {
+    if (precondition && !(await precondition.stillHolds())) {
+      throw new Error(precondition.message);
+    }
+    if (isActiveSplitLinkConflict(error) || await findHolder()) {
+      throw new Error(alreadyLinkedMessage);
+    }
+    throw error;
+  }
+}
+
+// The precondition of a match: the split record is still unlinked.
+function unlinkedRecordPrecondition(db: D1Database, table: "split_expenses" | "split_settlements", recordId: string, message: string): BatchPrecondition {
+  return {
+    guard: buildBatchGuard(db, `SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND linked_transaction_id IS NOT NULL`, recordId, DEFAULT_HOUSEHOLD_ID),
+    stillHolds: async () => Boolean(await db
+      .prepare(`SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL`)
+      .bind(recordId, DEFAULT_HOUSEHOLD_ID)
+      .first()),
+    message
+  };
+}
+
+// The precondition of a delete (`archived: false`) or restore (`archived:
+// true`): the record is still in the state the check saw.
+function archiveStatePrecondition(db: D1Database, table: "split_expenses" | "split_settlements", recordId: string, archived: boolean, message: string): BatchPrecondition {
+  return {
+    guard: buildBatchGuard(db, `SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND deleted_at IS ${archived ? "NULL" : "NOT NULL"}`, recordId, DEFAULT_HOUSEHOLD_ID),
+    stillHolds: async () => Boolean(await db
+      .prepare(`SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND deleted_at IS ${archived ? "NOT NULL" : "NULL"}`)
+      .bind(recordId, DEFAULT_HOUSEHOLD_ID)
+      .first()),
+    message
+  };
 }
 
 export async function linkSplitExpenseMatch(
@@ -1233,19 +1526,19 @@ export async function linkSplitExpenseMatch(
     db.prepare("SELECT total_amount_minor, currency, payment_method, payment_status FROM split_expenses WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
       .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
       .first<{ total_amount_minor: number; currency: string; payment_method: SplitExpenseDto["paymentMethod"]; payment_status: SplitExpenseDto["paymentStatus"] }>(),
-    db.prepare(`SELECT transactions.amount_minor, transactions.currency, transactions.entry_type
+    db.prepare(`SELECT transactions.amount_minor, transactions.currency, transactions.entry_type, transactions.transaction_date
       FROM transactions INNER JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.id = ? AND transactions.household_id = ? AND imports.status = 'completed'`)
       .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID)
-      .first<{ amount_minor: number; currency: string; entry_type: string }>(),
-    db.prepare(`SELECT id FROM split_expenses WHERE linked_transaction_id = ?
-      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ?
+      .first<{ amount_minor: number; currency: string; entry_type: string; transaction_date: string }>(),
+    db.prepare(`SELECT id FROM split_expenses WHERE linked_transaction_id = ? AND deleted_at IS NULL
+      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ? AND deleted_at IS NULL
       UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
       LIMIT 1`).bind(input.transactionId, input.transactionId, input.transactionId).first<{ id: string }>()
   ]);
   if (!expense) throw new Error("This split expense is unavailable or already linked.");
   if (!transaction || transaction.entry_type !== "expense") throw new Error("Split expense matches require an imported expense.");
-  if (alreadyUsed) throw new Error("This ledger row is already linked to another split record.");
+  if (alreadyUsed) throw new Error(LEDGER_ROW_ALREADY_LINKED);
   const splitCurrency = normalizeSplitCurrency(expense.currency);
   const transactionCurrency = normalizeSplitCurrency(transaction.currency);
   if (splitCurrency !== transactionCurrency && (!["card", "bank"].includes(expense.payment_method) || expense.payment_status !== "awaiting_statement")) {
@@ -1255,10 +1548,17 @@ export async function linkSplitExpenseMatch(
   const fxRateBasisPoints = splitCurrency === transactionCurrency
     ? 10000
     : calculateFxRateBasisPoints(Math.abs(expense.total_amount_minor), homeAmountMinor);
-  await db
-    .prepare("UPDATE split_expenses SET linked_transaction_id = ?, home_amount_minor = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
-    .bind(input.transactionId, homeAmountMinor, fxRateBasisPoints, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
-    .run();
+  // The entry now counts by its split shares, so its month totals change.
+  const months = [transaction.transaction_date.slice(0, 7)];
+  // A match of the same split to another entry that committed after the
+  // check above refuses this one as a whole: no link, no month marker.
+  await runLinkingBatch(db, LEDGER_ROW_ALREADY_LINKED, () => findActiveLedgerRowHolder(db, input.transactionId), [
+    db
+      .prepare("UPDATE split_expenses SET linked_transaction_id = ?, home_amount_minor = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+      .bind(input.transactionId, homeAmountMinor, fxRateBasisPoints, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ], unlinkedRecordPrecondition(db, "split_expenses", input.splitExpenseId, "This split expense is unavailable or already linked."));
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   const primaryShare = await db
     .prepare(`
@@ -1292,14 +1592,14 @@ export async function linkSplitSettlementMatch(
       WHERE transactions.id = ? AND transactions.household_id = ? AND imports.status = 'completed'`)
       .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID)
       .first<{ amount_minor: number; currency: string; entry_type: string }>(),
-    db.prepare(`SELECT id FROM split_expenses WHERE linked_transaction_id = ?
-      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ?
+    db.prepare(`SELECT id FROM split_expenses WHERE linked_transaction_id = ? AND deleted_at IS NULL
+      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ? AND deleted_at IS NULL
       UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
       LIMIT 1`).bind(input.transactionId, input.transactionId, input.transactionId).first<{ id: string }>()
   ]);
   if (!settlement) throw new Error("This settle-up is unavailable or already linked.");
   if (!transaction || transaction.entry_type !== "transfer") throw new Error("Settle-up matches require an imported transfer.");
-  if (alreadyUsed) throw new Error("This ledger row is already linked to another split record.");
+  if (alreadyUsed) throw new Error(LEDGER_ROW_ALREADY_LINKED);
   const splitCurrency = normalizeSplitCurrency(settlement.currency);
   const transactionCurrency = normalizeSplitCurrency(transaction.currency);
   if (splitCurrency !== transactionCurrency && (settlement.payment_method !== "bank" || settlement.payment_status !== "awaiting_statement")) {
@@ -1308,10 +1608,11 @@ export async function linkSplitSettlementMatch(
   const fxRateBasisPoints = splitCurrency === transactionCurrency
     ? 10000
     : calculateFxRateBasisPoints(Math.abs(settlement.amount_minor), Math.abs(transaction.amount_minor));
-  await db
-    .prepare("UPDATE split_settlements SET linked_transaction_id = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
-    .bind(input.transactionId, fxRateBasisPoints, input.settlementId, DEFAULT_HOUSEHOLD_ID)
-    .run();
+  await runLinkingBatch(db, LEDGER_ROW_ALREADY_LINKED, () => findActiveLedgerRowHolder(db, input.transactionId), [
+    db
+      .prepare("UPDATE split_settlements SET linked_transaction_id = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+      .bind(input.transactionId, fxRateBasisPoints, input.settlementId, DEFAULT_HOUSEHOLD_ID)
+  ], unlinkedRecordPrecondition(db, "split_settlements", input.settlementId, "This settle-up is unavailable or already linked."));
 
   return { ok: true };
 }
@@ -1362,13 +1663,10 @@ export async function createSplitExpenseFromEntryRecord(
     throw new Error("Only expense entries can be added to splits.");
   }
 
-  const existingSplit = await db
-    .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{ id: string }>();
-
-  if (existingSplit) {
-    throw new Error("This entry is already linked to a split expense.");
+  // An archived split keeps its link for a restore but no longer holds the
+  // entry, so the entry can be added to a new split.
+  if (await findActiveLinkedSplitExpenseId(db, input.entryId)) {
+    throw new Error(ENTRY_ALREADY_LINKED);
   }
 
   const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
@@ -1376,56 +1674,58 @@ export async function createSplitExpenseFromEntryRecord(
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
 
-  const id = `split-expense-${Date.now()}`;
+  const id = newSplitRecordId("split-expense");
   const currency = await assertSplitGroupCurrency(db, input.splitGroupId, entry.currency);
-  const batchId = await getOrCreateActiveSplitBatch(db, {
+  const batch = await resolveActiveSplitBatch(db, {
     groupId: input.splitGroupId || null,
     date: entry.transaction_date
   });
-  await db
-    .prepare(`
-      INSERT INTO split_expenses (
-        id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
-        description, category_id, total_amount_minor, currency, home_amount_minor,
-        payment_method, payment_status, note, linked_transaction_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      id,
-      DEFAULT_HOUSEHOLD_ID,
-      input.splitGroupId || null,
-      batchId,
-      payerPersonId,
-      entry.transaction_date,
-      entry.description,
-      entry.category_id,
-      entry.amount_minor,
-      currency,
-      Math.abs(entry.amount_minor),
-      paymentMethodForLinkedAccount(entry.account_kind, "other"),
-      "certified",
-      entry.note,
-      entry.id
-    )
-    .run();
-
   const sharePeople = await loadSplitSharePeople(db);
   const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amount_minor, 5000);
   const shares = [
     { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
     { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
   ];
+  // The entry now counts by its split shares, so its month totals change.
+  const months = [entry.transaction_date.slice(0, 7)];
 
-  for (const split of shares) {
-    await db
+  await runLinkingBatch(db, ENTRY_ALREADY_LINKED, () => findActiveLinkedSplitExpenseId(db, input.entryId), [
+    ...batch.statements,
+    db
+      .prepare(`
+        INSERT INTO split_expenses (
+          id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
+          description, category_id, total_amount_minor, currency, home_amount_minor,
+          payment_method, payment_status, note, linked_transaction_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        id,
+        DEFAULT_HOUSEHOLD_ID,
+        input.splitGroupId || null,
+        batch.id,
+        payerPersonId,
+        entry.transaction_date,
+        entry.description,
+        entry.category_id,
+        entry.amount_minor,
+        currency,
+        Math.abs(entry.amount_minor),
+        paymentMethodForLinkedAccount(entry.account_kind, "other"),
+        "certified",
+        entry.note,
+        entry.id
+      ),
+    ...shares.map((split) => db
       .prepare(`
         INSERT INTO split_expense_shares (
           id, split_expense_id, person_id, ratio_basis_points, amount_minor
         ) VALUES (?, ?, ?, ?, ?)
       `)
-      .bind(`${id}-${split.personId}`, id, split.personId, split.ratioBasisPoints, split.amountMinor)
-      .run();
-  }
+      .bind(`${id}-${split.personId}`, id, split.personId, split.ratioBasisPoints, split.amountMinor)),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return {
     splitExpenseId: id,
@@ -1435,98 +1735,460 @@ export async function createSplitExpenseFromEntryRecord(
   };
 }
 
-export async function upsertLinkedSplitExpenseForEntryRecord(
+// Statements that move the split expense linked to a ledger entry onto the
+// entry's new amount, for the entry update's own batch. Reads happen here,
+// before that batch. A same-currency split takes the new amount as its total
+// and rebalances its shares by the stored basis; a cross-currency split keeps
+// its own total and shares and only updates the home amount and FX rate.
+export async function buildLinkedSplitAmountStatements(
   db: D1Database,
-  input: { entryId: string; splitBasisPoints?: number; splitGroupId?: string | null }
+  input: { entryId: string; entryCurrency: string; amountMinor: number }
 ) {
-  const entry = await db
+  const linkedSplits = await db
     .prepare(`
-      SELECT
-        transactions.id,
-        transactions.transaction_date,
-        transactions.description,
-        transactions.amount_minor,
-        transactions.currency,
-        transactions.owner_person_id,
-        transactions.note,
-        transactions.category_id,
-        transactions.entry_type,
-        accounts.owner_person_id AS account_owner_person_id,
-        accounts.account_kind
-      FROM transactions
-      INNER JOIN accounts ON accounts.id = transactions.account_id
-      WHERE transactions.household_id = ?
-        AND transactions.id = ?
+      SELECT id, total_amount_minor, currency
+      FROM split_expenses
+      WHERE household_id = ? AND linked_transaction_id = ?
+      ORDER BY id
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{
-      id: string;
-      transaction_date: string;
+    .all<{ id: string; total_amount_minor: number; currency: string }>();
+  return buildSplitAmountFollowStatements(db, { splits: linkedSplits.results, entryCurrency: input.entryCurrency, amountMinor: input.amountMinor });
+}
+
+// The amount follow-up above for the given split expenses.
+async function buildSplitAmountFollowStatements(
+  db: D1Database,
+  input: { splits: Array<{ id: string; total_amount_minor: number; currency: string | null }>; entryCurrency: string; amountMinor: number }
+) {
+  const statements: D1PreparedStatement[] = [];
+  const homeAmountMinor = Math.abs(input.amountMinor);
+
+  for (const split of input.splits) {
+    if (normalizeSplitCurrency(split.currency) !== normalizeSplitCurrency(input.entryCurrency)) {
+      statements.push(
+        db
+          .prepare("UPDATE split_expenses SET home_amount_minor = ?, fx_rate_basis_points = ? WHERE id = ? AND household_id = ?")
+          .bind(homeAmountMinor, calculateFxRateBasisPoints(Math.abs(split.total_amount_minor), homeAmountMinor), split.id, DEFAULT_HOUSEHOLD_ID)
+      );
+      continue;
+    }
+
+    // Shares in split-share people order, so the remainder lands on the same
+    // person as when the split was created.
+    const shares = await db
+      .prepare(`
+        SELECT split_expense_shares.id, split_expense_shares.ratio_basis_points, split_expense_shares.amount_minor
+        FROM split_expense_shares
+        INNER JOIN people ON people.id = split_expense_shares.person_id
+        WHERE split_expense_shares.split_expense_id = ?
+        ORDER BY
+          CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END,
+          people.created_at,
+          people.id
+      `)
+      .bind(split.id)
+      .all<{ id: string; ratio_basis_points: number; amount_minor: number }>();
+    const nextShares = rebalanceSplitSharesForTotal(
+      shares.results.map((share) => ({ ratioBasisPoints: share.ratio_basis_points, amountMinor: share.amount_minor })),
+      input.amountMinor
+    );
+
+    statements.push(
+      db
+        .prepare("UPDATE split_expenses SET total_amount_minor = ?, home_amount_minor = ? WHERE id = ? AND household_id = ?")
+        .bind(input.amountMinor, homeAmountMinor, split.id, DEFAULT_HOUSEHOLD_ID),
+      ...shares.results.map((share, index) => db
+        .prepare("UPDATE split_expense_shares SET ratio_basis_points = ?, amount_minor = ? WHERE id = ?")
+        .bind(nextShares[index].ratioBasisPoints, nextShares[index].amountMinor, share.id))
+    );
+  }
+
+  return statements;
+}
+
+type MirroredEntryFields = { date: string; description: string; payerPersonId: string | null };
+
+// Statements that copy an entry edit's event date, description and payer to
+// the split expenses linked to it, for the entry update's own batch. A split
+// field follows only while it still holds the entry's previous value: a
+// split whose description or date was set in Splits (or recorded there
+// before a bank match) keeps its own. Note, category, group, shares and
+// travel-currency amounts are split-owned and never touched here. Archived
+// links follow too, so a restore matches the ledger.
+export async function buildLinkedSplitMirrorStatements(
+  db: D1Database,
+  input: { entryId: string; previous: MirroredEntryFields; next: MirroredEntryFields }
+) {
+  const { previous, next } = input;
+  if (previous.date === next.date && previous.description === next.description && previous.payerPersonId === next.payerPersonId) {
+    return [];
+  }
+
+  const linkedSplits = await db
+    .prepare(`
+      SELECT id, expense_date, description, payer_person_id
+      FROM split_expenses
+      WHERE household_id = ? AND linked_transaction_id = ?
+      ORDER BY id
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .all<{ id: string; expense_date: string; description: string; payer_person_id: string }>();
+
+  const follows = (splitValue: string, previousValue: string | null, nextValue: string | null) => (
+    nextValue !== null && splitValue === previousValue ? nextValue : splitValue
+  );
+  const statements: D1PreparedStatement[] = [];
+  for (const split of linkedSplits.results) {
+    const expenseDate = follows(split.expense_date, previous.date, next.date);
+    const description = follows(split.description, previous.description, next.description);
+    const payerPersonId = follows(split.payer_person_id, previous.payerPersonId, next.payerPersonId);
+    if (expenseDate === split.expense_date && description === split.description && payerPersonId === split.payer_person_id) {
+      continue;
+    }
+    statements.push(db
+      .prepare("UPDATE split_expenses SET expense_date = ?, description = ?, payer_person_id = ? WHERE id = ? AND household_id = ?")
+      .bind(expenseDate, description, payerPersonId, split.id, DEFAULT_HOUSEHOLD_ID));
+  }
+  return statements;
+}
+
+// Statements that link split expenses back to a ledger entry a statement
+// rollback re-creates (the statement superseded, i.e. deleted, the entry and
+// unlinked them), for the rollback's own batch. Reads and the settlement lock
+// check happen here, before that batch.
+// - a split the person has since matched to another ledger row keeps that
+//   link (a row of the statement being rolled back does not count: the
+//   rollback removes it and would unlink the split anyway)
+// - a linked split follows its entry's amount (DOMAIN.md): an expense split
+//   whose amount was changed while it was unlinked moves back to the entry's
+//   amount by the same rule as an entry amount edit, and a split in a settled
+//   simplification or group batch refuses the whole rollback instead
+export async function buildSplitRelinkStatements(
+  db: D1Database,
+  input: {
+    entry: { id: string; amountMinor: number; currency: string; entryType: string };
+    splitExpenseIds: string[];
+    rolledBackImportId: string;
+  }
+) {
+  if (!input.splitExpenseIds.length) return [];
+  const splits = await db
+    .prepare(`
+      SELECT split_expenses.id, split_expenses.total_amount_minor, split_expenses.home_amount_minor, split_expenses.currency,
+        split_expenses.linked_transaction_id, transactions.id AS linked_row_id, transactions.import_id AS linked_import_id
+      FROM split_expenses
+      LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      WHERE split_expenses.household_id = ? AND split_expenses.id IN (${input.splitExpenseIds.map(() => "?").join(", ")})
+      ORDER BY split_expenses.rowid
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...input.splitExpenseIds)
+    .all<{ id: string; total_amount_minor: number; home_amount_minor: number | null; currency: string | null; linked_transaction_id: string | null; linked_row_id: string | null; linked_import_id: string | null }>();
+  const relinked = splits.results.filter((split) => (
+    !split.linked_transaction_id
+    || split.linked_transaction_id === input.entry.id
+    || !split.linked_row_id
+    || split.linked_import_id === input.rolledBackImportId
+  ));
+  const entryCurrency = normalizeSplitCurrency(input.entry.currency);
+  const homeAmountMinor = Math.abs(input.entry.amountMinor);
+  const following = input.entry.entryType === "expense"
+    ? relinked.filter((split) => (normalizeSplitCurrency(split.currency) === entryCurrency
+      ? split.total_amount_minor !== input.entry.amountMinor
+      : split.home_amount_minor !== homeAmountMinor))
+    : [];
+  await assertLinkedSplitSettlementUnchanged(db, {
+    entryId: input.entry.id,
+    entryCurrency: input.entry.currency,
+    followAmountMinor: input.entry.amountMinor,
+    subject: "import rollback",
+    splitIds: following.map((split) => split.id)
+  });
+  return [
+    ...relinked.map((split) => db
+      .prepare("UPDATE split_expenses SET linked_transaction_id = ? WHERE household_id = ? AND id = ?")
+      .bind(input.entry.id, DEFAULT_HOUSEHOLD_ID, split.id)),
+    ...await buildSplitAmountFollowStatements(db, { splits: following, entryCurrency: input.entry.currency, amountMinor: input.entry.amountMinor })
+  ];
+}
+
+// Refuses an entry save when its linked split expense is in an active
+// simplified settlement and the save would change that split's settlement
+// facts: the amount follow-up above (same currency only) and, for a shared
+// save, the upsert below, which rewrites date, payer, amount, currency and
+// shares (a travel split keeps its own currency and total, so only its date,
+// payer and shares can move), and the date and payer mirror
+// (buildLinkedSplitMirrorStatements), which moves them while the split still
+// holds the entry's previous values. `splitIds` checks those split expenses
+// instead of the ones linked to the entry (a statement rollback re-links
+// splits to an entry it re-creates). Runs before the entry's batch, so a
+// refused save writes nothing.
+export async function assertLinkedSplitSettlementUnchanged(
+  db: D1Database,
+  input: {
+    entryId: string;
+    entryCurrency: string;
+    followAmountMinor?: number;
+    sharedSync?: { date: string; payerPersonId: string | null; amountMinor: number; splitBasisPoints?: number };
+    mirror?: {
+      previous: { date: string; payerPersonId: string | null };
+      next: { date: string; payerPersonId: string | null };
+    };
+    subject?: "linked entry" | "import rollback";
+    splitIds?: string[];
+  }
+) {
+  const mirror = input.mirror
+    && (input.mirror.previous.date !== input.mirror.next.date || input.mirror.previous.payerPersonId !== input.mirror.next.payerPersonId)
+    ? input.mirror
+    : undefined;
+  if (input.followAmountMinor === undefined && !input.sharedSync && !mirror) return;
+  if (input.splitIds && !input.splitIds.length) return;
+  // Archived links follow the amount and mirror too, so all are checked.
+  const linkedSplits = input.splitIds
+    ? await db
+      .prepare(`SELECT id, deleted_at FROM split_expenses WHERE household_id = ? AND id IN (${input.splitIds.map(() => "?").join(", ")}) ORDER BY rowid`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...input.splitIds)
+      .all<{ id: string; deleted_at: string | null }>()
+    : await db
+      .prepare("SELECT id, deleted_at FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? ORDER BY rowid")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+      .all<{ id: string; deleted_at: string | null }>();
+  const entryCurrency = normalizeSplitCurrency(input.entryCurrency);
+  // The shared-save upsert rewrites the live linked split only, the same
+  // row buildLinkedSplitUpsertStatements picks.
+  const sharedSyncSplitId = linkedSplits.results.find((split) => !split.deleted_at)?.id;
+
+  for (const split of linkedSplits.results) {
+    const sharedSync = split.id === sharedSyncSplitId ? input.sharedSync : undefined;
+    const followAmountMinor = input.followAmountMinor;
+    await assertSplitSettlementUnchanged(db, {
+      recordKind: "expense",
+      recordId: split.id,
+      subject: input.subject ?? "linked entry",
+      next: async (current): Promise<SplitSettlementFacts> => {
+        const withMirror = (facts: SplitSettlementFacts): SplitSettlementFacts => {
+          if (!mirror) return facts;
+          // Same rule as buildLinkedSplitMirrorStatements: a field follows only
+          // while the split still holds the entry's previous value.
+          const date = current.date === mirror.previous.date ? mirror.next.date : facts.date;
+          const payer = current.partyIds[0] === mirror.previous.payerPersonId && mirror.next.payerPersonId !== null
+            ? mirror.next.payerPersonId
+            : facts.partyIds[0];
+          return { ...facts, date, partyIds: [payer, ...facts.partyIds.slice(1)] };
+        };
+        if (sharedSync) {
+          // A travel split keeps its currency and total (sharedSaveSplitAmount),
+          // so those are what an unchanged save is compared on.
+          const amount = sharedSaveSplitAmount(
+            { amountMinor: current.amountMinor, currency: current.currency },
+            { amountMinor: sharedSync.amountMinor, currency: entryCurrency }
+          );
+          const shares = await planSharedSaveShares(db, {
+            splitExpenseId: split.id,
+            stored: { amountMinor: current.amountMinor, currency: current.currency },
+            amountMinor: amount.amountMinor,
+            currency: amount.currency,
+            splitBasisPoints: sharedSync.splitBasisPoints
+          });
+          return {
+            date: sharedSync.date,
+            groupId: current.groupId,
+            currency: amount.currency,
+            amountMinor: amount.amountMinor,
+            partyIds: [sharedSync.payerPersonId ?? current.partyIds[0]],
+            shares: shares.map((share) => ({ personId: share.personId, amountMinor: share.amountMinor }))
+          };
+        }
+        if (followAmountMinor === undefined || current.currency !== entryCurrency) {
+          return withMirror(current);
+        }
+        const shares = await loadOrderedSplitShares(db, split.id);
+        if (shares.length !== 2) return withMirror({ ...current, amountMinor: followAmountMinor });
+        const nextShares = rebalanceSplitSharesForTotal(shares, followAmountMinor);
+        return withMirror({
+          ...current,
+          amountMinor: followAmountMinor,
+          shares: shares.map((share, shareIndex) => ({ personId: share.personId, amountMinor: nextShares[shareIndex].amountMinor }))
+        });
+      }
+    });
+  }
+}
+
+// A split expense's shares in split-share people order, as the amount
+// follow-up rebalances them.
+async function loadOrderedSplitShares(db: D1Database, splitExpenseId: string) {
+  const shares = await db
+    .prepare(`
+      SELECT split_expense_shares.person_id, split_expense_shares.ratio_basis_points, split_expense_shares.amount_minor
+      FROM split_expense_shares
+      INNER JOIN people ON people.id = split_expense_shares.person_id
+      WHERE split_expense_shares.split_expense_id = ?
+      ORDER BY
+        CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END,
+        people.created_at,
+        people.id
+    `)
+    .bind(splitExpenseId)
+    .all<{ person_id: string; ratio_basis_points: number; amount_minor: number }>();
+  return shares.results.map((share) => ({ personId: share.person_id, ratioBasisPoints: share.ratio_basis_points, amountMinor: share.amount_minor }));
+}
+
+// The shares a shared entry save writes to its linked split, in split-share
+// people order; the settlement lock predicts the same. The editor sends the
+// split's stored first-share ratio back as the basis, and that ratio is
+// rounded (10.01 split 5.00/5.01 is stored as 4995, which floors back to
+// 4.99), so a save that keeps the amount, currency and stored basis keeps the
+// stored shares to the cent. Any other save builds them from the basis.
+async function planSharedSaveShares(
+  db: D1Database,
+  input: {
+    splitExpenseId: string | null;
+    stored: { amountMinor: number; currency: string | null } | null;
+    amountMinor: number;
+    currency: string;
+    splitBasisPoints?: number;
+  }
+): Promise<Array<{ personId: string; ratioBasisPoints: number; amountMinor: number }>> {
+  const sharePeople = await loadSplitSharePeople(db);
+  const keepsAmountAndBasis = input.splitExpenseId
+    && input.stored
+    && input.stored.amountMinor === input.amountMinor
+    && normalizeSplitCurrency(input.stored.currency) === normalizeSplitCurrency(input.currency)
+    && input.splitBasisPoints !== undefined;
+  if (keepsAmountAndBasis && input.splitExpenseId) {
+    const stored = await loadOrderedSplitShares(db, input.splitExpenseId);
+    if (
+      stored.length === 2
+      && stored[0].personId === sharePeople[0].id
+      && stored[1].personId === sharePeople[1].id
+      && stored[0].ratioBasisPoints === input.splitBasisPoints
+    ) {
+      return stored;
+    }
+  }
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints);
+  return [
+    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
+}
+
+// The amount a Shared owner save writes to the entry's split. A split in the
+// entry's currency takes the entry amount as its total and home amount. A
+// travel split (recorded in its own currency, such as JPY, and matched to a
+// home-currency card or bank row) keeps its currency and total, and only its
+// home amount and FX rate follow the entry, the same rule as an entry amount
+// edit (buildLinkedSplitAmountStatements). `fxRateBasisPoints` is null when
+// the save leaves the stored rate alone.
+function sharedSaveSplitAmount(
+  stored: { amountMinor: number; currency: string | null } | null,
+  entry: { amountMinor: number; currency: string }
+) {
+  if (stored && normalizeSplitCurrency(stored.currency) !== normalizeSplitCurrency(entry.currency)) {
+    const homeAmountMinor = Math.abs(entry.amountMinor);
+    return {
+      amountMinor: stored.amountMinor,
+      currency: normalizeSplitCurrency(stored.currency),
+      homeAmountMinor,
+      fxRateBasisPoints: calculateFxRateBasisPoints(Math.abs(stored.amountMinor), homeAmountMinor) as number | null
+    };
+  }
+  return { amountMinor: entry.amountMinor, currency: entry.currency, homeAmountMinor: entry.amountMinor, fxRateBasisPoints: null as number | null };
+}
+
+// The statements a Shared owner save (entry create or update with
+// ownershipType "shared") uses to rewrite the entry's active split expense,
+// or to link a new one, for the entry command's own batch: the split takes
+// the entry's date, description, payer, category, amount and note (a travel
+// split keeps its own currency and total, see sharedSaveSplitAmount), and its
+// shares are replaced by the given basis. Reads and checks run here, before
+// that batch, so a refused save (no clear payer, wrong group currency)
+// writes nothing, and the entry, its split and the month refresh markers
+// commit together. An archived split is left alone (a restore brings it
+// back); a later batch that loses a race for the entry fails on the
+// one-active-split index.
+export async function buildLinkedSplitUpsertStatements(
+  db: D1Database,
+  input: {
+    entryId: string;
+    entry: {
+      date: string;
       description: string;
-      amount_minor: number;
+      amountMinor: number;
       currency: string;
-      owner_person_id: string | null;
+      payerPersonId: string | null;
+      categoryId: string | null;
       note: string | null;
-      category_id: string | null;
-      entry_type: "expense" | "income" | "transfer";
-      account_owner_person_id: string | null;
-      account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment";
-    }>();
-
-  if (!entry) {
-    throw new Error("Entry not found.");
+      accountKind: "bank" | "credit_card" | "loan" | "cash" | "investment";
+    };
+    splitBasisPoints?: number;
+    splitGroupId?: string | null;
   }
-
-  if (entry.entry_type !== "expense") {
-    return { splitExpenseId: null, skipped: true };
-  }
-
-  const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
-  if (!payerPersonId) {
+) {
+  const { entry } = input;
+  if (!entry.payerPersonId) {
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
 
   const existingSplit = await db
-    .prepare("SELECT id, split_group_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
+    .prepare("SELECT id, split_group_id, split_batch_id, total_amount_minor, currency, fx_rate_basis_points FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL ORDER BY rowid")
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{ id: string; split_group_id: string | null }>();
-  const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
+    .first<{ id: string; split_group_id: string | null; split_batch_id: string | null; total_amount_minor: number; currency: string | null; fx_rate_basis_points: number | null }>();
+  const splitExpenseId = existingSplit?.id ?? newSplitRecordId("split-expense");
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
-  await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
-  const batchId = await getOrCreateActiveSplitBatch(db, {
-    groupId: splitGroupId,
-    date: entry.transaction_date
+  const amount = sharedSaveSplitAmount(
+    existingSplit ? { amountMinor: existingSplit.total_amount_minor, currency: existingSplit.currency } : null,
+    entry
+  );
+  // The group's currency is the split's own: a travel split in its JPY group
+  // stays valid when saved from its SGD card entry.
+  await assertSplitGroupCurrency(db, splitGroupId, amount.currency);
+  // A split that stays in its group stays in its batch: one in a settled
+  // (closed) batch must not slip back into the open balance on a save the
+  // settlement lock allowed.
+  const batch = existingSplit?.split_batch_id && existingSplit.split_group_id === splitGroupId
+    ? { batchId: existingSplit.split_batch_id, statements: [] as D1PreparedStatement[] }
+    : await planActiveSplitBatch(db, { groupId: splitGroupId, date: entry.date });
+  // Planned from the stored split, before this save's batch replaces it; the
+  // settlement lock predicts the same shares.
+  const shares = await planSharedSaveShares(db, {
+    splitExpenseId: existingSplit?.id ?? null,
+    stored: existingSplit ? { amountMinor: existingSplit.total_amount_minor, currency: existingSplit.currency } : null,
+    amountMinor: amount.amountMinor,
+    currency: amount.currency,
+    splitBasisPoints: input.splitBasisPoints
   });
+  const paymentMethod = paymentMethodForLinkedAccount(entry.accountKind, "other");
 
-  if (existingSplit) {
-    await db
+  const splitStatement = existingSplit
+    ? db
       .prepare(`
         UPDATE split_expenses
         SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
-            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
+            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?, fx_rate_basis_points = ?,
             payment_method = ?, payment_status = ?, note = ?
         WHERE id = ? AND household_id = ?
       `)
       .bind(
         splitGroupId,
-        batchId,
-        payerPersonId,
-        entry.transaction_date,
+        batch.batchId,
+        entry.payerPersonId,
+        entry.date,
         entry.description,
-        entry.category_id,
-        entry.amount_minor,
-        entry.currency,
-        entry.amount_minor,
-        paymentMethodForLinkedAccount(entry.account_kind, "other"),
+        entry.categoryId,
+        amount.amountMinor,
+        amount.currency,
+        amount.homeAmountMinor,
+        amount.fxRateBasisPoints ?? existingSplit.fx_rate_basis_points,
+        paymentMethod,
         "certified",
         entry.note,
         splitExpenseId,
         DEFAULT_HOUSEHOLD_ID
       )
-      .run();
-    await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(splitExpenseId).run();
-  } else {
-    await db
+    : db
       .prepare(`
         INSERT INTO split_expenses (
           id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
@@ -1538,42 +2200,31 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         splitExpenseId,
         DEFAULT_HOUSEHOLD_ID,
         splitGroupId,
-        batchId,
-        payerPersonId,
-        entry.transaction_date,
+        batch.batchId,
+        entry.payerPersonId,
+        entry.date,
         entry.description,
-        entry.category_id,
-        entry.amount_minor,
+        entry.categoryId,
+        entry.amountMinor,
         entry.currency,
-        entry.amount_minor,
-        paymentMethodForLinkedAccount(entry.account_kind, "other"),
+        entry.amountMinor,
+        paymentMethod,
         "certified",
         entry.note,
-        entry.id
-      )
-      .run();
-  }
+        input.entryId
+      );
 
-  const sharePeople = await loadSplitSharePeople(db);
-  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(
-    entry.amount_minor,
-    input.splitBasisPoints
-  );
-  const shares = [
-    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
-    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
-  ];
-
-  for (const split of shares) {
-    await db
+  const statements = [
+    ...batch.statements,
+    splitStatement,
+    db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(splitExpenseId),
+    ...shares.map((share) => db
       .prepare(`
         INSERT INTO split_expense_shares (
           id, split_expense_id, person_id, ratio_basis_points, amount_minor
         ) VALUES (?, ?, ?, ?, ?)
       `)
-      .bind(`${splitExpenseId}-${split.personId}`, splitExpenseId, split.personId, split.ratioBasisPoints, split.amountMinor)
-      .run();
-  }
-
-  return { splitExpenseId, skipped: false };
+      .bind(`${splitExpenseId}-${share.personId}`, splitExpenseId, share.personId, share.ratioBasisPoints, share.amountMinor))
+  ];
+  return { splitExpenseId, statements };
 }

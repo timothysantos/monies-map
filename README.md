@@ -86,10 +86,38 @@ to production only when the change is ready for real household data.
 
 Detailed user-facing and operational setup now belongs in this README. Narrow
 implementation notes can still live under [`docs/`](docs/) when they are too
-specific for the README.
+specific for the README; [`docs/README.md`](docs/README.md) indexes them.
 The product workflow guide lives in
 [`docs/git.md`](docs/git.md) and captures
 the current import, reconciliation, and splits workflows.
+
+## In-App Guides
+
+The FAQ page in the app has two tabs, both kept in the repository:
+
+- [`docs/user-guide.md`](docs/user-guide.md): the User guide for people using
+  the app: start here, every screen, step-by-step recipes, troubleshooting and
+  a glossary, with screenshots.
+- [`docs/developer-guide.md`](docs/developer-guide.md): the For developers
+  tab: local setup, testing, deploy, Shortcut internals and architecture
+  notes. It is downloaded only when that tab opens (`/faq?faq=developers`).
+
+Screenshots live in `public/faq/guide/` as WebP files with thumbnails.
+Regenerate them after a UI change:
+
+```bash
+npm run build
+npm run docs:screenshots                       # every shot
+npm run docs:screenshots -- --list             # shot names
+npm run docs:screenshots -- summary-household  # only some
+```
+
+The script starts its own isolated stack (Vite `5442`, Wrangler `8842`,
+inspector `9442`, D1 in `.wrangler/state-guide`), reseeds the demo data only,
+reveals money totals and captures desktop shots (1280×800, Chromium) and
+phone shots (iPhone 13 profile, WebKit), including the "On your iPhone"
+gallery in `public/faq/guide/iphone/`. `tests/guide-content.test.mjs`
+checks that every link, anchor and image in both guides resolves.
 
 ## Supported Imports
 
@@ -158,7 +186,7 @@ Core entities in [`schema.sql`](schema.sql):
 
 Recommended local environment:
 
-- Node.js `22.12.0` or newer
+- Node.js `22.23.0` or newer
 - npm
 - Git
 
@@ -170,7 +198,7 @@ nvm use
 node -v
 ```
 
-If you do not use `nvm`, install Node 22.12.0 or newer manually.
+If you do not use `nvm`, install Node 22.23.0 or newer manually.
 
 ## Local development
 
@@ -255,7 +283,7 @@ rollback, D1 schema checks, asset routing, and stale browser sessions.
 
 ### Command reference
 
-The repo requires Node 22.12.0 or newer for local scripts:
+The repo requires Node 22.23.0 or newer for local scripts:
 
 ```bash
 source ~/.nvm/nvm.sh
@@ -268,7 +296,10 @@ Use these commands from the repo root:
 npm run dev                  # local UI + Worker API
 npm run build                # production frontend bundle
 npm run verify               # audit, types, unit, build, and smoke merge gate
-npm run test:e2e             # complete Playwright suite
+npm run test:e2e             # complete Playwright suite, one serial run on 5173/8787
+npm run test:e2e:sharded     # same suite as 3 parallel isolated shards (faster)
+npm run test:e2e:smoke       # smoke bundle as 2 isolated shards (part of verify)
+npm run test:e2e:webkit      # @webkit-tagged tests in WebKit (iPhone profile)
 npm run db:migrate           # local D1 schema
 npm run db:migrate:remote    # production D1 schema
 npm run db:migrate:demo      # demo D1 schema
@@ -277,7 +308,53 @@ npm run deploy:demo          # build + deploy only demo
 npm run deploy:all           # build once, deploy production and demo
 npm run deploy               # alias for deploy:prod
 npm run db:empty-production  # terminal-only production empty-state reset
+npm run docs:screenshots     # regenerate the in-app guide screenshots (demo data)
 ```
+
+### Running the browser tests
+
+`npm run test:e2e` runs the whole Playwright suite serially with one worker
+against Vite on `5173` and Wrangler on `8787` (it reuses servers already on
+those ports outside CI).
+
+`npm run test:e2e:webkit` runs the tests tagged `@webkit` (currently the
+mobile sheet focus tests) in WebKit with an iPhone profile, because WebKit,
+like iPhone and iPad Safari, does not focus a tapped button. It uses
+`playwright.webkit.config.js`, needs `npx playwright install webkit` once,
+and is not part of `test:e2e`, the sharded runner or `verify`. Point it at
+an isolated stack with `E2E_BASE_URL` as for the other configs.
+
+`npm run test:e2e:sharded` runs the same suite faster as parallel shards. It
+builds `dist/` once. Then each shard starts its own stack on its own ports
+(Vite `5501+`, Wrangler `8901+`, inspector `9501+`) with its own local D1 in
+`.wrangler/state-shard-N`, and runs its spec files with one worker. At the end
+it merges every shard into `playwright-report/` and
+`test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
+removes the shard servers and state. Shard logs are in
+`test-results/e2e-sharded/logs/`.
+To run a second sharded suite at the same time (another worktree or
+session), move its ports with `E2E_PORT_OFFSET`, for example
+`E2E_PORT_OFFSET=20 npm run test:e2e:sharded` uses Vite `5520+`, Wrangler
+`8920+` and inspector `9520+`.
+
+```bash
+npm run test:e2e:sharded                          # 3 shards (at most half the CPUs)
+npm run test:e2e:sharded -- --shards 3            # choose the shard count
+npm run test:e2e:sharded -- tests/e2e/month-page.spec.js tests/e2e/splits-edit-expense.spec.js
+npm run test:e2e:sharded -- -- --grep "Month"     # Playwright options for every shard
+npm run test:e2e:sharded -- --update-weights      # refresh tests/e2e/shard-weights.json
+```
+
+The run fails if any test fails, or if the merged test count differs from
+`playwright test --list`. Whole spec files are shared out using the measured
+times in `tests/e2e/shard-weights.json`. After adding a spec or making one
+much slower, refresh them with a full passing `--update-weights` run. CI runs
+four shards on separate runners, then a `full-e2e` job that merges their
+reports. `npm run test:e2e:smoke` runs the smoke bundle through the same
+runner on two stacks (one stack on a two-CPU machine);
+`npm run test:e2e:smoke:serial` is the old one-server-per-workflow run on
+`5173`/`8787`. Measurements are in
+[`docs/audits/e2e-sharding.md`](docs/audits/e2e-sharding.md).
 
 ### Production Deploy
 
@@ -389,6 +466,12 @@ Workers & Pages -> monies-map -> Settings -> Domains & Routes -> workers.dev -> 
 Create an Access policy that allows only the two household emails above. Use
 the one-time PIN identity provider at first, or use the Google OAuth setup above
 after the Google identity provider has been tested.
+
+Keep `workers_dev` on: the `workers.dev` address is the production URL that
+Access protects. `wrangler.jsonc` sets `"preview_urls": false` so no
+per-version preview address exists outside that Access setting. After a
+deploy, open the app in a private window and confirm it asks for the Access
+login before showing anything.
 
 ### Demo Deploy
 

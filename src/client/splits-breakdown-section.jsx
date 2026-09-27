@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import {
   getDonutItemId,
   getVisibleDonutData,
@@ -17,6 +18,8 @@ const { format: formatService } = moniesClient;
 
 export function SplitsBreakdownSection({
   showBreakdown,
+  // The active group's currency: its balance and spend are in that currency.
+  currency = "SGD",
   totalExpenseMinor,
   groupBalanceMinor,
   groupSummaryLabel,
@@ -56,9 +59,9 @@ export function SplitsBreakdownSection({
         {searchControl}
         <div className="entries-summary-metrics">
           {!readOnly ? (
-            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}><PrivateMoney>{formatService.money(Math.abs(groupBalanceMinor))}</PrivateMoney></strong></span>
+            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
           ) : null}
-          <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.money(totalExpenseMinor)}</PrivateMoney></strong></span>
+          <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.moneyWithCurrency(totalExpenseMinor, currency)}</PrivateMoney></strong></span>
         </div>
         {summaryToolbar}
         <button type="button" className="subtle-action split-history-trigger" onClick={onOpenHistory}>Activity history</button>
@@ -91,6 +94,7 @@ export function SplitsBreakdownSection({
                   categories={categories}
                   totalMinor={visibleTotalMinor}
                   totalLabel={messages.entries.totalSpend}
+                  currency={currency}
                   compact
                   height={300}
                   innerRadius={58}
@@ -117,7 +121,7 @@ export function SplitsBreakdownSection({
                       </span>
                       <div>
                         <strong>{item.label}</strong>
-                        <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney> • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} • {hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart}</p>
+                        <p><PrivateMoney>{formatService.moneyWithCurrency(item.valueMinor, currency)}</PrivateMoney> • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} • {hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart}</p>
                       </div>
                     </div>
                   </button>
@@ -125,7 +129,7 @@ export function SplitsBreakdownSection({
               </div>
             </div>
           ) : (
-            <p className="lede compact">{messages.splits.noEntries}</p>
+            <EmptyState>{messages.splits.noEntries}</EmptyState>
           )}
         </section>
       ) : null}

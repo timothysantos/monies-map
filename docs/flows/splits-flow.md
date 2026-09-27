@@ -29,6 +29,10 @@ Splits state is split between:
 The page should preserve active matching state while freshness catches up,
 instead of replacing the current workflow blindly.
 
+Empty group, activity, search, match and history states use the shared
+`EmptyState`. When there are no matches, the match review says so once, not
+twice. Dialog form errors are `InlineError` alerts.
+
 ## Data Flow
 
 Splits data comes from:
@@ -64,7 +68,16 @@ Current status: aligned with tests and runtime behavior.
 Watch area:
 
 - keep shell-refresh requests explicit and named
-- checkpoint membership is immutable until the user explicitly reopens it
+- checkpoint membership is immutable until the user explicitly reopens it,
+  and so are the settled facts of its records: a Splits edit or delete, or an
+  Entries save that would move a linked split, is refused with
+  `split_settlement_locked` and the form offers `Undo simplification`
+  (`settlement-lock-notice.jsx`); an edit never reopens a checkpoint by itself
+- a closed group batch (settled by a settle-up) locks its records the same
+  way; the refusal names the `batchId` and offers `Undo settle-up`, which the
+  archived batch view also offers. It reopens the batch (or moves its records
+  into the group's open batch), keeps the settle-up as open activity and
+  refreshes Splits
 - a split group has one designated currency; original foreign amounts remain
   authoritative and cross-currency checkpoint matches require explicit FX
   evidence
@@ -73,6 +86,12 @@ Watch area:
 - deleting a split archives it from active projections but keeps its ID,
   shares, links, and currency available for restore
 - restoring an archived split does not alter an existing checkpoint snapshot
+- a refused restore (for example, already restored in another tab) shows its
+  error inside the Activity history dialog and refreshes the page data
+- browser coverage for creating an expense through `+ Add expense`, a JPY
+  cash-only travel group and restoring from Activity history lives in
+  `splits-add-expense-dialog.spec.js`, `splits-travel-group.spec.js` and
+  `splits-history-restore.spec.js`
 
 ## Known Exceptions / Watch Areas
 
@@ -84,3 +103,21 @@ Watch area:
   create a checkpoint; simplification remains optional
 - active simplified checkpoints are scoped by currency, so an SGD checkpoint
   does not block an independent JPY checkpoint
+- a foreign-currency group shows its amounts in the group currency with that
+  currency's own digits: the group pill balance, the summary strip totals, the
+  expense dialog's share preview and odd-cent labels, activity cards, history
+  rows and archived settle-up summaries (a ¥12,000 expense shows
+  "Spend JP¥12,000"). All format through `formatCurrencyMinor` (see
+  `design.md`, Split Currency Display Contract);
+  `splits-travel-group.spec.js` and `currency-money-format.test.mjs` cover it,
+  including money privacy masking
+- the category breakdown donut is per currency: the page sends the SGD chart
+  as `donutChart` and one chart per other currency with open expenses in
+  `donutChartsByCurrency` (left out when there are none), and the panel shows
+  the active group's currency through `selectSplitDonutChart`, formatted in
+  that currency. Yen are never added to dollars (DOMAIN.md, "Split currency
+  in charts"); `split-currency-display.test.mjs` and
+  `atomic-writes-travel-split-home-amounts.test.mjs` cover it
+- a travel split's shares stay in its currency in Splits; Entries, Month,
+  Summary and the stored month totals count each person's SGD share of the
+  linked ledger row instead (DOMAIN.md, "Home share of a travel split")

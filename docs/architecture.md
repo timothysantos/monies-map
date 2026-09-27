@@ -33,21 +33,21 @@ system.
 - [`docs/refactor-decisions.md`](./refactor-decisions.md): intended answers to
   the remaining shell, helper, mobile, money-editing, bootstrap, and
   invalidation shape questions
-- [`docs/first-slice-prompt.md`](./first-slice-prompt.md): ready-to-run prompt
+- [`docs/archive/first-slice-prompt.md`](./archive/first-slice-prompt.md): ready-to-run prompt
   for the app shell and query infrastructure foundation slice
-- [`docs/second-slice-prompt.md`](./second-slice-prompt.md): ready-to-run
+- [`docs/archive/second-slice-prompt.md`](./archive/second-slice-prompt.md): ready-to-run
   prompt for the route-transition and domain-boundary slice
-- [`docs/third-slice-prompt.md`](./third-slice-prompt.md): ready-to-run prompt
+- [`docs/archive/third-slice-prompt.md`](./archive/third-slice-prompt.md): ready-to-run prompt
   for the imports query and workflow slice
-- [`docs/fourth-slice-prompt.md`](./fourth-slice-prompt.md): ready-to-run
+- [`docs/archive/fourth-slice-prompt.md`](./archive/fourth-slice-prompt.md): ready-to-run
   prompt for the settings query and workflow slice
-- [`docs/eighth-slice-prompt.md`](./eighth-slice-prompt.md): ready-to-run
+- [`docs/archive/eighth-slice-prompt.md`](./archive/eighth-slice-prompt.md): ready-to-run
   prompt for the app-shell retirement and legacy-bridge cleanup slice
-- [`docs/ninth-slice-prompt.md`](./ninth-slice-prompt.md): ready-to-run
+- [`docs/archive/ninth-slice-prompt.md`](./archive/ninth-slice-prompt.md): ready-to-run
   prompt for the entries workflow boundary and remaining month handoff slice
-- [`docs/tenth-slice-prompt.md`](./tenth-slice-prompt.md): ready-to-run
+- [`docs/archive/tenth-slice-prompt.md`](./archive/tenth-slice-prompt.md): ready-to-run
   prompt for the month workspace boundary slice
-- [`docs/eleventh-slice-prompt.md`](./eleventh-slice-prompt.md): ready-to-run
+- [`docs/archive/eleventh-slice-prompt.md`](./archive/eleventh-slice-prompt.md): ready-to-run
   prompt for the summary slice
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
@@ -56,6 +56,12 @@ system.
   page-local reading glossary, not a second domain source
 
 ## Current Problem
+
+The 2026-09-22 [macro audit and execution plan](./macro-performance-plan.md)
+distinguishes current evidence from the historical migration goals below.
+Retain the existing framework and finance/workflow contracts. Measure built
+route loading, optional work, and full request initialization before changing
+state ownership or persistence. No runtime redesign was implemented by the audit.
 
 The app works, but the code is hard to follow because too much behavior is
 spread across broad client helpers, page components, query wiring, and implicit
@@ -187,6 +193,33 @@ Rules:
 - keep `/api/app-shell` free of accounts, categories, page payloads, balances,
   checkpoint history, and import history
 
+### Loading, warmup and data ownership (current, 2026-09)
+
+The macro performance work (`docs/macro-performance-implementation.md`,
+evidence in `docs/audits/macro-loading-baseline.md`) left this shape:
+
+- **Route work.** Each route owner reports whether its page is ready and
+  whether a protected workflow (an editor, a save) is open. The shell derives
+  one `usable` signal from that; optional work waits for it.
+- **One optional warmup queue.** After the page is usable and quiet, at most
+  one likely-next route module and, on desktop, up to two data requests per
+  visit are warmed, one at a time. Mobile warms code, and data only for
+  measured cheap families on a good connection (currently the Entries page).
+  Speculative reads are cancelled at a deadline unless the visible route
+  joins them. Navigation and required reads never wait for warmup.
+- **Owners for server data.** Reference data, Summary, the other route pages
+  and the app shell each have one owner that keeps the last good snapshot on
+  screen and ignores superseded responses, so a slow or cancelled request
+  cannot overwrite newer data, blank the shell or raise an error screen.
+- **Optional AI wording** is requested only while the route is usable and
+  only kept if it still matches the facts on screen.
+- **Payloads.** APIs serve compact JSON. The Month page sends its entries
+  once; Splits carries only the month's transfers. Every page API reports
+  `Server-Timing: app, init, total`.
+- **Persistence.** Write commands, runtime schema, seeding, snapshot
+  recalculation and page projections live in focused modules; persistence
+  refactors are proven with `scripts/persisted-state-snapshot.mjs`.
+
 ### Client state strategy
 
 - route state should select the active screen and screen parameters
@@ -214,6 +247,37 @@ The backend should remain explicit about boundaries:
 
 The existing domain richness is an asset. The redesign should not flatten the
 domain model just to simplify the client.
+
+### Write atomicity and derived month totals (current, 2026-09)
+
+Every persistence command reads and checks first, then commits all of its
+writes, its audit event and its month refresh markers in one `db.batch()`,
+which D1 runs as one transaction. A failure at any statement leaves the
+database as it was. This covers import commit and rollback (including
+statement certification, checkpoints and certificates), entry create, edit
+and delete, transfer link and settle, and every month-plan command.
+
+`monthly_snapshots` (the stored month totals Summary reads) are derived from
+the committed ledger, so they are refreshed in a second batch right after the
+write:
+
+```text
+command batch:  ledger writes + audit event + monthly_snapshot_refreshes rows
+refresh batch:  every scope's monthly_snapshots for those months
+                + delete their monthly_snapshot_refreshes rows
+Summary/Month page read: refresh any months still marked, then read totals
+```
+
+Each marker write sets a new refresh token, and a refresh only writes totals
+and clears a marker while the token it read is unchanged, so a refresh that
+races a newer write can never store older totals. A refresh that fails does
+not fail the committed write; its markers stay until
+the next Summary or Month read repairs them. An import larger than one batch
+(over 500 statements, about 245 CSV rows) stages the draft import and its new
+rows in chunks, which ledger reads ignore while the import is a draft, then
+makes every visible change in one final batch and discards the staged rows if
+anything fails. Rolling back an already rolled-back import is rejected (409).
+Evidence: `docs/audits/atomic-writes.md`.
 
 ### Shortcut integration boundary
 
@@ -429,7 +493,7 @@ Before implementation work, also use:
 - [`docs/known-coupling-targets.md`](./known-coupling-targets.md)
 - [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md)
 - [`docs/refactor-decisions.md`](./refactor-decisions.md)
-- [`docs/first-slice-prompt.md`](./first-slice-prompt.md)
+- [`docs/archive/first-slice-prompt.md`](./archive/first-slice-prompt.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
@@ -469,8 +533,9 @@ Workers AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
 path. Summary, Month, Entries, and Splits render a deterministic Money
 check-in from their already-loaded figures immediately, then may request a
-wording variation only after a stable page/filter state and an in-memory cache
-miss. Each request is capped by a shared D1 daily usage counter and returns an
+wording variation only after a stable page/filter state, while the route is
+usable (no editor or save open), and on an in-memory cache miss. A response
+is kept only if it is OK, valid and still matches the facts on screen. Each request is capped by a shared D1 daily usage counter and returns an
 ordinary unavailable response when the binding is disabled, the allowance is
 exhausted, or a model response fails validation.
 

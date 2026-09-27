@@ -1,3 +1,5 @@
+import { settlementLockUndoRequest } from "./settlement-lock-notice";
+
 async function postJson(endpoint, body, fallbackError) {
   const response = await fetch(endpoint, {
     method: "POST",
@@ -6,9 +8,22 @@ async function postJson(endpoint, body, fallbackError) {
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error ?? fallbackError);
+    // A write a settlement refused carries its code and the simplification
+    // (checkpointId) or group settle-up (batchId), so the form can offer to
+    // undo it.
+    throw Object.assign(new Error(data.error ?? fallbackError), {
+      code: data.code,
+      checkpointId: data.checkpointId,
+      batchId: data.batchId
+    });
   }
   return data;
+}
+
+// Undo simplification or Undo settle-up, whichever refused the save.
+export function undoSettlementLock(lock) {
+  const request = settlementLockUndoRequest(lock);
+  return postJson(request.url, request.body, request.failure);
 }
 
 // Keep split write endpoints in one place so panel components do not need to know API payload shapes.

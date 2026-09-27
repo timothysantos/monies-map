@@ -51,7 +51,9 @@ copy, or docs:
   Cash may remain unlinked, while a card expense may await statement
   certification.
 - Use `FX evidence` for an explicit rate used to compare different currencies.
-  Never net currencies without it.
+  Never net currencies without it. For the same reason the Splits category
+  donut charts each split currency on its own ("Split currency in charts" under
+  Split Expense Share), never summing yen and dollars.
 - Use `group settlement` for payment that closes only one split group's
   current batch. Use `simplified settlement checkpoint` for the optional
   netting of open groups in one currency; these are separate workflows.
@@ -346,11 +348,48 @@ Important distinctions:
 - Statement certification preserves user annotations such as category, note,
   ownership, splits, and links; it does not preserve provisional bank facts that
   conflict with the final PDF.
+- A current-activity (CSV/XLS) import that reconciles with a manual
+  provisional entry promotes it in place: the entry takes the import's bank
+  facts (posted date, description, amount, entry type, transfer direction) and
+  joins the import batch. The promoting import row keeps a snapshot of the
+  facts it replaced. Rolling the import back restores those facts and removes
+  the entry from the batch, so it is `Manual provisional` again exactly as
+  before the promotion; annotations made since (category, note, owner, splits,
+  transfer links) are kept. A bank fact the user edited after the promotion
+  is still restored, except that an entry linked as a transfer keeps the
+  transfer entry type and direction its link needs. Rows the import created
+  are removed as before. An entry deleted after the promotion has nothing to
+  restore. When the restored amount differs (the user corrected it after the
+  promotion), the entry's linked split follows it in the rollback's own
+  write, by the same rule as an entry amount edit (see `split expense
+  share`); if that split is in an active settlement checkpoint the rollback
+  is refused as a whole instead (settlement lock under Settlement
+  Checkpoint). A promoted entry's amount can only change through such a
+  correction: matching requires equal amounts, and a certified entry's amount
+  is locked, so a statement rollback never restores a different amount.
+- If a later statement certified a promoted entry, a rollback of the
+  current-activity import keeps the entry `Statement certified` with the
+  statement's bank facts, and replaces the import-provisional state underneath
+  it (the state a statement rollback returns to) with the manual entry.
+  If a later statement superseded the promoted entry, the statement's
+  snapshot is rewritten the same way, and the rows the rolled-back import
+  created are dropped from it, so rolling the statement back re-creates the
+  manual entry and nothing of the rolled-back import.
+- Imports committed before promotion snapshots existed (before 2026-09-25)
+  have none. Their rollback keeps an entry created before the import as a
+  manual entry with its current bank facts rather than deleting it.
 - The newest PDF statement for an account remains rollbackable even when it
   certified existing provisional rows. Rollback restores those rows to their
   prior working state and removes the statement certificate metadata. Older PDF
   statements stay locked once a later statement certificate exists for the same
   account.
+- Rows a statement superseded (deleted) are re-created by its rollback with
+  their split links. Superseding unlinked the splits, so one may have been
+  edited or matched meanwhile: a re-linked split goes back on the re-created
+  entry's amount by the same rule as an entry amount edit (see `split expense
+  share`; a settled split refuses the rollback instead, see the settlement
+  lock under Settlement Checkpoint), and a split matched to another ledger row
+  since keeps that link, so the entry comes back without a split.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely
@@ -505,7 +544,54 @@ Important distinction:
 - the ledger owner and bank-facing facts remain on the ledger entry
 - the split allocation and group live on the split expense and its shares
 - deleting or unlinking the split expense removes the shared Entries attribute
-  without rewriting the ledger owner
+  without rewriting the ledger owner. A deleted (archived) split keeps its
+  `linked_transaction_id` only so a restore can bring the link back; it does
+  not count as the entry's split in any projection (Entries, Month, Summary,
+  month totals), and the entry can be added to or matched with a new split
+- a ledger entry has at most one active split expense (and a transfer at most
+  one active settle-up). The database holds this with a partial unique index
+  on `linked_transaction_id` where `deleted_at IS NULL`, so when two writes
+  race (add to splits, match, restore, a Shared owner save) the later one is
+  refused as a whole with the same "already linked" message the check before
+  it gives
+- adding an entry to splits, matching a split to it, deleting or restoring
+  its split, editing the split's shares or payer in Splits, and a Shared owner
+  entry save change how person views count the entry (share versus full
+  amount, or which share), so each of those writes puts the entry's event
+  month refresh marker in its own batch and refreshes the stored month totals
+  after it. A Shared owner save writes the entry and its split in one batch
+- changing the entry's amount moves the linked split expense with it in the
+  same write: the split total becomes the new ledger amount and the shares are
+  rebalanced by the split's stored basis (see `split expense share`). A
+  cross-currency split keeps its own total and shares and only updates its home
+  amount and FX rate
+- every home-currency projection of a linked entry (the viewer share on
+  Entries, Month actuals and charts, Summary, the stored person month totals)
+  counts each person's share of the ledger amount. For a same-currency split
+  that is the stored share. For a travel split it is the person's home share
+  (see `split expense share`), never the split-currency share read as SGD: a
+  JPY 10,000 split 50/50 on an SGD 93.01 row counts 46.50 for Tim and 46.51
+  for Joyce, not 5,000.00
+- a Shared owner save that rewrites the split follows the same currency rule:
+  a travel split (recorded in its own currency, such as JPY, and matched to a
+  home-currency card or bank row) keeps its currency and total, only its home
+  amount and FX rate take the entry's amount, its group is checked against
+  the split's own currency, and a new share basis divides the split's own
+  total
+- a split record links to one ledger row at a time: when the same split is
+  matched to two rows at once, the later match is refused as a whole ("This
+  split expense is unavailable or already linked.") and writes nothing, not
+  even a month refresh
+- the split mirrors the entry's event date (`transaction_date`, never the
+  posted date), description and payer (the entry owner, else the account
+  owner): these are copied when the entry is added to splits, and an entry edit
+  copies a change to them in the same write while the split still holds the
+  entry's previous value. A split value that already differs (edited in Splits,
+  or recorded there before a bank match) is the split's own and is kept
+- the split's note, category, group, share basis and travel-currency
+  conversion are split-owned: an entry edit never changes them. Note and
+  category are copied at creation and afterwards only through the explicit
+  "update both" sync prompts
 
 Related but separate concepts:
 
@@ -569,6 +655,12 @@ Core records:
 - `split expenses`
 - `split settlements`
 
+Record ids: new split workspace records (groups, batches, expenses,
+settle-ups, settlement checkpoints, history events) get
+`<kind>-<creation time in ms>-<uuid>`, so two made in the same millisecond
+never collide and ids of one kind still sort by creation time. Older
+`<kind>-<ms>` ids and seeded names stay valid.
+
 ### Split Group
 
 A named shared-expense context such as a trip, event, or household bucket.
@@ -598,6 +690,26 @@ Relationships:
 
 A group settlement closes only the selected group's current batch. It does not
 create a simplified settlement checkpoint or change another group's balance.
+
+Rules:
+- a closed batch is settled group activity: its expenses and settle-ups, the
+  closing settle-up included, left the group balance because the settle-up
+  paid them off. The settlement lock (under Settlement Checkpoint) applies to
+  them while the batch stays closed, the same way as to a record in an active
+  simplified settlement: amount, currency, shares, payer, date and group are
+  kept, and the record cannot be deleted. A refusal names the batch
+  (`split_settlement_locked` with `batchId`, HTTP 409)
+- `Undo settle-up` (reopen the batch) is the one way to release them, offered
+  next to the refusal and in the archived batch view. It keeps the settle-up
+  (a real payment, maybe bank linked) as open activity and records a history
+  event on it; the batch's records count in the group balance again. A group
+  keeps one open batch, so when a newer batch is already open the reopened
+  records join it and the next settle-up closes them together. Deleting the
+  settle-up, or correcting it, is then an ordinary edit: editing a settle-up
+  that stays in its group never closes its batch again; only moving it to
+  another group settles that group's current batch
+- a shared entry save that the lock allows keeps its linked split in its
+  batch; it never moves a settled split back into the open balance
 
 ### Split Expense
 
@@ -631,6 +743,52 @@ Rounding rule:
   balancing remainder by default, and the split editor can explicitly assign the
   odd cent to either person when matching an external split record
 - the stored share amounts must always add exactly to the split expense total
+- when the linked ledger entry's amount changes, the shares follow the new
+  total by their stored `ratio_basis_points` with the same floor and balancing
+  remainder. The split does not store whether a share was entered as a
+  percentage or an exact amount, so an exact-amount share becomes the same
+  proportion of the new total. An even split whose odd cent was assigned to one
+  person (a stored 4999/5001 ratio) stays an even 5000/5000 split. An edit that
+  keeps the amount leaves the shares, including an assigned odd cent, alone.
+  When the split is settled (an active settlement checkpoint or a closed
+  group batch) the amount edit is refused instead (see the settlement lock
+  under Settlement Checkpoint)
+- a shared entry save sends the split's stored first-share ratio back as its
+  basis. That ratio is rounded (a 10.01 split 5.00/5.01 is stored as 4995,
+  which floors back to 4.99), so a shared save that keeps the amount,
+  currency and stored basis keeps the stored shares to the cent; only a
+  different basis (or amount) rebuilds them. The settlement lock compares the
+  same plan, so an unchanged shared save of a settled split is allowed and a
+  real share change is still refused. For a travel split the plan is in the
+  split's own currency and total, so an unchanged shared save of a settled
+  travel split is allowed too
+
+Home share of a travel split:
+- a travel split's shares are in its own currency; its linked ledger entry is
+  in the home currency (SGD). A person's `home share` is what that person's
+  share would be if the split's total followed the ledger amount, exactly as a
+  same-currency split's shares do: the stored basis applied to the ledger
+  amount with the same floor and balancing remainder, in split-share people
+  order (`homeCurrencyShareAmounts`, built on `rebalanceSplitSharesForTotal`).
+  An even split stays even and the home shares always add up to the ledger
+  amount
+- the ledger amount, not the stored FX rate, is the source: the rate is
+  rounded to basis points and would not add back up to the ledger row, while
+  the ledger amount is the bank fact the home amount already follows
+- the home share is a projection only. It is computed when the entry is
+  read (`app-repository-entries.ts`), shared by every projection through the
+  entry's `linkedSplitShares`, and never stored. The split keeps its own
+  currency, total and shares, and its balances and settlements stay in the
+  split currency
+- an unlinked travel split has no ledger amount and no home share; it counts
+  only in Splits, in its own currency
+
+Split currency in charts:
+- the Splits category donut sums open expenses per split currency. The SGD
+  chart holds SGD expenses only, and each other currency with open expenses
+  has its own chart in that currency (`donutChartsByCurrency`); the panel
+  shows the chart for the active group's currency. Converting per group to
+  SGD is not possible, because a cash travel expense has no FX evidence
 
 Relationships:
 - belongs to one `split expense`
@@ -672,6 +830,34 @@ Rules:
 - a later bank match remains required before the payment has ledger evidence
 - undoing paid confirmation returns the same checkpoint to the active workspace
   without releasing its included rows
+- settlement lock: while a checkpoint is active (any status except `reopened`
+  or `voided`, paid or not), each included expense or settle-up keeps the
+  facts the settled amount was computed from: amount, currency, shares, payer
+  (from and to for a settle-up), date and group, and it cannot be deleted. A
+  command that would change one is refused before its first write, as a
+  whole, with `split_settlement_locked` (HTTP 409) naming the checkpoint:
+  Splits edit and delete, and a ledger entry save whose linked split would
+  follow (the amount follow-up, or a shared save that rewrites the split).
+  Description, category, note, payment method and bank links stay editable.
+  The same lock holds the records of a closed group batch (see Split Batch),
+  released by `Undo settle-up`; a record in both is named by its checkpoint,
+  the later step
+- the only way to release locked rows is an explicit `Undo simplification`
+  (reopen), offered next to the refusal. An edit never reopens a checkpoint by
+  itself and a checkpoint is never left out of step with its rows: reopening
+  releases every included row and may undo a paid or bank-matched
+  settlement, which is too consequential to happen as a side effect of
+  editing one row (the same reason paid confirmation and bank matching are
+  explicit steps, and undoing paid refuses while a bank match exists)
+- import rollback does not change a locked row's facts (checkpoint or closed
+  batch): removing a linked entry only clears the split's ledger link, and a
+  rollback that would restore a linked entry to a different amount (so its
+  split would follow) is refused as a whole with `split_settlement_locked`
+  until the simplification (or settle-up) is undone. A rollback that leaves
+  the linked entry's amount alone is never blocked. The same holds for a
+  statement rollback that re-creates an entry the statement superseded and
+  re-links its split: a split whose amount was changed while it was unlinked
+  would follow the entry, so a settled one refuses the rollback
 
 ### Split Activity History
 
@@ -688,7 +874,20 @@ Rules:
 - active split projections exclude archived records
 - history is household-scoped and ordered newest first
 - restore is allowed only for an archived record and never creates a duplicate
-- checkpoint snapshots remain unchanged when a record is deleted or restored
+- a delete or restore takes effect once: when two requests for the same
+  record pass their checks together, the later one is refused as a whole
+  ("This split is already in activity history." / "This split is already
+  active.") and records no second history event
+- an archived record does not hold its ledger row; restoring it is refused
+  while another active split record (or a settlement checkpoint match) holds
+  that row
+- checkpoint snapshots remain unchanged when a record is deleted or restored;
+  a record in an active checkpoint or a closed group batch cannot be deleted
+  (settlement lock above)
+- `Undo settle-up` records an `updated` event on each settle-up of the
+  reopened batch
+- a record archived before its batch was settled was not paid by that
+  settle-up: restoring it brings it back into the group's open batch
 
 ### Monthly Note
 
@@ -793,6 +992,44 @@ Storage:
 Relationships:
 - belongs to one `household`
 - keyed by `year`, `month`, and `person_scope`
+
+Person month total and person views:
+- a person's stored month total (`total_expense_minor` for `person_scope` =
+  the person) is that person's own spend: every expense they own that is not
+  linked to a split, at its full amount, plus their share of every
+  split-linked expense (a travel split's home share, see `split expense
+  share`). An entry that is someone else's direct expense never counts
+- a person view counts entries by the same rule
+  (`personEntryAmountMinor`, `person-entry-amount.ts`) in Summary months,
+  metric cards and category charts, in the Month `Actual spend` card,
+  plan actuals and category chart, and in the Summary and Month Money
+  check-ins (`filterEntriesForView`, `person-view-scope.ts`). The view's
+  scope narrows it:
+  `Direct ownership` (`direct`) keeps entries not linked to a split,
+  `Shared` (`shared`) keeps split shares, `Direct + Shared`
+  (`direct_plus_shared`) keeps both. Direct plus Shared always adds up to
+  Direct + Shared, and a person's Direct + Shared actual spend equals their
+  stored month total
+- the household view counts every entry at its full amount whatever scope
+  the route carries; it has one `Combined` scope
+- a person has a stored month total for a month when they have a plan row,
+  an income row, a month note, or an entry of their own there, a share of a
+  split-linked entry included. The refresh removes the row once none is left
+
+### Month Snapshot Refresh
+
+A pending recalculation of one month's `month snapshots`. A write records it
+in the same transaction as its ledger change, and the refresh that rewrites
+the month's snapshots removes it in that same transaction. A refresh left
+pending (for example after an interrupted request) is completed before the
+next Summary or Month read. It carries no user data.
+
+Storage:
+- `monthly_snapshot_refreshes`
+
+Relationships:
+- belongs to one `household`
+- keyed by `month_key` (`YYYY-MM`)
 
 ### Monthly Budget Record
 

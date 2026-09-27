@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
+import { InlineError } from "./ui-states";
 
 const { format: formatService } = moniesClient;
 
@@ -97,7 +98,7 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
                 </label>
               </div>
             </div>
-            {formError ? <p className="form-error">{formError}</p> : null}
+            <InlineError message={formError} />
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
               <button type="submit" className="dialog-primary" disabled={isSubmitting}>

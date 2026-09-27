@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState, ErrorPanel } from "./ui-states";
+import { SettlementLockNotice } from "./settlement-lock-notice";
 import { useEntryActions } from "./entry-actions";
 import {
   EntryComposerInlineSection,
@@ -18,6 +20,12 @@ import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
+import {
+  createLinkedEntryRequest,
+  getPendingLinkedEntryId,
+  markLinkedEntryRequestHandled,
+  syncLinkedEntryRequest
+} from "./linked-entry-request";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   getActiveEntryFilterCount,
@@ -37,13 +45,22 @@ import {
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { useRouteWorkReport } from "./use-route-work-status";
+import { fetchQueryWithLease } from "./query-leases";
+import { createEntriesDataOwner } from "./entries-data-owner";
+import { buildEntriesPageParams } from "./app-routing";
+import { useIsMobileLayout } from "./use-viewport";
+import { useStableHandler } from "./use-stable-handler";
 
-const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
-const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 const { entries: entryService, format: formatService } = moniesClient;
+
+// Without the shell's notice (isolated renders), a failed refresh is dropped.
+function runQuietly(task) {
+  return Promise.resolve().then(task).catch(() => null);
+}
 
 // Entries page glossary:
 // - "entries source view": the person/household view that owns the server payload for this page.
@@ -52,12 +69,6 @@ const { entries: entryService, format: formatService } = moniesClient;
 // - "quick expense": a draft launched from an external shortcut/URL that should open the composer.
 // - "split group": the shared-expense bucket an expense can be attached to from the Entries page.
 // - "linked entry": an entry id carried in the URL so mobile edit state survives route changes.
-function waitFor(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
 export function EntriesPanel({
   view,
   entriesSourceView = view,
@@ -66,7 +77,6 @@ export function EntriesPanel({
   onCloseMobileContext,
   onMobileFilterStateChange,
   externalRefreshToken = 0,
-  availableMonths,
   accounts,
   categories,
   people,
@@ -74,18 +84,33 @@ export function EntriesPanel({
   onCategoryAppearanceChange,
   onInvalidateAppShellCache,
   onInvalidateEntryMutation,
-  onBroadcastSplitMutation
+  onBroadcastSplitMutation,
+  runBackgroundRefresh = runQuietly,
+  onRetryPageLoad,
+  canRequestWording = false
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [useMobileEntrySheet, setUseMobileEntrySheet] = useState(false);
+  const useMobileEntrySheet = useIsMobileLayout();
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
-  const [pendingLinkedEntryId, setPendingLinkedEntryId] = useState(() => searchParams.get("editing_entry") ?? "");
+  // The `editing_entry` param is the only source of the linked entry. The
+  // request records whether this page already acted on the param's current
+  // value, so closing the editor before the param clear lands (a save waits
+  // for its refresh first) can never reopen it.
+  const linkedEntryId = searchParams.get("editing_entry") ?? "";
+  const [storedLinkedEntryRequest, setLinkedEntryRequest] = useState(() => createLinkedEntryRequest(linkedEntryId));
+  const linkedEntryRequest = syncLinkedEntryRequest(storedLinkedEntryRequest, linkedEntryId);
+  if (linkedEntryRequest !== storedLinkedEntryRequest) {
+    // A new param value is a new request. Adjusting state while rendering
+    // keeps it in step with the URL without an effect.
+    setLinkedEntryRequest(linkedEntryRequest);
+  }
+  const pendingLinkedEntryId = getPendingLinkedEntryId(linkedEntryRequest);
   const [createdSplitAction, setCreatedSplitAction] = useState(null);
   const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
   const [createdSplitActionError, setCreatedSplitActionError] = useState("");
@@ -97,21 +122,22 @@ export function EntriesPanel({
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
+  const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
-  const suppressedLinkedEntryIdRef = useRef("");
   const {
     entriesPage,
     isEntriesPageLoading,
+    entriesLoadError,
     refreshEntriesPage
   } = useEntriesPageData({
     queryClient,
     view,
     entriesSourceView,
     selectedMonth,
-    availableMonths,
     externalRefreshToken,
-    onInvalidateAppShellCache
+    onInvalidateAppShellCache,
+    runBackgroundRefresh
   });
   const entryView = useMemo(
     () => ({
@@ -133,6 +159,9 @@ export function EntriesPanel({
     showEntryComposer,
     entryDraft,
     entrySubmitError,
+    entrySettlementLock,
+    isUndoingEntrySettlementLock,
+    undoEntrySettlementLock,
     isSavingEntryDraft,
     savingEntryId,
     deletingEntryId,
@@ -161,6 +190,7 @@ export function EntriesPanel({
     settleTransfer,
     refreshEntriesFromServerTruth,
     addEntryToSplits,
+    clearEntrySplitLink,
     deleteEntry,
     updateEntry,
     updateEntryAmount,
@@ -170,15 +200,45 @@ export function EntriesPanel({
     accounts,
     categories,
     people,
-    onRefresh: () => refreshEntriesPage({ bypassCache: true }),
+    // The server already accepted the edit; a failed refresh afterwards keeps
+    // it on screen and raises the refresh notice instead of failing the save.
+    onRefresh: () => runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true })),
     onEntryMutation: onInvalidateEntryMutation,
     onSplitMutation: onBroadcastSplitMutation
+  });
+  // Entries owns its page DTO, so it reports readiness for the requested
+  // month and view as well as every open editor or in-flight write.
+  useRouteWorkReport({
+    ready: !isEntriesPageLoading
+      && entriesPage.monthPage.month === selectedMonth
+      && entriesPage.viewId === entriesSourceView.id,
+    busy: showMobileFilters
+      || isQuickExpenseSaving
+      || quickExpensePendingKey !== ""
+      || pendingLinkedEntryId !== ""
+      || deletingCreatedSplitId !== ""
+      || Boolean(deleteConfirmation)
+      || Boolean(entryNoteSyncPrompt)
+      || isSyncingEntryNote
+      || Boolean(entryCategorySyncPrompt)
+      || isSyncingEntryCategory
+      || isMobileSplitPickerOpen
+      || isMobileSplitSelectorOpen
+      || Boolean(editingEntryId)
+      || showEntryComposer
+      || isSavingEntryDraft
+      || Boolean(savingEntryId)
+      || Boolean(deletingEntryId)
+      || Boolean(linkingTransferEntryId)
+      || Boolean(settlingTransferEntryId)
+      || Boolean(transferDialogEntryId)
+      || Boolean(refreshingTransferCandidatesEntryId)
+      || Boolean(addingToSplitsEntryId)
   });
   const openEntryComposerRef = useRef(openEntryComposer);
   const entryComposerEditorRef = useRef(null);
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const {
-    searchParamsKey,
     selectedScope,
     walletFilters,
     walletFilterKey,
@@ -189,18 +249,6 @@ export function EntriesPanel({
   useEffect(() => {
     openEntryComposerRef.current = openEntryComposer;
   }, [openEntryComposer]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobileEntrySheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   useEffect(() => {
     if (!showEntryComposer) {
@@ -301,29 +349,6 @@ export function EntriesPanel({
   }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams, shortcutSettings]);
 
   useEffect(() => {
-    const linkedEntryId = searchParams.get("editing_entry") ?? "";
-    if (!linkedEntryId) {
-      if (pendingLinkedEntryId) {
-        setPendingLinkedEntryId("");
-      }
-      suppressedLinkedEntryIdRef.current = "";
-      return;
-    }
-
-    if (linkedEntryId === suppressedLinkedEntryIdRef.current) {
-      return;
-    }
-
-    if (linkedEntryId === pendingLinkedEntryId) {
-      return;
-    }
-
-    // Mobile edit sheets preserve their target row in the URL so route changes
-    // or panel switches can reopen the same entry.
-    setPendingLinkedEntryId(linkedEntryId);
-  }, [pendingLinkedEntryId, searchParams]);
-
-  useEffect(() => {
     if (
       quickExpensePendingKey
       || pendingQuickExpenseDraftRef.current
@@ -366,8 +391,25 @@ export function EntriesPanel({
     return undefined;
   }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
 
+  // Opens the linked entry once per request. Links carry their target row in
+  // the URL so a deep link, or a route change back to Entries, opens the same
+  // entry. Handling the request is what stops a later render from reopening
+  // an editor the person has since saved or closed.
   useEffect(() => {
-    if (!pendingLinkedEntryId || isEntriesPageLoading || editingEntryId === pendingLinkedEntryId) {
+    if (!pendingLinkedEntryId) {
+      return;
+    }
+
+    const markHandled = () => setLinkedEntryRequest((current) => (
+      markLinkedEntryRequestHandled(current, pendingLinkedEntryId)
+    ));
+    // The editor is already open on this entry, for example after adding it
+    // to splits wrote its id into the URL.
+    if (editingEntryId === pendingLinkedEntryId) {
+      markHandled();
+      return;
+    }
+    if (isEntriesPageLoading) {
       return;
     }
 
@@ -378,6 +420,7 @@ export function EntriesPanel({
 
     // Opening a linked entry overrides any pending quick-expense draft because
     // the user explicitly navigated to an existing row to edit it.
+    markHandled();
     pendingQuickExpenseDraftRef.current = null;
     setQuickExpensePendingKey("");
     setQuickExpenseWarning("");
@@ -385,9 +428,10 @@ export function EntriesPanel({
     beginEntryEdit(linkedEntry);
   }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, pendingLinkedEntryId]);
 
+  // Closing the editor ends the link: the request is handled at once, and
+  // the param is removed so a reload does not reopen it either.
   function clearEditingEntrySearchParam() {
-    suppressedLinkedEntryIdRef.current = editingEntryId ?? pendingLinkedEntryId;
-    setPendingLinkedEntryId("");
+    setLinkedEntryRequest((current) => markLinkedEntryRequestHandled(current));
     setSearchParams((current) => {
       if (!current.get("editing_entry")) {
         return current;
@@ -406,7 +450,7 @@ export function EntriesPanel({
     setIsQuickExpenseSaving(true);
     try {
       const result = await saveEntryDraft();
-      if (result?.saved) {
+      if (result && result.saved) {
         pendingQuickExpenseDraftRef.current = null;
         setQuickExpensePendingKey("");
         clearStoredQuickExpenseDraft();
@@ -457,7 +501,7 @@ export function EntriesPanel({
       ...entry,
       amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
     })),
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     perspective: activeEntryFilterCount ? "partial_view" : "cash_flow",
     accountingAdvice: activeEntryFilterCount
       ? "Use this filtered view to investigate the selected account, category, type, or search result; do not use it as the whole-month budget total."
@@ -512,6 +556,13 @@ export function EntriesPanel({
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
     [editingEntryId, entries]
   );
+  // A settlement lock belongs to the entry whose save it refused, and shows
+  // only while that error (or the undo confirmation) is still up.
+  const activeEntrySettlementLock = entrySettlementLock
+    && entrySettlementLock.recordKey === activeEditingEntry?.id
+    && (entrySettlementLock.undone || entrySettlementLock.message === entrySubmitError)
+    ? entrySettlementLock
+    : null;
   const activeEditingEntryBankState = useMemo(
     () => activeEditingEntry ? getEntryBankState(activeEditingEntry) : null,
     [activeEditingEntry]
@@ -808,9 +859,13 @@ export function EntriesPanel({
       setCreatedSplitAction((current) => (
         current?.splitExpenseId === splitExpenseId ? null : current
       ));
+      clearEntrySplitLink(entryId);
+      // The entry counts in full again, so person-view totals change too.
       onBroadcastSplitMutation?.({
         month: selectedMonth,
-        invalidateEntries: true
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
       });
       await refreshEntriesPage({ bypassCache: true });
       return true;
@@ -959,6 +1014,18 @@ export function EntriesPanel({
     refreshEntriesPage({ bypassCache: true })
   ), [refreshEntriesPage]);
 
+  // The shell's page retry reloads this route and hands the page back through
+  // the owner's warm start, so the shell and the list recover together. If it
+  // fails again, the shell's own page error takes over.
+  const retryEntriesPageLoad = async () => {
+    setIsRetryingPageLoad(true);
+    try {
+      await onRetryPageLoad();
+    } finally {
+      setIsRetryingPageLoad(false);
+    }
+  };
+
   const filterStackProps = useMemo(() => ({
     showMobileFilters,
     activeEntryFilterCount,
@@ -1039,17 +1106,37 @@ export function EntriesPanel({
         </div>
       </div>
 
-      <EntriesTotalsStrip
-        showExpenseBreakdown={showExpenseBreakdown}
-        entryTotals={entryTotals}
-        entryOutflowMinor={entryOutflowMinor}
-        entryGrossOutflowMinor={entryGrossOutflowMinor}
-        entryNetMinor={entryNetMinor}
-        onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
-        onAddEntry={openEntryComposer}
-      />
+      {entriesLoadError ? (
+        // The page on screen belongs to another month or view, so none of
+        // its figures or rows may show here. Drafts and open sheets stay.
+        <ErrorPanel
+          className="entries-load-error"
+          title={messages.common.pageLoadErrorTitleFor(messages.tabs.entries)}
+          detail={messages.common.loadFailedDetail}
+          actions={[{
+            label: isRetryingPageLoad ? messages.common.working : messages.common.retryPageLoad,
+            onClick: () => void retryEntriesPageLoad(),
+            disabled: isRetryingPageLoad,
+            primary: true
+          }]}
+        >
+          <p className="app-loading-issue-inline">{entriesLoadError.message}</p>
+        </ErrorPanel>
+      ) : (
+        <>
+          <EntriesTotalsStrip
+            showExpenseBreakdown={showExpenseBreakdown}
+            entryTotals={entryTotals}
+            entryOutflowMinor={entryOutflowMinor}
+            entryGrossOutflowMinor={entryGrossOutflowMinor}
+            entryNetMinor={entryNetMinor}
+            onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
+            onAddEntry={openEntryComposer}
+          />
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" />
+          <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" canRequestWording={canRequestWording} />
+        </>
+      )}
 
       <button
         type="button"
@@ -1060,7 +1147,7 @@ export function EntriesPanel({
         tabIndex={-1}
       />
 
-      {showExpenseBreakdown ? (
+      {showExpenseBreakdown && !entriesLoadError ? (
         <EntriesBreakdownPanel
           expenseBreakdown={expenseBreakdown}
           categories={categories}
@@ -1069,7 +1156,7 @@ export function EntriesPanel({
         />
       ) : null}
 
-      {!useMobileEntrySheet ? <EntriesFilterStack {...filterStackProps} /> : null}
+      {!useMobileEntrySheet && !entriesLoadError ? <EntriesFilterStack {...filterStackProps} /> : null}
 
       {isEntriesPageLoading ? (
         <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">
@@ -1106,6 +1193,7 @@ export function EntriesPanel({
           errorMessage={entrySubmitError || quickExpenseWarning}
           saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
           isSaveDisabled={isComposerSaveDisabled}
+          isSubmitting={isSavingEntryDraft || isQuickExpenseSaving}
           entry={entryDraft}
           categories={categories}
           categoryOptions={categoryOptions}
@@ -1129,9 +1217,13 @@ export function EntriesPanel({
           title="Edit entry"
           description="Update the row in a bottom sheet instead of editing inline."
           errorMessage={entrySubmitError || createdSplitActionError}
+          errorContent={activeEntrySettlementLock
+            ? <SettlementLockNotice lock={activeEntrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={() => void undoEntrySettlementLock()} />
+            : null}
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+          isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
           secondaryAction={activeEditingEntry.entryType !== "expense"
             ? (
                 <button
@@ -1267,10 +1359,9 @@ export function EntriesPanel({
         document.body
       ) : null}
 
-      {groupedEntries.length ? (
+      {entriesLoadError ? null : groupedEntries.length ? (
         <EntriesDateGroups
           groupedEntries={groupedEntries}
-          allEntries={entries}
           categories={categories}
           categoryOptions={categoryOptions}
           accountOptions={accountOptions}
@@ -1310,6 +1401,9 @@ export function EntriesPanel({
           onCancelEntryEdit={closeEntryEditSheet}
           onRefreshEntries={refreshEntriesFromServerTruth}
           entrySubmitError={entrySubmitError}
+          entrySettlementLock={activeEntrySettlementLock}
+          isUndoingEntrySettlementLock={isUndoingEntrySettlementLock}
+          onUndoEntrySettlementLock={() => void undoEntrySettlementLock()}
           hasEditingChanges={hasEditingEntryChanges}
           renderInlineEditor={!useMobileEntrySheet}
         />
@@ -1401,22 +1495,26 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, o
 
 function EntriesEmptyState({ suggestion, onSwitchView }) {
   if (!suggestion) {
-    return <p className="empty-state">{messages.entries.noEntries}</p>;
+    return <EmptyState>{messages.entries.noEntries}</EmptyState>;
   }
 
   return (
-    <section className="entries-empty-state linked-entry-notice">
-      <strong>{messages.entries.walletViewMismatchTitle}</strong>
-      <p>{messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}</p>
-      <div className="entries-empty-state-actions">
-        <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
-          {messages.entries.walletViewMismatchHouseholdAction}
-        </button>
-        <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
-          {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
-        </button>
-      </div>
-    </section>
+    <EmptyState
+      className="entries-empty-state linked-entry-notice"
+      title={messages.entries.walletViewMismatchTitle}
+      actions={(
+        <>
+          <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
+            {messages.entries.walletViewMismatchHouseholdAction}
+          </button>
+          <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
+            {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
+          </button>
+        </>
+      )}
+    >
+      {messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
+    </EmptyState>
   );
 }
 
@@ -1425,14 +1523,19 @@ function useEntriesPageData({
   view,
   entriesSourceView,
   selectedMonth,
-  availableMonths,
   externalRefreshToken,
-  onInvalidateAppShellCache
+  onInvalidateAppShellCache,
+  runBackgroundRefresh
 }) {
-  const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
-  const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
-  const entriesQueryEpochRef = useRef(0);
-  const entriesPagePrefetchTimerRef = useRef(null);
+  const [owner] = useState(() => createEntriesDataOwner({
+    initialPage: buildInitialEntriesPage(view),
+    initialParams: buildEntriesPageParams({ viewId: view.id, month: view.monthPage.month })
+  }));
+  const { page: entriesPage, isLoading: isEntriesPageLoading, loadError: entriesLoadError } = useSyncExternalStore(
+    owner.subscribe,
+    owner.getSnapshot,
+    owner.getSnapshot
+  );
   const entriesPageParams = useMemo(
     () => buildEntriesPageParams({
       viewId: entriesSourceView.id,
@@ -1443,68 +1546,46 @@ function useEntriesPageData({
   const entriesPageCacheKey = entriesPageParams.toString();
 
   const clearEntriesPageCache = useCallback(() => {
-    entriesQueryEpochRef.current += 1;
     queryClient.cancelQueries({ queryKey: ["entries-page"] });
     queryClient.removeQueries({ queryKey: ["entries-page"] });
   }, [queryClient]);
 
   // This is the single network boundary for the panel. Everything else reads
-  // from local state or react-query cache.
-  const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.entriesPage(params);
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
+  // from the owner or the react-query cache.
+  const fetchEntriesPage = useCallback((params, { bypassCache = false, signal = undefined } = {}) => (
+    fetchQueryWithLease(queryClient, {
+      queryKey: queryKeys.entriesPage(params),
+      bypassCache,
+      signal,
+      abortMessage: "Entries page request aborted.",
+      // This panel has always used the client's default retry policy.
+      retry: queryClient.getDefaultOptions().queries?.retry,
+      fetcher: async ({ signal: requestSignal }) => {
+        const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store", signal: requestSignal });
+        if (!response.ok) {
+          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
+        }
+        return response.json();
       }
-    }
+    })
+  ), [queryClient]);
 
-    const fetcher = async () => {
-      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-      }
-      return response.json();
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
-
+  // Refreshes the month and view this callback was made for. The owner drops
+  // it when the person has since moved on, so it cannot replace the newer
+  // month's entries.
   const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateAppShell = false } = {}) => {
+    // A stale callback must not clear the new month's cache mid-load.
+    if (!owner.isActive(entriesPageParams)) {
+      return null;
+    }
     if (bypassCache) {
       clearEntriesPageCache();
     }
     if (invalidateAppShell) {
       onInvalidateAppShellCache?.();
     }
-    setIsEntriesPageLoading(true);
-    try {
-      const data = await fetchEntriesPage(entriesPageParams, { bypassCache });
-      setEntriesPage(data);
-      return data;
-    } finally {
-      setIsEntriesPageLoading(false);
-    }
-  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateAppShellCache]);
+    return owner.refresh({ params: entriesPageParams, fetchPage: fetchEntriesPage, bypassCache });
+  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateAppShellCache, owner]);
 
   useEffect(() => {
     const initialPage = buildInitialEntriesPage(entriesSourceView);
@@ -1512,93 +1593,47 @@ function useEntriesPageData({
       return;
     }
 
-    setEntriesPage(initialPage);
-  }, [entriesPageCacheKey, entriesSourceView, selectedMonth]);
+    owner.seed(initialPage, entriesPageParams);
+  }, [entriesPageCacheKey, entriesPageParams, entriesSourceView, owner, selectedMonth]);
+
+  // A failed load over rows that already belong to this month and view is a
+  // background failure: the rows stay and the refresh notice offers a retry.
+  const reportBackgroundLoadFailure = useStableHandler((error) => {
+    void runBackgroundRefresh(
+      () => Promise.reject(error),
+      () => refreshEntriesPage({ bypassCache: true })
+    );
+  });
 
   useEffect(() => {
     const controller = new AbortController();
     const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.entriesPage(entriesPageParams)));
-    setIsEntriesPageLoading(!hasCachedPage);
-
-    void fetchEntriesPage(entriesPageParams, { signal: controller.signal })
-      .then((data) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setEntriesPage(data);
-        setIsEntriesPageLoading(false);
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setIsEntriesPageLoading(false);
-      });
+    owner.load({
+      params: entriesPageParams,
+      fetchPage: fetchEntriesPage,
+      signal: controller.signal,
+      showLoading: !hasCachedPage
+    }).catch(reportBackgroundLoadFailure);
 
     return () => {
       controller.abort();
     };
-  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, queryClient]);
+  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, owner, queryClient, reportBackgroundLoadFailure]);
 
+  // Another tab changed this month's entries: refresh in the background and
+  // raise the refresh notice if that fails.
   useEffect(() => {
     if (!externalRefreshToken) {
       return;
     }
 
-    void refreshEntriesPage({ bypassCache: true });
-  }, [externalRefreshToken, refreshEntriesPage]);
-
-  // Prefetch adjacent months on desktop so moving month-to-month feels instant.
-  useEffect(() => {
-    if (
-      !availableMonths.length
-      || typeof window === "undefined"
-      || window.navigator?.connection?.saveData
-      || window.matchMedia?.("(pointer: coarse)")?.matches
-    ) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const entriesQueryEpoch = entriesQueryEpochRef.current;
-
-    entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
-      const currentIndex = availableMonths.indexOf(selectedMonth);
-      if (currentIndex === -1) {
-        return;
-      }
-
-      void (async () => {
-        for (const offset of [-1, 1]) {
-          if (isCancelled || entriesQueryEpochRef.current !== entriesQueryEpoch) {
-            return;
-          }
-
-          const adjacentMonth = availableMonths[currentIndex + offset];
-          if (!adjacentMonth) {
-            continue;
-          }
-
-          await fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
-          if (!isCancelled) {
-            await waitFor(ENTRIES_PAGE_PREFETCH_SPACING_MS);
-          }
-        }
-      })();
-    }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
-
-    return () => {
-      isCancelled = true;
-      if (entriesPagePrefetchTimerRef.current) {
-        window.clearTimeout(entriesPagePrefetchTimerRef.current);
-        entriesPagePrefetchTimerRef.current = null;
-      }
-    };
-  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [externalRefreshToken, refreshEntriesPage, runBackgroundRefresh]);
 
   return {
     entriesPage,
     isEntriesPageLoading,
+    entriesLoadError,
     refreshEntriesPage
   };
 }
@@ -1830,9 +1865,3 @@ function buildInitialEntriesPage(view) {
   };
 }
 
-function buildEntriesPageParams({ viewId, month }) {
-  return new URLSearchParams({
-    view: viewId,
-    month
-  });
-}

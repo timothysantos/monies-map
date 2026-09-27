@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { EmptyState, InlineError } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { moniesClient } from "./monies-client-service";
+import { useMoneyPrivacy } from "./money-privacy";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
@@ -19,17 +21,22 @@ import {
 } from "./month-row-editing";
 import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
 import {
+  buildSavedMonthPlanFields,
   getMonthPlanEditSource,
   mergeMonthPlanSections,
   mergeMonthRowsById
 } from "./month-state";
 import { buildMonthMutationRefreshPlan } from "./month-workflow";
+import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
-import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { buildMonthInsightFacts, selectMonthInsightEntries } from "./month-insight-facts";
+import { useRouteWorkReport } from "./use-route-work-status";
+import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
+// Mid-width table layout; ships with this lazy route, not the first screen.
+import "./month-mid-width.css";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
-const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -43,17 +50,31 @@ const {
 // - background refreshes so derived totals settle after saves
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
-export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
+// Without the shell's notice (isolated renders), a failed refresh is dropped.
+function runQuietly(task, _retry) {
+  return Promise.resolve().then(task).catch(() => null);
+}
+
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false, isDemoEnvironment = false }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
   const [editingRowId, setEditingRowId] = useState(null);
   const [editingSnapshot, setEditingSnapshot] = useState(null);
-  const [editingDrafts, setEditingDrafts] = useState({});
+  const [editingDrafts, setEditingDrafts] = useState(/** @type {Record<string, any>} */ ({}));
   const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows ?? []);
   const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
+  const [isSavingRowNote, setIsSavingRowNote] = useState(false);
+  const [rowNoteError, setRowNoteError] = useState("");
+  const rowNoteSaveInFlightRef = useRef(false);
+  const rowRemoveInFlightRef = useRef(false);
   const [planLinkDialog, setPlanLinkDialog] = useState(null);
+  const [isSavingPlanLinks, setIsSavingPlanLinks] = useState(false);
+  const [planLinkError, setPlanLinkError] = useState("");
+  // Set synchronously so a double click cannot start a second save before
+  // the saving state renders.
+  const planLinkSaveInFlightRef = useRef(false);
   const [resetMonthText, setResetMonthText] = useState("");
   const [deleteMonthText, setDeleteMonthText] = useState("");
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
@@ -64,8 +85,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
+  const useMobileMonthSheet = useIsMonthSheetLayout();
   const [isMonthDataRefreshing, setIsMonthDataRefreshing] = useState(false);
+  const [isRemovingMonthRow, setIsRemovingMonthRow] = useState(false);
   const previousMonthActualCacheRef = useRef(new Map());
   const [tableSorts, setTableSorts] = useState({
     income: null,
@@ -105,27 +127,29 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   }, [monthUiKey]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia(MOBILE_ADD_DIALOG_QUERY);
-    const update = () => setUseMobileMonthSheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
-
   // Summary cards borrow the selected month's rollup from the already-loaded
   // summary payload instead of refetching anything here.
   const selectedMonthSummary = useMemo(
     () => view.summaryPage?.months?.find((month) => month.month === view.monthPage.month) ?? null,
     [view]
   );
+  const planLinkRowId = planLinkDialog?.rowId ?? null;
   const planLinkTargetRow = useMemo(
-    () => planLinkDialog ? monthService.getPlanRowById(planSections, planLinkDialog.rowId) : null,
-    [planLinkDialog, planSections]
+    () => planLinkRowId ? monthService.getPlanRowById(planSections, planLinkRowId) : null,
+    [planLinkRowId, planSections]
+  );
+  // Scoring every month entry is the expensive part, so it runs when the
+  // picker opens on a row, not on each checkbox or filter change. Candidate
+  // objects then keep their identity and memoized candidate rows skip.
+  const planLinkCandidates = useMemo(
+    () => planLinkTargetRow
+      ? monthService.buildPlanLinkCandidates({
+        row: planLinkTargetRow,
+        monthEntries: view.monthPage.entries,
+        monthKey: view.monthPage.month
+      })
+      : [],
+    [planLinkTargetRow, view.monthPage.entries, view.monthPage.month]
   );
   const planLinkPickerModel = useMemo(() => {
     if (!planLinkTargetRow) {
@@ -137,12 +161,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       };
     }
 
-    const allCandidates = monthService.buildPlanLinkCandidates({
-      row: planLinkTargetRow,
-      householdMonthEntries,
-      monthEntries: view.monthPage.entries,
-      monthKey: view.monthPage.month
-    });
+    const allCandidates = planLinkCandidates;
     const selectedIds = new Set(planLinkDialog?.draftEntryIds ?? []);
     const rowCategory = (planLinkTargetRow.categoryName ?? "").trim().toLowerCase();
     const rowAccount = (planLinkTargetRow.accountName ?? "").trim().toLowerCase();
@@ -176,7 +195,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       candidates,
       selectedIds
     };
-  }, [householdMonthEntries, planLinkDialog, planLinkTargetRow, view.monthPage.entries, view.monthPage.month]);
+  }, [planLinkCandidates, planLinkDialog, planLinkTargetRow, view.monthPage.month]);
 
   const monthMetricCards = useMemo(
     () => monthService.buildMetricCards({ planSections, incomeRows, currentMonthSummary: selectedMonthSummary }),
@@ -186,30 +205,26 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     () => monthService.getVisibleAccounts(accounts, view.id),
     [accounts, view.id]
   );
-  const financialInsightFacts = useMemo(() => {
-    const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
-    const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
-    return buildFinancialInsightFacts({
-      contextLabel: `${formatService.formatMonthLabel(view.monthPage.month)} month`,
-      audienceKind: view.id === "household" ? "household" : "person",
-      audienceName: view.id === "household" ? "" : view.label,
-      records: view.monthPage.entries,
-      formatMoney: formatService.money,
-      perspective: "cash_flow",
-      accountingAdvice: actualSpendMinor > plannedSpendMinor && plannedSpendMinor > 0
-        ? "Actual spending is above the planned budget. Check the largest category and any pending bank rows before changing the plan or assuming the overspend is a one-off."
-        : "Keep the plan, actual entries, and any pending bank rows current before reallocating unused budget or treating the remaining amount as free to spend.",
-      decisionMapContext: {
-        plannedSpendMinor,
-        confidence: buildMonthConfidence(visibleAccounts)
-      }
-    });
-  }, [selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.id, view.label, view.monthPage.entries, view.monthPage.month, visibleAccounts]);
+  // The check-in counts the entries the Actual spend card counts (a person's
+  // own, in the selected scope), not every household entry the DTO carries.
+  const insightEntries = useMemo(
+    () => selectMonthInsightEntries(view.monthPage, view.id),
+    [view.id, view.monthPage]
+  );
+  const financialInsightFacts = useMemo(() => buildMonthInsightFacts({
+    viewId: view.id,
+    viewLabel: view.label,
+    monthPage: view.monthPage,
+    monthSummary: selectedMonthSummary,
+    accounts: visibleAccounts,
+    formatMoney: formatService.unmaskedMoney,
+    formatMonthLabel: formatService.formatMonthLabel
+  }), [selectedMonthSummary, view.id, view.label, view.monthPage, visibleAccounts]);
   const financialInsightActions = useMemo(() => {
     const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
     const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
     const actions = [];
-    if (view.monthPage.entries.some((entry) => entry.entryType === "income")) {
+    if (insightEntries.some((entry) => entry.entryType === "income")) {
       actions.push({
         label: `See income entries (${financialInsightFacts.income})`,
         onClick: () => handleOpenEntriesForActual({ entryType: "income" })
@@ -232,7 +247,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       });
     }
     return actions;
-  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.income, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.monthPage.entries]);
+  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.income, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, insightEntries]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -263,9 +278,14 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     [safeIncomeRows, safePlanSections]
   );
 
+  // The save already succeeded; a failed refresh keeps the saved rows and
+  // raises the shell's refresh notice, whose retry runs this again.
   function refreshMonthDataInBackground(options) {
     setIsMonthDataRefreshing(true);
-    void onRefresh(options).catch(() => {}).finally(() => {
+    void runBackgroundRefresh(
+      () => onRefresh(options),
+      () => refreshMonthDataInBackground(options)
+    ).finally(() => {
       setIsMonthDataRefreshing(false);
     });
   }
@@ -503,13 +523,14 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         const section = planSections.find((item) => item.key === currentSnapshot.sectionKey);
         const row = section?.rows.find((item) => item.id === currentSnapshot.rowId);
         if (row) {
+          const savedPlannedMinor = typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor;
           await persistMonthRow(currentSnapshot.sectionKey, {
             ...row,
-            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
+            plannedMinor: savedPlannedMinor
           }, nextPlannedMinor);
           upsertPlanRow(currentSnapshot.sectionKey, {
             ...row,
-            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
+            ...buildSavedMonthPlanFields({ plannedMinor: savedPlannedMinor, note: row.note }),
             isDraft: false,
             isPendingDerived: true
           });
@@ -561,8 +582,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setEditingDrafts({});
   }
 
+  // Read at the moment of the click so a resize that has not re-rendered yet
+  // still opens the layout the viewport shows now.
   function isMobileAddDialogPreferred() {
-    return useMobileMonthSheet || (typeof window !== "undefined" && window.matchMedia(MOBILE_ADD_DIALOG_QUERY).matches);
+    return isMonthSheetLayout();
   }
 
   function openMonthSection(sectionKey) {
@@ -795,6 +818,32 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
   }
 
+  // One delete at a time; the screen drops the row only after the server
+  // confirms, so totals never show a delete that did not happen.
+  async function deleteMonthPlanRowOnServer(rowId) {
+    if (rowRemoveInFlightRef.current) {
+      throw new Error(messages.month.rowDeleteFailed);
+    }
+    rowRemoveInFlightRef.current = true;
+    setIsRemovingMonthRow(true);
+    try {
+      const response = await fetch("/api/month-plan/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowId,
+          month: view.monthPage.month
+        })
+      });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.rowDeleteFailed));
+      }
+    } finally {
+      rowRemoveInFlightRef.current = false;
+      setIsRemovingMonthRow(false);
+    }
+  }
+
   async function handleRemovePlanRow(sectionKey, rowId) {
     const section = planSections.find((item) => item.key === sectionKey);
     const row = section?.rows.find((item) => item.id === rowId);
@@ -812,14 +861,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       return;
     }
 
-    await fetch("/api/month-plan/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rowId,
-        month: view.monthPage.month
-      })
-    });
+    // Throws on failure so the delete confirmation keeps the row and shows why.
+    await deleteMonthPlanRowOnServer(rowId);
     setPlanSections((current) => current.map((item) => (
       item.key === sectionKey
         ? { ...item, rows: item.rows.filter((planRow) => planRow.id !== rowId) }
@@ -846,6 +889,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   function openNoteDialog(kind, rowId, sectionKey, note) {
+    setRowNoteError("");
     setNoteDialog({
       kind,
       rowId,
@@ -854,28 +898,50 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
+  // The table shows the new note only after the save succeeds; a failure
+  // keeps the dialog and its draft open with the error.
   async function commitNoteDialog() {
-    if (!noteDialog) {
+    if (!noteDialog || rowNoteSaveInFlightRef.current) {
       return;
     }
 
-    if (noteDialog.kind === "income") {
-      handleIncomeRowChange(noteDialog.rowId, { note: noteDialog.draft });
-      const row = incomeRows.find((item) => item.id === noteDialog.rowId);
-      if (row) {
-        await persistMonthRow("income", { ...row, note: noteDialog.draft });
-      }
-    } else {
-      updatePlanRow(noteDialog.sectionKey, noteDialog.rowId, { note: noteDialog.draft });
-      const section = planSections.find((item) => item.key === noteDialog.sectionKey);
-      const row = section?.rows.find((item) => item.id === noteDialog.rowId);
-      if (row) {
-        await persistMonthRow(noteDialog.sectionKey, { ...row, note: noteDialog.draft });
-      }
+    const { kind, rowId, sectionKey, draft } = noteDialog;
+    const row = kind === "income"
+      ? incomeRows.find((item) => item.id === rowId)
+      : planSections.find((item) => item.key === sectionKey)?.rows.find((item) => item.id === rowId);
+    if (!row) {
+      setNoteDialog(null);
+      return;
     }
 
+    rowNoteSaveInFlightRef.current = true;
+    setIsSavingRowNote(true);
+    setRowNoteError("");
+    try {
+      await persistMonthRow(kind === "income" ? "income" : sectionKey, { ...row, note: draft });
+    } catch (error) {
+      setRowNoteError(error instanceof Error && error.message ? error.message : messages.month.rowNoteSaveFailed);
+      return;
+    } finally {
+      rowNoteSaveInFlightRef.current = false;
+      setIsSavingRowNote(false);
+    }
+
+    if (kind === "income") {
+      handleIncomeRowChange(rowId, { note: draft });
+    } else {
+      updatePlanRow(sectionKey, rowId, buildSavedMonthPlanFields({ note: draft }));
+    }
     setNoteDialog(null);
     refreshMonthDataInBackground();
+  }
+
+  function closeNoteDialog() {
+    if (rowNoteSaveInFlightRef.current) {
+      return;
+    }
+    setNoteDialog(null);
+    setRowNoteError("");
   }
 
   async function commitMonthNoteDialog() {
@@ -886,7 +952,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setIsSavingMonthNote(true);
     setMonthNoteError("");
     try {
-      await fetch("/api/month-note/update", {
+      const response = await fetch("/api/month-note/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -895,13 +961,16 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
           note: monthNoteDialog.draft
         })
       });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.monthNoteSaveFailed));
+      }
 
       setMonthNoteDialog(null);
       refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
         kind: "plan-row-edit"
       }));
     } catch (error) {
-      setMonthNoteError(error instanceof Error ? error.message : "Failed to save month note.");
+      setMonthNoteError(error instanceof Error && error.message ? error.message : messages.month.monthNoteSaveFailed);
     } finally {
       setIsSavingMonthNote(false);
     }
@@ -958,7 +1027,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  function handleOpenEntriesForActual({ categoryName, entryIds = [], entryType = "" }) {
+  function handleOpenEntriesForActual({ categoryName = undefined, entryIds = [], entryType = "" }) {
     const next = new URLSearchParams();
     next.set("view", view.id);
     next.set("month", view.monthPage.month);
@@ -1117,6 +1186,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         await persistMonthRow(sectionKey, nextPlanRow, plannedMinor);
         upsertPlanRow(sectionKey, {
           ...nextPlanRow,
+          ...buildSavedMonthPlanFields({ plannedMinor, note: nextPlanRow.note }),
           isDraft: false,
           isPendingDerived: true
         }, { prepend: currentDialog.mode === "create" });
@@ -1162,14 +1232,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       return;
     }
 
-    await fetch("/api/month-plan/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rowId,
-        month: view.monthPage.month
-      })
-    });
+    await deleteMonthPlanRowOnServer(rowId);
     setIncomeRows((current) => current.filter((item) => item.id !== rowId));
     setEditingRowId((current) => (current === rowId ? null : current));
     refreshMonthDataInBackground();
@@ -1200,6 +1263,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       await finishEdit();
     }
 
+    setPlanLinkError("");
     setPlanLinkDialog({
       rowId: row.id,
       draftEntryIds: row.linkedEntryIds ?? [],
@@ -1211,23 +1275,48 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
+  // Closes only on success. A failed save keeps the dialog or sheet and its
+  // draft open with the error; while the save is in flight Escape, Cancel and
+  // a second submit are ignored.
   async function savePlanLinkDialog() {
-    if (!planLinkDialog) {
+    if (!planLinkDialog || planLinkSaveInFlightRef.current) {
       return;
     }
 
-    await fetch("/api/month-plan/links", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rowId: planLinkDialog.rowId,
-        month: view.monthPage.month,
-        transactionIds: planLinkDialog.draftEntryIds
-      })
-    });
+    planLinkSaveInFlightRef.current = true;
+    setIsSavingPlanLinks(true);
+    setPlanLinkError("");
+    try {
+      const response = await fetch("/api/month-plan/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowId: planLinkDialog.rowId,
+          month: view.monthPage.month,
+          transactionIds: planLinkDialog.draftEntryIds
+        })
+      });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.planLinkSaveFailed));
+      }
+    } catch (error) {
+      setPlanLinkError(error instanceof Error && error.message ? error.message : messages.month.planLinkSaveFailed);
+      return;
+    } finally {
+      planLinkSaveInFlightRef.current = false;
+      setIsSavingPlanLinks(false);
+    }
 
     setPlanLinkDialog(null);
     refreshMonthDataInBackground();
+  }
+
+  function closePlanLinkDialog() {
+    if (planLinkSaveInFlightRef.current) {
+      return;
+    }
+    setPlanLinkDialog(null);
+    setPlanLinkError("");
   }
 
   function togglePlanLinkFilter(key) {
@@ -1244,7 +1333,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     } : current);
   }
 
-  function togglePlanLinkEntry(entryId, checked) {
+  // Stable so memoized candidate rows do not re-render when the dialog does.
+  const togglePlanLinkEntry = useCallback((entryId, checked) => {
     setPlanLinkDialog((current) => {
       if (!current) {
         return current;
@@ -1260,7 +1350,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         draftEntryIds: [...nextIds]
       };
     });
-  }
+  }, []);
 
   const monthKey = view.monthPage.month;
   function toggleSection(sectionKey) {
@@ -1274,15 +1364,42 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isDeletingMonth, setIsDeletingMonth] = useState(false);
+  // Every open editor, typed confirmation or in-flight write blocks optional
+  // background work while it is open.
+  useRouteWorkReport({
+    busy: Boolean(editingRowId)
+      || Boolean(noteDialog)
+      || Boolean(planLinkDialog)
+      || Boolean(monthNoteDialog)
+      || Boolean(mobileAddDialog)
+      || actionsOpen
+      || isSavingMonthNote
+      || isSavingRowNote
+      || isDraftingMonthNote
+      || isSavingMonthRow
+      || isRemovingMonthRow
+      || isMonthDataRefreshing
+      || hasPendingDerivedMonthData
+      || isDuplicating
+      || isResettingMonth
+      || isDeletingMonth
+      || resetMonthText !== ""
+      || deleteMonthText !== ""
+  });
 
+  // Month actions throw on failure; MonthPanelHeader keeps the popover or
+  // confirmation dialog open and shows the error.
   async function handleDuplicateMonth() {
     setIsDuplicating(true);
     try {
       const response = await fetch(`/api/months/duplicate?source=${view.monthPage.month}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.duplicateMonthFailed));
+      }
       const data = await response.json();
       if (data?.targetMonth) {
         setSearchParams((current) => {
@@ -1299,7 +1416,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   async function handleResetMonth() {
     setIsResettingMonth(true);
     try {
-      await fetch(`/api/months/reset?month=${view.monthPage.month}`, { method: "POST" });
+      const response = await fetch(`/api/months/reset?month=${view.monthPage.month}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.resetMonthFailed));
+      }
       await onRefresh();
       setResetMonthText("");
     } finally {
@@ -1310,7 +1430,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   async function handleDeleteMonth() {
     setIsDeletingMonth(true);
     try {
-      await fetch(`/api/months/delete?month=${view.monthPage.month}`, { method: "POST" });
+      const response = await fetch(`/api/months/delete?month=${view.monthPage.month}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.deleteMonthFailed));
+      }
       await onRefresh();
       setDeleteMonthText("");
     } finally {
@@ -1341,11 +1464,12 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onDeleteMonthTextChange={setDeleteMonthText}
         onResetMonth={handleResetMonth}
         onDeleteMonth={handleDeleteMonth}
+        isDemoEnvironment={isDemoEnvironment}
       />
 
       <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-month" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-month" canRequestWording={canRequestWording} />
 
       <MonthPlanStack
         view={view}
@@ -1401,6 +1525,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
           errorMessage={monthRowError}
           saveLabel={isSavingMonthRow ? messages.common.saving : messages.month.doneEdit}
           isSaveDisabled={isSavingMonthRow}
+          isSubmitting={isSavingMonthRow}
           onClose={() => setMobileAddDialog(null)}
           onSave={() => void saveMobileAddDialog()}
         >
@@ -1515,7 +1640,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         </EntryMobileSheet>
       ) : null}
 
-      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
+      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) closeNoteDialog(); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content">
@@ -1534,11 +1659,13 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                   type="button"
                   className="icon-action subtle-cancel"
                   aria-label="Close note editor"
-                  onClick={() => setNoteDialog(null)}
+                  disabled={isSavingRowNote}
+                  onClick={closeNoteDialog}
                 >
                   <X size={16} />
                 </button>
               </div>
+              <InlineError message={rowNoteError} />
               <textarea
                 className="note-dialog-textarea"
                 value={noteDialog?.draft ?? ""}
@@ -1547,11 +1674,11 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                 enterKeyHint="done"
               />
               <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" onClick={() => setNoteDialog(null)}>
+                <button type="button" className="subtle-cancel" disabled={isSavingRowNote} onClick={closeNoteDialog}>
                   {messages.month.cancelEdit}
                 </button>
-                <button type="submit" className="dialog-primary">
-                  {messages.month.doneEdit}
+                <button type="submit" className="dialog-primary" disabled={isSavingRowNote}>
+                  {isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
                 </button>
               </div>
             </form>
@@ -1560,7 +1687,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       </Dialog.Root>
 
       {!useMobileMonthSheet ? (
-        <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) setPlanLinkDialog(null); }}>
+        <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) closePlanLinkDialog(); }}>
           <Dialog.Portal>
             <Dialog.Overlay className="note-dialog-overlay" />
             <Dialog.Content className="note-dialog-content planned-link-dialog">
@@ -1570,7 +1697,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                 allCandidates={planLinkPickerModel.allCandidates}
                 candidates={planLinkPickerModel.candidates}
                 selectedIds={planLinkPickerModel.selectedIds}
-                onClose={() => setPlanLinkDialog(null)}
+                isSaving={isSavingPlanLinks}
+                errorMessage={planLinkError}
+                onClose={closePlanLinkDialog}
                 onToggleFilter={togglePlanLinkFilter}
                 onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
                 onToggleEntry={togglePlanLinkEntry}
@@ -1585,8 +1714,11 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         <EntryMobileSheet
           title="Match planned item"
           description={`Link exact ledger entries to ${planLinkPickerModel.row?.label ?? "this planned item"}. Budget buckets still use category totals.`}
-          saveLabel="Save matches"
-          onClose={() => setPlanLinkDialog(null)}
+          saveLabel={isSavingPlanLinks ? messages.common.saving : "Save matches"}
+          errorMessage={planLinkError}
+          isSubmitting={isSavingPlanLinks}
+          isSaveDisabled={isSavingPlanLinks}
+          onClose={closePlanLinkDialog}
           onSave={() => void savePlanLinkDialog()}
         >
           <MonthPlanLinkContent
@@ -1631,7 +1763,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                   <X size={16} />
                 </button>
               </div>
-              {monthNoteError ? <p className="form-error" role="alert">{monthNoteError}</p> : null}
+              <InlineError message={monthNoteError} />
               <textarea
                 className="note-dialog-textarea"
                 value={monthNoteDialog?.draft ?? ""}
@@ -1661,11 +1793,13 @@ function MonthPlanLinkContent({
   allCandidates,
   candidates,
   selectedIds,
-  onClose,
+  isSaving = false,
+  errorMessage = "",
+  onClose = undefined,
   onToggleFilter,
   onDescriptionFilterChange,
   onToggleEntry,
-  onSave,
+  onSave = undefined,
   isMobile = false
 }) {
   const filters = [
@@ -1675,9 +1809,12 @@ function MonthPlanLinkContent({
     ["filterCurrentMonthOnly", "This month only"]
   ];
 
+  // On mobile this sits inside the sheet's own form, which saves on submit. A
+  // nested form would take Enter from the filter field and submit the page.
+  const FormElement = isMobile ? "div" : "form";
   return (
-    <form
-      onSubmit={(event) => {
+    <FormElement
+      onSubmit={isMobile ? undefined : (event) => {
         event.preventDefault();
         void onSave();
       }}
@@ -1694,12 +1831,14 @@ function MonthPlanLinkContent({
             type="button"
             className="icon-action subtle-cancel"
             aria-label="Close planned item matching"
+            disabled={isSaving}
             onClick={onClose}
           >
             <X size={16} />
           </button>
         </div>
       ) : null}
+      {!isMobile ? <InlineError message={errorMessage} /> : null}
       <div className="planned-link-filter-panel">
         <div className="planned-link-filter-chips" aria-label="Match filters">
           {filters.map(([key, label]) => (
@@ -1707,6 +1846,7 @@ function MonthPlanLinkContent({
               key={key}
               type="button"
               className={`planned-link-filter-chip ${planLinkDialog?.[key] ? "is-active" : ""}`}
+              aria-pressed={Boolean(planLinkDialog?.[key])}
               onClick={() => onToggleFilter(key)}
             >
               {label}
@@ -1731,56 +1871,56 @@ function MonthPlanLinkContent({
       {candidates.length ? (
         <div className="planned-link-list">
           {candidates.map((entry) => (
-            <label key={entry.id} className="planned-link-row">
-              <input
-                type="checkbox"
-                checked={selectedIds.has(entry.id)}
-                onChange={(event) => onToggleEntry(entry.id, event.target.checked)}
-              />
-              <span className="planned-link-row-main">
-                <strong>{entry.description}</strong>
-                <small>{formatService.formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
-                {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
-              </span>
-              <span>{formatService.money(entry.amountMinor)}</span>
-            </label>
+            <MemoizedPlanLinkCandidateRow
+              key={entry.id}
+              entry={entry}
+              checked={selectedIds.has(entry.id)}
+              onToggleEntry={onToggleEntry}
+            />
           ))}
         </div>
       ) : (
-        <p className="empty-copy">No matching expense entries fit the current filters.</p>
+        <EmptyState>{messages.month.planLinkNoCandidates}</EmptyState>
       )}
       {!isMobile ? (
         <div className="note-dialog-actions">
-          <button type="button" className="subtle-cancel" onClick={onClose}>
+          <button type="button" className="subtle-cancel" disabled={isSaving} onClick={onClose}>
             {messages.month.cancelEdit}
           </button>
-          <button type="submit" className="dialog-primary">
-            Save matches
+          <button type="submit" className="dialog-primary" disabled={isSaving}>
+            {isSaving ? messages.common.saving : "Save matches"}
           </button>
         </div>
       ) : null}
-    </form>
+    </FormElement>
   );
 }
+
+// Memoized: a checkbox or filter change re-renders only the rows it changes.
+// It subscribes to money privacy because the shared formatter reads it.
+function PlanLinkCandidateRow({ entry, checked, onToggleEntry }) {
+  useMoneyPrivacy();
+  return (
+    <label className="planned-link-row">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onToggleEntry(entry.id, event.target.checked)}
+      />
+      <span className="planned-link-row-main">
+        <strong>{entry.description}</strong>
+        <small>{formatService.formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
+        {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
+      </span>
+      <span>{formatService.money(entry.amountMinor)}</span>
+    </label>
+  );
+}
+
+const MemoizedPlanLinkCandidateRow = memo(PlanLinkCandidateRow);
 
 function getPreviousMonthKey(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 2, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function buildMonthConfidence(accounts) {
-  const visibleAccounts = accounts ?? [];
-  const evaluated = visibleAccounts.length > 0;
-  return visibleAccounts.reduce((result, account) => ({
-    evaluated,
-    reconciliationMismatchCount: result.reconciliationMismatchCount + (account.reconciliationStatus === "mismatch" ? 1 : 0),
-    needsCheckpointCount: result.needsCheckpointCount + (account.reconciliationStatus === "needs_checkpoint" ? 1 : 0),
-    unresolvedTransferCount: result.unresolvedTransferCount + Number(account.unresolvedTransferCount ?? 0)
-  }), {
-    evaluated,
-    reconciliationMismatchCount: 0,
-    needsCheckpointCount: 0,
-    unresolvedTransferCount: 0
-  });
 }

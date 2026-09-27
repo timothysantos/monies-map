@@ -1,0 +1,208 @@
+{
+  "files": {
+    "api-performance.spec.js": {
+      "seconds": 1.4,
+      "tests": 2
+    },
+    "app-dates.spec.js": {
+      "seconds": 2.5,
+      "tests": 2
+    },
+    "app-shell-chrome.spec.js": {
+      "seconds": 30.8,
+      "tests": 16
+    },
+    "app-shell.spec.js": {
+      "seconds": 6.8,
+      "tests": 4
+    },
+    "app-sync-subscription.spec.js": {
+      "seconds": 2.5,
+      "tests": 2
+    },
+    "category-dialog-in-sheet.spec.js": {
+      "seconds": 6.9,
+      "tests": 4
+    },
+    "consistent-states.spec.js": {
+      "seconds": 3.5,
+      "tests": 3
+    },
+    "entries-add-to-splits.spec.js": {
+      "seconds": 13.4,
+      "tests": 8
+    },
+    "entries-category-filter.spec.js": {
+      "seconds": 12.8,
+      "tests": 9
+    },
+    "entries-data-owner.spec.js": {
+      "seconds": 2.9,
+      "tests": 1
+    },
+    "entries-deep-link-editor.spec.js": {
+      "seconds": 5.8,
+      "tests": 2
+    },
+    "entries-delete-entry.spec.js": {
+      "seconds": 1.9,
+      "tests": 1
+    },
+    "entries-linked-split-amount.spec.js": {
+      "seconds": 7,
+      "tests": 3
+    },
+    "entries-linked-split-sync.spec.js": {
+      "seconds": 5,
+      "tests": 2
+    },
+    "entries-load-failure.spec.js": {
+      "seconds": 19.6,
+      "tests": 2
+    },
+    "entries-row-rendering.spec.js": {
+      "seconds": 8.8,
+      "tests": 5
+    },
+    "entries-splits-search.spec.js": {
+      "seconds": 6.5,
+      "tests": 6
+    },
+    "entries-transfer-dialog.spec.js": {
+      "seconds": 3.7,
+      "tests": 2
+    },
+    "faq-content.spec.js": {
+      "seconds": 0.6,
+      "tests": 1
+    },
+    "financial-insight.spec.js": {
+      "seconds": 42.8,
+      "tests": 11
+    },
+    "import-inbox-navigation.spec.js": {
+      "seconds": 11,
+      "tests": 2
+    },
+    "import-ledger-flow.spec.js": {
+      "seconds": 130.4,
+      "tests": 19
+    },
+    "mobile-continuity.spec.js": {
+      "seconds": 5,
+      "tests": 6
+    },
+    "mobile-sheet-focus.spec.js": {
+      "seconds": 25.1,
+      "tests": 13
+    },
+    "money-field-editability.spec.js": {
+      "seconds": 18.6,
+      "tests": 9
+    },
+    "money-privacy.spec.js": {
+      "seconds": 5.8,
+      "tests": 2
+    },
+    "month-page.spec.js": {
+      "seconds": 40.7,
+      "tests": 19
+    },
+    "month-plan-link-rendering.spec.js": {
+      "seconds": 1.8,
+      "tests": 1
+    },
+    "month-plan-link-save.spec.js": {
+      "seconds": 5.8,
+      "tests": 3
+    },
+    "month-save-checks.spec.js": {
+      "seconds": 14.5,
+      "tests": 9
+    },
+    "reference-data-owner.spec.js": {
+      "seconds": 5.5,
+      "tests": 2
+    },
+    "refresh-failure-notice.spec.js": {
+      "seconds": 10.7,
+      "tests": 4
+    },
+    "route-data-owner.spec.js": {
+      "seconds": 3.4,
+      "tests": 1
+    },
+    "route-warmup-data.spec.js": {
+      "seconds": 103.4,
+      "tests": 11
+    },
+    "route-warmup.spec.js": {
+      "seconds": 60.4,
+      "tests": 9
+    },
+    "route-work-status.spec.js": {
+      "seconds": 8.2,
+      "tests": 6
+    },
+    "screen-error-boundary.spec.js": {
+      "seconds": 5.1,
+      "tests": 5
+    },
+    "settings-reference-data.spec.js": {
+      "seconds": 11,
+      "tests": 8
+    },
+    "splits-cross-tab-refresh.spec.js": {
+      "seconds": 3.3,
+      "tests": 2
+    },
+    "splits-date-groups.spec.js": {
+      "seconds": 3.4,
+      "tests": 3
+    },
+    "splits-delete-expense.spec.js": {
+      "seconds": 1.6,
+      "tests": 1
+    },
+    "splits-edit-expense.spec.js": {
+      "seconds": 9.7,
+      "tests": 8
+    },
+    "splits-group-settle-up-lock.spec.js": {
+      "seconds": 8.1,
+      "tests": 4
+    },
+    "splits-review-matches.spec.js": {
+      "seconds": 10.8,
+      "tests": 5
+    },
+    "splits-settlement-checkpoint.spec.js": {
+      "seconds": 4.4,
+      "tests": 2
+    },
+    "splits-settlement-lock.spec.js": {
+      "seconds": 7.5,
+      "tests": 4
+    },
+    "splits-settlement.spec.js": {
+      "seconds": 1.3,
+      "tests": 1
+    },
+    "splits-viewer-amounts.spec.js": {
+      "seconds": 5,
+      "tests": 4
+    },
+    "summary-owner.spec.js": {
+      "seconds": 6.3,
+      "tests": 2
+    },
+    "summary-workflow.spec.js": {
+      "seconds": 1.7,
+      "tests": 2
+    },
+    "viewport-breakpoints.spec.js": {
+      "seconds": 6.7,
+      "tests": 3
+    }
+  }
+}
