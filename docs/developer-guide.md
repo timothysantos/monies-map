@@ -58,6 +58,19 @@ The local and test Workers seed the demo around the month set in
 `DEMO_SEED_MONTH` (see `wrangler.test.jsonc`). The guide screenshots use this
 demo data only.
 
+The public demo Worker uses a second, deeper dataset: the showcase. When a
+Worker sets `DEMO_DATASET` to `showcase` (`wrangler.demo.jsonc` does), reseed
+replaces the household with a fictional couple, Ethan and Serene, and 17
+months of history ending today: six accounts with statement imports and
+checkpoints (one card deliberately off by $42.80, one unresolved transfer),
+month plans with under-, on- and over-plan months, notes, category rules, a
+yen trip split, settled split batches and a simplification. It is built by
+`src/domain/demo-showcase-data.ts` and written in one batch by
+`src/domain/app-repository-showcase-seed.ts`; `tests/demo-showcase.test.mjs`
+checks it. With `DEMO_DATASET` unset (local, test, screenshots) reseed
+produces the default demo exactly as before. The presenter's walkthrough is
+`docs/demo-tour.md`.
+
 ## Which commands matter day to day?
 
 ```bash
@@ -211,6 +224,19 @@ viewer email, so login-to-person linking is unavailable and users switch between
 household/person views manually. Keep the demo database limited to fake data
 because anyone with the URL can make changes. The demo app shows a thin sticky
 blue `demo` banner at the top of the page.
+
+The demo runs the showcase dataset (`DEMO_DATASET` is `showcase` in
+`wrangler.demo.jsonc`; walkthrough in `docs/demo-tour.md`). To refresh it,
+deploy, then reseed once so the history ends in the current month:
+
+```bash
+npm run deploy:demo
+curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
+```
+
+Reseed from Settings, Demo state works too. A deploy alone keeps the data
+that is already stored; only a reseed switches to the showcase or moves its
+months forward.
 
 ## How do I deploy to production?
 

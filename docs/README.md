@@ -16,6 +16,8 @@ a doc here in the same change.
 - [`developer-guide.md`](developer-guide.md): the in-app For developers tab:
   local setup, testing, guide screenshots, deploy, Shortcut internals and
   architecture notes.
+- [`demo-tour.md`](demo-tour.md): 5 to 10 minute presenter walkthrough of the
+  public demo with the showcase data (`DEMO_DATASET=showcase`).
 - [`../DOMAIN.md`](../DOMAIN.md): canonical domain vocabulary.
 
 ## Architecture and rules
