@@ -52,6 +52,9 @@ test("Entries: every trivia type's exact line for a hand-made August", () => {
   // One entry on the first day names it; the month in progress says "this month".
   const single = [row("2026-09-02", "TOAST BOX", 580, "Dining"), row("2026-09-03", "KOPITIAM", 650, "Dining"), row("2026-09-04", "SHOPEE SG", 2_000, "Shopping")];
   assert.equal(fact(entries.firstDayTrivia({ ...entriesInput(single), month: "2026-09" })), "First entry this month: Toast Box, $5.80, on Wed 2 Sep.");
+  // Nothing readable on the first day: the day and a count, never a code.
+  const unnamedFirst = [row("2026-08-01", "PAYNOW TO 91234567", 500, "Gifts"), row("2026-08-01", "GIRO - IRAS", 30_000, "Tax"), ...ENTRIES_AUGUST.slice(2)];
+  assert.equal(fact(entries.firstDayTrivia(entriesInput(unnamedFirst))), "First day with spending in August: Sat 1 Aug, with 2 entries.");
 });
 
 test("Entries: each trivia type stays silent when its data is missing", () => {
@@ -78,7 +81,7 @@ test("Entries: each trivia type stays silent when its data is missing", () => {
     ["accounts-count", entries.accountsCountTrivia, oneAccount],
     ["average", entries.averageEntryTrivia, two],
     ["median", entries.medianEntryTrivia, onceEach],
-    ["first-day", entries.firstDayTrivia, unnamed],
+    ["first-day (under 3 expenses)", entries.firstDayTrivia, two],
     ["span", entries.entrySpanTrivia, oneDate],
     ["repeated-amount", entries.repeatedAmountTrivia, onceEach],
     ["category-count", entries.categoryCountTrivia, categoryTie],

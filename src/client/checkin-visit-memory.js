@@ -3,8 +3,10 @@ import { useState } from "react";
 import { emptyVisitMemory, normalizeVisitMemory } from "../domain/money-signals/checkin";
 import { todayInAppTimeZone } from "./app-dates";
 
-// The money check-in's visit memory: which signals, phrasings, trivia and
-// quotes were shown and when, and the numbers last seen. It lives only in
+// The money check-in's visit memory: which signals were present and shown
+// and when, and the numbers last seen. It only adds rests, "what changed",
+// sorted and quiet visits: what rotates follows the period, never this
+// memory (money-signals/rotation.ts). It lives only in
 // this browser's localStorage, keyed per page + view (+ group on Splits);
 // nothing about visits goes to the server or to AI. Storage can be missing,
 // blocked or full, so every access is guarded and the check-in renders

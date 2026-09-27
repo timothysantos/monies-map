@@ -1156,6 +1156,16 @@ Line:
 
 - First day with spending {when}: {day}, led by {name} at {amount}.
 
+### firstDayCount (Just for fun)
+
+The first date with spending, when nothing that day has a readable name (a PayNow, a GIRO).
+
+Trivia type: `first-day`.
+
+Line:
+
+- First day with spending {when}: {day}, with {entries}.
+
 ### entrySpan (Just for fun)
 
 The first and last dates in the list and the number of days with entries (2 or more).

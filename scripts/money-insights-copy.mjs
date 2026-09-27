@@ -131,6 +131,7 @@ export const CATALOGUES = [
       medianEntry: ["just_for_fun", "The median purchase: at least half came to this or less (4 or more).", "median"],
       firstEntry: ["just_for_fun", "The first date with spending, when it has one entry.", "first-day"],
       firstDay: ["just_for_fun", "The first date with spending, when it has several: the largest named one leads.", "first-day"],
+      firstDayCount: ["just_for_fun", "The first date with spending, when nothing that day has a readable name (a PayNow, a GIRO).", "first-day"],
       entrySpan: ["just_for_fun", "The first and last dates in the list and the number of days with entries (2 or more).", "span"],
       repeatedAmount: ["just_for_fun", "The amount that appears most often (twice or more, no tie).", "repeated-amount"],
       categoryCount: ["just_for_fun", "The category with the most expenses (2 or more, no tie, not Other).", "category-count"],
