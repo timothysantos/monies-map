@@ -91,7 +91,9 @@ Just for fun line (never beside a bigger question) and the Long view line.
 record actions. Expanding is local presentation state and must not trigger
 an additional AI request; it loads the quote library chunk on demand. The
 component (`financial-insight.jsx`) composes the check-in with
-`composeCheckIn` from the page's signals and the visit memory as it was when
+`composeCheckIn` from the page's signals, the page and period (what rotates
+follows the period: `money-signals/rotation.ts`), the page's trivia schedule
+and calm lines, and the visit memory as it was when
 the page mounted (`checkin-visit-memory.js`, localStorage only), so
 recording the visit never changes what is on screen; the visit's clock is
 fixed at mount (`useCheckInClock`). Its styles live in `money-checkin.css`,

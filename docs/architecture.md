@@ -575,13 +575,16 @@ month's list for the view and scope; Splits: the selected group's balance,
 open activity and match candidates). It adds no endpoint and no payload; the
 same-season line shows only when last year's month is already in the range.
 `checkin.ts` ranks the signals (quick fix, bigger question, a moment, worth
-a look, going well; then money, then not recently seen), picks the phrasing
-and the long view, and decides rests, "what changed", sorted, quiet visits
-and the Just for fun line, from `nowMs`, `today`, a stable seed and the
-visit memory, which the client keeps only in localStorage
-(`checkin-visit-memory.js`). The quote library is a separate chunk loaded
-when "See all insights" opens. Every line passes the tone lint
-(`tone.ts`); all copy is listed in `docs/money-insights-copy.md`.
+a look, going well; then money, then not recently seen) and decides rests,
+"what changed", sorted and quiet visits from `nowMs`, `today`, a stable
+seed and the visit memory, which the client keeps only in localStorage
+(`checkin-visit-memory.js`). What rotates (the wording, the long view's
+lead, the Just for fun line, the quote, the calm line) follows the period
+being viewed (`rotation.ts`): for one page and view nothing repeats within
+twelve consecutive periods, whatever the browser remembers or forgets. The
+quote library is a separate chunk loaded when "See all insights" opens.
+Every line passes the tone lint (`tone.ts`); all copy and each page's
+rotation are listed in `docs/money-insights-copy.md`.
 
 ## Scenario Planning Standard
 
