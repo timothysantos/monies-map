@@ -1,4 +1,5 @@
 import { redactAiText } from "./ai-assistance";
+import { findToneProblems } from "./money-signals/tone";
 import type { EntryDto, ImportPreviewDto, ImportPreviewStatementReconciliationDto, SummaryMonthDto } from "../types/dto";
 
 const MAX_TEMPLATE_LENGTH = 520;
@@ -34,12 +35,18 @@ export interface FinancialInsightFacts {
   topCategoryAmount: string;
   topMerchantName: string;
   topMerchantAmount: string;
-  notableFact: string;
-  cashFlowPrinciple: string;
-  nextSpendConsideration: string;
-  accountingAdvice: string;
   decisionMap: FinancialDecisionMap;
 }
+
+// The check-in's headline as the optional AI may see it: the fact and the
+// way to think about it, which any AI wording must keep word for word.
+export interface CheckInHeadlineFacts {
+  headlineKind: "quick_fix" | "bigger_question" | "worth_a_look" | "going_well";
+  fact: string;
+  think: string;
+}
+
+export type FinancialInsightWordingFacts = FinancialInsightFacts & CheckInHeadlineFacts;
 
 export interface FinancialInsightRecord {
   amountMinor: number;
@@ -126,7 +133,6 @@ export function buildFinancialInsightFacts(input: {
   contextLabel: string;
   records: FinancialInsightRecord[];
   formatMoney: (amountMinor: number) => string;
-  accountingAdvice: string;
   perspective?: "cash_flow" | "partial_view" | "split_obligation";
   audienceKind?: "person" | "household";
   audienceName?: string;
@@ -171,30 +177,6 @@ export function buildFinancialInsightFacts(input: {
     topCategoryAmount: input.formatMoney(topCategoryMinor),
     topMerchantName,
     topMerchantAmount: input.formatMoney(topMerchantMinor),
-    notableFact: buildNotableEntryFact({
-      expenses,
-      spendMinor,
-      topCategoryName,
-      topCategoryMinor,
-      topMerchantName,
-      topMerchantMinor,
-      formatMoney: input.formatMoney,
-      contextLabel,
-      audienceKind,
-      audienceName,
-      perspective,
-      recordKind,
-      topMerchantIsShare: Boolean(topMerchant && isShareRecord(topMerchant))
-    }),
-    ...buildFinancialDecisionPrompts({
-      perspective,
-      audienceKind,
-      spendMinor,
-      incomeMinor,
-      netMinor: incomeMinor - spendMinor,
-      formatMoney: input.formatMoney
-    }),
-    accountingAdvice: redactAiText(input.accountingAdvice, 260) || "Review this view against the bank record before treating it as final.",
     decisionMap: buildFinancialDecisionMap({
       perspective,
       spendMinor,
@@ -209,22 +191,14 @@ export function buildFinancialInsightFacts(input: {
   };
 }
 
-export function buildDeterministicFinancialInsight(facts: FinancialInsightFacts) {
-  const isPersonView = facts.audienceKind === "person" && Boolean(facts.audienceName);
-  const entryLabel = facts.entryCount === 1 ? "entry" : "entries";
-  if (!facts.entryCount) {
-    return isPersonView
-      ? `${facts.audienceName}, there are no entries in ${facts.contextLabel} yet. ${facts.accountingAdvice}`
-      : `There are no entries in ${facts.contextLabel} yet. ${facts.accountingAdvice}`;
-  }
-  const snapshot = isPersonView
-    ? `${facts.audienceName}, you received ${facts.income} and spent ${facts.spend} across ${facts.entryCount} ${entryLabel} in ${facts.contextLabel}.`
-    : `The household received ${facts.income} and spent ${facts.spend} across ${facts.entryCount} ${entryLabel} in ${facts.contextLabel}.`;
-  const notableFact = facts.notableFact || `${facts.topCategoryName} is the largest expense category at ${facts.topCategoryAmount}.`;
-  return `${snapshot} ${notableFact} ${facts.cashFlowPrinciple} ${facts.nextSpendConsideration} ${facts.accountingAdvice}`;
+// The wording shown when AI is off: the fact, then the way to think about it.
+export function buildDeterministicFinancialInsight(facts: CheckInHeadlineFacts) {
+  return [facts.fact, facts.think].filter(Boolean).join(" ");
 }
 
-export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts) {
+// Changes whenever anything the check-in says or the map shows changes, so
+// wording is asked for again only for new facts.
+export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts, headline: CheckInHeadlineFacts) {
   return JSON.stringify([
     facts.contextLabel,
     facts.audienceKind,
@@ -233,14 +207,9 @@ export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts) {
     facts.spend,
     facts.income,
     facts.net,
-    facts.topCategoryName,
-    facts.topCategoryAmount,
-    facts.topMerchantName,
-    facts.topMerchantAmount,
-    facts.notableFact,
-    facts.cashFlowPrinciple,
-    facts.nextSpendConsideration,
-    facts.accountingAdvice,
+    headline.headlineKind,
+    headline.fact,
+    headline.think,
     facts.decisionMap
   ]);
 }
@@ -272,7 +241,10 @@ export function parseNarrativeTemplate(value: unknown, facts: MonthlyNarrativeFa
   return replaceTokens(template, replacements);
 }
 
-export function parseFinancialInsightTemplate(value: unknown, facts: FinancialInsightFacts) {
+// The AI may only choose words around the check-in's fact and think line:
+// both must appear exactly once and are inserted from computed facts, the
+// wording may not add figures, and it must pass the check-in's tone rules.
+export function parseFinancialInsightTemplate(value: unknown, facts: FinancialInsightWordingFacts) {
   if (!value || typeof value !== "object" || typeof (value as { template?: unknown }).template !== "string") {
     return null;
   }
@@ -283,197 +255,24 @@ export function parseFinancialInsightTemplate(value: unknown, facts: FinancialIn
   const replacements: Record<string, string> = {
     contextLabel: facts.contextLabel,
     audienceName: facts.audienceName ?? "",
-    entryCount: String(facts.entryCount),
-    spend: facts.spend,
-    income: facts.income,
-    net: facts.net,
-    topCategoryName: facts.topCategoryName,
-    topCategoryAmount: facts.topCategoryAmount,
-    topMerchantName: facts.topMerchantName,
-    topMerchantAmount: facts.topMerchantAmount,
-    notableFact: facts.notableFact,
-    cashFlowPrinciple: facts.cashFlowPrinciple,
-    nextSpendConsideration: facts.nextSpendConsideration,
-    accountingAdvice: facts.accountingAdvice
+    fact: facts.fact,
+    think: facts.think
   };
+  const ownWords = template.replace(/{{\s*[^}]+\s*}}/g, " ");
   if (
     !hasOnlyKnownTokens(template, replacements)
-    || !template.includes("{{contextLabel}}")
-    || !template.includes("{{notableFact}}")
-    || !template.includes("{{cashFlowPrinciple}}")
-    || !template.includes("{{nextSpendConsideration}}")
-    || (facts.audienceKind === "person" && template.split("{{audienceName}}").length !== 2)
+    || countToken(template, "fact") !== 1
+    || countToken(template, "think") !== 1
+    || (facts.audienceKind === "person" && countToken(template, "audienceName") !== 1)
+    || findToneProblems(ownWords).length > 0
   ) {
     return null;
   }
   return replaceTokens(template, replacements);
 }
 
-function buildNotableEntryFact(input: {
-  expenses: FinancialInsightRecord[];
-  spendMinor: number;
-  topCategoryName: string;
-  topCategoryMinor: number;
-  topMerchantName: string;
-  topMerchantMinor: number;
-  formatMoney: (amountMinor: number) => string;
-  contextLabel: string;
-  audienceKind: "person" | "household";
-  audienceName: string;
-  perspective: "cash_flow" | "partial_view" | "split_obligation";
-  recordKind: "entries" | "category_totals";
-  topMerchantIsShare: boolean;
-}) {
-  if (!input.expenses.length || input.spendMinor <= 0) {
-    return "There are not enough expenses here to spot a pattern yet.";
-  }
-
-  const merchantCounts = new Map<string, number>();
-  for (const expense of input.expenses) {
-    const merchant = redactAiText(expense.description, 100) || "Unlabelled expense";
-    merchantCounts.set(merchant, (merchantCounts.get(merchant) ?? 0) + 1);
-  }
-  const [mostFrequentMerchant, mostFrequentMerchantCount] = [...merchantCounts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? ["", 0];
-  const largestExpensesMinor = [...input.expenses]
-    .map((expense) => Math.abs(expense.amountMinor))
-    .sort((left, right) => right - left)
-    .slice(0, 3)
-    .reduce((total, amountMinor) => total + amountMinor, 0);
-  const categoryShare = Math.round((input.topCategoryMinor / input.spendMinor) * 100);
-  const topThreeShare = Math.round((largestExpensesMinor / input.spendMinor) * 100);
-  const weekdayFact = buildInterestingWeekdayPattern(input.expenses, input.audienceKind, input.audienceName);
-  const isCategoryTotals = input.recordKind === "category_totals";
-  // A person's amounts include their part of shared or split entries that
-  // someone else may have paid, so those facts name a share, and the facts
-  // about purchases or payments are left out.
-  const includesShares = input.audienceKind === "person"
-    && (input.perspective === "split_obligation" || input.expenses.some(isShareRecord));
-  const largestIsShare = input.perspective === "split_obligation" || input.topMerchantIsShare;
-  const candidates = [
-    input.audienceKind === "person"
-      ? `Your ${input.topCategoryName} spending accounted for ${categoryShare}% of what you spent.`
-      : `${input.topCategoryName} accounted for ${categoryShare}% of household spending.`,
-    isCategoryTotals
-      ? null
-      : input.audienceKind === "person"
-      ? `Your largest ${largestIsShare ? "share" : "purchase"} was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`
-      : `The largest household purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`,
-    input.expenses.length >= 3 && !isCategoryTotals && !includesShares
-      ? input.audienceKind === "person"
-        ? `Your three largest purchases made up ${topThreeShare}% of what you spent.`
-        : `The three largest household purchases made up ${topThreeShare}% of spending.`
-      : null,
-    mostFrequentMerchantCount >= 2 && !isCategoryTotals && !includesShares
-      ? input.audienceKind === "person"
-        ? `You paid ${mostFrequentMerchant} ${mostFrequentMerchantCount} times.`
-        : `${mostFrequentMerchant} was paid ${mostFrequentMerchantCount} times by the household.`
-      : null,
-    weekdayFact
-  ].filter((candidate): candidate is string => Boolean(candidate));
-  return candidates[stableInsightIndex(`${input.contextLabel}|${input.spendMinor}|${input.topCategoryName}|${mostFrequentMerchant}|${weekdayFact ?? ""}`) % candidates.length];
-}
-
-function isShareRecord(record: FinancialInsightRecord) {
-  return record.ownershipType === "shared"
-    || Boolean(record.linkedSplitExpenseId)
-    || (record.totalAmountMinor != null && record.totalAmountMinor !== record.amountMinor);
-}
-
-export function buildInterestingWeekdayPattern(expenses: FinancialInsightRecord[], audienceKind: "person" | "household", audienceName: string) {
-  const datedExpenses = expenses.filter((expense) => /^\d{4}-\d{2}-\d{2}$/.test(String(expense.date ?? "")));
-  const foodAndDiningExpenses = datedExpenses.filter((expense) => /(?:food|dining|restaurant|cafe|coffee|drink)/i.test(String(expense.categoryName ?? "")));
-  const candidates = foodAndDiningExpenses.length >= 3 ? foodAndDiningExpenses : datedExpenses;
-  if (candidates.length < 3) {
-    return null;
-  }
-
-  const weekdayCounts = new Map<number, number>();
-  for (const expense of candidates) {
-    const date = new Date(`${expense.date}T00:00:00Z`);
-    if (!Number.isFinite(date.getTime())) {
-      continue;
-    }
-    const weekday = date.getUTCDay();
-    weekdayCounts.set(weekday, (weekdayCounts.get(weekday) ?? 0) + 1);
-  }
-  const [weekday, count] = [...weekdayCounts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0] - right[0])[0] ?? [-1, 0];
-  if (count < 3 || count / candidates.length < 0.4) {
-    return null;
-  }
-
-  const weekdayName = new Intl.DateTimeFormat("en-SG", { weekday: "long", timeZone: "UTC" })
-    .format(new Date(Date.UTC(2026, 5, 7 + weekday)));
-  const categoryLabel = foodAndDiningExpenses.length >= 3
-    ? redactAiText(foodAndDiningExpenses[0]?.categoryName, 80) || "Food & Drinks"
-    : "expenses";
-  const purchaseLabel = categoryLabel === "expenses" ? "purchases" : `${categoryLabel} purchases`;
-  if (audienceKind === "person" && audienceName) {
-    return `${count} of your ${purchaseLabel} landed on ${weekdayName}s.`;
-  }
-  return `${count} household ${purchaseLabel} landed on ${weekdayName}s.`;
-}
-
-function stableInsightIndex(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function buildFinancialDecisionPrompts(input: {
-  perspective: "cash_flow" | "partial_view" | "split_obligation";
-  audienceKind: "person" | "household";
-  spendMinor: number;
-  incomeMinor: number;
-  netMinor: number;
-  formatMoney: (amountMinor: number) => string;
-}) {
-  if (input.perspective === "split_obligation") {
-    return {
-      cashFlowPrinciple: "Split expenses and settlements track who owes whom; they do not measure household income or savings.",
-      nextSpendConsideration: "Before adding another shared expense, confirm the payer, group, and expected settlement so the obligation stays visible."
-    };
-  }
-
-  if (input.perspective === "partial_view") {
-    return {
-      cashFlowPrinciple: "This is a selected list of entries, not the whole month. Do not use it alone to decide what you can spend or save.",
-      nextSpendConsideration: "Before buying something non-essential, check the full month or summary for income, planned bills, and budget left."
-    };
-  }
-
-  if (input.incomeMinor === 0 && input.spendMinor > 0) {
-    return {
-      // A person view speaks to the person, in the check-in's second person;
-      // their name stays out of the facts the AI sees.
-      cashFlowPrinciple: input.audienceKind === "person"
-        ? "This list has spending but no income, so it cannot show whether you are saving."
-        : "This list has spending but no income, so it cannot show whether the household is saving.",
-      nextSpendConsideration: "Before buying something non-essential, check the month or summary to make sure income still covers bills, transfers, and savings."
-    };
-  }
-
-  if (input.netMinor < 0) {
-    return {
-      cashFlowPrinciple: "More money has gone out than come in so far. If that continues, there will be less left for savings.",
-      nextSpendConsideration: "Before buying something non-essential, pause and decide whether it can wait, cost less, or fit an existing budget."
-    };
-  }
-
-  if (input.netMinor === 0 && input.incomeMinor > 0) {
-    return {
-      cashFlowPrinciple: "Income and spending are even so far, so there is nothing left from these records to save.",
-      nextSpendConsideration: "Before buying something non-essential, make sure it is covered by money that has not already been set aside."
-    };
-  }
-
-  return {
-    cashFlowPrinciple: `${input.formatMoney(input.netMinor)} is left after the spending recorded so far. Bills, transfers, and savings may still need to come out of it.`,
-    nextSpendConsideration: "Before buying something non-essential, set aside money for planned bills and savings first."
-  };
+function countToken(template: string, token: string) {
+  return (template.match(new RegExp(`{{\\s*${token}\\s*}}`, "g")) ?? []).length;
 }
 
 function buildFinancialDecisionMap(input: {
@@ -674,7 +473,7 @@ function buildConfidenceLane(input: {
     id: "confidence",
     label: "Snapshot confidence",
     value: "No visible proof gap",
-    detail: "No reconciliation or transfer warning is visible for the wallets in this view. Continue importing and reconciling before relying on older periods.",
+    detail: "No statement or transfer gap is visible for the wallets in this view. Continue importing and reconciling before relying on older periods.",
     tone: "positive"
   };
 }

@@ -1,0 +1,133 @@
+/* The money check-in's lines (financial-insight.jsx): the kind chip, the
+   bold fact and its think line, the action, the Just for fun and Long view
+   lines, the expanded "Also" list and quote. Imported by the component, so
+   it ships with the routes that show a check-in and stays out of the
+   first-screen stylesheet (public/styles.css keeps the frame). Colours are
+   the app's tokens; the Splits theme overrides them in splits-panel.css. */
+.checkin-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--chip-colour, var(--muted)) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chip-colour, var(--muted)) 9%, transparent);
+  color: var(--chip-colour, var(--muted));
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.checkin-chip.is-quick-fix,
+.checkin-chip.is-bigger-question {
+  --chip-colour: var(--accent-strong);
+}
+
+.checkin-chip.is-worth-a-look {
+  --chip-colour: var(--accent);
+}
+
+.checkin-chip.is-going-well {
+  --chip-colour: var(--positive);
+}
+
+.financial-insight-content > .checkin-chip {
+  margin-bottom: 5px;
+}
+
+.financial-insight .checkin-fact {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.financial-insight .checkin-fact.is-inline {
+  display: inline;
+}
+
+.financial-insight .checkin-think {
+  display: block;
+  margin-top: 2px;
+}
+
+.checkin-action {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.checkin-action:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.financial-insight .checkin-fun,
+.financial-insight .checkin-long-view {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.checkin-line-label {
+  display: inline-block;
+  margin-right: 7px;
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.checkin-also {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.checkin-also ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkin-also li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.checkin-quote {
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--accent-strong) 45%, transparent);
+}
+
+.checkin-quote blockquote {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.checkin-quote figcaption {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}

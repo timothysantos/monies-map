@@ -29,10 +29,12 @@ import {
   MetricCard
 } from "./ui-components";
 import { FinancialInsight } from "./financial-insight";
+import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { buildSummarySignals, SUMMARY_CALM_LINE } from "../domain/money-signals/summary-signals";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -44,7 +46,7 @@ const {
 // 1. Range-level metrics and spending mix.
 // 2. Month-by-month "intent vs outcome" plan review.
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
+export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -76,6 +78,26 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam, view),
     [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
   );
+  const checkInClock = useCheckInClock();
+  const checkIn = useMemo(() => ({
+    memoryKey: checkInMemoryKey("summary", view.id),
+    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "overall" : focusState.selectedFocusMonth, view.selectedScope].join("|"),
+    signals: buildSummarySignals({
+      audience: view.id === "household" ? "household" : "person",
+      viewLabel: view.label,
+      today: checkInClock.today,
+      focusMonth: summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "" : focusState.selectedFocusMonth,
+      months: safeSummaryPage.months,
+      categoryShareByMonth: safeSummaryPage.categoryShareByMonth,
+      accountPills: safeSummaryPage.accountPills,
+      accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
+      availableMonths: safeSummaryPage.availableMonths ?? [],
+      formatMoney: formatService.unmaskedMoney
+    }),
+    calmLine: SUMMARY_CALM_LINE,
+    alsoLabel: "Also in this range",
+    clock: checkInClock
+  }), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, view.id, view.label, view.selectedScope]);
   const financialInsightActions = useMemo(() => {
     const months = summaryFocusParam === SUMMARY_FOCUS_OVERALL
       ? safeSummaryPage.months
@@ -101,6 +123,14 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     }
     return actions;
   }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.topCategoryName, focusState.selectedFocusMonth, location.search, safeSummaryPage.months, summaryFocusParam]);
+
+  function handleCheckInAction(action) {
+    if (action.id === "review-statement") {
+      handleOpenImports();
+    } else if (action.id === "open-category" && action.categoryName) {
+      handleOpenEntriesForCategory(action.categoryName);
+    }
+  }
 
   function navigateToEntries(nextFilters) {
     navigate(buildSummaryEntriesLocation(location.search, nextFilters));
@@ -184,7 +214,14 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         </div>
       </div>
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
+      <FinancialInsight
+        facts={financialInsightFacts}
+        checkIn={checkIn}
+        actions={financialInsightActions}
+        onCheckInAction={handleCheckInAction}
+        className="financial-insight-summary"
+        canRequestWording={canRequestWording}
+      />
 
       <div className="summary-top-grid">
         <SummarySpendingMixSection
@@ -270,7 +307,6 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
     ? summaryPage.months
     : summaryPage.months.filter((month) => month.month === focusState.selectedFocusMonth);
   const plannedSpendMinor = months.reduce((total, month) => total + (month.estimatedExpensesMinor ?? 0), 0);
-  const actualSpendMinor = months.reduce((total, month) => total + (month.realExpensesMinor ?? 0), 0);
   const sameSeasonMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
     ? undefined
     : summaryPage.months.find((month) => month.month === previousYearMonth(focusState.selectedFocusMonth));
@@ -281,10 +317,6 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
       ? `Summary from ${formatService.formatMonthLabel(startMonth)} to ${formatService.formatMonthLabel(endMonth)}`
       : "Summary for the selected range"
     : `${formatService.formatMonthLabel(focusState.selectedFocusMonth)} summary`;
-  const accountingAdvice = actualSpendMinor > plannedSpendMinor && plannedSpendMinor > 0
-    ? "Actual spending is above the plan. Review the largest category before changing the budget or treating the difference as a one-off."
-    : "Keep planned and actual spending aligned before reallocating an unused budget or judging the month as settled.";
-
   return buildFinancialInsightFacts({
     contextLabel,
     audienceKind: view.id === "household" ? "household" : "person",
@@ -308,7 +340,6 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
     formatMoney: formatService.unmaskedMoney,
     perspective: "cash_flow",
     recordKind: "category_totals",
-    accountingAdvice,
     decisionMapContext: {
       plannedSpendMinor,
       sameSeason: sameSeasonMonth ? {
