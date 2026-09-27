@@ -30,9 +30,12 @@ function openMiniflare(config, persistTo) {
 
 // Migrates schema.sql and reseeds the demo household into a template
 // directory. Call once per file (test.before) and pass the result to
-// openSeededDatabase.
-export async function createSeededTemplate() {
-  const config = await readTestConfig();
+// openSeededDatabase. `vars` overrides wrangler.test.jsonc vars for this
+// template and every database opened from it (for example the showcase
+// dataset: { DEMO_DATASET: "showcase" }).
+export async function createSeededTemplate({ vars = {} } = {}) {
+  const baseConfig = await readTestConfig();
+  const config = { ...baseConfig, vars: { ...baseConfig.vars, ...vars } };
   const persistTo = await mkdtemp(path.join(os.tmpdir(), "monies-map-d1-template-"));
   const migration = spawnSync(
     process.execPath,

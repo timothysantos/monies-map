@@ -1352,7 +1352,8 @@ export async function loadSplitActivityHistory(db: D1Database): Promise<SplitAct
 
 export async function restoreSplitRecord(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string }) {
   const table = input.recordKind === "expense" ? "split_expenses" : "split_settlements";
-  const existing = await db.prepare(`SELECT id, split_group_id, description, ${input.recordKind === "expense" ? "total_amount_minor" : "amount_minor"} AS amount_minor, ${input.recordKind === "expense" ? "expense_date" : "settlement_date"} AS activity_date, currency, deleted_at, linked_transaction_id FROM ${table} WHERE id = ? AND household_id = ?`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).first<{ id: string; split_group_id: string | null; description: string; amount_minor: number; activity_date: string; currency: string | null; deleted_at: string | null; linked_transaction_id: string | null }>();
+  // A settle-up has no description column; its history events read "Settlement".
+  const existing = await db.prepare(`SELECT id, split_group_id, ${input.recordKind === "expense" ? "description" : "'Settlement' AS description"}, ${input.recordKind === "expense" ? "total_amount_minor" : "amount_minor"} AS amount_minor, ${input.recordKind === "expense" ? "expense_date" : "settlement_date"} AS activity_date, currency, deleted_at, linked_transaction_id FROM ${table} WHERE id = ? AND household_id = ?`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).first<{ id: string; split_group_id: string | null; description: string; amount_minor: number; activity_date: string; currency: string | null; deleted_at: string | null; linked_transaction_id: string | null }>();
   if (!existing) throw new Error("Split record not found.");
   if (!existing.deleted_at) throw new Error("This split is already active.");
   if (existing.linked_transaction_id) {
