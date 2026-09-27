@@ -651,6 +651,17 @@ so its rules win over base rules of the same specificity.
   and Note columns scroll inside the table, while Category, Item and the
   money columns stay on screen. Inline Save and Cancel stick to the visible
   edge of the table. On a portrait tablet the row sheet shows every field.
+- From 1,100 to 1,199 px the full-size tables need a little more than the
+  route grid: with the Mac's fonts the panel ran into the shell's 18 px
+  right gutter, and with wider fonts (Linux CI) the page scrolled sideways.
+  A last block in `month-mid-width.css` tightens cell padding to 6 px,
+  header letter spacing, the category gap and the note cut-off (160 px,
+  still one line), and the summary cards' gap and padding, so the tables
+  fit the grid whole with about 50 px spare under Verdana. The panel keeps
+  its automatic minimum width here: making it shrinkable instead clipped
+  the note edit icons. `header-tab-fit.spec.js` checks 1,100 to 1,279 px
+  with 0.05em extra letter spacing and money shown: no sideways scroll and
+  every note edit icon inside its table.
 
 `tests/e2e/month-mid-width-layout.spec.js` checks this at 820×1180 (full
 mobile emulation) and 1024×768. With mobile emulation, as on a real tablet,

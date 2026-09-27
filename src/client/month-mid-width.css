@@ -1,8 +1,9 @@
-/* Month on mid-width screens (tablets, small laptops), 761 to 1,099px.
+/* Month on mid-width screens (tablets, small laptops), 761 to 1,099px,
+   plus a lighter tightening from 1,100 to 1,199px at the end of the file.
    Imported by month-panel.jsx, so it ships with the lazy Month route and
    stays out of the first-screen stylesheet. It loads after
    public/styles.css, so a rule here wins over a base rule of the same
-   specificity. Phone (760px and below) and 1,100px and up are unchanged.
+   specificity. Phone (760px and below) and 1,200px and up are unchanged.
 
    The desktop tables need about 1,100px. Here they fit their section where
    they can and otherwise scroll inside .month-table-wrap, so the page never
@@ -61,5 +62,45 @@
     display: flex;
     width: max-content;
     margin-left: auto;
+  }
+}
+
+/* 1,100 to 1,199px: the full-size tables tighten so they fit the route grid
+   whole. At desktop spacing they need a little more than the grid here, so
+   the panel used to run into the shell's 18px right gutter; with wider text
+   (Linux's default sans fonts, or larger letter spacing) it ran past the
+   window and the page scrolled sideways. Tighter cells and an earlier,
+   still one-line, note cut-off keep every column and note icon on screen.
+   The summary cards lose a little padding so their labels keep to one
+   line in the narrower panel. */
+@media (min-width: 1100px) and (max-width: 1199px) {
+  .metric-row-month {
+    gap: 10px;
+  }
+
+  .metric-row-month .metric {
+    padding-inline: 12px;
+  }
+
+  .month-table-wrap th,
+  .month-table-wrap td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .month-table-wrap th {
+    letter-spacing: 0.04em;
+  }
+
+  .month-table-wrap .month-category-cell {
+    gap: 8px;
+  }
+
+  .month-table-wrap .note-trigger span {
+    max-width: 160px;
+  }
+
+  .month-table-wrap .note-trigger svg {
+    flex: 0 0 auto;
   }
 }
