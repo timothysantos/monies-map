@@ -501,7 +501,7 @@ export function EntriesPanel({
       ...entry,
       amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
     })),
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     perspective: activeEntryFilterCount ? "partial_view" : "cash_flow",
     accountingAdvice: activeEntryFilterCount
       ? "Use this filtered view to investigate the selected account, category, type, or search result; do not use it as the whole-month budget total."
@@ -1111,7 +1111,7 @@ export function EntriesPanel({
         // its figures or rows may show here. Drafts and open sheets stay.
         <ErrorPanel
           className="entries-load-error"
-          title={messages.common.pageLoadErrorTitle}
+          title={messages.common.pageLoadErrorTitleFor(messages.tabs.entries)}
           detail={messages.common.loadFailedDetail}
           actions={[{
             label: isRetryingPageLoad ? messages.common.working : messages.common.retryPageLoad,

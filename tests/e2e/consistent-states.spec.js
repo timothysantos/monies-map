@@ -38,10 +38,11 @@ test("a page that fails after navigating shows the page error in place of the pr
   });
   await page.getByRole("link", { name: "Month", exact: true }).first().click();
 
-  const alert = page.getByRole("alert").filter({ hasText: "This page could not finish loading." });
+  const alert = page.getByRole("alert").filter({ hasText: "The Month page could not load." });
   await expect(alert).toBeVisible();
   await expect(alert).toContainText("Your saved data is not affected.");
   await expect(alert).toContainText("Month exploded");
+  await expect(alert).not.toContainText("App shell");
   // The Summary figures must not stay on screen under the Month tab.
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toHaveCount(0);
   // The previous page is hidden, not unmounted, so a draft on it survives.
@@ -76,7 +77,7 @@ test("a first-load page failure uses the shared error panel: an alert, plain wor
   await page.route("**/api/month-page**", failWith500);
   await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
 
-  const alert = page.getByRole("alert").filter({ hasText: "This page could not finish loading." });
+  const alert = page.getByRole("alert").filter({ hasText: "The Month page could not load." });
   await expect(alert).toBeVisible({ timeout: 30_000 });
   await expect(alert.locator(".app-loading-error-copy")).toHaveText("Your saved data is not affected. Try again in a moment.");
   // The technical reason stays available, in the smaller issue line.

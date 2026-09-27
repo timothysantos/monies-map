@@ -14,7 +14,8 @@
 // reseeds the DEMO data through POST /api/demo/reseed, reveals money totals,
 // then walks each workflow at desktop 1280x800 in Chromium and on an iPhone 13
 // profile in WebKit (Safari's engine; `npx playwright install webkit` once).
-// Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone}/.
+// Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone,iphone}/
+// (the "On your iPhone" gallery is shot on the phone profile at the iphone size).
 /* global window -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
 import { mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
@@ -416,6 +417,21 @@ const SHOTS = [
       await page.waitForTimeout(500);
     }
   },
+  // The "On your iPhone" gallery: each screen as it opens on an iPhone, in
+  // WebKit, saved at the iphone size under public/faq/guide/iphone/.
+  ...[
+    ["01-summary", `/summary?view=person-tim&month=${MONTH}`],
+    ["02-month", `/month?view=person-tim&month=${MONTH}`],
+    ["03-entries", `/entries?view=person-tim&month=${MONTH}`],
+    ["04-splits", splitsUrl()],
+    ["05-imports", "/imports?view=household"],
+    ["06-settings", "/settings?view=household"],
+    ["07-faq", "/faq?view=household"],
+    ["08-household-summary", `/summary?view=household&month=${MONTH}`]
+  ].map(([name, url]) => ({
+    name, device: "phone", kind: "iphone",
+    run: (page) => open(page, url)
+  })),
   {
     name: "entries-add-to-splits", device: "desktop",
     run: async (page) => {
@@ -598,10 +614,13 @@ async function main() {
       const context = await newContext(await browserFor(shot.device), shot.device, baseURL, { hidden: shot.hidden });
       const page = await context.newPage();
       const captured = new Set();
+      // `kind` picks the output folder and size when it differs from the
+      // device (the iPhone gallery is shot on the phone profile).
+      const kind = shot.kind ?? shot.device;
       const capture = async (name) => {
-        await writeImage(await page.screenshot({ type: "png" }), shot.device, name);
+        await writeImage(await page.screenshot({ type: "png" }), kind, name);
         captured.add(name);
-        console.log(`${shot.device}/${name}.webp`);
+        console.log(`${kind}/${name}.webp`);
       };
       try {
         await shot.run(page, capture);

@@ -53,6 +53,7 @@ import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import {
   buildAppShellErrorMessage,
+  buildRequestFailureMessage,
   buildRequestErrorMessage,
   describeAppShellError,
   isAppShellResourceLimitError
@@ -610,7 +611,7 @@ export function App() {
         data = JSON.parse(responseText);
       } catch {
         if (!response.ok) {
-          throw new Error(buildAppShellErrorMessage(response.status, responseText));
+          throw new Error(buildRequestFailureMessage("Entries shell request", response.status, responseText));
         }
 
         throw new Error("Entries shell returned invalid JSON.");
@@ -618,7 +619,7 @@ export function App() {
     }
 
     if (!response.ok) {
-      throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+      throw new Error(buildRequestFailureMessage("Entries shell request", response.status, data?.message ?? data?.error ?? responseText));
     }
 
     if (signal?.aborted) {
@@ -732,7 +733,7 @@ export function App() {
             data = JSON.parse(responseText);
           } catch {
             if (!response.ok) {
-              throw new Error(buildAppShellErrorMessage(response.status, responseText));
+              throw new Error(buildRequestFailureMessage("Page request", response.status, responseText));
             }
 
             throw new Error("Page request returned invalid JSON.");
@@ -740,7 +741,7 @@ export function App() {
         }
 
         if (!response.ok) {
-          throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+          throw new Error(buildRequestFailureMessage("Page request", response.status, data?.message ?? data?.error ?? responseText));
         }
 
         return data;
@@ -1834,6 +1835,11 @@ export function App() {
   const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
   const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = renderedTabId === "splits";
+  // Imports, Settings and FAQ do not depend on a period, so the header shows
+  // no period text or arrows there; the view switch stays.
+  const routeUsesPeriod = !["imports", "settings", "faq"].includes(renderedTabId);
+  // A page load error names the page the person asked for.
+  const selectedPageLabel = routeTabs.find((tab) => tab.id === selectedTabId)?.label ?? "";
   // Detail tabs use the current month index to decide whether the navigation
   // arrows should remain enabled.
   const currentDetailMonthIndex = useMemo(
@@ -1955,6 +1961,7 @@ export function App() {
           onRefresh={refreshCurrentMonthPage}
           runBackgroundRefresh={runBackgroundRefresh}
           canRequestWording={routeWork.usable}
+          isDemoEnvironment={appEnvironment === "demo"}
         />
       );
     }
@@ -2091,7 +2098,7 @@ export function App() {
           {showRoutePageError ? (
             <ErrorPanel
               className="route-page-error"
-              title={messages.common.pageLoadErrorTitle}
+              title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
               detail={messages.common.loadFailedDetail}
               actions={[{
                 label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
@@ -2402,7 +2409,7 @@ export function App() {
     return (
       <ShellErrorScreen
         environment={appEnvironment}
-        title={messages.common.pageLoadErrorTitle}
+        title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
         message={routePageError}
         issue={loadingStatus.issue}
         retryLabel={messages.common.retryPageLoad}
@@ -2768,63 +2775,65 @@ export function App() {
             getNavIntentProps={getNavIntentProps}
             pendingCategorySuggestionCount={pendingCategorySuggestionCount}
           />
-          <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
-            <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
-            <div className="period-display">
-              <span className="period-mode">{periodMode}</span>
-              {isDetailMonthTab ? (
-                <strong className="period-range-value">
-                  <PeriodMonthPicker
-                    triggerLabel={periodLabel}
-                    disabled={isSplitsTab}
-                    title="Month"
-                    hint="Choose a single month for this view."
-                    yearsAriaLabel="Available years"
-                    years={detailAvailableYears}
-                    activeYear={monthPickerYear}
-                    onYearChange={setMonthPickerYear}
-                    months={detailAvailableMonthsForPickerYear}
-                    selectedMonth={selectedMonth}
-                    closeOnSelect
-                    onSelect={handleDetailMonthSelect}
-                  />
-                </strong>
-              ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
-                <strong className="period-range-value">
-                  <PeriodMonthPicker
-                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
-                    title="Start month"
-                    hint="Choose the first month in the summary range."
-                    yearsAriaLabel="Available start years"
-                    years={summaryAvailableYears}
-                    activeYear={rangePickerStartYear}
-                    onYearChange={setRangePickerStartYear}
-                    months={summaryAvailableMonthsForPickerYear}
-                    selectedMonth={pageView.summaryPage.rangeStartMonth}
-                    isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
-                    onSelect={handleSummaryStartMonthSelect}
-                  />
-                  <span className="period-range-separator" aria-hidden="true">-</span>
-                  <PeriodMonthPicker
-                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
-                    title="End month"
-                    hint="Choose the last month in the summary range."
-                    yearsAriaLabel="Available end years"
-                    years={summaryAvailableYears}
-                    activeYear={rangePickerEndYear}
-                    onYearChange={setRangePickerEndYear}
-                    months={summaryAvailableMonthsForEndPickerYear}
-                    selectedMonth={pageView.summaryPage.rangeEndMonth}
-                    isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
-                    onSelect={handleSummaryEndMonthSelect}
-                  />
-                </strong>
-              ) : (
-                <strong className="period-range-value">{periodLabel}</strong>
-              )}
+          {routeUsesPeriod ? (
+            <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
+              <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
+              <div className="period-display">
+                <span className="period-mode">{periodMode}</span>
+                {isDetailMonthTab ? (
+                  <strong className="period-range-value">
+                    <PeriodMonthPicker
+                      triggerLabel={periodLabel}
+                      disabled={isSplitsTab}
+                      title="Month"
+                      hint="Choose a single month for this view."
+                      yearsAriaLabel="Available years"
+                      years={detailAvailableYears}
+                      activeYear={monthPickerYear}
+                      onYearChange={setMonthPickerYear}
+                      months={detailAvailableMonthsForPickerYear}
+                      selectedMonth={selectedMonth}
+                      closeOnSelect
+                      onSelect={handleDetailMonthSelect}
+                    />
+                  </strong>
+                ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
+                  <strong className="period-range-value">
+                    <PeriodMonthPicker
+                      triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                      title="Start month"
+                      hint="Choose the first month in the summary range."
+                      yearsAriaLabel="Available start years"
+                      years={summaryAvailableYears}
+                      activeYear={rangePickerStartYear}
+                      onYearChange={setRangePickerStartYear}
+                      months={summaryAvailableMonthsForPickerYear}
+                      selectedMonth={pageView.summaryPage.rangeStartMonth}
+                      isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
+                      onSelect={handleSummaryStartMonthSelect}
+                    />
+                    <span className="period-range-separator" aria-hidden="true">-</span>
+                    <PeriodMonthPicker
+                      triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                      title="End month"
+                      hint="Choose the last month in the summary range."
+                      yearsAriaLabel="Available end years"
+                      years={summaryAvailableYears}
+                      activeYear={rangePickerEndYear}
+                      onYearChange={setRangePickerEndYear}
+                      months={summaryAvailableMonthsForEndPickerYear}
+                      selectedMonth={pageView.summaryPage.rangeEndMonth}
+                      isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
+                      onSelect={handleSummaryEndMonthSelect}
+                    />
+                  </strong>
+                ) : (
+                  <strong className="period-range-value">{periodLabel}</strong>
+                )}
+              </div>
+              <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
             </div>
-            <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
-          </div>
+          ) : null}
           <TotalsVisibilityToggle className="totals-visibility-toggle--header" />
         </div>
       </section>

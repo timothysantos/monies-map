@@ -542,7 +542,12 @@ test.describe("settings reference data", () => {
     await expect(page.getByText(/keep the Dictionary with value, merchant, and name/)).toBeVisible();
     await expect(page.getByText(/replace Register Apple Pay Transaction with Monies Map Apple Pay API/)).toBeVisible();
     await expect(page.getByText(/confirms the merchant, amount, and account, then opens the saved entry/)).toBeVisible();
-    await page.getByText("Advanced API settings", { exact: true }).click();
+    // Plain words on the main surface; the API field names live in the
+    // developer guide.
+    await expect(page.getByText("If the shortcut doesn't name an account, entries go to the first account in this list.")).toBeVisible();
+    await expect(page.getByText(/accountId\/accountName/)).toHaveCount(0);
+    await expect(page.getByText("Advanced API settings", { exact: true })).toHaveCount(0);
+    await page.getByText("More shortcut settings", { exact: true }).click();
     const apiKeyInput = page.getByLabel("Private connection key", { exact: true });
     await expect(apiKeyInput).toHaveAttribute("type", "password");
     await apiKeyInput.fill(apiKey);
