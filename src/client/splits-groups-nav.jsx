@@ -61,7 +61,7 @@ export function SplitsGroupsNav({
               <span className="split-group-pill-content">
                 <strong>{group.name}</strong>
                 <span>{group.currency ?? "SGD"} · {group.expenseSource === "cash" ? "Cash only" : group.expenseSource === "ledger" ? "Bank/card" : "Mixed"}</span>
-                <span>{group.entryCount} {messages.splits.entries}</span>
+                <span>{messages.splits.entryCount(group.entryCount)}</span>
                 <span>{areTotalsVisible ? group.summaryText : "Balance hidden"}</span>
               </span>
             </button>
