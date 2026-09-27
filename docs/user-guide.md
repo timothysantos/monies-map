@@ -1026,9 +1026,11 @@ A small label says what kind of line it is:
 3. Select **See all insights** for up to three more things worth knowing,
    now and then a short quote, and the **Money consequence map**.
 
-Money insights change as you use them. On your next visit they word the
-same fact a different way, give other lines a turn once one has been shown,
-and start with what changed ("Down from $42.80 since your last visit.").
+Money insights change month by month. Each month they word the same fact a
+different way and pick a different Just for fun line and quote, so none of
+these comes back within a year on the same page. Coming back to the same
+month, they give other lines a turn once one has been shown and start with
+what changed ("Down from $42.80 since your last visit.").
 When you fix something they say "Sorted" once. Early in the month they look
 ahead at bills coming up, mid-month at how spending is pacing, and at the
 end they wrap up. If nothing has changed since you last looked, they say so

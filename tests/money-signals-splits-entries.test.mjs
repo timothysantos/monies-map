@@ -108,7 +108,7 @@ test("share of costs: a person view's long view, never the household's", () => {
   assert.equal(shareOfCostsSignal(splits({ activity: TRIP_ACTIVITY.slice(0, 1) })), null);
 });
 
-test("the trip in numbers, the moment's line right after a trip ends", () => {
+test("the trip in numbers, a trivia type the year rotation schedules (never a moment)", () => {
   const signal = groupInNumbersTrivia(splits({ activity: TRIP_ACTIVITY }));
   assert.equal(signal.kind, "just_for_fun");
   assert.deepEqual(facts(signal), ["The trip in numbers: 3 shared costs, and the priciest was the Tokyo hotel (JP¥168,000)."]);
@@ -119,8 +119,10 @@ test("the trip in numbers, the moment's line right after a trip ends", () => {
   const withThe = groupInNumbersTrivia(splits({ activity: [{ ...TRIP_ACTIVITY[0], description: "The Peninsula Tokyo" }, ...TRIP_ACTIVITY.slice(1)] }));
   assert.deepEqual(facts(withThe), ["The trip in numbers: 3 shared costs, and the priciest was the Peninsula Tokyo (JP¥168,000)."]);
   assert.doesNotMatch(facts(withThe)[0], /the the/i);
-  assert.equal(signal.moment, false);
-  assert.equal(groupInNumbersTrivia(splits({ activity: TRIP_ACTIVITY, today: "2026-04-25" })).moment, true);
+  assert.equal(signal.triviaType, "in-numbers");
+  // Right after the trip ends it is not pushed ahead of the rotation: that
+  // could show it two months running.
+  assert.equal(groupInNumbersTrivia(splits({ activity: TRIP_ACTIVITY, today: "2026-04-25" })).moment, false);
   assert.match(facts(groupInNumbersTrivia(splits({ group: { id: "home", name: "Home", balanceMinor: 0 }, activity: TRIP_ACTIVITY })))[0], /^This group in numbers/);
   assert.equal(groupInNumbersTrivia(splits({ activity: TRIP_ACTIVITY.slice(0, 1) })), null);
   assert.deepEqual(buildSplitsSignals(splits({ group: { ...JAPAN, balanceMinor: 0 }, activity: [] })), []);

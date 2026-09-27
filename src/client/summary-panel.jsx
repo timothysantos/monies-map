@@ -34,7 +34,7 @@ import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
-import { buildSummarySignals, SUMMARY_CALM_LINE } from "../domain/money-signals/summary-signals";
+import { buildSummarySignals, SUMMARY_CALM_LINES, SUMMARY_TRIVIA_ROTATION } from "../domain/money-signals/summary-signals";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -94,7 +94,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       availableMonths: safeSummaryPage.availableMonths ?? [],
       formatMoney: formatService.unmaskedMoney
     }),
-    calmLine: SUMMARY_CALM_LINE,
+    page: "summary",
+    // The range's last month is the period Summary rotates by.
+    period: safeSummaryPage.rangeMonths.at(-1) ?? checkInClock.today.slice(0, 7),
+    triviaRotation: SUMMARY_TRIVIA_ROTATION,
+    calmLines: SUMMARY_CALM_LINES,
     alsoLabel: "Also in this range",
     clock: checkInClock
   }), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, view.id, view.label, view.selectedScope]);
