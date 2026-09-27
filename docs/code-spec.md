@@ -225,8 +225,13 @@ function per signal returning `{ key, kind, weight, numbers, phrasings,
 action? }` or `null`, with its copy in the page's catalogue beside it. They
 read only data the page already has (no new endpoint or payload), take
 `today` and the money formatter as inputs, and never call `Date.now` or
-`Math.random`; ranking and rotation in `checkin.ts` take the clock, the
-visit memory and a stable seed. Each signal needs a unit test that it fires
+`Math.random`; ranking in `checkin.ts` takes the clock, the visit memory and
+a stable seed, and everything that rotates is chosen from the period being
+viewed (`rotation.ts`), never from the clock or the memory, so nothing
+repeats within twelve periods for a page and view. A signal that can recur
+needs 12 or more wordings (phrasings times think lines); a Just for fun
+line needs a trivia type placed in exactly one of the page's twelve
+columns. Each signal needs a unit test that it fires
 with concrete numbers and exact wording, and one that it stays silent.
 Actions may only reuse navigations the page already has. Summary's signals
 are on the first screen: keep them compact, and put anything large (like the

@@ -1432,9 +1432,14 @@ adds no endpoint or payload. The code is in `src/domain/money-signals/`:
   condition is not met. `weight` is the money involved; `numbers.primaryMinor`
   is what "moved" is measured on. The page's copy catalogue
   (`SUMMARY_COPY`, `MONTH_COPY`, ...) beside the functions holds the approved
-  phrasings (3 to 5, all with the same numbers), the think line, the
+  phrasings (3 to 5, all with the same numbers), the think lines, the
   one-time "Sorted" line of a quick fix and the action label. Signals take
-  `today` and the money formatter as inputs and never read the clock.
+  `today` and the money formatter as inputs and never read the clock. A
+  Just for fun builder returns a `triviaSignal(type, detail, copy, values)`;
+  its `type` is what the page's rotation schedules. Place names go through
+  `tidyName`, which drops reference numbers, card and unit codes and "SINGAPORE
+  SG", and returns nothing for a PayNow, GIRO or transfer, so the builder
+  skips that entry rather than print a code.
 - **Ranking.** `rankSignals` in `checkin.ts` orders headline candidates by
   kind (Quick fix, Bigger question, a moment such as payday or bills coming
   up, Worth a look, Going well), then by money, then by not seen recently.
@@ -1445,26 +1450,52 @@ adds no endpoint or payload. The code is in `src/domain/money-signals/`:
   a signal shown in the last three days goes after the rest unless its
   number moved by 10% or $50. Only one bigger question is kept. Long view
   and Just for fun are picked separately.
-- **Rotation.** `composeCheckIn` takes the signals, the visit memory,
-  `nowMs`, `today` and a stable seed (page, view and context) and returns
-  the headline, up to three more lines, the long view, the fun line and the
-  quote topic. It never repeats the last phrasing, leads with "Down from
-  ... since your last visit." when a number moved, says a cleared quick fix
-  is sorted once, and shows one quiet line when nothing changed since a
-  visit in the last three days (never twice in a row). Trivia does not
-  repeat within 14 days and quotes within 28. The same inputs always give
-  the same check-in, so tests pin every rule
-  (`tests/money-checkin-engine.test.mjs`).
+- **The year rule.** Everything that rotates follows the `period` the page
+  passes: Month and Entries their month, Summary the range's last month,
+  Splits the current month for the selected group. For one page and view,
+  nothing shown for a period is shown again in the eleven periods before or
+  after it, with or without browser storage (`rotation.ts`):
+  - Just for fun: each page's `*_TRIVIA_ROTATION` has twelve columns, one
+    per month number. A period reads only its own column: the type whose
+    turn it is this year, then its reserves, and no trivia rather than a
+    type from another column. Two periods less than twelve apart read
+    different columns and every type sits in one column, so no type can
+    repeat. Moments (Summary's year recap and anniversary) go first; each
+    fires in at most one period of any twelve. Month and Entries share no
+    type.
+  - Wording: every phrasing with every think line it may pair with, taken
+    in turn by month (`wordingsOf`, `selectWording`). A signal that can
+    recur needs 12 or more of them.
+  - Long view: a seasonal moment leads, otherwise the long views that fire
+    take turns by month.
+  - Quotes: a quote's place in `quotes.ts` (mod 12) is its column; each page
+    reads a different column in the same month (Summary, Month, Entries and
+    Splits three apart) and moves on one a month. In the column it takes the
+    quote fitting the headline's topic, else the calm one.
+  - Calm lines: twelve per page, one per month.
+- **Rotation and visits.** `composeCheckIn` takes the signals, the period,
+  the page's trivia rotation and calm lines, the visit memory, `nowMs`,
+  `today` and a stable seed, and returns the headline, up to three more
+  lines, the long view, the fun line and the quote topic. The memory only
+  adds: a headline shown in the last three days rests, a number that moved
+  leads with "Down from ... since your last visit.", a cleared quick fix is
+  sorted once, and a visit in the last three days with nothing new is one
+  quiet line (never twice in a row). A revisit of the same period keeps its
+  wording, trivia and quote. The same inputs always give the same check-in,
+  so tests pin every rule (`tests/money-checkin-engine.test.mjs`,
+  `tests/money-insights-year-rotation.test.mjs`, which walks 24 months of
+  every page).
 - **Visit memory.** `src/client/checkin-visit-memory.js` keeps it in
   localStorage under `monies-map:checkin:v1:<page>:<view>[:<group>]`, with
   every access in try/catch; missing or broken storage reads as a first
-  visit. `recordVisit` writes what was shown; nothing about visits goes to
-  the Worker or AI. The component composes from the memory as the page
-  found it, so recording a visit never changes what is on screen.
+  visit. `recordVisit` writes what was present and shown; nothing about
+  visits goes to the Worker or AI. The component composes from the memory as
+  the page found it, so recording a visit never changes what is on screen.
 - **Quotes.** `quotes.ts` holds public-domain quotes, each copied exactly
-  from the source it names (author, work, year and the text checked). It is
-  loaded with a dynamic import when "See all insights" opens, so it never
-  weighs on the first screen; `pickQuote` matches the headline's topic.
+  from the source it names (author, work, year and the text checked against
+  the original). It is loaded with a dynamic import when "See all insights"
+  opens, so it never weighs on the first screen. Add a quote at the end of
+  the list; keep a calm quote in every column (the test checks).
 
 To add a signal: write the test first in the page's
 `tests/money-signals-*.test.mjs` (it fires with concrete numbers and the
@@ -1472,7 +1503,19 @@ exact wording, and stays silent when its condition is not met), add its copy
 to the page's catalogue and describe it in `scripts/money-insights-copy.mjs`, add
 the function and list it in the page's `build...Signals`, then run
 `npx tsx scripts/money-insights-copy.mjs` to regenerate `docs/money-insights-copy.md`. An
-action may only reuse a navigation the page already has.
+action may only reuse a navigation the page already has. A signal that can
+show month after month needs at least 12 wordings (for example 3 phrasings
+with 4 think lines); the copy test counts them.
+
+To add a Just for fun line: pick a new trivia type name, write its exact
+line and a test that it stays silent when its data is missing
+(`tests/money-insights-trivia.test.mjs`), add the builder with
+`triviaSignal(type, ...)` using only data the page already loads, and put the
+type in exactly one column of the page's `*_TRIVIA_ROTATION`, as a reserve
+beside a type that often cannot fire. Describe it, with its type, in
+`scripts/money-insights-copy.mjs`. Keep it kind: it may count places,
+days and amounts, never a habit to shame it. The year-rotation walk then
+proves it still never repeats within twelve months.
 
 The tone lint (`tone.ts`, run by `tests/money-insights-copy.test.mjs`) checks
 every phrasing, think line, sorted, trivia, quiet and calm line, the quotes

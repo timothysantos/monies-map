@@ -2,26 +2,36 @@
 // from what Month already loads: the view's entries, the plan rows with
 // their linked entries, the income rows, the month's totals and the view's
 // account pills. The time of month picks the moment: early looks ahead,
-// mid-month looks at pace, late and past months wrap up.
+// mid-month looks at pace, late and past months wrap up. Month's Just for
+// fun types are about the calendar and the plan (days, weeks, categories);
+// Entries' are about the list, so the two never say the same thing.
 import {
   addDays,
+  approxMoney,
   compactMoney,
   daysInMonth,
+  joinWithAnd,
+  lowerLabel,
   monthName,
   monthPhase,
+  numberWord,
   phrase,
+  plural,
   shortDay,
   sum,
   tidyName,
   weekdayIndex,
   weekdayNameOf,
-  joinWithAnd,
   type CopyCatalogue,
   type FormatMoney,
   type MonthPhase
 } from "./format";
+import { calmLinesFor } from "./checkin";
+import type { TriviaRotation } from "./rotation";
 import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
+
+const UNSPENT_PLAN_THINKS = ["Unspent plan isn't spent money yet.", "A small decision now keeps it yours.", "Leftover plan is room, not a rule."];
 
 export const MONTH_COPY = {
   unlinkedBills: {
@@ -35,8 +45,18 @@ export const MONTH_COPY = {
       "{label}, planned at {total}, is still waiting for an entry.",
       "Still unlinked: {label}, {total}, dated before today."
     ],
-    think: "Linking them keeps the plan honest and catches anything that didn't go out.",
-    thinkOne: "Linking it keeps the plan honest and catches anything that didn't go out.",
+    think: [
+      "Linking them keeps the plan honest and catches anything that didn't go out.",
+      "An unlinked bill might still be on its way, or might not have gone out. Linking shows which.",
+      "Matching bills to entries is what makes the plan line up with the bank.",
+      "Once linked, the plan and the entries tell the same story."
+    ],
+    thinkOne: [
+      "Linking it keeps the plan honest and catches anything that didn't go out.",
+      "An unlinked bill might still be on its way, or might not have gone out. Linking shows which.",
+      "Matching it to its entry is what makes the plan line up with the bank.",
+      "Once linked, the plan and the entries tell the same story."
+    ],
     sorted: {
       fact: "Sorted: every planned bill dated so far has an entry linked.",
       think: "The plan and the entries agree again, so the numbers here tell the whole story."
@@ -48,7 +68,12 @@ export const MONTH_COPY = {
       "{month} went {over} over plan, mostly {items}.",
       "Most of {month}'s {over} over plan came from {items}."
     ],
-    think: "Big one-offs happen. Worth deciding: truly one-off, or something to plan for next year?",
+    think: [
+      "Big one-offs happen. Worth deciding: truly one-off, or something to plan for next year?",
+      "One big item can make a whole month look different. The rest of the month may be right on track.",
+      "A one-off is worth a quick question: a rare treat, or a cost that comes round each year?",
+      "Big purchases often have a season. Planning for the next one makes it feel lighter."
+    ],
     action: "Show those entries"
   },
   categoryOverPlan: {
@@ -57,7 +82,12 @@ export const MONTH_COPY = {
       "{label} is at {actual} against a {plan} plan.",
       "The {label} plan was {plan}; spending came to {actual}."
     ],
-    think: "Plans are guesses made in advance. Adjust the plan or the spending; either is fine as long as it's a choice.",
+    think: [
+      "Plans are guesses made in advance. Adjust the plan or the spending; either is fine as long as it's a choice.",
+      "Going over in one category is information, not a verdict. It shows where the plan and life differ.",
+      "If this spending was worth it, the plan can grow to match. If not, next month is a fresh start.",
+      "A plan that matches real life is easier to keep. This is a useful clue for the next one."
+    ],
     action: "Review {category}"
   },
   incomeAbovePlan: {
@@ -66,7 +96,12 @@ export const MONTH_COPY = {
       "{extra} more came in than planned {when}.",
       "More came in than planned {when}: {extra} above plan."
     ],
-    think: "Extra money blends into everyday spending quickly. Deciding early how much goes to future you keeps the rest yours to enjoy on purpose."
+    think: [
+      "Extra money blends into everyday spending quickly. Deciding early how much goes to future you keeps the rest yours to enjoy on purpose.",
+      "Extra income is a good moment to decide on purpose: some for later, some to enjoy.",
+      "A bonus month is the easiest time to move some money toward a goal.",
+      "Deciding early where extra money goes makes it feel like more."
+    ]
   },
   incomeArrived: {
     phrasings: [
@@ -74,16 +109,25 @@ export const MONTH_COPY = {
       "Payday: {amount} came in on {day}.",
       "{amount} landed on {day}."
     ],
-    think: "Payday is the easiest moment to give money a job, before it blends into the month."
+    think: [
+      "Payday is the easiest moment to give money a job, before it blends into the month.",
+      "Right after payday is when a plan is easiest to follow.",
+      "Setting savings aside first makes the rest of the month simpler.",
+      "A few minutes now, deciding where it goes, saves second-guessing later."
+    ]
   },
   planLeft: {
     phrasings: [
       "{left} of this month's plan is still unspent.",
-      { fact: "{left} of this month's plan is still unspent. Give it a job before it drifts.", think: "Unspent plan isn't spent money yet." },
-      { fact: "You have {left} of plan left. Savings, next month, or something you've been looking forward to?", think: "Unspent plan isn't spent money yet." },
-      { fact: "Under plan by {left} so far. Nice; decide where it goes while it's still a choice.", think: "Unspent plan isn't spent money yet." }
+      { fact: "{left} of this month's plan is still unspent. Give it a job before it drifts.", think: UNSPENT_PLAN_THINKS },
+      { fact: "You have {left} of plan left. Savings, next month, or something you've been looking forward to?", think: UNSPENT_PLAN_THINKS },
+      { fact: "Under plan by {left} so far. Nice; decide where it goes while it's still a choice.", think: UNSPENT_PLAN_THINKS }
     ],
-    think: "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to."
+    think: [
+      "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.",
+      "Money left in the plan is a choice waiting to be made.",
+      "Deciding before the month ends keeps it from quietly disappearing."
+    ]
   },
   planLeftPast: {
     phrasings: [
@@ -91,7 +135,12 @@ export const MONTH_COPY = {
       "{month} came in {left} under plan.",
       "Under plan by {left} in {month}."
     ],
-    think: "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to."
+    think: [
+      "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.",
+      "A finished month under plan is money with no job yet. Savings or next month are both good homes.",
+      "Coming in under plan is a quiet win. Deciding where it goes makes it count.",
+      "Months like this give the next one a head start."
+    ]
   },
   savingsOnPlan: {
     phrasings: [
@@ -99,7 +148,12 @@ export const MONTH_COPY = {
       "{saved} went to savings {when}, as planned.",
       "Savings came to {saved} against a {planned} plan."
     ],
-    think: "With savings covered, spending on what you enjoy is part of the plan, not a slip from it."
+    think: [
+      "With savings covered, spending on what you enjoy is part of the plan, not a slip from it.",
+      "Savings done first makes everything else simpler.",
+      "Future you is covered this month. The rest is room to live.",
+      "Meeting the savings plan is the part that builds up. Worth a moment of credit."
+    ]
   },
   upcomingBills: {
     phrasings: [
@@ -112,7 +166,12 @@ export const MONTH_COPY = {
       "Coming up in the next 10 days: {label}, {total}.",
       "{total} goes out for {label} in the next 10 days."
     ],
-    think: "A fresh month is the easiest time to set things up. Anything to move or cancel before it goes out?"
+    think: [
+      "A fresh month is the easiest time to set things up. Anything to move or cancel before it goes out?",
+      "Knowing what's coming makes the rest of the month easier to plan.",
+      "A quick look now avoids surprises later in the month.",
+      "Bills due soon are easiest to change before they go out."
+    ]
   },
   paceSteady: {
     phrasings: [
@@ -120,7 +179,12 @@ export const MONTH_COPY = {
       "Mid-month check: {spent} spent against a {plan} plan.",
       "{left} of the plan is left for the last {days} days of {month}."
     ],
-    think: "Spending is keeping pace with the plan so far. A calm middle of the month usually makes for a calm end."
+    think: [
+      "Spending is keeping pace with the plan so far. A calm middle of the month usually makes for a calm end.",
+      "Halfway through and on pace: the plan is working as intended.",
+      "Steady spending mid-month leaves room for the unexpected later.",
+      "Nothing needs changing. The month is unfolding as planned."
+    ]
   },
   paceAhead: {
     phrasings: [
@@ -128,7 +192,12 @@ export const MONTH_COPY = {
       "Mid-month check: {spent} spent against a {plan} plan.",
       "{left} of the plan is left for the last {days} days of {month}."
     ],
-    think: "Spending is running ahead of the calendar. Nothing is fixed yet; the rest of the month decides where it lands."
+    think: [
+      "Spending is running ahead of the calendar. Nothing is fixed yet; the rest of the month decides where it lands.",
+      "Some months run ahead early. The second half often evens it out.",
+      "Ahead of the calendar is a nudge to glance at what's planned, nothing more.",
+      "There's still room in the plan. Knowing the pace now keeps the rest of the month a choice."
+    ]
   },
   fixedCosts: {
     phrasings: [
@@ -136,14 +205,27 @@ export const MONTH_COPY = {
       "{planned} of {whose} {income} income is already spoken for by planned bills and subscriptions.",
       "Planned bills and subscriptions: {planned}, against {income} of income."
     ],
-    think: "Fixed costs set how much room every month has. The lower they are, the more freedom for everything else."
+    think: [
+      "Fixed costs set how much room every month has. The lower they are, the more freedom for everything else.",
+      "Fixed costs are the part of a budget that decides itself. Knowing the size helps every other choice.",
+      "The room left after fixed costs is where most choices happen.",
+      "Fixed costs rarely change, so any change there lasts month after month."
+    ]
   },
   regularSpot: {
     phrasings: ["Your regular spot: {name}, {count} visits in {month}."],
     think: ""
   },
+  quietWeekday: {
+    phrasings: ["{weekday} was the quietest day of the week {when}."],
+    think: ""
+  },
   weekdayPattern: {
     phrasings: ["Most of your dining out {when} happened on {weekday}s."],
+    think: ""
+  },
+  busiestWeekday: {
+    phrasings: ["{weekday} was the busiest day of the week {when}, with {count} entries."],
     think: ""
   },
   noSpendDays: {
@@ -154,8 +236,56 @@ export const MONTH_COPY = {
     phrasings: ["{count} days so far in {month} with nothing spent."],
     think: ""
   },
+  longestRun: {
+    phrasings: ["Longest stretch without spending {when}: {count} days, {start} to {end}."],
+    think: ""
+  },
   biggestDay: {
     phrasings: ["Your biggest day was {day}: {name}."],
+    think: ""
+  },
+  busiestWeek: {
+    phrasings: ["The biggest week {when} began {day}, with {amount} spent."],
+    think: ""
+  },
+  halfway: {
+    phrasings: ["Half of the spending {when} had happened by {day}."],
+    think: ""
+  },
+  dayAverage: {
+    phrasings: ["Spending {when} averaged about {amount} a day."],
+    think: ""
+  },
+  weekendShare: {
+    phrasings: ["Weekends {when} came to {amount}, about one in every {fraction} dollars spent."],
+    think: ""
+  },
+  categoryShare: {
+    phrasings: ["{category} took about one in every {fraction} dollars spent {when}."],
+    think: ""
+  },
+  topTwoCategories: {
+    phrasings: ["{top} and {second} were the two biggest categories {when}."],
+    think: ""
+  },
+  categoriesCount: {
+    phrasings: ["Spending {when} spread across {count} categories."],
+    think: ""
+  },
+  categoryDays: {
+    phrasings: ["{category} showed up on {count} different days {when}."],
+    think: ""
+  },
+  categoryLargest: {
+    phrasings: ["Largest {category} entry {when}: {name}, {amount}."],
+    think: ""
+  },
+  planCount: {
+    phrasings: ["The plan for {month} holds {parts}."],
+    think: ""
+  },
+  biggestBill: {
+    phrasings: ["The biggest planned bill {when}: {label}, {amount}."],
     think: ""
   }
 } satisfies CopyCatalogue;
@@ -163,6 +293,29 @@ export const MONTH_COPY = {
 export function monthCalmLine(month: string) {
   return `Nothing in ${monthName(month)} needs a look right now.`;
 }
+
+export function monthCalmLines(month: string) {
+  return calmLinesFor(monthName(month), monthCalmLine(month));
+}
+
+// Month's year of Just for fun: twelve columns, one per month number,
+// each a type and (for most) a reserve. See rotation.ts for the rule.
+export const MONTH_TRIVIA_ROTATION: TriviaRotation = {
+  columns: [
+    ["regular-spot", "quiet-weekday"],
+    ["no-spend-days"],
+    ["biggest-day"],
+    ["longest-run", "plan-count"],
+    ["weekend-share"],
+    ["category-share", "dining-weekday"],
+    ["busiest-weekday", "category-days"],
+    ["halfway"],
+    ["categories-count"],
+    ["busiest-week", "category-largest"],
+    ["day-average"],
+    ["biggest-bill", "top-two-categories"]
+  ]
+};
 
 export interface MonthSignalEntry {
   id: string;
@@ -200,12 +353,18 @@ export interface MonthSignalInput {
 
 const SAVINGS = /saving/i;
 const DINING = /food|dining|restaurant|cafe|coffee|drink/i;
+const UNCATEGORIZED = /^(other|uncategori[sz]ed)?$/i;
 // Places visited out of routine rather than choice: not a "regular spot".
 const NOT_FUN_DAY = /saving|invest|transfer|insurance|giro|bill|utilit|loan|mortgage|rent|tax/i;
 const NOT_A_SPOT = /transport|transfer|bill|utilit|subscription|insurance|rent|mortgage|loan|saving|invest|tax|salary|income/i;
+const MIN_SPENDING = 3;
 
 function expenses(input: MonthSignalInput) {
   return input.entries.filter((entry) => entry.entryType === "expense" && Math.abs(entry.amountMinor) > 0);
+}
+
+function amountOf(entry: MonthSignalEntry) {
+  return Math.abs(entry.amountMinor);
 }
 
 function rows(input: MonthSignalInput, key?: string) {
@@ -217,7 +376,7 @@ function isLinked(row: MonthSignalPlanRow) {
 }
 
 function spend(input: MonthSignalInput) {
-  return Math.max(0, input.summary?.realExpensesMinor ?? sum(expenses(input).map((entry) => Math.abs(entry.amountMinor))));
+  return Math.max(0, input.summary?.realExpensesMinor ?? sum(expenses(input).map(amountOf)));
 }
 
 function plan(input: MonthSignalInput) {
@@ -230,6 +389,53 @@ function phaseOf(input: MonthSignalInput): MonthPhase {
 
 function whenPhrase(input: MonthSignalInput) {
   return phaseOf(input) === "past" ? `in ${monthName(input.month)}` : "this month";
+}
+
+// The last day of the month that has happened: the month's end, or today
+// in the month in progress; 0 for a month ahead.
+function lastDayOf(input: MonthSignalInput) {
+  const phase = phaseOf(input);
+  return phase === "ahead" ? 0 : phase === "past" ? daysInMonth(input.month) : Number(input.today.slice(8, 10));
+}
+
+function dayDate(input: MonthSignalInput, day: number) {
+  return `${input.month}-${String(day).padStart(2, "0")}`;
+}
+
+function totalsBy<K>(items: MonthSignalEntry[], keyOf: (entry: MonthSignalEntry) => K | undefined) {
+  const totals = new Map<K, { totalMinor: number; count: number }>();
+  for (const entry of items) {
+    const key = keyOf(entry);
+    if (key === undefined || key === "") {
+      continue;
+    }
+    const current = totals.get(key) ?? { totalMinor: 0, count: 0 };
+    current.totalMinor += amountOf(entry);
+    current.count += 1;
+    totals.set(key, current);
+  }
+  return totals;
+}
+
+function namedCategory(entry: MonthSignalEntry) {
+  const name = String(entry.categoryName ?? "").trim();
+  return UNCATEGORIZED.test(name) ? undefined : name;
+}
+
+// Categories by money spent, largest first (never Other).
+function categoryRanking(input: MonthSignalInput) {
+  return [...totalsBy(expenses(input), namedCategory).entries()]
+    .sort((left, right) => right[1].totalMinor - left[1].totalMinor || left[0].localeCompare(right[0]));
+}
+
+// A share as "one in every N dollars", between one in two and one in
+// twelve; null outside that range.
+function oneInEvery(partMinor: number, totalMinor: number) {
+  if (partMinor <= 0 || totalMinor <= 0) {
+    return null;
+  }
+  const fraction = Math.round(totalMinor / partMinor);
+  return fraction >= 2 && fraction <= 12 ? numberWord(fraction) : null;
 }
 
 // Quick fix: planned bills dated before today with no entry linked.
@@ -263,15 +469,15 @@ export function oneOffOverPlanSignal(input: MonthSignalInput): MoneySignal | nul
   if (plan(input) <= 0 || overMinor <= 0) {
     return null;
   }
-  const largest = [...expenses(input)].sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor) || left.id.localeCompare(right.id));
+  const largest = [...expenses(input)].sort((left, right) => amountOf(right) - amountOf(left) || left.id.localeCompare(right.id));
   const items: MonthSignalEntry[] = [];
   let coveredMinor = 0;
   for (const entry of largest.slice(0, 2)) {
-    if (Math.abs(entry.amountMinor) < overMinor * 0.2 || coveredMinor >= overMinor * 0.5) {
+    if (amountOf(entry) < overMinor * 0.2 || coveredMinor >= overMinor * 0.5) {
       break;
     }
     items.push(entry);
-    coveredMinor += Math.abs(entry.amountMinor);
+    coveredMinor += amountOf(entry);
   }
   if (!items.length || coveredMinor < overMinor * 0.5) {
     return null;
@@ -496,7 +702,41 @@ export function regularSpotTrivia(input: MonthSignalInput): MoneySignal | null {
     }
   }
   const [name, count] = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? ["", 0];
-  return count >= 3 ? triviaSignal(`regular-spot:${name}`, MONTH_COPY.regularSpot, { name, count, month: monthName(input.month) }) : null;
+  return count >= 3 ? triviaSignal("regular-spot", name, MONTH_COPY.regularSpot, { name, count, month: monthName(input.month) }) : null;
+}
+
+// Entries per weekday, for the weekdays the month has reached.
+function weekdayCounts(input: MonthSignalInput, items: MonthSignalEntry[]) {
+  const counts = new Map<number, number>();
+  for (let day = 1; day <= lastDayOf(input); day += 1) {
+    counts.set(weekdayIndex(dayDate(input, day)), 0);
+  }
+  for (const entry of items) {
+    const weekday = weekdayIndex(entry.date);
+    if (counts.has(weekday)) {
+      counts.set(weekday, (counts.get(weekday) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()];
+}
+
+// Just for fun: the weekday with the fewest entries, once the month has
+// reached every weekday (no tie).
+export function quietWeekdayTrivia(input: MonthSignalInput): MoneySignal | null {
+  const counts = weekdayCounts(input, expenses(input)).sort((left, right) => left[1] - right[1]);
+  if (counts.length < 7 || counts[0][1] === counts[1][1] || expenses(input).length < MIN_SPENDING) {
+    return null;
+  }
+  return triviaSignal("quiet-weekday", String(counts[0][0]), MONTH_COPY.quietWeekday, { weekday: weekdayNameOf(counts[0][0]), when: whenPhrase(input) });
+}
+
+// Just for fun: the weekday with the most entries (no tie).
+export function busiestWeekdayTrivia(input: MonthSignalInput): MoneySignal | null {
+  const counts = weekdayCounts(input, expenses(input)).sort((left, right) => right[1] - left[1]);
+  if (counts.length < 2 || counts[0][1] === counts[1][1] || counts[0][1] < 2) {
+    return null;
+  }
+  return triviaSignal("busiest-weekday", String(counts[0][0]), MONTH_COPY.busiestWeekday, { weekday: weekdayNameOf(counts[0][0]), count: counts[0][1], when: whenPhrase(input) });
 }
 
 // Just for fun: most dining out on one weekday.
@@ -513,22 +753,53 @@ export function weekdayPatternTrivia(input: MonthSignalInput): MoneySignal | nul
   if (count < 3 || count / dining.length <= 0.5) {
     return null;
   }
-  return triviaSignal(`weekday:${input.month}:${weekday}`, MONTH_COPY.weekdayPattern, { when: whenPhrase(input), weekday: weekdayNameOf(weekday) });
+  return triviaSignal("dining-weekday", String(weekday), MONTH_COPY.weekdayPattern, { when: whenPhrase(input), weekday: weekdayNameOf(weekday) });
+}
+
+function spendingDays(input: MonthSignalInput) {
+  return new Set(expenses(input).map((entry) => entry.date).filter((date) => date.startsWith(input.month) && Number(date.slice(8, 10)) <= lastDayOf(input)));
 }
 
 // Just for fun: days with no expense (so far, in the month in progress).
 export function noSpendDaysTrivia(input: MonthSignalInput): MoneySignal | null {
-  const phase = phaseOf(input);
-  if (phase === "ahead") {
+  const spentDays = spendingDays(input);
+  const count = lastDayOf(input) - spentDays.size;
+  if (!lastDayOf(input) || count < 2 || spentDays.size === 0) {
     return null;
   }
-  const lastDay = phase === "past" ? daysInMonth(input.month) : Number(input.today.slice(8, 10));
-  const spentDays = new Set(expenses(input).map((entry) => entry.date).filter((date) => date.startsWith(input.month)));
-  const count = lastDay - [...spentDays].filter((date) => Number(date.slice(8, 10)) <= lastDay).length;
-  if (count < 2 || spentDays.size === 0) {
+  return triviaSignal("no-spend-days", input.month, phaseOf(input) === "past" ? MONTH_COPY.noSpendDays : MONTH_COPY.noSpendDaysSoFar, { count, month: monthName(input.month) });
+}
+
+// Just for fun: the longest run of days in a row with nothing spent (the
+// earliest, when two are as long).
+export function longestRunTrivia(input: MonthSignalInput): MoneySignal | null {
+  const spentDays = spendingDays(input);
+  if (spentDays.size === 0) {
     return null;
   }
-  return triviaSignal(`no-spend:${input.month}`, phase === "past" ? MONTH_COPY.noSpendDays : MONTH_COPY.noSpendDaysSoFar, { count, month: monthName(input.month) });
+  let best = { start: 0, length: 0 };
+  let start = 0;
+  for (let day = 1; day <= lastDayOf(input) + 1; day += 1) {
+    const quiet = day <= lastDayOf(input) && !spentDays.has(dayDate(input, day));
+    if (quiet && !start) {
+      start = day;
+    }
+    if (!quiet && start) {
+      if (day - start > best.length) {
+        best = { start, length: day - start };
+      }
+      start = 0;
+    }
+  }
+  if (best.length < 2) {
+    return null;
+  }
+  return triviaSignal("longest-run", dayDate(input, best.start), MONTH_COPY.longestRun, {
+    count: best.length,
+    start: shortDay(dayDate(input, best.start)),
+    end: shortDay(dayDate(input, best.start + best.length - 1)),
+    when: whenPhrase(input)
+  });
 }
 
 // Just for fun: the date with the most spending, and its largest entry.
@@ -540,14 +811,159 @@ export function biggestDayTrivia(input: MonthSignalInput): MoneySignal | null {
     byDate.set(entry.date, [...(byDate.get(entry.date) ?? []), entry]);
   }
   const [date, dayEntries] = [...byDate.entries()]
-    .map(([day, items]) => [day, items, sum(items.map((item) => Math.abs(item.amountMinor)))] as const)
+    .map(([day, items]) => [day, items, sum(items.map(amountOf))] as const)
     .sort((left, right) => right[2] - left[2] || left[0].localeCompare(right[0]))[0] ?? [];
   if (!date || !dayEntries || byDate.size < 3) {
     return null;
   }
-  const largest = [...dayEntries].sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor))[0];
-  const name = tidyName(largest.description);
-  return name ? triviaSignal(`biggest-day:${date}`, MONTH_COPY.biggestDay, { day: shortDay(date), name }) : null;
+  const largest = dayEntries
+    .map((entry) => ({ entry, name: tidyName(entry.description) }))
+    .filter((item) => item.name)
+    .sort((left, right) => amountOf(right.entry) - amountOf(left.entry))[0];
+  return largest ? triviaSignal("biggest-day", date, MONTH_COPY.biggestDay, { day: shortDay(date), name: largest.name }) : null;
+}
+
+// Just for fun: the week (Monday to Sunday, within the month) with the
+// most spending.
+export function busiestWeekTrivia(input: MonthSignalInput): MoneySignal | null {
+  const byWeek = new Map<number, number>();
+  for (const entry of expenses(input).filter((item) => item.date.startsWith(input.month))) {
+    const day = Number(entry.date.slice(8, 10));
+    const weekStart = Math.max(1, day - ((weekdayIndex(entry.date) + 6) % 7));
+    byWeek.set(weekStart, (byWeek.get(weekStart) ?? 0) + amountOf(entry));
+  }
+  const [top, next] = [...byWeek.entries()].sort((left, right) => right[1] - left[1] || left[0] - right[0]);
+  if (!top || !next || top[1] === next[1]) {
+    return null;
+  }
+  return triviaSignal("busiest-week", dayDate(input, top[0]), MONTH_COPY.busiestWeek, {
+    day: shortDay(dayDate(input, top[0])),
+    amount: approxMoney(input.formatMoney, top[1]),
+    when: whenPhrase(input)
+  });
+}
+
+// Just for fun: the date by which half of the month's spending had gone.
+export function halfwayTrivia(input: MonthSignalInput): MoneySignal | null {
+  const list = [...expenses(input)].sort((left, right) => left.date.localeCompare(right.date));
+  const totalMinor = sum(list.map(amountOf));
+  if (list.length < MIN_SPENDING || new Set(list.map((entry) => entry.date)).size < 2) {
+    return null;
+  }
+  let runningMinor = 0;
+  const halfway = list.find((entry) => {
+    runningMinor += amountOf(entry);
+    return runningMinor * 2 >= totalMinor;
+  });
+  return halfway ? triviaSignal("halfway", halfway.date, MONTH_COPY.halfway, { day: shortDay(halfway.date), when: whenPhrase(input) }) : null;
+}
+
+// Just for fun: the average spending per day of the month so far.
+export function dayAverageTrivia(input: MonthSignalInput): MoneySignal | null {
+  const totalMinor = sum(expenses(input).map(amountOf));
+  if (expenses(input).length < MIN_SPENDING || !lastDayOf(input) || totalMinor < 100) {
+    return null;
+  }
+  return triviaSignal("day-average", input.month, MONTH_COPY.dayAverage, { amount: approxMoney(input.formatMoney, totalMinor / lastDayOf(input)), when: whenPhrase(input) });
+}
+
+// Just for fun: weekend spending as "one in every N dollars".
+export function weekendShareTrivia(input: MonthSignalInput): MoneySignal | null {
+  const list = expenses(input);
+  const weekendMinor = sum(list.filter((entry) => [0, 6].includes(weekdayIndex(entry.date))).map(amountOf));
+  const fraction = oneInEvery(weekendMinor, sum(list.map(amountOf)));
+  if (!fraction || list.length < MIN_SPENDING) {
+    return null;
+  }
+  return triviaSignal("weekend-share", input.month, MONTH_COPY.weekendShare, { amount: input.formatMoney(weekendMinor), fraction, when: whenPhrase(input) });
+}
+
+// Just for fun: the biggest everyday category (not a bill, loan or
+// savings) as "one in every N dollars".
+export function categoryShareTrivia(input: MonthSignalInput): MoneySignal | null {
+  const ranking = categoryRanking(input);
+  const totalMinor = sum(ranking.map(([, item]) => item.totalMinor));
+  const top = ranking.find(([label]) => !NOT_FUN_DAY.test(label));
+  const fraction = top ? oneInEvery(top[1].totalMinor, totalMinor) : null;
+  if (!top || !fraction) {
+    return null;
+  }
+  return triviaSignal("category-share", top[0], MONTH_COPY.categoryShare, { category: top[0], fraction, when: whenPhrase(input) });
+}
+
+// Just for fun: the month's two biggest everyday categories (not bills,
+// insurance, loans, rent, tax or savings).
+export function topTwoCategoriesTrivia(input: MonthSignalInput): MoneySignal | null {
+  const [top, second] = categoryRanking(input).filter(([label]) => !NOT_FUN_DAY.test(label));
+  if (!top || !second || top[1].totalMinor === second[1].totalMinor) {
+    return null;
+  }
+  return triviaSignal("top-two-categories", `${top[0]}:${second[0]}`, MONTH_COPY.topTwoCategories, { top: lowerLabel(top[0]), second: lowerLabel(second[0]), when: whenPhrase(input) });
+}
+
+// Just for fun: how many categories the month's spending touched.
+export function categoriesCountTrivia(input: MonthSignalInput): MoneySignal | null {
+  const count = categoryRanking(input).length;
+  return count >= 3 ? triviaSignal("categories-count", input.month, MONTH_COPY.categoriesCount, { count, when: whenPhrase(input) }) : null;
+}
+
+// Just for fun: the category that showed up on the most different days.
+export function categoryDaysTrivia(input: MonthSignalInput): MoneySignal | null {
+  const days = new Map<string, Set<string>>();
+  for (const entry of expenses(input)) {
+    const category = namedCategory(entry);
+    if (category) {
+      days.set(category, new Set([...(days.get(category) ?? []), entry.date]));
+    }
+  }
+  const [top] = [...days.entries()].sort((left, right) => right[1].size - left[1].size || left[0].localeCompare(right[0]));
+  if (!top || top[1].size < 3) {
+    return null;
+  }
+  return triviaSignal("category-days", top[0], MONTH_COPY.categoryDays, { category: top[0], count: top[1].size, when: whenPhrase(input) });
+}
+
+// Just for fun: the largest entry of the biggest everyday category.
+export function categoryLargestTrivia(input: MonthSignalInput): MoneySignal | null {
+  const top = categoryRanking(input).find(([label]) => !NOT_FUN_DAY.test(label));
+  const largest = top && expenses(input)
+    .filter((entry) => namedCategory(entry) === top[0])
+    .map((entry) => ({ entry, name: tidyName(entry.description) }))
+    .filter((item) => item.name)
+    .sort((left, right) => amountOf(right.entry) - amountOf(left.entry) || left.entry.id.localeCompare(right.entry.id))[0];
+  if (!top || !largest || top[1].count < 2) {
+    return null;
+  }
+  return triviaSignal("category-largest", largest.entry.id, MONTH_COPY.categoryLargest, {
+    category: lowerLabel(top[0]),
+    name: largest.name,
+    amount: input.formatMoney(amountOf(largest.entry)),
+    when: whenPhrase(input)
+  });
+}
+
+// Just for fun: how many planned bills and category budgets the plan has.
+export function planCountTrivia(input: MonthSignalInput): MoneySignal | null {
+  const bills = rows(input, "planned_items").filter((row) => row.plannedMinor > 0).length;
+  const budgets = rows(input, "budget_buckets").filter((row) => row.plannedMinor > 0).length;
+  const parts = [
+    bills ? plural(bills, "planned bill", "planned bills") : "",
+    budgets ? plural(budgets, "category budget", "category budgets") : ""
+  ].filter(Boolean);
+  if (bills + budgets < 2) {
+    return null;
+  }
+  return triviaSignal("plan-count", input.month, MONTH_COPY.planCount, { parts: joinWithAnd(parts), month: monthName(input.month) });
+}
+
+// Just for fun: the largest planned bill.
+export function biggestBillTrivia(input: MonthSignalInput): MoneySignal | null {
+  const bills = rows(input, "planned_items").filter((row) => row.plannedMinor > 0 && (row.label || row.categoryName));
+  const [top, next] = [...bills].sort((left, right) => right.plannedMinor - left.plannedMinor);
+  if (!top || !next || top.plannedMinor === next.plannedMinor) {
+    return null;
+  }
+  return triviaSignal("biggest-bill", top.id, MONTH_COPY.biggestBill, { label: top.label || top.categoryName || "", amount: input.formatMoney(top.plannedMinor), when: whenPhrase(input) });
 }
 
 export function buildMonthSignals(input: MonthSignalInput): MoneySignal[] {
@@ -566,9 +982,23 @@ export function buildMonthSignals(input: MonthSignalInput): MoneySignal[] {
     planLeftSignal(input),
     savingsOnPlanSignal(input),
     fixedCostsSignal(input),
-    weekdayPatternTrivia(input),
     regularSpotTrivia(input),
+    quietWeekdayTrivia(input),
+    busiestWeekdayTrivia(input),
+    weekdayPatternTrivia(input),
+    noSpendDaysTrivia(input),
+    longestRunTrivia(input),
     biggestDayTrivia(input),
-    noSpendDaysTrivia(input)
+    busiestWeekTrivia(input),
+    halfwayTrivia(input),
+    dayAverageTrivia(input),
+    weekendShareTrivia(input),
+    categoryShareTrivia(input),
+    topTwoCategoriesTrivia(input),
+    categoriesCountTrivia(input),
+    categoryDaysTrivia(input),
+    categoryLargestTrivia(input),
+    planCountTrivia(input),
+    biggestBillTrivia(input)
   ].filter((signal): signal is MoneySignal => Boolean(signal));
 }

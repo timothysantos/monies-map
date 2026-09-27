@@ -158,7 +158,8 @@ test("keep rate: the share of income kept, with the amount beside the percentage
   assert.deepEqual(facts(signal), [
     "Over the last 11 months the household kept 40% of what came in ($44,000.00).",
     "For every $10 that came in over the last 11 months, about $4 stayed.",
-    "$44,000.00 kept over the last 11 months. One heavy month barely moves that."
+    "$44,000.00 kept over the last 11 months. One heavy month barely moves that.",
+    "Kept over the last 11 months: $44,000.00, about 40% of what came in."
   ]);
   assert.equal(signal.phrasings[0].think, "One heavy month barely moves a year; the year is the fairer scorecard.");
   assert.match(facts(keepRateSignal(input({ audience: "person", viewLabel: "Ethan" })))[0], /^Over the last 11 months you kept 40%/);
@@ -233,15 +234,25 @@ test("trivia: a category as a plain fraction, last year's top category, a year r
   assert.equal(lastYearTopTrivia(input({ categoryShareByMonth: shares({ "2026-08": { Groceries: 1 } }) })), null);
 
   const recapShares = shares({ "2026-01": { Groceries: 50_000 }, "2026-02": { Groceries: 50_000, Travel: 10_000 }, "2026-03": { Travel: 20_000 } });
-  const recap = yearRecapTrivia(input({ today: "2026-12-05", categoryShareByMonth: recapShares }));
+  // A moment only for a range that ends in December, so at most one
+  // period in any twelve.
+  const toDecember = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"].map((key) => month(key));
+  const recap = yearRecapTrivia(input({ today: "2027-01-05", months: toDecember, categoryShareByMonth: recapShares }));
   assert.deepEqual(facts(recap), ["2026 in numbers: 40 entries, and Groceries was the biggest category."]);
-  assert.equal(yearRecapTrivia(input({ today: "2026-09-27", categoryShareByMonth: recapShares })), null);
+  assert.equal(recap.moment, true);
+  assert.equal(yearRecapTrivia(input({ today: "2026-12-05", categoryShareByMonth: recapShares })), null);
+  assert.equal(yearRecapTrivia(input({ today: "2027-01-05", months: toDecember, categoryShareByMonth: recapShares.slice(0, 2) })), null);
 
   assert.deepEqual(facts(anniversaryTrivia(input({ availableMonths: ["2025-09", "2025-10"] }))), ["A year of Monie's Map: your first month here was September 2025."]);
   assert.equal(anniversaryTrivia(input({ availableMonths: ["2025-10"] })), null);
+  // Only on a range that ends this month.
+  assert.equal(anniversaryTrivia(input({ today: "2026-10-02", availableMonths: ["2025-10"] })), null);
 });
 
 test("buildSummarySignals returns only the signals that fire", () => {
   const signals = buildSummarySignals(input());
-  assert.deepEqual(signals.map((signal) => signal.key), ["months-under-plan", "keep-rate"]);
+  assert.deepEqual(signals.filter((signal) => signal.kind !== "just_for_fun").map((signal) => signal.key), ["months-under-plan", "keep-rate"]);
+  // Twelve identical months tie for biggest, quietest and busiest, so only
+  // the trivia that needs no winner fires.
+  assert.deepEqual(signals.filter((signal) => signal.kind === "just_for_fun").map((signal) => signal.triviaType), ["average-month", "daily-average", "range-total", "income-months"]);
 });

@@ -5,7 +5,7 @@ import {
   buildDeterministicFinancialInsight,
   buildFinancialInsightCacheKey
 } from "../domain/ai-assistance-insights";
-import { composeCheckIn, pickQuote, recordQuote, recordVisit } from "../domain/money-signals/checkin";
+import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/checkin";
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { readVisitMemory, writeVisitMemory } from "./checkin-visit-memory";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -27,8 +27,11 @@ const insightCache = new Map();
 // more signals, a fitting quote and the Money consequence map.
 //
 // `checkIn` carries the page's signals (src/domain/money-signals), the
-// visit memory key and context, and the visit's clock. What was shown is
-// remembered only in this browser (checkin-visit-memory.js).
+// page and period being viewed (what rotates follows the period, so nothing
+// repeats within a year of months: rotation.ts), the page's trivia schedule
+// and calm lines, the visit memory key and context, and the visit's clock.
+// What was shown is remembered only in this browser
+// (checkin-visit-memory.js), and only adds rests, quiet visits and sorted.
 //
 // Optional AI wording is in-memory only: it avoids repeat requests while
 // the app is open without retaining financial wording in storage.
@@ -38,7 +41,7 @@ const insightCache = new Map();
 // choose words around the fact and the think line, which stay verbatim.
 export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction, className = "", canRequestWording = false }) {
   const { areTotalsVisible } = useMoneyPrivacy();
-  const { memoryKey, contextKey, signals, calmLine, clock, alsoLabel = "Also worth knowing", ready = true } = checkIn;
+  const { memoryKey, contextKey, signals, page, period, triviaRotation, calmLines, clock, alsoLabel = "Also worth knowing", ready = true } = checkIn;
   const seed = `${memoryKey}|${contextKey}`;
   // The memory as this visit found it: the check-in is composed from it,
   // so recording the visit never changes what is on screen.
@@ -50,9 +53,11 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
     today: clock.today,
     seed,
     contextKey,
-    calmLine,
+    period,
+    triviaRotation,
+    calmLines,
     ready
-  }), [calmLine, clock.nowMs, clock.today, contextKey, memorySnapshot, ready, seed, signals]);
+  }), [calmLines, clock.nowMs, clock.today, contextKey, memorySnapshot, period, ready, seed, signals, triviaRotation]);
   const { headline } = view;
   const headlineFacts = useMemo(() => (
     headline.kind && headline.kind !== "long_view" && headline.kind !== "just_for_fun" && headline.think
@@ -98,8 +103,9 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
     writeVisitMemory(memoryKey, recordVisit(latest, view, signals, { nowMs: clock.nowMs, today: clock.today, contextKey }));
   }, [areTotalsVisible, clock.nowMs, clock.today, contextKey, memoryKey, ready, signals, view]);
 
-  // A quote only in the expanded view, never beside a bigger question. The
-  // library loads on demand, so it is never part of the first screen.
+  // A quote only in the expanded view, never beside a bigger question,
+  // chosen by page and period. The library loads on demand, so it is never
+  // part of the first screen.
   useEffect(() => {
     if (!isExpanded || !view.quoteTopic || !areTotalsVisible) {
       setQuote(null);
@@ -111,17 +117,14 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
         if (cancelled) {
           return;
         }
-        const picked = pickQuote(QUOTES, view.quoteTopic, memorySnapshot, clock.nowMs, seed);
+        const picked = pickQuote(QUOTES, view.quoteTopic, { page, period });
         setQuote(picked ? { id: picked.id, text: picked.text, citation: quoteCitation(picked) } : null);
-        if (picked) {
-          writeVisitMemory(memoryKey, recordQuote(readVisitMemory(memoryKey), picked.id, clock.nowMs));
-        }
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [areTotalsVisible, clock.nowMs, isExpanded, memoryKey, memorySnapshot, seed, view.quoteTopic]);
+  }, [areTotalsVisible, isExpanded, page, period, view.quoteTopic]);
 
   useEffect(() => {
     if (!areTotalsVisible || !cacheKey) {
@@ -242,7 +245,7 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
           ) : null}
         </div>
         {view.fun ? (
-          <p className="checkin-fun">
+          <p className="checkin-fun" data-trivia-type={view.fun.type}>
             <span className="checkin-line-label">{SIGNAL_KIND_LABELS.just_for_fun}</span>
             {view.fun.text}
           </p>

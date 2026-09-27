@@ -52,7 +52,7 @@ import {
   createSplitRefreshGuard
 } from "./splits-workflow";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
-import { buildSplitsSignals, SPLITS_CALM_LINE } from "../domain/money-signals/splits-signals";
+import { buildSplitsSignals, SPLITS_CALM_LINES, SPLITS_TRIVIA_ROTATION } from "../domain/money-signals/splits-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
@@ -161,14 +161,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       viewId: view.id,
       viewLabel: view.label,
       people,
-      group: activeGroup ? { id: activeGroup.id, name: activeGroup.name, balanceMinor: groupBalanceMinor } : null,
+      group: activeGroup ? { id: activeGroup.id, name: activeGroup.name, balanceMinor: groupBalanceMinor, currency: activeGroup.currency } : null,
       activity: openGroupActivity,
       pendingMatchCount,
       today: checkInClock.today,
       // Balances stay in the group's own currency, never converted.
       formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD")
     }),
-    calmLine: SPLITS_CALM_LINE,
+    page: "splits",
+    // Splits rotates by the current month for the selected group.
+    period: checkInClock.today.slice(0, 7),
+    triviaRotation: SPLITS_TRIVIA_ROTATION,
+    calmLines: SPLITS_CALM_LINES,
     alsoLabel: "Also in this group",
     clock: checkInClock
   }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, openGroupActivity, pendingMatchCount, people, view.id, view.label]);

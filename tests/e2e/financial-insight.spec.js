@@ -1,6 +1,17 @@
 import { expect, test } from "@playwright/test";
 
 import { gotoPageAfterApi, loadMonthPage, loadSummaryAccountPills, postJson, reseedDemo } from "./helpers";
+import { MONTH_COPY } from "../../src/domain/money-signals/month-signals.ts";
+import { SHARED_COPY } from "../../src/domain/money-signals/shared-signals.ts";
+import { SPLITS_COPY } from "../../src/domain/money-signals/splits-signals.ts";
+import { SUMMARY_COPY } from "../../src/domain/money-signals/summary-signals.ts";
+
+// Every think line a signal's copy may pair with: its wording rotates by
+// the month viewed (the year rule), so any of them may show.
+const thinksOf = (entry, { one = false } = {}) => [
+  entry.think, one ? entry.thinkOne : undefined,
+  ...entry.phrasings.map((phrasing) => (typeof phrasing === "string" ? undefined : phrasing.think))
+].flat().filter(Boolean);
 
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 
@@ -32,7 +43,7 @@ test.describe("financial insights", () => {
     await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/[Ss]ubscriptions/);
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/\$28\.70|\$344|\$0\.94/);
-    await expect(summaryInsight.locator(".checkin-think")).toContainText("Automatic payments are easy to stop noticing.");
+    expect(thinksOf(SUMMARY_COPY.subscriptions)).toContain((await summaryInsight.locator(".checkin-think").innerText()).trim());
     await expect(summaryInsight).not.toContainText("Before buying something non-essential");
     await expect(summaryInsight.getByRole("button", { name: "See all insights" })).toHaveAttribute("aria-expanded", "false");
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeHidden();
@@ -68,7 +79,7 @@ test.describe("financial insights", () => {
     await expect(monthInsight).toContainText("Tim's money insights");
     await expect(monthInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
     await expect(monthInsight.locator(".checkin-fact")).toContainText(/planned bills/);
-    await expect(monthInsight.locator(".checkin-think")).toHaveText(/Linking them keeps the plan honest and catches anything that didn't go out\./);
+    expect(thinksOf(MONTH_COPY.unlinkedBills)).toContain((await monthInsight.locator(".checkin-think").innerText()).trim());
     await monthInsight.getByRole("button", { name: "See all insights" }).click();
     const also = monthInsight.locator(".checkin-also");
     await expect(also).toContainText("Also this month");
@@ -204,7 +215,8 @@ test.describe("financial insights", () => {
     expect(bodies[0].facts.headlineKind).toBe("quick_fix");
     const insight = page.locator(".financial-insight-month");
     expect(bodies[0].facts.fact).toBe((await insight.locator(".checkin-fact").innerText()).trim());
-    expect(bodies[0].facts.think).toBe("Linking them keeps the plan honest and catches anything that didn't go out.");
+    expect(bodies[0].facts.think).toBe((await insight.locator(".checkin-think").innerText()).trim());
+    expect([...thinksOf(MONTH_COPY.unlinkedBills), ...thinksOf(MONTH_COPY.unlinkedBills, { one: true })]).toContain(bodies[0].facts.think);
     expect(JSON.stringify(bodies[0])).not.toContain("Tim");
     for (const removed of ["notableFact", "cashFlowPrinciple", "nextSpendConsideration", "accountingAdvice"]) {
       expect(Object.hasOwn(bodies[0].facts, removed)).toBe(false);
@@ -321,7 +333,8 @@ test.describe("financial insights", () => {
     await expect(splitsInsight).toContainText("Tim's money insights");
     await expect(splitsInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText("Joyce owes you JP¥9,000");
-    await expect(splitsInsight.locator(".checkin-think")).toHaveText(/Settling while the trip is fresh keeps it light for both of you\./);
+    // A trip's own think lines, not the ones for a group that is not a trip.
+    expect(thinksOf(SPLITS_COPY.owedToYou)).toContain((await splitsInsight.locator(".checkin-think").innerText()).trim());
     await expect(splitsInsight.getByRole("button", { name: "Settle group" })).toBeVisible();
 
     // Only computed facts go out, with the person's name held back; the
@@ -377,7 +390,7 @@ test("four visits in one week: a first look, a new quick fix, sorted once, then 
   const wednesday = await visit("2026-05-13T20:00:00+08:00");
   expect(wednesday.chip).toBe("Quick fix");
   expect(wednesday.text).toContain("$42.80");
-  expect(wednesday.text).toContain("Small gaps are usually one missing or doubled entry.");
+  expect(thinksOf(SHARED_COPY.statementGap).some((line) => wednesday.text.includes(line))).toBe(true);
 
   // Fri 15 May: fixed. The check-in says so once.
   await postJson(page, "/api/accounts/reconcile", { accountId: card.accountId, checkpointMonth: "2026-05", statementBalanceMinor: card.balanceMinor });
