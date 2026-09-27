@@ -29,6 +29,18 @@ export function moneyWithCurrency(valueMinor, currency = "SGD") {
   return formatCurrencyMinor(valueMinor, currency);
 }
 
+// Unmasked formatters for the money check-in facts only. FinancialInsight
+// shows no figures while totals are hidden, so its facts are built with the
+// real amounts: a page loaded with totals hidden must show the real sentence
+// the moment totals are revealed, not a "••••" baked into memoized facts.
+export function unmaskedMoney(valueMinor) {
+  return moneyFormatter.format(valueMinor / 100);
+}
+
+export function unmaskedMoneyWithCurrency(valueMinor, currency = "SGD") {
+  return formatCurrencyMinor(valueMinor, currency);
+}
+
 // The smallest stored step (one hundredth) in a currency, such as "$0.01" or
 // "JP¥0.01", for the odd-cent choice. It is not a balance, so privacy does not
 // mask it.

@@ -146,7 +146,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     audienceName: isHouseholdView ? "" : view.label,
     records: insightRecords,
     // The records are one group's, so their amounts are in its currency.
-    formatMoney: (amountMinor) => formatService.moneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
+    formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
     perspective: "split_obligation",
     accountingAdvice: splitSearchQuery
       ? "This is a filtered group view, so check the matching split record before treating the displayed amount as the full group balance."

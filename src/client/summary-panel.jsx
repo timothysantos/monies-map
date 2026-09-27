@@ -305,7 +305,7 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
         }))
     ],
     entryCount: focusState.donutData.reduce((total, item) => total + Number(item.entryCount ?? 0), 0),
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     perspective: "cash_flow",
     accountingAdvice,
     decisionMapContext: {

@@ -501,7 +501,7 @@ export function EntriesPanel({
       ...entry,
       amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
     })),
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     perspective: activeEntryFilterCount ? "partial_view" : "cash_flow",
     accountingAdvice: activeEntryFilterCount
       ? "Use this filtered view to investigate the selected account, category, type, or search result; do not use it as the whole-month budget total."

@@ -217,7 +217,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     monthPage: view.monthPage,
     monthSummary: selectedMonthSummary,
     accounts: visibleAccounts,
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     formatMonthLabel: formatService.formatMonthLabel
   }), [selectedMonthSummary, view.id, view.label, view.monthPage, visibleAccounts]);
   const financialInsightActions = useMemo(() => {
