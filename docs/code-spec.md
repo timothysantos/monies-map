@@ -220,7 +220,7 @@ AI wording may only choose words around the check-in's fact and think line,
 which stay verbatim; a template without both, with its own figures, or
 failing the tone lint is refused.
 
-Money check-in signals live in `src/domain/money-signals/`, one small pure
+Money insights (check-in) signals live in `src/domain/money-signals/`, one small pure
 function per signal returning `{ key, kind, weight, numbers, phrasings,
 action? }` or `null`, with its copy in the page's catalogue beside it. They
 read only data the page already has (no new endpoint or payload), take

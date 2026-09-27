@@ -26,7 +26,7 @@ test.describe("financial insights", () => {
     );
     const summaryInsight = page.locator(".financial-insight-summary");
     await expect(summaryInsight).toBeVisible();
-    await expect(summaryInsight).toContainText("Household money check-in");
+    await expect(summaryInsight).toContainText("Household money insights");
     // Seeded May 2026 has subscriptions of $28.70: a Worth a look, with the
     // approved way to think about it.
     await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
@@ -34,10 +34,10 @@ test.describe("financial insights", () => {
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/\$28\.70|\$344|\$0\.94/);
     await expect(summaryInsight.locator(".checkin-think")).toContainText("Automatic payments are easy to stop noticing.");
     await expect(summaryInsight).not.toContainText("Before buying something non-essential");
-    await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
+    await expect(summaryInsight.getByRole("button", { name: "See all insights" })).toHaveAttribute("aria-expanded", "false");
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeHidden();
     await expect(summaryInsight.locator(".checkin-quote")).toHaveCount(0);
-    await summaryInsight.getByRole("button", { name: "Read full insight" }).click();
+    await summaryInsight.getByRole("button", { name: "See all insights" }).click();
     await expect(summaryInsight.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeVisible();
     await expect(summaryInsight).toContainText("Money left so far");
@@ -54,7 +54,7 @@ test.describe("financial insights", () => {
     }));
     expect(mobileWidth.documentWidth).toBeLessThanOrEqual(mobileWidth.viewportWidth + 1);
     await summaryInsight.getByRole("button", { name: "Show less" }).click();
-    await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
+    await expect(summaryInsight.getByRole("button", { name: "See all insights" })).toHaveAttribute("aria-expanded", "false");
     await page.setViewportSize({ width: 1280, height: 720 });
 
     // Month: May 2026's planned bills without a linked entry are a Quick fix.
@@ -65,11 +65,11 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Month", exact: true })
     );
     const monthInsight = page.locator(".financial-insight-month");
-    await expect(monthInsight).toContainText("Tim's money check-in");
+    await expect(monthInsight).toContainText("Tim's money insights");
     await expect(monthInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
     await expect(monthInsight.locator(".checkin-fact")).toContainText(/planned bills/);
     await expect(monthInsight.locator(".checkin-think")).toHaveText(/Linking them keeps the plan honest and catches anything that didn't go out\./);
-    await monthInsight.getByRole("button", { name: "Read full insight" }).click();
+    await monthInsight.getByRole("button", { name: "See all insights" }).click();
     const also = monthInsight.locator(".checkin-also");
     await expect(also).toContainText("Also this month");
     await expect(also.locator("li")).toHaveCount(2);
@@ -92,7 +92,7 @@ test.describe("financial insights", () => {
     });
     await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
     const insight = page.locator(".financial-insight-month");
-    await insight.getByRole("button", { name: "Read full insight" }).click();
+    await insight.getByRole("button", { name: "See all insights" }).click();
     const bigger = insight.locator(".checkin-also li").filter({ hasText: "Bigger question" });
     await expect(bigger).toContainText(/Courts Megastore Tampines/);
     await expect(bigger).toContainText("$1,181.79 over plan");
@@ -111,7 +111,7 @@ test.describe("financial insights", () => {
     const openMonthMap = async () => {
       await gotoPageAfterApi(page, monthUrl, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
       const insight = page.locator(".financial-insight-month");
-      await insight.getByRole("button", { name: "Read full insight" }).click();
+      await insight.getByRole("button", { name: "See all insights" }).click();
       const map = insight.getByLabel("Money consequence map");
       await expect(map).toBeVisible();
       return map;
@@ -168,8 +168,8 @@ test.describe("financial insights", () => {
         await gotoPageAfterApi(page, `/month?view=${viewId}&month=2026-05&scope=${scope}`, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
         await expect(page.locator(".month-label-view")).toHaveText(label);
         const insight = page.locator(".financial-insight-month");
-        await expect(insight).toContainText(viewId === "household" ? "Household money check-in" : `${label}'s money check-in`);
-        await insight.getByRole("button", { name: "Read full insight" }).click();
+        await expect(insight).toContainText(viewId === "household" ? "Household money insights" : `${label}'s money insights`);
+        await insight.getByRole("button", { name: "See all insights" }).click();
         const planLane = insight.locator(".financial-decision-lane").filter({ hasText: "Plan position" }).locator("strong");
         await expect(planLane, `${viewId} ${scope}`).toHaveText(expected);
         laneByView[`${viewId}:${scope}`] = expected;
@@ -237,11 +237,11 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Entries", exact: true })
     );
     const entriesInsight = page.locator(".financial-insight-entries");
-    await expect(entriesInsight).toContainText("Tim's money check-in");
+    await expect(entriesInsight).toContainText("Tim's money insights");
     await expect(entriesInsight.locator(".financial-insight-content > .checkin-chip")).toBeVisible();
     await expect(entriesInsight.locator(".checkin-fact")).not.toBeEmpty();
     await expect(entriesInsight).not.toContainText("Before buying something non-essential");
-    await entriesInsight.getByRole("button", { name: "Read full insight" }).click();
+    await entriesInsight.getByRole("button", { name: "See all insights" }).click();
     await expect(entriesInsight.getByLabel("Money consequence map")).toContainText("Check the full month");
     const incomeAction = entriesInsight.getByRole("button", { name: /See income entries/ });
     const incomeActionLabel = await incomeAction.textContent();
@@ -258,7 +258,7 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Entries", exact: true })
     );
     const resetEntriesInsight = page.locator(".financial-insight-entries");
-    await resetEntriesInsight.getByRole("button", { name: "Read full insight" }).click();
+    await resetEntriesInsight.getByRole("button", { name: "See all insights" }).click();
     await resetEntriesInsight.getByRole("button", { name: "Review largest expense" }).click();
     await expect(page).toHaveURL(/entry_id=/);
 
@@ -271,9 +271,9 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Splits", exact: true })
     );
     const splitsInsight = page.locator(".financial-insight-splits");
-    await expect(splitsInsight).toContainText("Tim's money check-in");
+    await expect(splitsInsight).toContainText("Tim's money insights");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Joyce \$260\.25/i);
-    await splitsInsight.getByRole("button", { name: "Read full insight" }).click();
+    await splitsInsight.getByRole("button", { name: "See all insights" }).click();
     await expect(splitsInsight.getByLabel("Money consequence map")).toContainText("Settlement obligations");
   });
 
@@ -318,7 +318,7 @@ test.describe("financial insights", () => {
     const hotel = page.locator(".split-activity-card").filter({ hasText: "Shinjuku hotel" });
     await expect(hotel).toContainText("You paid JP¥12,000");
     const splitsInsight = page.locator(".financial-insight-splits");
-    await expect(splitsInsight).toContainText("Tim's money check-in");
+    await expect(splitsInsight).toContainText("Tim's money insights");
     await expect(splitsInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText("Joyce owes you JP¥9,000");
     await expect(splitsInsight.locator(".checkin-think")).toHaveText(/Settling while the trip is fresh keeps it light for both of you\./);
@@ -334,7 +334,7 @@ test.describe("financial insights", () => {
     // Joyce's view speaks from her side and asks for wording again.
     await page.locator(".context-block .pill[title='Joyce']").click();
     await expect(page).toHaveURL(/view=person-joyce/);
-    await expect(splitsInsight).toContainText("Joyce's money check-in");
+    await expect(splitsInsight).toContainText("Joyce's money insights");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Tim JP¥9,000/i);
     await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(2);
     expect(bodies[1].facts).toMatchObject({ audienceKind: "person", spend: "JP¥9,000" });
@@ -547,7 +547,7 @@ test.describe("financial insight wording readiness", () => {
     await openSummary(page);
     await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
     await page.getByRole("button", { name: "Hide money totals" }).first().click();
-    await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read this insight.");
+    await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read these insights.");
     await expect.poll(() => control.state.failed.length).toBe(1);
     control.releaseAll();
     await page.waitForTimeout(2_000);
@@ -599,7 +599,7 @@ test.describe("financial insight wording readiness", () => {
     const insight = page.locator(".financial-insight-summary");
     // Interactions that rerender the page but leave the facts alone.
     await page.mouse.move(200, 200);
-    await insight.getByRole("button", { name: "Read full insight" }).click();
+    await insight.getByRole("button", { name: "See all insights" }).click();
     await insight.getByRole("button", { name: "Show less" }).click();
     await page.mouse.move(400, 300);
     await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);

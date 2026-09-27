@@ -1359,13 +1359,13 @@ source of truth.
 You can ask it to draft a Monthly Note, phrase a statement mismatch in simpler
 language, suggest category-rule drafts from existing categorized history, or
 rank descriptions among candidates that the app has already constrained by
-account, amount, and date. Summary, Month, Entries, and Splits also show a
-Money check-in for the figures already on screen (see [How does the Money
-check-in work?](#how-does-the-money-check-in-work)). It appears immediately
-from the app's own calculations, then may improve its wording in the
+account, amount, and date. Summary, Month, Entries, and Splits also show
+Money insights for the figures already on screen (see [How do Money
+insights work?](#how-do-money-insights-work)). They appear immediately
+from the app's own calculations, then may improve their wording in the
 background after a short pause: the AI may only choose a few words around
-the check-in's fact and think line, which it must keep word for word. In a
-person view, the Summary and Month check-ins count only that person's
+the headline's fact and think line, which it must keep word for word. In a
+person view, the Summary and Month insights count only that person's
 entries in the selected scope, the same entries as the `Actual spend` card
 beside them. Changing a month, scope, split group or the headline creates a
 different insight; the app keeps same-view wording in a short-lived
@@ -1374,9 +1374,9 @@ view is selected, the app addresses that person in the final browser
 wording, but sends only a placeholder rather than their name to Workers AI.
 A quiet visit or a calm line has nothing to reword, so it asks for nothing.
 
-Those insights are guidance, not a recalculation. The check-in never
-forecasts, promises what is safe to spend, or sets a savings target, and it
-never replaces the plan or the ledger.
+Those insights are guidance, not a recalculation. They never forecast,
+promise what is safe to spend, or set a savings target, and they never
+replace the plan or the ledger.
 
 Summary and Month also show a **Money consequence map**. It makes the
 calculation easier to inspect: money left so far, plan position, a same-season
@@ -1416,9 +1416,10 @@ The app keeps only daily AI usage counters so it can stay within its configured
 allowance. It does not save prompts, model answers, original PDFs, credentials,
 Shortcut tokens, or full card/account numbers as an AI history.
 
-## How does the Money check-in work?
+## How do Money insights work?
 
-The check-in is built in the browser from data the page already loaded; it
+Money insights (the "check-in" in code: `money-signals/checkin.ts`,
+`FinancialInsight`) are built in the browser from data the page already loaded; it
 adds no endpoint or payload. The code is in `src/domain/money-signals/`:
 
 - **Signals.** `summary-signals.ts`, `month-signals.ts`,
@@ -1455,24 +1456,24 @@ adds no endpoint or payload. The code is in `src/domain/money-signals/`:
   found it, so recording a visit never changes what is on screen.
 - **Quotes.** `quotes.ts` holds public-domain quotes, each copied exactly
   from the source it names (author, work, year and the text checked). It is
-  loaded with a dynamic import when "Read full insight" opens, so it never
+  loaded with a dynamic import when "See all insights" opens, so it never
   weighs on the first screen; `pickQuote` matches the headline's topic.
 
 To add a signal: write the test first in the page's
 `tests/money-signals-*.test.mjs` (it fires with concrete numbers and the
 exact wording, and stays silent when its condition is not met), add its copy
-to the page's catalogue and describe it in `scripts/checkin-copy.mjs`, add
+to the page's catalogue and describe it in `scripts/money-insights-copy.mjs`, add
 the function and list it in the page's `build...Signals`, then run
-`npx tsx scripts/checkin-copy.mjs` to regenerate `docs/checkin-copy.md`. An
+`npx tsx scripts/money-insights-copy.mjs` to regenerate `docs/money-insights-copy.md`. An
 action may only reuse a navigation the page already has.
 
-The tone lint (`tone.ts`, run by `tests/money-checkin-copy.test.mjs`) checks
+The tone lint (`tone.ts`, run by `tests/money-insights-copy.test.mjs`) checks
 every phrasing, think line, sorted, trivia, quiet and calm line, the quotes
 and the consequence map's lanes: no word from the avoid list (overspent,
 blew, bad month, cut back, should, non-essential, guilty, sacrifice,
 warning, alert, problem and a few forms of them), no exclamation marks, no
 emoji, and no percentage without its money amount. The same lint refuses AI
-wording that breaks it. The test also fails when `docs/checkin-copy.md` is
+wording that breaks it. The test also fails when `docs/money-insights-copy.md` is
 out of date.
 
 # Product and data model notes
@@ -1551,8 +1552,8 @@ actual spend is $120.00 and Joyce's is $90.00, on Summary and Month alike;
 the household view shows $210.00. The stored month totals hold the same
 Direct + Shared figure per person, and a person whose only spending in a
 month is a split share (Joyce's $60.00 of a dinner Tim paid) still gets one.
-The Summary and Month Money check-ins count the same entries, so in Tim's
-Direct + Shared view the Month check-in's facts (and its consequence map's
+Summary's and Month's Money insights count the same entries, so in Tim's
+Direct + Shared view the Month insights' facts (and the consequence map's
 plan position) use his $120.00, the same as his `Actual spend` card, and
 switching to `Shared` makes both use $20.00.
 

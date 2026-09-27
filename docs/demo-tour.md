@@ -31,7 +31,7 @@ Open **Summary** with **Household** selected.
 
 - The cards compare planned and actual income and spending over the last 12
   months. "Realized savings" is what was actually left over.
-- The check-in under the cards leads with a **Quick fix**: Serene's OCBC 365
+- **Money insights** under the cards lead with a **Quick fix**: Serene's OCBC 365
   Card statement is off by $42.80. Its **Long view** line says the household
   kept about 61% of what came in over the last 11 complete months.
 - Scroll to **Intent vs Outcome**: most months finish under plan. One month,
@@ -48,7 +48,7 @@ and the default range is only the last 12 months.
 1. Tap the **Range** control and set the start to the **earliest month**
    (17 months back). Keep the end at the current month.
 2. Under **Spending Mix**, pick **last month**.
-3. In the check-in, press **Read full insight**.
+3. In Money insights, press **See all insights**.
 
 The **Money consequence map** now has a "Compared with" card: last month
 spent about $1,100 less than the same month last year (the year before had a
@@ -70,7 +70,7 @@ Switch the view to **Ethan**, stay on Summary.
   and bank spending), **Shared** (his half of shared bills, dinners and the
   Japan trip) and **Direct + Shared** (both). Each gives a different total,
   and the first two always add up to the third.
-- Open the check-in's full insight: **Snapshot confidence** shows **No
+- Press **See all insights**: **Snapshot confidence** shows **No
   visible proof gap**, because every account Ethan can see is reconciled.
   Switch to **Serene**: it says **Needs review** again, because the card
   with the problem and the unresolved transfer are hers.
@@ -85,8 +85,8 @@ Go back to **Household**, open **Month** and choose **two months ago**.
 - **Actual spend** is above **Planned spend** by about $3,100. The month
   note explains it: both aircon units were replaced and the new sofa
   arrived.
-- The check-in still leads with the card's statement gap (a quick fix comes
-  first); open its full insight: **Also this month** lists the **Bigger
+- Money insights still lead with the card's statement gap (a quick fix comes
+  first); press **See all insights**: **Also this month** lists the **Bigger
   question** (the aircon made up most of the $3,128.14 over plan), **Plan
   position** shows the overspend, and the **One-repeat scenario** shows the
   month would end in deficit if one more purchase like the aircon happened.

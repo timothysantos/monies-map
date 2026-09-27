@@ -66,7 +66,7 @@ test.describe("summary workflow", () => {
     await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
     // The Summary check-in follows the scope with the figures: Joyce's
     // one-month Direct range has nothing that needs a look.
-    await expect(page.locator(".financial-insight-summary")).toContainText("Joyce's money check-in");
+    await expect(page.locator(".financial-insight-summary")).toContainText("Joyce's money insights");
     await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText("Nothing in this range needs a look right now.");
 
     // The keyboard reaches and presses it too; desktop has no floating bar.

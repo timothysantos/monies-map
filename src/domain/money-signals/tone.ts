@@ -1,4 +1,4 @@
-// The check-in's tone rules as code (docs/checkin-copy.md, "Tone"). Every
+// The check-in's tone rules as code (docs/money-insights-copy.md, "Tone"). Every
 // approved line, and every optional AI wording around them, must pass:
 // no shame or alarm words, no exclamation marks, no emoji, and no
 // percentage without the money amount beside it.

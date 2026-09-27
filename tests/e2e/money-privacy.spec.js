@@ -15,7 +15,7 @@ test("money values start hidden, reveal together, and cover individual activity"
   const toggle = page.getByRole("button", { name: "Show money totals" });
   await expect(toggle).toBeVisible();
   await expect(page.locator(".metric strong").first()).toHaveText("••••");
-  await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read this insight.");
+  await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read these insights.");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(toggle).toBeVisible();
@@ -31,7 +31,7 @@ test("money values start hidden, reveal together, and cover individual activity"
   await toggle.click();
   await expect(page.getByRole("button", { name: "Hide money totals" })).toBeVisible();
   await expect(page.locator(".metric strong").first()).not.toHaveText("••••");
-  await expect(page.locator(".financial-insight-summary")).not.toContainText("Reveal money totals to read this insight.");
+  await expect(page.locator(".financial-insight-summary")).not.toContainText("Reveal money totals to read these insights.");
 
   await page.reload();
   await expect(page.getByRole("button", { name: "Hide money totals" })).toBeVisible();
@@ -114,20 +114,20 @@ test("revealing totals after a hidden load shows the real money check-in on ever
   for (const [path, api, heading, insightClass] of pages) {
     await gotoPageAfterApi(page, path, api, () => page.getByRole("heading", { name: heading, exact: true }));
     const insight = page.locator(insightClass);
-    await expect(insight, heading).toContainText("Reveal money totals to read this insight.");
+    await expect(insight, heading).toContainText("Reveal money totals to read these insights.");
 
     await page.getByRole("button", { name: "Show money totals" }).first().click();
     const narrative = insight.locator(".financial-insight-narrative");
     await expect(narrative, heading).toBeVisible();
     await expect(narrative, heading).not.toContainText("••••");
-    await insight.getByRole("button", { name: "Read full insight" }).click();
+    await insight.getByRole("button", { name: "See all insights" }).click();
     // The check-in and its map show real amounts at once.
     await expect(insight, heading).toContainText(/\$\d/);
     await expect(insight, heading).not.toContainText("••••");
     await insight.getByRole("button", { name: "Show less" }).click();
 
     await page.getByRole("button", { name: "Hide money totals" }).first().click();
-    await expect(insight, heading).toContainText("Reveal money totals to read this insight.");
+    await expect(insight, heading).toContainText("Reveal money totals to read these insights.");
     await expect(narrative, heading).toHaveCount(0);
     await expect(insight, heading).not.toContainText("$");
   }

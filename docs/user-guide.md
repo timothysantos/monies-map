@@ -31,7 +31,7 @@ appear in this order:
 1. **Summary**: the big picture for a range of months: planned versus actual
    income, spending and savings, where the money went, and your wallet
    balances.
-   ![Summary shows planned and actual totals, a money check-in, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
+   ![Summary shows planned and actual totals, money insights, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
 2. **Month**: the plan for one month (income, budget buckets and planned
    items) next to what was actually spent.
    ![Month shows each plan row with planned, actual and variance](/faq/guide/desktop/thumbs/month-person.webp)
@@ -129,9 +129,9 @@ plan amounts. Amount fields you type into are masked too.
 2. Amounts appear everywhere at once. Select it again to hide them.
 
 The choice is remembered only in that browser. A different browser or a
-cleared browser starts hidden again. The Money check-in stays hidden while
-totals are hidden, because its sentences would reveal the same figures; it
-appears with the real figures as soon as you reveal totals. Edit
+cleared browser starts hidden again. Money insights stay hidden while
+totals are hidden, because their sentences would reveal the same figures;
+they appear with the real figures as soon as you reveal totals. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -213,8 +213,8 @@ each control does, the common tasks, and what changes on a phone.
 
 - **Six cards**: Planned income, Actual income, Planned spend, Actual spend,
   Savings target and Realized savings, added up over the selected range.
-- **Money check-in**: a short, plain-language reading of the figures on
-  screen ([Use the Money check-in](#use-the-money-check-in)).
+- **Money insights**: one thing worth knowing about the figures on screen
+  ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category, with a list of
   categories below it.
 - **Intent vs Outcome**: one card per month comparing planned and actual
@@ -263,7 +263,7 @@ change either.
 - **Six cards**: Planned income, Planned spend, Remaining budget (planned
   income minus planned spend; it says Overplanned when negative), Actual
   spend, Savings target and Spend gap (planned minus actual).
-- **Money check-in** for the month.
+- **Money insights** for the month.
 - **Income**: planned income sources.
 - **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
@@ -310,7 +310,7 @@ to change month.
 - **Totals strip**: Spend, Income, Difference, Transfers and Outflow (Spend
   plus Transfers). In a person view, a shared row counts at the full amount
   first, with that person's share in brackets.
-- **+ Add entry** and the **Money check-in**.
+- **+ Add entry** and **Money insights**.
 - **Filters**: refresh, Search, By wallet, By category, By type and **Reset
   filters**. Whose entries you see follows the view at the top left.
 - **Days**: entries grouped by date, newest first, with each day's net.
@@ -364,7 +364,7 @@ always know you are working on shared money rather than your bank ledger.
   example a trip or home bills). Each shows its currency, number of entries
   and your balance, such as "You owe Serene $108.58" or "Settled up". The **+**
   creates a group.
-- **Money check-in** for the selected group.
+- **Money insights** for the selected group.
 - **Search**, your balance, the group's spend, **Activity history** and
   **+ Add expense**.
 - **Possible split links**: a reminder when imported bank rows may match
@@ -989,11 +989,11 @@ of it. If it leaks, generate a new key under **More shortcut settings** in
 the same section and reinstall on every phone. If you used an older "Register Apple Pay transaction" Shortcut,
 remove it so one purchase cannot create two entries.
 
-## Use the Money check-in
+## Use Money insights
 
-Summary, Month, Entries and Splits each show a **Money check-in**: one thing
+Summary, Month, Entries and Splits each show **Money insights**: one thing
 worth knowing about the figures on screen, a calm way to think about it, and
-a line that zooms out. In a person view it talks to that person (for example
+a line that zooms out. In a person view they talk to that person (for example
 "Serene owes you JP¥26,730 from the Japan trip."). The household view talks
 about shared patterns and never compares the two of you.
 
@@ -1021,25 +1021,25 @@ A small label says what kind of line it is:
 2. If a link sits under them (**Review statement**, **Show those entries**,
    **Settle group** or **Review matches**), select it to open exactly those
    records.
-3. Select **Read full insight** for up to three more things worth knowing,
+3. Select **See all insights** for up to three more things worth knowing,
    now and then a short quote, and the **Money consequence map**.
 
-The check-in changes as you use it. On your next visit it words the same
-fact a different way, gives other lines a turn once one has been shown, and
-starts with what changed ("Down from $42.80 since your last visit."). When
-you fix something it says "Sorted" once. Early in the month it looks ahead
-at bills coming up, mid-month at how spending is pacing, and at the end it
-wraps up. If nothing has changed since you last looked, it says so in one
-short line. What it has shown you is remembered only in this browser;
-nothing about your visits is saved anywhere else.
+Money insights change as you use them. On your next visit they word the
+same fact a different way, give other lines a turn once one has been shown,
+and start with what changed ("Down from $42.80 since your last visit.").
+When you fix something they say "Sorted" once. Early in the month they look
+ahead at bills coming up, mid-month at how spending is pacing, and at the
+end they wrap up. If nothing has changed since you last looked, they say so
+in one short line. What they have shown you is remembered only in this
+browser; nothing about your visits is saved anywhere else.
 
-![The full insight with its Money consequence map](/faq/guide/desktop/thumbs/summary-insight-expanded.webp)
+![All insights with the Money consequence map](/faq/guide/desktop/thumbs/summary-insight-expanded.webp)
 
 The Money consequence map shows money left so far, where you stand against
 the plan, a same-season comparison (when that month is in your range), and
 how far bank statements confirm the figures. It never predicts the future or
-tells you what is safe to spend. The check-in uses the app's own figures and
-never changes them; money left after spending still has to cover bills,
+tells you what is safe to spend. Money insights use the app's own figures and
+never change them; money left after spending still has to cover bills,
 transfers and savings.
 
 On Month or Entries, **See income entries ($X)** opens exactly the income
@@ -1293,9 +1293,9 @@ saves every row or none of them.
 - **Unresolved transfer**: a transfer whose other side is not paired yet.
 - **Reconciliation exception**: a known gap you are tracking until it is
   explained.
-- **Money check-in**: one thing worth knowing about the figures on each
+- **Money insights**: one thing worth knowing about the figures on each
   screen, with a way to think about it and a long view.
-- **Money consequence map**: the check-in's breakdown of money left, plan
+- **Money consequence map**: the Money insights breakdown of money left, plan
   position and how well statements confirm the figures.
 
 ## Default categories

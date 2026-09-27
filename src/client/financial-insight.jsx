@@ -20,9 +20,10 @@ const MAX_INSIGHT_CACHE_ENTRIES = 48;
 const AI_PERSON_PLACEHOLDER = "[selected person]";
 const insightCache = new Map();
 
-// The money check-in: one computed signal worth knowing (with its kind
-// chip, a way to think about it and at most one existing action), a Just
-// for fun line, and the long view. "Read full insight" adds up to three
+// Money insights (the money check-in in code): one computed signal worth
+// knowing (with its kind chip, a way to think about it and at most one
+// existing action), a Just for fun line, and the long view. "See all
+// insights" adds up to three
 // more signals, a fitting quote and the Money consequence map.
 //
 // `checkIn` carries the page's signals (src/domain/money-signals), the
@@ -68,8 +69,8 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
     : null), [facts, headlineFacts]);
   const deterministicNarrative = headlineFacts ? buildDeterministicFinancialInsight(headlineFacts) : "";
   const insightLabel = facts.audienceKind === "person" && facts.audienceName
-    ? `${facts.audienceName}'s money check-in`
-    : "Household money check-in";
+    ? `${facts.audienceName}'s money insights`
+    : "Household money insights";
   const [response, setResponse] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [quote, setQuote] = useState(null);
@@ -196,17 +197,17 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
 
   if (!areTotalsVisible) {
     return (
-      <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight">
+      <section className={`financial-insight ${className}`.trim()} aria-label="Money insights">
         <span className="financial-insight-label">{insightLabel}</span>
         <div className="financial-insight-content">
-          <p className="financial-insight-private-copy">Reveal money totals to read this insight.</p>
+          <p className="financial-insight-private-copy">Reveal money totals to read these insights.</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight" data-checkin-mode={view.mode}>
+    <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" data-checkin-mode={view.mode}>
       <span className="financial-insight-label">{insightLabel}</span>
       <div className="financial-insight-content">
         {headline.kind ? <CheckInChip kind={headline.kind} /> : null}
@@ -266,7 +267,7 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
           onClick={() => setIsExpanded((expanded) => !expanded)}
         >
           {isExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-          {isExpanded ? "Show less" : "Read full insight"}
+          {isExpanded ? "Show less" : "See all insights"}
         </button>
         <div id={detailsId} hidden={!isExpanded}>
           {isExpanded && facts.decisionMap?.enabled ? <FinancialDecisionMap decisionMap={facts.decisionMap} /> : null}

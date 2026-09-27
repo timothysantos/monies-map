@@ -532,7 +532,7 @@ Exit criteria:
 Workers AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
 path. Summary, Month, Entries, and Splits render a deterministic Money
-check-in from their already-loaded figures immediately (see "Money check-in"
+check-in from their already-loaded figures immediately (see "Money insights"
 below), then may request a wording variation around its fact and think line
 only after a stable page/filter state, while the route is
 usable (no editor or save open), and on an in-memory cache miss. A response
@@ -564,7 +564,7 @@ creates a forecast or a safe-to-spend guarantee. Summary and Month own the
 confidence inputs and can route bank-record gaps to Imports; Entries and Splits
 explicitly state when that evidence is outside their page payload.
 
-## Money check-in
+## Money insights (the check-in)
 
 The check-in is a pure, deterministic domain module
 (`src/domain/money-signals/`): one small function per signal over data the
@@ -580,8 +580,8 @@ and the long view, and decides rests, "what changed", sorted, quiet visits
 and the Just for fun line, from `nowMs`, `today`, a stable seed and the
 visit memory, which the client keeps only in localStorage
 (`checkin-visit-memory.js`). The quote library is a separate chunk loaded
-when "Read full insight" opens. Every line passes the tone lint
-(`tone.ts`); all copy is listed in `docs/checkin-copy.md`.
+when "See all insights" opens. Every line passes the tone lint
+(`tone.ts`); all copy is listed in `docs/money-insights-copy.md`.
 
 ## Scenario Planning Standard
 
