@@ -5,6 +5,12 @@ import {
   loadSummaryPage,
   reseedDemo
 } from "./helpers";
+import { SUMMARY_CALM_LINES } from "../../src/domain/money-signals/summary-signals.ts";
+
+// A calm Summary says one of its twelve calm lines, chosen by the range's
+// last month (the year rule), so any of them may show.
+const escapeText = (line) => line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const SUMMARY_CALM = new RegExp(`^(?:${SUMMARY_CALM_LINES.map(escapeText).join("|")})$`);
 
 test.describe("summary workflow", () => {
   test.beforeEach(async ({ page }) => {
@@ -67,7 +73,8 @@ test.describe("summary workflow", () => {
     // The Summary check-in follows the scope with the figures: Joyce's
     // one-month Direct range has nothing that needs a look.
     await expect(page.locator(".financial-insight-summary")).toContainText("Joyce's money insights");
-    await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText("Nothing in this range needs a look right now.");
+    await expect(page.locator(".financial-insight-summary")).toHaveAttribute("data-checkin-mode", "calm");
+    await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText(SUMMARY_CALM);
 
     // The keyboard reaches and presses it too; desktop has no floating bar.
     await expect(page.locator(".mobile-context-sticky-wrap")).toBeHidden();
@@ -189,7 +196,8 @@ test.describe("summary workflow", () => {
     await expect(page).toHaveURL(/scope=direct(&|$)/);
     await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
     await expect(triggerLabel).toHaveText("Joyce · Direct");
-    await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText("Nothing in this range needs a look right now.");
+    await expect(page.locator(".financial-insight-summary")).toHaveAttribute("data-checkin-mode", "calm");
+    await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText(SUMMARY_CALM);
 
     await trigger.click();
     await expect(scopeSection.getByRole("button", { name: "Direct ownership", exact: true })).toHaveClass(/is-active/);
