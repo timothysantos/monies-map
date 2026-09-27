@@ -217,7 +217,7 @@ export const messages = {
     matches: "Matches",
     reviewMatches: "Review matches",
     backToGroup: "Back to split group",
-    entries: "entries",
+    entryCount: (count) => countOf(count, "entry", "entries"),
     allClear: "All clear",
     toReview: (count) => `${count} to review`,
     matchInboxTitle: (count) => `${count} possible split ${count === 1 ? "link" : "links"}`,

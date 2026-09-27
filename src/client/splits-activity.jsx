@@ -153,7 +153,7 @@ export function SplitActivityGroups({
         <header className="split-date-header">
           <strong>{formattedDate}</strong>
           <div className="split-date-actions">
-            <span>{group.items.length} {messages.splits.entries}</span>
+            <span>{messages.splits.entryCount(group.items.length)}</span>
             {onRefreshActivity && !archived ? (
               <button
                 type="button"

@@ -46,6 +46,8 @@ test("count strings use the singular for one and the plural otherwise", () => {
   );
   assert.equal(messages.splits.includedSplitRecords(1), "1 included split record");
   assert.equal(messages.splits.includedSplitRecords(3), "3 included split records");
+  assert.equal(messages.splits.entryCount(1), "1 entry");
+  assert.equal(messages.splits.entryCount(4), "4 entries");
 
   const oneRowConfirm = messages.imports.deleteDiagnosticEntriesConfirm({ count: 1, amount: "$5.00" });
   assert.match(oneRowConfirm, /^Delete the 1 unresolved ledger row shown here now\? It nets to \$5\.00\./);
