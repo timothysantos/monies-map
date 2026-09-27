@@ -84,7 +84,8 @@ function abortError(message) {
 // network. The caller's own signal only guards applying the result: it never
 // cancels a request another consumer may share. If a joined in-flight fetch
 // is cancelled underneath a live caller (an optional attempt or a cache
-// clear), fetch once more instead of failing the route.
+// clear), fetch again, as often as it is cancelled, instead of failing or
+// silently dropping the route load.
 export async function fetchQueryWithLease(queryClient, {
   queryKey,
   fetcher,
@@ -120,15 +121,23 @@ export async function fetchQueryWithLease(queryClient, {
       retry
     };
     let data;
-    try {
-      data = bypassCache
-        ? await queryClient.fetchQuery({ ...options, staleTime: 0 })
-        : await queryClient.ensureQueryData({ ...options, revalidateIfStale: true });
-    } catch (error) {
-      if (!isCancelledError(error) || signal?.aborted) {
-        throw error;
+    let read = () => (bypassCache
+      ? queryClient.fetchQuery({ ...options, staleTime: 0 })
+      : queryClient.ensureQueryData({ ...options, revalidateIfStale: true }));
+    // Each cancellation comes from someone else (a cache clear, a cross-tab
+    // refresh), so recover every time: a live caller whose owner nobody
+    // superseded must end in data or a real failure, never a cancellation it
+    // would treat as "superseded" and leave the route loading forever.
+    for (;;) {
+      try {
+        data = await read();
+        break;
+      } catch (error) {
+        if (!isCancelledError(error) || signal?.aborted) {
+          throw error;
+        }
+        read = () => queryClient.fetchQuery({ ...options, staleTime: 0 });
       }
-      data = await queryClient.fetchQuery({ ...options, staleTime: 0 });
     }
 
     if (signal?.aborted) {
