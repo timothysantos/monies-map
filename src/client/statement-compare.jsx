@@ -6,11 +6,12 @@ import { EmptyState, InlineError } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { moneyToneClass } from "./money-tone-class";
+import { flowTone } from "../domain/money-tone";
 
 const {
   accounts: accountService,
   categories: categoryService,
-  entries: entryService,
   format: formatService
 } = moniesClient;
 
@@ -23,7 +24,7 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
     <section className="settings-statement-compare">
       <strong>{messages.settings.statementCompareSummary(result)}</strong>
       {deltaMinor != null ? (
-        <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(formatService.money(Math.abs(deltaMinor)))}</p>
+        <p className="settings-account-health money-short">{messages.settings.statementCompareDelta(formatService.money(Math.abs(deltaMinor)))}</p>
       ) : null}
       <div className="settings-statement-compare-periods">
         <p>{messages.settings.statementCompareCheckpointPeriod(
@@ -251,7 +252,7 @@ function StatementCompareDisplayRow({ row, label = undefined }) {
     <div className="settings-statement-row">
       {label ? <span className="settings-statement-row-label">{label}</span> : null}
       <span>{formatService.formatDateOnly(row.date)}</span>
-      <strong className={entryService.getAmountToneClass(row.signedAmountMinor)}>{formatService.money(row.signedAmountMinor)}</strong>
+      <strong className={moneyToneClass(flowTone(row.signedAmountMinor))}>{formatService.money(row.signedAmountMinor)}</strong>
       <p>{row.description}</p>
     </div>
   );
@@ -329,7 +330,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
   return (
     <div className="settings-statement-row settings-statement-row-action">
       <span>{formatService.formatDateOnly(row.date)}</span>
-      <strong className={entryService.getAmountToneClass(row.signedAmountMinor)}>{formatService.money(row.signedAmountMinor)}</strong>
+      <strong className={moneyToneClass(flowTone(row.signedAmountMinor))}>{formatService.money(row.signedAmountMinor)}</strong>
       <p>{row.description}</p>
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>

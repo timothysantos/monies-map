@@ -261,6 +261,17 @@ Details and the reasons are in `docs/code-spec.md` and
   the owner to decide instead of shipping it silently. Check the existing
   pattern first (for example the mobile floating "View and scope" bar) before
   proposing a new control.
+- Colour is pastel: state and category surfaces use the pastel tokens in
+  `:root` of `public/styles.css`; text on a pastel surface uses that hue's
+  `-ink` token and meets WCAG AA. Don't introduce saturated fills or new hex
+  colours outside the tokens (design.md, "Pastel palette").
+- Money direction and outcome colours come only from the money tones
+  (`src/domain/money-tone.ts`, rendered with `moneyToneClass`): money in is
+  mint; deficits, over plan and debts are rose; plans are sky; ordinary
+  spending and transfers keep the plain ink. Money colour is text-only in
+  lists and tables, a soft tint on summary pills, and full pastel only for
+  attention banners; one strength per element, and hidden money shows no
+  tone. `tests/money-colour-guard.test.mjs` enforces it.
 - Keep rendering predictable and avoid state graphs that are easy to break.
 - Prefer TanStack Query as the server-state boundary and keep query ownership
   close to the feature slice that consumes it.

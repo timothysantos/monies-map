@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { entryAmountTone } from "../domain/money-tone";
 
 export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
   const splitPercent = getVisibleSplitPercent(entry, viewId);
@@ -41,6 +42,7 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
       entry.accountOwnerLabel
     ].filter(Boolean).join(" - "),
     primarySignedAmountMinor: hasWeightedTotal ? signedTotalAmountMinor : signedAmountMinor,
+    amountTone: entryAmountTone(entry.entryType, signedAmountMinor),
     secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null
   };
 }

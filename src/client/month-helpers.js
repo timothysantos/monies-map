@@ -4,6 +4,7 @@ import {
   textOverlapScore
 } from "./entry-helpers";
 import { getRowDateValue } from "./table-helpers";
+import { headroomTone, spendTone } from "../domain/money-tone";
 
 export function getDefaultMonthSectionOpen() {
   return {
@@ -30,16 +31,18 @@ export function buildMonthMetricCards({ planSections, incomeRows, currentMonthSu
   return [
     {
       label: "Planned income",
-      amountMinor: plannedIncomeMinor
+      amountMinor: plannedIncomeMinor,
+      tone: "plan"
     },
     {
       label: "Planned spend",
-      amountMinor: plannedSpendMinor
+      amountMinor: plannedSpendMinor,
+      tone: "plan"
     },
     {
       label: "Remaining budget",
       amountMinor: remainingBudgetMinor,
-      tone: remainingBudgetMinor >= 0 ? "positive" : "negative",
+      tone: headroomTone(remainingBudgetMinor),
       detail: remainingBudgetMinor >= 0 ? "To allocate" : "Overplanned",
       detailPopover: remainingBudgetMinor >= 0
         ? "Money is still unassigned. Add more planned rows to give the remaining budget a job."
@@ -48,16 +51,17 @@ export function buildMonthMetricCards({ planSections, incomeRows, currentMonthSu
     {
       label: "Actual spend",
       amountMinor: actualSpendMinor,
-      tone: actualSpendMinor > plannedSpendMinor ? "negative" : "positive"
+      tone: spendTone(actualSpendMinor, plannedSpendMinor)
     },
     {
       label: "Savings target",
-      amountMinor: savingsTargetMinor
+      amountMinor: savingsTargetMinor,
+      tone: "plan"
     },
     {
       label: "Spend gap",
       amountMinor: spendGapMinor,
-      tone: spendGapMinor >= 0 ? "positive" : "negative",
+      tone: headroomTone(spendGapMinor),
       detail: "Planned minus actual"
     }
   ];

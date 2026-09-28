@@ -325,7 +325,96 @@ the raw CSV source field and editable preview amount cells are screened while
 hidden, without blocking paste, drag-and-drop, parsing, mapping, or commit. On mobile, the same control floats
 above the bottom navigation, and stacks above the Entries or Splits add button
 when one is present. Financial Insight stays hidden while totals are masked
-because its prose can expose the same figures.
+because its prose can expose the same figures. Hiding money also hides its
+sign: every money tone (below) turns neutral, so a masked `••••` never shows
+red or green.
+
+## Pastel Palette
+
+Colour in the app is pastel. The palette lives once, in `:root` of
+`public/styles.css`; a state or category surface uses a fill token, and text
+on it uses the same hue's `-ink` token, which meets WCAG AA on that fill.
+Do not add saturated fills or new hex colours outside these tokens.
+
+| Token | Fill | Ink | Ink on the panel | Ink on a soft tint | Ink on the full fill | Ink on the Splits wash |
+| --- | --- | --- | --- | --- | --- | --- |
+| mint | `--pastel-mint` #e4f2ea | `--pastel-mint-ink` #17684a | 6.67 | 6.16 | 5.84 | 5.43 |
+| rose | `--pastel-rose` #f9e5e1 | `--pastel-rose-ink` #a3352a | 6.71 | 6.02 | 5.59 | 5.21 |
+| sky | `--pastel-sky` #e3ecf6 | `--pastel-sky-ink` #2f5b86 | 7.02 | 6.36 | 5.94 | 5.53 |
+| lavender | `--pastel-lavender` #ece8f5 | `--pastel-lavender-ink` #5c4d8c | 7.18 | 6.47 | 6.02 | 5.61 |
+| butter | `--pastel-butter` #f8efd3 | `--pastel-butter-ink` #735512 | 6.85 | 6.34 | 6.02 | 5.60 |
+| neutral | `--pastel-neutral` #f6f4ef | `--text` #26231f | 15.48 | 14.72 | 14.23 | 13.22 |
+
+Contrast is against the white panel, the soft tint (the fill at 60% over the
+panel), the full fill, and the Splits wash (the fill at 94% over the darker
+end of the orange panel). `--muted` keeps 4.54 on the neutral fill; on any
+other tint, text uses that tint's ink instead.
+
+## Money Colour
+
+Money is coloured only by its direction or outcome, and only through the
+money tones. `src/domain/money-tone.ts` decides a tone (projections carry it
+as a DTO field where the server builds the figure: metric cards, split group
+balances, split activity); `src/client/money-tone-class.js` renders it as
+`.money-<tone>` at one strength per element.
+
+| Tone | Means | Colour |
+| --- | --- | --- |
+| `in` | money in or a good outcome: income, a refund, received, owed to you, on or under plan, savings made, a matched statement | mint ink |
+| `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | rose ink |
+| `plan` | an intention: planned income, planned spend, a savings target | sky ink |
+| `caution` | something needs a check (a statement not yet checked) | butter ink |
+| `out` | an ordinary outflow: an expense in a list keeps the plain ink and its minus sign; spending is not bad by itself | plain ink |
+| `neutral` | transfers, zero, counts | plain ink |
+
+Exactly on plan, and a fully allocated budget, count as `in`; zero
+realized savings and no income yet are `neutral`.
+
+Three strengths, never two on one element:
+
+- **Text only** (lists and tables, the default): only the amount's text
+  takes the ink; no fill, no border. Entries row amounts and daily net, Month
+  Actual and Variance columns and totals, Intent vs Outcome values and its
+  month total, Splits activity (`you lent`, `you borrowed`, `you received`),
+  Settings statement health, Imports preview amounts and statement rows, and
+  the planned cards on Summary and Month.
+- **Soft tint** (compact summary objects): the fill at 60% with a hairline
+  in the same hue, and every line in the ink. Summary and Month outcome
+  cards (actual income, actual spend over plan, realized savings, remaining
+  budget, spend gap), Entries strip items with a direction (income,
+  difference), the Splits strip balance and group pill balance, wallet pills
+  by statement health, and a statement movement that is off. On the Splits
+  orange a soft tint is a near-opaque wash (94%) so the ink keeps AA. Plans
+  stay text-only so a row of cards does not read as a traffic light.
+- **Emphasis** (rare, one per area): the full fill for a banner that needs
+  attention: the import statement result and the overlap mismatch hint.
+
+Intent vs Outcome bars take the tone's ink as their fill: the plan a light
+sky, actual spend the muted grey, or rose when over plan.
+
+`tests/money-tone.test.mjs` pins the rule; `tests/e2e/money-tones.spec.js`
+reads the computed colours on Summary, Month, Entries and Splits, including
+hidden money; `tests/money-colour-guard.test.mjs` fails when a stylesheet
+colours with the old raw greens and reds, or a component picks a colour
+class by hand.
+
+### Not yet pastel
+
+These status surfaces do not colour money by its direction, and still use
+the older saturated or raw colours. They are listed in the guard
+(`NOT_YET_PASTEL`) and wait for an owner decision on a follow-up: the
+environment banners (#1f66d1, #18824f fills), `.tab-badge` and
+`.dialog-danger` (solid red fills), `.pill.success` and
+`.import-summary-item.is-success` (#1f7a63 text), the Imports inbox,
+intake, dropzone, stage and upload states (raw green borders and text), the
+duplicate-row, warning and error states in Imports, entry chips for bank
+state and blocking exceptions, delete and remove actions (red text), split
+match confidence and settlement lock notices, the edited-row highlight in
+Month tables, the Settings statement-compare result box, and the split group
+chip palette in `entry-row-display.js` (eight hard-coded hex triples). The
+Money insights kind chips already use soft fills; only `Going well` moved to
+the mint ink. On the Splits strip, the white 78% labels are 3.66:1 on the
+orange, below AA.
 
 ## Split Currency Display Contract
 

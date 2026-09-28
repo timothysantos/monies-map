@@ -8,6 +8,7 @@ import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
+import { moneyToneClass } from "./money-tone-class";
 
 const {
   accounts: accountService,
@@ -442,7 +443,7 @@ function OverlapImports({
           ))}
         </ol>
         {overlapMismatchHint ? (
-          <p className="import-overlap-mismatch-hint">{overlapMismatchHint}</p>
+          <p className="import-overlap-mismatch-hint money-short money-emphasis">{overlapMismatchHint}</p>
         ) : null}
       </div>
       <div className="stack">
@@ -724,7 +725,7 @@ function StatementReconciliationBreakdown({
           </ol>
         </div>
       ) : null}
-      <div className={`statement-reconciliation-result ${isMatched ? "is-matched" : ""}`}>
+      <div className={`statement-reconciliation-result ${moneyToneClass(isMatched ? "in" : "short", "emphasis")}`}>
         {isMatched
           ? messages.imports.statementReconciliationMatchedResult({
             projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
@@ -852,7 +853,7 @@ function StatementReconciliationBreakdown({
 
 function StatementReconciliationMovement({ label, value, detail, explanation, isProblem = false }) {
   return (
-    <div className={`statement-reconciliation-movement ${isProblem ? "is-problem" : ""}`}>
+    <div className={`statement-reconciliation-movement ${isProblem ? moneyToneClass("short", "soft") : ""}`}>
       <span className="statement-reconciliation-movement-label">
         {label}
         {explanation ? <HoverExplanation content={explanation} label={`Explain ${label}`} /> : null}

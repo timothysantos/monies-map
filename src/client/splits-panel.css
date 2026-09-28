@@ -42,3 +42,28 @@
 .panel-splits .financial-insight-toggle {
   color: #fff8f3;
 }
+
+/* Money tones on the orange (design.md, "Money colour"). A balance chip on
+   a group pill or in the summary strip is a near-opaque pastel wash, so the
+   tone's ink keeps AA contrast; hidden money drops the wash. Activity
+   amounts sit on light cards and take the ink as text only. */
+.split-group-pill .split-group-pill-content span.split-group-pill-balance:is(.money-in, .money-short),
+.panel-splits .entries-summary-metrics .money-soft:is(.money-in, .money-short) {
+  width: fit-content;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--money-fill) 94%, transparent);
+  color: var(--money-ink);
+}
+
+.panel-splits .entries-summary-metrics .money-soft strong {
+  color: inherit;
+}
+
+html[data-money-privacy="hidden"] .panel-splits .entries-summary-metrics .money-soft {
+  background: none;
+}
+
+.panel-splits .split-date-group .split-activity-trailing :is(.money-in, .money-short) {
+  color: var(--money-ink);
+}
