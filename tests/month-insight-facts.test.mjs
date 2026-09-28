@@ -165,23 +165,10 @@ test("a person's Month check-in never calls a share of someone else's entry a pu
   }
 });
 
-// Month's check-in shows the same "Snapshot confidence" as Summary. The
-// wallet health (statement checkpoint status and unresolved transfers) comes
-// from the view's account pills; the reference account list has none, so a
-// check-in built from it alone always said "No visible proof gap".
-function confidenceLane(accountPills) {
-  const facts = buildMonthInsightFacts({
-    viewId: "person-joyce",
-    viewLabel: "Joyce",
-    monthPage: monthPageFor("person-joyce", "direct_plus_shared"),
-    monthSummary: null,
-    accountPills,
-    formatMoney: (amountMinor) => String(amountMinor),
-    formatMonthLabel: (month) => month
-  });
-  return facts.decisionMap.lanes.find((lane) => lane.id === "confidence");
-}
-
+// The Money consequence map (and its "Snapshot confidence" lane) is
+// retired. The view's wallet health reaches the Month check-in only as the
+// statement-gap Quick fix, whose "Review statement" replaced the map's
+// "Review bank-record gaps" link; the wording facts carry no wallet verdict.
 const pill = (accountId, fields) => ({
   accountId,
   accountName: accountId,
@@ -191,37 +178,40 @@ const pill = (accountId, fields) => ({
   ...fields
 });
 
-test("a statement mismatch in the view's wallets makes the Month check-in say Needs review", () => {
-  const lane = confidenceLane([
+async function monthSignalsWith(accountPills) {
+  const { buildMonthSignals } = await import("../src/domain/money-signals/month-signals.ts");
+  return buildMonthSignals({
+    audience: "person",
+    viewLabel: "Joyce",
+    month: MONTH,
+    today: "2026-09-27",
+    entries: selectMonthInsightEntries(monthPageFor("person-joyce", "direct_plus_shared"), "person-joyce"),
+    planSections: [],
+    incomeRows: [],
+    summary: null,
+    accountPills,
+    formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`
+  });
+}
+
+test("a statement mismatch in the view's wallets is the Month check-in's Quick fix, with Review statement", async () => {
+  const signals = await monthSignalsWith([
     pill("uob-one", { reconciliationStatus: "matched", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: 0 }),
     pill("ocbc-365", { reconciliationStatus: "mismatch", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: -4_280 })
   ]);
-  assert.equal(lane.value, "Needs review");
-  assert.equal(lane.tone, "caution");
-  assert.match(lane.detail, /^1 wallet has a statement mismatch\./);
+  const gap = signals.find((signal) => signal.key === "statement-gap:ocbc-365");
+  assert.equal(gap.kind, "quick_fix");
+  assert.deepEqual(gap.action, { id: "review-statement", label: "Review statement" });
+  assert.match(gap.phrasings.map((phrasing) => phrasing.fact).join(" "), /\$42\.80/);
 });
 
-test("wallets that need a checkpoint or hold an unresolved transfer also need review", () => {
-  const lane = confidenceLane([
-    pill("uob-one", { reconciliationStatus: "needs_checkpoint" }),
-    pill("ocbc-365", { reconciliationStatus: "matched", latestCheckpointMonth: "2025-09", unresolvedTransferCount: 2 })
-  ]);
-  assert.equal(lane.value, "Needs review");
-  assert.match(lane.detail, /^1 wallet needs a statement checkpoint and 2 transfers are unresolved\./);
-});
-
-test("matched wallets with no unresolved transfer show no visible proof gap", () => {
-  const lane = confidenceLane([
+test("matched wallets give no Quick fix, and the wording facts never carry wallet health", async () => {
+  const signals = await monthSignalsWith([
     pill("uob-one", { reconciliationStatus: "matched", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: 0 }),
-    pill("ocbc-365", { reconciliationStatus: "matched", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: 0 })
+    pill("ocbc-365", { reconciliationStatus: "needs_checkpoint", unresolvedTransferCount: 2 })
   ]);
-  assert.equal(lane.value, "No visible proof gap");
-  assert.equal(lane.tone, "positive");
-});
-
-test("without wallet health the Month check-in claims no proof either way", () => {
-  // Not loaded yet, or a view with no wallets: never "No visible proof gap".
-  for (const accountPills of [undefined, null, []]) {
-    assert.equal(confidenceLane(accountPills).value, "Check the full month", String(accountPills));
-  }
+  assert.equal(signals.some((signal) => signal.key.startsWith("statement-gap")), false);
+  const facts = factsFor("person-joyce", "direct_plus_shared");
+  assert.equal(Object.hasOwn(facts, "decisionMap"), false);
+  assert.doesNotMatch(JSON.stringify(facts), /confidence|proof gap|Needs review|checkpoint/i);
 });

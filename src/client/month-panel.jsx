@@ -207,7 +207,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     () => monthService.getVisibleAccounts(accounts, view.id),
     [accounts, view.id]
   );
-  // The Accounts section and the check-in's "Snapshot confidence" read
+  // The Accounts section and the check-in's statement-gap Quick fix read
   // balances and statement health from the view's account pills.
   const accountsWithHealth = useMemo(
     () => monthService.withAccountHealth(visibleAccounts, view.accountPills),
@@ -223,11 +223,9 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     viewId: view.id,
     viewLabel: view.label,
     monthPage: view.monthPage,
-    monthSummary: selectedMonthSummary,
-    accountPills: view.accountPills,
     formatMoney: formatService.unmaskedMoney,
     formatMonthLabel: formatService.formatMonthLabel
-  }), [selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage]);
+  }), [view.id, view.label, view.monthPage]);
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
@@ -254,34 +252,6 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     // may be called sorted from a partial picture.
     ready: Array.isArray(view.accountPills)
   }), [checkInClock, incomeRows, insightEntries, planSections, selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage.month, view.monthPage.selectedScope]);
-  const financialInsightActions = useMemo(() => {
-    const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
-    const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
-    const actions = [];
-    if (insightEntries.some((entry) => entry.entryType === "income")) {
-      actions.push({
-        label: `See income entries (${financialInsightFacts.income})`,
-        onClick: () => handleOpenEntriesForActual({ entryType: "income" })
-      });
-    }
-    if (
-      plannedSpendMinor > 0
-      && actualSpendMinor > plannedSpendMinor
-      && financialInsightFacts.topCategoryName !== "No spending category"
-    ) {
-      actions.push({
-        label: `Review ${financialInsightFacts.topCategoryName}`,
-        onClick: () => handleOpenEntriesForActual({ categoryName: financialInsightFacts.topCategoryName })
-      });
-    }
-    if (financialInsightFacts.decisionMap.needsReview) {
-      actions.push({
-        label: "Review bank-record gaps",
-        onClick: () => navigate("/imports")
-      });
-    }
-    return actions;
-  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.income, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, insightEntries]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -1516,7 +1486,6 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       <FinancialInsight
         facts={financialInsightFacts}
         checkIn={checkIn}
-        actions={financialInsightActions}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-month"
         canRequestWording={canRequestWording}

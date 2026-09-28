@@ -984,85 +984,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   min-height: 32px;
 }
 
-.financial-decision-map {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.financial-decision-map-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--text);
-}
-
-.financial-decision-map-head strong {
-  font-size: 0.9rem;
-}
-
-.financial-decision-map-head span {
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.financial-decision-map-lanes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
-  gap: 8px;
-  margin-top: 9px;
-}
-
-.financial-decision-lane {
-  min-height: 132px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-}
-
-.financial-decision-lane > span {
-  display: block;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.financial-decision-lane > strong {
-  display: block;
-  margin-top: 4px;
-  color: var(--text);
-  font-size: 0.94rem;
-  line-height: 1.35;
-}
-
-.financial-decision-lane > p {
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.financial-decision-lane.is-positive {
-  border-color: color-mix(in srgb, var(--positive) 36%, var(--line));
-}
-
-.financial-decision-lane.is-positive > strong {
-  color: var(--positive);
-}
-
-.financial-decision-lane.is-caution {
-  border-color: color-mix(in srgb, var(--negative) 34%, var(--line));
-  background: color-mix(in srgb, var(--negative) 5%, var(--surface));
-}
-
-.financial-decision-lane.is-caution > strong {
-  color: var(--negative);
-}
-
 .financial-insight-entries {
   margin-top: 2px;
 }
@@ -8945,16 +8866,6 @@ th {
   .financial-insight {
     grid-template-columns: 1fr;
     gap: 5px;
-  }
-
-  .financial-decision-map-head {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .financial-decision-map-lanes {
-    grid-template-columns: 1fr;
   }
 
   .metric-row-summary {

@@ -23,8 +23,8 @@ const insightCache = new Map();
 // Money insights (the money check-in in code): one computed signal worth
 // knowing (with its kind chip, a way to think about it and at most one
 // existing action), a Just for fun line, and the long view. "See all
-// insights" adds up to three
-// more signals, a fitting quote and the Money consequence map.
+// insights" adds up to three more signals, a fitting quote and the page's
+// remaining review links (`actions`).
 //
 // `checkIn` carries the page's signals (src/domain/money-signals), the
 // page and period being viewed (what rotates follows the period, so nothing
@@ -273,7 +273,6 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
           {isExpanded ? "Show less" : "See all insights"}
         </button>
         <div id={detailsId} hidden={!isExpanded}>
-          {isExpanded && facts.decisionMap?.enabled ? <FinancialDecisionMap decisionMap={facts.decisionMap} /> : null}
           {isExpanded && actions.length ? (
             <div className="financial-insight-actions" aria-label="Review related records">
               {actions.map((action) => (
@@ -313,26 +312,6 @@ function localizeFinancialInsightNarrative(narrative, facts) {
     return narrative;
   }
   return narrative.split(AI_PERSON_PLACEHOLDER).join(facts.audienceName);
-}
-
-function FinancialDecisionMap({ decisionMap }) {
-  return (
-    <section className="financial-decision-map" aria-label="Money consequence map">
-      <div className="financial-decision-map-head">
-        <strong>Money consequence map</strong>
-        <span>{decisionMap.needsReview ? "Bank-record checks needed" : "Grounded in visible records"}</span>
-      </div>
-      <div className="financial-decision-map-lanes">
-        {decisionMap.lanes.map((lane) => (
-          <div key={lane.id} className={`financial-decision-lane is-${lane.tone}`}>
-            <span>{lane.label}</span>
-            <strong>{lane.value}</strong>
-            <p>{lane.detail}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
 }
 
 function setInsightCache(key, value) {

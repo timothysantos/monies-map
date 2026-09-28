@@ -46,14 +46,14 @@ test.describe("financial insights", () => {
     expect(thinksOf(SUMMARY_COPY.subscriptions)).toContain((await summaryInsight.locator(".checkin-think").innerText()).trim());
     await expect(summaryInsight).not.toContainText("Before buying something non-essential");
     await expect(summaryInsight.getByRole("button", { name: "See all insights" })).toHaveAttribute("aria-expanded", "false");
-    await expect(summaryInsight.getByLabel("Money consequence map")).toBeHidden();
     await expect(summaryInsight.locator(".checkin-quote")).toHaveCount(0);
     await summaryInsight.getByRole("button", { name: "See all insights" }).click();
     await expect(summaryInsight.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
-    await expect(summaryInsight.getByLabel("Money consequence map")).toBeVisible();
-    await expect(summaryInsight).toContainText("Money left so far");
-    await expect(summaryInsight).toContainText("Income not in this view");
-    await expect(summaryInsight).not.toContainText("One-repeat scenario");
+    // The Money consequence map is retired: the expanded view is the other
+    // signals, a quote and nothing else.
+    await expect(summaryInsight.getByLabel("Money consequence map")).toHaveCount(0);
+    await expect(summaryInsight).not.toContainText(/Money left so far|Plan position|Snapshot confidence|One-repeat scenario/);
+    await expect(summaryInsight.getByRole("button", { name: "Review bank-record gaps" })).toHaveCount(0);
     // Beside a Worth a look, the expanded view has one public-domain quote.
     await expect(summaryInsight.locator(".checkin-quote blockquote")).toHaveCount(1);
     await expect(summaryInsight.locator(".checkin-quote figcaption")).toContainText(/, /);
@@ -85,7 +85,11 @@ test.describe("financial insights", () => {
     await expect(also).toContainText("Also this month");
     await expect(also.locator("li")).toHaveCount(2);
     await expect(also).toContainText("Food went $63.19 over its $650 plan.");
-    await expect(monthInsight.getByLabel("Money consequence map")).toBeVisible();
+    // No map, and none of the links that sat under it: the Quick fix and the
+    // Worth a look carry their own actions.
+    await expect(monthInsight.getByLabel("Money consequence map")).toHaveCount(0);
+    await expect(monthInsight.locator(".financial-insight-actions")).toHaveCount(0);
+    await expect(monthInsight).not.toContainText(/See income entries|Review bank-record gaps/);
   });
 
   // A quote is never shown beside a bigger question. A $2,000 one-off makes
@@ -107,89 +111,94 @@ test.describe("financial insights", () => {
     const bigger = insight.locator(".checkin-also li").filter({ hasText: "Bigger question" });
     await expect(bigger).toContainText(/Courts Megastore Tampines/);
     await expect(bigger).toContainText("$1,181.79 over plan");
-    await expect(insight.getByLabel("Money consequence map")).toBeVisible();
     await page.waitForTimeout(600);
     await expect(insight.locator(".checkin-quote")).toHaveCount(0);
   });
 
-  // Month's check-in reads the same wallet health as Summary's: a statement
-  // mismatch, a missing statement checkpoint or an unresolved transfer in
-  // the view's wallets makes "Snapshot confidence" say "Needs review". The
-  // Month Accounts section shows the same health, and a statement gap is
-  // the check-in's Quick fix.
-  test("the month check-in's snapshot confidence follows the view's statement checkpoints", async ({ page }) => {
+  // Month's check-in reads the view's wallet health from the same account
+  // pills as the Month Accounts section: a statement that does not match is
+  // the check-in's Quick fix, with "Review statement". A missing checkpoint
+  // is shown by the Accounts section only; the check-in claims nothing about
+  // it (the Money consequence map and its "Needs review" lane are retired).
+  test("the month check-in's statement Quick fix follows the view's statement checkpoints", async ({ page }) => {
     const monthUrl = "/month?view=person-joyce&month=2026-05&scope=direct_plus_shared";
-    const openMonthMap = async () => {
+    const openMonth = async () => {
       await gotoPageAfterApi(page, monthUrl, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
       const insight = page.locator(".financial-insight-month");
       await insight.getByRole("button", { name: "See all insights" }).click();
-      const map = insight.getByLabel("Money consequence map");
-      await expect(map).toBeVisible();
-      return map;
+      return insight;
     };
     const pills = await loadSummaryAccountPills(page, { view: "person-joyce" });
     const checked = pills.accountPills.filter((account) => account.reconciliationStatus === "needs_checkpoint");
     expect(checked.map((account) => account.accountName)).toEqual(["Citi Rewards", "UOB Lady's"]);
 
-    // The seed has no statement checkpoints for Joyce's cards.
-    let map = await openMonthMap();
-    await expect(map).toContainText("Needs review");
-    await expect(map).toContainText("2 wallets need a statement checkpoint");
+    // The seed has no statement checkpoints for Joyce's cards: no Quick fix
+    // about a statement, and no verdict about the missing checkpoints.
+    let insight = await openMonth();
+    await expect(insight).not.toContainText(/statement|Needs review|proof gap/i);
+    await expect(insight.getByLabel("Money consequence map")).toHaveCount(0);
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("No statement checkpoint yet");
 
-    // Every card reconciled to its May statement: no visible proof gap.
+    // Every card reconciled to its May statement: still nothing to fix.
     for (const account of checked) {
       await postJson(page, "/api/accounts/reconcile", { accountId: account.accountId, checkpointMonth: "2026-05", statementBalanceMinor: account.balanceMinor });
     }
-    map = await openMonthMap();
-    await expect(map).toContainText("No visible proof gap");
-    await expect(map).not.toContainText("Needs review");
+    insight = await openMonth();
+    await expect(insight).not.toContainText(/statement|Needs review|proof gap/i);
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("Reconciled to May 2026 statement");
 
-    // One statement $42.80 away from the ledger: Needs review, and the
-    // check-in's Quick fix names it.
+    // One statement $42.80 away from the ledger: the check-in's Quick fix
+    // names it, and its Review statement opens Imports.
     const lady = checked.find((account) => account.accountName === "UOB Lady's");
     await postJson(page, "/api/accounts/reconcile", { accountId: lady.accountId, checkpointMonth: "2026-05", statementBalanceMinor: lady.balanceMinor - 4_280 });
-    map = await openMonthMap();
-    await expect(map).toContainText("Needs review");
-    await expect(map).toContainText("1 wallet has a statement mismatch");
-    await expect(map).not.toContainText("No visible proof gap");
+    insight = await openMonth();
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("May 2026 statement is off by $42.80");
-    const insight = page.locator(".financial-insight-month");
     await expect(insight.getByText(/UOB Lady's.*\$42\.80|\$42\.80.*UOB Lady's/).first()).toBeVisible();
+    await expect(insight.getByRole("button", { name: "Review bank-record gaps" })).toHaveCount(0);
+    const quickFix = insight.locator(".checkin-also li").filter({ hasText: "Quick fix" }).filter({ hasText: "$42.80" });
+    const headlineIsGap = await insight.locator(".checkin-fact").filter({ hasText: "$42.80" }).count();
+    if (headlineIsGap) {
+      await insight.getByRole("button", { name: "Review statement" }).click();
+      await expect(page).toHaveURL(/\/imports/);
+    } else {
+      await expect(quickFix).toHaveCount(1);
+    }
   });
 
   // The Month check-in counts what the Actual spend card counts: every entry
   // for the household; a person's own entries in the scope for a person view.
-  // The consequence map's plan lane is the check-in's spend against the
-  // plan, so it must equal the cards in every view and scope.
+  // The wording request carries that spend, so it must equal the card in
+  // every view and scope.
   test("the month check-in spends what the Actual spend card shows in every view and scope", async ({ page }) => {
+    const bodies = [];
+    await page.route("**/api/ai-assist/financial-insight", async (route) => {
+      bodies.push(route.request().postDataJSON());
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
+    });
     const views = [
       ["household", "Household", ["direct_plus_shared"]],
       ["person-joyce", "Joyce", ["direct", "shared", "direct_plus_shared"]],
       ["person-tim", "Tim", ["direct", "shared", "direct_plus_shared"]]
     ];
-    const laneByView = {};
+    const spendByView = {};
     for (const [viewId, label, scopes] of views) {
       for (const scope of scopes) {
         const data = await loadMonthPage(page, { view: viewId, month: "2026-05", scope });
-        const card = (name) => data.monthPage.metricCards.find((item) => item.label === name).amountMinor;
-        const varianceMinor = card("Actual spend") - card("Planned spend");
-        const expected = varianceMinor > 0 ? `${money(varianceMinor)} over plan` : `${money(-varianceMinor)} unspent`;
+        const card = data.monthPage.metricCards.find((item) => item.label === "Actual spend").amountMinor;
+        const before = bodies.length;
         await gotoPageAfterApi(page, `/month?view=${viewId}&month=2026-05&scope=${scope}`, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
         await expect(page.locator(".month-label-view")).toHaveText(label);
         const insight = page.locator(".financial-insight-month");
         await expect(insight).toContainText(viewId === "household" ? "Household money insights" : `${label}'s money insights`);
-        await insight.getByRole("button", { name: "See all insights" }).click();
-        const planLane = insight.locator(".financial-decision-lane").filter({ hasText: "Plan position" }).locator("strong");
-        await expect(planLane, `${viewId} ${scope}`).toHaveText(expected);
-        laneByView[`${viewId}:${scope}`] = expected;
+        await expect.poll(() => bodies.length, { message: `${viewId} ${scope} wording request`, timeout: 15_000 }).toBeGreaterThan(before);
+        expect(bodies.at(-1).facts.spend, `${viewId} ${scope}`).toBe(money(card));
+        spendByView[`${viewId}:${scope}`] = bodies.at(-1).facts.spend;
       }
     }
     // A person's figures are theirs, not the household's, and scopes differ.
-    expect(laneByView["person-joyce:direct_plus_shared"]).not.toBe(laneByView["household:direct_plus_shared"]);
-    expect(laneByView["person-tim:direct_plus_shared"]).not.toBe(laneByView["household:direct_plus_shared"]);
-    expect(laneByView["person-joyce:direct"]).not.toBe(laneByView["person-joyce:shared"]);
+    expect(spendByView["person-joyce:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
+    expect(spendByView["person-tim:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
+    expect(spendByView["person-joyce:direct"]).not.toBe(spendByView["person-joyce:shared"]);
   });
 
   test("the month wording request sends the person's scoped facts and headline, and asks again when the scope changes", async ({ page }) => {
@@ -231,7 +240,11 @@ test.describe("financial insights", () => {
     expect(bodies[1].facts.spend).not.toBe(bodies[0].facts.spend);
   });
 
-  test("entries and splits check-ins keep their filters' actions and maps", async ({ page }) => {
+  // The links that sat under the retired map are gone: "See income entries"
+  // and "Review largest expense" belonged to no signal (the five largest
+  // line carries its own "Show those entries"). Splits keeps its bank-match
+  // link, which its Quick fix owns.
+  test("entries and splits check-ins show no map and no orphan links", async ({ page }) => {
     await postJson(page, "/api/entries/create", {
       date: "2026-05-23",
       description: "Playwright May salary",
@@ -250,32 +263,16 @@ test.describe("financial insights", () => {
     );
     const entriesInsight = page.locator(".financial-insight-entries");
     await expect(entriesInsight).toContainText("Tim's money insights");
-    await expect(entriesInsight.locator(".financial-insight-content > .checkin-chip")).toBeVisible();
-    await expect(entriesInsight.locator(".checkin-fact")).not.toBeEmpty();
+    await expect(entriesInsight.locator(".financial-insight-narrative")).not.toBeEmpty();
     await expect(entriesInsight).not.toContainText("Before buying something non-essential");
     await entriesInsight.getByRole("button", { name: "See all insights" }).click();
-    await expect(entriesInsight.getByLabel("Money consequence map")).toContainText("Check the full month");
-    const incomeAction = entriesInsight.getByRole("button", { name: /See income entries/ });
-    const incomeActionLabel = await incomeAction.textContent();
-    const incomeAmount = incomeActionLabel?.match(/\(([^)]+)\)/)?.[1] ?? "";
-    await expect(incomeAction).toBeVisible();
-    await incomeAction.click();
-    await expect(page).toHaveURL(/entry_type=income/);
-    await expect(page.locator(".entries-totals-item").filter({ hasText: "Income" })).toContainText(incomeAmount);
-
-    await gotoPageAfterApi(
-      page,
-      "/entries?view=person-tim&month=2026-05&scope=direct_plus_shared",
-      "/api/entries-page",
-      () => page.getByRole("heading", { name: "Entries", exact: true })
-    );
-    const resetEntriesInsight = page.locator(".financial-insight-entries");
-    await resetEntriesInsight.getByRole("button", { name: "See all insights" }).click();
-    await resetEntriesInsight.getByRole("button", { name: "Review largest expense" }).click();
-    await expect(page).toHaveURL(/entry_id=/);
+    await expect(entriesInsight.getByRole("button", { name: "Show less" })).toBeVisible();
+    await expect(entriesInsight.getByLabel("Money consequence map")).toHaveCount(0);
+    await expect(entriesInsight.locator(".financial-insight-actions")).toHaveCount(0);
+    await expect(entriesInsight).not.toContainText(/See income entries|Review largest expense|Investigation evidence|Check the full month/);
 
     // A search does not change what the Splits check-in says about the
-    // group; the map still says it measures settlement obligations.
+    // group, and no map follows it.
     await gotoPageAfterApi(
       page,
       "/splits?view=person-tim&month=2026-06&split_group=split-group-none&split_search=Shopee",
@@ -286,7 +283,8 @@ test.describe("financial insights", () => {
     await expect(splitsInsight).toContainText("Tim's money insights");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Joyce \$260\.25/i);
     await splitsInsight.getByRole("button", { name: "See all insights" }).click();
-    await expect(splitsInsight.getByLabel("Money consequence map")).toContainText("Settlement obligations");
+    await expect(splitsInsight.getByLabel("Money consequence map")).toHaveCount(0);
+    await expect(splitsInsight).not.toContainText(/Settlement obligations|What this view measures/);
   });
 
   test("the entries check-in's action filters the list to the entries it names", async ({ page }) => {
