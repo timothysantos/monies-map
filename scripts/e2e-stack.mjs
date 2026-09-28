@@ -134,7 +134,15 @@ export async function startStack(stack, { timeoutMs = 120_000, keepState = false
   await Promise.all([stack.uiPort, stack.apiPort, stack.inspectorPort].map(assertPortFree));
   await mkdir(path.dirname(stack.serverLog), { recursive: true });
   const log = createWriteStream(stack.serverLog);
-  const env = { ...process.env, WRANGLER_SEND_METRICS: "false", VITE_API_ORIGIN: stack.apiOrigin };
+  // X_LOCAL_OBSERVABILITY=false: since wrangler 4.118 `wrangler dev` records
+  // every request's trace for its Local Explorer by default, which slows page
+  // requests by about a third locally. The tests never read those traces.
+  const env = {
+    ...process.env,
+    WRANGLER_SEND_METRICS: "false",
+    X_LOCAL_OBSERVABILITY: "false",
+    VITE_API_ORIGIN: stack.apiOrigin
+  };
   const launch = (label, args, extraEnv = {}) => {
     const child = spawn(process.execPath, args, {
       detached: true,

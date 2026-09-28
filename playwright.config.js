@@ -28,6 +28,9 @@ export default defineConfig({
     ? {
         command: "npm run dev:test:servers",
         url: "http://127.0.0.1:5173/api/health",
+        // Skip wrangler dev's request-trace capture, as the sharded stacks do
+        // (scripts/e2e-stack.mjs).
+        env: { X_LOCAL_OBSERVABILITY: "false" },
         reuseExistingServer: !process.env.CI,
         stdout: "pipe",
         stderr: "pipe",
