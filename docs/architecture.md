@@ -555,14 +555,14 @@ the deterministic matchers already selected. The ledger, D1 data, category
 rules, checkpoints, reconciliation calculations, and import inbox stay
 authoritative.
 
-The same component carries a deterministic Money consequence map for
-full-cash-flow views. The map separates the recorded surplus from free cash,
-shows planned-versus-actual spend, compares the same calendar month only when
-that matching month is already loaded, exposes reconciliation and transfer
-proof gaps, and can show one clearly labelled repeat-expense scenario. It never
-creates a forecast or a safe-to-spend guarantee. Summary and Month own the
-confidence inputs and can route bank-record gaps to Imports; Entries and Splits
-explicitly state when that evidence is outside their page payload.
+The Money consequence map that used to sit under "See all insights" was
+retired in September 2026: it repeated what the signals say, and its
+one-repeat scenario bordered on a forecast. Plan variance, the already-loaded
+same-season comparison and bank-proof gaps are now check-in signals only (a
+plan Worth a look or Bigger question, the same-season Long view and the
+statement-gap Quick fix with "Review statement"), and the AI facts carry no
+map. Nothing in Money insights creates a forecast or a safe-to-spend
+guarantee.
 
 ## Money insights (the check-in)
 

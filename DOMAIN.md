@@ -1144,9 +1144,10 @@ These boundaries are important enough to preserve explicitly:
   Summary, Month, Entries, or Splits figures. It updates with that view's
   filters and may use optional AI wording, but it is not saved as a Monthly
   Note, does not recalculate totals, and never changes the ledger or plan. A
-  financial insight must identify whether its figures are full cash flow, a
-  filtered investigation, or a split-settlement obligation. It is never a
-  forecast, a safe-to-spend figure or a savings target. Its user-facing name
+  financial insight speaks only of what its page counts: full cash flow on
+  Summary and Month, the month's whole list on Entries (whatever filter is
+  on), and settlement obligations on Splits. It is never a forecast, a
+  safe-to-spend figure or a savings target. Its user-facing name
   is `Money insights` ("Household money insights", "Ethan's money
   insights"); code calls it the check-in (`money-signals/checkin.ts`,
   `FinancialInsight`).
@@ -1193,9 +1194,13 @@ These boundaries are important enough to preserve explicitly:
   `quiet visit` is a visit soon after the last one with nothing new, shown
   as one short line; `sorted` is the one-time Going well line when a quick
   fix clears.
-- Money consequence map:
-  a `Money consequence map` is the deterministic evidence inside a
-  Financial insight, under "See all insights". It separates recorded surplus from free cash, actual
-  spending from the plan, an already-loaded same-season comparison, bank-proof
-  confidence, and a transparent one-repeat scenario. It does not project the
-  future, determine a savings target, or certify the ledger.
+- Money consequence map (retired):
+  the `Money consequence map` was a row of cards under "See all insights"
+  (money left so far, plan position, a same-season comparison, snapshot
+  confidence and a one-repeat scenario). It was removed from every page in
+  September 2026 because it repeated what the check-in signals already say;
+  the one-repeat scenario went with it because it bordered on a forecast.
+  Plan variance, the same-season comparison and bank-proof gaps are now
+  only check-in signals (a Worth a look or Bigger question about the plan,
+  the same-season Long view, the statement-gap Quick fix). Do not reuse the
+  name.

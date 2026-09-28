@@ -1023,8 +1023,8 @@ A small label says what kind of line it is:
 2. If a link sits under them (**Review statement**, **Show those entries**,
    **Settle group** or **Review matches**), select it to open exactly those
    records.
-3. Select **See all insights** for up to three more things worth knowing,
-   now and then a short quote, and the **Money consequence map**.
+3. Select **See all insights** for up to three more things worth knowing
+   and now and then a short quote.
 
 Money insights change month by month. Each month they word the same fact a
 different way and pick a different Just for fun line and quote, so none of
@@ -1037,17 +1037,11 @@ end they wrap up. If nothing has changed since you last looked, they say so
 in one short line. What they have shown you is remembered only in this
 browser; nothing about your visits is saved anywhere else.
 
-![All insights with the Money consequence map](/faq/guide/desktop/thumbs/summary-insight-expanded.webp)
+![All insights expanded](/faq/guide/desktop/thumbs/summary-insight-expanded.webp)
 
-The Money consequence map shows money left so far, where you stand against
-the plan, a same-season comparison (when that month is in your range), and
-how far bank statements confirm the figures. It never predicts the future or
-tells you what is safe to spend. Money insights use the app's own figures and
-never change them; money left after spending still has to cover bills,
-transfers and savings.
-
-On Month or Entries, **See income entries ($X)** opens exactly the income
-entries it counted.
+Money insights use the app's own figures and never change them. They never
+predict the future or tell you what is safe to spend; money left after
+spending still has to cover bills, transfers and savings.
 
 ## Manage people
 
@@ -1299,8 +1293,6 @@ saves every row or none of them.
   explained.
 - **Money insights**: one thing worth knowing about the figures on each
   screen, with a way to think about it and a long view.
-- **Money consequence map**: the Money insights breakdown of money left, plan
-  position and how well statements confirm the figures.
 
 ## Default categories
 

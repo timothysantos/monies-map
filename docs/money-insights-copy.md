@@ -28,8 +28,8 @@ fixes (planned bills with no entry) keep their place, and Summary still
 leads with a statement gap.
 Long view is a separate quieter line; Just for fun is one line shown only
 when the headline is not a Bigger question. "See all insights" adds up
-to three more signals, one quote (never beside a Bigger question) and
-the Money consequence map.
+to three more signals and one quote (never beside a Bigger question);
+Splits also keeps its link to review bank matches there.
 
 ## The year rule
 

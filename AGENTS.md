@@ -217,11 +217,10 @@ Details and the reasons are in `docs/code-spec.md` and
 - Keep deterministic data and existing review controls authoritative. AI may
   phrase, rank, or propose a draft, but must not certify, import, categorize,
   skip, merge, delete, or link finance records by itself.
-- A Money consequence map is a deterministic, read-only projection. It may
-  show recorded cash flow, plan variance, a same-season comparison that is
-  already loaded, a clearly labelled one-repeat scenario, and explicit bank
-  proof gaps. It must never present a forecast, safe-to-spend promise, or
-  savings target as an AI conclusion.
+- Money insights are a deterministic, read-only projection. They may show
+  recorded cash flow, plan variance, a same-season comparison that is
+  already loaded, and explicit bank-proof gaps. They must never present a
+  forecast, safe-to-spend promise, or savings target as an AI conclusion.
 - Never send credentials, Shortcut tokens, original bank files, raw PDF/image
   binaries, full account/card numbers, or unbounded notes to AI. For a
   statement fallback, require explicit consent and send only bounded,

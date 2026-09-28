@@ -276,9 +276,9 @@ Cache class:
 
 The Month route load fetches the view's `summaryAccountPills` beside
 `monthPage` (same cache bypass, shared query cache with Summary). The Month
-Accounts section and the money check-in's "Snapshot confidence" read
-balances, statement checkpoint status and unresolved transfers from those
-pills; the reference account list has none of them.
+Accounts section reads balances, statement checkpoint status and unresolved
+transfers from those pills, and the money check-in's statement-gap Quick fix
+reads their statement status; the reference account list has none of them.
 
 ### `monthPlanLinkCandidates`
 

@@ -236,11 +236,12 @@ with concrete numbers and exact wording, and one that it stays silent.
 Actions may only reuse navigations the page already has. Summary's signals
 are on the first screen: keep them compact, and put anything large (like the
 quotes) behind a dynamic import.
-The Money consequence map is deterministic UI evidence, not model output. A
-same-season lane requires an already-loaded matching calendar month; a
-one-repeat lane must identify itself as a scenario rather than a forecast; and
-bank-confidence wording requires explicit reconciliation/transfer signals from
-the page rather than inference from a filtered ledger view.
+Money insights are deterministic UI evidence, not model output. A
+same-season line requires an already-loaded matching calendar month, and a
+statement-gap Quick fix requires the page's explicit reconciliation status,
+never an inference from a filtered ledger view. The retired Money
+consequence map must not come back as a second copy of the signals
+(`tests/money-consequence-map-retired.test.mjs`).
 
 ## Query State Chart
 
