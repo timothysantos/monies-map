@@ -10,7 +10,8 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-import { CALM_LINE_TEMPLATES, QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
+import { CALM_LINE_TEMPLATES } from "../src/domain/money-signals/calm-lines.ts";
+import { QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
 import { ENTRIES_CALM_LINE, ENTRIES_COPY, ENTRIES_TRIVIA_ROTATION, TOP_FIVE_ONE_OFF_SHARE } from "../src/domain/money-signals/entries-signals.ts";
 import { CATEGORY_OVER_MINOR, CATEGORY_OVER_RATIO, MONTH_COPY, MONTH_TRIVIA_ROTATION, monthCalmLine } from "../src/domain/money-signals/month-signals.ts";
 import { QUOTES, quoteCitation } from "../src/domain/money-signals/quotes.ts";

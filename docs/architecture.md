@@ -587,6 +587,11 @@ lead, the Just for fun line, the quote, the calm line) follows the period
 being viewed (`rotation.ts`): for one page and view nothing repeats within
 twelve consecutive periods, whatever the browser remembers or forgets. The
 quote library is a separate chunk loaded when "See all insights" opens.
+Summary's signals and copy pools are a separate chunk too: its import
+starts with the Summary route's own, the route never waits for it, and
+until it arrives the insights show only their frame
+(`money-insights-loader.js`). App loads the active route's code beside its
+data, so in practice the insights paint complete the first time.
 Every line passes the tone lint (`tone.ts`); all copy and each page's
 rotation are listed in `docs/money-insights-copy.md`.
 

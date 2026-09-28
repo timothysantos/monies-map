@@ -5,7 +5,7 @@
 // months (a finished trip), so its Just for fun types each read a different
 // side of it, one per month.
 import { addMonths, approxMoney, daysBetween, joinWithAnd, monthYear, phrase, shortDay, sortedLine, sum, tidyName, timesWord, weekdayIndex, weekdayNameOf, type CopyCatalogue, type FormatMoney } from "./format";
-import { calmLinesFor } from "./checkin";
+import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { triviaSignal } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";

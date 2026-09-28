@@ -30,11 +30,11 @@ import {
 } from "./ui-components";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
+import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
-import { buildSummarySignals, SUMMARY_CALM_LINES, SUMMARY_TRIVIA_ROTATION } from "../domain/money-signals/summary-signals";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -79,10 +79,12 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
   );
   const checkInClock = useCheckInClock();
-  const checkIn = useMemo(() => ({
+  const summaryInsights = useSummaryInsights();
+  // Null until the insights module arrives: the insights show their frame.
+  const checkIn = useMemo(() => (summaryInsights ? {
     memoryKey: checkInMemoryKey("summary", view.id),
     contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "overall" : focusState.selectedFocusMonth, view.selectedScope].join("|"),
-    signals: buildSummarySignals({
+    signals: summaryInsights.buildSummarySignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       today: checkInClock.today,
@@ -97,11 +99,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     page: "summary",
     // The range's last month is the period Summary rotates by.
     period: safeSummaryPage.rangeMonths.at(-1) ?? checkInClock.today.slice(0, 7),
-    triviaRotation: SUMMARY_TRIVIA_ROTATION,
-    calmLines: SUMMARY_CALM_LINES,
+    triviaRotation: summaryInsights.SUMMARY_TRIVIA_ROTATION,
+    calmLines: summaryInsights.SUMMARY_CALM_LINES,
     alsoLabel: "Also in this range",
     clock: checkInClock
-  }), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, view.id, view.label, view.selectedScope]);
+  } : null), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
     if (action.id === "review-statement") {
       handleOpenImports();

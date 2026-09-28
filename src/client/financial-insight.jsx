@@ -33,13 +33,43 @@ const insightCache = new Map();
 // What was shown is remembered only in this browser
 // (checkin-visit-memory.js), and only adds rests, quiet visits and sorted.
 //
+// `checkIn` is null while a page's insights module is still loading
+// (Summary's loads beside the first screen: money-insights-loader.js); the
+// insights then show their frame only, one line high, and no AI request.
+//
 // Optional AI wording is in-memory only: it avoids repeat requests while
 // the app is open without retaining financial wording in storage.
 // canRequestWording is the route's "usable" state (loaded, no editor or
 // save in progress): AI wording never competes with protected work, and the
 // computed wording is shown until a valid response arrives. The AI may only
 // choose words around the fact and the think line, which stay verbatim.
-export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction, className = "", canRequestWording = false }) {
+export function FinancialInsight(props) {
+  return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
+}
+
+function insightLabelFor(facts) {
+  return facts.audienceKind === "person" && facts.audienceName
+    ? `${facts.audienceName}'s money insights`
+    : "Household money insights";
+}
+
+// The insights' frame while their module loads: the label and one empty
+// line, with the same box as the insights, so nothing new is said.
+function FinancialInsightFrame({ facts, className = "" }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  return (
+    <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" aria-busy={areTotalsVisible ? "true" : undefined} data-checkin-mode={areTotalsVisible ? "loading" : undefined}>
+      <span className="financial-insight-label">{insightLabelFor(facts)}</span>
+      <div className="financial-insight-content">
+        {areTotalsVisible
+          ? <p className="financial-insight-narrative" aria-hidden="true">{"\u00a0"}</p>
+          : <p className="financial-insight-private-copy">Reveal money totals to read these insights.</p>}
+      </div>
+    </section>
+  );
+}
+
+function FinancialInsightCheckIn({ facts, checkIn, actions = [], onCheckInAction, className = "", canRequestWording = false }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const { memoryKey, contextKey, signals, page, period, triviaRotation, calmLines, clock, alsoLabel = "Also worth knowing", ready = true } = checkIn;
   const seed = `${memoryKey}|${contextKey}`;
@@ -73,9 +103,7 @@ export function FinancialInsight({ facts, checkIn, actions = [], onCheckInAction
     }
     : null), [facts, headlineFacts]);
   const deterministicNarrative = headlineFacts ? buildDeterministicFinancialInsight(headlineFacts) : "";
-  const insightLabel = facts.audienceKind === "person" && facts.audienceName
-    ? `${facts.audienceName}'s money insights`
-    : "Household money insights";
+  const insightLabel = insightLabelFor(facts);
   const [response, setResponse] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [quote, setQuote] = useState(null);

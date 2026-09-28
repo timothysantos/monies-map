@@ -1533,7 +1533,22 @@ adds no endpoint or payload. The code is in `src/domain/money-signals/`:
 - **Quotes.** `quotes.ts` holds public-domain quotes, each copied exactly
   from the source it names (author, work, year and the text checked against
   the original). It is loaded with a dynamic import when "See all insights"
-  opens, so it never weighs on the first screen. Add a quote at the end of
+  opens, so it never weighs on the first screen.
+- **Loading.** Summary is the first screen, so its signals and every copy
+  pool (`summary-signals.ts` with `SUMMARY_COPY`, the statement gap's copy
+  and the calm lines in `calm-lines.ts`) are a chunk of their own.
+  `src/client/money-insights-loader.js` imports it; the Summary route loader
+  (`route-modules.js`) starts that import beside the route's own, and App
+  loads the active route's code while its data loads, so the insights have
+  normally arrived when the panel first renders. The panel never waits:
+  until the module arrives the insights show their frame (the label and
+  one empty line) and ask AI for nothing. `npm run check:bundle` fails if a
+  line of any pool lands in a first-screen file. The engine (`checkin.ts`)
+  must not import `format.ts`, or the shared module becomes an extra
+  first-screen file; it keeps its own copies of `fill`, `stableHash`,
+  `weekdayName` and `daysBetween` (`engineText`), which a test keeps equal
+  to `format.ts`'s. Month, Entries and Splits keep their signals in their
+  own route chunks. Add a quote at the end of
   the list; keep a calm quote in every column (the test checks).
 
 To add a signal: write the test first in the page's

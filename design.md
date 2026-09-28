@@ -89,7 +89,12 @@ Just for fun line (never beside a bigger question) and the Long view line.
 `See all insights` reveals up to three more signals and at most one quote
 (never beside a bigger question); on Splits also the bank-match review link,
 which its Quick fix owns. Expanding is local presentation state and must not trigger
-an additional AI request; it loads the quote library chunk on demand. The
+an additional AI request; it loads the quote library chunk on demand.
+Summary's signals and copy pools are a chunk of their own
+(`money-insights-loader.js`, started by the Summary route loader): until
+it arrives `checkIn` is null and the component renders its frame (the
+label and one empty line, `data-checkin-mode="loading"`, `aria-busy`), with
+no words of its own and no wording request. The
 component (`financial-insight.jsx`) composes the check-in with
 `composeCheckIn` from the page's signals, the page and period (what rotates
 follows the period: `money-signals/rotation.ts`), the page's trivia schedule
