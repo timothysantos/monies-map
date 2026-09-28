@@ -217,3 +217,24 @@ The remaining live-model behavior is intentionally not a release gate: the
 same response-validation and unavailable paths are covered locally, while the
 ordinary product workflow is proven in the no-AI configuration. Deployment
 must preserve this fully working no-AI path.
+
+### Update, 28 September 2026: Money consequence map retired
+
+The owner found the Money consequence map confusing and a repeat of the
+check-in signals, so it is gone from Summary, Month, Entries and Splits
+(branch `insights-simplify`). The one-repeat scenario went with it, because
+it bordered on a forecast. For the AI boundary:
+
+- Privacy: the wording request's facts no longer carry the map's lanes, so
+  less computed text leaves the browser. The Worker reads only the named
+  fact fields; a tab still open on an older version that sends its map has
+  the map dropped before the prompt is built
+  (`tests/ai-assistance-routes.test.mjs`).
+- Cost: unchanged. The prompt, the one debounced request per headline and
+  the allowance are the same.
+- Writes: unchanged. The map never wrote anything; its "Review bank-record
+  gaps" link is replaced by the statement-gap Quick fix's own "Review
+  statement", which opens the same Imports page.
+- No-AI path: unchanged. The check-in renders its computed wording at once,
+  and `tests/money-consequence-map-retired.test.mjs` fails if any part of
+  the map comes back.
