@@ -47,7 +47,10 @@ const persistencePath = path.join(tempRoot, "wrangler-state");
 const env = {
   ...process.env,
   WRANGLER_LOG_PATH: path.join(tempRoot, "wrangler.log"),
-  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_SEND_METRICS: "false",
+  // wrangler dev's default request-trace capture (4.118+) adds local latency
+  // that no deployed Worker pays; keep it out of the measurements.
+  X_LOCAL_OBSERVABILITY: "false"
 };
 const wrangler = path.join(root, "node_modules", ".bin", "wrangler");
 const baseUrl = `http://127.0.0.1:${port}`;

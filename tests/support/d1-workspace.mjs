@@ -19,13 +19,31 @@ async function readTestConfig() {
   return JSON.parse(await readFile(configPath, "utf8"));
 }
 
-function openMiniflare(config, persistTo) {
+// A Miniflare whose DB binding is the local D1 that
+// `wrangler d1 execute --local --persist-to <persistTo>` wrote (under
+// <persistTo>/v3/d1). Miniflare 5 takes one config per Worker; the Worker is
+// a stub because tests call src/index.ts directly with this binding.
+export function openLocalD1(persistTo, { databaseId, compatibilityDate }) {
   return new Miniflare({
-    modules: true,
-    script: "export default { fetch() { return new Response(null, { status: 404 }); } }",
-    d1Databases: { DB: config.d1_databases[0].database_id },
-    d1Persist: path.join(persistTo, "v3", "d1")
+    resourcePersistencePath: path.join(persistTo, "v3"),
+    workers: [{
+      config: {
+        name: "d1-workspace",
+        compatibilityDate,
+        manifest: {
+          mainModule: "stub.mjs",
+          modules: {
+            "stub.mjs": { type: "esm", contents: "export default { fetch() { return new Response(null, { status: 404 }); } }" }
+          }
+        },
+        env: { DB: { type: "d1", id: databaseId } }
+      }
+    }]
   });
+}
+
+function openMiniflare(config, persistTo) {
+  return openLocalD1(persistTo, { databaseId: config.d1_databases[0].database_id, compatibilityDate: config.compatibility_date });
 }
 
 // Migrates schema.sql and reseeds the demo household into a template
