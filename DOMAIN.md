@@ -628,6 +628,28 @@ Person-view rule:
   weighted visible amount in parentheses, but the definition of each metric
   stays the same.
 
+### Money Tone
+
+How a displayed amount reads by its direction or outcome, decided in
+`src/domain/money-tone.ts` and carried as `tone` on metric cards,
+`balanceTone` on split group pills and `viewerTone` on split activity.
+
+Canonical terms:
+- `money tone`: one of `in`, `short`, `plan`, `caution`, `out`, `neutral`
+
+Definitions:
+- `in` means money in or a good outcome (income, a refund, received, owed to
+  you, on or under plan, savings made, a matched statement).
+- `short` means a deficit, over plan, income still to come, a debt you owe,
+  or a statement that is off.
+- `plan` means an intention: planned income, planned spend, a savings target.
+- `caution` means something needs a check.
+- `out` means an ordinary outflow; spending is not `short` by itself.
+- `neutral` means transfers, zero and counts.
+
+A money tone is presentation of a figure, never a figure itself: it does not
+change totals, and hidden money shows every tone as `neutral`.
+
 ### Transfer Group
 
 A linkage record that pairs related transfer ledger entries across accounts.
