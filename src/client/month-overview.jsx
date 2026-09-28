@@ -6,7 +6,7 @@ import { useState } from "react";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { MetricCard } from "./ui-components";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
 import { reconciliationTone } from "../domain/money-tone";
@@ -246,6 +246,7 @@ export function MonthNotesAndAccounts({
   isDraftingMonthNote = false,
   onOpenEntriesForAccount
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   return (
     <div className="panel-subgrid">
       <section>
@@ -283,7 +284,7 @@ export function MonthNotesAndAccounts({
             >
               <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
               <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor ?? 0)}</PrivateMoney></span>
-              <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span>
+              {areTotalsVisible ? <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span> : null}
             </button>
           ))}
         </div>

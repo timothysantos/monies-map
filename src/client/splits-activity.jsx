@@ -11,6 +11,7 @@ import { isMobileLayout } from "./use-viewport";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
+import { useMoneyPrivacy } from "./money-privacy";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -77,6 +78,7 @@ export function SplitActivityGroups({
   onRefreshActivity = undefined,
   viewId = "household"
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const inlineEditorRef = useRef(null);
   const editingDraftKey = editingDraft ? `${editingDraft.kind}:${editingDraft.id}` : "";
   const [refreshingDate, setRefreshingDate] = useState("");
@@ -176,7 +178,8 @@ export function SplitActivityGroups({
           const canOpen = !archived && Boolean(item.kind === "expense" ? onEditExpense : onEditSettlement);
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
-          const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
+          // Who lent or borrowed is the sign of the viewer's share: hidden with money.
+          const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly && areTotalsVisible;
           // Lent or received is money coming to the viewer, borrowed a debt,
           // a settle-up they paid a plain outflow (src/domain/money-tone.ts).
           const amountToneClass = moneyToneClass(showDirectionLabel ? item.viewerTone : "neutral");
