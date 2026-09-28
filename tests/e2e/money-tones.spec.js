@@ -286,3 +286,33 @@ test("hidden money shows no tone", async ({ page }) => {
   await expect(incomeValue).not.toHaveText("••••");
   expect((await looks(incomeValue)).color).toBe(INK.in);
 });
+
+// Hiding money hides its sign in words too: no line may say a hidden figure
+// is over or under, owed or owing, or off.
+const SIGN_WORDING = /\b(To allocate|Overplanned|Over plan|Under plan|You owe|You are owed|owes you|Settled up|you lent|you borrowed|you received|you paid|is off by)\b|[-−]\s?••••/;
+
+test("hidden money shows no sign or outcome in words", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const visibleText = () => page.locator("main").innerText();
+
+  await gotoPageAfterApi(page, "/month?view=household&month=2025-06&scope=direct_plus_shared", "/api/month-page", () => card(page, "Remaining budget"));
+  await expect(cardValue(page, "Remaining budget")).toHaveText("••••");
+  expect(await visibleText()).not.toMatch(SIGN_WORDING);
+
+  await openSummary(page, "household", "2026-04");
+  await expect(page.locator(".summary-account-pill").first()).toBeVisible();
+  expect(await visibleText()).not.toMatch(SIGN_WORDING);
+  // A wallet's statement health is an outcome too: hidden with the money.
+  expect(await page.locator(".summary-account-pill-meta").allInnerTexts()).toEqual([]);
+
+  await gotoPageAfterApi(page, "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
+  await expect(page.locator(".split-activity-card").first()).toBeVisible();
+  const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
+  await expect(balance).toContainText("Net");
+  expect(await visibleText()).not.toMatch(SIGN_WORDING);
+
+  // Revealing brings the wording back.
+  await page.getByRole("button", { name: "Show money totals" }).click();
+  await expect(balance).toContainText("You owe");
+  await expect(page.locator(".split-activity-trailing strong").first()).toBeVisible();
+});
