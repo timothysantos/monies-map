@@ -74,7 +74,7 @@ export function SplitArchiveDialog({
                 return (
                   <button key={batch.batchId} type="button" className="split-archive-row" onClick={() => onOpenBatch(batch.batchId)}>
                     <span className="split-archive-row-date">{splitService.formatArchiveDate(batch.closedAt)}</span>
-                    <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": "#c58b62" }}>
+                    <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": "#BF7D51" }}>
                       <ArrowRightLeft size={16} />
                     </span>
                     <span className="split-archive-row-copy">

@@ -86,7 +86,7 @@ function renderPieCallout(props, total, options = {}) {
           <Icon size={iconSize} strokeWidth={2.2} />
         </div>
       </foreignObject>
-      <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" fill={payload.color} fontSize={fontSize} fontWeight="700">
+      <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" style={{ fill: `color-mix(in srgb, ${payload.color} 62%, var(--text))` }} fontSize={fontSize} fontWeight="700">
         {percentage}%
       </text>
     </g>
