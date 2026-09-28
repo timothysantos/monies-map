@@ -162,7 +162,7 @@ const SHOTS = [
     name: "summary-insight-expanded", device: "desktop",
     run: async (page) => {
       // From the oldest month, the range holds last month's same month a year
-      // earlier, so the map can compare them (docs/demo-tour.md, step 2).
+      // earlier, so the Long view can compare them (docs/demo-tour.md, step 2).
       await open(page, `/summary?view=household&month=${MONTH}&summary_start=${OLDEST_MONTH}&summary_end=${MONTH}`);
       await page.locator(".summary-mix-months").getByRole("button", { name: monthChipLabel(MONTH), exact: true }).click();
       await waitUsable(page);

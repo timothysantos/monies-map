@@ -22,12 +22,7 @@ const FACTS = {
   topMerchantAmount: "$20.00",
   headlineKind: "going_well",
   fact: "$1,080.59 of this month's plan is still unspent.",
-  think: "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.",
-  decisionMap: {
-    enabled: true,
-    needsReview: false,
-    lanes: [{ id: "surplus", label: "Money left so far", value: "$80.00", detail: "This is not automatically free cash.", tone: "positive" }]
-  }
+  think: "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to."
 };
 
 // Every statement succeeds. `quotaChanges` is what the daily-usage upsert
@@ -150,6 +145,27 @@ test("a valid AI template is rendered from computed facts only, and the remainin
   assert.match(prompt, /\{\{fact\}\}/);
   assert.match(prompt, /\{\{think\}\}/);
   assert.doesNotMatch(prompt, /notableFact|cashFlowPrinciple|nextSpendConsideration|accountingAdvice/);
+});
+
+// The Money consequence map is retired: the facts carry no map, and a page
+// still open from before the change, whose facts carry one, gets the same
+// answer with none of the map in the prompt.
+test("insight facts need no consequence map, and an old map is ignored rather than sent to AI", async () => {
+  const ai = stubAi({ response: JSON.stringify({ template: "A quiet win this month: {{fact}} {{think}}" }) });
+  const oldMap = {
+    enabled: true,
+    needsReview: true,
+    lanes: [{ id: "repeat", label: "One-repeat scenario", value: "$80.00 after one repeat", detail: "This is not a forecast.", tone: "caution" }]
+  };
+  for (const facts of [FACTS, { ...FACTS, decisionMap: oldMap }]) {
+    const payload = await (await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts })).json();
+    assert.equal(payload.source, "ai");
+    assert.equal(payload.narrative, `A quiet win this month: ${FACTS.fact} ${FACTS.think}`);
+  }
+  assert.equal(ai.calls.length, 2);
+  for (const call of ai.calls) {
+    assert.doesNotMatch(JSON.stringify(call.input), /repeat|forecast|decisionMap|lanes/i);
+  }
 });
 
 test("an AI template with its own figures is refused and the computed wording is used", async () => {

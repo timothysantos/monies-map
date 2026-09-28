@@ -23,7 +23,6 @@ import {
   parseImportExplanationTemplate,
   parseNarrativeTemplate,
   type CheckInHeadlineFacts,
-  type FinancialDecisionMap,
   type FinancialInsightWordingFacts
 } from "../domain/ai-assistance-insights";
 import { loadTransferMatchCandidates, recordVerifiedAiCategoryMatchSuggestion } from "../domain/app-repository";
@@ -240,9 +239,11 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightWordingFact
   if (!Number.isInteger(entryCount) || entryCount < 0 || entryCount > 100_000) {
     return null;
   }
-  const decisionMap = parseFinancialDecisionMap(input.decisionMap);
+  // Only the named fields are read: anything else a page sends (a tab still
+  // open on an older version sends fields it no longer needs) is dropped
+  // here and never reaches the prompt.
   const headlineKind = HEADLINE_KINDS.find((kind) => kind === input.headlineKind);
-  if (!decisionMap || !headlineKind) {
+  if (!headlineKind) {
     return null;
   }
   const readText = (key: string, maxLength: number) => {
@@ -263,8 +264,7 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightWordingFact
     topMerchantAmount: readText("topMerchantAmount", 40),
     headlineKind,
     fact: readText("fact", 240),
-    think: readText("think", 240),
-    decisionMap
+    think: readText("think", 240)
   } satisfies FinancialInsightWordingFacts;
   return facts.contextLabel
     && facts.spend
@@ -275,40 +275,6 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightWordingFact
     && (facts.audienceKind !== "person" || facts.audienceName)
     ? facts
     : null;
-}
-
-function parseFinancialDecisionMap(value: unknown): FinancialDecisionMap | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const input = value as Record<string, unknown>;
-  if (typeof input.enabled !== "boolean" || typeof input.needsReview !== "boolean" || !Array.isArray(input.lanes) || input.lanes.length > 5) {
-    return null;
-  }
-  const allowedIds = new Set(["surplus", "plan", "season", "confidence", "repeat"]);
-  const allowedTones = new Set(["default", "positive", "caution"]);
-  const lanes = input.lanes.map((lane) => {
-    if (!lane || typeof lane !== "object") {
-      return null;
-    }
-    const candidate = lane as Record<string, unknown>;
-    const id = typeof candidate.id === "string" && allowedIds.has(candidate.id) ? candidate.id : null;
-    const tone = typeof candidate.tone === "string" && allowedTones.has(candidate.tone) ? candidate.tone : null;
-    const label = typeof candidate.label === "string" ? redactAiText(candidate.label, 80) : "";
-    const laneValue = typeof candidate.value === "string" ? redactAiText(candidate.value, 120) : "";
-    const detail = typeof candidate.detail === "string" ? redactAiText(candidate.detail, 360) : "";
-    return id && tone && label && laneValue && detail
-      ? { id, tone, label, value: laneValue, detail }
-      : null;
-  });
-  if (lanes.some((lane) => !lane) || !lanes.length) {
-    return null;
-  }
-  return {
-    enabled: input.enabled,
-    needsReview: input.needsReview,
-    lanes: lanes as FinancialDecisionMap["lanes"]
-  };
 }
 
 function formatAiMoney(amountMinor: number) {

@@ -30,11 +30,11 @@ import {
 } from "./ui-components";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
+import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
-import { buildSummarySignals, SUMMARY_CALM_LINES, SUMMARY_TRIVIA_ROTATION } from "../domain/money-signals/summary-signals";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -79,10 +79,12 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
   );
   const checkInClock = useCheckInClock();
-  const checkIn = useMemo(() => ({
+  const summaryInsights = useSummaryInsights();
+  // Null until the insights module arrives: the insights show their frame.
+  const checkIn = useMemo(() => (summaryInsights ? {
     memoryKey: checkInMemoryKey("summary", view.id),
     contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "overall" : focusState.selectedFocusMonth, view.selectedScope].join("|"),
-    signals: buildSummarySignals({
+    signals: summaryInsights.buildSummarySignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       today: checkInClock.today,
@@ -97,37 +99,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     page: "summary",
     // The range's last month is the period Summary rotates by.
     period: safeSummaryPage.rangeMonths.at(-1) ?? checkInClock.today.slice(0, 7),
-    triviaRotation: SUMMARY_TRIVIA_ROTATION,
-    calmLines: SUMMARY_CALM_LINES,
+    triviaRotation: summaryInsights.SUMMARY_TRIVIA_ROTATION,
+    calmLines: summaryInsights.SUMMARY_CALM_LINES,
     alsoLabel: "Also in this range",
     clock: checkInClock
-  }), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, view.id, view.label, view.selectedScope]);
-  const financialInsightActions = useMemo(() => {
-    const months = summaryFocusParam === SUMMARY_FOCUS_OVERALL
-      ? safeSummaryPage.months
-      : safeSummaryPage.months.filter((month) => month.month === focusState.selectedFocusMonth);
-    const plannedSpendMinor = months.reduce((total, month) => total + (month.estimatedExpensesMinor ?? 0), 0);
-    const actualSpendMinor = months.reduce((total, month) => total + (month.realExpensesMinor ?? 0), 0);
-    const actions = [];
-    if (
-      plannedSpendMinor > 0
-      && actualSpendMinor > plannedSpendMinor
-      && financialInsightFacts.topCategoryName !== "No spending category"
-    ) {
-      actions.push({
-        label: `Review ${financialInsightFacts.topCategoryName}`,
-        onClick: () => handleOpenEntriesForCategory(financialInsightFacts.topCategoryName)
-      });
-    }
-    if (financialInsightFacts.decisionMap.needsReview) {
-      actions.push({
-        label: "Review bank-record gaps",
-        onClick: handleOpenImports
-      });
-    }
-    return actions;
-  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.topCategoryName, focusState.selectedFocusMonth, location.search, safeSummaryPage.months, summaryFocusParam]);
-
+  } : null), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
     if (action.id === "review-statement") {
       handleOpenImports();
@@ -221,7 +197,6 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       <FinancialInsight
         facts={financialInsightFacts}
         checkIn={checkIn}
-        actions={financialInsightActions}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-summary"
         canRequestWording={canRequestWording}
@@ -310,10 +285,6 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
   const months = isRangeOverall
     ? summaryPage.months
     : summaryPage.months.filter((month) => month.month === focusState.selectedFocusMonth);
-  const plannedSpendMinor = months.reduce((total, month) => total + (month.estimatedExpensesMinor ?? 0), 0);
-  const sameSeasonMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
-    ? undefined
-    : summaryPage.months.find((month) => month.month === previousYearMonth(focusState.selectedFocusMonth));
   const startMonth = summaryPage.rangeMonths[0];
   const endMonth = summaryPage.rangeMonths.at(-1);
   const contextLabel = isRangeOverall
@@ -341,38 +312,7 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
         }))
     ],
     entryCount: focusState.donutData.reduce((total, item) => total + Number(item.entryCount ?? 0), 0),
-    formatMoney: formatService.unmaskedMoney,
-    perspective: "cash_flow",
-    recordKind: "category_totals",
-    decisionMapContext: {
-      plannedSpendMinor,
-      sameSeason: sameSeasonMonth ? {
-        label: formatService.formatMonthLabel(sameSeasonMonth.month),
-        spendMinor: sameSeasonMonth.realExpensesMinor ?? 0,
-        incomeMinor: sameSeasonMonth.actualIncomeMinor ?? 0
-      } : undefined,
-      confidence: buildSummaryConfidence(summaryPage.accountPills)
-    }
-  });
-}
-
-function previousYearMonth(month) {
-  const [year, monthNumber] = String(month ?? "").split("-").map(Number);
-  return year && monthNumber ? `${year - 1}-${String(monthNumber).padStart(2, "0")}` : "";
-}
-
-function buildSummaryConfidence(accountPills = []) {
-  const evaluated = accountPills.length > 0;
-  return accountPills.reduce((result, account) => ({
-    evaluated,
-    reconciliationMismatchCount: result.reconciliationMismatchCount + (account.reconciliationStatus === "mismatch" ? 1 : 0),
-    needsCheckpointCount: result.needsCheckpointCount + (account.reconciliationStatus === "needs_checkpoint" ? 1 : 0),
-    unresolvedTransferCount: result.unresolvedTransferCount + Number(account.unresolvedTransferCount ?? 0)
-  }), {
-    evaluated,
-    reconciliationMismatchCount: 0,
-    needsCheckpointCount: 0,
-    unresolvedTransferCount: 0
+    formatMoney: formatService.unmaskedMoney
   });
 }
 

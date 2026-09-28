@@ -265,6 +265,15 @@ export function App() {
   // keyboard-friendly on small screens.
   useEffect(() => installMobileFocusVisibility(), []);
 
+  // The active route's code loads beside its data rather than after it (the
+  // panel renders only once its data is here). This is the page being
+  // opened, never another route, so it is not warmup. It also starts
+  // Summary's Money insights module in time for the panel's first render
+  // (summary-panel.jsx, money-insights-loader.js).
+  useEffect(() => {
+    loadRouteModule(selectedTabId).catch(() => {});
+  }, [selectedTabId]);
+
   // Keep the document title aligned with the current environment.
   useEffect(() => {
     document.title = getDocumentTitle(appEnvironment);

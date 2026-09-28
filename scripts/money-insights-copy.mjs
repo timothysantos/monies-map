@@ -10,14 +10,15 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-import { CALM_LINE_TEMPLATES, QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
-import { ENTRIES_CALM_LINE, ENTRIES_COPY, ENTRIES_TRIVIA_ROTATION } from "../src/domain/money-signals/entries-signals.ts";
-import { MONTH_COPY, MONTH_TRIVIA_ROTATION, monthCalmLine } from "../src/domain/money-signals/month-signals.ts";
+import { CALM_LINE_TEMPLATES } from "../src/domain/money-signals/calm-lines.ts";
+import { QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
+import { ENTRIES_CALM_LINE, ENTRIES_COPY, ENTRIES_TRIVIA_ROTATION, TOP_FIVE_ONE_OFF_SHARE } from "../src/domain/money-signals/entries-signals.ts";
+import { CATEGORY_OVER_MINOR, CATEGORY_OVER_RATIO, MONTH_COPY, MONTH_TRIVIA_ROTATION, monthCalmLine } from "../src/domain/money-signals/month-signals.ts";
 import { QUOTES, quoteCitation } from "../src/domain/money-signals/quotes.ts";
 import { QUOTE_PAGE_OFFSETS, YEAR_MONTHS } from "../src/domain/money-signals/rotation.ts";
 import { SHARED_COPY } from "../src/domain/money-signals/shared-signals.ts";
 import { SPLITS_CALM_LINE, SPLITS_COPY, SPLITS_TRIVIA_ROTATION } from "../src/domain/money-signals/splits-signals.ts";
-import { SUMMARY_CALM_LINE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
+import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
 import { AVOID_WORDS } from "../src/domain/money-signals/tone.ts";
 import { SIGNAL_KIND_LABELS } from "../src/domain/money-signals/types.ts";
 
@@ -42,8 +43,8 @@ export const CATALOGUES = [
     entries: {
       spendingAboveIncome: ["bigger_question", "Spending was above income for 3 or more complete months in a row (once the range records income)."],
       categoryCreep: ["worth_a_look", "A category rose 3 or more complete months in a row and is $50 or more above its average."],
-      subscriptions: ["worth_a_look", "Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost."],
-      monthsUnderPlan: ["going_well", "At least two thirds (and 3 or more) of the last 12 complete months came in under plan."],
+      subscriptions: ["worth_a_look", "Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost. Steady unless they changed from the month before (see Notability)."],
+      monthsUnderPlan: ["going_well", "At least two thirds (and 3 or more) of the last 12 complete months came in under plan. Steady unless the latest month came back under plan (see Notability)."],
       keepRate: ["long_view", "Income kept over the last (up to 12) complete months, when positive."],
       cushion: ["long_view", "Bank account balances (never cards) against the range's average monthly spend; skipped with no bank balance, no spending, or under a month."],
       sameSeason: ["long_view", "The month against the same month last year, only when both are complete and already in the range."],
@@ -80,12 +81,12 @@ export const CATALOGUES = [
     entries: {
       unlinkedBills: ["quick_fix", "Planned bills dated before today with no entry linked."],
       oneOffOverPlan: ["bigger_question", "The month went over plan and one or two entries made up at least half of it."],
-      categoryOverPlan: ["worth_a_look", "The category budget furthest over its plan (by $1 or more)."],
+      categoryOverPlan: ["worth_a_look", "The category budget furthest over its plan (by $1 or more). Steady under 10% and $20 over (see Notability)."],
       incomeAbovePlan: ["worth_a_look", "A moment (a bonus): income $500 and 10% or more above its plan."],
       incomeArrived: ["going_well", "A moment (payday): income dated in the last 3 days of the month in progress."],
-      planLeft: ["going_well", "Plan still unspent in the month in progress."],
-      planLeftPast: ["going_well", "Wrap-up: a finished month that came in under plan."],
-      savingsOnPlan: ["going_well", "Every savings row in the plan is met."],
+      planLeft: ["going_well", "Plan still unspent in the month in progress. Steady (see Notability)."],
+      planLeftPast: ["going_well", "Wrap-up: a finished month that came in under plan. Steady (see Notability)."],
+      savingsOnPlan: ["going_well", "Every savings row in the plan is met. Steady (see Notability)."],
       upcomingBills: ["worth_a_look", "Early in the month (days 1 to 10): unlinked planned bills due in the next 10 days."],
       paceSteady: ["going_well", "Mid-month (days 11 to 20): spending is at or behind the calendar's share of the plan."],
       paceAhead: ["worth_a_look", "Mid-month (days 11 to 20): spending is ahead of the calendar but still under plan."],
@@ -119,7 +120,7 @@ export const CATALOGUES = [
     entries: {
       uncategorized: ["quick_fix", "Expenses still in Other this month."],
       possibleDuplicate: ["worth_a_look", "The same amount from the same place twice within 7 days."],
-      topFive: ["worth_a_look", "The five largest entries are 40% or more of the month's spending (6 or more expenses)."],
+      topFive: ["worth_a_look", "The five largest entries are 40% or more of the month's spending (6 or more expenses). Steady unless one-off purchases among them are a quarter of the month (see Notability)."],
       smallestEntry: ["just_for_fun", "The smallest purchase with a readable name (never a fee, interest, adjustment, or a PayNow or transfer reference).", "smallest"],
       largestEntry: ["just_for_fun", "The largest purchase at a place (not a bill, subscription, insurance or transfer).", "largest"],
       placesCount: ["just_for_fun", "How many different places the month's purchases came from (3 or more).", "places"],
@@ -287,8 +288,29 @@ export function renderCheckInCopyMarkdown() {
     "leads with a statement gap.",
     "Long view is a separate quieter line; Just for fun is one line shown only",
     "when the headline is not a Bigger question. \"See all insights\" adds up",
-    "to three more signals, one quote (never beside a Bigger question) and",
-    "the Money consequence map.",
+    "to three more signals and one quote (never beside a Bigger question);",
+    "Splits also keeps its link to review bank matches there.",
+    "",
+    "## Notability",
+    "",
+    "Some signals are true almost every month. Each has a test for when its",
+    "numbers are unusual; when they are not, it is steady: it never leads,",
+    "and is listed under \"Also\" only when something notable leads (a calm",
+    "month lists nothing). A steady signal with a turn may still lead in one",
+    "month of each quarter, by the period (turn 0: Jan, Apr, Jul, Oct; 1: Feb,",
+    "May, Aug, Nov; 2: Mar, Jun, Sep, Dec). A month with nothing notable leads",
+    "with a Going well that fires, otherwise the calm line.",
+    "",
+    `- Entries, five largest: notable when one-off purchases among the five (purchases at a named place: not a bill, utility, loan, rent, insurance, subscription, tax, savings, investment, fee or transfer, nor a PayNow or GIRO payment with no place name) come to ${Math.round(TOP_FIVE_ONE_OFF_SHARE * 100)}% or more of the month's spending. The usual obligations are the largest entries every month, so they alone never count. No turn.`,
+    `- Summary, subscriptions: notable when the month's total moved ${Math.round(SUBSCRIPTIONS_CHANGE_RATIO * 100)}% or $${SUBSCRIPTIONS_CHANGE_MINOR / 100} (either) from the month before, when that month is in the range with spending of its own. Otherwise turn 2.`,
+    "- Summary, months under plan: notable in the month that comes back under plan after one over it. Otherwise turn 0.",
+    `- Month, category over plan: notable when ${Math.round(CATEGORY_OVER_RATIO * 100)}% and $${CATEGORY_OVER_MINOR / 100} over its plan. Smaller overs: no turn.`,
+    "- Month, plan left (in progress or finished): turn 1. Savings on plan: turn 2.",
+    "",
+    "Long view lines (keep rate, cushion, fixed costs, same season, share of",
+    "costs) and Just for fun lines (such as the average entry or a category's",
+    "share) never lead: they have their own line and their own year rotation.",
+    "Quick fixes, Bigger questions and moments are notable whenever they fire.",
     "",
     "## The year rule",
     "",

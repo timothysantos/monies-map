@@ -505,8 +505,7 @@ export function EntriesPanel({
       ...entry,
       amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
     })),
-    formatMoney: formatService.unmaskedMoney,
-    perspective: activeEntryFilterCount ? "partial_view" : "cash_flow"
+    formatMoney: formatService.unmaskedMoney
   }), [activeEntryFilterCount, aggregateEntries, entryView.id, entryView.label, entryView.monthPage.month]);
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
@@ -547,39 +546,6 @@ export function EntriesPanel({
       return next;
     });
   }, [setSearchParams]);
-  const financialInsightActions = useMemo(() => {
-    const actions = [];
-    const hasIncome = aggregateEntries.some((entry) => entry.entryType === "income");
-    if (!activeEntryFilterCount && hasIncome) {
-      actions.push({
-        label: `See income entries (${financialInsightFacts.income})`,
-        onClick: () => setSearchParams((current) => {
-          const next = new URLSearchParams(current);
-          next.delete("entry_id");
-          next.delete("entry_category");
-          next.delete("entry_search");
-          next.set("entry_type", "income");
-          return next;
-        })
-      });
-    }
-    const largestExpense = [...aggregateEntries]
-      .filter((entry) => entry.entryType === "expense")
-      .sort((left, right) => Math.abs(right.visibleAmountMinor ?? right.amountMinor) - Math.abs(left.visibleAmountMinor ?? left.amountMinor))[0];
-    if (!largestExpense) {
-      return actions;
-    }
-    actions.push({
-      label: "Review largest expense",
-      onClick: () => setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        next.delete("entry_id");
-        next.append("entry_id", largestExpense.id);
-        return next;
-      })
-    });
-    return actions;
-  }, [activeEntryFilterCount, aggregateEntries, financialInsightFacts.income, setSearchParams]);
   const entriesEmptyStateSuggestion = useMemo(
     () => getEntriesEmptyStateSuggestion({
       accounts,
@@ -1177,7 +1143,6 @@ export function EntriesPanel({
           <FinancialInsight
             facts={financialInsightFacts}
             checkIn={checkIn}
-            actions={financialInsightActions}
             onCheckInAction={handleCheckInAction}
             className="financial-insight-entries"
             canRequestWording={canRequestWording}

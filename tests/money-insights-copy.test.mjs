@@ -1,14 +1,14 @@
 // The tone lint over every line the money check-in can show: the approved
 // phrasings, think lines, sorted lines, trivia, quiet and calm lines, the
-// quotes and the Money consequence map's lanes. It also keeps
+// and the quotes. It also keeps
 // docs/money-insights-copy.md in step with the copy catalogues.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { CATALOGUES, DOC_PATH, renderCheckInCopyMarkdown, thinkLines } from "../scripts/money-insights-copy.mjs";
-import { buildFinancialInsightFacts } from "../src/domain/ai-assistance-insights.ts";
-import { CALM_LINE_TEMPLATES, QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
+import { CALM_LINE_TEMPLATES } from "../src/domain/money-signals/calm-lines.ts";
+import { QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
 import { ENTRIES_CALM_LINES } from "../src/domain/money-signals/entries-signals.ts";
 import { monthCalmLines } from "../src/domain/money-signals/month-signals.ts";
 import { QUOTES } from "../src/domain/money-signals/quotes.ts";
@@ -16,7 +16,6 @@ import { YEAR_MONTHS } from "../src/domain/money-signals/rotation.ts";
 import { SPLITS_CALM_LINES, SPLITS_COPY } from "../src/domain/money-signals/splits-signals.ts";
 import { SUMMARY_CALM_LINES } from "../src/domain/money-signals/summary-signals.ts";
 import { findPercentWithoutMoney, findToneProblems } from "../src/domain/money-signals/tone.ts";
-import { formatCurrencyMinor } from "../src/domain/split-currency.ts";
 
 function catalogueLines() {
   const lines = [];
@@ -153,34 +152,6 @@ test("the quotes carry no exclamation marks, emoji or avoid-list words", () => {
   for (const quote of QUOTES) {
     assert.deepEqual(findToneProblems(quote.text), [], quote.id);
   }
-});
-
-test("the Money consequence map's lanes pass the tone rules in every state", () => {
-  const formatMoney = (minor) => formatCurrencyMinor(minor, "SGD");
-  const records = (income, spend) => [
-    ...(income ? [{ entryType: "income", amountMinor: income, description: "Salary" }] : []),
-    ...(spend ? [{ entryType: "expense", amountMinor: spend, categoryName: "Home", description: "Castlery" }] : [])
-  ];
-  const lanes = [];
-  for (const perspective of ["cash_flow", "partial_view", "split_obligation"]) {
-    for (const [income, spend] of [[0, 5_000], [10_000, 5_000], [5_000, 10_000], [5_000, 5_000]]) {
-      for (const plannedSpendMinor of [0, 4_000, 8_000]) {
-        for (const confidence of [{ evaluated: false }, { evaluated: true }, { evaluated: true, reconciliationMismatchCount: 1, needsCheckpointCount: 2, unresolvedTransferCount: 1 }]) {
-          const facts = buildFinancialInsightFacts({
-            contextLabel: "August 2026",
-            records: records(income, spend),
-            formatMoney,
-            perspective,
-            decisionMapContext: { plannedSpendMinor, confidence, sameSeason: { label: "August 2025", spendMinor: 6_000, incomeMinor: 9_000 } }
-          });
-          lanes.push(...facts.decisionMap.lanes);
-        }
-      }
-    }
-  }
-  const problems = lanes.flatMap((lane) => [lane.label, lane.value, lane.detail]
-    .flatMap((text) => findToneProblems(text).map((problem) => `${lane.id}: "${text}" ${problem}`)));
-  assert.deepEqual(problems, []);
 });
 
 test("docs/money-insights-copy.md lists every line and is up to date", async () => {

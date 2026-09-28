@@ -26,7 +26,7 @@ import {
   type FormatMoney,
   type MonthPhase
 } from "./format";
-import { calmLinesFor } from "./checkin";
+import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
@@ -358,6 +358,11 @@ const UNCATEGORIZED = /^(other|uncategori[sz]ed)?$/i;
 const NOT_FUN_DAY = /saving|invest|transfer|insurance|giro|bill|utilit|loan|mortgage|rent|tax/i;
 const NOT_A_SPOT = /transport|transfer|bill|utilit|subscription|insurance|rent|mortgage|loan|saving|invest|tax|salary|income/i;
 const MIN_SPENDING = 3;
+// A category budget is notable when it is over its plan by at least this
+// share of the plan and this much money; a few dollars over is steady
+// (shown under Also only).
+export const CATEGORY_OVER_RATIO = 0.1;
+export const CATEGORY_OVER_MINOR = 2_000;
 
 function expenses(input: MonthSignalInput) {
   return input.entries.filter((entry) => entry.entryType === "expense" && Math.abs(entry.amountMinor) > 0);
@@ -495,7 +500,8 @@ export function oneOffOverPlanSignal(input: MonthSignalInput): MoneySignal | nul
   };
 }
 
-// Worth a look: the category budget furthest over its plan.
+// Worth a look: the category budget furthest over its plan. Steady unless
+// it is 10% and $20 over (CATEGORY_OVER_RATIO, CATEGORY_OVER_MINOR).
 export function categoryOverPlanSignal(input: MonthSignalInput): MoneySignal | null {
   const row = rows(input, "budget_buckets")
     .filter((candidate) => candidate.plannedMinor > 0 && candidate.actualMinor - candidate.plannedMinor >= 100)
@@ -512,7 +518,8 @@ export function categoryOverPlanSignal(input: MonthSignalInput): MoneySignal | n
     key: `category-over-plan:${row.id}`,
     kind: "worth_a_look",
     weight: overMinor,
-    numbers: { primaryMinor: overMinor },
+    numbers: { primaryMinor: overMinor, plannedMinor: row.plannedMinor },
+    steady: overMinor < CATEGORY_OVER_MINOR || overMinor < row.plannedMinor * CATEGORY_OVER_RATIO,
     primaryText: over,
     phrasings: phrase(copy, { label, over, plan: compactMoney(input.formatMoney, row.plannedMinor), actual: input.formatMoney(row.actualMinor) }),
     action: { id: "open-category", label: copy.action.replace("{category}", categoryName), categoryName },
@@ -567,7 +574,9 @@ export function incomeArrivedSignal(input: MonthSignalInput): MoneySignal | null
   };
 }
 
-// Going well: plan still unspent (a wrap-up for a finished month).
+// Going well: plan still unspent (a wrap-up for a finished month). Steady:
+// true every month for a household that keeps to its plan, so it leads in
+// the second month of each quarter and waits under Also otherwise.
 export function planLeftSignal(input: MonthSignalInput): MoneySignal | null {
   const leftMinor = plan(input) - spend(input);
   if (plan(input) <= 0 || leftMinor <= 0) {
@@ -580,13 +589,16 @@ export function planLeftSignal(input: MonthSignalInput): MoneySignal | null {
     kind: "going_well",
     weight: leftMinor,
     numbers: { primaryMinor: leftMinor },
+    steady: true,
+    turn: 1,
     primaryText: left,
     phrasings: phrase(isPast ? MONTH_COPY.planLeftPast : MONTH_COPY.planLeft, { left, month: monthName(input.month) }),
     topic: "enjoy"
   };
 }
 
-// Going well: every savings row in the plan is met.
+// Going well: every savings row in the plan is met. Steady, like plan
+// left, leading in the last month of each quarter.
 export function savingsOnPlanSignal(input: MonthSignalInput): MoneySignal | null {
   const savingsRows = rows(input).filter((row) => row.plannedMinor > 0 && (SAVINGS.test(row.categoryName ?? "") || SAVINGS.test(row.label ?? "")));
   if (!savingsRows.length || savingsRows.some((row) => row.actualMinor < row.plannedMinor)) {
@@ -599,6 +611,8 @@ export function savingsOnPlanSignal(input: MonthSignalInput): MoneySignal | null
     kind: "going_well",
     weight: savedMinor,
     numbers: { primaryMinor: savedMinor },
+    steady: true,
+    turn: 2,
     phrasings: phrase(MONTH_COPY.savingsOnPlan, {
       when: whenPhrase(input),
       saved: compactMoney(input.formatMoney, savedMinor),

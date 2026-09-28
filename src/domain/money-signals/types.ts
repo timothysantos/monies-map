@@ -90,6 +90,19 @@ export interface MoneySignal {
   // statement on Month) that goes right after a bigger question instead of
   // ahead of it.
   yieldsToBiggerQuestion?: boolean;
+  // Notability. A signal that is true almost every month (the five largest
+  // entries' share, the subscriptions total, months under plan, plan left)
+  // is `steady` when this period's numbers are not unusual: it never leads
+  // the check-in and shows at most under Also. With a `turn` it may still
+  // lead in one month of each quarter (rotation.ts, isQuarterTurn), so
+  // something true every month is said now and then, never every month.
+  steady?: boolean;
+  turn?: QuarterTurn;
 }
+
+// Which month of each quarter a steady signal may lead in: the period's
+// running month number mod 3 (0: Jan, Apr, Jul, Oct; 1: Feb, May, Aug, Nov;
+// 2: Mar, Jun, Sep, Dec).
+export type QuarterTurn = 0 | 1 | 2;
 
 export type Audience = "household" | "person";

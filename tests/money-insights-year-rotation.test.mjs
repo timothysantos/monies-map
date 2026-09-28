@@ -58,15 +58,15 @@ const PAGES = {
   summary: {
     rotation: SUMMARY_TRIVIA_ROTATION,
     calmLines: () => SUMMARY_CALM_LINES,
-    build: (period, { flat }) => {
-      const input = summaryInput(period, { flat });
+    build: (period, { flat, reconciled }) => {
+      const input = summaryInput(period, { flat, reconciled });
       return { signals: buildSummarySignals(input), today: input.today };
     }
   },
   month: {
     rotation: MONTH_TRIVIA_ROTATION,
     calmLines: (period) => monthCalmLines(period),
-    build: (period, { flat, today = "2027-02-15" }) => ({ signals: buildMonthSignals(monthInput(period, { flat, today })), today })
+    build: (period, { flat, reconciled, today = "2027-02-15" }) => ({ signals: buildMonthSignals(monthInput(period, { flat, reconciled, today })), today })
   },
   entries: {
     rotation: ENTRIES_TRIVIA_ROTATION,
@@ -127,17 +127,65 @@ function repeatsWithinAYear(series) {
 
 const WALK = consecutiveMonths("2025-01", 24);
 
+// What makes a headline notable on its own facts, restated from the
+// thresholds (docs/developer-guide.md, "Notability"). A quick fix or a
+// bigger question needs attention every time it fires. Anything else that
+// leads more than 4 of 12 consecutive months must be notable each time.
+const MAX_ROUTINE_LEADS = 4;
+const NOTABLE = {
+  "category-over-plan": (signal) => signal.numbers.primaryMinor >= 2_000 && signal.numbers.primaryMinor >= signal.numbers.plannedMinor * 0.1,
+  "top-five": (signal) => signal.numbers.oneOffMinor >= signal.numbers.totalMinor * 0.25,
+  subscriptions: (signal) => signal.numbers.previousMinor !== undefined
+    && (signal.numbers.previousMinor === 0 || Math.abs(signal.numbers.primaryMinor - signal.numbers.previousMinor) >= 2_000 || Math.abs(signal.numbers.primaryMinor - signal.numbers.previousMinor) / signal.numbers.previousMinor >= 0.1),
+  "months-under-plan": (signal) => signal.numbers.backUnder === 1
+};
+const family = (key) => key.split(":")[0];
+
+function isNotableLead(view, signals) {
+  if (view.mode !== "signal") {
+    return true;
+  }
+  const signal = signals.find((candidate) => candidate.key === view.headline.key);
+  if (["quick_fix", "bigger_question"].includes(signal.kind)) {
+    return true;
+  }
+  return NOTABLE[family(signal.key)]?.(signal) ?? false;
+}
+
+// Families that lead more than 4 of some 12 consecutive months without
+// being notable each of those times.
+function routineLeaders(walk) {
+  const found = new Set();
+  for (let start = 0; start + YEAR_MONTHS <= walk.length; start += 1) {
+    const window = walk.slice(start, start + YEAR_MONTHS);
+    const byFamily = new Map();
+    for (const { view, signals } of window) {
+      if (view.mode === "signal") {
+        const key = family(view.headline.key);
+        byFamily.set(key, [...(byFamily.get(key) ?? []), isNotableLead(view, signals)]);
+      }
+    }
+    for (const [key, notable] of byFamily) {
+      if (notable.length > MAX_ROUTINE_LEADS && notable.some((value) => !value)) {
+        found.add(`${key}: ${notable.length} of 12 from ${WALK[start]}, ${notable.filter((value) => !value).length} not notable`);
+      }
+    }
+  }
+  return [...found];
+}
+
 for (const [page, variants] of [
-  ["summary", [{}]],
-  ["month", [{}]],
+  ["summary", [{}, { reconciled: true }]],
+  ["month", [{}, { reconciled: true }]],
   ["entries", [{}]],
   ["splits", [{ audience: "person" }, { audience: "household" }]]
 ]) {
   for (const options of variants) {
     for (const flat of [false, true]) {
-      const label = `${page}${options.audience ? ` (${options.audience})` : ""}${flat ? ", the same data every month" : ""}`;
+      const label = `${page}${options.audience ? ` (${options.audience})` : ""}${options.reconciled ? ", every wallet reconciled" : ""}${flat ? ", the same data every month" : ""}`;
       test(`${label}: over 24 months nothing that rotates repeats within any 12`, () => {
-        const walk = WALK.map((period) => rotatingItems(viewFor(page, period, { ...options, flat })));
+        const views = WALK.map((period) => viewFor(page, period, { ...options, flat }));
+        const walk = views.map(rotatingItems);
         for (const field of ["trivia", "triviaText", "quote", "longView", "longViewText", "headline", "headlineText", "calm"]) {
           assert.deepEqual(repeatsWithinAYear(walk.map((item) => item[field])), [], `${label} ${field}`);
         }
@@ -147,10 +195,30 @@ for (const [page, variants] of [
         const withQuote = walk.filter((item) => item.quote).length;
         assert.ok(withTrivia >= 22, `${label}: trivia in ${withTrivia} of 24 months`);
         assert.ok(withQuote >= 22, `${label}: a quote in ${withQuote} of 24 months`);
+        // Nothing that is true every month leads every month.
+        assert.deepEqual(routineLeaders(views), [], `${label}: ${views.map(({ view }) => (view.mode === "signal" ? family(view.headline.key) : view.mode)).join(" ")}`);
       });
     }
   }
 }
+
+// The negative: with notability switched off (every signal counted as
+// notable, as before), the same walk finds the always-true signals leading
+// month after month, so the assertion above has teeth.
+test("without notability, always-true signals lead month after month", () => {
+  const unsteady = (signals) => signals.map((signal) => ({ ...signal, steady: false }));
+  const walkWithout = (page, options) => WALK.map((period) => {
+    const { rotation, calmLines, build } = PAGES[page];
+    const { signals, today } = build(period, options);
+    const all = unsteady(signals);
+    return { view: composeCheckIn({ signals: all, memory: emptyVisitMemory(), nowMs: NOW, today, seed: `${page}:household|${period}`, contextKey: period, period, triviaRotation: rotation, calmLines: calmLines(period) }), signals: all };
+  });
+  const summary = routineLeaders(walkWithout("summary", { reconciled: true, flat: false }));
+  assert.ok(summary.some((line) => line.startsWith("subscriptions:")), summary.join(" | "));
+  // The reported bug: the five largest entries led Entries most months.
+  const entries = routineLeaders(walkWithout("entries", { flat: false }));
+  assert.ok(entries.some((line) => line.startsWith("top-five:")), entries.join(" | "));
+});
 
 test("every recurring signal the pages build over two years has at least 12 wordings", () => {
   const short = new Set();
