@@ -120,7 +120,9 @@ scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
 
 Totals start hidden on every new browser, so you can open the app around other
 people. Every amount shows as `••••`: totals, transactions, splits, charts and
-plan amounts, without its colour. Amount fields you type into are masked too.
+plan amounts, without its colour or any words that say whether it is up or
+down (such as "Overplanned" or "You owe"). Amount fields you type into are
+masked too.
 
 ![With totals hidden, every amount shows as dots](/faq/guide/desktop/thumbs/money-hidden.webp)
 
