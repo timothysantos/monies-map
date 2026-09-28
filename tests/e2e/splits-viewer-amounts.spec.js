@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 import { loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
 test("person splits view tones lent and borrowed amounts with income and expense colors", async ({ page }) => {
+  // Hidden money shows no tone (money-tones.spec.js), so reveal it here.
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.goto("/");
   await reseedDemo(page);
 
@@ -10,13 +12,13 @@ test("person splits view tones lent and borrowed amounts with income and expense
   await expect(page.locator("article.panel-splits")).toBeVisible();
   const lentCard = page.locator(".split-activity-card").filter({ hasText: "Family support" }).first();
   await expect(lentCard.getByText("you lent")).toBeVisible();
-  await expect(lentCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(29, 122, 87)");
+  await expect(lentCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(23, 104, 74)"); // --pastel-mint-ink
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
   await expect(page.locator("article.panel-splits")).toBeVisible();
   const borrowedCard = page.locator(".split-activity-card").filter({ hasText: "Family support" }).first();
   await expect(borrowedCard.getByText("you borrowed")).toBeVisible();
-  await expect(borrowedCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(178, 58, 46)");
+  await expect(borrowedCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(163, 53, 42)"); // --pastel-rose-ink
 });
 
 test("split editor can choose the odd-cent recipient explicitly", async ({ page }) => {

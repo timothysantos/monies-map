@@ -12,6 +12,18 @@
   --accent: #934923;
   --accent-strong: #b15e2f;
   --shadow: 0 10px 30px rgba(27, 24, 21, 0.06);
+  /* Pastel palette: design.md "Pastel palette". */
+  --pastel-mint: #e4f2ea;
+  --pastel-mint-ink: #17684a;
+  --pastel-rose: #f9e5e1;
+  --pastel-rose-ink: #a3352a;
+  --pastel-sky: #e3ecf6;
+  --pastel-sky-ink: #2f5b86;
+  --pastel-lavender: #ece8f5;
+  --pastel-lavender-ink: #5c4d8c;
+  --pastel-butter: #f8efd3;
+  --pastel-butter-ink: #735512;
+  --pastel-neutral: #f6f4ef;
 }
 
 * {
@@ -822,7 +834,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   font-size: clamp(1rem, 1.45vw, 1.26rem);
 }
 
-.summary-head-metrics .metric span {
+.summary-head-metrics .metric > span {
   margin-bottom: 5px;
   font-size: 0.68rem;
 }
@@ -832,7 +844,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border-radius: 12px;
 }
 
-.metric span {
+.metric > span {
   display: block;
   margin-bottom: 6px;
   color: var(--muted);
@@ -849,7 +861,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .metric p {
   margin: 6px 0 0;
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   line-height: 1.1;
   font-size: 0.84rem;
   white-space: nowrap;
@@ -860,7 +872,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   line-height: 1.1;
   font-size: 0.84rem;
   white-space: nowrap;
@@ -890,14 +902,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--muted);
   line-height: 1.45;
   white-space: normal;
-}
-
-.metric-positive strong {
-  color: var(--positive);
-}
-
-.metric-negative strong {
-  color: var(--negative);
 }
 
 .panel-subgrid {
@@ -1492,8 +1496,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--muted);
 }
 
-.settings-account-health.is-matched {
-  color: var(--accent-strong);
+.settings-account-main .settings-account-health {
+  color: var(--money-ink, var(--muted));
 }
 
 .month-actual-cell {
@@ -1849,14 +1853,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .entry-composer-split-group {
   display: grid;
   gap: 6px;
-}
-
-.settings-account-health.is-mismatch {
-  color: var(--negative);
-}
-
-.settings-account-health.is-needs_checkpoint {
-  color: #9b6a2f;
 }
 
 .settings-account-meta {
@@ -2384,8 +2380,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .month-plan-section-income {
   background:
-    linear-gradient(180deg, rgba(31, 122, 99, 0.09), rgba(255, 255, 255, 0.88));
-  border-color: rgba(31, 122, 99, 0.16);
+    linear-gradient(180deg, var(--pastel-mint), rgba(255, 255, 255, 0.88));
+  border-color: color-mix(in srgb, var(--pastel-mint-ink) 16%, transparent);
 }
 
 .month-plan-section-planned {
@@ -2502,7 +2498,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border-top: 1px solid var(--line);
   background: rgba(38, 35, 31, 0.03);
   font-weight: 600;
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
 }
 
 .table-total-row td {
@@ -3617,14 +3613,6 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
   opacity: 0.7;
 }
 
-.tone-positive {
-  color: var(--accent);
-}
-
-.tone-negative {
-  color: #b85e4b;
-}
-
 .splits-groups-row {
   display: flex;
   align-items: stretch;
@@ -4399,14 +4387,6 @@ button.split-activity-card:hover {
   color: var(--text);
 }
 
-.panel-splits .split-date-group .split-activity-amount-line .positive {
-  color: var(--positive);
-}
-
-.panel-splits .split-date-group .split-activity-amount-line .negative {
-  color: var(--negative);
-}
-
 .panel-splits .subtle-action,
 .panel-splits .dialog-primary {
   display: inline-flex;
@@ -4574,11 +4554,6 @@ button.split-activity-card:hover {
 .panel-splits .split-inline-actions .dialog-primary:hover {
   border-color: var(--accent-strong);
   background: color-mix(in srgb, var(--accent-strong) 88%, black);
-}
-
-.panel-splits .tone-positive,
-.panel-splits .tone-negative {
-  color: white;
 }
 
 .panel-splits .split-match-card {
@@ -5292,12 +5267,12 @@ button.split-activity-card:hover {
   border-radius: 999px;
 }
 
-.plan-bar-fill.planned {
-  background: rgba(18, 56, 47, 0.36);
+.plan-bar-fill {
+  background: var(--money-ink, var(--muted));
 }
 
-.plan-bar-fill.actual {
-  background: #1f7a63;
+.plan-bar-fill.money-plan {
+  opacity: 0.5;
 }
 
 .plan-detail-table-wrap {
@@ -5898,23 +5873,8 @@ button.split-activity-card:hover {
   text-align: left;
 }
 
-.summary-account-pill.is-matched {
-  border-color: rgba(31, 122, 99, 0.28);
-  background: rgba(31, 122, 99, 0.06);
-}
-
-.summary-account-pill.is-mismatch {
-  border-color: rgba(181, 83, 67, 0.28);
-  background: rgba(181, 83, 67, 0.06);
-}
-
-.summary-account-pill.is-needs_checkpoint {
-  border-color: rgba(155, 106, 47, 0.28);
-  background: rgba(155, 106, 47, 0.06);
-}
-
 .summary-account-pill-name {
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   font-size: 0.82rem;
 }
 
@@ -5923,7 +5883,7 @@ button.split-activity-card:hover {
 }
 
 .summary-account-pill-meta {
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   font-size: 0.78rem;
   line-height: 1.25;
 }
@@ -6355,16 +6315,17 @@ button.split-activity-card:hover {
 }
 
 .entries-totals-label {
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
 }
 
 .entries-totals-item strong {
+  color: var(--money-ink, var(--text));
   font-size: 0.98rem;
   font-weight: 600;
 }
 
 .entries-totals-secondary {
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   font-size: 0.92rem;
 }
 
@@ -7317,10 +7278,8 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 .import-overlap-mismatch-hint {
   margin: 8px 0 0;
   padding: 10px 12px;
-  border: 1px solid rgba(180, 35, 24, 0.14);
+  border: 1px solid;
   border-radius: 8px;
-  background: rgba(180, 35, 24, 0.07);
-  color: var(--negative);
   font-weight: 700;
 }
 
@@ -7430,18 +7389,10 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   max-width: 100%;
   min-width: 0;
   padding: 10px 12px;
-  border: 1px solid rgba(180, 35, 24, 0.14);
+  border: 1px solid;
   border-radius: 8px;
-  background: rgba(180, 35, 24, 0.06);
-  color: var(--negative);
   font-weight: 700;
   line-height: 1.35;
-}
-
-.statement-reconciliation-result.is-matched {
-  border-color: rgba(26, 127, 79, 0.18);
-  background: rgba(26, 127, 79, 0.07);
-  color: var(--positive);
 }
 
 .statement-reconciliation-movement-grid {
@@ -7460,15 +7411,10 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   background: rgba(255, 255, 255, 0.66);
 }
 
-.statement-reconciliation-movement.is-problem {
-  border-color: rgba(180, 35, 24, 0.18);
-  background: rgba(180, 35, 24, 0.06);
-}
-
 .statement-reconciliation-movement span,
 .statement-reconciliation-movement small {
   min-width: 0;
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   line-height: 1.25;
 }
 
@@ -8121,7 +8067,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .entries-date-head span {
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   font-size: 0.88rem;
   font-weight: 500;
 }
@@ -8392,9 +8338,8 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .entry-chip-transfer {
-  background: rgba(29, 122, 87, 0.08);
-  color: var(--positive);
-  border-color: rgba(29, 122, 87, 0.16);
+  background: var(--pastel-neutral);
+  color: var(--text);
 }
 
 .entry-chip-split {
@@ -8460,18 +8405,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   line-height: 1.1;
 }
 
-.entry-edit-tone-positive {
-  color: var(--positive);
-  font-weight: 700;
-}
-
-.entry-edit-tone-negative {
-  color: var(--negative);
-  font-weight: 700;
-}
-
-.entry-edit-tone-transfer {
-  color: var(--positive);
+.entry-edit-tone {
   font-weight: 700;
 }
 
@@ -8845,16 +8779,6 @@ th {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.positive {
-  color: var(--positive);
-  font-weight: 700;
-}
-
-.negative {
-  color: var(--negative);
-  font-weight: 700;
 }
 
 @media (max-width: 960px) {
@@ -10474,7 +10398,7 @@ th {
     padding: 12px 13px;
   }
 
-  .metric span {
+  .metric > span {
     font-size: 0.72rem;
   }
 
@@ -11435,4 +11359,47 @@ th {
 .entries-load-error {
   min-height: 0;
   margin-top: 16px;
+}
+
+/* Money tones: src/domain/money-tone.ts, design.md "Money colour". Last, so
+   a tone wins over a component colour. */
+.money-in { --money-ink: var(--pastel-mint-ink); --money-fill: var(--pastel-mint); color: var(--money-ink); }
+.money-short { --money-ink: var(--pastel-rose-ink); --money-fill: var(--pastel-rose); color: var(--money-ink); }
+.money-plan { --money-ink: var(--pastel-sky-ink); --money-fill: var(--pastel-sky); color: var(--money-ink); }
+.money-caution { --money-ink: var(--pastel-butter-ink); --money-fill: var(--pastel-butter); color: var(--money-ink); }
+
+.money-soft {
+  background: color-mix(in srgb, var(--money-fill) 60%, transparent);
+  border-color: color-mix(in srgb, var(--money-ink, var(--text)) 14%, transparent);
+}
+
+.money-emphasis {
+  background: var(--money-fill);
+  border-color: color-mix(in srgb, var(--money-ink) 24%, transparent);
+}
+
+html[data-money-privacy="hidden"] :is(.money-in, .money-short, .money-plan, .money-caution):not(.money-emphasis) {
+  --money-ink: initial;
+  --money-fill: var(--pastel-neutral);
+  color: inherit;
+}
+
+td:is(.money-in, .money-short, .money-out),
+.plan-row-head > span {
+  font-weight: 700;
+}
+
+/* Not .panel-head span: that left every Summary value grey. */
+.metric strong .private-money {
+  color: inherit;
+}
+
+.metric.money-soft > span {
+  color: var(--money-ink, var(--muted));
+}
+
+.entries-totals-item.money-soft {
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border-radius: 999px;
 }

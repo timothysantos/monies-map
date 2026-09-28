@@ -3,6 +3,7 @@
 // filtered for a person view. Pure functions over loaded rows.
 
 import { buildDonutChart } from "./donut-chart-projection";
+import { headroomTone, spendTone } from "./money-tone";
 import { buildPersonScopes, effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
 import type {
   CategoryDto,
@@ -48,22 +49,24 @@ export function buildMonthPage(
     metricCards: [
       {
         label: "Planned spend",
-        amountMinor: plannedExpenseMinor
+        amountMinor: plannedExpenseMinor,
+        tone: "plan"
       },
       {
         label: "Actual spend",
         amountMinor: actualExpenseMinor,
-        tone: actualExpenseMinor > plannedExpenseMinor ? "negative" : "positive"
+        tone: spendTone(actualExpenseMinor, plannedExpenseMinor)
       },
       {
         label: "Variance",
         amountMinor: varianceMinor,
-        tone: varianceMinor >= 0 ? "positive" : "negative",
+        tone: headroomTone(varianceMinor),
         detail: varianceMinor >= 0 ? "Under plan" : "Over plan"
       },
       {
         label: "Savings target",
-        amountMinor: targetSavingsMinor
+        amountMinor: targetSavingsMinor,
+        tone: "plan"
       }
     ],
     monthNote: currentSummaryMonth?.note ?? "",

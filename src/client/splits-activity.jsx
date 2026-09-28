@@ -10,6 +10,7 @@ import { useRouteWorkBusy } from "./use-route-work-status";
 import { isMobileLayout } from "./use-viewport";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
+import { moneyToneClass } from "./money-tone-class";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -176,9 +177,9 @@ export function SplitActivityGroups({
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
           const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
-          const amountToneClass = showDirectionLabel
-            ? (item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "negative" : "positive")
-            : "";
+          // Lent or received is money coming to the viewer, borrowed a debt,
+          // a settle-up they paid a plain outflow (src/domain/money-tone.ts).
+          const amountToneClass = moneyToneClass(showDirectionLabel ? item.viewerTone : "neutral");
           const openEditor = () => {
             if (canOpen) {
               item.kind === "expense" ? onEditExpense(item) : onEditSettlement(item);
@@ -296,7 +297,7 @@ export function SplitActivityGroups({
               </div>
               <div className="split-activity-trailing">
                 {showDirectionLabel ? (
-                  <strong className={item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "tone-negative" : "tone-positive"}>
+                  <strong className={amountToneClass}>
                     {item.viewerDirectionLabel}
                   </strong>
                 ) : null}

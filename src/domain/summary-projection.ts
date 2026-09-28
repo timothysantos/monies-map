@@ -4,6 +4,7 @@
 
 import { buildPlanRowsForView } from "./month-projection";
 import { buildDonutChart } from "./donut-chart-projection";
+import { flowTone, signTone, spendTone } from "./money-tone";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 import type {
   AccountDto,
@@ -54,30 +55,32 @@ export function buildSummaryPage(
     {
       label: "Planned income",
       amountMinor: plannedIncomeTotalMinor,
-      tone: "positive"
+      tone: "plan"
     },
     {
       label: "Actual income",
       amountMinor: actualIncomeTotalMinor,
-      tone: "positive"
+      tone: flowTone(actualIncomeTotalMinor)
     },
     {
       label: "Planned spend",
-      amountMinor: plannedTotalMinor
+      amountMinor: plannedTotalMinor,
+      tone: "plan"
     },
     {
       label: "Actual spend",
       amountMinor: actualTotalMinor,
-      tone: actualTotalMinor > plannedTotalMinor ? "negative" : "positive"
+      tone: spendTone(actualTotalMinor, plannedTotalMinor)
     },
     {
       label: "Savings target",
-      amountMinor: targetSavingsMinor
+      amountMinor: targetSavingsMinor,
+      tone: "plan"
     },
     {
       label: "Realized savings",
       amountMinor: realizedSavingsMinor,
-      tone: realizedSavingsMinor >= 0 ? "positive" : "negative"
+      tone: signTone(realizedSavingsMinor)
     }
   ];
 

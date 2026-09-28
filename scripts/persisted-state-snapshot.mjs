@@ -26,7 +26,9 @@ const configPath = path.join(root, "wrangler.test.jsonc");
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "monies-map-state-"));
 const persist = path.join(tempRoot, "state");
 const baseUrl = `http://127.0.0.1:${port}`;
-const env = { ...process.env, WRANGLER_SEND_METRICS: "false", WRANGLER_LOG_PATH: path.join(tempRoot, "wrangler.log") };
+// X_LOCAL_OBSERVABILITY=false: wrangler dev (4.118+) would otherwise keep a
+// request-trace store beside D1 under the persist directory.
+const env = { ...process.env, WRANGLER_SEND_METRICS: "false", X_LOCAL_OBSERVABILITY: "false", WRANGLER_LOG_PATH: path.join(tempRoot, "wrangler.log") };
 
 function d1(file) {
   const result = spawnSync(process.execPath, [wrangler, "d1", "execute", "monies-map-test", "--config", configPath, "--local", "--persist-to", persist, "--file", file], { cwd: root, env, encoding: "utf8" });
@@ -326,7 +328,8 @@ try {
   }
 }
 
-const files = await findSqlite(persist);
+// Only D1: the persist directory also holds the other local resources.
+const files = await findSqlite(path.join(persist, "v3", "d1"));
 if (files.length !== 1) throw new Error(`Expected one D1 sqlite file, found ${files.length}`);
 const snapshot = dump(files[0], pageDtos);
 await writeFile(outFile, `${JSON.stringify(snapshot, null, 1)}\n`);

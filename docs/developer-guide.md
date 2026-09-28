@@ -103,9 +103,10 @@ builds `dist/` once. Then each shard starts its own stack on its own ports
 it merges every shard into `playwright-report/` and
 `test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
 removes the shard servers and state. Shard logs are in
-`test-results/e2e-sharded/logs/`. Each stack pings its Worker once a second
-to work around a `wrangler dev` proxy bug that can otherwise hold a request
-until the next one arrives (`docs/audits/e2e-sharding.md`).
+`test-results/e2e-sharded/logs/`. Test and performance servers start Wrangler
+with `X_LOCAL_OBSERVABILITY=false`, which turns off the request traces
+`wrangler dev` records for its Local Explorer; they slow local requests and
+no test reads them. `npm run dev` keeps them.
 
 To run a second sharded suite at the same time (another worktree or session),
 move its ports with `E2E_PORT_OFFSET`, for example

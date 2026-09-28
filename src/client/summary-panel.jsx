@@ -35,6 +35,8 @@ import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { flowTone, headroomTone, reconciliationTone, signTone, spendTone } from "../domain/money-tone";
+import { moneyToneClass } from "./money-tone-class";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -471,7 +473,7 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
               <p>Planned income <PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney> • Actual income <PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></p>
             </div>
           </div>
-          <span className={monthPlanReview.spendVarianceMinor >= 0 ? "positive" : "negative"}>
+          <span className={moneyToneClass(monthPlanReview.spendVarianceTone)}>
             <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
           </span>
         </div>
@@ -482,13 +484,13 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
           label={messages.month.table.planned}
           valueMinor={month.estimatedExpensesMinor}
           maxMinor={monthPlanReview.maxExpenseBarMinor}
-          tone="planned"
+          tone="plan"
         />
         <BarLine
           label={messages.month.table.actual}
           valueMinor={month.realExpensesMinor}
           maxMinor={monthPlanReview.maxExpenseBarMinor}
-          tone="actual"
+          tone={monthPlanReview.actualSpendTone}
         />
 
         <div className="table-wrap plan-detail-table-wrap">
@@ -505,26 +507,26 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
               <tr>
                 <td>{messages.summary.table.income}</td>
                 <td><PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney></td>
-                <td><PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></td>
-                <td className={monthPlanReview.incomeVarianceMinor >= 0 ? "positive" : "negative"}>
+                <td className={moneyToneClass(monthPlanReview.actualIncomeTone)}><PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></td>
+                <td className={moneyToneClass(monthPlanReview.incomeVarianceTone)}>
                   <PrivateMoney>{formatService.money(monthPlanReview.incomeVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedExpenses}</td>
                 <td><PrivateMoney>{formatService.money(month.estimatedExpensesMinor)}</PrivateMoney></td>
-                <td><PrivateMoney>{formatService.money(month.realExpensesMinor)}</PrivateMoney></td>
-                <td className={monthPlanReview.spendVarianceMinor >= 0 ? "positive" : "negative"}>
+                <td className={moneyToneClass(monthPlanReview.actualSpendTone)}><PrivateMoney>{formatService.money(month.realExpensesMinor)}</PrivateMoney></td>
+                <td className={moneyToneClass(monthPlanReview.spendVarianceTone)}>
                   <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedSavings}</td>
                 <td><PrivateMoney>{formatService.money(month.savingsGoalMinor)}</PrivateMoney></td>
-                <td className={month.realizedSavingsMinor >= 0 ? "positive" : "negative"}>
+                <td className={moneyToneClass(monthPlanReview.realizedSavingsTone)}>
                   <PrivateMoney>{formatService.money(month.realizedSavingsMinor)}</PrivateMoney>
                 </td>
-                <td className={monthPlanReview.savingsVarianceMinor >= 0 ? "positive" : "negative"}>
+                <td className={moneyToneClass(monthPlanReview.savingsVarianceTone)}>
                   <PrivateMoney>{formatService.money(monthPlanReview.savingsVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
@@ -564,7 +566,7 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
           <button
             key={account.accountId}
             type="button"
-            className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
+            className={`summary-account-pill ${moneyToneClass(reconciliationTone(account.reconciliationStatus), "soft")}`}
             onClick={() => onOpenEntriesForAccount(account.accountId)}
           >
             <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
@@ -663,10 +665,19 @@ function buildSummaryFocusState(summaryPage, summaryFocusParam) {
 }
 
 function buildMonthPlanReview(month) {
+  const incomeVarianceMinor = month.actualIncomeMinor - month.plannedIncomeMinor;
+  const spendVarianceMinor = month.estimatedExpensesMinor - month.realExpensesMinor;
+  const savingsVarianceMinor = month.realizedSavingsMinor - month.savingsGoalMinor;
   return {
-    incomeVarianceMinor: month.actualIncomeMinor - month.plannedIncomeMinor,
-    spendVarianceMinor: month.estimatedExpensesMinor - month.realExpensesMinor,
-    savingsVarianceMinor: month.realizedSavingsMinor - month.savingsGoalMinor,
+    incomeVarianceMinor,
+    spendVarianceMinor,
+    savingsVarianceMinor,
+    actualIncomeTone: flowTone(month.actualIncomeMinor),
+    actualSpendTone: spendTone(month.realExpensesMinor, month.estimatedExpensesMinor),
+    realizedSavingsTone: signTone(month.realizedSavingsMinor),
+    incomeVarianceTone: headroomTone(incomeVarianceMinor),
+    spendVarianceTone: headroomTone(spendVarianceMinor),
+    savingsVarianceTone: headroomTone(savingsVarianceMinor),
     maxExpenseBarMinor: Math.max(month.realExpensesMinor, month.estimatedExpensesMinor)
   };
 }

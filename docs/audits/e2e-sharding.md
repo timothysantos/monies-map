@@ -22,13 +22,6 @@ and parallel sessions kept colliding on those ports.
   dependency optimisation. Busy ports fail the run at once instead of reusing
   another tree's server. Servers run in their own process groups and are
   stopped, with their state removed, when the shard ends or on Ctrl+C.
-  While a stack is up it pings its Worker's `/api/health` once a second:
-  `wrangler dev` (4.113) parks a GET whose proxied fetch lost its connection
-  ("Network connection lost.") until the next request reaches its proxy, so
-  in a quiet test a page request could wait for the 45 s client timeout. The
-  ping drains that queue within about a second. Upstream `ProxyWorker.ts`
-  now compares origins instead of full URLs; drop the ping after a wrangler
-  upgrade that includes that fix.
 - `scripts/e2e-shard-plan.mjs`: the work comes from `playwright test --list`,
   so a new spec is always included. Whole files are placed longest first on
   the least-loaded shard, using `tests/e2e/shard-weights.json` (measured
@@ -148,6 +141,26 @@ about 130–145 s), so two shards match four.
   the faster smoke step. I checked the merge path locally, including a
   missing shard (count mismatch, exit 1). I have not run the workflow on
   GitHub.
+
+## wrangler dev proxy (removed workaround)
+
+`wrangler dev` 4.113's ProxyWorker parked a GET whose proxied fetch lost its
+connection until the next request reached the proxy: it compared the full
+request URL with the Worker's bare origin, so every such error looked like a
+Worker reload. In a quiet test the page's Summary request then never
+answered. The stacks pinged `/api/health` once a second to drain that queue
+(c959bcc). Wrangler 4.114 (#14593) compares origins
+(`isSameUserWorkerOrigin` in `wrangler-dist/ProxyWorker.js`), and 4.129.1
+(#15252) retries such a GET up to twice and logs `recovered on attempt`, so
+the ping was removed with the upgrade to 4.141.0. #15252 also closed
+workers-sdk issue 14926 (the dev server exiting when workerd restarted),
+which had kept the project on 4.113.
+
+Proof (3 isolated stacks side by side, 5 busy-loop processes on 10 CPUs,
+`financial-insight.spec.js --grep "error-with-wording|drops-the-fact"
+--repeat-each=30`, no ping): 4.113 failed 2 of 180 runs with the Summary
+heading never appearing; 4.141 passed 540 of 540 in three rounds (slowest
+run 7.5 s) and logged 15 dropped connections that its retry recovered.
 
 ## Keeping it honest
 
