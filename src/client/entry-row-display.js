@@ -48,26 +48,19 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
 }
 
 export function getSplitGroupChipStyle(groupName) {
-  const palette = [
-    { background: "#e6f3ff", color: "#135d8c", border: "#9bd0f5" },
-    { background: "#eaf7ed", color: "#1d6f42", border: "#a5dcb3" },
-    { background: "#f1ecff", color: "#5d3aa0", border: "#c6b6f4" },
-    { background: "#fff1e8", color: "#a84a17", border: "#f4b38e" },
-    { background: "#eaf7f6", color: "#176a68", border: "#9ed9d4" },
-    { background: "#fff3c7", color: "#7a5700", border: "#e8c34c" },
-    { background: "#fce7f3", color: "#9d2463", border: "#efa3cb" },
-    { background: "#eceff4", color: "#43516a", border: "#bac3d1" }
-  ];
+  // Eight hues of the category palette; the chip is its tint with a darker
+  // ink (5.4:1 or more), as every pastel surface is.
+  const palette = ["#5C90C9", "#33A471", "#9385D9", "#D07E43", "#499DA4", "#C0862A", "#DA6DA1", "#7C8791"];
   const hash = Array.from(String(groupName)).reduce(
     (value, character) => ((value << 5) - value + character.charCodeAt(0)) | 0,
     0
   );
-  const tone = palette[Math.abs(hash) % palette.length];
+  const colour = palette[Math.abs(hash) % palette.length];
 
   return {
-    "--split-group-chip-bg": tone.background,
-    "--split-group-chip-color": tone.color,
-    "--split-group-chip-border": tone.border
+    "--split-group-chip-bg": `color-mix(in srgb, ${colour} 16%, white)`,
+    "--split-group-chip-color": `color-mix(in srgb, ${colour} 55%, var(--text))`,
+    "--split-group-chip-border": `color-mix(in srgb, ${colour} 45%, white)`
   };
 }
 
@@ -80,7 +73,8 @@ export function getEntryOwnerCue(entry, isLinkedToSplits = false) {
   return {
     style: {
       "--entry-owner-color": color,
-      "--entry-owner-border-color": hexToRgba(color, 0.68)
+      // Solid, so the 5px edge keeps 3:1 against the row.
+      "--entry-owner-border-color": hexToRgba(color, 1)
     }
   };
 }
@@ -173,19 +167,21 @@ function getSignedTotalAmountMinor(entry) {
 function getOwnerCueColor(ownerKey) {
   const normalized = ownerKey.trim().toLowerCase();
 
+  // Colours from the category palette (src/domain/category-palette.ts), in
+  // the former hue families: green, coral, terracotta for Splits.
   if (normalized.includes("tim")) {
-    return "#74C69D";
+    return "#33A471";
   }
 
   if (normalized.includes("joyce")) {
-    return "#F28482";
+    return "#DE726D";
   }
 
   if (normalized === "linked-splits") {
-    return "#B15E2F";
+    return "#BF7D51";
   }
 
-  const palette = ["#6A7A73", "#7C8791", "#8FAE4B", "#C97B47", "#5EA89B", "#8B78E6"];
+  const palette = ["#6A7A73", "#7C8791", "#7F9B43", "#BF7D51", "#48988A", "#9385D9"];
   let hash = 0;
   for (let index = 0; index < normalized.length; index += 1) {
     hash = ((hash << 5) - hash + normalized.charCodeAt(index)) | 0;

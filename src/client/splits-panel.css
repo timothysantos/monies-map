@@ -67,3 +67,18 @@ html[data-money-privacy="hidden"] .panel-splits .entries-summary-metrics .money-
 .panel-splits .split-date-group .split-activity-trailing :is(.money-in, .money-short) {
   color: var(--money-ink);
 }
+
+/* The summary strip darkens the orange a little instead of lightening it,
+   so its labels read at AA: white is 5.1:1 and #fff8f3 4.9:1 at the
+   lightest end of the panel (white at 78% on the old light wash was 3:1). */
+.panel-splits .splits-summary-strip {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.panel-splits .entries-summary-metrics {
+  color: #fff;
+}
+
+.panel-splits .split-summary-search .entries-filter-label {
+  color: #fff8f3;
+}

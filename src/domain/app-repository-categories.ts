@@ -1,6 +1,7 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { slugify } from "./app-repository-helpers";
 import { recordAuditEvent } from "./app-repository-audit";
+import { categoryDisplayColour } from "./category-palette";
 import type { CategoryDto } from "../types/dto";
 
 export async function loadCategories(db: D1Database): Promise<CategoryDto[]> {
@@ -27,7 +28,7 @@ export async function loadCategories(db: D1Database): Promise<CategoryDto[]> {
     name: row.name,
     slug: row.slug ?? slugify(row.name),
     iconKey: row.icon_key,
-    colorHex: row.color_hex,
+    colorHex: categoryDisplayColour(row.color_hex),
     sortOrder: row.sort_order,
     isSystem: Boolean(row.is_system)
   }));

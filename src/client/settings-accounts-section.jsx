@@ -5,6 +5,7 @@ import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
 import { DeleteRowButton } from "./ui-components";
 import { moneyToneClass } from "./money-tone-class";
+import { useMoneyPrivacy } from "./money-privacy";
 import { reconciliationTone } from "../domain/money-tone";
 
 const { accounts: accountService, format: formatService } = moniesClient;
@@ -30,6 +31,7 @@ export function SettingsAccountsSection({
   onRowsMatched,
   onEntryAdded
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   return (
     <section className="chart-card settings-card">
       <button
@@ -67,9 +69,11 @@ export function SettingsAccountsSection({
                     <strong>{account.name}</strong>
                     <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
                     <p>{`Balance ${formatService.money(account.balanceMinor ?? 0)} • Opening ${formatService.money(account.openingBalanceMinor ?? 0)}`}</p>
-                    <p className={`settings-account-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
-                      {accountService.describeHealth(account)}
-                    </p>
+                    {areTotalsVisible ? (
+                      <p className={`settings-account-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
+                        {accountService.describeHealth(account)}
+                      </p>
+                    ) : null}
                     <p className="settings-account-meta">
                       {account.latestImportAt
                         ? messages.settings.accountHealthLastImport(formatService.formatDate(account.latestImportAt))

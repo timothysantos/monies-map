@@ -31,7 +31,7 @@ import {
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
@@ -551,6 +551,7 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
 }
 
 function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   if (!accountPills.length) {
     return null;
   }
@@ -571,7 +572,7 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
           >
             <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
             <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor)}</PrivateMoney></span>
-            <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span>
+            {areTotalsVisible ? <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span> : null}
           </button>
         ))}
       </div>

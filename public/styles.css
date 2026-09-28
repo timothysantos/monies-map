@@ -7,8 +7,8 @@
   --text: #26231f;
   --muted: #736f69;
   --line: rgba(38, 35, 31, 0.12);
-  --positive: #1d7a57;
-  --negative: #b23a2e;
+  --positive: var(--pastel-mint-ink);
+  --negative: var(--pastel-rose-ink);
   --accent: #934923;
   --accent-strong: #b15e2f;
   --shadow: 0 10px 30px rgba(27, 24, 21, 0.06);
@@ -24,6 +24,10 @@
   --pastel-butter: #f8efd3;
   --pastel-butter-ink: #735512;
   --pastel-neutral: #f6f4ef;
+  --pastel-mint-line: color-mix(in srgb, var(--pastel-mint-ink) 22%, transparent);
+  --pastel-rose-line: color-mix(in srgb, var(--pastel-rose-ink) 22%, transparent);
+  --pastel-sky-line: color-mix(in srgb, var(--pastel-sky-ink) 22%, transparent);
+  --pastel-butter-line: color-mix(in srgb, var(--pastel-butter-ink) 26%, transparent);
 }
 
 * {
@@ -40,7 +44,7 @@ body {
   font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   background:
     radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 22%),
-    radial-gradient(circle at left 20%, rgba(29, 122, 87, 0.06), transparent 30%),
+    radial-gradient(circle at left 20%, color-mix(in srgb, var(--pastel-mint) 60%, transparent), transparent 30%),
     linear-gradient(180deg, #f6f4ef 0%, var(--bg) 100%);
 }
 
@@ -71,11 +75,13 @@ button {
 }
 
 .environment-banner-demo {
-  background: #1f66d1;
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
 }
 
 .environment-banner-local {
-  background: #18824f;
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
 }
 
 h1,
@@ -354,8 +360,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--negative);
-  color: #fff;
+  background: var(--pastel-rose);
+  color: var(--negative);
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
@@ -760,8 +766,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .pill.warning {
-  border-color: rgba(180, 35, 24, 0.18);
-  background: rgba(180, 35, 24, 0.1);
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
   color: var(--negative);
 }
 
@@ -772,9 +778,9 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .pill.success {
-  border-color: rgba(31, 122, 99, 0.2);
-  background: rgba(31, 122, 99, 0.12);
-  color: #1f7a63;
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
+  color: var(--positive);
 }
 
 .pill-button {
@@ -1169,9 +1175,9 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(163, 70, 70, 0.24);
+  border: 1px solid var(--pastel-rose-line);
   border-radius: 14px;
-  background: rgba(255, 242, 242, 0.72);
+  background: var(--pastel-rose);
 }
 
 .settings-suggestion-list {
@@ -1188,7 +1194,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   display: grid;
   gap: 8px;
   padding: 10px;
-  border: 1px solid rgba(163, 70, 70, 0.2);
+  border: 1px solid var(--pastel-rose-line);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.64);
 }
@@ -1897,10 +1903,10 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .settings-shortcut-status {
   margin: 0;
   padding: 8px 10px;
-  border: 1px solid rgba(37, 132, 95, 0.24);
+  border: 1px solid var(--pastel-mint-line);
   border-radius: 8px;
-  background: rgba(37, 132, 95, 0.08);
-  color: var(--green);
+  background: var(--pastel-mint);
+  color: var(--positive);
   font-size: 0.86rem;
   font-weight: 700;
 }
@@ -1936,8 +1942,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: rgba(37, 132, 95, 0.1);
-  color: var(--green);
+  background: var(--pastel-mint);
+  color: var(--positive);
 }
 
 .settings-shortcut-install-button {
@@ -2908,9 +2914,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .month-plan-section table tbody tr.is-editing {
-  background:
-    linear-gradient(90deg, rgba(31, 122, 99, 0.14), rgba(255, 255, 255, 0.86) 72%),
-    linear-gradient(180deg, rgba(231, 245, 239, 0.96), rgba(250, 255, 252, 0.94));
+  background: linear-gradient(90deg, var(--pastel-mint), rgba(255, 255, 255, 0.86) 72%);
 }
 
 .table-edit-input {
@@ -3325,8 +3329,8 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
 }
 
 .split-odd-cent-actions button.is-selected {
-  border-color: rgba(29, 122, 87, 0.28);
-  background: rgba(235, 247, 241, 0.98);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
   color: var(--positive);
 }
 
@@ -3477,7 +3481,7 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
   height: 28px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--category-color) 16%, white);
-  color: var(--category-color);
+  color: color-mix(in srgb, var(--category-color) 70%, var(--text));
   flex: 0 0 auto;
 }
 
@@ -3599,10 +3603,11 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
 }
 
 .dialog-danger {
-  border: 0;
+  border: 1px solid var(--pastel-rose-line);
   border-radius: 10px;
-  background: var(--negative);
-  color: white;
+  background: var(--pastel-rose);
+  color: var(--negative);
+  font-weight: 700;
   font: inherit;
   padding: 10px 16px;
   cursor: pointer;
@@ -3818,10 +3823,10 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
   gap: 16px;
   margin: 12px 0 18px;
   padding: 14px 16px;
-  border: 1px solid rgba(47, 125, 99, 0.28);
+  border: 1px solid var(--pastel-mint-line);
   border-radius: 12px;
-  background: rgba(236, 248, 241, 0.9);
-  color: #245b49;
+  background: var(--pastel-mint);
+  color: var(--positive);
 }
 
 .split-checkpoint-panel.is-open {
@@ -4103,7 +4108,7 @@ button.split-activity-card:hover {
   flex: 0 0 auto;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(40, 135, 94, 0.12);
+  background: var(--pastel-mint);
   color: var(--positive);
   font-size: 0.78rem;
   font-weight: 700;
@@ -4621,8 +4626,8 @@ button.split-activity-card:hover {
 
 .panel-splits .split-checkpoint-panel.is-matched {
   border-color: rgba(205, 238, 220, 0.95);
-  background: rgba(240, 250, 244, 0.98);
-  color: #245b49;
+  background: var(--pastel-mint);
+  color: var(--positive);
 }
 
 .split-checkpoint-summary,
@@ -4796,15 +4801,15 @@ button.split-activity-card:hover {
 }
 
 .panel-splits .split-settlement-follow-up .split-settlement-follow-up-undo-action {
-  border-color: #bc7467;
-  background: #fce9e4;
-  color: #912d20;
+  border-color: color-mix(in srgb, var(--negative) 55%, transparent);
+  background: var(--pastel-rose);
+  color: var(--negative);
 }
 
 .panel-splits .split-settlement-follow-up .split-settlement-follow-up-undo-action:hover:not(:disabled) {
-  border-color: #962f22;
-  background: #f6d7cf;
-  color: #762318;
+  border-color: var(--negative);
+  background: color-mix(in srgb, var(--pastel-rose) 80%, var(--negative));
+  color: var(--negative);
 }
 
 .panel-splits .split-settlement-follow-up .split-settlement-follow-up-match-action {
@@ -4847,8 +4852,8 @@ button.split-activity-card:hover {
 }
 
 .panel-splits .split-checkpoint-panel.is-matched .subtle-action {
-  border-color: rgba(47, 125, 99, 0.35);
-  color: #246b54;
+  border-color: var(--pastel-mint-line);
+  color: var(--positive);
 }
 
 .panel-splits .split-checkpoint-transfer {
@@ -4912,7 +4917,7 @@ button.split-activity-card:hover {
 }
 
 .panel-splits .split-payment-marker.is-certified {
-  color: #246b54;
+  color: var(--positive);
 }
 
 @media (max-width: 760px) {
@@ -5087,13 +5092,13 @@ button.split-activity-card:hover {
 }
 
 .settings-statement-compare.is-success {
-  border-color: rgba(31, 122, 99, 0.18);
-  background: rgba(233, 245, 239, 0.9);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
 }
 
 .settings-statement-compare.is-error {
-  border-color: rgba(170, 54, 41, 0.26);
-  background: rgba(248, 226, 221, 0.78);
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
 }
 
 .settings-statement-compare-grid {
@@ -5389,7 +5394,7 @@ button.split-activity-card:hover {
   border-radius: 50%;
   flex: 0 0 auto;
   background: color-mix(in srgb, var(--category-color) 32%, white);
-  color: var(--category-color);
+  color: color-mix(in srgb, var(--category-color) 70%, var(--text));
   border: 1px solid color-mix(in srgb, var(--category-color) 52%, white);
   box-shadow: 0 10px 20px color-mix(in srgb, var(--category-color) 14%, transparent);
   font-size: 0.95rem;
@@ -5427,7 +5432,7 @@ button.split-activity-card:hover {
   aspect-ratio: 1 / 1;
   border-radius: 999px;
   overflow: hidden;
-  color: var(--category-color);
+  color: color-mix(in srgb, var(--category-color) 70%, var(--text));
   background: color-mix(in srgb, var(--category-color) 34%, white);
   border: 1px solid color-mix(in srgb, var(--category-color) 56%, white);
   box-shadow: 0 12px 22px color-mix(in srgb, var(--category-color) 18%, transparent);
@@ -5898,7 +5903,7 @@ button.split-activity-card:hover {
 
 .form-error {
   margin: 12px 0 0;
-  color: #b33a3a;
+  color: var(--negative);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -6495,7 +6500,7 @@ button.split-activity-card:hover {
 }
 
 .import-inbox-section.is-current {
-  border-color: rgba(31, 122, 99, 0.2);
+  border-color: var(--pastel-mint-line);
   background: rgba(248, 252, 250, 0.86);
 }
 
@@ -6538,7 +6543,7 @@ button.split-activity-card:hover {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: rgba(233, 245, 239, 0.86);
+  background: var(--pastel-mint);
   color: var(--positive);
 }
 
@@ -6571,8 +6576,8 @@ button.split-activity-card:hover {
 }
 
 .import-inbox-guidance.is-current {
-  border-color: rgba(31, 122, 99, 0.16);
-  background: rgba(233, 245, 239, 0.8);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
   color: var(--positive);
 }
 
@@ -6714,9 +6719,9 @@ button.split-activity-card:hover {
 
 .import-inbox-current-list span {
   padding: 6px 8px;
-  border: 1px solid rgba(31, 122, 99, 0.13);
+  border: 1px solid var(--pastel-mint-line);
   border-radius: 8px;
-  background: rgba(233, 245, 239, 0.64);
+  background: var(--pastel-mint);
   color: var(--positive);
   font-size: 0.84rem;
   font-weight: 700;
@@ -6735,9 +6740,9 @@ button.split-activity-card:hover {
 .import-intake-summary {
   width: fit-content;
   padding: 8px 10px;
-  border: 1px solid rgba(31, 122, 99, 0.14);
+  border: 1px solid var(--pastel-mint-line);
   border-radius: 8px;
-  background: rgba(233, 245, 239, 0.7);
+  background: var(--pastel-mint);
   color: var(--positive);
   font-size: 0.88rem;
   font-weight: 700;
@@ -6747,7 +6752,7 @@ button.split-activity-card:hover {
   display: grid;
   gap: 4px;
   padding: 12px 14px;
-  border: 1px dashed rgba(31, 122, 99, 0.24);
+  border: 1px dashed var(--pastel-mint-line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.64);
 }
@@ -6779,7 +6784,7 @@ button.split-activity-card:hover {
 }
 
 .import-intake-row.is-matched {
-  border-color: rgba(31, 122, 99, 0.18);
+  border-color: var(--pastel-mint-line);
 }
 
 .import-intake-row.is-ambiguous {
@@ -6956,8 +6961,8 @@ button.split-activity-card:hover {
 }
 
 .import-stage-label.is-complete {
-  border-color: rgba(31, 122, 99, 0.16);
-  background: rgba(233, 245, 239, 0.9);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
   color: var(--positive);
 }
 
@@ -7003,17 +7008,17 @@ button.split-activity-card:hover {
   display: grid;
   gap: 6px;
   padding: 16px;
-  border: 1px dashed rgba(31, 122, 99, 0.45);
+  border: 1px dashed color-mix(in srgb, var(--positive) 45%, transparent);
   border-radius: 8px;
-  background: rgba(233, 245, 239, 0.62);
+  background: color-mix(in srgb, var(--pastel-mint) 62%, transparent);
   cursor: pointer;
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
 .import-dropzone:hover,
 .import-dropzone.is-active {
-  border-color: rgba(31, 122, 99, 0.82);
-  background: rgba(218, 240, 229, 0.92);
+  border-color: var(--positive);
+  background: var(--pastel-mint);
   transform: translateY(-1px);
 }
 
@@ -7058,13 +7063,13 @@ button.split-activity-card:hover {
 }
 
 .import-upload-status.is-success {
-  border-color: rgba(31, 122, 99, 0.18);
-  background: rgba(233, 245, 239, 0.9);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
 }
 
 .import-upload-status.is-error {
-  border-color: rgba(170, 54, 41, 0.26);
-  background: rgba(248, 226, 221, 0.78);
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
 }
 
 .import-step-hint {
@@ -7180,18 +7185,18 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .import-warning-action {
-  border-color: rgba(31, 122, 99, 0.2);
-  background: rgba(233, 245, 239, 0.88);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
 }
 
 .import-warning-reconciled {
-  border-color: rgba(31, 122, 99, 0.2);
-  background: rgba(233, 245, 239, 0.88);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
 }
 
 .import-warning-overlap {
-  border-color: rgba(204, 154, 47, 0.32);
-  background: rgba(249, 242, 214, 0.86);
+  border-color: var(--pastel-butter-line);
+  background: var(--pastel-butter);
 }
 
 .import-warning-title-row {
@@ -7260,7 +7265,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  border: 1px solid rgba(204, 154, 47, 0.24);
+  border: 1px solid var(--pastel-butter-line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.54);
 }
@@ -7289,7 +7294,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
-  border: 1px solid rgba(204, 154, 47, 0.24);
+  border: 1px solid var(--pastel-butter-line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.7);
   color: var(--muted);
@@ -7758,15 +7763,15 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .import-summary-item.is-warning {
-  border-color: rgba(180, 35, 24, 0.14);
-  background: rgba(180, 35, 24, 0.08);
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
   color: var(--negative);
 }
 
 .import-summary-item.is-success {
-  border-color: rgba(31, 122, 99, 0.16);
-  background: rgba(31, 122, 99, 0.1);
-  color: #1f7a63;
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
+  color: var(--positive);
 }
 
 .import-preview-table th,
@@ -7833,7 +7838,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   align-items: start;
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid rgba(180, 35, 24, 0.1);
+  border: 1px solid var(--pastel-rose-line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.56);
 }
@@ -7956,8 +7961,8 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 .duplicate-match-highlight {
   padding: 0 0.08em;
   border-radius: 0.2em;
-  background: rgba(182, 53, 36, 0.14);
-  color: #b63524;
+  background: var(--pastel-rose);
+  color: var(--negative);
   font-weight: 800;
 }
 
@@ -8330,9 +8335,9 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 .entry-chip-linked-split-group {
   flex: 1 1 auto;
   max-width: 96px;
-  border-left: 1px solid var(--split-group-chip-border, rgba(251, 146, 60, 0.34));
-  background: var(--split-group-chip-bg, rgba(255, 247, 237, 0.98));
-  color: var(--split-group-chip-color, #9a3412);
+  border-left: 1px solid var(--split-group-chip-border, var(--line));
+  background: var(--split-group-chip-bg, var(--pastel-neutral));
+  color: var(--split-group-chip-color, var(--accent));
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -8353,40 +8358,40 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .entry-chip-bank-state.is-manual-provisional {
-  border-color: rgba(155, 106, 47, 0.22);
+  border-color: var(--pastel-butter-line);
   background: rgba(251, 244, 232, 0.96);
   color: #7b5524;
 }
 
 .entry-chip-bank-state.is-import-provisional {
-  border-color: rgba(38, 92, 140, 0.18);
-  background: rgba(233, 242, 250, 0.96);
-  color: #265c8c;
+  border-color: var(--pastel-sky-line);
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
 }
 
 .entry-chip-bank-state.is-statement-certified {
-  border-color: rgba(29, 122, 87, 0.18);
-  background: rgba(231, 245, 238, 0.96);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
   color: var(--positive);
 }
 
 .entry-chip-exception.is-blocking {
-  border-color: rgba(170, 50, 50, 0.22);
-  background: rgba(253, 235, 235, 0.96);
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
   color: var(--negative);
 }
 
 .entry-chip-exception.is-review {
-  border-color: rgba(155, 106, 47, 0.22);
+  border-color: var(--pastel-butter-line);
   background: rgba(251, 244, 232, 0.96);
   color: #7b5524;
 }
 
 .entry-chip-exception.is-info,
 .entry-chip-exception-status.is-resolved {
-  border-color: rgba(38, 92, 140, 0.18);
-  background: rgba(233, 242, 250, 0.96);
-  color: #265c8c;
+  border-color: var(--pastel-sky-line);
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
 }
 
 .entry-chip-exception-status.is-open {
@@ -8429,7 +8434,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 
 .entry-submit-error {
   margin: 0 0 12px;
-  color: #b33a3a;
+  color: var(--negative);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -8625,14 +8630,14 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .import-history-refreshing.is-success {
-  border-color: rgba(26, 127, 79, 0.2);
-  background: rgba(26, 127, 79, 0.07);
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
   color: var(--positive);
 }
 
 .import-history-refreshing.is-error {
-  border-color: rgba(180, 35, 24, 0.18);
-  background: rgba(180, 35, 24, 0.06);
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
   color: var(--negative);
 }
 
@@ -8748,9 +8753,9 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .import-status.is-warning {
-  color: #9b6a2f;
-  border-color: rgba(155, 106, 47, 0.16);
-  background: rgba(246, 239, 226, 0.76);
+  color: var(--pastel-butter-ink);
+  border-color: var(--pastel-butter-line);
+  background: var(--pastel-butter);
 }
 
 table {
