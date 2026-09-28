@@ -650,6 +650,10 @@ Definitions:
 A money tone is presentation of a figure, never a figure itself: it does not
 change totals, and hidden money shows every tone as `neutral`.
 
+A category's `colorHex` is shown through the category palette
+(`src/domain/category-palette.ts`): a stored former colour appears as its
+calm counterpart; the stored value is not rewritten.
+
 ### Transfer Group
 
 A linkage record that pairs related transfer ledger entries across accounts.
