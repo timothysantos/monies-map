@@ -31,6 +31,27 @@ when the headline is not a Bigger question. "See all insights" adds up
 to three more signals and one quote (never beside a Bigger question);
 Splits also keeps its link to review bank matches there.
 
+## Notability
+
+Some signals are true almost every month. Each has a test for when its
+numbers are unusual; when they are not, it is steady: it never leads,
+and is listed under "Also" only when something notable leads (a calm
+month lists nothing). A steady signal with a turn may still lead in one
+month of each quarter, by the period (turn 0: Jan, Apr, Jul, Oct; 1: Feb,
+May, Aug, Nov; 2: Mar, Jun, Sep, Dec). A month with nothing notable leads
+with a Going well that fires, otherwise the calm line.
+
+- Entries, five largest: notable when one-off purchases among the five (purchases at a named place: not a bill, utility, loan, rent, insurance, subscription, tax, savings, investment, fee or transfer, nor a PayNow or GIRO payment with no place name) come to 25% or more of the month's spending. The usual obligations are the largest entries every month, so they alone never count. No turn.
+- Summary, subscriptions: notable when the month's total moved 10% or $20 (either) from the month before, when that month is in the range with spending of its own. Otherwise turn 2.
+- Summary, months under plan: notable in the month that comes back under plan after one over it. Otherwise turn 0.
+- Month, category over plan: notable when 10% and $20 over its plan. Smaller overs: no turn.
+- Month, plan left (in progress or finished): turn 1. Savings on plan: turn 2.
+
+Long view lines (keep rate, cushion, fixed costs, same season, share of
+costs) and Just for fun lines (such as the average entry or a category's
+share) never lead: they have their own line and their own year rotation.
+Quick fixes, Bigger questions and moments are notable whenever they fire.
+
 ## The year rule
 
 What rotates follows the period being viewed, never the time of the visit
@@ -178,7 +199,7 @@ Way to think about it, in turn:
 
 ### subscriptions (Worth a look)
 
-Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost.
+Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost. Steady unless they changed from the month before (see Notability).
 
 Phrasings:
 
@@ -200,7 +221,7 @@ Way to think about it, in turn:
 
 ### monthsUnderPlan (Going well)
 
-At least two thirds (and 3 or more) of the last 12 complete months came in under plan.
+At least two thirds (and 3 or more) of the last 12 complete months came in under plan. Steady unless the latest month came back under plan (see Notability).
 
 Phrasings:
 
@@ -579,7 +600,7 @@ Action: Show those entries
 
 ### categoryOverPlan (Worth a look)
 
-The category budget furthest over its plan (by $1 or more).
+The category budget furthest over its plan (by $1 or more). Steady under 10% and $20 over (see Notability).
 
 Phrasings:
 
@@ -632,7 +653,7 @@ Way to think about it, in turn:
 
 ### planLeft (Going well)
 
-Plan still unspent in the month in progress.
+Plan still unspent in the month in progress. Steady (see Notability).
 
 Phrasings:
 
@@ -661,7 +682,7 @@ Way to think about it, in turn:
 
 ### planLeftPast (Going well)
 
-Wrap-up: a finished month that came in under plan.
+Wrap-up: a finished month that came in under plan. Steady (see Notability).
 
 Phrasings:
 
@@ -678,7 +699,7 @@ Way to think about it, in turn:
 
 ### savingsOnPlan (Going well)
 
-Every savings row in the plan is met.
+Every savings row in the plan is met. Steady (see Notability).
 
 Phrasings:
 
@@ -1029,7 +1050,7 @@ Action: Show those entries
 
 ### topFive (Worth a look)
 
-The five largest entries are 40% or more of the month's spending (6 or more expenses).
+The five largest entries are 40% or more of the month's spending (6 or more expenses). Steady unless one-off purchases among them are a quarter of the month (see Notability).
 
 Phrasings:
 

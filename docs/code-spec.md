@@ -233,7 +233,11 @@ needs 12 or more wordings (phrasings times think lines); a Just for fun
 line needs a trivia type placed in exactly one of the page's twelve
 columns. Each signal needs a unit test that it fires
 with concrete numbers and exact wording, and one that it stays silent.
-Actions may only reuse navigations the page already has. Summary's signals
+Actions may only reuse navigations the page already has. A signal that can
+be true month after month needs a notability test: `steady` when its
+numbers are not unusual, with an optional quarter `turn`
+(`money-signals/types.ts`), proved both ways in
+`tests/money-insights-notability.test.mjs`. Summary's signals
 are on the first screen: keep them compact, and put anything large (like the
 quotes) behind a dynamic import.
 Money insights are deterministic UI evidence, not model output. A
