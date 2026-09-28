@@ -1125,6 +1125,103 @@ test.describe("import flow", () => {
     await expect(page.locator(".split-header-toolbar .split-matches-link")).toContainText(/Review matches \([1-9]/);
   });
 
+  test("a Later click on the split clean-up card survives the post-commit refresh, and a new import brings it back", async ({ page }) => {
+    const runId = Date.now();
+    const firstDescription = `Playwright later race ${runId}`;
+    const secondDescription = `Playwright later race follow-up ${runId}`;
+    const firstLabel = `Playwright later race import ${runId}`;
+    const secondLabel = `Playwright later race follow-up import ${runId}`;
+
+    for (const [date, description] of [["2025-10-21", firstDescription], ["2025-10-22", secondDescription]]) {
+      await postJson(page, "/api/splits/expenses/create", {
+        groupId: null,
+        date,
+        description,
+        categoryName: "Food & Drinks",
+        payerPersonName: "Tim",
+        amountMinor: 2468,
+        note: "manual split before bank import",
+        splitBasisPoints: 5000,
+        splitAmountMinor: 1234
+      });
+    }
+
+    await page.goto("/imports?view=person-tim&month=2025-10");
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+    // Until released, every imports page response leaves the new import out
+    // of Recent imports, as a refresh that lands before the commit is
+    // visible would. The page still carries the pending split match count,
+    // so the clean-up card shows while the panel keeps waiting for its
+    // import to appear.
+    let releaseImportsPage = false;
+    let commitClicked = false;
+    let markHiddenRefresh;
+    const hiddenRefreshAfterCommit = new Promise((resolve) => { markHiddenRefresh = resolve; });
+    const hideCommittedImportRoute = async (route) => {
+      if (releaseImportsPage) {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      const body = await response.json();
+      if (body?.importsPage?.recentImports) {
+        body.importsPage.recentImports = body.importsPage.recentImports.filter((item) => item.sourceLabel !== firstLabel);
+      }
+      await route.fulfill({ response, json: body });
+      if (commitClicked) {
+        markHiddenRefresh();
+      }
+    };
+
+    const cleanupCard = page.locator(".import-post-cleanup-card");
+    await page.route("**/api/imports-page*", hideCommittedImportRoute);
+    try {
+      await page.getByLabel("Source label").fill(firstLabel);
+      await page.getByLabel("CSV content").fill(
+        [
+          "category,account,note,amount,date,description",
+          `Food & Drinks,UOB One,official bank row,-24.68,2025-10-21,${firstDescription} official`
+        ].join("\n")
+      );
+      await page.getByRole("button", { name: "Preview import" }).click();
+      await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+      commitClicked = true;
+      await page.getByRole("button", { name: "Commit import" }).first().click();
+      await hiddenRefreshAfterCommit;
+
+      await expect(cleanupCard).toContainText("possible split link", { timeout: 60_000 });
+      await expect(page.getByText(`${firstLabel} committed successfully. Recent imports have been updated.`)).toHaveCount(0);
+      await cleanupCard.getByRole("button", { name: "Later" }).click();
+      await expect(cleanupCard).toHaveCount(0);
+
+      // The refresh that started before the click now finishes.
+      releaseImportsPage = true;
+      await expect(page.getByText(`${firstLabel} committed successfully. Recent imports have been updated.`)).toBeVisible({
+        timeout: 30_000
+      });
+      await expect(cleanupCard).toHaveCount(0);
+    } finally {
+      await page.unroute("**/api/imports-page*", hideCommittedImportRoute);
+    }
+
+    // A genuinely new import with its own possible split link shows the card again.
+    await page.getByLabel("Source label").fill(secondLabel);
+    await page.getByLabel("CSV content").fill(
+      [
+        "category,account,note,amount,date,description",
+        `Food & Drinks,UOB One,official bank row,-24.68,2025-10-22,${secondDescription} official`
+      ].join("\n")
+    );
+    await page.getByRole("button", { name: "Preview import" }).click();
+    await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+    await page.getByRole("button", { name: "Commit import" }).first().click();
+    await expect(page.getByText(`${secondLabel} committed successfully. Recent imports have been updated.`)).toBeVisible({
+      timeout: 30_000
+    });
+    await expect(cleanupCard).toContainText("possible split link");
+  });
+
   test("local HSBC OCR packages upload Feb-Jul 2026 through the statement preview path", async ({ page }, testInfo) => {
     await createHsbcVisaRevolutionAccount(page);
 
