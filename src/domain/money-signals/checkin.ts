@@ -7,7 +7,7 @@
 // `nowMs`, `today`, the period, the memory and a stable seed are inputs, so
 // the same inputs always give the same check-in.
 import { fill, stableHash, weekdayName, daysBetween } from "./format";
-import { pickByPeriod, pickLongView, pickTrivia, quoteColumn, selectWording, YEAR_MONTHS, type CheckInPage, type TriviaRotation } from "./rotation";
+import { isQuarterTurn, pickByPeriod, pickLongView, pickTrivia, quoteColumn, selectWording, YEAR_MONTHS, type CheckInPage, type TriviaRotation } from "./rotation";
 import { HEADLINE_KIND_ORDER, type CheckInAction, type MoneySignal, type QuoteTopic, type SignalKind } from "./types";
 import type { CheckInQuote } from "./quotes";
 
@@ -186,15 +186,26 @@ function kindRank(signal: MoneySignal, hasBiggerQuestion: boolean) {
   return signal.moment && rank > 1 ? 1.5 : rank;
 }
 
+// Whether a signal may lead this period: anything notable, and a steady
+// signal only in its turn (types.ts, notability).
+export function leadsThisPeriod(signal: MoneySignal, period: string | undefined) {
+  return !signal.steady || isQuarterTurn(period, signal.turn);
+}
+
+function isHeadlineKind(signal: MoneySignal) {
+  return HEADLINE_KIND_ORDER.includes(signal.kind) && signal.phrasings.length > 0;
+}
+
 // Headline candidates in order: kind (quick fix, bigger question, worth a
 // look, going well; a quick fix that yields goes right after the bigger
 // question), then the money involved, then signals not seen
 // recently. A signal resting after being shown goes after the rest. Only
-// one bigger question is kept.
-export function rankSignals(signals: MoneySignal[], memory: VisitMemory, nowMs: number): MoneySignal[] {
+// one bigger question is kept. A steady signal is no candidate outside its
+// turn.
+export function rankSignals(signals: MoneySignal[], memory: VisitMemory, nowMs: number, period?: string): MoneySignal[] {
   const hasBiggerQuestion = signals.some((signal) => signal.kind === "bigger_question" && signal.phrasings.length > 0);
   const ranked = signals
-    .filter((signal) => HEADLINE_KIND_ORDER.includes(signal.kind) && signal.phrasings.length > 0)
+    .filter((signal) => isHeadlineKind(signal) && leadsThisPeriod(signal, period))
     .map((signal) => ({ signal, rested: isRested(signal, memory, nowMs), shownAt: memory.signals[signal.key]?.shownAt ?? -Infinity }))
     .sort((left, right) => Number(left.rested) - Number(right.rested)
       || kindRank(left.signal, hasBiggerQuestion) - kindRank(right.signal, hasBiggerQuestion)
@@ -266,7 +277,14 @@ export function composeCheckIn(input: {
 }): CheckInView {
   const { signals, memory, nowMs, today, contextKey, period } = input;
   const seed = stableHash(input.seed);
-  const ranked = rankSignals(signals, memory, nowMs);
+  const ranked = rankSignals(signals, memory, nowMs, period);
+  // Steady signals out of their turn: never the headline, at most under
+  // Also, after everything notable, largest first.
+  const steady = signals
+    .filter((signal) => isHeadlineKind(signal) && !leadsThisPeriod(signal, period))
+    .sort((left, right) => HEADLINE_KIND_ORDER.indexOf(left.kind) - HEADLINE_KIND_ORDER.indexOf(right.kind)
+      || right.weight - left.weight
+      || left.key.localeCompare(right.key));
   const sameContext = input.ready !== false && memory.lastContextKey === contextKey;
   const currentKeys = new Set(signals.map((signal) => signal.key));
   const sortedKey = sameContext
@@ -288,20 +306,22 @@ export function composeCheckIn(input: {
   if (sortedKey) {
     mode = "sorted";
     headline = { key: `sorted:${sortedKey}`, kind: "going_well", ...memory.quickFixes[sortedKey] };
-    also = ranked;
+    also = [...ranked, ...steady];
   } else if (isQuiet) {
     mode = "quiet";
     quietIndex = memory.quiet === undefined ? seed % QUIET_LINES.length : (memory.quiet + 1) % QUIET_LINES.length;
     headline = { key: "quiet", kind: null, fact: fill(QUIET_LINES[quietIndex], { when: describeLastVisit(memory.lastVisitDay, today) }), think: "" };
-    also = ranked;
+    also = [...ranked, ...steady];
   } else if (ranked.length) {
     mode = "signal";
     const top = ranked[0];
     const selected = selectWording(top, period)!;
     headlineWording = selected.index;
     headline = { key: top.key, kind: top.kind, fact: `${changedLead(top, memory)}${selected.wording.fact}`, think: selected.wording.think, action: top.action };
-    also = ranked.slice(1);
+    also = [...ranked.slice(1), ...steady];
   } else {
+    // Nothing notable: the calm line, and nothing under Also (a steady
+    // "Worth a look" there would contradict it).
     mode = "calm";
     headline = { key: "calm", kind: null, fact: pickByPeriod(input.calmLines ?? [], period) ?? input.calmLine ?? "", think: "" };
     also = [];
