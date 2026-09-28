@@ -425,13 +425,3 @@ export function textOverlapScore(left, right) {
 
   return overlap / Math.max(leftTokens.size, rightTokens.size);
 }
-
-export function getAmountToneClass(amountMinor) {
-  if (amountMinor > 0) {
-    return "positive";
-  }
-  if (amountMinor < 0) {
-    return "negative";
-  }
-  return "";
-}

@@ -29,7 +29,7 @@
 }
 
 .checkin-chip.is-going-well {
-  --chip-colour: var(--positive);
+  --chip-colour: var(--pastel-mint-ink);
 }
 
 .financial-insight-content > .checkin-chip {

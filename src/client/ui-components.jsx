@@ -8,6 +8,7 @@ import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 import { PrivateMoney } from "./money-privacy";
+import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
 import { useIsMobileLayout } from "./use-viewport";
 import { InlineError } from "./ui-states";
 
@@ -282,7 +283,7 @@ export function DeleteRowButton({
 export function MetricCard({ card }) {
   const value = card.amountMinor == null ? card.value : formatService.money(card.amountMinor);
   return (
-    <div className={`metric ${card.tone ? `metric-${card.tone}` : ""}`}>
+    <div className={`metric ${metricCardToneClass(card.tone)}`}>
       <span>{card.label}</span>
       <strong>{card.amountMinor == null ? value : <PrivateMoney>{value}</PrivateMoney>}</strong>
       {card.detail ? (
@@ -329,7 +330,7 @@ export function BarLine({ label, valueMinor, maxMinor, tone }) {
     <div className="plan-bar-line">
       <span>{label}</span>
       <div className="plan-bar-track">
-        <span className={`plan-bar-fill ${tone}`} style={{ width: `${percent}%` }} />
+        <span className={`plan-bar-fill ${moneyToneClass(tone)}`} style={{ width: `${percent}%` }} />
       </div>
       <strong><PrivateMoney>{formatService.money(valueMinor)}</PrivateMoney></strong>
     </div>
