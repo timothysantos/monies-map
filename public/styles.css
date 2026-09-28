@@ -1496,8 +1496,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--muted);
 }
 
-.settings-account-health.is-matched {
-  color: var(--accent-strong);
+.settings-account-main .settings-account-health {
+  color: var(--money-ink, var(--muted));
 }
 
 .month-actual-cell {
@@ -2498,7 +2498,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border-top: 1px solid var(--line);
   background: rgba(38, 35, 31, 0.03);
   font-weight: 600;
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
 }
 
 .table-total-row td {
@@ -8067,7 +8067,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .entries-date-head span {
-  color: var(--muted);
+  color: var(--money-ink, var(--muted));
   font-size: 0.88rem;
   font-weight: 500;
 }
