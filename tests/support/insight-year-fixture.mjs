@@ -97,7 +97,8 @@ const BUDGETS = [["Groceries", 60_000], ["Dining", 30_000], ["Public Transport",
 
 // What Month loads beside the entries: the plan, income rows, the month's
 // totals and the view's wallets (one card is $42.80 off its statement
-// every month, so the statement gap recurs month after month).
+// every month, so the statement gap recurs month after month; with
+// `reconciled: true` every wallet matches, so the other signals lead).
 export function monthPage(month, options = {}) {
   const entries = monthEntries(month, options);
   const expenses = entries.filter((entry) => entry.entryType === "expense");
@@ -123,19 +124,21 @@ export function monthPage(month, options = {}) {
     planSections: [{ key: "planned_items", rows: plannedItems }, { key: "budget_buckets", rows: budgets }],
     incomeRows: [{ plannedMinor: 650_000, actualMinor: incomeMinor }],
     summary: { estimatedExpensesMinor, realExpensesMinor, plannedIncomeMinor: 650_000, actualIncomeMinor: incomeMinor },
-    accountPills: accountPills(month)
+    accountPills: accountPills(month, options)
   };
 }
 
-export function accountPills(month) {
+export function accountPills(month, { reconciled = false } = {}) {
   return [
-    { accountId: "acct-ocbc-365", accountName: "OCBC 365 Card", ownerLabel: "Serene", reconciliationStatus: "mismatch", latestCheckpointMonth: addMonths(month, -1), latestCheckpointDeltaMinor: -4_280 },
+    reconciled
+      ? { accountId: "acct-ocbc-365", accountName: "OCBC 365 Card", ownerLabel: "Serene", reconciliationStatus: "matched", latestCheckpointMonth: addMonths(month, -1), latestCheckpointDeltaMinor: 0 }
+      : { accountId: "acct-ocbc-365", accountName: "OCBC 365 Card", ownerLabel: "Serene", reconciliationStatus: "mismatch", latestCheckpointMonth: addMonths(month, -1), latestCheckpointDeltaMinor: -4_280 },
     { accountId: "acct-dbs", accountName: "DBS Multiplier", ownerLabel: "Joint", balanceMinor: 2_450_000, reconciliationStatus: "matched" }
   ];
 }
 
-export function monthInput(month, { today = "2099-01-01", flat = false, audience = "household", viewLabel = "Household" } = {}) {
-  const page = monthPage(month, { today, flat });
+export function monthInput(month, { today = "2099-01-01", flat = false, reconciled = false, audience = "household", viewLabel = "Household" } = {}) {
+  const page = monthPage(month, { today, flat, reconciled });
   return { audience, viewLabel, month, today, ...page, formatMoney: sgd };
 }
 
@@ -145,7 +148,7 @@ export function entriesInput(month, { today = "2099-01-01", flat = false, audien
 
 // Summary over the twelve months ending `end`, viewed in the month after
 // it (so the whole range is complete), from the same ledger.
-export function summaryInput(end, { flat = false, today = `${addMonths(end, 1)}-15`, availableFrom = "2024-01" } = {}) {
+export function summaryInput(end, { flat = false, reconciled = false, today = `${addMonths(end, 1)}-15`, availableFrom = "2024-01" } = {}) {
   const range = consecutiveMonths(addMonths(end, -11), 12);
   const months = range.map((month) => {
     const page = monthPage(month, { flat });
@@ -168,7 +171,7 @@ export function summaryInput(end, { flat = false, today = `${addMonths(end, 1)}-
     focusMonth: "",
     months,
     categoryShareByMonth,
-    accountPills: accountPills(end),
+    accountPills: accountPills(end, { reconciled }),
     accountKinds: { "acct-ocbc-365": "credit_card", "acct-dbs": "bank" },
     availableMonths: consecutiveMonths(availableFrom, Math.max(1, (Number(end.slice(0, 4)) - Number(availableFrom.slice(0, 4))) * 12 + Number(end.slice(5, 7)) - Number(availableFrom.slice(5, 7)) + 1)),
     formatMoney: sgd

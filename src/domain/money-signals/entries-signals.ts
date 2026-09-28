@@ -213,6 +213,12 @@ const NOT_A_PURCHASE = /fee|charge|interest|adjust|rounding|refund|cash ?back|re
 // A routine obligation or money moved is not a place to be curious about.
 const NOT_A_PLACE = /bill|utilit|subscription|insurance|rent|mortgage|loan|saving|invest|tax|salary|income|transfer/i;
 const MIN_LIST = 3;
+// The five largest are notable when one-off purchases among them (entries
+// at a place, not a routine obligation) come to this share of the month's
+// spending. The usual obligations (an allowance, insurance, the bills, a
+// loan) are the largest entries every month, so they alone never make the
+// month unusual, however large their share.
+export const TOP_FIVE_ONE_OFF_SHARE = 0.25;
 
 function expenses(input: EntriesSignalInput) {
   return input.entries.filter((entry) => entry.entryType === "expense" && Math.abs(entry.amountMinor) > 0);
@@ -320,6 +326,8 @@ export function possibleDuplicateSignal(input: EntriesSignalInput): MoneySignal 
 }
 
 // Worth a look: the five largest entries' share of the month's spending.
+// Steady (Also only) unless one-off purchases among them make up a quarter
+// of the month (TOP_FIVE_ONE_OFF_SHARE).
 export function topFiveSignal(input: EntriesSignalInput): MoneySignal | null {
   const list = [...expenses(input)].sort((left, right) => amountOf(right) - amountOf(left) || left.id.localeCompare(right.id));
   if (list.length < 6) {
@@ -332,12 +340,15 @@ export function topFiveSignal(input: EntriesSignalInput): MoneySignal | null {
   if (totalMinor <= 0 || rate < 40) {
     return null;
   }
+  const oneOffIds = new Set(places(input).map((item) => item.entry.id));
+  const oneOffMinor = sum(top.filter((entry) => oneOffIds.has(entry.id)).map(amountOf));
   const copy = ENTRIES_COPY.topFive;
   return {
     key: "top-five",
     kind: "worth_a_look",
     weight: topMinor,
-    numbers: { primaryMinor: topMinor, rate },
+    numbers: { primaryMinor: topMinor, rate, totalMinor, oneOffMinor },
+    steady: oneOffMinor < totalMinor * TOP_FIVE_ONE_OFF_SHARE,
     phrasings: phrase(copy, { rate, top: input.formatMoney(topMinor), total: input.formatMoney(totalMinor), ...when(input) }),
     action: { id: "show-entries", label: copy.action, entryIds: top.map((entry) => entry.id) },
     topic: "enjoy"

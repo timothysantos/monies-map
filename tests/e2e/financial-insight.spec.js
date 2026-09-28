@@ -4,7 +4,7 @@ import { gotoPageAfterApi, loadMonthPage, loadSummaryAccountPills, postJson, res
 import { MONTH_COPY } from "../../src/domain/money-signals/month-signals.ts";
 import { SHARED_COPY } from "../../src/domain/money-signals/shared-signals.ts";
 import { SPLITS_COPY } from "../../src/domain/money-signals/splits-signals.ts";
-import { SUMMARY_COPY } from "../../src/domain/money-signals/summary-signals.ts";
+import { SUMMARY_CALM_LINES, SUMMARY_COPY } from "../../src/domain/money-signals/summary-signals.ts";
 
 // Every think line a signal's copy may pair with: its wording rotates by
 // the month viewed (the year rule), so any of them may show.
@@ -14,6 +14,24 @@ const thinksOf = (entry, { one = false } = {}) => [
 ].flat().filter(Boolean);
 
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
+
+// The seed's subscriptions are the same every month it has them, so on
+// Summary they are steady: they lead only in the last month of each
+// quarter. A subscription added in April makes May's total differ from
+// April's by more than 10%, which is notable, so May's Summary leads with
+// it (docs/developer-guide.md, "Notability").
+async function addAprilSubscription(page, ownerName = "Tim") {
+  await postJson(page, "/api/entries/create", {
+    date: "2026-04-15",
+    description: "SPOTIFY P1234567",
+    accountName: "UOB One",
+    categoryName: "Subscriptions MO",
+    amountMinor: 1_098,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName
+  });
+}
 
 test.describe("financial insights", () => {
   test.beforeEach(async ({ page }) => {
@@ -38,8 +56,25 @@ test.describe("financial insights", () => {
     const summaryInsight = page.locator(".financial-insight-summary");
     await expect(summaryInsight).toBeVisible();
     await expect(summaryInsight).toContainText("Household money insights");
-    // Seeded May 2026 has subscriptions of $28.70: a Worth a look, with the
-    // approved way to think about it.
+    // Seeded May 2026 has subscriptions of $28.70 and nothing to compare
+    // them with in a May-only range: steady, and May is not their turn, so
+    // the range is calm and nothing is listed under Also.
+    await expect(summaryInsight).toHaveAttribute("data-checkin-mode", "calm");
+    await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveCount(0);
+    expect(SUMMARY_CALM_LINES).toContain((await summaryInsight.locator(".checkin-fact").innerText()).trim());
+    await summaryInsight.getByRole("button", { name: "See all insights" }).click();
+    await expect(summaryInsight.locator(".checkin-also")).toHaveCount(0);
+    await expect(summaryInsight).not.toContainText(/[Ss]ubscriptions/);
+
+    // With April loaded and different, May's subscriptions are news: a
+    // Worth a look, with the approved way to think about it.
+    await addAprilSubscription(page);
+    await gotoPageAfterApi(
+      page,
+      "/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-04&summary_end=2026-05",
+      "/api/summary-page",
+      () => page.getByRole("heading", { name: "Summary", exact: true })
+    );
     await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/[Ss]ubscriptions/);
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/\$28\.70|\$344|\$0\.94/);
@@ -147,22 +182,20 @@ test.describe("financial insights", () => {
     await expect(insight).not.toContainText(/statement|Needs review|proof gap/i);
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("Reconciled to May 2026 statement");
 
-    // One statement $42.80 away from the ledger: the check-in's Quick fix
-    // names it, and its Review statement opens Imports.
+    // One statement $42.80 away from the ledger: a Quick fix names it. The
+    // month's unlinked bills led the two earlier visits and now rest, so the
+    // statement gap leads, and its Review statement opens Imports.
     const lady = checked.find((account) => account.accountName === "UOB Lady's");
     await postJson(page, "/api/accounts/reconcile", { accountId: lady.accountId, checkpointMonth: "2026-05", statementBalanceMinor: lady.balanceMinor - 4_280 });
     insight = await openMonth();
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("May 2026 statement is off by $42.80");
     await expect(insight.getByText(/UOB Lady's.*\$42\.80|\$42\.80.*UOB Lady's/).first()).toBeVisible();
     await expect(insight.getByRole("button", { name: "Review bank-record gaps" })).toHaveCount(0);
-    const quickFix = insight.locator(".checkin-also li").filter({ hasText: "Quick fix" }).filter({ hasText: "$42.80" });
-    const headlineIsGap = await insight.locator(".checkin-fact").filter({ hasText: "$42.80" }).count();
-    if (headlineIsGap) {
-      await insight.getByRole("button", { name: "Review statement" }).click();
-      await expect(page).toHaveURL(/\/imports/);
-    } else {
-      await expect(quickFix).toHaveCount(1);
-    }
+    await expect(insight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
+    await expect(insight.locator(".checkin-fact")).toContainText("$42.80");
+    await expect(insight.locator(".checkin-also li").filter({ hasText: "Quick fix" }).filter({ hasText: /planned bills?/ })).toHaveCount(1);
+    await insight.getByRole("button", { name: "Review statement" }).click();
+    await expect(page).toHaveURL(/\/imports/);
   });
 
   // The Month check-in counts what the Actual spend card counts: every entry
@@ -364,6 +397,9 @@ test("four visits in one week: a first look, a new quick fix, sorted once, then 
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }));
   await reseedDemo(page);
+  // Something notable all week (May's subscriptions differ from April's), so
+  // the first look leads with a signal and a quiet visit has one to hold.
+  await addAprilSubscription(page);
   const pills = await loadSummaryAccountPills(page, { view: "person-tim" });
   const card = pills.accountPills.find((account) => account.reconciliationStatus !== "mismatch");
   const insight = page.locator(".financial-insight-summary");
@@ -389,6 +425,11 @@ test("four visits in one week: a first look, a new quick fix, sorted once, then 
   expect(wednesday.chip).toBe("Quick fix");
   expect(wednesday.text).toContain("$42.80");
   expect(thinksOf(SHARED_COPY.statementGap).some((line) => wednesday.text.includes(line))).toBe(true);
+  // The Quick fix's own link replaced the retired map's "Review bank-record
+  // gaps": it opens Imports.
+  await expect(insight.getByRole("button", { name: "Review bank-record gaps" })).toHaveCount(0);
+  await insight.getByRole("button", { name: "Review statement" }).click();
+  await expect(page).toHaveURL(/\/imports\?/);
 
   // Fri 15 May: fixed. The check-in says so once.
   await postJson(page, "/api/accounts/reconcile", { accountId: card.accountId, checkpointMonth: "2026-05", statementBalanceMinor: card.balanceMinor });
@@ -479,6 +520,8 @@ test.describe("financial insight wording readiness", () => {
   async function openSummary(page, { moneyVisible = true } = {}) {
     await page.addInitScript((visible) => window.localStorage.setItem("monies-map:money-totals-visible", String(visible)), moneyVisible);
     await reseedDemo(page);
+    // A notable headline to reword: a calm range has nothing to ask for.
+    await addAprilSubscription(page);
     await page.goto(SUMMARY_URL);
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
     await waitUsable(page);

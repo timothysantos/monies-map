@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 
 test("money values start hidden, reveal together, and cover individual activity", async ({ page }) => {
   await reseedDemo(page);
@@ -104,9 +104,21 @@ test("revealing totals after a hidden load shows the real money check-in on ever
     body: JSON.stringify({ ok: false })
   }));
   await reseedDemo(page);
+  // A subscription in April makes May's subscriptions differ, so Summary
+  // leads with a signal that carries money (a calm range carries none).
+  await postJson(page, "/api/entries/create", {
+    date: "2026-04-15",
+    description: "SPOTIFY P1234567",
+    accountName: "UOB One",
+    categoryName: "Subscriptions MO",
+    amountMinor: 1_098,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
 
   const pages = [
-    ["/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05", "/api/summary-page", "Summary", ".financial-insight-summary"],
+    ["/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-04&summary_end=2026-05", "/api/summary-page", "Summary", ".financial-insight-summary"],
     ["/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", "Month", ".financial-insight-month"],
     ["/entries?view=household&month=2026-05&scope=direct_plus_shared", "/api/entries-page", "Entries", ".financial-insight-entries"],
     ["/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", "Splits", ".financial-insight-splits"]
@@ -121,7 +133,7 @@ test("revealing totals after a hidden load shows the real money check-in on ever
     await expect(narrative, heading).toBeVisible();
     await expect(narrative, heading).not.toContainText("••••");
     await insight.getByRole("button", { name: "See all insights" }).click();
-    // The check-in and its map show real amounts at once.
+    // The check-in shows real amounts at once.
     await expect(insight, heading).toContainText(/\$\d/);
     await expect(insight, heading).not.toContainText("••••");
     await insight.getByRole("button", { name: "Show less" }).click();
