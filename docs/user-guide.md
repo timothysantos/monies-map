@@ -1028,7 +1028,12 @@ A small label says what kind of line it is:
 
 Money insights change month by month. Each month they word the same fact a
 different way and pick a different Just for fun line and quote, so none of
-these comes back within a year on the same page. Coming back to the same
+these comes back within a year on the same page. Something that is true
+almost every month, like your subscriptions or your five largest entries,
+only leads when it is unusual (your subscriptions changed, or a few one-off
+buys shaped the month); otherwise it waits under **See all insights**, or
+comes up now and then. A month with nothing unusual says so in one calm
+line. Coming back to the same
 month, they give other lines a turn once one has been shown and start with
 what changed ("Down from $42.80 since your last visit.").
 When you fix something they say "Sorted" once. Early in the month they look

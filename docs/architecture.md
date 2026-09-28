@@ -578,7 +578,11 @@ same-season line shows only when last year's month is already in the range.
 a look, going well; then money, then not recently seen) and decides rests,
 "what changed", sorted and quiet visits from `nowMs`, `today`, a stable
 seed and the visit memory, which the client keeps only in localStorage
-(`checkin-visit-memory.js`). What rotates (the wording, the long view's
+(`checkin-visit-memory.js`). A signal that is true almost every month
+(the five largest entries, subscriptions, months under plan, plan left) is
+`steady` unless its numbers are unusual: it never leads except in its
+quarter turn, so no always-true line leads month after month; a month with
+nothing notable leads with a Going well or the calm line. What rotates (the wording, the long view's
 lead, the Just for fun line, the quote, the calm line) follows the period
 being viewed (`rotation.ts`): for one page and view nothing repeats within
 twelve consecutive periods, whatever the browser remembers or forgets. The

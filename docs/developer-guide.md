@@ -1451,6 +1451,44 @@ adds no endpoint or payload. The code is in `src/domain/money-signals/`:
   a signal shown in the last three days goes after the rest unless its
   number moved by 10% or $50. Only one bigger question is kept. Long view
   and Just for fun are picked separately.
+- **Notability.** A signal that is true almost every month says whether
+  this period's numbers are unusual. When they are not it returns
+  `steady: true`: `rankSignals` leaves it out, and `composeCheckIn` lists it
+  under "Also" after everything notable (a calm month lists nothing). A
+  steady signal with a `turn` (0, 1 or 2) may still lead in one month of each
+  quarter, by the period's month number mod 3 (`isQuarterTurn` in
+  `rotation.ts`; turn 0 is Jan, Apr, Jul, Oct, 1 is Feb, May, Aug, Nov, 2 is
+  Mar, Jun, Sep, Dec). A month with nothing notable leads with a Going well
+  that fires, otherwise the calm line. The thresholds:
+  - Entries, five largest (`TOP_FIVE_ONE_OFF_SHARE`): notable when one-off
+    purchases among the five (named places, not a bill, utility, loan, rent,
+    insurance, subscription, tax, savings, investment, fee or transfer, nor
+    a PayNow or GIRO payment) come to 25% or more of the month's spending.
+    A fixed "five largest are 65% of spending" does not work: on the
+    showcase, Ethan's parents' allowance, insurance and bills are always
+    his largest entries, so the five are 63 to 82% of every month. The
+    one-off test picks out the Japan trip in April and July's aircon and
+    sofa, and leaves the other ten months calm. No turn.
+  - Summary, subscriptions (`SUBSCRIPTIONS_CHANGE_RATIO`,
+    `SUBSCRIPTIONS_CHANGE_MINOR`): notable when the month's total moved 10%
+    or $20 from the month before, when that month is in the range with
+    spending of its own. Otherwise turn 2, so at most once a quarter.
+  - Summary, months under plan: notable in the month that came back under
+    plan after one over it. Otherwise turn 0.
+  - Month, category over plan (`CATEGORY_OVER_RATIO`,
+    `CATEGORY_OVER_MINOR`): notable when 10% and $20 over its plan; a few
+    dollars over is steady with no turn. A budget that runs well over every
+    month still leads every month: that is plan variance worth a decision,
+    in a new wording each month.
+  - Month, plan left (turn 1) and savings on plan (turn 2): steady.
+  Long view lines (keep rate, cushion, fixed costs, same season, share of
+  costs) and Just for fun lines (the average entry, a category's share)
+  never lead, so they need no test. Quick fixes, Bigger questions and
+  moments are notable whenever they fire.
+  `tests/money-insights-notability.test.mjs` pins each rule both ways, and
+  the 24-month walk fails when anything that is not a Quick fix or Bigger
+  question leads more than 4 of any 12 months without being notable each
+  time.
 - **The year rule.** Everything that rotates follows the `period` the page
   passes: Month and Entries their month, Summary the range's last month,
   Splits the current month for the selected group. For one page and view,
@@ -1502,7 +1540,8 @@ To add a signal: write the test first in the page's
 `tests/money-signals-*.test.mjs` (it fires with concrete numbers and the
 exact wording, and stays silent when its condition is not met), add its copy
 to the page's catalogue and describe it in `scripts/money-insights-copy.mjs`, add
-the function and list it in the page's `build...Signals`, then run
+the function and list it in the page's `build...Signals` (if it can be true
+month after month, give it a notability test and `steady`), then run
 `npx tsx scripts/money-insights-copy.mjs` to regenerate `docs/money-insights-copy.md`. An
 action may only reuse a navigation the page already has. A signal that can
 show month after month needs at least 12 wordings (for example 3 phrasings

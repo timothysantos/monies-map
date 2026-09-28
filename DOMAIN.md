@@ -1168,6 +1168,15 @@ These boundaries are important enough to preserve explicitly:
   with is a `wording`. `Headline order` is kind, then money involved, then
   not recently seen; a `moment` (payday, a bonus, bills coming up, pace)
   comes right after the bigger question.
+- Notability, steady signal and turn:
+  a signal that is true almost every month (the five largest entries'
+  share, the subscriptions total, months under plan, plan left, savings on
+  plan) has a `notability` test for when its numbers are unusual. When they
+  are not, it is a `steady signal`: it never leads, and is listed under
+  "Also" only beside something notable. A steady signal may have a `turn`,
+  one month of each quarter by the period, in which it may still lead. A
+  period with nothing notable leads with a Going well that fires, otherwise
+  the calm line.
 - Period, year rule and trivia type:
   the `period` is the month a check-in is about: Month's and Entries'
   month, the last month of Summary's range, the current month on Splits.
