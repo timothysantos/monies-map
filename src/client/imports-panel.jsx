@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -11,6 +11,7 @@ import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAc
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
+import { initialSplitCleanupState, splitCleanupReducer } from "./import-split-cleanup-model";
 import {
   getStatementPreviewAutoRefreshKey,
   shouldAutoRefreshStatementPreview,
@@ -156,7 +157,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [optimisticRecentImport, setOptimisticRecentImport] = useState(null);
   const [postImportSplitMatchCount, setPostImportSplitMatchCount] = useState(null);
   const [postImportSplitMatchMonth, setPostImportSplitMatchMonth] = useState("");
-  const [isSplitCleanupDismissed, setIsSplitCleanupDismissed] = useState(false);
+  const [splitCleanup, dispatchSplitCleanup] = useReducer(splitCleanupReducer, initialSplitCleanupState);
+  const splitCleanupCommitCountRef = useRef(0);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   // The suggestions the user chose to keep as they are. The approved fixes
   // themselves live in statementFixesRef and the preview's appliedFixes.
@@ -197,7 +199,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const statementFixesRef = useRef([]);
   const previewRequestSequenceRef = useRef(0);
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
-  const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
+  const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !splitCleanup.dismissed;
   const intakeQueueSummary = useMemo(() => summarizeIntakeQueue(intakeQueue), [intakeQueue]);
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
@@ -276,7 +278,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   useEffect(() => {
     if (!pendingSplitMatchCount) {
-      setIsSplitCleanupDismissed(false);
+      dispatchSplitCleanup({ type: "noPendingMatches" });
       setPostImportSplitMatchCount(null);
     }
   }, [pendingSplitMatchCount]);
@@ -1100,6 +1102,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           }
         }
       });
+      splitCleanupCommitCountRef.current += 1;
+      const splitCleanupCommitKey = splitCleanupCommitCountRef.current;
+      dispatchSplitCleanup({ type: "commitSaved", commitKey: splitCleanupCommitKey });
       setOptimisticRecentImport(buildOptimisticRecentImportBatch({
         commitResult,
         committedSourceLabel,
@@ -1138,7 +1143,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           .filter(Boolean)
           .sort();
         setPostImportSplitMatchMonth(commitMonths[commitMonths.length - 1] ?? "");
-        setIsSplitCleanupDismissed(false);
+        dispatchSplitCleanup({ type: "commitRefreshed", commitKey: splitCleanupCommitKey });
       });
       setRecentImportStatus({
         tone: "success",
@@ -2079,7 +2084,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <button type="button" className="dialog-primary" onClick={openSplitMatchReview}>
               {messages.imports.reviewSplitMatchesNow}
             </button>
-            <button type="button" className="subtle-action" onClick={() => setIsSplitCleanupDismissed(true)}>
+            <button type="button" className="subtle-action" onClick={() => dispatchSplitCleanup({ type: "later" })}>
               {messages.imports.reviewSplitMatchesLater}
             </button>
           </div>
