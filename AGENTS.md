@@ -156,8 +156,9 @@ Details and the reasons are in `docs/code-spec.md` and
   idle prefetch effects or eager imports of other routes to `App.jsx`.
 - Keep the first screen within budget. `npm run check:bundle` (part of
   `npm run verify`) fails when the entry chunk plus the Summary route grows
-  more than 5% past `scripts/initial-bundle-budget.json`. New code for other
-  screens belongs behind a lazy route or a dynamic import.
+  more than 5% past `scripts/initial-bundle-budget.json`, or when a Money
+  insights copy pool is in a first-screen file. New code for other screens
+  belongs behind a lazy route or a dynamic import.
 - A page API sends only what its screen reads: no second copy of a list and
   no other route's DTO. `tests/e2e/api-performance.spec.js` fails when a page
   response grows more than 10% past `tests/e2e/api-payload-budget.json`.

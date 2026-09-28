@@ -7,7 +7,8 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { CATALOGUES, DOC_PATH, renderCheckInCopyMarkdown, thinkLines } from "../scripts/money-insights-copy.mjs";
-import { CALM_LINE_TEMPLATES, QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
+import { CALM_LINE_TEMPLATES } from "../src/domain/money-signals/calm-lines.ts";
+import { QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
 import { ENTRIES_CALM_LINES } from "../src/domain/money-signals/entries-signals.ts";
 import { monthCalmLines } from "../src/domain/money-signals/month-signals.ts";
 import { QUOTES } from "../src/domain/money-signals/quotes.ts";

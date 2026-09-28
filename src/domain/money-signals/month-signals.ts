@@ -26,7 +26,7 @@ import {
   type FormatMoney,
   type MonthPhase
 } from "./format";
-import { calmLinesFor } from "./checkin";
+import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";

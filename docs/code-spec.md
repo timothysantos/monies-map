@@ -133,9 +133,13 @@ Budget rules:
 - page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
   `app` first because budget checks read the first `dur`
 - enforced budgets: `npm run check:bundle` (first-screen JS and CSS, gzip,
-  +5% of `scripts/initial-bundle-budget.json`, run by `npm run verify`) and
+  +5% of `scripts/initial-bundle-budget.json`, and no Money insights copy
+  pool in a first-screen file, run by `npm run verify`) and
   the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
   `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
+- App loads the active route's code as soon as the route is known, beside
+  its data (the panel renders only once its data is here); it never loads
+  another route's code this way (that is warmup, and waits for `usable`)
 - CSS that only one lazy route uses goes in a stylesheet imported by that
   route's module (`month-mid-width.css` from `month-panel.jsx`,
   `splits-panel.css` from `splits-panel.jsx`), so it ships with the route;
@@ -237,9 +241,17 @@ Actions may only reuse navigations the page already has. A signal that can
 be true month after month needs a notability test: `steady` when its
 numbers are not unusual, with an optional quarter `turn`
 (`money-signals/types.ts`), proved both ways in
-`tests/money-insights-notability.test.mjs`. Summary's signals
-are on the first screen: keep them compact, and put anything large (like the
-quotes) behind a dynamic import.
+`tests/money-insights-notability.test.mjs`. Summary's signals and every
+copy pool (phrasings, think lines, Just for fun lines, calm lines) are not
+on the first screen: `money-insights-loader.js` imports
+`summary-signals.ts` dynamically, the Summary route loader starts that
+import beside its own (`route-modules.js`), and the panel never waits for
+it (the insights show their frame, one line high, until it arrives). The
+quotes load when "See all insights" opens. `npm run check:bundle` fails
+when a line from any pool is in a first-screen file. `checkin.ts` must not
+import `format.ts`: a module Summary's signals share with the first-screen
+check-in becomes one more first-screen file, so the engine keeps its own
+four small helpers (`engineText`, tested against `format.ts`).
 Money insights are deterministic UI evidence, not model output. A
 same-season line requires an already-loaded matching calendar month, and a
 statement-gap Quick fix requires the page's explicit reconciliation status,

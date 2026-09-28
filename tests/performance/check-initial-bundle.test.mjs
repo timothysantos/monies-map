@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { collectStaticFiles, compareWithBudget, measureInitialBundle } from "../../scripts/check-initial-bundle.mjs";
+import { collectStaticFiles, compareWithBudget, DEFERRED_COPY_MARKERS, findDeferredCopy, measureInitialBundle } from "../../scripts/check-initial-bundle.mjs";
 
 // A small manifest in the shape Vite writes: the entry lazily imports the
 // Summary route, which statically imports shared chunks; the chart is only a
@@ -42,4 +42,41 @@ test("a build within 5% passes; more bytes or more files fail with a clear messa
   assert.match(failures[0], /jsGzipBytes 105001 is over the budget 100000 \(\+5% = 105000\)/);
   assert.match(failures[1], /cssGzipBytes/);
   assert.match(failures[2], /jsFiles 9 is over the budget 8/);
+});
+
+// Money insights' copy pools (every phrasing, think line, Just for fun line
+// and calm line) load with a dynamic import beside the first screen, never
+// inside it. The check reads the built first-screen files for a line from
+// each pool; the markers are pinned to the catalogues so they cannot rot.
+test("the Money insights copy pools are not in the first-screen files", () => {
+  const contents = {
+    "assets/index-a.js": "const app=1;",
+    "assets/summary-panel-b.js": "export const x=1;",
+    "assets/shared-c.js": "const y=\"Nothing here\";"
+  };
+  const read = (file) => Buffer.from(contents[file] ?? "");
+  const files = collectStaticFiles(MANIFEST, ["index.html", "src/client/summary-panel.jsx"]);
+  assert.deepEqual(findDeferredCopy(files, read), []);
+  // A pool bundled into a first-screen file is named with the file.
+  contents["assets/shared-c.js"] += `const pool=${JSON.stringify(DEFERRED_COPY_MARKERS.map((marker) => marker.text))};`;
+  const found = findDeferredCopy(files, read);
+  assert.deepEqual(found.map((item) => item.pool), DEFERRED_COPY_MARKERS.map((marker) => marker.pool));
+  assert.ok(found.every((item) => item.file === "assets/shared-c.js"));
+});
+
+test("each copy-pool marker is a real line of its pool", async () => {
+  const { SUMMARY_COPY } = await import("../../src/domain/money-signals/summary-signals.ts");
+  const { SHARED_COPY } = await import("../../src/domain/money-signals/shared-signals.ts");
+  const { CALM_LINE_TEMPLATES } = await import("../../src/domain/money-signals/calm-lines.ts");
+  const { QUOTES } = await import("../../src/domain/money-signals/quotes.ts");
+  const lines = {
+    "Summary phrasings and think lines": Object.values(SUMMARY_COPY).filter((entry) => entry.think).flatMap((entry) => [...entry.phrasings.map((phrasing) => (typeof phrasing === "string" ? phrasing : phrasing.fact)), ...[entry.think].flat()]),
+    "Summary Just for fun": Object.values(SUMMARY_COPY).filter((entry) => !entry.think).flatMap((entry) => entry.phrasings),
+    "statement gap": [...SHARED_COPY.statementGap.phrasings, ...SHARED_COPY.statementGap.think],
+    "calm lines": CALM_LINE_TEMPLATES,
+    quotes: QUOTES.map((quote) => quote.text)
+  };
+  for (const marker of DEFERRED_COPY_MARKERS) {
+    assert.ok((lines[marker.pool] ?? []).some((line) => line.includes(marker.text)), `${marker.pool}: ${marker.text}`);
+  }
 });

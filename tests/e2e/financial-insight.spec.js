@@ -127,6 +127,40 @@ test.describe("financial insights", () => {
     await expect(monthInsight).not.toContainText(/See income entries|Review bank-record gaps/);
   });
 
+  // Summary's insights (its signals and every copy pool) load beside the
+  // first screen, never inside it, and Summary never waits for them. Held
+  // back, the page is usable and the insights show only their frame: the
+  // label, no words of their own and no wording request. They fill in when
+  // the module arrives.
+  test("Summary is usable before its insights module arrives, and the insights fill in after", async ({ page }) => {
+    const held = [];
+    await page.route("**/src/domain/money-signals/summary-signals.ts*", async (route) => {
+      await new Promise((resolve) => held.push(resolve));
+      await route.continue();
+    });
+    const wordingRequests = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/ai-assist/financial-insight") wordingRequests.push(request.url());
+    });
+    await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared");
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 30_000 }).toBe(true);
+    await expect.poll(() => held.length).toBeGreaterThan(0);
+    const insight = page.locator(".financial-insight-summary");
+    await expect(insight).toHaveAttribute("data-checkin-mode", "loading");
+    await expect(insight).toHaveAttribute("aria-busy", "true");
+    expect((await insight.innerText()).trim()).toBe("HOUSEHOLD MONEY INSIGHTS");
+    await expect(page.getByText("Intent vs Outcome", { exact: true })).toBeVisible();
+    await page.waitForTimeout(1_000);
+    expect(wordingRequests).toEqual([]);
+
+    held.splice(0).forEach((release) => release());
+    await expect(insight).not.toHaveAttribute("data-checkin-mode", "loading");
+    await expect(insight).not.toHaveAttribute("aria-busy", "true");
+    await expect(insight.locator(".checkin-fact")).not.toBeEmpty();
+    await expect(insight.getByRole("button", { name: "See all insights" })).toBeVisible();
+  });
+
   // A quote is never shown beside a bigger question. A $2,000 one-off makes
   // Tim's May go over plan, with most of it from that one entry.
   test("no quote shows beside a bigger question, and its action opens those entries", async ({ page }) => {

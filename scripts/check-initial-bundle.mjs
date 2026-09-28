@@ -51,6 +51,32 @@ export function measureInitialBundle(manifest, readAsset, stylesheet) {
   };
 }
 
+// Money insights' copy pools load with a dynamic import beside the first
+// screen (src/client/money-insights-loader.js), never inside it: one line
+// from each pool, as the bundler keeps it. The markers are pinned to the
+// catalogues by tests/performance/check-initial-bundle.test.mjs.
+export const DEFERRED_COPY_MARKERS = [
+  { pool: "Summary phrasings and think lines", text: "Spending has been above income for {count} months running." },
+  { pool: "Summary Just for fun", text: "showed up in all {count} months of this range" },
+  { pool: "statement gap", text: "statement from the app." },
+  { pool: "calm lines", text: "All clear in {place}: nothing needs a look." },
+  { pool: "quotes", text: "Time is but the stream I go a-fishing in." }
+];
+
+// The first-screen files that hold a deferred copy pool.
+export function findDeferredCopy(files, readAsset) {
+  const found = [];
+  for (const file of files.filter((name) => name.endsWith(".js"))) {
+    const text = readAsset(file).toString("utf8");
+    for (const marker of DEFERRED_COPY_MARKERS) {
+      if (text.includes(marker.text)) {
+        found.push({ pool: marker.pool, file });
+      }
+    }
+  }
+  return found;
+}
+
 // Returns a list of human-readable failures; empty means within budget.
 export function compareWithBudget(measured, budget, tolerance = TOLERANCE) {
   const failures = [];
@@ -83,7 +109,10 @@ async function main(argv) {
     return;
   }
   const budget = JSON.parse(await readFile(path.join(root, BUDGET_FILE), "utf8"));
-  const failures = compareWithBudget(summary, budget);
+  const failures = [
+    ...compareWithBudget(summary, budget),
+    ...findDeferredCopy(measured.files, (file) => assets.get(file)).map((item) => `${item.file} holds the ${item.pool} copy pool, which must load after the first screen.`)
+  ];
   console.log(`Initial bundle: ${JSON.stringify(summary)} (budget ${JSON.stringify(budget)})`);
   if (failures.length) {
     console.error(`First-screen bundle over budget:\n- ${failures.join("\n- ")}\nMove new code behind a lazy route or dynamic import, or raise the budget deliberately with --update and explain why.`);

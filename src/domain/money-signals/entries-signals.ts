@@ -19,7 +19,7 @@ import {
   type CopyCatalogue,
   type FormatMoney
 } from "./format";
-import { calmLinesFor } from "./checkin";
+import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { triviaSignal } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
