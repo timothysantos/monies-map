@@ -35,7 +35,6 @@ export interface FinancialInsightFacts {
   topCategoryAmount: string;
   topMerchantName: string;
   topMerchantAmount: string;
-  decisionMap: FinancialDecisionMap;
 }
 
 // The check-in's headline as the optional AI may see it: the fact and the
@@ -60,35 +59,6 @@ export interface FinancialInsightRecord {
   ownershipType?: string;
   linkedSplitExpenseId?: string | null;
   totalAmountMinor?: number | null;
-}
-
-export interface FinancialDecisionMapLane {
-  id: "surplus" | "plan" | "season" | "confidence" | "repeat";
-  label: string;
-  value: string;
-  detail: string;
-  tone: "default" | "positive" | "caution";
-}
-
-export interface FinancialDecisionMap {
-  enabled: boolean;
-  needsReview: boolean;
-  lanes: FinancialDecisionMapLane[];
-}
-
-export interface FinancialDecisionMapContext {
-  plannedSpendMinor?: number;
-  sameSeason?: {
-    label: string;
-    spendMinor: number;
-    incomeMinor: number;
-  };
-  confidence?: {
-    evaluated?: boolean;
-    reconciliationMismatchCount?: number;
-    needsCheckpointCount?: number;
-    unresolvedTransferCount?: number;
-  };
 }
 
 export function buildMonthlyNarrativeFacts(
@@ -133,14 +103,9 @@ export function buildFinancialInsightFacts(input: {
   contextLabel: string;
   records: FinancialInsightRecord[];
   formatMoney: (amountMinor: number) => string;
-  perspective?: "cash_flow" | "partial_view" | "split_obligation";
   audienceKind?: "person" | "household";
   audienceName?: string;
   entryCount?: number;
-  decisionMapContext?: FinancialDecisionMapContext;
-  // Summary passes one record per spending category, not single entries, so
-  // no fact may call a record a purchase or repeat it as one expense.
-  recordKind?: "entries" | "category_totals";
 }) : FinancialInsightFacts {
   const expenses = input.records.filter((record) => record.entryType === "expense");
   const incomeMinor = input.records
@@ -157,8 +122,6 @@ export function buildFinancialInsightFacts(input: {
   const topMerchant = [...expenses]
     .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor) || String(left.description ?? "").localeCompare(String(right.description ?? "")))[0];
 
-  const perspective = input.perspective ?? "cash_flow";
-  const recordKind = input.recordKind ?? "entries";
   const topMerchantName = redactAiText(topMerchant?.description, 100) || "No expense recorded";
   const topMerchantMinor = Math.abs(topMerchant?.amountMinor ?? 0);
   const contextLabel = redactAiText(input.contextLabel, 120) || "Current view";
@@ -176,18 +139,7 @@ export function buildFinancialInsightFacts(input: {
     topCategoryName,
     topCategoryAmount: input.formatMoney(topCategoryMinor),
     topMerchantName,
-    topMerchantAmount: input.formatMoney(topMerchantMinor),
-    decisionMap: buildFinancialDecisionMap({
-      perspective,
-      spendMinor,
-      incomeMinor,
-      netMinor: incomeMinor - spendMinor,
-      topMerchantName,
-      topMerchantMinor,
-      formatMoney: input.formatMoney,
-      context: input.decisionMapContext,
-      recordKind
-    })
+    topMerchantAmount: input.formatMoney(topMerchantMinor)
   };
 }
 
@@ -196,8 +148,8 @@ export function buildDeterministicFinancialInsight(facts: CheckInHeadlineFacts) 
   return [facts.fact, facts.think].filter(Boolean).join(" ");
 }
 
-// Changes whenever anything the check-in says or the map shows changes, so
-// wording is asked for again only for new facts.
+// Changes whenever anything the check-in says changes, so wording is asked
+// for again only for new facts.
 export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts, headline: CheckInHeadlineFacts) {
   return JSON.stringify([
     facts.contextLabel,
@@ -209,8 +161,7 @@ export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts, head
     facts.net,
     headline.headlineKind,
     headline.fact,
-    headline.think,
-    facts.decisionMap
+    headline.think
   ]);
 }
 
@@ -273,242 +224,6 @@ export function parseFinancialInsightTemplate(value: unknown, facts: FinancialIn
 
 function countToken(template: string, token: string) {
   return (template.match(new RegExp(`{{\\s*${token}\\s*}}`, "g")) ?? []).length;
-}
-
-function buildFinancialDecisionMap(input: {
-  perspective: "cash_flow" | "partial_view" | "split_obligation";
-  spendMinor: number;
-  incomeMinor: number;
-  netMinor: number;
-  topMerchantName: string;
-  topMerchantMinor: number;
-  formatMoney: (amountMinor: number) => string;
-  context?: FinancialDecisionMapContext;
-  recordKind: "entries" | "category_totals";
-}): FinancialDecisionMap {
-  if (input.perspective !== "cash_flow") {
-    const isSplit = input.perspective === "split_obligation";
-    return {
-      enabled: true,
-      needsReview: false,
-      lanes: [{
-        id: "confidence",
-        label: isSplit ? "What this view measures" : "What this view measures",
-        value: isSplit ? "Settlement obligations" : "Investigation evidence",
-        detail: isSplit
-          ? "This group tracks who owes whom. It is not a household income, savings, or safe-to-spend calculation."
-          : "This filter is useful for investigating specific records, but it cannot determine whole-month savings or free cash.",
-        tone: "default"
-      }]
-    };
-  }
-
-  const plannedSpendMinor = Math.max(0, Math.round(input.context?.plannedSpendMinor ?? 0));
-  const confidence = input.context?.confidence ?? {};
-  const mismatchCount = Math.max(0, Math.round(confidence.reconciliationMismatchCount ?? 0));
-  const checkpointCount = Math.max(0, Math.round(confidence.needsCheckpointCount ?? 0));
-  const unresolvedTransferCount = Math.max(0, Math.round(confidence.unresolvedTransferCount ?? 0));
-  const hasConfidenceWarning = confidence.evaluated === true && (mismatchCount > 0 || checkpointCount > 0 || unresolvedTransferCount > 0);
-  const lanes: FinancialDecisionMapLane[] = [
-    buildSurplusLane(input),
-    buildPlanLane({ ...input, plannedSpendMinor }),
-    buildSeasonLane({ ...input, sameSeason: input.context?.sameSeason }),
-    buildConfidenceLane({ evaluated: confidence.evaluated === true, mismatchCount, checkpointCount, unresolvedTransferCount })
-  ];
-  // The one-repeat scenario adds one more expense like the largest one; a
-  // whole category total is not one expense.
-  const repeatLane = input.recordKind === "entries" ? buildRepeatLane(input) : null;
-  if (repeatLane) {
-    lanes.push(repeatLane);
-  }
-
-  return {
-    enabled: true,
-    needsReview: hasConfidenceWarning,
-    lanes
-  };
-}
-
-function buildSurplusLane(input: {
-  incomeMinor: number;
-  spendMinor: number;
-  netMinor: number;
-  formatMoney: (amountMinor: number) => string;
-}): FinancialDecisionMapLane {
-  if (input.incomeMinor <= 0 && input.spendMinor > 0) {
-    return {
-      id: "surplus",
-      label: "Money left so far",
-      value: "Income not in this view",
-      detail: "Spending on its own cannot show what is left to save or spend. Check the full month or range before deciding.",
-      tone: "caution"
-    };
-  }
-  if (input.netMinor < 0) {
-    return {
-      id: "surplus",
-      label: "Money in vs out so far",
-      value: `${input.formatMoney(Math.abs(input.netMinor))} deficit`,
-      detail: "More money has gone out than come in. First decide what can wait, cost less, or be covered by the plan.",
-      tone: "caution"
-    };
-  }
-  return {
-    id: "surplus",
-    label: "Money left so far",
-    value: input.formatMoney(input.netMinor),
-    detail: "This is before future bills, transfers, debt payments, and savings are set aside. It is not automatically money to spend.",
-    tone: input.netMinor > 0 ? "positive" : "caution"
-  };
-}
-
-function buildPlanLane(input: {
-  spendMinor: number;
-  plannedSpendMinor: number;
-  formatMoney: (amountMinor: number) => string;
-}): FinancialDecisionMapLane {
-  if (!input.plannedSpendMinor) {
-    return {
-      id: "plan",
-      label: "Plan position",
-      value: "No spend plan set",
-      detail: "Money left is easier to protect when expected bills and flexible category limits are written down before spending happens.",
-      tone: "default"
-    };
-  }
-  const varianceMinor = input.spendMinor - input.plannedSpendMinor;
-  if (varianceMinor > 0) {
-    return {
-      id: "plan",
-      label: "Plan position",
-      value: `${input.formatMoney(varianceMinor)} over plan`,
-      detail: "The recorded spending has used more than the planned amount. Review the largest category before changing the plan or treating the difference as a one-off.",
-      tone: "caution"
-    };
-  }
-  return {
-    id: "plan",
-    label: "Plan position",
-    value: `${input.formatMoney(Math.abs(varianceMinor))} unspent`,
-    detail: "Unspent plan is a decision point, not a prompt to spend it. Reserve known obligations and savings before reallocating it.",
-    tone: "positive"
-  };
-}
-
-function buildSeasonLane(input: {
-  spendMinor: number;
-  incomeMinor: number;
-  sameSeason?: FinancialDecisionMapContext["sameSeason"];
-  formatMoney: (amountMinor: number) => string;
-}): FinancialDecisionMapLane {
-  const reference = input.sameSeason;
-  if (!reference || (reference.spendMinor <= 0 && reference.incomeMinor <= 0)) {
-    return {
-      id: "season",
-      label: "Same-season comparison",
-      value: "No comparable month loaded",
-      detail: "The app only compares the same month in a prior year when that completed month is already present in the selected summary range.",
-      tone: "default"
-    };
-  }
-  const spendDifferenceMinor = input.spendMinor - reference.spendMinor;
-  const direction = spendDifferenceMinor > 0 ? "more" : spendDifferenceMinor < 0 ? "less" : "the same";
-  const value = direction === "the same"
-    ? "Spending is unchanged"
-    : `${input.formatMoney(Math.abs(spendDifferenceMinor))} ${direction} spending`;
-  const incomeDifferenceMinor = input.incomeMinor - reference.incomeMinor;
-  const incomeDetail = incomeDifferenceMinor === 0
-    ? "Recorded income is unchanged from that comparison."
-    : `Recorded income is ${input.formatMoney(Math.abs(incomeDifferenceMinor))} ${incomeDifferenceMinor > 0 ? "higher" : "lower"}.`;
-  return {
-    id: "season",
-    label: `Compared with ${reference.label}`,
-    value,
-    detail: `${incomeDetail} This is a historical comparison, not a forecast.`,
-    tone: spendDifferenceMinor > 0 ? "caution" : "positive"
-  };
-}
-
-function buildConfidenceLane(input: {
-  evaluated: boolean;
-  mismatchCount: number;
-  checkpointCount: number;
-  unresolvedTransferCount: number;
-}): FinancialDecisionMapLane {
-  if (!input.evaluated) {
-    return {
-      id: "confidence",
-      label: "Snapshot confidence",
-      value: "Check the full month",
-      detail: "This view does not load wallet reconciliation status. Use Summary or Month before relying on its cash-flow position for a spending decision.",
-      tone: "default"
-    };
-  }
-  const issues: string[] = [];
-  if (input.mismatchCount) {
-    issues.push(input.mismatchCount === 1
-      ? "1 wallet has a statement mismatch"
-      : `${input.mismatchCount} wallets have a statement mismatch`);
-  }
-  if (input.checkpointCount) {
-    issues.push(input.checkpointCount === 1
-      ? "1 wallet needs a statement checkpoint"
-      : `${input.checkpointCount} wallets need a statement checkpoint`);
-  }
-  if (input.unresolvedTransferCount) {
-    issues.push(input.unresolvedTransferCount === 1
-      ? "1 transfer is unresolved"
-      : `${input.unresolvedTransferCount} transfers are unresolved`);
-  }
-  if (issues.length) {
-    return {
-      id: "confidence",
-      label: "Snapshot confidence",
-      value: "Needs review",
-      detail: `${joinWithAnd(issues)}. Treat the cash-flow position as provisional until those bank-record checks are resolved.`,
-      tone: "caution"
-    };
-  }
-  return {
-    id: "confidence",
-    label: "Snapshot confidence",
-    value: "No visible proof gap",
-    detail: "No statement or transfer gap is visible for the wallets in this view. Continue importing and reconciling before relying on older periods.",
-    tone: "positive"
-  };
-}
-
-function buildRepeatLane(input: {
-  incomeMinor: number;
-  netMinor: number;
-  topMerchantName: string;
-  topMerchantMinor: number;
-  formatMoney: (amountMinor: number) => string;
-}): FinancialDecisionMapLane | null {
-  if (input.incomeMinor <= 0 || input.topMerchantMinor <= 0 || input.topMerchantName === "No expense recorded") {
-    return null;
-  }
-  const afterRepeatMinor = input.netMinor - input.topMerchantMinor;
-  const value = afterRepeatMinor >= 0
-    ? `${input.formatMoney(afterRepeatMinor)} after one repeat`
-    : `${input.formatMoney(Math.abs(afterRepeatMinor))} deficit after one repeat`;
-  return {
-    id: "repeat",
-    label: "One-repeat scenario",
-    value,
-    detail: `This is not a forecast. It shows the recorded cash-flow result if one more expense equal to ${input.topMerchantName} is added before other future commitments.`,
-    tone: afterRepeatMinor < 0 ? "caution" : "default"
-  };
-}
-
-function joinWithAnd(values: string[]) {
-  if (values.length < 2) {
-    return values[0] ?? "";
-  }
-  if (values.length === 2) {
-    return `${values[0]} and ${values[1]}`;
-  }
-  return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
 }
 
 export function parseImportExplanationTemplate(value: unknown, facts: ImportExplanationFacts) {
