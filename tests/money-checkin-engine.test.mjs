@@ -354,3 +354,21 @@ test("a quote comes from the page's column for the month: the topic's quote, els
   // Month reads three columns on: a different quote in the same month.
   assert.notEqual(pickQuote("enjoy", { page: "month", period: "2026-08" }).id, pickQuote("enjoy", { page: "summary", period: "2026-08" }).id);
 });
+
+// The engine keeps its own copies of four small helpers so the first
+// screen's check-in shares no module with Summary's signals (checkin.ts);
+// they must behave exactly like format.ts's.
+test("the engine's text and date helpers match format.ts's", async () => {
+  const format = await import("../src/domain/money-signals/format.ts");
+  const { engineText } = await import("../src/domain/money-signals/checkin.ts");
+  for (const [template, values] of [["Nothing new since {when}.", { when: "yesterday" }], ["{a} and {b}, {missing}", { a: 1, b: "two" }], ["no tokens", {}]]) {
+    assert.equal(engineText.fill(template, values), format.fill(template, values));
+  }
+  for (const value of ["", "summary:household|2026-08", "entries:person-ethan|2025-12|direct_plus_shared"]) {
+    assert.equal(engineText.stableHash(value), format.stableHash(value));
+  }
+  for (const date of ["2026-08-03", "2026-02-29", "2024-02-29", "not a date", "2026-09-28T10:00:00+08:00"]) {
+    assert.equal(engineText.weekdayName(date), format.weekdayName(date), date);
+    assert.equal(engineText.daysBetween("2026-08-01", date), format.daysBetween("2026-08-01", date), date);
+  }
+});

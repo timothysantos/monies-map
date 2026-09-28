@@ -104,9 +104,9 @@ test.describe("money insights on a phone", { tag: "@webkit" }, () => {
       await expectLineClearOfButton(page, (lines) => lines.filter((line) => !/^See all insights$/.test(line.text)).at(-1), `${heading} last line`);
       await expectLineClearOfButton(page, (lines) => [...lines].sort((left, right) => right.right - left.right)[0], `${heading} widest line`);
 
-      // Expanded: the extra lines, the quote and the map stay clear too.
+      // Expanded: the extra lines and the quote stay clear too.
       await insight.getByRole("button", { name: "See all insights" }).click();
-      await expect(insight.getByLabel("Money consequence map")).toBeVisible();
+      await expect(insight.getByRole("button", { name: "Show less" })).toBeVisible();
       await expectLineClearOfButton(page, (lines) => [...lines].sort((left, right) => right.right - left.right)[0], `${heading} expanded widest line`);
     });
   }

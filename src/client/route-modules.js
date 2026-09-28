@@ -1,7 +1,12 @@
+import { loadSummaryInsights } from "./money-insights-loader";
+
 // One loader per route panel. Navigation (React.lazy) and speculative warmup
 // share these promises, so a warmed route is never downloaded twice and a
 // click on a route that is still loading waits on the same import.
 // The dynamic imports stay literal so Vite keeps one chunk per route.
+// Summary's Money insights are not in its first-screen code: their import
+// starts beside the route's own, and the route never waits for it
+// (money-insights-loader.js).
 const loaders = {
   entries: () => import("./entries-panel.jsx"),
   faq: () => import("./faq-panel.jsx"),
@@ -9,7 +14,10 @@ const loaders = {
   month: () => import("./month-panel.jsx"),
   settings: () => import("./settings-panel.jsx"),
   splits: () => import("./splits-panel.jsx"),
-  summary: () => import("./summary-panel.jsx")
+  summary: () => {
+    loadSummaryInsights().catch(() => {});
+    return import("./summary-panel.jsx");
+  }
 };
 
 export const ROUTE_IDS = Object.freeze(Object.keys(loaders));

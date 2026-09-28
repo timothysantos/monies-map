@@ -86,10 +86,15 @@ Financial insight (user-facing: Money insights; the check-in in code) is deliber
 It shows one ranked signal: its kind chip, the bold fact, one think line and
 at most one action that reuses a navigation the page already has, then a
 Just for fun line (never beside a bigger question) and the Long view line.
-`See all insights` reveals up to three more signals, at most one quote
-(never beside a bigger question) and the money consequence map with the
-record actions. Expanding is local presentation state and must not trigger
-an additional AI request; it loads the quote library chunk on demand. The
+`See all insights` reveals up to three more signals and at most one quote
+(never beside a bigger question); on Splits also the bank-match review link,
+which its Quick fix owns. Expanding is local presentation state and must not trigger
+an additional AI request; it loads the quote library chunk on demand.
+Summary's signals and copy pools are a chunk of their own
+(`money-insights-loader.js`, started by the Summary route loader): until
+it arrives `checkIn` is null and the component renders its frame (the
+label and one empty line, `data-checkin-mode="loading"`, `aria-busy`), with
+no words of its own and no wording request. The
 component (`financial-insight.jsx`) composes the check-in with
 `composeCheckIn` from the page's signals, the page and period (what rotates
 follows the period: `money-signals/rotation.ts`), the page's trivia schedule
@@ -221,21 +226,16 @@ also render a deterministic Financial insight immediately and may make one
 debounced, cache-missed wording request after the view is stable. That cache is
 memory-only and short-lived. The Worker validates every response against
 existing DTO data and returns an unavailable result when the binding, quota, or
-model is unavailable. The shared insight labels whether it is looking at full
-cash flow, a filtered investigation, or split obligations; AI wording may only
-choose words around the computed fact and think line. When deterministic
-evidence warrants it, the component exposes a Review action that opens the
-existing filtered Entries or split-match surface; model output never supplies
-the target. No AI result bypasses the existing editor, preview, or review
-controls.
-
-Full-cash-flow insights also render a deterministic Money consequence map. It
-uses only already-loaded summary/month facts: recorded surplus, actual spending
-against the plan, a same-season month only when it is already present in the
-loaded range, wallet proof gaps, and an explicitly labelled one-repeat
-scenario. Summary and Month can route proof gaps to Imports. Entries and Splits
-state when their narrower view cannot assess wallet confidence or household
-cash flow.
+model is unavailable. Each page's insight speaks only of what that page
+counts (full cash flow on Summary and Month, the month's whole list on
+Entries, settlement obligations on Splits); AI wording may only choose words
+around the computed fact and think line. When deterministic evidence warrants
+it, a signal carries one action that opens an existing surface (the filtered
+Entries list, Imports for a statement gap, the split-match or settle-up
+view); model output never supplies the target. No AI result bypasses the
+existing editor, preview, or review controls. The Money consequence map that
+used to sit under "See all insights" is retired (DOMAIN.md): plan variance,
+the same-season comparison and bank-proof gaps are check-in signals only.
 
 A check-in's facts count what the figures beside it count. Summary builds
 them from its page DTO, which the Worker already filtered to the view and
@@ -245,14 +245,14 @@ needs them all), so `month-insight-facts.js` first keeps the entries the
 `effectiveScopeForView` (`src/domain/person-view-scope.ts`, over
 `person-entry-amount.ts`): every entry for the household, and a person's own
 entries in the scope at their own amounts. A scope change therefore changes
-the facts and the wording cache key. Month's "Snapshot confidence" reads
+the facts and the wording cache key. Month's statement-gap Quick fix reads
 the same wallet health as Summary's: the view's account pills
 (`/api/summary-account-pills`), which the Month route load fetches beside
 the month page (`fetchRoutePageData` in `App.jsx`) and hands to the panel
-as `view.accountPills`. The reference account list has no checkpoint status
-or transfer counts, so a check-in built from it always said "No visible
-proof gap"; without pills the lane says "Check the full month". The Month
-Accounts section shows the pills' balances and health too
+as `view.accountPills`. The reference account list has no checkpoint
+status, so the check-in never reads it; until the pills load, nothing may
+be called sorted (`ready`). The Month Accounts section shows the pills'
+balances and health too
 (`withMonthAccountHealth`). The Splits check-in follows the view
 too: `buildSplitInsightRecords` (`split-helpers.js`, exposed on the Splits
 model as `insightRecords`) gives a person view that person's split share of

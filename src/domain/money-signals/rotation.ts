@@ -7,9 +7,10 @@
 // Summary the range's last month, Splits the current month for the group.
 // Browser memory may still add (a rested headline, a quiet visit, "sorted")
 // but is never needed for the rule to hold.
-import type { MoneySignal } from "./types";
+import type { MoneySignal, QuarterTurn } from "./types";
 
 export const YEAR_MONTHS = 12;
+export const QUARTER_MONTHS = 3;
 
 export type CheckInPage = "summary" | "month" | "entries" | "splits";
 
@@ -22,6 +23,12 @@ function mod(value: number, size: number) {
 export function periodIndex(period: string | undefined) {
   const match = /^(\d{4})-(\d{2})/.exec(period ?? "");
   return match ? Number(match[1]) * YEAR_MONTHS + Number(match[2]) - 1 : 0;
+}
+
+// A steady signal's turn (types.ts): one month of each quarter. Without a
+// period there is no turn.
+export function isQuarterTurn(period: string | undefined, turn: QuarterTurn | undefined) {
+  return turn !== undefined && Boolean(period) && mod(periodIndex(period), QUARTER_MONTHS) === turn;
 }
 
 export function pickByPeriod<T>(items: T[], period: string | undefined, offset = 0): T | undefined {

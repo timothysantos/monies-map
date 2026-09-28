@@ -149,8 +149,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     audienceName: isHouseholdView ? "" : view.label,
     records: insightRecords,
     // The records are one group's, so their amounts are in its currency.
-    formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
-    perspective: "split_obligation"
+    formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD")
   }), [activeGroup?.currency, activeGroup?.name, insightRecords, isHouseholdView, splitSearchQuery, view.label]);
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({

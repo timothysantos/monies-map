@@ -48,18 +48,19 @@ and the default range is only the last 12 months.
 1. Tap the **Range** control and set the start to the **earliest month**
    (17 months back). Keep the end at the current month.
 2. Under **Spending Mix**, pick **last month**.
-3. In Money insights, press **See all insights**.
+3. Read the Money insights **Long view** line.
 
-The **Money consequence map** now has a "Compared with" card: last month
-spent about $1,100 less than the same month last year (the year before had a
-Bali long weekend), and income is higher (Ethan's pay rise).
+With last year's month in the range, the Long view can compare the two:
+last month spent about $1,100 less than the same month last year (the year
+before had a Bali long weekend). The Long view takes turns by month with the
+household's keep rate and cushion, so on some months it shows one of those
+instead.
 
 Story: "It compares like with like, and only with months that are really
 there. It never forecasts."
 
-Point at **Snapshot confidence**: it says **Needs review**, because one card
-is off against its statement and one transfer is unresolved. We will fix
-that picture in step 6.
+The headline is still the **Quick fix** for the card that is off against
+its statement. We will look at that in step 6.
 
 ## 3. People and scopes (1 minute)
 
@@ -70,10 +71,9 @@ Switch the view to **Ethan**, stay on Summary.
   and bank spending), **Shared** (his half of shared bills, dinners and the
   Japan trip) and **Direct + Shared** (both). Each gives a different total,
   and the first two always add up to the third.
-- Press **See all insights**: **Snapshot confidence** shows **No
-  visible proof gap**, because every account Ethan can see is reconciled.
-  Switch to **Serene**: it says **Needs review** again, because the card
-  with the problem and the unresolved transfer are hers.
+- Money insights no longer lead with the statement Quick fix, because
+  every account Ethan can see is reconciled. Switch to **Serene**: the
+  Quick fix is back, because the card with the problem is hers.
 
 Story: "Each partner sees their own money honestly, and the household still
 sees everything."
@@ -87,8 +87,7 @@ Go back to **Household**, open **Month** and choose **two months ago**.
   arrived.
 - Money insights lead with a **Bigger question**: the aircon made up most of
   the $3,128.14 over plan. Press **See all insights**: **Also this month**
-  lists the card's statement gap, **Plan position** shows the overspend, and the **One-repeat scenario** shows the
-  month would end in deficit if one more purchase like the aircon happened.
+  lists the card's statement gap.
 - Scroll to **Planned Items**: the HDB loan, S&CC, insurance and
   subscriptions are each linked to the real bank entry that paid them.
   **Budget Buckets** (groceries, food, transport) show how much of each

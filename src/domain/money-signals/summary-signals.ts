@@ -18,7 +18,7 @@ import {
   type CopyCatalogue,
   type FormatMoney
 } from "./format";
-import { calmLinesFor } from "./checkin";
+import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
@@ -285,6 +285,11 @@ export interface SummarySignalInput {
 
 const MIN_STREAK = 3;
 const CREEP_MIN_ABOVE_MINOR = 5_000;
+// Subscriptions are notable when the month's total moved by this much from
+// the month before (either one): a new or cancelled subscription, a price
+// change. Otherwise they take their turn once a quarter.
+export const SUBSCRIPTIONS_CHANGE_RATIO = 0.1;
+export const SUBSCRIPTIONS_CHANGE_MINOR = 2_000;
 const NOT_LIFESTYLE = /saving|invest|transfer/i;
 const NOT_FUN = /loan|mortgage|rent|housing|insurance|tax|saving|invest|transfer|bill|utilit/i;
 
@@ -403,22 +408,37 @@ export function categoryCreepSignal(input: SummarySignalInput): MoneySignal | nu
   };
 }
 
-// Worth a look: subscriptions in the month, at their yearly cost.
-export function subscriptionsSignal(input: SummarySignalInput): MoneySignal | null {
-  const month = targetMonth(input);
-  const amountMinor = sum(categoryTotals(input, month)
+function subscriptionsIn(input: SummarySignalInput, month: string) {
+  return sum(categoryTotals(input, month)
     .filter((item) => /subscription/i.test(item.label))
     .map((item) => item.valueMinor));
+}
+
+// Worth a look: subscriptions in the month, at their yearly cost. Notable
+// when they changed from the month before (10% or $20), when that month is
+// loaded with spending of its own; otherwise steady, leading only in the
+// last month of each quarter.
+export function subscriptionsSignal(input: SummarySignalInput): MoneySignal | null {
+  const month = targetMonth(input);
+  const amountMinor = subscriptionsIn(input, month);
   if (!month || amountMinor <= 0) {
     return null;
   }
+  const previousMonth = addMonths(month, -1);
+  const previousKnown = categoryTotals(input, previousMonth).length > 0;
+  const previousMinor = previousKnown ? subscriptionsIn(input, previousMonth) : null;
+  const changeMinor = previousMinor === null ? 0 : Math.abs(amountMinor - previousMinor);
+  const changed = previousMinor !== null
+    && (previousMinor === 0 || changeMinor >= SUBSCRIPTIONS_CHANGE_MINOR || changeMinor / previousMinor >= SUBSCRIPTIONS_CHANGE_RATIO);
   const yearlyMinor = amountMinor * 12;
   const amount = input.formatMoney(amountMinor);
   return {
     key: "subscriptions",
     kind: "worth_a_look",
     weight: yearlyMinor,
-    numbers: { primaryMinor: amountMinor },
+    numbers: { primaryMinor: amountMinor, ...(previousMinor === null ? {} : { previousMinor }) },
+    steady: !changed,
+    turn: 2,
     primaryText: amount,
     phrasings: phrase(SUMMARY_COPY.subscriptions, {
       amount,
@@ -431,7 +451,9 @@ export function subscriptionsSignal(input: SummarySignalInput): MoneySignal | nu
 }
 
 // Going well: most of the last (up to) 12 complete months came in under
-// their spending plan.
+// their spending plan. Steady (true month after month for a household that
+// keeps to its plan), leading in the first month of each quarter; notable
+// when the latest month came back under plan after one over it.
 export function monthsUnderPlanSignal(input: SummarySignalInput): MoneySignal | null {
   const planned = completeMonths(input).filter((month) => (month.estimatedExpensesMinor ?? 0) > 0).slice(-12);
   const under = planned.filter((month) => spendOf(month) <= (month.estimatedExpensesMinor ?? 0));
@@ -440,11 +462,15 @@ export function monthsUnderPlanSignal(input: SummarySignalInput): MoneySignal | 
   }
   const savedMinor = sum(under.map((month) => (month.estimatedExpensesMinor ?? 0) - spendOf(month)));
   const saved = input.formatMoney(savedMinor);
+  const isUnder = (month: SummarySignalMonth | undefined) => Boolean(month) && spendOf(month) <= (month?.estimatedExpensesMinor ?? 0);
+  const backUnder = planned.length >= 2 && isUnder(planned.at(-1)) && !isUnder(planned.at(-2));
   return {
     key: "months-under-plan",
     kind: "going_well",
     weight: savedMinor,
-    numbers: { primaryMinor: savedMinor, under: under.length, total: planned.length },
+    numbers: { primaryMinor: savedMinor, under: under.length, total: planned.length, backUnder: backUnder ? 1 : 0 },
+    steady: !backUnder,
+    turn: 0,
     primaryText: saved,
     phrasings: phrase(SUMMARY_COPY.monthsUnderPlan, { under: under.length, total: planned.length, saved }),
     topic: "steady"
