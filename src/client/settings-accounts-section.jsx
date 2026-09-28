@@ -4,6 +4,8 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
 import { DeleteRowButton } from "./ui-components";
+import { moneyToneClass } from "./money-tone-class";
+import { reconciliationTone } from "../domain/money-tone";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -65,7 +67,7 @@ export function SettingsAccountsSection({
                     <strong>{account.name}</strong>
                     <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
                     <p>{`Balance ${formatService.money(account.balanceMinor ?? 0)} • Opening ${formatService.money(account.openingBalanceMinor ?? 0)}`}</p>
-                    <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
+                    <p className={`settings-account-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
                       {accountService.describeHealth(account)}
                     </p>
                     <p className="settings-account-meta">
@@ -113,7 +115,7 @@ export function SettingsAccountsSection({
                   )}</strong>
                   <p>{messages.settings.statementComparePanelDetail}</p>
                   {statementComparePanel.deltaMinor != null ? (
-                    <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
+                    <p className="settings-account-health money-short">{messages.settings.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
                   ) : null}
                   {statementComparePanel.statementStartDate && statementComparePanel.statementEndDate ? (
                     <p>{messages.settings.statementCompareCheckpointPeriod(

@@ -126,30 +126,6 @@ export function wranglerDevArgs(stack) {
 }
 
 /**
- * Works around a `wrangler dev` bug (wrangler 4.113, ProxyWorker.ts): when
- * its proxy's fetch to the local Worker fails with "Network connection
- * lost." (a keep-alive race between the two local runtimes), a GET is put
- * in a retry queue that only drains when the next request reaches the
- * proxy. The page's request then waits, unanswered, until something else
- * calls the Worker; in a quiet test that is the 45 s client timeout. A
- * light ping to the Worker every second drains the queue, so such a request
- * is answered within about a second. Pings never overlap and their failures
- * are ignored. Returns `stop()`.
- */
-export function startProxyQueueFlush(url, { intervalMs = 1_000, fetchImpl = fetch, clock = globalThis } = {}) {
-  let inFlight = false;
-  const timer = clock.setInterval(() => {
-    if (inFlight) return;
-    inFlight = true;
-    fetchImpl(url, { signal: AbortSignal.timeout(intervalMs * 5) })
-      .then((response) => response.body?.cancel())
-      .catch(() => {})
-      .finally(() => { inFlight = false; });
-  }, intervalMs);
-  return () => clock.clearInterval(timer);
-}
-
-/**
  * Starts Wrangler and Vite for the stack, each in its own process group, and
  * resolves once `/api/health` answers through the Vite proxy. The returned
  * `stop()` ends both groups and removes the stack's D1 state and Vite cache.
@@ -158,7 +134,15 @@ export async function startStack(stack, { timeoutMs = 120_000, keepState = false
   await Promise.all([stack.uiPort, stack.apiPort, stack.inspectorPort].map(assertPortFree));
   await mkdir(path.dirname(stack.serverLog), { recursive: true });
   const log = createWriteStream(stack.serverLog);
-  const env = { ...process.env, WRANGLER_SEND_METRICS: "false", VITE_API_ORIGIN: stack.apiOrigin };
+  // X_LOCAL_OBSERVABILITY=false: since wrangler 4.118 `wrangler dev` records
+  // every request's trace for its Local Explorer by default, which slows page
+  // requests by about a third locally. The tests never read those traces.
+  const env = {
+    ...process.env,
+    WRANGLER_SEND_METRICS: "false",
+    X_LOCAL_OBSERVABILITY: "false",
+    VITE_API_ORIGIN: stack.apiOrigin
+  };
   const launch = (label, args, extraEnv = {}) => {
     const child = spawn(process.execPath, args, {
       detached: true,
@@ -176,10 +160,8 @@ export async function startStack(stack, { timeoutMs = 120_000, keepState = false
   ];
 
   let stopped;
-  let stopQueueFlush = () => {};
   const stop = () => {
     stopped ??= (async () => {
-      stopQueueFlush();
       await Promise.all(children.map(stopGroup));
       log.end();
       if (!keepState) {
@@ -196,6 +178,5 @@ export async function startStack(stack, { timeoutMs = 120_000, keepState = false
     await stop();
     throw error;
   }
-  stopQueueFlush = startProxyQueueFlush(`${stack.apiOrigin}/api/health`);
   return { stop };
 }

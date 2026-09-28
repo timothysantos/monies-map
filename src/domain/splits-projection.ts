@@ -14,6 +14,7 @@ import type {
   SplitSettlementDto,
   SplitSettlementCheckpointDto
 } from "../types/dto";
+import { signTone, splitViewerTone } from "./money-tone";
 
 const HOME_CURRENCY = "SGD";
 
@@ -155,6 +156,7 @@ export function buildSplitsPage(
       iconKey: group.iconKey,
       balanceMinor: group.balanceMinor,
       summaryText: formatSplitBalanceSummary(group.balanceMinor, group.currency, viewId, personNameById),
+      balanceTone: viewId === "household" ? "neutral" as const : signTone(group.balanceMinor),
       entryCount: group.entryCount,
       pendingMatchCount: group.pendingMatchCount,
       currency: group.currency,
@@ -308,6 +310,7 @@ function buildSplitActivity(
       editableSplitBasisPoints: editableShare?.ratioBasisPoints,
       editableSplitAmountMinor: editableShare?.amountMinor,
       viewerDirectionLabel: formatExpenseDirectionLabel(expense, viewId, personNameById),
+      viewerTone: splitViewerTone("expense", viewId, expense.payerPersonId),
       note: expense.note,
       linkedTransactionId: expense.linkedTransactionId,
       linkedTransactionDescription: expense.linkedTransactionDescription,
@@ -340,6 +343,7 @@ function buildSplitActivity(
       toPersonName: settlement.toPersonName,
       totalAmountMinor: settlement.amountMinor,
       viewerDirectionLabel: formatSettlementDirectionLabel(settlement, viewId),
+      viewerTone: splitViewerTone("settlement", viewId, settlement.fromPersonId),
       note: settlement.note,
       linkedTransactionId: settlement.linkedTransactionId,
       linkedTransactionDescription: settlement.linkedTransactionDescription,

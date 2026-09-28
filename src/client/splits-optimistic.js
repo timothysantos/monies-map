@@ -1,3 +1,5 @@
+import { splitViewerTone } from "../domain/money-tone";
+
 function sortSplitActivity(items) {
   return [...items].sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
 }
@@ -123,6 +125,7 @@ export function buildOptimisticExpenseActivityItem({
     editableSplitBasisPoints: shares.primary.ratioBasisPoints,
     editableSplitAmountMinor: shares.primary.amountMinor,
     viewerDirectionLabel: buildExpenseDirectionLabel(viewId, payer.personId),
+    viewerTone: splitViewerTone("expense", viewId, payer.personId),
     note: draft?.note ?? "",
     linkedTransactionId: draft?.linkedTransactionId ?? existingItem?.linkedTransactionId,
     linkedTransactionDescription: existingItem?.linkedTransactionDescription,
@@ -159,6 +162,7 @@ export function buildOptimisticSettlementActivityItem({
     toPersonName: draft?.toPersonName ?? existingItem?.toPersonName ?? "",
     totalAmountMinor,
     viewerDirectionLabel: buildSettlementDirectionLabel(viewId, draft, people),
+    viewerTone: splitViewerTone("settlement", viewId, people.find((person) => person.name === draft?.fromPersonName)?.id),
     note: draft?.note ?? "",
     linkedTransactionId: draft?.linkedTransactionId ?? existingItem?.linkedTransactionId,
     linkedTransactionDescription: existingItem?.linkedTransactionDescription,
