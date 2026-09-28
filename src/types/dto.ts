@@ -44,7 +44,7 @@ export interface AccountDto {
   latestCheckpointComputedBalanceMinor?: number;
   latestCheckpointDeltaMinor?: number;
   latestCheckpointNote?: string;
-  reconciliationStatus?: "matched" | "mismatch" | "needs_checkpoint";
+  reconciliationStatus?: ReconciliationStatus;
   checkpointHistory?: AccountCheckpointDto[];
 }
 
@@ -74,7 +74,7 @@ export interface SummaryAccountPillDto {
   unresolvedTransferCount?: number;
   latestCheckpointMonth?: string;
   latestCheckpointDeltaMinor?: number;
-  reconciliationStatus?: "matched" | "mismatch" | "needs_checkpoint";
+  reconciliationStatus?: ReconciliationStatus;
 }
 
 export interface CategoryDto {
@@ -107,11 +107,16 @@ export interface CategoryMatchRuleSuggestionDto {
   lastSeenAt: string;
 }
 
+// How money is coloured by its direction or outcome; src/domain/money-tone.ts
+// decides it and the .money-<tone> classes render it.
+export type MoneyTone = "in" | "short" | "plan" | "caution" | "out" | "neutral";
+export type ReconciliationStatus = "matched" | "mismatch" | "needs_checkpoint";
+
 export interface MetricCardDto {
   label: string;
   amountMinor?: number;
   value?: string;
-  tone?: "default" | "positive" | "negative";
+  tone: MoneyTone;
   detail?: string;
 }
 
@@ -221,6 +226,8 @@ export interface SplitGroupPillDto {
   iconKey?: string;
   balanceMinor: number;
   summaryText: string;
+  // Owed to you, you owe, or settled, from the viewer's side.
+  balanceTone?: MoneyTone;
   entryCount: number;
   pendingMatchCount: number;
   currency: string;
@@ -264,6 +271,7 @@ export interface SplitActivityDto {
   editableSplitBasisPoints?: number;
   editableSplitAmountMinor?: number;
   viewerDirectionLabel: string;
+  viewerTone?: MoneyTone;
   note?: string;
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
