@@ -9,10 +9,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { Miniflare } from "miniflare";
 
 import worker from "../src/index.ts";
 import { ensureDemoSchema } from "../src/domain/app-repository-schema.ts";
+import { openLocalD1 } from "./support/d1-workspace.mjs";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const configPath = path.join(root, "wrangler.test.jsonc");
@@ -31,12 +31,7 @@ async function openFreshSchemaDatabase(t) {
   );
   assert.equal(migration.status, 0, `schema.sql migration failed:\n${migration.stderr}`);
 
-  const miniflare = new Miniflare({
-    modules: true,
-    script: "export default { fetch() { return new Response(null, { status: 404 }); } }",
-    d1Databases: { DB: d1Config.database_id },
-    d1Persist: path.join(persistTo, "v3", "d1")
-  });
+  const miniflare = openLocalD1(persistTo, { databaseId: d1Config.database_id, compatibilityDate: config.compatibility_date });
   t.after(async () => {
     await miniflare.dispose();
     await rm(persistTo, { recursive: true, force: true });
