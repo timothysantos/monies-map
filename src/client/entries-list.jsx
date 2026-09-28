@@ -13,6 +13,8 @@ import { useRouteWorkBusy } from "./use-route-work-status";
 import { useStableHandler } from "./use-stable-handler";
 import { isMobileLayout } from "./use-viewport";
 import { SettlementLockNotice } from "./settlement-lock-notice";
+import { moneyToneClass } from "./money-tone-class";
+import { flowTone } from "../domain/money-tone";
 
 const {
   categories: categoryService,
@@ -262,7 +264,7 @@ export function EntriesDateGroups({
           <div className="entries-date-head">
             <strong>{formatService.formatDateOnly(group.date)}</strong>
             <div className="entries-date-actions">
-              <span>{messages.entries.dateNet}: <PrivateMoney>{formatService.money(group.netMinor)}</PrivateMoney></span>
+              <span>{messages.entries.dateNet}: <PrivateMoney className={moneyToneClass(flowTone(group.netMinor))}>{formatService.money(group.netMinor)}</PrivateMoney></span>
               {onRefreshEntries ? (
                 <button
                   type="button"
@@ -474,6 +476,7 @@ function EntryRow({
           <div className="entry-row-right">
             <MemoizedEntryRowAmount
               primarySignedAmountMinor={display.primarySignedAmountMinor}
+              amountTone={display.amountTone}
               secondarySignedAmountMinor={display.secondarySignedAmountMinor}
             />
             <div className="entry-pills">
@@ -533,11 +536,11 @@ const MemoizedEntryRow = memo(EntryRow);
 // The shared money formatter reads the privacy setting while rendering, so
 // the amount subscribes to it. A privacy toggle then redraws only amounts,
 // not whole memoized rows.
-function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor }) {
+function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor, amountTone }) {
   useMoneyPrivacy();
   return (
     <div className="entry-row-amount">
-      <strong className={entryService.getAmountToneClass(primarySignedAmountMinor)}>{formatService.money(primarySignedAmountMinor)}</strong>
+      <strong className={moneyToneClass(amountTone)}>{formatService.money(primarySignedAmountMinor)}</strong>
       {secondarySignedAmountMinor != null ? <p>({formatService.money(secondarySignedAmountMinor)})</p> : null}
     </div>
   );

@@ -11,6 +11,8 @@ import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { moneyToneClass } from "./money-tone-class";
+import { entryAmountTone } from "../domain/money-tone";
 
 const {
   categories: categoryService,
@@ -47,14 +49,8 @@ export function EntryEditorFields({
     { categoryName: displayCategoryName },
     0
   );
-  const amountToneClass = entry.entryType === "income" || entry.transferDirection === "in"
-    ? "entry-edit-tone-positive"
-    : "entry-edit-tone-negative";
-  const typeToneClass = entry.entryType === "income"
-    ? "entry-edit-tone-positive"
-    : entry.entryType === "expense"
-      ? "entry-edit-tone-negative"
-      : "entry-edit-tone-transfer";
+  // Income is money in; an expense is a plain outflow and a transfer neutral.
+  const typeToneClass = `entry-edit-tone ${moneyToneClass(entryAmountTone(entry.entryType, entry.entryType === "income" ? 1 : -1))}`;
   const resolvedAmountMinor = typeof amountMinorValue === "number" ? amountMinorValue : entry.amountMinor;
   const resolvedAmountInput = amountInputValue
     ?? entry.amountInput
@@ -243,7 +239,7 @@ export function EntryEditorFields({
           <span>{messages.entries.editAmount}</span>
           <div className="money-input-with-visibility">
             <input
-              className={`table-edit-input table-edit-input-money ${amountToneClass}`}
+              className={`table-edit-input table-edit-input-money ${typeToneClass}`}
               type="text"
               inputMode="decimal"
               value={amountDraft}

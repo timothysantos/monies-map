@@ -16,6 +16,8 @@ import { getMonthPlanEditSource } from "./month-state";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
 import { useIsMobileLayout, useIsMonthSheetLayout } from "./use-viewport";
+import { moneyToneClass } from "./money-tone-class";
+import { flowTone, headroomTone, incomeVarianceTone, spendTone } from "../domain/money-tone";
 
 const { categories: categoryService, format: formatService, months: monthService } = moniesClient;
 
@@ -303,12 +305,12 @@ function IncomePlanSection({
                               });
                             }}
                           >
-                            <PrivateMoney>{formatService.money(row.actualMinor)}</PrivateMoney>
+                            <PrivateMoney className={moneyToneClass(flowTone(row.actualMinor))}>{formatService.money(row.actualMinor)}</PrivateMoney>
                           </button>
                           {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
                         </div>
                       </td>
-                      <td className={variance <= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
+                      <td className={moneyToneClass(incomeVarianceTone(row.plannedMinor, row.actualMinor))}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
                       <td>
                         <div className="table-note-actions">
                           <button
@@ -630,7 +632,7 @@ function PlanningRow({
                 });
               }}
             >
-              <PrivateMoney>{formatService.money(row.actualMinor)}</PrivateMoney>
+              <PrivateMoney className={moneyToneClass(spendTone(row.actualMinor, row.plannedMinor))}>{formatService.money(row.actualMinor)}</PrivateMoney>
             </button>
             {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
             {isPlannedItemsSection(section.key) ? (
@@ -650,7 +652,7 @@ function PlanningRow({
             ) : null}
           </div>
         </td>
-        <td className={variance >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
+        <td className={moneyToneClass(headroomTone(variance))}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
         {isPlannedItemsSection(section.key) ? (
           <td>
             {isEditing ? (
@@ -779,8 +781,8 @@ function IncomeTotalsFooter({ rows }) {
         <td>{messages.month.table.total}</td>
         <td>{messages.common.emptyValue}</td>
         <td><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
-        <td><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
-        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
+        <td className={moneyToneClass(flowTone(totals.actualMinor))}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
+        <td className={moneyToneClass(incomeVarianceTone(totals.plannedMinor, totals.actualMinor))}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
         <td>{messages.common.emptyValue}</td>
       </tr>
     </tfoot>
@@ -797,8 +799,8 @@ function PlanningTotalsFooter({ section }) {
         {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
         <td>{messages.common.emptyValue}</td>
         <td><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
-        <td><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
-        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
+        <td className={moneyToneClass(spendTone(totals.actualMinor, totals.plannedMinor))}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
+        <td className={moneyToneClass(headroomTone(totals.varianceMinor))}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
         {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
         <td>{messages.common.emptyValue}</td>
       </tr>

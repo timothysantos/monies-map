@@ -3,6 +3,8 @@ import { SquarePen, X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
+import { moneyToneClass } from "./money-tone-class";
+import { statementDifferenceTone } from "../domain/money-tone";
 
 // Checkpoint editing has its own dialog because it also owns history review
 // actions like export, compare, and delete.
@@ -192,7 +194,7 @@ function SettingsCheckpointHistory({
               <p>{formatCheckpointCoverage(item)}</p>
               <p>{formatCheckpointBalanceLine(item)}</p>
               <div className="settings-checkpoint-delta-line">
-                <p className={`settings-account-health ${item.deltaMinor === 0 ? "is-matched" : "is-mismatch"}`}>
+                <p className={`settings-account-health ${moneyToneClass(statementDifferenceTone(item.deltaMinor))}`}>
                   {formatCheckpointDelta(item)}
                 </p>
                 {item.deltaMinor !== 0 ? (

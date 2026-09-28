@@ -13,11 +13,14 @@ import {
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
+import { moneyToneClass } from "./money-tone-class";
+import { entryTotalsTones } from "../domain/money-tone";
 
-const { categories: categoryService, entries: entryService, format: formatService } = moniesClient;
+const { categories: categoryService, format: formatService } = moniesClient;
 
 // The strip shows the same filtered dataset in four different accounting views:
-// spend, income, net, and total outflow.
+// spend, income, net, and total outflow. An item with a direction (income, a
+// difference) is a soft money chip; plain outflows and transfers stay plain.
 export function EntriesTotalsStrip({
   showExpenseBreakdown,
   entryTotals,
@@ -27,6 +30,7 @@ export function EntriesTotalsStrip({
   onToggleExpenseBreakdown,
   onAddEntry
 }) {
+  const tones = entryTotalsTones({ incomeMinor: entryTotals.incomeMinor, netMinor: entryNetMinor });
   return (
     <section className="entries-totals-strip" aria-label={messages.entries.totalsLabel}>
       <button
@@ -38,31 +42,31 @@ export function EntriesTotalsStrip({
       >
         {showExpenseBreakdown ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
       </button>
-      <span className="entries-totals-item">
+      <span className={`entries-totals-item ${moneyToneClass(tones.spend, "soft")}`}>
         <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-        <strong className={entryService.getAmountToneClass(-entryTotals.grossSpendMinor)}><PrivateMoney>{formatService.money(entryTotals.grossSpendMinor)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{formatService.money(entryTotals.grossSpendMinor)}</PrivateMoney></strong>
         {entryTotals.grossSpendMinor !== entryTotals.spendMinor ? (
           <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryTotals.spendMinor)}</PrivateMoney>)</span>
         ) : null}
       </span>
-      <span className="entries-totals-item">
+      <span className={`entries-totals-item ${moneyToneClass(tones.income, "soft")}`}>
         <span className="entries-totals-label">{messages.entries.totalIncome}</span>
-        <strong className={entryService.getAmountToneClass(entryTotals.incomeMinor)}><PrivateMoney>{formatService.money(entryTotals.incomeMinor)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{formatService.money(entryTotals.incomeMinor)}</PrivateMoney></strong>
       </span>
-      <span className="entries-totals-item">
+      <span className={`entries-totals-item ${moneyToneClass(tones.difference, "soft")}`}>
         <span className="entries-totals-label">{messages.entries.totalDifference}</span>
-        <strong className={entryService.getAmountToneClass(entryNetMinor)}><PrivateMoney>{formatService.money(entryNetMinor)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{formatService.money(entryNetMinor)}</PrivateMoney></strong>
       </span>
-      <span className="entries-totals-item">
+      <span className={`entries-totals-item ${moneyToneClass(tones.transfers, "soft")}`}>
         <span className="entries-totals-label">{messages.entries.totalTransfersOut}</span>
-        <strong className={entryService.getAmountToneClass(-entryTotals.grossTransferOutMinor)}><PrivateMoney>{formatService.money(entryTotals.grossTransferOutMinor)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{formatService.money(entryTotals.grossTransferOutMinor)}</PrivateMoney></strong>
         {entryTotals.grossTransferOutMinor !== entryTotals.transferOutMinor ? (
           <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryTotals.transferOutMinor)}</PrivateMoney>)</span>
         ) : null}
       </span>
-      <span className="entries-totals-item">
+      <span className={`entries-totals-item ${moneyToneClass(tones.outflow, "soft")}`}>
         <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
-        <strong className={entryService.getAmountToneClass(-entryGrossOutflowMinor)}><PrivateMoney>{formatService.money(entryGrossOutflowMinor)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{formatService.money(entryGrossOutflowMinor)}</PrivateMoney></strong>
         {entryGrossOutflowMinor !== entryOutflowMinor ? (
           <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryOutflowMinor)}</PrivateMoney>)</span>
         ) : null}
