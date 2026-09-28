@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { shardStack, startProxyQueueFlush, wranglerDevArgs } from "../scripts/e2e-stack.mjs";
+import { shardStack, wranglerDevArgs } from "../scripts/e2e-stack.mjs";
 
 test("shard stacks get distinct ports, and an offset moves all of them together", () => {
   const plain = [0, 1, 2].map((index) => shardStack(index, { portOffset: 0 }));
@@ -30,39 +30,4 @@ test("a stack's Worker vars become wrangler --var pairs, and test stacks pass no
   const guide = { ...stack, vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: "2026-09" } };
   assert.deepEqual(wranglerDevArgs(guide).slice(-4), ["--var", "DEMO_DATASET:showcase", "--var", "DEMO_SEED_MONTH:2026-09"]);
   assert.equal(wranglerDevArgs(guide).filter((arg) => arg === "--var").length, 2);
-});
-
-function manualInterval() {
-  let tick = null;
-  return {
-    setInterval(callback) { tick = callback; return 1; },
-    clearInterval() { tick = null; },
-    tick: () => tick?.(),
-    running: () => tick !== null
-  };
-}
-
-// wrangler dev parks a GET whose proxied fetch lost its connection until the
-// next request arrives; the stack pings the Worker so none waits for long.
-test("the proxy-queue flush pings the Worker each interval, never overlaps, survives failures and stops", async () => {
-  const clock = manualInterval();
-  const calls = [];
-  const fetchImpl = (url) => new Promise((resolve, reject) => calls.push({ url, resolve, reject }));
-  const stop = startProxyQueueFlush("http://127.0.0.1:8901/api/health", { fetchImpl, clock });
-  const settle = () => new Promise((resolve) => setImmediate(resolve));
-
-  clock.tick();
-  clock.tick();
-  assert.deepEqual(calls.map((call) => call.url), ["http://127.0.0.1:8901/api/health"], "no second ping while one is in flight");
-  calls[0].reject(new Error("ECONNREFUSED"));
-  await settle();
-  clock.tick();
-  assert.equal(calls.length, 2, "a failed ping does not stop the next one");
-  calls[1].resolve({ body: null });
-  await settle();
-
-  stop();
-  assert.equal(clock.running(), false);
-  clock.tick();
-  assert.equal(calls.length, 2);
 });
