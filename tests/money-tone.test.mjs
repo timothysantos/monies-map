@@ -117,6 +117,9 @@ test("a tone renders at one strength per element", () => {
   assert.equal(moneyToneClass("short", "soft"), "money-short money-soft");
   assert.equal(moneyToneClass("short", "emphasis"), "money-short money-emphasis");
   assert.equal(moneyToneClass(undefined), "money-neutral");
+  // Plain ink never gets a tint: an ordinary outflow or a zero stays plain.
+  assert.equal(moneyToneClass("out", "soft"), "money-out");
+  assert.equal(moneyToneClass("neutral", "emphasis"), "money-neutral");
   // Metric cards tint outcomes and keep intentions text-only.
   assert.equal(metricCardToneClass("in"), "money-in money-soft");
   assert.equal(metricCardToneClass("plan"), "money-plan");

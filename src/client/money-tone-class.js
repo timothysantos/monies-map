@@ -4,9 +4,12 @@
 // - "soft": a light tint with the tone's ink, for summary pills, strip items
 //   and chips
 // - "emphasis": the full pastel fill, for a rare attention banner
+// "out" and "neutral" keep the surrounding ink and surface at every strength.
+const COLOURED_TONES = new Set(["in", "short", "plan", "caution"]);
+
 export function moneyToneClass(tone, strength = "text") {
   const toneClass = `money-${tone ?? "neutral"}`;
-  return strength === "text" ? toneClass : `${toneClass} money-${strength}`;
+  return strength === "text" || !COLOURED_TONES.has(tone) ? toneClass : `${toneClass} money-${strength}`;
 }
 
 // A metric card tints only outcomes; an intention (plan) stays text-only so

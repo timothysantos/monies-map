@@ -6,11 +6,12 @@ import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
+import { moneyToneClass } from "./money-tone-class";
+import { entryAmountTone } from "../domain/money-tone";
 
 const {
   accounts: accountService,
   categories: categoryService,
-  entries: entryService,
   format: formatService
 } = moniesClient;
 
@@ -222,7 +223,7 @@ function PreviewRowsTable({
                   <td>
                     <input className="table-edit-input import-description-input" value={row.description} onChange={(event) => onUpdatePreviewRow(row.rowId, { description: event.target.value })} disabled={isSkippedTable} />
                   </td>
-                  <td className={entryService.getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
+                  <td className={moneyToneClass(entryAmountTone(row.entryType, row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor))}>
                     <input
                       className={`table-edit-input import-amount-input${areTotalsVisible ? "" : " is-screened"}`}
                       value={formatService.formatMinorInput(row.amountMinor)}

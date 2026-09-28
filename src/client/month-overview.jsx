@@ -9,6 +9,8 @@ import { MetricCard } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
+import { reconciliationTone } from "../domain/money-tone";
+import { moneyToneClass } from "./money-tone-class";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -276,7 +278,7 @@ export function MonthNotesAndAccounts({
             <button
               key={account.id}
               type="button"
-              className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
+              className={`summary-account-pill ${moneyToneClass(reconciliationTone(account.reconciliationStatus), "soft")}`}
               onClick={() => onOpenEntriesForAccount(account)}
             >
               <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
