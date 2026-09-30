@@ -4,7 +4,6 @@ import { messages } from "./copy/en-SG";
 import { getIconComponent } from "./ui-components";
 import { useMoneyPrivacy } from "./money-privacy";
 import { isMobileLayout } from "./use-viewport";
-import { moneyToneClass } from "./money-tone-class";
 
 export function SplitsGroupsNav({
   groups,
@@ -63,7 +62,7 @@ export function SplitsGroupsNav({
                 <strong>{group.name}</strong>
                 <span>{group.currency ?? "SGD"} · {group.expenseSource === "cash" ? "Cash only" : group.expenseSource === "ledger" ? "Bank/card" : "Mixed"}</span>
                 <span>{messages.splits.entryCount(group.entryCount)}</span>
-                <span className={`split-group-pill-balance ${moneyToneClass(areTotalsVisible ? group.balanceTone : "neutral", "soft")}`}>{areTotalsVisible ? group.summaryText : "Balance hidden"}</span>
+                <span className="split-group-pill-balance">{areTotalsVisible ? group.summaryText : "Balance hidden"}</span>
               </span>
             </button>
           );

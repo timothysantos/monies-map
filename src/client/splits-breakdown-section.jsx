@@ -13,8 +13,6 @@ import {
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
-import { moneyToneClass } from "./money-tone-class";
-import { signTone } from "../domain/money-tone";
 
 const { format: formatService } = moniesClient;
 
@@ -62,7 +60,7 @@ export function SplitsBreakdownSection({
         {searchControl}
         <div className="entries-summary-metrics">
           {!readOnly ? (
-            <span className={moneyToneClass(signTone(groupBalanceMinor), "soft")}>{areTotalsVisible ? groupSummaryLabel : messages.splits.net} <strong><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
+            <span>{areTotalsVisible ? groupSummaryLabel : messages.splits.net} <strong><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
           ) : null}
           <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.moneyWithCurrency(totalExpenseMinor, currency)}</PrivateMoney></strong></span>
         </div>

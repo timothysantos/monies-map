@@ -226,8 +226,6 @@ export interface SplitGroupPillDto {
   iconKey?: string;
   balanceMinor: number;
   summaryText: string;
-  // Owed to you, you owe, or settled, from the viewer's side.
-  balanceTone?: MoneyTone;
   entryCount: number;
   pendingMatchCount: number;
   currency: string;

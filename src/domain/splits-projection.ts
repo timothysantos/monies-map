@@ -14,7 +14,7 @@ import type {
   SplitSettlementDto,
   SplitSettlementCheckpointDto
 } from "../types/dto";
-import { signTone, splitViewerTone } from "./money-tone";
+import { splitViewerTone } from "./money-tone";
 
 const HOME_CURRENCY = "SGD";
 
@@ -156,7 +156,6 @@ export function buildSplitsPage(
       iconKey: group.iconKey,
       balanceMinor: group.balanceMinor,
       summaryText: formatSplitBalanceSummary(group.balanceMinor, group.currency, viewId, personNameById),
-      balanceTone: viewId === "household" ? "neutral" as const : signTone(group.balanceMinor),
       entryCount: group.entryCount,
       pendingMatchCount: group.pendingMatchCount,
       currency: group.currency,

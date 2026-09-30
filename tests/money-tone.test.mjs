@@ -32,7 +32,7 @@ test("tone rules: sign, flow, headroom, spend and income against a plan", () => 
   assert.equal(signTone(0), "neutral");
   assert.equal(signTone(-1), "short");
 
-  // A list's signed flow: spending is a plain outflow, never short.
+  // A list's signed flow: spending is "out" (rose text), never "short".
   assert.equal(flowTone(1), "in");
   assert.equal(flowTone(0), "neutral");
   assert.equal(flowTone(-1), "out");
