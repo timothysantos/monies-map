@@ -376,7 +376,7 @@ balances, split activity); `src/client/money-tone-class.js` renders it as
 | `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | rose ink |
 | `plan` | an intention: planned income, planned spend, a savings target | sky ink |
 | `caution` | something needs a check (a statement not yet checked) | butter ink |
-| `out` | an ordinary outflow: an expense in a list keeps the plain ink and its minus sign; spending is not bad by itself | plain ink |
+| `out` | money out in a list: an expense row, a negative day, an Imports expense row, the Entries spend total, a settle-up you paid (with its minus sign) | rose ink, text only |
 | `neutral` | transfers, zero, counts | plain ink |
 
 Exactly on plan, and a fully allocated budget, count as `in`; zero
@@ -387,17 +387,19 @@ Three strengths, never two on one element:
 - **Text only** (lists and tables, the default): only the amount's text
   takes the ink; no fill, no border. Entries row amounts and daily net, Month
   Actual and Variance columns and totals, Intent vs Outcome values and its
-  month total, Splits activity (`you lent`, `you borrowed`, `you received`),
+  month total, Splits activity (`you lent`, `you borrowed`, `you received`,
+  `you paid`),
   Settings statement health, Imports preview amounts and statement rows, and
   the planned cards on Summary and Month.
 - **Soft tint** (compact summary objects): the fill at 60% with a hairline
   in the same hue, and every line in the ink. Summary and Month outcome
   cards (actual income, actual spend over plan, realized savings, remaining
   budget, spend gap), Entries strip items with a direction (income,
-  difference), the Splits strip balance and group pill balance, wallet pills
-  by statement health, and a statement movement that is off. On the Splits
-  orange a soft tint is a near-opaque wash (94%) so the ink keeps AA. Plans
-  stay text-only so a row of cards does not read as a traffic light.
+  difference), wallet pills by statement health, and a statement movement
+  that is off. Plans stay text-only so a row of cards does not read as a
+  traffic light. Balances on the Splits orange (the summary strip and group
+  pills) stay plain text with no chip: the owner found tinted chips too much
+  there.
 - **Emphasis** (rare, one per area): the full fill for a banner that needs
   attention: the import statement result and the overlap mismatch hint.
 

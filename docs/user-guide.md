@@ -210,8 +210,10 @@ Each screen in the order it appears in the navigation: what you see, what
 each control does, the common tasks, and what changes on a phone.
 
 Money colours mean the same on every screen: green is money coming in or
-something going well, red is over plan, short or owed by you, blue is a
-plan, and everyday spending and transfers stay in plain text.
+something going well, red is money going out, over plan, short or owed by
+you, blue is a plan, and transfers stay in plain text. In lists only the
+amount's text is coloured; the summary cards turn red only when you are over
+plan.
 
 ## Summary
 

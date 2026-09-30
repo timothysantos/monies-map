@@ -11370,6 +11370,7 @@ th {
    a tone wins over a component colour. */
 .money-in { --money-ink: var(--pastel-mint-ink); --money-fill: var(--pastel-mint); color: var(--money-ink); }
 .money-short { --money-ink: var(--pastel-rose-ink); --money-fill: var(--pastel-rose); color: var(--money-ink); }
+.money-out { --money-ink: var(--pastel-rose-ink); color: var(--money-ink); }
 .money-plan { --money-ink: var(--pastel-sky-ink); --money-fill: var(--pastel-sky); color: var(--money-ink); }
 .money-caution { --money-ink: var(--pastel-butter-ink); --money-fill: var(--pastel-butter); color: var(--money-ink); }
 
@@ -11383,7 +11384,7 @@ th {
   border-color: color-mix(in srgb, var(--money-ink) 24%, transparent);
 }
 
-html[data-money-privacy="hidden"] :is(.money-in, .money-short, .money-plan, .money-caution):not(.money-emphasis) {
+html[data-money-privacy="hidden"] :is(.money-in, .money-short, .money-out, .money-plan, .money-caution):not(.money-emphasis) {
   --money-ink: initial;
   --money-fill: var(--pastel-neutral);
   color: inherit;
