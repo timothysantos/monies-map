@@ -4,8 +4,8 @@ import { gotoPageAfterApi, loadEntriesPage, loadMonthPage, loadSplitsPage, postJ
 
 // Money colour follows one rule on every page (src/domain/money-tone.ts,
 // design.md "Money colour"): money in or a good outcome is mint, a deficit,
-// over plan or a debt rose, a plan sky, ordinary spending and transfers the
-// plain ink. Lists and tables colour text only; summary pills get a soft
+// over plan or a debt rose, a plan sky, money out in a list (an expense row,
+// a negative day) rose text, transfers the plain ink. Lists and tables colour text only; summary pills get a soft
 // tint; hidden money shows no tone. These read the computed colours a person
 // actually sees, so a stylesheet rule that paints over a tone fails here.
 
@@ -27,23 +27,6 @@ function parseColour(value) {
   }
   const rgb = value.match(/rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)/);
   return { rgb: [rgb[1], rgb[2], rgb[3]].map(Number), alpha: rgb[4] === undefined ? 1 : Number(rgb[4]) };
-}
-
-function over(top, bottom) {
-  const { rgb, alpha } = parseColour(top);
-  return rgb.map((channel, index) => channel * alpha + bottom[index] * (1 - alpha));
-}
-
-function contrast(foreground, background) {
-  const luminance = (rgb) => {
-    const [r, g, b] = rgb.map((channel) => {
-      const value = channel / 255;
-      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  };
-  const [light, dark] = [luminance(foreground), luminance(background)].sort((left, right) => right - left);
-  return (light + 0.05) / (dark + 0.05);
 }
 
 function looks(locator) {
@@ -175,7 +158,7 @@ test("Month: over-plan outcomes are rose, under-plan mint, tables text-only", as
   expect((await looks(cardValue(page, "Spend gap"))).color).toBe(INK.in);
 });
 
-test("Entries: expenses plain with their minus sign, income mint, transfers plain", async ({ page }) => {
+test("Entries: expenses rose with their minus sign, income mint, transfers plain", async ({ page }) => {
   await revealMoney(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   // A demo month with expenses and a transfer, plus a salary in it.
@@ -204,25 +187,26 @@ test("Entries: expenses plain with their minus sign, income mint, transfers plai
   const income = amounts.find((item) => !item.text.startsWith("-") && !item.isTransfer);
   expect(expense, JSON.stringify(amounts.slice(0, 5))).toBeTruthy();
   expect(income, JSON.stringify(amounts.slice(0, 5))).toBeTruthy();
-  expect(expense.color).toBe(INK.text);
+  expect(expense.color).toBe(INK.short);
   expect(income.color).toBe(INK.in);
   for (const item of amounts) {
     expect(item.background).toBe(TRANSPARENT);
     if (item.isTransfer) expect(item.color).toBe(INK.text);
   }
 
-  // The totals strip: income is a soft mint chip; spend and transfers plain.
+  // The totals strip: income is a soft mint chip; spend is rose text with no
+  // chip; transfers plain.
   const item = (label) => page.locator(".entries-totals-item").filter({ has: page.locator(".entries-totals-label", { hasText: new RegExp(`^${label}$`) }) });
   const incomeItem = await looks(item("Income"));
   expect(incomeItem.color).toBe(INK.in);
   expect(incomeItem.background).not.toBe(TRANSPARENT);
   expect((await looks(item("Income").locator("strong"))).color).toBe(INK.in);
-  expect((await looks(item("Spend").locator("strong"))).color).toBe(INK.text);
+  expect((await looks(item("Spend").locator("strong"))).color).toBe(INK.short);
   expect((await looks(item("Spend"))).background).toBe(TRANSPARENT);
   expect((await looks(item("Transfers").locator("strong"))).color).toBe(INK.text);
 });
 
-test("Splits: you owe is rose and you are owed mint on the orange, with AA contrast", async ({ page }) => {
+test("Splits: balances on the orange are plain text; activity is coloured text only", async ({ page }) => {
   await revealMoney(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   const splits = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
@@ -233,20 +217,21 @@ test("Splits: you owe is rose and you are owed mint on the orange, with AA contr
     await gotoPageAfterApi(page, `/splits?view=person-tim&month=2025-10&split_group=${group.id}`, "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
     const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
     await expect(balance).toContainText(group.balanceMinor > 0 ? "You are owed" : "You owe");
-    const chip = await looks(balance);
-    const ink = group.balanceMinor > 0 ? INK.in : INK.short;
-    expect(chip.color).toBe(ink);
-    expect((await looks(balance.locator("strong"))).color).toBe(ink);
-    // Composite the wash over the darker end of the orange panel.
-    const washed = over(chip.background, [166, 94, 58]);
-    expect(contrast(parseColour(ink).rgb, washed)).toBeGreaterThanOrEqual(4.5);
+    // No coloured chip on the orange: the balance keeps the strip's own
+    // white text and no fill (the owner found tinted chips too much there).
+    const strip = await looks(balance);
+    expect(strip.background).toBe(TRANSPARENT);
+    expect([INK.in, INK.short]).not.toContain(strip.color);
+    expect([INK.in, INK.short]).not.toContain((await looks(balance.locator("strong"))).color);
 
-    // The group pill's balance line carries the same tone.
     const pillBalance = page.locator(".split-group-pill").filter({ hasText: group.name }).first().locator(".split-group-pill-balance");
-    expect((await looks(pillBalance)).color).toBe(ink);
+    const pill = await looks(pillBalance);
+    expect(pill.background).toBe(TRANSPARENT);
+    expect([INK.in, INK.short]).not.toContain(pill.color);
   }
 
-  // Activity on the light cards: lent is mint, borrowed rose, as text only.
+  // Activity on the light cards: lent and received are mint, borrowed and
+  // paid rose, as text only.
   const directions = await page.locator(".split-activity-trailing strong").evaluateAll((elements) => elements.map((element) => ({
     label: element.textContent.trim(),
     color: getComputedStyle(element).color,
@@ -254,7 +239,7 @@ test("Splits: you owe is rose and you are owed mint on the orange, with AA contr
   })));
   for (const direction of directions) {
     if (direction.label === "you lent" || direction.label === "you received") expect(direction.color).toBe(INK.in);
-    if (direction.label === "you borrowed") expect(direction.color).toBe(INK.short);
+    if (direction.label === "you borrowed" || direction.label === "you paid") expect(direction.color).toBe(INK.short);
     expect(direction.background).toBe(TRANSPARENT);
   }
   expect(directions.some((direction) => ["you lent", "you borrowed"].includes(direction.label)), JSON.stringify(directions)).toBe(true);
@@ -285,4 +270,34 @@ test("hidden money shows no tone", async ({ page }) => {
   await page.getByRole("button", { name: "Show money totals" }).click();
   await expect(incomeValue).not.toHaveText("••••");
   expect((await looks(incomeValue)).color).toBe(INK.in);
+});
+
+// Hiding money hides its sign in words too: no line may say a hidden figure
+// is over or under, owed or owing, or off.
+const SIGN_WORDING = /\b(To allocate|Overplanned|Over plan|Under plan|You owe|You are owed|owes you|Settled up|you lent|you borrowed|you received|you paid|is off by)\b|[-−]\s?••••/;
+
+test("hidden money shows no sign or outcome in words", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const visibleText = () => page.locator("main").innerText();
+
+  await gotoPageAfterApi(page, "/month?view=household&month=2025-06&scope=direct_plus_shared", "/api/month-page", () => card(page, "Remaining budget"));
+  await expect(cardValue(page, "Remaining budget")).toHaveText("••••");
+  expect(await visibleText()).not.toMatch(SIGN_WORDING);
+
+  await openSummary(page, "household", "2026-04");
+  await expect(page.locator(".summary-account-pill").first()).toBeVisible();
+  expect(await visibleText()).not.toMatch(SIGN_WORDING);
+  // A wallet's statement health is an outcome too: hidden with the money.
+  expect(await page.locator(".summary-account-pill-meta").allInnerTexts()).toEqual([]);
+
+  await gotoPageAfterApi(page, "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
+  await expect(page.locator(".split-activity-card").first()).toBeVisible();
+  const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
+  await expect(balance).toContainText("Net");
+  expect(await visibleText()).not.toMatch(SIGN_WORDING);
+
+  // Revealing brings the wording back.
+  await page.getByRole("button", { name: "Show money totals" }).click();
+  await expect(balance).toContainText("You owe");
+  await expect(page.locator(".split-activity-trailing strong").first()).toBeVisible();
 });
