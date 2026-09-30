@@ -4,7 +4,8 @@
 // - "soft": a light tint with the tone's ink, for summary pills, strip items
 //   and chips
 // - "emphasis": the full pastel fill, for a rare attention banner
-// "out" and "neutral" keep the surrounding ink and surface at every strength.
+// "out" is rose text at every strength (never a fill); "neutral" keeps the
+// surrounding ink and surface.
 const COLOURED_TONES = new Set(["in", "short", "plan", "caution"]);
 
 export function moneyToneClass(tone, strength = "text") {

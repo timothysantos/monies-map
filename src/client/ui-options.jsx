@@ -25,6 +25,8 @@ import {
   WashingMachine
 } from "lucide-react";
 
+import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../domain/category-palette";
+
 export const ICON_OPTIONS = [
   { key: "arrow-right-left", label: "Transfer", Icon: ArrowRightLeft },
   { key: "badge-dollar-sign", label: "Salary", Icon: BadgeDollarSign },
@@ -54,41 +56,10 @@ export const ICON_OPTIONS = [
 
 export const ICON_REGISTRY = Object.fromEntries(ICON_OPTIONS.map((item) => [item.key, item.Icon]));
 
-export const COLOR_OPTIONS = [
-  "#1F7A63",
-  "#C97B47",
-  "#7C8791",
-  "#8FAE4B",
-  "#22B573",
-  "#D5A24B",
-  "#B8875D",
-  "#E96A7A",
-  "#F08FA0",
-  "#F7A21B",
-  "#D4B35D",
-  "#4F8FD6",
-  "#7EBDC2",
-  "#F85A53",
-  "#F062A6",
-  "#CC63D8",
-  "#F08B43",
-  "#567CC9",
-  "#A06C5B",
-  "#66D2CF",
-  "#62C7B2",
-  "#7D86F2",
-  "#5EA89B",
-  "#8B78E6",
-  "#D56BDD",
-  "#FFA51A",
-  "#D86B73",
-  "#C98A5A",
-  "#717379",
-  "#56A4C9",
-  "#BDD93C"
-];
+// The category palette lives in src/domain/category-palette.ts.
+export const COLOR_OPTIONS = CATEGORY_COLOURS;
 
-export const FALLBACK_THEME = { colorHex: "#6A7A73", iconKey: "receipt" };
+export const FALLBACK_THEME = { colorHex: FALLBACK_CATEGORY_COLOUR, iconKey: "receipt" };
 
 export const ACCOUNT_KIND_OPTIONS = [
   { value: "bank", label: "Bank" },

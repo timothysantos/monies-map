@@ -12,9 +12,7 @@ import {
 } from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
-import { PrivateMoney } from "./money-privacy";
-import { moneyToneClass } from "./money-tone-class";
-import { signTone } from "../domain/money-tone";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 
 const { format: formatService } = moniesClient;
 
@@ -36,6 +34,7 @@ export function SplitsBreakdownSection({
   isRefreshingDerived = false,
   readOnly = false
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
   const visibleDonutChart = useMemo(
     () => getVisibleDonutData(donutChart, hiddenCategoryIds),
@@ -61,7 +60,7 @@ export function SplitsBreakdownSection({
         {searchControl}
         <div className="entries-summary-metrics">
           {!readOnly ? (
-            <span className={moneyToneClass(signTone(groupBalanceMinor), "soft")}>{groupSummaryLabel} <strong><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
+            <span>{areTotalsVisible ? groupSummaryLabel : messages.splits.net} <strong><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
           ) : null}
           <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.moneyWithCurrency(totalExpenseMinor, currency)}</PrivateMoney></strong></span>
         </div>

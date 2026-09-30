@@ -120,7 +120,9 @@ scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
 
 Totals start hidden on every new browser, so you can open the app around other
 people. Every amount shows as `••••`: totals, transactions, splits, charts and
-plan amounts, without its colour. Amount fields you type into are masked too.
+plan amounts, without its colour or any words that say whether it is up or
+down (such as "Overplanned" or "You owe"). Amount fields you type into are
+masked too.
 
 ![With totals hidden, every amount shows as dots](/faq/guide/desktop/thumbs/money-hidden.webp)
 
@@ -208,8 +210,10 @@ Each screen in the order it appears in the navigation: what you see, what
 each control does, the common tasks, and what changes on a phone.
 
 Money colours mean the same on every screen: green is money coming in or
-something going well, red is over plan, short or owed by you, blue is a
-plan, and everyday spending and transfers stay in plain text.
+something going well, red is money going out, over plan, short or owed by
+you, blue is a plan, and transfers stay in plain text. In lists only the
+amount's text is coloured; the summary cards turn red only when you are over
+plan.
 
 ## Summary
 

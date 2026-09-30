@@ -43,27 +43,25 @@
   color: #fff8f3;
 }
 
-/* Money tones on the orange (design.md, "Money colour"). A balance chip on
-   a group pill or in the summary strip is a near-opaque pastel wash, so the
-   tone's ink keeps AA contrast; hidden money drops the wash. Activity
-   amounts sit on light cards and take the ink as text only. */
-.split-group-pill .split-group-pill-content span.split-group-pill-balance:is(.money-in, .money-short),
-.panel-splits .entries-summary-metrics .money-soft:is(.money-in, .money-short) {
-  width: fit-content;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--money-fill) 94%, transparent);
+/* Money tones on the orange (design.md, "Money colour"). Balances on the
+   orange (the summary strip and group pills) stay plain text: the owner
+   found coloured chips too much there. Activity amounts sit on light cards
+   and take the ink as text only. */
+.panel-splits .split-date-group .split-activity-trailing :is(.money-in, .money-short, .money-out) {
   color: var(--money-ink);
 }
 
-.panel-splits .entries-summary-metrics .money-soft strong {
-  color: inherit;
+/* The summary strip darkens the orange a little instead of lightening it,
+   so its labels read at AA: white is 5.1:1 and #fff8f3 4.9:1 at the
+   lightest end of the panel (white at 78% on the old light wash was 3:1). */
+.panel-splits .splits-summary-strip {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
-html[data-money-privacy="hidden"] .panel-splits .entries-summary-metrics .money-soft {
-  background: none;
+.panel-splits .entries-summary-metrics {
+  color: #fff;
 }
 
-.panel-splits .split-date-group .split-activity-trailing :is(.money-in, .money-short) {
-  color: var(--money-ink);
+.panel-splits .split-summary-search .entries-filter-label {
+  color: #fff8f3;
 }

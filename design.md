@@ -326,8 +326,14 @@ hidden, without blocking paste, drag-and-drop, parsing, mapping, or commit. On m
 above the bottom navigation, and stacks above the Entries or Splits add button
 when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures. Hiding money also hides its
-sign: every money tone (below) turns neutral, so a masked `••••` never shows
-red or green.
+sign, in colour and in words: every money tone (below) turns neutral, and
+wording that says which side of zero a hidden figure is on goes too. Month's
+Remaining budget drops its "To allocate" / "Overplanned" detail (a card sets
+`detailFollowsAmount`), wallet pills and Settings drop the statement health
+line ("off by"), the Splits strip labels its balance "Net" instead of "You
+owe" / "You are owed" / "Settled up", and Splits activity drops "you lent" /
+"you borrowed" / "you paid" / "you received". `tests/e2e/money-tones.spec.js`
+reads the hidden pages for any such word.
 
 ## Pastel Palette
 
@@ -347,7 +353,13 @@ Do not add saturated fills or new hex colours outside these tokens.
 
 Contrast is against the white panel, the soft tint (the fill at 60% over the
 panel), the full fill, and the Splits wash (the fill at 94% over the darker
-end of the orange panel). `--muted` keeps 4.54 on the neutral fill; on any
+end of the orange panel). `--positive` and `--negative` alias the mint and
+rose inks, and each hue has a hairline (`--pastel-mint-line` and so on, the
+ink at 22%) for borders. Status surfaces use them at the same three
+strengths as money: text (delete actions, form errors, match confidence),
+a soft fill (status pills, chips, Imports inbox and intake states), and the
+full fill for banners that need attention (the environment banners: demo
+sky, local mint; the tab badge; the danger button; statement results). `--muted` keeps 4.54 on the neutral fill; on any
 other tint, text uses that tint's ink instead.
 
 ## Money Colour
@@ -364,7 +376,7 @@ balances, split activity); `src/client/money-tone-class.js` renders it as
 | `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | rose ink |
 | `plan` | an intention: planned income, planned spend, a savings target | sky ink |
 | `caution` | something needs a check (a statement not yet checked) | butter ink |
-| `out` | an ordinary outflow: an expense in a list keeps the plain ink and its minus sign; spending is not bad by itself | plain ink |
+| `out` | money out in a list: an expense row, a negative day, an Imports expense row, the Entries spend total, a settle-up you paid (with its minus sign) | rose ink, text only |
 | `neutral` | transfers, zero, counts | plain ink |
 
 Exactly on plan, and a fully allocated budget, count as `in`; zero
@@ -375,17 +387,19 @@ Three strengths, never two on one element:
 - **Text only** (lists and tables, the default): only the amount's text
   takes the ink; no fill, no border. Entries row amounts and daily net, Month
   Actual and Variance columns and totals, Intent vs Outcome values and its
-  month total, Splits activity (`you lent`, `you borrowed`, `you received`),
+  month total, Splits activity (`you lent`, `you borrowed`, `you received`,
+  `you paid`),
   Settings statement health, Imports preview amounts and statement rows, and
   the planned cards on Summary and Month.
 - **Soft tint** (compact summary objects): the fill at 60% with a hairline
   in the same hue, and every line in the ink. Summary and Month outcome
   cards (actual income, actual spend over plan, realized savings, remaining
   budget, spend gap), Entries strip items with a direction (income,
-  difference), the Splits strip balance and group pill balance, wallet pills
-  by statement health, and a statement movement that is off. On the Splits
-  orange a soft tint is a near-opaque wash (94%) so the ink keeps AA. Plans
-  stay text-only so a row of cards does not read as a traffic light.
+  difference), wallet pills by statement health, and a statement movement
+  that is off. Plans stay text-only so a row of cards does not read as a
+  traffic light. Balances on the Splits orange (the summary strip and group
+  pills) stay plain text with no chip: the owner found tinted chips too much
+  there.
 - **Emphasis** (rare, one per area): the full fill for a banner that needs
   attention: the import statement result and the overlap mismatch hint.
 
@@ -398,23 +412,58 @@ hidden money; `tests/money-colour-guard.test.mjs` fails when a stylesheet
 colours with the old raw greens and reds, or a component picks a colour
 class by hand.
 
-### Not yet pastel
+### Category palette
 
-These status surfaces do not colour money by its direction, and still use
-the older saturated or raw colours. They are listed in the guard
-(`NOT_YET_PASTEL`) and wait for an owner decision on a follow-up: the
-environment banners (#1f66d1, #18824f fills), `.tab-badge` and
-`.dialog-danger` (solid red fills), `.pill.success` and
-`.import-summary-item.is-success` (#1f7a63 text), the Imports inbox,
-intake, dropzone, stage and upload states (raw green borders and text), the
-duplicate-row, warning and error states in Imports, entry chips for bank
-state and blocking exceptions, delete and remove actions (red text), split
-match confidence and settlement lock notices, the edited-row highlight in
-Month tables, the Settings statement-compare result box, and the split group
-chip palette in `entry-row-display.js` (eight hard-coded hex triples). The
-Money insights kind chips already use soft fills; only `Going well` moved to
-the mint ink. On the Splits strip, the white 78% labels are 3.66:1 on the
-orange, below AA.
+`src/domain/category-palette.ts` holds the 31 category colours (plus the
+fallback), one per former colour and in the same hue family (within 12
+degrees), each at least 3:1 on white so a donut segment or icon reads on the
+panel. The closest pair is 6.2 apart in Lab; the former palette had two
+oranges 3.0 apart. An icon's glyph mixes the colour 70% with the text ink on
+its tint (16-34% of the colour); a donut percentage mixes it 62% for 4.5:1.
+Stored colours are never rewritten: the category DTO
+(`app-repository-categories.ts`) shows a former colour as its calm one and
+darkens any other colour toward the text ink only as far as 3:1 needs, so
+the picker, the donut and every icon agree. Split group chips and entry
+owner cues draw on the same colours.
+
+| Former | Colour | On white | Glyph on its tint | Label on white |
+| --- | --- | --- | --- | --- |
+| #1F7A63 | #27725F | 5.74 | 4.79 | 8.60 |
+| #C97B47 | #BF7D51 | 3.35 | 3.61 | 5.91 |
+| #7C8791 | #7C8791 | 3.66 | 3.82 | 6.27 |
+| #8FAE4B | #7F9B43 | 3.15 | 3.51 | 5.64 |
+| #22B573 | #33A471 | 3.14 | 3.48 | 5.69 |
+| #D5A24B | #B88A3D | 3.12 | 3.48 | 5.60 |
+| #B8875D | #B9875C | 3.14 | 3.50 | 5.63 |
+| #E96A7A | #D77481 | 3.13 | 3.47 | 5.65 |
+| #F08FA0 | #D46377 | 3.59 | 3.72 | 6.27 |
+| #F7A21B | #C0862A | 3.14 | 3.48 | 5.65 |
+| #D4B35D | #AE8E3D | 3.12 | 3.48 | 5.60 |
+| #4F8FD6 | #5C90C9 | 3.34 | 3.62 | 5.91 |
+| #7EBDC2 | #499DA4 | 3.16 | 3.51 | 5.69 |
+| #F85A53 | #DE726D | 3.12 | 3.45 | 5.65 |
+| #F062A6 | #DA6DA1 | 3.14 | 3.47 | 5.68 |
+| #CC63D8 | #C36ECD | 3.26 | 3.55 | 5.83 |
+| #F08B43 | #D07E43 | 3.11 | 3.46 | 5.62 |
+| #567CC9 | #5D7EC2 | 4.02 | 4.00 | 6.73 |
+| #A06C5B | #A96852 | 4.39 | 4.17 | 7.14 |
+| #66D2CF | #3BA19E | 3.10 | 3.46 | 5.63 |
+| #62C7B2 | #40A18D | 3.13 | 3.49 | 5.67 |
+| #7D86F2 | #838BDF | 3.12 | 3.50 | 5.62 |
+| #5EA89B | #48988A | 3.42 | 3.66 | 6.02 |
+| #8B78E6 | #9385D9 | 3.18 | 3.53 | 5.69 |
+| #D56BDD | #C360CA | 3.59 | 3.72 | 6.28 |
+| #FFA51A | #A87321 | 4.09 | 4.01 | 6.80 |
+| #D86B73 | #C9656D | 3.77 | 3.83 | 6.47 |
+| #C98A5A | #A66C3F | 4.34 | 4.14 | 7.09 |
+| #717379 | #717379 | 4.74 | 4.37 | 7.49 |
+| #56A4C9 | #519ABD | 3.13 | 3.50 | 5.65 |
+| #BDD93C | #879930 | 3.17 | 3.52 | 5.67 |
+| #6A7A73 | #6A7A73 | 4.52 | 4.26 | 7.25 |
+
+Raw colours elsewhere are only neutrals or the terracotta accent the Splits
+theme is built on; `tests/money-colour-guard.test.mjs` fails on any other
+raw colour in a stylesheet, or a script colour outside this palette.
 
 ## Split Currency Display Contract
 

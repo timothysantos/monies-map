@@ -8,8 +8,9 @@
 //   that is off -> rose
 // - plan: an intention (planned income, planned spend, a savings target) -> sky
 // - caution: something needs a check -> butter
-// - out: an ordinary outflow (an expense in a list); spending is not bad by
-//   itself, so it keeps the neutral ink and its minus sign
+// - out: money out in a list (an expense row, a negative day, a settle-up
+//   paid) -> rose text with its minus sign; summary figures use spendTone,
+//   which is rose only over plan
 // - neutral: transfers, zero, counts
 // Hiding money totals turns every money tone neutral in the stylesheet, so a
 // hidden value never shows its sign through colour.

@@ -227,7 +227,7 @@ test("splits search is integrated into the themed summary strip on desktop and m
   const desktopSearch = page.locator(".splits-summary-strip .split-summary-search");
   await expect(desktopSearch).toBeVisible();
   await expectInlineSearch(desktopSearch);
-  await expect(desktopSearch.locator(".entries-filter-label")).toHaveCSS("color", "rgba(255, 248, 243, 0.9)");
+  await expect(desktopSearch.locator(".entries-filter-label")).toHaveCSS("color", "rgb(255, 248, 243)");
   await expect(page.locator(".split-search-bar")).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
