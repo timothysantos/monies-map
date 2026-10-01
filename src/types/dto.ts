@@ -557,6 +557,130 @@ export interface ImportPreviewDto {
   reconciliationCandidates: ReconciliationCandidateDto[];
   statementReconciliations: ImportPreviewStatementReconciliationDto[];
   exceptionSummary: ImportPreviewExceptionDto[];
+  // Deterministic explanation of each statement card's difference, with the
+  // fixes the user can approve. Present only for statement imports.
+  statementDiagnosis?: StatementDiagnosisDto;
+}
+
+// A statement fix is a correction the statement check proposes and the user
+// approves. It is applied to the preview at once and written with the import
+// commit, in the same batch; rolling the import back undoes it.
+// - move_to_statement_account: a provisional entry on another account is the
+//   same purchase as a row in this statement's section for `toAccountId`; the
+//   commit moves it there and the statement row certifies it.
+// - defer_to_next_statement: a provisional entry inside the period is not on
+//   the statement and posts after it; the commit sets its posted date to the
+//   day after the statement closes.
+export type StatementFixDto =
+  | {
+    kind: "move_to_statement_account";
+    entryId: string;
+    fromAccountId: string;
+    toAccountId: string;
+    statementRowIndex: number;
+  }
+  | {
+    kind: "defer_to_next_statement";
+    entryId: string;
+    accountId: string;
+    postDate: string;
+  };
+
+export type StatementFindingKind =
+  | "wrong_account"
+  | "next_statement"
+  | "excluded_statement_row"
+  | "duplicate_entry"
+  | "amount_differs"
+  | "not_on_statement"
+  | "opening_balance_gap";
+
+// Facts a finding rests on, for the explanation the user reads.
+export type StatementFindingFact =
+  | { code: "same_amount" }
+  | { code: "same_merchant" }
+  | { code: "similar_merchant" }
+  | { code: "same_transaction_date" }
+  | { code: "posted_date_offset"; days: number }
+  | { code: "date_offset"; days: number }
+  | { code: "same_owner" }
+  | { code: "different_owner" }
+  | { code: "only_candidate" }
+  | { code: "several_candidates"; count: number }
+  | { code: "closes_statement" }
+  | { code: "improves_statement" }
+  | { code: "worsens_statement" }
+  | { code: "closed_statement_protects_entry" }
+  | { code: "transfer_link_protects_entry" }
+  | { code: "no_posted_date" }
+  | { code: "near_statement_end"; days: number }
+  | { code: "excluded_by_you" };
+
+export interface StatementFindingEntryDto {
+  id: string;
+  accountId: string;
+  accountName: string;
+  description: string;
+  transactionDate: string;
+  postedDate?: string;
+  signedAmountMinor: number;
+  bankCertificationStatus: "provisional" | "statement_certified";
+}
+
+export interface StatementFindingStatementRowDto {
+  rowIndex: number;
+  accountId?: string;
+  description: string;
+  transactionDate?: string;
+  postedDate: string;
+  signedAmountMinor: number;
+}
+
+export interface StatementFindingDto {
+  id: string;
+  kind: StatementFindingKind;
+  // high: one clear candidate on strong evidence, and the fixes together
+  // close every card they touch. medium: worth applying after a closer look
+  // (similar text, a date offset, several candidates, or a partial close).
+  // low: amount-only or weak evidence; never offered as a fix.
+  confidence: "high" | "medium" | "low";
+  // The card whose difference this finding explains.
+  accountId: string;
+  // The other card a wrong-account entry belongs to.
+  relatedAccountId?: string;
+  // Signed change to `accountId`'s difference once the finding is resolved.
+  effectMinor: number;
+  entry?: StatementFindingEntryDto;
+  statementRow?: StatementFindingStatementRowDto;
+  facts: StatementFindingFact[];
+  fix?: StatementFixDto;
+  // The fix is already applied to this preview (the user approved it).
+  applied: boolean;
+}
+
+export type StatementCardOutcome = "resolved" | "partially_resolved" | "still_mismatched" | "needs_manual_review";
+
+export interface StatementCardDiagnosisDto {
+  accountId: string;
+  accountName: string;
+  checkpointMonth: string;
+  deltaMinor: number;
+  // The difference once every suggested (high or medium) fix is applied.
+  projectedDeltaMinor: number;
+  // The difference left after every finding, fixable or not, is accounted for.
+  unexplainedMinor: number;
+  outcome: StatementCardOutcome;
+  // Provisional entries on this card dated after the statement closes. They
+  // stay provisional for a later statement and are not part of the difference.
+  laterStatementEntries: StatementFindingEntryDto[];
+  laterStatementEntryCount: number;
+}
+
+export interface StatementDiagnosisDto {
+  cards: StatementCardDiagnosisDto[];
+  findings: StatementFindingDto[];
+  appliedFixes: StatementFixDto[];
+  rejectedFixes: { fix: StatementFixDto; reason: string }[];
 }
 
 export interface ImportPreviewExceptionDto {
