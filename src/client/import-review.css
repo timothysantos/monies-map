@@ -328,3 +328,12 @@
     padding: 8px 12px;
   }
 }
+
+/* The rollback is a text button here, not the history row's icon. */
+.icon-action.import-done-rollback {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  padding: 0 8px;
+  font-weight: 600;
+}
