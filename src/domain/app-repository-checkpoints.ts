@@ -387,35 +387,7 @@ export async function compareAccountCheckpointStatementRows(
   const statementEndDate = checkpoint.statement_end_date
     ?? uploadedStatementEndDate
     ?? getMonthEndDate(checkpoint.checkpoint_month);
-  const statementRows: StatementCompareRowDto[] = input.rows
-    .flatMap((rawRow, index) => {
-      const normalized = normalizeImportRow(rawRow);
-      if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
-        return [];
-      }
-
-      if (normalized.date < statementStartDate || normalized.date > statementEndDate) {
-        return [];
-      }
-
-      const signedAmountMinor = getSignedLedgerAmountMinor({
-        entry_type: normalized.entryType,
-        transfer_direction: normalized.transferDirection ?? null,
-        amount_minor: normalized.amountMinor
-      });
-
-      return [{
-        id: `statement-${index + 1}`,
-        date: normalized.date,
-        description: normalized.description ?? "",
-        amountMinor: normalized.amountMinor,
-        signedAmountMinor,
-        entryType: normalized.entryType,
-        transferDirection: normalized.transferDirection,
-        categoryName: normalized.categoryName,
-        note: normalized.note
-      }];
-    });
+  const statementRows = normalizeStatementCompareRows(input.rows, statementStartDate, statementEndDate);
 
   const ledgerResult = await db
     .prepare(`
@@ -465,40 +437,7 @@ export async function compareAccountCheckpointStatementRows(
     };
   });
 
-  const matchedLedgerIds = new Set<string>();
-  const matchedStatementIds = new Set<string>();
-
-  for (const statementRow of statementRows) {
-    const match = ledgerRows.find((ledgerRow) => (
-      !matchedLedgerIds.has(ledgerRow.id)
-      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
-      && ledgerRow.date === statementRow.date
-      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.45
-    ));
-
-    if (match) {
-      matchedLedgerIds.add(match.id);
-      matchedStatementIds.add(statementRow.id);
-    }
-  }
-
-  for (const statementRow of statementRows) {
-    if (matchedStatementIds.has(statementRow.id)) {
-      continue;
-    }
-
-    const match = ledgerRows.find((ledgerRow) => (
-      !matchedLedgerIds.has(ledgerRow.id)
-      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
-      && Math.abs(daysBetween(ledgerRow.date, statementRow.date)) <= 3
-      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65
-    ));
-
-    if (match) {
-      matchedLedgerIds.add(match.id);
-      matchedStatementIds.add(statementRow.id);
-    }
-  }
+  const { matchedLedgerIds, matchedStatementIds } = matchStatementCompareRows(statementRows, ledgerRows);
 
   const unmatchedStatementRows = statementRows.filter((row) => !matchedStatementIds.has(row.id));
   const unmatchedLedgerRows = ledgerRows.filter((row) => !matchedLedgerIds.has(row.id));
@@ -539,4 +478,82 @@ export async function compareAccountCheckpointStatementRows(
     duplicateStatementGroups,
     duplicateLedgerGroups
   };
+}
+
+// A statement's rows inside its period, signed like ledger entries.
+export function normalizeStatementCompareRows(rows: Record<string, string>[], statementStartDate: string, statementEndDate: string): StatementCompareRowDto[] {
+  return rows
+    .flatMap((rawRow, index) => {
+      const normalized = normalizeImportRow(rawRow);
+      if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
+        return [];
+      }
+
+      if (normalized.date < statementStartDate || normalized.date > statementEndDate) {
+        return [];
+      }
+
+      const signedAmountMinor = getSignedLedgerAmountMinor({
+        entry_type: normalized.entryType,
+        transfer_direction: normalized.transferDirection ?? null,
+        amount_minor: normalized.amountMinor
+      });
+
+      return [{
+        id: `statement-${index + 1}`,
+        date: normalized.date,
+        description: normalized.description ?? "",
+        amountMinor: normalized.amountMinor,
+        signedAmountMinor,
+        entryType: normalized.entryType,
+        transferDirection: normalized.transferDirection,
+        categoryName: normalized.categoryName,
+        note: normalized.note
+      }];
+    });
+}
+
+// Pairs each statement row with one ledger row: the same signed amount on
+// the same day with similar text first, then within three days with closer
+// text. Returns which statement row each matched ledger row answers.
+export function matchStatementCompareRows(statementRows: StatementCompareRowDto[], ledgerRows: StatementCompareRowDto[]) {
+  const matchedLedgerIds = new Set<string>();
+  const matchedStatementIds = new Set<string>();
+  const ledgerIdByStatementId = new Map<string, string>();
+
+  for (const statementRow of statementRows) {
+    const match = ledgerRows.find((ledgerRow) => (
+      !matchedLedgerIds.has(ledgerRow.id)
+      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
+      && ledgerRow.date === statementRow.date
+      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.45
+    ));
+
+    if (match) {
+      matchedLedgerIds.add(match.id);
+      matchedStatementIds.add(statementRow.id);
+      ledgerIdByStatementId.set(statementRow.id, match.id);
+    }
+  }
+
+  for (const statementRow of statementRows) {
+    if (matchedStatementIds.has(statementRow.id)) {
+      continue;
+    }
+
+    const match = ledgerRows.find((ledgerRow) => (
+      !matchedLedgerIds.has(ledgerRow.id)
+      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
+      && Math.abs(daysBetween(ledgerRow.date, statementRow.date)) <= 3
+      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65
+    ));
+
+    if (match) {
+      matchedLedgerIds.add(match.id);
+      matchedStatementIds.add(statementRow.id);
+      ledgerIdByStatementId.set(statementRow.id, match.id);
+    }
+  }
+
+  return { matchedLedgerIds, matchedStatementIds, ledgerIdByStatementId };
 }

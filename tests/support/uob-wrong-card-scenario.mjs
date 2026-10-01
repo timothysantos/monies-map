@@ -96,3 +96,62 @@ export function suggestedFixes(preview) {
     .filter((finding) => finding.fix && !finding.applied && finding.confidence === "high")
     .map((finding) => finding.fix);
 }
+
+// Settings "Compare statement" after the statement is saved: the same
+// statement sections, sent against one card with the other card's section.
+export const STATEMENT_MONTH = "2026-05";
+
+function section(statement, accountName) {
+  const checkpoint = statement.checkpoints.find((item) => item.accountName === accountName);
+  return {
+    accountName,
+    accountLast4: checkpoint.accountLast4,
+    statementStartDate: checkpoint.statementStartDate,
+    statementEndDate: checkpoint.statementEndDate,
+    rows: statement.rows.filter((row) => row.account === accountName)
+  };
+}
+
+// What Settings sends when the statement is compared against Lady's Card.
+export async function compareLadysCard(api, statement, ladysCardId) {
+  const ladys = section(statement, LADYS_CARD);
+  const { status, payload } = await api("/api/accounts/checkpoints/compare-statement", {
+    accountId: ladysCardId,
+    checkpointMonth: STATEMENT_MONTH,
+    rows: ladys.rows,
+    uploadedStatementStartDate: ladys.statementStartDate,
+    uploadedStatementEndDate: ladys.statementEndDate,
+    sourceType: "pdf",
+    otherSections: [section(statement, ONE_CARD)]
+  });
+  assert.equal(status, 200, JSON.stringify(payload));
+  return payload.comparison;
+}
+
+async function saveStatement(api, accountId, statement, accountName, overrideBalanceMinor) {
+  const checkpoint = statement.checkpoints.find((item) => item.accountName === accountName);
+  const { status, payload } = await api("/api/accounts/reconcile", {
+    accountId,
+    checkpointMonth: STATEMENT_MONTH,
+    statementStartDate: checkpoint.statementStartDate,
+    statementEndDate: checkpoint.statementEndDate,
+    statementBalanceMinor: overrideBalanceMinor ?? checkpoint.statementBalanceMinor
+  });
+  assert.equal(status, 200, JSON.stringify(payload));
+}
+
+// Every statement purchase recorded by hand, OpenAI and Buyandship on the
+// wrong card, and both statements saved from Settings without an import.
+export async function setUpHandRecordedStatement(api, { oneCardBalanceMinor } = {}) {
+  const scenario = await setUpWrongCardScenario(api);
+  const entry = (accountName, date, description, amountMinor, extra = {}) => createEntry(api, { accountName, date, description, amountMinor, categoryName: "Other", ...extra });
+  await entry(ONE_CARD, "2026-04-13", "PAYMENT VIA FAST", 15000, { entryType: "transfer", transferDirection: "in", categoryName: "Transfer" });
+  await entry(ONE_CARD, "2026-05-09", "BUS/MRT", 394);
+  await entry(LADYS_CARD, "2026-04-14", "2280 Singapore", 2350);
+  await entry(LADYS_CARD, "2026-04-17", "NTUC FairPrice", 6435);
+  await entry(LADYS_CARD, "2026-05-03", "Shaw Theatres", 2800);
+  await entry(LADYS_CARD, "2026-05-05", "NTUC FairPrice refund", 520, { entryType: "income" });
+  await saveStatement(api, scenario.oneCardId, scenario.statement, ONE_CARD, oneCardBalanceMinor);
+  await saveStatement(api, scenario.ladysCardId, scenario.statement, LADYS_CARD);
+  return scenario;
+}

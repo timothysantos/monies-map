@@ -32,6 +32,7 @@ import {
   getTokenSimilarity
 } from "./statement-row-matching";
 import type {
+  AccountDto,
   StatementCardDiagnosisDto,
   StatementCardOutcome,
   StatementDiagnosisDto,
@@ -105,6 +106,11 @@ export interface DiagnosisInput {
   // Only an official statement can move or defer entries. Other sources get
   // findings without fixes.
   sourceType: "csv" | "pdf" | "manual";
+  // "preview": an import preview, where a statement row with no entry will be
+  // added by the commit. "committed": a saved statement compared with the
+  // ledger, where a row with no entry is missing from it, so a move also
+  // fixes the destination card and a second copy can be removed.
+  mode?: "preview" | "committed";
   accounts: DiagnosisAccount[];
   cards: DiagnosisCard[];
   statementRows: DiagnosisStatementRow[];
@@ -170,6 +176,9 @@ export function diagnoseStatementMismatches(input: DiagnosisInput): StatementDia
         });
         explainedEntryIds.add(deferred.id);
       }
+      continue;
+    }
+    if (fix.kind !== "move_to_statement_account") {
       continue;
     }
     const entry = input.ledgerEntries.find((candidate) => candidate.id === fix.entryId);
@@ -328,6 +337,9 @@ function findWrongAccountEntries(context: {
     const sourceCard = cardsByAccountId.get(best.entry.accountId);
     const sourceCountsEntry = Boolean(sourceCard && getEntryClearedDate(best.entry) <= sourceCard.endDate);
     const canFix = input.sourceType === "pdf" && evidence !== "weak";
+    // After commit the destination card is missing the entry, so the move
+    // closes its difference too; in a preview the commit adds the row anyway.
+    const destinationEffectMinor = input.mode === "committed" && sourceCard ? getEntrySignedAmountMinor(best.entry) : 0;
     findings.push({
       id: `wrong_account:${best.entry.id}`,
       kind: "wrong_account",
@@ -336,7 +348,10 @@ function findWrongAccountEntries(context: {
       // on this statement; otherwise it stops a duplicate on the destination.
       accountId: sourceCard ? sourceCard.accountId : row.accountId!,
       relatedAccountId: sourceCard ? row.accountId! : best.entry.accountId,
-      effectMinor: sourceCountsEntry ? -getEntrySignedAmountMinor(best.entry) : 0,
+      effectMinor: sourceCard
+        ? sourceCountsEntry ? -getEntrySignedAmountMinor(best.entry) : 0
+        : input.mode === "committed" ? getEntrySignedAmountMinor(best.entry) : 0,
+      ...(destinationEffectMinor ? { relatedEffectMinor: destinationEffectMinor } : {}),
       entry: mapEntry(best.entry, accountsById),
       statementRow: mapStatementRow(row),
       facts,
@@ -468,11 +483,17 @@ function explainPeriodEntry(context: {
     return matchKind === "exact" || matchKind === "probable";
   });
   if (coveredRow) {
+    const coveringEntryId = (coveredRow.targetEntryId ?? coveredRow.coveredByEntryId)!;
+    const canRemove = input.mode === "committed"
+      && input.sourceType === "pdf"
+      && entry.bankCertificationStatus === "provisional"
+      && !entry.transferGroupId;
     return {
       ...base,
       id: `duplicate_entry:${entry.id}`,
       kind: "duplicate_entry",
-      confidence: "medium",
+      confidence: canRemove ? "high" : "medium",
+      ...(canRemove ? { fix: { kind: "remove_duplicate_entry" as const, entryId: entry.id, accountId: card.accountId, coveredByEntryId: coveringEntryId } } : {}),
       ...(coveredRow.accountId && coveredRow.accountId !== card.accountId ? { relatedAccountId: coveredRow.accountId } : {}),
       statementRow: mapStatementRow(coveredRow),
       facts: [{ code: "same_amount" }, { code: "same_merchant" }, ...getDateFacts(coveredRow, entry)]
@@ -546,6 +567,9 @@ function assignPlanConfidence(findings: StatementFindingDto[], cards: DiagnosisC
   for (const finding of findings) {
     if (finding.fix && !finding.applied && finding.confidence !== "low") {
       projectedByCard.set(finding.accountId, (projectedByCard.get(finding.accountId) ?? 0) + finding.effectMinor);
+      if (finding.relatedAccountId && finding.relatedEffectMinor) {
+        projectedByCard.set(finding.relatedAccountId, (projectedByCard.get(finding.relatedAccountId) ?? 0) + finding.relatedEffectMinor);
+      }
     }
   }
   for (const finding of findings) {
@@ -554,9 +578,14 @@ function assignPlanConfidence(findings: StatementFindingDto[], cards: DiagnosisC
     }
     const card = cards.find((item) => item.accountId === finding.accountId);
     const before = Math.abs(card?.deltaMinor ?? 0);
-    const after = Math.abs(projectedByCard.get(finding.accountId) ?? 0);
-    const singleAfter = Math.abs((card?.deltaMinor ?? 0) + finding.effectMinor);
-    if (finding.effectMinor !== 0 && singleAfter > before && after > before) {
+    const relatedCard = finding.relatedEffectMinor ? cards.find((item) => item.accountId === finding.relatedAccountId) : undefined;
+    // Every card the fix changes must end no further from its statement.
+    const after = Math.abs(projectedByCard.get(finding.accountId) ?? 0)
+      + (relatedCard ? Math.abs(projectedByCard.get(relatedCard.accountId) ?? 0) : 0);
+    const beforeAll = before + (relatedCard ? Math.abs(relatedCard.deltaMinor) : 0);
+    const singleAfter = Math.abs((card?.deltaMinor ?? 0) + finding.effectMinor)
+      + (relatedCard ? Math.abs(relatedCard.deltaMinor + (finding.relatedEffectMinor ?? 0)) : 0);
+    if ((finding.effectMinor !== 0 || finding.relatedEffectMinor) && singleAfter > beforeAll && after > beforeAll) {
       finding.facts.push({ code: "worsens_statement" });
       finding.confidence = "low";
       delete finding.fix;
@@ -570,7 +599,7 @@ function assignPlanConfidence(findings: StatementFindingDto[], cards: DiagnosisC
         finding.confidence = "high";
       }
     } else {
-      if (after < before) {
+      if (after < beforeAll) {
         finding.facts.push({ code: "improves_statement" });
       }
       if (finding.confidence === "high") {
@@ -582,10 +611,13 @@ function assignPlanConfidence(findings: StatementFindingDto[], cards: DiagnosisC
 
 function buildCardDiagnosis(card: DiagnosisCard, findings: StatementFindingDto[], input: DiagnosisInput): StatementCardDiagnosisDto {
   const cardFindings = findings.filter((finding) => finding.accountId === card.accountId && !finding.applied);
+  const relatedFindings = findings.filter((finding) => finding.relatedAccountId === card.accountId && finding.relatedEffectMinor && !finding.applied);
   const suggestedEffectMinor = cardFindings
     .filter((finding) => finding.fix)
-    .reduce((total, finding) => total + finding.effectMinor, 0);
-  const allEffectMinor = cardFindings.reduce((total, finding) => total + finding.effectMinor, 0);
+    .reduce((total, finding) => total + finding.effectMinor, 0)
+    + relatedFindings.filter((finding) => finding.fix).reduce((total, finding) => total + (finding.relatedEffectMinor ?? 0), 0);
+  const allEffectMinor = cardFindings.reduce((total, finding) => total + finding.effectMinor, 0)
+    + relatedFindings.reduce((total, finding) => total + (finding.relatedEffectMinor ?? 0), 0);
   const projectedDeltaMinor = card.deltaMinor + suggestedEffectMinor;
   const unexplainedMinor = card.deltaMinor + allEffectMinor;
   const needsReview = cardFindings.some((finding) => !finding.fix && finding.effectMinor !== 0);
@@ -745,9 +777,12 @@ function mapStatementRow(row: DiagnosisStatementRow): StatementFindingStatementR
 }
 
 export function getFixKey(fix: StatementFixDto) {
-  return fix.kind === "move_to_statement_account"
-    ? `${fix.kind}:${fix.entryId}:${fix.toAccountId}`
-    : `${fix.kind}:${fix.entryId}:${fix.postDate}`;
+  if (fix.kind === "move_to_statement_account") {
+    return `${fix.kind}:${fix.entryId}:${fix.toAccountId}`;
+  }
+  return fix.kind === "defer_to_next_statement"
+    ? `${fix.kind}:${fix.entryId}:${fix.postDate}`
+    : `${fix.kind}:${fix.entryId}`;
 }
 
 function addDays(date: string, days: number) {
@@ -769,6 +804,9 @@ export function getStatementFixRejection(input: {
   const { fix, entry } = input;
   if (input.sourceType !== "pdf") {
     return "Only an official statement can move or defer entries.";
+  }
+  if (fix.kind === "remove_duplicate_entry") {
+    return "A second copy is removed from Settings after the statement is saved, not in an import.";
   }
   if (!entry) {
     return "The entry is no longer in the ledger.";
@@ -809,4 +847,75 @@ export function getStatementFixRejection(input: {
     return "The deferral date does not follow this statement.";
   }
   return undefined;
+}
+
+export interface SavedCheckpointBalance {
+  accountId: string;
+  accountName: string;
+  month: string;
+  endDate: string;
+  deltaMinor: number;
+}
+
+export interface LedgerBalanceChange {
+  accountId: string;
+  // Signed change to the account's balance from `clearedDate` on.
+  signedAmountMinor: number;
+  clearedDate: string;
+}
+
+// A correction after commit changes an account's balance from the entry's
+// date on, so every saved statement that closes on or after it moves too.
+// Returns the saved statements that match now and would not afterwards: a
+// correction that unbalances a statement that agrees is never applied.
+export function findCheckpointsBrokenByCorrections(input: {
+  checkpoints: SavedCheckpointBalance[];
+  changes: LedgerBalanceChange[];
+}) {
+  return input.checkpoints.filter((checkpoint) => {
+    if (checkpoint.deltaMinor !== 0) {
+      return false;
+    }
+    const shiftMinor = input.changes
+      .filter((change) => change.accountId === checkpoint.accountId && change.clearedDate <= checkpoint.endDate)
+      .reduce((total, change) => total + change.signedAmountMinor, 0);
+    return shiftMinor !== 0;
+  });
+}
+
+// The balance changes a correction makes: a move takes the entry off one
+// account and onto another; removing a copy takes it off its account.
+export function getCorrectionBalanceChanges(fix: StatementFixDto, entry: { accountId: string; signedAmountMinor: number; clearedDate: string }): LedgerBalanceChange[] {
+  if (fix.kind === "move_to_statement_account") {
+    return [
+      { accountId: fix.fromAccountId, signedAmountMinor: -entry.signedAmountMinor, clearedDate: entry.clearedDate },
+      { accountId: fix.toAccountId, signedAmountMinor: entry.signedAmountMinor, clearedDate: entry.clearedDate }
+    ];
+  }
+  if (fix.kind === "remove_duplicate_entry") {
+    return [{ accountId: fix.accountId, signedAmountMinor: -entry.signedAmountMinor, clearedDate: entry.clearedDate }];
+  }
+  return [];
+}
+
+// An account as the diagnosis reads it: a joint account has no single owner.
+export function toDiagnosisAccount(account?: AccountDto): DiagnosisAccount | undefined {
+  if (!account) {
+    return undefined;
+  }
+  return {
+    id: account.id,
+    name: account.name,
+    ...(account.ownerPersonId && !account.isJoint ? { ownerPersonId: account.ownerPersonId } : {}),
+    ...(account.institutionId ? { institutionId: account.institutionId } : {}),
+    savedCheckpoints: (account.checkpointHistory ?? []).map((checkpoint) => ({
+      month: checkpoint.month,
+      endDate: checkpoint.statementEndDate ?? getMonthEndDateForDiagnosis(checkpoint.month)
+    }))
+  };
+}
+
+function getMonthEndDateForDiagnosis(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10);
 }
