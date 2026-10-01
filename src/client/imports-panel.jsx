@@ -909,7 +909,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         nextStatementCheckpoints
       );
       if (nextSourceType === "pdf") {
-        queueMicrotask(() => applyProvenStatementFixes(filteredPreview, readAutomaticStatementFixes()));
+        const appliedContext = { nextSourceType, nextStatementCheckpoints };
+        queueMicrotask(() => applyProvenStatementFixes(filteredPreview, readAutomaticStatementFixes(), appliedContext));
       }
     } catch (error) {
       if (requestSequence !== previewRequestSequenceRef.current) {
@@ -1265,22 +1266,26 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsEditingStatementRows(false);
   }
 
-  function refreshWithStatementFixes(nextStatementFixes) {
+  // `context` carries the file's source type and checkpoints when this runs
+  // right after a first preview, before the panel state has caught up.
+  function refreshWithStatementFixes(nextStatementFixes, context = {}) {
     statementFixesRef.current = nextStatementFixes;
     return refreshPreviewFromRows({
       rows: previewRowsRef.current.map(importService.buildRawRowFromPreviewRow),
       nextStatementFixes,
+      nextSourceType: context.nextSourceType ?? statementImportMeta.sourceType,
+      nextStatementCheckpoints: context.nextStatementCheckpoints ?? statementCheckpointsRef.current,
       activeMessage: messages.imports.statementReconciliationRefreshing,
       successMessage: messages.imports.statementReconciliationRefreshed
     });
   }
 
-  function applyStatementFixes(fixes) {
+  function applyStatementFixes(fixes, context) {
     const keys = new Set(statementFixesRef.current.map(getStatementFixKey));
     return refreshWithStatementFixes([
       ...statementFixesRef.current,
       ...fixes.filter((fix) => !keys.has(getStatementFixKey(fix)))
-    ]);
+    ], context);
   }
 
   function undoStatementFixes(fixes) {
@@ -1295,7 +1300,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   // With "Fix it for me" on, the fixes a statement proves are applied once,
   // as if the user had approved them; they stay undoable until the commit.
-  function applyProvenStatementFixes(nextPreview, isAutomatic) {
+  function applyProvenStatementFixes(nextPreview, isAutomatic, context) {
     if (!isAutomatic || nextPreview?.statementReconciliations?.length === 0) {
       return;
     }
@@ -1307,7 +1312,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       autoAppliedStatementFixKeysRef.current.add(getStatementFixKey(fix));
     }
     setAutoAppliedStatementFixCount((current) => current + proven.length);
-    void applyStatementFixes(proven);
+    void applyStatementFixes(proven, context);
   }
 
   function dismissStatementFindings(findingIds) {
