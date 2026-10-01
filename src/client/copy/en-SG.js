@@ -317,13 +317,31 @@ export const messages = {
     intakeEmptyTitle: "Drop all downloaded bank files together.",
     intakeEmptyDetail: "Filename format is not required. The app reads parsed content in this browser, suggests the matching checklist item, flags duplicates, and does not store original files.",
     intakeClear: "Clear queue",
-    intakeSummary: ({ total, ready, ambiguous, unexpected, duplicate }) => `${total} queued • ${ready} matched • ${ambiguous} ambiguous • ${unexpected} unexpected • ${duplicate} duplicate`,
-    intakeRowDetail: ({ fileName, rowCount, checkpointCount, parserKey }) => `${fileName} • ${countOf(rowCount, "row")} • ${countOf(checkpointCount, "checkpoint")} • ${parserKey}`,
-    intakeMatched: "Matched to a needed file.",
-    intakeAmbiguous: "Needs account or period confirmation during review.",
-    intakeUnexpected: "Not on the current checklist, but can still be reviewed.",
-    intakeUnknown: "Generic CSV or unsupported source; review mapping before commit.",
-    intakeDuplicate: "Duplicate-looking content already in this queue.",
+    intakeSummary: ({ total, ready, ambiguous, unexpected, duplicate }) => [
+      countOf(total, "file"),
+      ready ? `${ready} ${ready === 1 ? "matches a file" : "match files"} you need` : "",
+      ambiguous ? `${ambiguous} ${ambiguous === 1 ? "needs" : "need"} the account or month confirmed` : "",
+      unexpected ? `${unexpected} not on your checklist` : "",
+      duplicate ? `${duplicate} ${duplicate === 1 ? "looks" : "look"} like a copy` : ""
+    ].filter(Boolean).join(" · "),
+    intakeSourceKind: {
+      card_statement: (bank) => `${bank} card statement`,
+      account_statement: (bank) => `${bank} account statement`,
+      card_activity: (bank) => `${bank} card activity export`,
+      account_activity: (bank) => `${bank} account activity export`,
+      csv: () => "CSV file"
+    },
+    intakeRowDetail: ({ sourceKind, month, cardCount, rowCount }) => [
+      sourceKind,
+      month,
+      cardCount > 1 ? countOf(cardCount, "card") : "",
+      countOf(rowCount, "row")
+    ].filter(Boolean).join(" · "),
+    intakeMatched: "Matches a file you need.",
+    intakeAmbiguous: "Check which account or month this is during review.",
+    intakeUnexpected: "Not on your checklist; you can still review it.",
+    intakeUnknown: "You'll match its columns during review.",
+    intakeDuplicate: "Looks like a copy of another file in this queue.",
     intakeLoad: "Review",
     intakeReviewFirst: "Review this first: statements before activity, older months first.",
     intakeInReview: "In review below.",

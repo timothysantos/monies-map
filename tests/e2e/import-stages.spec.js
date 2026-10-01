@@ -74,7 +74,12 @@ test("a statement and an activity export dropped together are reviewed in order,
   await expect(queue).toHaveCount(2);
   await expect(queue.nth(0)).toContainText("eStatement_UOB_Cards_12May2026");
   await expect(queue.nth(0)).toContainText("Review this first");
+  await expect(queue.nth(0)).toContainText("UOB card statement · May 2026 · 2 cards · 10 rows");
   await expect(queue.nth(1)).toContainText("one-card-activity");
+  await expect(queue.nth(1)).toContainText("CSV file · 3 rows");
+  // Two of its rows fall inside the statement queued above it.
+  await expect(queue.nth(1)).toContainText("2 of 3 rows are on eStatement_UOB_Cards_12May2026 in this queue.");
+  await expect(page.locator(".import-intake-summary")).toHaveText("2 files · 2 not on your checklist");
 
   await queue.nth(0).getByRole("button", { name: "Review" }).click();
   const stepper = page.locator(".import-stepper");

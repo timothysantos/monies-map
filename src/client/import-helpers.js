@@ -1,5 +1,6 @@
 import { formatMinorInput } from "./formatters";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+export { inferImportMapping } from "./import-column-mapping";
 
 export function getImportDirectOwnerForAccount(accounts, people, accountName, fallbackOwnerName, accountId) {
   const account = accounts.find((item) => (
@@ -16,79 +17,6 @@ export function getImportDirectOwnerForAccount(accounts, people, accountName, fa
   return fallbackOwnerName;
 }
 
-export function inferImportMapping(header) {
-  const normalized = header.toLowerCase().trim();
-
-  if (
-    [
-      "date",
-      "transaction date",
-      "posting date",
-      "posted date",
-      "value date"
-    ].includes(normalized)
-  ) {
-    return "date";
-  }
-
-  if (
-    [
-      "description",
-      "details",
-      "narrative",
-      "merchant",
-      "memo"
-    ].includes(normalized)
-  ) {
-    return "description";
-  }
-
-  if (["amount", "transaction amount", "amt", "value"].includes(normalized)) {
-    return "amount";
-  }
-
-  if ([
-    "expense",
-    "expenses",
-    "expense amount",
-    "debit",
-    "debit amount",
-    "withdrawal",
-    "outflow"
-  ].includes(normalized)) {
-    return "expense";
-  }
-
-  if ([
-    "income",
-    "incomes",
-    "income amount",
-    "credit",
-    "credit amount",
-    "deposit",
-    "inflow"
-  ].includes(normalized)) {
-    return "income";
-  }
-
-  if (["account", "wallet", "account name", "source account"].includes(normalized)) {
-    return "account";
-  }
-
-  if (["category", "category name"].includes(normalized)) {
-    return "category";
-  }
-
-  if (["note", "notes", "remarks"].includes(normalized)) {
-    return "note";
-  }
-
-  if (["type", "transaction type", "entry type"].includes(normalized)) {
-    return "type";
-  }
-
-  return "ignore";
-}
 
 export function buildMappedImportRows(rows, columnMappings) {
   return rows

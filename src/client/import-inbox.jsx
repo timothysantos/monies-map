@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, CircleAlert, Clock3, FileText, Landmark, ListChecks } from "lucide-react";
 
-import { describeIntakeCoverage, orderIntakeQueue } from "./import-intake-model";
+import { describeIntakeCoverage, describeIntakeSource, orderIntakeQueue } from "./import-intake-model";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { addDaysToIsoDate, todayInAppTimeZone } from "./app-dates";
@@ -168,12 +168,14 @@ export function ImportIntakeQueueSection({
               return (
               <div key={item.id} className={`import-intake-row is-${item.matchStatus}${item.duplicate ? " is-duplicate" : ""}${item.id === activeItemId ? " is-active" : ""}`}>
                 <div className="import-intake-main">
-                  <strong>{item.sourceLabel || item.fileName}</strong>
+                  <strong>{item.fileName}</strong>
                   <span>{messages.imports.intakeRowDetail({
-                    fileName: item.fileName,
-                    rowCount: item.rowCount,
-                    checkpointCount: item.checkpointCount,
-                    parserKey: item.parserKey
+                    sourceKind: describeIntakeSourceLabel(item),
+                    month: item.parsed?.checkpoints?.[0]?.checkpointMonth
+                      ? formatService.formatMonthLabel(item.parsed.checkpoints[0].checkpointMonth)
+                      : "",
+                    cardCount: item.checkpointCount,
+                    rowCount: item.rowCount
                   })}</span>
                   <span>{item.id === activeItemId ? messages.imports.intakeInReview : isNext ? messages.imports.intakeReviewFirst : getIntakeStatusLabel(item)}</span>
                   {coverage ? <span className="import-intake-coverage">{messages.imports.intakeCoverage(coverage)}</span> : null}
@@ -204,6 +206,11 @@ export function ImportIntakeQueueSection({
       )}
     </section>
   );
+}
+
+function describeIntakeSourceLabel(item) {
+  const source = describeIntakeSource(item);
+  return messages.imports.intakeSourceKind[source.kind](source.bank);
 }
 
 function getIntakeStatusLabel(item) {

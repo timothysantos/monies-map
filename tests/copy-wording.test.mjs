@@ -25,12 +25,16 @@ test("count strings use the singular for one and the plural otherwise", () => {
   }
 
   assert.equal(
-    messages.imports.intakeRowDetail({ fileName: "a.csv", rowCount: 1, checkpointCount: 1, parserKey: "uob" }),
-    "a.csv • 1 row • 1 checkpoint • uob"
+    messages.imports.intakeRowDetail({ sourceKind: "UOB card statement", month: "May 2026", cardCount: 2, rowCount: 10 }),
+    "UOB card statement · May 2026 · 2 cards · 10 rows"
   );
   assert.equal(
-    messages.imports.intakeRowDetail({ fileName: "a.csv", rowCount: 3, checkpointCount: 0, parserKey: "uob" }),
-    "a.csv • 3 rows • 0 checkpoints • uob"
+    messages.imports.intakeRowDetail({ sourceKind: "CSV file", month: "", cardCount: 0, rowCount: 1 }),
+    "CSV file · 1 row"
+  );
+  assert.equal(
+    messages.imports.intakeSummary({ total: 2, ready: 1, ambiguous: 0, unexpected: 1, duplicate: 0 }),
+    "2 files · 1 matches a file you need · 1 not on your checklist"
   );
   assert.equal(messages.imports.recentPageSummary(1, 1, 1), "Showing 1-1 of 1 import");
   assert.equal(messages.imports.recentPageSummary(1, 10, 12), "Showing 1-10 of 12 imports");
