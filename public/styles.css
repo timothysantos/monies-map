@@ -7376,6 +7376,110 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   margin: 0;
 }
 
+/* Statement fixes: the statement check's suggestions for one card. A
+   suggestion sits on the sky (plan/intention) surface; an approved fix on
+   mint; rows use the existing overlap row layout. */
+.statement-fix-list {
+  display: grid;
+  gap: 10px;
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.statement-fix-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--pastel-sky-line);
+  border-radius: 8px;
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
+}
+
+.statement-fix-card .lede {
+  color: var(--pastel-sky-ink);
+}
+
+.statement-fix-applied {
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+}
+
+.statement-fix-applied-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statement-fix-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.statement-fix-rows .import-overlap-entry-row {
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  border-color: var(--pastel-sky-line);
+}
+
+.statement-fix-applied .statement-fix-rows .import-overlap-entry-row {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  border-color: var(--pastel-mint-line);
+}
+
+.statement-fix-row .import-history-inline {
+  display: block;
+}
+
+.statement-fix-row-review {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.statement-fix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statement-fix-apply {
+  font-weight: 700;
+}
+
+.statement-fix-check,
+.statement-fix-later {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.statement-fix-check ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.statement-fix-rejected {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+@media (max-width: 760px) {
+  .statement-fix-rows .import-overlap-entry-row {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .statement-fix-row-review {
+    grid-column: 1 / -1;
+  }
+}
+
 .statement-reconciliation-breakdown {
   display: grid;
   gap: 12px;

@@ -466,6 +466,44 @@ export const messages = {
     statementReconciliationMatchedDetail: "The preview reconciles to the official statement balance. Matching provisional rows will be certified without changing user annotations.",
     statementReconciliationMismatchDetail: "The statement cannot close yet. Check account mapping, missing or extra rows, row direction, or account identity before committing.",
     statementReconciliationRefresh: "Refresh check",
+    // Statement fixes: the statement check's deterministic suggestions. They
+    // name the rows and amounts; the import commit applies approved ones.
+    statementFixMoveTitle: (count, toName) => `${countOf(count, "entry", "entries")} ${count === 1 ? "belongs" : "belong"} on ${toName}`,
+    statementFixMoveDetail: ({ count, fromName, toName, amount, closes }) => amount
+      ? `${count === 1 ? "It is" : "They are"} on ${fromName} in your ledger, but this statement lists ${count === 1 ? "it" : "them"} under ${toName}. Moving ${count === 1 ? "it" : "them"} takes ${amount} off ${fromName}'s difference${closes ? " and the statement closes" : ""}.`
+      : `${count === 1 ? "It is" : "They are"} on ${fromName} in your ledger, but this statement lists ${count === 1 ? "it" : "them"} under ${toName}. Moving ${count === 1 ? "it" : "them"} stops a second copy being added to ${toName}.`,
+    statementFixMoveAction: (count, toName) => count === 1 ? `Move it to ${toName}` : `Move ${count} entries to ${toName}`,
+    statementFixMoveApplied: (count, toName) => `${countOf(count, "entry", "entries")} will move to ${toName} when you commit.`,
+    statementFixDestinationNote: (count, fromName) => `${countOf(count, "row")} here ${count === 1 ? "is" : "are"} already in your ledger on ${fromName}. See the suggested move on ${fromName}.`,
+    statementFixDeferTitle: (count) => `${countOf(count, "entry", "entries")} ${count === 1 ? "looks" : "look"} like the next statement's`,
+    statementFixDeferDetail: ({ count, endDate, amount, closes }) => `${count === 1 ? "It has" : "They have"} no posted date yet and ${count === 1 ? "isn't" : "aren't"} on this statement, which closed on ${endDate}. Moving ${count === 1 ? "it" : "them"} to the next statement takes ${amount} off the difference${closes ? " and the statement closes" : ""}.`,
+    statementFixDeferAction: (count) => count === 1 ? "Move it to the next statement" : `Move ${count} entries to the next statement`,
+    statementFixDeferApplied: (count, date) => `${countOf(count, "entry", "entries")} will be marked as posted on ${date} when you commit.`,
+    statementFixMoveOne: "Move it",
+    statementFixApplyClear: (count) => count === 1 ? "Apply the clear one" : `Apply the ${count} clear ones`,
+    statementFixKeep: "Keep as is",
+    statementFixUndo: "Undo",
+    statementFixCheckThisOne: "Check this one",
+    statementFixRowDates: (transactionDate, postedDate) => postedDate && postedDate !== transactionDate
+      ? `Bought ${transactionDate}, posted ${postedDate}`
+      : `Bought ${transactionDate}`,
+    statementFixAlsoCheck: "Also check",
+    statementFixExplanation: {
+      duplicate_entry: (description, amount, otherName) => `${description} (${amount}) looks like a second copy of a purchase this statement already matched${otherName ? ` on ${otherName}` : ""}.`,
+      amount_differs: (description, amount, statementAmount) => `${description} is ${amount} in your ledger but ${statementAmount} on the statement.`,
+      not_on_statement: (description, amount) => `${description} (${amount}) isn't on this statement.`,
+      excluded_statement_row: (description, amount) => `${description} (${amount}) is left out of this import.`,
+      opening_balance_gap: (amount) => `The balance before this statement is off by ${amount}. An earlier statement may be missing, or an earlier entry is off.`,
+      wrong_account: (description, amount, accountName) => `${description} (${amount}) on ${accountName} may be one of this statement's rows, but it can't be moved for you.`,
+      next_statement: (description, amount) => `${description} (${amount}) may belong to the next statement.`
+    },
+    statementFixUnexplained: (amount) => `${amount} is still unexplained after these fixes.`,
+    statementFixLaterEntries: (count) => `${countOf(count, "entry", "entries")} after this statement ${count === 1 ? "stays" : "stay"} provisional for the next one:`,
+    statementFixRejected: (reason) => `A fix you approved no longer applies, so it was left out: ${reason}`,
+    commitStatementMismatchWarning: (accountNames) => `${accountNames} ${accountNames.includes(" and ") ? "don't" : "doesn't"} match the statement yet. Committing now saves the statement with a difference.`,
+    commitStatementStaleWarning: "You changed rows after the statement check ran. Refresh the check before committing.",
+    commitAnyway: "Commit anyway",
+    commitWarningCancel: "Cancel",
     statementReconciliationRefreshing: "Refreshing statement certification check.",
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,

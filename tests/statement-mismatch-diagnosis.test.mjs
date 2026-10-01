@@ -401,3 +401,15 @@ test("a mid-cycle import gets explanations but never a fix", () => {
   assert.equal(openai.fix, undefined);
   assert.equal(diagnosis.cards.find((item) => item.accountId === LADY).outcome, "needs_manual_review");
 });
+
+test("an approved deferral is reported as applied, not as a later-statement entry", () => {
+  const ledgerEntries = uobLedger([entry("txn-sabai", LADY, "2026-05-10", "Sabai Sabai - Valley P", 2049, { postDate: "2026-05-13" })]);
+  const diagnosis = diagnose({
+    ledgerEntries,
+    appliedFixes: [{ kind: "defer_to_next_statement", entryId: "txn-sabai", accountId: LADY, postDate: "2026-05-13" }]
+  });
+
+  const deferral = finding(diagnosis, "next_statement:txn-sabai");
+  assert.deepEqual([deferral.applied, deferral.effectMinor], [true, 0]);
+  assert.equal(diagnosis.cards.find((item) => item.accountId === LADY).laterStatementEntryCount, 0);
+});

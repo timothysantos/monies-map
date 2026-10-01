@@ -6,6 +6,7 @@ import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
+import { StatementFixSuggestions } from "./statement-fix-suggestions";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
 import { moneyToneClass } from "./money-tone-class";
@@ -56,7 +57,11 @@ export function ImportPreviewReview({
   onDeleteDiagnosticLedgerRow,
   onDeleteDiagnosticLedgerRows,
   onSetDiagnosticLedgerPostDate,
-  onUpdateStatementCheckpoint
+  onUpdateStatementCheckpoint,
+  dismissedStatementFindingIds = [],
+  onApplyStatementFixes,
+  onUndoStatementFixes,
+  onDismissStatementFindings
 }) {
   if (!preview) {
     return null;
@@ -122,6 +127,12 @@ export function ImportPreviewReview({
       {statementReconciliations.length ? (
         <StatementBalanceCheck
           reconciliations={statementReconciliations}
+          diagnosis={preview.statementDiagnosis}
+          accounts={accounts}
+          dismissedFindingIds={dismissedStatementFindingIds}
+          onApplyStatementFixes={onApplyStatementFixes}
+          onUndoStatementFixes={onUndoStatementFixes}
+          onDismissStatementFindings={onDismissStatementFindings}
           hasMismatch={hasStatementReconciliationMismatch}
           viewId={viewId}
           isSubmitting={isSubmitting}
@@ -591,6 +602,12 @@ function formatOverlapEntryAmount(entry) {
 
 function StatementBalanceCheck({
   reconciliations,
+  diagnosis,
+  accounts,
+  dismissedFindingIds,
+  onApplyStatementFixes,
+  onUndoStatementFixes,
+  onDismissStatementFindings,
   hasMismatch,
   viewId,
   isSubmitting,
@@ -614,6 +631,11 @@ function StatementBalanceCheck({
           {messages.imports.statementReconciliationRefresh}
         </button>
       </div>
+      {diagnosis?.rejectedFixes?.map((item) => (
+        <p key={`${item.fix.kind}-${item.fix.entryId}`} className="lede compact statement-fix-rejected">
+          {messages.imports.statementFixRejected(item.reason)}
+        </p>
+      ))}
       <div className="stack">
         {reconciliations.map((item) => (
           <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card statement-reconciliation-row">
@@ -640,6 +662,19 @@ function StatementBalanceCheck({
                 ) : null}
               </div>
             </div>
+            {item.accountId ? (
+              <StatementFixSuggestions
+                accountId={item.accountId}
+                statementEndDate={item.statementEndDate}
+                diagnosis={diagnosis}
+                accounts={accounts}
+                dismissedFindingIds={dismissedFindingIds}
+                isSubmitting={isSubmitting}
+                onApplyStatementFixes={onApplyStatementFixes}
+                onUndoStatementFixes={onUndoStatementFixes}
+                onDismissStatementFindings={onDismissStatementFindings}
+              />
+            ) : null}
             {item.supersededLedgerRows?.length ? (
               <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>
                 <strong>{messages.imports.statementReconciliationSupersededRowsTitle}</strong>
