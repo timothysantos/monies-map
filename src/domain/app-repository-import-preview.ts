@@ -112,7 +112,21 @@ export async function buildImportPreview(
     }>();
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(accounts);
-  const statementCards = (input.statementCheckpoints ?? []).flatMap((checkpoint) => {
+  // A statement section whose name matches no account is matched by the
+  // card's last four digits, remembered from an earlier statement commit.
+  const statementAccountMatches = await matchStatementAccountsByCardLast4(db, {
+    checkpoints: input.statementCheckpoints ?? [],
+    resolveByName: (checkpoint) => resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName),
+    accountsById
+  });
+  const accountByStatementName = new Map(statementAccountMatches.map((match) => [match.detectedAccountName, accountsById.get(match.accountId)!]));
+  const statementCheckpoints = (input.statementCheckpoints ?? []).map((checkpoint) => {
+    const match = accountByStatementName.get(checkpoint.detectedAccountName ?? checkpoint.accountName);
+    return match && !checkpoint.accountId
+      ? { ...checkpoint, accountId: match.id, accountName: match.name, detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName }
+      : checkpoint;
+  });
+  const statementCards = statementCheckpoints.flatMap((checkpoint) => {
     const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
     return account ? [{
       accountId: account.id,
@@ -171,17 +185,18 @@ export async function buildImportPreview(
       inferredCategoryName = "Transfer";
     }
 
-    if (inferredAccountName && !accountNames.has(inferredAccountName)) {
-      unknownAccounts.add(inferredAccountName);
-    }
 
     if (inferredCategoryName && !categoryNames.has(inferredCategoryName)) {
       unknownCategories.add(inferredCategoryName);
       inferredCategoryName = "Other";
     }
 
-    const inferredAccount = resolvePreviewAccount(accountsById, accountsByName, normalized.accountId, inferredAccountName);
     const statementAccountName = rawRow.statementAccountName || rawRow.statementAccount || rawRow.account;
+    const inferredAccount = resolvePreviewAccount(accountsById, accountsByName, normalized.accountId, inferredAccountName)
+      ?? (normalized.accountId ? undefined : accountByStatementName.get(statementAccountName ?? inferredAccountName ?? ""));
+    if (inferredAccountName && !accountNames.has(inferredAccountName) && !inferredAccount) {
+      unknownAccounts.add(inferredAccountName);
+    }
     const inferredOwnerName = input.ownershipType === "direct"
       ? getDirectOwnerNameForAccount(inferredAccount, input.ownerName)
       : undefined;
@@ -260,25 +275,25 @@ export async function buildImportPreview(
   }
 
   const overlapImports = await findOverlappingImports(db, previewRows);
-  const statementChainBreaks = await loadStatementChainBreaks(db, input.statementCheckpoints ?? []);
+  const statementChainBreaks = await loadStatementChainBreaks(db, statementCheckpoints);
   autoIncludeDuplicateMatchesExplainedByStatementBalance({
     accounts,
     existingRows: ledgerRows,
     previewRows,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: statementCheckpoints
   });
   autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches({
     accounts,
     existingRows: ledgerRows,
     previewRows,
     sourceType: input.sourceType,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: statementCheckpoints
   });
   prioritizeCertifiedRowsExplainingStatementMismatch({
     accounts,
     existingRows: ledgerRows,
     previewRows,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: statementCheckpoints
   });
   const visibleReconciliationRows = previewRows.filter((row) => row.reconciliationMatches?.length);
   const reconciliationCandidates = visibleReconciliationRows.flatMap((row) => row.reconciliationMatches ?? []).slice(0, 8);
@@ -287,7 +302,7 @@ export async function buildImportPreview(
     existingRows: ledgerRows,
     previewRows,
     sourceType: input.sourceType,
-    statementCheckpoints: input.statementCheckpoints ?? [],
+    statementCheckpoints: statementCheckpoints,
     statementChainBreaks
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
@@ -295,7 +310,7 @@ export async function buildImportPreview(
   const statementDiagnosis = buildStatementDiagnosis({
     sourceType: input.sourceType ?? "csv",
     accounts,
-    statementCheckpoints: input.statementCheckpoints ?? [],
+    statementCheckpoints: statementCheckpoints,
     statementReconciliations,
     previewRows,
     ledgerRows,
@@ -327,8 +342,34 @@ export async function buildImportPreview(
     reconciliationCandidates,
     statementReconciliations,
     exceptionSummary,
-    ...(statementDiagnosis ? { statementDiagnosis } : {})
+    ...(statementDiagnosis ? { statementDiagnosis } : {}),
+    ...(statementAccountMatches.length ? { statementAccountMatches } : {})
   };
+}
+
+async function matchStatementAccountsByCardLast4(db: D1Database, input: {
+  checkpoints: StatementCheckpointDraftDto[];
+  resolveByName: (checkpoint: StatementCheckpointDraftDto) => AccountDto | undefined;
+  accountsById: Map<string, AccountDto>;
+}): Promise<NonNullable<ImportPreviewDto["statementAccountMatches"]>> {
+  const unmatched = input.checkpoints.filter((checkpoint) => checkpoint.accountLast4 && !input.resolveByName(checkpoint));
+  if (!unmatched.length) {
+    return [];
+  }
+  const accountsWithLast4 = await db
+    .prepare("SELECT id, last4 FROM accounts WHERE household_id = ? AND last4 IS NOT NULL")
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string; last4: string }>();
+  return unmatched.flatMap((checkpoint) => {
+    const candidates = accountsWithLast4.results.filter((row) => row.last4 === checkpoint.accountLast4);
+    const account = candidates.length === 1 ? input.accountsById.get(candidates[0].id) : undefined;
+    return account ? [{
+      detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName,
+      accountId: account.id,
+      accountName: account.name,
+      matchedBy: "card_last4" as const
+    }] : [];
+  });
 }
 
 type PreviewLedgerRow = {

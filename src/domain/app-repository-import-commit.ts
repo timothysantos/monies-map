@@ -870,6 +870,23 @@ export async function commitImportBatch(
         ),
         checkpoint.note ?? null
       ));
+
+    // Remember the card's last four digits on its account, so the next
+    // statement finds the account even when the bank renames the card.
+    // Never overwrites, and never gives two accounts the same digits.
+    if (isOfficialStatementImport && checkpoint.accountLast4 && /^\d{4}$/.test(checkpoint.accountLast4)) {
+      write(db
+        .prepare(`
+          UPDATE accounts
+          SET last4 = ?
+          WHERE household_id = ? AND id = ? AND last4 IS NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM accounts AS other
+              WHERE other.household_id = accounts.household_id AND other.last4 = ? AND other.id != accounts.id
+            )
+        `)
+        .bind(checkpoint.accountLast4, DEFAULT_HOUSEHOLD_ID, account.id, checkpoint.accountLast4));
+    }
   }
 
   if (savesCertificates && input.statementCheckpoints) {
@@ -1299,7 +1316,7 @@ export async function rollbackImportBatch(
       .bind(DEFAULT_HOUSEHOLD_ID, input.importId, ...movedFromAccountIds, DEFAULT_HOUSEHOLD_ID, input.importId)
       .first<{ found: number }>();
     if (laterSourceStatement) {
-      throw new Error("This statement moved entries off an account that has a later statement. Roll back newer statements for that account first.");
+      throw new Error("This statement cannot be rolled back yet: it moved entries off an account that has a later statement. Roll back newer statements for that account first.");
     }
   }
   const fixRestore = buildStatementFixRollbackStatements(db, { importId: input.importId, fixes: recordedFixes });

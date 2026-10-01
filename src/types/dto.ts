@@ -560,6 +560,14 @@ export interface ImportPreviewDto {
   // Deterministic explanation of each statement card's difference, with the
   // fixes the user can approve. Present only for statement imports.
   statementDiagnosis?: StatementDiagnosisDto;
+  // Statement sections matched to an account by the card's last four digits
+  // because their printed name matches no account.
+  statementAccountMatches?: {
+    detectedAccountName: string;
+    accountId: string;
+    accountName: string;
+    matchedBy: "card_last4";
+  }[];
 }
 
 // A statement fix is a correction the statement check proposes and the user
@@ -698,6 +706,7 @@ export interface StatementCheckpointDraftDto {
   statementEndDate?: string;
   statementBalanceMinor: number;
   previousBalanceMinor?: number;
+  accountLast4?: string;
   note?: string;
 }
 

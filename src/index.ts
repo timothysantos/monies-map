@@ -1860,6 +1860,7 @@ export default {
           statementEndDate?: string;
           statementBalanceMinor: number;
           previousBalanceMinor?: number;
+          accountLast4?: string;
           note?: string;
         }[];
         statementControlRows?: {

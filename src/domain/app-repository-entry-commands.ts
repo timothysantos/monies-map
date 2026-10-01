@@ -926,7 +926,8 @@ export async function deleteEntryRecord(
         id,
         transaction_date,
         description,
-        transfer_group_id
+        transfer_group_id,
+        bank_certification_status
       FROM transactions
       WHERE household_id = ?
         AND id = ?
@@ -937,10 +938,18 @@ export async function deleteEntryRecord(
       transaction_date: string;
       description: string;
       transfer_group_id: string | null;
+      bank_certification_status: "provisional" | "statement_certified";
     }>();
 
   if (!transaction) {
     throw new Error("Entry not found.");
+  }
+
+  // A statement certificate counts this entry. Removing it alone would
+  // leave a certified statement that no longer adds up; rolling back the
+  // statement import removes or restores it with everything it certified.
+  if (transaction.bank_certification_status === "statement_certified") {
+    throw new Error("This entry is certified by a bank statement, so it can't be deleted on its own. Roll back that statement import to remove it.");
   }
 
   const months = [transaction.transaction_date.slice(0, 7)];
