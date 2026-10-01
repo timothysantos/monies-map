@@ -1,5 +1,5 @@
 import { messages } from "./copy/en-SG";
-import { formatStatementReconciliationLine } from "./formatters";
+import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { DeleteRowButton } from "./ui-components";
 import "./import-review.css";
@@ -57,7 +57,7 @@ export function ImportDoneCard({ summary, nextItem, onReviewNext, onRollback, on
           {summary.cards.map((card) => (
             <article key={card.name} className="import-card import-done-account">
               <strong>{card.name}</strong>
-              <span>{messages.imports.doneCardBalance(formatStatementReconciliationLine(card.reconciliation), card.balanced)}</span>
+              <span>{messages.imports.doneCardBalance(formatStatementBalance(card.reconciliation), card.balanced)}</span>
               <span className="import-history-inline">{messages.imports.doneCardDetail(card.counts)}</span>
             </article>
           ))}
@@ -90,4 +90,15 @@ export function ImportDoneCard({ summary, nextItem, onReviewNext, onRollback, on
       </div>
     </section>
   );
+}
+
+// The statement's own balance in bank terms: what a card owes, or a credit.
+function formatStatementBalance(reconciliation) {
+  const balanceMinor = Number(reconciliation.statementBalanceMinor ?? 0);
+  if (reconciliation.accountKind !== "credit_card") {
+    return messages.imports.doneBalance(money(balanceMinor));
+  }
+  return balanceMinor < 0
+    ? messages.imports.doneOwed(money(Math.abs(balanceMinor)))
+    : messages.imports.doneCredit(money(balanceMinor));
 }

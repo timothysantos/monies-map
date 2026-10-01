@@ -484,7 +484,10 @@ export const messages = {
     doneTitle: (title) => `${title} saved`,
     doneAllBalanced: "Every card balanced",
     doneSavedWithDifference: (count) => `${countOf(count, "card")} saved with a difference`,
-    doneCardBalance: (line, balanced) => balanced ? `${line}, confirmed` : `${line}, saved with a difference`,
+    doneCardBalance: (balance, balanced) => balanced ? `${balance}, matches the statement` : `${balance} on the statement, saved with a difference`,
+    doneOwed: (amount) => `Owed ${amount}`,
+    doneCredit: (amount) => `Credit ${amount}`,
+    doneBalance: (amount) => `Balance ${amount}`,
     doneCardDetail: ({ added, confirmed, moved, later }) => [
       `${countOf(added, "row")} added`,
       `${countOf(confirmed, "entry", "entries")} confirmed`,
