@@ -418,6 +418,26 @@ async function ensureDemoSchemaOnce(db: D1Database) {
     `)
     .run();
 
+  // Statement fixes an import commit applied, for its rollback.
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS import_statement_fixes (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        import_id TEXT NOT NULL,
+        transaction_id TEXT NOT NULL,
+        fix_kind TEXT NOT NULL CHECK (fix_kind IN ('move_to_statement_account', 'defer_to_next_statement')),
+        from_account_id TEXT NOT NULL,
+        to_account_id TEXT NOT NULL,
+        previous_post_date TEXT,
+        new_post_date TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+      )
+    `)
+    .run();
+
   await db
     .prepare(`
       CREATE TABLE IF NOT EXISTS statement_chain_breaks (

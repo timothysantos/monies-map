@@ -20,6 +20,7 @@ import {
   getSignedLedgerAmountMinor,
   getMonthEndDate,
   daysBetween,
+  normalizeAccountOpeningBalanceMinor,
   normalizeDateString,
   normalizeDescriptionForMatch,
   normalizeStatementBalanceInputMinor,
@@ -28,10 +29,20 @@ import {
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
+import {
+  assertStatementFixesMatchCertification,
+  buildStatementFixCleanupStatement,
+  buildStatementFixCommitStatements,
+  buildStatementFixRollbackStatements,
+  getCertificationLookupAccountId,
+  loadRecordedStatementFixes,
+  loadStatementFixPlan
+} from "./import-statement-fixes";
 import type {
   ImportPreviewRowDto,
   ImportPreviewStatementReconciliationDto,
-  StatementCheckpointDraftDto
+  StatementCheckpointDraftDto,
+  StatementFixDto
 } from "../types/dto";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
@@ -412,6 +423,8 @@ export async function commitImportBatch(
     statementControlRows?: ImportPreviewRowDto[];
     statementReconciliations?: ImportPreviewStatementReconciliationDto[];
     statementCheckpoints?: StatementCheckpointDraftDto[];
+    // Fixes the user approved in the statement check; written in this batch.
+    statementFixes?: StatementFixDto[];
     note?: string;
   }
 ) {
@@ -475,6 +488,19 @@ export async function commitImportBatch(
     accountRowsByName.set(account.account_name, current);
   }
   const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
+  const statementFixPlan = await loadStatementFixPlan(db, {
+    fixes: input.statementFixes ?? [],
+    sourceType: input.sourceType ?? "csv",
+    statementCards: (input.statementCheckpoints ?? []).flatMap((checkpoint) => {
+      const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
+      return account ? [{
+        accountId: account.id,
+        checkpointMonth: checkpoint.checkpointMonth,
+        endDate: normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth)
+      }] : [];
+    })
+  });
+  const certifiedEntryIds = new Set<string>();
   const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
   const supersededLedgerRows = collectStatementSupersededLedgerRows(input.statementReconciliations ?? []);
   const certifiedLedgerRowsByAccountId = new Map<string, CertifiedLedgerRowSnapshot[]>();
@@ -528,6 +554,32 @@ export async function commitImportBatch(
     }
   }
 
+  // Before the rows: a moved entry must be on its statement card when its
+  // certification (guarded by account) runs later in this batch.
+  const statementFixWrites = buildStatementFixCommitStatements(db, {
+    plan: statementFixPlan,
+    importId,
+    sourceLabel: input.sourceLabel,
+    accountNamesById: new Map(accountRows.results.map((account) => [account.id, account.account_name]))
+  });
+  for (const statement of statementFixWrites.statements) {
+    write(statement);
+  }
+  for (const month of statementFixWrites.months) {
+    monthsToRecalculate.add(month);
+  }
+  for (const fix of statementFixPlan.defersByEntryId.values()) {
+    const entry = statementFixPlan.entriesById.get(fix.entryId)!;
+    pendingLedger.upserts.set(entry.id, {
+      id: entry.id,
+      account_id: entry.account_id,
+      cleared_date: fix.postDate,
+      entry_type: entry.entry_type,
+      transfer_direction: entry.transfer_direction,
+      amount_minor: Number(entry.amount_minor)
+    });
+  }
+
   for (const row of input.rows) {
     assertImportDescriptionQuality(row.description, row.rowIndex);
 
@@ -553,6 +605,7 @@ export async function commitImportBatch(
       throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
     }
 
+    const targetLookupAccountId = getCertificationLookupAccountId(statementFixPlan, row.reconciliationTargetTransactionId, accountId);
     const reconciliationTarget = row.reconciliationTargetTransactionId
       ? await db
         .prepare(`
@@ -564,7 +617,7 @@ export async function commitImportBatch(
             AND account_id = ?
             AND bank_certification_status = 'provisional'
         `)
-        .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
+        .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, targetLookupAccountId)
         .first<PromotedEntrySnapshot["transaction"] & { transaction_date: string }>()
       : null;
 
@@ -671,8 +724,9 @@ export async function commitImportBatch(
             AND id = ?
             AND account_id = ?
         `)
-        .bind(DEFAULT_HOUSEHOLD_ID, reconciliationTarget.id, accountId)
+        .bind(DEFAULT_HOUSEHOLD_ID, reconciliationTarget.id, targetLookupAccountId)
         .first<CertifiedLedgerRowSnapshot["transaction"]>();
+      certifiedEntryIds.add(reconciliationTarget.id);
 
       if (certifiedRowSnapshot) {
         const currentSnapshots = certifiedLedgerRowsByAccountId.get(accountId) ?? [];
@@ -780,6 +834,7 @@ export async function commitImportBatch(
 
     monthsToRecalculate.add(row.date.slice(0, 7));
   }
+  assertStatementFixesMatchCertification(statementFixPlan, certifiedEntryIds);
 
   for (const checkpoint of input.statementCheckpoints ?? []) {
     const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
@@ -978,6 +1033,9 @@ async function loadCertificateLedgerRows(db: D1Database) {
         amount_minor
       FROM transactions
       WHERE household_id = ?
+        AND (import_id IS NULL OR EXISTS (
+          SELECT 1 FROM imports WHERE imports.id = transactions.import_id AND imports.status = 'completed'
+        ))
     `)
     .bind(DEFAULT_HOUSEHOLD_ID)
     .all<CertificateLedgerRow>();
@@ -1055,8 +1113,10 @@ function buildStatementReconciliationCertificateStatements(
     const certifiedLedgerRowsJson = input.certifiedLedgerRowsByAccountId.get(account.id)?.length
       ? JSON.stringify(input.certifiedLedgerRowsByAccountId.get(account.id))
       : null;
-    const computedProjectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
-      openingBalanceMinor: Number(account.opening_balance_minor ?? 0),
+    // The server works the balance out from the ledger as this commit leaves
+    // it, and never takes the preview's numbers on trust.
+    const projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+      openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(account.opening_balance_minor ?? 0), account.account_kind),
       checkpoint: {
         account_id: account.id,
         checkpoint_month: checkpoint.checkpointMonth,
@@ -1065,14 +1125,14 @@ function buildStatementReconciliationCertificateStatements(
       },
       rows: input.ledgerRows
     });
-    const projectedLedgerBalanceMinor = typeof previewReconciliation?.projectedLedgerBalanceMinor === "number"
-      ? previewReconciliation.projectedLedgerBalanceMinor
-      : computedProjectedLedgerBalanceMinor;
-    const deltaMinor = typeof previewReconciliation?.deltaMinor === "number"
-      ? previewReconciliation.deltaMinor
-      : projectedLedgerBalanceMinor - statementBalanceMinor;
+    const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
     const needsReviewRowCount = controlRows.filter((row) => row.commitStatus === "needs_review").length;
-    const reconciliationExceptionCount = previewReconciliation?.status && previewReconciliation.status !== "matched" ? 1 : 0;
+    // An unconfirmed account identity or a missing earlier statement is an
+    // exception even when the balance closes.
+    const hasStatementIdentityException = previewReconciliation?.status === "identity_unconfirmed"
+      || previewReconciliation?.status === "missing_prior_statement"
+      || previewReconciliation?.status === "unknown_account";
+    const reconciliationExceptionCount = deltaMinor !== 0 || hasStatementIdentityException ? 1 : 0;
     const exceptionCount = needsReviewRowCount + reconciliationExceptionCount;
 
     statements.push(
@@ -1216,8 +1276,38 @@ export async function rollbackImportBatch(
     throw new Error("This PDF statement import has a later statement for the same account. Roll back newer statements first, or use a replacement statement or manual adjustment.");
   }
 
+  // Moving an entry back changes its original account's balance from that
+  // date on, so a later statement on that account forbids it too.
+  const recordedFixes = await loadRecordedStatementFixes(db, input.importId);
+  const movedFromAccountIds = Array.from(new Set(recordedFixes
+    .filter((fix) => fix.fix_kind === "move_to_statement_account")
+    .map((fix) => fix.from_account_id)));
+  if (movedFromAccountIds.length) {
+    const laterSourceStatement = await db
+      .prepare(`
+        SELECT 1 AS found
+        FROM statement_reconciliation_certificates later_certificate
+        WHERE later_certificate.household_id = ?
+          AND later_certificate.import_id != ?
+          AND later_certificate.account_id IN (${movedFromAccountIds.map(() => "?").join(", ")})
+          AND later_certificate.checkpoint_month > (
+            SELECT MIN(checkpoint_month) FROM statement_reconciliation_certificates
+            WHERE household_id = ? AND import_id = ?
+          )
+        LIMIT 1
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.importId, ...movedFromAccountIds, DEFAULT_HOUSEHOLD_ID, input.importId)
+      .first<{ found: number }>();
+    if (laterSourceStatement) {
+      throw new Error("This statement moved entries off an account that has a later statement. Roll back newer statements for that account first.");
+    }
+  }
+  const fixRestore = buildStatementFixRollbackStatements(db, { importId: input.importId, fixes: recordedFixes });
+
   // Every read happens here, before the single batch below.
-  const certifiedRestore = await buildStatementCertifiedRowRestore(db, input.importId);
+  const certifiedRestore = await buildStatementCertifiedRowRestore(db, input.importId, new Map(recordedFixes
+    .filter((fix) => fix.fix_kind === "move_to_statement_account")
+    .map((fix) => [fix.transaction_id, fix.from_account_id])));
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
   const promotedRestore = importRecord.source_type === "pdf"
     ? { statements: [], months: new Set<string>(), amountChanges: [] }
@@ -1253,6 +1343,7 @@ export async function rollbackImportBatch(
     .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
     .all<{ event_month: string; cleared_month: string }>();
   const transactionMonths = new Set([
+    ...fixRestore.months,
     ...certifiedRestore.months,
     ...supersededRestore.months,
     ...promotedRestore.months,
@@ -1264,6 +1355,9 @@ export async function rollbackImportBatch(
 
   await db.batch([
     ...certifiedRestore.statements,
+    // After the certification restore: a moved entry is provisional again
+    // and goes back to the account it was on.
+    ...fixRestore.statements,
     ...supersededRestore.statements,
     // Before the cleanup: a restored entry no longer carries this import's
     // id, so the cleanup neither unlinks its splits nor deletes it.
@@ -1660,7 +1754,9 @@ function parsePromotedEntrySnapshot(value: string | null, entryId: string) {
 
 // Puts entries certified by this import back to their pre-certification bank
 // facts. Returns the statements and the months they touch.
-async function buildStatementCertifiedRowRestore(db: D1Database, importId: string) {
+// `movedFromAccountIds` maps an entry this statement moved to the account it
+// came from, where the import rows it may return to were assigned.
+async function buildStatementCertifiedRowRestore(db: D1Database, importId: string, movedFromAccountIds = new Map<string, string>()) {
   const certifiedRows = await db
     .prepare(`
       SELECT
@@ -1730,7 +1826,7 @@ async function buildStatementCertifiedRowRestore(db: D1Database, importId: strin
     raw_row_json: string;
     imported_at: string;
   }>>();
-  const accountIds = Array.from(new Set(certifiedRows.results.map((row) => row.account_id)));
+  const accountIds = Array.from(new Set(certifiedRows.results.map((row) => movedFromAccountIds.get(row.id) ?? row.account_id)));
   for (const accountId of accountIds) {
     const candidates = await db
       .prepare(`
@@ -1816,7 +1912,7 @@ async function buildStatementCertifiedRowRestore(db: D1Database, importId: strin
       }
     }
 
-    const restored = await resolveRolledBackStatementRowState(row, candidateRowsByAccount.get(row.account_id) ?? []);
+    const restored = await resolveRolledBackStatementRowState(row, candidateRowsByAccount.get(movedFromAccountIds.get(row.id) ?? row.account_id) ?? []);
     if (!restored) {
       continue;
     }
@@ -2373,6 +2469,7 @@ function buildStatementChainBreakClearStatements(
 async function buildImportBatchCleanupStatements(db: D1Database, importId: string) {
   return [
     ...await buildStatementImportMetadataCleanupStatements(db, importId),
+    buildStatementFixCleanupStatement(db, importId),
     buildStatementCertificationResetStatement(db, importId),
     db
       .prepare(`

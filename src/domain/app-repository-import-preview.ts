@@ -21,6 +21,12 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import {
+  diagnoseStatementMismatches,
+  getFixKey,
+  getStatementFixRejection,
+  type DiagnosisAccount
+} from "./statement-mismatch-diagnosis";
+import {
   canSuppressCertifiedStatementDuplicate,
   getDuplicateCandidateMaxDayDistance
 } from "./import-preview-match-policy";
@@ -36,7 +42,9 @@ import type {
   ImportOverlapDto,
   ImportPreviewDto,
   ImportPreviewRowDto,
-  StatementCheckpointDraftDto
+  StatementCheckpointDraftDto,
+  StatementDiagnosisDto,
+  StatementFixDto
 } from "../types/dto";
 
 export async function buildImportPreview(
@@ -50,6 +58,9 @@ export async function buildImportPreview(
     splitBasisPoints?: number;
     sourceType?: "csv" | "pdf" | "manual";
     statementCheckpoints?: StatementCheckpointDraftDto[];
+    // Statement fixes the user approved. They are applied to the ledger this
+    // preview sees, so the check shows the result; the commit writes them.
+    statementFixes?: StatementFixDto[];
   }
 ): Promise<ImportPreviewDto> {
   const accounts = await loadAccounts(db);
@@ -70,6 +81,7 @@ export async function buildImportPreview(
         transactions.entry_type,
         transactions.transfer_direction,
         transactions.bank_certification_status,
+        transactions.transfer_group_id,
         accounts.account_name,
         COALESCE(statement_import_rows.normalized_hash, import_rows.normalized_hash) AS normalized_hash
       FROM transactions
@@ -94,11 +106,30 @@ export async function buildImportPreview(
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
       bank_certification_status: "provisional" | "statement_certified";
+      transfer_group_id: string | null;
       account_name: string;
       normalized_hash: string | null;
     }>();
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(accounts);
+  const statementCards = (input.statementCheckpoints ?? []).flatMap((checkpoint) => {
+    const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
+    return account ? [{
+      accountId: account.id,
+      checkpointMonth: checkpoint.checkpointMonth,
+      endDate: normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth)
+    }] : [];
+  });
+  const { ledgerRows, appliedFixes, rejectedFixes } = applyStatementFixesToLedgerRows({
+    fixes: input.statementFixes ?? [],
+    sourceType: input.sourceType ?? "csv",
+    ledgerRows: existingTransactions.results,
+    accountsById,
+    statementCards
+  });
+  const movedEntryIdsByStatementRowIndex = new Map(appliedFixes.flatMap((fix) => (
+    fix.kind === "move_to_statement_account" ? [[fix.statementRowIndex, fix.entryId] as const] : []
+  )));
   const accountNames = new Set(accounts.map((account) => account.name));
   const categoryNames = new Set(categories.map((category) => category.name));
   const unknownAccounts = new Set<string>();
@@ -174,12 +205,14 @@ export async function buildImportPreview(
       rawRow
     };
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
-    const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
+    // An approved move names the statement row that certifies the moved entry.
+    const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow)
+      ?? movedEntryIdsByStatementRowIndex.get(index + 1);
     const previewRowDateContext = getPreviewRowDateContext(previewRow);
     let exactDuplicateMatch = findExactDuplicateSuppressionMatch({
       previewRow,
       previewRowDateContext,
-      existingRows: existingTransactions.results,
+      existingRows: ledgerRows,
       incomingSourceType: input.sourceType,
       excludedTransactionIds: claimedReconciliationTargetIds
     });
@@ -188,7 +221,7 @@ export async function buildImportPreview(
       : findReconciliationMatches({
         previewRow,
         previewRowDateContext,
-        existingRows: existingTransactions.results,
+        existingRows: ledgerRows,
         incomingSourceType: input.sourceType,
         excludedTransactionIds: claimedReconciliationTargetIds
       });
@@ -230,20 +263,20 @@ export async function buildImportPreview(
   const statementChainBreaks = await loadStatementChainBreaks(db, input.statementCheckpoints ?? []);
   autoIncludeDuplicateMatchesExplainedByStatementBalance({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
   autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
     sourceType: input.sourceType,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
   prioritizeCertifiedRowsExplainingStatementMismatch({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
@@ -251,7 +284,7 @@ export async function buildImportPreview(
   const reconciliationCandidates = visibleReconciliationRows.flatMap((row) => row.reconciliationMatches ?? []).slice(0, 8);
   const statementReconciliations = buildImportPreviewStatementReconciliations({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
     sourceType: input.sourceType,
     statementCheckpoints: input.statementCheckpoints ?? [],
@@ -259,6 +292,16 @@ export async function buildImportPreview(
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
   markCertifiedConflictRows(previewRows, statementReconciliations);
+  const statementDiagnosis = buildStatementDiagnosis({
+    sourceType: input.sourceType ?? "csv",
+    accounts,
+    statementCheckpoints: input.statementCheckpoints ?? [],
+    statementReconciliations,
+    previewRows,
+    ledgerRows,
+    appliedFixes,
+    rejectedFixes
+  });
   const exceptionSummary = buildImportPreviewExceptionSummary({
     unknownAccountCount: unknownAccounts.size,
     unknownCategoryCount: unknownCategories.size,
@@ -283,8 +326,180 @@ export async function buildImportPreview(
     accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter((accountName): accountName is string => Boolean(accountName)))).sort(),
     reconciliationCandidates,
     statementReconciliations,
-    exceptionSummary
+    exceptionSummary,
+    ...(statementDiagnosis ? { statementDiagnosis } : {})
   };
+}
+
+type PreviewLedgerRow = {
+  import_id: string | null;
+  source_type: "csv" | "pdf" | "manual";
+  transaction_id: string;
+  account_id: string;
+  transaction_date: string;
+  post_date: string | null;
+  description: string;
+  note: string | null;
+  amount_minor: number;
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  bank_certification_status: "provisional" | "statement_certified";
+  transfer_group_id: string | null;
+  account_name: string;
+  normalized_hash: string | null;
+};
+
+// Applies the approved statement fixes to the ledger rows the preview
+// matches against: a moved entry sits on its statement card, a deferred one
+// posts the day after the statement. A fix that no longer holds is reported
+// and left out, never forced.
+function applyStatementFixesToLedgerRows(input: {
+  fixes: StatementFixDto[];
+  sourceType: "csv" | "pdf" | "manual";
+  ledgerRows: PreviewLedgerRow[];
+  accountsById: Map<string, AccountDto>;
+  statementCards: { accountId: string; checkpointMonth: string; endDate: string }[];
+}) {
+  const appliedFixes: StatementFixDto[] = [];
+  const rejectedFixes: StatementDiagnosisDto["rejectedFixes"] = [];
+  const seenEntryIds = new Set<string>();
+  const rowsById = new Map(input.ledgerRows.map((row) => [row.transaction_id, row]));
+  const overrides = new Map<string, Partial<PreviewLedgerRow>>();
+  for (const fix of input.fixes) {
+    const row = rowsById.get(fix.entryId);
+    const sourceAccountId = fix.kind === "move_to_statement_account" ? fix.fromAccountId : fix.accountId;
+    const rejection = seenEntryIds.has(fix.entryId)
+      ? "Only one fix can change an entry."
+      : getStatementFixRejection({
+        fix,
+        sourceType: input.sourceType,
+        entry: row ? {
+          accountId: row.account_id,
+          bankCertificationStatus: row.bank_certification_status,
+          postDate: row.post_date,
+          transactionDate: row.transaction_date,
+          transferGroupId: row.transfer_group_id
+        } : undefined,
+        statementCards: input.statementCards,
+        sourceAccount: toDiagnosisAccount(input.accountsById.get(sourceAccountId))
+      });
+    if (rejection) {
+      rejectedFixes.push({ fix, reason: rejection });
+      continue;
+    }
+    seenEntryIds.add(fix.entryId);
+    appliedFixes.push(fix);
+    overrides.set(fix.entryId, fix.kind === "move_to_statement_account"
+      ? { account_id: fix.toAccountId, account_name: input.accountsById.get(fix.toAccountId)?.name ?? row!.account_name }
+      : { post_date: fix.postDate });
+  }
+  return {
+    ledgerRows: overrides.size
+      ? input.ledgerRows.map((row) => overrides.has(row.transaction_id) ? { ...row, ...overrides.get(row.transaction_id) } : row)
+      : input.ledgerRows,
+    appliedFixes,
+    rejectedFixes
+  };
+}
+
+function toDiagnosisAccount(account?: AccountDto): DiagnosisAccount | undefined {
+  if (!account) {
+    return undefined;
+  }
+  return {
+    id: account.id,
+    name: account.name,
+    ...(account.ownerPersonId && !account.isJoint ? { ownerPersonId: account.ownerPersonId } : {}),
+    ...(account.institutionId ? { institutionId: account.institutionId } : {}),
+    savedCheckpoints: (account.checkpointHistory ?? []).map((checkpoint) => ({
+      month: checkpoint.month,
+      endDate: checkpoint.statementEndDate ?? getMonthEndDate(checkpoint.month)
+    }))
+  };
+}
+
+function buildStatementDiagnosis(input: {
+  sourceType: "csv" | "pdf" | "manual";
+  accounts: AccountDto[];
+  statementCheckpoints: StatementCheckpointDraftDto[];
+  statementReconciliations: ImportPreviewDto["statementReconciliations"];
+  previewRows: ImportPreviewRowDto[];
+  ledgerRows: PreviewLedgerRow[];
+  appliedFixes: StatementFixDto[];
+  rejectedFixes: StatementDiagnosisDto["rejectedFixes"];
+}): StatementDiagnosisDto | undefined {
+  const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
+  const cards = input.statementReconciliations.flatMap((reconciliation) => {
+    const account = reconciliation.accountId ? accountsById.get(reconciliation.accountId) : undefined;
+    if (!account || typeof reconciliation.deltaMinor !== "number" || reconciliation.status === "unknown_account") {
+      return [];
+    }
+    const checkpoint = input.statementCheckpoints.find((item) => (
+      item.checkpointMonth === reconciliation.checkpointMonth
+      && (item.accountId === account.id || item.accountName === account.name || item.accountName === reconciliation.accountName)
+    ));
+    return [{
+      accountId: account.id,
+      accountName: account.name,
+      checkpointMonth: reconciliation.checkpointMonth,
+      ...(reconciliation.statementStartDate ? { startDate: reconciliation.statementStartDate } : {}),
+      endDate: reconciliation.statementEndDate ?? getMonthEndDate(reconciliation.checkpointMonth),
+      deltaMinor: reconciliation.deltaMinor,
+      ...(reconciliation.reconciliationBreakdown ? { priorLedgerBalanceMinor: reconciliation.reconciliationBreakdown.priorLedgerBalanceMinor } : {}),
+      ...(checkpoint?.previousBalanceMinor != null && Number.isFinite(Number(checkpoint.previousBalanceMinor))
+        ? { previousStatementBalanceMinor: normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.previousBalanceMinor)), account.kind) }
+        : {}),
+      supersededEntryIds: (reconciliation.supersededLedgerRows ?? []).map((row) => row.transactionId)
+    }];
+  });
+  if (!cards.length) {
+    return undefined;
+  }
+
+  const appliedFixKeys = new Set(input.appliedFixes.map(getFixKey));
+  return diagnoseStatementMismatches({
+    sourceType: input.sourceType,
+    accounts: input.accounts.map((account) => toDiagnosisAccount(account)!),
+    cards,
+    statementRows: input.previewRows.map((row) => {
+      const dateContext = getPreviewRowDateContext(row);
+      return {
+        rowIndex: row.rowIndex,
+        ...(row.accountId ? { accountId: row.accountId } : {}),
+        postedDate: dateContext.postedDate,
+        ...(dateContext.hasEventDateHint ? { eventDate: dateContext.eventDate } : {}),
+        description: row.description,
+        amountMinor: row.amountMinor,
+        entryType: row.entryType,
+        ...(row.transferDirection ? { transferDirection: row.transferDirection } : {}),
+        commitStatus: row.commitStatus ?? "included",
+        commitStatusExplicit: Boolean(row.commitStatusExplicit),
+        ...(row.reconciliationTargetTransactionId ? { targetEntryId: row.reconciliationTargetTransactionId } : {}),
+        ...(row.commitStatus === "skipped" && row.reconciliationMatch?.existingTransactionId
+          ? { coveredByEntryId: row.reconciliationMatch.existingTransactionId }
+          : {}),
+        reviewCandidateEntryIds: row.commitStatus === "needs_review"
+          ? (row.reconciliationMatches ?? []).map((match) => match.existingTransactionId).filter((id): id is string => Boolean(id))
+          : []
+      };
+    }),
+    ledgerEntries: input.ledgerRows.map((row) => ({
+      id: row.transaction_id,
+      accountId: row.account_id,
+      transactionDate: row.transaction_date,
+      postDate: row.post_date,
+      note: row.note,
+      description: row.description,
+      amountMinor: Number(row.amount_minor),
+      entryType: row.entry_type,
+      transferDirection: row.transfer_direction,
+      bankCertificationStatus: row.bank_certification_status,
+      sourceType: row.source_type,
+      transferGroupId: row.transfer_group_id
+    })),
+    appliedFixes: input.appliedFixes.filter((fix) => appliedFixKeys.has(getFixKey(fix))),
+    rejectedFixes: input.rejectedFixes
+  });
 }
 
 function buildImportPreviewExceptionSummary(input: {

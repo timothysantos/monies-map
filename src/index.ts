@@ -7,6 +7,7 @@ import {
   invalidateAppDataCache,
   primeAppDataCache
 } from "./domain/app-shell";
+import type { StatementFixDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
@@ -1816,8 +1817,10 @@ export default {
           statementEndDate?: string;
           statementBalanceMinor: number;
           previousBalanceMinor?: number;
+          accountLast4?: string;
           note?: string;
         }[];
+        statementFixes?: StatementFixDto[];
       }>();
 
       const rows = body.rows ?? parseCsv(body.csv ?? "");
@@ -1832,7 +1835,8 @@ export default {
             ownerName: body.ownerName,
             splitBasisPoints: body.splitBasisPoints,
             sourceType: body.sourceType ?? "csv",
-            statementCheckpoints: body.statementCheckpoints ?? []
+            statementCheckpoints: body.statementCheckpoints ?? [],
+            statementFixes: Array.isArray(body.statementFixes) ? body.statementFixes : []
           })
         });
       } catch (error) {
@@ -1938,6 +1942,7 @@ export default {
           isStatementMatchResolved?: boolean;
           isCertifiedConflict?: boolean;
         }[];
+        statementFixes?: StatementFixDto[];
       }>();
 
       if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length)) {
@@ -1955,6 +1960,7 @@ export default {
             statementCheckpoints: body.statementCheckpoints ?? [],
             statementControlRows: body.statementControlRows,
             statementReconciliations: body.statementReconciliations,
+            statementFixes: Array.isArray(body.statementFixes) ? body.statementFixes : [],
             rows: body.rows ?? []
           }))
         });
