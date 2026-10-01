@@ -4,6 +4,7 @@ import {
   compactDescription,
   compareImportRowsByDate,
   dateFromSavingsDate,
+  estimateMonthlyStatementCycleStartDate,
   dateFromShortStatementDate,
   findDateAfter,
   findLongDate,
@@ -24,6 +25,7 @@ import {
 interface CreditCardSection {
   accountName: string;
   accountHeading: string;
+  accountLast4?: string;
   previousBalanceMinor: number;
   totalBalanceMinor: number;
   minPostDate?: string;
@@ -40,7 +42,7 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
   const statementYear = Number(statementDate.slice(0, 4));
   const statementMonth = Number(statementDate.slice(5, 7));
   const sections: CreditCardSection[] = [];
-  let currentAccount: { name: string; heading: string } | undefined;
+  let currentAccount: { name: string; heading: string; last4?: string } | undefined;
 
   for (let index = 0; index < lines.length; index += 1) {
     const account = readUobCardAccountHeading(lines, index);
@@ -70,9 +72,11 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
   const checkpoints = sections.map((section) => ({
     accountName: section.accountName,
     checkpointMonth: statementDate.slice(0, 7),
-    statementStartDate: section.minPostDate,
+    statementStartDate: estimateMonthlyStatementCycleStartDate(statementDate, section.minPostDate),
     statementEndDate: statementDate,
     statementBalanceMinor: section.totalBalanceMinor,
+    previousBalanceMinor: section.previousBalanceMinor,
+    ...(section.accountLast4 ? { accountLast4: section.accountLast4 } : {}),
     note: "Imported from UOB credit card statement"
   }));
 
@@ -194,7 +198,7 @@ export function parseUobSavingsStatement(text: string, fileName?: string): Parse
 function parseUobCreditCardSection(
   lines: string[],
   previousBalanceIndex: number,
-  account: { name: string; heading: string },
+  account: { name: string; heading: string; last4?: string },
   statementYear: number,
   statementMonth: number
 ): CreditCardSection {
@@ -291,6 +295,7 @@ function parseUobCreditCardSection(
   return {
     accountName: account.name,
     accountHeading: account.heading,
+    ...(account.last4 ? { accountLast4: account.last4 } : {}),
     previousBalanceMinor,
     totalBalanceMinor,
     minPostDate,
@@ -316,9 +321,11 @@ function readUobCardAccountHeading(lines: string[], index: number) {
     return undefined;
   }
 
+  const cardNumber = (lines[index + 1] ?? "").match(/^\d{4}-\d{4}-\d{4}-(\d{4})/);
   return {
     heading,
-    name: normalizeUobCardAccountName(heading)
+    name: normalizeUobCardAccountName(heading),
+    ...(cardNumber ? { last4: cardNumber[1] } : {})
   };
 }
 
