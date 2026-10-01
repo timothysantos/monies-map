@@ -103,3 +103,31 @@
     grid-column: 1 / -1;
   }
 }
+
+.statement-fix-automatic {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  margin-left: auto;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.statement-fix-automatic input {
+  width: 18px;
+  height: 18px;
+}
+
+.statement-auto-applied {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid var(--pastel-mint-line);
+  border-radius: 10px;
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+}

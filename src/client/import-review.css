@@ -1,0 +1,330 @@
+/* Import review: the statement header, one section per card, and the commit
+   bar. Loaded with the Imports route, not the first-screen stylesheet. */
+
+.pill.pill-sky {
+  border-color: var(--pastel-sky-line);
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
+}
+
+.pill.pill-butter {
+  border-color: var(--pastel-butter-line);
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.pill.pill-lavender {
+  border-color: color-mix(in srgb, var(--pastel-lavender-ink) 22%, transparent);
+  background: var(--pastel-lavender);
+  color: var(--pastel-lavender-ink);
+}
+
+.pill.pill-neutral {
+  border-color: var(--line);
+  background: var(--pastel-neutral);
+  color: var(--muted);
+}
+
+.statement-review {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.statement-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.statement-review-title {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.statement-review-title h3 {
+  margin: 0;
+}
+
+.statement-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.statement-card {
+  display: grid;
+  gap: 12px;
+}
+
+.statement-card-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.statement-card-title {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.statement-card-title .pill {
+  flex-shrink: 0;
+}
+
+.statement-card-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.statement-card-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.statement-card-rows ul {
+  display: grid;
+  gap: 0;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.statement-card-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto 110px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 0.92rem;
+}
+
+.statement-card-row + .statement-card-row {
+  border-top: 1px solid var(--line);
+}
+
+.statement-card-row-description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.statement-card-row-amount {
+  text-align: right;
+}
+
+.statement-card-rows > summary,
+.statement-card-breakdown > summary,
+.statement-more-checks > summary {
+  cursor: pointer;
+  min-height: 32px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.statement-more-checks > .stack {
+  margin-top: 10px;
+}
+
+/* The commit bar stays in view while the review scrolls. */
+.import-commit-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -8px 24px rgba(27, 24, 21, 0.06);
+}
+
+.import-commit-bar-summary {
+  margin: 0;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.import-commit-bar-summary .is-warning {
+  color: var(--pastel-butter-ink);
+  font-weight: 600;
+}
+
+.import-commit-bar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .statement-card-head {
+    flex-direction: column;
+  }
+
+  .statement-card-title {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .statement-card-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .statement-card-row-date {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .statement-card-row .pill {
+    justify-self: start;
+  }
+
+  /* Above the floating nav bar on a phone, one summary line. */
+  .import-commit-bar {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .import-commit-bar-summary {
+    width: 100%;
+    overflow: hidden;
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .import-commit-bar-actions,
+  .import-commit-bar-actions .import-commit-button {
+    width: 100%;
+  }
+
+  .import-commit-bar-actions .import-commit-button {
+    flex-grow: 1;
+  }
+}
+
+/* Import steps. */
+.import-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.import-stepper-step {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+  min-width: 0;
+}
+
+.import-stepper-step.is-current {
+  border: 2px solid var(--accent-strong);
+  background: #fff;
+  color: var(--text);
+}
+
+.import-stepper-step.is-done .import-stepper-label {
+  color: var(--positive);
+}
+
+.import-stepper-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.import-stepper-step.is-current .import-stepper-label {
+  color: var(--accent);
+}
+
+.import-stepper-summary {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.import-stepper-change {
+  padding: 0;
+  min-height: 0;
+}
+
+/* What the last commit did. */
+.import-done-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--pastel-mint-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.import-done-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.import-done-head h3 {
+  margin: 0;
+}
+
+.import-done-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.import-done-account {
+  display: grid;
+  gap: 4px;
+}
+
+.import-done-actions,
+.import-done-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.import-intake-coverage {
+  color: var(--pastel-sky-ink);
+}
+
+@media (max-width: 760px) {
+  .import-stepper {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-stepper-step:not(.is-current) {
+    padding: 8px 12px;
+  }
+}

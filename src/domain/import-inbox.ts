@@ -109,10 +109,12 @@ export function buildImportInbox({
     statementTargetMonth,
     now
   }));
-  const sessions = buildInstitutionSessions(accountModels, expectedFiles);
-  const reviewQueue = [...expectedFiles].sort(compareExpectedFileReviewOrder);
-  const requiredFileCount = expectedFiles.filter((file) => file.priority === "required").length;
-  const optionalFileCount = expectedFiles.filter((file) => file.priority === "optional").length;
+  const sharedStatementGroups = buildSharedStatementGroups(recentImports);
+  const mergedExpectedFiles = mergeSharedStatementFiles(expectedFiles, sharedStatementGroups);
+  const sessions = buildInstitutionSessions(accountModels, mergedExpectedFiles);
+  const reviewQueue = [...mergedExpectedFiles].sort(compareExpectedFileReviewOrder);
+  const requiredFileCount = mergedExpectedFiles.filter((file) => file.priority === "required").length;
+  const optionalFileCount = mergedExpectedFiles.filter((file) => file.priority === "optional").length;
 
   return {
     generatedAt: now.toISOString(),
@@ -254,6 +256,69 @@ function buildInstitutionSessions(
       const rightRank = getSessionStatusRank(right.status);
       return leftRank - rightRank || left.institution.localeCompare(right.institution);
     });
+}
+
+// Accounts whose latest statements arrived on one PDF (a bank's combined card
+// statement) share that statement: the inbox asks for it once.
+function buildSharedStatementGroups(recentImports: ImportBatchDto[]) {
+  const groupByAccountName = new Map<string, Set<string>>();
+  const statements = recentImports
+    .filter((importBatch) => importBatch.sourceType === "pdf" && importBatch.status === "completed" && (importBatch.accountNames?.length ?? 0) > 1)
+    .sort((left, right) => right.importedAt.localeCompare(left.importedAt));
+  for (const statement of statements) {
+    const names = statement.accountNames.map(normalizeAccountLabel);
+    if (names.some((name) => groupByAccountName.has(name))) {
+      continue;
+    }
+    const group = new Set(names);
+    for (const name of names) {
+      groupByAccountName.set(name, group);
+    }
+  }
+  return groupByAccountName;
+}
+
+function mergeSharedStatementFiles(files: ImportInboxExpectedFileDto[], groupByAccountName: Map<string, Set<string>>) {
+  const merged: ImportInboxExpectedFileDto[] = [];
+  const taken = new Set<string>();
+  for (const file of files) {
+    if (taken.has(file.id)) {
+      continue;
+    }
+    const group = file.sourceType === "pdf_statement" ? groupByAccountName.get(file.accountName) : undefined;
+    const siblings = group
+      ? files.filter((other) => (
+        other.sourceType === "pdf_statement"
+        && other.institution === file.institution
+        && other.periodMonth === file.periodMonth
+        && group.has(other.accountName)
+      ))
+      : [file];
+    if (siblings.length < 2) {
+      merged.push(file);
+      continue;
+    }
+    for (const sibling of siblings) {
+      taken.add(sibling.id);
+    }
+    const names = siblings.map((sibling) => sibling.accountName);
+    const owners = new Set(siblings.map((sibling) => sibling.ownerLabel));
+    merged.push({
+      ...file,
+      id: siblings.map((sibling) => sibling.id).join("+"),
+      accountName: joinNames(names),
+      ownerLabel: owners.size === 1 ? file.ownerLabel : joinNames(Array.from(owners)),
+      label: `${file.institution} statement ${file.periodMonth} (${joinNames(names)})`,
+      detail: `One ${file.institution} statement covers ${joinNames(names)}. Download the ${file.periodMonth} PDF statement while signed in to ${file.institution}.`,
+      reviewOrder: Math.min(...siblings.map((sibling) => sibling.reviewOrder)),
+      coveredAccounts: siblings.map((sibling) => ({ accountId: sibling.accountId, accountName: sibling.accountName }))
+    });
+  }
+  return merged;
+}
+
+function joinNames(names: string[]) {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
 function buildImportCountByAccountName(recentImports: ImportBatchDto[]) {

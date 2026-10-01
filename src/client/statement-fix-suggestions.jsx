@@ -18,7 +18,9 @@ export function StatementFixSuggestions({
   isSubmitting,
   onApplyStatementFixes,
   onUndoStatementFixes,
-  onDismissStatementFindings
+  onDismissStatementFindings,
+  isAutomaticStatementFixes = false,
+  onAutomaticStatementFixesChange = undefined
 }) {
   const card = diagnosis?.cards?.find((item) => item.accountId === accountId);
   if (!card) {
@@ -69,6 +71,8 @@ export function StatementFixSuggestions({
           isSubmitting={isSubmitting}
           onApply={onApplyStatementFixes}
           onDismiss={onDismissStatementFindings}
+          isAutomatic={isAutomaticStatementFixes}
+          onAutomaticChange={onAutomaticStatementFixesChange}
         />
       ))}
       {openDefers.length ? (
@@ -85,6 +89,8 @@ export function StatementFixSuggestions({
           isSubmitting={isSubmitting}
           onApply={onApplyStatementFixes}
           onDismiss={onDismissStatementFindings}
+          isAutomatic={isAutomaticStatementFixes}
+          onAutomaticChange={onAutomaticStatementFixesChange}
         />
       ) : null}
       {Array.from(appliedMoveGroups.entries()).map(([toAccountId, group]) => (
@@ -138,7 +144,7 @@ export function StatementFixSuggestions({
 
 // One action for every strong suggestion in the group; a medium one is
 // approved on its own so the user looks at it first.
-function FixGroup({ title, detail, findings, actionLabel, isSubmitting, onApply, onDismiss }) {
+function FixGroup({ title, detail, findings, actionLabel, isSubmitting, onApply, onDismiss, isAutomatic, onAutomaticChange }) {
   const strong = findings.filter((finding) => finding.confidence === "high");
   const toReview = findings.filter((finding) => finding.confidence !== "high");
   return (
@@ -174,6 +180,16 @@ function FixGroup({ title, detail, findings, actionLabel, isSubmitting, onApply,
         >
           {messages.imports.statementFixKeep}
         </button>
+        {strong.length && onAutomaticChange ? (
+          <label className="statement-fix-automatic">
+            <input
+              type="checkbox"
+              checked={isAutomatic}
+              onChange={(event) => onAutomaticChange(event.target.checked)}
+            />
+            {messages.imports.statementFixAutomatic}
+          </label>
+        ) : null}
       </div>
     </div>
   );

@@ -85,7 +85,7 @@ test("a wrong-card purchase is found, moved on approval, committed and undone by
   // offered as a fix.
   await expect(ladysCard.getByText("1 entry after this statement stays provisional for the next one:")).toBeVisible();
   await expect(ladysCard.locator(".statement-fix-later")).toContainText("Sabai Sabai - Valley P");
-  await expect(ladysCard.locator(".pill").first()).toHaveText("Mismatch");
+  await expect(ladysCard.locator(".pill").first()).toHaveText("Fix ready");
 
   // Committing before the move asks first, and cancelling writes nothing.
   await page.locator(".import-commit-button").first().click();
@@ -99,12 +99,12 @@ test("a wrong-card purchase is found, moved on approval, committed and undone by
   // saved yet, and the approval can be undone.
   await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
   await expect(ladysCard.getByText("2 entries will move to UOB One Card when you commit.")).toBeVisible();
-  await expect(oneCard.locator(".pill").first()).toHaveText("Matched");
-  await expect(ladysCard.locator(".pill").first()).toHaveText("Matched");
+  await expect(oneCard.locator(".pill").first()).toHaveText("Resolved");
+  await expect(ladysCard.locator(".pill").first()).toHaveText("Resolved");
   expect(await entryAccountName(page, openaiId)).toBe(LADYS_CARD);
   await ladysCard.getByRole("button", { name: "Undo" }).click();
   await expect(ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" })).toBeVisible();
-  await expect(ladysCard.locator(".pill").first()).toHaveText("Mismatch");
+  await expect(ladysCard.locator(".pill").first()).toHaveText("Fix ready");
   await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
   await expect(ladysCard.getByText("2 entries will move to UOB One Card when you commit.")).toBeVisible();
 
@@ -134,6 +134,7 @@ test("editing a row after the statement check asks for a fresh check before comm
   await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
   await expect(ladysCard.getByText("2 entries will move to UOB One Card when you commit.")).toBeVisible();
 
+  await page.getByRole("button", { name: "Edit rows" }).click();
   const description = page.locator(".import-description-input").first();
   await description.fill("SHAW THEATRES SINGAPORE (edited)");
   await page.locator(".import-commit-button").first().click();

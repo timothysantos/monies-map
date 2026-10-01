@@ -174,8 +174,18 @@ async function createCitiRewardsAccount(page) {
   });
 }
 
+// A statement's rows are read-only in its card sections; the row editor
+// shows them as inputs. It stays open across refreshes of the same file.
+async function openStatementRowEditor(page) {
+  const editRows = page.getByRole("button", { name: "Edit rows" });
+  if (await editRows.count()) {
+    await editRows.click();
+  }
+}
+
 async function expectHsbcPreviewValues(page, expectedValues) {
   await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
+  await openStatementRowEditor(page);
   const previewValues = await page
     .locator(".import-preview-table input")
     .evaluateAll((inputs) => inputs.map((input) => input.value));
@@ -1162,6 +1172,7 @@ test.describe("import flow", () => {
 
     await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 120_000 });
+    await openStatementRowEditor(page);
     const previewValues = await page
       .locator(".import-preview-table input")
       .evaluateAll((inputs) => inputs.map((input) => input.value));
@@ -1861,10 +1872,11 @@ test.describe("import flow", () => {
         await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name })).toBeVisible();
         await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name })).toBeVisible();
         await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
-        return;
+      } else {
+        await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
+        await mapDetectedAccounts();
       }
-      await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
-      await mapDetectedAccounts();
+      await openStatementRowEditor(importFlowPage);
     };
 
     const commitCurrentPreview = async () => {
@@ -1953,14 +1965,16 @@ test.describe("import flow", () => {
     await screenshot("07-feb-two-card-pdf-duplicates-plus-late-row-matched");
 
     await lateStatementOnlyPreviewRow.getByRole("button", { name: "Exclude row" }).click();
-    await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.warning")).toBeVisible();
+    // The excluded row is the whole difference, found but not fixable for
+    // the user: the card needs a manual review.
+    await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.pill-lavender")).toHaveText("Needs manual review");
     await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name }).locator(".pill.success")).toBeVisible();
     await importFlowPage.locator("details.import-skipped-rows summary").click();
     await expect(importFlowPage.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
     await screenshot("08-user-skipped-late-row-alpha-check-fails");
 
     await importFlowPage.getByRole("button", { name: "Refresh check" }).click();
-    await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.warning")).toBeVisible();
+    await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.pill-lavender")).toHaveText("Needs manual review");
     await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name }).locator(".pill.success")).toBeVisible();
     await expect(importFlowPage.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
 

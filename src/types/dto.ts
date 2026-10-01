@@ -969,6 +969,9 @@ export interface ImportInboxExpectedFileDto {
   detail: string;
   supportedFileTypes: string[];
   reviewOrder: number;
+  // A statement that covers several accounts (a bank's combined card
+  // statement) is one expected file; `accountName` then names them all.
+  coveredAccounts?: { accountId: string; accountName: string }[];
 }
 
 export interface ImportInboxCleanupDto {

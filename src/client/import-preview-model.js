@@ -104,6 +104,9 @@ export function buildImportPreviewModel({
         : hasCheckpointOnlyCommit
           ? messages.imports.saveStatementCheckpoints
           : messages.imports.commit,
+    // A statement whose cards all map to one account each only shows the
+    // mapping on request; an unknown, ambiguous or unmapped card needs it.
+    needsStatementAccountMapping: unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || hasUnmappedAccounts,
     showStatementAccountMapping: preview && accountMappingAccountNames.length > 0 && (
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),
