@@ -143,8 +143,9 @@ export function StatementFixSuggestions({
 }
 
 // One action for every strong suggestion in the group; a medium one is
-// approved on its own so the user looks at it first.
-function FixGroup({ title, detail, findings, actionLabel, isSubmitting, onApply, onDismiss, isAutomatic, onAutomaticChange }) {
+// approved on its own so the user looks at it first. Also used by the
+// Settings statement comparison for corrections to saved data.
+export function FixGroup({ title, detail, findings, actionLabel, isSubmitting, onApply, onDismiss, isAutomatic = false, onAutomaticChange = undefined }) {
   const strong = findings.filter((finding) => finding.confidence === "high");
   const toReview = findings.filter((finding) => finding.confidence !== "high");
   return (
@@ -217,7 +218,9 @@ function FixRow({ finding, isSubmitting, onApply }) {
           <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onApply([finding.fix])}>
             {finding.fix.kind === "move_to_statement_account"
               ? messages.imports.statementFixMoveOne
-              : messages.imports.statementFixDeferAction(1)}
+              : finding.fix.kind === "remove_duplicate_entry"
+                ? messages.settings.statementCorrectionRemoveOne
+                : messages.imports.statementFixDeferAction(1)}
           </button>
         </span>
       ) : null}
@@ -268,7 +271,7 @@ function describeFindingToCheck(finding, accountName) {
   }
 }
 
-function groupBy(items, key) {
+export function groupBy(items, key) {
   const groups = new Map();
   for (const item of items) {
     groups.set(key(item), [...(groups.get(key(item)) ?? []), item]);
@@ -276,10 +279,10 @@ function groupBy(items, key) {
   return groups;
 }
 
-function sumEffect(findings) {
+export function sumEffect(findings) {
   return findings.reduce((total, finding) => total + (finding.effectMinor ?? 0), 0);
 }
 
-function hasFact(finding, code) {
+export function hasFact(finding, code) {
   return finding.facts.some((fact) => fact.code === code);
 }

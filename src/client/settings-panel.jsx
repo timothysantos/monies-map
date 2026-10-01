@@ -7,11 +7,13 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import {
   archiveAccount,
+  applyStatementCorrections,
   compareAccountCheckpointStatement,
   deleteAccountCheckpoint,
   fetchCheckpointExport,
   saveAccount,
-  saveAccountCheckpoint
+  saveAccountCheckpoint,
+  undoStatementCorrections
 } from "./accounts-api";
 import {
   createReconciliationException,
@@ -151,6 +153,10 @@ export function SettingsPanel({
   const [statementComparePanel, setStatementComparePanel] = useState(null);
   const [statementCompareResult, setStatementCompareResult] = useState(null);
   const [statementCompareStatus, setStatementCompareStatus] = useState(null);
+  // The last corrections applied from the comparison, for their undo.
+  const [statementCorrection, setStatementCorrection] = useState(null);
+  const [dismissedCorrectionFindingIds, setDismissedCorrectionFindingIds] = useState([]);
+  const statementCompareRequestRef = useRef(null);
   const [aiCategoryRuleStatus, setAiCategoryRuleStatus] = useState("");
   const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
   const [transferDialogEntry, setTransferDialogEntry] = useState(null);
@@ -333,6 +339,9 @@ export function SettingsPanel({
     setStatementComparePanel(nextPanel);
     setStatementCompareResult(null);
     setStatementCompareStatus(null);
+    setStatementCorrection(null);
+    setDismissedCorrectionFindingIds([]);
+    statementCompareRequestRef.current = null;
     setReconciliationDialog(null);
   }
 
@@ -501,35 +510,93 @@ export function SettingsPanel({
 
     setIsSubmitting(true);
     setStatementCompareResult(null);
+    setStatementCorrection(null);
+    setDismissedCorrectionFindingIds([]);
     setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareReading(file.name) });
     try {
-      let rows = [];
-      let uploadedStatementStartDate;
-      let uploadedStatementEndDate;
+      const request = {
+        accountId: target.accountId,
+        checkpointMonth: target.checkpointMonth,
+        sourceType: "csv",
+        otherSections: [],
+        rows: []
+      };
       if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
         const parsed = parseStatementText(await importService.extractPdfText(file), file.name);
         const selectedStatement = importService.selectParsedStatementForCompare(parsed, target);
-        rows = selectedStatement.rows;
-        uploadedStatementStartDate = selectedStatement.checkpoint?.statementStartDate;
-        uploadedStatementEndDate = selectedStatement.checkpoint?.statementEndDate;
+        Object.assign(request, {
+          sourceType: "pdf",
+          rows: selectedStatement.rows,
+          otherSections: selectedStatement.otherSections,
+          uploadedStatementStartDate: selectedStatement.checkpoint?.statementStartDate,
+          uploadedStatementEndDate: selectedStatement.checkpoint?.statementEndDate
+        });
       } else {
-        rows = inspectCsv(await file.text()).rows;
+        request.rows = inspectCsv(await file.text()).rows;
       }
 
-      setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareChecking(rows.length) });
-      const data = await compareAccountCheckpointStatement({
-        accountId: target.accountId,
-        checkpointMonth: target.checkpointMonth,
-        uploadedStatementStartDate,
-        uploadedStatementEndDate,
-        rows
-      });
-
-      setStatementCompareResult(data.comparison);
-      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareReady(data.comparison) });
+      setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareChecking(request.rows.length) });
+      statementCompareRequestRef.current = request;
+      const comparison = await runStatementCompare(request);
+      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareReady(comparison) });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Statement compare failed.";
       setStatementCompareStatus({ tone: "error", message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // The comparison as the ledger is now, with the saved statement's
+  // current difference.
+  async function runStatementCompare(request) {
+    const data = await compareAccountCheckpointStatement(request);
+    setStatementCompareResult(data.comparison);
+    const targetCard = data.comparison.statementDiagnosis?.cards?.find((card) => card.accountId === request.accountId);
+    if (targetCard) {
+      setStatementComparePanel((current) => current ? { ...current, deltaMinor: targetCard.deltaMinor } : current);
+    }
+    return data.comparison;
+  }
+
+  async function handleApplyStatementCorrections(corrections, summary) {
+    const request = statementCompareRequestRef.current;
+    if (!request || !corrections.length) {
+      return;
+    }
+    setIsSubmitting(true);
+    setStatementCompareStatus(null);
+    try {
+      const result = await applyStatementCorrections({
+        accountId: request.accountId,
+        checkpointMonth: request.checkpointMonth,
+        corrections
+      });
+      setStatementCorrection({ correctionIds: result.correctionIds, summary });
+      await runStatementCompare(request);
+      await onRefresh(buildSettingsRefreshPlan("statement_corrected"));
+    } catch (error) {
+      setStatementCompareStatus({ tone: "error", message: error instanceof Error ? error.message : "Statement correction failed." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleUndoStatementCorrections() {
+    const request = statementCompareRequestRef.current;
+    if (!request || !statementCorrection) {
+      return;
+    }
+    setIsSubmitting(true);
+    setStatementCompareStatus(null);
+    try {
+      await undoStatementCorrections({ correctionIds: statementCorrection.correctionIds });
+      setStatementCorrection(null);
+      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCorrectionUndone });
+      await runStatementCompare(request);
+      await onRefresh(buildSettingsRefreshPlan("statement_correction_undone"));
+    } catch (error) {
+      setStatementCompareStatus({ tone: "error", message: error instanceof Error ? error.message : "Undo failed." });
     } finally {
       setIsSubmitting(false);
     }
@@ -1135,6 +1202,11 @@ export function SettingsPanel({
         statementComparePanel={statementComparePanel}
         statementCompareResult={statementCompareResult}
         statementCompareStatus={statementCompareStatus}
+        statementCorrection={statementCorrection}
+        dismissedCorrectionFindingIds={dismissedCorrectionFindingIds}
+        onApplyStatementCorrections={handleApplyStatementCorrections}
+        onUndoStatementCorrections={handleUndoStatementCorrections}
+        onDismissStatementCorrections={(ids) => setDismissedCorrectionFindingIds((current) => [...current, ...ids])}
         onToggle={() => toggleSettingsSection("accounts")}
         onCreateAccount={openCreateAccountDialog}
         onEditAccount={openEditAccountDialog}

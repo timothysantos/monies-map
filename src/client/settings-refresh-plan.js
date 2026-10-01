@@ -65,6 +65,13 @@ const TRANSFER_MUTATION_PLAN = Object.freeze({
   invalidateSummary: true
 });
 
+// A statement correction moves or removes ledger entries, and an import
+// whose entry covers a removed copy can no longer be rolled back.
+const STATEMENT_CORRECTION_PLAN = Object.freeze({
+  ...TRANSFER_MUTATION_PLAN,
+  invalidateImports: true
+});
+
 // Settings mutations use named refresh plans so invalidation stays explicit and
 // the panel does not decide cache-burst behavior inline.
 export function buildSettingsRefreshPlan(kind) {
@@ -116,6 +123,10 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "unresolved_transfer_settled"
   ) {
     return TRANSFER_MUTATION_PLAN;
+  }
+
+  if (kind === "statement_corrected" || kind === "statement_correction_undone") {
+    return STATEMENT_CORRECTION_PLAN;
   }
 
   if (kind === "demo_reseed" || kind === "demo_empty_state") {

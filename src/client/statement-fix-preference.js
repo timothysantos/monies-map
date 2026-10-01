@@ -31,7 +31,10 @@ export function getProvenStatementFixes(diagnosis, excludedKeys = new Set()) {
 // Same identity as the server's getFixKey (src/domain/statement-mismatch-
 // diagnosis.ts): one fix per entry and destination.
 export function getStatementFixKey(fix) {
-  return fix.kind === "move_to_statement_account"
-    ? `${fix.kind}:${fix.entryId}:${fix.toAccountId}`
+  if (fix.kind === "move_to_statement_account") {
+    return `${fix.kind}:${fix.entryId}:${fix.toAccountId}`;
+  }
+  return fix.kind === "remove_duplicate_entry"
+    ? `${fix.kind}:${fix.entryId}`
     : `${fix.kind}:${fix.entryId}:${fix.postDate}`;
 }
