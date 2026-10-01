@@ -4,44 +4,15 @@
 // printed to a real PDF, with OpenAI and Buyandship recorded on the wrong
 // card.
 import { expect, test } from "@playwright/test";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 
-import { postJson, reseedDemo } from "./helpers.js";
-
-const ONE_CARD = "UOB One Card";
-const LADYS_CARD = "UOB Lady's Card";
+import { LADYS_CARD, ONE_CARD, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 // The review must stay short: a resolved card is one line, rows and the
 // breakdown are behind disclosures. Measured 2026-10-01 at 1,959 px
 // (desktop, 1280 wide) and 3,271 px (phone, 390 wide) for this statement;
 // the old page was about 9,900 and 23,800.
 const PAGE_HEIGHT_BUDGET = { desktop: 2_300, phone: 3_800 };
-
-async function writeStatementPdf(page, path) {
-  const text = (await readFile(new URL("../fixtures/pdf-statement-text/uob-card-two-card-may-2026-sanitized.pdf-text.txt", import.meta.url), "utf8"))
-    .split("__PDF_LAYOUT_TEXT__")[0];
-  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const pdfPage = await page.context().newPage();
-  await pdfPage.setContent(`<html><body><pre style="font-family: Helvetica, Arial, sans-serif; font-size: 11px; line-height: 1.55; white-space: pre-wrap;">${escaped}</pre></body></html>`);
-  await pdfPage.pdf({ path, format: "A4", printBackground: true });
-  await pdfPage.close();
-}
-
-async function setUpWrongCardLedger(page) {
-  await reseedDemo(page);
-  for (const [name, openingBalanceMinor] of [[ONE_CARD, 15000], [LADYS_CARD, -1250]]) {
-    await postJson(page, "/api/accounts/create", { name, institution: "UOB", kind: "credit_card", currency: "SGD", openingBalanceMinor, ownerPersonId: "person-tim", isJoint: false });
-  }
-  for (const [accountName, date, description, amountMinor] of [
-    [ONE_CARD, "2026-04-11", "HONG KONG ZHAI DIM SUM", 1140],
-    [LADYS_CARD, "2026-04-30", "Don Don Donki", 1890],
-    [LADYS_CARD, "2026-04-20", "OpenAI", 2949],
-    [LADYS_CARD, "2026-05-05", "Buyandship", 1313],
-    [LADYS_CARD, "2026-05-14", "Sabai Sabai - Valley P", 2049]
-  ]) {
-    await postJson(page, "/api/entries/create", { accountName, date, description, amountMinor, categoryName: "Other", entryType: "expense", ownershipType: "direct", ownerName: "Tim" });
-  }
-}
 
 // The bank's own activity export for One Card: two rows the May statement
 // already has (worded differently) and one after it.

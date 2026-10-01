@@ -8,6 +8,7 @@ import { moniesClient } from "./monies-client-service";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { moneyToneClass } from "./money-tone-class";
 import { flowTone } from "../domain/money-tone";
+import { StatementCorrectionSuggestions } from "./statement-correction-suggestions";
 
 const {
   accounts: accountService,
@@ -15,7 +16,21 @@ const {
   format: formatService
 } = moniesClient;
 
-export function StatementCompareResultView({ result, deltaMinor, accounts, categories, people, onEntryAdded, onRowsMatched }) {
+export function StatementCompareResultView({
+  result,
+  deltaMinor,
+  accounts,
+  categories,
+  people,
+  isSubmitting = false,
+  statementCorrection = null,
+  dismissedCorrectionFindingIds = [],
+  onEntryAdded,
+  onRowsMatched,
+  onApplyStatementCorrections = undefined,
+  onUndoStatementCorrections = undefined,
+  onDismissStatementCorrections = undefined
+}) {
   const directionMismatches = result.possibleMatches.filter((candidate) => candidate.amountDirectionMismatch);
   const duplicateStatementGroups = result.duplicateStatementGroups ?? [];
   const duplicateLedgerGroups = result.duplicateLedgerGroups ?? [];
@@ -36,6 +51,18 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
           result.uploadedStatementEndDate ? formatService.formatDateOnly(result.uploadedStatementEndDate) : messages.common.emptyValue
         )}</p>
       </div>
+      {onApplyStatementCorrections ? (
+        <StatementCorrectionSuggestions
+          result={result}
+          accounts={accounts}
+          correction={statementCorrection}
+          dismissedFindingIds={dismissedCorrectionFindingIds}
+          isSubmitting={isSubmitting}
+          onApply={onApplyStatementCorrections}
+          onUndo={onUndoStatementCorrections}
+          onDismiss={onDismissStatementCorrections}
+        />
+      ) : null}
       {result.possibleMatches.length ? (
         <div className="settings-statement-compare-block">
           <h3>{messages.settings.statementComparePossibleTitle}</h3>

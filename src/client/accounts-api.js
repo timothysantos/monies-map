@@ -95,7 +95,9 @@ export function compareAccountCheckpointStatement({
   checkpointMonth,
   uploadedStatementStartDate,
   uploadedStatementEndDate,
-  rows
+  rows,
+  sourceType,
+  otherSections
 }) {
   return postJson(
     "/api/accounts/checkpoints/compare-statement",
@@ -104,9 +106,27 @@ export function compareAccountCheckpointStatement({
       checkpointMonth,
       uploadedStatementStartDate,
       uploadedStatementEndDate,
-      rows
+      rows,
+      sourceType,
+      otherSections
     },
     "Statement compare failed."
+  );
+}
+
+export function applyStatementCorrections({ accountId, checkpointMonth, corrections }) {
+  return postJson(
+    "/api/accounts/checkpoints/statement-corrections/apply",
+    { accountId, checkpointMonth, corrections },
+    "Statement correction failed."
+  );
+}
+
+export function undoStatementCorrections({ correctionIds }) {
+  return postJson(
+    "/api/accounts/checkpoints/statement-corrections/undo",
+    { correctionIds },
+    "Undo failed."
   );
 }
 

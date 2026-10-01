@@ -211,6 +211,19 @@ export function selectParsedStatementForCompare(parsed, target) {
   const rows = accountNames.size > 1
     ? parsed.rows.filter((row) => row.account === target.accountName)
     : parsed.rows;
+  // The statement's other cards, so the comparison can tell an entry that
+  // belongs on one of them.
+  const otherSections = accountNames.size > 1
+    ? parsed.checkpoints
+      .filter((item) => item.accountName !== target.accountName)
+      .map((item) => ({
+        accountName: item.accountName,
+        accountLast4: item.accountLast4,
+        statementStartDate: item.statementStartDate,
+        statementEndDate: item.statementEndDate,
+        rows: parsed.rows.filter((row) => row.account === item.accountName)
+      }))
+    : [];
 
-  return { checkpoint, rows };
+  return { checkpoint, rows, otherSections };
 }
