@@ -1319,6 +1319,24 @@ export async function rollbackImportBatch(
       throw new Error("This statement cannot be rolled back yet: it moved entries off an account that has a later statement. Roll back newer statements for that account first.");
     }
   }
+  // A second copy was removed because this import's entry covers it; rolling
+  // back would remove both copies.
+  const coveredRemoval = await db
+    .prepare(`
+      SELECT 1 AS found
+      FROM statement_corrections
+      INNER JOIN transactions ON transactions.id = statement_corrections.covered_by_transaction_id
+      WHERE statement_corrections.household_id = ?
+        AND statement_corrections.correction_kind = 'remove_duplicate_entry'
+        AND statement_corrections.undone_at IS NULL
+        AND transactions.import_id = ?
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
+    .first<{ found: number }>();
+  if (coveredRemoval) {
+    throw new Error("This import cannot be rolled back yet: a statement comparison removed a second copy of one of its entries. Undo that correction in Settings first.");
+  }
   const fixRestore = buildStatementFixRollbackStatements(db, { importId: input.importId, fixes: recordedFixes });
 
   // Every read happens here, before the single batch below.

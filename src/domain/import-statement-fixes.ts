@@ -111,7 +111,7 @@ export async function loadStatementFixPlan(db: D1Database, input: {
     }
     if (fix.kind === "move_to_statement_account") {
       plan.movesByEntryId.set(fix.entryId, fix);
-    } else {
+    } else if (fix.kind === "defer_to_next_statement") {
       plan.defersByEntryId.set(fix.entryId, fix);
     }
   }
@@ -181,6 +181,9 @@ export function buildStatementFixCommitStatements(db: D1Database, input: {
           detail: `Moved ${entry.description} from ${entry.account_name} to ${toName}: the ${input.sourceLabel} statement lists it under ${toName}.`
         })
       );
+      continue;
+    }
+    if (fix.kind !== "defer_to_next_statement") {
       continue;
     }
 

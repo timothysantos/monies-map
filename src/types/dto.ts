@@ -595,6 +595,16 @@ export type StatementFixDto =
     entryId: string;
     accountId: string;
     postDate: string;
+  }
+  // After a statement is committed: a provisional second copy of a purchase
+  // the statement already matched to another entry (on this card or another
+  // card of the statement) is removed. Applied by the statement correction
+  // command, never by an import commit.
+  | {
+    kind: "remove_duplicate_entry";
+    entryId: string;
+    accountId: string;
+    coveredByEntryId: string;
   };
 
 export type StatementFindingKind =
@@ -625,7 +635,10 @@ export type StatementFindingFact =
   | { code: "transfer_link_protects_entry" }
   | { code: "no_posted_date" }
   | { code: "near_statement_end"; days: number }
-  | { code: "excluded_by_you" };
+  | { code: "excluded_by_you" }
+  // After commit: the correction would unbalance a saved statement that
+  // matches now, so it is not offered.
+  | { code: "unbalances_saved_statement"; accountName: string; month: string };
 
 export interface StatementFindingEntryDto {
   id: string;
@@ -661,6 +674,9 @@ export interface StatementFindingDto {
   relatedAccountId?: string;
   // Signed change to `accountId`'s difference once the finding is resolved.
   effectMinor: number;
+  // Signed change to `relatedAccountId`'s difference: a move after commit
+  // also adds the entry to the card that was missing it.
+  relatedEffectMinor?: number;
   entry?: StatementFindingEntryDto;
   statementRow?: StatementFindingStatementRowDto;
   facts: StatementFindingFact[];
@@ -812,6 +828,9 @@ export interface StatementCompareDto {
   possibleMatches: StatementCompareCandidateDto[];
   duplicateStatementGroups: StatementCompareDuplicateGroupDto[];
   duplicateLedgerGroups: StatementCompareDuplicateGroupDto[];
+  // The same deterministic diagnosis as the import preview, after commit:
+  // entries on the wrong card and second copies, with corrections to apply.
+  statementDiagnosis?: StatementDiagnosisDto;
 }
 
 export interface ReconciliationCandidateDto {

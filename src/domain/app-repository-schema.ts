@@ -438,6 +438,28 @@ async function ensureDemoSchemaOnce(db: D1Database) {
     `)
     .run();
 
+  // Corrections applied from a Settings statement comparison after the
+  // statement was saved, for their undo. A removed entry keeps its row here.
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS statement_corrections (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        transaction_id TEXT NOT NULL,
+        correction_kind TEXT NOT NULL CHECK (correction_kind IN ('move_to_statement_account', 'remove_duplicate_entry')),
+        account_id TEXT NOT NULL,
+        checkpoint_month TEXT NOT NULL,
+        from_account_id TEXT NOT NULL,
+        to_account_id TEXT NOT NULL,
+        covered_by_transaction_id TEXT,
+        entry_snapshot_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        undone_at TEXT,
+        FOREIGN KEY (household_id) REFERENCES households(id)
+      )
+    `)
+    .run();
+
   await db
     .prepare(`
       CREATE TABLE IF NOT EXISTS statement_chain_breaks (

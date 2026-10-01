@@ -24,7 +24,7 @@ import {
   diagnoseStatementMismatches,
   getFixKey,
   getStatementFixRejection,
-  type DiagnosisAccount
+  toDiagnosisAccount
 } from "./statement-mismatch-diagnosis";
 import {
   canSuppressCertifiedStatementDuplicate,
@@ -559,7 +559,7 @@ function applyStatementFixesToLedgerRows(input: {
     appliedFixes.push(fix);
     overrides.set(fix.entryId, fix.kind === "move_to_statement_account"
       ? { account_id: fix.toAccountId, account_name: input.accountsById.get(fix.toAccountId)?.name ?? row!.account_name }
-      : { post_date: fix.postDate });
+      : fix.kind === "defer_to_next_statement" ? { post_date: fix.postDate } : {});
   }
   return {
     ledgerRows: overrides.size
@@ -567,22 +567,6 @@ function applyStatementFixesToLedgerRows(input: {
       : input.ledgerRows,
     appliedFixes,
     rejectedFixes
-  };
-}
-
-function toDiagnosisAccount(account?: AccountDto): DiagnosisAccount | undefined {
-  if (!account) {
-    return undefined;
-  }
-  return {
-    id: account.id,
-    name: account.name,
-    ...(account.ownerPersonId && !account.isJoint ? { ownerPersonId: account.ownerPersonId } : {}),
-    ...(account.institutionId ? { institutionId: account.institutionId } : {}),
-    savedCheckpoints: (account.checkpointHistory ?? []).map((checkpoint) => ({
-      month: checkpoint.month,
-      endDate: checkpoint.statementEndDate ?? getMonthEndDate(checkpoint.month)
-    }))
   };
 }
 

@@ -413,3 +413,81 @@ test("an approved deferral is reported as applied, not as a later-statement entr
   assert.deepEqual([deferral.applied, deferral.effectMinor], [true, 0]);
   assert.equal(diagnosis.cards.find((item) => item.accountId === LADY).laterStatementEntryCount, 0);
 });
+
+test("after commit, a move closes both cards' saved statements", () => {
+  // The May statement was saved without importing it: One Card's ledger is
+  // missing OPENAI and Buyandship (difference +42.62 owed less), and Lady's
+  // Card has them (42.62 owed more).
+  const diagnosis = diagnoseStatementMismatches({
+    sourceType: "pdf",
+    mode: "committed",
+    accounts: accounts(),
+    cards: [card(ONE, 4262), card(LADY, -4262)],
+    statementRows: uobStatementRows(),
+    ledgerEntries: uobLedger(),
+    appliedFixes: [],
+    rejectedFixes: []
+  });
+
+  const openai = finding(diagnosis, "wrong_account:txn-openai");
+  assert.deepEqual([openai.confidence, openai.accountId, openai.effectMinor, openai.relatedAccountId, openai.relatedEffectMinor], ["high", LADY, 2949, ONE, -2949]);
+  assert.deepEqual(diagnosis.cards.map((item) => [item.accountId, item.projectedDeltaMinor, item.outcome]), [
+    [ONE, 0, "resolved"],
+    [LADY, 0, "resolved"]
+  ]);
+});
+
+test("after commit, a second copy of a purchase the statement confirmed elsewhere can be removed", () => {
+  // The statement was imported without the move: One Card has its certified
+  // OPENAI entry, Lady's Card still has the provisional copy.
+  const statementRows = uobStatementRows().map((item) => item.rowIndex === 5 ? { ...item, targetEntryId: "txn-openai-one" } : item.rowIndex === 9 ? { ...item, targetEntryId: "txn-buyandship-one" } : item);
+  const diagnosis = diagnoseStatementMismatches({
+    sourceType: "pdf",
+    mode: "committed",
+    accounts: accounts(),
+    cards: [card(ONE, 0), card(LADY, -4262)],
+    statementRows,
+    ledgerEntries: uobLedger([
+      entry("txn-openai-one", ONE, "2026-04-20", "OPENAI OPENAI.COM", 2949, { bankCertificationStatus: "statement_certified", sourceType: "pdf", postDate: "2026-04-22" }),
+      entry("txn-buyandship-one", ONE, "2026-05-05", "Buyandship Limited Hong Kong", 1313, { bankCertificationStatus: "statement_certified", sourceType: "pdf", postDate: "2026-05-06" })
+    ]),
+    appliedFixes: [],
+    rejectedFixes: []
+  });
+
+  const copy = finding(diagnosis, "duplicate_entry:txn-openai");
+  assert.deepEqual(copy.fix, { kind: "remove_duplicate_entry", entryId: "txn-openai", accountId: LADY, coveredByEntryId: "txn-openai-one" });
+  assert.equal(copy.confidence, "high");
+  assert.deepEqual(diagnosis.cards.find((item) => item.accountId === LADY).projectedDeltaMinor, 0);
+
+  // A preview never removes copies: the import itself avoids them.
+  const preview = diagnoseStatementMismatches({
+    sourceType: "pdf",
+    accounts: accounts(),
+    cards: [card(ONE, 0), card(LADY, -4262)],
+    statementRows,
+    ledgerEntries: uobLedger([entry("txn-openai-one", ONE, "2026-04-20", "OPENAI OPENAI.COM", 2949, { bankCertificationStatus: "statement_certified", sourceType: "pdf" })]),
+    appliedFixes: [],
+    rejectedFixes: []
+  });
+  assert.equal(finding(preview, "duplicate_entry:txn-openai").fix, undefined);
+});
+
+test("a correction that would unbalance a saved statement that matches now is caught", async () => {
+  const { findCheckpointsBrokenByCorrections, getCorrectionBalanceChanges } = await import("../src/domain/statement-mismatch-diagnosis.ts");
+  const move = { kind: "move_to_statement_account", entryId: "txn-openai", fromAccountId: LADY, toAccountId: ONE, statementRowIndex: 5 };
+  const changes = getCorrectionBalanceChanges(move, { accountId: LADY, signedAmountMinor: -2949, clearedDate: "2026-04-20" });
+  assert.deepEqual(changes, [
+    { accountId: LADY, signedAmountMinor: 2949, clearedDate: "2026-04-20" },
+    { accountId: ONE, signedAmountMinor: -2949, clearedDate: "2026-04-20" }
+  ]);
+  const checkpoints = [
+    { accountId: ONE, accountName: "UOB One Card", month: "2026-05", endDate: "2026-05-12", deltaMinor: 4262 },
+    // Lady's Card's June statement matches: moving April's entry off the
+    // card would change it.
+    { accountId: LADY, accountName: "UOB Lady's Card", month: "2026-06", endDate: "2026-06-12", deltaMinor: 0 },
+    // Its March statement closed before the entry: not affected.
+    { accountId: LADY, accountName: "UOB Lady's Card", month: "2026-03", endDate: "2026-03-12", deltaMinor: 0 }
+  ];
+  assert.deepEqual(findCheckpointsBrokenByCorrections({ checkpoints, changes }).map((item) => item.month), ["2026-06"]);
+});
