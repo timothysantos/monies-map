@@ -2,6 +2,7 @@ import {
   compactDescription,
   compareImportRowsByDate,
   dateFromCompactStatementDate,
+  estimateMonthlyStatementCycleStartDate,
   findStatementMonthFromFileName,
   formatDate,
   getMonthEndDateFromMonth,
@@ -52,12 +53,18 @@ export function parseCitibankCreditCardStatement(lines: string[], fileName?: str
   }
 
   const rows = sections.flatMap((section) => section.rows).sort(compareImportRowsByDate);
+  // The printed statement date closes the cycle. Older layouts without a
+  // readable one fall back to the row dates.
+  const statementDate = findCitibankStatementDate(lines);
   const checkpoints = sections.map((section) => ({
     accountName: section.accountName,
     checkpointMonth,
-    statementStartDate: section.minDate,
-    statementEndDate: section.maxDate ?? getMonthEndDateFromMonth(checkpointMonth),
+    statementStartDate: statementDate
+      ? estimateMonthlyStatementCycleStartDate(statementDate, section.minDate)
+      : section.minDate,
+    statementEndDate: statementDate ?? section.maxDate ?? getMonthEndDateFromMonth(checkpointMonth),
     statementBalanceMinor: section.totalBalanceMinor,
+    previousBalanceMinor: section.previousBalanceMinor,
     note: "Imported from Citibank credit card statement"
   }));
 
@@ -211,6 +218,39 @@ function findCitibankTransactionMoneyMatch(line: string) {
 
 function hasDetachedClosingParen(line: string, amountEndIndex: number) {
   return /^\s*\)/.test(line.slice(amountEndIndex));
+}
+
+const CITIBANK_MONTHS: Record<string, number> = {
+  January: 1,
+  February: 2,
+  March: 3,
+  April: 4,
+  May: 5,
+  June: 6,
+  July: 7,
+  August: 8,
+  September: 9,
+  October: 10,
+  November: 11,
+  December: 12
+};
+
+// "StatementDate:August27,2026" on one line, or (pdf.js 4 layout)
+// "StatementDate0" followed by "August11,20260". The trailing zeros are text
+// layer artefacts.
+function findCitibankStatementDate(lines: string[]) {
+  for (const [index, line] of lines.entries()) {
+    if (!/StatementDate/.test(line) || /PaymentDueDate/.test(line)) {
+      continue;
+    }
+    for (const candidate of [line.replace(/^.*?StatementDate:?/, ""), lines[index + 1] ?? ""]) {
+      const match = candidate.match(/^([A-Za-z]+)(\d{1,2}),(\d{4})/);
+      if (match && CITIBANK_MONTHS[match[1]]) {
+        return formatDate(Number(match[3]), CITIBANK_MONTHS[match[1]], Number(match[2]));
+      }
+    }
+  }
+  return undefined;
 }
 
 function findCitibankDueDate(lines: string[]) {

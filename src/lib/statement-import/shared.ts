@@ -22,6 +22,10 @@ export interface StatementCheckpointDraft {
   statementEndDate?: string;
   statementBalanceMinor: number;
   previousBalanceMinor?: number;
+  // Last four digits of the card or account number printed on the
+  // statement section, so a section can be matched to its account even when
+  // the bank's product name differs from the account name.
+  accountLast4?: string;
   note?: string;
 }
 
@@ -157,6 +161,19 @@ export function getMonthEndDateFromMonth(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(Date.UTC(year, monthNumber, 0));
   return formatDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+}
+
+// Card statements print the statement (closing) date but not the day the
+// cycle opened. Cycles run monthly, so the cycle opens the day after the same
+// date a month earlier (clamped to that month's length). The earliest row
+// wins when it is older, so no printed row ever falls before the start.
+export function estimateMonthlyStatementCycleStartDate(statementDate: string, earliestRowDate?: string) {
+  const [year, month, day] = statementDate.split("-").map(Number);
+  const previousMonthEnd = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
+  const previousStatementDate = new Date(Date.UTC(year, month - 2, Math.min(day, previousMonthEnd)));
+  previousStatementDate.setUTCDate(previousStatementDate.getUTCDate() + 1);
+  const estimate = formatDate(previousStatementDate.getUTCFullYear(), previousStatementDate.getUTCMonth() + 1, previousStatementDate.getUTCDate());
+  return earliestRowDate && earliestRowDate < estimate ? earliestRowDate : estimate;
 }
 
 export function formatDate(year: number, month: number, day: number) {
