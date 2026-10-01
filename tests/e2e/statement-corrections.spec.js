@@ -15,11 +15,11 @@ async function setUpSavedStatements(page) {
   const { oneCardId, ladysCardId, openaiId, entry } = await setUpWrongCardLedger(page);
   // The rest of the statement, recorded by hand on the right cards.
   await entry(oneCardId, "2026-04-13", "PAYMENT VIA FAST", 15000, "Transfer", { entryType: "transfer", transferDirection: "in" });
-  await entry(oneCardId, "2026-05-09", "BUS/MRT", 394, "Other");
+  await entry(oneCardId, "2026-05-05", "BUS/MRT", 394, "Other");
   await entry(ladysCardId, "2026-04-14", "2280 Singapore", 2350, "Other");
   await entry(ladysCardId, "2026-04-17", "NTUC FairPrice", 6435, "Groceries");
   await entry(ladysCardId, "2026-05-03", "Shaw Theatres", 2800, "Other");
-  await entry(ladysCardId, "2026-05-05", "NTUC FairPrice refund", 520, "Groceries", { entryType: "income" });
+  await entry(ladysCardId, "2026-05-04", "NTUC FairPrice refund", 520, "Groceries", { entryType: "income" });
   for (const [accountId, statementBalanceMinor] of [[oneCardId, 5796], [ladysCardId, 11705]]) {
     await postJson(page, "/api/accounts/reconcile", {
       accountId,

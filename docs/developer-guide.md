@@ -814,6 +814,16 @@ statement is reviewed card by card in `StatementReview`
 `tests/e2e/import-stages.spec.js` keeps the review of the two-card UOB
 statement under a page-height budget on desktop and phone.
 
+The comparison pairs rows in `matchStatementCompareRows`
+(`src/domain/app-repository-checkpoints.ts`), always on the same signed
+amount: the same day with similar text, then within three days with closer
+text, then within seven days with a shared merchant word or as the only
+candidate on both sides. Days are compared on both the posted day and the
+purchase day (a statement row's `txn date` note, a ledger entry's
+`transactionDate`), so a hand-recorded fare meets the row the bank posted
+later. `tests/statement-compare-matching.test.mjs` holds the rules and their
+refusals.
+
 Saved data is corrected from Settings → **Compare statement**. The client
 sends the card's rows and the PDF's other card sections (`otherSections`);
 `/api/accounts/checkpoints/compare-statement` adds

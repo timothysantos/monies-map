@@ -146,11 +146,13 @@ export async function setUpHandRecordedStatement(api, { oneCardBalanceMinor } = 
   const scenario = await setUpWrongCardScenario(api);
   const entry = (accountName, date, description, amountMinor, extra = {}) => createEntry(api, { accountName, date, description, amountMinor, categoryName: "Other", ...extra });
   await entry(ONE_CARD, "2026-04-13", "PAYMENT VIA FAST", 15000, { entryType: "transfer", transferDirection: "in", categoryName: "Transfer" });
-  await entry(ONE_CARD, "2026-05-09", "BUS/MRT", 394);
+  // On the day of travel; the bank posted it on 9 May.
+  await entry(ONE_CARD, "2026-05-05", "BUS/MRT", 394);
   await entry(LADYS_CARD, "2026-04-14", "2280 Singapore", 2350);
   await entry(LADYS_CARD, "2026-04-17", "NTUC FairPrice", 6435);
   await entry(LADYS_CARD, "2026-05-03", "Shaw Theatres", 2800);
-  await entry(LADYS_CARD, "2026-05-05", "NTUC FairPrice refund", 520, { entryType: "income" });
+  // In the user's words, on the day of the refund; posted on 5 May.
+  await entry(LADYS_CARD, "2026-05-04", "NTUC FairPrice refund", 520, { entryType: "income" });
   await saveStatement(api, scenario.oneCardId, scenario.statement, ONE_CARD, oneCardBalanceMinor);
   await saveStatement(api, scenario.ladysCardId, scenario.statement, LADYS_CARD);
   return scenario;

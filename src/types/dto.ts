@@ -791,7 +791,10 @@ export interface ImportPreviewReconciliationDiagnosticRowDto {
 
 export interface StatementCompareRowDto {
   id: string;
+  // The posted day for a statement row; the cleared day for a ledger row.
   date: string;
+  // The purchase day, when the ledger entry has a different posted day.
+  transactionDate?: string;
   description: string;
   amountMinor: number;
   signedAmountMinor: number;

@@ -878,6 +878,8 @@ The account then says "Reconciled to <month> statement", or how far off it
 is. If it is off, use **Compare statement** to upload the PDF and see which
 rows match, which are missing and which are extra, without importing
 anything. Missing rows can be added and wrong directions fixed from there.
+An entry you recorded yourself counts as a match even if you used your own
+words, or the bank posted it a few days after you bought it.
 
 When the PDF holds more than one card, the comparison looks at all of them.
 Under **Suggested fixes** it can offer to:
