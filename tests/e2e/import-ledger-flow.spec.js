@@ -1843,7 +1843,10 @@ test.describe("import flow", () => {
       await expect(importFlowPage.locator(".statement-reconciliation-row").first()).toHaveCSS("grid-template-columns", /px$/);
     };
 
-    const uploadPdfAndMap = async (path) => {
+    // The first statement asks for each card's account. Its commit
+    // remembers the cards' last four digits, so later statements map the
+    // same cards on their own.
+    const uploadPdfAndMap = async (path, { expectUnknownAccounts = true } = {}) => {
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
       await expect(importFlowPage).toHaveURL(/\/imports/);
       try {
@@ -1854,6 +1857,12 @@ test.describe("import flow", () => {
       await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
       const fileInput = importFlowPage.locator("input[type=\"file\"]");
       await fileInput.setInputFiles(path);
+      if (!expectUnknownAccounts) {
+        await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name })).toBeVisible();
+        await expect(importFlowPage.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name })).toBeVisible();
+        await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
+        return;
+      }
       await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
       await mapDetectedAccounts();
     };
@@ -1875,7 +1884,7 @@ test.describe("import flow", () => {
     await screenshot("01-jan-two-card-pdf-mapped-and-matched");
     await commitCurrentPreview();
 
-    await uploadPdfAndMap(janPdfPath);
+    await uploadPdfAndMap(janPdfPath, { expectUnknownAccounts: false });
     await expect(importFlowPage.getByText("2 statement checkpoints will refresh").first()).toBeVisible();
     await expect(importFlowPage.getByText("This statement has no transaction rows. Only the statement checkpoint will be saved.").first()).toBeVisible();
     await expect(importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" }).first()).toBeEnabled();
@@ -1932,7 +1941,7 @@ test.describe("import flow", () => {
 
     await previewCsvSnapshot("06-final-csv-all-midcycle-duplicates", sortedMidcycleRows, 0, 7);
 
-    await uploadPdfAndMap(febPdfPath);
+    await uploadPdfAndMap(febPdfPath, { expectUnknownAccounts: false });
     await expect(importFlowPage.getByText("1 row will import").first()).toBeVisible();
     await expect(importFlowPage.getByText("7 existing rows will be certified by the statement").first()).toBeVisible();
     await expect(importFlowPage.locator(`input[value="${febAlphaRows[0].description}"]`)).toHaveCount(0);
