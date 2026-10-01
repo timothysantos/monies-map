@@ -539,6 +539,9 @@ export interface ImportPreviewRowDto {
   reconciliationTargetTransactionId?: string;
   isStatementMatchResolved?: boolean;
   isCertifiedConflict?: boolean;
+  // A mid-cycle row dated inside an already confirmed statement period for
+  // its account: whether that statement covers it.
+  certifiedStatement?: { checkpointMonth: string; covered: boolean };
 }
 
 export interface ImportPreviewDto {

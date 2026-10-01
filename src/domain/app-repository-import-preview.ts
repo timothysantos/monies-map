@@ -151,6 +151,10 @@ export async function buildImportPreview(
   const previewRows: ImportPreviewRowDto[] = [];
   const validationErrors: string[] = [];
   const claimedReconciliationTargetIds = new Set<string>();
+  // Confirmed statement periods per account. A mid-cycle row dated inside one
+  // must already be on that statement (see applyCertifiedStatementCoverage).
+  const certifiedStatementPeriods = input.sourceType === "pdf" ? [] : await loadCertifiedStatementPeriods(db);
+  const claimedStatementCoverIds = new Set<string>();
   for (const [index, rawRow] of input.rows.entries()) {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length) {
@@ -266,6 +270,14 @@ export async function buildImportPreview(
     if (previewRow.reconciliationTargetTransactionId) {
       claimedReconciliationTargetIds.add(previewRow.reconciliationTargetTransactionId);
     }
+    applyCertifiedStatementCoverage({
+      previewRow,
+      previewRowDateContext,
+      ledgerRows,
+      certifiedStatementPeriods,
+      claimedStatementCoverIds,
+      requestedCommitStatus
+    });
     previewRows.push(previewRow);
 
   }
@@ -370,6 +382,121 @@ async function matchStatementAccountsByCardLast4(db: D1Database, input: {
       matchedBy: "card_last4" as const
     }] : [];
   });
+}
+
+interface CertifiedStatementPeriod {
+  accountId: string;
+  checkpointMonth: string;
+  startDate: string | null;
+  endDate: string;
+}
+
+async function loadCertifiedStatementPeriods(db: D1Database): Promise<CertifiedStatementPeriod[]> {
+  const result = await db
+    .prepare(`
+      SELECT certificates.account_id, certificates.checkpoint_month,
+        certificates.statement_start_date, certificates.statement_end_date
+      FROM statement_reconciliation_certificates AS certificates
+      INNER JOIN imports ON imports.id = certificates.import_id AND imports.status = 'completed'
+      WHERE certificates.household_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ account_id: string; checkpoint_month: string; statement_start_date: string | null; statement_end_date: string | null }>();
+  return result.results.map((row) => ({
+    accountId: row.account_id,
+    checkpointMonth: row.checkpoint_month,
+    startDate: row.statement_start_date,
+    endDate: row.statement_end_date ?? getMonthEndDate(row.checkpoint_month)
+  }));
+}
+
+// A confirmed statement is the complete record for its period. A mid-cycle
+// row (CSV/XLS/manual) whose posted date falls inside one for its account is
+// therefore either on that statement or not a real charge on that card:
+// - one of the statement's certified entries with the same signed amount,
+//   inside the velocity window and not taken by another row, covers it: the
+//   row is skipped as already on the statement, however the export words it;
+// - nothing covers it: it is left out by default and says why, so it cannot
+//   slip into a closed statement and unbalance it. The user can include it.
+// Rows the earlier lanes already handled (an exact duplicate, a promotion of
+// a manual entry, an explicit user choice) are only labelled.
+function applyCertifiedStatementCoverage(input: {
+  previewRow: ImportPreviewRowDto;
+  previewRowDateContext: ReturnType<typeof getPreviewRowDateContext>;
+  ledgerRows: PreviewLedgerRow[];
+  certifiedStatementPeriods: CertifiedStatementPeriod[];
+  claimedStatementCoverIds: Set<string>;
+  requestedCommitStatus?: "included" | "skipped" | "needs_review";
+}) {
+  const { previewRow } = input;
+  const period = previewRow.accountId
+    ? input.certifiedStatementPeriods.find((item) => (
+      item.accountId === previewRow.accountId
+      && isDateWithinRange(previewRow.date, item.startDate ?? undefined, item.endDate)
+    ))
+    : undefined;
+  if (!period) {
+    return;
+  }
+
+  const exactCover = previewRow.reconciliationMatch?.existingBankCertificationStatus === "statement_certified"
+    ? previewRow.reconciliationMatch.existingTransactionId
+    : undefined;
+  if (exactCover && previewRow.commitStatus === "skipped") {
+    input.claimedStatementCoverIds.add(exactCover);
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: true };
+    return;
+  }
+  if (input.requestedCommitStatus || previewRow.reconciliationTargetTransactionId || previewRow.commitStatus !== "included") {
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
+    return;
+  }
+
+  const rowSignedAmountMinor = getSignedLedgerAmountMinor({
+    entry_type: previewRow.entryType,
+    transfer_direction: previewRow.transferDirection ?? null,
+    amount_minor: previewRow.amountMinor
+  });
+  const maxDayDistance = getDuplicateCandidateMaxDayDistance(previewRow.amountMinor);
+  const cover = input.ledgerRows
+    .filter((row) => (
+      row.account_id === previewRow.accountId
+      && row.bank_certification_status === "statement_certified"
+      && !input.claimedStatementCoverIds.has(row.transaction_id)
+      && getExistingRowSignedAmountMinor(row) === rowSignedAmountMinor
+    ))
+    .map((row) => ({
+      row,
+      dayDistance: getDuplicateCandidateDayDistance({
+        previewRow: input.previewRowDateContext,
+        candidate: getExistingTransactionDateContext(row)
+      }),
+      similarity: compareDescriptionSimilarity(previewRow.description, row.description)
+    }))
+    .filter((candidate) => candidate.dayDistance <= maxDayDistance)
+    .sort((left, right) => left.dayDistance - right.dayDistance || right.similarity - left.similarity)[0];
+
+  const monthLabel = formatCheckpointMonthForReason(period.checkpointMonth);
+  if (cover) {
+    input.claimedStatementCoverIds.add(cover.row.transaction_id);
+    previewRow.reconciliationMatch = mapCandidateToReconciliationMatch(cover.row, cover.dayDistance === 0 && cover.similarity >= 0.8 ? "exact" : "probable");
+    previewRow.reconciliationMatchCount = 1;
+    previewRow.reconciliationMatches = undefined;
+    previewRow.commitStatus = "skipped";
+    previewRow.commitStatusReason = `Already on the confirmed ${monthLabel} statement as ${cover.row.description}.`;
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: true };
+    return;
+  }
+
+  previewRow.commitStatus = "skipped";
+  previewRow.commitStatusReason = `Dated inside the ${monthLabel} statement, which is already confirmed, but that statement doesn't have it. Include it only if the statement is wrong.`;
+  previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
+}
+
+function formatCheckpointMonthForReason(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${names[monthNumber - 1] ?? month} ${year}`;
 }
 
 type PreviewLedgerRow = {
