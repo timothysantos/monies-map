@@ -134,6 +134,14 @@ Relationships:
 - has many statement reconciliation records
 - may be referenced by many `month plan rows` and `month plan match hints`
 
+Important distinctions:
+- A card account may remember its card's last four digits (`accounts.last4`).
+  The first statement commit that maps a statement section to the account
+  stores them (never overwriting, never giving two accounts the same digits),
+  and later statements match a section whose printed name matches no account
+  by those digits. Rolling the statement back keeps them: they identify the
+  card, they are not a ledger fact.
+
 ### Savings Target
 
 An explicit monthly planning field representing how much the user intends to
@@ -178,6 +186,14 @@ Aliases:
 Relationships:
 - belongs to one `household`
 - belongs to one `account`
+
+Important distinctions:
+- A card statement prints its closing (statement) date but not the day the
+  cycle opened. The statement period opens the day after the same date a
+  month earlier (clamped to that month's length), or on the earliest printed
+  row if that is older. It does not start on the first printed row, so a
+  provisional entry between the cycle start and the first row is inside the
+  period.
 
 ### Category
 
@@ -512,6 +528,9 @@ Important distinctions:
 - Those status guards do not block exact duplicate suppression. Repeated bank
   files should still auto-skip a row that is already present in the ledger,
   even if that ledger row is import provisional or statement certified.
+- A `statement_certified` entry cannot be deleted on its own: a statement
+  certificate counts it. Rolling back the statement import is the way to
+  remove or restore it.
 
 ### Entry Share
 
@@ -1088,6 +1107,76 @@ Relationships:
 - belongs to one `import batch`
 - belongs to one `account`
 
+### Statement Mismatch Diagnosis
+
+The deterministic explanation of a statement card's difference in the import
+preview, with the actual rows behind it. It never writes and never uses AI.
+
+Canonical term:
+- `statement mismatch diagnosis`
+
+Code:
+- `src/domain/statement-mismatch-diagnosis.ts` (pure)
+- DTO `StatementDiagnosisDto` on `ImportPreviewDto.statementDiagnosis`
+
+Important distinctions:
+- A statement gives the complete row list, so a card's difference is fully
+  accounted for: `difference = opening gap + ledger entries in the period no
+  statement row matched - statement rows in the period left out`. Each
+  finding explains one part, and its `effectMinor` is the change to the
+  difference once it is resolved.
+- Finding kinds: `wrong_account` (a provisional entry on another account is
+  the same purchase as a row in this section), `next_statement` (an entry
+  with no posted date, dated in the last week of the period, not on the
+  statement), `duplicate_entry`, `amount_differs`, `excluded_statement_row`,
+  `opening_balance_gap` and `not_on_statement`.
+- The search for a wrong-account entry covers the other cards on the same
+  statement and the same owner's accounts at the same institution. It uses
+  the preview's own matching rules (date lanes, the velocity rule, merchant
+  similarity), so a moved entry is certified by the row that found it.
+- Confidence is fixed by rules. `high`: strong evidence on one clear
+  candidate, owners match, and the fixes together close every card they
+  touch. `medium`: a near match, several candidates, an owner difference, or
+  fixes that improve but do not close the card. `low`: weak evidence, or the
+  entry is protected (statement certified, inside a saved statement on its
+  current account, or linked as a transfer); never offered as a fix.
+- A card's outcome is `resolved`, `partially_resolved`, `still_mismatched` or
+  `needs_manual_review`, read from its difference after the suggested fixes.
+- Entries dated after the statement closes stay provisional for a later
+  statement. They are listed with the card, never counted in its difference.
+- A mid-cycle (CSV/XLS) import gets findings without fixes: it has no
+  statement balance to prove a fix against.
+
+### Statement Fix
+
+A correction the statement mismatch diagnosis proposes and the user
+approves. Approving it applies it to the preview at once; the import commit
+writes it in its own batch; rolling the import back undoes it.
+
+Canonical term:
+- `statement fix`
+
+Storage:
+- `import_statement_fixes` (one row per applied fix, for the rollback)
+- audit events `entry_moved_by_statement`, `entry_deferred_by_statement` and
+  `entry_moved_back_by_rollback`
+
+Kinds:
+- `move_to_statement_account`: the commit moves the entry to the statement
+  card that lists it, and that card's statement row certifies it. A move the
+  statement would not certify is refused.
+- `defer_to_next_statement`: the commit sets the entry's posted date to the
+  day after the statement closes.
+
+Important distinctions:
+- Only an official statement (PDF) can apply fixes, and only to provisional
+  entries that are not linked as transfers. The preview and the commit both
+  check every fix against the ledger as it is then; a fix that no longer
+  holds is refused, never forced.
+- Rolling back a statement that moved entries off an account is refused
+  while that account has a later statement, because moving them back would
+  change it.
+
 ### Reconciliation Exception
 
 A persisted balance-trust issue that remains open or resolved outside a single
@@ -1141,6 +1230,8 @@ Use these terms consistently in future work:
   `budget_buckets` section.
 - Say `month snapshot`, not `monthly plan summary`, for generated dashboard
   rollups.
+- Say `statement fix` for an approved correction from the statement check,
+  not `auto-fix` or `auto-correction`: nothing is applied without approval.
 
 ## Current Canonical Boundaries
 

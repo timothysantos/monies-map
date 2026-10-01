@@ -189,6 +189,31 @@ Why:
   rows, even when those rows would be excluded from reconciliation by the
   promotion-lane source guards.
 
+## Statement Mismatch Diagnosis Boundary
+
+The statement check's explanation and fixes come from one pure module,
+[`src/domain/statement-mismatch-diagnosis.ts`](/Users/tim/22m/ai-projects/monies_map/src/domain/statement-mismatch-diagnosis.ts),
+called once at the end of `buildImportPreview`.
+
+Rules:
+
+- matching rules (date lanes, the velocity rule, merchant similarity) live in
+  `src/domain/statement-row-matching.ts`, shared with the preview matcher, so
+  a fix the diagnosis proposes is certified by the preview's own matching
+  once applied
+- approved fixes are applied to the ledger rows the preview reads (never
+  written by the preview); `getStatementFixRejection` checks each fix in the
+  preview and again in the commit on fresh rows
+- the commit writes fixes through `src/domain/import-statement-fixes.ts`
+  (statement builders inside the import commit's batch, not a command of
+  their own), and rollback undoes them from `import_statement_fixes`
+- the client renders the diagnosis in `src/client/statement-fix-suggestions.jsx`
+  inside each card of the statement check, keeps approved fixes in
+  `ImportsPanel` state, and sends them with every preview and the commit;
+  the server's `appliedFixes` replace the client list after each preview
+- no AI: the diagnosis and its fixes work identically with the AI binding
+  missing
+
 ## Import Inbox And Intake Boundary
 
 Import Inbox planning belongs to the Imports slice. It is route-level product

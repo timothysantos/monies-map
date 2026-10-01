@@ -789,6 +789,24 @@ the detected statement account name. This prevents a first PDF import into a
 zero-balance wrong account from passing just because the statement's own rows
 and ending balance are internally consistent.
 
+Before the balance breakdown, the preview runs a deterministic statement
+mismatch diagnosis (`src/domain/statement-mismatch-diagnosis.ts`, returned as
+`preview.statementDiagnosis`). It accounts for each card's whole difference
+(opening gap, unmatched ledger entries in the period, statement rows left
+out) and proposes statement fixes: a provisional entry on another card of
+the same statement (or the same owner's account at the same bank) that is
+the same purchase as a new statement row is moved to that card, and an
+undated entry from the last week of the period is deferred to the next
+statement. The client sends approved fixes as `statementFixes` with every
+preview, so the check shows their result, and with the commit, which
+re-checks them on fresh rows, writes them in its own batch before the
+certifications (`src/domain/import-statement-fixes.ts`), records them in
+`import_statement_fixes` and the audit log, and refuses a move the statement
+would not certify. Rollback undoes them. No AI is involved; DOMAIN.md
+("Statement Mismatch Diagnosis", "Statement Fix") has the rules. The commit
+also works each certificate out from the ledger it leaves instead of taking
+the preview's numbers.
+
 When the statement certification check does not match, the import preview shows
 a plain-language balance breakdown for each affected account. It separates the
 prior ledger balance, existing ledger rows inside the statement period, included

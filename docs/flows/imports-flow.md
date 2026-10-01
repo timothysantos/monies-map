@@ -58,6 +58,15 @@ Imports owns:
 - account mapping
 - commit and rollback
 - certification and duplicate review
+- statement fixes: each card of the statement check shows the deterministic
+  statement mismatch diagnosis (DOMAIN.md, "Statement Mismatch Diagnosis")
+  with the rows and amounts behind it. Approving a fix (a move to the card
+  the statement lists the entry under, or a deferral to the next statement)
+  re-runs the preview with `statementFixes`; Undo removes it; Keep as is
+  hides it for this preview. The commit sends the preview's `appliedFixes`
+  and writes them in its batch; nothing is written before the commit.
+  Committing while a card is not Matched, or after a row edit the check has
+  not seen, asks first in a popover on the commit button
 - statement mismatch diagnostics, including balance breakdown rows that explain
   likely account, row direction, skipped-row, or unmatched-ledger causes and
   expose hover/focus explanations with the exact statement date window; ledger
