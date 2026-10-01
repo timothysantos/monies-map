@@ -30,6 +30,7 @@ export function ImportPreviewRowsTable({
   isCommitDisabled,
   isSubmitting,
   commitLabel,
+  commitWarning,
   jumpToSkippedRowsRequestKey = 0,
   onCommit,
   onUpdatePreviewRow,
@@ -79,7 +80,7 @@ export function ImportPreviewRowsTable({
         {skippedRows.length ? <span className="import-summary-item">{messages.imports.willSkipRows(skippedRows.length)}</span> : null}
         {needsReviewCount ? <span className="import-summary-item is-warning">{messages.imports.needsReviewRows(needsReviewCount)}</span> : null}
       </div>
-      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} />
+      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} warning={commitWarning} />
       {activeRows.length ? (
         <PreviewRowsTable
           rows={activeRows}
@@ -127,7 +128,7 @@ export function ImportPreviewRowsTable({
         </details>
       ) : null}
       {hasPreviewRows ? (
-        <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} isBottom />
+        <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} warning={commitWarning} isBottom />
       ) : null}
     </>
   );
@@ -600,17 +601,47 @@ function formatDuplicateMatchKind(matchKind) {
   return messages.imports.duplicateMatchKindNear;
 }
 
-function ImportCommitButton({ disabled, isSubmitting, onCommit, label, isBottom = false }) {
+// A statement that does not close yet, or a check that is out of date, asks
+// first: the warning names what is wrong and offers the next step.
+function ImportCommitButton({ disabled, isSubmitting, onCommit, label, warning, isBottom = false }) {
+  const [isWarningOpen, setIsWarningOpen] = useState(false);
+  const button = (
+    <button
+      type="button"
+      className="import-commit-button"
+      disabled={disabled}
+      onClick={warning ? undefined : onCommit}
+    >
+      {isSubmitting ? messages.common.working : label}
+    </button>
+  );
   return (
     <div className={`import-actions import-actions-end ${isBottom ? "import-actions-bottom" : ""}`}>
-      <button
-        type="button"
-        className="import-commit-button"
-        disabled={disabled}
-        onClick={onCommit}
-      >
-        {isSubmitting ? messages.common.working : label}
-      </button>
+      {warning ? (
+        <Popover.Root open={isWarningOpen} onOpenChange={setIsWarningOpen}>
+          <Popover.Trigger asChild>{button}</Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content className="delete-popover import-commit-warning" sideOffset={8} align="end">
+              <p>{warning.message}</p>
+              <div className="delete-popover-actions">
+                <Popover.Close asChild>
+                  <button type="button" className="subtle-action">{messages.imports.commitWarningCancel}</button>
+                </Popover.Close>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  onClick={() => {
+                    setIsWarningOpen(false);
+                    warning.onConfirm();
+                  }}
+                >
+                  {warning.confirmLabel}
+                </button>
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      ) : button}
     </div>
   );
 }

@@ -148,6 +148,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [postImportSplitMatchMonth, setPostImportSplitMatchMonth] = useState("");
   const [isSplitCleanupDismissed, setIsSplitCleanupDismissed] = useState(false);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
+  // Statement fixes the user approved (sent with every preview so the check
+  // shows their result, and with the commit, which writes them) and the
+  // suggestions the user chose to keep as they are.
+  const [statementFixes, setStatementFixes] = useState([]);
+  const [dismissedStatementFindingIds, setDismissedStatementFindingIds] = useState([]);
   const [intakeQueue, setIntakeQueue] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
@@ -166,6 +171,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // ignore any response superseded by a newer preview request.
   const previewRowsRef = useRef(previewRows);
   const statementCheckpointsRef = useRef(statementCheckpoints);
+  const statementFixesRef = useRef(statementFixes);
   const previewRequestSequenceRef = useRef(0);
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
   const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
@@ -317,6 +323,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
+  const commitWarning = buildStatementCommitWarning({
+    sourceType: statementImportMeta.sourceType,
+    hasStatementCheckpoints: statementCheckpoints.length > 0,
+    isPreviewDirty: importWorkflowModel.isPreviewDirty,
+    statementReconciliations: importPreviewModel.statementReconciliations ?? [],
+    onRefresh: () => handleRefreshStatementReconciliation(),
+    onCommit: () => handleCommit()
+  });
   // Any import draft, preview edit or write in flight is protected work.
   useRouteWorkReport({
     busy: importDraftExists
@@ -507,6 +521,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsParsingStatement(false);
     setIsDragActive(false);
     setDismissedOverlapIds([]);
+    clearStatementFixes();
     setIntakeQueue([]);
     setJumpToSkippedRowsRequestKey(0);
     deletedDiagnosticLedgerIdsRef.current = new Set();
@@ -537,6 +552,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     successMessage
   }) {
     setSourceLabel(parsed.sourceLabel);
+    clearStatementFixes();
     setStatementCheckpoints(nextStatementCheckpoints);
     statementCheckpointsRef.current = nextStatementCheckpoints;
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
@@ -563,6 +579,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function refreshPreviewFromRows({
     rows,
     nextStatementCheckpoints = statementCheckpoints,
+    nextStatementFixes = statementFixesRef.current,
     nextSourceType = statementImportMeta.sourceType,
     activeMessage,
     successMessage,
@@ -575,6 +592,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       rows,
       nextSourceType,
       nextStatementCheckpoints,
+      nextStatementFixes,
       preservePreviewOnError: shouldPreserveStatementPreviewOnRefreshError({
         isAutoRefresh,
         hasPreview: Boolean(preview)
@@ -794,6 +812,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     nextSourceLabel = sourceLabel,
     nextSourceType = statementImportMeta.sourceType,
     nextStatementCheckpoints = statementCheckpoints,
+    nextStatementFixes = statementFixesRef.current,
     preservePreviewOnError = false
   }) {
     // All source formats eventually converge here so the server only has one
@@ -811,6 +830,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         defaultAccountName,
         ownerName,
         statementCheckpoints: nextStatementCheckpoints,
+        statementFixes: nextStatementFixes,
         diagnosticContext: {
           source: "import_preview",
           action: currentAction,
@@ -830,6 +850,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         return;
       }
       setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
+      // Keep only the fixes the server applied; one it refused is reported in
+      // the statement check and dropped.
+      const appliedStatementFixes = data.preview?.statementDiagnosis?.appliedFixes ?? [];
+      statementFixesRef.current = appliedStatementFixes;
+      setStatementFixes(appliedStatementFixes);
+      // A statement card matched by its card's last four digits takes that
+      // account, as if the user had mapped it.
+      const matchedCheckpoints = applyStatementAccountMatches(nextStatementCheckpoints, data.preview?.statementAccountMatches);
+      if (matchedCheckpoints !== nextStatementCheckpoints) {
+        nextStatementCheckpoints = matchedCheckpoints;
+        statementCheckpointsRef.current = matchedCheckpoints;
+        setStatementCheckpoints(matchedCheckpoints);
+      }
       const filteredPreview = filterDeletedDiagnosticLedgerRowsFromPreview(data.preview, deletedDiagnosticLedgerIdsRef.current);
       setPreview(filteredPreview);
       setPreviewRows(filteredPreview?.previewRows ?? []);
@@ -1010,6 +1043,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementCheckpoints,
         statementControlRows: statementImportMeta.sourceType === "pdf" ? previewRows : undefined,
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
+        statementFixes: statementImportMeta.sourceType === "pdf" ? preview?.statementDiagnosis?.appliedFixes ?? [] : [],
         rows: rowsToCommit,
         diagnosticContext: {
           source: "import_commit",
@@ -1166,6 +1200,40 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setIsSubmitting(false);
       setIsRecentImportsRefreshing(false);
     }
+  }
+
+  function clearStatementFixes() {
+    statementFixesRef.current = [];
+    setStatementFixes([]);
+    setDismissedStatementFindingIds([]);
+  }
+
+  function refreshWithStatementFixes(nextStatementFixes) {
+    statementFixesRef.current = nextStatementFixes;
+    setStatementFixes(nextStatementFixes);
+    return refreshPreviewFromRows({
+      rows: previewRowsRef.current.map(importService.buildRawRowFromPreviewRow),
+      nextStatementFixes,
+      activeMessage: messages.imports.statementReconciliationRefreshing,
+      successMessage: messages.imports.statementReconciliationRefreshed
+    });
+  }
+
+  function applyStatementFixes(fixes) {
+    const keys = new Set(statementFixesRef.current.map(getStatementFixKey));
+    return refreshWithStatementFixes([
+      ...statementFixesRef.current,
+      ...fixes.filter((fix) => !keys.has(getStatementFixKey(fix)))
+    ]);
+  }
+
+  function undoStatementFixes(fixes) {
+    const keys = new Set(fixes.map(getStatementFixKey));
+    return refreshWithStatementFixes(statementFixesRef.current.filter((fix) => !keys.has(getStatementFixKey(fix))));
+  }
+
+  function dismissStatementFindings(findingIds) {
+    setDismissedStatementFindingIds((current) => Array.from(new Set([...current, ...findingIds])));
   }
 
   function updatePreviewRow(rowId, patch) {
@@ -1789,6 +1857,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onDeleteDiagnosticLedgerRows={handleDeleteDiagnosticLedgerRows}
             onSetDiagnosticLedgerPostDate={handleSetDiagnosticLedgerPostDate}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
+            dismissedStatementFindingIds={dismissedStatementFindingIds}
+            onApplyStatementFixes={applyStatementFixes}
+            onUndoStatementFixes={undoStatementFixes}
+            onDismissStatementFindings={dismissStatementFindings}
           />
 
           {hasStatementReconciliationMismatch ? (
@@ -1838,6 +1910,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               commitLabel={commitLabel}
               jumpToSkippedRowsRequestKey={jumpToSkippedRowsRequestKey}
               onCommit={handleCommit}
+              commitWarning={commitWarning}
               onUpdatePreviewRow={updatePreviewRow}
               onUpdatePreviewRowAccount={updatePreviewRowAccount}
               onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
@@ -2044,4 +2117,59 @@ function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
       Number(row.amountMinor ?? 0)
     ]))
   });
+}
+
+// Same identity as the server's getFixKey (src/domain/statement-mismatch-
+// diagnosis.ts): one fix per entry and destination.
+function getStatementFixKey(fix) {
+  return fix.kind === "move_to_statement_account"
+    ? `${fix.kind}:${fix.entryId}:${fix.toAccountId}`
+    : `${fix.kind}:${fix.entryId}:${fix.postDate}`;
+}
+
+function applyStatementAccountMatches(statementCheckpoints, matches) {
+  if (!matches?.length) {
+    return statementCheckpoints;
+  }
+  let changed = false;
+  const next = statementCheckpoints.map((checkpoint) => {
+    const detectedAccountName = checkpoint.detectedAccountName ?? checkpoint.accountName;
+    const match = !checkpoint.accountId && matches.find((item) => item.detectedAccountName === detectedAccountName);
+    if (!match) {
+      return checkpoint;
+    }
+    changed = true;
+    return { ...checkpoint, detectedAccountName, accountId: match.accountId, accountName: match.accountName };
+  });
+  return changed ? next : statementCheckpoints;
+}
+
+// Committing a statement that does not close, or whose check is out of date
+// after a row edit, asks first.
+function buildStatementCommitWarning({ sourceType, hasStatementCheckpoints, isPreviewDirty, statementReconciliations, onRefresh, onCommit }) {
+  if (sourceType !== "pdf" || !hasStatementCheckpoints) {
+    return undefined;
+  }
+  if (isPreviewDirty) {
+    return {
+      message: messages.imports.commitStatementStaleWarning,
+      confirmLabel: messages.imports.statementReconciliationRefresh,
+      onConfirm: onRefresh
+    };
+  }
+  const openNames = statementReconciliations
+    .filter((item) => item.status !== "matched")
+    .map((item) => item.accountName);
+  if (!openNames.length) {
+    return undefined;
+  }
+  return {
+    message: messages.imports.commitStatementMismatchWarning(joinNames(openNames)),
+    confirmLabel: messages.imports.commitAnyway,
+    onConfirm: onCommit
+  };
+}
+
+function joinNames(names) {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }

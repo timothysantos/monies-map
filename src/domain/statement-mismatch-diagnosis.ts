@@ -154,7 +154,22 @@ export function diagnoseStatementMismatches(input: DiagnosisInput): StatementDia
   // target on its statement card. Report them so the user sees what will be
   // written, without counting them against any difference.
   for (const fix of input.appliedFixes) {
-    if (fix.kind !== "move_to_statement_account") {
+    if (fix.kind === "defer_to_next_statement") {
+      const deferred = input.ledgerEntries.find((candidate) => candidate.id === fix.entryId);
+      if (deferred) {
+        findings.push({
+          id: `next_statement:${deferred.id}`,
+          kind: "next_statement",
+          confidence: "high",
+          accountId: fix.accountId,
+          effectMinor: 0,
+          entry: mapEntry(deferred, accountsById),
+          facts: [],
+          fix,
+          applied: true
+        });
+        explainedEntryIds.add(deferred.id);
+      }
       continue;
     }
     const entry = input.ledgerEntries.find((candidate) => candidate.id === fix.entryId);
@@ -574,9 +589,11 @@ function buildCardDiagnosis(card: DiagnosisCard, findings: StatementFindingDto[]
   const projectedDeltaMinor = card.deltaMinor + suggestedEffectMinor;
   const unexplainedMinor = card.deltaMinor + allEffectMinor;
   const needsReview = cardFindings.some((finding) => !finding.fix && finding.effectMinor !== 0);
+  const deferredEntryIds = new Set(input.appliedFixes.filter((fix) => fix.kind === "defer_to_next_statement").map((fix) => fix.entryId));
   const laterEntries = input.ledgerEntries
     .filter((entry) => (
       entry.accountId === card.accountId
+      && !deferredEntryIds.has(entry.id)
       && entry.bankCertificationStatus === "provisional"
       && getEntryClearedDate(entry) > card.endDate
     ))
