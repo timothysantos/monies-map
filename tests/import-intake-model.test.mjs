@@ -161,3 +161,40 @@ test("the queue reviews statements before activity, older months first, and coun
   assert.equal(describeIntakeCoverage(statement, [activity, statement]), undefined);
   assert.equal(describeIntakeCoverage(activity, [activity]), undefined);
 });
+
+test("a queued file is named by bank and kind, not by parser", async () => {
+  const { describeIntakeSource } = await import("../src/client/import-intake-model.js");
+  assert.deepEqual(describeIntakeSource({ parserKey: "uob_credit_card_pdf" }), { kind: "card_statement", bank: "UOB" });
+  assert.deepEqual(describeIntakeSource({ parserKey: "uob_savings_pdf" }), { kind: "account_statement", bank: "UOB" });
+  assert.deepEqual(describeIntakeSource({ parserKey: "uob_credit_card_current_transactions_xls" }), { kind: "card_activity", bank: "UOB" });
+  assert.deepEqual(describeIntakeSource({ parserKey: "ocbc_360_activity_csv" }), { kind: "account_activity", bank: "OCBC" });
+  assert.deepEqual(describeIntakeSource({ parserKey: "ocbc_365_credit_card_pdf" }), { kind: "card_statement", bank: "OCBC" });
+  assert.deepEqual(describeIntakeSource({ parserKey: "hsbc_visa_revolution_ocr_pdf" }), { kind: "card_statement", bank: "HSBC" });
+  assert.deepEqual(describeIntakeSource({ parserKey: "generic_csv" }), { kind: "csv" });
+});
+
+test("a plain CSV in the queue is counted against a queued statement through its date and account columns", async () => {
+  const { describeIntakeCoverage, orderIntakeQueue } = await import("../src/client/import-intake-model.js");
+  const statement = {
+    id: "may-statement",
+    fileName: "eStatement_UOB_Cards_12May2026.pdf",
+    sourceLabel: "eStatement_UOB_Cards_12May2026",
+    sourceType: "pdf",
+    duplicate: false,
+    parsed: { checkpoints: [{ accountName: "UOB One Card", checkpointMonth: "2026-05", statementStartDate: "2026-04-13", statementEndDate: "2026-05-12" }], rows: [] }
+  };
+  const csv = {
+    id: "csv",
+    fileName: "one-card-activity.csv",
+    sourceType: "csv",
+    duplicate: false,
+    parsed: null,
+    csvText: "Transaction Date,Description,Amount,Account\n21/04/2026,OPENAI,-29.49,UOB One Card\n2026-05-09,BUS/MRT,-3.94,UOB One Card\n15/05/2026,GRAB,-12.30,UOB One Card\n"
+  };
+  assert.deepEqual(describeIntakeCoverage(csv, [csv, statement]), { coveredCount: 2, rowCount: 3, statementLabel: "eStatement_UOB_Cards_12May2026" });
+  assert.deepEqual(orderIntakeQueue([csv, statement]).map((item) => item.id), ["may-statement", "csv"]);
+
+  // Without an account column the rows cannot be tied to a card.
+  const noAccount = { ...csv, id: "no-account", csvText: "date,description,amount\n2026-04-21,OPENAI,-29.49\n" };
+  assert.equal(describeIntakeCoverage(noAccount, [noAccount, statement]), undefined);
+});
