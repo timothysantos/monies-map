@@ -814,6 +814,22 @@ statement is reviewed card by card in `StatementReview`
 `tests/e2e/import-stages.spec.js` keeps the review of the two-card UOB
 statement under a page-height budget on desktop and phone.
 
+Saved data is corrected from Settings → **Compare statement**. The client
+sends the card's rows and the PDF's other card sections (`otherSections`);
+`/api/accounts/checkpoints/compare-statement` adds
+`comparison.statementDiagnosis`, the same diagnosis in `committed` mode
+(`src/domain/statement-compare-projection.ts`). Its fixes are statement
+corrections (DOMAIN.md, "Statement Correction"): `POST
+/api/accounts/checkpoints/statement-corrections/apply` moves an entry to the
+card the statement lists it under or removes a provisional second copy, in
+one batch with a `statement_corrections` row, an audit event and month
+refresh markers; `.../undo` reverses them from that row. Both re-check
+everything on fresh rows, refuse (409) a correction that no longer holds or
+that would unbalance a saved statement that matches, and are covered by
+`tests/statement-corrections-api.test.mjs`,
+`tests/atomic-writes-statement-corrections.test.mjs` and
+`tests/e2e/statement-corrections.spec.js`.
+
 When the statement certification check does not match, the import preview shows
 a plain-language balance breakdown for each affected account. It separates the
 prior ledger balance, existing ledger rows inside the statement period, included

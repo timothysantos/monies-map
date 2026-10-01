@@ -393,6 +393,11 @@ A persistence command is all-or-nothing:
   certifications, after re-checking them on rows read before the batch; a
   fix that no longer holds throws before anything is written
   (`tests/atomic-writes-statement-fixes.test.mjs`)
+- statement corrections from Settings
+  (`src/domain/app-repository-statement-corrections.ts`) apply or undo every
+  move and removal with its `statement_corrections` row and audit event in
+  one batch; a refusal is a `StatementCorrectionRefusedError` (409), thrown
+  before anything is written (`tests/atomic-writes-statement-corrections.test.mjs`)
 - the only multi-batch write is an import over
   `IMPORT_COMMIT_SINGLE_BATCH_STATEMENT_LIMIT` (500) statements: draft-only
   rows are staged, every visible change is one final batch, and a failure

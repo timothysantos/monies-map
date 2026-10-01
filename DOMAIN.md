@@ -1156,6 +1156,14 @@ Important distinctions:
   statement. They are listed with the card, never counted in its difference.
 - A mid-cycle (CSV/XLS) import gets findings without fixes: it has no
   statement balance to prove a fix against.
+- After commit (Settings, "Compare statement") the same diagnosis runs in
+  `committed` mode against saved statements: every card section of the
+  uploaded statement is matched to that card's ledger, a move closes both
+  cards' saved statements (`relatedEffectMinor` is the change on the
+  destination), and a provisional second copy of a purchase the statement
+  matched to another entry gets a `remove_duplicate_entry` fix. A fix that
+  would unbalance a saved statement that matches now is dropped, with the
+  fact `unbalances_saved_statement`.
 
 ### Statement Fix
 
@@ -1186,6 +1194,41 @@ Important distinctions:
 - Rolling back a statement that moved entries off an account is refused
   while that account has a later statement, because moving them back would
   change it.
+
+### Statement Correction
+
+A statement fix for data that is already saved, applied from the Settings
+statement comparison. It is written at once, never automatically, and can
+be undone. Not part of any import, so an import rollback never undoes it.
+
+Canonical term:
+- `statement correction`
+
+Code and storage:
+- `src/domain/statement-compare-projection.ts` (the diagnosis after commit,
+  read only) and `src/domain/app-repository-statement-corrections.ts`
+  (apply and undo)
+- `statement_corrections` (one row per correction; a removed entry keeps its
+  whole row in `entry_snapshot_json` for the undo)
+- audit events `entry_moved_by_statement_compare`,
+  `entry_removed_as_statement_duplicate` and `statement_correction_undone`
+
+Kinds:
+- `move_to_statement_account`: the entry moves to the card the statement
+  lists it under. That card needs a saved statement for the month.
+- `remove_duplicate_entry`: a provisional second copy of a purchase is
+  removed because the statement matched the purchase to another entry with
+  the same signed amount.
+
+Important distinctions:
+- Only provisional entries that are not linked as transfers; a removal is
+  also refused for an entry linked to a plan, a split or a settlement.
+- All corrections in one request together must not unbalance a saved
+  statement that matches now.
+- Undo moves an entry back only if it is still where the correction put it,
+  and restores a removed entry only if its import is still in place.
+- Rolling back an import is refused while a removal it covers is in place:
+  both copies would be gone.
 
 ### Reconciliation Exception
 
