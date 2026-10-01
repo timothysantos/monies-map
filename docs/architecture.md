@@ -258,7 +258,9 @@ statement certification, checkpoints and certificates), entry create, edit
 and delete, transfer link and settle, and every month-plan command. A
 statement import's approved statement fixes (DOMAIN.md, "Statement Fix") are
 written in the same batch as its certifications, before them, and undone by
-its rollback.
+its rollback. Statement corrections from the Settings comparison (DOMAIN.md,
+"Statement Correction") are their own command: each apply or undo is one
+batch, recorded in `statement_corrections` for the undo.
 
 `monthly_snapshots` (the stored month totals Summary reads) are derived from
 the committed ledger, so they are refreshed in a second batch right after the

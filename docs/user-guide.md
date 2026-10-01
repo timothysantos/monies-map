@@ -879,6 +879,18 @@ is. If it is off, use **Compare statement** to upload the PDF and see which
 rows match, which are missing and which are extra, without importing
 anything. Missing rows can be added and wrong directions fixed from there.
 
+When the PDF holds more than one card, the comparison looks at all of them.
+Under **Suggested fixes** it can offer to:
+
+- **Move** entries to the card the statement lists them under, for example a
+  purchase you recorded on Lady's Card that the bank put on One Card.
+- **Remove the copy** of a purchase that is already on another card from the
+  statement, when you had recorded it by hand as well.
+
+Nothing changes until you select the fix, and **Undo** puts the entries back
+exactly as they were. A fix that would put another saved statement out of
+balance is not offered; it is listed under **Also check** instead.
+
 After a period closes:
 
 1. Pair any transfers under **Settings → Unresolved transfers**.

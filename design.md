@@ -213,6 +213,13 @@ Rules:
   the server's `appliedFixes` replace the client list after each preview
 - no AI: the diagnosis and its fixes work identically with the AI binding
   missing
+- after commit, `src/domain/statement-compare-projection.ts` runs the same
+  diagnosis in `committed` mode for Settings → Compare statement (read
+  only); its corrections are written by
+  `src/domain/app-repository-statement-corrections.ts`. The client shows
+  them in `src/client/statement-correction-suggestions.jsx`, which reuses
+  the import review's `FixGroup`, writes on approval (never automatically)
+  and keeps the last correction's ids in `SettingsPanel` for its Undo
 
 ## Import Page Stages
 
