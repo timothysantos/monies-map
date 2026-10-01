@@ -36,8 +36,9 @@ export function buildIntakeMatch({ parsed, sourceType, inbox }) {
       return false;
     }
 
+    const fileAccountNames = file.coveredAccounts?.map((account) => account.accountName) ?? [file.accountName];
     const accountMatches = parsedEvidence.accountNames.some((accountName) => (
-      namesLookRelated(accountName, file.accountName)
+      fileAccountNames.some((fileAccountName) => namesLookRelated(accountName, fileAccountName))
     ));
     const monthMatches = !parsedEvidence.months.length || parsedEvidence.months.includes(file.periodMonth);
     return accountMatches && monthMatches;
@@ -45,6 +46,27 @@ export function buildIntakeMatch({ parsed, sourceType, inbox }) {
 
   if (matches.length === 1) {
     return { status: "matched", expectedFileIds: [matches[0].id] };
+  }
+
+  // One PDF can be the statement of several cards: it matches when each of
+  // its card sections matches its own needed file.
+  const sectionMatches = sourceType === "pdf" ? (parsed.checkpoints ?? []).map((checkpoint) => {
+    const sectionName = checkpoint.detectedAccountName ?? checkpoint.accountName ?? "";
+    const related = matches.filter((file) => (
+      namesLookRelated(sectionName, file.accountName)
+      && (!checkpoint.checkpointMonth || checkpoint.checkpointMonth === file.periodMonth)
+    ));
+    // "UOB One Card" also looks related to "UOB One": the exact name wins.
+    const exact = related.filter((file) => normalizeName(file.accountName) === normalizeName(sectionName));
+    return exact.length === 1 ? exact : related;
+  }) : [];
+  const sectionFileIds = sectionMatches.map((files) => files.length === 1 ? files[0].id : undefined);
+  if (
+    sectionMatches.length > 1
+    && sectionFileIds.every(Boolean)
+    && new Set(sectionFileIds).size === sectionFileIds.length
+  ) {
+    return { status: "matched", expectedFileIds: sectionFileIds };
   }
 
   if (matches.length > 1) {
@@ -80,6 +102,65 @@ export function buildIntakeQueueItem({
     parsed,
     csvText
   };
+}
+
+// The order files are best reviewed in: statements before activity (a
+// confirmed statement then decides which activity rows are already on it),
+// older months first, duplicates last.
+export function orderIntakeQueue(items) {
+  const rank = (item) => [
+    item.duplicate ? 1 : 0,
+    item.sourceType === "pdf" ? 0 : 1,
+    getIntakeItemStartDate(item)
+  ];
+  return [...items].sort((left, right) => {
+    const [leftDuplicate, leftKind, leftDate] = rank(left);
+    const [rightDuplicate, rightKind, rightDate] = rank(right);
+    return leftDuplicate - rightDuplicate || leftKind - rightKind || leftDate.localeCompare(rightDate);
+  });
+}
+
+// How many of an activity file's rows a statement in the same queue already
+// covers: same card (by name) and posted inside that statement's period.
+export function describeIntakeCoverage(item, items) {
+  if (item.sourceType === "pdf" || !item.parsed?.rows?.length) {
+    return undefined;
+  }
+  const periods = items
+    .filter((other) => other.id !== item.id && other.sourceType === "pdf" && !other.duplicate)
+    .flatMap((statement) => (statement.parsed?.checkpoints ?? []).map((checkpoint) => ({
+      statement,
+      accountName: checkpoint.detectedAccountName ?? checkpoint.accountName ?? "",
+      startDate: checkpoint.statementStartDate ?? "",
+      endDate: checkpoint.statementEndDate ?? ""
+    })));
+  if (!periods.length) {
+    return undefined;
+  }
+  let coveredCount = 0;
+  let statement;
+  for (const row of item.parsed.rows) {
+    const accountName = row.accountName ?? row.statementAccountName ?? row.account ?? "";
+    const date = row.date ?? "";
+    const period = periods.find((candidate) => (
+      namesLookRelated(accountName, candidate.accountName)
+      && (!candidate.startDate || date >= candidate.startDate)
+      && (!candidate.endDate || date <= candidate.endDate)
+    ));
+    if (period) {
+      coveredCount += 1;
+      statement = period.statement;
+    }
+  }
+  return coveredCount
+    ? { coveredCount, rowCount: item.parsed.rows.length, statementLabel: statement.sourceLabel || statement.fileName }
+    : undefined;
+}
+
+function getIntakeItemStartDate(item) {
+  const checkpointDates = (item.parsed?.checkpoints ?? []).map((checkpoint) => checkpoint.statementStartDate ?? checkpoint.statementEndDate ?? "").filter(Boolean);
+  const rowDates = (item.parsed?.rows ?? []).map((row) => row.date ?? "").filter(Boolean);
+  return [...checkpointDates, ...rowDates].sort()[0] ?? "9999-12-31";
 }
 
 export function summarizeIntakeQueue(items) {

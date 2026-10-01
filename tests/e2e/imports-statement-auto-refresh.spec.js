@@ -54,6 +54,9 @@ async function openHsbcMarchStatementPreview(page, testInfo) {
 
   const summary = page.locator(".import-preview-status-row");
   await expect(summary).toContainText("2 rows will import");
+  // A statement's rows are read-only in its card section; the row editor
+  // shows them as inputs.
+  await page.getByRole("button", { name: "Edit rows" }).click();
   await expect(summary).toContainText("1 statement checkpoint will refresh");
   await expect(summary).not.toContainText("certified by the statement");
   await expect.poll(() => previewInputValues(page)).toEqual([...IKEA_ROW, ...PAYMENT_ROW]);

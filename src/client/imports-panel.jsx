@@ -18,8 +18,18 @@ import {
 } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
 import { buildImportPreviewModel } from "./import-preview-model";
-import { ImportPreviewReview } from "./import-preview-review";
+import { buildStatementTitle, ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
+import { ImportCommitBar } from "./import-commit-bar";
+import { ImportDoneCard, ImportStepper } from "./import-stages";
+import { buildImportDoneSummary } from "./import-done-model";
+import { orderIntakeQueue } from "./import-intake-model";
+import {
+  getProvenStatementFixes,
+  getStatementFixKey,
+  readAutomaticStatementFixes,
+  writeAutomaticStatementFixes
+} from "./statement-fix-preference";
 import { ImportSelectFileStage } from "./import-select-file-stage";
 import { moniesClient } from "./monies-client-service";
 import { AccountDialog } from "./account-dialog";
@@ -151,6 +161,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // The suggestions the user chose to keep as they are. The approved fixes
   // themselves live in statementFixesRef and the preview's appliedFixes.
   const [dismissedStatementFindingIds, setDismissedStatementFindingIds] = useState([]);
+  // A statement's rows are read-only in its card sections; this opens the
+  // full row editor.
+  const [isEditingStatementRows, setIsEditingStatementRows] = useState(false);
+  // The queued file in review, what the last commit did (the Done step), and
+  // whether Bring files is open while a parsed file is in review.
+  const [activeIntakeItemId, setActiveIntakeItemId] = useState(null);
+  const [lastCommitSummary, setLastCommitSummary] = useState(null);
+  const [isBringFilesOpen, setIsBringFilesOpen] = useState(false);
+  // "Fix it for me", and which fixes it already applied in this review (so an
+  // Undo is not re-applied on the next refresh).
+  const [isAutomaticStatementFixes, setIsAutomaticStatementFixes] = useState(readAutomaticStatementFixes);
+  const [autoAppliedStatementFixCount, setAutoAppliedStatementFixCount] = useState(0);
+  const autoAppliedStatementFixKeysRef = useRef(new Set());
   const [intakeQueue, setIntakeQueue] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
@@ -376,6 +399,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     skippedPreviewRowCount,
     needsReviewPreviewRowCount,
     showStatementAccountMapping,
+    needsStatementAccountMapping,
     statementReconciliations,
     unknownPreviewAccountNames,
     visibleOverlapImports
@@ -467,8 +491,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function handleSelectExpectedFile(file) {
-    setDefaultAccountName(file.accountName);
-    const nextOwnerName = importService.getDirectOwnerForAccount(accounts, people, file.accountName, undefined);
+    // A statement covering several cards defaults to its first card.
+    const accountName = file.coveredAccounts?.[0]?.accountName ?? file.accountName;
+    setDefaultAccountName(accountName);
+    const nextOwnerName = importService.getDirectOwnerForAccount(accounts, people, accountName, undefined);
     if (ownershipType === "direct" && nextOwnerName) {
       setOwnerName(nextOwnerName);
     }
@@ -478,6 +504,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function handleLoadIntakeItem(item) {
+    setActiveIntakeItemId(item.id);
     setDefaultAccountName(item.parsed?.checkpoints?.[0]?.accountName ?? item.parsed?.rows?.[0]?.accountName ?? defaultAccountName);
     if (item.parsed) {
       await loadParsedImport({
@@ -496,10 +523,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   function handleRemoveIntakeItem(itemId) {
     setIntakeQueue((current) => current.filter((item) => item.id !== itemId));
+    if (itemId === activeIntakeItemId) {
+      setActiveIntakeItemId(null);
+    }
   }
 
   function handleClearIntakeQueue() {
     setIntakeQueue([]);
+    setActiveIntakeItemId(null);
   }
 
   function resetImportForm({ preserveRecentImportStatus = false } = {}) {
@@ -522,7 +553,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsDragActive(false);
     setDismissedOverlapIds([]);
     clearStatementFixes();
-    setIntakeQueue([]);
+    // The rest of a multi-file drop stays queued; only the file in review is
+    // let go.
+    setActiveIntakeItemId(null);
+    setLastCommitSummary(null);
+    setIsBringFilesOpen(false);
     setJumpToSkippedRowsRequestKey(0);
     deletedDiagnosticLedgerIdsRef.current = new Set();
     if (!preserveRecentImportStatus) {
@@ -553,6 +588,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }) {
     setSourceLabel(parsed.sourceLabel);
     clearStatementFixes();
+    setLastCommitSummary(null);
+    setIsBringFilesOpen(false);
     setStatementCheckpoints(nextStatementCheckpoints);
     statementCheckpointsRef.current = nextStatementCheckpoints;
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
@@ -871,6 +908,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         filteredPreview?.previewRows ?? [],
         nextStatementCheckpoints
       );
+      if (nextSourceType === "pdf") {
+        queueMicrotask(() => applyProvenStatementFixes(filteredPreview, readAutomaticStatementFixes()));
+      }
     } catch (error) {
       if (requestSequence !== previewRequestSequenceRef.current) {
         return;
@@ -1069,7 +1109,23 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         previewRows
       }));
       setRecentImportStatus(null);
+      const doneSummary = buildImportDoneSummary({
+        importId: commitResult.importId,
+        title: isStatementReview
+          ? buildStatementTitle({ parserKey: statementImportMeta.parserKey, statementReconciliations, sourceLabel: committedSourceLabel })
+          : committedSourceLabel || DEFAULT_SOURCE_LABEL,
+        sourceLabel: committedSourceLabel || DEFAULT_SOURCE_LABEL,
+        preview,
+        previewRows,
+        statementReconciliations,
+        isStatement: isStatementReview
+      });
+      const committedIntakeItemId = activeIntakeItemId;
       resetImportForm({ preserveRecentImportStatus: true });
+      setLastCommitSummary(doneSummary);
+      if (committedIntakeItemId) {
+        setIntakeQueue((current) => current.filter((item) => item.id !== committedIntakeItemId));
+      }
       const committedImportId = commitResult.importId;
       await refreshRecentImportsUntilVisible({
         committedImportId,
@@ -1203,7 +1259,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   function clearStatementFixes() {
     statementFixesRef.current = [];
+    autoAppliedStatementFixKeysRef.current = new Set();
+    setAutoAppliedStatementFixCount(0);
     setDismissedStatementFindingIds([]);
+    setIsEditingStatementRows(false);
   }
 
   function refreshWithStatementFixes(nextStatementFixes) {
@@ -1227,6 +1286,28 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function undoStatementFixes(fixes) {
     const keys = new Set(fixes.map(getStatementFixKey));
     return refreshWithStatementFixes(statementFixesRef.current.filter((fix) => !keys.has(getStatementFixKey(fix))));
+  }
+
+  function changeAutomaticStatementFixes(isAutomatic) {
+    writeAutomaticStatementFixes(isAutomatic);
+    setIsAutomaticStatementFixes(isAutomatic);
+  }
+
+  // With "Fix it for me" on, the fixes a statement proves are applied once,
+  // as if the user had approved them; they stay undoable until the commit.
+  function applyProvenStatementFixes(nextPreview, isAutomatic) {
+    if (!isAutomatic || nextPreview?.statementReconciliations?.length === 0) {
+      return;
+    }
+    const proven = getProvenStatementFixes(nextPreview?.statementDiagnosis, autoAppliedStatementFixKeysRef.current);
+    if (!proven.length) {
+      return;
+    }
+    for (const fix of proven) {
+      autoAppliedStatementFixKeysRef.current.add(getStatementFixKey(fix));
+    }
+    setAutoAppliedStatementFixCount((current) => current + proven.length);
+    void applyStatementFixes(proven);
   }
 
   function dismissStatementFindings(findingIds) {
@@ -1702,6 +1783,50 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
+  // An official statement is reviewed card by card (ImportPreviewReview);
+  // its optional AI checks then sit under "More checks".
+  const isStatementReview = statementImportMeta.sourceType === "pdf" && statementReconciliations.length > 0;
+  // A parsed file (statement PDF, bank export) needs no form or column
+  // mapping, so Bring files folds to one line while it is in review. Pasted
+  // CSV keeps the form and mapping beside its preview.
+  const importStage = preview ? "review" : lastCommitSummary ? "done" : "bring";
+  const canCollapseBringFiles = Boolean(preview) && statementImportMeta.parserKey !== DEFAULT_STATEMENT_IMPORT_META.parserKey;
+  const isBringFilesShown = !canCollapseBringFiles || isBringFilesOpen;
+  const nextIntakeItem = orderIntakeQueue(intakeQueue).find((item) => !item.duplicate && item.id !== activeIntakeItemId);
+  const optionalAiChecks = (
+    <>
+  {hasStatementReconciliationMismatch ? (
+              <section className="import-warning import-warning-attention" aria-live="polite">
+                <strong>Plain-language check</strong>
+                <p className="lede compact">This is optional guidance. The exact ledger rows and statement controls above remain the source of truth.</p>
+                {aiMismatchExplanations.length ? (
+                  <div className="stack compact-stack">
+                    {aiMismatchExplanations.map((item) => <p key={item.accountName}><strong>{item.accountName}:</strong> {item.message}</p>)}
+                  </div>
+                ) : (
+                  <button type="button" className="subtle-action" onClick={() => void handleExplainMismatch()} disabled={isExplainingMismatch}>
+                    {isExplainingMismatch ? "Explaining..." : "Explain what to check"}
+                  </button>
+                )}
+              </section>
+            ) : null}
+
+            {previewReconciliationRowCount ? (
+              <section className="import-warning import-warning-attention" aria-live="polite">
+                <strong>Possible duplicate rows</strong>
+                <p className="lede compact">These are already constrained by account, amount, and date. Optional ranking only compares merchant descriptions and never changes a skip or certification decision.</p>
+                {aiDuplicateScores.length ? (
+                  <p className="lede compact">Top optional description similarity: {aiDuplicateScores[0].similarity}% for a row already shown in the reconciliation review.</p>
+                ) : (
+                  <button type="button" className="subtle-action" onClick={() => void handleRankDuplicateCandidates()} disabled={isRankingDuplicates}>
+                    {isRankingDuplicates ? "Ranking..." : "Rank descriptions"}
+                  </button>
+                )}
+              </section>
+            ) : null}
+    </>
+  );
+
   return (
     <article className="panel">
       <div className="panel-head">
@@ -1710,18 +1835,45 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           <span className="panel-context">{messages.imports.viewing(viewLabel)}</span>
         </div>
       </div>
-      <ImportInboxSection
-        inbox={safeImportsPage.importInbox}
-        onSelectExpectedFile={handleSelectExpectedFile}
+      <ImportStepper
+        stage={importStage}
+        bringSummary={canCollapseBringFiles
+          ? uploadStatus?.message ?? preview?.sourceLabel ?? sourceLabel
+          : messages.imports.stageBringSummary(intakeQueue.length)}
+        isBringOpen={isBringFilesOpen}
+        canCollapseBring={canCollapseBringFiles}
+        onToggleBring={() => setIsBringFilesOpen((current) => !current)}
       />
-      <ImportIntakeQueueSection
-        items={intakeQueue}
-        summary={intakeQueueSummary}
-        onLoadItem={handleLoadIntakeItem}
-        onRemoveItem={handleRemoveIntakeItem}
-        onClear={handleClearIntakeQueue}
-      />
+      {importStage === "done" ? (
+        <ImportDoneCard
+          summary={lastCommitSummary}
+          nextItem={nextIntakeItem}
+          onReviewNext={() => nextIntakeItem && void handleLoadIntakeItem(nextIntakeItem)}
+          onRollback={async () => {
+            await handleRollback(lastCommitSummary.importId);
+            setLastCommitSummary(null);
+          }}
+          onClose={() => setLastCommitSummary(null)}
+        />
+      ) : null}
+      {isBringFilesShown ? (
+        <>
+          <ImportInboxSection
+            inbox={safeImportsPage.importInbox}
+            onSelectExpectedFile={handleSelectExpectedFile}
+          />
+          <ImportIntakeQueueSection
+            items={intakeQueue}
+            summary={intakeQueueSummary}
+            activeItemId={activeIntakeItemId}
+            onLoadItem={handleLoadIntakeItem}
+            onRemoveItem={handleRemoveIntakeItem}
+            onClear={handleClearIntakeQueue}
+          />
+        </>
+      ) : null}
       <section className="panel-subsection import-workflow">
+        {isBringFilesShown ? (
         <div className="import-header">
           <div>
             <h3>{messages.imports.composerTitle}</h3>
@@ -1733,8 +1885,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             </button>
           ) : null}
         </div>
+        ) : null}
 
         {/* Stage 1: get raw source rows into the draft. */}
+        {isBringFilesShown ? (
         <ImportSelectFileStage
           currentStage={importWorkflowModel.currentStage}
           sourceLabel={sourceLabel}
@@ -1761,9 +1915,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           onAllowAiStatementFallbackChange={setAllowAiStatementFallback}
           rollbackPolicy={safeImportsPage.rollbackPolicy}
         />
+        ) : null}
 
         {/* Stage 2: map source columns into the app's import schema. */}
-        {importWorkflowModel.readyForMapping ? (
+        {isBringFilesShown && importWorkflowModel.readyForMapping ? (
           <ImportMappingStage
             mappingSectionRef={mappingSectionRef}
             currentStage={importWorkflowModel.currentStage}
@@ -1786,6 +1941,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
         {/* Stage 3: review the normalized preview and commit only safe rows. */}
         <div ref={previewSectionRef} className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
+          {isStatementReview ? null : (
           <div className="import-stage-head">
             <div className="section-head">
               <h3>{messages.imports.previewRows}</h3>
@@ -1808,7 +1964,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               ) : null}
             </div>
           </div>
-          {preview ? <p className="import-stage-note">{messages.imports.previewReady}</p> : null}
+          )}
+          {preview && !isStatementReview ? <p className="import-stage-note">{messages.imports.previewReady}</p> : null}
           {previewRows.length > 100 ? (
             <p className="import-stage-note">{messages.imports.largeImportNotice(previewRows.length)}</p>
           ) : null}
@@ -1858,61 +2015,48 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onApplyStatementFixes={applyStatementFixes}
             onUndoStatementFixes={undoStatementFixes}
             onDismissStatementFindings={dismissStatementFindings}
+            needsStatementAccountMapping={needsStatementAccountMapping}
+            statementImportMeta={statementImportMeta}
+            isEditingRows={isEditingStatementRows}
+            onToggleEditRows={() => setIsEditingStatementRows((current) => !current)}
+            moreChecks={isStatementReview ? optionalAiChecks : null}
+            isAutomaticStatementFixes={isAutomaticStatementFixes}
+            autoAppliedStatementFixCount={autoAppliedStatementFixCount}
+            onAutomaticStatementFixesChange={changeAutomaticStatementFixes}
           />
 
-          {hasStatementReconciliationMismatch ? (
-            <section className="import-warning import-warning-attention" aria-live="polite">
-              <strong>Plain-language check</strong>
-              <p className="lede compact">This is optional guidance. The exact ledger rows and statement controls above remain the source of truth.</p>
-              {aiMismatchExplanations.length ? (
-                <div className="stack compact-stack">
-                  {aiMismatchExplanations.map((item) => <p key={item.accountName}><strong>{item.accountName}:</strong> {item.message}</p>)}
-                </div>
-              ) : (
-                <button type="button" className="subtle-action" onClick={() => void handleExplainMismatch()} disabled={isExplainingMismatch}>
-                  {isExplainingMismatch ? "Explaining..." : "Explain what to check"}
-                </button>
-              )}
-            </section>
-          ) : null}
+          {isStatementReview ? null : optionalAiChecks}
 
-          {previewReconciliationRowCount ? (
-            <section className="import-warning import-warning-attention" aria-live="polite">
-              <strong>Possible duplicate rows</strong>
-              <p className="lede compact">These are already constrained by account, amount, and date. Optional ranking only compares merchant descriptions and never changes a skip or certification decision.</p>
-              {aiDuplicateScores.length ? (
-                <p className="lede compact">Top optional description similarity: {aiDuplicateScores[0].similarity}% for a row already shown in the reconciliation review.</p>
-              ) : (
-                <button type="button" className="subtle-action" onClick={() => void handleRankDuplicateCandidates()} disabled={isRankingDuplicates}>
-                  {isRankingDuplicates ? "Ranking..." : "Rank descriptions"}
-                </button>
-              )}
-            </section>
-          ) : null}
-
-          {preview ? (
+          {preview && (!isStatementReview || isEditingStatementRows) ? (
             <ImportPreviewRowsTable
               previewRows={previewRows}
               accounts={accounts}
               categories={categories}
               people={people}
               knownAccountNames={knownAccountNames}
-              statementCheckpointCount={statementCheckpoints.length}
-              reconciledExistingRowCount={reconciledExistingRowCount}
               statementImportSourceType={statementImportMeta.sourceType}
               hasAlreadyCoveredCheckpointRefresh={hasAlreadyCoveredCheckpointRefresh}
               hasEmptyStatementCheckpointOnly={hasEmptyStatementCheckpointOnly}
-              isCommitDisabled={isCommitDisabled}
-              isSubmitting={isSubmitting}
-              commitLabel={commitLabel}
               jumpToSkippedRowsRequestKey={jumpToSkippedRowsRequestKey}
-              onCommit={handleCommit}
-              commitWarning={commitWarning}
               onUpdatePreviewRow={updatePreviewRow}
               onUpdatePreviewRowAccount={updatePreviewRowAccount}
               onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
               onPromotePreviewRowReconciliationTarget={promotePreviewRowReconciliationTarget}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+            />
+          ) : null}
+          {preview ? (
+            <ImportCommitBar
+              previewRows={previewRows}
+              statementCheckpointCount={statementCheckpoints.length}
+              reconciledExistingRowCount={reconciledExistingRowCount}
+              statementImportSourceType={statementImportMeta.sourceType}
+              isCommitDisabled={isCommitDisabled}
+              isSubmitting={isSubmitting}
+              commitLabel={commitLabel}
+              commitWarning={commitWarning}
+              onCommit={handleCommit}
+              onStartOver={() => resetImportForm()}
             />
           ) : (
             <EmptyState>{messages.imports.previewEmpty}</EmptyState>
@@ -2116,13 +2260,6 @@ function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
   });
 }
 
-// Same identity as the server's getFixKey (src/domain/statement-mismatch-
-// diagnosis.ts): one fix per entry and destination.
-function getStatementFixKey(fix) {
-  return fix.kind === "move_to_statement_account"
-    ? `${fix.kind}:${fix.entryId}:${fix.toAccountId}`
-    : `${fix.kind}:${fix.entryId}:${fix.postDate}`;
-}
 
 function applyStatementAccountMatches(statementCheckpoints, matches) {
   if (!matches?.length) {

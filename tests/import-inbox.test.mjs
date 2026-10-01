@@ -85,6 +85,42 @@ test("import inbox keeps split cleanup separate from required bank files", () =>
   assert.equal(inbox.sessions[0].status, "current");
 });
 
+test("cards whose last statement arrived on one PDF are asked for as one statement", () => {
+  const inbox = buildImportInbox({
+    now: NOW,
+    pendingSplitMatchCount: 0,
+    recentImports: [{
+      id: "uob-may",
+      sourceLabel: "eStatement_UOB_Cards_12May2026",
+      sourceType: "pdf",
+      importedAt: "2026-06-01T00:00:00.000Z",
+      status: "completed",
+      transactionCount: 10,
+      accountNames: ["UOB One Card - Tim", "UOB Lady's Card - Tim"],
+      statementCertificateCount: 2
+    }],
+    accounts: [
+      account({ id: "uob-one-card", institution: "UOB", name: "UOB One Card", latestCheckpointMonth: "2026-05", latestImportAt: "2026-08-12T00:00:00.000Z" }),
+      account({ id: "uob-ladys", institution: "UOB", name: "UOB Lady's Card", latestCheckpointMonth: "2026-05", latestImportAt: "2026-08-12T00:00:00.000Z" }),
+      account({ id: "uob-savings", institution: "UOB", name: "UOB Savings", kind: "bank", latestCheckpointMonth: "2026-06", latestImportAt: "2026-08-12T00:00:00.000Z" })
+    ]
+  });
+
+  const uobFiles = inbox.sessions.find((session) => session.institution === "UOB").expectedFiles.filter((file) => file.priority === "required");
+  // Two months each for both cards become two statements, plus savings.
+  assert.deepEqual(uobFiles.map((file) => [file.accountName, file.periodMonth]), [
+    ["UOB Lady's Card and UOB One Card", "2026-06"],
+    ["UOB Lady's Card and UOB One Card", "2026-07"],
+    ["UOB Savings", "2026-07"]
+  ]);
+  assert.deepEqual(uobFiles[0].coveredAccounts, [
+    { accountId: "uob-ladys", accountName: "UOB Lady's Card" },
+    { accountId: "uob-one-card", accountName: "UOB One Card" }
+  ]);
+  assert.equal(uobFiles[0].detail, "One UOB statement covers UOB Lady's Card and UOB One Card. Download the 2026-06 PDF statement while signed in to UOB.");
+  assert.equal(inbox.summary.requiredFileCount, 3);
+});
+
 function account(overrides) {
   return {
     id: overrides.id,
