@@ -214,6 +214,37 @@ Rules:
 - no AI: the diagnosis and its fixes work identically with the AI binding
   missing
 
+## Import Page Stages
+
+The Imports page is three steps (`src/client/import-stages.jsx`): Bring
+files, Review, Done.
+
+Rules:
+
+- `ImportsPanel` owns the stage: Review while a preview exists, Done after a
+  commit until the next file or Close, otherwise Bring files
+- a parsed file (statement PDF, bank export) folds Bring files to one line
+  while it is in review; pasted CSV keeps the form and column mapping
+- an official statement is reviewed by `StatementReview` in
+  `import-preview-review.jsx`: one header, one section per card with its
+  outcome (`getStatementCardStatus`), fixes, read-only rows and the
+  breakdown behind a disclosure. The full row editor
+  (`ImportPreviewRowsTable`), statement details, card mapping and the other
+  checks open on request; a mapping that was needed stays open for that
+  review
+- `ImportCommitBar` (`import-commit-bar.jsx`) is the only commit control and
+  carries the commit summary (`.import-preview-status-row`) and the commit
+  question
+- the intake queue keeps the rest of a drop after a commit, orders it with
+  `orderIntakeQueue` and counts covered rows with `describeIntakeCoverage`
+  (`import-intake-model.js`); the Done card (`buildImportDoneSummary`,
+  `import-done-model.js`) offers the next queued file
+- "Fix it for me" is a per-viewer preference
+  (`statement-fix-preference.js`, browser storage); proven fixes are applied
+  once per review, so an Undo is not re-applied
+- the review styles load with the route (`import-review.css`,
+  `statement-fix-suggestions.css`), not the first-screen stylesheet
+
 ## Import Inbox And Intake Boundary
 
 Import Inbox planning belongs to the Imports slice. It is route-level product

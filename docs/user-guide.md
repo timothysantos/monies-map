@@ -413,14 +413,19 @@ receipt button adds a shared expense.
 
 ### What you see
 
+- **Steps**: **1 · Bring files**, **2 · Review**, **3 · Done**. A finished
+  step shrinks to one line.
 - **Import inbox**: your bank run, planned for you. It counts bank sessions to
   open, needed files, accounts that are current and split cleanup. For each
   bank it lists the steps, an **Open portal** link, and each file you still
-  need (for example the OCBC 365 Card statement for Aug 2026).
+  need (for example the OCBC 365 Card statement for Aug 2026). A statement
+  that covers several cards is asked for once ("covers UOB Lady's Card and
+  UOB One Card").
 - **Review order**: statements are reviewed oldest month first; optional
   activity files come after.
-- **Import and certify**: where you add a file, in three steps: Select file,
-  Data mapping, Review.
+- **Import and certify**: where you add a file. A statement PDF or a bank
+  export goes straight to Review; a pasted CSV first asks you to match its
+  columns.
 - **Recent imports**: every import batch, with its kind (PDF statement,
   Mid-cycle, CSV import or Manual), dates, account, status and a rollback
   button.
@@ -436,10 +441,15 @@ receipt button adds a shared expense.
   a card activity file.
 - **CSV content**: paste CSV rows directly.
 - **Drop a CSV, PDF, or XLS here**: drop or select one file. Drop several at
-  once and they wait in the **File intake queue**; use **Load into review**
-  on each.
+  once and they wait in the **File intake queue**, in the order to review
+  them: statements first (older months first), then activity. An activity
+  file says how many of its rows a statement in the queue already covers.
+  Select **Review** on each.
+- **Change** (on the Bring files step): opens the files again while one is
+  in review.
 - **Preview import**, **Commit import to ledger**, **Start over**: see
-  [Import a bank statement](#import-a-bank-statement).
+  [Import a bank statement](#import-a-bank-statement). The commit button
+  stays in view at the bottom of the review, with what the commit will do.
 - **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
@@ -617,7 +627,10 @@ words.
 5. Review the preview ([Read the import preview](#read-the-import-preview)).
    Fix anything under **Exceptions to resolve**.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
-   batch appears under **Recent imports**.
+   batch appears under **Recent imports**. The **Done** step says what
+   changed on each card (rows added, entries confirmed or moved, entries left
+   for the next statement), with **Roll back this import**, and offers
+   **Review next** when more files are queued.
 
 ![A bank export turned into preview rows, ready to commit](/faq/guide/desktop/thumbs/imports-preview.webp)
 
@@ -681,6 +694,26 @@ June belongs to June's statement.
 
 The preview shows what will happen before anything is saved.
 
+A statement PDF is reviewed card by card. Under the statement's name, date
+and period, each card has its own section with an outcome:
+
+- **Resolved**: the card matches the statement. The section shrinks to one
+  line.
+- **Fix ready**: a suggested fix would make it match
+  ([Fix a statement that does not balance](#fix-a-statement-that-does-not-balance)).
+- **Partially resolved**: the fixes leave some of the difference.
+- **Needs manual review**: the app found causes it can't fix for you, listed
+  under **Also check**.
+- **Still mismatched**: nothing explains the difference yet.
+
+Each card lists its rows read-only (**Rows on this card's statement**) and,
+when it does not balance, **How the difference adds up**. **Edit rows** opens
+the full row editor; **Edit statement details** the statement's dates and
+balance; **Change card accounts** which account each card goes to; **More
+checks** the remaining counts and checks.
+
+For every import:
+
 - **Counts**: how many rows will import, how many existing entries will be
   confirmed, how many are **already covered** (duplicates) and how many
   **need review**.
@@ -698,6 +731,12 @@ The preview shows what will happen before anything is saved.
   adding a duplicate. **View match** compares the two side by side.
 - **Already covered rows**: duplicates the app skipped. They stay visible; use
   **Include row** only if the match was wrong.
+- **Activity inside a confirmed statement**: a statement you committed is the
+  complete record for its dates. An activity row dated inside it is skipped
+  when the statement has it, even worded differently ("Already on the
+  confirmed May 2026 statement as …"), and left out with a reason when the
+  statement doesn't. Include it only if the statement is wrong. Rows after
+  the statement import as usual.
 
 A statement preview shows **Matched** for each account when its balance
 agrees with the bank. When every row is already in your ledger, the button
@@ -719,6 +758,11 @@ says how much of the difference the move takes away.
   adding copies.
 - An entry marked **Check this one** is a less certain match: approve it on
   its own with **Move it** after you have looked at it.
+- **Do this for me next time when the statement proves it**: from then on,
+  in this browser, fixes the statement proves (one clear match, and the
+  fixes make every card match) are applied as the preview opens. A notice
+  says so, each fix keeps its **Undo**, nothing is saved until you commit,
+  and **Ask me first next time** turns it off.
 - **Keep as is** hides the suggestion.
 - An entry dated just before the statement closed, with no posted date yet,
   may be suggested for **the next statement**.
@@ -787,8 +831,10 @@ This example uses a sample two-card statement (two credit cards on one PDF)
 and activity exports that grow during the month.
 
 1. **Import the first statement.** Map each card in the PDF to its account and
-   check that both cards say Matched before committing.
-   ![First statement: two cards mapped and both balance checks matched](/faq/guide/examples/thumbs/01-jan-two-card-pdf-mapped-and-matched.webp)
+   check that both cards say Resolved before committing. The app remembers
+   each card's last four digits, so the next statement maps its cards by
+   itself.
+   ![First statement: two cards mapped and both resolved](/faq/guide/examples/thumbs/01-jan-two-card-pdf-mapped-and-matched.webp)
 2. **Save proof without duplicates.** If you review the same statement again,
    every row is already covered and the button saves the statement balances
    only.
@@ -800,9 +846,10 @@ and activity exports that grow during the month.
    place, keeping your categories, notes and splits. Only rows missing from
    your ledger are added.
    ![Next statement confirms earlier rows and adds one late row](/faq/guide/examples/thumbs/07-feb-two-card-pdf-duplicates-plus-late-row-matched.webp)
-5. **If you exclude a real row by mistake**, only that card's check fails.
-   Include the row again and both checks return to Matched.
-   ![Excluding a real row makes only that card's check fail](/faq/guide/examples/thumbs/08-user-skipped-late-row-alpha-check-fails.webp)
+5. **If you exclude a real row by mistake**, only that card needs a manual
+   review, and **Also check** names the row. Include it again and both cards
+   are resolved.
+   ![Excluding a real row: only that card needs a manual review](/faq/guide/examples/thumbs/08-user-skipped-late-row-alpha-check-fails.webp)
 6. **Commit.** Recent imports keeps every batch, so a mistake can be rolled
    back.
    ![Recent imports after the month's imports](/faq/guide/examples/thumbs/10-recent-imports-after-combined-flow.webp)

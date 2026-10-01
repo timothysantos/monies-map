@@ -46,6 +46,15 @@ when the import changes shared ledger evidence or reference data.
 
 Imports owns:
 
+- the three import steps (Bring files, Review, Done; design.md, "Import Page
+  Stages"). A statement is reviewed card by card under one header; the
+  commit bar stays in view; after a commit the Done card shows what changed
+  per card, with rollback and the next queued file. The intake queue keeps
+  the rest of a multi-file drop, reviews statements before activity (older
+  months first) and says how many activity rows a queued statement covers.
+  A mid-cycle row posted inside an already confirmed statement period is
+  skipped when that statement covers it and left out with a reason when it
+  does not (DOMAIN.md, Entry Reconciliation)
 - import inbox planning at the top of the route. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every
   missing statement/activity file for that institution, while the review queue

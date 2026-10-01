@@ -807,6 +807,13 @@ would not certify. Rollback undoes them. No AI is involved; DOMAIN.md
 also works each certificate out from the ledger it leaves instead of taking
 the preview's numbers.
 
+The page itself is three steps (design.md, "Import Page Stages"): a
+statement is reviewed card by card in `StatementReview`
+(`src/client/import-preview-review.jsx`), the one commit control is
+`ImportCommitBar`, and the Done card comes from `buildImportDoneSummary`.
+`tests/e2e/import-stages.spec.js` keeps the review of the two-card UOB
+statement under a page-height budget on desktop and phone.
+
 When the statement certification check does not match, the import preview shows
 a plain-language balance breakdown for each affected account. It separates the
 prior ledger balance, existing ledger rows inside the statement period, included
