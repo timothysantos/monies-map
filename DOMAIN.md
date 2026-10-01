@@ -406,6 +406,16 @@ Important distinctions:
   share`; a settled split refuses the rollback instead, see the settlement
   lock under Settlement Checkpoint), and a split matched to another ledger row
   since keeps that link, so the entry comes back without a split.
+- A confirmed statement (one with a statement reconciliation certificate) is
+  the complete record for its period. A mid-cycle row (CSV, XLS or manual
+  import) posted inside that period for the same account is either on the
+  statement or not a charge on that card: when a certified entry with the
+  same signed amount inside the velocity window (and not taken by another
+  row) covers it, the row is skipped as already on the statement, however
+  the export words it; when nothing covers it, the row is left out by
+  default with a reason the user reads, and can still be included. This
+  keeps a later activity export from unbalancing a closed statement. The
+  preview row carries `certifiedStatement: { checkpointMonth, covered }`.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely
