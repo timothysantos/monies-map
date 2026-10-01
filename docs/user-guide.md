@@ -335,7 +335,9 @@ owner's name.
   ([Glossary](#words-used-in-the-app)).
   ![Selecting an entry opens its editor with Add to splits, Delete entry, Save and Cancel](/faq/guide/desktop/thumbs/entries-edit.webp)
 - **Add to splits**: share this entry ([Split an expense](#split-an-expense)).
-- **Delete entry**: asks you to confirm first.
+- **Delete entry**: asks you to confirm first. An entry a bank statement
+  confirmed can't be deleted on its own; roll back that statement import
+  instead.
 - **Refresh** (circular arrows at the start of the filters): reload this
   month, for example after importing in another tab.
 - **By wallet** lists every active account, even ones with no entries this
@@ -704,7 +706,31 @@ adding duplicates.
 
 ## Fix a statement that does not balance
 
-When a statement says **Mismatch**, the preview shows five boxes: **Before
+The statement check looks for the reason first and suggests a fix, using the
+actual rows and amounts. The most common one: a purchase you recorded on one
+card that the statement lists under another card on the same statement. It
+shows, for example, **2 entries belong on UOB One Card**, lists each entry
+with the date you bought it, the date the bank posted it and the amount, and
+says how much of the difference the move takes away.
+
+- Select **Move 2 entries to UOB One Card** to approve it. The check updates
+  straight away; nothing is saved until you commit, and **Undo** takes the
+  approval back. The statement then confirms the moved entries instead of
+  adding copies.
+- An entry marked **Check this one** is a less certain match: approve it on
+  its own with **Move it** after you have looked at it.
+- **Keep as is** hides the suggestion.
+- An entry dated just before the statement closed, with no posted date yet,
+  may be suggested for **the next statement**.
+- **Also check** lists what the app found but can't fix for you, such as a
+  second copy of a purchase or an entry that isn't on the statement.
+- Entries dated after the statement closed are listed as staying provisional
+  for the next one. They are not part of the difference.
+
+If you commit while a card still says **Mismatch**, the app asks first. It
+also asks you to refresh the check if you changed rows after it ran.
+
+When a statement says **Mismatch**, the preview also shows five boxes: **Before
 statement period**, **Already in ledger during this period**, **PDF activity
 in this preview**, **Rows the PDF can remove** and **Projected ledger after
 preview**. Hover or focus a box to see exactly which dates and rows it uses.
@@ -719,7 +745,7 @@ preview**. Hover or focus a box to see exactly which dates and rows it uses.
    - Real, but the bank posted it after the statement closed: select **Set
      posted date** if your bank app shows the posted date, or **Defer** to
      move it to the next statement.
-   - On the wrong card: change its wallet.
+   - On the wrong card: use the suggested move above, or change its wallet.
 3. Check **PDF rows not included yet**: include any real statement row you
    excluded.
 4. The check refreshes as you go. Commit once it says **Matched**.
@@ -743,10 +769,13 @@ What happens:
 - Rows the import added are removed. Entries you had typed by hand that the
   import had matched go back to how you typed them, keeping later changes
   such as category, note or splits.
+- Entries a statement moved to another card go back to the card they were on.
 - Activity exports can always be rolled back.
 - A PDF statement can be rolled back while it is the newest statement for
   that account. Older statements show **Statement locked**, because later
-  statements depend on them. Roll back the newest first.
+  statements depend on them. Roll back the newest first. A statement that
+  moved entries off another card is also locked once that card has a newer
+  statement.
 - A shared entry whose split is already settled can block a rollback until
   you undo that settle-up.
 
