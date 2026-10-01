@@ -244,3 +244,119 @@ test("the server works out each certificate itself instead of trusting the previ
   `, commit.payload.importId, ladysCardId);
   assert.deepEqual(certificate, { delta_minor: -4262, status: "exception" });
 });
+
+test("a later statement on the account an entry was moved off locks the earlier statement's rollback", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const { entryIds, statement } = await setUpWrongCardScenario(api);
+  // OpenAI was recorded on Tim's UOB One account, which is not on this
+  // statement but is his account at the same bank.
+  const update = await api("/api/entries/update", {
+    entryId: entryIds.openai,
+    date: "2026-04-20",
+    description: "OpenAI",
+    accountName: "UOB One",
+    categoryName: "Subscriptions MO",
+    amountMinor: 2949,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    note: "Recorded by hand"
+  });
+  assert.equal(update.status, 200, JSON.stringify(update.payload));
+  const preview = await previewStatement(api, statement);
+  const openaiFix = suggestedFixes(preview).find((fix) => fix.entryId === entryIds.openai);
+  assert.equal(openaiFix?.fromAccountId, "acct-uob-one");
+  // UOB One is not on the statement, so moving OpenAI changes no card's
+  // difference there: it only stops a copy on One Card.
+  assert.equal(preview.statementDiagnosis.findings.find((item) => item.entry?.id === entryIds.openai).effectMinor, 0);
+  const fixes = suggestedFixes(preview);
+  const may = await api("/api/imports/commit", commitBody(statement, await previewStatement(api, statement, fixes), fixes));
+  assert.equal(may.status, 200, JSON.stringify(may.payload));
+
+  // UOB One's June statement is imported afterwards.
+  const june = {
+    rows: [{ date: "2026-06-03", description: "SHAW THEATRES SINGAPORE", expense: "12.00", account: "UOB One", category: "Entertainment" }],
+    checkpoints: [{ accountName: "UOB One", checkpointMonth: "2026-06", statementEndDate: "2026-06-12", statementBalanceMinor: 1200 }],
+    parserKey: "uob_credit_card_pdf"
+  };
+  const juneCommit = await api("/api/imports/commit", { ...commitBody(june, await previewStatement(api, june)), sourceLabel: "UOB One June" });
+  assert.equal(juneCommit.status, 200, JSON.stringify(juneCommit.payload));
+
+  // Moving OpenAI back onto UOB One would change its June statement.
+  const rollback = await api("/api/imports/rollback", { importId: may.payload.importId });
+  assert.equal(rollback.status, 409);
+  assert.match(rollback.payload.error, /cannot be rolled back yet: it moved entries off an account that has a later statement/);
+  assert.equal((await entryState(db, entryIds.openai)).account_name, ONE_CARD);
+
+  const page = await api("/api/imports-page");
+  const history = findHistory(page.payload);
+  assert.equal(history.find((item) => item.id === may.payload.importId).rollbackProtected, true);
+});
+
+test("a statement-certified entry cannot be deleted on its own; a provisional one can", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const { entryIds, statement } = await setUpWrongCardScenario(api);
+  const fixes = suggestedFixes(await previewStatement(api, statement));
+  const commit = await api("/api/imports/commit", commitBody(statement, await previewStatement(api, statement, fixes), fixes));
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+
+  const certified = await api("/api/entries/delete", { entryId: entryIds.openai });
+  assert.equal(certified.status, 400);
+  assert.equal(certified.payload.error, "This entry is certified by a bank statement, so it can't be deleted on its own. Roll back that statement import to remove it.");
+  assert.equal((await entryState(db, entryIds.openai)).bank_certification_status, "statement_certified");
+
+  // Sabai Sabai is still provisional (next statement), so it can go.
+  const provisional = await api("/api/entries/delete", { entryId: entryIds.sabai });
+  assert.equal(provisional.status, 200, JSON.stringify(provisional.payload));
+  assert.equal(await entryState(db, entryIds.sabai), undefined);
+});
+
+test("a statement card is found by its remembered last four digits after the account is renamed", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const { oneCardId, ladysCardId, statement } = await setUpWrongCardScenario(api);
+  const fixes = suggestedFixes(await previewStatement(api, statement));
+  const commit = await api("/api/imports/commit", commitBody(statement, await previewStatement(api, statement, fixes), fixes));
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  assert.deepEqual(await rows(db, "SELECT id, last4 FROM accounts WHERE id IN (?, ?) ORDER BY last4", oneCardId, ladysCardId), [
+    { id: oneCardId, last4: "1111" },
+    { id: ladysCardId, last4: "2222" }
+  ]);
+
+  const rename = await api("/api/accounts/update", {
+    accountId: ladysCardId,
+    name: "Tim Lady's Solitaire",
+    institution: "UOB",
+    kind: "credit_card",
+    currency: "SGD",
+    openingBalanceMinor: -1250,
+    ownerPersonId: "person-tim",
+    isJoint: false
+  });
+  assert.equal(rename.status, 200, JSON.stringify(rename.payload));
+
+  const preview = await previewStatement(api, statement);
+  assert.deepEqual(preview.statementAccountMatches, [{
+    detectedAccountName: LADYS_CARD,
+    accountId: ladysCardId,
+    accountName: "Tim Lady's Solitaire",
+    matchedBy: "card_last4"
+  }]);
+  assert.deepEqual(preview.unknownAccounts, []);
+  assert.equal(preview.statementReconciliations.find((item) => item.accountId === ladysCardId)?.accountName, "Tim Lady's Solitaire");
+  assert.ok(preview.previewRows.filter((row) => row.statementAccountName === LADYS_CARD).every((row) => row.accountId === ladysCardId));
+});
+
+function findHistory(payload) {
+  for (const value of Object.values(payload)) {
+    if (Array.isArray(value) && value.some((item) => item?.rollbackProtected !== undefined)) {
+      return value;
+    }
+    if (value && typeof value === "object") {
+      const nested = findHistory(value);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+  return undefined;
+}

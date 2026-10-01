@@ -180,8 +180,18 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
               SELECT 1
               FROM statement_reconciliation_certificates later_certificate
               WHERE later_certificate.household_id = statement_reconciliation_certificates.household_id
-                AND later_certificate.account_id = statement_reconciliation_certificates.account_id
                 AND later_certificate.checkpoint_month > statement_reconciliation_certificates.checkpoint_month
+                AND (
+                  later_certificate.account_id = statement_reconciliation_certificates.account_id
+                  -- An account this statement moved entries off: moving
+                  -- them back would change its later statement.
+                  OR later_certificate.account_id IN (
+                    SELECT from_account_id FROM import_statement_fixes
+                    WHERE import_statement_fixes.household_id = statement_reconciliation_certificates.household_id
+                      AND import_statement_fixes.import_id = statement_reconciliation_certificates.import_id
+                      AND import_statement_fixes.fix_kind = 'move_to_statement_account'
+                  )
+                )
             ) THEN 1 ELSE 0 END
           ) AS later_statement_count
         FROM statement_reconciliation_certificates
