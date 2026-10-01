@@ -251,6 +251,7 @@ function toCompareRow(entry: DiagnosisLedgerEntry): StatementCompareRowDto {
   return {
     id: entry.id,
     date: entry.postDate ?? entry.transactionDate,
+    ...(entry.postDate && entry.postDate !== entry.transactionDate ? { transactionDate: entry.transactionDate } : {}),
     description: entry.description,
     amountMinor: entry.amountMinor,
     signedAmountMinor: getEntrySigned(entry),

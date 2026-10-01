@@ -42,6 +42,10 @@ test("after a statement is saved, entries on the wrong card are moved to it and 
   assert.deepEqual(await mayDeltas(api), { [ONE_CARD]: 4262, [LADYS_CARD]: -4262 });
 
   const comparison = await compareLadysCard(api, statement, ladysCardId);
+  // The refund recorded on its own day in the user's words is matched; only
+  // the two purchases the statement lists under One Card are left over.
+  assert.deepEqual([comparison.statementRowCount, comparison.matchedRowCount, comparison.unmatchedStatementRows.length], [5, 5, 0]);
+  assert.deepEqual(comparison.unmatchedLedgerRows.map((row) => row.description), ["OpenAI", "Buyandship"]);
   const diagnosis = comparison.statementDiagnosis;
   assert.deepEqual(diagnosis.findings.map((finding) => [finding.kind, finding.confidence, finding.entry?.description, finding.effectMinor, finding.relatedEffectMinor]), [
     ["wrong_account", "high", "OpenAI", 2949, -2949],
