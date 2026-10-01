@@ -325,6 +325,7 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM monthly_snapshot_refreshes",
     "DELETE FROM statement_reconciliation_certificates",
     "DELETE FROM statement_chain_breaks",
+    "DELETE FROM import_statement_fixes",
     "DELETE FROM import_rows",
     "DELETE FROM imports",
     "DELETE FROM account_balance_checkpoints",

@@ -738,3 +738,58 @@ function addDays(date: string, days: number) {
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
 }
+
+// Why an approved fix can no longer be applied, or undefined when it can.
+// The preview and the commit both check every fix with this, the commit on
+// freshly read rows, so a fix approved on stale data is refused, not forced.
+export function getStatementFixRejection(input: {
+  fix: StatementFixDto;
+  sourceType: "csv" | "pdf" | "manual";
+  entry?: Pick<DiagnosisLedgerEntry, "accountId" | "bankCertificationStatus" | "postDate" | "transactionDate" | "transferGroupId">;
+  statementCards: Pick<DiagnosisCard, "accountId" | "checkpointMonth" | "endDate">[];
+  sourceAccount?: DiagnosisAccount;
+}) {
+  const { fix, entry } = input;
+  if (input.sourceType !== "pdf") {
+    return "Only an official statement can move or defer entries.";
+  }
+  if (!entry) {
+    return "The entry is no longer in the ledger.";
+  }
+  if (entry.bankCertificationStatus !== "provisional") {
+    return "The entry is already certified by a statement.";
+  }
+  if (entry.transferGroupId) {
+    return "The entry is linked as a transfer.";
+  }
+
+  if (fix.kind === "move_to_statement_account") {
+    if (entry.accountId !== fix.fromAccountId) {
+      return "The entry is no longer on the account it was found on.";
+    }
+    const destinationCard = input.statementCards.find((card) => card.accountId === fix.toAccountId);
+    if (!destinationCard) {
+      return "The destination account is not on this statement.";
+    }
+    if (input.sourceAccount && isCoveredBySavedCheckpoint(
+      { ...entry, id: "", note: null, description: "", amountMinor: 0, entryType: "expense", transferDirection: null, sourceType: "manual" },
+      input.sourceAccount,
+      destinationCard.checkpointMonth
+    )) {
+      return "The entry belongs to a saved statement on its current account.";
+    }
+    return undefined;
+  }
+
+  const card = input.statementCards.find((item) => item.accountId === fix.accountId);
+  if (!card || entry.accountId !== fix.accountId) {
+    return "The entry is not on a card of this statement.";
+  }
+  if (entry.postDate != null) {
+    return "The entry already has a posted date.";
+  }
+  if (fix.postDate !== addDays(card.endDate, 1)) {
+    return "The deferral date does not follow this statement.";
+  }
+  return undefined;
+}

@@ -91,6 +91,23 @@ CREATE TABLE IF NOT EXISTS statement_reconciliation_certificates (
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
+-- Statement fixes the user approved and an import commit applied, so a
+-- rollback can undo them (DOMAIN.md, Statement Fix).
+CREATE TABLE IF NOT EXISTS import_statement_fixes (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  import_id TEXT NOT NULL,
+  transaction_id TEXT NOT NULL,
+  fix_kind TEXT NOT NULL CHECK (fix_kind IN ('move_to_statement_account', 'defer_to_next_statement')),
+  from_account_id TEXT NOT NULL,
+  to_account_id TEXT NOT NULL,
+  previous_post_date TEXT,
+  new_post_date TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS statement_chain_breaks (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
