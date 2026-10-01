@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import "./statement-fix-suggestions.css";
 
 const { format: formatService } = moniesClient;
 

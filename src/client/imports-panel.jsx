@@ -148,10 +148,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [postImportSplitMatchMonth, setPostImportSplitMatchMonth] = useState("");
   const [isSplitCleanupDismissed, setIsSplitCleanupDismissed] = useState(false);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
-  // Statement fixes the user approved (sent with every preview so the check
-  // shows their result, and with the commit, which writes them) and the
-  // suggestions the user chose to keep as they are.
-  const [statementFixes, setStatementFixes] = useState([]);
+  // The suggestions the user chose to keep as they are. The approved fixes
+  // themselves live in statementFixesRef and the preview's appliedFixes.
   const [dismissedStatementFindingIds, setDismissedStatementFindingIds] = useState([]);
   const [intakeQueue, setIntakeQueue] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
@@ -171,7 +169,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // ignore any response superseded by a newer preview request.
   const previewRowsRef = useRef(previewRows);
   const statementCheckpointsRef = useRef(statementCheckpoints);
-  const statementFixesRef = useRef(statementFixes);
+  // Statement fixes the user approved: sent with every preview so the check
+  // shows their result; the commit sends the preview's appliedFixes.
+  const statementFixesRef = useRef([]);
   const previewRequestSequenceRef = useRef(0);
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
   const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
@@ -854,7 +854,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       // the statement check and dropped.
       const appliedStatementFixes = data.preview?.statementDiagnosis?.appliedFixes ?? [];
       statementFixesRef.current = appliedStatementFixes;
-      setStatementFixes(appliedStatementFixes);
       // A statement card matched by its card's last four digits takes that
       // account, as if the user had mapped it.
       const matchedCheckpoints = applyStatementAccountMatches(nextStatementCheckpoints, data.preview?.statementAccountMatches);
@@ -1204,13 +1203,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   function clearStatementFixes() {
     statementFixesRef.current = [];
-    setStatementFixes([]);
     setDismissedStatementFindingIds([]);
   }
 
   function refreshWithStatementFixes(nextStatementFixes) {
     statementFixesRef.current = nextStatementFixes;
-    setStatementFixes(nextStatementFixes);
     return refreshPreviewFromRows({
       rows: previewRowsRef.current.map(importService.buildRawRowFromPreviewRow),
       nextStatementFixes,
