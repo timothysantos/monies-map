@@ -85,6 +85,19 @@ test("loose matching never pairs a different amount, a refund with a purchase, o
   ), {});
 });
 
+test("low-value repeats more than two days apart stay separate purchases, as everywhere else", () => {
+  // Coffee under $5 on 1 May is not the coffee the bank shows for 6 May.
+  assert.deepEqual(pairs(
+    [statement("s-coffee", "2026-05-06", "STARBUCKS SINGAPORE", -450, "2026-05-06")],
+    [ledger("l-coffee", "2026-05-01", "Starbucks", -450)]
+  ), {});
+  // Two days apart is still the same purchase.
+  assert.deepEqual(pairs(
+    [statement("s-coffee", "2026-05-03", "STARBUCKS SINGAPORE", -450, "2026-05-03")],
+    [ledger("l-coffee", "2026-05-01", "Starbucks", -450)]
+  ), { "s-coffee": "l-coffee" });
+});
+
 test("when two entries could answer a row and neither shares its wording, none is picked", () => {
   assert.deepEqual(pairs(
     [statement("s-shaw", "2026-05-03", "SHAW THEATRES SINGAPORE", -2800, "2026-05-03")],
