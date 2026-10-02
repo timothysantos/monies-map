@@ -1,4 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { getDuplicateCandidateMaxDayDistance } from "./import-preview-match-policy";
 import { recordAuditEvent } from "./app-repository-audit";
 import {
   compareDescriptionSimilarity,
@@ -519,13 +520,16 @@ export function normalizeStatementCompareRows(rows: Record<string, string>[], st
 }
 
 // Within this many days a same-amount row with a shared merchant word, or
-// the only same-amount row either way, answers a statement row.
+// the only same-amount row either way, answers a statement row. Low-value
+// repeats (fares, coffee) keep the import preview's tighter window.
 const LOOSE_MATCH_WINDOW_DAYS = 7;
+const getLooseMatchWindowDays = (amountMinor: number) => Math.min(LOOSE_MATCH_WINDOW_DAYS, getDuplicateCandidateMaxDayDistance(amountMinor));
 
 // Pairs each statement row with one ledger row of the same signed amount,
 // strictest rule first: the same day with similar text, then within three
-// days with closer text, then within a week with a shared merchant word or
-// as the only candidate on both sides. Days are compared on the posted day
+// days with closer text, then within a week (two days under $5, as the
+// import preview's velocity rule) with a shared merchant word or as the
+// only candidate on both sides. Days are compared on the posted day
 // and the purchase day of each row (a statement row's "txn date" note, a
 // ledger entry's own date), whichever are closer, so an entry recorded on
 // the day of purchase meets the row the bank posted days later. Returns
@@ -566,7 +570,8 @@ export function matchStatementCompareRows(statementRows: StatementCompareRowDto[
   runPass((statementRow) => openCandidates(statementRow, 3)
     .find((ledgerRow) => compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65));
   runPass((statementRow) => {
-    const candidates = openCandidates(statementRow, LOOSE_MATCH_WINDOW_DAYS)
+    const windowDays = getLooseMatchWindowDays(statementRow.amountMinor);
+    const candidates = openCandidates(statementRow, windowDays)
       .sort((left, right) => dayDistance(statementRow, left) - dayDistance(statementRow, right));
     const sharingWord = candidates.find((ledgerRow) => sharesMerchantWord(ledgerRow.description, statementRow.description));
     if (sharingWord) {
@@ -579,7 +584,7 @@ export function matchStatementCompareRows(statementRows: StatementCompareRowDto[
     const rivals = statementRows.filter((other) => (
       !matchedStatementIds.has(other.id)
       && other.signedAmountMinor === statementRow.signedAmountMinor
-      && dayDistance(other, candidates[0]) <= LOOSE_MATCH_WINDOW_DAYS
+      && dayDistance(other, candidates[0]) <= windowDays
     ));
     return rivals.length === 1 ? candidates[0] : undefined;
   });
