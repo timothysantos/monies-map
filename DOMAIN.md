@@ -338,14 +338,19 @@ Important distinctions:
 - `Promotion and reconciliation` is the status-guarded lane. It handles manual
   row promotion and statement certification after duplicate suppression has
   already removed truly identical bank rows.
-- The `Velocity Rule` prevents commuter false positives by scaling duplicate
-  candidate windows with `amount_minor`. Low-value rows with
-  `abs(amount_minor) < 500` need `day_distance <= 2`, while higher-value rows
-  can use `day_distance <= 7` to tolerate delayed posting.
-- Under that rule, identical recurring small-value transactions such as
-  BUS/MRT fares or coffee should be treated as separate economic events by
-  default unless they occur close together in time.
-- Close to a statement's closing day the rule tightens: a low-value entry
+- The `Velocity Rule` prevents commuter false positives: a charge that
+  repeats on its account (another charge of the same signed amount with
+  lookalike wording within 7 days, ignoring reference numbers such as a
+  BUS/MRT trip number) is matched only within `day_distance <= 2`; a one-off
+  charge can use `day_distance <= 7` to tolerate delayed posting, whatever
+  its amount. A file row and a ledger entry get the tight window when either
+  repeats on its own side.
+- Under that rule, identical recurring transactions such as BUS/MRT fares,
+  coffee or same-priced top-ups are separate economic events by default
+  unless they occur close together in time. Until 2026-10-03 the test was
+  the amount (`abs(amount_minor) < 500`); `docs/audits/velocity-rule.md`
+  measured repetition as the better test on real bank files.
+- Close to a statement's closing day the rule tightens: a repeating entry
   with no posted date, dated in the period's last two days, may post on the
   next statement, so it only answers a statement row from its own purchase
   day or later (`isRowBeforeLateUnpostedEntry`). A ride recorded on 12 May is

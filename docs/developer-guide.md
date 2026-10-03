@@ -817,9 +817,9 @@ statement under a page-height budget on desktop and phone.
 The comparison pairs rows in `matchStatementCompareRows`
 (`src/domain/app-repository-checkpoints.ts`), always on the same signed
 amount: the same day with similar text, then within three days with closer
-text, then within seven days (two under $5, the preview's velocity rule)
-with a shared merchant word or as the only candidate on both sides. The
-closing-days rule above applies here too. Days are compared on both the posted day and the
+text, then within seven days with a shared merchant word or as the only
+candidate on both sides. The velocity rule and the closing-days rule above
+apply in every pass. Days are compared on both the posted day and the
 purchase day (a statement row's `txn date` note, a ledger entry's
 `transactionDate`), so a hand-recorded fare meets the row the bank posted
 later. `tests/statement-compare-matching.test.mjs` holds the rules and their
@@ -923,13 +923,17 @@ for spending history and matching. A unique exact promotion should show as
   similarity `>= 0.6`
 - near: same absolute amount, `dayDistance <= 7`, and token similarity `>= 0.5`
 
-Low-value rows below `500` minor units use the `Velocity Rule`: if the lane
-distance is more than 2 days, the row is not treated as a duplicate candidate.
-On an official statement, a low-value entry with no posted date from the
-period's last two days only matches a row bought the same day or later
-(`isRowBeforeLateUnpostedEntry` in `import-preview-match-policy.js`), so a
-closing-day ride that posts next month is offered as "next statement" rather
-than taken for the previous day's ride.
+The `Velocity Rule` (`src/domain/import-preview-match-policy.js`) picks the
+lane's day limit by repetition, not amount: when the file row or the ledger
+entry repeats on its own side (another charge of the same signed amount with
+lookalike wording within 7 days, reference numbers ignored;
+`createRepetitionIndex` in `statement-row-matching.ts`), the limit is 2 days,
+otherwise 7. On an official statement, a repeating entry with no posted date
+from the period's last two days only matches a row bought the same day or
+later (`isRowBeforeLateUnpostedEntry`), so a closing-day ride that posts next
+month is offered as "next statement" rather than taken for the previous
+day's ride. `docs/audits/velocity-rule.md` has the measurement behind it and
+`scripts/audit-velocity-rule.mjs` reruns it.
 
 A normalized import hash is the strict fingerprint for one reviewed import row.
 It is built from the normalized date, description, amount, mapped account, and
