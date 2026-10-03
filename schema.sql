@@ -126,6 +126,18 @@ CREATE TABLE IF NOT EXISTS statement_corrections (
   FOREIGN KEY (household_id) REFERENCES households(id)
 );
 
+-- The last exchange rate per currency pair, for Wallet amounts in another
+-- currency when the rate sources are unreachable (foreign-currency.ts).
+CREATE TABLE IF NOT EXISTS fx_rates (
+  base_currency TEXT NOT NULL,
+  quote_currency TEXT NOT NULL,
+  quote_per_base REAL NOT NULL,
+  rate_date TEXT NOT NULL,
+  source TEXT NOT NULL,
+  fetched_at TEXT NOT NULL,
+  PRIMARY KEY (base_currency, quote_currency)
+);
+
 CREATE TABLE IF NOT EXISTS statement_chain_breaks (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -296,6 +308,10 @@ CREATE TABLE IF NOT EXISTS transactions (
   offsets_category INTEGER NOT NULL DEFAULT 0,
   note TEXT,
   external_reference TEXT,
+  -- A Wallet amount in another currency, kept when the entry is saved in
+  -- the account's currency at an estimated rate (foreign-currency.ts).
+  original_amount_minor INTEGER,
+  original_currency TEXT,
   bank_certification_status TEXT NOT NULL DEFAULT 'provisional' CHECK (
     bank_certification_status IN ('provisional', 'statement_certified')
   ),

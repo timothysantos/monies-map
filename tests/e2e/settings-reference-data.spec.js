@@ -387,10 +387,13 @@ test.describe("settings reference data", () => {
         amount: "USD 12.34"
       }
     });
-    expect(currencyMismatchResponse.status()).toBe(400);
+    // A foreign Wallet amount is converted at the day's rate
+    // (tests/foreign-wallet-amount.test.mjs); this test Worker has no saved
+    // rate and stays offline, so it refuses and asks for a retry.
+    expect(currencyMismatchResponse.status()).toBe(503);
     expect(await currencyMismatchResponse.json()).toMatchObject({
       ok: false,
-      error: `Wallet amount is USD, but ${targetAccount.name} uses ${targetAccount.currency}. Nothing was saved.`
+      error: "Couldn't get today's USD to SGD exchange rate. Nothing was saved. Run the Shortcut again in a minute."
     });
 
     const oversizedDescriptionResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {

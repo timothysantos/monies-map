@@ -286,6 +286,15 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   // Repair those rows so statement checkpoints use the cleared date lane.
   await repairLegacyOcbcValueDatePostDates(db);
 
+  // A Wallet amount in another currency, kept beside the estimate in the
+  // account's currency (foreign-currency.ts).
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "original_amount_minor")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN original_amount_minor INTEGER").run();
+  }
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "original_currency")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN original_currency TEXT").run();
+  }
+
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_id TEXT").run();
     shouldResetRolledBackStatementCertifications = true;
