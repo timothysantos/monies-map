@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSeededTemplate, openSeededDatabase, rows } from "./support/d1-workspace.mjs";
+import { createEntry, createSeededTemplate, openSeededDatabase, rows } from "./support/d1-workspace.mjs";
 import {
   commitBody,
   LADYS_CARD,
@@ -360,3 +360,45 @@ function findHistory(payload) {
   }
   return undefined;
 }
+
+// One Card's statement closes on 12 May. A $1.99 ride recorded by hand on
+// 12 May has not posted yet; the statement's last ride was bought on 11 May.
+function withRideBoughtOn11May(statement) {
+  return {
+    ...statement,
+    rows: [...statement.rows, {
+      date: "2026-05-12",
+      description: "BUS/MRT 000000006 SINGAPORE",
+      expense: "1.99",
+      income: "",
+      account: ONE_CARD,
+      category: "Public Transport",
+      note: "txn date: 2026-05-11",
+      type: "expense",
+      reference: "00000000000000000000011"
+    }]
+  };
+}
+
+test("a closing-day ride that posts next statement is not taken for the statement's ride the day before", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { statement } = await setUpWrongCardScenario(api);
+  const lateRideId = await createEntry(api, { accountName: ONE_CARD, date: "2026-05-12", description: "BUS/MRT", amountMinor: 199, categoryName: "Other" });
+
+  const preview = await previewStatement(api, withRideBoughtOn11May(statement));
+  const rideRow = preview.previewRows.find((row) => row.description === "BUS/MRT 000000006 SINGAPORE");
+  // The 11 May ride is new to the ledger; the 12 May entry waits for June.
+  assert.deepEqual([rideRow.commitStatus, rideRow.reconciliationTargetTransactionId], ["included", undefined]);
+  const lateRide = preview.statementDiagnosis.findings.find((finding) => finding.entry?.id === lateRideId);
+  assert.deepEqual([lateRide.kind, lateRide.fix?.kind, lateRide.fix?.postDate], ["next_statement", "defer_to_next_statement", "2026-05-13"]);
+});
+
+test("a ride recorded on its own purchase day before the closing days still meets its statement row", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { statement } = await setUpWrongCardScenario(api);
+  const rideId = await createEntry(api, { accountName: ONE_CARD, date: "2026-05-11", description: "BUS/MRT", amountMinor: 199, categoryName: "Other" });
+
+  const preview = await previewStatement(api, withRideBoughtOn11May(statement));
+  const rideRow = preview.previewRows.find((row) => row.description === "BUS/MRT 000000006 SINGAPORE");
+  assert.equal(rideRow.reconciliationTargetTransactionId, rideId);
+});

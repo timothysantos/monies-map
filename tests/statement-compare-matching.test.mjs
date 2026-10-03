@@ -121,3 +121,49 @@ test("one entry answers one row: two rides of the same fare need two entries", (
     { "s-ride-1": "l-ride-a", "s-ride-2": "l-ride-b" }
   );
 });
+
+// Commuting on one card: $1.99 fares, two a day, the statement printing each
+// ride's purchase day.
+const ride = (id, posted, bought) => statement(id, posted, "BUS/MRT 000000000 SINGAPORE", -199, bought);
+const entry = (id, date) => ledger(id, date, "BUS/MRT", -199);
+const commute = [
+  ride("s-mon-am", "2026-05-06", "2026-05-04"), ride("s-mon-pm", "2026-05-06", "2026-05-04"),
+  ride("s-tue-am", "2026-05-07", "2026-05-05"), ride("s-tue-pm", "2026-05-07", "2026-05-05"),
+  ride("s-wed-am", "2026-05-08", "2026-05-06"), ride("s-wed-pm", "2026-05-08", "2026-05-06")
+];
+
+function leftOver(statementRows, ledgerRows, options) {
+  const result = matchStatementCompareRows(statementRows, ledgerRows, options);
+  return {
+    rows: statementRows.filter((row) => !result.matchedStatementIds.has(row.id)).map((row) => row.id),
+    entries: ledgerRows.filter((row) => !result.matchedLedgerIds.has(row.id)).map((row) => row.id)
+  };
+}
+
+test("a week of commuting: each ride meets its own day's row, and an unrecorded ride shows on its own day", () => {
+  const all = [entry("l-mon-am", "2026-05-04"), entry("l-mon-pm", "2026-05-04"), entry("l-tue-am", "2026-05-05"), entry("l-tue-pm", "2026-05-05"), entry("l-wed-am", "2026-05-06"), entry("l-wed-pm", "2026-05-06")];
+  assert.deepEqual(leftOver(commute, all), { rows: [], entries: [] });
+  const tuesdayEveningMissing = all.filter((row) => row.id !== "l-tue-pm");
+  assert.deepEqual(leftOver(commute, tuesdayEveningMissing), { rows: ["s-tue-pm"], entries: [] });
+});
+
+test("a ride typed a day late still meets its row when the real day's ride is also recorded", () => {
+  assert.deepEqual(
+    leftOver([ride("s-mon", "2026-05-06", "2026-05-04"), ride("s-tue", "2026-05-07", "2026-05-05")], [entry("l-typo", "2026-05-05"), entry("l-tue", "2026-05-05")]),
+    { rows: [], entries: [] }
+  );
+});
+
+test("a ride on the closing day that posts next statement is not paired with an unrecorded ride the day before", () => {
+  const options = { statementEndDate: "2026-05-12", unpostedLedgerIds: new Set(["l-12"]) };
+  // The 11 May ride is missing; the 12 May entry is the next statement's.
+  assert.deepEqual(
+    leftOver([ride("s-11", "2026-05-12", "2026-05-11")], [entry("l-12", "2026-05-12")], options),
+    { rows: ["s-11"], entries: ["l-12"] }
+  );
+  // When the bank did post the 12 May ride on this statement, they match.
+  assert.deepEqual(
+    leftOver([ride("s-12", "2026-05-12", "2026-05-12")], [entry("l-12", "2026-05-12")], options),
+    { rows: [], entries: [] }
+  );
+});

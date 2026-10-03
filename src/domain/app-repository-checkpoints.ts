@@ -1,5 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
-import { getDuplicateCandidateMaxDayDistance } from "./import-preview-match-policy";
+import { getDuplicateCandidateMaxDayDistance, isRowBeforeLateUnpostedEntry } from "./import-preview-match-policy";
 import { recordAuditEvent } from "./app-repository-audit";
 import {
   compareDescriptionSimilarity,
@@ -398,6 +398,7 @@ export async function compareAccountCheckpointStatementRows(
         transactions.id,
         COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
         transactions.transaction_date,
+        transactions.post_date,
         transactions.description,
         transactions.amount_minor,
         transactions.entry_type,
@@ -419,6 +420,7 @@ export async function compareAccountCheckpointStatementRows(
       id: string;
       cleared_date: string;
       transaction_date: string;
+      post_date: string | null;
       description: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
@@ -443,7 +445,10 @@ export async function compareAccountCheckpointStatementRows(
     };
   });
 
-  const { matchedLedgerIds, matchedStatementIds } = matchStatementCompareRows(statementRows, ledgerRows);
+  const { matchedLedgerIds, matchedStatementIds } = matchStatementCompareRows(statementRows, ledgerRows, {
+    statementEndDate,
+    unpostedLedgerIds: new Set(ledgerResult.results.filter((row) => !row.post_date).map((row) => row.id))
+  });
 
   const unmatchedStatementRows = statementRows.filter((row) => !matchedStatementIds.has(row.id));
   const unmatchedLedgerRows = ledgerRows.filter((row) => !matchedLedgerIds.has(row.id));
@@ -534,7 +539,13 @@ const getLooseMatchWindowDays = (amountMinor: number) => Math.min(LOOSE_MATCH_WI
 // ledger entry's own date), whichever are closer, so an entry recorded on
 // the day of purchase meets the row the bank posted days later. Returns
 // which ledger row answers each statement row.
-export function matchStatementCompareRows(statementRows: StatementCompareRowDto[], ledgerRows: StatementCompareRowDto[]) {
+export function matchStatementCompareRows(
+  statementRows: StatementCompareRowDto[],
+  ledgerRows: StatementCompareRowDto[],
+  // The period's last day and the ledger rows with no posted date: a
+  // low-value one from the last two days may be the next statement's.
+  options: { statementEndDate?: string; unpostedLedgerIds?: Set<string> } = {}
+) {
   const matchedLedgerIds = new Set<string>();
   const matchedStatementIds = new Set<string>();
   const ledgerIdByStatementId = new Map<string, string>();
@@ -543,10 +554,19 @@ export function matchStatementCompareRows(statementRows: StatementCompareRowDto[
   const dayDistance = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => Math.min(
     ...statementDates.get(statementRow.id)!.flatMap((left) => ledgerDates.get(ledgerRow.id)!.map((right) => Math.abs(daysBetween(left, right))))
   );
+  const isNextStatementCandidate = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => Boolean(options.unpostedLedgerIds?.has(ledgerRow.id))
+    && isRowBeforeLateUnpostedEntry({
+      amountMinor: ledgerRow.amountMinor,
+      entryDate: ledgerRow.transactionDate ?? ledgerRow.date,
+      entryPostDate: null,
+      statementEndDate: options.statementEndDate,
+      rowPurchaseDate: statementRow.transactionDate ?? extractTransactionDateHint(statementRow.note) ?? statementRow.date
+    });
   const openCandidates = (statementRow: StatementCompareRowDto, maxDays: number) => ledgerRows.filter((ledgerRow) => (
     !matchedLedgerIds.has(ledgerRow.id)
     && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
     && dayDistance(statementRow, ledgerRow) <= maxDays
+    && !isNextStatementCandidate(statementRow, ledgerRow)
   ));
   const pair = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => {
     matchedLedgerIds.add(ledgerRow.id);

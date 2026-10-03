@@ -28,7 +28,8 @@ import {
 } from "./statement-mismatch-diagnosis";
 import {
   canSuppressCertifiedStatementDuplicate,
-  getDuplicateCandidateMaxDayDistance
+  getDuplicateCandidateMaxDayDistance,
+  isRowBeforeLateUnpostedEntry
 } from "./import-preview-match-policy";
 import {
   getDuplicateCandidateDayDistance,
@@ -242,7 +243,8 @@ export async function buildImportPreview(
         previewRowDateContext,
         existingRows: ledgerRows,
         incomingSourceType: input.sourceType,
-        excludedTransactionIds: claimedReconciliationTargetIds
+        excludedTransactionIds: claimedReconciliationTargetIds,
+        statementEndDate: statementCards.find((card) => card.accountId === previewRow.accountId)?.endDate
       });
 
     // Exact duplicate suppression is the raw identity lane. It must run before
@@ -786,6 +788,9 @@ function findReconciliationMatches(input: {
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
   excludedTransactionIds?: Set<string>;
+  // The statement period's last day for this row's card (official
+  // statements only).
+  statementEndDate?: string;
 }) {
   return input.existingRows
     .map((candidate) => {
@@ -813,6 +818,17 @@ function findReconciliationMatches(input: {
       // coffee charges share the same amount and similar merchant text but
       // are actually separate real-world events.
       if (dayDistance > maxDayDistance) {
+        return undefined;
+      }
+      // A low-value entry from the statement's last days that has not
+      // posted yet may be the next statement's: never an earlier row's.
+      if (isRowBeforeLateUnpostedEntry({
+        amountMinor: input.previewRow.amountMinor,
+        entryDate: candidate.transaction_date,
+        entryPostDate: candidate.post_date,
+        statementEndDate: input.statementEndDate,
+        rowPurchaseDate: input.previewRowDateContext.eventDate
+      })) {
         return undefined;
       }
 
