@@ -17,8 +17,8 @@ own date lanes and wording rules (`statement-row-matching.ts`).
 
 | Rows | Count | Today | By repetition | Examples |
 | --- | --- | --- | --- | --- |
-| Under $5, repeats | 5 | 2 days | 2 days | BUS/MRT at the same fare, MA MUM |
-| Under $5, one-off | 30 | 2 days | 7 days | FX and service fees, interest, Cloudflare, Apple, single bus fares |
+| Under $5, repeats | 9 | 2 days | 2 days | BUS/MRT at the same fare, MA MUM |
+| Under $5, one-off | 26 | 2 days | 7 days | FX and service fees, interest, Cloudflare, Apple, single bus fares |
 | $5 and over, repeats | 58 | 7 days | 2 days | OpenAI ($7.22, up to 15 a day), PayNow transfers, Ajummas, TORI-Q |
 | $5 and over, one-off | 153 | 7 days | 7 days | Grab, Shopee, M1, airline, bookstore |
 
@@ -30,9 +30,10 @@ own date lanes and wording rules (`statement-row-matching.ts`).
   one-entry-one-row, closest-day pairing does.
 - Posting delay where both dates are known: repeating $5+ rows post at most
   2 days late (median 1), so a 2-day window loses no observed true match.
-  One-off under-$5 rows post a median 4 days late (10 of 20 over 2 days), so
-  today's 2-day window can miss their true match when one side has no
-  purchase date (10 such rows: fees, interest, Apple, Cloudflare).
+  Repeating fares post a median 4 days late, as before; their purchase date
+  is printed, so they are compared on it. One-off under-$5 rows post up to
+  6 days late, so the old 2-day window could miss their true match when one
+  side has no purchase date (10 such rows: fees, interest, Apple, Cloudflare).
 
 ## Limits
 
@@ -43,10 +44,14 @@ own date lanes and wording rules (`statement-row-matching.ts`).
   pairing between two files was measured: these are window decisions,
   false-pair opportunities and posting delays, not final import outcomes.
 
-## Recommendation
+## Decision
 
-Keep the intent (repeated charges are separate purchases unless close in
-time) and change its test from the amount to repetition. On this data it is
-stricter where repeats happen and looser for one-off small charges, with no
-observed loss. Not implemented: it changes matching in every import, so it
-needs the owner's decision.
+Approved by the owner and implemented on 2026-10-03: the velocity rule
+keeps its intent and its two windows, and its test is now repetition
+(`createRepetitionIndex` in `src/domain/statement-row-matching.ts`), used by
+the import preview, confirmed-statement coverage, the statement mismatch
+diagnosis and Settings "Compare statement". Reference numbers such as a
+BUS/MRT trip number are ignored when comparing wording, so a commute at one
+fare counts as repeating; the first run of this audit, before that, counted
+only 5 of those fares as repeats. The table above is the rerun with the
+app's own test.
