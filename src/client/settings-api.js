@@ -153,10 +153,10 @@ export function retainLatestErrorDiagnostics(keep = 50) {
   );
 }
 
-export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds, defaultParams }) {
+export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds, defaultParams, foreignCurrencyAccountId = "" }) {
   return postJson(
     "/api/settings/shortcuts/save",
-    { apiKey, defaultAccountPriorityIds, defaultParams },
+    { apiKey, defaultAccountPriorityIds, defaultParams, foreignCurrencyAccountId },
     "Failed to save shortcut settings."
   );
 }

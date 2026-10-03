@@ -54,6 +54,8 @@ export interface ShortcutSettingsDto {
   apiKeySource: "app" | "environment" | "none";
   defaultAccountPriorityIds: string[];
   defaultParams: string;
+  // "" when purchases in another currency follow the priority list.
+  foreignCurrencyAccountId: string;
 }
 
 export interface AccountCheckpointDto {

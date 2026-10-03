@@ -1131,6 +1131,29 @@ export function SettingsPanel({
     }
   }
 
+  // Saves straight away, like the account priority.
+  async function handleForeignCurrencyAccountChange(foreignCurrencyAccountId) {
+    const nextDraft = { ...shortcutSettingsDraft, foreignCurrencyAccountId };
+    setShortcutSettingsDraft(nextDraft);
+    setShortcutSettingsError("");
+    if (!nextDraft.apiKey.trim()) {
+      setShortcutSettingsStatus(messages.settings.shortcutPriorityNeedsKey);
+      return;
+    }
+    setIsSubmitting(true);
+    setShortcutSettingsStatus(messages.settings.shortcutPrioritySaving);
+    try {
+      await saveShortcutSettings(nextDraft);
+      setShortcutSettingsStatus(messages.settings.shortcutForeignCurrencySaved);
+      await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
+    } catch (error) {
+      setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
+      setShortcutSettingsStatus("");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSaveShortcutSettings() {
     setIsSubmitting(true);
     setShortcutSettingsError("");
@@ -1238,6 +1261,7 @@ export function SettingsPanel({
         onGenerateApiKey={handleGenerateShortcutApiKey}
         onInstallShortcut={handleInstallShortcut}
         onMoveAccount={handleMoveShortcutAccount}
+        onForeignCurrencyAccountChange={handleForeignCurrencyAccountChange}
         onToggle={() => toggleSettingsSection("shortcutApi")}
         onSave={handleSaveShortcutSettings}
       />

@@ -142,3 +142,32 @@ test("the rate comes from the first source that answers, is saved, and covers bo
     FxRateUnavailableError
   );
 });
+
+test("with Citi Rewards chosen for other currencies, an IDR purchase is saved there, and the choice is kept in Settings", async (t) => {
+  const { db, api, fetch: fetchWorker } = await openSeededDatabase(t, template);
+  await saveRate(db);
+  const accountsByName = Object.fromEntries((await rows(db, "SELECT id, account_name FROM accounts WHERE is_active = 1")).map((row) => [row.account_name, row.id]));
+  const citiRewardsId = accountsByName["Citi Rewards"];
+  assert.ok(citiRewardsId);
+  const priorityIds = Object.values(accountsByName).filter((id) => id !== citiRewardsId);
+
+  const saved = await api("/api/settings/shortcuts/save", { apiKey: TOKEN, defaultAccountPriorityIds: priorityIds, foreignCurrencyAccountId: citiRewardsId });
+  assert.equal(saved.status, 200, JSON.stringify(saved.payload));
+  const settings = await api("/api/settings-page?view=household");
+  assert.equal(settings.payload.settingsPage.shortcutSettings.foreignCurrencyAccountId, citiRewardsId);
+
+  const { status, payload } = await postWalletPurchase(fetchWorker, { amount: "IDR 159,000", description: "Digimap Icon Sanur M23" });
+  assert.equal(status, 200, JSON.stringify(payload));
+  assert.deepEqual([payload.accountName, payload.accountResolution, payload.amountMinor], ["Citi Rewards", "foreign_currency", 1134]);
+
+  // A purchase in SGD still goes to the first priority card.
+  const local = await postWalletPurchase(fetchWorker, { amount: "SGD 4.50", description: "Kopitiam" });
+  assert.deepEqual([local.payload.accountResolution, local.payload.accountName === "Citi Rewards"], ["priority", false]);
+
+  // Clearing the choice keeps today's behaviour; an unknown card is refused.
+  const cleared = await api("/api/settings/shortcuts/save", { apiKey: TOKEN, defaultAccountPriorityIds: priorityIds, foreignCurrencyAccountId: "" });
+  assert.equal(cleared.status, 200);
+  assert.equal((await api("/api/settings-page?view=household")).payload.settingsPage.shortcutSettings.foreignCurrencyAccountId, "");
+  const unknown = await api("/api/settings/shortcuts/save", { apiKey: TOKEN, defaultAccountPriorityIds: priorityIds, foreignCurrencyAccountId: "acct-missing" });
+  assert.deepEqual([unknown.status, unknown.payload.error], [400, "Choose an active card for purchases in another currency."]);
+});

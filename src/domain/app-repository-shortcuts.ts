@@ -9,13 +9,16 @@ interface StoredShortcutSettings {
   apiKey?: string;
   defaultAccountPriorityIds?: string[];
   defaultParams?: string;
+  // The card a Wallet purchase in another currency goes to when the
+  // Shortcut names no card (an Amaze card abroad charges the linked card).
+  foreignCurrencyAccountId?: string;
 }
 
 export interface ShortcutAccountSelection {
   id: string;
   name: string;
   currency: string;
-  resolution: "explicit" | "wallet_name" | "priority";
+  resolution: "explicit" | "wallet_name" | "priority" | "foreign_currency";
 }
 
 export async function ensureAppSettingsTable(db: D1Database) {
@@ -67,7 +70,10 @@ export async function loadShortcutSettings(
     apiKey: appApiKey || fallbackToken,
     apiKeySource: appApiKey ? "app" : fallbackToken ? "environment" : "none",
     defaultAccountPriorityIds: priorityIds,
-    defaultParams: stored.defaultParams?.trim() ?? ""
+    defaultParams: stored.defaultParams?.trim() ?? "",
+    foreignCurrencyAccountId: stored.foreignCurrencyAccountId && (!accounts.length || activeAccountIds.has(stored.foreignCurrencyAccountId))
+      ? stored.foreignCurrencyAccountId
+      : ""
   };
 }
 
@@ -77,6 +83,7 @@ export async function saveShortcutSettings(
     apiKey: string;
     defaultAccountPriorityIds: string[];
     defaultParams?: string;
+    foreignCurrencyAccountId?: string;
   }
 ) {
   await ensureAppSettingsTable(db);
@@ -95,11 +102,16 @@ export async function saveShortcutSettings(
   if (!defaultAccountPriorityIds.length) {
     throw new Error("Choose at least one active default shortcut account.");
   }
+  const foreignCurrencyAccountId = input.foreignCurrencyAccountId?.trim() ?? "";
+  if (foreignCurrencyAccountId && !activeAccountIds.has(foreignCurrencyAccountId)) {
+    throw new Error("Choose an active card for purchases in another currency.");
+  }
 
   const value: StoredShortcutSettings = {
     apiKey,
     defaultAccountPriorityIds,
-    defaultParams: input.defaultParams?.trim() ?? ""
+    defaultParams: input.defaultParams?.trim() ?? "",
+    ...(foreignCurrencyAccountId ? { foreignCurrencyAccountId } : {})
   };
   await db
     .prepare(`
@@ -134,6 +146,7 @@ export async function resolveShortcutAccountSelection(
     accountId?: string;
     accountName?: string;
     walletName?: string;
+    amountCurrency?: string;
   }
 ): Promise<ShortcutAccountSelection | null> {
   const accounts = await loadShortcutAccountReferences(db);
@@ -141,7 +154,8 @@ export async function resolveShortcutAccountSelection(
   const selected = selectShortcutAccount(
     accounts,
     settings.defaultAccountPriorityIds,
-    input
+    input,
+    { foreignCurrencyAccountId: settings.foreignCurrencyAccountId }
   );
   if (selected.error) {
     throw new Error(selected.error);
@@ -156,7 +170,10 @@ export function selectShortcutAccount(
     accountId?: string;
     accountName?: string;
     walletName?: string;
-  }
+    // The Wallet amount's currency, when it names one.
+    amountCurrency?: string;
+  },
+  options: { foreignCurrencyAccountId?: string } = {}
 ): { account: ShortcutAccountSelection | null; error?: string } {
   const activeAccounts = accounts.filter((account) => account.isActive);
   if (input.accountId) {
@@ -181,6 +198,18 @@ export function selectShortcutAccount(
   const priorityAccount = defaultAccountPriorityIds
     .map((accountId) => activeAccounts.find((account) => account.id === accountId))
     .find((account): account is AccountDto => Boolean(account));
+  // A purchase in another currency than the first priority card's goes to
+  // the card chosen for other currencies, when one is set and active.
+  const foreignCurrencyAccount = options.foreignCurrencyAccountId
+    ? activeAccounts.find((account) => account.id === options.foreignCurrencyAccountId)
+    : undefined;
+  if (
+    foreignCurrencyAccount
+    && input.amountCurrency
+    && input.amountCurrency.toUpperCase() !== (priorityAccount?.currency ?? "").toUpperCase()
+  ) {
+    return { account: toShortcutAccountSelection(foreignCurrencyAccount, "foreign_currency") };
+  }
   return {
     account: priorityAccount
       ? toShortcutAccountSelection(priorityAccount, "priority")
@@ -281,7 +310,8 @@ function parseShortcutSettings(value?: string | null): StoredShortcutSettings {
       defaultAccountPriorityIds: Array.isArray(parsed.defaultAccountPriorityIds)
         ? parsed.defaultAccountPriorityIds.filter((item): item is string => typeof item === "string")
         : [],
-      defaultParams: typeof parsed.defaultParams === "string" ? parsed.defaultParams : ""
+      defaultParams: typeof parsed.defaultParams === "string" ? parsed.defaultParams : "",
+      foreignCurrencyAccountId: typeof parsed.foreignCurrencyAccountId === "string" ? parsed.foreignCurrencyAccountId : ""
     };
   } catch {
     return {};
