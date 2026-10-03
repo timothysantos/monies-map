@@ -53,6 +53,15 @@ Reference-data settings changes may also refresh:
 
 when the change truly affects shared metadata.
 
+Compare statement posts the card's rows and the PDF's other card sections to
+`POST /api/accounts/checkpoints/compare-statement`, which returns the
+comparison with `statementDiagnosis` (corrections after commit). Applying or
+undoing one posts to `/api/accounts/checkpoints/statement-corrections/apply`
+or `/undo`, re-runs the same comparison, and refreshes with the
+`statement_corrected` / `statement_correction_undone` plan (entries, month,
+summary and imports, because an import a removal depends on can no longer be
+rolled back).
+
 ## Ownership Notes
 
 Settings owns:
@@ -62,6 +71,8 @@ Settings owns:
 - people
 - category rules
 - checkpoints
+- statement corrections from Compare statement (DOMAIN.md, "Statement
+  Correction")
 - reconciliation exceptions
 - unresolved transfer review
 - Apple Pay shortcut install state, private key, default shortcut params, and

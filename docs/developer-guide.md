@@ -789,6 +789,58 @@ the detected statement account name. This prevents a first PDF import into a
 zero-balance wrong account from passing just because the statement's own rows
 and ending balance are internally consistent.
 
+Before the balance breakdown, the preview runs a deterministic statement
+mismatch diagnosis (`src/domain/statement-mismatch-diagnosis.ts`, returned as
+`preview.statementDiagnosis`). It accounts for each card's whole difference
+(opening gap, unmatched ledger entries in the period, statement rows left
+out) and proposes statement fixes: a provisional entry on another card of
+the same statement (or the same owner's account at the same bank) that is
+the same purchase as a new statement row is moved to that card, and an
+undated entry from the last week of the period is deferred to the next
+statement. The client sends approved fixes as `statementFixes` with every
+preview, so the check shows their result, and with the commit, which
+re-checks them on fresh rows, writes them in its own batch before the
+certifications (`src/domain/import-statement-fixes.ts`), records them in
+`import_statement_fixes` and the audit log, and refuses a move the statement
+would not certify. Rollback undoes them. No AI is involved; DOMAIN.md
+("Statement Mismatch Diagnosis", "Statement Fix") has the rules. The commit
+also works each certificate out from the ledger it leaves instead of taking
+the preview's numbers.
+
+The page itself is three steps (design.md, "Import Page Stages"): a
+statement is reviewed card by card in `StatementReview`
+(`src/client/import-preview-review.jsx`), the one commit control is
+`ImportCommitBar`, and the Done card comes from `buildImportDoneSummary`.
+`tests/e2e/import-stages.spec.js` keeps the review of the two-card UOB
+statement under a page-height budget on desktop and phone.
+
+The comparison pairs rows in `matchStatementCompareRows`
+(`src/domain/app-repository-checkpoints.ts`), always on the same signed
+amount: the same day with similar text, then within three days with closer
+text, then within seven days with a shared merchant word or as the only
+candidate on both sides. The velocity rule and the closing-days rule above
+apply in every pass. Days are compared on both the posted day and the
+purchase day (a statement row's `txn date` note, a ledger entry's
+`transactionDate`), so a hand-recorded fare meets the row the bank posted
+later. `tests/statement-compare-matching.test.mjs` holds the rules and their
+refusals.
+
+Saved data is corrected from Settings → **Compare statement**. The client
+sends the card's rows and the PDF's other card sections (`otherSections`);
+`/api/accounts/checkpoints/compare-statement` adds
+`comparison.statementDiagnosis`, the same diagnosis in `committed` mode
+(`src/domain/statement-compare-projection.ts`). Its fixes are statement
+corrections (DOMAIN.md, "Statement Correction"): `POST
+/api/accounts/checkpoints/statement-corrections/apply` moves an entry to the
+card the statement lists it under or removes a provisional second copy, in
+one batch with a `statement_corrections` row, an audit event and month
+refresh markers; `.../undo` reverses them from that row. Both re-check
+everything on fresh rows, refuse (409) a correction that no longer holds or
+that would unbalance a saved statement that matches, and are covered by
+`tests/statement-corrections-api.test.mjs`,
+`tests/atomic-writes-statement-corrections.test.mjs` and
+`tests/e2e/statement-corrections.spec.js`.
+
 When the statement certification check does not match, the import preview shows
 a plain-language balance breakdown for each affected account. It separates the
 prior ledger balance, existing ledger rows inside the statement period, included
@@ -871,8 +923,17 @@ for spending history and matching. A unique exact promotion should show as
   similarity `>= 0.6`
 - near: same absolute amount, `dayDistance <= 7`, and token similarity `>= 0.5`
 
-Low-value rows below `500` minor units use the `Velocity Rule`: if the lane
-distance is more than 2 days, the row is not treated as a duplicate candidate.
+The `Velocity Rule` (`src/domain/import-preview-match-policy.js`) picks the
+lane's day limit by repetition, not amount: when the file row or the ledger
+entry repeats on its own side (another charge of the same signed amount with
+lookalike wording within 7 days, reference numbers ignored;
+`createRepetitionIndex` in `statement-row-matching.ts`), the limit is 2 days,
+otherwise 7. On an official statement, a repeating entry with no posted date
+from the period's last two days only matches a row bought the same day or
+later (`isRowBeforeLateUnpostedEntry`), so a closing-day ride that posts next
+month is offered as "next statement" rather than taken for the previous
+day's ride. `docs/audits/velocity-rule.md` has the measurement behind it and
+`scripts/audit-velocity-rule.mjs` reruns it.
 
 A normalized import hash is the strict fingerprint for one reviewed import row.
 It is built from the normalized date, description, amount, mapped account, and

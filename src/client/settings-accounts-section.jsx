@@ -20,6 +20,8 @@ export function SettingsAccountsSection({
   statementComparePanel,
   statementCompareResult,
   statementCompareStatus,
+  statementCorrection,
+  dismissedCorrectionFindingIds,
   onToggle,
   onCreateAccount,
   onEditAccount,
@@ -28,6 +30,9 @@ export function SettingsAccountsSection({
   onOpenStatementCompare,
   onCloseStatementCompare,
   onUploadStatementCompare,
+  onApplyStatementCorrections,
+  onUndoStatementCorrections,
+  onDismissStatementCorrections,
   onRowsMatched,
   onEntryAdded
 }) {
@@ -162,6 +167,12 @@ export function SettingsAccountsSection({
                   people={people}
                   onRowsMatched={onRowsMatched}
                   onEntryAdded={onEntryAdded}
+                  isSubmitting={isSubmitting}
+                  statementCorrection={statementCorrection}
+                  dismissedCorrectionFindingIds={dismissedCorrectionFindingIds}
+                  onApplyStatementCorrections={onApplyStatementCorrections}
+                  onUndoStatementCorrections={onUndoStatementCorrections}
+                  onDismissStatementCorrections={onDismissStatementCorrections}
                 />
               ) : null}
             </div>

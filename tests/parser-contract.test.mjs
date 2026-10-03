@@ -78,6 +78,8 @@ End of Transaction Details
     statementStartDate: "2026-04-13",
     statementEndDate: "2026-05-12",
     statementBalanceMinor: 840,
+    previousBalanceMinor: 0,
+    accountLast4: "3456",
     note: "Imported from UOB credit card statement"
   });
 });

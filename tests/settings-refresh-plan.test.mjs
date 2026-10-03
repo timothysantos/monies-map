@@ -139,6 +139,22 @@ test("settings transfer fixes refresh affected ledger route families", () => {
   });
 });
 
+test("statement corrections refresh the ledger routes and import history they change", () => {
+  for (const kind of ["statement_corrected", "statement_correction_undone"]) {
+    assert.deepEqual(buildSettingsRefreshPlan(kind), {
+      refreshShell: false,
+      refreshReferenceData: false,
+      invalidateEntries: true,
+      invalidateImports: true,
+      invalidateMonth: true,
+      invalidateSplits: false,
+      invalidateSummary: true
+    });
+  }
+  // A comparison that only links rows touches the Settings page alone.
+  assert.equal(buildSettingsRefreshPlan("statement_compare_linked").invalidateEntries, false);
+});
+
 test("demo resets refresh every downstream slice they can invalidate", () => {
   assert.deepEqual(buildSettingsRefreshPlan("demo_empty_state"), {
     refreshShell: true,

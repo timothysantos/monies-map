@@ -125,6 +125,7 @@ async function openSettingsSection(page, heading) {
 // does not have), copied under the bank's plain file name so the batch name
 // does not carry the test fixture's suffix.
 const SAMPLE_EXPORT_NAME = "CC_TXN_History_06052026211223";
+const SAMPLE_CARD_ACCOUNT = "UOB One Card (new)";
 async function sampleCardExport() {
   const target = path.resolve("test-results/guide-screenshots", `${SAMPLE_EXPORT_NAME}.xls`);
   await mkdir(path.dirname(target), { recursive: true });
@@ -497,15 +498,23 @@ const SHOTS = [
   {
     name: "imports-mapping", device: "desktop", reseed: true, also: ["imports-preview", "imports-committed", "imports-rollback"],
     run: async (page, capture) => {
+      // The sample export is from May 2026. Serene's showcase cards already
+      // have confirmed May statements, which keep every row of an old export
+      // out, so the export goes to a new card that has no statement yet.
+      const reference = await (await page.request.get("/api/reference-data")).json();
+      const serene = reference.accounts.find((account) => account.name === "UOB PRVI Miles Card")?.ownerPersonId;
+      await page.request.post("/api/accounts/create", {
+        data: { name: SAMPLE_CARD_ACCOUNT, institution: "UOB", kind: "credit_card", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: serene ?? null, isJoint: false }
+      });
       await open(page, `/imports?view=household&month=${MONTH}`);
-      await page.getByLabel("Default account").selectOption("UOB PRVI Miles Card - Serene");
+      await page.getByLabel("Default account").selectOption({ label: `${SAMPLE_CARD_ACCOUNT} - Serene` });
       await page.locator("input[type=file]").first().setInputFiles(await sampleCardExport());
       await page.getByText(/ready for review/).first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(1500);
       await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);
       // The export names the card ("UOB One Card"): map it to the account.
       await capture("imports-mapping");
-      await page.getByRole("combobox").filter({ has: page.locator("option", { hasText: "Choose account" }) }).first().selectOption({ label: "UOB PRVI Miles Card - Serene" });
+      await page.getByRole("combobox").filter({ has: page.locator("option", { hasText: "Choose account" }) }).first().selectOption({ label: `${SAMPLE_CARD_ACCOUNT} - Serene` });
       await page.locator("button:has-text('Commit import to ledger'):enabled").first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(1500);
       await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);

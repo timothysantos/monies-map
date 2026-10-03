@@ -608,17 +608,18 @@ test("statement balance can certify a near-match provisional row when amount cle
   expect(resolvedPreview.json.preview.statementReconciliations[0].status).toBe("matched");
 });
 
-test("low-value near matches beyond two days stay out of the reconciliation lane", async (t) => {
-  const request = await openRequest(t);
+// Commits $2.48 fares from a bank export, then previews a statement's $2.48
+// fare on 14 Aug and returns the transaction it would be matched to.
+async function previewFareAgainstCommittedFares(request, fareDates) {
   const referenceData = await loadReferenceData(request);
   const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
   expect(account).toBeTruthy();
 
-  const existingRow = {
-    rowId: "velocity-lane-existing",
-    rowIndex: 1,
-    date: "2025-08-11",
-    description: "BUS MRT 123",
+  const existingRows = fareDates.map((date, index) => ({
+    rowId: `velocity-lane-existing-${index + 1}`,
+    rowIndex: index + 1,
+    date,
+    description: `BUS MRT ${123 + index}`,
     amountMinor: 248,
     entryType: "expense",
     accountId: account.id,
@@ -628,16 +629,16 @@ test("low-value near matches beyond two days stay out of the reconciliation lane
     ownerName: "Tim",
     splitBasisPoints: 10000,
     rawRow: {
-      date: "2025-08-11",
-      description: "BUS MRT 123",
+      date,
+      description: `BUS MRT ${123 + index}`,
       expense: "2.48",
       accountId: account.id,
       account: account.name,
       category: "Public Transport"
     }
-  };
+  }));
 
-  const existingCommit = await request.evaluate(async ({ row }) => {
+  const existingCommit = await request.evaluate(async ({ rows }) => {
     const response = await fetch("/api/imports/commit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -645,12 +646,12 @@ test("low-value near matches beyond two days stay out of the reconciliation lane
         sourceLabel: "Playwright velocity existing transit",
         sourceType: "csv",
         parserKey: "uob_current_xls",
-        rows: [row],
+        rows,
         statementCheckpoints: []
       })
     });
     return { ok: response.ok, text: await response.text() };
-  }, { row: existingRow });
+  }, { rows: existingRows });
   expect(existingCommit.ok, existingCommit.text).toBeTruthy();
 
   const preview = await request.evaluate(async ({ accountId, accountName }) => {
@@ -676,11 +677,27 @@ test("low-value near matches beyond two days stay out of the reconciliation lane
     });
     return { ok: response.ok, json: await response.json() };
   }, { accountId: account.id, accountName: account.name });
-
   expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
-  expect(preview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
-  expect(preview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
-  expect(preview.json.preview.reconciliationCandidateCount).toBe(0);
+  return preview.json.preview;
+}
+
+test("repeated fares more than two days apart stay out of the reconciliation lane", async (t) => {
+  const request = await openRequest(t);
+  // A commute: the same fare on 7 and 11 Aug. The statement's 14 Aug fare is
+  // a third trip, not the 11 Aug one three days later.
+  const preview = await previewFareAgainstCommittedFares(request, ["2025-08-07", "2025-08-11"]);
+
+  expect(preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
+  expect(preview.reconciliationCandidateCount).toBe(0);
+});
+
+test("a one-off fare three days from the statement's is matched as the same trip", async (t) => {
+  const request = await openRequest(t);
+  // One fare at that price in the export: the statement row posted three
+  // days later is most likely the same trip.
+  const preview = await previewFareAgainstCommittedFares(request, ["2025-08-11"]);
+
+  expect(preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
 });
 
 test("midcycle Citi activity skips an already certified statement row with a different activity date", async (t) => {

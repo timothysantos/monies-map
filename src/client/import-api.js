@@ -142,6 +142,7 @@ export function previewImportBatch({
   defaultAccountName,
   ownerName,
   statementCheckpoints,
+  statementFixes = [],
   diagnosticContext
 }) {
   return postJson(
@@ -154,7 +155,8 @@ export function previewImportBatch({
       ownershipType: "direct",
       ownerName,
       splitBasisPoints: 10000,
-      statementCheckpoints: normalizeStatementCheckpoints(statementCheckpoints)
+      statementCheckpoints: normalizeStatementCheckpoints(statementCheckpoints),
+      statementFixes
     },
     "Import preview failed.",
     diagnosticContext
@@ -169,6 +171,7 @@ export function commitImportBatch({
   statementCheckpoints,
   statementControlRows,
   statementReconciliations,
+  statementFixes = [],
   rows,
   diagnosticContext
 }) {
@@ -185,6 +188,7 @@ export function commitImportBatch({
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)
       })),
       statementReconciliations,
+      statementFixes,
       rows: rows.map((row) => ({
         ...row,
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)

@@ -539,6 +539,9 @@ export interface ImportPreviewRowDto {
   reconciliationTargetTransactionId?: string;
   isStatementMatchResolved?: boolean;
   isCertifiedConflict?: boolean;
+  // A mid-cycle row dated inside an already confirmed statement period for
+  // its account: whether that statement covers it.
+  certifiedStatement?: { checkpointMonth: string; covered: boolean };
 }
 
 export interface ImportPreviewDto {
@@ -557,6 +560,154 @@ export interface ImportPreviewDto {
   reconciliationCandidates: ReconciliationCandidateDto[];
   statementReconciliations: ImportPreviewStatementReconciliationDto[];
   exceptionSummary: ImportPreviewExceptionDto[];
+  // Deterministic explanation of each statement card's difference, with the
+  // fixes the user can approve. Present only for statement imports.
+  statementDiagnosis?: StatementDiagnosisDto;
+  // Statement sections matched to an account by the card's last four digits
+  // because their printed name matches no account.
+  statementAccountMatches?: {
+    detectedAccountName: string;
+    accountId: string;
+    accountName: string;
+    matchedBy: "card_last4";
+  }[];
+}
+
+// A statement fix is a correction the statement check proposes and the user
+// approves. It is applied to the preview at once and written with the import
+// commit, in the same batch; rolling the import back undoes it.
+// - move_to_statement_account: a provisional entry on another account is the
+//   same purchase as a row in this statement's section for `toAccountId`; the
+//   commit moves it there and the statement row certifies it.
+// - defer_to_next_statement: a provisional entry inside the period is not on
+//   the statement and posts after it; the commit sets its posted date to the
+//   day after the statement closes.
+export type StatementFixDto =
+  | {
+    kind: "move_to_statement_account";
+    entryId: string;
+    fromAccountId: string;
+    toAccountId: string;
+    statementRowIndex: number;
+  }
+  | {
+    kind: "defer_to_next_statement";
+    entryId: string;
+    accountId: string;
+    postDate: string;
+  }
+  // After a statement is committed: a provisional second copy of a purchase
+  // the statement already matched to another entry (on this card or another
+  // card of the statement) is removed. Applied by the statement correction
+  // command, never by an import commit.
+  | {
+    kind: "remove_duplicate_entry";
+    entryId: string;
+    accountId: string;
+    coveredByEntryId: string;
+  };
+
+export type StatementFindingKind =
+  | "wrong_account"
+  | "next_statement"
+  | "excluded_statement_row"
+  | "duplicate_entry"
+  | "amount_differs"
+  | "not_on_statement"
+  | "opening_balance_gap";
+
+// Facts a finding rests on, for the explanation the user reads.
+export type StatementFindingFact =
+  | { code: "same_amount" }
+  | { code: "same_merchant" }
+  | { code: "similar_merchant" }
+  | { code: "same_transaction_date" }
+  | { code: "posted_date_offset"; days: number }
+  | { code: "date_offset"; days: number }
+  | { code: "same_owner" }
+  | { code: "different_owner" }
+  | { code: "only_candidate" }
+  | { code: "several_candidates"; count: number }
+  | { code: "closes_statement" }
+  | { code: "improves_statement" }
+  | { code: "worsens_statement" }
+  | { code: "closed_statement_protects_entry" }
+  | { code: "transfer_link_protects_entry" }
+  | { code: "no_posted_date" }
+  | { code: "near_statement_end"; days: number }
+  | { code: "excluded_by_you" }
+  // After commit: the correction would unbalance a saved statement that
+  // matches now, so it is not offered.
+  | { code: "unbalances_saved_statement"; accountName: string; month: string };
+
+export interface StatementFindingEntryDto {
+  id: string;
+  accountId: string;
+  accountName: string;
+  description: string;
+  transactionDate: string;
+  postedDate?: string;
+  signedAmountMinor: number;
+  bankCertificationStatus: "provisional" | "statement_certified";
+}
+
+export interface StatementFindingStatementRowDto {
+  rowIndex: number;
+  accountId?: string;
+  description: string;
+  transactionDate?: string;
+  postedDate: string;
+  signedAmountMinor: number;
+}
+
+export interface StatementFindingDto {
+  id: string;
+  kind: StatementFindingKind;
+  // high: one clear candidate on strong evidence, and the fixes together
+  // close every card they touch. medium: worth applying after a closer look
+  // (similar text, a date offset, several candidates, or a partial close).
+  // low: amount-only or weak evidence; never offered as a fix.
+  confidence: "high" | "medium" | "low";
+  // The card whose difference this finding explains.
+  accountId: string;
+  // The other card a wrong-account entry belongs to.
+  relatedAccountId?: string;
+  // Signed change to `accountId`'s difference once the finding is resolved.
+  effectMinor: number;
+  // Signed change to `relatedAccountId`'s difference: a move after commit
+  // also adds the entry to the card that was missing it.
+  relatedEffectMinor?: number;
+  entry?: StatementFindingEntryDto;
+  statementRow?: StatementFindingStatementRowDto;
+  facts: StatementFindingFact[];
+  fix?: StatementFixDto;
+  // The fix is already applied to this preview (the user approved it).
+  applied: boolean;
+}
+
+export type StatementCardOutcome = "resolved" | "partially_resolved" | "still_mismatched" | "needs_manual_review";
+
+export interface StatementCardDiagnosisDto {
+  accountId: string;
+  accountName: string;
+  checkpointMonth: string;
+  deltaMinor: number;
+  // The difference once every suggested (high or medium) fix is applied.
+  projectedDeltaMinor: number;
+  // The difference left after every finding, fixable or not, is accounted for.
+  unexplainedMinor: number;
+  outcome: StatementCardOutcome;
+  // Provisional entries on this card dated after the statement closes. They
+  // stay provisional for a later statement and are not part of the difference.
+  laterStatementEntries: StatementFindingEntryDto[];
+  laterStatementEntryCount: number;
+}
+
+export interface StatementDiagnosisDto {
+  cards: StatementCardDiagnosisDto[];
+  findings: StatementFindingDto[];
+  appliedFixes: StatementFixDto[];
+  rejectedFixes: { fix: StatementFixDto; reason: string }[];
 }
 
 export interface ImportPreviewExceptionDto {
@@ -574,6 +725,7 @@ export interface StatementCheckpointDraftDto {
   statementEndDate?: string;
   statementBalanceMinor: number;
   previousBalanceMinor?: number;
+  accountLast4?: string;
   note?: string;
 }
 
@@ -639,7 +791,10 @@ export interface ImportPreviewReconciliationDiagnosticRowDto {
 
 export interface StatementCompareRowDto {
   id: string;
+  // The posted day for a statement row; the cleared day for a ledger row.
   date: string;
+  // The purchase day, when the ledger entry has a different posted day.
+  transactionDate?: string;
   description: string;
   amountMinor: number;
   signedAmountMinor: number;
@@ -676,6 +831,9 @@ export interface StatementCompareDto {
   possibleMatches: StatementCompareCandidateDto[];
   duplicateStatementGroups: StatementCompareDuplicateGroupDto[];
   duplicateLedgerGroups: StatementCompareDuplicateGroupDto[];
+  // The same deterministic diagnosis as the import preview, after commit:
+  // entries on the wrong card and second copies, with corrections to apply.
+  statementDiagnosis?: StatementDiagnosisDto;
 }
 
 export interface ReconciliationCandidateDto {
@@ -833,6 +991,9 @@ export interface ImportInboxExpectedFileDto {
   detail: string;
   supportedFileTypes: string[];
   reviewOrder: number;
+  // A statement that covers several accounts (a bank's combined card
+  // statement) is one expected file; `accountName` then names them all.
+  coveredAccounts?: { accountId: string; accountName: string }[];
 }
 
 export interface ImportInboxCleanupDto {
