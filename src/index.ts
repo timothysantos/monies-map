@@ -7,6 +7,7 @@ import {
   invalidateAppDataCache,
   primeAppDataCache
 } from "./domain/app-shell";
+import type { StatementFixDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
@@ -63,6 +64,8 @@ import {
   restoreSplitRecord
 } from "./domain/app-repository";
 import { commitImportBatch, rollbackImportBatch } from "./domain/app-repository-import-commit";
+import { buildStatementCompareDiagnosis, type StatementCompareSection } from "./domain/statement-compare-projection";
+import { applyStatementCorrections, StatementCorrectionRefusedError, undoStatementCorrections, type StatementCorrectionDto } from "./domain/app-repository-statement-corrections";
 import {
   deleteMonthPlan,
   deleteMonthPlanRow,
@@ -615,6 +618,8 @@ export default {
         rows?: Record<string, string>[];
         uploadedStatementStartDate?: string;
         uploadedStatementEndDate?: string;
+        sourceType?: "csv" | "pdf";
+        otherSections?: StatementCompareSection[];
       }>();
 
       if (!body.accountId || !body.checkpointMonth || !body.rows?.length) {
@@ -622,18 +627,67 @@ export default {
       }
 
       try {
+        const comparison = await compareAccountCheckpointStatementRows(env.DB, {
+          accountId: body.accountId,
+          checkpointMonth: body.checkpointMonth,
+          rows: body.rows,
+          uploadedStatementStartDate: body.uploadedStatementStartDate,
+          uploadedStatementEndDate: body.uploadedStatementEndDate
+        });
+        const statementDiagnosis = await buildStatementCompareDiagnosis(env.DB, {
+          accountId: body.accountId,
+          checkpointMonth: body.checkpointMonth,
+          statementStartDate: comparison.statementStartDate ?? comparison.statementEndDate,
+          statementEndDate: comparison.statementEndDate,
+          rows: body.rows,
+          otherSections: (body.otherSections ?? []).filter((section) => section?.accountName && Array.isArray(section.rows)),
+          sourceType: body.sourceType === "pdf" ? "pdf" : "csv"
+        });
         return json({
           ok: true,
-          comparison: await compareAccountCheckpointStatementRows(env.DB, {
-            accountId: body.accountId,
-            checkpointMonth: body.checkpointMonth,
-            rows: body.rows,
-            uploadedStatementStartDate: body.uploadedStatementStartDate,
-            uploadedStatementEndDate: body.uploadedStatementEndDate
-          })
+          comparison: statementDiagnosis ? { ...comparison, statementDiagnosis } : comparison
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Statement compare failed" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/accounts/checkpoints/statement-corrections/apply" && request.method === "POST") {
+      const body = await request.json<{
+        accountId?: string;
+        checkpointMonth?: string;
+        corrections?: StatementCorrectionDto[];
+      }>();
+      const corrections = (body.corrections ?? []).filter((correction) => correction?.kind === "move_to_statement_account" || correction?.kind === "remove_duplicate_entry");
+      if (!body.accountId || !body.checkpointMonth || !corrections.length || corrections.length !== body.corrections?.length) {
+        return json({ ok: false, error: "Missing statement correction fields" }, 400);
+      }
+      try {
+        return json({
+          ok: true,
+          ...(await applyStatementCorrections(env.DB, { accountId: body.accountId, checkpointMonth: body.checkpointMonth, corrections }))
+        });
+      } catch (error) {
+        if (error instanceof StatementCorrectionRefusedError) {
+          return json({ ok: false, error: error.message }, 409);
+        }
+        throw error;
+      }
+    }
+
+    if (url.pathname === "/api/accounts/checkpoints/statement-corrections/undo" && request.method === "POST") {
+      const body = await request.json<{ correctionIds?: string[] }>();
+      const correctionIds = (body.correctionIds ?? []).filter((id) => typeof id === "string" && id);
+      if (!correctionIds.length) {
+        return json({ ok: false, error: "Missing statement correction ids" }, 400);
+      }
+      try {
+        return json({ ok: true, ...(await undoStatementCorrections(env.DB, { correctionIds })) });
+      } catch (error) {
+        if (error instanceof StatementCorrectionRefusedError) {
+          return json({ ok: false, error: error.message }, 409);
+        }
+        throw error;
       }
     }
 
@@ -1816,8 +1870,10 @@ export default {
           statementEndDate?: string;
           statementBalanceMinor: number;
           previousBalanceMinor?: number;
+          accountLast4?: string;
           note?: string;
         }[];
+        statementFixes?: StatementFixDto[];
       }>();
 
       const rows = body.rows ?? parseCsv(body.csv ?? "");
@@ -1832,7 +1888,8 @@ export default {
             ownerName: body.ownerName,
             splitBasisPoints: body.splitBasisPoints,
             sourceType: body.sourceType ?? "csv",
-            statementCheckpoints: body.statementCheckpoints ?? []
+            statementCheckpoints: body.statementCheckpoints ?? [],
+            statementFixes: Array.isArray(body.statementFixes) ? body.statementFixes : []
           })
         });
       } catch (error) {
@@ -1856,6 +1913,7 @@ export default {
           statementEndDate?: string;
           statementBalanceMinor: number;
           previousBalanceMinor?: number;
+          accountLast4?: string;
           note?: string;
         }[];
         statementControlRows?: {
@@ -1938,6 +1996,7 @@ export default {
           isStatementMatchResolved?: boolean;
           isCertifiedConflict?: boolean;
         }[];
+        statementFixes?: StatementFixDto[];
       }>();
 
       if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length)) {
@@ -1955,6 +2014,7 @@ export default {
             statementCheckpoints: body.statementCheckpoints ?? [],
             statementControlRows: body.statementControlRows,
             statementReconciliations: body.statementReconciliations,
+            statementFixes: Array.isArray(body.statementFixes) ? body.statementFixes : [],
             rows: body.rows ?? []
           }))
         });

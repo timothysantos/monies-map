@@ -1,9 +1,12 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { getDuplicateCandidateMaxDayDistance, isRowBeforeLateUnpostedEntry } from "./import-preview-match-policy";
+import { createRepetitionIndex } from "./statement-row-matching";
 import { recordAuditEvent } from "./app-repository-audit";
 import {
   compareDescriptionSimilarity,
   daysBetween,
   escapeCsvCell,
+  extractTransactionDateHint,
   findStatementCompareDuplicateGroups,
   formatMoneyCsvMinor,
   formatMoneyMinor,
@@ -11,6 +14,7 @@ import {
   getMonthEndDate,
   getSignedLedgerAmountMinor,
   normalizeAccountOpeningBalanceMinor,
+  normalizeDescriptionForMatch,
   normalizeImportRow,
   normalizeStatementBalanceInputMinor,
   normalizeStoredStatementBalanceMinor,
@@ -387,41 +391,15 @@ export async function compareAccountCheckpointStatementRows(
   const statementEndDate = checkpoint.statement_end_date
     ?? uploadedStatementEndDate
     ?? getMonthEndDate(checkpoint.checkpoint_month);
-  const statementRows: StatementCompareRowDto[] = input.rows
-    .flatMap((rawRow, index) => {
-      const normalized = normalizeImportRow(rawRow);
-      if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
-        return [];
-      }
-
-      if (normalized.date < statementStartDate || normalized.date > statementEndDate) {
-        return [];
-      }
-
-      const signedAmountMinor = getSignedLedgerAmountMinor({
-        entry_type: normalized.entryType,
-        transfer_direction: normalized.transferDirection ?? null,
-        amount_minor: normalized.amountMinor
-      });
-
-      return [{
-        id: `statement-${index + 1}`,
-        date: normalized.date,
-        description: normalized.description ?? "",
-        amountMinor: normalized.amountMinor,
-        signedAmountMinor,
-        entryType: normalized.entryType,
-        transferDirection: normalized.transferDirection,
-        categoryName: normalized.categoryName,
-        note: normalized.note
-      }];
-    });
+  const statementRows = normalizeStatementCompareRows(input.rows, statementStartDate, statementEndDate);
 
   const ledgerResult = await db
     .prepare(`
       SELECT
         transactions.id,
         COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
+        transactions.transaction_date,
+        transactions.post_date,
         transactions.description,
         transactions.amount_minor,
         transactions.entry_type,
@@ -442,6 +420,8 @@ export async function compareAccountCheckpointStatementRows(
     .all<{
       id: string;
       cleared_date: string;
+      transaction_date: string;
+      post_date: string | null;
       description: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
@@ -455,6 +435,7 @@ export async function compareAccountCheckpointStatementRows(
     return {
       id: row.id,
       date: row.cleared_date,
+      ...(row.transaction_date !== row.cleared_date ? { transactionDate: row.transaction_date } : {}),
       description: row.description,
       amountMinor,
       signedAmountMinor: getSignedLedgerAmountMinor(row),
@@ -465,40 +446,10 @@ export async function compareAccountCheckpointStatementRows(
     };
   });
 
-  const matchedLedgerIds = new Set<string>();
-  const matchedStatementIds = new Set<string>();
-
-  for (const statementRow of statementRows) {
-    const match = ledgerRows.find((ledgerRow) => (
-      !matchedLedgerIds.has(ledgerRow.id)
-      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
-      && ledgerRow.date === statementRow.date
-      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.45
-    ));
-
-    if (match) {
-      matchedLedgerIds.add(match.id);
-      matchedStatementIds.add(statementRow.id);
-    }
-  }
-
-  for (const statementRow of statementRows) {
-    if (matchedStatementIds.has(statementRow.id)) {
-      continue;
-    }
-
-    const match = ledgerRows.find((ledgerRow) => (
-      !matchedLedgerIds.has(ledgerRow.id)
-      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
-      && Math.abs(daysBetween(ledgerRow.date, statementRow.date)) <= 3
-      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65
-    ));
-
-    if (match) {
-      matchedLedgerIds.add(match.id);
-      matchedStatementIds.add(statementRow.id);
-    }
-  }
+  const { matchedLedgerIds, matchedStatementIds } = matchStatementCompareRows(statementRows, ledgerRows, {
+    statementEndDate,
+    unpostedLedgerIds: new Set(ledgerResult.results.filter((row) => !row.post_date).map((row) => row.id))
+  });
 
   const unmatchedStatementRows = statementRows.filter((row) => !matchedStatementIds.has(row.id));
   const unmatchedLedgerRows = ledgerRows.filter((row) => !matchedLedgerIds.has(row.id));
@@ -539,4 +490,142 @@ export async function compareAccountCheckpointStatementRows(
     duplicateStatementGroups,
     duplicateLedgerGroups
   };
+}
+
+// A statement's rows inside its period, signed like ledger entries.
+export function normalizeStatementCompareRows(rows: Record<string, string>[], statementStartDate: string, statementEndDate: string): StatementCompareRowDto[] {
+  return rows
+    .flatMap((rawRow, index) => {
+      const normalized = normalizeImportRow(rawRow);
+      if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
+        return [];
+      }
+
+      if (normalized.date < statementStartDate || normalized.date > statementEndDate) {
+        return [];
+      }
+
+      const signedAmountMinor = getSignedLedgerAmountMinor({
+        entry_type: normalized.entryType,
+        transfer_direction: normalized.transferDirection ?? null,
+        amount_minor: normalized.amountMinor
+      });
+
+      return [{
+        id: `statement-${index + 1}`,
+        date: normalized.date,
+        description: normalized.description ?? "",
+        amountMinor: normalized.amountMinor,
+        signedAmountMinor,
+        entryType: normalized.entryType,
+        transferDirection: normalized.transferDirection,
+        categoryName: normalized.categoryName,
+        note: normalized.note
+      }];
+    });
+}
+
+// Within this many days a same-amount row with a shared merchant word, or
+// the only same-amount row either way, answers a statement row.
+const LOOSE_MATCH_WINDOW_DAYS = 7;
+
+// Pairs each statement row with one ledger row of the same signed amount,
+// strictest rule first: the same day with similar text, then within three
+// days with closer text, then within a week with a shared merchant word or
+// as the only candidate on both sides. The velocity rule holds in every pass:
+// a charge that repeats on either side (daily fares, coffees, top-ups at one
+// price) is matched only within two days. Days are compared on the posted day
+// and the purchase day of each row (a statement row's "txn date" note, a
+// ledger entry's own date), whichever are closer, so an entry recorded on
+// the day of purchase meets the row the bank posted days later. Returns
+// which ledger row answers each statement row.
+export function matchStatementCompareRows(
+  statementRows: StatementCompareRowDto[],
+  ledgerRows: StatementCompareRowDto[],
+  // The period's last day and the ledger rows with no posted date: a
+  // repeating one from the last two days may be the next statement's.
+  options: { statementEndDate?: string; unpostedLedgerIds?: Set<string> } = {}
+) {
+  const matchedLedgerIds = new Set<string>();
+  const matchedStatementIds = new Set<string>();
+  const ledgerIdByStatementId = new Map<string, string>();
+  const statementDates = new Map(statementRows.map((row) => [row.id, getCompareRowDates(row)]));
+  const ledgerDates = new Map(ledgerRows.map((row) => [row.id, getCompareRowDates(row)]));
+  const dayDistance = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => Math.min(
+    ...statementDates.get(statementRow.id)!.flatMap((left) => ledgerDates.get(ledgerRow.id)!.map((right) => Math.abs(daysBetween(left, right))))
+  );
+  const toCharge = (row: StatementCompareRowDto) => {
+    const purchaseDate = row.transactionDate ?? extractTransactionDateHint(row.note) ?? row.date;
+    return { signedAmountMinor: row.signedAmountMinor, description: row.description, postedDate: row.date, eventDate: purchaseDate, hasEventDateHint: purchaseDate !== row.date };
+  };
+  const statementRepeats = createRepetitionIndex(statementRows, toCharge);
+  const ledgerRepeats = createRepetitionIndex(ledgerRows, toCharge);
+  const repeats = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => statementRepeats(statementRow) || ledgerRepeats(ledgerRow);
+  const isNextStatementCandidate = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => Boolean(options.unpostedLedgerIds?.has(ledgerRow.id))
+    && isRowBeforeLateUnpostedEntry({
+      repeats: repeats(statementRow, ledgerRow),
+      entryDate: ledgerRow.transactionDate ?? ledgerRow.date,
+      entryPostDate: null,
+      statementEndDate: options.statementEndDate,
+      rowPurchaseDate: statementRow.transactionDate ?? extractTransactionDateHint(statementRow.note) ?? statementRow.date
+    });
+  const openCandidates = (statementRow: StatementCompareRowDto, maxDays: number) => ledgerRows.filter((ledgerRow) => (
+    !matchedLedgerIds.has(ledgerRow.id)
+    && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
+    && dayDistance(statementRow, ledgerRow) <= Math.min(maxDays, getDuplicateCandidateMaxDayDistance({ repeats: repeats(statementRow, ledgerRow) }))
+    && !isNextStatementCandidate(statementRow, ledgerRow)
+  ));
+  const pair = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => {
+    matchedLedgerIds.add(ledgerRow.id);
+    matchedStatementIds.add(statementRow.id);
+    ledgerIdByStatementId.set(statementRow.id, ledgerRow.id);
+  };
+  const runPass = (pick: (statementRow: StatementCompareRowDto) => StatementCompareRowDto | undefined) => {
+    for (const statementRow of statementRows) {
+      if (matchedStatementIds.has(statementRow.id)) {
+        continue;
+      }
+      const match = pick(statementRow);
+      if (match) {
+        pair(statementRow, match);
+      }
+    }
+  };
+
+  runPass((statementRow) => openCandidates(statementRow, 0)
+    .find((ledgerRow) => compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.45));
+  runPass((statementRow) => openCandidates(statementRow, 3)
+    .find((ledgerRow) => compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65));
+  runPass((statementRow) => {
+    const candidates = openCandidates(statementRow, LOOSE_MATCH_WINDOW_DAYS)
+      .sort((left, right) => dayDistance(statementRow, left) - dayDistance(statementRow, right));
+    const sharingWord = candidates.find((ledgerRow) => sharesMerchantWord(ledgerRow.description, statementRow.description));
+    if (sharingWord) {
+      return sharingWord;
+    }
+    // Nothing in the text to go on: only an unambiguous pairing counts.
+    if (candidates.length !== 1) {
+      return undefined;
+    }
+    const rivals = statementRows.filter((other) => (
+      !matchedStatementIds.has(other.id)
+      && other.signedAmountMinor === statementRow.signedAmountMinor
+      && dayDistance(other, candidates[0]) <= LOOSE_MATCH_WINDOW_DAYS
+    ));
+    return rivals.length === 1 ? candidates[0] : undefined;
+  });
+
+  return { matchedLedgerIds, matchedStatementIds, ledgerIdByStatementId };
+}
+
+function getCompareRowDates(row: StatementCompareRowDto) {
+  return Array.from(new Set([row.date, row.transactionDate ?? extractTransactionDateHint(row.note)].filter((date): date is string => Boolean(date))));
+}
+
+// A merchant word both describe (three or more characters with a letter;
+// place names and currency amounts are dropped by the normalizer).
+function sharesMerchantWord(left: string, right: string) {
+  const words = (value: string) => new Set(normalizeDescriptionForMatch(value).split(" ").filter((word) => word.length >= 3 && /[a-z]/.test(word)));
+  const rightWords = words(right);
+  return Array.from(words(left)).some((word) => rightWords.has(word));
 }

@@ -1,3 +1,6 @@
+import { inspectCsv } from "../lib/csv";
+import { inferImportMapping } from "./import-column-mapping";
+
 export function buildIntakeFingerprint({ parsed, sourceType, csvText = "" }) {
   if (parsed?.rows?.length) {
     return JSON.stringify({
@@ -36,8 +39,9 @@ export function buildIntakeMatch({ parsed, sourceType, inbox }) {
       return false;
     }
 
+    const fileAccountNames = file.coveredAccounts?.map((account) => account.accountName) ?? [file.accountName];
     const accountMatches = parsedEvidence.accountNames.some((accountName) => (
-      namesLookRelated(accountName, file.accountName)
+      fileAccountNames.some((fileAccountName) => namesLookRelated(accountName, fileAccountName))
     ));
     const monthMatches = !parsedEvidence.months.length || parsedEvidence.months.includes(file.periodMonth);
     return accountMatches && monthMatches;
@@ -45,6 +49,27 @@ export function buildIntakeMatch({ parsed, sourceType, inbox }) {
 
   if (matches.length === 1) {
     return { status: "matched", expectedFileIds: [matches[0].id] };
+  }
+
+  // One PDF can be the statement of several cards: it matches when each of
+  // its card sections matches its own needed file.
+  const sectionMatches = sourceType === "pdf" ? (parsed.checkpoints ?? []).map((checkpoint) => {
+    const sectionName = checkpoint.detectedAccountName ?? checkpoint.accountName ?? "";
+    const related = matches.filter((file) => (
+      namesLookRelated(sectionName, file.accountName)
+      && (!checkpoint.checkpointMonth || checkpoint.checkpointMonth === file.periodMonth)
+    ));
+    // "UOB One Card" also looks related to "UOB One": the exact name wins.
+    const exact = related.filter((file) => normalizeName(file.accountName) === normalizeName(sectionName));
+    return exact.length === 1 ? exact : related;
+  }) : [];
+  const sectionFileIds = sectionMatches.map((files) => files.length === 1 ? files[0].id : undefined);
+  if (
+    sectionMatches.length > 1
+    && sectionFileIds.every(Boolean)
+    && new Set(sectionFileIds).size === sectionFileIds.length
+  ) {
+    return { status: "matched", expectedFileIds: sectionFileIds };
   }
 
   if (matches.length > 1) {
@@ -80,6 +105,114 @@ export function buildIntakeQueueItem({
     parsed,
     csvText
   };
+}
+
+const BANK_NAMES = [["uob", "UOB"], ["citibank", "Citibank"], ["ocbc", "OCBC"], ["hsbc", "HSBC"]];
+
+// What a queued file is, in plain words: the bank and kind of file from its
+// parser ("UOB card statement", "UOB card activity export"), or a plain CSV.
+export function describeIntakeSource(item) {
+  const parserKey = item.parserKey ?? "generic_csv";
+  const bank = BANK_NAMES.find(([prefix]) => parserKey.startsWith(prefix))?.[1];
+  if (!bank) {
+    return { kind: "csv" };
+  }
+  const isCard = /credit_card|_365_|infinity|visa/.test(parserKey);
+  const isStatement = parserKey.endsWith("_pdf");
+  return { kind: isStatement ? (isCard ? "card_statement" : "account_statement") : (isCard ? "card_activity" : "account_activity"), bank };
+}
+
+// The order files are best reviewed in: statements before activity (a
+// confirmed statement then decides which activity rows are already on it),
+// older months first, duplicates last.
+export function orderIntakeQueue(items) {
+  const rank = (item) => [
+    item.duplicate ? 1 : 0,
+    item.sourceType === "pdf" ? 0 : 1,
+    getIntakeItemStartDate(item)
+  ];
+  return [...items].sort((left, right) => {
+    const [leftDuplicate, leftKind, leftDate] = rank(left);
+    const [rightDuplicate, rightKind, rightDate] = rank(right);
+    return leftDuplicate - rightDuplicate || leftKind - rightKind || leftDate.localeCompare(rightDate);
+  });
+}
+
+// How many of an activity file's rows a statement in the same queue already
+// covers: same card (by name) and posted inside that statement's period.
+export function describeIntakeCoverage(item, items) {
+  const rows = item.sourceType === "pdf" ? [] : getIntakeRows(item);
+  if (!rows.length) {
+    return undefined;
+  }
+  const periods = items
+    .filter((other) => other.id !== item.id && other.sourceType === "pdf" && !other.duplicate)
+    .flatMap((statement) => (statement.parsed?.checkpoints ?? []).map((checkpoint) => ({
+      statement,
+      accountName: checkpoint.detectedAccountName ?? checkpoint.accountName ?? "",
+      startDate: checkpoint.statementStartDate ?? "",
+      endDate: checkpoint.statementEndDate ?? ""
+    })));
+  if (!periods.length) {
+    return undefined;
+  }
+  let coveredCount = 0;
+  let statement;
+  for (const row of rows) {
+    const accountName = row.accountName ?? row.statementAccountName ?? row.account ?? "";
+    const date = row.date ?? "";
+    const period = periods.find((candidate) => (
+      namesLookRelated(accountName, candidate.accountName)
+      && (!candidate.startDate || date >= candidate.startDate)
+      && (!candidate.endDate || date <= candidate.endDate)
+    ));
+    if (period) {
+      coveredCount += 1;
+      statement = period.statement;
+    }
+  }
+  return coveredCount
+    ? { coveredCount, rowCount: rows.length, statementLabel: statement.sourceLabel || statement.fileName }
+    : undefined;
+}
+
+// A queued file's rows with their date and account: parsed rows, or a plain
+// CSV read through the same column guesses its mapping step starts from. A
+// CSV without a date or account column gives nothing to compare.
+function getIntakeRows(item) {
+  if (item.parsed?.rows?.length) {
+    return item.parsed.rows;
+  }
+  if (!item.csvText) {
+    return [];
+  }
+  const { headers, rows } = inspectCsv(item.csvText);
+  const dateHeader = headers.find((header) => inferImportMapping(header) === "date");
+  const accountHeader = headers.find((header) => inferImportMapping(header) === "account");
+  if (!dateHeader || !accountHeader) {
+    return [];
+  }
+  return rows
+    .map((row) => ({ date: normalizeCsvDate(row[dateHeader]), account: row[accountHeader] ?? "" }))
+    .filter((row) => row.date);
+}
+
+// 2026-04-21, 21/04/2026 or 21-04-2026 (day first, as Singapore banks write
+// it) to 2026-04-21.
+function normalizeCsvDate(value = "") {
+  const text = value.trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+  const dayFirst = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  return dayFirst ? `${dayFirst[3]}-${dayFirst[2].padStart(2, "0")}-${dayFirst[1].padStart(2, "0")}` : "";
+}
+
+function getIntakeItemStartDate(item) {
+  const checkpointDates = (item.parsed?.checkpoints ?? []).map((checkpoint) => checkpoint.statementStartDate ?? checkpoint.statementEndDate ?? "").filter(Boolean);
+  const rowDates = getIntakeRows(item).map((row) => row.date ?? "").filter(Boolean);
+  return [...checkpointDates, ...rowDates].sort()[0] ?? "9999-12-31";
 }
 
 export function summarizeIntakeQueue(items) {

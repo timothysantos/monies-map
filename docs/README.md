@@ -95,6 +95,8 @@ a doc here in the same change.
 - [`audits/e2e-sharding.md`](audits/e2e-sharding.md): parallel isolated
   browser test shards (`npm run test:e2e:sharded`), independence check and
   timings.
+- [`audits/velocity-rule.md`](audits/velocity-rule.md): the velocity
+  rule's "under $5" test against a repetition test, on real bank files.
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice.
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):

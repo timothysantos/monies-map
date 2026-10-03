@@ -99,7 +99,10 @@ test("a tampered real OCBC 365 card amount is rejected, not imported", () => {
 test("a real Citi Rewards statement parses from pdf.js 4 text with its grand total", () => {
   const parsed = parseFixture("citibank-rewards-aug-2026-real");
   assert.equal(parsed.parserKey, "citibank_credit_card_pdf");
-  assert.deepEqual(parsed.checkpoints.map((c) => [c.accountName, c.statementStartDate, c.statementEndDate, c.statementBalanceMinor]), [["Citi Rewards", "2026-07-13", "2026-08-09", 14882]]);
+  assert.deepEqual(parsed.checkpoints.map((c) => [c.accountName, c.statementStartDate, c.statementEndDate, c.statementBalanceMinor]), [["Citi Rewards", "2026-07-12", "2026-08-11", 14882]]);
+  // pdf.js 4 splits "StatementDate" from "August11,2026" (with text-layer
+  // zeros); the printed statement date still closes the cycle.
+  assert.equal(parsed.checkpoints[0].previousBalanceMinor, 62056);
   assert.equal(parsed.rows.length, 16);
   assert.deepEqual(parsed.rows.filter((row) => row.income).map((row) => [row.date, row.income, row.type]), [["2026-08-03", "1433.84", "transfer"]]);
   assert.deepEqual(parsed.rows.find((row) => row.description.startsWith("FORTYTWO")), {

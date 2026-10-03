@@ -134,6 +134,14 @@ Relationships:
 - has many statement reconciliation records
 - may be referenced by many `month plan rows` and `month plan match hints`
 
+Important distinctions:
+- A card account may remember its card's last four digits (`accounts.last4`).
+  The first statement commit that maps a statement section to the account
+  stores them (never overwriting, never giving two accounts the same digits),
+  and later statements match a section whose printed name matches no account
+  by those digits. Rolling the statement back keeps them: they identify the
+  card, they are not a ledger fact.
+
 ### Savings Target
 
 An explicit monthly planning field representing how much the user intends to
@@ -178,6 +186,14 @@ Aliases:
 Relationships:
 - belongs to one `household`
 - belongs to one `account`
+
+Important distinctions:
+- A card statement prints its closing (statement) date but not the day the
+  cycle opened. The statement period opens the day after the same date a
+  month earlier (clamped to that month's length), or on the earliest printed
+  row if that is older. It does not start on the first printed row, so a
+  provisional entry between the cycle start and the first row is inside the
+  period.
 
 ### Category
 
@@ -322,13 +338,25 @@ Important distinctions:
 - `Promotion and reconciliation` is the status-guarded lane. It handles manual
   row promotion and statement certification after duplicate suppression has
   already removed truly identical bank rows.
-- The `Velocity Rule` prevents commuter false positives by scaling duplicate
-  candidate windows with `amount_minor`. Low-value rows with
-  `abs(amount_minor) < 500` need `day_distance <= 2`, while higher-value rows
-  can use `day_distance <= 7` to tolerate delayed posting.
-- Under that rule, identical recurring small-value transactions such as
-  BUS/MRT fares or coffee should be treated as separate economic events by
-  default unless they occur close together in time.
+- The `Velocity Rule` prevents commuter false positives: a charge that
+  repeats on its account (another charge of the same signed amount with
+  lookalike wording within 7 days, ignoring reference numbers such as a
+  BUS/MRT trip number) is matched only within `day_distance <= 2`; a one-off
+  charge can use `day_distance <= 7` to tolerate delayed posting, whatever
+  its amount. A file row and a ledger entry get the tight window when either
+  repeats on its own side.
+- Under that rule, identical recurring transactions such as BUS/MRT fares,
+  coffee or same-priced top-ups are separate economic events by default
+  unless they occur close together in time. Until 2026-10-03 the test was
+  the amount (`abs(amount_minor) < 500`); `docs/audits/velocity-rule.md`
+  measured repetition as the better test on real bank files.
+- Close to a statement's closing day the rule tightens: a repeating entry
+  with no posted date, dated in the period's last two days, may post on the
+  next statement, so it only answers a statement row from its own purchase
+  day or later (`isRowBeforeLateUnpostedEntry`). A ride recorded on 12 May is
+  never taken for the statement's 11 May ride; it is offered as "next
+  statement" instead. The import preview, the statement mismatch diagnosis
+  and Settings "Compare statement" share this rule.
 - Date evidence should stay lane-aware. Compare original transaction dates to
   other original transaction dates when both exist; otherwise compare posted
   dates, so imported commuter rows do not become false matches through a mixed
@@ -390,6 +418,16 @@ Important distinctions:
   share`; a settled split refuses the rollback instead, see the settlement
   lock under Settlement Checkpoint), and a split matched to another ledger row
   since keeps that link, so the entry comes back without a split.
+- A confirmed statement (one with a statement reconciliation certificate) is
+  the complete record for its period. A mid-cycle row (CSV, XLS or manual
+  import) posted inside that period for the same account is either on the
+  statement or not a charge on that card: when a certified entry with the
+  same signed amount inside the velocity window (and not taken by another
+  row) covers it, the row is skipped as already on the statement, however
+  the export words it; when nothing covers it, the row is left out by
+  default with a reason the user reads, and can still be included. This
+  keeps a later activity export from unbalancing a closed statement. The
+  preview row carries `certifiedStatement: { checkpointMonth, covered }`.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely
@@ -512,6 +550,9 @@ Important distinctions:
 - Those status guards do not block exact duplicate suppression. Repeated bank
   files should still auto-skip a row that is already present in the ledger,
   even if that ledger row is import provisional or statement certified.
+- A `statement_certified` entry cannot be deleted on its own: a statement
+  certificate counts it. Rolling back the statement import is the way to
+  remove or restore it.
 
 ### Entry Share
 
@@ -1088,6 +1129,119 @@ Relationships:
 - belongs to one `import batch`
 - belongs to one `account`
 
+### Statement Mismatch Diagnosis
+
+The deterministic explanation of a statement card's difference in the import
+preview, with the actual rows behind it. It never writes and never uses AI.
+
+Canonical term:
+- `statement mismatch diagnosis`
+
+Code:
+- `src/domain/statement-mismatch-diagnosis.ts` (pure)
+- DTO `StatementDiagnosisDto` on `ImportPreviewDto.statementDiagnosis`
+
+Important distinctions:
+- A statement gives the complete row list, so a card's difference is fully
+  accounted for: `difference = opening gap + ledger entries in the period no
+  statement row matched - statement rows in the period left out`. Each
+  finding explains one part, and its `effectMinor` is the change to the
+  difference once it is resolved.
+- Finding kinds: `wrong_account` (a provisional entry on another account is
+  the same purchase as a row in this section), `next_statement` (an entry
+  with no posted date, dated in the last week of the period, not on the
+  statement), `duplicate_entry`, `amount_differs`, `excluded_statement_row`,
+  `opening_balance_gap` and `not_on_statement`.
+- The search for a wrong-account entry covers the other cards on the same
+  statement and the same owner's accounts at the same institution. It uses
+  the preview's own matching rules (date lanes, the velocity rule, merchant
+  similarity), so a moved entry is certified by the row that found it.
+- Confidence is fixed by rules. `high`: strong evidence on one clear
+  candidate, owners match, and the fixes together close every card they
+  touch. `medium`: a near match, several candidates, an owner difference, or
+  fixes that improve but do not close the card. `low`: weak evidence, or the
+  entry is protected (statement certified, inside a saved statement on its
+  current account, or linked as a transfer); never offered as a fix.
+- A card's outcome is `resolved`, `partially_resolved`, `still_mismatched` or
+  `needs_manual_review`, read from its difference after the suggested fixes.
+- Entries dated after the statement closes stay provisional for a later
+  statement. They are listed with the card, never counted in its difference.
+- A mid-cycle (CSV/XLS) import gets findings without fixes: it has no
+  statement balance to prove a fix against.
+- After commit (Settings, "Compare statement") the same diagnosis runs in
+  `committed` mode against saved statements: every card section of the
+  uploaded statement is matched to that card's ledger, a move closes both
+  cards' saved statements (`relatedEffectMinor` is the change on the
+  destination), and a provisional second copy of a purchase the statement
+  matched to another entry gets a `remove_duplicate_entry` fix. A fix that
+  would unbalance a saved statement that matches now is dropped, with the
+  fact `unbalances_saved_statement`.
+
+### Statement Fix
+
+A correction the statement mismatch diagnosis proposes and the user
+approves. Approving it applies it to the preview at once; the import commit
+writes it in its own batch; rolling the import back undoes it.
+
+Canonical term:
+- `statement fix`
+
+Storage:
+- `import_statement_fixes` (one row per applied fix, for the rollback)
+- audit events `entry_moved_by_statement`, `entry_deferred_by_statement` and
+  `entry_moved_back_by_rollback`
+
+Kinds:
+- `move_to_statement_account`: the commit moves the entry to the statement
+  card that lists it, and that card's statement row certifies it. A move the
+  statement would not certify is refused.
+- `defer_to_next_statement`: the commit sets the entry's posted date to the
+  day after the statement closes.
+
+Important distinctions:
+- Only an official statement (PDF) can apply fixes, and only to provisional
+  entries that are not linked as transfers. The preview and the commit both
+  check every fix against the ledger as it is then; a fix that no longer
+  holds is refused, never forced.
+- Rolling back a statement that moved entries off an account is refused
+  while that account has a later statement, because moving them back would
+  change it.
+
+### Statement Correction
+
+A statement fix for data that is already saved, applied from the Settings
+statement comparison. It is written at once, never automatically, and can
+be undone. Not part of any import, so an import rollback never undoes it.
+
+Canonical term:
+- `statement correction`
+
+Code and storage:
+- `src/domain/statement-compare-projection.ts` (the diagnosis after commit,
+  read only) and `src/domain/app-repository-statement-corrections.ts`
+  (apply and undo)
+- `statement_corrections` (one row per correction; a removed entry keeps its
+  whole row in `entry_snapshot_json` for the undo)
+- audit events `entry_moved_by_statement_compare`,
+  `entry_removed_as_statement_duplicate` and `statement_correction_undone`
+
+Kinds:
+- `move_to_statement_account`: the entry moves to the card the statement
+  lists it under. That card needs a saved statement for the month.
+- `remove_duplicate_entry`: a provisional second copy of a purchase is
+  removed because the statement matched the purchase to another entry with
+  the same signed amount.
+
+Important distinctions:
+- Only provisional entries that are not linked as transfers; a removal is
+  also refused for an entry linked to a plan, a split or a settlement.
+- All corrections in one request together must not unbalance a saved
+  statement that matches now.
+- Undo moves an entry back only if it is still where the correction put it,
+  and restores a removed entry only if its import is still in place.
+- Rolling back an import is refused while a removal it covers is in place:
+  both copies would be gone.
+
 ### Reconciliation Exception
 
 A persisted balance-trust issue that remains open or resolved outside a single
@@ -1141,6 +1295,8 @@ Use these terms consistently in future work:
   `budget_buckets` section.
 - Say `month snapshot`, not `monthly plan summary`, for generated dashboard
   rollups.
+- Say `statement fix` for an approved correction from the statement check,
+  not `auto-fix` or `auto-correction`: nothing is applied without approval.
 
 ## Current Canonical Boundaries
 

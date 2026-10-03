@@ -21,15 +21,32 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import {
+  diagnoseStatementMismatches,
+  getFixKey,
+  getStatementFixRejection,
+  toDiagnosisAccount
+} from "./statement-mismatch-diagnosis";
+import {
   canSuppressCertifiedStatementDuplicate,
-  getDuplicateCandidateMaxDayDistance
+  getDuplicateCandidateMaxDayDistance,
+  isRowBeforeLateUnpostedEntry
 } from "./import-preview-match-policy";
+import {
+  createRepetitionIndex,
+  getDuplicateCandidateDayDistance,
+  getDuplicateMatchKind,
+  getExistingTransactionDateContext,
+  getPreviewRowDateContext,
+  getTokenSimilarity
+} from "./statement-row-matching";
 import type {
   AccountDto,
   ImportOverlapDto,
   ImportPreviewDto,
   ImportPreviewRowDto,
-  StatementCheckpointDraftDto
+  StatementCheckpointDraftDto,
+  StatementDiagnosisDto,
+  StatementFixDto
 } from "../types/dto";
 
 export async function buildImportPreview(
@@ -43,6 +60,9 @@ export async function buildImportPreview(
     splitBasisPoints?: number;
     sourceType?: "csv" | "pdf" | "manual";
     statementCheckpoints?: StatementCheckpointDraftDto[];
+    // Statement fixes the user approved. They are applied to the ledger this
+    // preview sees, so the check shows the result; the commit writes them.
+    statementFixes?: StatementFixDto[];
   }
 ): Promise<ImportPreviewDto> {
   const accounts = await loadAccounts(db);
@@ -63,6 +83,7 @@ export async function buildImportPreview(
         transactions.entry_type,
         transactions.transfer_direction,
         transactions.bank_certification_status,
+        transactions.transfer_group_id,
         accounts.account_name,
         COALESCE(statement_import_rows.normalized_hash, import_rows.normalized_hash) AS normalized_hash
       FROM transactions
@@ -87,11 +108,44 @@ export async function buildImportPreview(
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
       bank_certification_status: "provisional" | "statement_certified";
+      transfer_group_id: string | null;
       account_name: string;
       normalized_hash: string | null;
     }>();
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(accounts);
+  // A statement section whose name matches no account is matched by the
+  // card's last four digits, remembered from an earlier statement commit.
+  const statementAccountMatches = await matchStatementAccountsByCardLast4(db, {
+    checkpoints: input.statementCheckpoints ?? [],
+    resolveByName: (checkpoint) => resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName),
+    accountsById
+  });
+  const accountByStatementName = new Map(statementAccountMatches.map((match) => [match.detectedAccountName, accountsById.get(match.accountId)!]));
+  const statementCheckpoints = (input.statementCheckpoints ?? []).map((checkpoint) => {
+    const match = accountByStatementName.get(checkpoint.detectedAccountName ?? checkpoint.accountName);
+    return match && !checkpoint.accountId
+      ? { ...checkpoint, accountId: match.id, accountName: match.name, detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName }
+      : checkpoint;
+  });
+  const statementCards = statementCheckpoints.flatMap((checkpoint) => {
+    const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
+    return account ? [{
+      accountId: account.id,
+      checkpointMonth: checkpoint.checkpointMonth,
+      endDate: normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth)
+    }] : [];
+  });
+  const { ledgerRows, appliedFixes, rejectedFixes } = applyStatementFixesToLedgerRows({
+    fixes: input.statementFixes ?? [],
+    sourceType: input.sourceType ?? "csv",
+    ledgerRows: existingTransactions.results,
+    accountsById,
+    statementCards
+  });
+  const movedEntryIdsByStatementRowIndex = new Map(appliedFixes.flatMap((fix) => (
+    fix.kind === "move_to_statement_account" ? [[fix.statementRowIndex, fix.entryId] as const] : []
+  )));
   const accountNames = new Set(accounts.map((account) => account.name));
   const categoryNames = new Set(categories.map((category) => category.name));
   const unknownAccounts = new Set<string>();
@@ -99,6 +153,11 @@ export async function buildImportPreview(
   const previewRows: ImportPreviewRowDto[] = [];
   const validationErrors: string[] = [];
   const claimedReconciliationTargetIds = new Set<string>();
+  // Confirmed statement periods per account. A mid-cycle row dated inside one
+  // must already be on that statement (see applyCertifiedStatementCoverage).
+  const certifiedStatementPeriods = input.sourceType === "pdf" ? [] : await loadCertifiedStatementPeriods(db);
+  const claimedStatementCoverIds = new Set<string>();
+  const velocity = buildPreviewVelocity(input.rows, ledgerRows, input.defaultAccountName);
   for (const [index, rawRow] of input.rows.entries()) {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length) {
@@ -133,17 +192,18 @@ export async function buildImportPreview(
       inferredCategoryName = "Transfer";
     }
 
-    if (inferredAccountName && !accountNames.has(inferredAccountName)) {
-      unknownAccounts.add(inferredAccountName);
-    }
 
     if (inferredCategoryName && !categoryNames.has(inferredCategoryName)) {
       unknownCategories.add(inferredCategoryName);
       inferredCategoryName = "Other";
     }
 
-    const inferredAccount = resolvePreviewAccount(accountsById, accountsByName, normalized.accountId, inferredAccountName);
     const statementAccountName = rawRow.statementAccountName || rawRow.statementAccount || rawRow.account;
+    const inferredAccount = resolvePreviewAccount(accountsById, accountsByName, normalized.accountId, inferredAccountName)
+      ?? (normalized.accountId ? undefined : accountByStatementName.get(statementAccountName ?? inferredAccountName ?? ""));
+    if (inferredAccountName && !accountNames.has(inferredAccountName) && !inferredAccount) {
+      unknownAccounts.add(inferredAccountName);
+    }
     const inferredOwnerName = input.ownershipType === "direct"
       ? getDirectOwnerNameForAccount(inferredAccount, input.ownerName)
       : undefined;
@@ -167,23 +227,28 @@ export async function buildImportPreview(
       rawRow
     };
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
-    const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
+    // An approved move names the statement row that certifies the moved entry.
+    const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow)
+      ?? movedEntryIdsByStatementRowIndex.get(index + 1);
     const previewRowDateContext = getPreviewRowDateContext(previewRow);
     let exactDuplicateMatch = findExactDuplicateSuppressionMatch({
       previewRow,
       previewRowDateContext,
-      existingRows: existingTransactions.results,
+      existingRows: ledgerRows,
       incomingSourceType: input.sourceType,
-      excludedTransactionIds: claimedReconciliationTargetIds
+      excludedTransactionIds: claimedReconciliationTargetIds,
+      velocity
     });
     const reconciliationMatches = exactDuplicateMatch
       ? []
       : findReconciliationMatches({
         previewRow,
         previewRowDateContext,
-        existingRows: existingTransactions.results,
+        existingRows: ledgerRows,
         incomingSourceType: input.sourceType,
-        excludedTransactionIds: claimedReconciliationTargetIds
+        excludedTransactionIds: claimedReconciliationTargetIds,
+        statementEndDate: statementCards.find((card) => card.accountId === previewRow.accountId)?.endDate,
+        velocity
       });
 
     // Exact duplicate suppression is the raw identity lane. It must run before
@@ -211,6 +276,15 @@ export async function buildImportPreview(
     if (previewRow.reconciliationTargetTransactionId) {
       claimedReconciliationTargetIds.add(previewRow.reconciliationTargetTransactionId);
     }
+    applyCertifiedStatementCoverage({
+      previewRow,
+      previewRowDateContext,
+      ledgerRows,
+      certifiedStatementPeriods,
+      claimedStatementCoverIds,
+      requestedCommitStatus,
+      velocity
+    });
     previewRows.push(previewRow);
 
   }
@@ -220,38 +294,49 @@ export async function buildImportPreview(
   }
 
   const overlapImports = await findOverlappingImports(db, previewRows);
-  const statementChainBreaks = await loadStatementChainBreaks(db, input.statementCheckpoints ?? []);
+  const statementChainBreaks = await loadStatementChainBreaks(db, statementCheckpoints);
   autoIncludeDuplicateMatchesExplainedByStatementBalance({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: statementCheckpoints
   });
   autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
     sourceType: input.sourceType,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: statementCheckpoints
   });
   prioritizeCertifiedRowsExplainingStatementMismatch({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: statementCheckpoints
   });
   const visibleReconciliationRows = previewRows.filter((row) => row.reconciliationMatches?.length);
   const reconciliationCandidates = visibleReconciliationRows.flatMap((row) => row.reconciliationMatches ?? []).slice(0, 8);
   const statementReconciliations = buildImportPreviewStatementReconciliations({
     accounts,
-    existingRows: existingTransactions.results,
+    existingRows: ledgerRows,
     previewRows,
     sourceType: input.sourceType,
-    statementCheckpoints: input.statementCheckpoints ?? [],
-    statementChainBreaks
+    statementCheckpoints: statementCheckpoints,
+    statementChainBreaks,
+    velocity
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
   markCertifiedConflictRows(previewRows, statementReconciliations);
+  const statementDiagnosis = buildStatementDiagnosis({
+    sourceType: input.sourceType ?? "csv",
+    accounts,
+    statementCheckpoints: statementCheckpoints,
+    statementReconciliations,
+    previewRows,
+    ledgerRows,
+    appliedFixes,
+    rejectedFixes
+  });
   const exceptionSummary = buildImportPreviewExceptionSummary({
     unknownAccountCount: unknownAccounts.size,
     unknownCategoryCount: unknownCategories.size,
@@ -276,8 +361,354 @@ export async function buildImportPreview(
     accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter((accountName): accountName is string => Boolean(accountName)))).sort(),
     reconciliationCandidates,
     statementReconciliations,
-    exceptionSummary
+    exceptionSummary,
+    ...(statementDiagnosis ? { statementDiagnosis } : {}),
+    ...(statementAccountMatches.length ? { statementAccountMatches } : {})
   };
+}
+
+async function matchStatementAccountsByCardLast4(db: D1Database, input: {
+  checkpoints: StatementCheckpointDraftDto[];
+  resolveByName: (checkpoint: StatementCheckpointDraftDto) => AccountDto | undefined;
+  accountsById: Map<string, AccountDto>;
+}): Promise<NonNullable<ImportPreviewDto["statementAccountMatches"]>> {
+  const unmatched = input.checkpoints.filter((checkpoint) => checkpoint.accountLast4 && !input.resolveByName(checkpoint));
+  if (!unmatched.length) {
+    return [];
+  }
+  const accountsWithLast4 = await db
+    .prepare("SELECT id, last4 FROM accounts WHERE household_id = ? AND last4 IS NOT NULL")
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string; last4: string }>();
+  return unmatched.flatMap((checkpoint) => {
+    const candidates = accountsWithLast4.results.filter((row) => row.last4 === checkpoint.accountLast4);
+    const account = candidates.length === 1 ? input.accountsById.get(candidates[0].id) : undefined;
+    return account ? [{
+      detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName,
+      accountId: account.id,
+      accountName: account.name,
+      matchedBy: "card_last4" as const
+    }] : [];
+  });
+}
+
+interface CertifiedStatementPeriod {
+  accountId: string;
+  checkpointMonth: string;
+  startDate: string | null;
+  endDate: string;
+}
+
+async function loadCertifiedStatementPeriods(db: D1Database): Promise<CertifiedStatementPeriod[]> {
+  const result = await db
+    .prepare(`
+      SELECT certificates.account_id, certificates.checkpoint_month,
+        certificates.statement_start_date, certificates.statement_end_date
+      FROM statement_reconciliation_certificates AS certificates
+      INNER JOIN imports ON imports.id = certificates.import_id AND imports.status = 'completed'
+      WHERE certificates.household_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ account_id: string; checkpoint_month: string; statement_start_date: string | null; statement_end_date: string | null }>();
+  return result.results.map((row) => ({
+    accountId: row.account_id,
+    checkpointMonth: row.checkpoint_month,
+    startDate: row.statement_start_date,
+    endDate: row.statement_end_date ?? getMonthEndDate(row.checkpoint_month)
+  }));
+}
+
+// A confirmed statement is the complete record for its period. A mid-cycle
+// row (CSV/XLS/manual) whose posted date falls inside one for its account is
+// therefore either on that statement or not a real charge on that card:
+// - one of the statement's certified entries with the same signed amount,
+//   inside the velocity window and not taken by another row, covers it: the
+//   row is skipped as already on the statement, however the export words it;
+// - nothing covers it: it is left out by default and says why, so it cannot
+//   slip into a closed statement and unbalance it. The user can include it.
+// Rows the earlier lanes already handled (an exact duplicate, a promotion of
+// a manual entry, an explicit user choice) are only labelled.
+function applyCertifiedStatementCoverage(input: {
+  previewRow: ImportPreviewRowDto;
+  previewRowDateContext: ReturnType<typeof getPreviewRowDateContext>;
+  ledgerRows: PreviewLedgerRow[];
+  certifiedStatementPeriods: CertifiedStatementPeriod[];
+  claimedStatementCoverIds: Set<string>;
+  requestedCommitStatus?: "included" | "skipped" | "needs_review";
+  velocity: PreviewVelocity;
+}) {
+  const { previewRow } = input;
+  const period = previewRow.accountId
+    ? input.certifiedStatementPeriods.find((item) => (
+      item.accountId === previewRow.accountId
+      && isDateWithinRange(previewRow.date, item.startDate ?? undefined, item.endDate)
+    ))
+    : undefined;
+  if (!period) {
+    return;
+  }
+
+  const exactCover = previewRow.reconciliationMatch?.existingBankCertificationStatus === "statement_certified"
+    ? previewRow.reconciliationMatch.existingTransactionId
+    : undefined;
+  if (exactCover && previewRow.commitStatus === "skipped") {
+    input.claimedStatementCoverIds.add(exactCover);
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: true };
+    return;
+  }
+  if (input.requestedCommitStatus || previewRow.reconciliationTargetTransactionId || previewRow.commitStatus !== "included") {
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
+    return;
+  }
+
+  const rowSignedAmountMinor = getSignedLedgerAmountMinor({
+    entry_type: previewRow.entryType,
+    transfer_direction: previewRow.transferDirection ?? null,
+    amount_minor: previewRow.amountMinor
+  });
+  const cover = input.ledgerRows
+    .filter((row) => (
+      row.account_id === previewRow.accountId
+      && row.bank_certification_status === "statement_certified"
+      && !input.claimedStatementCoverIds.has(row.transaction_id)
+      && getExistingRowSignedAmountMinor(row) === rowSignedAmountMinor
+    ))
+    .map((row) => ({
+      row,
+      dayDistance: getDuplicateCandidateDayDistance({
+        previewRow: input.previewRowDateContext,
+        candidate: getExistingTransactionDateContext(row)
+      }),
+      similarity: compareDescriptionSimilarity(previewRow.description, row.description)
+    }))
+    .filter((candidate) => candidate.dayDistance <= getDuplicateCandidateMaxDayDistance({
+      repeats: input.velocity.repeats(previewRow.rowIndex, candidate.row.transaction_id)
+    }))
+    .sort((left, right) => left.dayDistance - right.dayDistance || right.similarity - left.similarity)[0];
+
+  const monthLabel = formatCheckpointMonthForReason(period.checkpointMonth);
+  if (cover) {
+    input.claimedStatementCoverIds.add(cover.row.transaction_id);
+    previewRow.reconciliationMatch = mapCandidateToReconciliationMatch(cover.row, cover.dayDistance === 0 && cover.similarity >= 0.8 ? "exact" : "probable");
+    previewRow.reconciliationMatchCount = 1;
+    previewRow.reconciliationMatches = undefined;
+    previewRow.commitStatus = "skipped";
+    previewRow.commitStatusReason = `Already on the confirmed ${monthLabel} statement as ${cover.row.description}.`;
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: true };
+    return;
+  }
+
+  previewRow.commitStatus = "skipped";
+  previewRow.commitStatusReason = `Dated inside the ${monthLabel} statement, which is already confirmed, but that statement doesn't have it. Include it only if the statement is wrong.`;
+  previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
+}
+
+function formatCheckpointMonthForReason(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${names[monthNumber - 1] ?? month} ${year}`;
+}
+
+type PreviewLedgerRow = {
+  import_id: string | null;
+  source_type: "csv" | "pdf" | "manual";
+  transaction_id: string;
+  account_id: string;
+  transaction_date: string;
+  post_date: string | null;
+  description: string;
+  note: string | null;
+  amount_minor: number;
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  bank_certification_status: "provisional" | "statement_certified";
+  transfer_group_id: string | null;
+  account_name: string;
+  normalized_hash: string | null;
+};
+
+// The velocity rule's repetition test for this preview (DOMAIN.md,
+// "Velocity Rule"): a file row and a ledger entry are matched with the tight
+// window when either repeats on its own side, the row among the file's rows
+// for its account, the entry among the ledger's.
+interface PreviewVelocity {
+  repeats(rowIndex: number, transactionId?: string): boolean;
+}
+
+function buildPreviewVelocity(rows: Record<string, string>[], ledgerRows: PreviewLedgerRow[], defaultAccountName?: string): PreviewVelocity {
+  const fileCharges = rows.flatMap((rawRow, index) => {
+    const normalized = normalizeImportRow(rawRow);
+    if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
+      return [];
+    }
+    const dateContext = getPreviewRowDateContext({ date: normalized.date, note: normalized.note, rawRow } as ImportPreviewRowDto);
+    return [{
+      rowIndex: index + 1,
+      charge: {
+        accountId: normalized.accountId ?? normalized.accountName ?? rawRow.statementAccountName ?? rawRow.statementAccount ?? rawRow.account ?? defaultAccountName,
+        signedAmountMinor: getSignedLedgerAmountMinor({
+          entry_type: normalized.entryType,
+          transfer_direction: normalized.transferDirection ?? null,
+          amount_minor: normalized.amountMinor
+        }),
+        description: normalized.description ?? "",
+        ...dateContext
+      }
+    }];
+  });
+  const fileRepeats = createRepetitionIndex(fileCharges, (item) => item.charge);
+  const fileByRowIndex = new Map(fileCharges.map((item) => [item.rowIndex, item]));
+  const ledgerRepeats = createRepetitionIndex(ledgerRows, (row) => ({
+    accountId: row.account_id,
+    signedAmountMinor: getExistingRowSignedAmountMinor(row),
+    description: row.description,
+    ...getExistingTransactionDateContext(row)
+  }));
+  const ledgerById = new Map(ledgerRows.map((row) => [row.transaction_id, row]));
+  return {
+    repeats(rowIndex, transactionId) {
+      const fileRow = fileByRowIndex.get(rowIndex);
+      const ledgerRow = transactionId ? ledgerById.get(transactionId) : undefined;
+      return Boolean((fileRow && fileRepeats(fileRow)) || (ledgerRow && ledgerRepeats(ledgerRow)));
+    }
+  };
+}
+
+// Applies the approved statement fixes to the ledger rows the preview
+// matches against: a moved entry sits on its statement card, a deferred one
+// posts the day after the statement. A fix that no longer holds is reported
+// and left out, never forced.
+function applyStatementFixesToLedgerRows(input: {
+  fixes: StatementFixDto[];
+  sourceType: "csv" | "pdf" | "manual";
+  ledgerRows: PreviewLedgerRow[];
+  accountsById: Map<string, AccountDto>;
+  statementCards: { accountId: string; checkpointMonth: string; endDate: string }[];
+}) {
+  const appliedFixes: StatementFixDto[] = [];
+  const rejectedFixes: StatementDiagnosisDto["rejectedFixes"] = [];
+  const seenEntryIds = new Set<string>();
+  const rowsById = new Map(input.ledgerRows.map((row) => [row.transaction_id, row]));
+  const overrides = new Map<string, Partial<PreviewLedgerRow>>();
+  for (const fix of input.fixes) {
+    const row = rowsById.get(fix.entryId);
+    const sourceAccountId = fix.kind === "move_to_statement_account" ? fix.fromAccountId : fix.accountId;
+    const rejection = seenEntryIds.has(fix.entryId)
+      ? "Only one fix can change an entry."
+      : getStatementFixRejection({
+        fix,
+        sourceType: input.sourceType,
+        entry: row ? {
+          accountId: row.account_id,
+          bankCertificationStatus: row.bank_certification_status,
+          postDate: row.post_date,
+          transactionDate: row.transaction_date,
+          transferGroupId: row.transfer_group_id
+        } : undefined,
+        statementCards: input.statementCards,
+        sourceAccount: toDiagnosisAccount(input.accountsById.get(sourceAccountId))
+      });
+    if (rejection) {
+      rejectedFixes.push({ fix, reason: rejection });
+      continue;
+    }
+    seenEntryIds.add(fix.entryId);
+    appliedFixes.push(fix);
+    overrides.set(fix.entryId, fix.kind === "move_to_statement_account"
+      ? { account_id: fix.toAccountId, account_name: input.accountsById.get(fix.toAccountId)?.name ?? row!.account_name }
+      : fix.kind === "defer_to_next_statement" ? { post_date: fix.postDate } : {});
+  }
+  return {
+    ledgerRows: overrides.size
+      ? input.ledgerRows.map((row) => overrides.has(row.transaction_id) ? { ...row, ...overrides.get(row.transaction_id) } : row)
+      : input.ledgerRows,
+    appliedFixes,
+    rejectedFixes
+  };
+}
+
+function buildStatementDiagnosis(input: {
+  sourceType: "csv" | "pdf" | "manual";
+  accounts: AccountDto[];
+  statementCheckpoints: StatementCheckpointDraftDto[];
+  statementReconciliations: ImportPreviewDto["statementReconciliations"];
+  previewRows: ImportPreviewRowDto[];
+  ledgerRows: PreviewLedgerRow[];
+  appliedFixes: StatementFixDto[];
+  rejectedFixes: StatementDiagnosisDto["rejectedFixes"];
+}): StatementDiagnosisDto | undefined {
+  const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
+  const cards = input.statementReconciliations.flatMap((reconciliation) => {
+    const account = reconciliation.accountId ? accountsById.get(reconciliation.accountId) : undefined;
+    if (!account || typeof reconciliation.deltaMinor !== "number" || reconciliation.status === "unknown_account") {
+      return [];
+    }
+    const checkpoint = input.statementCheckpoints.find((item) => (
+      item.checkpointMonth === reconciliation.checkpointMonth
+      && (item.accountId === account.id || item.accountName === account.name || item.accountName === reconciliation.accountName)
+    ));
+    return [{
+      accountId: account.id,
+      accountName: account.name,
+      checkpointMonth: reconciliation.checkpointMonth,
+      ...(reconciliation.statementStartDate ? { startDate: reconciliation.statementStartDate } : {}),
+      endDate: reconciliation.statementEndDate ?? getMonthEndDate(reconciliation.checkpointMonth),
+      deltaMinor: reconciliation.deltaMinor,
+      ...(reconciliation.reconciliationBreakdown ? { priorLedgerBalanceMinor: reconciliation.reconciliationBreakdown.priorLedgerBalanceMinor } : {}),
+      ...(checkpoint?.previousBalanceMinor != null && Number.isFinite(Number(checkpoint.previousBalanceMinor))
+        ? { previousStatementBalanceMinor: normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.previousBalanceMinor)), account.kind) }
+        : {}),
+      supersededEntryIds: (reconciliation.supersededLedgerRows ?? []).map((row) => row.transactionId)
+    }];
+  });
+  if (!cards.length) {
+    return undefined;
+  }
+
+  const appliedFixKeys = new Set(input.appliedFixes.map(getFixKey));
+  return diagnoseStatementMismatches({
+    sourceType: input.sourceType,
+    accounts: input.accounts.map((account) => toDiagnosisAccount(account)!),
+    cards,
+    statementRows: input.previewRows.map((row) => {
+      const dateContext = getPreviewRowDateContext(row);
+      return {
+        rowIndex: row.rowIndex,
+        ...(row.accountId ? { accountId: row.accountId } : {}),
+        postedDate: dateContext.postedDate,
+        ...(dateContext.hasEventDateHint ? { eventDate: dateContext.eventDate } : {}),
+        description: row.description,
+        amountMinor: row.amountMinor,
+        entryType: row.entryType,
+        ...(row.transferDirection ? { transferDirection: row.transferDirection } : {}),
+        commitStatus: row.commitStatus ?? "included",
+        commitStatusExplicit: Boolean(row.commitStatusExplicit),
+        ...(row.reconciliationTargetTransactionId ? { targetEntryId: row.reconciliationTargetTransactionId } : {}),
+        ...(row.commitStatus === "skipped" && row.reconciliationMatch?.existingTransactionId
+          ? { coveredByEntryId: row.reconciliationMatch.existingTransactionId }
+          : {}),
+        reviewCandidateEntryIds: row.commitStatus === "needs_review"
+          ? (row.reconciliationMatches ?? []).map((match) => match.existingTransactionId).filter((id): id is string => Boolean(id))
+          : []
+      };
+    }),
+    ledgerEntries: input.ledgerRows.map((row) => ({
+      id: row.transaction_id,
+      accountId: row.account_id,
+      transactionDate: row.transaction_date,
+      postDate: row.post_date,
+      note: row.note,
+      description: row.description,
+      amountMinor: Number(row.amount_minor),
+      entryType: row.entry_type,
+      transferDirection: row.transfer_direction,
+      bankCertificationStatus: row.bank_certification_status,
+      sourceType: row.source_type,
+      transferGroupId: row.transfer_group_id
+    })),
+    appliedFixes: input.appliedFixes.filter((fix) => appliedFixKeys.has(getFixKey(fix))),
+    rejectedFixes: input.rejectedFixes
+  });
 }
 
 function buildImportPreviewExceptionSummary(input: {
@@ -305,67 +736,6 @@ function buildImportPreviewExceptionSummary(input: {
   ].filter((item) => item.count > 0);
 }
 
-function getPreviewRowDateCandidates(previewRow: ImportPreviewRowDto) {
-  return Array.from(new Set(
-    [
-      previewRow.date,
-      extractTransactionDateHint(previewRow.note),
-      extractTransactionDateHint(previewRow.rawRow?.note),
-      extractTransactionDateHint(previewRow.rawRow?.notes),
-      extractTransactionDateHint(previewRow.rawRow?.remarks),
-      previewRow.rawRow?.transactionDate,
-      previewRow.rawRow?.["transaction date"]
-    ]
-      .map((value) => typeof value === "string" ? normalizeDateString(value) ?? normalizeStatementDate(value) : undefined)
-      .filter((value): value is string => Boolean(value))
-  ));
-}
-
-function getPreviewRowDateContext(previewRow: ImportPreviewRowDto) {
-  const originalDateCandidates = getPreviewRowDateCandidates(previewRow).filter((date) => date !== previewRow.date);
-  const eventDateHint = originalDateCandidates[0];
-  return {
-    postedDate: previewRow.date,
-    eventDate: eventDateHint ?? previewRow.date,
-    hasEventDateHint: Boolean(eventDateHint)
-  };
-}
-
-function getExistingTransactionDateContext(candidate: {
-  transaction_date: string;
-  post_date: string | null;
-  note: string | null;
-}) {
-  const noteEventDateHint = extractTransactionDateHint(candidate.note ?? undefined);
-  const postedDate = candidate.post_date ?? candidate.transaction_date;
-  return {
-    postedDate,
-    eventDate: candidate.transaction_date,
-    hasEventDateHint: candidate.post_date == null
-      || candidate.transaction_date !== postedDate
-      || Boolean(noteEventDateHint)
-  };
-}
-
-function getDuplicateCandidateDayDistance(input: {
-  previewRow: {
-    postedDate: string;
-    eventDate: string;
-    hasEventDateHint: boolean;
-  };
-  candidate: {
-    postedDate: string;
-    eventDate: string;
-    hasEventDateHint: boolean;
-  };
-}) {
-  if (input.previewRow.hasEventDateHint && input.candidate.hasEventDateHint) {
-    return Math.abs(daysBetween(input.previewRow.eventDate, input.candidate.eventDate));
-  }
-
-  return Math.abs(daysBetween(input.previewRow.postedDate, input.candidate.postedDate));
-}
-
 function findExactDuplicateSuppressionMatch(input: {
   previewRow: ImportPreviewRowDto;
   previewRowDateContext: ReturnType<typeof getPreviewRowDateContext>;
@@ -385,6 +755,7 @@ function findExactDuplicateSuppressionMatch(input: {
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
   excludedTransactionIds?: Set<string>;
+  velocity: PreviewVelocity;
 }) {
   const previewRowHash = buildImportRowHash(input.previewRow);
 
@@ -414,7 +785,7 @@ function findExactDuplicateSuppressionMatch(input: {
             candidateBankCertificationStatus: candidate.bank_certification_status,
             incomingSourceType: input.incomingSourceType,
             dayDistance,
-            amountMinor: input.previewRow.amountMinor
+            repeats: input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id)
           })
         );
       const canUseCertifiedStatementDateWindow = canSuppressCertifiedStatementDuplicate({
@@ -422,7 +793,7 @@ function findExactDuplicateSuppressionMatch(input: {
         candidateBankCertificationStatus: candidate.bank_certification_status,
         incomingSourceType: input.incomingSourceType,
         dayDistance,
-        amountMinor: input.previewRow.amountMinor
+        repeats: input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id)
       });
       const hasPerfectDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
@@ -473,6 +844,10 @@ function findReconciliationMatches(input: {
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
   excludedTransactionIds?: Set<string>;
+  // The statement period's last day for this row's card (official
+  // statements only).
+  statementEndDate?: string;
+  velocity: PreviewVelocity;
 }) {
   return input.existingRows
     .map((candidate) => {
@@ -493,13 +868,23 @@ function findReconciliationMatches(input: {
         previewRow: input.previewRowDateContext,
         candidate: candidateDateContext
       });
-      const maxDayDistance = getDuplicateCandidateMaxDayDistance(input.previewRow.amountMinor);
+      const repeats = input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id);
 
-      // The velocity rule rejects low-value matches that are too far apart in
-      // time. This prevents commuter false positives where weekly BUS/MRT or
-      // coffee charges share the same amount and similar merchant text but
-      // are actually separate real-world events.
-      if (dayDistance > maxDayDistance) {
+      // The velocity rule: a charge that repeats (daily fares, coffees,
+      // top-ups at one price) is matched only within two days, so separate
+      // purchases are never taken for one another.
+      if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats })) {
+        return undefined;
+      }
+      // A repeating entry from the statement's last days that has not
+      // posted yet may be the next statement's: never an earlier row's.
+      if (isRowBeforeLateUnpostedEntry({
+        repeats,
+        entryDate: candidate.transaction_date,
+        entryPostDate: candidate.post_date,
+        statementEndDate: input.statementEndDate,
+        rowPurchaseDate: input.previewRowDateContext.eventDate
+      })) {
         return undefined;
       }
 
@@ -922,6 +1307,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
   statementStartDate?: string;
   statementEndDate: string;
   deltaMinor: number;
+  velocity: PreviewVelocity;
 }) {
   if (input.deltaMinor === 0) {
     return [];
@@ -942,7 +1328,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
       && row.account_id === input.account.id
       && !reconciliationTargetIds.has(row.transaction_id)
       && isDateWithinRange(getExistingRowClearedDate(row), input.statementStartDate, input.statementEndDate)
-      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows)
+      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows, input.velocity)
     ))
     .map((row) => {
       const transactionId = row.transaction_id;
@@ -984,6 +1370,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
 
 function hasPotentialOfficialStatementRowForExistingCandidate(
   candidate: {
+    transaction_id?: string;
     account_id: string;
     transaction_date: string;
     post_date?: string | null;
@@ -992,7 +1379,8 @@ function hasPotentialOfficialStatementRowForExistingCandidate(
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
   },
-  previewRows: ImportPreviewRowDto[]
+  previewRows: ImportPreviewRowDto[],
+  velocity: PreviewVelocity
 ) {
   const candidateClearedDate = getExistingRowClearedDate(candidate);
   const candidateSignedAmountMinor = getExistingRowSignedAmountMinor(candidate);
@@ -1012,7 +1400,7 @@ function hasPotentialOfficialStatementRowForExistingCandidate(
     }
 
     const dayDistance = Math.abs(daysBetween(row.date, candidateClearedDate));
-    if (dayDistance > getDuplicateCandidateMaxDayDistance(row.amountMinor)) {
+    if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats: velocity.repeats(row.rowIndex, candidate.transaction_id) })) {
       return false;
     }
 
@@ -1420,6 +1808,7 @@ function buildImportPreviewStatementReconciliations(input: {
     account_id: string;
     missing_checkpoint_month: string;
   }[];
+  velocity: PreviewVelocity;
 }) {
   if (!input.statementCheckpoints.length) {
     return [];
@@ -1466,7 +1855,8 @@ function buildImportPreviewStatementReconciliations(input: {
         previewRows: input.previewRows,
         statementStartDate,
         statementEndDate,
-        deltaMinor
+        deltaMinor,
+        velocity: input.velocity
       })
       : [];
     if (supersededLedgerRows.length) {
@@ -1801,41 +2191,6 @@ function applyRequestedReconciliationTargetToPreviewRow(
     : requestedMatch.existingSourceType === "manual"
       ? "This import will promote the selected manual ledger row while preserving user edits and split links."
       : "This import will reconcile against the selected existing ledger row instead of creating a new one.";
-}
-
-function getDuplicateMatchKind(input: {
-  dayDistance: number;
-  descriptionSimilarity: number;
-  tokenSimilarity: number;
-}) {
-  if (input.dayDistance === 0 && input.descriptionSimilarity >= 0.8) {
-    return "exact" as const;
-  }
-
-  if (input.dayDistance <= 2 && input.descriptionSimilarity >= 0.6) {
-    return "probable" as const;
-  }
-
-  if (input.dayDistance <= 7 && input.tokenSimilarity >= 0.5) {
-    return "near" as const;
-  }
-
-  return undefined;
-}
-
-function getTokenSimilarity(left: string, right: string) {
-  const sharedTokenCount = countSharedTokens(left, right);
-  const leftTokenCount = normalizeDescriptionTokenCount(left);
-  const rightTokenCount = normalizeDescriptionTokenCount(right);
-  if (!leftTokenCount || !rightTokenCount) {
-    return 0;
-  }
-
-  return sharedTokenCount / Math.max(leftTokenCount, rightTokenCount);
-}
-
-function normalizeDescriptionTokenCount(value: string) {
-  return new Set(value.toLowerCase().replace(/[^a-z0-9]+/gi, " ").split(" ").filter(Boolean)).size;
 }
 
 function getDuplicateMatchRank(matchKind: "exact" | "probable" | "near") {

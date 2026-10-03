@@ -15,23 +15,18 @@ const {
   format: formatService
 } = moniesClient;
 
-// Preview rows are edited here, while ImportsPanel owns the canonical payload and commit callback.
+// Preview rows are edited here, while ImportsPanel owns the canonical payload
+// and ImportCommitBar the commit.
 export function ImportPreviewRowsTable({
   previewRows,
   accounts,
   categories,
   people,
   knownAccountNames,
-  statementCheckpointCount = 0,
-  reconciledExistingRowCount = 0,
   statementImportSourceType = "csv",
   hasAlreadyCoveredCheckpointRefresh = false,
   hasEmptyStatementCheckpointOnly = false,
-  isCommitDisabled,
-  isSubmitting,
-  commitLabel,
   jumpToSkippedRowsRequestKey = 0,
-  onCommit,
   onUpdatePreviewRow,
   onUpdatePreviewRowAccount,
   onUpdatePreviewRowCommitStatus,
@@ -46,11 +41,6 @@ export function ImportPreviewRowsTable({
   ));
   const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
-  const newImportCount = visibleRows.filter((row) => (
-    (row.commitStatus === "included" || !row.commitStatus) && !row.reconciliationTargetTransactionId
-  )).length;
-  const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
-  const hasPreviewRows = visibleRows.length > 0 || statementCheckpointCount > 0;
   const skippedRowsRef = useRef(null);
 
   useEffect(() => {
@@ -64,22 +54,6 @@ export function ImportPreviewRowsTable({
 
   return (
     <>
-      <div className="import-summary-strip import-preview-status-row" aria-label={messages.imports.previewCommitSummaryLabel}>
-        {newImportCount || !statementCheckpointCount ? (
-          <span className="import-summary-item is-success">{messages.imports.willImportRows(newImportCount)}</span>
-        ) : null}
-        {reconciledExistingRowCount ? (
-          <span className="import-summary-item is-success">
-            {messages.imports.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType)}
-          </span>
-        ) : null}
-        {statementCheckpointCount ? (
-          <span className="import-summary-item is-success">{messages.imports.willSaveStatementCheckpoints(statementCheckpointCount)}</span>
-        ) : null}
-        {skippedRows.length ? <span className="import-summary-item">{messages.imports.willSkipRows(skippedRows.length)}</span> : null}
-        {needsReviewCount ? <span className="import-summary-item is-warning">{messages.imports.needsReviewRows(needsReviewCount)}</span> : null}
-      </div>
-      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} />
       {activeRows.length ? (
         <PreviewRowsTable
           rows={activeRows}
@@ -125,9 +99,6 @@ export function ImportPreviewRowsTable({
             isSkippedTable
           />
         </details>
-      ) : null}
-      {hasPreviewRows ? (
-        <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} isBottom />
       ) : null}
     </>
   );
@@ -600,17 +571,3 @@ function formatDuplicateMatchKind(matchKind) {
   return messages.imports.duplicateMatchKindNear;
 }
 
-function ImportCommitButton({ disabled, isSubmitting, onCommit, label, isBottom = false }) {
-  return (
-    <div className={`import-actions import-actions-end ${isBottom ? "import-actions-bottom" : ""}`}>
-      <button
-        type="button"
-        className="import-commit-button"
-        disabled={disabled}
-        onClick={onCommit}
-      >
-        {isSubmitting ? messages.common.working : label}
-      </button>
-    </div>
-  );
-}

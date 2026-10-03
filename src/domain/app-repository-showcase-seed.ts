@@ -56,6 +56,8 @@ const SHOWCASE_CLEAR_TABLES = [
   "monthly_snapshot_refreshes",
   "statement_reconciliation_certificates",
   "statement_chain_breaks",
+  "import_statement_fixes",
+  "statement_corrections",
   "import_rows",
   "imports",
   "account_balance_checkpoints",

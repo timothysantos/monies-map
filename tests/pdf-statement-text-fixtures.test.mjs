@@ -77,22 +77,26 @@ test("Citibank card PDF text parses both card sections with compact descriptions
 
   // Due date September 2026 certifies the August cycle. Citi Miles carries a
   // printed credit (negative) previous balance, and its grand total amount sits
-  // on the line above the GRAND TOTAL label.
+  // on the line above the GRAND TOTAL label. The printed statement date
+  // (27 Aug) closes the cycle, which opened the day after the previous
+  // statement date (27 Jul), not on the first row's date.
   assert.deepEqual(parsed.checkpoints, [
     {
       accountName: "Citi Rewards",
       checkpointMonth: "2026-08",
-      statementStartDate: "2026-08-03",
-      statementEndDate: "2026-08-23",
+      statementStartDate: "2026-07-28",
+      statementEndDate: "2026-08-27",
       statementBalanceMinor: 11170,
+      previousBalanceMinor: 120820,
       note: "Imported from Citibank credit card statement"
     },
     {
       accountName: "Citi Miles",
       checkpointMonth: "2026-08",
-      statementStartDate: "2026-08-09",
-      statementEndDate: "2026-08-24",
+      statementStartDate: "2026-07-28",
+      statementEndDate: "2026-08-27",
       statementBalanceMinor: 110950,
+      previousBalanceMinor: -2500,
       note: "Imported from Citibank credit card statement"
     }
   ]);
@@ -160,7 +164,10 @@ test("UOB card PDF text parses a two-card statement with post and transaction da
     { date: "2026-05-09", description: "BUS/MRT 000000000 SINGAPORE", amountMinor: -394, account: "UOB One Card", category: "Public Transport", type: "expense", note: "txn date: 2026-05-05", reference: "00000000000000000000005" }
   ]);
 
-  // Lady's Card opens with a credit balance printed as "12.50 CR".
+  // Lady's Card opens with a credit balance printed as "12.50 CR". Both
+  // cards share the cycle that opened the day after the 12 Apr statement,
+  // even though Lady's Card's first row posted on 15 Apr. Each section keeps
+  // its printed previous balance and the last four digits of its card.
   assert.deepEqual(parsed.checkpoints, [
     {
       accountName: "UOB One Card",
@@ -168,14 +175,18 @@ test("UOB card PDF text parses a two-card statement with post and transaction da
       statementStartDate: "2026-04-13",
       statementEndDate: "2026-05-12",
       statementBalanceMinor: 5796,
+      previousBalanceMinor: 15000,
+      accountLast4: "1111",
       note: "Imported from UOB credit card statement"
     },
     {
       accountName: "UOB Lady's Card",
       checkpointMonth: "2026-05",
-      statementStartDate: "2026-04-15",
+      statementStartDate: "2026-04-13",
       statementEndDate: "2026-05-12",
       statementBalanceMinor: 11705,
+      previousBalanceMinor: -1250,
+      accountLast4: "2222",
       note: "Imported from UOB credit card statement"
     }
   ]);

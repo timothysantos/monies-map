@@ -6,9 +6,12 @@ import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
+import { StatementFixSuggestions } from "./statement-fix-suggestions";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
 import { moneyToneClass } from "./money-tone-class";
+import { useMoneyPrivacy } from "./money-privacy";
+import { entryAmountTone } from "../domain/money-tone";
 
 const {
   accounts: accountService,
@@ -56,10 +59,111 @@ export function ImportPreviewReview({
   onDeleteDiagnosticLedgerRow,
   onDeleteDiagnosticLedgerRows,
   onSetDiagnosticLedgerPostDate,
-  onUpdateStatementCheckpoint
+  onUpdateStatementCheckpoint,
+  dismissedStatementFindingIds = [],
+  onApplyStatementFixes,
+  onUndoStatementFixes,
+  onDismissStatementFindings,
+  needsStatementAccountMapping = false,
+  statementImportMeta,
+  isEditingRows = false,
+  onToggleEditRows,
+  moreChecks = null,
+  isAutomaticStatementFixes = false,
+  autoAppliedStatementFixCount = 0,
+  onAutomaticStatementFixesChange
 }) {
   if (!preview) {
     return null;
+  }
+
+  // An official statement is reviewed card by card: the statement header,
+  // one section per card with its outcome and fixes, and the rest behind
+  // disclosures. Activity files and pasted CSV keep the row-first review.
+  if (statementImportSourceType === "pdf" && statementReconciliations.length) {
+    return (
+      <StatementReview
+        preview={preview}
+        previewRows={previewRows}
+        accounts={accounts}
+        statementReconciliations={statementReconciliations}
+        parserKey={statementImportMeta?.parserKey}
+        viewId={viewId}
+        isSubmitting={isSubmitting}
+        needsStatementAccountMapping={needsStatementAccountMapping}
+        isEditingRows={isEditingRows}
+        onToggleEditRows={onToggleEditRows}
+        isAutomaticStatementFixes={isAutomaticStatementFixes}
+        autoAppliedStatementFixCount={autoAppliedStatementFixCount}
+        onAutomaticStatementFixesChange={onAutomaticStatementFixesChange}
+        dismissedFindingIds={dismissedStatementFindingIds}
+        onApplyStatementFixes={onApplyStatementFixes}
+        onUndoStatementFixes={onUndoStatementFixes}
+        onDismissStatementFindings={onDismissStatementFindings}
+        onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
+        onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
+        onSetDiagnosticLedgerPostDate={onSetDiagnosticLedgerPostDate}
+        onRefreshStatementReconciliation={onRefreshStatementReconciliation}
+        accountMapping={showStatementAccountMapping ? (
+          <StatementAccountMapping
+            accounts={accounts}
+            accountMappingAccountNames={accountMappingAccountNames}
+            knownAccountNames={knownAccountNames}
+            detectedPreviewAccountNames={detectedPreviewAccountNames}
+            unknownPreviewAccountNames={unknownPreviewAccountNames}
+            previewRows={previewRows}
+            statementCheckpoints={statementCheckpoints}
+            onRemapPreviewAccount={onRemapPreviewAccount}
+            onCreateStatementAccount={onCreateStatementAccount}
+          />
+        ) : null}
+        unknownCategories={preview.unknownCategories?.length ? (
+          <UnknownCategories categoryNames={preview.unknownCategories} unknownCategoryMode={unknownCategoryMode} />
+        ) : null}
+        certifiedConflicts={certifiedConflictRows.length ? (
+          <CertifiedConflictRows rows={certifiedConflictRows} onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus} />
+        ) : null}
+        statementDetails={(
+          <StatementCheckpointDrafts
+            accounts={accounts}
+            knownAccountNames={knownAccountNames}
+            statementCheckpoints={statementCheckpoints}
+            hasDuplicateCheckpointAccounts={hasDuplicateCheckpointAccounts}
+            duplicateCheckpointAccounts={duplicateCheckpointAccounts}
+            onUpdateStatementCheckpoint={onUpdateStatementCheckpoint}
+          />
+        )}
+        hasDuplicateCheckpointAccounts={hasDuplicateCheckpointAccounts}
+        moreChecks={(
+          <>
+            <PreviewGuardrailPills
+              preview={preview}
+              previewReconciliationRowCount={previewReconciliationRowCount}
+              skippedPreviewRowCount={skippedPreviewRowCount}
+              needsReviewPreviewRowCount={needsReviewPreviewRowCount}
+              visibleOverlapImports={visibleOverlapImports}
+              reconciledExistingRowCount={reconciledExistingRowCount}
+              statementImportSourceType={statementImportSourceType}
+            />
+            {preview.exceptionSummary?.length ? <ExceptionRegister exceptions={preview.exceptionSummary} /> : null}
+            {visibleOverlapImports.length ? (
+              <OverlapImports
+                imports={visibleOverlapImports}
+                skippedPreviewRowCount={skippedPreviewRowCount}
+                needsReviewPreviewRowCount={needsReviewPreviewRowCount}
+                hasStatementReconciliationMismatch={hasStatementReconciliationMismatch}
+                hasStatementReconciliations
+                statementReconciliations={statementReconciliations}
+                canJumpToSkippedRows={canJumpToSkippedRows}
+                onDismissOverlap={onDismissOverlap}
+                onJumpToSkippedRows={onJumpToSkippedRows}
+              />
+            ) : null}
+            {moreChecks}
+          </>
+        )}
+      />
+    );
   }
 
   return (
@@ -122,6 +226,12 @@ export function ImportPreviewReview({
       {statementReconciliations.length ? (
         <StatementBalanceCheck
           reconciliations={statementReconciliations}
+          diagnosis={preview.statementDiagnosis}
+          accounts={accounts}
+          dismissedFindingIds={dismissedStatementFindingIds}
+          onApplyStatementFixes={onApplyStatementFixes}
+          onUndoStatementFixes={onUndoStatementFixes}
+          onDismissStatementFindings={onDismissStatementFindings}
           hasMismatch={hasStatementReconciliationMismatch}
           viewId={viewId}
           isSubmitting={isSubmitting}
@@ -591,6 +701,12 @@ function formatOverlapEntryAmount(entry) {
 
 function StatementBalanceCheck({
   reconciliations,
+  diagnosis,
+  accounts,
+  dismissedFindingIds,
+  onApplyStatementFixes,
+  onUndoStatementFixes,
+  onDismissStatementFindings,
   hasMismatch,
   viewId,
   isSubmitting,
@@ -614,6 +730,11 @@ function StatementBalanceCheck({
           {messages.imports.statementReconciliationRefresh}
         </button>
       </div>
+      {diagnosis?.rejectedFixes?.map((item) => (
+        <p key={`${item.fix.kind}-${item.fix.entryId}`} className="lede compact statement-fix-rejected">
+          {messages.imports.statementFixRejected(item.reason)}
+        </p>
+      ))}
       <div className="stack">
         {reconciliations.map((item) => (
           <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card statement-reconciliation-row">
@@ -640,6 +761,19 @@ function StatementBalanceCheck({
                 ) : null}
               </div>
             </div>
+            {item.accountId ? (
+              <StatementFixSuggestions
+                accountId={item.accountId}
+                statementEndDate={item.statementEndDate}
+                diagnosis={diagnosis}
+                accounts={accounts}
+                dismissedFindingIds={dismissedFindingIds}
+                isSubmitting={isSubmitting}
+                onApplyStatementFixes={onApplyStatementFixes}
+                onUndoStatementFixes={onUndoStatementFixes}
+                onDismissStatementFindings={onDismissStatementFindings}
+              />
+            ) : null}
             {item.supersededLedgerRows?.length ? (
               <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>
                 <strong>{messages.imports.statementReconciliationSupersededRowsTitle}</strong>
@@ -1394,4 +1528,350 @@ function StatementCheckpointDrafts({
       </div>
     </div>
   );
+}
+
+const STATEMENT_CARD_ROW_LIMIT = 5;
+
+// The statement's own name: bank and kind from the parser, month from the
+// checkpoints ("UOB card statement · May 2026").
+export function buildStatementTitle({ parserKey, statementReconciliations, sourceLabel }) {
+  const bank = [["uob", "UOB"], ["citibank", "Citibank"], ["ocbc", "OCBC"], ["hsbc", "HSBC"]]
+    .find(([prefix]) => parserKey?.startsWith(prefix))?.[1];
+  const month = statementReconciliations[0]?.checkpointMonth;
+  if (!bank || !month) {
+    return sourceLabel;
+  }
+  const kind = /card/.test(parserKey) || statementReconciliations.every((item) => item.accountKind === "credit_card")
+    ? messages.imports.statementKindCard
+    : messages.imports.statementKindAccount;
+  return messages.imports.statementTitle(bank, kind, formatService.formatMonthLabel(month));
+}
+
+// A card's outcome, read from the diagnosis after the fixes it suggests.
+// `tone` picks the pastel: mint resolved, sky a fix waiting for the user,
+// butter partly explained, lavender found but not fixable here, rose not
+// explained.
+export function getStatementCardStatus({ reconciliation, diagnosis }) {
+  const labels = messages.imports.statementCardStatus;
+  if (reconciliation.status === "unknown_account") {
+    return { key: "unknown_account", tone: "warning", label: labels.unknown_account };
+  }
+  if (reconciliation.status === "identity_unconfirmed") {
+    return { key: "identity_unconfirmed", tone: "pill-lavender", label: labels.identity_unconfirmed };
+  }
+  if (reconciliation.status === "missing_prior_statement") {
+    return { key: "missing_prior_statement", tone: "pill-lavender", label: labels.missing_prior_statement };
+  }
+  const card = diagnosis?.cards?.find((item) => item.accountId === reconciliation.accountId);
+  const openFixCount = (diagnosis?.findings ?? []).filter((finding) => (
+    finding.fix && !finding.applied && finding.confidence !== "low"
+    && (finding.accountId === reconciliation.accountId || finding.relatedAccountId === reconciliation.accountId)
+  )).length;
+  if (openFixCount && (card?.projectedDeltaMinor ?? 1) === 0) {
+    return { key: "fix_ready", tone: "pill-sky", label: labels.fix_ready, openFixCount };
+  }
+  if ((reconciliation.deltaMinor ?? 0) === 0) {
+    return { key: "resolved", tone: "success", label: labels.resolved };
+  }
+  const outcome = card?.outcome ?? "still_mismatched";
+  if (outcome === "partially_resolved") {
+    return { key: outcome, tone: "pill-butter", label: labels.partially_resolved, openFixCount };
+  }
+  if (outcome === "needs_manual_review") {
+    return { key: outcome, tone: "pill-lavender", label: labels.needs_manual_review };
+  }
+  return { key: "still_mismatched", tone: "warning", label: labels.still_mismatched };
+}
+
+function StatementReview({
+  preview,
+  previewRows,
+  accounts,
+  statementReconciliations,
+  parserKey,
+  viewId,
+  isSubmitting,
+  needsStatementAccountMapping,
+  isEditingRows,
+  onToggleEditRows,
+  isAutomaticStatementFixes,
+  autoAppliedStatementFixCount,
+  onAutomaticStatementFixesChange,
+  dismissedFindingIds,
+  onApplyStatementFixes,
+  onUndoStatementFixes,
+  onDismissStatementFindings,
+  onDeleteDiagnosticLedgerRow,
+  onDeleteDiagnosticLedgerRows,
+  onSetDiagnosticLedgerPostDate,
+  onRefreshStatementReconciliation,
+  accountMapping,
+  unknownCategories,
+  certifiedConflicts,
+  statementDetails,
+  hasDuplicateCheckpointAccounts,
+  moreChecks
+}) {
+  // Once a card had to be mapped, the mapping stays open for this review so
+  // it does not vanish under the user's hand when the last card is mapped.
+  const [isMappingOpen, setIsMappingOpen] = useState(needsStatementAccountMapping);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const diagnosis = preview.statementDiagnosis;
+  const statuses = statementReconciliations.map((reconciliation) => getStatementCardStatus({ reconciliation, diagnosis }));
+  const fixReadyCount = statuses.filter((status) => status.key === "fix_ready").length;
+  const openFixEntryCount = new Set((diagnosis?.findings ?? [])
+    .filter((finding) => finding.fix && !finding.applied && finding.confidence !== "low" && !dismissedFindingIds.includes(finding.id))
+    .map((finding) => finding.fix.entryId)).size;
+  const openCount = statuses.filter((status) => status.key !== "resolved").length;
+  const startDate = statementReconciliations.map((item) => item.statementStartDate).filter(Boolean).sort()[0];
+  const endDate = statementReconciliations.map((item) => item.statementEndDate).filter(Boolean).sort().at(-1);
+  const overall = openCount === 0
+    ? { tone: "success", label: messages.imports.statementAllBalance(statementReconciliations.length) }
+    : fixReadyCount === openCount
+      ? { tone: "pill-sky", label: messages.imports.statementFixesReady(openFixEntryCount) }
+      : { tone: "warning", label: messages.imports.statementCardsNeedYou(openCount) };
+
+  return (
+    <section className="statement-review" aria-label={messages.imports.statementReconciliationTitle}>
+      <div className="statement-review-head">
+        <div className="statement-review-title">
+          <h3>{buildStatementTitle({ parserKey, statementReconciliations, sourceLabel: preview.sourceLabel })}</h3>
+          <span className="lede compact">{messages.imports.statementReviewSubline({
+            endDate: endDate ? formatService.formatDateOnly(endDate) : "",
+            startDate: startDate ? formatService.formatDateOnly(startDate) : "",
+            cardCount: statementReconciliations.length,
+            rowCount: previewRows.length
+          })}</span>
+        </div>
+        <div className="statement-review-actions">
+          <span className={`pill ${overall.tone}`}>{overall.label}</span>
+          <button type="button" className="subtle-action" onClick={onRefreshStatementReconciliation} disabled={isSubmitting}>
+            {messages.imports.statementReconciliationRefresh}
+          </button>
+          {!needsStatementAccountMapping && accountMapping ? (
+            <button type="button" className="subtle-action" aria-expanded={isMappingOpen} onClick={() => setIsMappingOpen((current) => !current)}>
+              {messages.imports.statementChangeAccounts}
+            </button>
+          ) : null}
+          <button type="button" className="subtle-action" aria-expanded={isDetailsOpen || hasDuplicateCheckpointAccounts} onClick={() => setIsDetailsOpen((current) => !current)}>
+            {messages.imports.statementEditDetails}
+          </button>
+          <button type="button" className="subtle-action" aria-pressed={isEditingRows} onClick={onToggleEditRows}>
+            {isEditingRows ? messages.imports.statementHideRowEditor : messages.imports.statementEditRows}
+          </button>
+        </div>
+      </div>
+      {needsStatementAccountMapping || isMappingOpen ? accountMapping : null}
+      {unknownCategories}
+      {isDetailsOpen || hasDuplicateCheckpointAccounts ? statementDetails : null}
+      {diagnosis?.rejectedFixes?.map((item) => (
+        <p key={`${item.fix.kind}-${item.fix.entryId}`} className="lede compact statement-fix-rejected">
+          {messages.imports.statementFixRejected(item.reason)}
+        </p>
+      ))}
+      {certifiedConflicts}
+      {autoAppliedStatementFixCount && isAutomaticStatementFixes ? (
+        <div className="statement-auto-applied">
+          <span>{messages.imports.statementAutoApplied(autoAppliedStatementFixCount)}</span>
+          <button type="button" className="subtle-action" onClick={() => onAutomaticStatementFixesChange(false)}>
+            {messages.imports.statementAskFirst}
+          </button>
+        </div>
+      ) : null}
+      <div className="stack">
+        {statementReconciliations.map((reconciliation, index) => (
+          <StatementCardSection
+            key={`${reconciliation.accountName}-${reconciliation.checkpointMonth}`}
+            reconciliation={reconciliation}
+            status={statuses[index]}
+            diagnosis={diagnosis}
+            accounts={accounts}
+            rows={previewRows.filter((row) => row.accountId
+              ? row.accountId === reconciliation.accountId
+              : (row.statementAccountName ?? row.accountName) === reconciliation.accountName)}
+            viewId={viewId}
+            isSubmitting={isSubmitting}
+            dismissedFindingIds={dismissedFindingIds}
+            onApplyStatementFixes={onApplyStatementFixes}
+            onUndoStatementFixes={onUndoStatementFixes}
+            onDismissStatementFindings={onDismissStatementFindings}
+            isAutomaticStatementFixes={isAutomaticStatementFixes}
+            onAutomaticStatementFixesChange={onAutomaticStatementFixesChange}
+            onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
+            onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
+            onSetDiagnosticLedgerPostDate={onSetDiagnosticLedgerPostDate}
+          />
+        ))}
+      </div>
+      <details className="statement-more-checks">
+        <summary>{messages.imports.statementMoreChecks}</summary>
+        <div className="stack">{moreChecks}</div>
+      </details>
+    </section>
+  );
+}
+
+function StatementCardSection({
+  reconciliation,
+  status,
+  diagnosis,
+  accounts,
+  rows,
+  viewId,
+  isSubmitting,
+  dismissedFindingIds,
+  onApplyStatementFixes,
+  onUndoStatementFixes,
+  onDismissStatementFindings,
+  isAutomaticStatementFixes,
+  onAutomaticStatementFixesChange,
+  onDeleteDiagnosticLedgerRow,
+  onDeleteDiagnosticLedgerRows,
+  onSetDiagnosticLedgerPostDate
+}) {
+  const card = diagnosis?.cards?.find((item) => item.accountId === reconciliation.accountId);
+  const hasCardFixes = (diagnosis?.findings ?? []).some((finding) => (
+    finding.fix
+    && (finding.accountId === reconciliation.accountId || finding.relatedAccountId === reconciliation.accountId)
+    && !dismissedFindingIds.includes(finding.id)
+  ));
+  const [manualOpen, setManualOpen] = useState(null);
+  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes);
+  const deltaMinor = reconciliation.deltaMinor ?? 0;
+  const projectedDeltaMinor = card?.projectedDeltaMinor ?? deltaMinor;
+  const addedCount = rows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review" && !row.reconciliationTargetTransactionId).length;
+  const confirmedCount = rows.filter((row) => row.reconciliationTargetTransactionId).length;
+
+  return (
+    <article className={`import-card statement-reconciliation-row statement-card ${isOpen ? "is-open" : "is-collapsed"}`} aria-label={reconciliation.accountName}>
+      <div className="statement-reconciliation-card-head statement-card-head">
+        <div className="statement-card-title">
+          <span className={`pill ${status.tone}`}>{status.label}</span>
+          <div className="statement-reconciliation-card-title">
+            <strong>{messages.imports.statementReconciliationAccount(
+              reconciliation.accountName,
+              formatService.formatMonthLabel(reconciliation.checkpointMonth)
+            )}</strong>
+            <span className="import-history-inline">
+              {formatService.formatStatementReconciliationLine(reconciliation)}
+              {deltaMinor !== 0
+                ? ` • ${messages.imports.statementCardDifference(
+                  formatService.money(Math.abs(deltaMinor)),
+                  projectedDeltaMinor !== deltaMinor ? formatService.money(Math.abs(projectedDeltaMinor)) : ""
+                )}`
+                : ""}
+            </span>
+            <span className="import-history-inline">{messages.imports.statementCardCounts(addedCount, confirmedCount)}</span>
+          </div>
+        </div>
+        <button type="button" className="subtle-action" aria-expanded={isOpen} onClick={() => setManualOpen(!isOpen)}>
+          {isOpen ? messages.imports.statementCardHide : messages.imports.statementCardShow}
+        </button>
+      </div>
+      {isOpen ? (
+        <div className="statement-card-body">
+          {reconciliation.accountId ? (
+            <StatementFixSuggestions
+              accountId={reconciliation.accountId}
+              statementEndDate={reconciliation.statementEndDate}
+              diagnosis={diagnosis}
+              accounts={accounts}
+              dismissedFindingIds={dismissedFindingIds}
+              isSubmitting={isSubmitting}
+              onApplyStatementFixes={onApplyStatementFixes}
+              onUndoStatementFixes={onUndoStatementFixes}
+              onDismissStatementFindings={onDismissStatementFindings}
+              isAutomaticStatementFixes={isAutomaticStatementFixes}
+              onAutomaticStatementFixesChange={onAutomaticStatementFixesChange}
+            />
+          ) : null}
+          {reconciliation.supersededLedgerRows?.length ? (
+            <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>
+              <strong>{messages.imports.statementReconciliationSupersededRowsTitle}</strong>
+              {reconciliation.supersededLedgerRows.map((row) => (
+                <div key={row.transactionId} className="import-overlap-entry-row">
+                  <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
+                  <span className="import-overlap-entry-description">{row.description}</span>
+                  <span className="import-overlap-entry-account">{row.accountName}</span>
+                  <strong className="import-overlap-entry-amount">{formatService.money(Math.abs(row.signedAmountMinor))}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <StatementCardRows rows={rows} />
+          {reconciliation.reconciliationBreakdown && deltaMinor !== 0 ? (
+            <details className="statement-card-breakdown">
+              <summary>{messages.imports.statementHowItAddsUp}</summary>
+              <StatementReconciliationBreakdown
+                reconciliation={reconciliation}
+                breakdown={reconciliation.reconciliationBreakdown}
+                accountKind={reconciliation.accountKind}
+                viewId={viewId}
+                onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
+                onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
+                onSetDiagnosticLedgerPostDate={onSetDiagnosticLedgerPostDate}
+              />
+            </details>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+// The card's statement rows, read-only: what each will do on commit. Rows
+// that need the user come first; the full editor is one button away.
+function StatementCardRows({ rows }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const [isShowingAll, setIsShowingAll] = useState(false);
+  if (!rows.length) {
+    return null;
+  }
+  const order = (row) => row.commitStatus === "needs_review" ? 0 : row.commitStatus === "skipped" && row.commitStatusExplicit ? 1 : 2;
+  const sorted = [...rows].sort((left, right) => order(left) - order(right) || left.date.localeCompare(right.date));
+  const visible = isShowingAll ? sorted : sorted.slice(0, STATEMENT_CARD_ROW_LIMIT);
+  // Closed unless a row needs the user: the card header already counts them.
+  const needsAttention = rows.some((row) => row.commitStatus === "needs_review" || (row.commitStatus === "skipped" && row.commitStatusExplicit));
+  return (
+    <details className="statement-card-rows" open={needsAttention}>
+      <summary>{messages.imports.statementCardRowsTitle(rows.length)}</summary>
+      <ul>
+        {visible.map((row) => {
+          const chip = getStatementRowChip(row);
+          const signedMinor = row.entryType === "income" || row.transferDirection === "in" ? row.amountMinor : -row.amountMinor;
+          return (
+            <li key={row.rowId} className="statement-card-row">
+              <span className="statement-card-row-date">{formatService.formatDateOnly(row.date)}</span>
+              <span className="statement-card-row-description">{row.description}</span>
+              <span className={`pill ${chip.tone}`}>{chip.label}</span>
+              <strong className={`statement-card-row-amount ${areTotalsVisible ? moneyToneClass(entryAmountTone(row.entryType, signedMinor)) : ""}`}>
+                {formatService.money(row.amountMinor)}
+              </strong>
+            </li>
+          );
+        })}
+      </ul>
+      {sorted.length > STATEMENT_CARD_ROW_LIMIT ? (
+        <button type="button" className="subtle-action" aria-expanded={isShowingAll} onClick={() => setIsShowingAll((current) => !current)}>
+          {isShowingAll ? messages.imports.statementCardFewerRows : messages.imports.statementCardMoreRows(sorted.length - STATEMENT_CARD_ROW_LIMIT)}
+        </button>
+      ) : null}
+    </details>
+  );
+}
+
+function getStatementRowChip(row) {
+  const chips = messages.imports.statementRowChip;
+  if (row.commitStatus === "needs_review") {
+    return { tone: "pill-lavender", label: chips.needsReview };
+  }
+  if (row.commitStatus === "skipped") {
+    return row.commitStatusExplicit
+      ? { tone: "pill-butter", label: chips.leftOut }
+      : { tone: "pill-neutral", label: chips.alreadyCovered };
+  }
+  if (row.reconciliationTargetTransactionId) {
+    return { tone: "success", label: chips.confirms(row.reconciliationMatch?.description) };
+  }
+  return { tone: "pill-sky", label: chips.added };
 }

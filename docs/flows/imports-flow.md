@@ -46,6 +46,15 @@ when the import changes shared ledger evidence or reference data.
 
 Imports owns:
 
+- the three import steps (Bring files, Review, Done; design.md, "Import Page
+  Stages"). A statement is reviewed card by card under one header; the
+  commit bar stays in view; after a commit the Done card shows what changed
+  per card, with rollback and the next queued file. The intake queue keeps
+  the rest of a multi-file drop, reviews statements before activity (older
+  months first) and says how many activity rows a queued statement covers.
+  A mid-cycle row posted inside an already confirmed statement period is
+  skipped when that statement covers it and left out with a reason when it
+  does not (DOMAIN.md, Entry Reconciliation)
 - import inbox planning at the top of the route. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every
   missing statement/activity file for that institution, while the review queue
@@ -58,6 +67,15 @@ Imports owns:
 - account mapping
 - commit and rollback
 - certification and duplicate review
+- statement fixes: each card of the statement check shows the deterministic
+  statement mismatch diagnosis (DOMAIN.md, "Statement Mismatch Diagnosis")
+  with the rows and amounts behind it. Approving a fix (a move to the card
+  the statement lists the entry under, or a deferral to the next statement)
+  re-runs the preview with `statementFixes`; Undo removes it; Keep as is
+  hides it for this preview. The commit sends the preview's `appliedFixes`
+  and writes them in its batch; nothing is written before the commit.
+  Committing while a card is not Matched, or after a row edit the check has
+  not seen, asks first in a popover on the commit button
 - statement mismatch diagnostics, including balance breakdown rows that explain
   likely account, row direction, skipped-row, or unmatched-ledger causes and
   expose hover/focus explanations with the exact statement date window; ledger
