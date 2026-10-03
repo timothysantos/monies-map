@@ -390,10 +390,12 @@ export default {
         apiKey?: string;
         defaultAccountPriorityIds?: string[];
         defaultParams?: string;
+        foreignCurrencyAccountId?: string;
       }>().catch(() => ({
         apiKey: undefined,
         defaultAccountPriorityIds: undefined,
-        defaultParams: undefined
+        defaultParams: undefined,
+        foreignCurrencyAccountId: undefined
       }));
 
       try {
@@ -402,7 +404,8 @@ export default {
           ...(await saveShortcutSettings(env.DB, {
             apiKey: body.apiKey ?? "",
             defaultAccountPriorityIds: body.defaultAccountPriorityIds ?? [],
-            defaultParams: body.defaultParams ?? ""
+            defaultParams: body.defaultParams ?? "",
+            foreignCurrencyAccountId: typeof body.foreignCurrencyAccountId === "string" ? body.foreignCurrencyAccountId : ""
           }))
         });
       } catch (error) {
@@ -1010,7 +1013,8 @@ export default {
         account = await resolveShortcutAccountSelection(env.DB, {
           accountId: bodyWithDefaults.accountId,
           accountName: bodyWithDefaults.accountName,
-          walletName: bodyWithDefaults.name
+          walletName: bodyWithDefaults.name,
+          amountCurrency: explicitCurrency ?? amount?.currency
         });
       } catch (error) {
         return json({ ok: false, error: describeError(error) }, 400);

@@ -28,6 +28,7 @@ test("buildSafeSettingsPage supplies empty collections for the settings route", 
   assert.deepEqual(result.recentAuditEvents, []);
   assert.deepEqual(result.shortcutSettings.defaultAccountPriorityIds, []);
   assert.equal(result.shortcutSettings.defaultParams, "");
+  assert.equal(result.shortcutSettings.foreignCurrencyAccountId, "");
   assert.equal(result.demo.emptyState, false);
 });
 
@@ -43,14 +44,19 @@ test("shortcut settings draft keeps active saved priority then appends active ac
     buildShortcutSettingsDraft({
       apiKey: "mm_test",
       defaultParams: "category=Transport",
-      defaultAccountPriorityIds: ["bank", "old"]
+      defaultAccountPriorityIds: ["bank", "old"],
+      foreignCurrencyAccountId: "card"
     }, accounts),
     {
       apiKey: "mm_test",
       defaultParams: "category=Transport",
-      defaultAccountPriorityIds: ["bank", "card", "cash"]
+      defaultAccountPriorityIds: ["bank", "card", "cash"],
+      foreignCurrencyAccountId: "card"
     }
   );
+  // A card for other currencies that is no longer active is dropped, so
+  // the next save does not keep it.
+  assert.equal(buildShortcutSettingsDraft({ apiKey: "mm_test", defaultAccountPriorityIds: [], foreignCurrencyAccountId: "old" }, accounts).foreignCurrencyAccountId, "");
 });
 
 test("shortcut account reorder moves one account without losing ids", () => {
