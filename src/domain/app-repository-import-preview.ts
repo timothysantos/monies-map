@@ -32,6 +32,7 @@ import {
   isRowBeforeLateUnpostedEntry
 } from "./import-preview-match-policy";
 import {
+  createRepetitionIndex,
   getDuplicateCandidateDayDistance,
   getDuplicateMatchKind,
   getExistingTransactionDateContext,
@@ -156,6 +157,7 @@ export async function buildImportPreview(
   // must already be on that statement (see applyCertifiedStatementCoverage).
   const certifiedStatementPeriods = input.sourceType === "pdf" ? [] : await loadCertifiedStatementPeriods(db);
   const claimedStatementCoverIds = new Set<string>();
+  const velocity = buildPreviewVelocity(input.rows, ledgerRows, input.defaultAccountName);
   for (const [index, rawRow] of input.rows.entries()) {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length) {
@@ -234,7 +236,8 @@ export async function buildImportPreview(
       previewRowDateContext,
       existingRows: ledgerRows,
       incomingSourceType: input.sourceType,
-      excludedTransactionIds: claimedReconciliationTargetIds
+      excludedTransactionIds: claimedReconciliationTargetIds,
+      velocity
     });
     const reconciliationMatches = exactDuplicateMatch
       ? []
@@ -244,7 +247,8 @@ export async function buildImportPreview(
         existingRows: ledgerRows,
         incomingSourceType: input.sourceType,
         excludedTransactionIds: claimedReconciliationTargetIds,
-        statementEndDate: statementCards.find((card) => card.accountId === previewRow.accountId)?.endDate
+        statementEndDate: statementCards.find((card) => card.accountId === previewRow.accountId)?.endDate,
+        velocity
       });
 
     // Exact duplicate suppression is the raw identity lane. It must run before
@@ -278,7 +282,8 @@ export async function buildImportPreview(
       ledgerRows,
       certifiedStatementPeriods,
       claimedStatementCoverIds,
-      requestedCommitStatus
+      requestedCommitStatus,
+      velocity
     });
     previewRows.push(previewRow);
 
@@ -317,7 +322,8 @@ export async function buildImportPreview(
     previewRows,
     sourceType: input.sourceType,
     statementCheckpoints: statementCheckpoints,
-    statementChainBreaks
+    statementChainBreaks,
+    velocity
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
   markCertifiedConflictRows(previewRows, statementReconciliations);
@@ -429,6 +435,7 @@ function applyCertifiedStatementCoverage(input: {
   certifiedStatementPeriods: CertifiedStatementPeriod[];
   claimedStatementCoverIds: Set<string>;
   requestedCommitStatus?: "included" | "skipped" | "needs_review";
+  velocity: PreviewVelocity;
 }) {
   const { previewRow } = input;
   const period = previewRow.accountId
@@ -459,7 +466,6 @@ function applyCertifiedStatementCoverage(input: {
     transfer_direction: previewRow.transferDirection ?? null,
     amount_minor: previewRow.amountMinor
   });
-  const maxDayDistance = getDuplicateCandidateMaxDayDistance(previewRow.amountMinor);
   const cover = input.ledgerRows
     .filter((row) => (
       row.account_id === previewRow.accountId
@@ -475,7 +481,9 @@ function applyCertifiedStatementCoverage(input: {
       }),
       similarity: compareDescriptionSimilarity(previewRow.description, row.description)
     }))
-    .filter((candidate) => candidate.dayDistance <= maxDayDistance)
+    .filter((candidate) => candidate.dayDistance <= getDuplicateCandidateMaxDayDistance({
+      repeats: input.velocity.repeats(previewRow.rowIndex, candidate.row.transaction_id)
+    }))
     .sort((left, right) => left.dayDistance - right.dayDistance || right.similarity - left.similarity)[0];
 
   const monthLabel = formatCheckpointMonthForReason(period.checkpointMonth);
@@ -518,6 +526,53 @@ type PreviewLedgerRow = {
   account_name: string;
   normalized_hash: string | null;
 };
+
+// The velocity rule's repetition test for this preview (DOMAIN.md,
+// "Velocity Rule"): a file row and a ledger entry are matched with the tight
+// window when either repeats on its own side, the row among the file's rows
+// for its account, the entry among the ledger's.
+interface PreviewVelocity {
+  repeats(rowIndex: number, transactionId?: string): boolean;
+}
+
+function buildPreviewVelocity(rows: Record<string, string>[], ledgerRows: PreviewLedgerRow[], defaultAccountName?: string): PreviewVelocity {
+  const fileCharges = rows.flatMap((rawRow, index) => {
+    const normalized = normalizeImportRow(rawRow);
+    if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
+      return [];
+    }
+    const dateContext = getPreviewRowDateContext({ date: normalized.date, note: normalized.note, rawRow } as ImportPreviewRowDto);
+    return [{
+      rowIndex: index + 1,
+      charge: {
+        accountId: normalized.accountId ?? normalized.accountName ?? rawRow.statementAccountName ?? rawRow.statementAccount ?? rawRow.account ?? defaultAccountName,
+        signedAmountMinor: getSignedLedgerAmountMinor({
+          entry_type: normalized.entryType,
+          transfer_direction: normalized.transferDirection ?? null,
+          amount_minor: normalized.amountMinor
+        }),
+        description: normalized.description ?? "",
+        ...dateContext
+      }
+    }];
+  });
+  const fileRepeats = createRepetitionIndex(fileCharges, (item) => item.charge);
+  const fileByRowIndex = new Map(fileCharges.map((item) => [item.rowIndex, item]));
+  const ledgerRepeats = createRepetitionIndex(ledgerRows, (row) => ({
+    accountId: row.account_id,
+    signedAmountMinor: getExistingRowSignedAmountMinor(row),
+    description: row.description,
+    ...getExistingTransactionDateContext(row)
+  }));
+  const ledgerById = new Map(ledgerRows.map((row) => [row.transaction_id, row]));
+  return {
+    repeats(rowIndex, transactionId) {
+      const fileRow = fileByRowIndex.get(rowIndex);
+      const ledgerRow = transactionId ? ledgerById.get(transactionId) : undefined;
+      return Boolean((fileRow && fileRepeats(fileRow)) || (ledgerRow && ledgerRepeats(ledgerRow)));
+    }
+  };
+}
 
 // Applies the approved statement fixes to the ledger rows the preview
 // matches against: a moved entry sits on its statement card, a deferred one
@@ -700,6 +755,7 @@ function findExactDuplicateSuppressionMatch(input: {
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
   excludedTransactionIds?: Set<string>;
+  velocity: PreviewVelocity;
 }) {
   const previewRowHash = buildImportRowHash(input.previewRow);
 
@@ -729,7 +785,7 @@ function findExactDuplicateSuppressionMatch(input: {
             candidateBankCertificationStatus: candidate.bank_certification_status,
             incomingSourceType: input.incomingSourceType,
             dayDistance,
-            amountMinor: input.previewRow.amountMinor
+            repeats: input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id)
           })
         );
       const canUseCertifiedStatementDateWindow = canSuppressCertifiedStatementDuplicate({
@@ -737,7 +793,7 @@ function findExactDuplicateSuppressionMatch(input: {
         candidateBankCertificationStatus: candidate.bank_certification_status,
         incomingSourceType: input.incomingSourceType,
         dayDistance,
-        amountMinor: input.previewRow.amountMinor
+        repeats: input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id)
       });
       const hasPerfectDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
@@ -791,6 +847,7 @@ function findReconciliationMatches(input: {
   // The statement period's last day for this row's card (official
   // statements only).
   statementEndDate?: string;
+  velocity: PreviewVelocity;
 }) {
   return input.existingRows
     .map((candidate) => {
@@ -811,19 +868,18 @@ function findReconciliationMatches(input: {
         previewRow: input.previewRowDateContext,
         candidate: candidateDateContext
       });
-      const maxDayDistance = getDuplicateCandidateMaxDayDistance(input.previewRow.amountMinor);
+      const repeats = input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id);
 
-      // The velocity rule rejects low-value matches that are too far apart in
-      // time. This prevents commuter false positives where weekly BUS/MRT or
-      // coffee charges share the same amount and similar merchant text but
-      // are actually separate real-world events.
-      if (dayDistance > maxDayDistance) {
+      // The velocity rule: a charge that repeats (daily fares, coffees,
+      // top-ups at one price) is matched only within two days, so separate
+      // purchases are never taken for one another.
+      if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats })) {
         return undefined;
       }
-      // A low-value entry from the statement's last days that has not
+      // A repeating entry from the statement's last days that has not
       // posted yet may be the next statement's: never an earlier row's.
       if (isRowBeforeLateUnpostedEntry({
-        amountMinor: input.previewRow.amountMinor,
+        repeats,
         entryDate: candidate.transaction_date,
         entryPostDate: candidate.post_date,
         statementEndDate: input.statementEndDate,
@@ -1251,6 +1307,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
   statementStartDate?: string;
   statementEndDate: string;
   deltaMinor: number;
+  velocity: PreviewVelocity;
 }) {
   if (input.deltaMinor === 0) {
     return [];
@@ -1271,7 +1328,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
       && row.account_id === input.account.id
       && !reconciliationTargetIds.has(row.transaction_id)
       && isDateWithinRange(getExistingRowClearedDate(row), input.statementStartDate, input.statementEndDate)
-      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows)
+      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows, input.velocity)
     ))
     .map((row) => {
       const transactionId = row.transaction_id;
@@ -1313,6 +1370,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
 
 function hasPotentialOfficialStatementRowForExistingCandidate(
   candidate: {
+    transaction_id?: string;
     account_id: string;
     transaction_date: string;
     post_date?: string | null;
@@ -1321,7 +1379,8 @@ function hasPotentialOfficialStatementRowForExistingCandidate(
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
   },
-  previewRows: ImportPreviewRowDto[]
+  previewRows: ImportPreviewRowDto[],
+  velocity: PreviewVelocity
 ) {
   const candidateClearedDate = getExistingRowClearedDate(candidate);
   const candidateSignedAmountMinor = getExistingRowSignedAmountMinor(candidate);
@@ -1341,7 +1400,7 @@ function hasPotentialOfficialStatementRowForExistingCandidate(
     }
 
     const dayDistance = Math.abs(daysBetween(row.date, candidateClearedDate));
-    if (dayDistance > getDuplicateCandidateMaxDayDistance(row.amountMinor)) {
+    if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats: velocity.repeats(row.rowIndex, candidate.transaction_id) })) {
       return false;
     }
 
@@ -1749,6 +1808,7 @@ function buildImportPreviewStatementReconciliations(input: {
     account_id: string;
     missing_checkpoint_month: string;
   }[];
+  velocity: PreviewVelocity;
 }) {
   if (!input.statementCheckpoints.length) {
     return [];
@@ -1795,7 +1855,8 @@ function buildImportPreviewStatementReconciliations(input: {
         previewRows: input.previewRows,
         statementStartDate,
         statementEndDate,
-        deltaMinor
+        deltaMinor,
+        velocity: input.velocity
       })
       : [];
     if (supersededLedgerRows.length) {

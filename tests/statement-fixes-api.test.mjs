@@ -361,23 +361,22 @@ function findHistory(payload) {
   return undefined;
 }
 
-// One Card's statement closes on 12 May. A $1.99 ride recorded by hand on
-// 12 May has not posted yet; the statement's last ride was bought on 11 May.
-function withRideBoughtOn11May(statement) {
-  return {
-    ...statement,
-    rows: [...statement.rows, {
-      date: "2026-05-12",
-      description: "BUS/MRT 000000006 SINGAPORE",
-      expense: "1.99",
-      income: "",
-      account: ONE_CARD,
-      category: "Public Transport",
-      note: "txn date: 2026-05-11",
-      type: "expense",
-      reference: "00000000000000000000011"
-    }]
-  };
+// One Card's statement closes on 12 May. A $1.99 commute: rides bought on
+// 9 and 11 May are on the statement; a ride recorded by hand on 12 May has
+// not posted yet.
+function withCommuteRides(statement) {
+  const ride = (date, purchaseDate, id) => ({
+    date,
+    description: `BUS/MRT 00000000${id} SINGAPORE`,
+    expense: "1.99",
+    income: "",
+    account: ONE_CARD,
+    category: "Public Transport",
+    note: `txn date: ${purchaseDate}`,
+    type: "expense",
+    reference: `0000000000000000000001${id}`
+  });
+  return { ...statement, rows: [...statement.rows, ride("2026-05-11", "2026-05-09", 5), ride("2026-05-12", "2026-05-11", 6)] };
 }
 
 test("a closing-day ride that posts next statement is not taken for the statement's ride the day before", async (t) => {
@@ -385,7 +384,7 @@ test("a closing-day ride that posts next statement is not taken for the statemen
   const { statement } = await setUpWrongCardScenario(api);
   const lateRideId = await createEntry(api, { accountName: ONE_CARD, date: "2026-05-12", description: "BUS/MRT", amountMinor: 199, categoryName: "Other" });
 
-  const preview = await previewStatement(api, withRideBoughtOn11May(statement));
+  const preview = await previewStatement(api, withCommuteRides(statement));
   const rideRow = preview.previewRows.find((row) => row.description === "BUS/MRT 000000006 SINGAPORE");
   // The 11 May ride is new to the ledger; the 12 May entry waits for June.
   assert.deepEqual([rideRow.commitStatus, rideRow.reconciliationTargetTransactionId], ["included", undefined]);
@@ -398,7 +397,7 @@ test("a ride recorded on its own purchase day before the closing days still meet
   const { statement } = await setUpWrongCardScenario(api);
   const rideId = await createEntry(api, { accountName: ONE_CARD, date: "2026-05-11", description: "BUS/MRT", amountMinor: 199, categoryName: "Other" });
 
-  const preview = await previewStatement(api, withRideBoughtOn11May(statement));
+  const preview = await previewStatement(api, withCommuteRides(statement));
   const rideRow = preview.previewRows.find((row) => row.description === "BUS/MRT 000000006 SINGAPORE");
   assert.equal(rideRow.reconciliationTargetTransactionId, rideId);
 });

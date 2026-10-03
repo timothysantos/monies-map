@@ -1,5 +1,5 @@
-// Velocity rule audit (docs/audits/velocity-rule.md): today's "under $5"
-// test against a "does the same charge repeat nearby" test, over every
+// Velocity rule audit (docs/audits/velocity-rule.md): the old "under $5"
+// test against the repetition test the app now uses (createRepetitionIndex), over every
 // real-structure bank file in tests/fixtures. Read only; changes nothing.
 //   npx tsx scripts/audit-velocity-rule.mjs
 import { readFileSync, readdirSync } from "node:fs";
@@ -7,7 +7,7 @@ import { parseCitibankActivityCsv, parseOcbcActivityCsv, parseStatementText } fr
 import { parseCurrentTransactionSpreadsheet } from "../src/lib/statement-import/xls.ts";
 import { normalizeImportRow, extractTransactionDateHint } from "../src/domain/app-repository-helpers.ts";
 import { compareDescriptionSimilarity } from "../src/domain/app-repository-helpers.ts";
-import { getDuplicateCandidateDayDistance, getDuplicateMatchKind, getTokenSimilarity } from "../src/domain/statement-row-matching.ts";
+import { createRepetitionIndex, getDuplicateCandidateDayDistance, getDuplicateMatchKind, getTokenSimilarity } from "../src/domain/statement-row-matching.ts";
 const fx = (p) => new URL(`../tests/fixtures/${p}`, import.meta.url);
 const text = (p) => readFileSync(fx(p), "utf8");
 const buf = (p) => { const b = readFileSync(fx(p)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); };
@@ -46,8 +46,9 @@ const sources = loadSources().filter((s) => s.rows.length);
 const all = [];
 const fp = { A: [], B: [] };
 for (const s of sources) {
+  const repeats = createRepetitionIndex(s.rows, (r) => ({ accountId: r.account, signedAmountMinor: r.signed, description: r.description, ...ctx(r) }));
   for (const r of s.rows) {
-    r.repeats = s.rows.some((o) => o !== r && dist(r, o) <= 7 && lookalike(r, o, dist(r, o)));
+    r.repeats = repeats(r);
     r.small = r.amountMinor < 500;
     r.windowA = r.small ? 2 : 7;
     r.windowB = r.repeats ? 2 : 7;
@@ -58,7 +59,7 @@ for (const s of sources) {
     const a = s.rows[i], b = s.rows[j], d = dist(a, b);
     if (!lookalike(a, b, d)) continue;
     if (d <= (a.small ? 2 : 7)) fp.A.push([a, b, d]);
-    if (d <= 2) fp.B.push([a, b, d]); // both rows repeat by definition here
+    if (d <= (a.repeats || b.repeats ? 2 : 7)) fp.B.push([a, b, d]);
   }
 }
 

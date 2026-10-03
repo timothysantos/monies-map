@@ -26,6 +26,7 @@ import {
 } from "./app-repository-helpers";
 import { getDuplicateCandidateMaxDayDistance, isRowBeforeLateUnpostedEntry } from "./import-preview-match-policy";
 import {
+  createRepetitionIndex,
   getDuplicateCandidateDayDistance,
   getDuplicateMatchKind,
   getExistingTransactionDateContext,
@@ -303,7 +304,7 @@ function findWrongAccountEntries(context: {
     const searchAccountIds = getRelatedAccountIds(destinationAccount, input.accounts, cardsByAccountId);
     const candidates = input.ledgerEntries
       .filter((entry) => searchAccountIds.has(entry.accountId) && !claimedEntryIds.has(entry.id))
-      .map((entry) => scoreWrongAccountCandidate({ row, entry, card, accountsById, destinationAccount }))
+      .map((entry) => scoreWrongAccountCandidate({ row, entry, card, accountsById, destinationAccount, repeats: repeatsFor(input)(row, entry) }))
       .filter((candidate): candidate is WrongAccountCandidate => Boolean(candidate))
       .sort((left, right) => getEvidenceRank(left.evidence) - getEvidenceRank(right.evidence) || left.dayDistance - right.dayDistance);
     if (!candidates.length) {
@@ -402,18 +403,21 @@ function scoreWrongAccountCandidate(input: {
   card: DiagnosisCard;
   accountsById: Map<string, DiagnosisAccount>;
   destinationAccount?: DiagnosisAccount;
+  // The velocity rule: the row or the entry repeats on its own side.
+  repeats: boolean;
 }): WrongAccountCandidate | undefined {
   const { row, entry } = input;
   if (getEntrySignedAmountMinor(entry) !== getRowSignedAmountMinor(row)) {
     return undefined;
   }
   const dayDistance = getRowEntryDayDistance(row, entry);
-  // The velocity rule: low-value repeats (fares, coffee) far apart in time
-  // are separate purchases, never one purchase on the wrong card.
-  if (dayDistance > getDuplicateCandidateMaxDayDistance(row.amountMinor)) {
+  // The velocity rule: repeated charges (daily fares, coffees, top-ups at
+  // one price) far apart in time are separate purchases, never one purchase
+  // on the wrong card.
+  if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats: input.repeats })) {
     return undefined;
   }
-  if (isNextStatementEntryForRow(row, entry, input.card.endDate)) {
+  if (isNextStatementEntryForRow(row, entry, input.card.endDate, input.repeats)) {
     return undefined;
   }
 
@@ -481,7 +485,7 @@ function explainPeriodEntry(context: {
       return false;
     }
     const rowCard = input.cards.find((item) => item.accountId === row.accountId) ?? card;
-    if (isNextStatementEntryForRow(row, entry, rowCard.endDate)) {
+    if (isNextStatementEntryForRow(row, entry, rowCard.endDate, repeatsFor(input)(row, entry))) {
       return false;
     }
     const dayDistance = getRowEntryDayDistance(row, entry);
@@ -708,17 +712,45 @@ function getDateFacts(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry): 
   return facts;
 }
 
-// A low-value entry from the statement's last days that has not posted yet
+// A repeating entry from the statement's last days that has not posted yet
 // may be the next statement's, never an earlier row's (the shared rule in
 // import-preview-match-policy.js).
-function isNextStatementEntryForRow(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry, statementEndDate: string) {
+function isNextStatementEntryForRow(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry, statementEndDate: string, repeats: boolean) {
   return isRowBeforeLateUnpostedEntry({
-    amountMinor: row.amountMinor,
+    repeats,
     entryDate: entry.transactionDate,
     entryPostDate: entry.postDate,
     statementEndDate,
     rowPurchaseDate: row.eventDate ?? row.postedDate
   });
+}
+
+// The velocity rule's repetition test for one diagnosis: a statement row
+// repeats among the statement's rows, an entry among the ledger's.
+const repetitionByInput = new WeakMap<DiagnosisInput, (row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry) => boolean>();
+
+function repeatsFor(input: DiagnosisInput) {
+  const known = repetitionByInput.get(input);
+  if (known) {
+    return known;
+  }
+  const rowRepeats = createRepetitionIndex(input.statementRows, (row) => ({
+    accountId: row.accountId,
+    signedAmountMinor: getRowSignedAmountMinor(row),
+    description: row.description,
+    postedDate: row.postedDate,
+    eventDate: row.eventDate ?? row.postedDate,
+    hasEventDateHint: Boolean(row.eventDate && row.eventDate !== row.postedDate)
+  }));
+  const entryRepeats = createRepetitionIndex(input.ledgerEntries, (entry) => ({
+    accountId: entry.accountId,
+    signedAmountMinor: getEntrySignedAmountMinor(entry),
+    description: entry.description,
+    ...getExistingTransactionDateContext({ transaction_date: entry.transactionDate, post_date: entry.postDate, note: entry.note })
+  }));
+  const repeats = (row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry) => rowRepeats(row) || entryRepeats(entry);
+  repetitionByInput.set(input, repeats);
+  return repeats;
 }
 
 function getRowEntryDayDistance(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry) {

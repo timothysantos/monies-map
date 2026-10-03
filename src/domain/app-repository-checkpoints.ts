@@ -1,5 +1,6 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { getDuplicateCandidateMaxDayDistance, isRowBeforeLateUnpostedEntry } from "./import-preview-match-policy";
+import { createRepetitionIndex } from "./statement-row-matching";
 import { recordAuditEvent } from "./app-repository-audit";
 import {
   compareDescriptionSimilarity,
@@ -525,16 +526,15 @@ export function normalizeStatementCompareRows(rows: Record<string, string>[], st
 }
 
 // Within this many days a same-amount row with a shared merchant word, or
-// the only same-amount row either way, answers a statement row. Low-value
-// repeats (fares, coffee) keep the import preview's tighter window.
+// the only same-amount row either way, answers a statement row.
 const LOOSE_MATCH_WINDOW_DAYS = 7;
-const getLooseMatchWindowDays = (amountMinor: number) => Math.min(LOOSE_MATCH_WINDOW_DAYS, getDuplicateCandidateMaxDayDistance(amountMinor));
 
 // Pairs each statement row with one ledger row of the same signed amount,
 // strictest rule first: the same day with similar text, then within three
-// days with closer text, then within a week (two days under $5, as the
-// import preview's velocity rule) with a shared merchant word or as the
-// only candidate on both sides. Days are compared on the posted day
+// days with closer text, then within a week with a shared merchant word or
+// as the only candidate on both sides. The velocity rule holds in every pass:
+// a charge that repeats on either side (daily fares, coffees, top-ups at one
+// price) is matched only within two days. Days are compared on the posted day
 // and the purchase day of each row (a statement row's "txn date" note, a
 // ledger entry's own date), whichever are closer, so an entry recorded on
 // the day of purchase meets the row the bank posted days later. Returns
@@ -543,7 +543,7 @@ export function matchStatementCompareRows(
   statementRows: StatementCompareRowDto[],
   ledgerRows: StatementCompareRowDto[],
   // The period's last day and the ledger rows with no posted date: a
-  // low-value one from the last two days may be the next statement's.
+  // repeating one from the last two days may be the next statement's.
   options: { statementEndDate?: string; unpostedLedgerIds?: Set<string> } = {}
 ) {
   const matchedLedgerIds = new Set<string>();
@@ -554,9 +554,16 @@ export function matchStatementCompareRows(
   const dayDistance = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => Math.min(
     ...statementDates.get(statementRow.id)!.flatMap((left) => ledgerDates.get(ledgerRow.id)!.map((right) => Math.abs(daysBetween(left, right))))
   );
+  const toCharge = (row: StatementCompareRowDto) => {
+    const purchaseDate = row.transactionDate ?? extractTransactionDateHint(row.note) ?? row.date;
+    return { signedAmountMinor: row.signedAmountMinor, description: row.description, postedDate: row.date, eventDate: purchaseDate, hasEventDateHint: purchaseDate !== row.date };
+  };
+  const statementRepeats = createRepetitionIndex(statementRows, toCharge);
+  const ledgerRepeats = createRepetitionIndex(ledgerRows, toCharge);
+  const repeats = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => statementRepeats(statementRow) || ledgerRepeats(ledgerRow);
   const isNextStatementCandidate = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => Boolean(options.unpostedLedgerIds?.has(ledgerRow.id))
     && isRowBeforeLateUnpostedEntry({
-      amountMinor: ledgerRow.amountMinor,
+      repeats: repeats(statementRow, ledgerRow),
       entryDate: ledgerRow.transactionDate ?? ledgerRow.date,
       entryPostDate: null,
       statementEndDate: options.statementEndDate,
@@ -565,7 +572,7 @@ export function matchStatementCompareRows(
   const openCandidates = (statementRow: StatementCompareRowDto, maxDays: number) => ledgerRows.filter((ledgerRow) => (
     !matchedLedgerIds.has(ledgerRow.id)
     && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
-    && dayDistance(statementRow, ledgerRow) <= maxDays
+    && dayDistance(statementRow, ledgerRow) <= Math.min(maxDays, getDuplicateCandidateMaxDayDistance({ repeats: repeats(statementRow, ledgerRow) }))
     && !isNextStatementCandidate(statementRow, ledgerRow)
   ));
   const pair = (statementRow: StatementCompareRowDto, ledgerRow: StatementCompareRowDto) => {
@@ -590,8 +597,7 @@ export function matchStatementCompareRows(
   runPass((statementRow) => openCandidates(statementRow, 3)
     .find((ledgerRow) => compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65));
   runPass((statementRow) => {
-    const windowDays = getLooseMatchWindowDays(statementRow.amountMinor);
-    const candidates = openCandidates(statementRow, windowDays)
+    const candidates = openCandidates(statementRow, LOOSE_MATCH_WINDOW_DAYS)
       .sort((left, right) => dayDistance(statementRow, left) - dayDistance(statementRow, right));
     const sharingWord = candidates.find((ledgerRow) => sharesMerchantWord(ledgerRow.description, statementRow.description));
     if (sharingWord) {
@@ -604,7 +610,7 @@ export function matchStatementCompareRows(
     const rivals = statementRows.filter((other) => (
       !matchedStatementIds.has(other.id)
       && other.signedAmountMinor === statementRow.signedAmountMinor
-      && dayDistance(other, candidates[0]) <= windowDays
+      && dayDistance(other, candidates[0]) <= LOOSE_MATCH_WINDOW_DAYS
     ));
     return rivals.length === 1 ? candidates[0] : undefined;
   });
