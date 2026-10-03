@@ -1207,6 +1207,29 @@ Important distinctions:
   while that account has a later statement, because moving them back would
   change it.
 
+### Foreign Currency Estimate
+
+An entry saved from an Apple Pay Wallet amount in another currency than its
+account's, for example IDR 159,000 paid in Bali with an Amaze card that
+charges a linked SGD card. Its `amount_minor` is an estimate in the account's
+currency at the day's exchange rate; the Wallet amount is kept.
+
+Canonical term:
+- `foreign currency estimate`
+
+Code and storage:
+- `src/domain/foreign-currency.ts`
+- `transactions.original_amount_minor`, `transactions.original_currency`
+- `fx_rates` (the last rate per currency pair, a cache, not household data)
+
+Important distinctions:
+- The account's currency stays the ledger's currency; an entry is never saved
+  in a currency its account does not use.
+- The estimate is provisional like any manual entry. The card's statement
+  carries the exact amount.
+- No rate, no entry: when no usable rate exists the Shortcut is told to run
+  again and nothing is saved.
+
 ### Statement Correction
 
 A statement fix for data that is already saved, applied from the Settings
