@@ -818,7 +818,8 @@ The comparison pairs rows in `matchStatementCompareRows`
 (`src/domain/app-repository-checkpoints.ts`), always on the same signed
 amount: the same day with similar text, then within three days with closer
 text, then within seven days (two under $5, the preview's velocity rule)
-with a shared merchant word or as the only candidate on both sides. Days are compared on both the posted day and the
+with a shared merchant word or as the only candidate on both sides. The
+closing-days rule above applies here too. Days are compared on both the posted day and the
 purchase day (a statement row's `txn date` note, a ledger entry's
 `transactionDate`), so a hand-recorded fare meets the row the bank posted
 later. `tests/statement-compare-matching.test.mjs` holds the rules and their
@@ -924,6 +925,11 @@ for spending history and matching. A unique exact promotion should show as
 
 Low-value rows below `500` minor units use the `Velocity Rule`: if the lane
 distance is more than 2 days, the row is not treated as a duplicate candidate.
+On an official statement, a low-value entry with no posted date from the
+period's last two days only matches a row bought the same day or later
+(`isRowBeforeLateUnpostedEntry` in `import-preview-match-policy.js`), so a
+closing-day ride that posts next month is offered as "next statement" rather
+than taken for the previous day's ride.
 
 A normalized import hash is the strict fingerprint for one reviewed import row.
 It is built from the normalized date, description, amount, mapped account, and

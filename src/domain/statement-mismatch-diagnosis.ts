@@ -24,7 +24,7 @@ import {
   hasCompactMerchantContainment,
   normalizeDescriptionForMatch
 } from "./app-repository-helpers";
-import { getDuplicateCandidateMaxDayDistance } from "./import-preview-match-policy";
+import { getDuplicateCandidateMaxDayDistance, isRowBeforeLateUnpostedEntry } from "./import-preview-match-policy";
 import {
   getDuplicateCandidateDayDistance,
   getDuplicateMatchKind,
@@ -413,6 +413,9 @@ function scoreWrongAccountCandidate(input: {
   if (dayDistance > getDuplicateCandidateMaxDayDistance(row.amountMinor)) {
     return undefined;
   }
+  if (isNextStatementEntryForRow(row, entry, input.card.endDate)) {
+    return undefined;
+  }
 
   const merchant = compareMerchants(row.description, entry.description, entry, dayDistance);
   const matchKind = getDuplicateMatchKind({
@@ -475,6 +478,10 @@ function explainPeriodEntry(context: {
   const coveredRow = [...cardRows, ...input.statementRows.filter((row) => row.accountId !== card.accountId)].find((row) => {
     const coveringEntryId = row.targetEntryId ?? row.coveredByEntryId;
     if (!coveringEntryId || coveringEntryId === entry.id || getRowSignedAmountMinor(row) !== getEntrySignedAmountMinor(entry)) {
+      return false;
+    }
+    const rowCard = input.cards.find((item) => item.accountId === row.accountId) ?? card;
+    if (isNextStatementEntryForRow(row, entry, rowCard.endDate)) {
       return false;
     }
     const dayDistance = getRowEntryDayDistance(row, entry);
@@ -699,6 +706,19 @@ function getDateFacts(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry): 
     facts.push({ code: "posted_date_offset", days: Math.abs(daysBetween(statementEventDate, row.postedDate)) });
   }
   return facts;
+}
+
+// A low-value entry from the statement's last days that has not posted yet
+// may be the next statement's, never an earlier row's (the shared rule in
+// import-preview-match-policy.js).
+function isNextStatementEntryForRow(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry, statementEndDate: string) {
+  return isRowBeforeLateUnpostedEntry({
+    amountMinor: row.amountMinor,
+    entryDate: entry.transactionDate,
+    entryPostDate: entry.postDate,
+    statementEndDate,
+    rowPurchaseDate: row.eventDate ?? row.postedDate
+  });
 }
 
 function getRowEntryDayDistance(row: DiagnosisStatementRow, entry: DiagnosisLedgerEntry) {

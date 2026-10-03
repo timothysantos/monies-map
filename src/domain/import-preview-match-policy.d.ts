@@ -11,3 +11,11 @@ export function canSuppressCertifiedStatementDuplicate(input: {
   dayDistance: number;
   amountMinor: number;
 }): boolean;
+
+export function isRowBeforeLateUnpostedEntry(input: {
+  amountMinor: number;
+  entryDate: string;
+  entryPostDate?: string | null;
+  statementEndDate?: string;
+  rowPurchaseDate: string;
+}): boolean;

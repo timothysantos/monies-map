@@ -491,3 +491,27 @@ test("a correction that would unbalance a saved statement that matches now is ca
   ];
   assert.deepEqual(findCheckpointsBrokenByCorrections({ checkpoints, changes }).map((item) => item.month), ["2026-06"]);
 });
+
+test("an unposted ride on the closing day is the next statement's, not another card's ride from the day before", () => {
+  // One Card's statement has a $1.99 ride bought 11 May (no entry). Lady's
+  // Card has a hand-recorded $1.99 ride on 12 May, the closing day, with no
+  // posted date yet.
+  const ride11 = row(11, ONE, "2026-05-12", "2026-05-11", "BUS/MRT 000000006 SINGAPORE", 199);
+  const diagnosis = diagnose({
+    cards: [card(ONE, 199), card(LADY, -4262 - 199)],
+    statementRows: [...uobStatementRows(), ride11],
+    ledgerEntries: uobLedger([entry("txn-ride-12", LADY, "2026-05-12", "BUS/MRT", 199)])
+  });
+
+  assert.equal(diagnosis.findings.some((item) => item.id === "wrong_account:txn-ride-12"), false);
+  const ride = finding(diagnosis, "next_statement:txn-ride-12");
+  assert.deepEqual([ride.fix?.kind, ride.fix?.postDate], ["defer_to_next_statement", "2026-05-13"]);
+
+  // The same ride recorded on 11 May, its purchase day, is still found.
+  const onItsDay = diagnose({
+    cards: [card(ONE, 199), card(LADY, -4262 - 199)],
+    statementRows: [...uobStatementRows(), ride11],
+    ledgerEntries: uobLedger([entry("txn-ride-11", LADY, "2026-05-11", "BUS/MRT", 199)])
+  });
+  assert.equal(finding(onItsDay, "wrong_account:txn-ride-11").kind, "wrong_account");
+});

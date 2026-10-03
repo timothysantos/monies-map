@@ -345,6 +345,13 @@ Important distinctions:
 - Under that rule, identical recurring small-value transactions such as
   BUS/MRT fares or coffee should be treated as separate economic events by
   default unless they occur close together in time.
+- Close to a statement's closing day the rule tightens: a low-value entry
+  with no posted date, dated in the period's last two days, may post on the
+  next statement, so it only answers a statement row from its own purchase
+  day or later (`isRowBeforeLateUnpostedEntry`). A ride recorded on 12 May is
+  never taken for the statement's 11 May ride; it is offered as "next
+  statement" instead. The import preview, the statement mismatch diagnosis
+  and Settings "Compare statement" share this rule.
 - Date evidence should stay lane-aware. Compare original transaction dates to
   other original transaction dates when both exist; otherwise compare posted
   dates, so imported commuter rows do not become false matches through a mixed

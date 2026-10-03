@@ -113,7 +113,10 @@ export async function buildStatementCompareDiagnosis(db: D1Database, input: {
         return clearedDate >= section.startDate && clearedDate <= section.endDate;
       })
       .map(toCompareRow);
-    const { ledgerIdByStatementId } = matchStatementCompareRows(normalizedRows, cardLedger);
+    const { ledgerIdByStatementId } = matchStatementCompareRows(normalizedRows, cardLedger, {
+      statementEndDate: section.endDate,
+      unpostedLedgerIds: new Set(ledgerEntries.filter((entry) => entry.accountId === section.account.id && !entry.postDate).map((entry) => entry.id))
+    });
     // A section with no saved statement has no difference to explain; its
     // rows still tell which purchases belong on that card.
     if (saved) {
