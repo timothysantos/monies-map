@@ -677,6 +677,9 @@ export async function createEntryRecord(
     note?: string;
     splitBasisPoints?: number;
     externalReference?: string;
+    // A Wallet amount in another currency behind an estimated amountMinor.
+    originalAmountMinor?: number;
+    originalCurrency?: string;
   }
 ) {
   if (typeof input.amountMinor !== "number" || input.amountMinor <= 0) {
@@ -766,8 +769,9 @@ export async function createEntryRecord(
         INSERT INTO transactions (
           id, household_id, account_id, transaction_date, post_date,
           description, amount_minor, currency, entry_type, transfer_direction,
-          category_id, owner_person_id, offsets_category, note, external_reference
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          category_id, owner_person_id, offsets_category, note, external_reference,
+          original_amount_minor, original_currency
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         entryId,
@@ -784,7 +788,9 @@ export async function createEntryRecord(
         ownerPersonId,
         input.offsetsCategory ? 1 : 0,
         input.note ?? null,
-        externalReference
+        externalReference,
+        input.originalAmountMinor ?? null,
+        input.originalCurrency ?? null
       ),
       ...(sharedSplit?.statements ?? []),
       buildAuditEventStatement(db, {
