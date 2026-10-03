@@ -383,15 +383,28 @@ test("merchant text matches through punctuation, spacing and case; an unknown ab
   assert.equal(finding(manual, "wrong_account:txn-fp").confidence, "high");
 });
 
-test("low-value repeats far apart are separate purchases, not a wrong card", () => {
+test("repeated fares far apart are separate trips, not a wrong card", () => {
+  // A commute on Lady's Card at the statement's One Card fare: 25 Apr and
+  // 1 May, four and ten days from the statement's 5 May trip.
+  const diagnosis = diagnose({
+    cards: [card(ONE, 0), card(LADY, -788)],
+    statementRows: [row(10, ONE, "2026-05-09", "2026-05-05", "BUS/MRT 000000000 SINGAPORE", 394)],
+    ledgerEntries: [entry("txn-bus-1", LADY, "2026-04-25", "BUS/MRT", 394), entry("txn-bus", LADY, "2026-05-01", "BUS/MRT", 394)]
+  });
+
+  assert.equal(diagnosis.findings.some((item) => item.kind === "wrong_account"), false);
+  assert.equal(finding(diagnosis, "not_on_statement:txn-bus").confidence, "low");
+});
+
+test("a one-off fare four days from the statement's is offered as the same trip on the wrong card, never as a clear fix", () => {
   const diagnosis = diagnose({
     cards: [card(ONE, 0), card(LADY, -394)],
     statementRows: [row(10, ONE, "2026-05-09", "2026-05-05", "BUS/MRT 000000000 SINGAPORE", 394)],
     ledgerEntries: [entry("txn-bus", LADY, "2026-05-01", "BUS/MRT", 394)]
   });
 
-  assert.equal(diagnosis.findings.some((item) => item.kind === "wrong_account"), false);
-  assert.equal(finding(diagnosis, "not_on_statement:txn-bus").confidence, "low");
+  const bus = finding(diagnosis, "wrong_account:txn-bus");
+  assert.notEqual(bus.confidence, "high");
 });
 
 test("a mid-cycle import gets explanations but never a fix", () => {
@@ -493,13 +506,16 @@ test("a correction that would unbalance a saved statement that matches now is ca
 });
 
 test("an unposted ride on the closing day is the next statement's, not another card's ride from the day before", () => {
-  // One Card's statement has a $1.99 ride bought 11 May (no entry). Lady's
+  // One Card's statement has $1.99 commute rides bought 9 and 11 May (no
+  // entry for the 11 May one). Lady's
   // Card has a hand-recorded $1.99 ride on 12 May, the closing day, with no
   // posted date yet.
   const ride11 = row(11, ONE, "2026-05-12", "2026-05-11", "BUS/MRT 000000006 SINGAPORE", 199);
+  // The commute's earlier ride at the same fare, so the fare repeats.
+  const ride09 = row(12, ONE, "2026-05-11", "2026-05-09", "BUS/MRT 000000005 SINGAPORE", 199, { targetEntryId: "txn-ride-09" });
   const diagnosis = diagnose({
     cards: [card(ONE, 199), card(LADY, -4262 - 199)],
-    statementRows: [...uobStatementRows(), ride11],
+    statementRows: [...uobStatementRows(), ride09, ride11],
     ledgerEntries: uobLedger([entry("txn-ride-12", LADY, "2026-05-12", "BUS/MRT", 199)])
   });
 
@@ -510,7 +526,7 @@ test("an unposted ride on the closing day is the next statement's, not another c
   // The same ride recorded on 11 May, its purchase day, is still found.
   const onItsDay = diagnose({
     cards: [card(ONE, 199), card(LADY, -4262 - 199)],
-    statementRows: [...uobStatementRows(), ride11],
+    statementRows: [...uobStatementRows(), ride09, ride11],
     ledgerEntries: uobLedger([entry("txn-ride-11", LADY, "2026-05-11", "BUS/MRT", 199)])
   });
   assert.equal(finding(onItsDay, "wrong_account:txn-ride-11").kind, "wrong_account");

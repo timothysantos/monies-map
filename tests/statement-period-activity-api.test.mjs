@@ -99,21 +99,36 @@ test("committing the export after the statement adds only the rows after it and 
   assert.deepEqual([oneCard.latestCheckpointMonth, oneCard.latestCheckpointDeltaMinor], ["2026-05", 0]);
 });
 
-test("a row the user includes on purpose is kept, and low-value repeats far apart are not covered", async (t) => {
+test("a row the user includes on purpose is kept, and repeated fares far apart are not covered", async (t) => {
   const { api } = await openSeededDatabase(t, template);
   await createCards(api);
   await commitStatement(api);
 
   const preview = await previewActivity(api, [
-    // Five days from the statement's 3.94 fare: a different trip.
+    // A commute at the statement's 3.94 fare, five and seven days from it:
+    // different trips.
     activityRow("2026-05-04", "BUS/MRT 999999 SINGAPORE", "3.94"),
+    activityRow("2026-05-02", "BUS/MRT 999998 SINGAPORE", "3.94"),
     activityRow("2026-05-01", "KOPITIAM", "5.20", { commitStatus: "included" })
   ]);
 
   assert.deepEqual(summarise(preview), [
     ["BUS/MRT 999999 SINGAPORE", "skipped", false],
+    ["BUS/MRT 999998 SINGAPORE", "skipped", false],
     ["KOPITIAM", "included", false]
   ]);
+});
+
+test("a one-off fare five days from the statement's is covered by it", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  await createCards(api);
+  await commitStatement(api);
+
+  // The only 3.94 fare in the export: the statement's 3.94 fare, posted on
+  // 9 May, is most likely the same trip.
+  const preview = await previewActivity(api, [activityRow("2026-05-04", "BUS/MRT 999999 SINGAPORE", "3.94")]);
+
+  assert.deepEqual(summarise(preview), [["BUS/MRT 999999 SINGAPORE", "skipped", true]]);
 });
 
 test("an activity export before the statement still lets the statement confirm its rows", async (t) => {

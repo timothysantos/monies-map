@@ -85,15 +85,21 @@ test("loose matching never pairs a different amount, a refund with a purchase, o
   ), {});
 });
 
-test("low-value repeats more than two days apart stay separate purchases, as everywhere else", () => {
-  // Coffee under $5 on 1 May is not the coffee the bank shows for 6 May.
+test("repeated charges more than two days apart stay separate purchases, as everywhere else", () => {
+  // A daily coffee at one price: the 1 May entry is not the coffee the bank
+  // shows for 6 May.
+  const coffees = [
+    statement("s-coffee-6", "2026-05-06", "STARBUCKS SINGAPORE", -450, "2026-05-06"),
+    statement("s-coffee-9", "2026-05-09", "STARBUCKS SINGAPORE", -450, "2026-05-09")
+  ];
+  assert.deepEqual(pairs(coffees, [ledger("l-coffee", "2026-05-01", "Starbucks", -450)]), {});
+  // Two days apart is still the same purchase.
+  assert.deepEqual(pairs(coffees, [ledger("l-coffee", "2026-05-04", "Starbucks", -450)]), { "s-coffee-6": "l-coffee" });
+});
+
+test("a one-off charge recorded five days off still meets its row, whatever the amount", () => {
   assert.deepEqual(pairs(
     [statement("s-coffee", "2026-05-06", "STARBUCKS SINGAPORE", -450, "2026-05-06")],
-    [ledger("l-coffee", "2026-05-01", "Starbucks", -450)]
-  ), {});
-  // Two days apart is still the same purchase.
-  assert.deepEqual(pairs(
-    [statement("s-coffee", "2026-05-03", "STARBUCKS SINGAPORE", -450, "2026-05-03")],
     [ledger("l-coffee", "2026-05-01", "Starbucks", -450)]
   ), { "s-coffee": "l-coffee" });
 });
@@ -156,9 +162,10 @@ test("a ride typed a day late still meets its row when the real day's ride is al
 
 test("a ride on the closing day that posts next statement is not paired with an unrecorded ride the day before", () => {
   const options = { statementEndDate: "2026-05-12", unpostedLedgerIds: new Set(["l-12"]) };
-  // The 11 May ride is missing; the 12 May entry is the next statement's.
+  // A commute: rides on 9 and 11 May, the 9 May one recorded. The 11 May
+  // ride is missing; the 12 May entry is the next statement's.
   assert.deepEqual(
-    leftOver([ride("s-11", "2026-05-12", "2026-05-11")], [entry("l-12", "2026-05-12")], options),
+    leftOver([ride("s-09", "2026-05-11", "2026-05-09"), ride("s-11", "2026-05-12", "2026-05-11")], [entry("l-09", "2026-05-09"), entry("l-12", "2026-05-12")], options),
     { rows: ["s-11"], entries: ["l-12"] }
   );
   // When the bank did post the 12 May ride on this statement, they match.

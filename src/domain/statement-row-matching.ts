@@ -2,12 +2,14 @@
 // and the statement mismatch diagnosis, so both read dates and merchant text
 // the same way. Pure functions only.
 import {
+  compareDescriptionSimilarity,
   countSharedTokens,
   daysBetween,
   extractTransactionDateHint,
   normalizeDateString,
   normalizeStatementDate
 } from "./app-repository-helpers";
+import { STANDARD_DUPLICATE_MAX_DAY_DISTANCE } from "./import-preview-match-policy";
 import type { ImportPreviewRowDto } from "../types/dto";
 
 export function getPreviewRowDateCandidates(previewRow: ImportPreviewRowDto) {
@@ -104,4 +106,57 @@ export function getTokenSimilarity(left: string, right: string) {
 
 function normalizeDescriptionTokenCount(value: string) {
   return new Set(value.toLowerCase().replace(/[^a-z0-9]+/gi, " ").split(" ").filter(Boolean)).size;
+}
+
+export interface RepetitionCharge {
+  accountId?: string;
+  signedAmountMinor: number;
+  description: string;
+  postedDate: string;
+  eventDate: string;
+  hasEventDateHint: boolean;
+}
+
+// The velocity rule's test (import-preview-match-policy.js): a charge
+// repeats when its account has another charge of the same signed amount
+// whose wording would pass as the same purchase within a week, compared on
+// the usual date lanes. Returns a lookup for the rows it was built from.
+export function createRepetitionIndex<T>(rows: readonly T[], read: (row: T) => RepetitionCharge) {
+  const groups = new Map<string, { row: T; charge: RepetitionCharge }[]>();
+  const keyOf = (charge: RepetitionCharge) => `${charge.accountId ?? ""}|${charge.signedAmountMinor}`;
+  for (const row of rows) {
+    const charge = read(row);
+    groups.set(keyOf(charge), [...(groups.get(keyOf(charge)) ?? []), { row, charge }]);
+  }
+  const cache = new Map<T, boolean>();
+  return (row: T) => {
+    const cached = cache.get(row);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const charge = read(row);
+    const repeats = (groups.get(keyOf(charge)) ?? []).some((other) => other.row !== row && isLookalikeWithinWeek(charge, other.charge));
+    cache.set(row, repeats);
+    return repeats;
+  };
+}
+
+function isLookalikeWithinWeek(left: RepetitionCharge, right: RepetitionCharge) {
+  const dayDistance = getDuplicateCandidateDayDistance({ previewRow: left, candidate: right });
+  if (dayDistance > STANDARD_DUPLICATE_MAX_DAY_DISTANCE) {
+    return false;
+  }
+  const leftWords = withoutReferenceNumbers(left.description);
+  const rightWords = withoutReferenceNumbers(right.description);
+  return Boolean(getDuplicateMatchKind({
+    dayDistance,
+    descriptionSimilarity: compareDescriptionSimilarity(leftWords, rightWords),
+    tokenSimilarity: getTokenSimilarity(leftWords, rightWords)
+  }));
+}
+
+// Banks print a trip, terminal or reference number on each charge
+// ("BUS/MRT 830924733"); two fares on the same line differ only there.
+function withoutReferenceNumbers(description: string) {
+  return description.replace(/\b\d{4,}\b/g, " ").replace(/\s+/g, " ").trim();
 }
