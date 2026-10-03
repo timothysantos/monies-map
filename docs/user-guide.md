@@ -1079,7 +1079,13 @@ open it for you to check.
 ![The Apple Pay shortcut section in Settings](/faq/guide/desktop/thumbs/settings-shortcut.webp)
 
 After a purchase, a notification shows the merchant, amount and account, and
-the new entry opens so you can adjust it. The category comes from your
+the new entry opens so you can adjust it.
+
+Paying abroad in another currency (for example with an Amaze card in Bali)
+also works: the purchase is saved in the card's currency at the day's
+exchange rate, and its note keeps what you paid, such as "Paid IDR 159,000".
+Your card's own amount may differ a little; the bank statement shows the exact
+figure. The category comes from your
 category rules (otherwise Other). Each iPhone installs its own copy.
 
 Keep the private connection secret like a password: do not share screenshots
