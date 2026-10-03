@@ -450,7 +450,17 @@ Common payload:
 `amount` can be a positive decimal number or Wallet-style text such as `SGD
 12.34` or `S$1,234.56`. The API preserves cents and rejects ambiguous decimal
 or thousands separators and ambiguous bare currency symbols. If the amount
-names a currency, it must match the selected account. `amountMinor` also works
+names another currency than the selected account's (an Amaze card abroad:
+`IDR 159,000` on an SGD card), it is saved in the account's currency at the
+day's exchange rate (`src/domain/foreign-currency.ts`): the original amount and
+currency are kept on the entry (`original_amount_minor`, `original_currency`),
+the note says what was paid and at what rate, and the response adds
+`originalAmount`. Rates come from Frankfurter (European Central Bank) and, as a
+fallback, ExchangeRate-API's open endpoint; only the two currency codes are
+sent. The last rate per pair is saved in `fx_rates` and reused for 12 hours,
+and for up to 14 days when both sources are down. With no usable rate the
+request is refused with 503 and saves nothing. `FX_RATES_OFFLINE=true` (the
+test Worker) uses saved rates only. `amountMinor` also works
 if the caller already uses integer cents; when both forms are sent, they must
 agree.
 

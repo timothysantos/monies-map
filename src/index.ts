@@ -65,6 +65,7 @@ import {
 } from "./domain/app-repository";
 import { commitImportBatch, rollbackImportBatch } from "./domain/app-repository-import-commit";
 import { buildStatementCompareDiagnosis, type StatementCompareSection } from "./domain/statement-compare-projection";
+import { convertForeignAmount, describeForeignAmount, formatForeignAmount, FxRateUnavailableError } from "./domain/foreign-currency";
 import { applyStatementCorrections, StatementCorrectionRefusedError, undoStatementCorrections, type StatementCorrectionDto } from "./domain/app-repository-statement-corrections";
 import {
   deleteMonthPlan,
@@ -147,6 +148,8 @@ export interface Env {
   SHORTCUT_APP_ORIGIN?: string;
   SHORTCUT_INGEST_TOKEN?: string;
   SHORTCUT_PUBLIC_ENDPOINT?: string;
+  // "true" keeps foreign-currency conversion to the saved rate (tests).
+  FX_RATES_OFFLINE?: string;
   AI_ASSIST_ENABLED?: string;
   AI_ASSIST_DAILY_LIMIT?: string;
 }
@@ -1054,18 +1057,38 @@ export default {
             : `Missing or invalid shortcut fields: ${invalidFields.join(", ")}.`
         }, 400);
       }
-      if (amountCurrency && amountCurrency !== account.currency) {
-        return json({
-          ok: false,
-          error: `Wallet amount is ${amountCurrency}, but ${account.name} uses ${account.currency}. Nothing was saved.`
-        }, 400);
-      }
       if (requestId && ownershipType !== "direct") {
         return json({
           ok: false,
           error: "Shortcut requestId is only supported for direct ownership entries. Nothing was saved."
         }, 400);
       }
+
+      // A Wallet amount in another currency (an Amaze card abroad) is saved
+      // in the account's currency at the day's rate, the original kept.
+      let foreign: { amountMinor: number; originalAmountMinor: number; originalCurrency: string; note: string } | undefined;
+      if (amountCurrency && amountCurrency !== account.currency) {
+        try {
+          const conversion = await convertForeignAmount(env.DB, {
+            amountMinor: amount.amountMinor,
+            fromCurrency: amountCurrency,
+            toCurrency: account.currency,
+            offline: env.FX_RATES_OFFLINE === "true"
+          });
+          foreign = {
+            amountMinor: conversion.amountMinor,
+            originalAmountMinor: amount.amountMinor,
+            originalCurrency: amountCurrency,
+            note: describeForeignAmount({ originalAmountMinor: amount.amountMinor, originalCurrency: amountCurrency, accountCurrency: account.currency, conversion })
+          };
+        } catch (error) {
+          if (error instanceof FxRateUnavailableError) {
+            return json({ ok: false, error: error.message }, 503);
+          }
+          throw error;
+        }
+      }
+      const savedAmountMinor = foreign?.amountMinor ?? amount.amountMinor;
 
       try {
         const categoryName = bodyWithDefaults.categoryName
@@ -1076,13 +1099,15 @@ export default {
           description: shortcutDescription,
           accountId: account.id,
           categoryName,
-          amountMinor: amount.amountMinor,
+          amountMinor: savedAmountMinor,
+          originalAmountMinor: foreign?.originalAmountMinor,
+          originalCurrency: foreign?.originalCurrency,
           entryType,
           transferDirection: bodyWithDefaults.transferDirection,
           ownershipType,
           ownerName: bodyWithDefaults.ownerName,
           offsetsCategory: bodyWithDefaults.offsetsCategory,
-          note,
+          note: [foreign?.note, note].filter(Boolean).join("\n") || undefined,
           splitBasisPoints: bodyWithDefaults.splitBasisPoints,
           externalReference: requestId ? `shortcut:${requestId}` : undefined
         });
@@ -1099,8 +1124,9 @@ export default {
           created: created.created,
           date: shortcutDate,
           description: shortcutDescription,
-          amountMinor: amount.amountMinor,
+          amountMinor: savedAmountMinor,
           currency: account.currency,
+          ...(foreign ? { originalAmount: formatForeignAmount(foreign.originalAmountMinor, foreign.originalCurrency) } : {}),
           accountId: account.id,
           accountName: account.name,
           accountResolution: account.resolution,
