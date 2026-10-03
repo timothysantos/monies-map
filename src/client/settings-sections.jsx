@@ -99,6 +99,7 @@ export function SettingsShortcutApiSection({
   onGenerateApiKey,
   onInstallShortcut,
   onMoveAccount,
+  onForeignCurrencyAccountChange,
   onToggle,
   onSave
 }) {
@@ -280,6 +281,26 @@ export function SettingsShortcutApiSection({
                 </div>
               ))}
             </div>
+          </div>
+          <div className="settings-shortcut-priority">
+            <div className="chart-head">
+              <h3>{messages.settings.shortcutForeignCurrencyTitle}</h3>
+              <p>{messages.settings.shortcutForeignCurrencyDetail}</p>
+            </div>
+            <label className="table-edit-field">
+              <span>{messages.settings.shortcutForeignCurrencyLabel}</span>
+              <select
+                className="table-edit-input"
+                value={draft.foreignCurrencyAccountId}
+                disabled={isSubmitting}
+                onChange={(event) => void onForeignCurrencyAccountChange(event.target.value)}
+              >
+                <option value="">{messages.settings.shortcutForeignCurrencySame}</option>
+                {orderedAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>{account.name}</option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
       ) : null}

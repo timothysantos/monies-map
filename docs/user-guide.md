@@ -1085,7 +1085,13 @@ Paying abroad in another currency (for example with an Amaze card in Bali)
 also works: the purchase is saved in the card's currency at the day's
 exchange rate, and its note keeps what you paid, such as "Paid IDR 159,000".
 Your card's own amount may differ a little; the bank statement shows the exact
-figure. The category comes from your
+figure.
+
+Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
+to your first card in **Default account priority**. Under **Paying in another
+currency**, choose the card such purchases really land on, for example the
+Citi card your Amaze card charges. It saves straight away; **Same as other
+purchases** turns it off. The category comes from your
 category rules (otherwise Other). Each iPhone installs its own copy.
 
 Keep the private connection secret like a password: do not share screenshots

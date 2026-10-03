@@ -416,10 +416,13 @@ Required fields:
 
 `accountId` or `accountName` is optional. An explicit account must identify an
 active account. Without one, an exact, unique Wallet `name` match selects that
-active account; otherwise the API uses the first active account in Settings ->
-Apple Pay shortcut -> Default account priority. `accountResolution` in the
-response reports `explicit`, `wallet_name`, or `priority`, so the Shortcut can
-show what happened instead of silently guessing.
+active account; otherwise, when the amount names another currency than the
+first priority account's and Settings -> Apple Pay shortcut -> Paying in another
+currency names an active card (`foreignCurrencyAccountId` in the stored
+shortcut settings), that card is used; otherwise the API uses the first active
+account in Default account priority. `accountResolution` in the response reports
+`explicit`, `wallet_name`, `foreign_currency`, or `priority`, so the Shortcut
+can show what happened instead of silently guessing.
 
 The endpoint also applies Settings -> Apple Pay shortcut -> More shortcut
 settings -> Default shortcut params before the JSON body, so values sent by the
