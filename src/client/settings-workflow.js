@@ -9,7 +9,8 @@ export function buildSafeSettingsPage(settingsPage) {
       apiKey: "",
       apiKeySource: "none",
       defaultAccountPriorityIds: [],
-      defaultParams: ""
+      defaultParams: "",
+      foreignCurrencyAccountId: ""
     },
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
@@ -30,7 +31,8 @@ export function buildShortcutSettingsDraft(shortcutSettings, accounts) {
   return {
     apiKey: shortcutSettings?.apiKey ?? "",
     defaultParams: shortcutSettings?.defaultParams ?? "",
-    defaultAccountPriorityIds: [...savedPriorityIds, ...remainingPriorityIds]
+    defaultAccountPriorityIds: [...savedPriorityIds, ...remainingPriorityIds],
+    foreignCurrencyAccountId: activeAccountIds.has(shortcutSettings?.foreignCurrencyAccountId) ? shortcutSettings.foreignCurrencyAccountId : ""
   };
 }
 
