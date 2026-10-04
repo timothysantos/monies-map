@@ -34,6 +34,7 @@ import {
 } from "./import-preview-match-policy";
 import {
   createRepetitionIndex,
+  isCardMerchantPrefixMatch,
   getDuplicateCandidateDayDistance,
   getDuplicateMatchKind,
   getExistingTransactionDateContext,
@@ -980,10 +981,14 @@ function findReconciliationMatches(input: {
       // ("AMAZE* GRAB* A-8ABC"): when the two are each other's only fit by
       // amount and day, that is enough. Two estimates that both fit wait
       // for wording to tell them apart.
-      const matchKind = isEstimate && wordingMatchKind !== "exact" && wordingMatchKind !== "probable"
-        && input.matchContext.isOnlyEstimatePair(input.previewRow.rowIndex, candidate.transaction_id, getDuplicateCandidateMaxDayDistance({ repeats }))
-        ? "probable"
-        : wordingMatchKind;
+      // A card row cuts the shop's name behind the payment app's prefix
+      // ("AMAZE*E-MARTYONGS" for "E-MART Yongsan"): a name that starts the
+      // other counts as the same shop.
+      const isEstimateFit = isEstimate && wordingMatchKind !== "exact" && wordingMatchKind !== "probable" && (
+        isCardMerchantPrefixMatch(input.previewRow.description, candidate.description)
+        || input.matchContext.isOnlyEstimatePair(input.previewRow.rowIndex, candidate.transaction_id, getDuplicateCandidateMaxDayDistance({ repeats }))
+      );
+      const matchKind = isEstimateFit ? "probable" : wordingMatchKind;
       if (!matchKind) {
         return undefined;
       }
