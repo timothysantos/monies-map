@@ -7,9 +7,9 @@ export async function enableShortcut(db, settings = {}) {
   await db.prepare("INSERT OR REPLACE INTO app_settings (key, value_json) VALUES ('shortcut_api', ?)").bind(JSON.stringify({ apiKey: TOKEN, ...settings })).run();
 }
 
-export async function saveRate(db, { quotePerBase = 14025, fetchedAt = new Date().toISOString(), rateDate = "2026-10-02", source = "frankfurter" } = {}) {
-  await db.prepare("INSERT OR REPLACE INTO fx_rates (base_currency, quote_currency, quote_per_base, rate_date, source, fetched_at) VALUES ('SGD', 'IDR', ?, ?, ?, ?)")
-    .bind(quotePerBase, rateDate, source, fetchedAt).run();
+export async function saveRate(db, { quote = "IDR", quotePerBase = 14025, fetchedAt = new Date().toISOString(), rateDate = "2026-10-02", source = "frankfurter" } = {}) {
+  await db.prepare("INSERT OR REPLACE INTO fx_rates (base_currency, quote_currency, quote_per_base, rate_date, source, fetched_at) VALUES ('SGD', ?, ?, ?, ?, ?)")
+    .bind(quote, quotePerBase, rateDate, source, fetchedAt).run();
 }
 
 export async function postWalletPurchase(fetchWorker, body) {

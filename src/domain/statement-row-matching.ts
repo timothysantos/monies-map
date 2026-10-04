@@ -160,3 +160,27 @@ function isLookalikeWithinWeek(left: RepetitionCharge, right: RepetitionCharge) 
 function withoutReferenceNumbers(description: string) {
   return description.replace(/\b\d{4,}\b/g, " ").replace(/\s+/g, " ").trim();
 }
+
+// Card rows for a purchase paid through a payment app print the app's
+// prefix glued to the shop's name, cut to a few characters, with no spaces
+// ("AMAZE*E-MARTYONGS" for "E-MART Yongsan"). Payment gateways that hide the
+// shop ("AMAZE*EXIMBAYCO.,") never count as a shop name.
+const CARD_PAYMENT_APP_PREFIX = /^\s*(?:AMAZE|AMZ)\s*\*\s*/i;
+const CARD_GATEWAY_NAMES = ["eximbay"];
+const CARD_MERCHANT_MIN_LENGTH = 5;
+
+export function isCardMerchantPrefixMatch(cardDescription: string, walletDescription: string) {
+  if (!CARD_PAYMENT_APP_PREFIX.test(cardDescription)) {
+    return false;
+  }
+  const compact = (value: string) => value.toLowerCase().replace(/\bsingapore\b|\bsg\b/g, "").replace(/[^a-z0-9]+/g, "");
+  const cardMerchant = compact(cardDescription.replace(CARD_PAYMENT_APP_PREFIX, ""));
+  const walletMerchant = compact(walletDescription);
+  if (cardMerchant.length < CARD_MERCHANT_MIN_LENGTH || walletMerchant.length < CARD_MERCHANT_MIN_LENGTH) {
+    return false;
+  }
+  if (CARD_GATEWAY_NAMES.some((gateway) => cardMerchant.startsWith(gateway))) {
+    return false;
+  }
+  return walletMerchant.startsWith(cardMerchant) || cardMerchant.startsWith(walletMerchant);
+}

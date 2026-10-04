@@ -466,10 +466,14 @@ request is refused with 503 and saves nothing. `FX_RATES_OFFLINE=true` (the
 test Worker) uses saved rates only. When the card's statement or activity
 export arrives, the import preview matches its SGD row to the estimate within
 5% (`isWithinEstimateBand` in `app-repository-import-preview.ts`), by
-wording or, for rows that name only the payment app, when the pair is each
-other's only fit (`isOnlyEstimatePair`); the commit then writes the card's
-amount. `tests/foreign-estimate-matching-api.test.mjs` covers the matches and
-the refusals. `amountMinor` also works
+wording, by the card's cut-off shop name behind the payment app's prefix
+(`isCardMerchantPrefixMatch` in `statement-row-matching.ts`), or, for rows
+that name only a gateway, when the pair is each other's only fit
+(`isOnlyEstimatePair`); the commit then writes the card's amount.
+`tests/foreign-estimate-matching-api.test.mjs` covers the matches and the
+refusals; `tests/foreign-estimate-real-citi.test.mjs` runs the 45 Amaze rows
+of a real Citi Rewards statement (wording and dates real, amounts scaled)
+against simulated Wallet estimates and requires zero wrong pairings. `amountMinor` also works
 if the caller already uses integer cents; when both forms are sent, they must
 agree.
 

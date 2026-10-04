@@ -1229,8 +1229,10 @@ Important distinctions:
   carries the exact amount: a statement or activity-export row on the same
   account matches the estimate when its amount is within 5% (at least 10
   cents) of it, the day fits the velocity rule, and either the wording
-  matches or the two are each other's only fit by amount and day (a card row
-  worded only "AMAZE* GRAB* A-8ABC"). Similarly priced estimates pair one to
+  matches, the card's cut-off shop name starts the Wallet name (Citi prints
+  "AMAZE*E-MARTYONGS" for "E-MART Yongsan"; a payment gateway such as
+  "AMAZE*EXIMBAYCO.," never counts as a shop), or the two are each other's
+  only fit by amount and day. Similarly priced estimates pair one to
   one, each with the closest amount; two estimates that both fit a row whose
   wording names neither are left for review. On commit the card's amount
   replaces the estimate (the statement keeps the estimate for rollback);
