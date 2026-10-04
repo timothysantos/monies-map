@@ -166,3 +166,50 @@ test("a Citi activity export before the statement also replaces the estimate wit
   const [entry] = await rows(db, "SELECT amount_minor, post_date, bank_certification_status, original_currency FROM transactions WHERE id = ?", digimap);
   assert.deepEqual(entry, { amount_minor: 1161, post_date: "2026-10-04", bank_certification_status: "provisional", original_currency: "IDR" });
 });
+
+// Probe: an activity export's SGD amount before the statement's final one.
+async function importActivity(api, sourceLabel, amount, date = "2026-10-04") {
+  const { payload } = await api("/api/imports/preview", {
+    sourceLabel,
+    sourceType: "csv",
+    rows: [{ date, description: "AMAZE*DIGIMAP ICON SANUR M23", expense: amount, account: CITI, category: "Other", type: "expense" }],
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  const commit = await api("/api/imports/commit", {
+    sourceLabel,
+    sourceType: "csv",
+    parserKey: "citibank_credit_card_activity_csv",
+    rows: payload.preview.previewRows.filter((item) => item.commitStatus === "included")
+  });
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  return payload.preview.previewRows[0];
+}
+
+test("an activity export's interim amount replaces the estimate, and the statement's final amount replaces that", async (t) => {
+  const { api, db, estimate } = await setUp(t);
+  const digimap = await estimate("Digimap Icon Sanur M23", "IDR 159,000");
+
+  const exported = await importActivity(api, "Citi activity 4 Oct", "11.50");
+  assert.equal(exported.reconciliationTargetTransactionId, digimap);
+  const [afterExport] = await rows(db, "SELECT amount_minor, bank_certification_status, original_currency FROM transactions WHERE id = ?", digimap);
+  assert.deepEqual(afterExport, { amount_minor: 1150, bank_certification_status: "provisional", original_currency: "IDR" });
+
+  // Still an estimate until the statement: the final amount may differ.
+  const statementRows = [statementRow("2026-10-05", "AMAZE*DIGIMAP ICON SANUR M23", "11.61")];
+  const preview = await previewStatement(api, statementRows);
+  assert.equal(preview.previewRows[0].reconciliationTargetTransactionId, digimap);
+  assert.equal(preview.previewRows[0].commitStatusReason, "Official statement will replace the estimate for IDR 159,000 (about SGD 11.50) with the card's SGD 11.61.");
+  const commit = await api("/api/imports/commit", {
+    sourceLabel: "Citi Rewards Oct 2026",
+    sourceType: "pdf",
+    parserKey: "citibank_credit_card_pdf",
+    statementCheckpoints: [],
+    statementControlRows: preview.previewRows,
+    statementReconciliations: preview.statementReconciliations,
+    rows: preview.previewRows.filter((item) => item.commitStatus === "included")
+  });
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  const [final] = await rows(db, "SELECT amount_minor, bank_certification_status, statement_certified_previous_amount_minor FROM transactions WHERE id = ?", digimap);
+  assert.deepEqual(final, { amount_minor: 1161, bank_certification_status: "statement_certified", statement_certified_previous_amount_minor: 1150 });
+});
