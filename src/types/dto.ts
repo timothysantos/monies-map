@@ -850,6 +850,10 @@ export interface ReconciliationCandidateDto {
   amountMinor: number;
   accountName?: string;
   matchKind: "exact" | "probable" | "near";
+  // The entry is a foreign currency estimate: what was paid ("IDR 159,000")
+  // and the currency of its estimated amountMinor.
+  originalAmount?: string;
+  currency?: string;
 }
 
 export interface TransferIssueDto {
