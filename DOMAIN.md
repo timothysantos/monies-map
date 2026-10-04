@@ -1226,7 +1226,15 @@ Important distinctions:
 - The account's currency stays the ledger's currency; an entry is never saved
   in a currency its account does not use.
 - The estimate is provisional like any manual entry. The card's statement
-  carries the exact amount.
+  carries the exact amount: a statement or activity-export row on the same
+  account matches the estimate when its amount is within 5% (at least 10
+  cents) of it, the day fits the velocity rule, and either the wording
+  matches or the two are each other's only fit by amount and day (a card row
+  worded only "AMAZE* GRAB* A-8ABC"). Similarly priced estimates pair one to
+  one, each with the closest amount; two estimates that both fit a row whose
+  wording names neither are left for review. On commit the card's amount
+  replaces the estimate (the statement keeps the estimate for rollback);
+  the Wallet amount stays.
 - No rate, no entry: when no usable rate exists the Shortcut is told to run
   again and nothing is saved.
 

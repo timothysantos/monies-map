@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createSeededTemplate, openSeededDatabase, rows } from "./support/d1-workspace.mjs";
+import { enableShortcut, postWalletPurchase, saveRate, TOKEN } from "./support/foreign-wallet.mjs";
 import { convertForeignAmount, FxRateUnavailableError } from "../src/domain/foreign-currency.ts";
 
 let template;
@@ -19,26 +20,7 @@ test.after(async () => {
   await template?.dispose();
 });
 
-const TOKEN = "test-shortcut-token";
 const HOUR = 60 * 60 * 1000;
-
-async function enableShortcut(db) {
-  await db.prepare("INSERT OR REPLACE INTO app_settings (key, value_json) VALUES ('shortcut_api', ?)").bind(JSON.stringify({ apiKey: TOKEN })).run();
-}
-
-async function saveRate(db, { quotePerBase = 14025, fetchedAt = new Date().toISOString(), rateDate = "2026-10-02", source = "frankfurter" } = {}) {
-  await db.prepare("INSERT OR REPLACE INTO fx_rates (base_currency, quote_currency, quote_per_base, rate_date, source, fetched_at) VALUES ('SGD', 'IDR', ?, ?, ?, ?)")
-    .bind(quotePerBase, rateDate, source, fetchedAt).run();
-}
-
-async function postWalletPurchase(fetchWorker, body) {
-  const response = await fetchWorker(`/api/shortcuts/entries/create?shortcut_token=${TOKEN}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ date: "2026-10-03", ...body })
-  });
-  return { status: response.status, payload: await response.json() };
-}
 
 test("an IDR Wallet purchase on an SGD card is saved at the day's rate, with the IDR amount kept", async (t) => {
   const { db, fetch: fetchWorker } = await openSeededDatabase(t, template);

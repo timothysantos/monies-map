@@ -20,6 +20,7 @@ import { loadCategories } from "./app-repository-categories";
 import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
+import { formatForeignAmount } from "./foreign-currency";
 import {
   diagnoseStatementMismatches,
   getFixKey,
@@ -84,6 +85,9 @@ export async function buildImportPreview(
         transactions.transfer_direction,
         transactions.bank_certification_status,
         transactions.transfer_group_id,
+        transactions.currency,
+        transactions.original_amount_minor,
+        transactions.original_currency,
         accounts.account_name,
         COALESCE(statement_import_rows.normalized_hash, import_rows.normalized_hash) AS normalized_hash
       FROM transactions
@@ -109,6 +113,9 @@ export async function buildImportPreview(
       transfer_direction: "in" | "out" | null;
       bank_certification_status: "provisional" | "statement_certified";
       transfer_group_id: string | null;
+      currency: string;
+      original_amount_minor: number | null;
+      original_currency: string | null;
       account_name: string;
       normalized_hash: string | null;
     }>();
@@ -157,7 +164,7 @@ export async function buildImportPreview(
   // must already be on that statement (see applyCertifiedStatementCoverage).
   const certifiedStatementPeriods = input.sourceType === "pdf" ? [] : await loadCertifiedStatementPeriods(db);
   const claimedStatementCoverIds = new Set<string>();
-  const velocity = buildPreviewVelocity(input.rows, ledgerRows, input.defaultAccountName);
+  const matchContext = buildPreviewMatchContext(input.rows, ledgerRows, input.defaultAccountName);
   for (const [index, rawRow] of input.rows.entries()) {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length) {
@@ -237,7 +244,7 @@ export async function buildImportPreview(
       existingRows: ledgerRows,
       incomingSourceType: input.sourceType,
       excludedTransactionIds: claimedReconciliationTargetIds,
-      velocity
+      matchContext
     });
     const reconciliationMatches = exactDuplicateMatch
       ? []
@@ -248,7 +255,7 @@ export async function buildImportPreview(
         incomingSourceType: input.sourceType,
         excludedTransactionIds: claimedReconciliationTargetIds,
         statementEndDate: statementCards.find((card) => card.accountId === previewRow.accountId)?.endDate,
-        velocity
+        matchContext
       });
 
     // Exact duplicate suppression is the raw identity lane. It must run before
@@ -283,7 +290,7 @@ export async function buildImportPreview(
       certifiedStatementPeriods,
       claimedStatementCoverIds,
       requestedCommitStatus,
-      velocity
+      matchContext
     });
     previewRows.push(previewRow);
 
@@ -323,7 +330,7 @@ export async function buildImportPreview(
     sourceType: input.sourceType,
     statementCheckpoints: statementCheckpoints,
     statementChainBreaks,
-    velocity
+    matchContext
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
   markCertifiedConflictRows(previewRows, statementReconciliations);
@@ -435,7 +442,7 @@ function applyCertifiedStatementCoverage(input: {
   certifiedStatementPeriods: CertifiedStatementPeriod[];
   claimedStatementCoverIds: Set<string>;
   requestedCommitStatus?: "included" | "skipped" | "needs_review";
-  velocity: PreviewVelocity;
+  matchContext: PreviewMatchContext;
 }) {
   const { previewRow } = input;
   const period = previewRow.accountId
@@ -482,7 +489,7 @@ function applyCertifiedStatementCoverage(input: {
       similarity: compareDescriptionSimilarity(previewRow.description, row.description)
     }))
     .filter((candidate) => candidate.dayDistance <= getDuplicateCandidateMaxDayDistance({
-      repeats: input.velocity.repeats(previewRow.rowIndex, candidate.row.transaction_id)
+      repeats: input.matchContext.repeats(previewRow.rowIndex, candidate.row.transaction_id)
     }))
     .sort((left, right) => left.dayDistance - right.dayDistance || right.similarity - left.similarity)[0];
 
@@ -523,6 +530,11 @@ type PreviewLedgerRow = {
   transfer_direction: "in" | "out" | null;
   bank_certification_status: "provisional" | "statement_certified";
   transfer_group_id: string | null;
+  currency: string;
+  // A foreign currency estimate (foreign-currency.ts): the Wallet amount
+  // behind an amount_minor saved at the day's rate.
+  original_amount_minor: number | null;
+  original_currency: string | null;
   account_name: string;
   normalized_hash: string | null;
 };
@@ -531,11 +543,14 @@ type PreviewLedgerRow = {
 // "Velocity Rule"): a file row and a ledger entry are matched with the tight
 // window when either repeats on its own side, the row among the file's rows
 // for its account, the entry among the ledger's.
-interface PreviewVelocity {
+interface PreviewMatchContext {
   repeats(rowIndex: number, transactionId?: string): boolean;
+  // A foreign currency estimate and a file row are each other's only
+  // candidate within the amount band and the day window.
+  isOnlyEstimatePair(rowIndex: number, transactionId: string, maxDayDistance: number): boolean;
 }
 
-function buildPreviewVelocity(rows: Record<string, string>[], ledgerRows: PreviewLedgerRow[], defaultAccountName?: string): PreviewVelocity {
+function buildPreviewMatchContext(rows: Record<string, string>[], ledgerRows: PreviewLedgerRow[], defaultAccountName?: string): PreviewMatchContext {
   const fileCharges = rows.flatMap((rawRow, index) => {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
@@ -565,13 +580,46 @@ function buildPreviewVelocity(rows: Record<string, string>[], ledgerRows: Previe
     ...getExistingTransactionDateContext(row)
   }));
   const ledgerById = new Map(ledgerRows.map((row) => [row.transaction_id, row]));
+  const isOnAccount = (accountKey: string | undefined, row: PreviewLedgerRow) => accountKey === row.account_id || accountKey === row.account_name;
+  const dayDistanceBetween = (fileRow: (typeof fileCharges)[number], row: PreviewLedgerRow) => getDuplicateCandidateDayDistance({
+    previewRow: fileRow.charge,
+    candidate: getExistingTransactionDateContext(row)
+  });
+  const fitsEstimate = (fileRow: (typeof fileCharges)[number], row: PreviewLedgerRow, maxDayDistance: number) => isForeignCurrencyEstimate(row)
+    && isOnAccount(fileRow.charge.accountId, row)
+    && Math.sign(fileRow.charge.signedAmountMinor) === Math.sign(getExistingRowSignedAmountMinor(row))
+    && isWithinEstimateBand(Number(row.amount_minor), Math.abs(fileRow.charge.signedAmountMinor))
+    && dayDistanceBetween(fileRow, row) <= maxDayDistance;
   return {
     repeats(rowIndex, transactionId) {
       const fileRow = fileByRowIndex.get(rowIndex);
       const ledgerRow = transactionId ? ledgerById.get(transactionId) : undefined;
       return Boolean((fileRow && fileRepeats(fileRow)) || (ledgerRow && ledgerRepeats(ledgerRow)));
+    },
+    isOnlyEstimatePair(rowIndex, transactionId, maxDayDistance) {
+      const fileRow = fileByRowIndex.get(rowIndex);
+      const ledgerRow = ledgerById.get(transactionId);
+      if (!fileRow || !ledgerRow || !fitsEstimate(fileRow, ledgerRow, maxDayDistance)) {
+        return false;
+      }
+      return ledgerRows.filter((row) => fitsEstimate(fileRow, row, maxDayDistance)).length === 1
+        && fileCharges.filter((other) => fitsEstimate(other, ledgerRow, maxDayDistance)).length === 1;
     }
   };
+}
+
+// The card's amount for a purchase saved as a foreign currency estimate
+// differs by the card's own rate and fees (an Amaze conversion runs a few
+// percent off the day's reference rate).
+const FOREIGN_ESTIMATE_TOLERANCE = 0.05;
+const FOREIGN_ESTIMATE_MIN_TOLERANCE_MINOR = 10;
+
+function isForeignCurrencyEstimate(row: { original_currency: string | null; bank_certification_status: string }) {
+  return Boolean(row.original_currency) && row.bank_certification_status === "provisional";
+}
+
+function isWithinEstimateBand(estimateMinor: number, bankMinor: number) {
+  return Math.abs(bankMinor - estimateMinor) <= Math.max(Math.round(estimateMinor * FOREIGN_ESTIMATE_TOLERANCE), FOREIGN_ESTIMATE_MIN_TOLERANCE_MINOR);
 }
 
 // Applies the approved statement fixes to the ledger rows the preview
@@ -755,7 +803,7 @@ function findExactDuplicateSuppressionMatch(input: {
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
   excludedTransactionIds?: Set<string>;
-  velocity: PreviewVelocity;
+  matchContext: PreviewMatchContext;
 }) {
   const previewRowHash = buildImportRowHash(input.previewRow);
 
@@ -785,7 +833,7 @@ function findExactDuplicateSuppressionMatch(input: {
             candidateBankCertificationStatus: candidate.bank_certification_status,
             incomingSourceType: input.incomingSourceType,
             dayDistance,
-            repeats: input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id)
+            repeats: input.matchContext.repeats(input.previewRow.rowIndex, candidate.transaction_id)
           })
         );
       const canUseCertifiedStatementDateWindow = canSuppressCertifiedStatementDuplicate({
@@ -793,7 +841,7 @@ function findExactDuplicateSuppressionMatch(input: {
         candidateBankCertificationStatus: candidate.bank_certification_status,
         incomingSourceType: input.incomingSourceType,
         dayDistance,
-        repeats: input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id)
+        repeats: input.matchContext.repeats(input.previewRow.rowIndex, candidate.transaction_id)
       });
       const hasPerfectDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
@@ -839,15 +887,19 @@ function findReconciliationMatches(input: {
     description: string;
     note: string | null;
     amount_minor: number;
+    entry_type: "expense" | "income" | "transfer";
     bank_certification_status: "provisional" | "statement_certified";
     account_name: string;
+    currency: string;
+    original_amount_minor: number | null;
+    original_currency: string | null;
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
   excludedTransactionIds?: Set<string>;
   // The statement period's last day for this row's card (official
   // statements only).
   statementEndDate?: string;
-  velocity: PreviewVelocity;
+  matchContext: PreviewMatchContext;
 }) {
   return input.existingRows
     .map((candidate) => {
@@ -859,7 +911,15 @@ function findReconciliationMatches(input: {
         return undefined;
       }
 
-      if (!isSameAmountAndAccountCandidate(input.previewRow, candidate)) {
+      // A foreign currency estimate meets the card's own amount within a few
+      // percent; every other entry needs the exact amount.
+      const isEstimate = isForeignCurrencyEstimate(candidate)
+        && candidate.entry_type === input.previewRow.entryType
+        && isWithinEstimateBand(Number(candidate.amount_minor), Number(input.previewRow.amountMinor));
+      if (!isEstimate && !isSameAmountAndAccountCandidate(input.previewRow, candidate)) {
+        return undefined;
+      }
+      if (isEstimate && !isSameAccountCandidate(input.previewRow, candidate)) {
         return undefined;
       }
 
@@ -868,7 +928,7 @@ function findReconciliationMatches(input: {
         previewRow: input.previewRowDateContext,
         candidate: candidateDateContext
       });
-      const repeats = input.velocity.repeats(input.previewRow.rowIndex, candidate.transaction_id);
+      const repeats = input.matchContext.repeats(input.previewRow.rowIndex, candidate.transaction_id);
 
       // The velocity rule: a charge that repeats (daily fares, coffees,
       // top-ups at one price) is matched only within two days, so separate
@@ -911,11 +971,19 @@ function findReconciliationMatches(input: {
         sharedTokenCount,
         hasCompactMerchantMatch
       });
-      const matchKind = isCardPaymentAlias ? "probable" : getDuplicateMatchKind({
+      const wordingMatchKind = isCardPaymentAlias ? "probable" : getDuplicateMatchKind({
         dayDistance,
         descriptionSimilarity,
         tokenSimilarity
       });
+      // The card's row for an estimate may name only the payment app
+      // ("AMAZE* GRAB* A-8ABC"): when the two are each other's only fit by
+      // amount and day, that is enough. Two estimates that both fit wait
+      // for wording to tell them apart.
+      const matchKind = isEstimate && wordingMatchKind !== "exact" && wordingMatchKind !== "probable"
+        && input.matchContext.isOnlyEstimatePair(input.previewRow.rowIndex, candidate.transaction_id, getDuplicateCandidateMaxDayDistance({ repeats }))
+        ? "probable"
+        : wordingMatchKind;
       if (!matchKind) {
         return undefined;
       }
@@ -924,7 +992,9 @@ function findReconciliationMatches(input: {
         candidate,
         dayDistance,
         descriptionSimilarity,
-        matchKind
+        matchKind,
+        // Similarly priced purchases pair with the closest estimate.
+        amountGapMinor: Math.abs(Number(candidate.amount_minor) - Number(input.previewRow.amountMinor))
       };
     })
     .filter((match): match is {
@@ -932,14 +1002,25 @@ function findReconciliationMatches(input: {
       dayDistance: number;
       descriptionSimilarity: number;
       matchKind: "exact" | "probable" | "near";
+      amountGapMinor: number;
     } => Boolean(match))
     .sort((left, right) => (
       getDuplicateMatchRank(left.matchKind) - getDuplicateMatchRank(right.matchKind)
       || left.dayDistance - right.dayDistance
+      || left.amountGapMinor - right.amountGapMinor
       || right.descriptionSimilarity - left.descriptionSimilarity
     ))
     .slice(0, 3)
     .map(({ candidate, matchKind }) => mapCandidateToReconciliationMatch(candidate, matchKind));
+}
+
+function isSameAccountCandidate(
+  previewRow: ImportPreviewRowDto,
+  candidate: { account_id: string; account_name: string }
+) {
+  return previewRow.accountId
+    ? candidate.account_id === previewRow.accountId
+    : !previewRow.accountName || candidate.account_name === previewRow.accountName;
 }
 
 function isSameAmountAndAccountCandidate(
@@ -972,10 +1053,16 @@ function mapCandidateToReconciliationMatch(
     amount_minor: number;
     bank_certification_status: "provisional" | "statement_certified";
     account_name: string;
+    currency?: string;
+    original_amount_minor?: number | null;
+    original_currency?: string | null;
   },
   matchKind: "exact" | "probable" | "near"
 ) {
   return {
+    ...(candidate.original_currency && candidate.original_amount_minor != null
+      ? { originalAmount: formatForeignAmount(Number(candidate.original_amount_minor), candidate.original_currency), currency: candidate.currency }
+      : {}),
     ...(candidate.import_id ? { existingImportId: candidate.import_id } : {}),
     existingTransactionId: candidate.transaction_id,
     existingAccountId: candidate.account_id,
@@ -1118,7 +1205,9 @@ function applySourceAuthorityToPreviewRow(
   }
 
   previewRow.commitStatus = "included";
-  previewRow.commitStatusReason = "Official statement will certify the existing mid-cycle ledger row while preserving user edits.";
+  previewRow.commitStatusReason = strongestMatch.originalAmount
+    ? describeEstimateReplacement(previewRow, strongestMatch)
+    : "Official statement will certify the existing mid-cycle ledger row while preserving user edits.";
   previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
   previewRow.reconciliationMatches = undefined;
 }
@@ -1147,6 +1236,16 @@ function canPromoteManualReconciliationMatch(
     && strongestMatch.existingBankCertificationStatus === "provisional"
     && (previewRow.reconciliationMatchCount ?? 0) === 1
     && strongestMatch.matchKind !== "near";
+}
+
+// "Official statement will replace the estimate for IDR 159,000 (about SGD
+// 11.34) with the card's SGD 11.61."
+function describeEstimateReplacement(
+  previewRow: ImportPreviewRowDto,
+  match: NonNullable<ImportPreviewRowDto["reconciliationMatch"]>
+) {
+  const currency = match.currency ?? "SGD";
+  return `Official statement will replace the estimate for ${match.originalAmount} (about ${formatForeignAmount(match.amountMinor, currency, 2)}) with the card's ${formatForeignAmount(previewRow.amountMinor, currency, 2)}.`;
 }
 
 function buildCurrentActivityManualPromotionReason(previewRow: ImportPreviewRowDto) {
@@ -1307,7 +1406,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
   statementStartDate?: string;
   statementEndDate: string;
   deltaMinor: number;
-  velocity: PreviewVelocity;
+  matchContext: PreviewMatchContext;
 }) {
   if (input.deltaMinor === 0) {
     return [];
@@ -1328,7 +1427,7 @@ function findOfficialStatementSupersededLedgerRows(input: {
       && row.account_id === input.account.id
       && !reconciliationTargetIds.has(row.transaction_id)
       && isDateWithinRange(getExistingRowClearedDate(row), input.statementStartDate, input.statementEndDate)
-      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows, input.velocity)
+      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows, input.matchContext)
     ))
     .map((row) => {
       const transactionId = row.transaction_id;
@@ -1380,7 +1479,7 @@ function hasPotentialOfficialStatementRowForExistingCandidate(
     transfer_direction: "in" | "out" | null;
   },
   previewRows: ImportPreviewRowDto[],
-  velocity: PreviewVelocity
+  matchContext: PreviewMatchContext
 ) {
   const candidateClearedDate = getExistingRowClearedDate(candidate);
   const candidateSignedAmountMinor = getExistingRowSignedAmountMinor(candidate);
@@ -1400,7 +1499,7 @@ function hasPotentialOfficialStatementRowForExistingCandidate(
     }
 
     const dayDistance = Math.abs(daysBetween(row.date, candidateClearedDate));
-    if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats: velocity.repeats(row.rowIndex, candidate.transaction_id) })) {
+    if (dayDistance > getDuplicateCandidateMaxDayDistance({ repeats: matchContext.repeats(row.rowIndex, candidate.transaction_id) })) {
       return false;
     }
 
@@ -1808,7 +1907,7 @@ function buildImportPreviewStatementReconciliations(input: {
     account_id: string;
     missing_checkpoint_month: string;
   }[];
-  velocity: PreviewVelocity;
+  matchContext: PreviewMatchContext;
 }) {
   if (!input.statementCheckpoints.length) {
     return [];
@@ -1856,7 +1955,7 @@ function buildImportPreviewStatementReconciliations(input: {
         statementStartDate,
         statementEndDate,
         deltaMinor,
-        velocity: input.velocity
+        matchContext: input.matchContext
       })
       : [];
     if (supersededLedgerRows.length) {

@@ -463,7 +463,13 @@ fallback, ExchangeRate-API's open endpoint; only the two currency codes are
 sent. The last rate per pair is saved in `fx_rates` and reused for 12 hours,
 and for up to 14 days when both sources are down. With no usable rate the
 request is refused with 503 and saves nothing. `FX_RATES_OFFLINE=true` (the
-test Worker) uses saved rates only. `amountMinor` also works
+test Worker) uses saved rates only. When the card's statement or activity
+export arrives, the import preview matches its SGD row to the estimate within
+5% (`isWithinEstimateBand` in `app-repository-import-preview.ts`), by
+wording or, for rows that name only the payment app, when the pair is each
+other's only fit (`isOnlyEstimatePair`); the commit then writes the card's
+amount. `tests/foreign-estimate-matching-api.test.mjs` covers the matches and
+the refusals. `amountMinor` also works
 if the caller already uses integer cents; when both forms are sent, they must
 agree.
 
