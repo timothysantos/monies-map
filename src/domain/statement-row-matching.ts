@@ -169,8 +169,13 @@ const CARD_PAYMENT_APP_PREFIX = /^\s*(?:AMAZE|AMZ)\s*\*\s*/i;
 const CARD_GATEWAY_NAMES = ["eximbay"];
 const CARD_MERCHANT_MIN_LENGTH = 5;
 
+// A card row for a purchase paid through a payment app ("AMAZE*...").
+export function hasCardPaymentAppPrefix(cardDescription: string) {
+  return CARD_PAYMENT_APP_PREFIX.test(cardDescription);
+}
+
 export function isCardMerchantPrefixMatch(cardDescription: string, walletDescription: string) {
-  if (!CARD_PAYMENT_APP_PREFIX.test(cardDescription)) {
+  if (!hasCardPaymentAppPrefix(cardDescription)) {
     return false;
   }
   const compact = (value: string) => value.toLowerCase().replace(/\bsingapore\b|\bsg\b/g, "").replace(/[^a-z0-9]+/g, "");

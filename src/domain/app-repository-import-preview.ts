@@ -34,6 +34,7 @@ import {
 } from "./import-preview-match-policy";
 import {
   createRepetitionIndex,
+  hasCardPaymentAppPrefix,
   isCardMerchantPrefixMatch,
   getDuplicateCandidateDayDistance,
   getDuplicateMatchKind,
@@ -908,7 +909,10 @@ function findReconciliationMatches(input: {
         return undefined;
       }
 
-      if (!isReconciliationCandidateEligibleForSource(candidate, input.incomingSourceType)) {
+      // A foreign currency estimate stays open until the statement: a later
+      // activity export may update the interim amount an earlier one set.
+      // Every other entry an export brought in keeps the mid-cycle isolation.
+      if (!isReconciliationCandidateEligibleForSource(candidate, input.incomingSourceType) && !isForeignCurrencyEstimate(candidate)) {
         return undefined;
       }
 
@@ -984,9 +988,15 @@ function findReconciliationMatches(input: {
       // A card row cuts the shop's name behind the payment app's prefix
       // ("AMAZE*E-MARTYONGS" for "E-MART Yongsan"): a name that starts the
       // other counts as the same shop.
+      // Without the shop's name, only a payment-app row ("AMAZE*EXIMBAYCO.,")
+      // may stand for an estimate: an ordinary card row near its amount
+      // ("SHOPEESGMP") is another purchase.
       const isEstimateFit = isEstimate && wordingMatchKind !== "exact" && wordingMatchKind !== "probable" && (
         isCardMerchantPrefixMatch(input.previewRow.description, candidate.description)
-        || input.matchContext.isOnlyEstimatePair(input.previewRow.rowIndex, candidate.transaction_id, getDuplicateCandidateMaxDayDistance({ repeats }))
+        || (
+          hasCardPaymentAppPrefix(input.previewRow.description)
+          && input.matchContext.isOnlyEstimatePair(input.previewRow.rowIndex, candidate.transaction_id, getDuplicateCandidateMaxDayDistance({ repeats }))
+        )
       );
       const matchKind = isEstimateFit ? "probable" : wordingMatchKind;
       if (!matchKind) {
@@ -1182,7 +1192,9 @@ function applySourceAuthorityToPreviewRow(
 
   if (sourceType === "csv" && canPromoteManualReconciliationMatch(previewRow, strongestMatch)) {
     previewRow.commitStatus = "included";
-    previewRow.commitStatusReason = buildCurrentActivityManualPromotionReason(previewRow);
+    previewRow.commitStatusReason = strongestMatch.originalAmount && strongestMatch.existingImportId
+      ? describeEstimateInterimUpdate(previewRow, strongestMatch)
+      : buildCurrentActivityManualPromotionReason(previewRow);
     previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
     previewRow.reconciliationMatches = undefined;
     return;
@@ -1237,7 +1249,12 @@ function canPromoteManualReconciliationMatch(
   previewRow: ImportPreviewRowDto,
   strongestMatch: NonNullable<ImportPreviewRowDto["reconciliationMatch"]>
 ) {
-  return strongestMatch.existingSourceType === "manual"
+  // A foreign currency estimate an earlier export already updated is still
+  // open: a newer interim amount replaces the older one. The same amount
+  // again is the same row, skipped like any exact duplicate.
+  const isOpenEstimateWithNewAmount = Boolean(strongestMatch.originalAmount)
+    && (!strongestMatch.existingImportId || strongestMatch.amountMinor !== previewRow.amountMinor);
+  return (strongestMatch.existingSourceType === "manual" || isOpenEstimateWithNewAmount)
     && strongestMatch.existingBankCertificationStatus === "provisional"
     && (previewRow.reconciliationMatchCount ?? 0) === 1
     && strongestMatch.matchKind !== "near";
@@ -1251,6 +1268,16 @@ function describeEstimateReplacement(
 ) {
   const currency = match.currency ?? "SGD";
   return `Official statement will replace the estimate for ${match.originalAmount} (about ${formatForeignAmount(match.amountMinor, currency, 2)}) with the card's ${formatForeignAmount(previewRow.amountMinor, currency, 2)}.`;
+}
+
+// "Current-activity import will update the estimate for IDR 159,000 from SGD
+// 11.50 to the card's SGD 11.58."
+function describeEstimateInterimUpdate(
+  previewRow: ImportPreviewRowDto,
+  match: NonNullable<ImportPreviewRowDto["reconciliationMatch"]>
+) {
+  const currency = match.currency ?? "SGD";
+  return `Current-activity import will update the estimate for ${match.originalAmount} from ${formatForeignAmount(match.amountMinor, currency, 2)} to the card's ${formatForeignAmount(previewRow.amountMinor, currency, 2)}.`;
 }
 
 function buildCurrentActivityManualPromotionReason(previewRow: ImportPreviewRowDto) {
