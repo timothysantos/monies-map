@@ -1,0 +1,126 @@
+/* Imports rules that only match inside the lazy Imports route.
+   They ship with it instead of with the first-screen stylesheet
+   (npm run check:bundle). Imported first by imports-panel.jsx, so they load
+   after public/styles.css and before the route's other stylesheets; no later
+   rule of the same specificity sets the same properties on these elements,
+   so the cascade result is unchanged. */
+
+.import-inbox-header .section-head {
+  margin-bottom: 0;
+}
+
+.import-workflow + .panel-subsection {
+  margin-top: 10px;
+}
+
+.info-icon-button:hover,
+.info-icon-button:focus-visible {
+  border-color: rgba(142, 81, 39, 0.48);
+  background: rgba(255, 255, 255, 0.95);
+  outline: none;
+}
+
+.duplicate-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.duplicate-row-detail {
+  display: inline;
+  margin-top: 0;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.duplicate-match-head {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.duplicate-match-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 14px;
+}
+
+.duplicate-match-card p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-match-dates div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.duplicate-match-dates dt,
+.duplicate-match-dates dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.duplicate-match-dates dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.duplicate-match-dates dd {
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.duplicate-match-arrow {
+  align-self: center;
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.duplicate-match-open-link {
+  display: inline-flex;
+  margin-top: 18px;
+  color: var(--accent-strong);
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.duplicate-match-popover .category-popover-arrow {
+  display: none;
+}
+
+.import-history-toggle .section-head {
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .duplicate-row-detail-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .duplicate-match-flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .duplicate-match-arrow {
+    justify-self: start;
+  }
+
+  .duplicate-match-popover {
+    width: min(520px, calc(100vw - 24px));
+    max-height: calc(100dvh - 80px);
+    padding: 18px;
+  }
+}

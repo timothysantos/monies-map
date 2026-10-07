@@ -1,3 +1,5 @@
+// First, so these rules load before the stylesheets the modules below import.
+import "./entries-route.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";

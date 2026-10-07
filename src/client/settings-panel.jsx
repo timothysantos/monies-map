@@ -1,3 +1,5 @@
+// First, so these rules load before the stylesheets the modules below import.
+import "./settings-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { LogOut } from "lucide-react";

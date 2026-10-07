@@ -1,0 +1,415 @@
+/* Settings rules that only match inside the lazy Settings route.
+   They ship with it instead of with the first-screen stylesheet
+   (npm run check:bundle). Imported first by settings-panel.jsx, so they load
+   after public/styles.css and before the route's other stylesheets; no later
+   rule of the same specificity sets the same properties on these elements,
+   so the cascade result is unchanged. */
+
+.settings-login-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 1100px) {
+  .settings-rule-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.settings-duplicate-rule-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: start;
+}
+
+.settings-duplicate-rule-summary strong,
+.settings-duplicate-rule-summary p {
+  grid-column: 1;
+}
+
+.settings-suggestion-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.settings-rule-group-header::-webkit-details-marker {
+  display: none;
+}
+
+.settings-transfer-months {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-statement-compare-inline {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(91, 107, 125, 0.22);
+  border-radius: 8px;
+  background: rgba(244, 246, 248, 0.88);
+}
+
+.settings-statement-compare-inline::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: -2px 0 2px;
+  background: var(--line);
+}
+
+.settings-statement-compare-inline .settings-statement-compare {
+  width: 100%;
+}
+
+.settings-statement-compare-inline + .settings-statement-compare-inline {
+  padding-top: 12px;
+}
+
+.settings-statement-compare-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-shortcut-params-input {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.settings-shortcut-install-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+@media (max-width: 700px) {
+  .settings-shortcut-install {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+.settings-shortcut-secret-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 6px;
+  align-items: center;
+}
+
+.settings-shortcut-account-row:active {
+  cursor: grabbing;
+}
+
+.settings-exception-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-exception-head h3 {
+  font-size: 1rem;
+}
+
+.settings-exception-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-exception-form-wide,
+.settings-exception-form-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-exception-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-transfer-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-transfer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.settings-activity-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-activity-group {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-activity-list {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-activity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.settings-activity-row .settings-account-meta {
+  margin: 0;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.settings-diagnostics {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-diagnostics-toolbar {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-diagnostic-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-diagnostic-row summary::marker {
+  content: "";
+}
+
+.settings-diagnostic-row summary span {
+  min-width: 0;
+}
+
+.settings-diagnostic-row summary strong {
+  display: block;
+  color: var(--ink);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.settings-diagnostic-row summary span span,
+.settings-diagnostic-row summary > span:last-child {
+  color: var(--muted);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-field-half {
+  grid-column: span 2;
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-balance-field {
+  grid-column: span 2;
+  align-self: start;
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-note-field {
+  grid-column: span 2;
+}
+
+.settings-reconciliation-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px -4px 0 0;
+  overflow-y: auto;
+  padding: 0 4px 2px 0;
+}
+
+.settings-checkpoint-row {
+  align-items: flex-start;
+}
+
+.settings-checkpoint-delta-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-checkpoint-delta-line .settings-account-health {
+  margin: 6px 0 0;
+}
+
+.settings-checkpoint-export {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font: inherit;
+}
+
+.settings-checkpoint-export:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.settings-statement-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-statement-compare h3 {
+  font-size: 0.92rem;
+}
+
+.settings-statement-direction-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 12px;
+}
+
+.settings-statement-duplicate-groups {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-statement-row:first-of-type {
+  border-top: 0;
+}
+
+.settings-statement-row-action {
+  grid-template-columns: 88px 100px minmax(0, 1fr) auto;
+}
+
+.settings-form-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-person-form {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 960px) {
+  .settings-login-card {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .settings-login-actions {
+    justify-content: flex-start;
+  }
+
+  .settings-demo-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-transfer-row,
+  .settings-activity-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .settings-activity-row .settings-account-meta {
+    text-align: left;
+  }
+}
+
+@media (max-width: 1180px) {
+  .settings-category-card .settings-account-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 760px) {
+  .settings-rule-row {
+    padding: 10px 12px;
+  }
+
+  .settings-rule-row .settings-account-main strong {
+    max-width: 100%;
+  }
+
+  .settings-trust-grid,
+  .settings-exception-form,
+  .settings-exception-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-exception-head {
+    display: grid;
+  }
+
+  .settings-exception-status,
+  .settings-exception-form-actions {
+    justify-content: flex-start;
+  }
+
+  .settings-reconciliation-dialog {
+    display: flex;
+    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
+    width: min(720px, calc(100vw - 24px));
+    max-height: none;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .settings-reconciliation-dialog .settings-account-form {
+    order: 1;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .settings-reconciliation-dialog .note-dialog-actions {
+    order: 2;
+    margin-bottom: 12px;
+  }
+
+  .settings-reconciliation-field-half,
+  .settings-reconciliation-balance-field,
+  .settings-reconciliation-note-field {
+    grid-column: 1;
+  }
+
+  .settings-reconciliation-scroll {
+    order: 3;
+    flex: 0 0 auto;
+    min-height: auto;
+    margin-top: 10px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .settings-checkpoint-year-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-checkpoint-row {
+    align-items: flex-start;
+  }
+
+  .settings-duplicate-rule-summary {
+    grid-template-columns: 1fr;
+  }
+}

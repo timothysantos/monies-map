@@ -141,9 +141,14 @@ Budget rules:
   its data (the panel renders only once its data is here); it never loads
   another route's code this way (that is warmup, and waits for `usable`)
 - CSS that only one lazy route uses goes in a stylesheet imported by that
-  route's module (`month-mid-width.css` from `month-panel.jsx`,
-  `splits-panel.css` from `splits-panel.jsx`), so it ships with the route;
-  `public/styles.css` counts toward the first-screen budget
+  route's module, so it ships with the route; `public/styles.css` counts
+  toward the first-screen budget. Each lazy route's general rules are in
+  `<route>-route.css` (Entries, Imports, Month, Settings, Splits), imported
+  first by `<route>-panel.jsx`; narrower files follow it
+  (`month-mid-width.css`, `splits-panel.css`). A moved rule loads after
+  every `styles.css` rule, so move one only when no later rule of the same
+  specificity sets the same property on the same element, and compare
+  computed styles before and after
 - no `:has()` that searches all descendants (`body:has(.x)`): on a large
   month each restyle of an element such a rule styles walks the whole page.
   A portalled layer uses `body:has(> .x)`; an element inside the page holds

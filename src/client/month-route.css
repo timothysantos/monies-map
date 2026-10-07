@@ -1,0 +1,265 @@
+/* Month rules that only match inside the lazy Month route.
+   They ship with it instead of with the first-screen stylesheet
+   (npm run check:bundle). Imported first by month-panel.jsx, so they load
+   after public/styles.css and before the route's other stylesheets; no later
+   rule of the same specificity sets the same properties on these elements,
+   so the cascade result is unchanged. */
+
+.month-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.metric-row-month {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.month-actual-drilldown:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+/* A browser sends no click for a press on a disabled button, not even to
+   its row, so an actual amount with no entries would be a dead spot in a
+   row that opens on a click or tap. The press goes through to the row. */
+.month-actual-cell .month-actual-drilldown:disabled {
+  pointer-events: none;
+}
+
+.month-row-open-button {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.month-row-open-button:hover,
+.month-row-open-button:focus-visible {
+  color: var(--accent-strong);
+}
+
+.month-row-open-button:focus-visible {
+  outline: 2px solid rgba(191, 103, 45, 0.32);
+  outline-offset: 3px;
+}
+
+.month-row-pending-hint {
+  font-size: 0.76rem;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.planned-link-manage-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.planned-link-manage-trigger:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.month-add-dialog-note {
+  grid-column: 1 / -1;
+}
+
+.month-planned-cell {
+  display: grid;
+  gap: 6px;
+}
+
+.month-budget-default-hint {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.month-budget-default-trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.18em;
+}
+
+.month-budget-default-text {
+  color: inherit;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.month-budget-default-trigger:hover,
+.month-budget-default-trigger:focus-visible {
+  color: var(--accent-strong);
+}
+
+.month-budget-default-trigger:focus-visible {
+  outline: 2px solid rgba(191, 103, 45, 0.32);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.month-budget-default-popover {
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 36px rgba(24, 18, 12, 0.12);
+  border: 1px solid rgba(191, 103, 45, 0.14);
+  z-index: 91;
+}
+
+.month-section-head-inline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.month-section-head-with-toggle.month-section-head-inline {
+  align-items: baseline;
+}
+
+.month-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  flex: 0 0 auto;
+  transition: transform 140ms ease, color 140ms ease;
+}
+
+.month-section-detail-inline {
+  font-size: 0.82rem;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.month-table-wrap {
+  margin-top: 14px;
+}
+
+.month-table-wrap tfoot td {
+  border-top: 1px solid var(--line);
+  background: rgba(38, 35, 31, 0.03);
+  font-weight: 600;
+  color: var(--money-ink, var(--muted));
+}
+
+.table-total-row td {
+  position: sticky;
+  bottom: 0;
+}
+
+.month-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-self: start;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 3;
+}
+
+.month-actions-item:hover {
+  background: rgba(191, 103, 45, 0.06);
+}
+
+.panel-subgrid > section,
+.month-plan-grid > section {
+  min-width: 0;
+}
+
+.month-plan-section table tbody tr {
+  cursor: pointer;
+}
+
+.month-plan-section table tbody tr.is-readonly {
+  cursor: default;
+}
+
+.month-plan-section table tbody tr.is-editing {
+  background: linear-gradient(90deg, var(--pastel-mint), rgba(255, 255, 255, 0.86) 72%);
+}
+
+.month-inline-cancel-button {
+  white-space: nowrap;
+}
+
+.month-inline-delete-button {
+  color: var(--negative);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+@media (max-width: 960px) {
+  .metric-row-month {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .month-add-dialog-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .month-title {
+    display: none;
+  }
+
+  .month-plan-section .panel-subhead p,
+  .month-section-detail-inline {
+    display: none;
+  }
+
+  .month-panel-head {
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  }
+
+  .month-panel-head > div:first-child {
+    display: none;
+  }
+
+  .month-panel-head .month-header-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .month-panel .month-actions-trigger {
+    padding: 2px 0;
+    line-height: 1.1;
+  }
+
+  .month-panel .metric-row-month {
+    margin-bottom: 12px;
+  }
+
+  .month-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

@@ -1,0 +1,388 @@
+/* Entries rules that only match inside the lazy Entries route.
+   They ship with it instead of with the first-screen stylesheet
+   (npm run check:bundle). Imported first by entries-panel.jsx, so they load
+   after public/styles.css and before the route's other stylesheets; no later
+   rule of the same specificity sets the same properties on these elements,
+   so the cascade result is unchanged. */
+
+.entry-composer-split-toggle {
+  min-height: 0;
+}
+
+.entry-split-picker-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.category-toggle-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.entries-page-loading {
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+}
+
+.entries-totals-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.entries-breakdown-toggle:hover {
+  background: rgba(177, 94, 47, 0.12);
+}
+
+.entries-totals-spacer {
+  flex: 1 1 auto;
+}
+
+.entries-add-inline {
+  flex: 0 0 auto;
+}
+
+.entries-totals-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.entries-totals-label {
+  color: var(--money-ink, var(--muted));
+}
+
+.entries-totals-secondary {
+  color: var(--money-ink, var(--muted));
+  font-size: 0.92rem;
+}
+
+@media (min-width: 961px) {
+  .entries-breakdown-list .category-toggle-actions {
+    justify-content: flex-start;
+  }
+}
+
+.entries-rows {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A month can hold thousands of rows. Closed rows off screen skip style,
+   layout and paint until they scroll near the viewport; find-in-page, Tab
+   focus and screen readers still reach them because they stay in the DOM.
+   "auto" keeps each row's last rendered height, so the scrollbar stays put
+   once a row has been seen. The fallback is the measured content height
+   (68 px row minus its 1 px top border): the intrinsic size excludes the
+   border, and a 1 px error per row adds up over a 2,000-row month. */
+.entry-row:not(.is-editing) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 67px;
+}
+
+/* Paint containment clips anything outside the row, so draw the keyboard
+   focus ring inside it. */
+.entry-row-main:focus-visible {
+  outline-offset: -2px;
+}
+
+.entry-row.is-inline-editing:first-child {
+  border-top: 1px solid rgba(191, 103, 45, 0.16);
+}
+
+.entry-row-main {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1.55fr) minmax(0, 1fr) minmax(120px, 0.8fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.entry-row-main.is-pending {
+  opacity: 0.84;
+}
+
+.entry-row-category,
+.entry-row-category-label,
+.entry-row-description,
+.entry-row-transfer,
+.entry-row-right {
+  min-width: 0;
+}
+
+.entry-row-category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.entry-row-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  gap: 2px;
+}
+
+.entry-chip-owner {
+  background: rgba(38, 35, 31, 0.05);
+  color: var(--text);
+}
+
+.entry-chip-shared {
+  background: rgba(177, 94, 47, 0.1);
+  color: var(--accent-strong);
+  border-color: rgba(177, 94, 47, 0.18);
+}
+
+.entry-chip-linked-split {
+  max-width: 172px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border-color: rgba(251, 146, 60, 0.34);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-chip-linked-split-base,
+.entry-chip-linked-split-group {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  min-width: 0;
+  padding: 0 9px;
+  line-height: 1;
+}
+
+.entry-chip-linked-split-base {
+  flex: 0 0 auto;
+  background: rgba(255, 237, 213, 0.98);
+  color: #b45309;
+}
+
+.entry-chip-linked-split-group {
+  flex: 1 1 auto;
+  max-width: 96px;
+  border-left: 1px solid var(--split-group-chip-border, var(--line));
+  background: var(--split-group-chip-bg, var(--pastel-neutral));
+  color: var(--split-group-chip-color, var(--accent));
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-chip-split {
+  background: rgba(18, 56, 47, 0.05);
+}
+
+.entry-chip-pending {
+  border-color: rgba(177, 94, 47, 0.18);
+  background: rgba(255, 247, 240, 0.96);
+  color: var(--accent-strong);
+}
+
+.entry-inline-actions-divider {
+  align-self: center;
+  width: 1px;
+  height: 24px;
+  margin: 0 6px 0 2px;
+  background: rgba(122, 127, 125, 0.36);
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.entry-inline-status-separator {
+  color: var(--line-strong);
+}
+
+@media (max-width: 960px) {
+  .entry-row-main {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .entry-row-right {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+  }
+
+  .entries-totals-strip {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .entry-row.is-inline-editing:first-child {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .entries-totals-strip {
+    gap: 10px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  .entries-totals-item {
+    min-width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .entries-breakdown-toggle {
+    width: 30px;
+    height: 30px;
+  }
+
+  .entries-breakdown-list .category-toggle-actions {
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .entries-breakdown-list .chart-toggle-action,
+  .entries-breakdown-list .filter-toggle-action {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+  }
+
+  .entries-add-inline,
+  .entries-totals-spacer {
+    display: none;
+  }
+
+  .entry-row-main {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "category description right"
+      "category meta meta";
+    gap: 8px 10px;
+    padding: 8px 0;
+    align-items: start;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .entries-date-groups {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .entries-date-group {
+    padding: 10px 12px;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .entry-row:not(.is-editing) {
+    contain-intrinsic-size: auto 88px;
+  }
+
+  .entries-date-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 8px;
+    width: 100vw;
+    margin: -10px calc(50% - 50vw) 4px;
+    padding: 10px 12px 6px;
+    border-radius: 0;
+    max-width: none;
+    box-sizing: border-box;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    contain: paint;
+  }
+
+  .entries-date-actions {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .entry-row-category {
+    grid-area: category;
+    align-items: flex-start;
+  }
+
+  .entry-row-description {
+    grid-area: description;
+    min-width: 0;
+  }
+
+  .entry-row-transfer {
+    display: none;
+  }
+
+  .entry-row-right {
+    display: contents;
+  }
+
+  .entry-row-amount {
+    grid-area: right;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .entry-row-amount p {
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+
+  .entry-row-main p {
+    font-size: 0.76rem;
+    line-height: 1.02;
+  }
+
+  .entry-pills {
+    align-self: start;
+  }
+
+  .entry-chip-linked-split {
+    max-width: min(42vw, 138px);
+    padding: 0;
+  }
+
+  .entry-chip-linked-split-base,
+  .entry-chip-linked-split-group {
+    min-height: 20px;
+    padding: 0 7px;
+  }
+
+  .entry-chip-linked-split-group {
+    max-width: 72px;
+  }
+}
+
+/* Entries could not load the requested month: the shared error panel sits
+   inside the Entries panel in place of its figures and rows. */
+.entries-load-error {
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.entries-totals-item.money-soft {
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+}

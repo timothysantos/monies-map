@@ -967,8 +967,9 @@ to 1,199 px follows it (see below). The header rules are in
 `public/styles.css`, because every page shows the header. The Month rules
 are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
 so they ship with the lazy Month route and stay out of the first-screen
-CSS budget (`npm run check:bundle`). That file loads after `styles.css`,
-so its rules win over base rules of the same specificity.
+CSS budget (`npm run check:bundle`). That file loads after `styles.css`
+and after `month-route.css` (the Month route's general rules), so its
+rules win over base rules of the same specificity.
 
 - The header's period controls wrap below the page tabs as one group.
   Before, they widened the page up to 960 px and slid under the tabs from
