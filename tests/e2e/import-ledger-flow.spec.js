@@ -176,20 +176,31 @@ async function createCitiRewardsAccount(page) {
 
 // A statement's rows are read-only in its card sections; the row editor
 // shows them as inputs. It stays open across refreshes of the same file.
+// Waits for the review to render first, so the toggle is never missed, and
+// returns once the editor is open (its aria-pressed is the source of truth).
 async function openStatementRowEditor(page) {
-  const editRows = page.getByRole("button", { name: "Edit rows" });
-  if (await editRows.count()) {
-    await editRows.click();
+  const statementReview = page.locator(".statement-review");
+  await expect(statementReview.or(page.locator(".import-preview-table")).first()).toBeVisible({ timeout: 30_000 });
+  if (!(await statementReview.count())) {
+    return;
   }
+  const rowEditorToggle = statementReview.locator(".statement-review-actions button[aria-pressed]");
+  if ((await rowEditorToggle.getAttribute("aria-pressed")) !== "true") {
+    await rowEditorToggle.click();
+  }
+  await expect(rowEditorToggle).toHaveAttribute("aria-pressed", "true");
+}
+
+function readPreviewInputValues(page) {
+  return page
+    .locator(".import-preview-table input")
+    .evaluateAll((inputs) => inputs.map((input) => input.value));
 }
 
 async function expectHsbcPreviewValues(page, expectedValues) {
   await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
   await openStatementRowEditor(page);
-  const previewValues = await page
-    .locator(".import-preview-table input")
-    .evaluateAll((inputs) => inputs.map((input) => input.value));
-  expect(previewValues).toEqual(expectedValues);
+  await expect.poll(() => readPreviewInputValues(page)).toEqual(expectedValues);
 }
 
 async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } = {}) {
@@ -1173,9 +1184,8 @@ test.describe("import flow", () => {
     await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 120_000 });
     await openStatementRowEditor(page);
-    const previewValues = await page
-      .locator(".import-preview-table input")
-      .evaluateAll((inputs) => inputs.map((input) => input.value));
+    await expect(page.locator(".import-preview-table input").first()).toBeVisible();
+    const previewValues = await readPreviewInputValues(page);
     const normalizedPreviewValues = previewValues.join(" ").replace(/[^a-z0-9]+/gi, " ").toUpperCase();
     expect(normalizedPreviewValues).toMatch(/\bIKEA\b/);
     expect(normalizedPreviewValues).toMatch(/\bPAYMENT\s+VIA\s+UOB\s+VISA\b/);
