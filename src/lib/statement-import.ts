@@ -11,6 +11,7 @@ import {
 } from "./statement-import/ocbc-activity-csv";
 import { parseOcbc360Statement, parseOcbcCreditCardStatement, parseOcbcDepositStatement } from "./statement-import/ocbc";
 import { parseHsbcVisaRevolutionOcrTsv } from "./statement-import/hsbc-ocr";
+import { joinOcrTsvPasses } from "./statement-import/ocr";
 import {
   getPdfLayoutLines,
   getPdfSpacedLayoutLines,
@@ -26,6 +27,7 @@ export {
   canRecognizeCitibankActivityCsv,
   canParseOcbcActivityCsv,
   canRecognizeOcbcActivityCsv,
+  joinOcrTsvPasses,
   parseCitibankActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
