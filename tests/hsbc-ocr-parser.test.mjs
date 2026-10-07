@@ -308,6 +308,16 @@ test("HSBC browser OCR imports Aug-Oct 2026 statements from two OCR passes", asy
   }
 });
 
+test("HSBC OCR drops a dotted rule Tesseract reads as one-pixel-tall words", async () => {
+  // OCR of the sanitized May image PDF reads the dotted rule under IKEA as
+  // "Si ans ns So aso sata Sista" at up to 35% confidence.
+  const parsed = parseStatementText(`__OCR_TSV__\n${await readBrowserOcrFixture("may", "-sanitized-pdf")}`, "hsbc-visa-revolution-may_2026.pdf");
+  assert.deepEqual(rowValues(parsed), [
+    ["2026-05-04", "IKEA SINGAPORE SG", "157.20", "", "Shopping", "txn date: 2026-05-01", "expense"],
+    ["2026-05-05", "PAYMENT VIA UOB VISA DIRECT SG", "", "157.20", "Transfer", "txn date: 2026-05-04", "transfer"]
+  ]);
+});
+
 test("HSBC first OCR pass reads Oct 2026 transaction dates printed as 010ct", async () => {
   const parsed = parseStatementText(`__OCR_TSV__\n${await readBrowserOcrFixture("oct")}`, "hsbc-visa-revolution-oct_2026.pdf");
   assert.deepEqual(rowAmounts(parsed), AUG_TO_OCT_2026[2].rows.map(([date, , expense, income, , note]) => [date, expense, income, note]));

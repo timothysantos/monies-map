@@ -148,6 +148,11 @@ export function ocrWordsInColumn(words: OcrWord[], leftMin: number, leftMax: num
 // (an all-caps merchant name at 0% is common), so a word is only noise when
 // its confidence is low AND it looks like a rule rather than a word.
 export function isOcrNoiseWord(word: OcrWord) {
+  // Tesseract boxes a dotted rule as "words" one or two pixels tall; no
+  // letter or digit is that short, whatever confidence it was given.
+  if (/[A-Za-z0-9]/.test(word.text) && word.height > 0 && word.height < 6) {
+    return true;
+  }
   if (word.confidence == null || word.confidence >= 30) {
     return false;
   }

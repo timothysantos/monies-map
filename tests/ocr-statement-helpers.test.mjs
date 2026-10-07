@@ -106,6 +106,10 @@ test("OCR noise filtering drops dotted rules but keeps low-confidence real words
   assert.equal(isOcrNoiseWord(word(431, 1077, "KINOKUNIYA-TAKASHIMAYA", { confidence: 14, width: 327 })), false);
   assert.equal(isOcrNoiseWord(word(431, 1164, "IKEA", { confidence: 8 })), false);
   assert.equal(isOcrNoiseWord(word(598, 1251, "shaw.sg", { confidence: 91 })), false);
+  // A dotted rule read as words one pixel tall, some at fair confidence.
+  assert.equal(isOcrNoiseWord(word(280, 1113, "ans", { confidence: 35, height: 1 })), true);
+  assert.equal(isOcrNoiseWord(word(739, 1113, "Sista", { confidence: 40, height: 1, width: 419 })), true);
+  assert.equal(isOcrNoiseWord(word(609, 1088, "-", { confidence: 92, height: 2, width: 6 })), false, "a real dash is short");
 
   const lines = withoutOcrNoise(groupOcrLines([
     word(171, 1318, "Soro", { confidence: 0 }),
