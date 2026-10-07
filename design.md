@@ -275,7 +275,10 @@ Rules:
   retain `File` objects or persist original PDFs, CSVs, XLS files, OCR images,
   or raw bank files
 - keep HSBC image PDFs on the same private browser OCR path as single-file
-  import, then load the parsed statement into the normal preview/review flow
+  import, then load the parsed statement into the normal preview/review flow.
+  `imports.parseImageStatement` owns the OCR pass decision (a second pass only
+  when the first is doubtful); the panel passes it `parseStatementText` and
+  keeps only the AI-fallback and status wiring
 - keep split cleanup separate from required bank-file collection
 
 ## Optional AI Assistance Boundary
