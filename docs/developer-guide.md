@@ -468,8 +468,13 @@ export arrives, the import preview matches its SGD row to the estimate within
 5% (`isWithinEstimateBand` in `app-repository-import-preview.ts`), by
 wording, by the card's cut-off shop name behind the payment app's prefix
 (`isCardMerchantPrefixMatch` in `statement-row-matching.ts`), or, for rows
-that name only a gateway, when the pair is each other's only fit
-(`isOnlyEstimatePair`); the commit then writes the card's amount.
+that name only a gateway, when the row has the payment app's prefix and the
+pair is each other's only fit (`isOnlyEstimatePair`); the commit then writes
+the card's amount. An estimate stays open to later activity exports (the
+mid-cycle isolation in `isReconciliationCandidateEligibleForSource` does not
+apply to it): a newer interim amount updates it, the same amount is skipped,
+the promotion snapshot keeps the earlier export's link, and rollback restores
+that link and refuses an earlier export while a later one holds the entry.
 `tests/foreign-estimate-matching-api.test.mjs` covers the matches and the
 refusals; `tests/foreign-estimate-real-citi.test.mjs` runs the 45 Amaze rows
 of a real Citi Rewards statement (wording and dates real, amounts scaled)
