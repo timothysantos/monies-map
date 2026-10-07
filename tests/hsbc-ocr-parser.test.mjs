@@ -109,7 +109,7 @@ test("HSBC browser OCR fixtures import Feb-Jul 2026 statements", async () => {
 
   for (const item of cases) {
     const tsv = await readFile(`tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-${item.month}-2026.browser.tsv`, "utf8");
-    const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, `4000-0000-0000-8155-${item.month}_2026.pdf`);
+    const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, `hsbc-visa-revolution-${item.month}_2026.pdf`);
     assert.equal(parsed.parserKey, "hsbc_visa_revolution_ocr_pdf");
     assert.deepEqual(parsed.checkpoints, [{
       accountName: "HSBC Visa Revolution",
@@ -180,7 +180,7 @@ test("HSBC browser OCR imports Aug 2026 image statement rows below the summary b
     [431, 1592, "Total"], [543, 1592, "Due"], [1038, 1589, "0.00"]
   ]);
 
-  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "4000-0000-0000-8155-aug.pdf");
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-aug.pdf");
 
   assert.deepEqual(parsed.checkpoints, [{
     accountName: "HSBC Visa Revolution",
@@ -216,7 +216,7 @@ test("HSBC browser OCR rejects active summaries when transaction rows are not re
   ]);
 
   assert.throws(
-    () => parseStatementText(`__OCR_TSV__\n${tsv}`, "4000-0000-0000-8155-aug.pdf"),
+    () => parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-aug.pdf"),
     /HSBC statement purchases did not reconcile/
   );
 });
