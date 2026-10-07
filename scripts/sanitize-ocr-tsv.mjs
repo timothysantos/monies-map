@@ -1,8 +1,8 @@
 // Removes personal details from a Tesseract TSV before it becomes a test
 // fixture. Words whose top-left corner falls in one of the layout's private
-// areas are replaced in place (digits become 0, other words become TEST), so
-// word positions, confidences and row structure stay exactly as the real OCR
-// produced them.
+// areas (scripts/statement-private-areas.mjs) are replaced in place (digits
+// become 0, other words become TEST), so word positions, confidences and row
+// structure stay exactly as the real OCR produced them.
 //
 //   node scripts/sanitize-ocr-tsv.mjs <in.tsv> <out.tsv> [--layout hsbc-visa-revolution]
 //
@@ -11,38 +11,17 @@
 // address at run time; never write them into this repo).
 import { readFile, writeFile } from "node:fs/promises";
 
-// Areas are in the parser's reference frame (an A4 page OCR'd at 220 dpi,
-// 1820 x 2572), on page 1: [left, top, right, bottom].
-const LAYOUTS = {
-  "hsbc-visa-revolution": {
-    referenceWidth: 1820,
-    referenceHeight: 2572,
-    page: 1,
-    areas: [
-      [140, 400, 760, 470], // card holder name
-      [140, 470, 760, 540], // full card number
-      [140, 920, 1160, 1010], // card holder bar above the transactions
-      [140, 2190, 760, 2400] // mailing address
-    ]
-  }
-};
+import { privateCheckTerms, statementLayout } from "./statement-private-areas.mjs";
 
 const [inputPath, outputPath, ...flags] = process.argv.slice(2);
 if (!inputPath || !outputPath) {
   console.error("Usage: node scripts/sanitize-ocr-tsv.mjs <in.tsv> <out.tsv> [--layout hsbc-visa-revolution]");
   process.exit(1);
 }
-const layoutFlag = flags.indexOf("--layout");
-const layoutName = layoutFlag >= 0 ? flags[layoutFlag + 1] : "hsbc-visa-revolution";
-const layout = LAYOUTS[layoutName];
-if (!layout) {
-  console.error(`Unknown layout ${layoutName}. Known: ${Object.keys(LAYOUTS).join(", ")}`);
-  process.exit(1);
-}
 
-const input = await readFile(inputPath, "utf8");
-const output = sanitizeOcrTsv(input, layout);
-const checkTerms = (process.env.OCR_SANITIZE_CHECK_TERMS ?? "").split(",").map((term) => term.trim()).filter(Boolean);
+const layout = statementLayout(flags);
+const output = sanitizeOcrTsv(await readFile(inputPath, "utf8"), layout);
+const checkTerms = privateCheckTerms();
 // Only the recognized text is checked: coordinates and confidences are
 // numbers that can contain any digit run.
 const outputWords = output
@@ -77,7 +56,7 @@ function sanitizeOcrTsv(tsv, { referenceWidth, referenceHeight, page, areas }) {
     const size = pageSizes.get(columns[1]) ?? { width: referenceWidth, height: referenceHeight };
     const left = Number(columns[6]) * referenceWidth / size.width;
     const top = Number(columns[7]) * referenceHeight / size.height;
-    const isPrivate = areas.some(([areaLeft, areaTop, areaRight, areaBottom]) => (
+    const isPrivate = areas.some(({ box: [areaLeft, areaTop, areaRight, areaBottom] }) => (
       left >= areaLeft && left <= areaRight && top >= areaTop && top <= areaBottom
     ));
     if (!isPrivate) {

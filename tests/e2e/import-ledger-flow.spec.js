@@ -65,6 +65,96 @@ const HSBC_2026_CASES = [
     routeMonth: "2026-07",
     readyText: "0 rows ready for review",
     values: []
+  },
+  // Aug-Oct come from real statements whose first OCR pass misreads rows;
+  // their packages carry both passes, and their PDFs need the second pass.
+  {
+    month: "aug",
+    routeMonth: "2026-08",
+    readyText: "6 rows ready for review",
+    secondPass: true,
+    values: [
+      "2026-07-09",
+      "CEBU PAC 06T2FC PAYPAL COM SG",
+      "622.39",
+      "txn date: 2026-07-07",
+      "2026-07-13",
+      "UNIQLO GREAT WORLD Singapore SG",
+      "19.80",
+      "txn date: 2026-07-11",
+      "2026-07-15",
+      "Shaw Theatres shaw.sg INTERNET SG",
+      "28.00",
+      "txn date: 2026-07-14",
+      "2026-07-28",
+      "FAMILY-COM ELECTRONICS SINGAPORE SG",
+      "79.00",
+      "txn date: 2026-07-25",
+      "2026-07-29",
+      "APPLE STORE R669 SINGAPORE SG",
+      "3384.86",
+      "txn date: 2026-07-27",
+      "2026-08-03",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "4134.05",
+      "txn date: 2026-08-01"
+    ]
+  },
+  {
+    month: "sep",
+    routeMonth: "2026-09",
+    readyText: "3 rows ready for review",
+    secondPass: true,
+    values: [
+      "2026-08-08",
+      "MOTHERCARE - PARAGON SINGAPORE SG",
+      "459.00",
+      "txn date: 2026-08-06",
+      "2026-08-17",
+      "IKEA SINGAPORE SG",
+      "64.70",
+      "txn date: 2026-08-14",
+      "2026-09-02",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "523.70",
+      "txn date: 2026-09-02"
+    ]
+  },
+  {
+    month: "oct",
+    routeMonth: "2026-10",
+    readyText: "7 rows ready for review",
+    secondPass: true,
+    values: [
+      "2026-09-16",
+      "KINOKUNIYA-TAKASHIMAYA SINGAPORE SG",
+      "34.95",
+      "txn date: 2026-09-15",
+      "2026-09-19",
+      "FAMILY-COM ELECTRONICS SINGAPORE SG",
+      "98.00",
+      "txn date: 2026-09-17",
+      "2026-09-26",
+      "I CREATIVE SALON LLP SINGAPORE SG",
+      "37.00",
+      "txn date: 2026-09-25",
+      "2026-10-02",
+      "Buyandship Limited Hong Kong HK",
+      "18.00",
+      "txn date: 2026-09-30",
+      "2026-10-02",
+      "DCC FEE",
+      "0.18",
+      "txn date: 2026-10-02",
+      "2026-10-03",
+      "DCC FEE",
+      "0.30",
+      "txn date: 2026-10-03",
+      "2026-10-03",
+      "Etsy WWW.ETSY.COM IE",
+      "29.92",
+      "txn date: 2026-10-01"
+    ]
   }
 ];
 
@@ -1136,13 +1226,17 @@ test.describe("import flow", () => {
     await expect(page.locator(".split-header-toolbar .split-matches-link")).toContainText(/Review matches \([1-9]/);
   });
 
-  test("local HSBC OCR packages upload Feb-Jul 2026 through the statement preview path", async ({ page }, testInfo) => {
+  test("local HSBC OCR packages upload Feb-Oct 2026 through the statement preview path", async ({ page }, testInfo) => {
     await createHsbcVisaRevolutionAccount(page);
 
     for (const item of HSBC_2026_CASES) {
-      const tsv = await readFile(`tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-${item.month}-2026.browser.tsv`, "utf8");
+      const fixture = `tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-${item.month}-2026`;
+      const passes = [await readFile(`${fixture}.browser.tsv`, "utf8")];
+      if (item.secondPass) {
+        passes.push(await readFile(`${fixture}.browser-pass2.tsv`, "utf8"));
+      }
       const ocrPackagePath = testInfo.outputPath(`hsbc-visa-revolution-${item.month}-2026.hsbc-ocr.tsv`);
-      await writeFile(ocrPackagePath, `__OCR_TSV__\n${tsv}`, "utf8");
+      await writeFile(ocrPackagePath, passes.map((tsv) => `__OCR_TSV__\n${tsv}`).join("\n"), "utf8");
 
       await page.goto(`/imports?view=person-tim&month=${item.routeMonth}`);
       await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
@@ -1154,7 +1248,9 @@ test.describe("import flow", () => {
     }
   });
 
-  test("sanitized HSBC image PDFs upload Feb-Jul 2026 through private browser OCR", async ({ page }) => {
+  test("sanitized HSBC image PDFs upload Feb-Oct 2026 through private browser OCR", async ({ page }) => {
+    // Nine statements of real browser OCR; Aug-Oct each take a second pass.
+    test.setTimeout(600_000);
     await createHsbcVisaRevolutionAccount(page);
 
     for (const item of HSBC_2026_CASES) {
