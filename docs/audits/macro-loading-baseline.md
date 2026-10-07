@@ -2953,3 +2953,61 @@ Run on the branch after merging `macro-performance` at `a6f179e` (merge
 Before the merge, `mobile-sheet-focus.spec.js` failed once (the first
 test timed out waiting for the Month page on a cold dev server while the
 load average was about 30) and passed 16/16 when rerun alone.
+
+## First-screen CSS: route-only rules ship with their routes (2026-10-07)
+
+`npm run check:bundle` measured `public/styles.css` at 33,212 B gzip
+against a 31,961 B budget (+3.9%, inside the 5% allowance with about
+350 B left). Most of the growth since the budget was set came from
+Entries, Month, Settings and Splits work, so the rules that only those
+lazy routes render now ship with them, the way `month-mid-width.css` and
+`splits-panel.css` already did.
+
+- **Which rules.** A rule moved only when every selector in it needs a
+  class that only one lazy route's chunks contain (from the build's module
+  graph: the class name, or a prefix it is built from, appears in no
+  module that the entry, Summary or another route loads, including bundled
+  libraries such as Recharts). Summary rules stay: it is the first screen.
+- **Cascade order.** A moved rule now loads after every `styles.css` rule.
+  It stayed put when a rule that stays (later in `styles.css`, or in any
+  existing lazy stylesheet) has the same specificity, sets an overlapping
+  property and can match the same element. The check repeats until no
+  newly held-back rule exposes another. 460 route-only rules
+  (about 8.4 kB gzip) stay in `styles.css` for that reason; most are
+  probably safe, but none was moved on a guess.
+- **Where.** `src/client/<route>-route.css` for Entries (61 rules),
+  Imports (20), Month (43), Settings (74) and Splits (109), each imported
+  first in `<route>-panel.jsx` so it loads before the route's other
+  stylesheets.
+
+| | `styles.css` gzip | First-screen JS gzip |
+| --- | --- | --- |
+| Before | 33,212 B | 178,752 B |
+| After | 28,013 B (-5,199 B, -15.7%) | 178,786 B (+34 B, CSS entries in the preload map) |
+
+Route stylesheets now: Entries 1.5 kB, Imports 1.7 kB (with
+`import-review.css`), Month 1.4 kB (with `month-mid-width.css`), Settings
+1.5 kB, Splits 2.8 kB (with `splits-panel.css`), gzip as built.
+
+**Computed styles.** Both builds (`vite build --mode cssdiff`, so the
+route-work hook is present) were served over one stack with the showcase
+demo data, and every guide-screenshot workflow (60 shots and step
+captures) was run against each: desktop shots in Chromium at 1280x800,
+1024x768 and 820x1180, phone shots in WebKit on the iPhone 13 profile.
+Every computed property of every element (and `::before`/`::after`) was
+compared. 144 of 144 states are identical, 159,605 elements in all. Two
+820x1180 steps (`month-edit-row`, `month-add-planned`) could not find
+their target in either build and were not compared. The only property
+ignored is `background-position` on elements with no background image:
+the CSS minifier writes `background: transparent` as `background: 0 0`
+in built route stylesheets, which changes that unused value.
+
+A first attempt treated every route-only rule as moving when it checked
+order, and the comparison caught three flips (the 860 px one-column
+`.split-match-inbox-callout`, a Splits checkpoint hint's opacity and a
+Settings suggestion row's alignment). The repeated check holds those back.
+
+**Follow-up, not done here.** `public/styles.css` is copied into the build
+unminified. Minifying it would take the first-screen CSS from 28,013 B to
+about 24,300 B gzip, but it changes how the stylesheet is built, named and
+cached, so it is a separate decision.
