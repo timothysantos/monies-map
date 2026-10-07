@@ -1231,8 +1231,16 @@ Important distinctions:
   cents) of it, the day fits the velocity rule, and either the wording
   matches, the card's cut-off shop name starts the Wallet name (Citi prints
   "AMAZE*E-MARTYONGS" for "E-MART Yongsan"; a payment gateway such as
-  "AMAZE*EXIMBAYCO.," never counts as a shop), or the two are each other's
-  only fit by amount and day. Similarly priced estimates pair one to
+  "AMAZE*EXIMBAYCO.," never counts as a shop), or the row comes from the
+  payment app ("AMAZE*...") and the two are each other's only fit by amount
+  and day. An ordinary card row ("SHOPEESGMP") near an estimate's amount
+  is never taken for it without the shop's name.
+- An estimate stays open until its statement: each activity export may
+  update it to the card's latest interim amount (the same amount again is
+  skipped as the same row), keeping the earlier link and amount for the
+  rollback. Exports roll back latest first: an export whose estimate a later
+  export updated is refused until the later one is rolled back. Entries an
+  export brought in that are not estimates keep the mid-cycle isolation. Similarly priced estimates pair one to
   one, each with the closest amount; two estimates that both fit a row whose
   wording names neither are left for review. On commit the card's amount
   replaces the estimate (the statement keeps the estimate for rollback);

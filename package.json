@@ -76,7 +76,7 @@
     "tsx": "^4.22.4",
     "typescript": "^5.8.3",
     "vite": "^8.3.0",
-    "wrangler": "4.141.0"
+    "wrangler": "4.146.0"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -93,6 +93,7 @@
     "recharts": "^3.8.1"
   },
   "overrides": {
-    "undici": "7.30.0"
+    "sharp": "0.35.5",
+    "shell-quote": "1.11.0"
   }
 }

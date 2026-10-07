@@ -115,6 +115,13 @@ Imports owns:
   regains focus, only for a statement (PDF or OCR) preview that has settled
   for 2 s and has no unsaved row edits; the page run is driven in
   `imports-statement-auto-refresh.spec.js`
+- the post-commit split clean-up card. A commit shows it again for its own
+  possible split links once the commit's refresh settles, but a "Later"
+  clicked after the commit was saved is never undone by that refresh, which
+  can take several attempts while the refreshed page is already on screen
+  (`import-split-cleanup-model.js`; the race is driven in
+  `import-ledger-flow.spec.js` by holding the new import out of the refreshed
+  page until after the click)
 
 ## Audit Status
 

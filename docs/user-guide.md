@@ -1085,8 +1085,9 @@ Paying abroad in another currency (for example with an Amaze card in Bali)
 also works: the purchase is saved in the card's currency at the day's
 exchange rate, and its note keeps what you paid, such as "Paid IDR 159,000".
 Your card's own amount may differ a little. When you import the card's
-statement or activity export, each of these purchases is matched to the
-card's own row and takes its exact amount, so it isn't added twice.
+activity export, each of these purchases is matched to the card's row and
+takes its current amount; a later export updates it again if the amount
+changed, and the statement sets the final amount. It is never added twice.
 
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
 to your first card in **Default account priority**. Under **Paying in another

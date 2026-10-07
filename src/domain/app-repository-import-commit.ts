@@ -610,7 +610,7 @@ export async function commitImportBatch(
       ? await db
         .prepare(`
           SELECT id, transaction_date, import_id, import_row_id, post_date, description,
-            amount_minor, entry_type, transfer_direction, updated_at
+            amount_minor, entry_type, transfer_direction, updated_at, original_currency
           FROM transactions
           WHERE household_id = ?
             AND id = ?
@@ -618,7 +618,7 @@ export async function commitImportBatch(
             AND bank_certification_status = 'provisional'
         `)
         .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, targetLookupAccountId)
-        .first<PromotedEntrySnapshot["transaction"] & { transaction_date: string }>()
+        .first<PromotedEntrySnapshot["transaction"] & { transaction_date: string; original_currency: string | null }>()
       : null;
 
     if (row.reconciliationTargetTransactionId && !reconciliationTarget) {
@@ -659,7 +659,10 @@ export async function commitImportBatch(
       ));
 
     if (reconciliationTarget && !isOfficialStatementImport) {
-      if (reconciliationTarget.import_id) {
+      // A foreign currency estimate stays open until its statement: a later
+      // export updates the interim amount an earlier export set, and the
+      // snapshot keeps that export's link for the rollback.
+      if (reconciliationTarget.import_id && !reconciliationTarget.original_currency) {
         throw new Error("Current-activity reconciliation target is no longer manual. Refresh the import preview and try again.");
       }
 
@@ -681,7 +684,7 @@ export async function commitImportBatch(
           WHERE household_id = ?
             AND id = ?
             AND account_id = ?
-            AND import_id IS NULL
+            AND COALESCE(import_id, '') = ?
             AND bank_certification_status = 'provisional'
         `)
         .bind(
@@ -694,7 +697,8 @@ export async function commitImportBatch(
           row.transferDirection ?? null,
           DEFAULT_HOUSEHOLD_ID,
           reconciliationTarget.id,
-          accountId
+          accountId,
+          reconciliationTarget.import_id ?? ""
         ));
       monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
       continue;
@@ -1319,6 +1323,24 @@ export async function rollbackImportBatch(
       throw new Error("This statement cannot be rolled back yet: it moved entries off an account that has a later statement. Roll back newer statements for that account first.");
     }
   }
+  // An estimate this export updated was updated again by a later export,
+  // which now holds it; this rollback would undo the later export's amount.
+  const laterHolder = await db
+    .prepare(`
+      SELECT 1 AS found
+      FROM import_rows
+      INNER JOIN imports ON imports.id = import_rows.import_id
+      WHERE imports.household_id = ?
+        AND imports.status = 'completed'
+        AND import_rows.import_id != ?
+        AND json_extract(import_rows.promoted_entry_snapshot_json, '$.transaction.import_id') = ?
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId, input.importId)
+    .first<{ found: number }>();
+  if (laterHolder) {
+    throw new Error("This import cannot be rolled back yet: a later import updated one of its entries. Roll back the later import first.");
+  }
   // A second copy was removed because this import's entry covers it; rolling
   // back would remove both copies.
   const coveredRemoval = await db
@@ -1525,8 +1547,8 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
         ? db
           .prepare(`
             UPDATE transactions
-            SET import_id = NULL,
-              import_row_id = NULL,
+            SET import_id = ?,
+              import_row_id = ?,
               post_date = ?,
               description = ?,
               amount_minor = ?,
@@ -1539,6 +1561,9 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
               AND bank_certification_status = 'provisional'
           `)
           .bind(
+            // An estimate an earlier export updated goes back to that export.
+            snapshot.transaction.import_id ?? null,
+            snapshot.transaction.import_row_id ?? null,
             snapshot.transaction.post_date,
             snapshot.transaction.description,
             snapshot.transaction.amount_minor,
