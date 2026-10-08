@@ -94,6 +94,10 @@ async function hideCaret(page) {
   await page.addStyleTag({ content: "*{caret-color:transparent !important} ::-webkit-scrollbar{display:none}" });
 }
 
+// While files are in review the import bar is stuck to the top (about
+// 120 px at 1280 wide); shots below it scroll their subject under it.
+const STUCK_IMPORT_BAR_OFFSET = 140;
+
 async function scrollToLocator(page, locator, offset = 90) {
   await locator.first().waitFor({ state: "visible", timeout: 20_000 });
   await locator.first().evaluate((element, top) => {
@@ -514,20 +518,20 @@ const SHOTS = [
       // The stuck import bar folds this line away, so wait for it to exist.
       await page.getByText(/ready for review/).first().waitFor({ state: "attached", timeout: 60_000 });
       await page.waitForTimeout(1500);
-      await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);
+      await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), STUCK_IMPORT_BAR_OFFSET);
       // The export names the card ("UOB One Card"): map it to the account.
       await capture("imports-mapping");
       await page.getByRole("combobox").filter({ has: page.locator("option", { hasText: "Choose account" }) }).first().selectOption({ label: `${SAMPLE_CARD_ACCOUNT} - Serene` });
       await page.locator("button:has-text('Commit import to ledger'):enabled").first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(1500);
-      await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);
+      await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), STUCK_IMPORT_BAR_OFFSET);
       await capture("imports-preview");
       await page.getByRole("button", { name: "Commit import to ledger" }).first().click();
       await page.getByText(/committed successfully/).first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(800);
       // Recent imports starts closed.
       await page.locator(".import-history-toggle").click();
-      await scrollToLocator(page, page.getByRole("heading", { name: "Recent imports", exact: true }), 20);
+      await scrollToLocator(page, page.getByRole("heading", { name: "Recent imports", exact: true }), STUCK_IMPORT_BAR_OFFSET);
       await capture("imports-committed");
       // The showcase's own imports are stamped later in the seed month, so
       // the new batch is not the first row: roll back that one.
