@@ -42,8 +42,8 @@ appear in this order:
    whom, and settling up. It has a dark orange look so you always know you are
    in Splits.
    ![Splits uses a dark orange theme and shows groups, balances and shared expenses](/faq/guide/desktop/thumbs/splits-person.webp)
-5. **Imports**: bring in bank files. The Import inbox tells you which files
-   to download from which bank.
+5. **Imports**: bring in bank files. Drop them at the top; the Import inbox
+   tells you which files to download from which bank.
    ![Imports starts with the Import inbox, which plans your bank downloads](/faq/guide/desktop/thumbs/imports-inbox.webp)
 6. **Settings**: people, accounts, categories, category rules, Apple Pay and
    the tools that keep balances trustworthy.
@@ -414,37 +414,53 @@ receipt button adds a shared expense.
 ### What you see
 
 - **Steps**: **1 · Bring files**, **2 · Review**, **3 · Done**. A finished
-  step shrinks to one line.
-- **Import inbox**: your bank run, planned for you. It counts bank sessions to
-  open, needed files, accounts that are current and split cleanup. For each
-  bank it lists the steps, an **Open portal** link, and each file you still
-  need (for example the OCBC 365 Card statement for Aug 2026). A statement
-  that covers several cards is asked for once ("covers UOB Lady's Card and
-  UOB One Card").
+  step shrinks to one line. While a file is in review, Bring files shrinks
+  too.
+- **Import and certify**: comes first. Drop or select your files here. A
+  statement PDF or a bank export goes straight to Review; a plain CSV first
+  asks you to match its columns.
+- **File intake queue**: the files you dropped, in the order to review them.
+- **Import inbox**: your bank run, planned for you. It shows one line,
+  **Still missing: 3 of 13**, and opens with **Show**. It starts open when
+  nothing is waiting, and folds away once files are queued or one is in
+  review. Each file you queue that matches a file on the list is ticked off
+  and lowers the count. Open it to see bank sessions to open, needed files,
+  accounts that are current and split cleanup. Each bank is one row with
+  how many of its files are still missing; open a bank for its steps, an
+  **Open portal** link and each file you still need (for example the OCBC
+  365 Card statement for Aug 2026). A statement that covers several cards
+  is asked for once ("covers UOB Lady's Card and UOB One Card").
 - **Review order**: statements are reviewed oldest month first; optional
   activity files come after.
-- **Import and certify**: where you add a file. A statement PDF or a bank
-  export goes straight to Review; a pasted CSV first asks you to match its
-  columns.
 - **Recent imports**: every import batch, with its kind (PDF statement,
   Mid-cycle, CSV import or Manual), dates, account, status and a rollback
-  button.
+  button. It starts closed; select it to open the list.
 
 ![Import and certify: choose the account, then paste or drop a file](/faq/guide/desktop/thumbs/imports-upload.webp)
 
 ### What each control does
 
-- **Source label** and **Batch note**: optional names so you recognise the
-  import later.
-- **Default account** and **Default owner**: used for rows that do not say
-  which account or person they belong to. Choose the account before dropping
-  a card activity file.
-- **CSV content**: paste CSV rows directly.
 - **Drop a CSV, PDF, or XLS here**: drop or select one file. Drop several at
   once and they wait in the **File intake queue**, in the order to review
   them: statements first (older months first), then activity. An activity
   file says how many of its rows a statement in the queue already covers.
-  Select **Review** on each.
+  Select **Review** on each. You can also drop files anywhere on the Imports
+  page; it says **Drop files anywhere on this page** while you drag. A file
+  dropped on the file you are reviewing is not added.
+- **Paste rows or set defaults**: opens the fields below. It opens by
+  itself when a plain CSV needs them.
+  - **Source label** and **Batch note**: optional names so you recognise
+    the import later.
+  - **Default account** and **Default owner**: used for rows that do not
+    say which account or person they belong to. Choose the account before
+    dropping a card activity file.
+  - **CSV content**: paste CSV rows directly.
+- **Show** / **Hide** (on the Import inbox): opens or folds the bank list.
+- **Use with import form** and **Not available** (on a file in the Import
+  inbox): point at the file, or tap it on a phone, to see them. **Use with
+  import form** fills the defaults (account, owner, source label and note)
+  from that file; **Not available** sets the file aside for a few days when
+  the bank has not published it yet.
 - **Change** (on the Bring files step): opens the files again while one is
   in review.
 - **Preview import**, **Commit import to ledger**, **Start over**: see
@@ -613,8 +629,9 @@ words.
    by bank. Select **Open portal** to sign in to your bank, and download the
    listed files ([Which file do I download?](#which-file-do-i-download-from-my-bank)).
    No renaming needed.
-2. Under **Import and certify**, choose the **Default account** the file
-   belongs to (for a card activity export this matters most).
+2. Under **Import and certify**, select **Paste rows or set defaults** and
+   choose the **Default account** the file belongs to (for a card activity
+   export this matters most).
 3. Drop the file on **Drop a CSV, PDF, or XLS here**, or select it. PDFs and
    bank exports turn straight into rows; a plain CSV first asks you to match
    its columns (**Data mapping**), then **Preview import**.
@@ -800,7 +817,7 @@ duplicates, or belong to another account.
 
 ## Undo an import
 
-1. Open **Imports** and find the batch under **Recent imports** (use **By
+1. Open **Imports**, open **Recent imports** and find the batch (use **By
    account** to narrow the list).
 2. Select the **×** (Rollback import) at the end of the batch's row.
 3. Check the name in the message and select **Confirm rollback** (or
