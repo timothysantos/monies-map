@@ -169,6 +169,8 @@ test("the drop zone and queue come first, and the inbox folds to what is still m
   await expect(inboxToggle).toHaveText("Show");
   await expect(inboxToggle).toHaveAttribute("aria-expanded", "false");
   await expect(banks).toHaveCount(0);
+  // Folded, the inbox is one line, not a screen.
+  expect((await inbox.boundingBox()).height).toBeLessThan(120);
 
   await inboxToggle.click();
   await expect(inboxToggle).toHaveText("Hide");

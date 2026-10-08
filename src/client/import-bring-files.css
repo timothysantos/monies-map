@@ -119,6 +119,10 @@
   color: var(--pastel-mint-ink);
 }
 
+.import-inbox-file-row .import-inbox-file-main {
+  flex: 1 1 auto;
+}
+
 .import-inbox-file-row:focus {
   outline: none;
 }
@@ -164,6 +168,17 @@
   font-size: 1.1rem;
   font-weight: 700;
   pointer-events: none;
+}
+
+/* Phone: the folded inbox and each bank stay one line with their toggle
+   or pill beside them. */
+@media (max-width: 620px) {
+  .import-inbox-section .import-inbox-header,
+  .import-inbox-sessions .import-inbox-session > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 720px) {
