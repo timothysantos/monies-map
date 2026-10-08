@@ -536,7 +536,8 @@ export const messages = {
     blockerJumpNext: "Jump to next",
     blockerJumpKeys: "Next: J · Previous: K",
     // Moving through the batch from the commit bar.
-    commitAndOpen: (label) => `Commit and open ${label}`,
+    commitAndOpenNext: "Commit and open next",
+    refreshCheckpointsAndOpenNext: "Refresh checkpoints and open next",
     skipForNow: "Skip for now",
     doneTitle: (title) => `${title} saved`,
     doneAllBalanced: "Every card balanced",

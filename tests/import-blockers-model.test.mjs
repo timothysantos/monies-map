@@ -424,3 +424,21 @@ test("the commit is disabled, or asks first, in exactly the cases the old rules 
   }
   assert.equal(cases, 9 * 3 * 3 * 2 * 2 * 3 * 2 * 3);
 });
+
+test("the preview names what a commit saves, which picks the commit button's words", () => {
+  const checkpoints = [{ detectedAccountName: LADYS.name, accountName: LADYS.name, accountId: LADYS.id, checkpointMonth: "2026-05" }];
+  const kind = (previewRows, statementCheckpoints = checkpoints) => {
+    const model = previewModelFor({ previewRows, statementCheckpoints });
+    return { kind: model.commitKind, label: model.commitLabel };
+  };
+  assert.deepEqual(kind([row({ rowId: "a", accountId: LADYS.id, accountName: LADYS.name })]), { kind: "rows", label: "Commit import to ledger" });
+  // Every row already covered: only the checkpoint is refreshed.
+  assert.deepEqual(kind([row({ rowId: "a", accountId: LADYS.id, accountName: LADYS.name, commitStatus: "skipped" })]), {
+    kind: "covered_checkpoint",
+    label: "Refresh covered statement checkpoint"
+  });
+  // No rows at all: an empty statement checkpoint.
+  assert.deepEqual(kind([]), { kind: "empty_checkpoint", label: "Save empty statement checkpoint" });
+  // Without a checkpoint, nothing to import is still a row commit.
+  assert.deepEqual(kind([], []), { kind: "rows", label: "Commit import to ledger" });
+});

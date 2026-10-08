@@ -91,11 +91,19 @@ test("a copy stays last even after a skip, and skipping an unknown file changes 
   assert.equal(unchanged, queue);
 });
 
-test("the commit button names the next file while one waits, and keeps its own words for the last file", () => {
+test("the commit button says it opens the next file while one waits, and keeps its own words for the last file", () => {
   const may = statementItem("may", "2026-05");
   const activity = activityItem("uob-activity", "2026-05-20", { parserKey: "uob_credit_card_current_transactions_xls", sourceType: "xls" });
-  assert.equal(describeCommitLabel({ commitLabel: "Commit import to ledger", nextItem: may }), "Commit and open UOB One Card May");
-  assert.equal(describeCommitLabel({ commitLabel: "Commit import to ledger", nextItem: activity }), "Commit and open UOB activity");
-  assert.equal(describeCommitLabel({ commitLabel: "Commit import to ledger", nextItem: undefined }), "Commit import to ledger");
-  assert.equal(describeCommitLabel({ commitLabel: "Refresh statement checkpoints", nextItem: null }), "Refresh statement checkpoints");
+  // Rows to commit: "Commit and open next", whichever file waits.
+  assert.equal(describeCommitLabel({ commitKind: "rows", commitLabel: "Commit import to ledger", nextItem: may }), "Commit and open next");
+  assert.equal(describeCommitLabel({ commitKind: "rows", commitLabel: "Commit import to ledger", nextItem: activity }), "Commit and open next");
+  assert.equal(describeCommitLabel({ commitKind: "rows", commitLabel: "Commit import to ledger", nextItem: undefined }), "Commit import to ledger");
+  // A statement saved without rows keeps its own words, with the suffix.
+  assert.equal(describeCommitLabel({ commitKind: "checkpoints", commitLabel: "Refresh statement checkpoints", nextItem: may }), "Refresh checkpoints and open next");
+  assert.equal(describeCommitLabel({ commitKind: "checkpoints", commitLabel: "Refresh statement checkpoints", nextItem: null }), "Refresh statement checkpoints");
+  assert.equal(describeCommitLabel({ commitKind: "covered_checkpoint", commitLabel: "Refresh covered statement checkpoint", nextItem: may }), "Refresh checkpoints and open next");
+  assert.equal(describeCommitLabel({ commitKind: "covered_checkpoint", commitLabel: "Refresh covered statement checkpoint", nextItem: null }), "Refresh covered statement checkpoint");
+  // Saving an empty statement has no "and open next" words: it keeps its
+  // own, and never reads "Commit".
+  assert.equal(describeCommitLabel({ commitKind: "empty_checkpoint", commitLabel: "Save empty statement checkpoint", nextItem: may }), "Save empty statement checkpoint");
 });

@@ -51,8 +51,8 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   await page.locator("input[type=file]").setInputFiles(files);
   await openBalancedStatement(page);
 
-  // Another file waits, so the commit names it.
-  await expect(commitButton(page)).toHaveText("Commit and open one-card-activity.csv");
+  // Another file waits, so the commit says it opens the next one.
+  await expect(commitButton(page)).toHaveText("Commit and open next");
   await commitButton(page).click();
 
   // The next file opens; the statement's summary stays above it.
@@ -66,7 +66,7 @@ test("a commit opens the next file under the last commit's summary, whose rollba
 
   await page.getByRole("button", { name: "Preview import" }).click();
   await expect(page.locator(".import-preview-status-row")).toContainText("1 row will import", { timeout: 30_000 });
-  await expect(commitButton(page)).toHaveText("Commit and open ladys-card-activity.csv");
+  await expect(commitButton(page)).toHaveText("Commit and open next");
 
   // Rolling the statement back keeps the activity file's review as it is.
   await compactSummary(page).getByRole("button", { name: "Roll back this import" }).click();
@@ -76,7 +76,7 @@ test("a commit opens the next file under the last commit's summary, whose rollba
     .some((item) => item.sourceLabel.includes("eStatement_UOB_Cards_12May2026") && item.status === "completed"), { timeout: 30_000 }).toBe(false);
   await expect(chips(page).filter({ hasText: "one-card-activity.csv" })).toHaveAttribute("aria-current", "step");
   await expect(page.locator(".import-preview-status-row")).toContainText("1 row will import");
-  await expect(commitButton(page)).toHaveText("Commit and open ladys-card-activity.csv");
+  await expect(commitButton(page)).toHaveText("Commit and open next");
   await expect(commitButton(page)).toBeEnabled();
 
   await commitButton(page).click();
@@ -113,7 +113,7 @@ test("a failed commit opens nothing and keeps the review", async ({ page }, test
   await expect(chips(page).filter({ hasText: "UOB cards May" })).toHaveAttribute("aria-current", "step");
   await expect(chips(page).filter({ hasText: "one-card-activity.csv" })).not.toHaveAttribute("aria-current", "step");
   await expect(page.locator(".import-done-card")).toHaveCount(0);
-  await expect(commitButton(page)).toHaveText("Commit and open one-card-activity.csv");
+  await expect(commitButton(page)).toHaveText("Commit and open next");
   await expect(commitButton(page)).toBeEnabled();
 });
 

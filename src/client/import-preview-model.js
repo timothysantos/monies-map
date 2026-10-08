@@ -6,6 +6,13 @@ import { messages } from "./copy/en-SG";
 // - the facts the commit rules read (import-blockers-model.js decides
 //   whether the commit is disabled or asks first)
 // - which helper sections the preview page should render
+const COMMIT_LABELS = {
+  covered_checkpoint: messages.imports.refreshCoveredStatementCheckpoint,
+  empty_checkpoint: messages.imports.saveEmptyStatementCheckpoint,
+  checkpoints: messages.imports.saveStatementCheckpoints,
+  rows: messages.imports.commit
+};
+
 export function buildImportPreviewModel({
   accounts,
   preview,
@@ -63,6 +70,15 @@ export function buildImportPreviewModel({
   const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && commitPayloadPreviewRows.length === 0;
   const hasAlreadyCoveredCheckpointRefresh = hasCheckpointOnlyCommit && skippedPreviewRowCount > 0;
   const hasEmptyStatementCheckpointOnly = hasCheckpointOnlyCommit && skippedPreviewRowCount === 0;
+  // What the commit saves, which names its button (describeCommitLabel
+  // adds "and open next" while another file waits).
+  const commitKind = hasAlreadyCoveredCheckpointRefresh
+    ? "covered_checkpoint"
+    : hasEmptyStatementCheckpointOnly
+      ? "empty_checkpoint"
+      : hasCheckpointOnlyCommit
+        ? "checkpoints"
+        : "rows";
   const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
     && statementReconciliations.length > 0
     && statementReconciliations.every((item) => item.status === "matched");
@@ -103,13 +119,8 @@ export function buildImportPreviewModel({
     previewReconciliationRowCount,
     reconciledExistingRowCount,
     skippedPreviewRowCount,
-    commitLabel: hasAlreadyCoveredCheckpointRefresh
-      ? messages.imports.refreshCoveredStatementCheckpoint
-      : hasEmptyStatementCheckpointOnly
-        ? messages.imports.saveEmptyStatementCheckpoint
-        : hasCheckpointOnlyCommit
-          ? messages.imports.saveStatementCheckpoints
-          : messages.imports.commit,
+    commitKind,
+    commitLabel: COMMIT_LABELS[commitKind],
     // A statement whose cards all map to one account each only shows the
     // mapping on request; an unknown, ambiguous or unmapped card needs it.
     needsStatementAccountMapping: unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || hasUnmappedAccounts,

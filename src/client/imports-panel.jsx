@@ -482,6 +482,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
+    commitKind,
     commitLabel,
     knownAccountNames,
     previewReconciliationRowCount,
@@ -2378,7 +2379,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               statementImportSourceType={statementImportMeta.sourceType}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
-              commitLabel={describeCommitLabel({ commitLabel, nextItem: nextIntakeItem })}
+              commitLabel={describeCommitLabel({ commitKind, commitLabel, nextItem: nextIntakeItem })}
               commitWarning={commitWarning}
               remainingCount={importBlockers.remainingCount}
               onJumpToNext={importBlockers.blockers.length ? () => jumpToBlocker(importBlockers.blockers[0]) : undefined}
