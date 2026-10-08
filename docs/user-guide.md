@@ -414,7 +414,19 @@ receipt button adds a shared expense.
 ### What you see
 
 - **Steps**: **1 · Bring files**, **2 · Review**, **3 · Done**. A finished
-  step shrinks to one line.
+  step shrinks to one line. While you work through files, the steps stay at
+  the top of the screen on a computer or tablet (on a phone they scroll with
+  the page), with two more rows under them:
+  - **Your files**: one chip per file you brought this time, in the order to
+    review them. A ticked chip is done, the outlined one is in review, and
+    **File 2 of 4** says where you are. Select a waiting file to open it; if
+    you changed rows or approved fixes in the file in review, the app asks
+    first, because opening another file drops those changes.
+  - **Before you can commit:** what still needs you in the file in review,
+    in the order to fix it: accounts to map, cards that don't match the
+    statement (with the amount when money totals are shown), rows to check.
+    Select one to go straight to it. A green chip counts the rows already
+    matched to your entries.
 - **Import inbox**: your bank run, planned for you. It counts bank sessions to
   open, needed files, accounts that are current and split cleanup. For each
   bank it lists the steps, an **Open portal** link, and each file you still
@@ -450,6 +462,8 @@ receipt button adds a shared expense.
 - **Preview import**, **Commit import to ledger**, **Start over**: see
   [Import a bank statement](#import-a-bank-statement). The commit button
   stays in view at the bottom of the review, with what the commit will do.
+  While something still needs you it says how many things are left;
+  **Jump to next** takes you to the first one.
 - **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
@@ -625,7 +639,9 @@ words.
    is chosen.
    ![The file names a card the app does not know yet: choose the account](/faq/guide/desktop/thumbs/imports-mapping.webp)
 5. Review the preview ([Read the import preview](#read-the-import-preview)).
-   Fix anything under **Exceptions to resolve**.
+   Fix anything under **Exceptions to resolve**. The chips under
+   **Before you can commit:** at the top, or **Jump to next** beside the
+   commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
    batch appears under **Recent imports**. The **Done** step says what
    changed on each card (rows added, entries confirmed or moved, entries left

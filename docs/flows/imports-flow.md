@@ -55,6 +55,17 @@ Imports owns:
   A mid-cycle row posted inside an already confirmed statement period is
   skipped when that statement covers it and left out with a reason when it
   does not (DOMAIN.md, Entry Reconciliation)
+- the import bar (`ImportBatchBar`): the steps, one chip per file of this
+  session's batch, and "Before you can commit:" chips for the file in
+  review. It is sticky on desktop and tablet while a batch is in progress,
+  not on a phone. The blocker list (`import-blockers-model.js`) is the one
+  source for the chips, the commit bar's "{n} things left · Jump to
+  next", whether the commit is disabled and whether it asks first; a chip
+  scrolls to and focuses the control that fixes it. Opening a waiting file
+  from its chip asks first when the file in review has changes it would
+  drop; the queue's own Review button and the Done card's Review next do
+  not ask (the Done card has nothing in review). Driven in
+  `import-stepper.spec.js`
 - import inbox planning at the top of the route. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every
   missing statement/activity file for that institution, while the review queue
