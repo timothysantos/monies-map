@@ -9202,9 +9202,7 @@ th {
   }
 
   .import-workflow,
-  .import-stage-card,
   .import-post-cleanup-card,
-  .import-warning,
   .import-column-card,
   .statement-checkpoint-grid,
   .statement-checkpoint-row,
@@ -9217,9 +9215,16 @@ th {
     max-width: 100%;
   }
 
+  /* Edge to edge like the other cards (width set above), never wider:
+     their children wrap inside instead of pushing past the right edge. */
   .import-stage-card,
   .import-warning {
+    min-width: 0;
     padding: 14px;
+  }
+
+  .import-stage-card {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .statement-reconciliation-movement-grid {
