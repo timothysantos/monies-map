@@ -25,6 +25,9 @@ import { ImportCommitBar } from "./import-commit-bar";
 import { ImportDoneCard, ImportStepper } from "./import-stages";
 import { buildImportDoneSummary } from "./import-done-model";
 import { orderIntakeQueue } from "./import-intake-model";
+import { isInboxOpenByDefault } from "./import-inbox-model";
+import { usePageFileDrop } from "./import-page-drop";
+import { useFollowingFold } from "./use-following-fold";
 import {
   getProvenStatementFixes,
   getStatementFixKey,
@@ -149,7 +152,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [accountDialog, setAccountDialog] = useState(null);
   const [accountDialogError, setAccountDialogError] = useState("");
   const [pendingStatementAccountName, setPendingStatementAccountName] = useState("");
-  const [recentImportsOpen, setRecentImportsOpen] = useState(true);
+  // Recent imports starts closed: it is audit context, not the next step.
+  const [recentImportsOpen, setRecentImportsOpen] = useState(false);
   const [recentImportPage, setRecentImportPage] = useState(1);
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
   const [recentImportStatus, setRecentImportStatus] = useState(null);
@@ -348,6 +352,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
+  // A plain CSV (no bank parser) needs its columns mapped, and the defaults
+  // that fill what its columns do not say. A parsed file needs neither.
+  const isMappingNeeded = importWorkflowModel.readyForMapping
+    && statementImportMeta.parserKey === DEFAULT_STATEMENT_IMPORT_META.parserKey;
+  const [isPasteDefaultsOpen, setIsPasteDefaultsOpen] = useFollowingFold(isMappingNeeded, { followClose: false });
+  // A file dropped anywhere on the page goes where the drop zone sends it.
+  const isPageDragActive = usePageFileDrop((files) => void processImportFiles(files));
   const commitWarning = buildStatementCommitWarning({
     sourceType: statementImportMeta.sourceType,
     hasStatementCheckpoints: statementCheckpoints.length > 0,
@@ -502,6 +513,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
     setSourceLabel(file.label);
     setImportNote(file.detail);
+    // Show the defaults it just filled.
+    setIsPasteDefaultsOpen(true);
     fileInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
@@ -560,6 +573,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setActiveIntakeItemId(null);
     setLastCommitSummary(null);
     setIsBringFilesOpen(false);
+    setIsPasteDefaultsOpen(false);
     setJumpToSkippedRowsRequestKey(0);
     deletedDiagnosticLedgerIdsRef.current = new Set();
     if (!preserveRecentImportStatus) {
@@ -1796,12 +1810,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // An official statement is reviewed card by card (ImportPreviewReview);
   // its optional AI checks then sit under "More checks".
   const isStatementReview = statementImportMeta.sourceType === "pdf" && statementReconciliations.length > 0;
-  // A parsed file (statement PDF, bank export) needs no form or column
-  // mapping, so Bring files folds to one line while it is in review. Pasted
-  // CSV keeps the form and mapping beside its preview.
+  // Any file in review folds Bring files to one line ("Change" opens it
+  // again). A plain CSV keeps its column mapping beside its preview.
   const importStage = preview ? "review" : lastCommitSummary ? "done" : "bring";
-  const canCollapseBringFiles = Boolean(preview) && statementImportMeta.parserKey !== DEFAULT_STATEMENT_IMPORT_META.parserKey;
+  const canCollapseBringFiles = Boolean(preview);
   const isBringFilesShown = !canCollapseBringFiles || isBringFilesOpen;
+  const isMappingShown = importWorkflowModel.readyForMapping && (isBringFilesShown || isMappingNeeded);
   const nextIntakeItem = orderIntakeQueue(intakeQueue).find((item) => !item.duplicate && item.id !== activeIntakeItemId);
   const optionalAiChecks = (
     <>
@@ -1839,6 +1853,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   return (
     <article className="panel">
+      {isPageDragActive ? (
+        <div className="import-page-drop-hint" role="status">{messages.imports.pageDropHint}</div>
+      ) : null}
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.imports}</h2>
@@ -1868,10 +1885,48 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       ) : null}
       {isBringFilesShown ? (
         <>
-          <ImportInboxSection
-            inbox={safeImportsPage.importInbox}
-            onSelectExpectedFile={handleSelectExpectedFile}
-          />
+          {/* Stage 1: the drop zone first, then the queue, then the inbox. */}
+          <section className="panel-subsection import-workflow">
+            <div className="import-header">
+              <div>
+                <h3>{messages.imports.composerTitle}</h3>
+                <p className="lede compact">{messages.imports.composerDetail}</p>
+              </div>
+              {importDraftExists ? (
+                <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
+                  {messages.imports.startOver}
+                </button>
+              ) : null}
+            </div>
+            <ImportSelectFileStage
+              currentStage={importWorkflowModel.currentStage}
+              sourceLabel={sourceLabel}
+              onSourceLabelChange={setSourceLabel}
+              defaultAccountName={defaultAccountName}
+              onDefaultAccountChange={handleDefaultAccountChange}
+              accounts={accounts}
+              ownerName={ownerName}
+              onOwnerNameChange={handleOwnerNameChange}
+              people={people}
+              importNote={importNote}
+              onImportNoteChange={setImportNote}
+              csvText={csvText}
+              onCsvTextChange={handleCsvTextChange}
+              fileInputRef={fileInputRef}
+              onUploadImportFile={handleUploadImportFile}
+              isDragActive={isDragActive}
+              isParsingStatement={isParsingStatement}
+              onDragOverImportFile={handleDragOverImportFile}
+              onDragLeaveImportFile={handleDragLeaveImportFile}
+              onDropImportFile={handleDropImportFile}
+              uploadStatus={uploadStatus}
+              allowAiStatementFallback={allowAiStatementFallback}
+              onAllowAiStatementFallbackChange={setAllowAiStatementFallback}
+              rollbackPolicy={safeImportsPage.rollbackPolicy}
+              isPasteDefaultsOpen={isPasteDefaultsOpen}
+              onTogglePasteDefaults={() => setIsPasteDefaultsOpen((current) => !current)}
+            />
+          </section>
           <ImportIntakeQueueSection
             items={intakeQueue}
             summary={intakeQueueSummary}
@@ -1880,55 +1935,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onRemoveItem={handleRemoveIntakeItem}
             onClear={handleClearIntakeQueue}
           />
+          <ImportInboxSection
+            inbox={safeImportsPage.importInbox}
+            intakeQueue={intakeQueue}
+            defaultOpen={isInboxOpenByDefault({ queuedCount: intakeQueue.length, isFileInReview: Boolean(preview) || isMappingNeeded })}
+            onSelectExpectedFile={handleSelectExpectedFile}
+          />
         </>
       ) : null}
       <section className="panel-subsection import-workflow">
-        {isBringFilesShown ? (
-        <div className="import-header">
-          <div>
-            <h3>{messages.imports.composerTitle}</h3>
-            <p className="lede compact">{messages.imports.composerDetail}</p>
-          </div>
-          {importDraftExists ? (
-            <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
-              {messages.imports.startOver}
-            </button>
-          ) : null}
-        </div>
-        ) : null}
-
-        {/* Stage 1: get raw source rows into the draft. */}
-        {isBringFilesShown ? (
-        <ImportSelectFileStage
-          currentStage={importWorkflowModel.currentStage}
-          sourceLabel={sourceLabel}
-          onSourceLabelChange={setSourceLabel}
-          defaultAccountName={defaultAccountName}
-          onDefaultAccountChange={handleDefaultAccountChange}
-          accounts={accounts}
-          ownerName={ownerName}
-          onOwnerNameChange={handleOwnerNameChange}
-          people={people}
-          importNote={importNote}
-          onImportNoteChange={setImportNote}
-          csvText={csvText}
-          onCsvTextChange={handleCsvTextChange}
-          fileInputRef={fileInputRef}
-          onUploadImportFile={handleUploadImportFile}
-          isDragActive={isDragActive}
-          isParsingStatement={isParsingStatement}
-          onDragOverImportFile={handleDragOverImportFile}
-          onDragLeaveImportFile={handleDragLeaveImportFile}
-          onDropImportFile={handleDropImportFile}
-          uploadStatus={uploadStatus}
-          allowAiStatementFallback={allowAiStatementFallback}
-          onAllowAiStatementFallbackChange={setAllowAiStatementFallback}
-          rollbackPolicy={safeImportsPage.rollbackPolicy}
-        />
-        ) : null}
-
         {/* Stage 2: map source columns into the app's import schema. */}
-        {isBringFilesShown && importWorkflowModel.readyForMapping ? (
+        {isMappingShown ? (
           <ImportMappingStage
             mappingSectionRef={mappingSectionRef}
             currentStage={importWorkflowModel.currentStage}
@@ -1950,7 +1967,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         ) : null}
 
         {/* Stage 3: review the normalized preview and commit only safe rows. */}
-        <div ref={previewSectionRef} className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
+        {/* A file dropped on the file in review does not start an intake. */}
+        <div
+          ref={previewSectionRef}
+          className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}
+          data-page-drop={preview ? "off" : undefined}
+        >
           {isStatementReview ? null : (
           <div className="import-stage-head">
             <div className="section-head">
