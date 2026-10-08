@@ -128,13 +128,13 @@ test("the import bar follows a long review, lists the batch and jumps to each bl
   await expect(blockers.getByRole("button", { name: "Map 1 account" })).toHaveCount(0, { timeout: 30_000 });
   await expect(page.locator(".import-blockers-live")).not.toContainText("3 things left");
 
-  // Commit anyway: the statement is done, the count stays on its file.
+  // Commit anyway: the statement is done and the next file opens.
   await commitBar.locator(".import-commit-button").click();
   await page.getByRole("button", { name: "Commit anyway" }).click();
   await expect(page.locator(".import-done-card")).toBeVisible({ timeout: 30_000 });
   await expect(chips).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
   await expect(chips.first()).toHaveClass(/is-done/);
-  await expect(bar(page)).toContainText("File 1 of 3");
+  await expect(bar(page)).toContainText("File 2 of 3");
   await expect(bar(page).locator(".import-blockers")).toHaveCount(0);
   // The done chip goes to its summary.
   await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
@@ -295,4 +295,109 @@ test("a statement's row to check opens the row editor at that row", async ({ pag
   const reviewRow = page.locator('tr[data-commit-status="needs_review"]').first();
   await expect(reviewRow.locator("button").first()).toBeFocused();
   await expectBelowBar(page, reviewRow);
+});
+
+test("J and K move between the blockers in order, and are left alone while typing", async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+  const commitBar = page.locator(".import-commit-bar");
+  await expect(commitBar).toContainText("3 things left");
+  // The shortcuts are named on the jump link only; desktop has no sheet.
+  await expect(commitBar.getByRole("button", { name: "Jump to next" })).toHaveAttribute("title", "Next: J · Previous: K");
+  await expect(commitBar.getByRole("button", { name: "3 things left" })).toHaveCount(0);
+
+  const oneCardSelect = page.getByRole("combobox", { name: `Detected: ${ONE_CARD}` });
+  const oneCard = page.locator(".statement-card").filter({ hasText: `${ONE_CARD} • May 2026` });
+  const ladysCard = page.locator(".statement-card").filter({ hasText: `${LADYS_CARD} • May 2026` });
+  const selected = await oneCardSelect.inputValue();
+
+  await page.keyboard.press("j");
+  await expect(oneCardSelect).toBeFocused();
+  await expectBelowBar(page, oneCardSelect);
+  // J again leaves the select it jumped to without choosing an option.
+  await page.keyboard.press("j");
+  await expect(oneCard).toBeFocused();
+  expect(await oneCardSelect.inputValue()).toBe(selected);
+  await page.keyboard.press("j");
+  await expect(ladysCard).toBeFocused();
+  await expectBelowBar(page, ladysCard);
+  // Past the last one it wraps to the first; K goes back.
+  await page.keyboard.press("j");
+  await expect(oneCardSelect).toBeFocused();
+  await page.keyboard.press("k");
+  await expect(ladysCard).toBeFocused();
+  await page.keyboard.press("k");
+  await expect(oneCard).toBeFocused();
+  // With a modifier held it is not a jump.
+  await page.keyboard.press("Control+j");
+  await expect(oneCard).toBeFocused();
+
+  // In a text field J is a letter.
+  await bar(page).getByRole("button", { name: "Change" }).click();
+  const sourceLabel = page.getByLabel("Source label");
+  await sourceLabel.click();
+  await sourceLabel.press("End");
+  await page.keyboard.press("j");
+  await expect(sourceLabel).toBeFocused();
+  await expect(sourceLabel).toHaveValue(/j$/);
+});
+
+test("on a phone things left opens a sheet of the files and blockers", async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+
+  const trigger = page.locator(".import-commit-bar").getByRole("button", { name: "3 things left" });
+  const sheet = page.getByRole("dialog", { name: "Import progress" });
+  const focusIsInside = () => sheet.evaluate((element) => element.contains(document.activeElement));
+
+  await trigger.click();
+  await expect(sheet).toBeVisible();
+  await expect.poll(focusIsInside).toBe(true);
+  // The same file chips and blockers as the desktop bar.
+  const sheetChips = sheet.locator(".import-file-chip");
+  await expect(sheetChips).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
+  await expect(sheetChips.first()).toHaveAttribute("aria-current", "step");
+  await expect(sheet.locator(".import-blocker-chip")).toHaveText([
+    "Map 1 account",
+    `${ONE_CARD} doesn't match`,
+    `${LADYS_CARD} off by $42.62`
+  ]);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+
+  // A tap on the backdrop closes it too.
+  await trigger.click();
+  await expect(sheet).toBeVisible();
+  await page.mouse.click(195, 40);
+  await expect(sheet).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+
+  // A blocker closes the sheet and goes to its control.
+  await trigger.click();
+  await sheet.getByRole("button", { name: "Map 1 account" }).click();
+  await expect(sheet).toHaveCount(0);
+  const oneCardSelect = page.getByRole("combobox", { name: `Detected: ${ONE_CARD}` });
+  await expect(oneCardSelect).toBeFocused();
+  await expect(oneCardSelect).toBeInViewport();
+
+  // A waiting file opens from the sheet, with nothing changed to ask about.
+  await trigger.click();
+  await sheet.locator(".import-file-chip").filter({ hasText: "one-card-activity.csv" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(bar(page).locator(".import-file-chip").filter({ hasText: "one-card-activity.csv" })).toHaveAttribute("aria-current", "step");
 });
