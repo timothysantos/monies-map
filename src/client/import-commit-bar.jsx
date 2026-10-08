@@ -5,7 +5,9 @@ import { messages } from "./copy/en-SG";
 
 // The one commit control of an import preview. It stays in view at the
 // bottom of the review, says what the commit will do, and asks first when
-// the statement does not close or its check is out of date.
+// the statement does not close or its check is out of date. While
+// blockers remain (import-blockers-model.js) it says how many, with a jump
+// to the first.
 export function ImportCommitBar({
   previewRows,
   statementCheckpointCount = 0,
@@ -15,6 +17,8 @@ export function ImportCommitBar({
   isSubmitting,
   commitLabel,
   commitWarning,
+  remainingCount = 0,
+  onJumpToNext,
   onCommit,
   onStartOver
 }) {
@@ -43,6 +47,15 @@ export function ImportCommitBar({
           </span>
         ))}
       </p>
+      {remainingCount && onJumpToNext ? (
+        <span className="import-commit-bar-left">
+          {messages.imports.blockerThingsLeft(remainingCount)}
+          {" · "}
+          <button type="button" className="subtle-action import-commit-bar-jump" onClick={onJumpToNext}>
+            {messages.imports.blockerJumpNext}
+          </button>
+        </span>
+      ) : null}
       <div className="import-commit-bar-actions">
         {onStartOver ? (
           <button type="button" className="subtle-action" onClick={onStartOver} disabled={isSubmitting}>
