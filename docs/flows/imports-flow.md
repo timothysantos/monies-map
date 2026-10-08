@@ -118,7 +118,8 @@ Imports owns:
   (an IntersectionObserver on a sentinel above the bar), the bar's solid
   surface spreads to the window's edges, a soft shadow fades in and the
   step descriptions fold away (Change stays on the Bring files step's first
-  line), over 200 ms and without animation under reduced motion. The bar
+  line; an upload or check-refresh error on that line stays in view), over
+  200 ms and without animation under reduced motion. The bar
   keeps its height in the page while stuck, so nothing below moves, and jump
   targets land below the stuck height. J and K step to the next
   and previous blocker (not while typing, with a modifier, under a popover,

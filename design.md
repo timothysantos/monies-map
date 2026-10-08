@@ -301,7 +301,8 @@ Rules:
   sticks, then spreads it, while the shadow fades in and the step summaries
   collapse (`grid-template-rows` 1fr to 0fr, padding), 200 ms, none under
   `prefers-reduced-motion`. The step's Change moves to its first line while
-  stuck (`is-stuck-only`; one Change is shown at a time). The hook keeps
+  stuck (`is-stuck-only`; one Change is shown at a time), and a Bring files
+  line carrying an error (`isBringAlert`, `is-alert`) does not fold. The hook keeps
   `--import-sticky-offset` on the panel at the stuck height (measured by
   laying the surface out stuck for a moment with transitions off), so jump
   targets carry `scroll-margin-top` below the stuck bar
