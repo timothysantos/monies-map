@@ -26,7 +26,7 @@ import { buildStatementTitle, ImportPreviewReview } from "./import-preview-revie
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportCommitBar } from "./import-commit-bar";
 import { ImportDoneCard, ImportStepper } from "./import-stages";
-import { ImportBatchBar, ImportProgressSheet, useImportStickyOffset } from "./import-batch-bar";
+import { ImportBatchBar, ImportProgressSheet, useImportStickyBar } from "./import-batch-bar";
 import {
   buildImportBatchFiles,
   describeCommitLabel,
@@ -2067,7 +2067,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // edits, mappings and the statement fixes they approved.
   const hasUnsavedReviewWork = Boolean(preview) && reviewChangeCount > 0;
   const showImportBlockers = Boolean(preview) || importBlockers.blockers.length > 0;
-  useImportStickyOffset(panelRef, batchBarRef, isBatchInProgress);
+  const isBatchBarStuck = useImportStickyBar(panelRef, batchBarRef, isBatchInProgress);
   useImportBlockerKeys({ hasPreview: Boolean(preview), blockers: importBlockers.blockers, cursorRef: blockerCursorRef, onJump: jumpToBlocker });
   // The file a commit opens next, opened from this render so it starts from
   // the reset form rather than the committed file's choices.
@@ -2154,6 +2154,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       <ImportBatchBar
         barRef={batchBarRef}
         isSticky={isBatchInProgress}
+        isStuck={isBatchBarStuck}
         stepper={(
           <ImportStepper
             stage={importStage}

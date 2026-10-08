@@ -150,7 +150,9 @@
   padding: 12px 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.97);
+  /* Solid (the panel over the page): rows scrolling under it do not show through. */
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--panel), var(--panel));
   box-shadow: 0 -8px 24px rgba(27, 24, 21, 0.06);
 }
 
@@ -196,28 +198,32 @@
     justify-self: start;
   }
 
-  /* Above the floating nav bar on a phone, one summary line. */
+  /* Above the floating nav bar on a phone. */
   .import-commit-bar {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     gap: 8px;
     padding: 10px 12px;
   }
 
+  /* The summary wraps rather than being cut off. */
   .import-commit-bar-summary {
     width: 100%;
-    overflow: hidden;
     font-size: 0.82rem;
-    text-overflow: ellipsis;
+  }
+
+  /* Start over and Skip for now on one line, the commit button under
+     them across the bar: wrapped, never squeezed. */
+  .import-commit-bar-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .import-commit-bar-actions .subtle-action {
     white-space: nowrap;
   }
 
-  .import-commit-bar-actions,
   .import-commit-bar-actions .import-commit-button {
-    width: 100%;
-  }
-
-  .import-commit-bar-actions .import-commit-button {
-    flex-grow: 1;
+    flex: 1 1 100%;
   }
 }
 
@@ -270,6 +276,20 @@
 .import-stepper-change {
   padding: 0;
   min-height: 0;
+}
+
+.import-stepper-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+/* Shown in the step's first line only while the import bar is stuck. */
+.import-stepper-change.is-stuck-only {
+  display: none;
+  font-size: 0.82rem;
 }
 
 /* What the last commit did. */
@@ -365,10 +385,20 @@
    sticks below the app's sticky environment banner on desktop and tablet
    while a batch is in progress; on a phone it scrolls with the page. */
 .import-batch-bar {
-  display: grid;
-  gap: 10px;
   margin: 0 0 16px;
   min-width: 0;
+}
+
+.import-batch-bar-surface {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Just above the bar; leaves the window's top as the bar sticks. */
+.import-batch-bar-sentinel {
+  height: 1px;
+  margin-bottom: -1px;
 }
 
 .import-batch-bar .import-stepper {
@@ -380,16 +410,120 @@
     position: sticky;
     top: var(--import-sticky-top, 0px);
     z-index: 4;
-    margin-inline: -8px;
-    padding: 8px;
-    border-radius: 0 0 12px 12px;
-    background: rgba(255, 255, 255, 0.97);
-    box-shadow: 0 8px 24px rgba(27, 24, 21, 0.06);
   }
 
-  /* Jump targets land below the bar, never under it. */
+  /* A solid surface (the panel over the page), the panel's width at rest.
+     Its background (::before) and shadow (::after) reach the window's edges
+     (--import-bar-bleed-*); clip-path keeps the background to the bar until
+     it sticks, then lets it spread. Nothing widens the page itself. */
+  .import-batch-bar.is-sticky .import-batch-bar-surface {
+    position: relative;
+    isolation: isolate;
+    margin-inline: -8px;
+    padding: 8px;
+    transition: padding 200ms ease, gap 200ms ease;
+  }
+
+  .import-batch-bar.is-sticky .import-batch-bar-surface::before,
+  .import-batch-bar.is-sticky .import-batch-bar-surface::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(-1 * var(--import-bar-bleed-left, 0px));
+    right: calc(-1 * var(--import-bar-bleed-right, 0px));
+  }
+
+  .import-batch-bar.is-sticky .import-batch-bar-surface::before {
+    z-index: -1;
+    background-color: var(--bg);
+    background-image: linear-gradient(var(--panel), var(--panel));
+    clip-path: inset(0 var(--import-bar-bleed-right, 0px) 0 var(--import-bar-bleed-left, 0px) round 0 0 12px 12px);
+    transition: clip-path 200ms ease;
+  }
+
+  .import-batch-bar.is-sticky .import-batch-bar-surface::after {
+    z-index: -2;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+    clip-path: inset(0 0 -48px 0);
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  .import-batch-bar.is-sticky .import-stepper-step {
+    grid-template-rows: auto 1fr;
+    transition: padding 200ms ease, row-gap 200ms ease, grid-template-rows 200ms ease;
+  }
+
+  .import-batch-bar.is-sticky .import-stepper-summary {
+    min-height: 0;
+    overflow: hidden;
+    transition: opacity 160ms ease, visibility 0s linear 0s;
+  }
+
+  /* Stuck: edge to edge, shadowed, one compact line of steps. The bar keeps
+     its height in the page (useImportStickyBar); only the surface shrinks,
+     and what is below shows and takes clicks through the rest. */
+  .import-batch-bar.is-stuck {
+    pointer-events: none;
+  }
+
+  .import-batch-bar.is-stuck .import-batch-bar-surface {
+    padding-block: 6px;
+    gap: 6px;
+    pointer-events: auto;
+  }
+
+  .import-batch-bar.is-stuck .import-batch-bar-surface::before {
+    clip-path: inset(0 0 0 0 round 0);
+  }
+
+  .import-batch-bar.is-stuck .import-batch-bar-surface::after {
+    opacity: 1;
+  }
+
+  .import-batch-bar.is-stuck .import-stepper-step {
+    grid-template-rows: auto 0fr;
+    row-gap: 0;
+    padding-block: 5px;
+  }
+
+  /* One Change at a time: the summary's goes as the bar sticks. */
+  .import-batch-bar.is-stuck .import-stepper-change.is-stuck-only {
+    display: inline;
+  }
+
+  .import-batch-bar.is-stuck .import-stepper-change.is-in-summary {
+    visibility: hidden;
+  }
+
+  .import-batch-bar.is-stuck .import-stepper-summary {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 160ms ease, visibility 0s linear 160ms;
+  }
+
+  .import-batch-bar.is-measuring,
+  .import-batch-bar.is-measuring *,
+  .import-batch-bar.is-measuring *::before,
+  .import-batch-bar.is-measuring *::after {
+    transition: none !important;
+  }
+
+  /* Jump targets land below the stuck bar, never under it. */
   .import-panel.has-sticky-bar :is([data-import-target], [data-import-target] select, [data-import-target] button, tr[data-commit-status], .import-done-card h3) {
     scroll-margin-top: calc(var(--import-sticky-offset, 0px) + 12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .import-batch-bar .import-batch-bar-surface,
+  .import-batch-bar .import-batch-bar-surface::before,
+  .import-batch-bar .import-batch-bar-surface::after,
+  .import-batch-bar .import-stepper-step,
+  .import-batch-bar .import-stepper-summary {
+    transition: none !important;
   }
 }
 

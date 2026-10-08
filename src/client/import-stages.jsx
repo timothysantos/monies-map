@@ -18,19 +18,27 @@ export function ImportStepper({ stage, bringSummary, isBringOpen, canCollapseBri
     <ol className="import-stepper" aria-label={messages.imports.stageStepsLabel}>
       {steps.map((step, index) => {
         const state = index < currentIndex ? "is-done" : index === currentIndex ? "is-current" : "is-next";
+        const changeButton = (className) => (
+          <button type="button" className={`subtle-action import-stepper-change ${className}`} aria-expanded={isBringOpen} onClick={onToggleBring}>
+            {isBringOpen ? messages.imports.stageHideFiles : messages.imports.stageChangeFiles}
+          </button>
+        );
+        const canChange = step.key === "bring" && canCollapseBring;
         return (
           <li key={step.key} className={`import-stepper-step ${state}`} aria-current={index === currentIndex ? "step" : undefined}>
-            <span className="import-stepper-label">
-              {messages.imports.stageNumbered(index + 1, step.label)}{index < currentIndex ? ` · ${messages.imports.stageDoneMark}` : ""}
+            <span className="import-stepper-head">
+              <span className="import-stepper-label">
+                {messages.imports.stageNumbered(index + 1, step.label)}{index < currentIndex ? ` · ${messages.imports.stageDoneMark}` : ""}
+              </span>
+              {/* The stuck import bar hides the summary; Change stays here. */}
+              {canChange ? changeButton("is-stuck-only") : null}
             </span>
             <span className="import-stepper-summary">
               {step.summary}
-              {step.key === "bring" && canCollapseBring ? (
+              {canChange ? (
                 <>
                   {" "}
-                  <button type="button" className="subtle-action import-stepper-change" aria-expanded={isBringOpen} onClick={onToggleBring}>
-                    {isBringOpen ? messages.imports.stageHideFiles : messages.imports.stageChangeFiles}
-                  </button>
+                  {changeButton("is-in-summary")}
                 </>
               ) : null}
             </span>

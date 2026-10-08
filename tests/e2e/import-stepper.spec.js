@@ -66,12 +66,14 @@ async function writeFiles(page, testInfo) {
 }
 
 const bar = (page) => page.getByRole("navigation", { name: "Import progress" });
+// What the bar shows: stuck, it is shorter than the space it keeps in the page.
+const barSurface = (page) => bar(page).locator(".import-batch-bar-surface");
 
 // The target sits fully below the sticky bar, inside the window.
 async function expectBelowBar(page, locator) {
   await expect(locator).toBeInViewport();
   await expect.poll(async () => {
-    const barBox = await bar(page).boundingBox();
+    const barBox = await barSurface(page).boundingBox();
     const box = await locator.boundingBox();
     return Boolean(barBox && box) && box.y >= barBox.y + barBox.height - 1;
   }).toBe(true);
@@ -215,6 +217,7 @@ test("on a phone the import bar scrolls with the page and the commit bar stays",
   await expect(bar(page)).not.toBeInViewport();
   await expect(page.locator(".import-commit-bar .import-commit-button")).toBeInViewport();
   expect(await bar(page).evaluate((element) => getComputedStyle(element).position)).not.toBe("sticky");
+  await expect(bar(page)).not.toHaveClass(/is-stuck/);
 
   // A blocker still jumps to its control, with nothing sticky over it.
   await page.locator(".import-commit-bar").getByRole("button", { name: "Jump to next" }).click();
@@ -400,4 +403,167 @@ test("on a phone things left opens a sheet of the files and blockers", async ({ 
   await sheet.locator(".import-file-chip").filter({ hasText: "one-card-activity.csv" }).click();
   await expect(sheet).toHaveCount(0);
   await expect(bar(page).locator(".import-file-chip").filter({ hasText: "one-card-activity.csv" })).toHaveAttribute("aria-current", "step");
+});
+
+// Every part of the statement header and the commit bar sits inside the
+// review card's padding and the window: nothing is cut off on the right.
+async function overflowingParts(page) {
+  return page.evaluate(() => {
+    const card = document.querySelector("[data-import-target='preview-rows']");
+    const cardBox = card.getBoundingClientRect();
+    const style = getComputedStyle(card);
+    const left = cardBox.left + parseFloat(style.paddingLeft) - 0.5;
+    const right = cardBox.right - parseFloat(style.paddingRight) + 0.5;
+    const width = document.documentElement.clientWidth;
+    const parts = [...document.querySelectorAll(".statement-review-head, .statement-review-head *, .import-commit-bar, .import-commit-bar *")];
+    const out = parts
+      .map((element) => ({ element, box: element.getBoundingClientRect() }))
+      .filter(({ box }) => box.width > 0 && (box.left < left || box.right > right || box.right > width))
+      .map(({ element, box }) => `${element.className || element.tagName} ${Math.round(box.left)}..${Math.round(box.right)}`);
+    if (cardBox.right > width + 0.5 || cardBox.left < -0.5) out.push(`card ${Math.round(cardBox.left)}..${Math.round(cardBox.right)}`);
+    if (document.documentElement.scrollWidth > width) out.push(`page ${document.documentElement.scrollWidth}`);
+    return out;
+  });
+}
+
+test("on a phone the statement header and the commit bar wrap inside the review card", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".import-commit-bar")).toContainText("Skip for now");
+  await expect.poll(() => overflowingParts(page)).toEqual([]);
+  // Wrapped, not squeezed: the commit button keeps its words on one line.
+  const button = page.locator(".import-commit-bar .import-commit-button");
+  const lines = await button.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return new Set([...range.getClientRects()].map((box) => Math.round(box.bottom))).size;
+  });
+  expect(lines).toBe(1);
+  await expect(button).toHaveText("Commit and open next");
+});
+
+test("stuck to the top, the import bar spans the window, casts a shadow and folds its steps to one line", async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+
+  const nav = bar(page);
+  const surface = barSurface(page);
+  const summary = nav.locator(".import-stepper-summary").first();
+  // What sits at the window's edges, level with the bar.
+  const edgeHits = () => surface.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const y = box.top + box.height / 2;
+    const width = document.documentElement.clientWidth;
+    return [2, width - 2].map((x) => Boolean(document.elementFromPoint(x, y)?.closest(".import-batch-bar")));
+  });
+  const flowTop = () => page.locator(".statement-review").evaluate((element) => Math.round(element.getBoundingClientRect().top + window.scrollY));
+
+  // At the top of the page the bar is in its place, as wide as the panel.
+  await expect(nav).not.toHaveClass(/is-stuck/);
+  await expect(summary).toBeVisible();
+  expect((await surface.boundingBox()).height).toBeGreaterThan(150);
+  expect(await edgeHits()).toEqual([false, false]);
+  const reviewTop = await flowTop();
+
+  // Scrolled into the review it sticks: edge to edge, shadowed, one line of
+  // steps, and short.
+  await page.evaluate(() => window.scrollTo({ top: 900, behavior: "instant" }));
+  await expect(nav).toHaveClass(/is-stuck/);
+  await expect(summary).toBeHidden();
+  await expect.poll(async () => (await surface.boundingBox()).height).toBeLessThanOrEqual(120);
+  await expect.poll(edgeHits).toEqual([true, true]);
+  await expect.poll(() => surface.evaluate((element) => getComputedStyle(element, "::after").opacity)).toBe("1");
+  expect(await surface.evaluate((element) => getComputedStyle(element, "::after").boxShadow)).not.toBe("none");
+  // A solid background: no text shows through it.
+  expect(await surface.evaluate((element) => getComputedStyle(element, "::before").backgroundColor)).toMatch(/^rgb\(/);
+  // Sticking moves nothing in the page and adds no sideways scroll.
+  expect(await flowTop()).toBe(reviewTop);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  // The step in review still reads as current.
+  await expect(nav.locator(".import-stepper-step.is-current .import-stepper-label")).toHaveText("2 · Review");
+
+  // A jump lands just below the stuck bar.
+  const ladysCard = page.locator(".statement-card").filter({ hasText: `${LADYS_CARD} • May 2026` });
+  await nav.getByRole("button", { name: `${LADYS_CARD} off by $42.62` }).click();
+  await expect(ladysCard).toBeFocused();
+  await expect.poll(async () => {
+    const barBox = await surface.boundingBox();
+    const box = await ladysCard.boundingBox();
+    return box.y - (barBox.y + barBox.height);
+  }).toBeGreaterThanOrEqual(-1);
+  await expect.poll(async () => {
+    const barBox = await surface.boundingBox();
+    const box = await ladysCard.boundingBox();
+    return box.y - (barBox.y + barBox.height);
+  }).toBeLessThan(40);
+
+  // Back at the top it lets go.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await expect(nav).not.toHaveClass(/is-stuck/);
+  await expect(summary).toBeVisible();
+  await expect.poll(edgeHits).toEqual([false, false]);
+});
+
+test("the stuck bar changes without animation when reduced motion is asked for", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+  await page.evaluate(() => window.scrollTo({ top: 900, behavior: "instant" }));
+  await expect(bar(page)).toHaveClass(/is-stuck/);
+  const durations = await barSurface(page).evaluate((element) => [
+    getComputedStyle(element, "::before").transitionDuration,
+    getComputedStyle(element, "::after").transitionDuration,
+    getComputedStyle(element.querySelector(".import-stepper-summary")).transitionDuration,
+    getComputedStyle(element.querySelector(".import-stepper-step")).transitionDuration
+  ]);
+  for (const duration of durations) {
+    expect(duration.split(",").every((value) => parseFloat(value) === 0)).toBe(true);
+  }
+});
+
+test("at 1280 px the commit bar with Skip for now stays on one line", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  const commitBar = page.locator(".import-commit-bar");
+  await expect(commitBar).toContainText("Skip for now", { timeout: 30_000 });
+  await expect(commitBar.locator(".import-commit-button")).toHaveText("Commit and open next");
+  // One row: the summary, the count and jump, Start over, Skip for now and
+  // the commit button side by side, no taller than the button needs.
+  const layout = await commitBar.evaluate((element) => {
+    const parts = [...element.children, ...element.querySelector(".import-commit-bar-actions").children].map((child) => child.getBoundingClientRect());
+    const button = element.querySelector(".import-commit-button").getBoundingClientRect();
+    return {
+      spread: Math.max(...parts.map((box) => box.top + box.height / 2)) - Math.min(...parts.map((box) => box.top + box.height / 2)),
+      extraHeight: element.getBoundingClientRect().height - button.height
+    };
+  });
+  expect(layout.spread).toBeLessThan(4);
+  expect(layout.extraHeight).toBeLessThanOrEqual(32);
 });

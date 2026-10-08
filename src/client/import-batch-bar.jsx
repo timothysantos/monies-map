@@ -1,6 +1,6 @@
 import * as Popover from "@radix-ui/react-popover";
 import { Check } from "lucide-react";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
@@ -10,10 +10,13 @@ import "./import-review.css";
 // batch (import-batch-model.js) and what blocks a clean commit of the file
 // in review (import-blockers-model.js). It sticks to the top of the page
 // on desktop and tablet while a batch is in progress; on a phone it
-// scrolls with the page and the commit bar is the only sticky bar.
+// scrolls with the page and the commit bar is the only sticky bar. Once
+// stuck (`isStuck`, useImportStickyBar) its surface spreads to the window's
+// edges, casts a shadow and folds the step descriptions away.
 export function ImportBatchBar({
   barRef,
   isSticky,
+  isStuck = false,
   stepper,
   batch,
   doneImportId,
@@ -26,51 +29,57 @@ export function ImportBatchBar({
   onJump
 }) {
   return (
-    <nav ref={barRef} className={`import-batch-bar${isSticky ? " is-sticky" : ""}`} aria-label={messages.imports.batchBarLabel}>
-      {stepper}
-      {batch.total ? (
-        <div className="import-file-strip">
-          <ul className="import-file-chips" aria-label={messages.imports.batchFilesLabel}>
-            {batch.files.map((file) => (
-              <li key={file.id}>
-                <ImportFileChip
-                  file={file}
-                  canShowDone={file.state === "done" && Boolean(doneImportId) && file.importId === doneImportId}
-                  hasUnsavedReviewWork={hasUnsavedReviewWork}
-                  onOpenFile={onOpenFile}
-                  onShowCurrentFile={onShowCurrentFile}
-                  onShowDoneFile={onShowDoneFile}
-                />
-              </li>
-            ))}
-          </ul>
-          <span className="import-file-position">{messages.imports.batchFilePosition(batch.index, batch.total)}</span>
-        </div>
-      ) : null}
-      {showBlockers && (blockers.blockers.length || blockers.matched) ? (
-        <div className="import-blockers">
-          {blockers.blockers.length ? (
-            <>
-              <span className="import-blockers-title" id="import-blockers-title">{messages.imports.blockersTitle}</span>
-              <ul className="import-blocker-list" aria-labelledby="import-blockers-title">
-                {blockers.blockers.map((blocker) => (
-                  <li key={blocker.id}>
-                    <button type="button" className={`import-blocker-chip is-${blocker.effect}`} onClick={() => onJump(blocker)}>
-                      {blocker.label}
-                    </button>
+    <>
+      {/* Leaves the top of the window as the bar sticks (useImportStickyBar). */}
+      <div className="import-batch-bar-sentinel" aria-hidden="true" />
+      <nav ref={barRef} className={`import-batch-bar${isSticky ? " is-sticky" : ""}${isStuck ? " is-stuck" : ""}`} aria-label={messages.imports.batchBarLabel}>
+        <div className="import-batch-bar-surface">
+          {stepper}
+          {batch.total ? (
+            <div className="import-file-strip">
+              <ul className="import-file-chips" aria-label={messages.imports.batchFilesLabel}>
+                {batch.files.map((file) => (
+                  <li key={file.id}>
+                    <ImportFileChip
+                      file={file}
+                      canShowDone={file.state === "done" && Boolean(doneImportId) && file.importId === doneImportId}
+                      hasUnsavedReviewWork={hasUnsavedReviewWork}
+                      onOpenFile={onOpenFile}
+                      onShowCurrentFile={onShowCurrentFile}
+                      onShowDoneFile={onShowDoneFile}
+                    />
                   </li>
                 ))}
               </ul>
-            </>
+              <span className="import-file-position">{messages.imports.batchFilePosition(batch.index, batch.total)}</span>
+            </div>
           ) : null}
-          {blockers.matched ? <span className="import-blocker-matched">{blockers.matched.label}</span> : null}
+          {showBlockers && (blockers.blockers.length || blockers.matched) ? (
+            <div className="import-blockers">
+              {blockers.blockers.length ? (
+                <>
+                  <span className="import-blockers-title" id="import-blockers-title">{messages.imports.blockersTitle}</span>
+                  <ul className="import-blocker-list" aria-labelledby="import-blockers-title">
+                    {blockers.blockers.map((blocker) => (
+                      <li key={blocker.id}>
+                        <button type="button" className={`import-blocker-chip is-${blocker.effect}`} onClick={() => onJump(blocker)}>
+                          {blocker.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {blockers.matched ? <span className="import-blocker-matched">{blockers.matched.label}</span> : null}
+            </div>
+          ) : null}
+          {/* Announces the count as blockers are fixed. */}
+          <span className="import-blockers-live import-sr-only" aria-live="polite">
+            {showBlockers && blockers.remainingCount ? messages.imports.blockerThingsLeft(blockers.remainingCount) : ""}
+          </span>
         </div>
-      ) : null}
-      {/* Announces the count as blockers are fixed. */}
-      <span className="import-blockers-live import-sr-only" aria-live="polite">
-        {showBlockers && blockers.remainingCount ? messages.imports.blockerThingsLeft(blockers.remainingCount) : ""}
-      </span>
-    </nav>
+      </nav>
+    </>
   );
 }
 
@@ -230,14 +239,33 @@ export function ImportProgressSheet({
   );
 }
 
-// Keeps --import-sticky-top (below the app's own sticky environment
-// banner) and --import-sticky-offset (where content starts under the bar)
-// on the panel, so jump targets land below the bar, never under it.
-export function useImportStickyOffset(panelRef, barRef, isSticky) {
+const STICKY_BAR_QUERY = "(min-width: 768px)";
+
+/**
+ * The sticky import bar's measurements and stuck state (desktop and tablet,
+ * while `isSticky`).
+ *
+ * - The panel keeps --import-sticky-top (below the app's own sticky
+ *   environment banner) and --import-sticky-offset (where content starts
+ *   under the bar once stuck), so jump targets land below the stuck bar.
+ * - The bar keeps --import-bar-bleed-left/right, how far its surface's
+ *   background spreads to reach the window's edges once stuck.
+ * - An IntersectionObserver on the sentinel just above the bar says when
+ *   it is stuck (no scroll listener). While stuck the bar keeps the height
+ *   it had in the page, so folding the step descriptions moves nothing
+ *   below it and cannot unstick it again.
+ *
+ * @returns {boolean} whether the bar is stuck to the top of the window
+ */
+export function useImportStickyBar(panelRef, barRef, isSticky) {
+  const [isStuck, setIsStuck] = useState(false);
+  const [stickyTop, setStickyTop] = useState(0);
+
   useLayoutEffect(() => {
     const panel = panelRef.current;
     const bar = barRef.current;
-    if (!panel || !bar || !isSticky) {
+    const surface = bar?.querySelector(".import-batch-bar-surface");
+    if (!panel || !bar || !surface || !isSticky) {
       panel?.style.removeProperty("--import-sticky-offset");
       panel?.style.removeProperty("--import-sticky-top");
       return undefined;
@@ -246,15 +274,78 @@ export function useImportStickyOffset(panelRef, barRef, isSticky) {
       const banner = document.querySelector(".environment-banner");
       const bannerStyle = banner ? getComputedStyle(banner) : null;
       const top = bannerStyle?.position === "sticky" ? banner.getBoundingClientRect().height : 0;
+      const box = surface.getBoundingClientRect();
+      const width = document.documentElement.clientWidth;
+      bar.style.setProperty("--import-bar-bleed-left", `${Math.max(0, box.left)}px`);
+      bar.style.setProperty("--import-bar-bleed-right", `${Math.max(0, width - box.right)}px`);
       panel.style.setProperty("--import-sticky-top", `${top}px`);
-      panel.style.setProperty("--import-sticky-offset", `${top + bar.getBoundingClientRect().height}px`);
+      panel.style.setProperty("--import-sticky-offset", `${top + measureStuckHeight(bar, surface)}px`);
+      setStickyTop(top);
     };
     measure();
-    if (typeof ResizeObserver === "undefined") {
+    window.addEventListener("resize", measure);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(surface);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
+  }, [barRef, isSticky, panelRef]);
+
+  useEffect(() => {
+    const bar = barRef.current;
+    const sentinel = bar?.previousElementSibling;
+    const surface = bar?.querySelector(".import-batch-bar-surface");
+    const media = typeof window.matchMedia === "function" ? window.matchMedia(STICKY_BAR_QUERY) : null;
+    const settle = (stuck) => {
+      if (bar) {
+        // Stuck, the bar keeps the height it had in the page.
+        bar.style.height = stuck && surface ? `${surface.getBoundingClientRect().height}px` : "";
+      }
+      setIsStuck(stuck);
+    };
+    if (!bar || !sentinel || !isSticky || !media || typeof IntersectionObserver === "undefined") {
+      settle(false);
       return undefined;
     }
-    const observer = new ResizeObserver(measure);
-    observer.observe(bar);
-    return () => observer.disconnect();
-  }, [barRef, isSticky, panelRef]);
+    let observer = null;
+    const start = () => {
+      observer?.disconnect();
+      observer = null;
+      if (!media.matches) {
+        settle(false);
+        return;
+      }
+      observer = new IntersectionObserver(([entry]) => {
+        const rootTop = entry.rootBounds?.top ?? stickyTop;
+        const stuck = !entry.isIntersecting && entry.boundingClientRect.top < rootTop;
+        if (stuck !== bar.classList.contains("is-stuck")) {
+          settle(stuck);
+        }
+      }, { rootMargin: `${-stickyTop}px 0px 0px 0px`, threshold: [0, 1] });
+      observer.observe(sentinel);
+    };
+    start();
+    media.addEventListener?.("change", start);
+    return () => {
+      observer?.disconnect();
+      media.removeEventListener?.("change", start);
+    };
+  }, [barRef, isSticky, stickyTop]);
+
+  return isSticky && isStuck;
+}
+
+// The surface's height once stuck: measured as it is, or by laying it out
+// stuck for a moment with transitions off (nothing is painted in between).
+function measureStuckHeight(bar, surface) {
+  if (bar.classList.contains("is-stuck")) {
+    return surface.getBoundingClientRect().height;
+  }
+  bar.classList.add("is-measuring", "is-stuck");
+  const height = surface.getBoundingClientRect().height;
+  bar.classList.remove("is-stuck");
+  void surface.getBoundingClientRect().height;
+  bar.classList.remove("is-measuring");
+  return height;
 }
