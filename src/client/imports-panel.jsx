@@ -11,6 +11,9 @@ import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAc
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
+import { buildImportBlockers } from "./import-blockers-model";
+import { unmaskedMoney } from "./formatters";
+import { useMoneyPrivacy } from "./money-privacy";
 import { initialSplitCleanupState, splitCleanupReducer } from "./import-split-cleanup-model";
 import {
   getStatementPreviewAutoRefreshKey,
@@ -117,6 +120,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     rollbackPolicy: ""
   };
   const navigate = useNavigate();
+  const { areTotalsVisible } = useMoneyPrivacy();
   // Draft metadata chosen by the user before preview.
   const [sourceLabel, setSourceLabel] = useState(DEFAULT_SOURCE_LABEL);
   const [importNote, setImportNote] = useState("");
@@ -301,11 +305,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementCheckpoints,
       statementImportMeta,
       dismissedOverlapIds,
-      unknownCategoryMode,
-      isSubmitting,
-      isParsingStatement
+      unknownCategoryMode
     }),
-    [accounts, dismissedOverlapIds, isParsingStatement, isSubmitting, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
+    [accounts, dismissedOverlapIds, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
   );
   const currentPreviewSignature = useMemo(
     () => buildStatementPreviewSnapshot(previewRows, statementCheckpoints),
@@ -348,14 +350,51 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
-  const commitWarning = buildStatementCommitWarning({
-    sourceType: statementImportMeta.sourceType,
-    hasStatementCheckpoints: statementCheckpoints.length > 0,
-    isPreviewDirty: importWorkflowModel.isPreviewDirty,
-    statementReconciliations: importPreviewModel.statementReconciliations ?? [],
-    onRefresh: () => handleRefreshStatementReconciliation(),
-    onCommit: () => handleCommit()
-  });
+  // What blocks a clean commit: the bar's chips, the commit bar's count
+  // and the commit rules all read this one list.
+  const importBlockers = useMemo(
+    () => buildImportBlockers({
+      previewModel: preview ? importPreviewModel : null,
+      hasPreview: Boolean(preview),
+      sourceType: statementImportMeta.sourceType,
+      statementCheckpointCount: statementCheckpoints.length,
+      unknownCategoryCount: preview?.unknownCategories?.length ?? 0,
+      isPreviewDirty: importWorkflowModel.isPreviewDirty,
+      isSubmitting,
+      isParsingStatement,
+      columnMapping: {
+        readyForMapping: importWorkflowModel.readyForMapping,
+        missingRequiredFields: importWorkflowModel.missingRequiredFields,
+        duplicateMappings: importWorkflowModel.duplicateMappings
+      },
+      areTotalsVisible,
+      formatMoney: unmaskedMoney
+    }),
+    [
+      areTotalsVisible,
+      importPreviewModel,
+      importWorkflowModel.duplicateMappings,
+      importWorkflowModel.isPreviewDirty,
+      importWorkflowModel.missingRequiredFields,
+      importWorkflowModel.readyForMapping,
+      isParsingStatement,
+      isSubmitting,
+      preview,
+      statementCheckpoints.length,
+      statementImportMeta.sourceType
+    ]
+  );
+  const { isCommitDisabled } = importBlockers;
+  const commitQuestion = importBlockers.commitQuestion;
+  const commitWarning = commitQuestion
+    ? {
+      message: commitQuestion.message,
+      confirmLabel: commitQuestion.confirmLabel,
+      onConfirm: commitQuestion.kind === "stale_check"
+        ? () => handleRefreshStatementReconciliation()
+        : () => handleCommit()
+    }
+    : undefined;
   // Any import draft, preview edit or write in flight is protected work.
   useRouteWorkReport({
     busy: importDraftExists
@@ -393,7 +432,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
-    isCommitDisabled,
     commitLabel,
     knownAccountNames,
     previewReconciliationRowCount,
@@ -2286,34 +2324,4 @@ function applyStatementAccountMatches(statementCheckpoints, matches) {
     return { ...checkpoint, detectedAccountName, accountId: match.accountId, accountName: match.accountName };
   });
   return changed ? next : statementCheckpoints;
-}
-
-// Committing a statement that does not close, or whose check is out of date
-// after a row edit, asks first.
-function buildStatementCommitWarning({ sourceType, hasStatementCheckpoints, isPreviewDirty, statementReconciliations, onRefresh, onCommit }) {
-  if (sourceType !== "pdf" || !hasStatementCheckpoints) {
-    return undefined;
-  }
-  if (isPreviewDirty) {
-    return {
-      message: messages.imports.commitStatementStaleWarning,
-      confirmLabel: messages.imports.statementReconciliationRefresh,
-      onConfirm: onRefresh
-    };
-  }
-  const openNames = statementReconciliations
-    .filter((item) => item.status !== "matched")
-    .map((item) => item.accountName);
-  if (!openNames.length) {
-    return undefined;
-  }
-  return {
-    message: messages.imports.commitStatementMismatchWarning(joinNames(openNames)),
-    confirmLabel: messages.imports.commitAnyway,
-    onConfirm: onCommit
-  };
-}
-
-function joinNames(names) {
-  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
