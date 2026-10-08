@@ -463,13 +463,26 @@ receipt button adds a shared expense.
   [Import a bank statement](#import-a-bank-statement). The commit button
   stays in view at the bottom of the review, with what the commit will do.
   While something still needs you it says how many things are left;
-  **Jump to next** takes you to the first one.
+  **Jump to next** takes you to the first one. On a computer, press **J**
+  for the next thing to fix and **K** for the previous one (not while you
+  are typing in a field).
+- **Commit and open** a file: while another file waits, the commit button
+  names it. After the commit that file opens straight away, with a short
+  summary of the file you just committed above it and its **Roll back this
+  import**. The last file's button keeps its usual words, and the full
+  **Done** step shows when it is committed.
+- **Skip for now**: while another file waits, moves the file in review to
+  the end of your files and opens the next one. Reopen it from its chip
+  whenever you like; you don't need the file again. If you changed rows or
+  approved fixes, the app asks first, because skipping drops those changes.
 - **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
 
 Imports is under the **•••** button. Everything works the same, one column
-wide; dropping several files at once is easiest on a computer.
+wide; dropping several files at once is easiest on a computer. Tap the count of
+things left on the commit bar (for example **2 things left**) to see your files and what still needs you
+in one sheet; tap a thing to fix to go straight to it, or a file to open it.
 
 ## Settings
 
@@ -645,8 +658,9 @@ words.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
    batch appears under **Recent imports**. The **Done** step says what
    changed on each card (rows added, entries confirmed or moved, entries left
-   for the next statement), with **Roll back this import**, and offers
-   **Review next** when more files are queued.
+   for the next statement), with **Roll back this import**. When more
+   files are queued the button reads **Commit and open** the next file, which
+   opens after the commit under a short summary of the one you committed.
 
 ![A bank export turned into preview rows, ready to commit](/faq/guide/desktop/thumbs/imports-preview.webp)
 

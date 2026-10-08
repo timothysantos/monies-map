@@ -278,6 +278,34 @@ Rules:
   `orderIntakeQueue` and counts covered rows with `describeIntakeCoverage`
   (`import-intake-model.js`); the Done card (`buildImportDoneSummary`,
   `import-done-model.js`) offers the next queued file
+- moving through a batch lives in `import-batch-model.js`:
+  `findNextIntakeItem` (the next file waiting, never the one in review or a
+  copy), `skipIntakeItem` (gives the item a `skipOrder`, which
+  `orderIntakeQueue` ranks after every file not skipped) and
+  `describeCommitLabel` ("Commit and open {file}" while a file waits). The
+  panel opens the next file from the render after the commit's reset
+  (`pendingNextItemId`), so it starts from a clean form, and keeps
+  `lastCommitSummary` while a file of the batch is open: `ImportDoneCard`
+  then renders `compact` (title, status, rows in total, rollback) above the
+  review, and in full only when nothing is open. Opening a queued file
+  (`handleLoadIntakeItem`) keeps the summary; a single dropped file clears it
+- the commit is saved before the refresh: a failed commit returns early with
+  the review intact; the refresh after it goes through the shell's
+  `runBackgroundRefresh` (prop from `App.jsx`)
+- `import-blocker-keys.js` holds the J/K rules (`readBlockerKey`,
+  `pickAdjacentBlocker`) and a document `keydown` listener
+  (`useImportBlockerKeys`). The cursor is the `order` of the blocker last
+  jumped to (chips and "Jump to next" set it too), so the walk carries on
+  after that blocker is fixed. A field the jump itself focused (an account
+  select) is not treated as typing, so the next press moves on; the key's
+  default is prevented so the select keeps its value
+- `ImportAskFirst` (`import-batch-bar.jsx`) is the one ask-first popover for
+  the waiting chips and "Skip for now"; `inline` renders it inside the phone
+  sheet, which traps focus
+- `ImportProgressSheet` (`import-batch-bar.jsx`) is the phone's import bar,
+  built on `EntryMobileSheet`. The panel closes it before a chip's action
+  and runs the action in a timeout after Radix FocusScope hands focus back
+  to the trigger, so a jump keeps its focus
 - "Fix it for me" is a per-viewer preference
   (`statement-fix-preference.js`, browser storage); proven fixes are applied
   once per review, so an Undo is not re-applied

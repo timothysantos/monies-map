@@ -48,8 +48,16 @@ Imports owns:
 
 - the three import steps (Bring files, Review, Done; design.md, "Import Page
   Stages"). A statement is reviewed card by card under one header; the
-  commit bar stays in view; after a commit the Done card shows what changed
-  per card, with rollback and the next queued file. The intake queue keeps
+  commit bar stays in view. While another file waits the commit reads
+  "Commit and open {file}": a successful commit opens that file and keeps a
+  compact Done card (what changed, with rollback) above its review; rolling
+  back from it leaves that review as it is. The last file commits with its
+  own words and shows the full Done card (what changed per card, with
+  rollback). A failed commit opens nothing; the refresh after a commit runs
+  through `runBackgroundRefresh`, so a failure keeps the commit and raises the
+  refresh notice. "Skip for now" (shown while another file waits) sends the
+  file in review to the end of the queue, still parsed, and opens the next;
+  it asks first when the review has changes it would drop. The intake queue keeps
   the rest of a multi-file drop, reviews statements before activity (older
   months first) and says how many activity rows a queued statement covers.
   A mid-cycle row posted inside an already confirmed statement period is
@@ -64,8 +72,13 @@ Imports owns:
   scrolls to and focuses the control that fixes it. Opening a waiting file
   from its chip asks first when the file in review has changes it would
   drop; the queue's own Review button and the Done card's Review next do
-  not ask (the Done card has nothing in review). Driven in
-  `import-stepper.spec.js`
+  not ask (the Done card has nothing in review). J and K step to the next
+  and previous blocker (not while typing, with a modifier, under a popover,
+  dialog or sheet, or without a preview); "Jump to next" names them in its
+  title. Below 768 px the commit bar's "{n} things left" opens the import
+  progress sheet (the shared mobile sheet) with the file chips and blocker
+  chips; a chip closes it and then acts. Driven in `import-stepper.spec.js`
+  and `import-commit-next.spec.js`
 - import inbox planning at the top of the route. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every
   missing statement/activity file for that institution, while the review queue
