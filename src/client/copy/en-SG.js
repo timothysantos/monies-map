@@ -275,7 +275,7 @@ export const messages = {
     viewing: (label) => `Viewing imports for ${label}`,
     transactionCount: (count) => countOf(count, "transaction"),
     inboxTitle: "Import inbox",
-    inboxDetail: "The app plans the bank run. Log into one bank, collect the listed files, then drop them below. No renaming needed.",
+    inboxDetail: "The app plans the bank run. Log into one bank, collect the listed files, then drop them here. No renaming needed.",
     inboxSummaryLabel: "Import inbox status",
     inboxMetricBankSessions: "Bank sessions",
     inboxMetricBankSessionsValue: (count) => `${count} to open`,

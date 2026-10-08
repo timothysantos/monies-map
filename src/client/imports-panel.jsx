@@ -209,6 +209,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // chips), how many changes the file in review has that switching files
   // would drop, and a blocker jump waiting for its section to open.
   const [committedBatchFiles, setCommittedBatchFiles] = useState([]);
+  // Whether the user typed the source label (or took one from the inbox).
+  const isSourceLabelChosenRef = useRef(false);
   const [reviewChangeCount, setReviewChangeCount] = useState(0);
   const [pendingJumpTarget, setPendingJumpTarget] = useState(null);
   const panelRef = useRef(null);
@@ -574,6 +576,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
   }
 
+  function handleSourceLabelChange(nextSourceLabel) {
+    isSourceLabelChosenRef.current = true;
+    setSourceLabel(nextSourceLabel);
+  }
+
   function handleOwnerNameChange(nextOwnerName) {
     setOwnerName(nextOwnerName);
     void maybeAutoPreviewCitibankActivityCsv(csvText, {
@@ -591,6 +598,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setOwnerName(nextOwnerName);
     }
     setSourceLabel(file.label);
+    isSourceLabelChosenRef.current = true;
     setImportNote(file.detail);
     // Show the defaults it just filled.
     setIsPasteDefaultsOpen(true);
@@ -601,6 +609,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // rollback) above the new review.
   async function handleLoadIntakeItem(item) {
     setActiveIntakeItemId(item.id);
+    // A plain CSV carries no label of its own: name it by its file, so its
+    // summary does not read "Imported CSV saved". A label the user set stays.
+    if (!item.parsed && !isSourceLabelChosenRef.current) {
+      setSourceLabel(item.fileName || DEFAULT_SOURCE_LABEL);
+    }
     setDefaultAccountName(item.parsed?.checkpoints?.[0]?.accountName ?? item.parsed?.rows?.[0]?.accountName ?? defaultAccountName);
     if (item.parsed) {
       await loadParsedImport({
@@ -635,6 +648,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsProgressSheetOpen(false);
     blockerCursorRef.current = null;
     currentImportSourceRef.current = null;
+    isSourceLabelChosenRef.current = false;
     setSourceLabel(DEFAULT_SOURCE_LABEL);
     setImportNote("");
     setCsvText("");
@@ -798,6 +812,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   async function processImportFile(file) {
     startBatchIfIdle();
+    // The dropped file is now the one in review; a queued file that was open
+    // waits in the queue again.
+    setActiveIntakeItemId(null);
     setPreviewError("");
     setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
     setPreview(null);
@@ -1379,6 +1396,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsRecentImportsRefreshing(true);
     try {
       await rollbackImportBatch(importId);
+      setCommittedBatchFiles((current) => current.filter((file) => file.importId !== importId));
       await onRefresh({
         broadcast: true,
         invalidateEntries: true,
@@ -2194,7 +2212,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <ImportSelectFileStage
               currentStage={importWorkflowModel.currentStage}
               sourceLabel={sourceLabel}
-              onSourceLabelChange={setSourceLabel}
+              onSourceLabelChange={handleSourceLabelChange}
               defaultAccountName={defaultAccountName}
               onDefaultAccountChange={handleDefaultAccountChange}
               accounts={accounts}
@@ -2224,6 +2242,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             items={intakeQueue}
             summary={intakeQueueSummary}
             activeItemId={activeIntakeItemId}
+            hasUnsavedReviewWork={hasUnsavedReviewWork}
             onLoadItem={handleLoadIntakeItem}
             onRemoveItem={handleRemoveIntakeItem}
             onClear={handleClearIntakeQueue}
@@ -2236,6 +2255,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           />
         </>
       ) : null}
+      {isMappingShown || preview || statementWarnings.length ? (
       <section className="panel-subsection import-workflow">
         {/* Stage 2: map source columns into the app's import schema. */}
         {isMappingShown ? (
@@ -2259,8 +2279,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           />
         ) : null}
 
-        {/* Stage 3: review the normalized preview and commit only safe rows. */}
-        {/* A file dropped on the file in review does not start an intake. */}
+        {/* Stage 3: review the normalized preview and commit only safe rows.
+            Nothing shows here until a preview (or its warnings) exists. A
+            file dropped on the file in review does not start an intake. */}
+        {preview || statementWarnings.length ? (
         <div
           ref={previewSectionRef}
           data-import-target="preview-rows"
@@ -2395,7 +2417,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <EmptyState>{messages.imports.previewEmpty}</EmptyState>
           )}
         </div>
+        ) : null}
       </section>
+      ) : null}
 
       {showSplitCleanupNotice ? (
         <section className="import-post-cleanup-card">

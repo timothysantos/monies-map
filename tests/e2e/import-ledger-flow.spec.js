@@ -1987,7 +1987,8 @@ test.describe("import flow", () => {
       );
       await importFlowPage.getByRole("button", { name: /Commit import/ }).first().click();
       await commitResponse;
-      await expect(importFlowPage.getByText("No preview yet.").first()).toBeVisible({ timeout: 60_000 });
+      await expect(importFlowPage.locator(".import-done-card").first()).toBeVisible({ timeout: 60_000 });
+      await expect(importFlowPage.locator(".import-commit-bar")).toHaveCount(0);
     };
 
     await uploadPdfAndMap(janPdfPath);
@@ -2007,7 +2008,8 @@ test.describe("import flow", () => {
     );
     await importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" }).first().click();
     await emptyCheckpointResponse;
-    await expect(importFlowPage.getByText("No preview yet.").first()).toBeVisible({ timeout: 60_000 });
+    await expect(importFlowPage.locator(".import-done-card").first()).toBeVisible({ timeout: 60_000 });
+    await expect(importFlowPage.locator(".import-commit-bar")).toHaveCount(0);
 
     const midcycleRows = [
       ...febAlphaRows.map((row) => ({ ...row, account: alphaAccount.name, note: "synthetic growing midcycle" })),

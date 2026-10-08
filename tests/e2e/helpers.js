@@ -1,4 +1,5 @@
 import { expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 export async function gotoPageAfterApi(page, path, apiPath, readyLocator) {
   let lastError = null;
@@ -235,4 +236,27 @@ export async function openRecentImports(page) {
     await toggle.click();
   }
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
+// Drops files on an element the way a browser does: dragenter, dragover,
+// then drop, all carrying the same DataTransfer.
+export async function dropFiles(page, selector, files, { drop = true } = {}) {
+  const payload = await Promise.all(files.map(async (file) => ({
+    name: file.name,
+    type: file.type,
+    base64: (await readFile(file.path)).toString("base64")
+  })));
+  const dataTransfer = await page.evaluateHandle((items) => {
+    const transfer = new DataTransfer();
+    for (const item of items) {
+      const bytes = Uint8Array.from(atob(item.base64), (char) => char.charCodeAt(0));
+      transfer.items.add(new File([bytes], item.name, { type: item.type }));
+    }
+    return transfer;
+  }, payload);
+  await page.dispatchEvent(selector, "dragenter", { dataTransfer });
+  await page.dispatchEvent(selector, "dragover", { dataTransfer });
+  if (drop) {
+    await page.dispatchEvent(selector, "drop", { dataTransfer });
+  }
 }

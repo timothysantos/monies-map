@@ -3,6 +3,7 @@ import { CheckCircle2, CircleAlert, Clock3, FileText, Landmark, ListChecks } fro
 
 import { describeIntakeCoverage, describeIntakeSource, orderIntakeQueue } from "./import-intake-model";
 import { buildInboxChecklistProgress } from "./import-inbox-model";
+import { ImportAskFirst } from "./import-batch-bar";
 import { useFollowingFold } from "./use-following-fold";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
@@ -175,6 +176,7 @@ export function ImportIntakeQueueSection({
   items,
   summary,
   activeItemId,
+  hasUnsavedReviewWork = false,
   onLoadItem,
   onRemoveItem,
   onClear
@@ -218,14 +220,23 @@ export function ImportIntakeQueueSection({
                   {coverage ? <span className="import-intake-coverage">{messages.imports.intakeCoverage(coverage)}</span> : null}
                 </div>
                 <div className="import-intake-actions">
-                  <button
-                    type="button"
-                    className={isNext ? "import-commit-button" : "subtle-action"}
-                    onClick={() => onLoadItem(item)}
-                    disabled={item.duplicate || item.id === activeItemId}
+                  {/* Opening it drops the changes to the file in review, so
+                      it asks first, like the file chips. */}
+                  <ImportAskFirst
+                    question={hasUnsavedReviewWork ? messages.imports.batchSwitchWarning(item.fileName) : null}
+                    onConfirm={() => onLoadItem(item)}
                   >
-                    {messages.imports.intakeLoad}
-                  </button>
+                    {({ onClick }) => (
+                      <button
+                        type="button"
+                        className={isNext ? "import-commit-button" : "subtle-action"}
+                        onClick={onClick}
+                        disabled={item.duplicate || item.id === activeItemId}
+                      >
+                        {messages.imports.intakeLoad}
+                      </button>
+                    )}
+                  </ImportAskFirst>
                   <button type="button" className="subtle-action" onClick={() => onRemoveItem(item.id)}>
                     {messages.imports.intakeRemove}
                   </button>
