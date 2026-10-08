@@ -50,7 +50,7 @@ test.describe("mobile continuity", () => {
       () => page.getByRole("heading", { name: "Import and certify", exact: true })
     );
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText("Source label")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 60_000 });
   });
 
   test("settings page stays readable on mobile", async ({ page }) => {

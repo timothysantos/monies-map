@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, openPasteRowsAndDefaults, postJson, reseedDemo } from "./helpers";
 
 test("money values start hidden, reveal together, and cover individual activity", async ({ page }) => {
   await reseedDemo(page);
@@ -61,8 +61,9 @@ test("money values start hidden, reveal together, and cover individual activity"
     page,
     "/imports?view=household&month=2026-05",
     "/api/imports-page",
-    () => page.getByLabel("CSV content")
+    () => page.getByRole("button", { name: "Paste rows or set defaults" })
   );
+  await openPasteRowsAndDefaults(page);
   const csvSource = page.getByLabel("CSV content");
   await expect(page.locator(".import-privacy-notice")).toBeVisible();
   await expect(csvSource).toHaveClass(/is-screened/);

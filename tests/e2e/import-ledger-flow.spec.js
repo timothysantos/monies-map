@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
+import { fillImportField, openRecentImports, selectImportField } from "./helpers";
 
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const HSBC_2026_CASES = [
@@ -250,7 +251,7 @@ async function gotoImportsPage(page, month = "2025-10") {
       ), { timeout: 30_000 });
       await page.goto(`/imports?view=person-tim&month=${month}`, { waitUntil: "domcontentloaded" });
       await importsPageReady;
-      await page.getByLabel("Source label").waitFor({ state: "visible", timeout: 15_000 });
+      await page.getByRole("button", { name: "Paste rows or set defaults" }).waitFor({ state: "visible", timeout: 15_000 });
       return;
     } catch (error) {
       lastError = error;
@@ -606,8 +607,8 @@ test.describe("import flow", () => {
     await page.route("**/api/imports/preview", mockedPreviewRoute);
     await page.route("**/api/entries/delete", mockedDeleteRoute);
     try {
-      await page.getByLabel("Source label").fill("Statement guidance preview");
-      await page.getByLabel("CSV content").fill(
+      await fillImportField(page, "Source label", "Statement guidance preview");
+      await fillImportField(page, "CSV content",
         [
           "date,description,expense,account,category,note",
           "2026-04-16,PDF STATEMENT ROW,10.00,Statement Guidance Card,Other,txn date: 2026-04-14"
@@ -789,8 +790,8 @@ test.describe("import flow", () => {
 
     await page.route("**/api/imports/preview", mockedPreviewRoute);
     try {
-      await page.getByLabel("Source label").fill("Statement cutoff preview");
-      await page.getByLabel("CSV content").fill(
+      await fillImportField(page, "Source label", "Statement cutoff preview");
+      await fillImportField(page, "CSV content",
         [
           "date,description,expense,account,category,note",
           "2026-04-16,PDF STATEMENT ROW,10.00,Statement Cutoff Card,Other,txn date: 2026-04-14"
@@ -910,8 +911,8 @@ test.describe("import flow", () => {
 
     await page.route("**/api/imports/preview", mockedPreviewRoute);
     try {
-      await page.getByLabel("Source label").fill("Matched statement preview");
-      await page.getByLabel("CSV content").fill(
+      await fillImportField(page, "Source label", "Matched statement preview");
+      await fillImportField(page, "CSV content",
         [
           "date,description,expense,account,category,note",
           "2026-04-16,PDF STATEMENT ROW,10.00,Statement Matched Card,Other,txn date: 2026-04-14"
@@ -950,16 +951,15 @@ test.describe("import flow", () => {
     await page.goto("/imports?view=person-tim&month=2025-10");
     await importsPageReady;
     try {
-      await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 10_000 });
     } catch {
       await page.reload();
     }
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("Source label")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 30_000 });
 
-    await page.getByLabel("Source label").fill("Playwright import");
-    await page.getByLabel("CSV content").fill(
+    await fillImportField(page, "Source label", "Playwright import");
+    await fillImportField(page, "CSV content",
       [
         "category,account,note,amount,date,description",
         "Groceries,UOB One,Playwright import row,-111.11,2025-10-17,Playwright groceries import"
@@ -1015,7 +1015,7 @@ test.describe("import flow", () => {
   test("final import shows recent-import loading and completion inline", async ({ page }) => {
     await page.goto("/imports?view=person-tim&month=2025-10");
     try {
-      await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 10_000 });
     } catch {
       await page.reload();
     }
@@ -1024,8 +1024,8 @@ test.describe("import flow", () => {
     const firstImportLabel = `Playwright loading import ${Date.now()}`;
     const secondImportLabel = `Playwright follow-up import ${Date.now()}`;
 
-    await page.getByLabel("Source label").fill(firstImportLabel);
-    await page.getByLabel("CSV content").fill(
+    await fillImportField(page, "Source label", firstImportLabel);
+    await fillImportField(page, "CSV content",
       [
         "category,account,note,amount,date,description",
         "Groceries,UOB One,Playwright loading import,-9.99,2025-10-19,Playwright loading import row"
@@ -1055,8 +1055,8 @@ test.describe("import flow", () => {
         importsPage.importsPage.recentImports.some((item) => item.sourceLabel === firstImportLabel && item.status === "completed")
       ).toBe(true);
 
-      await page.getByLabel("Source label").fill(secondImportLabel);
-      await page.getByLabel("CSV content").fill(
+      await fillImportField(page, "Source label", secondImportLabel);
+      await fillImportField(page, "CSV content",
         [
           "category,account,note,amount,date,description",
           "Groceries,UOB One,Playwright follow-up import,-8.88,2025-10-20,Playwright follow-up import row"
@@ -1074,6 +1074,7 @@ test.describe("import flow", () => {
       await expect(page.getByText(`${secondImportLabel} committed successfully. Recent imports have been updated.`)).toBeVisible({
         timeout: 30_000
       });
+      await openRecentImports(page);
       await expect(page.locator(".import-card").filter({ hasText: secondImportLabel }).first()).toContainText("completed", {
         timeout: 30_000
       });
@@ -1100,8 +1101,8 @@ test.describe("import flow", () => {
     await page.goto("/imports?view=person-tim&month=2025-10");
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
 
-    await page.getByLabel("Source label").fill("Playwright split cleanup import");
-    await page.getByLabel("CSV content").fill(
+    await fillImportField(page, "Source label", "Playwright split cleanup import");
+    await fillImportField(page, "CSV content",
       [
         "category,account,note,amount,date,description",
         `Food & Drinks,UOB One,official bank row,-12.34,2025-10-18,${description} official`
@@ -1177,8 +1178,8 @@ test.describe("import flow", () => {
     const cleanupCard = page.locator(".import-post-cleanup-card");
     await page.route("**/api/imports-page*", hideCommittedImportRoute);
     try {
-      await page.getByLabel("Source label").fill(firstLabel);
-      await page.getByLabel("CSV content").fill(
+      await fillImportField(page, "Source label", firstLabel);
+      await fillImportField(page, "CSV content",
         [
           "category,account,note,amount,date,description",
           `Food & Drinks,UOB One,official bank row,-24.68,2025-10-21,${firstDescription} official`
@@ -1206,8 +1207,8 @@ test.describe("import flow", () => {
     }
 
     // A genuinely new import with its own possible split link shows the card again.
-    await page.getByLabel("Source label").fill(secondLabel);
-    await page.getByLabel("CSV content").fill(
+    await fillImportField(page, "Source label", secondLabel);
+    await fillImportField(page, "CSV content",
       [
         "category,account,note,amount,date,description",
         `Food & Drinks,UOB One,official bank row,-24.68,2025-10-22,${secondDescription} official`
@@ -1307,6 +1308,7 @@ test.describe("import flow", () => {
     expect(commitPayload.importId).toBeTruthy();
 
     await gotoImportsPage(page, month);
+    await openRecentImports(page);
 
     const importCard = page.locator(".import-card").filter({ hasText: "Playwright January PDF rollback" });
     await expect(importCard).toBeVisible();
@@ -1322,7 +1324,7 @@ test.describe("import flow", () => {
   });
 
   test("restoring an exact covered import row opens the confirmation dialog and re-includes the row", async ({ page }) => {
-    await page.getByLabel("Source label").fill(`Restore import ${Date.now()}`);
+    await fillImportField(page, "Source label", `Restore import ${Date.now()}`);
     const mockedPreviewRoute = async (route) => {
       const request = route.request();
       const body = JSON.parse(request.postData() ?? "{}");
@@ -1392,7 +1394,7 @@ test.describe("import flow", () => {
     };
     await page.route("**/api/imports/preview", mockedPreviewRoute);
     try {
-      await page.getByLabel("CSV content").fill(
+      await fillImportField(page, "CSV content",
         [
           "date,description,amount,account,category,note",
           "2025-10-17,Playwright restore import row,-111.11,UOB One,Groceries,"
@@ -1434,8 +1436,8 @@ test.describe("import flow", () => {
     expect(beforeMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor).toBe(beforeMonth.realExpensesMinor);
     const expectedAfterActual = beforeMonth.realExpensesMinor + 22_22;
 
-    await importsPage.getByLabel("Source label").fill("Cross-tab sync import");
-    await importsPage.getByLabel("CSV content").fill(
+    await fillImportField(importsPage, "Source label", "Cross-tab sync import");
+    await fillImportField(importsPage, "CSV content",
       [
         "date,description,amount,account,category,note",
         "2025-10-18,Cross-tab sync groceries,-22.22,UOB One,Groceries,Should refresh summary and month."
@@ -1486,8 +1488,8 @@ test.describe("import flow", () => {
     }, { accountId: account.id, accountName: account.name });
     expect(createdEntry.ok, JSON.stringify(createdEntry.json)).toBeTruthy();
 
-    await page.getByLabel("Source label").fill("Matched manual card row import");
-    await page.getByLabel("CSV content").fill(
+    await fillImportField(page, "Source label", "Matched manual card row import");
+    await fillImportField(page, "CSV content",
       [
         "date,description,expense,account,category,note",
         `2025-06-13,MATCHED MANUAL CARD ROW,5.30,${account.name},Food & Drinks,txn date: 2025-06-11`
@@ -1699,6 +1701,7 @@ test.describe("import flow", () => {
     expect(aprilEntriesAfterSupersede.monthPage.entries.some((entry) => entry.description === "AMAZON MKTPLC SG Singapore SGP")).toBeFalsy();
 
     await gotoImportsPage(page, "2026-05");
+    await openRecentImports(page);
     const mayPdfImportCard = page.locator(".import-card").filter({ hasText: "Citi Rewards May PDF" }).first();
     await expect(mayPdfImportCard).toBeVisible();
     await expect(mayPdfImportCard.getByRole("button", { name: "Rollback import" })).toBeVisible();
@@ -1801,7 +1804,7 @@ test.describe("import flow", () => {
     });
 
     await importFlowPage.goto("/imports?view=person-tim&month=2026-03");
-    await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
+    await expect(importFlowPage.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 60_000 });
 
     const firstPreviewResponsePromise = importFlowPage.waitForResponse((response) => (
       response.url().includes("/api/imports/preview") && response.request().method() === "POST"
@@ -1958,11 +1961,11 @@ test.describe("import flow", () => {
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
       await expect(importFlowPage).toHaveURL(/\/imports/);
       try {
-        await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 10_000 });
+        await expect(importFlowPage.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 10_000 });
       } catch {
         await importFlowPage.reload();
       }
-      await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
+      await expect(importFlowPage.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 60_000 });
       const fileInput = importFlowPage.locator("input[type=\"file\"]");
       await fileInput.setInputFiles(path);
       if (!expectUnknownAccounts) {
@@ -2026,10 +2029,9 @@ test.describe("import flow", () => {
 
     const previewCsvSnapshot = async (label, rows, expectedImportCount, expectedSkipCount) => {
       await expect(importFlowPage.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 60_000 });
-      await expect(importFlowPage.getByText("Source label")).toBeVisible({ timeout: 60_000 });
-      await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
-      await importFlowPage.getByLabel("Source label").fill(label);
-      await importFlowPage.getByLabel("CSV content").fill(csvFromRows(rows));
+      await expect(importFlowPage.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 60_000 });
+      await fillImportField(importFlowPage, "Source label", label);
+      await fillImportField(importFlowPage, "CSV content", csvFromRows(rows));
       await importFlowPage.getByRole("button", { name: "Preview import" }).click();
       await expect(importFlowPage.getByText(`${expectedImportCount} row${expectedImportCount === 1 ? "" : "s"} will import`)).toBeVisible();
       if (expectedSkipCount) {
@@ -2143,7 +2145,7 @@ test.describe("import flow", () => {
     expect(statementImport?.statementCertificateStatus).toBe("certified");
     await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
     await expect(importFlowPage.getByRole("heading", { name: "Recent imports" })).toBeVisible();
-    await importFlowPage.getByRole("button", { name: /Recent imports/ }).click();
+    await openRecentImports(importFlowPage);
     await screenshot("10-recent-imports-after-combined-flow");
   });
 
@@ -2158,7 +2160,7 @@ test.describe("import flow", () => {
     });
 
     await gotoImportsPage(page);
-    await page.getByLabel("CSV content").fill([
+    await fillImportField(page, "CSV content", [
       "date,description,expense,account,category",
       "2026-06-02,Funds Transfer HDB mortgage,450.00,UOB One,Transfer"
     ].join("\n"));
@@ -2188,7 +2190,7 @@ test.describe("import flow", () => {
     });
 
     await gotoImportsPage(page);
-    await page.getByLabel("CSV content").fill([
+    await fillImportField(page, "CSV content", [
       "date,description,expense,account,category",
       "2026-06-02,Funds Transfer HDB mortgage,450.00,UOB One,Transfer"
     ].join("\n"));
@@ -2211,8 +2213,8 @@ test.describe("import flow", () => {
     }
     await gotoImportsPage(page, "2026-08");
 
-    await page.getByLabel("Default account").selectOption({ label: "Citi Rewards - Joyce" });
-    await page.getByLabel("CSV content").fill([
+    await selectImportField(page, "Default account", { label: "Citi Rewards - Joyce" });
+    await fillImportField(page, "CSV content", [
       `"23/08/2026","CLOUDFLARE             SAN FRANCISCO USA USD 3.34 USD 3.34","-4.25","","'5000000000006349'"`,
       `"22/08/2026","HBOMax help.hbomax.com SG            SGP","-18.98","","'5000000000006349'"`,
       `"20/08/2026","SHOPEE SG MP           SINGAPORE     SGP","-7.62","","'5000000000006349'"`

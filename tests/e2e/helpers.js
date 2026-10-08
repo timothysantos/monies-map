@@ -205,3 +205,34 @@ export async function loadSettingsPage(page) {
 
   throw lastError ?? new Error("GET /api/settings-page failed");
 }
+
+// Imports keeps pasted rows and the import defaults behind "Paste rows or
+// set defaults"; these open it (when it is closed) before using a field.
+export async function openPasteRowsAndDefaults(page) {
+  const toggle = page.getByRole("button", { name: "Paste rows or set defaults" });
+  await toggle.waitFor({ state: "visible", timeout: 60_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
+export async function fillImportField(page, label, value) {
+  await openPasteRowsAndDefaults(page);
+  await page.getByLabel(label).fill(value);
+}
+
+export async function selectImportField(page, label, option) {
+  await openPasteRowsAndDefaults(page);
+  await page.getByLabel(label).selectOption(option);
+}
+
+// Recent imports starts closed on Imports; this opens it.
+export async function openRecentImports(page) {
+  const toggle = page.locator(".import-history-toggle");
+  await toggle.waitFor({ state: "visible", timeout: 60_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
