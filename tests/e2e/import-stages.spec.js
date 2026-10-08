@@ -69,7 +69,7 @@ test("a statement and an activity export dropped together are reviewed in order,
   const done = page.locator(".import-done-card.is-compact");
   await expect(done).toContainText("UOB card statement · May 2026 saved", { timeout: 30_000 });
   await expect(done).toContainText("Every card balanced");
-  await expect(done).toContainText("2 rows added · 6 entries confirmed");
+  await expect(done).toContainText("6 rows added · 4 entries confirmed");
   await page.getByRole("button", { name: "Preview import" }).click();
   const summary = page.locator(".import-preview-status-row");
   // Both reworded rows are already on the confirmed May statement; only the

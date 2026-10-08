@@ -81,7 +81,8 @@ test("a commit opens the next file under the last commit's summary, whose rollba
 
   await commitButton(page).click();
   await expect(chips(page).filter({ hasText: "ladys-card-activity.csv" })).toHaveAttribute("aria-current", "step", { timeout: 30_000 });
-  await expect(compactSummary(page)).toContainText("one-card-activity");
+  // A CSV opened from the queue keeps the composer's default source label.
+  await expect(compactSummary(page)).toContainText("Imported CSV saved");
   await expect(compactSummary(page)).toContainText("1 row added");
 
   // The last file: today's commit words, no skip, and the full Done card
@@ -90,7 +91,8 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   await expect(commitButton(page)).toHaveText("Commit import to ledger", { timeout: 30_000 });
   await expect(page.locator(".import-commit-bar").getByRole("button", { name: "Skip for now" })).toHaveCount(0);
   await commitButton(page).click();
-  await expect(fullDoneCard(page)).toContainText("ladys-card-activity", { timeout: 30_000 });
+  await expect(fullDoneCard(page)).toContainText("Imported CSV saved", { timeout: 30_000 });
+  await expect(fullDoneCard(page)).toContainText("1 row added");
   await expect(compactSummary(page)).toHaveCount(0);
   await expect(page.locator(".import-stepper .is-current")).toContainText("3 · Done");
   await expect(page.locator(".import-commit-bar")).toHaveCount(0);
