@@ -99,12 +99,12 @@ test("the import bar follows a long review, lists the batch and jumps to each bl
   const blockers = bar(page).locator(".import-blockers");
   await expect(blockers).toContainText("Before you can commit:");
   await expect(blockers.locator(".import-blocker-chip")).toHaveText([
+    // The unmapped One Card is named once, by "Map 1 account".
     "Map 1 account",
-    `${ONE_CARD} doesn't match`,
     `${LADYS_CARD} off by $42.62`
   ]);
   const commitBar = page.locator(".import-commit-bar");
-  await expect(commitBar).toContainText("3 things left");
+  await expect(commitBar).toContainText("2 things left");
 
   // The bar stays at the top while the review scrolls under it.
   await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
@@ -126,7 +126,7 @@ test("the import bar follows a long review, lists the batch and jumps to each bl
   // Mapping it removes its chip; the count follows.
   await oneCardSelect.selectOption({ label: "My One Card - Tim" });
   await expect(blockers.getByRole("button", { name: "Map 1 account" })).toHaveCount(0, { timeout: 30_000 });
-  await expect(page.locator(".import-blockers-live")).not.toContainText("3 things left");
+  await expect(page.locator(".import-blockers-live")).not.toContainText("2 things left");
 
   // Commit anyway: the statement is done and the next file opens.
   await commitBar.locator(".import-commit-button").click();
@@ -205,7 +205,7 @@ test("on a phone the import bar scrolls with the page and the commit bar stays",
   await page.locator("input[type=file]").setInputFiles(files);
   await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
   await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".import-commit-bar")).toContainText("3 things left");
+  await expect(page.locator(".import-commit-bar")).toContainText("2 things left");
 
   // Halfway down the review.
   await page.evaluate(() => {
@@ -308,10 +308,10 @@ test("J and K move between the blockers in order, and are left alone while typin
   await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
   await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
   const commitBar = page.locator(".import-commit-bar");
-  await expect(commitBar).toContainText("3 things left");
+  await expect(commitBar).toContainText("2 things left");
   // The shortcuts are named on the jump link only; desktop has no sheet.
   await expect(commitBar.getByRole("button", { name: "Jump to next" })).toHaveAttribute("title", "Next: J · Previous: K");
-  await expect(commitBar.getByRole("button", { name: "3 things left" })).toHaveCount(0);
+  await expect(commitBar.getByRole("button", { name: "2 things left" })).toHaveCount(0);
 
   const oneCardSelect = page.getByRole("combobox", { name: `Detected: ${ONE_CARD}` });
   const oneCard = page.locator(".statement-card").filter({ hasText: `${ONE_CARD} • May 2026` });
@@ -321,23 +321,23 @@ test("J and K move between the blockers in order, and are left alone while typin
   await page.keyboard.press("j");
   await expect(oneCardSelect).toBeFocused();
   await expectBelowBar(page, oneCardSelect);
-  // J again leaves the select it jumped to without choosing an option.
-  await page.keyboard.press("j");
-  await expect(oneCard).toBeFocused();
-  expect(await oneCardSelect.inputValue()).toBe(selected);
+  // J again leaves the select it jumped to without choosing an option. The
+  // unmapped One Card has no card blocker of its own.
   await page.keyboard.press("j");
   await expect(ladysCard).toBeFocused();
+  expect(await oneCardSelect.inputValue()).toBe(selected);
   await expectBelowBar(page, ladysCard);
+  await expect(oneCard).not.toBeFocused();
   // Past the last one it wraps to the first; K goes back.
   await page.keyboard.press("j");
   await expect(oneCardSelect).toBeFocused();
   await page.keyboard.press("k");
   await expect(ladysCard).toBeFocused();
   await page.keyboard.press("k");
-  await expect(oneCard).toBeFocused();
+  await expect(oneCardSelect).toBeFocused();
   // With a modifier held it is not a jump.
   await page.keyboard.press("Control+j");
-  await expect(oneCard).toBeFocused();
+  await expect(oneCardSelect).toBeFocused();
 
   // In a text field J is a letter.
   await bar(page).getByRole("button", { name: "Change" }).click();
@@ -360,7 +360,7 @@ test("on a phone things left opens a sheet of the files and blockers", async ({ 
   await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
   await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
 
-  const trigger = page.locator(".import-commit-bar").getByRole("button", { name: "3 things left" });
+  const trigger = page.locator(".import-commit-bar").getByRole("button", { name: "2 things left" });
   const sheet = page.getByRole("dialog", { name: "Import progress" });
   const focusIsInside = () => sheet.evaluate((element) => element.contains(document.activeElement));
 
@@ -372,8 +372,8 @@ test("on a phone things left opens a sheet of the files and blockers", async ({ 
   await expect(sheetChips).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
   await expect(sheetChips.first()).toHaveAttribute("aria-current", "step");
   await expect(sheet.locator(".import-blocker-chip")).toHaveText([
+    // The unmapped One Card is named once, by "Map 1 account".
     "Map 1 account",
-    `${ONE_CARD} doesn't match`,
     `${LADYS_CARD} off by $42.62`
   ]);
   await page.keyboard.press("Escape");

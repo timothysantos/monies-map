@@ -68,7 +68,8 @@ export function buildImportBlockers({
   const cardEffect = isCheckpointOnlyOpen ? "disable" : isStatement ? "ask" : null;
   const blockers = [];
 
-  if (previewModel.hasUnmappedAccounts) {
+  const isMappingAsked = previewModel.hasUnmappedAccounts;
+  if (isMappingAsked) {
     blockers.push(blocker("account-mapping", {
       label: messages.imports.blockerMapAccounts(Math.max(1, previewModel.unmappedCommitAccountNames?.length ?? 1)),
       target: { kind: "account-mapping" }
@@ -96,7 +97,11 @@ export function buildImportBlockers({
     }));
   }
   if (cardEffect) {
-    openCards.forEach((card, index) => {
+    // A card with no account yet is named once, by the "Map" chip; its own
+    // chip comes back once it is mapped. The commit question still counts it.
+    const unmappedNames = new Set(previewModel.unmappedCommitAccountNames ?? []);
+    const isNamedByMapping = (card) => isMappingAsked && (card.status === "unknown_account" || unmappedNames.has(card.accountName));
+    openCards.filter((card) => !isNamedByMapping(card)).forEach((card, index) => {
       blockers.push(blocker("statement-card", {
         id: `statement-card:${card.accountName}:${card.checkpointMonth ?? ""}`,
         effect: cardEffect,

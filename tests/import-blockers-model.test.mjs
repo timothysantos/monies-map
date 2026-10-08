@@ -79,15 +79,10 @@ const messyStatement = {
 test("a statement with an unmapped card, a card off and a row to check lists them in fixing order", () => {
   const result = blockersFor(messyStatement);
 
+  // The unmapped One Card is named once, by "Map 1 account": no "doesn't
+  // match" chip of its own while it has no account.
   assert.deepEqual(result.blockers.map(({ id, kind, effect, label, target }) => ({ id, kind, effect, label, target })), [
     { id: "account-mapping", kind: "account-mapping", effect: "disable", label: "Map 1 account", target: { kind: "account-mapping" } },
-    {
-      id: "statement-card:UOB One Card:2026-05",
-      kind: "statement-card",
-      effect: "ask",
-      label: "UOB One Card doesn't match",
-      target: { kind: "statement-card", accountName: "UOB One Card", checkpointMonth: "2026-05" }
-    },
     {
       id: "statement-card:UOB Lady's Card:2026-05",
       kind: "statement-card",
@@ -100,8 +95,9 @@ test("a statement with an unmapped card, a card off and a row to check lists the
   // Order numbers grow in the order the user should fix things.
   const orders = result.blockers.map((blocker) => blocker.order);
   assert.deepEqual(orders, [...orders].sort((left, right) => left - right));
-  assert.equal(result.remainingCount, 4);
+  assert.equal(result.remainingCount, 3);
   assert.equal(result.isCommitDisabled, true);
+  // The commit still asks about both cards, the unmapped one included.
   assert.deepEqual(result.commitQuestion, {
     kind: "statement_mismatch",
     accountNames: ["UOB One Card", LADYS.name],
@@ -110,6 +106,33 @@ test("a statement with an unmapped card, a card off and a row to check lists the
   });
   // The confirmed row and the already-covered row are matches.
   assert.deepEqual(result.matched, { count: 2, label: "2 rows matched" });
+});
+
+test("an unmapped card gets its own chip once it is mapped, or when nothing asks to map it", () => {
+  // Mapped to an account, One Card is checked like any other card.
+  const mapped = blockersFor({
+    accounts: [LADYS, PRVI, { id: "acct-one", name: "My One Card" }],
+    statementCheckpoints: [
+      { detectedAccountName: "UOB One Card", accountName: "My One Card", accountId: "acct-one", checkpointMonth: "2026-05" }
+    ],
+    statementReconciliations: [
+      { accountName: "My One Card", accountId: "acct-one", status: "mismatch", deltaMinor: 500, checkpointMonth: "2026-05" }
+    ],
+    previewRows: [row({ rowId: "one-1", accountId: "acct-one", accountName: "My One Card", statementAccountName: "UOB One Card" })]
+  });
+  assert.deepEqual(mapped.blockers.map((blocker) => blocker.label), ["My One Card off by $5.00"]);
+
+  // A statement saved without rows has no rows to map, so no "Map" chip:
+  // the unknown card keeps its own chip, and it still blocks the commit.
+  const checkpointOnly = blockersFor({
+    statementCheckpoints: [{ detectedAccountName: "UOB One Card", accountName: "UOB One Card", checkpointMonth: "2026-05" }],
+    statementReconciliations: [{ accountName: "UOB One Card", status: "unknown_account", checkpointMonth: "2026-05" }],
+    previewRows: [row({ rowId: "one-1", accountName: "UOB One Card", statementAccountName: "UOB One Card", commitStatus: "skipped" })]
+  });
+  assert.deepEqual(checkpointOnly.blockers.map(({ id, effect, label }) => ({ id, effect, label })), [
+    { id: "statement-card:UOB One Card:2026-05", effect: "disable", label: "UOB One Card doesn't match" }
+  ]);
+  assert.equal(checkpointOnly.isCommitDisabled, true);
 });
 
 test("two unmapped account names count as two accounts to map", () => {
@@ -160,7 +183,7 @@ test("a row edit the statement check has not seen asks to refresh the check firs
     { id: "statement-check", effect: "ask", label: "Refresh the statement check", target: { kind: "statement-check" } }
   );
   // Refreshing comes before the card checks it would change.
-  assert.deepEqual(result.blockers.map((blocker) => blocker.kind), ["account-mapping", "statement-check", "statement-card", "statement-card", "rows-to-check"]);
+  assert.deepEqual(result.blockers.map((blocker) => blocker.kind), ["account-mapping", "statement-check", "statement-card", "rows-to-check"]);
   assert.deepEqual(result.commitQuestion, {
     kind: "stale_check",
     message: "You changed rows after the statement check ran. Refresh the check before committing.",
