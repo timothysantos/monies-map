@@ -6,7 +6,7 @@
 import { expect, test } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 
-import { postJson, reseedDemo } from "./helpers.js";
+import { openPasteRowsAndDefaults, postJson, reseedDemo } from "./helpers.js";
 import { LADYS_CARD, ONE_CARD, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 test.beforeEach(async ({ page }) => {
@@ -341,6 +341,7 @@ test("J and K move between the blockers in order, and are left alone while typin
 
   // In a text field J is a letter.
   await bar(page).getByRole("button", { name: "Change" }).click();
+  await openPasteRowsAndDefaults(page);
   const sourceLabel = page.getByLabel("Source label");
   await sourceLabel.fill("May statement");
   await page.keyboard.press("j");
