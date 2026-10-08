@@ -55,7 +55,34 @@ Imports owns:
   A mid-cycle row posted inside an already confirmed statement period is
   skipped when that statement covers it and left out with a reason when it
   does not (DOMAIN.md, Entry Reconciliation)
-- import inbox planning at the top of the route. The inbox groups expected
+- the Bring files layout: the drop zone first, then the intake queue, then
+  the import inbox. The inbox folds to one line, "Still missing: N of M"
+  (`buildInboxChecklistProgress`, `import-inbox-model.js`), open by default
+  only while the queue is empty and no file is in review (a plain CSV in
+  column mapping counts as in review); the user's Show/Hide holds until that
+  default changes. Expanded, each bank session is its own collapsible row. A
+  queued file the intake model matched (`buildIntakeMatch`, status
+  "matched", not a duplicate) ticks off its checklist line and lowers the
+  count; there is no second matcher. A line's actions ("Use with import
+  form" fills the import defaults from that expected file and opens them;
+  "Not available" snoozes it for three days in browser storage) show on
+  hover or focus, and a tap focuses the line on touch screens. Pasted rows
+  and the defaults (source label, default account, default owner, batch
+  note) sit behind "Paste rows or set defaults", closed by default and
+  opened when a plain CSV needs mapping or by "Use with import form"; it
+  never closes by itself while open, and Start over closes it. The upload
+  status and the AI fallback consent stay outside it. Any file in review
+  folds Bring files (the stepper's Change/Hide files toggles it); a plain
+  CSV keeps its column mapping visible beside the preview. Recent imports
+  starts closed (not remembered); its commit and refresh status shows
+  whether or not it is open. Driven in `import-bring-files.spec.js`
+- page-wide file drop: while Imports is mounted, a file dropped anywhere on
+  the page goes to the drop zone's handler (`usePageFileDrop`,
+  `import-page-drop.js`) and a fixed highlight says so while dragging. A
+  file dropped on the file in review (`data-page-drop="off"` on the preview
+  card), a dialog or a popover is refused: no intake, and the browser does
+  not open the file. Non-file drags (text, elements) are left alone
+- import inbox planning. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every
   missing statement/activity file for that institution, while the review queue
   remains ordered by statement chronology and trust level. This planning must

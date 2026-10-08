@@ -1,0 +1,192 @@
+/* Bring files: the drop zone first, paste rows and defaults behind one link,
+   the Import inbox folded bank by bank, and the page-wide drop highlight.
+   Loaded with the Imports route (import-inbox.jsx), not the first screen. */
+
+.import-drop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.import-drop-grid .import-dropzone {
+  min-height: 120px;
+  align-content: center;
+}
+
+.import-paste-defaults-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+}
+
+.import-paste-defaults-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.import-paste-defaults-toggle svg.is-open {
+  transform: rotate(90deg);
+}
+
+.import-paste-defaults {
+  display: grid;
+  gap: 12px;
+}
+
+/* Import inbox: one line when folded. */
+.import-inbox-section.is-folded {
+  gap: 0;
+}
+
+.import-inbox-header {
+  align-items: center;
+}
+
+.import-inbox-fold-toggle {
+  flex: none;
+}
+
+.import-inbox-body {
+  display: grid;
+  gap: 14px;
+}
+
+.import-inbox-body > .lede {
+  margin: 0;
+}
+
+/* Each bank folds to its name and what is still missing there. */
+.import-inbox-session {
+  gap: 0;
+}
+
+.import-inbox-session > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.import-inbox-session > summary::-webkit-details-marker {
+  display: none;
+}
+
+.import-inbox-session > summary > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+}
+
+.import-inbox-session > summary > div::before {
+  content: "";
+  grid-row: 1 / span 2;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 160ms ease;
+}
+
+.import-inbox-session[open] > summary > div::before {
+  transform: rotate(45deg);
+}
+
+.import-inbox-session-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.import-inbox-session-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* A line a queued file matches is ticked off. */
+.import-inbox-file-row.is-ticked {
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
+}
+
+.import-inbox-file-tick {
+  flex: none;
+  color: var(--pastel-mint-ink);
+}
+
+.import-inbox-file-row .import-inbox-file-main {
+  flex: 1 1 auto;
+}
+
+.import-inbox-file-row:focus {
+  outline: none;
+}
+
+.import-inbox-file-row:focus-visible {
+  outline: 2px solid var(--pastel-sky-ink);
+  outline-offset: 2px;
+}
+
+/* A line's actions show on hover or focus, not on every line. */
+.import-inbox-file-actions {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.import-inbox-file-row:hover .import-inbox-file-actions,
+.import-inbox-file-row:focus-within .import-inbox-file-actions {
+  opacity: 1;
+}
+
+/* Touch: a tap focuses the line and shows its actions. */
+@media (hover: none) {
+  .import-inbox-file-actions {
+    display: none;
+  }
+
+  .import-inbox-file-row:focus-within .import-inbox-file-actions {
+    display: flex;
+  }
+}
+
+/* A file dragged over the page: show that the whole page takes it. */
+.import-page-drop-hint {
+  position: fixed;
+  inset: 12px;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--positive);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pastel-mint) 78%, transparent);
+  color: var(--pastel-mint-ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* Phone: the folded inbox and each bank stay one line with their toggle
+   or pill beside them. */
+@media (max-width: 620px) {
+  .import-inbox-section .import-inbox-header,
+  .import-inbox-sessions .import-inbox-session > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 720px) {
+  .import-drop-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-drop-grid .import-dropzone {
+    min-height: 0;
+  }
+}

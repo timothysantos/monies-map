@@ -230,8 +230,22 @@ Rules:
 
 - `ImportsPanel` owns the stage: Review while a preview exists, Done after a
   commit until the next file or Close, otherwise Bring files
-- a parsed file (statement PDF, bank export) folds Bring files to one line
-  while it is in review; pasted CSV keeps the form and column mapping
+- Bring files is ordered drop zone, intake queue, import inbox. Any file in
+  review folds Bring files to one line; a plain CSV keeps its column mapping
+  (`isMappingNeeded`: rows to map and the generic CSV parser) beside the
+  preview
+- the inbox folds to "Still missing: N of M" and each bank to one row
+  (`import-inbox-model.js`: `buildInboxChecklistProgress` ticks off lines
+  from the intake model's matches, `isInboxOpenByDefault`, `nextFoldState`
+  behind `useFollowingFold`)
+- pasted rows and the import defaults sit behind "Paste rows or set
+  defaults", opened when a plain CSV needs mapping; upload status and the AI
+  consent stay beside the drop zone
+- a file dropped anywhere on the page goes to the drop zone's handler
+  (`usePageFileDrop`, `import-page-drop.js`), except on the file in review
+  (`data-page-drop="off"`), dialogs and popovers
+- Recent imports starts closed; its status line shows either way
+- the Bring files styles load with the route (`import-bring-files.css`)
 - an official statement is reviewed by `StatementReview` in
   `import-preview-review.jsx`: one header, one section per card with its
   outcome (`getStatementCardStatus`), fixes, read-only rows and the

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { loadSplitsPage, openRecentImports, postJson, reseedDemo } from "./helpers";
 
 const month = "2026-05";
 const sourceLabel = "Rollback linked split";
@@ -55,6 +55,7 @@ test("rolling back an import brings the linked split back to the entry's restore
   await expect(splitCard(page)).toContainText("$17.50");
 
   await page.getByRole("link", { name: "Imports" }).click();
+  await openRecentImports(page);
   const importCard = page.locator(".import-card").filter({ hasText: sourceLabel });
   await expect(importCard).toBeVisible({ timeout: 60_000 });
   await importCard.getByRole("button", { name: "Rollback import" }).click();
@@ -81,6 +82,7 @@ test("a rollback that would move a split in a simplified settlement is refused i
   await postJson(page, "/api/splits/checkpoints/create", { viewerPersonId: "person-tim", date: `${month}-20`, currency: "SGD" });
 
   await page.goto(`/imports?view=person-tim&month=${month}`);
+  await openRecentImports(page);
   const importCard = page.locator(".import-card").filter({ hasText: sourceLabel });
   await expect(importCard).toBeVisible({ timeout: 60_000 });
   await importCard.getByRole("button", { name: "Rollback import" }).click();

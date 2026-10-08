@@ -507,6 +507,8 @@ const SHOTS = [
         data: { name: SAMPLE_CARD_ACCOUNT, institution: "UOB", kind: "credit_card", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: serene ?? null, isJoint: false }
       });
       await open(page, `/imports?view=household&month=${MONTH}`);
+      // The import defaults sit behind "Paste rows or set defaults".
+      await page.getByRole("button", { name: "Paste rows or set defaults" }).click();
       await page.getByLabel("Default account").selectOption({ label: `${SAMPLE_CARD_ACCOUNT} - Serene` });
       await page.locator("input[type=file]").first().setInputFiles(await sampleCardExport());
       await page.getByText(/ready for review/).first().waitFor({ timeout: 60_000 });
@@ -522,6 +524,8 @@ const SHOTS = [
       await page.getByRole("button", { name: "Commit import to ledger" }).first().click();
       await page.getByText(/committed successfully/).first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(800);
+      // Recent imports starts closed.
+      await page.locator(".import-history-toggle").click();
       await scrollToLocator(page, page.getByRole("heading", { name: "Recent imports", exact: true }), 20);
       await capture("imports-committed");
       // The showcase's own imports are stamped later in the seed month, so

@@ -48,6 +48,24 @@ export function ImportRecentHistorySection({
           <ChevronRight size={18} />
         </span>
       </button>
+      {/* Commit and refresh status shows whether or not the list is open. */}
+      {showGenericRefreshStatus ? (
+        <div className="import-history-refreshing" role="status" aria-live="polite">
+          <span className="app-spinner" aria-hidden="true" />
+          <span>{messages.imports.recentRefreshing}</span>
+        </div>
+      ) : null}
+      {recentImportStatus ? (
+        <div className={`import-history-refreshing is-${recentImportStatus.tone}`} role="status" aria-live="polite">
+          {recentImportStatus.tone === "active" ? <span className="app-spinner" aria-hidden="true" /> : null}
+          <span>{recentImportStatus.message}</span>
+          {recentImportStatus.diagnosticHref ? (
+            <a href={recentImportStatus.diagnosticHref} className="inline-link">
+              {messages.imports.openErrorDiagnostics}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
       {recentImportsOpen ? (
         <div className="import-history-groups">
           <label className="entries-filter import-history-filter">
@@ -69,23 +87,6 @@ export function ImportRecentHistorySection({
               onPreviousPage={onPreviousPage}
               onNextPage={onNextPage}
             />
-          ) : null}
-          {showGenericRefreshStatus ? (
-            <div className="import-history-refreshing" role="status" aria-live="polite">
-              <span className="app-spinner" aria-hidden="true" />
-              <span>{messages.imports.recentRefreshing}</span>
-            </div>
-          ) : null}
-          {recentImportStatus ? (
-            <div className={`import-history-refreshing is-${recentImportStatus.tone}`} role="status" aria-live="polite">
-              {recentImportStatus.tone === "active" ? <span className="app-spinner" aria-hidden="true" /> : null}
-              <span>{recentImportStatus.message}</span>
-              {recentImportStatus.diagnosticHref ? (
-                <a href={recentImportStatus.diagnosticHref} className="inline-link">
-                  {messages.imports.openErrorDiagnostics}
-                </a>
-              ) : null}
-            </div>
           ) : null}
           {recentImportGroups.map((group) => (
             <section key={group.date} className="import-history-group">

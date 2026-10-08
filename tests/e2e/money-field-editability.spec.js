@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  fillImportField,
   gotoPageAfterApi,
   loadEntriesPage,
   loadImportsPage,
@@ -8,7 +9,8 @@ import {
   loadSettingsPage,
   loadSplitsPage,
   postJson,
-  reseedDemo
+  reseedDemo,
+  selectImportField
 } from "./helpers";
 
 function formatMoney(minor) {
@@ -274,12 +276,11 @@ test.describe("money field editability", () => {
       () => page.getByRole("heading", { name: "Import and certify", exact: true })
     );
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("Source label")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Paste rows or set defaults" })).toBeVisible({ timeout: 30_000 });
 
-    await page.getByLabel("Source label").fill(`Playwright import ${Date.now()}`);
-    await page.getByLabel("Default owner").selectOption("Tim");
-    await page.getByLabel("CSV content").fill(
+    await fillImportField(page, "Source label", `Playwright import ${Date.now()}`);
+    await selectImportField(page, "Default owner", "Tim");
+    await fillImportField(page, "CSV content",
       [
         "category,account,note,amount,date,description",
         "Groceries,UOB One,Playwright import row,-111.11,2025-10-17,Playwright groceries import"
