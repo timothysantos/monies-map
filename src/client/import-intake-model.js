@@ -124,17 +124,19 @@ export function describeIntakeSource(item) {
 
 // The order files are best reviewed in: statements before activity (a
 // confirmed statement then decides which activity rows are already on it),
-// older months first, duplicates last.
+// older months first, duplicates last. A file skipped for now ("Skip for
+// now", `skipOrder`) goes after every file not skipped, in skip order.
 export function orderIntakeQueue(items) {
   const rank = (item) => [
     item.duplicate ? 1 : 0,
+    item.skipOrder ?? 0,
     item.sourceType === "pdf" ? 0 : 1,
     getIntakeItemStartDate(item)
   ];
   return [...items].sort((left, right) => {
-    const [leftDuplicate, leftKind, leftDate] = rank(left);
-    const [rightDuplicate, rightKind, rightDate] = rank(right);
-    return leftDuplicate - rightDuplicate || leftKind - rightKind || leftDate.localeCompare(rightDate);
+    const [leftDuplicate, leftSkip, leftKind, leftDate] = rank(left);
+    const [rightDuplicate, rightSkip, rightKind, rightDate] = rank(right);
+    return leftDuplicate - rightDuplicate || leftSkip - rightSkip || leftKind - rightKind || leftDate.localeCompare(rightDate);
   });
 }
 

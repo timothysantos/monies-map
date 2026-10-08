@@ -42,10 +42,37 @@ export function ImportStepper({ stage, bringSummary, isBringOpen, canCollapseBri
 }
 
 // What the last commit did, card by card, with its rollback and the next
-// file in the queue.
-export function ImportDoneCard({ summary, nextItem, onReviewNext, onRollback, onClose }) {
+// file in the queue. `compact` is the short form kept above the next
+// file's review while a batch goes on: the title, how the cards closed, the
+// rows in total and the rollback.
+export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = undefined, onRollback, onClose = undefined, compact = false }) {
   // Re-render when money is revealed or hidden.
   useMoneyPrivacy();
+  const rollback = onRollback ? (
+    <DeleteRowButton
+      label={summary.sourceLabel}
+      destructive={false}
+      buttonClassName="subtle-action import-done-rollback"
+      triggerLabel={messages.imports.doneRollback}
+      confirmLabel={messages.imports.rollbackConfirm}
+      prompt={<>{messages.imports.rollbackDetail(summary.sourceLabel)}</>}
+      onConfirm={onRollback}
+    >
+      {messages.imports.doneRollback}
+    </DeleteRowButton>
+  ) : null;
+  if (compact) {
+    return (
+      <section className="import-done-card is-compact" aria-label={summary.title}>
+        <div className="import-done-head">
+          <h3>{summary.title}</h3>
+          {summary.statusLabel ? <span className={`pill ${summary.statusTone}`}>{summary.statusLabel}</span> : null}
+          <span className="import-done-compact-detail">{messages.imports.doneRowsDetail(totalDoneCounts(summary))}</span>
+          {rollback}
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="import-done-card" aria-label={summary.title}>
       <div className="import-done-head">
@@ -66,19 +93,7 @@ export function ImportDoneCard({ summary, nextItem, onReviewNext, onRollback, on
         <p className="lede compact">{messages.imports.doneRowsDetail(summary.counts)}</p>
       )}
       <div className="import-done-actions">
-        {onRollback ? (
-          <DeleteRowButton
-            label={summary.sourceLabel}
-            destructive={false}
-            buttonClassName="subtle-action import-done-rollback"
-            triggerLabel={messages.imports.doneRollback}
-            confirmLabel={messages.imports.rollbackConfirm}
-            prompt={<>{messages.imports.rollbackDetail(summary.sourceLabel)}</>}
-            onConfirm={onRollback}
-          >
-            {messages.imports.doneRollback}
-          </DeleteRowButton>
-        ) : <span />}
+        {rollback ?? <span />}
         <div className="import-done-next">
           <button type="button" className="subtle-action" onClick={onClose}>{messages.imports.doneClose}</button>
           {nextItem ? (
@@ -90,6 +105,18 @@ export function ImportDoneCard({ summary, nextItem, onReviewNext, onRollback, on
       </div>
     </section>
   );
+}
+
+// Rows added and entries confirmed across every card of a statement, or of
+// an activity file.
+function totalDoneCounts(summary) {
+  if (!summary.cards.length) {
+    return summary.counts;
+  }
+  return summary.cards.reduce((total, card) => ({
+    added: total.added + card.counts.added,
+    confirmed: total.confirmed + card.counts.confirmed
+  }), { added: 0, confirmed: 0 });
 }
 
 // The statement's own balance in bank terms: what a card owes, or a credit.

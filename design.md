@@ -256,10 +256,70 @@ Rules:
 - `ImportCommitBar` (`import-commit-bar.jsx`) is the only commit control and
   carries the commit summary (`.import-preview-status-row`) and the commit
   question
+- the commit rules live in one pure module, `buildImportBlockers`
+  (`import-blockers-model.js`). It reads the preview model's facts
+  (`import-preview-model.js` no longer decides) and returns
+  `{ blockers, remainingCount, isCommitDisabled, commitQuestion, matched }`.
+  A blocker is `{ id, kind, effect, label, target, order }`: `effect` is
+  `disable` (commit off), `ask` (commit asks first) or `preview` (a CSV
+  column still to map); `order` is the fixing order (columns, accounts,
+  card accounts, categories, statement check, cards, rows to check, nothing
+  to import). The chips, the commit bar's "things left", the disabled
+  button and the popover all read it, so they cannot disagree; a matrix test
+  pins it to the rules it replaced
+- `ImportBatchBar` (`import-batch-bar.jsx`) wraps `ImportStepper` in a
+  `nav` with this batch's file chips (`buildImportBatchFiles`,
+  `import-batch-model.js`: done this session, the file in review, then
+  the queue in review order) and the blocker chips. It sticks to the top at
+  768 px and wider while a batch is in progress (a file queued, in review
+  or just committed), below the sticky environment banner; on a phone it
+  scrolls with the page and the commit bar is the only sticky bar. It keeps
+  `--import-sticky-offset` on the panel so jump targets carry
+  `scroll-margin-top` below it
+- a blocker's `target` is resolved by `jumpToImportTarget`
+  (`import-jump.js`) against `data-import-target` markers on the
+  sections that fix it (account mapping, a statement card, the Refresh
+  check button, statement details, unknown categories, the column mapping
+  grid, the preview); a row to check is the first
+  `tr[data-commit-status="needs_review"]`, and a statement opens its row
+  editor first. The jump scrolls (smooth unless reduced motion is set) and
+  focuses the control
+- a waiting file chip opens its file like the queue's Review button; when
+  the file in review has changes that would be dropped (row edits,
+  mappings, statement fixes the user approved or undid; not fixes "Fix it
+  for me" applied) it asks first in a popover, never a browser dialog
 - the intake queue keeps the rest of a drop after a commit, orders it with
   `orderIntakeQueue` and counts covered rows with `describeIntakeCoverage`
   (`import-intake-model.js`); the Done card (`buildImportDoneSummary`,
   `import-done-model.js`) offers the next queued file
+- moving through a batch lives in `import-batch-model.js`:
+  `findNextIntakeItem` (the next file waiting, never the one in review or a
+  copy), `skipIntakeItem` (gives the item a `skipOrder`, which
+  `orderIntakeQueue` ranks after every file not skipped) and
+  `describeCommitLabel` ("Commit and open {file}" while a file waits). The
+  panel opens the next file from the render after the commit's reset
+  (`pendingNextItemId`), so it starts from a clean form, and keeps
+  `lastCommitSummary` while a file of the batch is open: `ImportDoneCard`
+  then renders `compact` (title, status, rows in total, rollback) above the
+  review, and in full only when nothing is open. Opening a queued file
+  (`handleLoadIntakeItem`) keeps the summary; a single dropped file clears it
+- the commit is saved before the refresh: a failed commit returns early with
+  the review intact; the refresh after it goes through the shell's
+  `runBackgroundRefresh` (prop from `App.jsx`)
+- `import-blocker-keys.js` holds the J/K rules (`readBlockerKey`,
+  `pickAdjacentBlocker`) and a document `keydown` listener
+  (`useImportBlockerKeys`). The cursor is the `order` of the blocker last
+  jumped to (chips and "Jump to next" set it too), so the walk carries on
+  after that blocker is fixed. A field the jump itself focused (an account
+  select) is not treated as typing, so the next press moves on; the key's
+  default is prevented so the select keeps its value
+- `ImportAskFirst` (`import-batch-bar.jsx`) is the one ask-first popover for
+  the waiting chips and "Skip for now"; `inline` renders it inside the phone
+  sheet, which traps focus
+- `ImportProgressSheet` (`import-batch-bar.jsx`) is the phone's import bar,
+  built on `EntryMobileSheet`. The panel closes it before a chip's action
+  and runs the action in a timeout after Radix FocusScope hands focus back
+  to the trigger, so a jump keeps its focus
 - "Fix it for me" is a per-viewer preference
   (`statement-fix-preference.js`, browser storage); proven fixes are applied
   once per review, so an Undo is not re-applied

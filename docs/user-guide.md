@@ -414,8 +414,20 @@ receipt button adds a shared expense.
 ### What you see
 
 - **Steps**: **1 · Bring files**, **2 · Review**, **3 · Done**. A finished
-  step shrinks to one line. While a file is in review, Bring files shrinks
-  too.
+  step shrinks to one line, and while a file is in review Bring files
+  shrinks too. While you work through files, the steps stay at
+  the top of the screen on a computer or tablet (on a phone they scroll with
+  the page), with two more rows under them:
+  - **Your files**: one chip per file you brought this time, in the order to
+    review them. A ticked chip is done, the outlined one is in review, and
+    **File 2 of 4** says where you are. Select a waiting file to open it; if
+    you changed rows or approved fixes in the file in review, the app asks
+    first, because opening another file drops those changes.
+  - **Before you can commit:** what still needs you in the file in review,
+    in the order to fix it: accounts to map, cards that don't match the
+    statement (with the amount when money totals are shown), rows to check.
+    Select one to go straight to it. A green chip counts the rows already
+    matched to your entries.
 - **Import and certify**: comes first. Drop or select your files here. A
   statement PDF or a bank export goes straight to Review; a plain CSV first
   asks you to match its columns.
@@ -466,12 +478,27 @@ receipt button adds a shared expense.
 - **Preview import**, **Commit import to ledger**, **Start over**: see
   [Import a bank statement](#import-a-bank-statement). The commit button
   stays in view at the bottom of the review, with what the commit will do.
+  While something still needs you it says how many things are left;
+  **Jump to next** takes you to the first one. On a computer, press **J**
+  for the next thing to fix and **K** for the previous one (not while you
+  are typing in a field).
+- **Commit and open** a file: while another file waits, the commit button
+  names it. After the commit that file opens straight away, with a short
+  summary of the file you just committed above it and its **Roll back this
+  import**. The last file's button keeps its usual words, and the full
+  **Done** step shows when it is committed.
+- **Skip for now**: while another file waits, moves the file in review to
+  the end of your files and opens the next one. Reopen it from its chip
+  whenever you like; you don't need the file again. If you changed rows or
+  approved fixes, the app asks first, because skipping drops those changes.
 - **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
 
 Imports is under the **•••** button. Everything works the same, one column
-wide; dropping several files at once is easiest on a computer.
+wide; dropping several files at once is easiest on a computer. Tap the count of
+things left on the commit bar (for example **2 things left**) to see your files and what still needs you
+in one sheet; tap a thing to fix to go straight to it, or a file to open it.
 
 ## Settings
 
@@ -642,12 +669,15 @@ words.
    is chosen.
    ![The file names a card the app does not know yet: choose the account](/faq/guide/desktop/thumbs/imports-mapping.webp)
 5. Review the preview ([Read the import preview](#read-the-import-preview)).
-   Fix anything under **Exceptions to resolve**.
+   Fix anything under **Exceptions to resolve**. The chips under
+   **Before you can commit:** at the top, or **Jump to next** beside the
+   commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
    batch appears under **Recent imports**. The **Done** step says what
    changed on each card (rows added, entries confirmed or moved, entries left
-   for the next statement), with **Roll back this import**, and offers
-   **Review next** when more files are queued.
+   for the next statement), with **Roll back this import**. When more
+   files are queued the button reads **Commit and open** the next file, which
+   opens after the commit under a short summary of the one you committed.
 
 ![A bank export turned into preview rows, ready to commit](/faq/guide/desktop/thumbs/imports-preview.webp)
 

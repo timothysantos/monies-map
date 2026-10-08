@@ -425,7 +425,7 @@ function StatementAccountMapping({
   }
 
   return (
-    <div className="import-warning import-warning-action">
+    <div className="import-warning import-warning-action" data-import-target="account-mapping">
       <strong>{unknownPreviewAccountNames.length ? messages.imports.unknownAccounts : messages.imports.accountMappingTitle}</strong>
       <p className="lede compact">{messages.imports.accountMappingDetail}</p>
       <div className="statement-account-map-grid">
@@ -468,7 +468,7 @@ function formatDuplicateMatch(match) {
 
 function UnknownCategories({ categoryNames, unknownCategoryMode }) {
   return (
-    <div className="import-warning import-warning-attention">
+    <div className="import-warning import-warning-attention" data-import-target="unknown-categories">
       <strong>{messages.imports.unknownCategories}</strong>
       <div className="pill-row dense">
         {categoryNames.map((categoryName) => (
@@ -1467,7 +1467,7 @@ function StatementCheckpointDrafts({
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
 
   return (
-    <div className="import-warning import-warning-review">
+    <div className="import-warning import-warning-review" data-import-target="statement-details">
       <strong>{messages.imports.statementCheckpointsTitle(statementCheckpoints.length)}</strong>
       <p className="lede compact">{messages.imports.statementCheckpointsDetail(statementCheckpoints.length)}</p>
       {hasDuplicateCheckpointAccounts ? (
@@ -1645,7 +1645,7 @@ function StatementReview({
         </div>
         <div className="statement-review-actions">
           <span className={`pill ${overall.tone}`}>{overall.label}</span>
-          <button type="button" className="subtle-action" onClick={onRefreshStatementReconciliation} disabled={isSubmitting}>
+          <button type="button" className="subtle-action" data-import-target="statement-check" onClick={onRefreshStatementReconciliation} disabled={isSubmitting}>
             {messages.imports.statementReconciliationRefresh}
           </button>
           {!needsStatementAccountMapping && accountMapping ? (
@@ -1743,7 +1743,12 @@ function StatementCardSection({
   const confirmedCount = rows.filter((row) => row.reconciliationTargetTransactionId).length;
 
   return (
-    <article className={`import-card statement-reconciliation-row statement-card ${isOpen ? "is-open" : "is-collapsed"}`} aria-label={reconciliation.accountName}>
+    <article
+      className={`import-card statement-reconciliation-row statement-card ${isOpen ? "is-open" : "is-collapsed"}`}
+      aria-label={reconciliation.accountName}
+      data-import-target="statement-card"
+      data-account-name={reconciliation.accountName}
+    >
       <div className="statement-reconciliation-card-head statement-card-head">
         <div className="statement-card-title">
           <span className={`pill ${status.tone}`}>{status.label}</span>

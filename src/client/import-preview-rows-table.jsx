@@ -147,7 +147,7 @@ function PreviewRowsTable({
             const showReviewDetails = Boolean(duplicateMatch || row.commitStatus === "needs_review" || row.commitStatusReason);
             return (
               <Fragment key={row.rowId}>
-                <tr className={duplicateMatch ? "import-preview-row-duplicate" : ""}>
+                <tr className={duplicateMatch ? "import-preview-row-duplicate" : ""} data-commit-status={row.commitStatus}>
                   <td>{row.rowIndex}</td>
                   <td>
                     <div className="import-row-actions">

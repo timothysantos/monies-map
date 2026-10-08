@@ -2041,6 +2041,7 @@ export function App() {
           categories={categories}
           people={appShell.household.people}
           onRefresh={(options) => refreshCurrentImportsPage(options)}
+          runBackgroundRefresh={runBackgroundRefresh}
         />
       );
     }
