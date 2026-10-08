@@ -529,6 +529,10 @@ export const messages = {
     blockerDuplicateColumn: (field) => `Map ${field} to one column only`,
     blockerThingsLeft: (count) => `${countOf(count, "thing")} left`,
     blockerJumpNext: "Jump to next",
+    blockerJumpKeys: "Next: J · Previous: K",
+    // Moving through the batch from the commit bar.
+    commitAndOpen: (label) => `Commit and open ${label}`,
+    skipForNow: "Skip for now",
     doneTitle: (title) => `${title} saved`,
     doneAllBalanced: "Every card balanced",
     doneSavedWithDifference: (count) => `${countOf(count, "card")} saved with a difference`,

@@ -40,6 +40,43 @@ export function buildImportBatchFiles({ committedFiles, currentFile, queue, acti
   return { files, index, total: files.length };
 }
 
+/**
+ * The file that opens after the one in review is committed or skipped: the
+ * first one waiting in review order. Copies of a file already queued are
+ * never opened.
+ *
+ * @param {object[]} queue the intake queue items
+ * @param {string | null} activeItemId the queue item in review, if any
+ */
+export function findNextIntakeItem(queue, activeItemId) {
+  return orderIntakeQueue(queue).find((item) => !item.duplicate && item.id !== activeItemId);
+}
+
+/**
+ * "Skip for now": the queue with `itemId` sent after every other file
+ * waiting. The item keeps its parsed rows, so it reopens without the file.
+ * Nothing is saved; the queue only lives for this visit to the page.
+ *
+ * @param {object[]} queue
+ * @param {string} itemId
+ * @returns {object[]} a new queue, or `queue` itself when the item is not in it
+ */
+export function skipIntakeItem(queue, itemId) {
+  if (!queue.some((item) => item.id === itemId)) {
+    return queue;
+  }
+  const skipOrder = Math.max(0, ...queue.map((item) => item.skipOrder ?? 0)) + 1;
+  return queue.map((item) => (item.id === itemId ? { ...item, skipOrder } : item));
+}
+
+/**
+ * The commit button's words: it names the next file it will open while one
+ * waits ("Commit and open UOB cards May"); the last file keeps its own.
+ */
+export function describeCommitLabel({ commitLabel, nextItem }) {
+  return nextItem ? messages.imports.commitAndOpen(describeIntakeItemLabel(nextItem)) : commitLabel;
+}
+
 /** A queued file's short label. */
 export function describeIntakeItemLabel(item) {
   return describeImportFileLabel({
