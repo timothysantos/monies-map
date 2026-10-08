@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { EntryMobileSheet } from "./entry-mobile-sheet";
 import "./import-review.css";
 
 // The import bar: the three steps, one chip per file of this session's
@@ -54,7 +55,7 @@ export function ImportBatchBar({
               <ul className="import-blocker-list" aria-labelledby="import-blockers-title">
                 {blockers.blockers.map((blocker) => (
                   <li key={blocker.id}>
-                    <button type="button" className={`import-blocker-chip is-${blocker.effect}`} onClick={() => onJump(blocker.target)}>
+                    <button type="button" className={`import-blocker-chip is-${blocker.effect}`} onClick={() => onJump(blocker)}>
                       {blocker.label}
                     </button>
                   </li>
@@ -73,8 +74,10 @@ export function ImportBatchBar({
   );
 }
 
-function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, onOpenFile, onShowCurrentFile, onShowDoneFile }) {
-  const [isAsking, setIsAsking] = useState(false);
+// One file of the batch: a done file goes to its summary, the file in
+// review to its review, a waiting file opens. `inline` keeps the ask-first
+// popover inside the phone sheet, which holds focus inside itself.
+function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = false, onOpenFile, onShowCurrentFile, onShowDoneFile }) {
   if (file.state === "done") {
     return (
       <button
@@ -97,46 +100,133 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, onOpenFile, o
       </button>
     );
   }
-  const chip = (
-    <button
-      type="button"
-      className="import-file-chip is-waiting"
-      title={file.title}
-      aria-label={messages.imports.batchFileWaiting(file.label)}
-      onClick={hasUnsavedReviewWork ? undefined : () => onOpenFile(file.item)}
-    >
-      <span>{file.label}</span>
-    </button>
-  );
-  if (!hasUnsavedReviewWork) {
-    return chip;
-  }
   // Opening another file drops the row edits and fixes of the one in
   // review, so it asks first, like the commit button does.
   return (
+    <ImportAskFirst
+      question={hasUnsavedReviewWork ? messages.imports.batchSwitchWarning(file.title) : null}
+      inline={inline}
+      onConfirm={() => onOpenFile(file.item)}
+    >
+      {({ onClick }) => (
+        <button
+          type="button"
+          className="import-file-chip is-waiting"
+          title={file.title}
+          aria-label={messages.imports.batchFileWaiting(file.label)}
+          onClick={onClick}
+        >
+          <span>{file.label}</span>
+        </button>
+      )}
+    </ImportAskFirst>
+  );
+}
+
+/**
+ * Runs `onConfirm` straight away, or, with a `question`, asks first in a
+ * popover (never a browser dialog): Cancel keeps the review as it is, "Open
+ * anyway" goes on. `children` renders the trigger button from the click
+ * handler it is given.
+ *
+ * @param {{ question: string | null, inline?: boolean, onConfirm: () => void, children: (props: { onClick: (() => void) | undefined }) => import("react").ReactElement }} props
+ */
+export function ImportAskFirst({ question, inline = false, onConfirm, children }) {
+  const [isAsking, setIsAsking] = useState(false);
+  if (!question) {
+    return children({ onClick: onConfirm });
+  }
+  const content = (
+    <Popover.Content className="delete-popover import-file-switch-warning" sideOffset={8} align="start">
+      <p>{question}</p>
+      <div className="delete-popover-actions">
+        <Popover.Close asChild>
+          <button type="button" className="subtle-action">{messages.imports.batchSwitchCancel}</button>
+        </Popover.Close>
+        <button
+          type="button"
+          className="subtle-action"
+          onClick={() => {
+            setIsAsking(false);
+            onConfirm();
+          }}
+        >
+          {messages.imports.batchSwitchConfirm}
+        </button>
+      </div>
+    </Popover.Content>
+  );
+  return (
     <Popover.Root open={isAsking} onOpenChange={setIsAsking}>
-      <Popover.Trigger asChild>{chip}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content className="delete-popover import-file-switch-warning" sideOffset={8} align="start">
-          <p>{messages.imports.batchSwitchWarning(file.title)}</p>
-          <div className="delete-popover-actions">
-            <Popover.Close asChild>
-              <button type="button" className="subtle-action">{messages.imports.batchSwitchCancel}</button>
-            </Popover.Close>
-            <button
-              type="button"
-              className="subtle-action"
-              onClick={() => {
-                setIsAsking(false);
-                onOpenFile(file.item);
-              }}
-            >
-              {messages.imports.batchSwitchConfirm}
-            </button>
-          </div>
-        </Popover.Content>
-      </Popover.Portal>
+      <Popover.Trigger asChild>{children({ onClick: undefined })}</Popover.Trigger>
+      {inline ? content : <Popover.Portal>{content}</Popover.Portal>}
     </Popover.Root>
+  );
+}
+
+// The phone's view of the import bar, opened from the commit bar's "{n}
+// things left": the batch's file chips and the blockers, in the shared
+// mobile sheet. The panel closes the sheet before it runs a chip's action,
+// so a jump lands after focus has come back from the sheet.
+export function ImportProgressSheet({
+  batch,
+  doneImportId,
+  hasUnsavedReviewWork,
+  blockers,
+  onClose,
+  onOpenFile,
+  onShowCurrentFile,
+  onShowDoneFile,
+  onJump
+}) {
+  return (
+    <EntryMobileSheet
+      title={messages.imports.batchBarLabel}
+      description={messages.imports.blockerThingsLeft(blockers.remainingCount)}
+      saveLabel={messages.common.close}
+      isSaveDisabled
+      onSave={onClose}
+      onClose={onClose}
+      footerContent={<></>}
+    >
+      <div className="import-progress-sheet">
+        {batch.total ? (
+          <section className="import-progress-sheet-section">
+            <span className="import-blockers-title" id="import-progress-files-title">{messages.imports.batchFilesLabel}</span>
+            <ul className="import-file-chips" aria-labelledby="import-progress-files-title">
+              {batch.files.map((file) => (
+                <li key={file.id}>
+                  <ImportFileChip
+                    file={file}
+                    canShowDone={file.state === "done" && Boolean(doneImportId) && file.importId === doneImportId}
+                    hasUnsavedReviewWork={hasUnsavedReviewWork}
+                    inline
+                    onOpenFile={onOpenFile}
+                    onShowCurrentFile={onShowCurrentFile}
+                    onShowDoneFile={onShowDoneFile}
+                  />
+                </li>
+              ))}
+            </ul>
+            <span className="import-file-position">{messages.imports.batchFilePosition(batch.index, batch.total)}</span>
+          </section>
+        ) : null}
+        {blockers.blockers.length ? (
+          <section className="import-progress-sheet-section">
+            <span className="import-blockers-title" id="import-progress-blockers-title">{messages.imports.blockersTitle}</span>
+            <ul className="import-blocker-list" aria-labelledby="import-progress-blockers-title">
+              {blockers.blockers.map((blocker) => (
+                <li key={blocker.id}>
+                  <button type="button" className={`import-blocker-chip is-${blocker.effect}`} onClick={() => onJump(blocker)}>
+                    {blocker.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
+    </EntryMobileSheet>
   );
 }
 

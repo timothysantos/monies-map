@@ -2,12 +2,15 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import "./import-review.css";
 import { messages } from "./copy/en-SG";
+import { ImportAskFirst } from "./import-batch-bar";
 
 // The one commit control of an import preview. It stays in view at the
 // bottom of the review, says what the commit will do, and asks first when
 // the statement does not close or its check is out of date. While
 // blockers remain (import-blockers-model.js) it says how many, with a jump
-// to the first.
+// to the first (J and K step through them, import-blocker-keys.js). On a
+// phone the count opens the import progress sheet. While another file
+// waits, "Skip for now" sends this one to the end of the queue.
 export function ImportCommitBar({
   previewRows,
   statementCheckpointCount = 0,
@@ -19,6 +22,8 @@ export function ImportCommitBar({
   commitWarning,
   remainingCount = 0,
   onJumpToNext,
+  onShowRemaining,
+  skip,
   onCommit,
   onStartOver
 }) {
@@ -49,9 +54,13 @@ export function ImportCommitBar({
       </p>
       {remainingCount && onJumpToNext ? (
         <span className="import-commit-bar-left">
-          {messages.imports.blockerThingsLeft(remainingCount)}
+          {onShowRemaining ? (
+            <button type="button" className="subtle-action import-commit-bar-remaining" aria-haspopup="dialog" onClick={onShowRemaining}>
+              {messages.imports.blockerThingsLeft(remainingCount)}
+            </button>
+          ) : messages.imports.blockerThingsLeft(remainingCount)}
           {" · "}
-          <button type="button" className="subtle-action import-commit-bar-jump" onClick={onJumpToNext}>
+          <button type="button" className="subtle-action import-commit-bar-jump" title={messages.imports.blockerJumpKeys} onClick={onJumpToNext}>
             {messages.imports.blockerJumpNext}
           </button>
         </span>
@@ -61,6 +70,15 @@ export function ImportCommitBar({
           <button type="button" className="subtle-action" onClick={onStartOver} disabled={isSubmitting}>
             {messages.imports.startOver}
           </button>
+        ) : null}
+        {skip ? (
+          <ImportAskFirst question={skip.question} onConfirm={skip.onSkip}>
+            {({ onClick }) => (
+              <button type="button" className="subtle-action import-commit-bar-skip" disabled={isSubmitting} onClick={onClick}>
+                {messages.imports.skipForNow}
+              </button>
+            )}
+          </ImportAskFirst>
         ) : null}
         <ImportCommitButton
           disabled={isCommitDisabled}

@@ -315,6 +315,29 @@
   justify-content: space-between;
 }
 
+/* The short form above the next file's review: one line on desktop. */
+.import-done-card.is-compact {
+  gap: 0;
+  padding: 10px 14px;
+}
+
+.import-done-card.is-compact .import-done-head {
+  justify-content: flex-start;
+}
+
+.import-done-card.is-compact h3 {
+  font-size: 1rem;
+}
+
+.import-done-compact-detail {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.import-done-card.is-compact .import-done-rollback {
+  margin-left: auto;
+}
+
 .import-intake-coverage {
   color: var(--pastel-sky-ink);
 }
@@ -496,6 +519,36 @@
 
 .import-commit-bar-jump {
   font-weight: 700;
+}
+
+/* On a phone the count opens the import progress sheet. */
+.import-commit-bar-remaining {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.import-commit-bar-remaining:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.import-progress-sheet {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 8px;
+}
+
+.import-progress-sheet-section {
+  display: grid;
+  gap: 8px;
+}
+
+/* In the sheet the file chips wrap instead of scrolling sideways. */
+.import-progress-sheet .import-file-chips {
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 .import-sr-only {
