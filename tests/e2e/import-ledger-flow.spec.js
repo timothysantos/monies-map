@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
-import { fillImportField, openRecentImports, selectImportField } from "./helpers";
+import { expectImportRowsReady, fillImportField, openRecentImports, selectImportField } from "./helpers";
 
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const HSBC_2026_CASES = [
@@ -1236,7 +1236,7 @@ test.describe("import flow", () => {
 
       await page.locator("input[type=\"file\"]").setInputFiles(ocrPackagePath);
 
-      await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 60_000 });
+      await expectImportRowsReady(page, item.readyText, { timeout: 60_000 });
       await expectHsbcPreviewValues(page, item.values);
     }
   });
@@ -1253,7 +1253,7 @@ test.describe("import flow", () => {
       await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
 
       await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
-      await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 120_000 });
+      await expectImportRowsReady(page, item.readyText, { timeout: 120_000 });
       await expectHsbcPreviewValues(page, item.values);
     }
   });
@@ -1269,7 +1269,7 @@ test.describe("import flow", () => {
     await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
 
     await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 120_000 });
+    await expectImportRowsReady(page, "2 rows ready for review", { timeout: 120_000 });
     await openStatementRowEditor(page);
     const previewValues = await page
       .locator(".import-preview-table input")
@@ -2222,6 +2222,6 @@ test.describe("import flow", () => {
       `"20/08/2026","SHOPEE SG MP           SINGAPORE     SGP","-7.62","","'5000000000006349'"`
     ].join("\n"));
 
-    await expect(page.getByText("3 rows ready for review.")).toBeVisible({ timeout: 30_000 });
+    await expectImportRowsReady(page, "3 rows ready for review.", { timeout: 30_000 });
   });
 });

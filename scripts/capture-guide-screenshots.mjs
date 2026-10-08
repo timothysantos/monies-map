@@ -511,7 +511,8 @@ const SHOTS = [
       await page.getByRole("button", { name: "Paste rows or set defaults" }).click();
       await page.getByLabel("Default account").selectOption({ label: `${SAMPLE_CARD_ACCOUNT} - Serene` });
       await page.locator("input[type=file]").first().setInputFiles(await sampleCardExport());
-      await page.getByText(/ready for review/).first().waitFor({ timeout: 60_000 });
+      // The stuck import bar folds this line away, so wait for it to exist.
+      await page.getByText(/ready for review/).first().waitFor({ state: "attached", timeout: 60_000 });
       await page.waitForTimeout(1500);
       await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);
       // The export names the card ("UOB One Card"): map it to the account.

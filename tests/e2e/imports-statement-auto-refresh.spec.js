@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 
-import { postJson, reseedDemo } from "./helpers";
+import { expectImportRowsReady, postJson, reseedDemo } from "./helpers";
 
 // The Imports page re-runs a statement preview when the tab regains focus, so
 // a preview left open does not keep stale match results (see
@@ -50,7 +50,7 @@ async function openHsbcMarchStatementPreview(page, testInfo) {
   const firstPreview = page.waitForResponse((response) => isPreviewPost(response.request()) && response.ok());
   await page.locator("input[type=\"file\"]").setInputFiles(packagePath);
   await firstPreview;
-  await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 60_000 });
+  await expectImportRowsReady(page, "2 rows ready for review");
 
   const summary = page.locator(".import-preview-status-row");
   await expect(summary).toContainText("2 rows will import");

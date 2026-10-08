@@ -2161,6 +2161,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             bringSummary={canCollapseBringFiles
               ? uploadStatus?.message ?? preview?.sourceLabel ?? sourceLabel
               : messages.imports.stageBringSummary(intakeQueue.length)}
+            isBringAlert={canCollapseBringFiles && uploadStatus?.tone === "error"}
             isBringOpen={isBringFilesOpen}
             canCollapseBring={canCollapseBringFiles}
             onToggleBring={() => setIsBringFilesOpen((current) => !current)}

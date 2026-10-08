@@ -260,3 +260,10 @@ export async function dropFiles(page, selector, files, { drop = true } = {}) {
     await page.dispatchEvent(selector, "drop", { dataTransfer });
   }
 }
+
+// Once a file is in review the Bring files step says how many rows are
+// ready. The import bar folds that line away while it is stuck to the top,
+// so this reads the step whether or not the line is shown.
+export async function expectImportRowsReady(page, text, { timeout = 60_000 } = {}) {
+  await expect(page.locator(".import-stepper-step").first()).toContainText(text, { timeout });
+}

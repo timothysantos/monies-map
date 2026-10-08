@@ -504,6 +504,25 @@
     transition: opacity 160ms ease, visibility 0s linear 160ms;
   }
 
+  /* An error on the Bring files line stays in view while stuck. */
+  .import-batch-bar.is-stuck .import-stepper-step.is-alert {
+    grid-template-rows: auto 1fr;
+    row-gap: 4px;
+  }
+
+  .import-batch-bar.is-stuck .import-stepper-step.is-alert .import-stepper-summary {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .import-batch-bar.is-stuck .import-stepper-step.is-alert .import-stepper-change.is-stuck-only {
+    display: none;
+  }
+
+  .import-batch-bar.is-stuck .import-stepper-step.is-alert .import-stepper-change.is-in-summary {
+    visibility: visible;
+  }
+
   .import-batch-bar.is-measuring,
   .import-batch-bar.is-measuring *,
   .import-batch-bar.is-measuring *::before,

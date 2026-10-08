@@ -7,7 +7,9 @@ import "./import-review.css";
 // The three steps of an import: bring files, review one, see what changed.
 // A finished step shrinks to one line; "Change" reopens Bring files while a
 // file is in review.
-export function ImportStepper({ stage, bringSummary, isBringOpen, canCollapseBring, onToggleBring }) {
+// `isBringAlert`: the Bring files line carries an error (a failed upload or
+// check refresh); the stuck import bar keeps that line instead of folding it.
+export function ImportStepper({ stage, bringSummary, isBringAlert = false, isBringOpen, canCollapseBring, onToggleBring }) {
   const steps = [
     { key: "bring", label: messages.imports.stageBring, summary: bringSummary },
     { key: "review", label: messages.imports.stageReview, summary: messages.imports.stageReviewSummary },
@@ -25,7 +27,7 @@ export function ImportStepper({ stage, bringSummary, isBringOpen, canCollapseBri
         );
         const canChange = step.key === "bring" && canCollapseBring;
         return (
-          <li key={step.key} className={`import-stepper-step ${state}`} aria-current={index === currentIndex ? "step" : undefined}>
+          <li key={step.key} className={`import-stepper-step ${state}${step.key === "bring" && isBringAlert ? " is-alert" : ""}`} aria-current={index === currentIndex ? "step" : undefined}>
             <span className="import-stepper-head">
               <span className="import-stepper-label">
                 {messages.imports.stageNumbered(index + 1, step.label)}{index < currentIndex ? ` · ${messages.imports.stageDoneMark}` : ""}
