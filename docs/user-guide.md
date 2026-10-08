@@ -417,20 +417,26 @@ receipt button adds a shared expense.
   step shrinks to one line, and while a file is in review Bring files
   shrinks too. While you work through files, the steps stay at
   the top of the screen on a computer or tablet (on a phone they scroll with
-  the page), with two more rows under them:
+  the page). Once you scroll down they stretch across the window as one
+  short line, with a soft shadow under them. Two more rows sit under the
+  steps:
   - **Your files**: one chip per file you brought this time, in the order to
     review them. A ticked chip is done, the outlined one is in review, and
     **File 2 of 4** says where you are. Select a waiting file to open it; if
     you changed rows or approved fixes in the file in review, the app asks
-    first, because opening another file drops those changes.
+    first, because opening another file drops those changes. A file you roll
+    back leaves the chips.
   - **Before you can commit:** what still needs you in the file in review,
     in the order to fix it: accounts to map, cards that don't match the
     statement (with the amount when money totals are shown), rows to check.
+    A card that has no account yet is counted once, under **Map 1 account**.
     Select one to go straight to it. A green chip counts the rows already
     matched to your entries.
 - **Import and certify**: comes first. Drop or select your files here. A
   statement PDF or a bank export goes straight to Review; a plain CSV first
-  asks you to match its columns.
+  asks you to match its columns. Once files are waiting it shrinks to one
+  line, **Drop more files, or Select file**, so your files are on the first
+  screen.
 - **File intake queue**: the files you dropped, in the order to review them.
 - **Import inbox**: your bank run, planned for you. It shows one line,
   **Still missing: 3 of 13**, and opens with **Show**. It starts open when
@@ -448,7 +454,7 @@ receipt button adds a shared expense.
   Mid-cycle, CSV import or Manual), dates, account, status and a rollback
   button. It starts closed; select it to open the list.
 
-![Import and certify: choose the account, then paste or drop a file](/faq/guide/desktop/thumbs/imports-upload.webp)
+![Import and certify: drop your files; once some are waiting it is one line, "Drop more files, or Select file", with Paste rows or set defaults under it](/faq/guide/desktop/thumbs/imports-upload.webp)
 
 ### What each control does
 
@@ -458,11 +464,15 @@ receipt button adds a shared expense.
   file says how many of its rows a statement in the queue already covers.
   Select **Review** on each. You can also drop files anywhere on the Imports
   page; it says **Drop files anywhere on this page** while you drag. A file
-  dropped on the file you are reviewing is not added.
+  dropped on the file you are reviewing is not added. A single file dropped
+  while you review another opens straight away; the other waits in the
+  queue again. **Review** asks first if you changed the file in review.
 - **Paste rows or set defaults**: opens the fields below. It opens by
-  itself when a plain CSV needs them.
+  itself when a plain CSV needs them. Once files are waiting it also holds
+  the notes about PDF and XLS files, trustworthy statements and rollback.
   - **Source label** and **Batch note**: optional names so you recognise
-    the import later.
+    the import later. A plain CSV you open from the queue is named by its
+    file unless you typed a source label.
   - **Default account** and **Default owner**: used for rows that do not
     say which account or person they belong to. Choose the account before
     dropping a card activity file.
@@ -482,11 +492,12 @@ receipt button adds a shared expense.
   **Jump to next** takes you to the first one. On a computer, press **J**
   for the next thing to fix and **K** for the previous one (not while you
   are typing in a field).
-- **Commit and open** a file: while another file waits, the commit button
-  names it. After the commit that file opens straight away, with a short
-  summary of the file you just committed above it and its **Roll back this
-  import**. The last file's button keeps its usual words, and the full
-  **Done** step shows when it is committed.
+- **Commit and open next**: while another file waits, the commit button
+  says so (**Refresh checkpoints and open next** for a statement whose rows
+  are all in already). After the commit the next file opens straight away,
+  with a short summary of the file you just committed above it and its
+  **Roll back this import**. The last file's button keeps its usual words,
+  and the full **Done** step shows when it is committed.
 - **Skip for now**: while another file waits, moves the file in review to
   the end of your files and opens the next one. Reopen it from its chip
   whenever you like; you don't need the file again. If you changed rows or
@@ -496,7 +507,9 @@ receipt button adds a shared expense.
 ### On a phone
 
 Imports is under the **•••** button. Everything works the same, one column
-wide; dropping several files at once is easiest on a computer. Tap the count of
+wide; dropping several files at once is easiest on a computer. The commit
+bar puts **Start over** and **Skip for now** on one line and the commit
+button under them. Tap the count of
 things left on the commit bar (for example **2 things left**) to see your files and what still needs you
 in one sheet; tap a thing to fix to go straight to it, or a file to open it.
 
@@ -676,7 +689,7 @@ words.
    batch appears under **Recent imports**. The **Done** step says what
    changed on each card (rows added, entries confirmed or moved, entries left
    for the next statement), with **Roll back this import**. When more
-   files are queued the button reads **Commit and open** the next file, which
+   files are queued the button reads **Commit and open next**; the next file
    opens after the commit under a short summary of the one you committed.
 
 ![A bank export turned into preview rows, ready to commit](/faq/guide/desktop/thumbs/imports-preview.webp)

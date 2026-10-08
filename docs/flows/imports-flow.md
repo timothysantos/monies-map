@@ -49,11 +49,16 @@ Imports owns:
 - the three import steps (Bring files, Review, Done; design.md, "Import Page
   Stages"). A statement is reviewed card by card under one header; the
   commit bar stays in view. While another file waits the commit reads
-  "Commit and open {file}": a successful commit opens that file and keeps a
+  "Commit and open next" ("Refresh checkpoints and open next" for a
+  statement whose rows are all covered; "Save empty statement checkpoint"
+  keeps its own words): a successful commit opens that file and keeps a
   compact Done card (what changed, with rollback) above its review; rolling
-  back from it leaves that review as it is. The last file commits with its
+  back from it leaves that review as it is and takes the rolled-back file
+  off the file chips ("File i of n" follows). The last file commits with its
   own words and shows the full Done card (what changed per card, with
-  rollback). A failed commit opens nothing; the refresh after a commit runs
+  rollback). A plain CSV opened from the queue is named by its file name
+  (its summary reads "{file} saved"), unless the user typed a source label
+  or took one from the inbox. A failed commit opens nothing; the refresh after a commit runs
   through `runBackgroundRefresh`, so a failure keeps the commit and raises the
   refresh notice. "Skip for now" (shown while another file waits) sends the
   file in review to the end of the queue, still parsed, and opens the next;
@@ -64,7 +69,15 @@ Imports owns:
   skipped when that statement covers it and left out with a reason when it
   does not (DOMAIN.md, Entry Reconciliation)
 - the Bring files layout: the drop zone first, then the intake queue, then
-  the import inbox. The inbox folds to one line, "Still missing: N of M"
+  the import inbox. Once a file is queued (or Bring files is opened again
+  over a file in review) the Select file card shrinks to one line, "Drop
+  more files, or Select file", with the upload status on one line beside it
+  and the AI fallback consent under it; the OCR/XLS note, the trust hint and
+  the rollback note move behind "Paste rows or set defaults". At 1280x800
+  after a three-file drop the queue's first Review button is on the first
+  screen. A file dropped on its own opens straight away and frees the
+  queued file that was in review (it waits again). No preview card shows
+  until a preview exists. The inbox folds to one line, "Still missing: N of M"
   (`buildInboxChecklistProgress`, `import-inbox-model.js`), open by default
   only while the queue is empty and no file is in review (a plain CSV in
   column mapping counts as in review); the user's Show/Hide holds until that
@@ -96,15 +109,25 @@ Imports owns:
   not on a phone. The blocker list (`import-blockers-model.js`) is the one
   source for the chips, the commit bar's "{n} things left · Jump to
   next", whether the commit is disabled and whether it asks first; a chip
-  scrolls to and focuses the control that fixes it. Opening a waiting file
-  from its chip asks first when the file in review has changes it would
-  drop; the queue's own Review button and the Done card's Review next do
-  not ask (the Done card has nothing in review). J and K step to the next
+  scrolls to and focuses the control that fixes it. A card with no account
+  yet is named once, by "Map {n} accounts", not also "{card} doesn't
+  match"; the commit question still names it. Opening a waiting file from
+  its chip or from the queue's Review button asks first (`ImportAskFirst`)
+  when the file in review has changes it would drop; the Done card's Review
+  next does not ask (the Done card has nothing in review). Stuck to the top
+  (an IntersectionObserver on a sentinel above the bar), the bar's solid
+  surface spreads to the window's edges, a soft shadow fades in and the
+  step descriptions fold away (Change stays on the Bring files step's first
+  line), over 200 ms and without animation under reduced motion. The bar
+  keeps its height in the page while stuck, so nothing below moves, and jump
+  targets land below the stuck height. J and K step to the next
   and previous blocker (not while typing, with a modifier, under a popover,
   dialog or sheet, or without a preview); "Jump to next" names them in its
   title. Below 768 px the commit bar's "{n} things left" opens the import
   progress sheet (the shared mobile sheet) with the file chips and blocker
-  chips; a chip closes it and then acts. Driven in `import-stepper.spec.js`
+  chips; a chip closes it and then acts. On a phone the statement header and
+  the commit bar wrap inside the review card (the commit button on its own
+  line), never past the right edge. Driven in `import-stepper.spec.js`
   and `import-commit-next.spec.js`
 - import inbox planning. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every

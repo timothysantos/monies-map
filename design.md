@@ -241,6 +241,19 @@ Rules:
 - pasted rows and the import defaults sit behind "Paste rows or set
   defaults", opened when a plain CSV needs mapping; upload status and the AI
   consent stay beside the drop zone
+- with a file queued, or Bring files opened again over a file in review
+  (`isDropZoneSlim`), `ImportSelectFileStage` renders `isSlim`: the card
+  head goes, the drop zone is one line ("Drop more files, or" and Select
+  file, still a drop target), the upload status sits beside it on one line
+  and the AI consent under it; the OCR/XLS note, trust hint and rollback
+  note move into the "Paste rows or set defaults" disclosure
+- a file dropped on its own (`processImportFile`) clears
+  `activeIntakeItemId`, so the queued file that was in review waits again
+  and Skip for now queues the dropped file; the source label of a plain CSV
+  opened from the queue is its file name unless `isSourceLabelChosenRef`
+  says the user typed one (or took one from the inbox)
+- the preview card (`data-import-target="preview-rows"`) renders only with
+  a preview or its warnings
 - a file dropped anywhere on the page goes to the drop zone's handler
   (`usePageFileDrop`, `import-page-drop.js`), except on the file in review
   (`data-page-drop="off"`), dialogs and popovers
@@ -273,9 +286,25 @@ Rules:
   the queue in review order) and the blocker chips. It sticks to the top at
   768 px and wider while a batch is in progress (a file queued, in review
   or just committed), below the sticky environment banner; on a phone it
-  scrolls with the page and the commit bar is the only sticky bar. It keeps
-  `--import-sticky-offset` on the panel so jump targets carry
-  `scroll-margin-top` below it
+  scrolls with the page and the commit bar is the only sticky bar
+- `useImportStickyBar` (`import-batch-bar.jsx`) says when the bar is stuck:
+  an IntersectionObserver on `.import-batch-bar-sentinel`, the 1 px element
+  just above the bar, with the root's top moved down by the banner (no
+  scroll listener). Stuck (`is-stuck`), the `nav` keeps the height its
+  surface had in the page (inline `height`, transparent and click-through
+  below the surface), so folding the step descriptions moves nothing below
+  and cannot unstick it. `.import-batch-bar-surface` carries the look: a
+  solid background (`--panel` over `--bg`) on `::before` and a
+  `var(--shadow)` on `::after`, both stretched to the window's edges by
+  `--import-bar-bleed-left/right` (measured, so the page never scrolls
+  sideways); clip-path keeps the background to the panel width until it
+  sticks, then spreads it, while the shadow fades in and the step summaries
+  collapse (`grid-template-rows` 1fr to 0fr, padding), 200 ms, none under
+  `prefers-reduced-motion`. The step's Change moves to its first line while
+  stuck (`is-stuck-only`; one Change is shown at a time). The hook keeps
+  `--import-sticky-offset` on the panel at the stuck height (measured by
+  laying the surface out stuck for a moment with transitions off), so jump
+  targets carry `scroll-margin-top` below the stuck bar
 - a blocker's `target` is resolved by `jumpToImportTarget`
   (`import-jump.js`) against `data-import-target` markers on the
   sections that fix it (account mapping, a statement card, the Refresh
@@ -296,7 +325,10 @@ Rules:
   `findNextIntakeItem` (the next file waiting, never the one in review or a
   copy), `skipIntakeItem` (gives the item a `skipOrder`, which
   `orderIntakeQueue` ranks after every file not skipped) and
-  `describeCommitLabel` ("Commit and open {file}" while a file waits). The
+  `describeCommitLabel` ("Commit and open next" while a file waits, or
+  "Refresh checkpoints and open next" for a statement whose rows are all
+  covered, by the preview model's `commitKind`; an empty statement
+  checkpoint keeps its own words). The
   panel opens the next file from the render after the commit's reset
   (`pendingNextItemId`), so it starts from a clean form, and keeps
   `lastCommitSummary` while a file of the batch is open: `ImportDoneCard`
@@ -314,8 +346,11 @@ Rules:
   select) is not treated as typing, so the next press moves on; the key's
   default is prevented so the select keeps its value
 - `ImportAskFirst` (`import-batch-bar.jsx`) is the one ask-first popover for
-  the waiting chips and "Skip for now"; `inline` renders it inside the phone
-  sheet, which traps focus
+  the waiting chips, the intake queue's Review buttons and "Skip for now";
+  `inline` renders it inside the phone sheet, which traps focus
+- a card with no account yet (`unknown_account`, or a name still to map)
+  gets no card chip while the "Map {n} accounts" chip names it; the commit
+  question still lists it
 - `ImportProgressSheet` (`import-batch-bar.jsx`) is the phone's import bar,
   built on `EntryMobileSheet`. The panel closes it before a chip's action
   and runs the action in a timeout after Radix FocusScope hands focus back
