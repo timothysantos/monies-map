@@ -222,3 +222,77 @@ test("on a phone the import bar scrolls with the page and the commit bar stays",
   await expect(oneCardSelect).toBeInViewport();
   await expect(oneCardSelect).toBeFocused();
 });
+
+test("a CSV's missing columns and its row to check are chips that jump to their controls", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setUpWrongCardLedger(page);
+  // Headers the mapping step cannot guess; one row is near an entry Lady's
+  // Card already has (Sabai Sabai on 14 May), so it needs a decision.
+  const csvPath = testInfo.outputPath("ladys-export.csv");
+  await writeFile(csvPath, [
+    "when,what,howmuch,card",
+    `2026-05-19,SABAI SABAI VALLEY POINT,-20.49,${LADYS_CARD}`,
+    `2026-05-21,KOPI TIAM,-4.20,${LADYS_CARD}`
+  ].join("\n"));
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(csvPath);
+  const blockers = page.locator(".import-blockers");
+  await expect(blockers.locator(".import-blocker-chip")).toHaveText(["Map the date column", "Map the description column", "Map an amount column"]);
+  await blockers.getByRole("button", { name: "Map the date column" }).click();
+  const whenSelect = page.locator(".import-column-card").filter({ hasText: "when" }).locator("select");
+  await expect(whenSelect).toBeFocused();
+
+  await whenSelect.selectOption("date");
+  await page.locator(".import-column-card").filter({ hasText: "what" }).locator("select").selectOption("description");
+  await page.locator(".import-column-card").filter({ hasText: "howmuch" }).locator("select").selectOption("amount");
+  await page.locator(".import-column-card").filter({ hasText: "card" }).locator("select").selectOption("account");
+  await expect(blockers.locator(".import-blocker-chip")).toHaveCount(0);
+  await page.getByRole("button", { name: "Preview import" }).click();
+
+  await expect(blockers.locator(".import-blocker-chip")).toHaveText(["1 row to check"], { timeout: 30_000 });
+  await expect(page.locator(".import-commit-bar .import-commit-button")).toBeDisabled();
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await blockers.getByRole("button", { name: "1 row to check" }).click();
+  const reviewRow = page.locator('tr[data-commit-status="needs_review"]');
+  await expect(reviewRow.locator("button").first()).toBeFocused();
+  await expect(reviewRow).toBeInViewport();
+
+  // Deciding the row clears the last blocker and enables the commit.
+  await reviewRow.locator("button").first().click();
+  await expect(blockers.locator(".import-blocker-chip")).toHaveCount(0);
+  await expect(page.locator(".import-commit-bar")).not.toContainText("things left");
+  await expect(page.locator(".import-commit-bar .import-commit-button")).toBeEnabled();
+});
+
+test("a statement's row to check opens the row editor at that row", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setUpWrongCardLedger(page);
+  // The statement certifies every row of this fixture, so the server's
+  // answer is changed to leave one row for the user to decide.
+  await page.route("**/api/imports/preview", async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    const row = json.preview?.previewRows?.find((item) => item.commitStatus === "included" && !item.reconciliationTargetTransactionId);
+    if (row) {
+      row.commitStatus = "needs_review";
+    }
+    await route.fulfill({ response, json });
+  });
+  const pdfPath = testInfo.outputPath("eStatement_UOB_Cards_12May2026.pdf");
+  await writeStatementPdf(page, pdfPath);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(pdfPath);
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+  const rowsChip = bar(page).getByRole("button", { name: /rows? to check$/ });
+  await expect(rowsChip).toBeVisible();
+  // The row editor is closed until the chip opens it.
+  await expect(page.locator(".import-preview-table")).toHaveCount(0);
+  await rowsChip.click();
+  const reviewRow = page.locator('tr[data-commit-status="needs_review"]').first();
+  await expect(reviewRow.locator("button").first()).toBeFocused();
+  await expectBelowBar(page, reviewRow);
+});
