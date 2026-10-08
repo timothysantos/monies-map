@@ -5,9 +5,9 @@
 // keeps its column mapping), Recent imports starts closed, and a file
 // dropped anywhere on the page joins the intake.
 import { expect, test } from "@playwright/test";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 
-import { reseedDemo } from "./helpers.js";
+import { dropFiles, openPasteRowsAndDefaults, reseedDemo } from "./helpers.js";
 import { writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 const OCBC_ACTIVITY = new URL("../fixtures/ocbc-activity/TransactionHistory_20260628140517-ocbc-360-sanitized.csv", import.meta.url);
@@ -105,29 +105,6 @@ async function writeGenericCsv(path) {
   ].join("\n"));
 }
 
-// Drops files on an element the way a browser does: dragenter, dragover,
-// then drop, all carrying the same DataTransfer.
-async function dropFiles(page, selector, files, { drop = true } = {}) {
-  const payload = await Promise.all(files.map(async (file) => ({
-    name: file.name,
-    type: file.type,
-    base64: (await readFile(file.path)).toString("base64")
-  })));
-  const dataTransfer = await page.evaluateHandle((items) => {
-    const transfer = new DataTransfer();
-    for (const item of items) {
-      const bytes = Uint8Array.from(atob(item.base64), (char) => char.charCodeAt(0));
-      transfer.items.add(new File([bytes], item.name, { type: item.type }));
-    }
-    return transfer;
-  }, payload);
-  await page.dispatchEvent(selector, "dragenter", { dataTransfer });
-  await page.dispatchEvent(selector, "dragover", { dataTransfer });
-  if (drop) {
-    await page.dispatchEvent(selector, "drop", { dataTransfer });
-  }
-}
-
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await reseedDemo(page);
@@ -153,6 +130,11 @@ test("the drop zone and queue come first, and the inbox folds to what is still m
   await expect(banks.nth(1).locator(":scope > summary")).toContainText("OCBC");
   await expect(banks.nth(1).locator(":scope > summary")).toContainText("Still missing: 2 of 2");
   await expect(banks.nth(0).locator(".import-inbox-file-row").first()).toBeHidden();
+
+  // The inbox says where the files go; no empty preview card waits below.
+  await expect(inbox).toContainText("collect the listed files, then drop them here.");
+  await expect(page.getByText("No preview yet.")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Preview rows" })).toHaveCount(0);
 
   // Order: drop zone, queue, inbox.
   const top = async (selector) => (await page.locator(selector).boundingBox()).y;
@@ -314,4 +296,51 @@ test("a file dropped anywhere on the page joins the intake, but not one dropped 
   await expect(page.locator(".import-commit-bar")).toBeVisible();
   await page.locator(".import-stepper").getByRole("button", { name: "Change" }).click();
   await expect(page.locator(".import-intake-row")).toHaveCount(2);
+});
+
+test("once files are queued the drop zone is one slim line and the first Review fits the first screen", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await pinImportInbox(page);
+  const pdfPath = testInfo.outputPath("eStatement_UOB_Cards_12May2026.pdf");
+  const csvPath = testInfo.outputPath("plain-card-export.csv");
+  await writeStatementPdf(page, pdfPath);
+  await writeGenericCsv(csvPath);
+  await openImports(page);
+
+  // Nothing queued: the full drop zone with its notes beside it.
+  const dropzone = page.locator(".import-dropzone");
+  await expect(dropzone).toContainText("Drop a CSV, PDF, or XLS here");
+  await expect(dropzone).not.toHaveClass(/is-slim/);
+  const trustHint = page.getByText("Statement imports are only trustworthy when date coverage is complete");
+  await expect(trustHint).toBeVisible();
+
+  await page.locator("input[type=file]").setInputFiles([pdfPath, OCBC_ACTIVITY.pathname, csvPath]);
+  await expect(page.locator(".import-intake-row")).toHaveCount(3, { timeout: 30_000 });
+
+  // One slim line; the upload status and the AI consent stay in view.
+  await expect(dropzone).toHaveClass(/is-slim/);
+  await expect(dropzone).toHaveText("Drop more files, or Select file");
+  expect((await dropzone.boundingBox()).height).toBeLessThan(64);
+  await expect(page.locator(".import-upload-status")).toContainText("3 files added to the intake queue.");
+  await expect(page.locator(".import-ai-consent")).toBeVisible();
+  // The notes wait behind "Paste rows or set defaults".
+  await expect(trustHint).toBeHidden();
+  await expect(page.getByText("PDF statements and supported current-transaction XLS files are converted")).toBeHidden();
+  await openPasteRowsAndDefaults(page);
+  await expect(trustHint).toBeVisible();
+  await expect(page.getByText("PDF statements and supported current-transaction XLS files are converted")).toBeVisible();
+  await page.getByRole("button", { name: "Paste rows or set defaults" }).click();
+
+  // The queue's first Review button is fully on the first screen.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const review = page.locator(".import-intake-row").first().getByRole("button", { name: "Review" });
+  const box = await review.boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(800);
+
+  // "Select file" still opens the file picker.
+  const chooser = page.waitForEvent("filechooser");
+  await dropzone.getByRole("button", { name: "Select file" }).click();
+  expect((await chooser).isMultiple()).toBe(true);
 });

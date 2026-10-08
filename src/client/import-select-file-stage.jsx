@@ -10,7 +10,9 @@ const { accounts: accountService } = moniesClient;
 // Stage 1 hands file/paste events back to ImportsPanel. The drop zone, the
 // upload status and the AI consent stay in view; the pasted rows and the
 // defaults (source label, account, owner, batch note) sit behind one link
-// that ImportsPanel opens when the workflow needs them.
+// that ImportsPanel opens when the workflow needs them. Once files are
+// queued (`isSlim`) the drop zone is one line and its notes move behind
+// that link too.
 export function ImportSelectFileStage({
   currentStage,
   sourceLabel,
@@ -37,46 +39,75 @@ export function ImportSelectFileStage({
   onAllowAiStatementFallbackChange,
   rollbackPolicy,
   isPasteDefaultsOpen,
-  onTogglePasteDefaults
+  onTogglePasteDefaults,
+  isSlim = false
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
   const accountOptions = accountService.getSelectOptions(accounts);
   const pasteDefaultsId = useId();
+  const openFilePicker = () => fileInputRef.current?.click();
+  const dropHandlers = {
+    onDragEnter: onDragOverImportFile,
+    onDragOver: onDragOverImportFile,
+    onDragLeave: onDragLeaveImportFile,
+    onDrop: onDropImportFile
+  };
+  const dropzoneClassName = `import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`;
+  const stepHint = (
+    <div className="import-step-hint">
+      <strong>{messages.imports.selectFileNextUpload}</strong>
+    </div>
+  );
+  const trustNotes = (
+    <>
+      <p className="lede compact">{messages.imports.trustHint}</p>
+      <p className="lede compact">{rollbackPolicy}</p>
+    </>
+  );
 
   return (
-    <div className={`import-stage-card ${stageClassName}`}>
-      <div className="import-stage-head">
-        <div className="section-head">
-          <h3>{messages.imports.selectFileTitle}</h3>
-          <span className="panel-context">{messages.imports.selectFileDetail}</span>
+    <div className={`import-stage-card ${stageClassName}${isSlim ? " is-slim" : ""}`}>
+      {/* Slim, the line below is the whole drop zone and its Select file. */}
+      {isSlim ? null : (
+        <div className="import-stage-head">
+          <div className="section-head">
+            <h3>{messages.imports.selectFileTitle}</h3>
+            <span className="panel-context">{messages.imports.selectFileDetail}</span>
+          </div>
+          <span className={`import-stage-label ${stageClassName}`}>
+            {messages.imports.steps[0]}
+          </span>
         </div>
-        <span className={`import-stage-label ${stageClassName}`}>
-          {messages.imports.steps[0]}
-        </span>
-      </div>
+      )}
 
-      <div className="import-drop-grid">
+      <div className={`import-drop-grid${isSlim ? " is-slim" : ""}`}>
         <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel,.hsbc-ocr.tsv,.tsv,text/tab-separated-values" hidden multiple onChange={onUploadImportFile} />
-        <div
-          className={`import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`}
-          role="button"
-          tabIndex={0}
-          onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              fileInputRef.current?.click();
-            }
-          }}
-          onDragEnter={onDragOverImportFile}
-          onDragOver={onDragOverImportFile}
-          onDragLeave={onDragLeaveImportFile}
-          onDrop={onDropImportFile}
-        >
-          <strong>{messages.imports.dropzoneTitle}</strong>
-          <span>{messages.imports.dropzoneDetail}</span>
-        </div>
+        {isSlim ? (
+          <div className={`${dropzoneClassName} is-slim`} {...dropHandlers}>
+            <span>{messages.imports.dropMoreFiles}</span>{" "}
+            <button type="button" className="subtle-action" onClick={openFilePicker}>
+              {messages.imports.selectFileTitle}
+            </button>
+          </div>
+        ) : (
+          <div
+            className={dropzoneClassName}
+            role="button"
+            tabIndex={0}
+            onClick={openFilePicker}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openFilePicker();
+              }
+            }}
+            {...dropHandlers}
+          >
+            <strong>{messages.imports.dropzoneTitle}</strong>
+            <span>{messages.imports.dropzoneDetail}</span>
+          </div>
+        )}
         <div className="import-sidecar">
           {uploadStatus ? (
             <div className={`import-upload-status is-${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>
@@ -84,9 +115,7 @@ export function ImportSelectFileStage({
               <span>{uploadStatus.message}</span>
             </div>
           ) : null}
-          <div className="import-step-hint">
-            <strong>{messages.imports.selectFileNextUpload}</strong>
-          </div>
+          {isSlim ? null : stepHint}
           <label className="checkbox-field import-ai-consent">
             <input
               type="checkbox"
@@ -95,8 +124,7 @@ export function ImportSelectFileStage({
             />
             <span>Allow optional AI fallback for an unsupported PDF using extracted text only. Original files are not uploaded or stored.</span>
           </label>
-          <p className="lede compact">{messages.imports.trustHint}</p>
-          <p className="lede compact">{rollbackPolicy}</p>
+          {isSlim ? null : trustNotes}
         </div>
       </div>
 
@@ -113,6 +141,7 @@ export function ImportSelectFileStage({
 
       {isPasteDefaultsOpen ? (
         <div id={pasteDefaultsId} className="import-paste-defaults">
+          {isSlim ? <div className="import-paste-defaults-notes">{stepHint}{trustNotes}</div> : null}
           <div className="import-form-grid">
             <label className="entries-filter">
               <span className="entries-filter-label">{messages.imports.sourceLabel}</span>

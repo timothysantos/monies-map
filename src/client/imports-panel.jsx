@@ -2038,6 +2038,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const canCollapseBringFiles = Boolean(preview);
   const isBringFilesShown = !canCollapseBringFiles || isBringFilesOpen;
   const isMappingShown = importWorkflowModel.readyForMapping && (isBringFilesShown || isMappingNeeded);
+  // With files queued, or Bring files opened again over a file in review,
+  // the drop zone is one slim line so the queue starts on the first screen.
+  const isDropZoneSlim = intakeQueue.length > 0 || (canCollapseBringFiles && isBringFilesOpen);
   const nextIntakeItem = findNextIntakeItem(intakeQueue, activeIntakeItemId);
   // A batch is in progress while a file is queued, in review, or just
   // committed; the import bar then sticks to the top (desktop and tablet).
@@ -2236,6 +2239,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               rollbackPolicy={safeImportsPage.rollbackPolicy}
               isPasteDefaultsOpen={isPasteDefaultsOpen}
               onTogglePasteDefaults={() => setIsPasteDefaultsOpen((current) => !current)}
+              isSlim={isDropZoneSlim}
             />
           </section>
           <ImportIntakeQueueSection

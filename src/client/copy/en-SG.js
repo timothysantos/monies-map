@@ -376,6 +376,7 @@ export const messages = {
     csvPlaceholder: "Paste CSV rows here, or upload a CSV/PDF/XLS below.",
     uploadFile: "Upload CSV, PDF, or XLS",
     dropzoneTitle: "Drop a CSV, PDF, or XLS here",
+    dropMoreFiles: "Drop more files, or",
     dropzoneDetail: "Click to browse, or drag a supported statement or current-transaction export onto this area.",
     uploadStatusWorking: "Working",
     uploadStatusReady: "Ready",

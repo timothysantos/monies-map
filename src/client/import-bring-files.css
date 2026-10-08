@@ -14,6 +14,58 @@
   align-content: center;
 }
 
+/* Files queued: the drop zone is one line, the upload status beside it on
+   one line, the AI consent under them; the notes wait behind "Paste rows or
+   set defaults". */
+.import-stage-card.is-slim {
+  gap: 10px;
+  padding-block: 12px;
+}
+
+.import-drop-grid.is-slim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.import-drop-grid.is-slim .import-sidecar {
+  display: contents;
+}
+
+.import-drop-grid .import-dropzone.is-slim {
+  display: flex;
+  flex: 1 1 320px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-height: 0;
+  padding: 2px 14px;
+  cursor: default;
+}
+
+.import-dropzone.is-slim:hover {
+  transform: none;
+}
+
+.import-drop-grid.is-slim .import-upload-status {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  align-items: baseline;
+  padding: 7px 12px;
+}
+
+.import-drop-grid.is-slim .import-ai-consent {
+  flex: 1 1 100%;
+}
+
+.import-paste-defaults-notes {
+  display: grid;
+  gap: 10px;
+}
+
 .import-paste-defaults-toggle {
   display: inline-flex;
   align-items: center;
