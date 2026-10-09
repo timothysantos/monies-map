@@ -155,8 +155,9 @@ Details and the reasons are in `docs/code-spec.md` and
   through the warmup scheduler (`src/client/use-route-warmup.js`). Never add
   idle prefetch effects or eager imports of other routes to `App.jsx`.
 - Keep the first screen within budget. `npm run check:bundle` (part of
-  `npm run verify`) fails when the entry chunk plus the Summary route grows
-  more than 5% past `scripts/initial-bundle-budget.json`, or when a Money
+  `npm run verify`) fails when the entry chunk plus the Summary route, or
+  the built (minified) `styles.css`, grows more than 5% past
+  `scripts/initial-bundle-budget.json`, or when a Money
   insights copy pool is in a first-screen file. New code for other screens
   belongs behind a lazy route or a dynamic import.
 - A page API sends only what its screen reads: no second copy of a list and

@@ -142,7 +142,10 @@ Budget rules:
   another route's code this way (that is warmup, and waits for `usable`)
 - CSS that only one lazy route uses goes in a stylesheet imported by that
   route's module, so it ships with the route; `public/styles.css` counts
-  toward the first-screen budget. Each lazy route's general rules are in
+  toward the first-screen budget, measured as the build ships it
+  (`dist/styles.css`, minified by `vite.config.js` with the same
+  lightningcss options and targets as route CSS; the minifier never adds
+  or removes vendor prefixes). Each lazy route's general rules are in
   `<route>-route.css` (Entries, Imports, Month, Settings, Splits), imported
   first by `<route>-panel.jsx`; narrower files follow it
   (`month-mid-width.css`, `splits-panel.css`). A moved rule loads after

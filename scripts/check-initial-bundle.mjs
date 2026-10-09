@@ -1,6 +1,7 @@
 // First-screen bundle budget. The code and CSS a browser must download
 // before the Summary page is usable are the app entry chunk plus the Summary
-// route chunk and their static imports, plus public/styles.css. This reads
+// route chunk and their static imports, plus styles.css as the build ships it
+// (public/styles.css, minified by vite.config.js). This reads
 // them from the Vite build manifest (no timing, so no noise) and fails when
 // the gzip total grows past the checked-in budget.
 //
@@ -99,7 +100,7 @@ async function main(argv) {
   await Promise.all(Object.values(manifest).map(async (chunk) => {
     assets.set(chunk.file, await readFile(path.join(root, "dist", chunk.file)));
   }));
-  const stylesheet = await readFile(path.join(root, "public/styles.css"));
+  const stylesheet = await readFile(path.join(root, "dist/styles.css"));
   const measured = measureInitialBundle(manifest, (file) => assets.get(file), stylesheet);
   const summary = { jsFiles: measured.jsFiles, jsGzipBytes: measured.jsGzipBytes, cssGzipBytes: measured.cssGzipBytes };
 
