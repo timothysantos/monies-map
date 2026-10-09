@@ -84,7 +84,10 @@ export async function extractPdfText(file) {
   return `${pages.join("\n")}\n__PDF_LAYOUT_TEXT__\n${layoutPages.join("\n")}\n__PDF_SPACED_LAYOUT_TEXT__\n${spacedLayoutPages.join("\n")}`;
 }
 
-export async function extractPdfOcrText(file, onProgress) {
+// pageSegMode is Tesseract's page layout mode: "4" (one column of
+// variable-size text) is the first pass; a second pass in "6" (one uniform
+// block) reads some rows the first one cannot.
+export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } = {}) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   const tesseractModule = await importRuntimeModule("/vendor/tesseract/tesseract.esm.min.js");
@@ -110,7 +113,7 @@ export async function extractPdfOcrText(file, onProgress) {
   });
 
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: "4" });
+    await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
     const tsvPages = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       onProgress?.({ status: "rendering page", pageNumber, pageCount: document.numPages });
@@ -134,6 +137,35 @@ export async function extractPdfOcrText(file, onProgress) {
     return `__OCR_TSV__\n${mergeOcrTsvPages(tsvPages)}`;
   } finally {
     await worker.terminate();
+  }
+}
+
+// Parses an image statement from its first OCR pass. When the parser cannot
+// reconcile that reading, or reports it as doubtful (an inferred amount or a
+// barely legible row), the PDF is OCR'd again in a second page layout mode
+// and both passes are parsed together; the statement's totals then choose
+// between the two readings. Each pass is an "__OCR_TSV__" package, so the
+// two packages joined by a newline are the two-pass package.
+export async function parseImageStatement({ file, firstPass, parse, onProgress }) {
+  let firstPassError;
+  try {
+    const parsed = parse(firstPass);
+    if (!parsed.ocrReview?.wantsSecondPass) {
+      return parsed;
+    }
+  } catch (error) {
+    firstPassError = error;
+  }
+
+  const secondPass = await extractPdfOcrText(file, onProgress, { pageSegMode: "6" });
+  try {
+    return parse(`${firstPass}\n${secondPass}`);
+  } catch (error) {
+    // A doubtful but reconciled first pass is still a valid preview.
+    if (!firstPassError) {
+      return parse(firstPass);
+    }
+    throw error;
   }
 }
 

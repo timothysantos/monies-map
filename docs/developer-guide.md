@@ -1248,6 +1248,40 @@ For supported PDFs, the browser extracts statement text locally and turns it
 into reviewable rows. If the PDF creates statement checkpoints, those fields are
 editable before commit.
 
+## How are image-only statements read?
+
+A PDF with no text layer (HSBC Visa Revolution today) is OCR'd in the browser
+with the vendored Tesseract in `public/vendor/tesseract/`; nothing is
+uploaded. `parseImageStatement` in `src/client/import-helpers.js` parses the
+first pass and, when the reading is doubtful, OCRs again in a second page layout
+mode and parses both passes together. The statement's printed totals choose
+between the two readings.
+
+The bank-independent pieces are in `src/lib/statement-import/ocr.ts`: reading
+Tesseract TSV into positioned words with confidence, grouping lines, dropping
+dotted-rule noise, reading damaged amounts and dates, and
+`resolveOcrAmountsAgainstTotals`. To support another bank's image statement,
+write a parser like `hsbc-ocr.ts` that only knows that layout's columns and
+summary labels, and route it from `parseStatementText`. The rules every parser
+inherits: a read amount is never guessed over, a missing amount is filled only
+when it is a total's single unknown, and dates must land inside the statement
+period.
+
+Fixtures for OCR parsers come from real statements, sanitized:
+
+```bash
+OCR_SANITIZE_CHECK_TERMS="real name,card digits,street" node scripts/sanitize-ocr-tsv.mjs raw.tsv tests/fixtures/hsbc-ocr/browser-2026/name.browser.tsv
+```
+
+```bash
+OCR_SANITIZE_CHECK_TERMS="real name,card digits,street" node scripts/create-sanitized-statement-pdf.mjs statement.pdf tests/fixtures/hsbc-ocr/image-pdf/name.sanitized.pdf
+```
+
+Both replace the private areas listed for the layout in
+`scripts/statement-private-areas.mjs` and refuse to write when a check term is
+still there (the PDF script OCRs its own output to check). Pass the real values
+only on the command line.
+
 ## Is there a command-line fallback for HSBC scanned PDFs?
 
 The browser runs OCR automatically. For unsupported browsers or very slow
