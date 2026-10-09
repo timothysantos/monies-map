@@ -28,7 +28,9 @@ import {
   labelFromFile,
   minorToDecimal,
   MONTHS,
-  type ParsedStatementImport
+  type ParsedStatementImport,
+  type StatementReconciliationCandidate,
+  type StatementReconciliationDiagnostic
 } from "./shared";
 
 // HSBC Visa Revolution statements are image-only PDFs. The app OCRs them in
@@ -79,6 +81,7 @@ export interface HsbcOcrReview {
   // The first pass needed an inferred amount or has barely legible text, so
   // the app should OCR the PDF again before showing the preview.
   wantsSecondPass: boolean;
+  reconciliation?: StatementReconciliationDiagnostic;
 }
 
 export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): ParsedStatementImport & { ocrReview: HsbcOcrReview } {
@@ -113,7 +116,41 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
     )
   });
   if (!resolved) {
-    throw new Error(describeReconciliationFailure(rows, summaries[0]));
+    const summary = summaries[0];
+    const reconciliation = buildReconciliationDiagnostic(rows, summary);
+    const partialRows = rows
+      .filter((row) => row.readings[0])
+      .map((row) => buildHsbcRow({
+        accountName,
+        postDate: row.postDate,
+        transactionDate: row.transactionDate,
+        description: row.description,
+        amount: row.readings[0]
+      }));
+    return {
+      parserKey: "hsbc_visa_revolution_ocr_pdf",
+      sourceLabel: labelFromFile(fileName, `HSBC Visa Revolution ${period.endDate.slice(0, 7)}`),
+      rows: partialRows.sort(compareImportRowsByDate),
+      checkpoints: [{
+        accountName,
+        checkpointMonth: period.endDate.slice(0, 7),
+        statementStartDate: period.startDate,
+        statementEndDate: period.endDate,
+        statementBalanceMinor: summary.statementBalanceMinor!,
+        previousBalanceMinor: summary.previousBalanceMinor!,
+        note: "Imported from HSBC Visa Revolution OCR statement"
+      }],
+      warnings: [
+        "Parsed with local OCR. Review the preview against the original HSBC PDF before committing.",
+        `Statement reconciliation needs attention: expected ${minorToDecimal(reconciliation.expectedMinor)}, found ${minorToDecimal(reconciliation.foundMinor)}.`
+      ],
+      ocrReview: {
+        passCount: passLines.length,
+        inferredAmounts: [],
+        wantsSecondPass: passLines.length === 1,
+        reconciliation
+      }
+    };
   }
 
   const importRows = rows.map((row, index) => buildHsbcRow({
@@ -153,6 +190,46 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
       wantsSecondPass: passLines.length === 1 && isFirstPassDoubtful
     }
   };
+}
+
+function buildReconciliationDiagnostic(
+  rows: Array<{ description: string; postDate?: string; transactionDate?: string; readings: OcrAmountReading[] }>,
+  summary: HsbcSummaryReading
+): StatementReconciliationDiagnostic {
+  const firstReadings = rows.map((row) => row.readings[0]).filter(Boolean);
+  const foundPurchasesMinor = firstReadings.reduce((total, reading) => total + (reading.isCredit ? 0 : reading.minor), 0);
+  const foundCreditsMinor = firstReadings.reduce((total, reading) => total + (reading.isCredit ? reading.minor : 0), 0);
+  const kind = summary.purchasesMinor != null && foundPurchasesMinor !== summary.purchasesMinor
+    ? "purchases"
+    : summary.creditsMinor != null && foundCreditsMinor !== summary.creditsMinor
+      ? "credits"
+      : "balance";
+  const expectedMinor = kind === "purchases"
+    ? summary.purchasesMinor!
+    : kind === "credits"
+      ? summary.creditsMinor!
+      : summary.statementBalanceMinor!;
+  const foundMinor = kind === "purchases"
+    ? foundPurchasesMinor
+    : kind === "credits"
+      ? foundCreditsMinor
+      : (summary.previousBalanceMinor! + foundPurchasesMinor - foundCreditsMinor);
+  const differenceMinor = expectedMinor - foundMinor;
+  const unknownRows = rows.filter((row) => row.readings.length === 0 && row.description);
+  const candidates: StatementReconciliationCandidate[] = unknownRows.length === 1 && differenceMinor > 0
+    ? [{
+      row: buildHsbcRow({
+        accountName: "HSBC Visa Revolution",
+        postDate: unknownRows[0].postDate,
+        transactionDate: unknownRows[0].transactionDate,
+        description: unknownRows[0].description,
+        amount: { minor: differenceMinor, isCredit: kind === "credits" }
+      }),
+      amountMinor: differenceMinor,
+      source: "ocr"
+    }]
+    : [];
+  return { kind, expectedMinor, foundMinor, differenceMinor, candidates };
 }
 
 function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPeriod): HsbcPassReading {
@@ -301,20 +378,6 @@ function buildSummaryCandidates(summaries: HsbcSummaryReading[]) {
   const candidates = [combined, ...summaries]
     .filter((summary) => summary.previousBalanceMinor != null && summary.statementBalanceMinor != null);
   return candidates.filter((summary, index) => candidates.findIndex((other) => JSON.stringify(other) === JSON.stringify(summary)) === index);
-}
-
-function describeReconciliationFailure(rows: Array<{ readings: OcrAmountReading[] }>, summary: HsbcSummaryReading) {
-  const firstReading = rows.map((row) => row.readings[0]);
-  const debitMinor = firstReading.reduce((total, reading) => total + (reading && !reading.isCredit ? reading.minor : 0), 0);
-  const creditMinor = firstReading.reduce((total, reading) => total + (reading?.isCredit ? reading.minor : 0), 0);
-  if (summary.purchasesMinor != null && debitMinor !== summary.purchasesMinor) {
-    return `HSBC statement purchases did not reconcile. Expected ${minorToDecimal(summary.purchasesMinor)}, got ${minorToDecimal(debitMinor)}.`;
-  }
-  if (summary.creditsMinor != null && creditMinor !== summary.creditsMinor) {
-    return `HSBC statement credits did not reconcile. Expected ${minorToDecimal(summary.creditsMinor)}, got ${minorToDecimal(creditMinor)}.`;
-  }
-  const computedBalanceMinor = summary.previousBalanceMinor! + debitMinor - creditMinor;
-  return `HSBC statement did not reconcile. Expected ${minorToDecimal(summary.statementBalanceMinor!)}, got ${minorToDecimal(computedBalanceMinor)}.`;
 }
 
 function buildHsbcRow({

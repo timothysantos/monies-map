@@ -57,7 +57,8 @@ function findImportTarget(target, root) {
     }
     case "statement-details":
     case "unknown-categories":
-    case "statement-check": {
+    case "statement-check":
+    case "statement-ocr-recovery": {
       const element = section(target.kind);
       if (!element) {
         return findImportTarget({ kind: "preview-rows" }, root);

@@ -302,6 +302,18 @@ test("a save or parse in flight disables the commit without adding a chip", () =
   }
 });
 
+test("an OCR reconciliation diagnostic hard-blocks commit without a Commit anyway question", () => {
+  const result = blockersFor({
+    previewRows: [row({ rowId: "ocr-row", accountName: LADYS.name, accountId: LADYS.id })],
+    statementCheckpoints: [{ accountName: LADYS.name, accountId: LADYS.id, checkpointMonth: "2026-05" }],
+    statementReconciliations: [{ accountName: LADYS.name, accountId: LADYS.id, status: "matched", checkpointMonth: "2026-05" }]
+  }, { hasOcrRecovery: true });
+
+  assert.equal(result.isCommitDisabled, true);
+  assert.equal(result.commitQuestion, null);
+  assert.equal(result.blockers.some((blocker) => blocker.kind === "statement-ocr-recovery"), true);
+});
+
 // The rules the panel used before the blocker model, kept verbatim as the
 // reference: import-preview-model.js `isCommitDisabled` and imports-panel.jsx
 // `buildStatementCommitWarning`.

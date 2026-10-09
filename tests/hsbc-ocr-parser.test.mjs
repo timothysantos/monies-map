@@ -195,6 +195,16 @@ test("HSBC browser OCR fixtures import Feb-Jul 2026 statements", async () => {
   }
 });
 
+test("HSBC command-line OCR fixture keeps noisy rows and reports inferred totals", async () => {
+  const tsv = await readFile("tests/fixtures/hsbc-ocr/hsbc-visa-revolution-sep-2026.cli.tsv", "utf8");
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep_2026-cli.pdf");
+
+  assert.equal(parsed.rows.length, 7);
+  assert.equal(parsed.rows.find((row) => row.description.includes("KINOKUNIYA"))?.expense, "34.95");
+  assert.equal(parsed.ocrReview.inferredAmounts.some((item) => item.amount === "34.95"), true);
+  assert.equal(parsed.ocrReview.wantsSecondPass, true);
+});
+
 test("HSBC browser OCR computes checkpoint when total account label is damaged", async () => {
   const tsv = await readFile("tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-may-2026.browser.tsv", "utf8");
   const damagedTotalLabelTsv = tsv
@@ -263,7 +273,7 @@ test("HSBC browser OCR imports Aug 2026 image statement rows below the summary b
   );
 });
 
-test("HSBC browser OCR rejects active summaries when transaction rows are not readable", () => {
+test("HSBC browser OCR returns a recovery review when transaction rows are not readable", () => {
   const tsv = buildOcrTsv([
     [171, 215, "HSBC"], [318, 215, "VISA"], [448, 215, "REVOLUTION"],
     [181, 600, "From"], [265, 600, "06"], [308, 600, "JUL"], [375, 600, "2026"],
@@ -274,10 +284,15 @@ test("HSBC browser OCR rejects active summaries when transaction rows are not re
     [1188, 1088, "Total"], [1261, 1088, "Account"], [1379, 1088, "Balance"], [1685, 1106, "0.00"]
   ]);
 
-  assert.throws(
-    () => parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-aug.pdf"),
-    /HSBC statement purchases did not reconcile/
-  );
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-aug.pdf");
+  assert.equal(parsed.rows.length, 0);
+  assert.deepEqual(parsed.ocrReview.reconciliation, {
+    kind: "purchases",
+    expectedMinor: 10000,
+    foundMinor: 0,
+    differenceMinor: 10000,
+    candidates: []
+  });
 });
 
 test("HSBC OCR parser rejects unrelated OCR TSV", () => {
@@ -347,14 +362,16 @@ test("HSBC first OCR pass asks for a second pass when a description is barely le
   assert.deepEqual(parsed.ocrReview.inferredAmounts, []);
 });
 
-test("HSBC OCR rejects a statement when two amounts are unreadable", async () => {
+test("HSBC OCR returns a recovery review when two amounts are unreadable", async () => {
   // Damage MOTHERCARE's 459.00 as well as IKEA's: the purchases total can no
   // longer say which row takes what, so nothing is guessed.
   const tsv = (await readBrowserOcrFixture("sep")).replace(/\t459\.00$/m, "\t4S9.O");
-  assert.throws(
-    () => parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep_2026.pdf"),
-    /HSBC statement purchases did not reconcile/
-  );
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep_2026.pdf");
+  assert.equal(parsed.ocrReview.reconciliation?.kind, "purchases");
+  assert.equal(parsed.ocrReview.reconciliation?.expectedMinor, 52370);
+  assert.equal(parsed.ocrReview.reconciliation?.foundMinor, 0);
+  assert.equal(parsed.ocrReview.reconciliation?.differenceMinor, 52370);
+  assert.deepEqual(parsed.ocrReview.reconciliation?.candidates, []);
 });
 
 test("HSBC OCR takes a lone purchase's amount from the total and reports it", () => {
@@ -380,7 +397,7 @@ test("HSBC OCR takes a lone purchase's amount from the total and reports it", ()
   });
 });
 
-test("HSBC OCR rejects a lone purchase when the summary does not balance", () => {
+test("HSBC OCR returns a reconciliation review when the statement balance does not agree", () => {
   // The same lone purchase, but the printed balance contradicts the
   // purchases total, so the total cannot be trusted to replace the reading.
   const tsv = buildOcrTsv([
@@ -393,18 +410,22 @@ test("HSBC OCR rejects a lone purchase when the summary does not balance", () =>
     [1188, 1088, "Total"], [1261, 1088, "Account"], [1379, 1088, "Balance"], [1685, 1106, "459.00"],
     [183, 1077, "08Aug"], [310, 1077, "06Aug"], [431, 1077, "MOTHERCARE"], [1040, 1077, "459.00"]
   ]);
-  assert.throws(
-    () => parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep.pdf"),
-    /HSBC statement purchases did not reconcile/
-  );
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep.pdf");
+  assert.equal(parsed.ocrReview.reconciliation.kind, "purchases");
+  assert.equal(parsed.ocrReview.reconciliation.expectedMinor, 52370);
+  assert.equal(parsed.ocrReview.reconciliation.foundMinor, 45900);
+  assert.equal(parsed.ocrReview.reconciliation.differenceMinor, 6470);
+  assert.equal(parsed.ocrReview.reconciliation.candidates.length, 0);
 });
 
-test("HSBC OCR second pass cannot rescue a statement that still does not reconcile", async () => {
+test("HSBC OCR second pass returns a hard reconciliation review when it still cannot reconcile", async () => {
   // MOTHERCARE's and IKEA's amounts are damaged in both passes, leaving two
   // unknown purchases that the total cannot split.
   const damage = (tsv) => tsv.replace(/\t459\.00$/m, "\t4S9.O").replace(/\t64\.70$/m, "\t6A.7O");
   const text = joinOcrTsvPasses([damage(await readBrowserOcrFixture("sep")), damage(await readBrowserOcrFixture("sep", "-pass2"))]);
-  assert.throws(() => parseStatementText(text, "hsbc-visa-revolution-sep_2026.pdf"), /did not reconcile/);
+  const parsed = parseStatementText(text, "hsbc-visa-revolution-sep_2026.pdf");
+  assert.equal(parsed.ocrReview.reconciliation.kind, "purchases");
+  assert.equal(parsed.ocrReview.reconciliation.candidates.length, 0);
 });
 
 function buildOcrTsv(words) {

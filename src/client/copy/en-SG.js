@@ -532,6 +532,7 @@ export const messages = {
     blockerCardAccounts: "Give each card its own account",
     blockerUnknownCategories: (count) => `Map ${countOf(count, "category", "categories")}`,
     blockerRefreshCheck: "Refresh the statement check",
+    blockerOcrRecovery: "Resolve the OCR statement difference",
     blockerNothingToImport: "Include at least 1 row",
     blockerMapColumn: (field) => field === "amount/expense/income" ? "Map an amount column" : `Map the ${field} column`,
     blockerDuplicateColumn: (field) => `Map ${field} to one column only`,

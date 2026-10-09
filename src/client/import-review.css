@@ -754,3 +754,16 @@
     width: 100%;
   }
 }
+.import-ocr-recovery-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0.55rem 0;
+  font-weight: 600;
+}
+
+.import-ocr-recovery-candidate {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-subtle, rgba(74, 56, 44, 0.16));
+}

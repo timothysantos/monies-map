@@ -35,6 +35,21 @@ export interface ParsedStatementImport {
   rows: Record<string, string>[];
   checkpoints: StatementCheckpointDraft[];
   warnings: string[];
+  reconciliation?: StatementReconciliationDiagnostic;
+}
+
+export interface StatementReconciliationCandidate {
+  row: Record<string, string>;
+  amountMinor: number;
+  source: "ocr";
+}
+
+export interface StatementReconciliationDiagnostic {
+  kind: "purchases" | "credits" | "balance";
+  expectedMinor: number;
+  foundMinor: number;
+  differenceMinor: number;
+  candidates: StatementReconciliationCandidate[];
 }
 
 export interface SpreadsheetCell {

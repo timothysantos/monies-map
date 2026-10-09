@@ -21,6 +21,7 @@ const BLOCKER_ORDER = {
   "card-accounts": 30,
   "unknown-categories": 40,
   "statement-check": 50,
+  "statement-ocr-recovery": 55,
   "statement-card": 60,
   "rows-to-check": 70,
   "nothing-to-import": 80
@@ -37,6 +38,7 @@ const BLOCKER_ORDER = {
  * @param {boolean} input.isPreviewDirty rows changed since the check ran
  * @param {boolean} input.isSubmitting
  * @param {boolean} input.isParsingStatement
+ * @param {boolean} [input.hasOcrRecovery]
  * @param {{ readyForMapping: boolean, missingRequiredFields: string[], duplicateMappings: string[] }} [input.columnMapping]
  * @param {boolean} input.areTotalsVisible money privacy: hidden shows no amounts
  * @param {(minor: number) => string} input.formatMoney
@@ -50,6 +52,7 @@ export function buildImportBlockers({
   isPreviewDirty,
   isSubmitting,
   isParsingStatement,
+  hasOcrRecovery = false,
   columnMapping = { readyForMapping: false, missingRequiredFields: [], duplicateMappings: [] },
   areTotalsVisible,
   formatMoney
@@ -96,6 +99,13 @@ export function buildImportBlockers({
       target: { kind: "statement-check" }
     }));
   }
+  if (hasOcrRecovery) {
+    blockers.push(blocker("statement-ocr-recovery", {
+      label: messages.imports.blockerOcrRecovery,
+      target: { kind: "statement-ocr-recovery" },
+      order: BLOCKER_ORDER["statement-ocr-recovery"]
+    }));
+  }
   if (cardEffect) {
     // A card with no account yet is named once, by the "Map" chip; its own
     // chip comes back once it is mapped. The commit question still counts it.
@@ -130,7 +140,7 @@ export function buildImportBlockers({
     blockers,
     remainingCount: blockers.length,
     isCommitDisabled: isSubmitting || isParsingStatement || blockers.some((item) => item.effect === "disable"),
-    commitQuestion: buildCommitQuestion({ isStatement, isPreviewDirty, openCards }),
+    commitQuestion: hasOcrRecovery ? null : buildCommitQuestion({ isStatement, isPreviewDirty, openCards }),
     matched: matchedCount ? { count: matchedCount, label: messages.imports.blockerRowsMatched(matchedCount) } : null
   };
 }
