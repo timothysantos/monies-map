@@ -286,13 +286,8 @@ test("HSBC browser OCR returns a recovery review when transaction rows are not r
 
   const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-aug.pdf");
   assert.equal(parsed.rows.length, 0);
-  assert.deepEqual(parsed.ocrReview.reconciliation, {
-    kind: "purchases",
-    expectedMinor: 10000,
-    foundMinor: 0,
-    differenceMinor: 10000,
-    candidates: []
-  });
+  assert.deepEqual(parsed.reconciliation, { expectedDebitMinor: 10000, expectedCreditMinor: 10000, candidates: [] });
+  assert.equal(parsed.ocrReview.wantsSecondPass, true);
 });
 
 test("HSBC OCR parser rejects unrelated OCR TSV", () => {
@@ -367,11 +362,17 @@ test("HSBC OCR returns a recovery review when two amounts are unreadable", async
   // longer say which row takes what, so nothing is guessed.
   const tsv = (await readBrowserOcrFixture("sep")).replace(/\t459\.00$/m, "\t4S9.O");
   const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep_2026.pdf");
-  assert.equal(parsed.ocrReview.reconciliation?.kind, "purchases");
-  assert.equal(parsed.ocrReview.reconciliation?.expectedMinor, 52370);
-  assert.equal(parsed.ocrReview.reconciliation?.foundMinor, 0);
-  assert.equal(parsed.ocrReview.reconciliation?.differenceMinor, 52370);
-  assert.deepEqual(parsed.ocrReview.reconciliation?.candidates, []);
+  // The payment it could read goes to review; both purchases are listed for
+  // their amounts to be typed from the PDF, and no amount is offered.
+  assert.deepEqual(rowAmounts(parsed), [["2026-09-02", "", "523.70", "txn date: 2026-09-02"]]);
+  assert.equal(parsed.reconciliation.expectedDebitMinor, 52370);
+  assert.equal(parsed.reconciliation.expectedCreditMinor, 52370);
+  assert.deepEqual(parsed.reconciliation.candidates.map((candidate) => [
+    candidate.evidence, candidate.row.date, candidate.row.description, candidate.row.expense, candidate.amountMinor, candidate.isCredit
+  ]), [
+    ["unread-amount", "2026-08-08", "MOTHERCARE - PARAGON SINGAPORE SC", "", undefined, false],
+    ["unread-amount", "2026-08-17", "IKEA SINGAPORE SG", "", undefined, false]
+  ]);
 });
 
 test("HSBC OCR takes a lone purchase's amount from the total and reports it", () => {
@@ -411,11 +412,9 @@ test("HSBC OCR returns a reconciliation review when the statement balance does n
     [183, 1077, "08Aug"], [310, 1077, "06Aug"], [431, 1077, "MOTHERCARE"], [1040, 1077, "459.00"]
   ]);
   const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep.pdf");
-  assert.equal(parsed.ocrReview.reconciliation.kind, "purchases");
-  assert.equal(parsed.ocrReview.reconciliation.expectedMinor, 52370);
-  assert.equal(parsed.ocrReview.reconciliation.foundMinor, 45900);
-  assert.equal(parsed.ocrReview.reconciliation.differenceMinor, 6470);
-  assert.equal(parsed.ocrReview.reconciliation.candidates.length, 0);
+  // A misread amount leaves no candidate: the user corrects it in the rows.
+  assert.deepEqual(rowAmounts(parsed), [["2026-08-08", "459.00", "", "txn date: 2026-08-06"]]);
+  assert.deepEqual(parsed.reconciliation, { expectedDebitMinor: 52370, expectedCreditMinor: 0, candidates: [] });
 });
 
 test("HSBC OCR second pass returns a hard reconciliation review when it still cannot reconcile", async () => {
@@ -424,8 +423,66 @@ test("HSBC OCR second pass returns a hard reconciliation review when it still ca
   const damage = (tsv) => tsv.replace(/\t459\.00$/m, "\t4S9.O").replace(/\t64\.70$/m, "\t6A.7O");
   const text = joinOcrTsvPasses([damage(await readBrowserOcrFixture("sep")), damage(await readBrowserOcrFixture("sep", "-pass2"))]);
   const parsed = parseStatementText(text, "hsbc-visa-revolution-sep_2026.pdf");
-  assert.equal(parsed.ocrReview.reconciliation.kind, "purchases");
-  assert.equal(parsed.ocrReview.reconciliation.candidates.length, 0);
+  assert.deepEqual(parsed.reconciliation.candidates.map((candidate) => [candidate.evidence, candidate.row.description, candidate.amountMinor]), [
+    ["unread-amount", "MOTHERCARE - PARAGON SINGAPORE SG", undefined],
+    ["unread-amount", "IKEA SINGAPORE SG", undefined]
+  ]);
+  assert.equal(parsed.ocrReview.wantsSecondPass, false);
+});
+
+test("HSBC OCR offers a dropped row's read amount when it is exactly the missing difference", async () => {
+  // The Oct 2026 failure in production: Etsy's dates were unreadable, so its
+  // line was not a row, yet OCR read its 29.92. The 29.92 is the one leftover
+  // amount and equals the purchases difference, so it is offered with the date
+  // of the row above it for the user to confirm against the PDF.
+  const tsv = (await readBrowserOcrFixture("oct"))
+    .replace(/\t03Oct$/m, "\t~")
+    .replace(/\t010ct$/m, "\t~");
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-oct_2026.pdf");
+  assert.equal(parsed.rows.length, 6);
+  assert.equal(parsed.rows.some((row) => /Etsy/i.test(row.description)), false);
+  assert.equal(parsed.reconciliation.expectedDebitMinor, 21835);
+  assert.deepEqual(parsed.reconciliation.candidates.map((candidate) => [
+    candidate.evidence, candidate.row.date, candidate.row.description, candidate.amountMinor, candidate.isCredit
+  ]), [["leftover-amount", "2026-10-02", "Etsy WWW.ETSY.COM", 2992, false]]);
+});
+
+test("HSBC OCR never gives a dropped row's amount to an unread row", async () => {
+  // Etsy's line is dropped and DCC FEE's 0.30 is unreadable too. One unknown
+  // purchase would normally take the difference, but the leftover 29.92 shows
+  // a whole row may be missing, so DCC FEE is not given 30.22: both are listed.
+  const tsv = (await readBrowserOcrFixture("oct"))
+    .replace(/\t03Oct$/m, "\t~")
+    .replace(/\t010ct$/m, "\t~")
+    .replace(/\t0\.30$/m, "\t0.3");
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-oct_2026.pdf");
+  assert.equal(parsed.rows.some((row) => row.description === "DCC FEE" && row.expense === "30.22"), false);
+  assert.deepEqual(parsed.reconciliation.candidates.map((candidate) => [candidate.evidence, candidate.row.description, candidate.amountMinor]), [
+    ["unread-amount", "DCC FEE", undefined],
+    ["leftover-amount", "Etsy WWW.ETSY.COM", 2992]
+  ]);
+});
+
+test("HSBC OCR reads a row's amount from its merchant's second line", () => {
+  const tsv = buildOcrTsv([
+    [171, 215, "HSBC"], [318, 215, "VISA"], [448, 215, "REVOLUTION"],
+    [181, 600, "From"], [265, 600, "06"], [308, 600, "AUG"], [375, 600, "2026"],
+    [454, 600, "to"], [492, 600, "06"], [535, 600, "SEP"], [614, 600, "2026"],
+    [1190, 893, "Previous"], [1304, 893, "Statement"], [1441, 893, "Balance"], [1688, 893, "0.00"],
+    [1190, 932, "Payments"], [1321, 932, "&"], [1347, 932, "Credits"], [1633, 932, "0.00"],
+    [1190, 971, "Purchases"], [1328, 971, "&"], [1356, 971, "Debits"], [1633, 971, "523.70"],
+    [1188, 1088, "Total"], [1261, 1088, "Account"], [1379, 1088, "Balance"], [1685, 1106, "523.70"],
+    [183, 1077, "08Aug"], [310, 1077, "06Aug"], [431, 1077, "MOTHERCARE"], [1040, 1077, "459.00"],
+    [184, 1164, "17Aug"], [311, 1164, "14Aug"], [431, 1164, "IKEA"],
+    [431, 1196, "SINGAPORE"], [607, 1196, "SG"], [1053, 1196, "64.70"]
+  ]);
+  const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep.pdf");
+  assert.deepEqual(rowAmounts(parsed), [
+    ["2026-08-08", "459.00", "", "txn date: 2026-08-06"],
+    ["2026-08-17", "64.70", "", "txn date: 2026-08-14"]
+  ]);
+  assert.equal(parsed.reconciliation, undefined);
+  assert.deepEqual(parsed.ocrReview.inferredAmounts, []);
 });
 
 function buildOcrTsv(words) {

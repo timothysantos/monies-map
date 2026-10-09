@@ -69,8 +69,18 @@ interface HsbcRowCandidate {
   amount?: OcrAmount;
 }
 
+// An amount read in the amount column on a line no row could claim (its
+// dates and merchant were unreadable). It may be the missing row.
+interface HsbcLeftoverAmount {
+  page: number;
+  top: number;
+  amount: OcrAmount;
+  description: string;
+}
+
 interface HsbcPassReading {
   rows: HsbcRowCandidate[];
+  leftovers: HsbcLeftoverAmount[];
   summary: HsbcSummaryReading;
 }
 
@@ -81,7 +91,6 @@ export interface HsbcOcrReview {
   // The first pass needed an inferred amount or has barely legible text, so
   // the app should OCR the PDF again before showing the preview.
   wantsSecondPass: boolean;
-  reconciliation?: StatementReconciliationDiagnostic;
 }
 
 export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): ParsedStatementImport & { ocrReview: HsbcOcrReview } {
@@ -107,8 +116,10 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
     throw new Error("Could not read HSBC previous or total account balance.");
   }
 
+  const leftovers = distinctLeftovers(passes.flatMap((reading) => reading.leftovers));
   const resolved = resolveOcrAmountsAgainstTotals({
     rows: rows.map((row) => ({ readings: row.readings, creditWhenUnread: isTransferDescription(row.description) })),
+    canInferKind: (isCredit) => !leftovers.some((leftover) => leftover.amount.isCredit === isCredit),
     summaries,
     totalsOf: (summary) => ({ debitMinor: summary.purchasesMinor, creditMinor: summary.creditsMinor }),
     isSummaryConsistent: (summary, debitMinor, creditMinor) => (
@@ -116,8 +127,16 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
     )
   });
   if (!resolved) {
+    // The readable rows go to review with the printed totals they must reach;
+    // the import stays blocked until the rows in the preview add up.
     const summary = summaries[0];
-    const reconciliation = buildReconciliationDiagnostic(rows, summary);
+    const reconciliation = buildReconciliationDiagnostic({
+      rows,
+      leftovers,
+      summary,
+      accountName,
+      periodEndDate: period.endDate
+    });
     const partialRows = rows
       .filter((row) => row.readings[0])
       .map((row) => buildHsbcRow({
@@ -141,14 +160,13 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
         note: "Imported from HSBC Visa Revolution OCR statement"
       }],
       warnings: [
-        "Parsed with local OCR. Review the preview against the original HSBC PDF before committing.",
-        `Statement reconciliation needs attention: expected ${minorToDecimal(reconciliation.expectedMinor)}, found ${minorToDecimal(reconciliation.foundMinor)}.`
+        "Parsed with local OCR. Review the preview against the original HSBC PDF before committing."
       ],
+      reconciliation,
       ocrReview: {
         passCount: passLines.length,
         inferredAmounts: [],
-        wantsSecondPass: passLines.length === 1,
-        reconciliation
+        wantsSecondPass: passLines.length === 1
       }
     };
   }
@@ -192,50 +210,79 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
   };
 }
 
-function buildReconciliationDiagnostic(
-  rows: Array<{ description: string; postDate?: string; transactionDate?: string; readings: OcrAmountReading[] }>,
-  summary: HsbcSummaryReading
-): StatementReconciliationDiagnostic {
-  const firstReadings = rows.map((row) => row.readings[0]).filter(Boolean);
-  const foundPurchasesMinor = firstReadings.reduce((total, reading) => total + (reading.isCredit ? 0 : reading.minor), 0);
-  const foundCreditsMinor = firstReadings.reduce((total, reading) => total + (reading.isCredit ? reading.minor : 0), 0);
-  const kind = summary.purchasesMinor != null && foundPurchasesMinor !== summary.purchasesMinor
-    ? "purchases"
-    : summary.creditsMinor != null && foundCreditsMinor !== summary.creditsMinor
-      ? "credits"
-      : "balance";
-  const expectedMinor = kind === "purchases"
-    ? summary.purchasesMinor!
-    : kind === "credits"
-      ? summary.creditsMinor!
-      : summary.statementBalanceMinor!;
-  const foundMinor = kind === "purchases"
-    ? foundPurchasesMinor
-    : kind === "credits"
-      ? foundCreditsMinor
-      : (summary.previousBalanceMinor! + foundPurchasesMinor - foundCreditsMinor);
-  const differenceMinor = expectedMinor - foundMinor;
-  const unknownRows = rows.filter((row) => row.readings.length === 0 && row.description);
-  const candidates: StatementReconciliationCandidate[] = unknownRows.length === 1 && differenceMinor > 0
-    ? [{
-      row: buildHsbcRow({
-        accountName: "HSBC Visa Revolution",
-        postDate: unknownRows[0].postDate,
-        transactionDate: unknownRows[0].transactionDate,
-        description: unknownRows[0].description,
-        amount: { minor: differenceMinor, isCredit: kind === "credits" }
-      }),
-      amountMinor: differenceMinor,
-      source: "ocr"
-    }]
-    : [];
-  return { kind, expectedMinor, foundMinor, differenceMinor, candidates };
+// Candidates come only from evidence on the page: every amount read on a line
+// no row claimed, and every dated row whose amount no pass could read. The
+// app offers a leftover only while it exactly equals the current difference,
+// and asks the user to type an unread row's amount from the PDF. Nothing here
+// certifies anything: the preview stays blocked until its rows add up to the
+// printed totals.
+function buildReconciliationDiagnostic({
+  rows,
+  leftovers,
+  summary,
+  accountName,
+  periodEndDate
+}: {
+  rows: Array<{ description: string; postDate?: string; transactionDate?: string; top: number; page: number; readings: OcrAmountReading[] }>;
+  leftovers: HsbcLeftoverAmount[];
+  summary: HsbcSummaryReading;
+  accountName: string;
+  periodEndDate: string;
+}): StatementReconciliationDiagnostic {
+  const expected = { debit: summary.purchasesMinor, credit: summary.creditsMinor };
+  const candidates: StatementReconciliationCandidate[] = [];
+
+  for (const row of rows.filter((item) => item.readings.length === 0 && item.description)) {
+    candidates.push({
+      id: `unread-amount-${row.page}-${row.top}`,
+      evidence: "unread-amount",
+      row: buildHsbcRowWithoutAmount({ accountName, postDate: row.postDate, transactionDate: row.transactionDate, description: row.description }),
+      isCredit: isTransferDescription(row.description)
+    });
+  }
+
+  for (const leftover of leftovers) {
+    // The leftover's own dates were unreadable; the row printed just above it
+    // is the best default, and the user confirms it against the PDF.
+    const rowAbove = rows
+      .filter((row) => row.page === leftover.page && row.top < leftover.top && row.postDate)
+      .sort((left, right) => right.top - left.top)[0];
+    candidates.push({
+      id: `leftover-amount-${leftover.page}-${leftover.top}`,
+      evidence: "leftover-amount",
+      row: buildHsbcRowWithoutAmount({ accountName, postDate: rowAbove?.postDate ?? periodEndDate, description: leftover.description }),
+      amountMinor: leftover.amount.minor,
+      isCredit: leftover.amount.isCredit
+    });
+  }
+
+  return {
+    ...(expected.debit != null ? { expectedDebitMinor: expected.debit } : {}),
+    ...(expected.credit != null ? { expectedCreditMinor: expected.credit } : {}),
+    candidates
+  };
+}
+
+// The same leftover read by two passes is one leftover; a zero amount is
+// never a missing row.
+function distinctLeftovers(leftovers: HsbcLeftoverAmount[]) {
+  return leftovers.filter((leftover, index) => leftover.amount.minor > 0 && leftovers.findIndex((other) => (
+    other.page === leftover.page
+    && Math.abs(other.top - leftover.top) <= SAME_ROW_TOP_DISTANCE
+    && other.amount.minor === leftover.amount.minor
+    && other.amount.isCredit === leftover.amount.isCredit
+  )) === index);
+}
+
+function buildHsbcRowWithoutAmount(input: { accountName: string; postDate?: string; transactionDate?: string; description: string }) {
+  return { ...buildHsbcRow({ ...input, amount: { minor: 0, isCredit: false } }), expense: "", income: "" };
 }
 
 function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPeriod): HsbcPassReading {
   const lines = withoutOcrNoise(rawLines);
   const transactionLines = getHsbcTransactionTableLines(lines);
   const rows: HsbcRowCandidate[] = [];
+  const leftovers: HsbcLeftoverAmount[] = [];
   let tablePreviousBalanceMinor: number | undefined;
 
   for (let index = 0; index < transactionLines.length; index += 1) {
@@ -248,8 +295,18 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
     const postDate = readHsbcDate(line.words, 125, 245, period, 0);
     const transactionDate = readHsbcDate(line.words, 240, 390, period, 31);
     if (!postDate && !transactionDate) {
+      const leftoverAmount = findAmountInRange(line.words, 930, 1140);
+      if (leftoverAmount && !isHsbcTableEndLine(line)) {
+        leftovers.push({
+          page: line.page,
+          top: line.top,
+          amount: leftoverAmount,
+          description: cleanHsbcDescription(wordsToHsbcTransactionDescription(line.words, true))
+        });
+      }
       continue;
     }
+    let amount = findAmountInRange(line.words, 930, 1140);
 
     const descriptionParts: string[] = [];
     const descriptionWords: OcrWord[] = [];
@@ -268,13 +325,18 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
       // Only the table's side of the page can end a row: the summary column
       // on the right has its own "Total Account Balance".
       const tableText = ocrWordsToText(candidate.words.filter((word) => word.left < 1120));
+      // A line with its own amount under a row that already has one is the
+      // next transaction with unreadable dates, not a merchant's second line.
       if (
-        readHsbcDate(candidate.words, 125, 245, period, 0)
+        (amount && findAmountInRange(candidate.words, 930, 1140))
+        || readHsbcDate(candidate.words, 125, 245, period, 0)
         || /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance/i.test(tableText)
         || !isHsbcMerchantContinuationLine(candidate, line, 85)
       ) {
         break;
       }
+      // A row's amount can sit on its merchant's second line.
+      amount ??= findAmountInRange(candidate.words, 930, 1140);
       const continuation = wordsToHsbcTransactionDescription(candidate.words, true);
       if (continuation) {
         descriptionParts.push(continuation);
@@ -293,8 +355,18 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
       descriptionScore: ocrLegibilityScore(descriptionWords),
       descriptionMeanConfidence: meanOcrConfidence(descriptionWords),
       descriptionMinConfidence: minOcrConfidence(descriptionWords),
-      amount: findAmountInRange(line.words, 930, 1140)
+      amount
     });
+  }
+
+  // OCR can box a row's amount a few pixels off its line; a leftover that
+  // close to a row without an amount is that row's amount.
+  for (const row of rows.filter((item) => !item.amount)) {
+    const nearby = leftovers.findIndex((leftover) => leftover.page === row.page && Math.abs(leftover.top - row.top) <= 25);
+    if (nearby >= 0) {
+      row.amount = leftovers[nearby].amount;
+      leftovers.splice(nearby, 1);
+    }
   }
 
   const summaryPreviousBalanceMinor = findSummaryAmountByTokens(lines, [/Previous/i, /Balance/i])?.minor;
@@ -310,6 +382,7 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
 
   return {
     rows,
+    leftovers,
     summary: { previousBalanceMinor, purchasesMinor, creditsMinor, statementBalanceMinor }
   };
 }
@@ -359,6 +432,8 @@ function describeMergedRow(candidates: HsbcRowCandidate[]) {
     }
   }
   return {
+    page: candidates[0].page,
+    top: candidates[0].top,
     postDate: candidates.find((candidate) => candidate.postDate)?.postDate,
     transactionDate: candidates.find((candidate) => candidate.transactionDate)?.transactionDate,
     description: legible?.description ?? "",
@@ -521,6 +596,11 @@ function wordsToHsbcTransactionDescription(words: OcrWord[], continuation: boole
     .replace(/\b(?:aaa|an|tn|ere|ee|ss+)\b/gi, " ")
     .replace(/\bOM\s+SO\b/gi, "COM SG")
     .trim();
+}
+
+function isHsbcTableEndLine(line: OcrLine) {
+  return /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance|Previous\s+Statement\s+Balance/i
+    .test(ocrWordsToText(line.words.filter((word) => word.left < 1120)));
 }
 
 function isHsbcMerchantContinuationLine(candidate: OcrLine, anchor: OcrLine, topWindow: number) {

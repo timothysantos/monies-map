@@ -393,17 +393,22 @@ export interface OcrResolvedAmounts<TSummary> {
 // consistent. A row no pass could read is filled from a total only when it is
 // that total's single unknown. Prefers no inferred amounts, then the most
 // readings from earlier passes. Returns undefined when nothing reconciles.
+// canInferKind(isCredit) false forbids filling or correcting that kind's
+// amounts: when the page shows an amount no row claimed, a whole row may be
+// missing, so the single unknown cannot be assumed to take the difference.
 export function resolveOcrAmountsAgainstTotals<TSummary>({
   rows,
   summaries,
   totalsOf,
   isSummaryConsistent,
+  canInferKind = () => true,
   maxCombinations = 4096
 }: {
   rows: OcrResolvableRow[];
   summaries: TSummary[];
   totalsOf: (summary: TSummary) => OcrTotals;
   isSummaryConsistent: (summary: TSummary, debitMinor: number, creditMinor: number) => boolean;
+  canInferKind?: (isCredit: boolean) => boolean;
   maxCombinations?: number;
 }): OcrResolvedAmounts<TSummary> | undefined {
   const choiceCounts = rows.map((row) => Math.max(row.readings.length, 1));
@@ -414,8 +419,8 @@ export function resolveOcrAmountsAgainstTotals<TSummary>({
 
   // First every reading as read; only when nothing reconciles may the lone
   // row of a kind take its total (see tryCombination).
-  return searchCombinations(rows, summaries, totalsOf, isSummaryConsistent, choiceCounts, false)
-    ?? searchCombinations(rows, summaries, totalsOf, isSummaryConsistent, choiceCounts, true);
+  return searchCombinations(rows, summaries, totalsOf, isSummaryConsistent, choiceCounts, false, canInferKind)
+    ?? searchCombinations(rows, summaries, totalsOf, isSummaryConsistent, choiceCounts, true, canInferKind);
 }
 
 function searchCombinations<TSummary>(
@@ -424,7 +429,8 @@ function searchCombinations<TSummary>(
   totalsOf: (summary: TSummary) => OcrTotals,
   isSummaryConsistent: (summary: TSummary, debitMinor: number, creditMinor: number) => boolean,
   choiceCounts: number[],
-  correctLoneRows: boolean
+  correctLoneRows: boolean,
+  canInferKind: (isCredit: boolean) => boolean
 ): OcrResolvedAmounts<TSummary> | undefined {
   let best: (OcrResolvedAmounts<TSummary> & { laterPicks: number }) | undefined;
   for (let summaryIndex = 0; summaryIndex < summaries.length; summaryIndex += 1) {
@@ -432,7 +438,7 @@ function searchCombinations<TSummary>(
     const totals = totalsOf(summary);
     const picks = rows.map(() => 0);
     for (;;) {
-      const candidate = tryCombination(rows, picks, totals, correctLoneRows);
+      const candidate = tryCombination(rows, picks, totals, correctLoneRows, canInferKind);
       if (candidate && isSummaryConsistent(summary, candidate.debitMinor, candidate.creditMinor)) {
         const laterPicks = summaryIndex + picks.reduce((total, pick) => total + pick, 0);
         if (
@@ -464,16 +470,26 @@ function searchCombinations<TSummary>(
 // may replace that row's reading with the kind's total: the total is then
 // the row's amount, provided the summary still balances. With two or more
 // rows the total cannot say which reading is wrong, so nothing is replaced.
-function tryCombination(rows: OcrResolvableRow[], picks: number[], totals: OcrTotals, correctLoneRows: boolean) {
+function tryCombination(
+  rows: OcrResolvableRow[],
+  picks: number[],
+  totals: OcrTotals,
+  correctLoneRows: boolean,
+  canInferKind: (isCredit: boolean) => boolean
+) {
   const amounts: Array<OcrAmountReading | undefined> = rows.map((row, index) => row.readings[picks[index]]);
   const fill = (isCredit: boolean, total: number | undefined) => {
     const ofKind = rows
       .map((row, index) => ({ row, index }))
       .filter(({ row, index }) => (amounts[index] ? amounts[index]!.isCredit : row.creditWhenUnread) === isCredit);
-    if (correctLoneRows && total != null && ofKind.length === 1 && amounts[ofKind[0].index]?.minor !== total) {
+    const mayInfer = canInferKind(isCredit);
+    if (mayInfer && correctLoneRows && total != null && ofKind.length === 1 && amounts[ofKind[0].index]?.minor !== total) {
       amounts[ofKind[0].index] = undefined;
     }
     const unknown = ofKind.filter(({ index }) => !amounts[index]);
+    if (!mayInfer && unknown.length) {
+      return { ok: false, sum: 0, inferred: [] as number[] };
+    }
     const known = amounts.reduce((sum, amount) => sum + (amount && amount.isCredit === isCredit ? amount.minor : 0), 0);
     if (total == null) {
       return unknown.length === 0 ? { ok: true, sum: known, inferred: [] as number[] } : { ok: false, sum: known, inferred: [] as number[] };

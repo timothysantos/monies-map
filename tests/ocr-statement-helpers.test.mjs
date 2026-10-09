@@ -230,3 +230,25 @@ test("resolveOcrAmountsAgainstTotals refuses two unread rows and an inconsistent
   });
   assert.equal(unbalanced, undefined, "the balance contradicts the purchases total");
 });
+
+test("resolveOcrAmountsAgainstTotals infers nothing for a kind that may be missing a whole row", () => {
+  const rows = [
+    { readings: [{ minor: 45900, isCredit: false }], creditWhenUnread: false },
+    { readings: [], creditWhenUnread: false },
+    { readings: [{ minor: 52370, isCredit: true }], creditWhenUnread: true }
+  ];
+  const input = { rows, summaries: [SEP_SUMMARY], totalsOf, isSummaryConsistent: consistentBalance };
+  assert.deepEqual(resolveOcrAmountsAgainstTotals(input)?.inferredRowIndexes, [1]);
+  // A purchase amount no row claimed is on the page: the unread row cannot be
+  // assumed to take the whole difference.
+  assert.equal(resolveOcrAmountsAgainstTotals({ ...input, canInferKind: (isCredit) => isCredit }), undefined);
+  // The lone-row correction is held back the same way.
+  const lone = {
+    rows: [{ readings: [{ minor: 18720, isCredit: false }], creditWhenUnread: false }],
+    summaries: [{ previous: 0, purchases: 15720, credits: 0, balance: 15720 }],
+    totalsOf,
+    isSummaryConsistent: consistentBalance
+  };
+  assert.deepEqual(resolveOcrAmountsAgainstTotals(lone)?.inferredRowIndexes, [0]);
+  assert.equal(resolveOcrAmountsAgainstTotals({ ...lone, canInferKind: () => false }), undefined);
+});
