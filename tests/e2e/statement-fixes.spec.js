@@ -4,6 +4,7 @@
 // (tests/fixtures/pdf-statement-text/uob-card-two-card-may-2026-sanitized),
 // printed to a real PDF so the browser parses it as a user's file.
 import { expect, test } from "@playwright/test";
+import { openRecentImports } from "./helpers.js";
 import { LADYS_CARD, ONE_CARD, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 async function entryAccountName(page, entryId) {
@@ -70,6 +71,7 @@ test("a wrong-card purchase is found, moved on approval, committed and undone by
   expect(await entryAccountName(page, openaiId)).toBe(ONE_CARD);
 
   // Rolling the statement back puts the entries back on Lady's Card.
+  await openRecentImports(page);
   await page.getByRole("button", { name: "Rollback import" }).first().click();
   const rollbackResponse = page.waitForResponse((response) => response.url().includes("/api/imports/rollback"));
   await page.getByRole("button", { name: "Confirm rollback" }).click();

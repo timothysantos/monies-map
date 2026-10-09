@@ -35,6 +35,31 @@ export interface ParsedStatementImport {
   rows: Record<string, string>[];
   checkpoints: StatementCheckpointDraft[];
   warnings: string[];
+  // Set only when the rows a parser could read do not add up to the
+  // statement's printed totals. The import shows the readable rows and stays
+  // blocked until the rows in the preview add up to these totals.
+  reconciliation?: StatementReconciliationDiagnostic;
+}
+
+// A row the statement shows that the parser could not complete. "leftover-amount":
+// an amount the parser read on a line it could not attach to a row, and it is
+// exactly the missing difference. "unread-amount": a dated, described row whose
+// amount could not be read; the user types it from the PDF.
+export interface StatementReconciliationCandidate {
+  id: string;
+  evidence: "leftover-amount" | "unread-amount";
+  // An import row without amount fields; the amount is added on confirmation.
+  row: Record<string, string>;
+  amountMinor?: number;
+  isCredit: boolean;
+}
+
+export interface StatementReconciliationDiagnostic {
+  // The printed purchases and credits totals the rows must add up to; a total
+  // the parser could not read is left out and not checked.
+  expectedDebitMinor?: number;
+  expectedCreditMinor?: number;
+  candidates: StatementReconciliationCandidate[];
 }
 
 export interface SpreadsheetCell {

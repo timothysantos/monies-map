@@ -1,4 +1,5 @@
 import { expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 export async function gotoPageAfterApi(page, path, apiPath, readyLocator) {
   let lastError = null;
@@ -204,4 +205,65 @@ export async function loadSettingsPage(page) {
   }
 
   throw lastError ?? new Error("GET /api/settings-page failed");
+}
+
+// Imports keeps pasted rows and the import defaults behind "Paste rows or
+// set defaults"; these open it (when it is closed) before using a field.
+export async function openPasteRowsAndDefaults(page) {
+  const toggle = page.getByRole("button", { name: "Paste rows or set defaults" });
+  await toggle.waitFor({ state: "visible", timeout: 60_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
+export async function fillImportField(page, label, value) {
+  await openPasteRowsAndDefaults(page);
+  await page.getByLabel(label).fill(value);
+}
+
+export async function selectImportField(page, label, option) {
+  await openPasteRowsAndDefaults(page);
+  await page.getByLabel(label).selectOption(option);
+}
+
+// Recent imports starts closed on Imports; this opens it.
+export async function openRecentImports(page) {
+  const toggle = page.locator(".import-history-toggle");
+  await toggle.waitFor({ state: "visible", timeout: 60_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
+// Drops files on an element the way a browser does: dragenter, dragover,
+// then drop, all carrying the same DataTransfer.
+export async function dropFiles(page, selector, files, { drop = true } = {}) {
+  const payload = await Promise.all(files.map(async (file) => ({
+    name: file.name,
+    type: file.type,
+    base64: (await readFile(file.path)).toString("base64")
+  })));
+  const dataTransfer = await page.evaluateHandle((items) => {
+    const transfer = new DataTransfer();
+    for (const item of items) {
+      const bytes = Uint8Array.from(atob(item.base64), (char) => char.charCodeAt(0));
+      transfer.items.add(new File([bytes], item.name, { type: item.type }));
+    }
+    return transfer;
+  }, payload);
+  await page.dispatchEvent(selector, "dragenter", { dataTransfer });
+  await page.dispatchEvent(selector, "dragover", { dataTransfer });
+  if (drop) {
+    await page.dispatchEvent(selector, "drop", { dataTransfer });
+  }
+}
+
+// Once a file is in review the Bring files step says how many rows are
+// ready. The import bar folds that line away while it is stuck to the top,
+// so this reads the step whether or not the line is shown.
+export async function expectImportRowsReady(page, text, { timeout = 60_000 } = {}) {
+  await expect(page.locator(".import-stepper-step").first()).toContainText(text, { timeout });
 }

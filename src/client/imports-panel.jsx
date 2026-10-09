@@ -11,6 +11,9 @@ import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAc
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
+import { buildImportBlockers } from "./import-blockers-model";
+import { unmaskedMoney } from "./formatters";
+import { useMoneyPrivacy } from "./money-privacy";
 import { initialSplitCleanupState, splitCleanupReducer } from "./import-split-cleanup-model";
 import {
   getStatementPreviewAutoRefreshKey,
@@ -23,8 +26,22 @@ import { buildStatementTitle, ImportPreviewReview } from "./import-preview-revie
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportCommitBar } from "./import-commit-bar";
 import { ImportDoneCard, ImportStepper } from "./import-stages";
+import { ImportBatchBar, ImportProgressSheet, useImportStickyBar } from "./import-batch-bar";
+import {
+  buildImportBatchFiles,
+  describeCommitLabel,
+  describeImportFileLabel,
+  describeIntakeItemLabel,
+  findNextIntakeItem,
+  skipIntakeItem
+} from "./import-batch-model";
+import { useImportBlockerKeys } from "./import-blocker-keys";
+import { jumpToImportTarget, revealAndFocus } from "./import-jump";
 import { buildImportDoneSummary } from "./import-done-model";
-import { orderIntakeQueue } from "./import-intake-model";
+import { isInboxOpenByDefault } from "./import-inbox-model";
+import { usePageFileDrop } from "./import-page-drop";
+import { useFollowingFold } from "./use-following-fold";
+import { useMediaQuery } from "./use-viewport";
 import {
   getProvenStatementFixes,
   getStatementFixKey,
@@ -32,6 +49,8 @@ import {
   writeAutomaticStatementFixes
 } from "./statement-fix-preference";
 import { ImportSelectFileStage } from "./import-select-file-stage";
+import { ImportStatementRecovery } from "./import-statement-recovery";
+import { buildRecoveryImportRow, buildStatementRecovery } from "./import-statement-recovery-model";
 import { moniesClient } from "./monies-client-service";
 import { AccountDialog } from "./account-dialog";
 import { saveAccount } from "./accounts-api";
@@ -50,6 +69,15 @@ const DEFAULT_SOURCE_LABEL = "Imported CSV";
 const DEFAULT_STATEMENT_IMPORT_META = { sourceType: "csv", parserKey: "generic_csv" };
 const DEFAULT_UNKNOWN_CATEGORY_MODE = "other";
 const { format: formatService, imports: importService } = moniesClient;
+// Below this width the import bar scrolls away and the commit bar's count
+// opens the import progress sheet (import-review.css uses the same 767 px).
+const IMPORT_PHONE_QUERY = "(max-width: 767px)";
+
+// Without the shell's refresh notice (isolated renders), a failed refresh
+// is dropped.
+function runQuietly(task, _retry) {
+  return Promise.resolve().then(task).catch(() => null);
+}
 
 function buildImportPreviewError(error, fallbackMessage = "Import preview failed.") {
   if (!(error instanceof Error)) {
@@ -107,7 +135,7 @@ function filterDeletedDiagnosticRowsFromBreakdown(breakdown, deletedLedgerIds) {
 // - stage 1 collects source rows and default import ownership/account choices
 // - stage 2 maps CSV columns into the app's import schema
 // - stage 3 reviews the server-built preview before commit
-export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
+export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh, runBackgroundRefresh = runQuietly }) {
   // Imports can mount while the route payload is still hydrating, so keep a
   // minimal local shape instead of assuming the page slice is already present.
   const safeImportsPage = importsPage ?? {
@@ -117,6 +145,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     rollbackPolicy: ""
   };
   const navigate = useNavigate();
+  const { areTotalsVisible } = useMoneyPrivacy();
   // Draft metadata chosen by the user before preview.
   const [sourceLabel, setSourceLabel] = useState(DEFAULT_SOURCE_LABEL);
   const [importNote, setImportNote] = useState("");
@@ -139,6 +168,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [statementCheckpoints, setStatementCheckpoints] = useState([]);
   const [statementImportMeta, setStatementImportMeta] = useState(DEFAULT_STATEMENT_IMPORT_META);
   const [statementWarnings, setStatementWarnings] = useState([]);
+  // Printed totals and evidence for a statement whose readable rows did not
+  // add up (ParsedStatementImport.reconciliation); null otherwise.
+  const [statementReconciliation, setStatementReconciliation] = useState(null);
   const [allowAiStatementFallback, setAllowAiStatementFallback] = useState(false);
 
   // UI-only workflow state: upload progress, modal dialogs, and navigation aids.
@@ -149,7 +181,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [accountDialog, setAccountDialog] = useState(null);
   const [accountDialogError, setAccountDialogError] = useState("");
   const [pendingStatementAccountName, setPendingStatementAccountName] = useState("");
-  const [recentImportsOpen, setRecentImportsOpen] = useState(true);
+  // Recent imports starts closed: it is audit context, not the next step.
+  const [recentImportsOpen, setRecentImportsOpen] = useState(false);
   const [recentImportPage, setRecentImportPage] = useState(1);
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
   const [recentImportStatus, setRecentImportStatus] = useState(null);
@@ -177,6 +210,27 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [autoAppliedStatementFixCount, setAutoAppliedStatementFixCount] = useState(0);
   const autoAppliedStatementFixKeysRef = useRef(new Set());
   const [intakeQueue, setIntakeQueue] = useState([]);
+  // This session's batch: the files committed so far (the done file
+  // chips), how many changes the file in review has that switching files
+  // would drop, and a blocker jump waiting for its section to open.
+  const [committedBatchFiles, setCommittedBatchFiles] = useState([]);
+  // Whether the user typed the source label (or took one from the inbox).
+  const isSourceLabelChosenRef = useRef(false);
+  const [reviewChangeCount, setReviewChangeCount] = useState(0);
+  const [pendingJumpTarget, setPendingJumpTarget] = useState(null);
+  const panelRef = useRef(null);
+  const batchBarRef = useRef(null);
+  // Moving through the batch: the file a commit opens next (opened once the
+  // commit's reset has rendered), the phone's progress sheet and what to do
+  // once it has closed, the order of the blocker last jumped to (J and K
+  // carry on from it), and the file in review as it was read, so "Skip for
+  // now" can queue a file that was not dropped with others.
+  const [pendingNextItemId, setPendingNextItemId] = useState(null);
+  const [isProgressSheetOpen, setIsProgressSheetOpen] = useState(false);
+  const [afterProgressSheet, setAfterProgressSheet] = useState(null);
+  const blockerCursorRef = useRef(null);
+  const currentImportSourceRef = useRef(null);
+  const isPhoneLayout = useMediaQuery(IMPORT_PHONE_QUERY);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
   const mappingSectionRef = useRef(null);
@@ -301,11 +355,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementCheckpoints,
       statementImportMeta,
       dismissedOverlapIds,
-      unknownCategoryMode,
-      isSubmitting,
-      isParsingStatement
+      unknownCategoryMode
     }),
-    [accounts, dismissedOverlapIds, isParsingStatement, isSubmitting, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
+    [accounts, dismissedOverlapIds, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
   );
   const currentPreviewSignature = useMemo(
     () => buildStatementPreviewSnapshot(previewRows, statementCheckpoints),
@@ -348,14 +400,66 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
-  const commitWarning = buildStatementCommitWarning({
-    sourceType: statementImportMeta.sourceType,
-    hasStatementCheckpoints: statementCheckpoints.length > 0,
-    isPreviewDirty: importWorkflowModel.isPreviewDirty,
-    statementReconciliations: importPreviewModel.statementReconciliations ?? [],
-    onRefresh: () => handleRefreshStatementReconciliation(),
-    onCommit: () => handleCommit()
-  });
+  // A plain CSV (no bank parser) needs its columns mapped, and the defaults
+  // that fill what its columns do not say. A parsed file needs neither.
+  const isMappingNeeded = importWorkflowModel.readyForMapping
+    && statementImportMeta.parserKey === DEFAULT_STATEMENT_IMPORT_META.parserKey;
+  const [isPasteDefaultsOpen, setIsPasteDefaultsOpen] = useFollowingFold(isMappingNeeded, { followClose: false });
+  // A file dropped anywhere on the page goes where the drop zone sends it.
+  const isPageDragActive = usePageFileDrop((files) => void processImportFiles(files));
+  // Recomputed from the current rows, so it clears only when they add up.
+  const statementRecovery = useMemo(
+    () => buildStatementRecovery({ reconciliation: statementReconciliation, previewRows }),
+    [statementReconciliation, previewRows]
+  );
+  const hasUnbalancedStatement = Boolean(statementRecovery && !statementRecovery.isBalanced);
+  // What blocks a clean commit: the bar's chips, the commit bar's count
+  // and the commit rules all read this one list.
+  const importBlockers = useMemo(
+    () => buildImportBlockers({
+      previewModel: preview ? importPreviewModel : null,
+      hasPreview: Boolean(preview),
+      sourceType: statementImportMeta.sourceType,
+      statementCheckpointCount: statementCheckpoints.length,
+      unknownCategoryCount: preview?.unknownCategories?.length ?? 0,
+      isPreviewDirty: importWorkflowModel.isPreviewDirty,
+      isSubmitting,
+      isParsingStatement,
+      columnMapping: {
+        readyForMapping: importWorkflowModel.readyForMapping,
+        missingRequiredFields: importWorkflowModel.missingRequiredFields,
+        duplicateMappings: importWorkflowModel.duplicateMappings
+      },
+      hasOcrRecovery: hasUnbalancedStatement,
+      areTotalsVisible,
+      formatMoney: unmaskedMoney
+    }),
+    [
+      areTotalsVisible,
+      hasUnbalancedStatement,
+      importPreviewModel,
+      importWorkflowModel.duplicateMappings,
+      importWorkflowModel.isPreviewDirty,
+      importWorkflowModel.missingRequiredFields,
+      importWorkflowModel.readyForMapping,
+      isParsingStatement,
+      isSubmitting,
+      preview,
+      statementCheckpoints.length,
+      statementImportMeta.sourceType
+    ]
+  );
+  const { isCommitDisabled } = importBlockers;
+  const commitQuestion = importBlockers.commitQuestion;
+  const commitWarning = commitQuestion
+    ? {
+      message: commitQuestion.message,
+      confirmLabel: commitQuestion.confirmLabel,
+      onConfirm: commitQuestion.kind === "stale_check"
+        ? () => handleRefreshStatementReconciliation()
+        : () => handleCommit()
+    }
+    : undefined;
   // Any import draft, preview edit or write in flight is protected work.
   useRouteWorkReport({
     busy: importDraftExists
@@ -393,7 +497,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
-    isCommitDisabled,
+    commitKind,
     commitLabel,
     knownAccountNames,
     previewReconciliationRowCount,
@@ -453,9 +557,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   function handleCsvTextChange(nextText) {
     setCsvText(nextText);
+    setReviewChangeCount(0);
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setStatementWarnings([]);
+    setStatementReconciliation(null);
     setAllowAiStatementFallback(false);
     setPreview(null);
     setPreviewRows([]);
@@ -484,6 +590,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
   }
 
+  function handleSourceLabelChange(nextSourceLabel) {
+    isSourceLabelChosenRef.current = true;
+    setSourceLabel(nextSourceLabel);
+  }
+
   function handleOwnerNameChange(nextOwnerName) {
     setOwnerName(nextOwnerName);
     void maybeAutoPreviewCitibankActivityCsv(csvText, {
@@ -501,25 +612,31 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setOwnerName(nextOwnerName);
     }
     setSourceLabel(file.label);
+    isSourceLabelChosenRef.current = true;
     setImportNote(file.detail);
+    // Show the defaults it just filled.
+    setIsPasteDefaultsOpen(true);
     fileInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  // Opening a file of the batch keeps the last commit's summary (and its
+  // rollback) above the new review.
   async function handleLoadIntakeItem(item) {
     setActiveIntakeItemId(item.id);
     setDefaultAccountName(item.parsed?.checkpoints?.[0]?.accountName ?? item.parsed?.rows?.[0]?.accountName ?? defaultAccountName);
     if (item.parsed) {
       await loadParsedImport({
         parsed: item.parsed,
-        sourceType: item.sourceType
-      });
+        sourceType: item.sourceType,
+        fileName: item.fileName
+      }, { keepCommitSummary: true });
     } else {
       await loadParsedImport({
         parsed: null,
         sourceType: item.sourceType,
         csvText: item.csvText,
         fileName: item.fileName
-      });
+      }, { keepCommitSummary: true });
     }
   }
 
@@ -536,6 +653,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function resetImportForm({ preserveRecentImportStatus = false } = {}) {
+    setReviewChangeCount(0);
+    setIsProgressSheetOpen(false);
+    blockerCursorRef.current = null;
+    currentImportSourceRef.current = null;
+    isSourceLabelChosenRef.current = false;
     setSourceLabel(DEFAULT_SOURCE_LABEL);
     setImportNote("");
     setCsvText("");
@@ -550,6 +672,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setStatementWarnings([]);
+    setStatementReconciliation(null);
     setUploadStatus(null);
     setIsParsingStatement(false);
     setIsDragActive(false);
@@ -560,6 +683,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setActiveIntakeItemId(null);
     setLastCommitSummary(null);
     setIsBringFilesOpen(false);
+    setIsPasteDefaultsOpen(false);
     setJumpToSkippedRowsRequestKey(0);
     deletedDiagnosticLedgerIdsRef.current = new Set();
     if (!preserveRecentImportStatus) {
@@ -586,16 +710,20 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     parsed,
     sourceType,
     nextStatementCheckpoints,
-    successMessage
+    successMessage,
+    keepCommitSummary = false
   }) {
     setSourceLabel(parsed.sourceLabel);
     clearStatementFixes();
-    setLastCommitSummary(null);
+    if (!keepCommitSummary) {
+      setLastCommitSummary(null);
+    }
     setIsBringFilesOpen(false);
     setStatementCheckpoints(nextStatementCheckpoints);
     statementCheckpointsRef.current = nextStatementCheckpoints;
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
     setStatementWarnings(parsed.warnings ?? []);
+    setStatementReconciliation(parsed.reconciliation ?? null);
     setCsvText(statementRowsToCsv(parsed.rows));
 
     setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
@@ -606,6 +734,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       nextStatementCheckpoints
     });
     setUploadStatus({ tone: "success", message: successMessage });
+  }
+
+  // Adds a statement row the user confirmed against the PDF. The recovery
+  // check then re-reads the refreshed rows; nothing is unblocked here.
+  function handleAddRecoveryRow(candidate, amountMinor) {
+    const row = buildRecoveryImportRow(candidate, amountMinor);
+    return refreshPreviewFromRows({
+      rows: [...previewRowsRef.current.map(importService.buildRawRowFromPreviewRow), row],
+      activeMessage: messages.imports.statementRecoveryAdding,
+      successMessage: messages.imports.statementRecoveryAdded
+    });
   }
 
   function markPreviewRefreshStarted(message) {
@@ -656,6 +795,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function processImportFiles(files) {
+    startBatchIfIdle();
     if (files.length === 1) {
       await processImportFile(files[0]);
       return;
@@ -682,7 +822,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         nextItems.push(item);
       }
       setIntakeQueue((current) => [...current, ...nextItems]);
-      setUploadStatus({ tone: "success", message: messages.imports.intakeReady(nextItems.length) });
+      // Queued, not done: they wait for review.
+      setUploadStatus({ tone: "waiting", message: messages.imports.intakeReady(nextItems.length) });
     } catch (error) {
       const previewErrorDetail = buildImportPreviewError(error, messages.imports.intakeFailed);
       setPreviewError(previewErrorDetail);
@@ -693,10 +834,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function processImportFile(file) {
+    startBatchIfIdle();
+    // The dropped file is now the one in review; a queued file that was open
+    // waits in the queue again.
+    setActiveIntakeItemId(null);
     setPreviewError("");
     setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
     setPreview(null);
     setPreviewRows([]);
+    setStatementReconciliation(null);
     setIsParsingStatement(true);
     try {
       const parsedImport = await parseImportFileForIntake(file);
@@ -832,9 +978,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     };
   }
 
-  async function loadParsedImport(parsedImport) {
+  async function loadParsedImport(parsedImport, { keepCommitSummary = false } = {}) {
     setDismissedOverlapIds([]);
+    setReviewChangeCount(0);
+    currentImportSourceRef.current = parsedImport;
+    blockerCursorRef.current = null;
     if (!parsedImport.parsed) {
+      // A plain CSV carries no label of its own: name it by its file, so its
+      // summary does not read "Imported CSV saved". A label the user set
+      // stays.
+      if (!isSourceLabelChosenRef.current) {
+        setSourceLabel(parsedImport.fileName || DEFAULT_SOURCE_LABEL);
+      }
       setCsvText(parsedImport.csvText ?? "");
       setStatementCheckpoints([]);
       setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
@@ -849,7 +1004,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       nextStatementCheckpoints: parsedImport.sourceType === "pdf" ? parsedImport.parsed.checkpoints : [],
       successMessage: parsedImport.sourceType === "pdf" && parsedImport.parsed.checkpoints.length > 1
         ? messages.imports.uploadStatementReady(parsedImport.parsed.rows.length, parsedImport.parsed.checkpoints.length)
-        : messages.imports.uploadReady(parsedImport.parsed.rows.length)
+        : messages.imports.uploadReady(parsedImport.parsed.rows.length),
+      keepCommitSummary
     });
   }
 
@@ -989,6 +1145,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     if (!importWorkflowModel.readyForPreview) {
       return;
     }
+    setReviewChangeCount(0);
 
     const activityContext = buildActivityContext();
     if (canRecognizeCitibankActivityCsv(csvText, undefined, activityContext)) {
@@ -1082,9 +1239,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsSubmitting(true);
     setRecentImportStatus({ tone: "active", message: messages.imports.recentCommitWorking });
     setIsRecentImportsRefreshing(true);
+    const committedSourceLabel = preview?.sourceLabel ?? sourceLabel;
+    let commitResult;
     try {
-      const committedSourceLabel = preview?.sourceLabel ?? sourceLabel;
-      const commitResult = await commitImportBatch({
+      commitResult = await commitImportBatch({
         sourceLabel: committedSourceLabel,
         sourceType: statementImportMeta.sourceType,
         parserKey: statementImportMeta.parserKey,
@@ -1109,54 +1267,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           }
         }
       });
-      splitCleanupCommitCountRef.current += 1;
-      const splitCleanupCommitKey = splitCleanupCommitCountRef.current;
-      dispatchSplitCleanup({ type: "commitSaved", commitKey: splitCleanupCommitKey });
-      setOptimisticRecentImport(buildOptimisticRecentImportBatch({
-        commitResult,
-        committedSourceLabel,
-        importNote,
-        rowsToCommit,
-        statementCheckpoints,
-        statementImportMeta,
-        previewRows
-      }));
-      setRecentImportStatus(null);
-      const doneSummary = buildImportDoneSummary({
-        importId: commitResult.importId,
-        title: isStatementReview
-          ? buildStatementTitle({ parserKey: statementImportMeta.parserKey, statementReconciliations, sourceLabel: committedSourceLabel })
-          : committedSourceLabel || DEFAULT_SOURCE_LABEL,
-        sourceLabel: committedSourceLabel || DEFAULT_SOURCE_LABEL,
-        preview,
-        previewRows,
-        statementReconciliations,
-        isStatement: isStatementReview
-      });
-      const committedIntakeItemId = activeIntakeItemId;
-      resetImportForm({ preserveRecentImportStatus: true });
-      setLastCommitSummary(doneSummary);
-      if (committedIntakeItemId) {
-        setIntakeQueue((current) => current.filter((item) => item.id !== committedIntakeItemId));
-      }
-      const committedImportId = commitResult.importId;
-      await refreshRecentImportsUntilVisible({
-        committedImportId,
-        refreshOptions: { broadcast: true, invalidateImports: true }
-      }).then((latestPage) => {
-        setPostImportSplitMatchCount(Number(latestPage?.importsPage?.pendingSplitMatchCount ?? 0));
-        const commitMonths = rowsToCommit
-          .map((row) => row.date?.slice(0, 7))
-          .filter(Boolean)
-          .sort();
-        setPostImportSplitMatchMonth(commitMonths[commitMonths.length - 1] ?? "");
-        dispatchSplitCleanup({ type: "commitRefreshed", commitKey: splitCleanupCommitKey });
-      });
-      setRecentImportStatus({
-        tone: "success",
-        message: messages.imports.recentCommitSuccess(committedSourceLabel || DEFAULT_SOURCE_LABEL)
-      });
     } catch (error) {
+      // A failed commit keeps the review as it is and opens nothing.
       const commitErrorDetail = buildImportPreviewError(error, messages.imports.commitFailed);
       setRecentImportStatus({
         tone: "error",
@@ -1166,10 +1278,75 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       });
       setPreviewError(commitErrorDetail);
       setOptimisticRecentImport(null);
-    } finally {
       setIsSubmitting(false);
       setIsRecentImportsRefreshing(false);
+      return;
     }
+
+    splitCleanupCommitCountRef.current += 1;
+    const splitCleanupCommitKey = splitCleanupCommitCountRef.current;
+    dispatchSplitCleanup({ type: "commitSaved", commitKey: splitCleanupCommitKey });
+    setOptimisticRecentImport(buildOptimisticRecentImportBatch({
+      commitResult,
+      committedSourceLabel,
+      importNote,
+      rowsToCommit,
+      statementCheckpoints,
+      statementImportMeta,
+      previewRows
+    }));
+    setRecentImportStatus(null);
+    const doneSummary = buildImportDoneSummary({
+      importId: commitResult.importId,
+      title: isStatementReview
+        ? buildStatementTitle({ parserKey: statementImportMeta.parserKey, statementReconciliations, sourceLabel: committedSourceLabel })
+        : committedSourceLabel || DEFAULT_SOURCE_LABEL,
+      sourceLabel: committedSourceLabel || DEFAULT_SOURCE_LABEL,
+      preview,
+      previewRows,
+      statementReconciliations,
+      isStatement: isStatementReview
+    });
+    const committedIntakeItemId = activeIntakeItemId;
+    if (currentBatchFile) {
+      setCommittedBatchFiles((current) => [
+        ...current,
+        { ...currentBatchFile, id: committedIntakeItemId ?? `import-${commitResult.importId}`, importId: commitResult.importId }
+      ]);
+    }
+    resetImportForm({ preserveRecentImportStatus: true });
+    setLastCommitSummary(doneSummary);
+    if (committedIntakeItemId) {
+      setIntakeQueue((current) => current.filter((item) => item.id !== committedIntakeItemId));
+    }
+    // The commit is saved: the next file waiting opens now (once the reset
+    // above has rendered), while the rest of the page catches up.
+    setIsSubmitting(false);
+    if (nextIntakeItem) {
+      setPendingNextItemId(nextIntakeItem.id);
+    }
+    const committedImportId = commitResult.importId;
+    const refreshAfterCommit = () => refreshRecentImportsUntilVisible({
+      committedImportId,
+      refreshOptions: { broadcast: true, invalidateImports: true }
+    }).then((latestPage) => {
+      setPostImportSplitMatchCount(Number(latestPage?.importsPage?.pendingSplitMatchCount ?? 0));
+      const commitMonths = rowsToCommit
+        .map((row) => row.date?.slice(0, 7))
+        .filter(Boolean)
+        .sort();
+      setPostImportSplitMatchMonth(commitMonths[commitMonths.length - 1] ?? "");
+      dispatchSplitCleanup({ type: "commitRefreshed", commitKey: splitCleanupCommitKey });
+      setRecentImportStatus({
+        tone: "success",
+        message: messages.imports.recentCommitSuccess(committedSourceLabel || DEFAULT_SOURCE_LABEL)
+      });
+      return true;
+    });
+    // A failed refresh keeps the commit on screen and raises the shell's
+    // refresh notice, whose retry runs it again; a superseded one is silent.
+    await runBackgroundRefresh(refreshAfterCommit);
+    setIsRecentImportsRefreshing(false);
   }
 
   async function handleExplainMismatch() {
@@ -1256,6 +1433,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsRecentImportsRefreshing(true);
     try {
       await rollbackImportBatch(importId);
+      setCommittedBatchFiles((current) => current.filter((file) => file.importId !== importId));
       await onRefresh({
         broadcast: true,
         invalidateEntries: true,
@@ -1637,6 +1815,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       const detectedAccountName = pendingStatementAccountName;
       await onRefresh(buildImportAccountCreationRefreshPlan());
       await applyStatementAccountMapping(detectedAccountName, createdAccount);
+      setReviewChangeCount((count) => count + 1);
       setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
       setAccountDialog(null);
       setPendingStatementAccountName("");
@@ -1800,16 +1979,170 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
+  // Counts a change to the file in review that opening another file would
+  // drop.
+  function trackReviewChange(handler) {
+    return (...args) => {
+      setReviewChangeCount((count) => count + 1);
+      return handler(...args);
+    };
+  }
+
+  // A new drop after the last batch finished starts a new list of files.
+  function startBatchIfIdle() {
+    if (!isBatchInProgress) {
+      setCommittedBatchFiles([]);
+    }
+  }
+
+  // Scrolls to the control that fixes a blocker. Rows to check are decided
+  // in the row editor, which a statement opens on request.
+  // A blocker (or a bare target) to jump to; J and K carry on from a
+  // blocker jumped to by any means.
+  function jumpToBlocker(blockerOrTarget) {
+    const target = blockerOrTarget.target ?? blockerOrTarget;
+    if (typeof blockerOrTarget.order === "number") {
+      blockerCursorRef.current = blockerOrTarget.order;
+    }
+    if (target.kind === "review-rows" && isStatementReview && !isEditingStatementRows) {
+      setIsEditingStatementRows(true);
+      setPendingJumpTarget(target);
+      return;
+    }
+    jumpToImportTarget(target, panelRef.current ?? document);
+  }
+
+  // "Skip for now": the file in review goes to the end of the queue, still
+  // parsed, and the next file opens. A file that was dropped on its own (or
+  // pasted) joins the queue first. Nothing is saved.
+  function handleSkipForNow() {
+    const nextItem = nextIntakeItem;
+    if (!nextItem) {
+      return;
+    }
+    // Pasted CSV text has no file; it queues as text under its source label.
+    const source = currentImportSourceRef.current ?? (csvText ? { parsed: null, sourceType: "csv", csvText, fileName: sourceLabel } : null);
+    if (activeIntakeItem) {
+      setIntakeQueue((current) => skipIntakeItem(current, activeIntakeItem.id));
+    } else if (source) {
+      const item = buildIntakeQueueItem({
+        id: `${Date.now()}-skipped-${source.fileName ?? source.parsed?.sourceLabel ?? sourceLabel}`,
+        fileName: source.fileName ?? source.parsed?.sourceLabel ?? sourceLabel,
+        parsed: source.parsed,
+        sourceType: source.sourceType,
+        csvText: source.csvText,
+        inbox: safeImportsPage.importInbox,
+        existingFingerprints: new Set(intakeQueue.map((queued) => queued.fingerprint))
+      });
+      setIntakeQueue((current) => skipIntakeItem([...current, item], item.id));
+    }
+    void handleLoadIntakeItem(nextItem);
+  }
+
+  // A chip in the phone sheet closes the sheet first; its action runs once
+  // focus has come back from the sheet, so a jump keeps the focus it moves.
+  function afterClosingProgressSheet(action) {
+    return (...args) => {
+      setIsProgressSheetOpen(false);
+      setAfterProgressSheet(() => () => action(...args));
+    };
+  }
+
+  function showCurrentFile() {
+    const section = preview ? previewSectionRef.current : mappingSectionRef.current ?? previewSectionRef.current;
+    if (section) {
+      revealAndFocus(section);
+    }
+  }
+
+  function showDoneFile() {
+    const heading = panelRef.current?.querySelector(".import-done-card h3");
+    if (heading instanceof HTMLElement) {
+      revealAndFocus(heading);
+    }
+  }
+
   // An official statement is reviewed card by card (ImportPreviewReview);
   // its optional AI checks then sit under "More checks".
   const isStatementReview = statementImportMeta.sourceType === "pdf" && statementReconciliations.length > 0;
-  // A parsed file (statement PDF, bank export) needs no form or column
-  // mapping, so Bring files folds to one line while it is in review. Pasted
-  // CSV keeps the form and mapping beside its preview.
-  const importStage = preview ? "review" : lastCommitSummary ? "done" : "bring";
-  const canCollapseBringFiles = Boolean(preview) && statementImportMeta.parserKey !== DEFAULT_STATEMENT_IMPORT_META.parserKey;
+  // Any file in review folds Bring files to one line ("Change" opens it
+  // again). A plain CSV keeps its column mapping beside its preview.
+  // With a commit just made and no other file open, the step is Done; a
+  // file opened after it (a CSV waits for its preview in Bring files) shows
+  // the commit's summary in short above it instead.
+  const isFileOpen = Boolean(preview || activeIntakeItemId);
+  const importStage = preview ? "review" : lastCommitSummary && !activeIntakeItemId ? "done" : "bring";
+  const canCollapseBringFiles = Boolean(preview);
   const isBringFilesShown = !canCollapseBringFiles || isBringFilesOpen;
-  const nextIntakeItem = orderIntakeQueue(intakeQueue).find((item) => !item.duplicate && item.id !== activeIntakeItemId);
+  const isMappingShown = importWorkflowModel.readyForMapping && (isBringFilesShown || isMappingNeeded);
+  // With files queued, or Bring files opened again over a file in review,
+  // the drop zone is one slim line so the queue starts on the first screen.
+  const isDropZoneSlim = intakeQueue.length > 0 || (canCollapseBringFiles && isBringFilesOpen);
+  const nextIntakeItem = findNextIntakeItem(intakeQueue, activeIntakeItemId);
+  // A batch is in progress while a file is queued, in review, or just
+  // committed; the import bar then sticks to the top (desktop and tablet).
+  const isBatchInProgress = Boolean(preview || lastCommitSummary || activeIntakeItemId) || intakeQueue.length > 0;
+  const activeIntakeItem = activeIntakeItemId ? intakeQueue.find((item) => item.id === activeIntakeItemId) : undefined;
+  const currentBatchFile = activeIntakeItem
+    ? { id: activeIntakeItem.id, label: describeIntakeItemLabel(activeIntakeItem), title: activeIntakeItem.fileName }
+    : preview
+      ? {
+        id: "current",
+        label: describeImportFileLabel({
+          fileName: preview.sourceLabel ?? sourceLabel,
+          sourceType: statementImportMeta.sourceType,
+          parserKey: statementImportMeta.parserKey,
+          checkpoints: statementCheckpoints
+        }),
+        title: preview.sourceLabel ?? sourceLabel
+      }
+      : null;
+  const importBatch = isBatchInProgress
+    ? buildImportBatchFiles({ committedFiles: committedBatchFiles, currentFile: currentBatchFile, queue: intakeQueue, activeItemId: activeIntakeItemId })
+    : { files: [], index: 0, total: 0 };
+  // Opening another file drops what the user changed in this one: row
+  // edits, mappings and the statement fixes they approved.
+  const hasUnsavedReviewWork = Boolean(preview) && reviewChangeCount > 0;
+  const showImportBlockers = Boolean(preview) || importBlockers.blockers.length > 0;
+  const isBatchBarStuck = useImportStickyBar(panelRef, batchBarRef, isBatchInProgress);
+  useImportBlockerKeys({ hasPreview: Boolean(preview), blockers: importBlockers.blockers, cursorRef: blockerCursorRef, onJump: jumpToBlocker });
+  // The file a commit opens next, opened from this render so it starts from
+  // the reset form rather than the committed file's choices.
+  useEffect(() => {
+    if (!pendingNextItemId) {
+      return;
+    }
+    setPendingNextItemId(null);
+    const item = intakeQueue.find((queued) => queued.id === pendingNextItemId);
+    if (item) {
+      void handleLoadIntakeItem(item);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per commit; handleLoadIntakeItem is this render's
+  }, [pendingNextItemId]);
+  // A phone sheet chip's action, once the sheet has closed. The sheet hands
+  // focus back to its opener in a timeout of its own (Radix FocusScope),
+  // queued before this one, so the action's focus is the one that stays.
+  useEffect(() => {
+    if (isProgressSheetOpen || !afterProgressSheet) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setAfterProgressSheet(null);
+      afterProgressSheet();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [afterProgressSheet, isProgressSheetOpen]);
+  // A jump that had to open the row editor first lands once it is shown.
+  useEffect(() => {
+    if (!pendingJumpTarget || !isEditingStatementRows) {
+      return undefined;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      jumpToImportTarget(pendingJumpTarget, panelRef.current ?? document);
+      setPendingJumpTarget(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditingStatementRows, pendingJumpTarget]);
   const optionalAiChecks = (
     <>
   {hasStatementReconciliationMismatch ? (
@@ -1845,22 +2178,52 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   );
 
   return (
-    <article className="panel">
+    <article ref={panelRef} className={`panel import-panel${isBatchInProgress ? " has-sticky-bar" : ""}`}>
+      {isPageDragActive ? (
+        <div className="import-page-drop-hint" role="status">{messages.imports.pageDropHint}</div>
+      ) : null}
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.imports}</h2>
           <span className="panel-context">{messages.imports.viewing(viewLabel)}</span>
         </div>
       </div>
-      <ImportStepper
-        stage={importStage}
-        bringSummary={canCollapseBringFiles
-          ? uploadStatus?.message ?? preview?.sourceLabel ?? sourceLabel
-          : messages.imports.stageBringSummary(intakeQueue.length)}
-        isBringOpen={isBringFilesOpen}
-        canCollapseBring={canCollapseBringFiles}
-        onToggleBring={() => setIsBringFilesOpen((current) => !current)}
+      <ImportBatchBar
+        barRef={batchBarRef}
+        isSticky={isBatchInProgress}
+        isStuck={isBatchBarStuck}
+        stepper={(
+          <ImportStepper
+            stage={importStage}
+            bringSummary={canCollapseBringFiles
+              ? uploadStatus?.message ?? preview?.sourceLabel ?? sourceLabel
+              : messages.imports.stageBringSummary(intakeQueue.length)}
+            isBringAlert={canCollapseBringFiles && uploadStatus?.tone === "error"}
+            isBringOpen={isBringFilesOpen}
+            canCollapseBring={canCollapseBringFiles}
+            onToggleBring={() => setIsBringFilesOpen((current) => !current)}
+          />
+        )}
+        batch={importBatch}
+        doneImportId={lastCommitSummary?.importId}
+        hasUnsavedReviewWork={hasUnsavedReviewWork}
+        blockers={importBlockers}
+        showBlockers={showImportBlockers}
+        onOpenFile={(item) => void handleLoadIntakeItem(item)}
+        onShowCurrentFile={showCurrentFile}
+        onShowDoneFile={showDoneFile}
+        onJump={jumpToBlocker}
       />
+      {lastCommitSummary && isFileOpen ? (
+        <ImportDoneCard
+          compact
+          summary={lastCommitSummary}
+          onRollback={async () => {
+            await handleRollback(lastCommitSummary.importId);
+            setLastCommitSummary(null);
+          }}
+        />
+      ) : null}
       {importStage === "done" ? (
         <ImportDoneCard
           summary={lastCommitSummary}
@@ -1875,67 +2238,72 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       ) : null}
       {isBringFilesShown ? (
         <>
-          <ImportInboxSection
-            inbox={safeImportsPage.importInbox}
-            onSelectExpectedFile={handleSelectExpectedFile}
-          />
+          {/* Stage 1: the drop zone first, then the queue, then the inbox. */}
+          <section className="panel-subsection import-workflow">
+            <div className="import-header">
+              <div>
+                <h3>{messages.imports.composerTitle}</h3>
+                <p className="lede compact">{messages.imports.composerDetail}</p>
+              </div>
+              {importDraftExists ? (
+                <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
+                  {messages.imports.startOver}
+                </button>
+              ) : null}
+            </div>
+            <ImportSelectFileStage
+              currentStage={importWorkflowModel.currentStage}
+              sourceLabel={sourceLabel}
+              onSourceLabelChange={handleSourceLabelChange}
+              defaultAccountName={defaultAccountName}
+              onDefaultAccountChange={handleDefaultAccountChange}
+              accounts={accounts}
+              ownerName={ownerName}
+              onOwnerNameChange={handleOwnerNameChange}
+              people={people}
+              importNote={importNote}
+              onImportNoteChange={setImportNote}
+              csvText={csvText}
+              onCsvTextChange={handleCsvTextChange}
+              fileInputRef={fileInputRef}
+              onUploadImportFile={handleUploadImportFile}
+              isDragActive={isDragActive}
+              isParsingStatement={isParsingStatement}
+              onDragOverImportFile={handleDragOverImportFile}
+              onDragLeaveImportFile={handleDragLeaveImportFile}
+              onDropImportFile={handleDropImportFile}
+              uploadStatus={uploadStatus}
+              allowAiStatementFallback={allowAiStatementFallback}
+              onAllowAiStatementFallbackChange={setAllowAiStatementFallback}
+              rollbackPolicy={safeImportsPage.rollbackPolicy}
+              isPasteDefaultsOpen={isPasteDefaultsOpen}
+              onTogglePasteDefaults={() => setIsPasteDefaultsOpen((current) => !current)}
+              isSlim={isDropZoneSlim}
+              hasWaitingFiles={Boolean(nextIntakeItem)}
+              onShowQueue={() => jumpToImportTarget({ kind: "intake-queue" }, panelRef.current ?? document)}
+            />
+          </section>
           <ImportIntakeQueueSection
             items={intakeQueue}
             summary={intakeQueueSummary}
             activeItemId={activeIntakeItemId}
+            hasUnsavedReviewWork={hasUnsavedReviewWork}
             onLoadItem={handleLoadIntakeItem}
             onRemoveItem={handleRemoveIntakeItem}
             onClear={handleClearIntakeQueue}
           />
+          <ImportInboxSection
+            inbox={safeImportsPage.importInbox}
+            intakeQueue={intakeQueue}
+            defaultOpen={isInboxOpenByDefault({ queuedCount: intakeQueue.length, isFileInReview: Boolean(preview) || isMappingNeeded })}
+            onSelectExpectedFile={handleSelectExpectedFile}
+          />
         </>
       ) : null}
+      {isMappingShown || preview || statementWarnings.length ? (
       <section className="panel-subsection import-workflow">
-        {isBringFilesShown ? (
-        <div className="import-header">
-          <div>
-            <h3>{messages.imports.composerTitle}</h3>
-            <p className="lede compact">{messages.imports.composerDetail}</p>
-          </div>
-          {importDraftExists ? (
-            <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
-              {messages.imports.startOver}
-            </button>
-          ) : null}
-        </div>
-        ) : null}
-
-        {/* Stage 1: get raw source rows into the draft. */}
-        {isBringFilesShown ? (
-        <ImportSelectFileStage
-          currentStage={importWorkflowModel.currentStage}
-          sourceLabel={sourceLabel}
-          onSourceLabelChange={setSourceLabel}
-          defaultAccountName={defaultAccountName}
-          onDefaultAccountChange={handleDefaultAccountChange}
-          accounts={accounts}
-          ownerName={ownerName}
-          onOwnerNameChange={handleOwnerNameChange}
-          people={people}
-          importNote={importNote}
-          onImportNoteChange={setImportNote}
-          csvText={csvText}
-          onCsvTextChange={handleCsvTextChange}
-          fileInputRef={fileInputRef}
-          onUploadImportFile={handleUploadImportFile}
-          isDragActive={isDragActive}
-          isParsingStatement={isParsingStatement}
-          onDragOverImportFile={handleDragOverImportFile}
-          onDragLeaveImportFile={handleDragLeaveImportFile}
-          onDropImportFile={handleDropImportFile}
-          uploadStatus={uploadStatus}
-          allowAiStatementFallback={allowAiStatementFallback}
-          onAllowAiStatementFallbackChange={setAllowAiStatementFallback}
-          rollbackPolicy={safeImportsPage.rollbackPolicy}
-        />
-        ) : null}
-
         {/* Stage 2: map source columns into the app's import schema. */}
-        {isBringFilesShown && importWorkflowModel.readyForMapping ? (
+        {isMappingShown ? (
           <ImportMappingStage
             mappingSectionRef={mappingSectionRef}
             currentStage={importWorkflowModel.currentStage}
@@ -1956,8 +2324,16 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           />
         ) : null}
 
-        {/* Stage 3: review the normalized preview and commit only safe rows. */}
-        <div ref={previewSectionRef} className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
+        {/* Stage 3: review the normalized preview and commit only safe rows.
+            Nothing shows here until a preview (or its warnings) exists. A
+            file dropped on the file in review does not start an intake. */}
+        {preview || statementWarnings.length ? (
+        <div
+          ref={previewSectionRef}
+          data-import-target="preview-rows"
+          className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}
+          data-page-drop={preview ? "off" : undefined}
+        >
           {isStatementReview ? null : (
           <div className="import-stage-head">
             <div className="section-head">
@@ -1992,6 +2368,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               {statementWarnings.map((warning) => <p key={warning} className="lede compact">{warning}</p>)}
             </section>
           ) : null}
+          {hasUnbalancedStatement ? (
+            <ImportStatementRecovery
+              recovery={statementRecovery}
+              isSubmitting={isSubmitting}
+              onAddRow={handleAddRecoveryRow}
+            />
+          ) : null}
 
           <ImportPreviewReview
             preview={preview}
@@ -2018,20 +2401,20 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             duplicateCheckpointAccounts={duplicateCheckpointAccounts}
             isSubmitting={isSubmitting}
             canJumpToSkippedRows={skippedPreviewRowCount > 0}
-            onRemapPreviewAccount={remapPreviewAccount}
+            onRemapPreviewAccount={trackReviewChange(remapPreviewAccount)}
             onCreateStatementAccount={openCreateStatementAccountDialog}
             onDismissOverlap={(importId) => setDismissedOverlapIds((current) => [...new Set([...current, importId])])}
-            onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
+            onUpdatePreviewRowCommitStatus={trackReviewChange(updatePreviewRowCommitStatus)}
             onJumpToSkippedRows={() => setJumpToSkippedRowsRequestKey((current) => current + 1)}
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
             onDeleteDiagnosticLedgerRow={handleDeleteDiagnosticLedgerRow}
             onDeleteDiagnosticLedgerRows={handleDeleteDiagnosticLedgerRows}
             onSetDiagnosticLedgerPostDate={handleSetDiagnosticLedgerPostDate}
-            onUpdateStatementCheckpoint={updateStatementCheckpoint}
+            onUpdateStatementCheckpoint={trackReviewChange(updateStatementCheckpoint)}
             dismissedStatementFindingIds={dismissedStatementFindingIds}
-            onApplyStatementFixes={applyStatementFixes}
-            onUndoStatementFixes={undoStatementFixes}
-            onDismissStatementFindings={dismissStatementFindings}
+            onApplyStatementFixes={trackReviewChange(applyStatementFixes)}
+            onUndoStatementFixes={trackReviewChange(undoStatementFixes)}
+            onDismissStatementFindings={trackReviewChange(dismissStatementFindings)}
             needsStatementAccountMapping={needsStatementAccountMapping}
             statementImportMeta={statementImportMeta}
             isEditingRows={isEditingStatementRows}
@@ -2055,10 +2438,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               hasAlreadyCoveredCheckpointRefresh={hasAlreadyCoveredCheckpointRefresh}
               hasEmptyStatementCheckpointOnly={hasEmptyStatementCheckpointOnly}
               jumpToSkippedRowsRequestKey={jumpToSkippedRowsRequestKey}
-              onUpdatePreviewRow={updatePreviewRow}
-              onUpdatePreviewRowAccount={updatePreviewRowAccount}
-              onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
-              onPromotePreviewRowReconciliationTarget={promotePreviewRowReconciliationTarget}
+              onUpdatePreviewRow={trackReviewChange(updatePreviewRow)}
+              onUpdatePreviewRowAccount={trackReviewChange(updatePreviewRowAccount)}
+              onUpdatePreviewRowCommitStatus={trackReviewChange(updatePreviewRowCommitStatus)}
+              onPromotePreviewRowReconciliationTarget={trackReviewChange(promotePreviewRowReconciliationTarget)}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
             />
           ) : null}
@@ -2070,8 +2453,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               statementImportSourceType={statementImportMeta.sourceType}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
-              commitLabel={commitLabel}
+              commitLabel={describeCommitLabel({ commitKind, commitLabel, nextItem: nextIntakeItem })}
               commitWarning={commitWarning}
+              remainingCount={importBlockers.remainingCount}
+              onJumpToNext={importBlockers.blockers.length ? () => jumpToBlocker(importBlockers.blockers[0]) : undefined}
+              onShowRemaining={isPhoneLayout ? () => setIsProgressSheetOpen(true) : undefined}
+              skip={nextIntakeItem ? {
+                question: hasUnsavedReviewWork ? messages.imports.batchSwitchWarning(nextIntakeItem.fileName) : null,
+                onSkip: handleSkipForNow
+              } : undefined}
               onCommit={handleCommit}
               onStartOver={() => resetImportForm()}
             />
@@ -2079,7 +2469,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <EmptyState>{messages.imports.previewEmpty}</EmptyState>
           )}
         </div>
+        ) : null}
       </section>
+      ) : null}
 
       {showSplitCleanupNotice ? (
         <section className="import-post-cleanup-card">
@@ -2117,6 +2509,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         onRollback={handleRollback}
         isRefreshing={isRecentImportsRefreshing}
       />
+      {isProgressSheetOpen && preview && isPhoneLayout ? (
+        <ImportProgressSheet
+          batch={importBatch}
+          doneImportId={lastCommitSummary?.importId}
+          hasUnsavedReviewWork={hasUnsavedReviewWork}
+          blockers={importBlockers}
+          onClose={() => setIsProgressSheetOpen(false)}
+          onOpenFile={afterClosingProgressSheet((item) => void handleLoadIntakeItem(item))}
+          onShowCurrentFile={afterClosingProgressSheet(showCurrentFile)}
+          onShowDoneFile={afterClosingProgressSheet(showDoneFile)}
+          onJump={afterClosingProgressSheet(jumpToBlocker)}
+        />
+      ) : null}
       <AccountDialog
         dialog={accountDialog}
         error={accountDialogError}
@@ -2277,7 +2682,6 @@ function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
   });
 }
 
-
 function applyStatementAccountMatches(statementCheckpoints, matches) {
   if (!matches?.length) {
     return statementCheckpoints;
@@ -2293,34 +2697,4 @@ function applyStatementAccountMatches(statementCheckpoints, matches) {
     return { ...checkpoint, detectedAccountName, accountId: match.accountId, accountName: match.accountName };
   });
   return changed ? next : statementCheckpoints;
-}
-
-// Committing a statement that does not close, or whose check is out of date
-// after a row edit, asks first.
-function buildStatementCommitWarning({ sourceType, hasStatementCheckpoints, isPreviewDirty, statementReconciliations, onRefresh, onCommit }) {
-  if (sourceType !== "pdf" || !hasStatementCheckpoints) {
-    return undefined;
-  }
-  if (isPreviewDirty) {
-    return {
-      message: messages.imports.commitStatementStaleWarning,
-      confirmLabel: messages.imports.statementReconciliationRefresh,
-      onConfirm: onRefresh
-    };
-  }
-  const openNames = statementReconciliations
-    .filter((item) => item.status !== "matched")
-    .map((item) => item.accountName);
-  if (!openNames.length) {
-    return undefined;
-  }
-  return {
-    message: messages.imports.commitStatementMismatchWarning(joinNames(openNames)),
-    confirmLabel: messages.imports.commitAnyway,
-    onConfirm: onCommit
-  };
-}
-
-function joinNames(names) {
-  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }

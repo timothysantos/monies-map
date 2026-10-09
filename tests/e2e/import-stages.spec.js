@@ -62,17 +62,14 @@ test("a statement and an activity export dropped together are reviewed in order,
   const ladysCard = page.locator(".statement-reconciliation-row").filter({ hasText: `${LADYS_CARD} • May 2026` });
   await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
   await expect(page.locator(".statement-review-actions .pill")).toHaveText("Both cards balance");
+  await expect(page.locator(".import-commit-bar .import-commit-button")).toHaveText("Commit and open next");
   await page.locator(".import-commit-bar .import-commit-button").click();
 
-  // Done: what changed on each card, and the next file in the queue.
-  const done = page.locator(".import-done-card");
+  // The activity export opens next, under what the statement changed.
+  const done = page.locator(".import-done-card.is-compact");
   await expect(done).toContainText("UOB card statement · May 2026 saved", { timeout: 30_000 });
   await expect(done).toContainText("Every card balanced");
-  await expect(done.locator(".import-done-account").filter({ hasText: ONE_CARD })).toContainText("2 entries moved here");
-  await expect(done.locator(".import-done-account").filter({ hasText: LADYS_CARD })).toContainText("1 entry stays for the next statement");
-  await expect(stepper.locator(".is-current")).toContainText("3 · Done");
-
-  await done.getByRole("button", { name: "Review next: one-card-activity.csv" }).click();
+  await expect(done).toContainText("6 rows added · 4 entries confirmed");
   await page.getByRole("button", { name: "Preview import" }).click();
   const summary = page.locator(".import-preview-status-row");
   // Both reworded rows are already on the confirmed May statement; only the

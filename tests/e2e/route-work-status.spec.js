@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { reseedDemo } from "./helpers";
+import { fillImportField, reseedDemo } from "./helpers";
 
 // Route work is the shell's ready/busy contract that later warmup and AI
 // scheduling read. These tests drive real workflows and read the
@@ -97,9 +97,9 @@ test.describe("route work status", () => {
   test("an import draft is protected work on the Imports route", async ({ page }) => {
     await page.goto("/imports?view=household&month=2026-05");
     await waitForRouteWork(page, { routeKey: "imports|||||", usable: true });
-    await page.getByLabel("Batch note").fill("Route work draft");
+    await fillImportField(page, "Batch note", "Route work draft");
     await waitForRouteWork(page, { busy: true, usable: false, reason: "busy" });
-    await page.getByLabel("Batch note").fill("");
+    await fillImportField(page, "Batch note", "");
     await waitForRouteWork(page, { busy: false, usable: true });
   });
 

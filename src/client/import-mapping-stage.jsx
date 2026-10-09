@@ -67,7 +67,7 @@ export function ImportMappingStage({
         </div>
       </div>
 
-      <div className="import-mapping-grid">
+      <div className="import-mapping-grid" data-import-target="column-mapping">
         {csvInspection.headers.map((header) => (
           <article key={header} className="import-column-card">
             <div className="import-column-head">

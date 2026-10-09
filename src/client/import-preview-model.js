@@ -3,8 +3,15 @@ import { messages } from "./copy/en-SG";
 // Read alongside docs/import-summary-code-glossary.md.
 // This model translates raw preview payloads into UI concepts:
 // - what still needs user action
-// - whether commit is safe
+// - the facts the commit rules read (import-blockers-model.js decides
+//   whether the commit is disabled or asks first)
 // - which helper sections the preview page should render
+const COMMIT_LABELS = {
+  covered_checkpoint: messages.imports.refreshCoveredStatementCheckpoint,
+  empty_checkpoint: messages.imports.saveEmptyStatementCheckpoint,
+  rows: messages.imports.commit
+};
+
 export function buildImportPreviewModel({
   accounts,
   preview,
@@ -12,9 +19,7 @@ export function buildImportPreviewModel({
   statementCheckpoints,
   statementImportMeta,
   dismissedOverlapIds,
-  unknownCategoryMode,
-  isSubmitting,
-  isParsingStatement
+  unknownCategoryMode
 }) {
   const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict && row.commitStatus === "skipped");
   const knownAccountNames = new Set(accounts.map((account) => account.name));
@@ -64,21 +69,31 @@ export function buildImportPreviewModel({
   const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && commitPayloadPreviewRows.length === 0;
   const hasAlreadyCoveredCheckpointRefresh = hasCheckpointOnlyCommit && skippedPreviewRowCount > 0;
   const hasEmptyStatementCheckpointOnly = hasCheckpointOnlyCommit && skippedPreviewRowCount === 0;
+  // What the commit saves, which names its button (describeCommitLabel
+  // adds "and open next" while another file waits).
+  const commitKind = hasAlreadyCoveredCheckpointRefresh
+    ? "covered_checkpoint"
+    : hasEmptyStatementCheckpointOnly
+      ? "empty_checkpoint"
+      : "rows";
   const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
     && statementReconciliations.length > 0
     && statementReconciliations.every((item) => item.status === "matched");
-  const hasUnmappedAccounts = commitPayloadPreviewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
+  const unmappedCommitRows = commitPayloadPreviewRows.filter((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
+  const hasUnmappedAccounts = unmappedCommitRows.length > 0;
+  // The account labels still to map, one per label (a row without one counts
+  // as one more).
+  const unmappedCommitAccountNames = Array.from(new Set(unmappedCommitRows.map((row) => row.statementAccountName ?? row.accountName ?? "")));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
   const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
-  const isCommitDisabled = isSubmitting
-    || isParsingStatement
-    || !hasCommitPayload
-    || hasUnmappedAccounts
-    || (hasCheckpointOnlyCommit && !hasMatchedCheckpointOnlyCommit)
-    || hasBlockingCategoryPolicy
-    || hasDuplicateCheckpointAccounts
-    || needsReviewPreviewRowCount > 0;
+  // Rows paired with an entry the ledger already has: confirmed by the
+  // statement, already covered, or resolved by an earlier statement match.
+  const matchedPreviewRowCount = previewRows.filter((row) => (
+    Boolean(row.reconciliationTargetTransactionId)
+    || row.isStatementMatchResolved
+    || (row.commitStatus === "skipped" && !row.commitStatusExplicit && !row.isCertifiedConflict)
+  )).length;
 
   return {
     accountMappingAccountNames,
@@ -88,7 +103,11 @@ export function buildImportPreviewModel({
     hasDuplicateCheckpointAccounts,
     hasStatementReconciliationMismatch,
     hasUnmappedAccounts,
-    isCommitDisabled,
+    unmappedCommitAccountNames,
+    hasCommitPayload,
+    hasCheckpointOnlyCommit,
+    hasMatchedCheckpointOnlyCommit,
+    matchedPreviewRowCount,
     certifiedConflictRows,
     knownAccountNames,
     needsReviewPreviewRowCount,
@@ -97,13 +116,8 @@ export function buildImportPreviewModel({
     previewReconciliationRowCount,
     reconciledExistingRowCount,
     skippedPreviewRowCount,
-    commitLabel: hasAlreadyCoveredCheckpointRefresh
-      ? messages.imports.refreshCoveredStatementCheckpoint
-      : hasEmptyStatementCheckpointOnly
-        ? messages.imports.saveEmptyStatementCheckpoint
-        : hasCheckpointOnlyCommit
-          ? messages.imports.saveStatementCheckpoints
-          : messages.imports.commit,
+    commitKind,
+    commitLabel: COMMIT_LABELS[commitKind],
     // A statement whose cards all map to one account each only shows the
     // mapping on request; an unknown, ambiguous or unmapped card needs it.
     needsStatementAccountMapping: unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || hasUnmappedAccounts,

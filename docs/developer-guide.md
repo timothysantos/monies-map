@@ -1267,6 +1267,17 @@ inherits: a read amount is never guessed over, a missing amount is filled only
 when it is a total's single unknown, and dates must land inside the statement
 period.
 
+When a parser cannot make its rows add up to the printed totals, it returns
+the rows it could read with a `reconciliation` (the printed purchases and
+credits totals, plus candidates from evidence on the page) instead of
+throwing. A candidate is either an amount read on a line no row could claim,
+or a dated row whose amount could not be read. While a kind of amount has an
+unclaimed amount on the page, the resolver infers nothing of that kind, since
+a whole row may be missing. In the app, `import-statement-recovery-model.js`
+re-checks the current preview rows against those totals on every change; the
+import blocker disables the commit until they add up, and a leftover amount is
+offered only while it exactly equals the live difference.
+
 Fixtures for OCR parsers come from real statements, sanitized:
 
 ```bash

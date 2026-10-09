@@ -42,8 +42,8 @@ appear in this order:
    whom, and settling up. It has a dark orange look so you always know you are
    in Splits.
    ![Splits uses a dark orange theme and shows groups, balances and shared expenses](/faq/guide/desktop/thumbs/splits-person.webp)
-5. **Imports**: bring in bank files. The Import inbox tells you which files
-   to download from which bank.
+5. **Imports**: bring in bank files. Drop them at the top; the Import inbox
+   tells you which files to download from which bank.
    ![Imports starts with the Import inbox, which plans your bank downloads](/faq/guide/desktop/thumbs/imports-inbox.webp)
 6. **Settings**: people, accounts, categories, category rules, Apple Pay and
    the tools that keep balances trustworthy.
@@ -414,48 +414,107 @@ receipt button adds a shared expense.
 ### What you see
 
 - **Steps**: **1 · Bring files**, **2 · Review**, **3 · Done**. A finished
-  step shrinks to one line.
-- **Import inbox**: your bank run, planned for you. It counts bank sessions to
-  open, needed files, accounts that are current and split cleanup. For each
-  bank it lists the steps, an **Open portal** link, and each file you still
-  need (for example the OCBC 365 Card statement for Aug 2026). A statement
-  that covers several cards is asked for once ("covers UOB Lady's Card and
-  UOB One Card").
+  step shrinks to one line, and while a file is in review Bring files
+  shrinks too. While you work through files, the steps stay at
+  the top of the screen on a computer or tablet (on a phone they scroll with
+  the page). Once you scroll down they stretch across the window as one
+  short line, with a soft shadow under them. Two more rows sit under the
+  steps:
+  - **Your files:** one chip per file you brought this time, in the order to
+    review them. A green chip with a tick is done (a finished step looks the
+    same), the outlined one with a file icon says **reviewing**, and one
+    with a clock says **waiting**. Point at a chip to see the full file
+    name. **File 2 of 4** says where you are. Select a waiting file to open it; if
+    you changed rows or approved fixes in the file in review, the app asks
+    first, because opening another file drops those changes. A file you roll
+    back leaves the chips.
+  - **Before you can commit:** what still needs you in the file in review,
+    in the order to fix it: accounts to map, cards that don't match the
+    statement (with the amount when money totals are shown), rows to check.
+    A card that has no account yet is counted once, under **Map 1 account**.
+    Select one to go straight to it. A green chip counts the rows already
+    matched to your entries.
+- **Import and certify**: comes first. Drop or select your files here. A
+  statement PDF or a bank export goes straight to Review; a plain CSV first
+  asks you to match its columns. Once files are waiting it shrinks to one
+  line, **Drop more files, or Select file**, so your files are on the first
+  screen. Beside it, **Waiting for review** says how many files you added;
+  select it to go to the queue.
+- **File intake queue**: the files you dropped, in the order to review them.
+- **Import inbox**: your bank run, planned for you. It shows one line,
+  **Still missing: 3 of 13**, and opens with **Show**. It starts open when
+  nothing is waiting, and folds away once files are queued or one is in
+  review. Each file you queue that matches a file on the list is ticked off
+  and lowers the count. Open it to see bank sessions to open, needed files,
+  accounts that are current and split cleanup. Each bank is one row with
+  how many of its files are still missing; open a bank for its steps, an
+  **Open portal** link and each file you still need (for example the OCBC
+  365 Card statement for Aug 2026). A statement that covers several cards
+  is asked for once ("covers UOB Lady's Card and UOB One Card").
 - **Review order**: statements are reviewed oldest month first; optional
   activity files come after.
-- **Import and certify**: where you add a file. A statement PDF or a bank
-  export goes straight to Review; a pasted CSV first asks you to match its
-  columns.
 - **Recent imports**: every import batch, with its kind (PDF statement,
   Mid-cycle, CSV import or Manual), dates, account, status and a rollback
-  button.
+  button. It starts closed; select it to open the list.
 
-![Import and certify: choose the account, then paste or drop a file](/faq/guide/desktop/thumbs/imports-upload.webp)
+![Import and certify: drop your files; once some are waiting it is one line, "Drop more files, or Select file", with Paste rows or set defaults under it](/faq/guide/desktop/thumbs/imports-upload.webp)
 
 ### What each control does
 
-- **Source label** and **Batch note**: optional names so you recognise the
-  import later.
-- **Default account** and **Default owner**: used for rows that do not say
-  which account or person they belong to. Choose the account before dropping
-  a card activity file.
-- **CSV content**: paste CSV rows directly.
 - **Drop a CSV, PDF, or XLS here**: drop or select one file. Drop several at
   once and they wait in the **File intake queue**, in the order to review
   them: statements first (older months first), then activity. An activity
   file says how many of its rows a statement in the queue already covers.
-  Select **Review** on each.
+  Select **Review** on each. You can also drop files anywhere on the Imports
+  page; it says **Drop files anywhere on this page** while you drag. A file
+  dropped on the file you are reviewing is not added. A single file dropped
+  while you review another opens straight away; the other waits in the
+  queue again. **Review** asks first if you changed the file in review.
+- **Paste rows or set defaults**: opens the fields below. It opens by
+  itself when a plain CSV needs them. Once files are waiting it also holds
+  the notes about PDF and XLS files, trustworthy statements and rollback.
+  - **Source label** and **Batch note**: optional names so you recognise
+    the import later. A plain CSV is named by its file unless you typed a
+    source label.
+  - **Default account** and **Default owner**: used for rows that do not
+    say which account or person they belong to. Choose the account before
+    dropping a card activity file.
+  - **CSV content**: paste CSV rows directly.
+- **Show** / **Hide** (on the Import inbox): opens or folds the bank list.
+- **Use with import form** and **Not available** (on a file in the Import
+  inbox): point at the file, or tap it on a phone, to see them. **Use with
+  import form** fills the defaults (account, owner, source label and note)
+  from that file; **Not available** sets the file aside for a few days when
+  the bank has not published it yet.
 - **Change** (on the Bring files step): opens the files again while one is
   in review.
 - **Preview import**, **Commit import to ledger**, **Start over**: see
   [Import a bank statement](#import-a-bank-statement). The commit button
   stays in view at the bottom of the review, with what the commit will do.
+  While something still needs you it says how many things are left;
+  **Jump to next** takes you to the first one. On a computer, press **J**
+  for the next thing to fix and **K** for the previous one (not while you
+  are typing in a field).
+- **Commit and open next**: while another file waits, the commit button
+  says so (**Refresh checkpoints and open next** for a statement whose rows
+  are all in already). After the commit the next file opens straight away,
+  with a short summary of the file you just committed above it and its
+  **Roll back this import**. The last file's button keeps its usual words,
+  and the full **Done** step shows when it is committed.
+- **Skip for now**: while another file waits, moves the file in review to
+  the end of your files and opens the next one. Reopen it from its chip
+  whenever you like; you don't need the file again. If you changed rows or
+  approved fixes, the app asks first, because skipping drops those changes.
 - **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
 
 Imports is under the **•••** button. Everything works the same, one column
-wide; dropping several files at once is easiest on a computer.
+wide; dropping several files at once is easiest on a computer. The commit
+bar puts **Start over** and **Skip for now** on one line and the commit
+button under them. Tap the count of
+things left on the commit bar (for example **2 things left**) to see your files and what still needs you
+in one sheet; tap a thing to fix to go straight to it, or a file to open it.
 
 ## Settings
 
@@ -613,8 +672,9 @@ words.
    by bank. Select **Open portal** to sign in to your bank, and download the
    listed files ([Which file do I download?](#which-file-do-i-download-from-my-bank)).
    No renaming needed.
-2. Under **Import and certify**, choose the **Default account** the file
-   belongs to (for a card activity export this matters most).
+2. Under **Import and certify**, select **Paste rows or set defaults** and
+   choose the **Default account** the file belongs to (for a card activity
+   export this matters most).
 3. Drop the file on **Drop a CSV, PDF, or XLS here**, or select it. PDFs and
    bank exports turn straight into rows; a plain CSV first asks you to match
    its columns (**Data mapping**), then **Preview import**.
@@ -625,12 +685,15 @@ words.
    is chosen.
    ![The file names a card the app does not know yet: choose the account](/faq/guide/desktop/thumbs/imports-mapping.webp)
 5. Review the preview ([Read the import preview](#read-the-import-preview)).
-   Fix anything under **Exceptions to resolve**.
+   Fix anything under **Exceptions to resolve**. The chips under
+   **Before you can commit:** at the top, or **Jump to next** beside the
+   commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
    batch appears under **Recent imports**. The **Done** step says what
    changed on each card (rows added, entries confirmed or moved, entries left
-   for the next statement), with **Roll back this import**, and offers
-   **Review next** when more files are queued.
+   for the next statement), with **Roll back this import**. When more
+   files are queued the button reads **Commit and open next**; the next file
+   opens after the commit under a short summary of the one you committed.
 
 ![A bank export turned into preview rows, ready to commit](/faq/guide/desktop/thumbs/imports-preview.webp)
 
@@ -680,6 +743,13 @@ June belongs to June's statement.
   the app reads them with text recognition inside your browser (nothing is
   uploaded). It takes a little longer; check the rows against the PDF before
   committing, because scanned text can be misread.
+- **When the rows don't add up**: if the app can't read every row, the review
+  opens anyway with the rows it found and a card showing the statement's
+  purchases, the rows found and the difference. It offers **Add row** for a
+  missing row only when an amount it read matches the difference exactly, and
+  asks you to type an amount it couldn't read. You can also correct a misread
+  amount under **Edit rows**. Nothing is saved, and you can't commit, until
+  the rows add up to the statement.
 
 ### Any other bank
 
@@ -740,8 +810,9 @@ For every import:
 
 A statement preview shows **Matched** for each account when its balance
 agrees with the bank. When every row is already in your ledger, the button
-becomes **Refresh statement checkpoints**, which saves the proof without
-adding duplicates.
+becomes **Refresh covered statement checkpoint** (**Refresh checkpoints and
+open next** while another file waits), which saves the proof without adding
+duplicates.
 
 ## Fix a statement that does not balance
 
@@ -800,7 +871,7 @@ duplicates, or belong to another account.
 
 ## Undo an import
 
-1. Open **Imports** and find the batch under **Recent imports** (use **By
+1. Open **Imports**, open **Recent imports** and find the batch (use **By
    account** to narrow the list).
 2. Select the **×** (Rollback import) at the end of the batch's row.
 3. Check the name in the message and select **Confirm rollback** (or

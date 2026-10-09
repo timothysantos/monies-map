@@ -230,8 +230,36 @@ Rules:
 
 - `ImportsPanel` owns the stage: Review while a preview exists, Done after a
   commit until the next file or Close, otherwise Bring files
-- a parsed file (statement PDF, bank export) folds Bring files to one line
-  while it is in review; pasted CSV keeps the form and column mapping
+- Bring files is ordered drop zone, intake queue, import inbox. Any file in
+  review folds Bring files to one line; a plain CSV keeps its column mapping
+  (`isMappingNeeded`: rows to map and the generic CSV parser) beside the
+  preview
+- the inbox folds to "Still missing: N of M" and each bank to one row
+  (`import-inbox-model.js`: `buildInboxChecklistProgress` ticks off lines
+  from the intake model's matches, `isInboxOpenByDefault`, `nextFoldState`
+  behind `useFollowingFold`)
+- pasted rows and the import defaults sit behind "Paste rows or set
+  defaults", opened when a plain CSV needs mapping; upload status and the AI
+  consent stay beside the drop zone
+- with a file queued, or Bring files opened again over a file in review
+  (`isDropZoneSlim`), `ImportSelectFileStage` renders `isSlim`: the card
+  head goes, the drop zone is one line ("Drop more files, or" and Select
+  file, still a drop target), the upload status sits beside it on one line
+  and the AI consent under it; the OCR/XLS note, trust hint and rollback
+  note move into the "Paste rows or set defaults" disclosure
+- a file dropped on its own (`processImportFile`) clears
+  `activeIntakeItemId`, so the queued file that was in review waits again
+  and Skip for now queues the dropped file; the source label of a plain CSV
+  (opened from the queue or dropped on its own, `loadParsedImport`) is its
+  file name unless `isSourceLabelChosenRef` says the user typed one (or
+  took one from the inbox)
+- the preview card (`data-import-target="preview-rows"`) renders only with
+  a preview or its warnings
+- a file dropped anywhere on the page goes to the drop zone's handler
+  (`usePageFileDrop`, `import-page-drop.js`), except on the file in review
+  (`data-page-drop="off"`), dialogs and popovers
+- Recent imports starts closed; its status line shows either way
+- the Bring files styles load with the route (`import-bring-files.css`)
 - an official statement is reviewed by `StatementReview` in
   `import-preview-review.jsx`: one header, one section per card with its
   outcome (`getStatementCardStatus`), fixes, read-only rows and the
@@ -242,10 +270,106 @@ Rules:
 - `ImportCommitBar` (`import-commit-bar.jsx`) is the only commit control and
   carries the commit summary (`.import-preview-status-row`) and the commit
   question
+- the commit rules live in one pure module, `buildImportBlockers`
+  (`import-blockers-model.js`). It reads the preview model's facts
+  (`import-preview-model.js` no longer decides) and returns
+  `{ blockers, remainingCount, isCommitDisabled, commitQuestion, matched }`.
+  A blocker is `{ id, kind, effect, label, target, order }`: `effect` is
+  `disable` (commit off), `ask` (commit asks first) or `preview` (a CSV
+  column still to map); `order` is the fixing order (columns, accounts,
+  card accounts, categories, statement check, cards, rows to check, nothing
+  to import). The chips, the commit bar's "things left", the disabled
+  button and the popover all read it, so they cannot disagree; a matrix test
+  pins it to the rules it replaced
+- done looks the same everywhere: a finished step (`is-done`) and a done
+  file chip use `--pastel-mint`, `--pastel-mint-ink` and a lucide `Check`;
+  the current step keeps the terracotta outline. The file chips row leads
+  with "Your files:" (styled like "Before you can commit:"); the reviewing
+  chip has `FileText`, the outline and bold text and "· reviewing", a
+  waiting chip `Clock`, a neutral outline, muted ink and "· waiting"; the
+  full file name is the title. The phone sheet uses the same chips
+- the Bring files status box comes from `describeUploadStatus`
+  (`import-upload-status.js`): a multi-file drop sets the `waiting` tone
+  (butter, "Waiting for review"), rendered as a button that jumps to the
+  `intake-queue` target (`import-jump.js`: the queue, focus on the first
+  enabled Review); it hides once nothing waits. `active`, `success` and
+  `error` keep their tones
+- `ImportBatchBar` (`import-batch-bar.jsx`) wraps `ImportStepper` in a
+  `nav` with this batch's file chips (`buildImportBatchFiles`,
+  `import-batch-model.js`: done this session, the file in review, then
+  the queue in review order) and the blocker chips. It sticks to the top at
+  768 px and wider while a batch is in progress (a file queued, in review
+  or just committed), below the sticky environment banner; on a phone it
+  scrolls with the page and the commit bar is the only sticky bar
+- `useImportStickyBar` (`import-batch-bar.jsx`) says when the bar is stuck:
+  an IntersectionObserver on `.import-batch-bar-sentinel`, the 1 px element
+  just above the bar, with the root's top moved down by the banner (no
+  scroll listener). Stuck (`is-stuck`), the `nav` keeps the height its
+  surface had in the page (inline `height`, transparent and click-through
+  below the surface), so folding the step descriptions moves nothing below
+  and cannot unstick it. `.import-batch-bar-surface` carries the look: a
+  solid background (`--panel` over `--bg`) on `::before` and a
+  `var(--shadow)` on `::after`, both stretched to the window's edges by
+  `--import-bar-bleed-left/right` (measured, so the page never scrolls
+  sideways); clip-path keeps the background to the panel width until it
+  sticks, then spreads it, while the shadow fades in and the step summaries
+  collapse (`grid-template-rows` 1fr to 0fr, padding), 200 ms, none under
+  `prefers-reduced-motion`. The step's Change moves to its first line while
+  stuck (`is-stuck-only`; one Change is shown at a time), and a Bring files
+  line carrying an error (`isBringAlert`, `is-alert`) does not fold. The hook keeps
+  `--import-sticky-offset` on the panel at the stuck height (measured by
+  laying the surface out stuck for a moment with transitions off), so jump
+  targets carry `scroll-margin-top` below the stuck bar
+- a blocker's `target` is resolved by `jumpToImportTarget`
+  (`import-jump.js`) against `data-import-target` markers on the
+  sections that fix it (account mapping, a statement card, the Refresh
+  check button, statement details, unknown categories, the column mapping
+  grid, the preview); a row to check is the first
+  `tr[data-commit-status="needs_review"]`, and a statement opens its row
+  editor first. The jump scrolls (smooth unless reduced motion is set) and
+  focuses the control
+- a waiting file chip opens its file like the queue's Review button; when
+  the file in review has changes that would be dropped (row edits,
+  mappings, statement fixes the user approved or undid; not fixes "Fix it
+  for me" applied) it asks first in a popover, never a browser dialog
 - the intake queue keeps the rest of a drop after a commit, orders it with
   `orderIntakeQueue` and counts covered rows with `describeIntakeCoverage`
   (`import-intake-model.js`); the Done card (`buildImportDoneSummary`,
   `import-done-model.js`) offers the next queued file
+- moving through a batch lives in `import-batch-model.js`:
+  `findNextIntakeItem` (the next file waiting, never the one in review or a
+  copy), `skipIntakeItem` (gives the item a `skipOrder`, which
+  `orderIntakeQueue` ranks after every file not skipped) and
+  `describeCommitLabel` ("Commit and open next" while a file waits, or
+  "Refresh checkpoints and open next" for a statement whose rows are all
+  covered, by the preview model's `commitKind`; an empty statement
+  checkpoint keeps its own words). The
+  panel opens the next file from the render after the commit's reset
+  (`pendingNextItemId`), so it starts from a clean form, and keeps
+  `lastCommitSummary` while a file of the batch is open: `ImportDoneCard`
+  then renders `compact` (title, status, rows in total, rollback) above the
+  review, and in full only when nothing is open. Opening a queued file
+  (`handleLoadIntakeItem`) keeps the summary; a single dropped file clears it
+- the commit is saved before the refresh: a failed commit returns early with
+  the review intact; the refresh after it goes through the shell's
+  `runBackgroundRefresh` (prop from `App.jsx`)
+- `import-blocker-keys.js` holds the J/K rules (`readBlockerKey`,
+  `pickAdjacentBlocker`) and a document `keydown` listener
+  (`useImportBlockerKeys`). The cursor is the `order` of the blocker last
+  jumped to (chips and "Jump to next" set it too), so the walk carries on
+  after that blocker is fixed. A field the jump itself focused (an account
+  select) is not treated as typing, so the next press moves on; the key's
+  default is prevented so the select keeps its value
+- `ImportAskFirst` (`import-batch-bar.jsx`) is the one ask-first popover for
+  the waiting chips, the intake queue's Review buttons and "Skip for now";
+  `inline` renders it inside the phone sheet, which traps focus
+- a card with no account yet (`unknown_account`, or a name still to map)
+  gets no card chip while the "Map {n} accounts" chip names it; the commit
+  question still lists it
+- `ImportProgressSheet` (`import-batch-bar.jsx`) is the phone's import bar,
+  built on `EntryMobileSheet`. The panel closes it before a chip's action
+  and runs the action in a timeout after Radix FocusScope hands focus back
+  to the trigger, so a jump keeps its focus
 - "Fix it for me" is a per-viewer preference
   (`statement-fix-preference.js`, browser storage); proven fixes are applied
   once per review, so an Undo is not re-applied
