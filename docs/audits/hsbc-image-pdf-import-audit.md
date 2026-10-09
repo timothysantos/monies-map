@@ -100,6 +100,14 @@ Updated: 2026-10-07
   kind, so one unread row cannot absorb a whole missing row's amount. Codex's
   first cut cleared the block on the Add click and offered the difference
   itself as an amount; both were replaced before shipping.
+- 2026-10-10, cell reads: a doubtful first pass also gets its rows' date and
+  amount cells OCR'd one at a time (PSM 7, restricted characters). On the
+  sanitized Mar, May, Aug, Sep and Oct PDFs every date and amount reads
+  exactly and no amount is inferred any more (March's IKEA 683.00 needed the
+  total before); a line whose dates only a cell read sees is recovered with
+  the page pass's merchant text. 0.8-1.5 s per statement. Column-wide crops
+  failed on Aug and Oct and were not used. Amounts still inferred from a
+  total are marked on their row ("Amount from statement total").
 - Merchant-specific corrections from earlier OCR runs stay in one labelled table
   (`HSBC_KNOWN_MISREADS`) and only rewrite text that can only be those merchants.
 

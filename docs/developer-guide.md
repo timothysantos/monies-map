@@ -1267,6 +1267,15 @@ inherits: a read amount is never guessed over, a missing amount is filled only
 when it is a total's single unknown, and dates must land inside the statement
 period.
 
+When the first pass is doubtful, the parser also returns `ocrReview.cellRegions`:
+each row's date and amount cells, and each line with an amount but unreadable
+dates, in its reference frame. `extractPdfOcrCells` OCRs each cell on its own
+as one line restricted to a date's or an amount's characters
+(`OCR_CELL_CHARACTERS`) and returns a `kind=cells` pass. Parsers trust cell
+reads first for dates and amounts, still subject to the totals. Whole-column
+crops were tried and rejected: dotted rules between rows break Tesseract's
+layout analysis inside a tall strip, while single cells read reliably.
+
 When a parser cannot make its rows add up to the printed totals, it returns
 the rows it could read with a `reconciliation` (the printed purchases and
 credits totals, plus candidates from evidence on the page) instead of

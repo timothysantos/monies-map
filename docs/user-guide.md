@@ -743,6 +743,10 @@ June belongs to June's statement.
   the app reads them with text recognition inside your browser (nothing is
   uploaded). It takes a little longer; check the rows against the PDF before
   committing, because scanned text can be misread.
+- **Amount from statement total**: when the scan can't read one amount but
+  the statement's total says exactly what it must be, the app fills it in
+  and marks that row "Amount from statement total". Check it against the
+  PDF; the mark goes once you change the amount.
 - **When the rows don't add up**: if the app can't read every row, the review
   opens anyway with the rows it found and a card showing the statement's
   purchases, the rows found and the difference. It offers **Add row** for a
