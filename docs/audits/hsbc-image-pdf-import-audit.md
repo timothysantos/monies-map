@@ -90,6 +90,16 @@ Updated: 2026-10-07
   again (mode 6) and parses both passes together: rows are lined up by position,
   the most legible description wins, and the printed totals choose between amount
   readings. Package format: each pass is `__OCR_TSV__` plus its TSV, in order.
+- 2026-10-09, recovery instead of a dead end (Codex's report in
+  `hsbc-september-2026-reconciliation-report.md`): a statement whose rows do
+  not add up opens for review with a live totals check that hard-blocks the
+  commit (no Commit anyway) until the current rows add up. Missing rows are
+  offered only from evidence: an amount read on a line no row claimed, offered
+  while it equals the difference exactly, or a dated row whose amount the user
+  types from the PDF. An unclaimed amount on the page stops inference for its
+  kind, so one unread row cannot absorb a whole missing row's amount. Codex's
+  first cut cleared the block on the Add click and offered the difference
+  itself as an amount; both were replaced before shipping.
 - Merchant-specific corrections from earlier OCR runs stay in one labelled table
   (`HSBC_KNOWN_MISREADS`) and only rewrite text that can only be those merchants.
 

@@ -122,6 +122,9 @@ a doc here in the same change.
   fourteenth slice closure.
 - [`audits/hsbc-image-pdf-import-audit.md`](audits/hsbc-image-pdf-import-audit.md):
   HSBC image PDF import.
+- [`audits/hsbc-september-2026-reconciliation-report.md`](audits/hsbc-september-2026-reconciliation-report.md):
+  Codex's diagnosis of the Oct 2026 HSBC statement (7 Sep - 5 Oct) that
+  stopped at 188.43 of 218.35, and the recovery plan.
 - [`audits/import-quality-transfer-review-audit.md`](audits/import-quality-transfer-review-audit.md):
   import quality and transfer review.
 - [`audits/ledger-split-ownership-audit.md`](audits/ledger-split-ownership-audit.md):

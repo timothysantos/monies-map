@@ -743,6 +743,13 @@ June belongs to June's statement.
   the app reads them with text recognition inside your browser (nothing is
   uploaded). It takes a little longer; check the rows against the PDF before
   committing, because scanned text can be misread.
+- **When the rows don't add up**: if the app can't read every row, the review
+  opens anyway with the rows it found and a card showing the statement's
+  purchases, the rows found and the difference. It offers **Add row** for a
+  missing row only when an amount it read matches the difference exactly, and
+  asks you to type an amount it couldn't read. You can also correct a misread
+  amount under **Edit rows**. Nothing is saved, and you can't commit, until
+  the rows add up to the statement.
 
 ### Any other bank
 

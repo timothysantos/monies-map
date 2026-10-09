@@ -120,7 +120,13 @@ Imports owns:
   next", whether the commit is disabled and whether it asks first; a chip
   scrolls to and focuses the control that fixes it. A card with no account
   yet is named once, by "Map {n} accounts", not also "{card} doesn't
-  match"; the commit question still names it. Opening a waiting file from
+  match"; the commit question still names it. A statement whose parsed
+  rows don't add up to its printed totals (`ParsedStatementImport.reconciliation`,
+  today from HSBC OCR) adds a "Make the rows add up to the statement" chip
+  that disables the commit with no "Commit anyway" question; the recovery
+  card (`import-statement-recovery.jsx`) and the chip read the live check in
+  `import-statement-recovery-model.js`, so they clear only when the current
+  rows add up. Opening a waiting file from
   its chip or from the queue's Review button asks first (`ImportAskFirst`)
   when the file in review has changes it would drop; the Done card's Review
   next does not ask (the Done card has nothing in review). Stuck to the top
