@@ -800,8 +800,9 @@ For every import:
 
 A statement preview shows **Matched** for each account when its balance
 agrees with the bank. When every row is already in your ledger, the button
-becomes **Refresh statement checkpoints**, which saves the proof without
-adding duplicates.
+becomes **Refresh covered statement checkpoint** (**Refresh checkpoints and
+open next** while another file waits), which saves the proof without adding
+duplicates.
 
 ## Fix a statement that does not balance
 

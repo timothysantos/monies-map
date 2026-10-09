@@ -609,11 +609,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // rollback) above the new review.
   async function handleLoadIntakeItem(item) {
     setActiveIntakeItemId(item.id);
-    // A plain CSV carries no label of its own: name it by its file, so its
-    // summary does not read "Imported CSV saved". A label the user set stays.
-    if (!item.parsed && !isSourceLabelChosenRef.current) {
-      setSourceLabel(item.fileName || DEFAULT_SOURCE_LABEL);
-    }
     setDefaultAccountName(item.parsed?.checkpoints?.[0]?.accountName ?? item.parsed?.rows?.[0]?.accountName ?? defaultAccountName);
     if (item.parsed) {
       await loadParsedImport({
@@ -953,6 +948,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     currentImportSourceRef.current = parsedImport;
     blockerCursorRef.current = null;
     if (!parsedImport.parsed) {
+      // A plain CSV carries no label of its own: name it by its file, so its
+      // summary does not read "Imported CSV saved". A label the user set
+      // stays.
+      if (!isSourceLabelChosenRef.current) {
+        setSourceLabel(parsedImport.fileName || DEFAULT_SOURCE_LABEL);
+      }
       setCsvText(parsedImport.csvText ?? "");
       setStatementCheckpoints([]);
       setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);

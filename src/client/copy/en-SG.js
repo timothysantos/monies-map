@@ -411,7 +411,6 @@ export const messages = {
     openErrorDiagnostics: "Open error diagnostics",
     preview: "Preview import",
     commit: "Commit import to ledger",
-    saveStatementCheckpoints: "Refresh statement checkpoints",
     refreshCoveredStatementCheckpoint: "Refresh covered statement checkpoint",
     saveEmptyStatementCheckpoint: "Save empty statement checkpoint",
     commitFailed: "Import commit failed. No partial transactions were kept.",

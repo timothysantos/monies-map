@@ -344,3 +344,23 @@ test("once files are queued the drop zone is one slim line and the first Review 
   await dropzone.getByRole("button", { name: "Select file" }).click();
   expect((await chooser).isMultiple()).toBe(true);
 });
+
+test("a plain CSV dropped on its own is named by its file, unless a label was typed", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await openImports(page);
+  const csvPath = testInfo.outputPath("plain-card-export.csv");
+  const otherPath = testInfo.outputPath("second-card-export.csv");
+  await writeGenericCsv(csvPath);
+  await writeGenericCsv(otherPath);
+
+  await page.locator("input[type=file]").setInputFiles(csvPath);
+  await expect(page.locator(".import-upload-status")).toContainText("plain-card-export.csv is loaded.");
+  await openPasteRowsAndDefaults(page);
+  await expect(page.getByLabel("Source label")).toHaveValue("plain-card-export.csv");
+
+  // A typed label stays when the next file is dropped.
+  await page.getByLabel("Source label").fill("Card run");
+  await page.locator("input[type=file]").setInputFiles(otherPath);
+  await expect(page.locator(".import-upload-status")).toContainText("second-card-export.csv is loaded.");
+  await expect(page.getByLabel("Source label")).toHaveValue("Card run");
+});

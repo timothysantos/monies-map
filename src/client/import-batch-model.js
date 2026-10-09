@@ -73,7 +73,6 @@ export function skipIntakeItem(queue, itemId) {
 // Saving an empty statement has none and keeps its own words.
 const OPEN_NEXT_LABELS = {
   rows: messages.imports.commitAndOpenNext,
-  checkpoints: messages.imports.refreshCheckpointsAndOpenNext,
   covered_checkpoint: messages.imports.refreshCheckpointsAndOpenNext
 };
 
@@ -83,8 +82,8 @@ const OPEN_NEXT_LABELS = {
  * a commit with no such words, keep their own.
  *
  * @param {{ commitKind?: string, commitLabel: string, nextItem?: object | null }} input
- *   commitKind from buildImportPreviewModel: rows, checkpoints,
- *   covered_checkpoint or empty_checkpoint
+ *   commitKind from buildImportPreviewModel: rows, covered_checkpoint or
+ *   empty_checkpoint
  */
 export function describeCommitLabel({ commitKind = "rows", commitLabel, nextItem }) {
   return nextItem ? OPEN_NEXT_LABELS[commitKind] ?? commitLabel : commitLabel;

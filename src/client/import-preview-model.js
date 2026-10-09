@@ -9,7 +9,6 @@ import { messages } from "./copy/en-SG";
 const COMMIT_LABELS = {
   covered_checkpoint: messages.imports.refreshCoveredStatementCheckpoint,
   empty_checkpoint: messages.imports.saveEmptyStatementCheckpoint,
-  checkpoints: messages.imports.saveStatementCheckpoints,
   rows: messages.imports.commit
 };
 
@@ -76,9 +75,7 @@ export function buildImportPreviewModel({
     ? "covered_checkpoint"
     : hasEmptyStatementCheckpointOnly
       ? "empty_checkpoint"
-      : hasCheckpointOnlyCommit
-        ? "checkpoints"
-        : "rows";
+      : "rows";
   const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
     && statementReconciliations.length > 0
     && statementReconciliations.every((item) => item.status === "matched");
