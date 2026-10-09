@@ -48,16 +48,59 @@ export interface OcrStatementPeriod {
 
 // One OCR pass per TSV, primary pass first. The package format is the marker
 // line followed by the pass's TSV, repeated for each pass.
-export function joinOcrTsvPasses(passes: string[]) {
-  return passes.map((tsv) => `${OCR_TSV_MARKER}\n${tsv.replace(new RegExp(`^${OCR_TSV_MARKER}\\n?`), "").trim()}`).join("\n");
+// A pass is a whole-page reading ("page") or a reading of single cells the
+// parser pointed at ("cells", see OcrCellRegion); the marker line names it.
+export type OcrPassKind = "page" | "cells";
+
+export interface OcrTsvPass {
+  kind: OcrPassKind;
+  tsv: string;
+}
+
+export function joinOcrTsvPasses(passes: Array<string | OcrTsvPass>) {
+  return passes.map((pass) => {
+    const { kind, tsv } = typeof pass === "string" ? { kind: "page", tsv: pass } : pass;
+    const marker = kind === "page" ? OCR_TSV_MARKER : `${OCR_TSV_MARKER} kind=${kind}`;
+    return `${marker}\n${tsv.replace(new RegExp(`^${OCR_TSV_MARKER}[^\\n]*\\n?`), "").trim()}`;
+  }).join("\n");
 }
 
 export function splitOcrTsvPasses(text: string) {
-  return text
-    .split(new RegExp(`(?:^|\\n)${OCR_TSV_MARKER}[^\\n]*`))
-    .map((pass) => pass.trim())
-    .filter(Boolean);
+  return splitOcrTsvPassesWithKinds(text).map((pass) => pass.tsv);
 }
+
+// Text before the first marker is a page pass (the dispatcher strips the
+// first marker before handing the package to a parser).
+export function splitOcrTsvPassesWithKinds(text: string): OcrTsvPass[] {
+  const passes: OcrTsvPass[] = [];
+  let current: OcrTsvPass = { kind: "page", tsv: "" };
+  for (const line of text.split("\n")) {
+    if (line.startsWith(OCR_TSV_MARKER)) {
+      passes.push(current);
+      current = { kind: /\bkind=cells\b/.test(line) ? "cells" : "page", tsv: "" };
+      continue;
+    }
+    current.tsv += `${line}\n`;
+  }
+  passes.push(current);
+  return passes.map((pass) => ({ ...pass, tsv: pass.tsv.trim() })).filter((pass) => pass.tsv);
+}
+
+// A cell for the app to OCR on its own, in the parser's reference frame:
+// one line of text, restricted to the characters a date or an amount uses.
+export interface OcrCellRegion {
+  page: number;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  characters: "date" | "amount";
+}
+
+export const OCR_CELL_CHARACTERS: Record<OcrCellRegion["characters"], string> = {
+  date: "0123456789ABCDEFGJLMNOPRSTUVYabcdeglnoprtuvy",
+  amount: "0123456789.,CR"
+};
 
 // Coordinates are scaled to a reference page size so a parser's column
 // ranges hold whatever resolution the page was rendered at.

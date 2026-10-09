@@ -11,10 +11,12 @@ import {
   readOcrDayMonth,
   readOcrTsvWords,
   resolveOcrAmountsAgainstTotals,
-  splitOcrTsvPasses,
+  splitOcrTsvPassesWithKinds,
   withoutOcrNoise,
   type OcrAmount,
   type OcrAmountReading,
+  type OcrCellRegion,
+  type OcrPassKind,
   type OcrLine,
   type OcrStatementPeriod,
   type OcrWord
@@ -41,6 +43,7 @@ import {
 // between amount readings (see ocr.ts).
 
 const HSBC_OCR_REFERENCE = { referenceWidth: 1820, referenceHeight: 2572 };
+const HSBC_REFERENCE_SIZE = { width: HSBC_OCR_REFERENCE.referenceWidth, height: HSBC_OCR_REFERENCE.referenceHeight };
 const HSBC_SHORT_MONTHS_BY_NUMBER = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // Below this confidence a description word is probably misread, so the first
 // pass asks for a second one.
@@ -58,6 +61,7 @@ interface HsbcSummaryReading {
 
 interface HsbcRowCandidate {
   pass: number;
+  kind: OcrPassKind;
   page: number;
   top: number;
   postDate?: string;
@@ -91,10 +95,41 @@ export interface HsbcOcrReview {
   // The first pass needed an inferred amount or has barely legible text, so
   // the app should OCR the PDF again before showing the preview.
   wantsSecondPass: boolean;
+  // With wantsSecondPass: each row's date and amount cells, and each line
+  // with an amount but unreadable dates, for the app to OCR one by one.
+  cellRegions?: OcrCellRegion[];
+  referenceSize?: { width: number; height: number };
+}
+
+// The HSBC Visa Revolution table's date and amount cells, around a line top.
+const HSBC_CELL_COLUMNS: Array<{ left: number; right: number; characters: OcrCellRegion["characters"] }> = [
+  { left: 160, right: 270, characters: "date" },
+  { left: 290, right: 400, characters: "date" },
+  { left: 960, right: 1160, characters: "amount" }
+];
+
+function hsbcCellRegions(lines: Array<{ page: number; top: number }>): OcrCellRegion[] {
+  const seen = new Set<string>();
+  return lines.flatMap((line) => {
+    const key = `${line.page}:${Math.round(line.top / 10)}`;
+    if (seen.has(key)) {
+      return [];
+    }
+    seen.add(key);
+    return HSBC_CELL_COLUMNS.map((column) => ({
+      page: line.page,
+      left: column.left,
+      right: column.right,
+      top: line.top - 10,
+      bottom: line.top + 30,
+      characters: column.characters
+    }));
+  });
 }
 
 export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): ParsedStatementImport & { ocrReview: HsbcOcrReview } {
-  const passLines = splitOcrTsvPasses(text).map((tsv) => groupOcrLines(readOcrTsvWords(tsv, HSBC_OCR_REFERENCE)));
+  const passInputs = splitOcrTsvPassesWithKinds(text);
+  const passLines = passInputs.map((pass) => groupOcrLines(readOcrTsvWords(pass.tsv, HSBC_OCR_REFERENCE)));
   if (!passLines.some((lines) => lines.some((line) => /HSBC\s+VISA\s+REVOLUTION/i.test(line.text)))) {
     throw new Error("This OCR text does not look like an HSBC Visa Revolution statement.");
   }
@@ -105,18 +140,40 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
   }
 
   const accountName = "HSBC Visa Revolution";
-  const passes = passLines.map((lines, pass) => readHsbcPass(lines, pass, period));
+  const passes = passLines.map((lines, pass) => readHsbcPass(lines, pass, period, passInputs[pass].kind));
   const mergedRows = alignRowsAcrossPasses(passes.map((reading) => reading.rows));
+  // A line whose dates only a cell read could see takes its merchant from
+  // the page pass's leftover line at the same height: the row is recovered.
+  const pageLeftovers = distinctLeftovers(passes.flatMap((reading) => reading.leftovers));
+  const claimedLeftovers = new Set<HsbcLeftoverAmount>();
   const rows = mergedRows
     .map((candidates) => describeMergedRow(candidates))
+    .map((row) => {
+      if (row.description) {
+        return row;
+      }
+      const leftover = pageLeftovers.find((item) => (
+        !claimedLeftovers.has(item) && item.page === row.page && Math.abs(item.top - row.top) <= SAME_ROW_TOP_DISTANCE && item.description
+      ));
+      if (!leftover) {
+        return row;
+      }
+      claimedLeftovers.add(leftover);
+      const readings = row.readings.some((reading) => reading.minor === leftover.amount.minor && reading.isCredit === leftover.amount.isCredit)
+        ? row.readings
+        : [...row.readings, { minor: leftover.amount.minor, isCredit: leftover.amount.isCredit }];
+      return { ...row, description: leftover.description, readings };
+    })
     .filter((row) => row.description);
+  const pageRowLines = passes.flatMap((reading, pass) => passInputs[pass].kind === "page" ? reading.rows : []);
+  const cellRegions = hsbcCellRegions([...pageRowLines, ...pageLeftovers]);
 
   const summaries = buildSummaryCandidates(passes.map((reading) => reading.summary));
   if (!summaries.length) {
     throw new Error("Could not read HSBC previous or total account balance.");
   }
 
-  const leftovers = distinctLeftovers(passes.flatMap((reading) => reading.leftovers));
+  const leftovers = pageLeftovers.filter((leftover) => !claimedLeftovers.has(leftover));
   const resolved = resolveOcrAmountsAgainstTotals({
     rows: rows.map((row) => ({ readings: row.readings, creditWhenUnread: isTransferDescription(row.description) })),
     canInferKind: (isCredit) => !leftovers.some((leftover) => leftover.amount.isCredit === isCredit),
@@ -166,7 +223,8 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
       ocrReview: {
         passCount: passLines.length,
         inferredAmounts: [],
-        wantsSecondPass: passLines.length === 1
+        wantsSecondPass: passLines.length === 1,
+        ...(passLines.length === 1 ? { cellRegions, referenceSize: HSBC_REFERENCE_SIZE } : {})
       }
     };
   }
@@ -205,7 +263,8 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
     ocrReview: {
       passCount: passLines.length,
       inferredAmounts,
-      wantsSecondPass: passLines.length === 1 && isFirstPassDoubtful
+      wantsSecondPass: passLines.length === 1 && isFirstPassDoubtful,
+      ...(passLines.length === 1 && isFirstPassDoubtful ? { cellRegions, referenceSize: HSBC_REFERENCE_SIZE } : {})
     }
   };
 }
@@ -278,7 +337,10 @@ function buildHsbcRowWithoutAmount(input: { accountName: string; postDate?: stri
   return { ...buildHsbcRow({ ...input, amount: { minor: 0, isCredit: false } }), expense: "", income: "" };
 }
 
-function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPeriod): HsbcPassReading {
+function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPeriod, kind: OcrPassKind): HsbcPassReading {
+  if (kind === "cells") {
+    return readHsbcCellPass(rawLines, pass, period);
+  }
   const lines = withoutOcrNoise(rawLines);
   const transactionLines = getHsbcTransactionTableLines(lines);
   const rows: HsbcRowCandidate[] = [];
@@ -347,6 +409,7 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
 
     rows.push({
       pass,
+      kind: "page",
       page: line.page,
       top: line.top,
       postDate,
@@ -387,6 +450,34 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
   };
 }
 
+// A cells pass holds only what the app read cell by cell (dates and amounts,
+// each restricted to its characters): every line with a date is a row's
+// dates and amount, with no merchant and no summary.
+function readHsbcCellPass(lines: OcrLine[], pass: number, period: OcrStatementPeriod): HsbcPassReading {
+  const rows: HsbcRowCandidate[] = [];
+  for (const line of lines) {
+    const postDate = readHsbcDate(line.words, 125, 245, period, 0);
+    const transactionDate = readHsbcDate(line.words, 240, 400, period, 31);
+    if (!postDate && !transactionDate) {
+      continue;
+    }
+    rows.push({
+      pass,
+      kind: "cells",
+      page: line.page,
+      top: line.top,
+      postDate,
+      transactionDate,
+      description: "",
+      descriptionScore: 0,
+      descriptionMeanConfidence: null,
+      descriptionMinConfidence: null,
+      amount: findAmountInRange(line.words, 930, 1160)
+    });
+  }
+  return { rows, leftovers: [], summary: {} };
+}
+
 // Lines up each pass's rows with the first pass's by position on the page.
 // A row only a later pass could date is added in its place.
 function alignRowsAcrossPasses(passRows: HsbcRowCandidate[][]) {
@@ -424,8 +515,10 @@ function describeMergedRow(candidates: HsbcRowCandidate[]) {
       || (right.descriptionMeanConfidence ?? 0) - (left.descriptionMeanConfidence ?? 0)
       || left.pass - right.pass
     ))[0];
+  // A cell read is the most reliable reading of a date or an amount.
+  const byReliability = [...candidates].sort((left, right) => Number(right.kind === "cells") - Number(left.kind === "cells") || left.pass - right.pass);
   const readings: OcrAmountReading[] = [];
-  for (const candidate of candidates) {
+  for (const candidate of byReliability) {
     const amount = candidate.amount;
     if (amount && amount.minor !== 0 && !readings.some((reading) => reading.minor === amount.minor && reading.isCredit === amount.isCredit)) {
       readings.push({ minor: amount.minor, isCredit: amount.isCredit });
@@ -434,8 +527,8 @@ function describeMergedRow(candidates: HsbcRowCandidate[]) {
   return {
     page: candidates[0].page,
     top: candidates[0].top,
-    postDate: candidates.find((candidate) => candidate.postDate)?.postDate,
-    transactionDate: candidates.find((candidate) => candidate.transactionDate)?.transactionDate,
+    postDate: byReliability.find((candidate) => candidate.postDate)?.postDate,
+    transactionDate: byReliability.find((candidate) => candidate.transactionDate)?.transactionDate,
     description: legible?.description ?? "",
     minConfidence: legible?.descriptionMinConfidence ?? null,
     readings
