@@ -1859,12 +1859,14 @@ function StatementCardRows({ rows }) {
             <li key={row.rowId} className="statement-card-row">
               <span className="statement-card-row-date">{formatService.formatDateOnly(row.date)}</span>
               <span className="statement-card-row-description">{row.description}</span>
-              <span className={`pill ${chip.tone}`}>{chip.label}</span>
-              {isInferredAmountRow(row, inferredAmountKeys) ? (
-                <span className="pill pill-lavender statement-inferred-amount" title={messages.imports.statementInferredAmountHint}>
-                  {messages.imports.statementInferredAmount}
-                </span>
-              ) : null}
+              <span className={`statement-card-row-chips${isInferredAmountRow(row, inferredAmountKeys) ? " has-mark" : ""}`}>
+                <span className={`pill ${chip.tone}`}>{chip.label}</span>
+                {isInferredAmountRow(row, inferredAmountKeys) ? (
+                  <span className="pill pill-lavender statement-inferred-amount" title={messages.imports.statementInferredAmountHint}>
+                    {messages.imports.statementInferredAmount}
+                  </span>
+                ) : null}
+              </span>
               <strong className={`statement-card-row-amount ${areTotalsVisible ? moneyToneClass(entryAmountTone(row.entryType, signedMinor)) : ""}`}>
                 {formatService.money(row.amountMinor)}
               </strong>
