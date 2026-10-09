@@ -402,7 +402,9 @@ Rules:
   import, then load the parsed statement into the normal preview/review flow.
   `imports.parseImageStatement` owns the OCR pass decision (a second pass only
   when the first is doubtful); the panel passes it `parseStatementText` and
-  keeps only the AI-fallback and status wiring
+  keeps only the AI-fallback and status wiring. The cell reader (`import-ocr-cells.js`)
+  loads by dynamic import only when a statement asks for cell reads, so OCR
+  code beyond the existing page reader stays off the first screen
 - keep split cleanup separate from required bank-file collection
 
 ## Optional AI Assistance Boundary

@@ -95,6 +95,9 @@ export interface OcrCellRegion {
   right: number;
   bottom: number;
   characters: "date" | "amount";
+  // The characters Tesseract may read in this cell (OCR_CELL_CHARACTERS), so
+  // the app needs no copy of the table.
+  allowedCharacters: string;
 }
 
 export const OCR_CELL_CHARACTERS: Record<OcrCellRegion["characters"], string> = {

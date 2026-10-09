@@ -1,6 +1,5 @@
 import { formatMinorInput } from "./formatters";
 import { attemptParse, chooseImageStatementParse } from "./import-ocr-passes";
-import { OCR_CELL_CHARACTERS } from "../lib/statement-import/ocr";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 export { inferImportMapping } from "./import-column-mapping";
 
@@ -88,7 +87,7 @@ export async function extractPdfText(file) {
 
 // The OCR engine and renderer every image statement goes through: the PDF's
 // pages rendered at 220 dpi (the parsers' reference frame) and one worker.
-async function openOcrSession(file, onProgress) {
+export async function openOcrSession(file, onProgress) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   const tesseractModule = await importRuntimeModule("/vendor/tesseract/tesseract.esm.min.js");
@@ -115,7 +114,7 @@ async function openOcrSession(file, onProgress) {
   return { document, worker };
 }
 
-async function renderPdfPageForOcr(document, pageNumber) {
+export async function renderPdfPageForOcr(document, pageNumber) {
   const page = await document.getPage(pageNumber);
   const viewport = page.getViewport({ scale: 220 / 72 });
   const canvas = globalThis.document.createElement("canvas");
@@ -153,51 +152,6 @@ export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } 
   }
 }
 
-// Reads the cells a statement parser pointed at (ocrReview.cellRegions), each
-// on its own as one line of text restricted to a date's or an amount's
-// characters. Far more reliable than a whole-page pass for exactly the values
-// the statement totals check. Word positions stay in page coordinates.
-export async function extractPdfOcrCells(file, { cellRegions, referenceSize }, onProgress) {
-  const { document, worker } = await openOcrSession(file, onProgress);
-  const lines = [];
-  try {
-    const pageNumbers = [...new Set(cellRegions.map((region) => region.page))]
-      .filter((pageNumber) => pageNumber >= 1 && pageNumber <= document.numPages);
-    for (const pageNumber of pageNumbers) {
-      onProgress?.({ status: "rendering page", pageNumber, pageCount: document.numPages });
-      const canvas = await renderPdfPageForOcr(document, pageNumber);
-      const xScale = canvas.width / referenceSize.width;
-      const yScale = canvas.height / referenceSize.height;
-      lines.push(`1\t${pageNumber}\t0\t0\t0\t0\t0\t0\t${canvas.width}\t${canvas.height}\t-1\t`);
-      onProgress?.({ status: "recognizing text", pageNumber, pageCount: document.numPages });
-      let characters = "";
-      for (const region of cellRegions.filter((item) => item.page === pageNumber)) {
-        if (region.characters !== characters) {
-          characters = region.characters;
-          await worker.setParameters({ tessedit_pageseg_mode: "7", tessedit_char_whitelist: OCR_CELL_CHARACTERS[characters] });
-        }
-        const rectangle = {
-          left: Math.max(0, Math.round(region.left * xScale)),
-          top: Math.max(0, Math.round(region.top * yScale)),
-          width: Math.round((region.right - region.left) * xScale),
-          height: Math.round((region.bottom - region.top) * yScale)
-        };
-        const result = await worker.recognize(canvas, { rectangle }, { tsv: true });
-        for (const line of (result.data.tsv ?? "").split(/\r?\n/)) {
-          const columns = line.split("\t");
-          if (columns[0] === "5" && columns.length >= 12 && columns.slice(11).join("").trim()) {
-            columns[1] = String(pageNumber);
-            lines.push(columns.join("\t"));
-          }
-        }
-      }
-    }
-    return `__OCR_TSV__ kind=cells\n${lines.join("\n")}`;
-  } finally {
-    await worker.terminate();
-  }
-}
-
 // Parses an image statement from its first OCR pass. When the parser cannot
 // reconcile that reading, or reports it as doubtful (an inferred amount or a
 // barely legible row), the PDF is OCR'd again in a second page layout mode
@@ -212,8 +166,10 @@ export async function parseImageStatement({ file, firstPass, parse, onProgress }
   }
   const secondPass = await extractPdfOcrText(file, onProgress, { pageSegMode: "6" });
   const cellRegions = first.parsed?.ocrReview?.cellRegions;
+  // The cell reader loads only when a statement needs it (Imports, never the
+  // first screen).
   const cellPass = cellRegions?.length
-    ? await extractPdfOcrCells(file, { cellRegions, referenceSize: first.parsed.ocrReview.referenceSize }, onProgress)
+    ? await (await import("./import-ocr-cells")).extractPdfOcrCells(file, { cellRegions, referenceSize: first.parsed.ocrReview.referenceSize }, onProgress)
     : "";
   const passes = [firstPass, secondPass, cellPass].filter(Boolean).join("\n");
   return chooseImageStatementParse(first, attemptParse(parse, passes));

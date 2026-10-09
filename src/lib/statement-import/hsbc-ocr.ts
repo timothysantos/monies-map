@@ -4,6 +4,7 @@ import {
   groupOcrLines,
   meanOcrConfidence,
   minOcrConfidence,
+  OCR_CELL_CHARACTERS,
   ocrLegibilityScore,
   ocrWordsInColumn,
   ocrWordsToText,
@@ -122,7 +123,8 @@ function hsbcCellRegions(lines: Array<{ page: number; top: number }>): OcrCellRe
       right: column.right,
       top: line.top - 10,
       bottom: line.top + 30,
-      characters: column.characters
+      characters: column.characters,
+      allowedCharacters: OCR_CELL_CHARACTERS[column.characters]
     }));
   });
 }
