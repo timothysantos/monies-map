@@ -420,9 +420,11 @@ receipt button adds a shared expense.
   the page). Once you scroll down they stretch across the window as one
   short line, with a soft shadow under them. Two more rows sit under the
   steps:
-  - **Your files**: one chip per file you brought this time, in the order to
-    review them. A ticked chip is done, the outlined one is in review, and
-    **File 2 of 4** says where you are. Select a waiting file to open it; if
+  - **Your files:** one chip per file you brought this time, in the order to
+    review them. A green chip with a tick is done (a finished step looks the
+    same), the outlined one with a file icon says **reviewing**, and one
+    with a clock says **waiting**. Point at a chip to see the full file
+    name. **File 2 of 4** says where you are. Select a waiting file to open it; if
     you changed rows or approved fixes in the file in review, the app asks
     first, because opening another file drops those changes. A file you roll
     back leaves the chips.
@@ -436,7 +438,8 @@ receipt button adds a shared expense.
   statement PDF or a bank export goes straight to Review; a plain CSV first
   asks you to match its columns. Once files are waiting it shrinks to one
   line, **Drop more files, or Select file**, so your files are on the first
-  screen.
+  screen. Beside it, **Waiting for review** says how many files you added;
+  select it to go to the queue.
 - **File intake queue**: the files you dropped, in the order to review them.
 - **Import inbox**: your bank run, planned for you. It shows one line,
   **Still missing: 3 of 13**, and opens with **Show**. It starts open when
@@ -471,8 +474,8 @@ receipt button adds a shared expense.
   itself when a plain CSV needs them. Once files are waiting it also holds
   the notes about PDF and XLS files, trustworthy statements and rollback.
   - **Source label** and **Batch note**: optional names so you recognise
-    the import later. A plain CSV you open from the queue is named by its
-    file unless you typed a source label.
+    the import later. A plain CSV is named by its file unless you typed a
+    source label.
   - **Default account** and **Default owner**: used for rows that do not
     say which account or person they belong to. Choose the account before
     dropping a card activity file.

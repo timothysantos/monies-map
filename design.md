@@ -250,8 +250,9 @@ Rules:
 - a file dropped on its own (`processImportFile`) clears
   `activeIntakeItemId`, so the queued file that was in review waits again
   and Skip for now queues the dropped file; the source label of a plain CSV
-  opened from the queue is its file name unless `isSourceLabelChosenRef`
-  says the user typed one (or took one from the inbox)
+  (opened from the queue or dropped on its own, `loadParsedImport`) is its
+  file name unless `isSourceLabelChosenRef` says the user typed one (or
+  took one from the inbox)
 - the preview card (`data-import-target="preview-rows"`) renders only with
   a preview or its warnings
 - a file dropped anywhere on the page goes to the drop zone's handler
@@ -280,6 +281,19 @@ Rules:
   to import). The chips, the commit bar's "things left", the disabled
   button and the popover all read it, so they cannot disagree; a matrix test
   pins it to the rules it replaced
+- done looks the same everywhere: a finished step (`is-done`) and a done
+  file chip use `--pastel-mint`, `--pastel-mint-ink` and a lucide `Check`;
+  the current step keeps the terracotta outline. The file chips row leads
+  with "Your files:" (styled like "Before you can commit:"); the reviewing
+  chip has `FileText`, the outline and bold text and "· reviewing", a
+  waiting chip `Clock`, a neutral outline, muted ink and "· waiting"; the
+  full file name is the title. The phone sheet uses the same chips
+- the Bring files status box comes from `describeUploadStatus`
+  (`import-upload-status.js`): a multi-file drop sets the `waiting` tone
+  (butter, "Waiting for review"), rendered as a button that jumps to the
+  `intake-queue` target (`import-jump.js`: the queue, focus on the first
+  enabled Review); it hides once nothing waits. `active`, `success` and
+  `error` keep their tones
 - `ImportBatchBar` (`import-batch-bar.jsx`) wraps `ImportStepper` in a
   `nav` with this batch's file chips (`buildImportBatchFiles`,
   `import-batch-model.js`: done this session, the file in review, then

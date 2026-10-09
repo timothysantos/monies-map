@@ -56,9 +56,9 @@ Imports owns:
   back from it leaves that review as it is and takes the rolled-back file
   off the file chips ("File i of n" follows). The last file commits with its
   own words and shows the full Done card (what changed per card, with
-  rollback). A plain CSV opened from the queue is named by its file name
-  (its summary reads "{file} saved"), unless the user typed a source label
-  or took one from the inbox. A failed commit opens nothing; the refresh after a commit runs
+  rollback). A plain CSV, opened from the queue or dropped on its own, is
+  named by its file name (its summary reads "{file} saved"), unless the user
+  typed a source label or took one from the inbox. A failed commit opens nothing; the refresh after a commit runs
   through `runBackgroundRefresh`, so a failure keeps the commit and raises the
   refresh notice. "Skip for now" (shown while another file waits) sends the
   file in review to the end of the queue, still parsed, and opens the next;
@@ -75,7 +75,13 @@ Imports owns:
   and the AI fallback consent under it; the OCR/XLS note, the trust hint and
   the rollback note move behind "Paste rows or set defaults". At 1280x800
   after a three-file drop the queue's first Review button is on the first
-  screen. A file dropped on its own opens straight away and frees the
+  screen. Files added to the queue are not done: the status box says
+  "Waiting for review" in the pending (butter) tone and is a button that
+  scrolls to the queue (below the pinned bar) and focuses the first Review
+  button; with nothing left waiting it is not shown. Reading, a file ready
+  to map or preview and an error keep their tones
+  (`describeUploadStatus`, `import-upload-status.js`). A file dropped on
+  its own opens straight away and frees the
   queued file that was in review (it waits again). No preview card shows
   until a preview exists. The inbox folds to one line, "Still missing: N of M"
   (`buildInboxChecklistProgress`, `import-inbox-model.js`), open by default
@@ -103,9 +109,12 @@ Imports owns:
   file dropped on the file in review (`data-page-drop="off"` on the preview
   card), a dialog or a popover is refused: no intake, and the browser does
   not open the file. Non-file drags (text, elements) are left alone
-- the import bar (`ImportBatchBar`): the steps, one chip per file of this
-  session's batch, and "Before you can commit:" chips for the file in
-  review. It is sticky on desktop and tablet while a batch is in progress,
+- the import bar (`ImportBatchBar`): the steps, a "Your files:" row with
+  one chip per file of this session's batch, and "Before you can commit:"
+  chips for the file in review. A finished step and a done file are mint
+  with a tick; the file in review is outlined, bold, with a file icon and
+  "· reviewing"; a waiting file has a neutral outline, a clock and
+  "· waiting". It is sticky on desktop and tablet while a batch is in progress,
   not on a phone. The blocker list (`import-blockers-model.js`) is the one
   source for the chips, the commit bar's "{n} things left · Jump to
   next", whether the commit is disabled and whether it asks first; a chip
