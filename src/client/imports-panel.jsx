@@ -49,6 +49,8 @@ import {
   writeAutomaticStatementFixes
 } from "./statement-fix-preference";
 import { ImportSelectFileStage } from "./import-select-file-stage";
+import { ImportStatementRecovery } from "./import-statement-recovery";
+import { buildRecoveryImportRow, buildStatementRecovery } from "./import-statement-recovery-model";
 import { moniesClient } from "./monies-client-service";
 import { AccountDialog } from "./account-dialog";
 import { saveAccount } from "./accounts-api";
@@ -166,7 +168,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [statementCheckpoints, setStatementCheckpoints] = useState([]);
   const [statementImportMeta, setStatementImportMeta] = useState(DEFAULT_STATEMENT_IMPORT_META);
   const [statementWarnings, setStatementWarnings] = useState([]);
-  const [ocrRecovery, setOcrRecovery] = useState(null);
+  // Printed totals and evidence for a statement whose readable rows did not
+  // add up (ParsedStatementImport.reconciliation); null otherwise.
+  const [statementReconciliation, setStatementReconciliation] = useState(null);
   const [allowAiStatementFallback, setAllowAiStatementFallback] = useState(false);
 
   // UI-only workflow state: upload progress, modal dialogs, and navigation aids.
@@ -384,7 +388,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       importNote,
       isParsingStatement,
       isSubmitting,
-      ocrRecovery,
       preview,
       previewError,
       previewRows,
@@ -404,6 +407,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [isPasteDefaultsOpen, setIsPasteDefaultsOpen] = useFollowingFold(isMappingNeeded, { followClose: false });
   // A file dropped anywhere on the page goes where the drop zone sends it.
   const isPageDragActive = usePageFileDrop((files) => void processImportFiles(files));
+  // Recomputed from the current rows, so it clears only when they add up.
+  const statementRecovery = useMemo(
+    () => buildStatementRecovery({ reconciliation: statementReconciliation, previewRows }),
+    [statementReconciliation, previewRows]
+  );
+  const hasUnbalancedStatement = Boolean(statementRecovery && !statementRecovery.isBalanced);
   // What blocks a clean commit: the bar's chips, the commit bar's count
   // and the commit rules all read this one list.
   const importBlockers = useMemo(
@@ -419,14 +428,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       columnMapping: {
         readyForMapping: importWorkflowModel.readyForMapping,
         missingRequiredFields: importWorkflowModel.missingRequiredFields,
-      duplicateMappings: importWorkflowModel.duplicateMappings
+        duplicateMappings: importWorkflowModel.duplicateMappings
       },
-      hasOcrRecovery: Boolean(ocrRecovery),
+      hasOcrRecovery: hasUnbalancedStatement,
       areTotalsVisible,
       formatMoney: unmaskedMoney
     }),
     [
       areTotalsVisible,
+      hasUnbalancedStatement,
       importPreviewModel,
       importWorkflowModel.duplicateMappings,
       importWorkflowModel.isPreviewDirty,
@@ -551,11 +561,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setStatementWarnings([]);
-    setOcrRecovery(null);
+    setStatementReconciliation(null);
     setAllowAiStatementFallback(false);
     setPreview(null);
     setPreviewRows([]);
-    setOcrRecovery(null);
     setPreviewError("");
     setUploadStatus(null);
     lastAutoPreviewCitibankSignatureRef.current = "";
@@ -663,7 +672,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setStatementWarnings([]);
-    setOcrRecovery(null);
+    setStatementReconciliation(null);
     setUploadStatus(null);
     setIsParsingStatement(false);
     setIsDragActive(false);
@@ -714,7 +723,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     statementCheckpointsRef.current = nextStatementCheckpoints;
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
     setStatementWarnings(parsed.warnings ?? []);
-    setOcrRecovery(parsed.ocrReview?.reconciliation ?? null);
+    setStatementReconciliation(parsed.reconciliation ?? null);
     setCsvText(statementRowsToCsv(parsed.rows));
 
     setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
@@ -727,21 +736,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setUploadStatus({ tone: "success", message: successMessage });
   }
 
-  async function handleAddOcrRecoveryRow(candidate) {
-    if (!candidate?.row || !ocrRecovery) {
-      return;
-    }
-    const currentRows = previewRowsRef.current.map(importService.buildRawRowFromPreviewRow);
-    try {
-      await refreshPreviewFromRows({
-        rows: [...currentRows, candidate.row],
-        activeMessage: "Adding the checked OCR row and refreshing the statement check.",
-        successMessage: "The OCR row was added. Review the statement check before committing."
-      });
-      setOcrRecovery(null);
-    } catch {
-      // Keep the recovery state and show the retryable refresh error.
-    }
+  // Adds a statement row the user confirmed against the PDF. The recovery
+  // check then re-reads the refreshed rows; nothing is unblocked here.
+  function handleAddRecoveryRow(candidate, amountMinor) {
+    const row = buildRecoveryImportRow(candidate, amountMinor);
+    return refreshPreviewFromRows({
+      rows: [...previewRowsRef.current.map(importService.buildRawRowFromPreviewRow), row],
+      activeMessage: messages.imports.statementRecoveryAdding,
+      successMessage: messages.imports.statementRecoveryAdded
+    });
   }
 
   function markPreviewRefreshStarted(message) {
@@ -839,7 +842,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
     setPreview(null);
     setPreviewRows([]);
-    setOcrRecovery(null);
+    setStatementReconciliation(null);
     setIsParsingStatement(true);
     try {
       const parsedImport = await parseImportFileForIntake(file);
@@ -2365,11 +2368,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               {statementWarnings.map((warning) => <p key={warning} className="lede compact">{warning}</p>)}
             </section>
           ) : null}
-          {ocrRecovery ? (
-            <OcrReconciliationRecovery
-              diagnostic={ocrRecovery}
-              onAddMissingRow={handleAddOcrRecoveryRow}
-              areTotalsVisible={areTotalsVisible}
+          {hasUnbalancedStatement ? (
+            <ImportStatementRecovery
+              recovery={statementRecovery}
+              isSubmitting={isSubmitting}
+              onAddRow={handleAddRecoveryRow}
             />
           ) : null}
 
@@ -2678,36 +2681,6 @@ function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
     ]))
   });
 }
-
-function OcrReconciliationRecovery({ diagnostic, onAddMissingRow, areTotalsVisible }) {
-  const candidate = diagnostic.candidates?.length === 1 ? diagnostic.candidates[0] : null;
-  const money = (minor) => areTotalsVisible ? `SGD ${(Number(minor ?? 0) / 100).toFixed(2)}` : "Hidden";
-  return (
-    <section className="import-warning import-warning-attention import-ocr-recovery" data-import-target="statement-ocr-recovery" aria-live="polite">
-      <strong>OCR needs one statement check</strong>
-      <div className="import-ocr-recovery-facts">
-        <span>Expected {money(diagnostic.expectedMinor)}</span>
-        <span>Found {money(diagnostic.foundMinor)}</span>
-        <span>Difference {money(Math.abs(diagnostic.differenceMinor))}</span>
-      </div>
-      {candidate ? (
-        <div className="import-ocr-recovery-candidate">
-          <p className="lede compact">
-            Possible missing row: <strong>{candidate.row.date || "Unknown date"}</strong> · {candidate.row.description || "Unrecognized merchant"} · {money(candidate.amountMinor)}
-          </p>
-          <p className="lede compact">Check this row against page 1 of the PDF before adding it. Nothing has been saved.</p>
-          <button type="button" className="subtle-action" onClick={() => onAddMissingRow(candidate)}>
-            Add missing row
-          </button>
-        </div>
-      ) : (
-        <p className="lede compact">No single OCR row matches the difference yet. Review the PDF rows and start over if the statement image is unclear. Nothing has been saved.</p>
-      )}
-      <p className="lede compact">Commit is blocked until the statement totals reconcile.</p>
-    </section>
-  );
-}
-
 
 function applyStatementAccountMatches(statementCheckpoints, matches) {
   if (!matches?.length) {

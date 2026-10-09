@@ -1,4 +1,5 @@
 import { formatMinorInput } from "./formatters";
+import { attemptParse, chooseImageStatementParse } from "./import-ocr-passes";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 export { inferImportMapping } from "./import-column-mapping";
 
@@ -147,26 +148,12 @@ export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } 
 // between the two readings. Each pass is an "__OCR_TSV__" package, so the
 // two packages joined by a newline are the two-pass package.
 export async function parseImageStatement({ file, firstPass, parse, onProgress }) {
-  let firstPassError;
-  try {
-    const parsed = parse(firstPass);
-    if (!parsed.ocrReview?.wantsSecondPass) {
-      return parsed;
-    }
-  } catch (error) {
-    firstPassError = error;
+  const first = attemptParse(parse, firstPass);
+  if (first.parsed && !first.parsed.ocrReview?.wantsSecondPass) {
+    return first.parsed;
   }
-
   const secondPass = await extractPdfOcrText(file, onProgress, { pageSegMode: "6" });
-  try {
-    return parse(`${firstPass}\n${secondPass}`);
-  } catch (error) {
-    // A doubtful but reconciled first pass is still a valid preview.
-    if (!firstPassError) {
-      return parse(firstPass);
-    }
-    throw error;
-  }
+  return chooseImageStatementParse(first, attemptParse(parse, `${firstPass}\n${secondPass}`));
 }
 
 export function isExtractedPdfTextEmpty(text) {

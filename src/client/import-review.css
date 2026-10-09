@@ -754,16 +754,43 @@
     width: 100%;
   }
 }
-.import-ocr-recovery-facts {
+/* A statement whose rows do not add up to its printed totals yet. */
+.import-statement-recovery {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.import-statement-recovery-totals {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem 1rem;
-  margin: 0.55rem 0;
+  gap: 0.4rem 1.4rem;
+  margin: 0;
+}
+
+.import-statement-recovery-totals dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.import-statement-recovery-totals dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.import-statement-recovery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+
+.import-statement-recovery-label {
   font-weight: 600;
 }
 
-.import-ocr-recovery-candidate {
-  margin-top: 0.6rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--border-subtle, rgba(74, 56, 44, 0.16));
+.import-statement-recovery-amount {
+  width: 7rem;
 }
