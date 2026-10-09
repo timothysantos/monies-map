@@ -795,7 +795,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         nextItems.push(item);
       }
       setIntakeQueue((current) => [...current, ...nextItems]);
-      setUploadStatus({ tone: "success", message: messages.imports.intakeReady(nextItems.length) });
+      // Queued, not done: they wait for review.
+      setUploadStatus({ tone: "waiting", message: messages.imports.intakeReady(nextItems.length) });
     } catch (error) {
       const previewErrorDetail = buildImportPreviewError(error, messages.imports.intakeFailed);
       setPreviewError(previewErrorDetail);
@@ -2243,6 +2244,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isPasteDefaultsOpen={isPasteDefaultsOpen}
               onTogglePasteDefaults={() => setIsPasteDefaultsOpen((current) => !current)}
               isSlim={isDropZoneSlim}
+              hasWaitingFiles={Boolean(nextIntakeItem)}
+              onShowQueue={() => jumpToImportTarget({ kind: "intake-queue" }, panelRef.current ?? document)}
             />
           </section>
           <ImportIntakeQueueSection

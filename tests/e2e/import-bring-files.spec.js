@@ -364,3 +364,53 @@ test("a plain CSV dropped on its own is named by its file, unless a label was ty
   await expect(page.locator(".import-upload-status")).toContainText("second-card-export.csv is loaded.");
   await expect(page.getByLabel("Source label")).toHaveValue("Card run");
 });
+
+test("queued files wait for review in a butter status that opens the queue", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const pdfPath = testInfo.outputPath("eStatement_UOB_Cards_12May2026.pdf");
+  const csvPath = testInfo.outputPath("plain-card-export.csv");
+  await writeStatementPdf(page, pdfPath);
+  await writeGenericCsv(csvPath);
+  await openImports(page);
+
+  // A single plain CSV ready to map keeps the mint Ready status.
+  await page.locator("input[type=file]").setInputFiles(csvPath);
+  const status = page.locator(".import-upload-status");
+  await expect(status).toHaveClass(/is-success/);
+  await expect(status).toContainText("Ready");
+  await expect(page.getByRole("button", { name: /Waiting for review/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Start over" }).first().click();
+
+  await page.locator("input[type=file]").setInputFiles([pdfPath, OCBC_ACTIVITY.pathname, csvPath]);
+  await expect(page.locator(".import-intake-row")).toHaveCount(3, { timeout: 30_000 });
+  const waiting = page.getByRole("button", { name: "Waiting for review 3 files added to the intake queue." });
+  await expect(waiting).toHaveClass(/is-waiting/);
+  expect(await waiting.evaluate((element) => {
+    const root = getComputedStyle(document.documentElement);
+    const probe = document.createElement("span");
+    probe.style.backgroundColor = root.getPropertyValue("--pastel-butter");
+    probe.style.color = root.getPropertyValue("--pastel-butter-ink");
+    document.body.append(probe);
+    const expected = getComputedStyle(probe);
+    const result = getComputedStyle(element).backgroundColor === expected.backgroundColor
+      && getComputedStyle(element.querySelector("strong")).color === expected.color;
+    probe.remove();
+    return result;
+  })).toBe(true);
+
+  // It opens the queue: the first Review button takes focus, below the bar.
+  await waiting.click();
+  const firstReview = page.locator(".import-intake-row").first().getByRole("button", { name: "Review" });
+  await expect(firstReview).toBeFocused();
+  await expect(firstReview).toBeInViewport();
+  await expect.poll(async () => {
+    const queue = await page.locator(".import-intake-section").boundingBox();
+    const surface = await page.locator(".import-batch-bar-surface").boundingBox();
+    return queue.y >= surface.y + surface.height - 1;
+  }).toBe(true);
+
+  // With the queue cleared there is nothing waiting to point at.
+  await page.getByRole("button", { name: "Clear queue" }).click();
+  await expect(page.locator(".import-upload-status.is-waiting")).toHaveCount(0);
+});

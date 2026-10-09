@@ -182,7 +182,7 @@ export function ImportIntakeQueueSection({
   onClear
 }) {
   return (
-    <section className="panel-subsection import-intake-section">
+    <section className="panel-subsection import-intake-section" data-import-target="intake-queue">
       <div className="import-inbox-header">
         <div className="section-head">
           <h3>{messages.imports.intakeTitle}</h3>

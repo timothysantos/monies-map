@@ -61,6 +61,35 @@
   flex: 1 1 100%;
 }
 
+/* Queued files are not done yet: they wait for review in the pending
+   (butter) tone, and the box takes you to the queue. */
+.import-upload-status-live {
+  display: contents;
+}
+
+button.import-upload-status.is-waiting {
+  border-color: var(--pastel-butter-line);
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.import-upload-status.is-waiting strong,
+.import-upload-status.is-waiting span {
+  color: var(--pastel-butter-ink);
+}
+
+.import-upload-status.is-waiting:hover {
+  border-color: var(--pastel-butter-ink);
+}
+
+.import-upload-status.is-waiting:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
 .import-paste-defaults-notes {
   display: grid;
   gap: 10px;

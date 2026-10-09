@@ -86,6 +86,15 @@ function findImportTarget(target, root) {
       const control = selects.find((select) => select.value === target.field) ?? selects[0] ?? grid;
       return { scrollTo: control, focus: control };
     }
+    case "intake-queue": {
+      // The queue, with focus on the first file that can be opened.
+      const element = section("intake-queue");
+      if (!element) {
+        return null;
+      }
+      const review = Array.from(element.querySelectorAll(".import-intake-actions button")).find((button) => !button.disabled);
+      return { scrollTo: element, focus: review ?? element };
+    }
     case "preview-rows": {
       const element = section("preview-rows");
       return element ? { scrollTo: element, focus: element } : null;

@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { describeUploadStatus } from "./import-upload-status";
 import { useMoneyPrivacy } from "./money-privacy";
 
 const { accounts: accountService } = moniesClient;
@@ -40,12 +41,21 @@ export function ImportSelectFileStage({
   rollbackPolicy,
   isPasteDefaultsOpen,
   onTogglePasteDefaults,
-  isSlim = false
+  isSlim = false,
+  hasWaitingFiles = false,
+  onShowQueue
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
   const accountOptions = accountService.getSelectOptions(accounts);
   const pasteDefaultsId = useId();
+  const status = describeUploadStatus(uploadStatus, { hasWaitingFiles });
+  const statusContent = status ? (
+    <>
+      <strong>{status.title}</strong>
+      <span>{status.message}</span>
+    </>
+  ) : null;
   const openFilePicker = () => fileInputRef.current?.click();
   const dropHandlers = {
     onDragEnter: onDragOverImportFile,
@@ -109,10 +119,16 @@ export function ImportSelectFileStage({
           </div>
         )}
         <div className="import-sidecar">
-          {uploadStatus ? (
-            <div className={`import-upload-status is-${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>
-              <strong>{uploadStatus.tone === "error" ? messages.imports.uploadStatusError : uploadStatus.tone === "success" ? messages.imports.uploadStatusReady : messages.imports.uploadStatusWorking}</strong>
-              <span>{uploadStatus.message}</span>
+          {/* Queued files wait for review: the box opens the queue. */}
+          {status?.opensQueue ? (
+            <div className="import-upload-status-live" role="status">
+              <button type="button" className="import-upload-status is-waiting" onClick={onShowQueue}>
+                {statusContent}
+              </button>
+            </div>
+          ) : status ? (
+            <div className={`import-upload-status is-${status.tone}`} role={status.role}>
+              {statusContent}
             </div>
           ) : null}
           {isSlim ? null : stepHint}
