@@ -1,5 +1,5 @@
 import * as Popover from "@radix-ui/react-popover";
-import { Check } from "lucide-react";
+import { Check, Clock, FileText } from "lucide-react";
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -37,7 +37,9 @@ export function ImportBatchBar({
           {stepper}
           {batch.total ? (
             <div className="import-file-strip">
-              <ul className="import-file-chips" aria-label={messages.imports.batchFilesLabel}>
+              {/* Says what the chips are: the files the user brought. */}
+              <span className="import-blockers-title" id="import-files-title">{messages.imports.batchFilesRowLabel}</span>
+              <ul className="import-file-chips" aria-labelledby="import-files-title">
                 {batch.files.map((file) => (
                   <li key={file.id}>
                     <ImportFileChip
@@ -105,7 +107,9 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
   if (file.state === "reviewing") {
     return (
       <button type="button" className="import-file-chip is-reviewing" title={file.title} aria-current="step" onClick={onShowCurrentFile}>
+        <FileText size={14} aria-hidden="true" />
         <span>{file.label}</span>
+        <span className="import-file-chip-state">{" · "}{messages.imports.batchFileStateReviewing}</span>
       </button>
     );
   }
@@ -122,10 +126,11 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
           type="button"
           className="import-file-chip is-waiting"
           title={file.title}
-          aria-label={messages.imports.batchFileWaiting(file.label)}
           onClick={onClick}
         >
+          <Clock size={14} aria-hidden="true" />
           <span>{file.label}</span>
+          <span className="import-file-chip-state">{" · "}{messages.imports.batchFileStateWaiting}</span>
         </button>
       )}
     </ImportAskFirst>

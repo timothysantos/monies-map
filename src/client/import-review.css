@@ -255,11 +255,22 @@
   color: var(--text);
 }
 
+/* A finished step reads as done: the mint surface, mint ink and a tick,
+   like a done file chip. */
+.import-stepper-step.is-done {
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+}
+
 .import-stepper-step.is-done .import-stepper-label {
-  color: var(--positive);
+  color: var(--pastel-mint-ink);
 }
 
 .import-stepper-label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -580,7 +591,7 @@
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  max-width: 16rem;
+  max-width: 20rem;
   min-height: 32px;
   padding: 4px 12px;
   border: 1px solid var(--line);
@@ -593,8 +604,19 @@
 }
 
 .import-file-chip span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* "· reviewing" and "· waiting" stay whole; the name gives way. */
+.import-file-chip .import-file-chip-state {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.import-file-chip svg {
+  flex-shrink: 0;
 }
 
 .import-file-chip,

@@ -88,8 +88,8 @@ test("the import bar follows a long review, lists the batch and jumps to each bl
   await page.goto("/imports");
   await page.locator("input[type=file]").setInputFiles(files);
   const chips = bar(page).locator(".import-file-chip");
-  // One chip per file, in review order: the statement first.
-  await expect(chips).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
+  // One chip per file, in review order: the statement first, all waiting.
+  await expect(chips).toHaveText(["UOB cards May · waiting", "one-card-activity.csv · waiting", "ladys-card-activity.csv · waiting"]);
   await expect(bar(page)).toContainText("File 1 of 3");
 
   // A waiting chip opens its file like the queue's Review button.
@@ -134,7 +134,7 @@ test("the import bar follows a long review, lists the batch and jumps to each bl
   await commitBar.locator(".import-commit-button").click();
   await page.getByRole("button", { name: "Commit anyway" }).click();
   await expect(page.locator(".import-done-card")).toBeVisible({ timeout: 30_000 });
-  await expect(chips).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
+  await expect(chips).toHaveText(["UOB cards May", "one-card-activity.csv · reviewing", "ladys-card-activity.csv · waiting"]);
   await expect(chips.first()).toHaveClass(/is-done/);
   await expect(bar(page)).toContainText("File 2 of 3");
   await expect(bar(page).locator(".import-blockers")).toHaveCount(0);
@@ -372,7 +372,7 @@ test("on a phone things left opens a sheet of the files and blockers", async ({ 
   await expect.poll(focusIsInside).toBe(true);
   // The same file chips and blockers as the desktop bar.
   const sheetChips = sheet.locator(".import-file-chip");
-  await expect(sheetChips).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
+  await expect(sheetChips).toHaveText(["UOB cards May · reviewing", "one-card-activity.csv · waiting", "ladys-card-activity.csv · waiting"]);
   await expect(sheetChips.first()).toHaveAttribute("aria-current", "step");
   await expect(sheet.locator(".import-blocker-chip")).toHaveText([
     // The unmapped One Card is named once, by "Map 1 account".
@@ -566,4 +566,81 @@ test("at 1280 px the commit bar with Skip for now stays on one line", async ({ p
   });
   expect(layout.spread).toBeLessThan(4);
   expect(layout.extraHeight).toBeLessThanOrEqual(32);
+});
+
+// What a chip and a step look like in each state: done is a mint surface
+// with a tick, the one in review an outline with a file icon and bold text,
+// a waiting one a neutral outline with a clock.
+async function stateLook(locator) {
+  return locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const root = getComputedStyle(document.documentElement);
+    const rgb = (value) => {
+      const probe = document.createElement("span");
+      probe.style.color = value;
+      document.body.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    return {
+      background: style.backgroundColor === rgb(root.getPropertyValue("--pastel-mint")) ? "mint" : style.backgroundColor,
+      ink: style.color === rgb(root.getPropertyValue("--pastel-mint-ink")) ? "mint-ink" : style.color === rgb(root.getPropertyValue("--muted")) ? "muted" : style.color,
+      weight: Number(style.fontWeight),
+      icon: element.querySelector("svg")?.getAttribute("class")?.match(/lucide-([a-z-]+)/)?.[1] ?? null
+    };
+  });
+}
+
+test("done steps and done files read as done; the file in review and the waiting files each look different", async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+  await setUpUnmappedLedger(page);
+  const files = await writeFiles(page, testInfo);
+
+  await page.goto("/imports");
+  await page.locator("input[type=file]").setInputFiles(files);
+  // The row says what the chips are.
+  const strip = bar(page).locator(".import-file-strip");
+  await expect(strip.locator(".import-blockers-title")).toHaveText("Your files:");
+  await expect(strip.getByRole("list", { name: "Your files:" })).toBeVisible();
+
+  await bar(page).locator(".import-file-chip").filter({ hasText: "UOB cards May" }).click();
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+  const chips = bar(page).locator(".import-file-chip");
+  const reviewing = chips.filter({ hasText: "UOB cards May" });
+  const waiting = chips.filter({ hasText: "one-card-activity.csv" });
+  await expect(reviewing).toHaveText("UOB cards May · reviewing");
+  await expect(reviewing).toHaveAttribute("title", "eStatement_UOB_Cards_12May2026.pdf");
+  await expect(waiting).toHaveText("one-card-activity.csv · waiting");
+  const reviewingLook = await stateLook(reviewing);
+  expect(reviewingLook.icon).toBe("file-text");
+  expect(reviewingLook.weight).toBeGreaterThanOrEqual(700);
+  expect(reviewingLook.background).not.toBe("mint");
+  const waitingLook = await stateLook(waiting);
+  expect(waitingLook).toMatchObject({ icon: "clock", ink: "muted" });
+  expect(waitingLook.weight).toBeLessThan(700);
+
+  // The finished Bring files step: mint, mint ink and a tick; the current
+  // step keeps its outline and the next one stays plain.
+  const steps = bar(page).locator(".import-stepper-step");
+  const doneStep = await stateLook(steps.nth(0));
+  expect(doneStep).toMatchObject({ background: "mint", ink: "mint-ink", icon: "check" });
+  expect(await stateLook(steps.nth(1))).toMatchObject({ icon: null });
+  expect((await stateLook(steps.nth(1))).background).not.toBe("mint");
+  expect((await stateLook(steps.nth(2))).background).not.toBe("mint");
+  await expect(steps.nth(0).locator(".import-stepper-label")).toHaveText("1 · Bring files · done");
+  // Pinned, the done step keeps its look.
+  await page.evaluate(() => window.scrollTo({ top: 900, behavior: "instant" }));
+  await expect(bar(page)).toHaveClass(/is-stuck/);
+  expect(await stateLook(steps.nth(0))).toMatchObject({ background: "mint", ink: "mint-ink", icon: "check" });
+
+  // Commit anyway: the statement's chip turns mint with a tick, like the step.
+  await page.getByRole("combobox", { name: `Detected: ${ONE_CARD}` }).selectOption({ label: "My One Card - Tim" });
+  await page.locator(".import-commit-bar .import-commit-button").click();
+  await page.getByRole("button", { name: "Commit anyway" }).click();
+  await expect(chips.first()).toHaveClass(/is-done/, { timeout: 30_000 });
+  expect(await stateLook(chips.first())).toMatchObject({ background: "mint", ink: "mint-ink", icon: "check" });
+  await expect(chips.first()).toHaveText("UOB cards May");
 });

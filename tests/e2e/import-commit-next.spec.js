@@ -79,7 +79,7 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   await expect(commitButton(page)).toHaveText("Commit and open next");
   await expect(commitButton(page)).toBeEnabled();
   // The rolled-back statement leaves the file chips and the count.
-  await expect(chips(page)).toHaveText(["one-card-activity.csv", "ladys-card-activity.csv"]);
+  await expect(chips(page)).toHaveText(["one-card-activity.csv · reviewing", "ladys-card-activity.csv · waiting"]);
   await expect(bar(page)).toContainText("File 1 of 2");
 
   await commitButton(page).click();
@@ -159,7 +159,7 @@ test("Skip for now sends the file in review to the end of the queue and opens th
   await page.locator(".import-commit-bar").getByRole("button", { name: "Skip for now" }).click();
   // Nothing was changed, so it does not ask.
   await expect(page.locator(".import-file-switch-warning")).toHaveCount(0);
-  await expect(chips(page)).toHaveText(["one-card-activity.csv", "ladys-card-activity.csv", "UOB cards May"]);
+  await expect(chips(page)).toHaveText(["one-card-activity.csv · reviewing", "ladys-card-activity.csv · waiting", "UOB cards May · waiting"]);
   await expect(chips(page).filter({ hasText: "one-card-activity.csv" })).toHaveAttribute("aria-current", "step");
   await expect(page.locator(".statement-review")).toHaveCount(0);
 
@@ -185,11 +185,11 @@ test("Skip for now asks first when the file in review has changes, and Cancel ke
   await expect(question).toHaveCount(0);
   await expect(page.locator(".statement-review-actions .pill")).toHaveText("Both cards balance");
   await expect(chips(page).filter({ hasText: "UOB cards May" })).toHaveAttribute("aria-current", "step");
-  await expect(chips(page)).toHaveText(["UOB cards May", "one-card-activity.csv"]);
+  await expect(chips(page)).toHaveText(["UOB cards May · reviewing", "one-card-activity.csv · waiting"]);
 
   await skip.click();
   await page.locator(".import-file-switch-warning").getByRole("button", { name: "Open anyway" }).click();
-  await expect(chips(page)).toHaveText(["one-card-activity.csv", "UOB cards May"]);
+  await expect(chips(page)).toHaveText(["one-card-activity.csv · reviewing", "UOB cards May · waiting"]);
   await expect(chips(page).filter({ hasText: "one-card-activity.csv" })).toHaveAttribute("aria-current", "step");
 });
 
@@ -269,6 +269,6 @@ test("a file dropped on its own while a queued file is in review takes its place
   await expect(page.locator(".import-commit-bar")).toBeVisible({ timeout: 30_000 });
   await page.locator(".import-commit-bar").getByRole("button", { name: "Skip for now" }).click();
   await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
-  await expect(chips(page)).toHaveText(["UOB cards May", "one-card-activity.csv", "ladys-card-activity.csv"]);
+  await expect(chips(page)).toHaveText(["UOB cards May · reviewing", "one-card-activity.csv · waiting", "ladys-card-activity.csv · waiting"]);
   await expect(chips(page).filter({ hasText: "UOB cards May" })).toHaveAttribute("aria-current", "step");
 });

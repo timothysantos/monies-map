@@ -1,3 +1,5 @@
+import { Check } from "lucide-react";
+
 import { messages } from "./copy/en-SG";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -30,6 +32,7 @@ export function ImportStepper({ stage, bringSummary, isBringAlert = false, isBri
           <li key={step.key} className={`import-stepper-step ${state}${step.key === "bring" && isBringAlert ? " is-alert" : ""}`} aria-current={index === currentIndex ? "step" : undefined}>
             <span className="import-stepper-head">
               <span className="import-stepper-label">
+                {state === "is-done" ? <Check size={14} aria-hidden="true" /> : null}
                 {messages.imports.stageNumbered(index + 1, step.label)}{index < currentIndex ? ` · ${messages.imports.stageDoneMark}` : ""}
               </span>
               {/* The stuck import bar hides the summary; Change stays here. */}
