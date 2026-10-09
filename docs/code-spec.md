@@ -144,8 +144,9 @@ Budget rules:
   route's module, so it ships with the route; `public/styles.css` counts
   toward the first-screen budget, measured as the build ships it
   (`dist/styles.css`, minified by `vite.config.js` with the same
-  lightningcss options and targets as route CSS; the minifier never adds
-  or removes vendor prefixes). Each lazy route's general rules are in
+  lightningcss options and targets as route CSS, which adds the prefixes
+  Safari 16.4 needs, such as `-webkit-backdrop-filter`, and drops unneeded
+  ones). Each lazy route's general rules are in
   `<route>-route.css` (Entries, Imports, Month, Settings, Splits), imported
   first by `<route>-panel.jsx`; narrower files follow it
   (`month-mid-width.css`, `splits-panel.css`). A moved rule loads after

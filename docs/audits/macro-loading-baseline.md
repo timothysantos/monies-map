@@ -3060,3 +3060,27 @@ is noise in that workflow and was not counted.
 from 31,961 to 24,653 B, the measured size, so the gain cannot drift back
 unnoticed (the limit with the 5% allowance is 25,886 B). The JS budget is
 unchanged.
+
+### Safari 16.4 prefixes allowed (2026-10-09)
+
+The owner chose the blurred surfaces on Safari and iOS 16.4–17 as well,
+so `vite.config.js` no longer excludes vendor prefixes: lightningcss adds
+what the build targets need, for route CSS and `styles.css` alike.
+
+- `-webkit-backdrop-filter` on the 8 px card blur (`.panel`,
+  `.chart-card`, `.note-card`, `.import-card`, `.metric`, `.faq-item`),
+  the dialog and sheet backdrops, the sticky Entries and Splits date
+  heads, the phone tab strip, the View and scope trigger and the Splits
+  groups row (10 rules).
+- `-webkit-text-decoration: underline dotted` on `.metric-detail-trigger`
+  and the Month budget default trigger.
+- `-webkit-appearance` dropped from 3 rules: Safari takes `appearance`
+  from 15.4, below every target.
+
+Current Chromium and WebKit take the unprefixed properties, so nothing
+changes there: computed styles, custom properties included, are
+identical in 23 compared states (6 desktop at 1280x800, all 17 phone
+states). The simulators on this machine run iOS 18, which needs no
+prefix either, so the iOS 16.4–17 result could not be captured; there it
+now matches what iOS 18 shows. First-screen CSS 24,653 -> 24,686 B gzip;
+the budget follows the measured size.

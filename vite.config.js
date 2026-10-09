@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { Features, transform } from "lightningcss";
+import { transform } from "lightningcss";
 
 const apiOrigin = process.env.VITE_API_ORIGIN ?? "http://127.0.0.1:8787";
 
@@ -21,15 +21,12 @@ export function lightningcssTargets(cssTarget) {
   return targets;
 }
 
-// The CSS minifier (lightningcss, for route CSS and styles.css) must only
-// minify: adding prefixes for the targets would change how older Safari
-// draws rules written unprefixed (backdrop-filter before Safari 18), and
-// that is a design decision, not a build one.
-const CSS_MINIFY_OPTIONS = { exclude: Features.VendorPrefixes };
-
 // public/ is copied into the build as-is, so the first-screen stylesheet
 // would ship unminified. Minify the copy with the minifier, options and
 // browser targets Vite uses for route CSS; it keeps its /styles.css URL.
+// For those targets lightningcss adds the prefixes Safari 16.4 needs
+// (-webkit-backdrop-filter, unprefixed only from Safari 18) and drops ones
+// no target needs, exactly as it does for route CSS.
 export function minifyPublicStylesheet() {
   let config;
   return {
@@ -55,9 +52,6 @@ export function minifyPublicStylesheet() {
 
 export default defineConfig({
   plugins: [react(), minifyPublicStylesheet()],
-  css: {
-    lightningcss: CSS_MINIFY_OPTIONS
-  },
   server: {
     host: "127.0.0.1",
     port: 5173,

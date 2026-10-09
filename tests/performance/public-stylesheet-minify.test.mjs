@@ -28,12 +28,9 @@ test("a CSS target lightningcss cannot take is refused instead of dropped", () =
   assert.throws(() => lightningcssTargets(["chrome111", "netscape4"]), /Unsupported CSS target "netscape4"/);
 });
 
-test("route CSS and styles.css minify without adding or removing vendor prefixes", () => {
-  // Vite spreads css.lightningcss into its route CSS minify call.
-  assert.equal(viteConfig.css.lightningcss.exclude & Features.VendorPrefixes, Features.VendorPrefixes);
-});
-
-test("the build minifies the copied styles.css in place for the build targets", async () => {
+// Runs the plugin on a small stylesheet in a temporary output directory,
+// with the CSS options Vite would pass to its own route CSS minifier.
+async function minifyWithPlugin(css) {
   const outDir = await mkdtemp(path.join(tmpdir(), "monies-map-styles-"));
   try {
     await writeFile(path.join(outDir, "styles.css"), [
@@ -61,18 +58,32 @@ test("the build minifies the copied styles.css in place for the build targets", 
     plugin.configResolved({
       root: outDir,
       build: { outDir: ".", cssTarget: VITE_DEFAULT_CSS_TARGET },
-      css: viteConfig.css,
+      css,
       logger: { warn: (message) => warnings.push(message) }
     });
     await plugin.writeBundle();
-    assert.equal(
-      await readFile(path.join(outDir, "styles.css"), "utf8"),
-      // Prefixes stay as written: no -webkit-backdrop-filter is added for
-      // Safari 16.4, and -webkit-appearance is kept.
-      ".panel{color:red;-webkit-appearance:none;appearance:none}.sheet-backdrop{backdrop-filter:blur(4px)}@media (width<=760px){.panel{padding:0 12px}}"
-    );
     assert.deepEqual(warnings, []);
+    return await readFile(path.join(outDir, "styles.css"), "utf8");
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }
+}
+
+test("the build minifies the copied styles.css in place with the prefixes the targets need", async () => {
+  // With the app's own CSS options (shared with route CSS). Safari 16.4
+  // needs -webkit-backdrop-filter; no target needs
+  // -webkit-appearance (Safari takes appearance from 15.4).
+  assert.equal(
+    await minifyWithPlugin(viteConfig.css ?? {}),
+    ".panel{color:red;appearance:none}.sheet-backdrop{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}@media (width<=760px){.panel{padding:0 12px}}"
+  );
+});
+
+test("styles.css takes the lightningcss options route CSS gets", async () => {
+  // Vite spreads css.lightningcss into its route CSS minify call; the
+  // plugin does the same, so an option set there reaches both.
+  assert.equal(
+    await minifyWithPlugin({ lightningcss: { exclude: Features.VendorPrefixes } }),
+    ".panel{color:red;-webkit-appearance:none;appearance:none}.sheet-backdrop{backdrop-filter:blur(4px)}@media (width<=760px){.panel{padding:0 12px}}"
+  );
 });
