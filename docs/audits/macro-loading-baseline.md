@@ -3007,7 +3007,56 @@ order, and the comparison caught three flips (the 860 px one-column
 `.split-match-inbox-callout`, a Splits checkpoint hint's opacity and a
 Settings suggestion row's alignment). The repeated check holds those back.
 
-**Follow-up, not done here.** `public/styles.css` is copied into the build
-unminified. Minifying it would take the first-screen CSS from 28,013 B to
-about 24,300 B gzip, but it changes how the stylesheet is built, named and
-cached, so it is a separate decision.
+The comparison ran in current Chromium and WebKit, which both take
+unprefixed `backdrop-filter`, so it could not see one change: the route
+CSS minifier added `-webkit-backdrop-filter` to the three moved Splits
+rules that blur, which changes how Safari before 18 draws them. The next
+section stops the minifier from adding or removing prefixes.
+
+### Minified `styles.css` and a lower CSS budget (2026-10-09)
+
+`public/styles.css` was copied into the build unminified (182 kB raw).
+`vite.config.js` now minifies the copy in `dist/` after the build, with
+lightningcss and the same options and browser targets Vite uses for route
+CSS (`build.cssTarget`, Vite 8's baseline-widely-available: Chrome and
+Edge 111, Firefox 114, Safari and iOS 16.4). It keeps its `/styles.css`
+URL, so caching is unchanged. `npm run check:bundle` now measures that
+built file, which is what a browser downloads.
+
+- **No prefix changes.** With those targets lightningcss adds
+  `-webkit-backdrop-filter` (unprefixed only from Safari 18) and
+  `-webkit-text-decoration`, and drops `-webkit-appearance`. That would
+  change how older Safari draws the blurred backdrops, sticky date heads,
+  the phone tab strip and the View and scope trigger, so `css.lightningcss`
+  excludes vendor prefixes for route CSS and `styles.css` alike. The
+  vendor prefixes in every built stylesheet now match the source and the
+  build before this work (`31b09be`) exactly.
+- **Nothing else lowered.** With prefixes excluded, the output for these
+  targets differs from the output for current browsers only where
+  lightningcss keeps `:has()` selectors in their own rules for Firefox 114
+  (a merged list would drop the whole rule there).
+
+| | First-screen CSS gzip |
+| --- | --- |
+| Before this work (`31b09be`) | 33,212 B |
+| Route-only rules moved | 28,013 B |
+| `styles.css` minified | 24,653 B (-25.8% in all) |
+
+**Computed styles and pixels.** The same workflow comparison, between the
+build with the rules moved and the minified build: identical in all 144
+states except `background-image` on the elements whose gradients the
+minifier rewrites in an equal form (`linear-gradient(0deg, A, B 42%)` as
+`linear-gradient(B 58%, A)`, `at 100% 0%` as `at 100% 0px`). Custom
+properties were compared through the properties that use them, because
+their computed value is the literal text the minifier shortens
+(`#ffffffeb` for `rgba(255, 255, 255, 0.92)`). Screenshots of the states
+holding those gradients (Summary, Entries add and edit, Splits add
+expense and edit, the phone View and scope sheet) are identical pixel for
+pixel. Splits activity history differs by 62 to 181 pixels between the
+builds, but also by 44 pixels between two runs of the same build, so it
+is noise in that workflow and was not counted.
+
+**Budget.** `cssGzipBytes` in `scripts/initial-bundle-budget.json` goes
+from 31,961 to 24,653 B, the measured size, so the gain cannot drift back
+unnoticed (the limit with the 5% allowance is 25,886 B). The JS budget is
+unchanged.
