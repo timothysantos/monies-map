@@ -22,7 +22,7 @@ function loadSources() {
   sources.push({ name: "citi-activity.csv", kind: "activity", parsed: parseCitibankActivityCsv(text("citibank-activity/ACCT_349_06_07_2026-sanitized.csv"), "ACCT_349_06_07_2026.csv", { accountName: "Citi Rewards", accountKind: "credit_card", institution: "Citibank" }) });
   for (const name of readdirSync(fx("hsbc-ocr/browser-2026"))) {
     const month = name.match(/-(\w{3})-2026/)[1];
-    try { sources.push({ name, kind: "statement", parsed: parseStatementText(`__OCR_TSV__\n${text(`hsbc-ocr/browser-2026/${name}`)}`, `4000-0000-0000-8155-${month}_2026.pdf`) }); } catch (e) { console.error("skip", name, e.message); }
+    try { sources.push({ name, kind: "statement", parsed: parseStatementText(`__OCR_TSV__\n${text(`hsbc-ocr/browser-2026/${name}`)}`, `hsbc-visa-revolution-${month}_2026.pdf`) }); } catch (e) { console.error("skip", name, e.message); }
   }
   return sources.map((source) => ({
     ...source,

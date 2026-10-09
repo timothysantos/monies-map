@@ -858,7 +858,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
         }
         setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
-        const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
+        const onOcrProgress = ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
           setUploadStatus({
             tone: "active",
             message: messages.imports.uploadOcrProgress({
@@ -869,11 +869,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               progress
             })
           });
-        });
+        };
+        const ocrText = await importService.extractPdfOcrText(file, onOcrProgress);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         try {
-          parsed = parseStatementText(ocrText, file.name);
+          parsed = await importService.parseImageStatement({
+            file,
+            firstPass: ocrText,
+            parse: (text) => parseStatementText(text, file.name),
+            onProgress: onOcrProgress
+          });
         } catch (error) {
+          // The optional AI fallback only ever sees the first pass's text.
           parsed = await tryAiStatementTextFallback(ocrText, file.name, error);
         }
       }

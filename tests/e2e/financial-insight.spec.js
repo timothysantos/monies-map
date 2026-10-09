@@ -573,9 +573,22 @@ test.describe("financial insight wording readiness", () => {
     await page.waitForTimeout(2_000);
     expect(control.state.requests).toEqual([]);
 
+    // The quiet period starts when the editor closes in the page, not when
+    // toBeHidden next polls (that can be 100 ms+ later under load), so the
+    // page records the moment the editor leaves.
+    await page.getByText("Edit category").evaluate((title) => {
+      const observer = new MutationObserver(() => {
+        if (!title.isConnected || !title.checkVisibility()) {
+          observer.disconnect();
+          window.__insightTestEditorClosedAt = Date.now();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    });
     await page.keyboard.press("Escape");
     await expect(page.getByText("Edit category")).toBeHidden();
-    const closedAt = Date.now();
+    const closedAt = await page.evaluate(() => window.__insightTestEditorClosedAt);
+    expect(closedAt).toEqual(expect.any(Number));
     await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
     expect(control.state.requests[0] - closedAt).toBeGreaterThanOrEqual(650);
     await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
