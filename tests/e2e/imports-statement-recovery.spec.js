@@ -143,3 +143,37 @@ test("hidden money keeps the recovery amounts masked", async ({ page }) => {
   await expect(recovery).not.toContainText("$");
   await expect(recovery.locator(".import-statement-recovery-totals dd").first()).toHaveText("••••");
 });
+
+test("an amount taken from the statement total is marked on its row until it is corrected", async ({ page }) => {
+  // The real Sep 2026 statement's first OCR pass cannot read IKEA's 64.70; the
+  // purchases total leaves exactly that, so the statement balances and IKEA
+  // is marked for checking against the PDF.
+  await openImportsWithHsbcCard(page);
+  await page.locator("input[type=\"file\"]").setInputFiles({
+    name: "hsbc-visa-revolution-sep-2026.hsbc-ocr.tsv",
+    mimeType: "text/tab-separated-values",
+    buffer: Buffer.from(`__OCR_TSV__\n${await readFile("tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-sep-2026.browser.tsv", "utf8")}`)
+  });
+  await expect(page.locator(".statement-review")).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator(".import-statement-recovery")).toHaveCount(0);
+
+  // The card's rows open on their own, and only IKEA carries the mark.
+  const marked = page.locator(".statement-card-rows[open] .statement-card-row").filter({ hasText: "Amount from statement total" });
+  await expect(marked).toHaveCount(1);
+  await expect(marked).toContainText("IKEA SINGAPORE SG");
+  await expect(marked).toContainText("$64.70");
+  await expect(marked.locator(".statement-inferred-amount")).toHaveAttribute("title", /couldn't read this amount/);
+
+  await page.getByRole("button", { name: "Edit rows" }).click();
+  const notes = page.locator(".import-preview-table .import-inferred-amount-note");
+  await expect(notes).toHaveCount(1);
+  const ikeaIndex = await page.locator(".import-preview-table tbody tr").evaluateAll((rows) => rows.findIndex((row) => (
+    Array.from(row.querySelectorAll("input")).map((input) => input.value)[1] === "IKEA SINGAPORE SG"
+  )));
+  const ikeaRow = page.locator(".import-preview-table tbody tr").nth(ikeaIndex);
+  await expect(ikeaRow.locator(".import-inferred-amount-note")).toHaveText("Amount from statement total");
+
+  // Once the user types the amount it is theirs, and the mark goes.
+  await ikeaRow.locator("input").nth(2).fill("64.71");
+  await expect(notes).toHaveCount(0);
+});

@@ -12,6 +12,7 @@ import { InlineError } from "./ui-states";
 import { moneyToneClass } from "./money-tone-class";
 import { useMoneyPrivacy } from "./money-privacy";
 import { entryAmountTone } from "../domain/money-tone";
+import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
 
 const {
   accounts: accountService,
@@ -1736,7 +1737,11 @@ function StatementCardSection({
     && !dismissedFindingIds.includes(finding.id)
   ));
   const [manualOpen, setManualOpen] = useState(null);
-  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes);
+  // A card that balances only because the scan took an amount from the total
+  // opens too: that amount needs checking against the PDF.
+  const inferredAmountKeys = useInferredAmountKeys();
+  const hasInferredAmount = rows.some((row) => isInferredAmountRow(row, inferredAmountKeys));
+  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes || hasInferredAmount);
   const deltaMinor = reconciliation.deltaMinor ?? 0;
   const projectedDeltaMinor = card?.projectedDeltaMinor ?? deltaMinor;
   const addedCount = rows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review" && !row.reconciliationTargetTransactionId).length;
@@ -1828,6 +1833,7 @@ function StatementCardSection({
 // that need the user come first; the full editor is one button away.
 function StatementCardRows({ rows }) {
   const { areTotalsVisible } = useMoneyPrivacy();
+  const inferredAmountKeys = useInferredAmountKeys();
   const [isShowingAll, setIsShowingAll] = useState(false);
   if (!rows.length) {
     return null;
@@ -1836,7 +1842,12 @@ function StatementCardRows({ rows }) {
   const sorted = [...rows].sort((left, right) => order(left) - order(right) || left.date.localeCompare(right.date));
   const visible = isShowingAll ? sorted : sorted.slice(0, STATEMENT_CARD_ROW_LIMIT);
   // Closed unless a row needs the user: the card header already counts them.
-  const needsAttention = rows.some((row) => row.commitStatus === "needs_review" || (row.commitStatus === "skipped" && row.commitStatusExplicit));
+  // An amount taken from the statement total also needs checking against the PDF.
+  const needsAttention = rows.some((row) => (
+    row.commitStatus === "needs_review"
+    || (row.commitStatus === "skipped" && row.commitStatusExplicit)
+    || isInferredAmountRow(row, inferredAmountKeys)
+  ));
   return (
     <details className="statement-card-rows" open={needsAttention}>
       <summary>{messages.imports.statementCardRowsTitle(rows.length)}</summary>
@@ -1849,6 +1860,11 @@ function StatementCardRows({ rows }) {
               <span className="statement-card-row-date">{formatService.formatDateOnly(row.date)}</span>
               <span className="statement-card-row-description">{row.description}</span>
               <span className={`pill ${chip.tone}`}>{chip.label}</span>
+              {isInferredAmountRow(row, inferredAmountKeys) ? (
+                <span className="pill pill-lavender statement-inferred-amount" title={messages.imports.statementInferredAmountHint}>
+                  {messages.imports.statementInferredAmount}
+                </span>
+              ) : null}
               <strong className={`statement-card-row-amount ${areTotalsVisible ? moneyToneClass(entryAmountTone(row.entryType, signedMinor)) : ""}`}>
                 {formatService.money(row.amountMinor)}
               </strong>

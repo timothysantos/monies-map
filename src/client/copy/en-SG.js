@@ -607,6 +607,8 @@ export const messages = {
     statementCardShow: "Show",
     statementCardHide: "Hide",
     statementCardRowsTitle: (count) => `Rows on this card's statement (${count})`,
+    statementInferredAmount: "Amount from statement total",
+    statementInferredAmountHint: "The scan couldn't read this amount, so it's the amount the statement total leaves. Check it against the PDF.",
     statementCardMoreRows: (count) => `Show ${countOf(count, "more row", "more rows")}`,
     statementCardFewerRows: "Show fewer rows",
     statementRowChip: {

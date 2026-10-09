@@ -10,7 +10,7 @@
 .pill.pill-butter {
   border-color: var(--pastel-butter-line);
   background: var(--pastel-butter);
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
 }
 
 .pill.pill-lavender {
@@ -164,7 +164,7 @@
 }
 
 .import-commit-bar-summary .is-warning {
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
   font-weight: 600;
 }
 
@@ -661,7 +661,7 @@
 .import-blocker-chip {
   border-color: var(--pastel-butter-line);
   background: var(--pastel-butter);
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
   font-weight: 600;
 }
 
@@ -686,7 +686,7 @@
 
 .import-commit-bar-left {
   margin-left: auto;
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
   font-size: 0.92rem;
   font-weight: 600;
   white-space: nowrap;
@@ -793,4 +793,14 @@
 
 .import-statement-recovery-amount {
   width: 7rem;
+}
+
+/* A row whose amount the scan could not read and the statement total filled. */
+.import-inferred-amount-note {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--pastel-lavender-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }

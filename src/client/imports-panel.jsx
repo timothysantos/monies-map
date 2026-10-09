@@ -50,6 +50,7 @@ import {
 } from "./statement-fix-preference";
 import { ImportSelectFileStage } from "./import-select-file-stage";
 import { ImportStatementRecovery } from "./import-statement-recovery";
+import { buildInferredAmountKeys, InferredAmountsContext } from "./import-inferred-amounts";
 import { buildRecoveryImportRow, buildStatementRecovery } from "./import-statement-recovery-model";
 import { moniesClient } from "./monies-client-service";
 import { AccountDialog } from "./account-dialog";
@@ -171,6 +172,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // Printed totals and evidence for a statement whose readable rows did not
   // add up (ParsedStatementImport.reconciliation); null otherwise.
   const [statementReconciliation, setStatementReconciliation] = useState(null);
+  // Amounts OCR could not read, taken from the statement's total; the rows
+  // that still carry them are marked for the user to check.
+  const [inferredAmounts, setInferredAmounts] = useState([]);
+  const inferredAmountKeys = useMemo(() => buildInferredAmountKeys(inferredAmounts), [inferredAmounts]);
   const [allowAiStatementFallback, setAllowAiStatementFallback] = useState(false);
 
   // UI-only workflow state: upload progress, modal dialogs, and navigation aids.
@@ -562,6 +567,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setStatementWarnings([]);
     setStatementReconciliation(null);
+    setInferredAmounts([]);
     setAllowAiStatementFallback(false);
     setPreview(null);
     setPreviewRows([]);
@@ -673,6 +679,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setStatementWarnings([]);
     setStatementReconciliation(null);
+    setInferredAmounts([]);
     setUploadStatus(null);
     setIsParsingStatement(false);
     setIsDragActive(false);
@@ -724,6 +731,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
     setStatementWarnings(parsed.warnings ?? []);
     setStatementReconciliation(parsed.reconciliation ?? null);
+    setInferredAmounts(parsed.ocrReview?.inferredAmounts ?? []);
     setCsvText(statementRowsToCsv(parsed.rows));
 
     setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
@@ -843,6 +851,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreview(null);
     setPreviewRows([]);
     setStatementReconciliation(null);
+    setInferredAmounts([]);
     setIsParsingStatement(true);
     try {
       const parsedImport = await parseImportFileForIntake(file);
@@ -2376,6 +2385,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             />
           ) : null}
 
+          <InferredAmountsContext.Provider value={inferredAmountKeys}>
           <ImportPreviewReview
             preview={preview}
             previewRows={previewRows}
@@ -2445,6 +2455,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
             />
           ) : null}
+          </InferredAmountsContext.Provider>
           {preview ? (
             <ImportCommitBar
               previewRows={previewRows}
