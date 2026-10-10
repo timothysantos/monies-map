@@ -1162,6 +1162,13 @@ Important distinctions:
   with no posted date, dated in the last week of the period, not on the
   statement), `duplicate_entry`, `amount_differs`, `excluded_statement_row`,
   `opening_balance_gap` and `not_on_statement`.
+- An `opening_balance_gap` carries a `missing_statements` fact when no
+  statement is saved for the months between the account's last saved
+  statement and this one. The fact names those months, the last saved
+  statement's end date and balance, and this statement's previous balance,
+  so the review says which statements to import first instead of "an earlier
+  statement may be missing". It is only a fact: the gap stays the same
+  finding, with the same effect and no fix.
 - The search for a wrong-account entry covers the other cards on the same
   statement and the same owner's accounts at the same institution. It uses
   the preview's own matching rules (date lanes, the velocity rule, merchant

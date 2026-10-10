@@ -790,6 +790,14 @@ and period, each card has its own section with an outcome:
   under **Also check**.
 - **Still mismatched**: nothing explains the difference yet.
 
+Each card's name starts with whose account the statement goes to, in that
+person's colour (the same colour as their rows on Entries), and ends with the
+card's last four digits when the statement prints them, for example
+"Joyce OCBC 365 Credit Card • Oct 2026 • ending 7528". If that is the wrong
+account, use **Change card accounts**. After the first statement is saved, the
+account remembers those four digits, so the next statement finds it even if
+the bank renames the card.
+
 Under its name each card counts its rows, for example "34 new rows · none
 already in your ledger". New rows become new entries. Rows already in your
 ledger are entries you added before, from an activity export or by hand,
@@ -876,6 +884,11 @@ says how much of the difference the move takes away.
   may be suggested for **the next statement**.
 - **Also check** lists what the app found but can't fix for you, such as a
   second copy of a purchase or an entry that isn't on the statement.
+- When the balance before the statement doesn't match and a month's statement
+  was never imported, **Also check** names it, for example "Your Sept 2026
+  statement isn't imported yet. Your ledger stops at the 1 Aug 2026 statement
+  ($111.93 owed), and this statement starts from $264.34 owed." Select
+  **Start over**, import that statement first, then this one.
 - Entries dated after the statement closed are listed as staying provisional
   for the next one. They are not part of the difference.
 

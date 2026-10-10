@@ -1249,9 +1249,12 @@ comparison use `post_date`.
   compact headers such as `Withdrawals(SGD)` and `Deposits(SGD)`; those are
   parsed directly into reviewable rows without creating a statement checkpoint.
 - OCBC 365 and OCBC Infinity Cashback card PDFs use the printed statement date,
-  last-month balance, subtotal, and total amount due. Credits such as card
-  payments and cash rebates are imported as income/transfer rows so the
-  statement balance reconciles. If you create the card account from the import
+  last-month balance, subtotal, and total amount due. Every credit that starts
+  with `PAYMENT` (`PAYMENT BY INTERNET`, `PAYMENT - VISA DIRECT` when another
+  bank pays the card) is a transfer; other credits such as cash rebates and
+  refunds are income. The cycle opens the day after the previous statement
+  date (OCBC prints no cycle start), and the card number on the cardholder
+  line above `LAST MONTH'S BALANCE` gives the checkpoint its `accountLast4`. If you create the card account from the import
   page, the opening balance is pre-filled from the printed last-month balance.
 - OCBC 360 account PDFs use the monthly period, running balances, and balance
   carried forward.

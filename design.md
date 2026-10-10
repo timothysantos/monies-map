@@ -582,8 +582,10 @@ coral, Splits-linked rows terracotta and any other owner (Shared) a stable
 palette pick. Entries draws it as the row's 5px edge; the Import inbox
 owner groups use `getPersonColourVars`: a chip (16% tint, `--person-ink`),
 the solid account edge, a 10% header band and a 6% wash on alternate
-months. `--person-ink` is the colour 55% into `--text`, 5.4:1 or more on
-the chip and band. Any later per-person cue reuses these, never new hues.
+months. Each statement card on the import review starts its name with the
+account owner's chip (`.statement-card-owner`, the same chip). `--person-ink`
+is the colour 55% into `--text`, 5.4:1 or more on the chip and band. Any
+later per-person cue reuses these, never new hues.
 
 ## Money Colour
 
