@@ -88,12 +88,13 @@ test("a real OCBC 365 card statement with a past-due reminder beside the card na
   assert.equal(parsed.parserKey, "ocbc_365_credit_card_pdf");
   assert.deepEqual(parsed.checkpoints.map((c) => [c.accountName, c.statementStartDate, c.statementEndDate, c.previousBalanceMinor, c.statementBalanceMinor, c.accountLast4]), [["OCBC 365 Credit Card", "2026-08-02", "2026-09-01", 10186, 24056, "7528"]]);
   // The payment-slip card number on page 3 (all zeros here) is not read.
-  assert.deepEqual(parsed.rows.map((row) => [row.date, row.description, row.expense || `+${row.income}`]), [
-    ["2026-08-24", "CASH REBATE", "+0.25"],
-    ["2026-08-24", "LATE CHARGE", "91.00"],
-    ["2026-08-25", "SHOPEE SG MP", "3.63"],
-    ["2026-08-25", "SHOPEE SG MP", "40.34"],
-    ["2026-09-01", "INTEREST CHARGE", "3.98"]
+  assert.deepEqual(parsed.rows.map((row) => [row.date, row.description, row.expense || `+${row.income}`, row.category]), [
+    ["2026-08-24", "CASH REBATE", "+0.25", "Other - Income"],
+    // The bank's own charges are Fees, not shopping.
+    ["2026-08-24", "LATE CHARGE", "91.00", "Fees"],
+    ["2026-08-25", "SHOPEE SG MP", "3.63", "Shopping"],
+    ["2026-08-25", "SHOPEE SG MP", "40.34", "Shopping"],
+    ["2026-09-01", "INTEREST CHARGE", "3.98", "Fees"]
   ]);
   assert.equal(10186 - netMinor(parsed.rows), 24056);
 });

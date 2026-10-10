@@ -97,3 +97,18 @@ test("one reversal cancels one charge, and a reversal before the charge does not
   // Oldest first.
   assert.deepEqual(findUnreversedBankCharges(entries).map((item) => item.id), ["e", "b"]);
 });
+
+// Every bank's parser names its rows' categories through inferCategory.
+test("a bank charge and its reversal are Fees, and interest a savings account earns stays income", async () => {
+  const { inferCategory } = await import("../src/lib/statement-import/shared.ts");
+  assert.equal(inferCategory("LATE CHARGES", false), "Fees");
+  assert.equal(inferCategory("ANNUALMEMBERSHIPFEE", false), "Fees");
+  assert.equal(inferCategory("CARD MEMBERSHIP FEE -INCLUSIVE OF GST", false), "Fees");
+  assert.equal(inferCategory("CR LATE CHARGE", true), "Fees");
+  assert.equal(inferCategory("AUTOLATEFEEREVERSAL", true), "Fees");
+  assert.equal(inferCategory("GSTONMEMBERSHIPFEEREVERSAL", true), "Fees");
+  assert.equal(inferCategory("INTEREST REVERSAL", true), "Fees");
+  assert.equal(inferCategory("INTEREST CREDIT", true), "Other - Income");
+  assert.equal(inferCategory("INTEREST", true), "Other - Income");
+  assert.notEqual(inferCategory("AMAZE*FEES", false), "Fees");
+});

@@ -46,6 +46,7 @@ import type {
   StatementFixDto
 } from "../types/dto";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { classifyBankCharge } from "./bank-charges";
 
 // D1 applies its per-query limits (100 bound parameters, 100 KB of SQL,
 // 30 s) to each statement in a batch and documents no statement-count limit,
@@ -815,7 +816,7 @@ export async function commitImportBatch(
           description, amount_minor, currency, entry_type, transfer_direction,
           category_id, owner_person_id, offsets_category, note,
           bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         transactionId,
@@ -831,6 +832,7 @@ export async function commitImportBatch(
         row.transferDirection ?? null,
         categoryId,
         directOwnerId ?? null,
+        offsetsFeesCategory(row) ? 1 : 0,
         row.note ?? null,
         isOfficialStatementImport ? "statement_certified" : "provisional",
         isOfficialStatementImport ? importId : null,
@@ -2677,4 +2679,12 @@ async function buildStatementImportMetadataCleanupStatements(db: D1Database, imp
     .prepare("DELETE FROM statement_reconciliation_certificates WHERE household_id = ? AND import_id = ?")
     .bind(DEFAULT_HOUSEHOLD_ID, importId));
   return statements;
+}
+
+// A bank's reversal of its own charge ("CR LATE CHARGE") kept in Fees takes
+// the charge back out of Fees, the way a refund offsets its category.
+function offsetsFeesCategory(row: { entryType: string; categoryName?: string | null; description: string }) {
+  return row.entryType === "income"
+    && row.categoryName === "Fees"
+    && Boolean(classifyBankCharge(row.description)?.isReversal);
 }

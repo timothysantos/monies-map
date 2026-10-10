@@ -1,3 +1,4 @@
+import { classifyBankCharge } from "../../domain/bank-charges";
 export const IMPORT_HEADERS = ["date", "description", "expense", "income", "account", "category", "note", "type"];
 
 export const MONTHS: Record<string, number> = {
@@ -381,6 +382,12 @@ export function isTransferDescription(description: string) {
 
 export function inferCategory(description: string, isIncome: boolean) {
   const normalized = description.toUpperCase();
+  // A bank's own charge, or its reversal, is a fee. Money in that is not a
+  // reversal ("INTEREST CREDIT" on savings) is income, not a fee.
+  const bankCharge = classifyBankCharge(description);
+  if (bankCharge && (!isIncome || bankCharge.isReversal)) {
+    return "Fees";
+  }
   if (/PAYNOW-FAST.*WISE ASIA-PACIFIC/.test(normalized)) {
     return "Family & Personal";
   }
