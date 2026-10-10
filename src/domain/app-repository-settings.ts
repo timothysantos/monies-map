@@ -138,6 +138,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
         statement_start_date,
         statement_end_date,
         statement_balance_minor,
+        payment_due_date,
+        minimum_payment_minor,
         note
       FROM account_balance_checkpoints
       WHERE household_id = ?
@@ -150,6 +152,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       statement_start_date: string | null;
       statement_end_date: string | null;
       statement_balance_minor: number;
+      payment_due_date: string | null;
+      minimum_payment_minor: number | null;
       note: string | null;
     }>();
 
@@ -238,6 +242,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       statementBalanceMinor,
       computedBalanceMinor,
       deltaMinor: computedBalanceMinor - statementBalanceMinor,
+      ...(checkpoint.payment_due_date ? { paymentDueDate: checkpoint.payment_due_date } : {}),
+      ...(checkpoint.minimum_payment_minor ? { minimumPaymentMinor: checkpoint.minimum_payment_minor } : {}),
       note: checkpoint.note ?? undefined
     });
     checkpointHistoryByAccountId.set(checkpoint.account_id, currentHistory);

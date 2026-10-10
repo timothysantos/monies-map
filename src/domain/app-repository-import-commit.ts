@@ -864,12 +864,15 @@ export async function commitImportBatch(
     write(db
       .prepare(`
         INSERT INTO account_balance_checkpoints (
-          id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor,
+          payment_due_date, minimum_payment_minor, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
           statement_start_date = excluded.statement_start_date,
           statement_end_date = excluded.statement_end_date,
           statement_balance_minor = excluded.statement_balance_minor,
+          payment_due_date = excluded.payment_due_date,
+          minimum_payment_minor = excluded.minimum_payment_minor,
           note = excluded.note,
           updated_at = CURRENT_TIMESTAMP
       `)
@@ -884,6 +887,8 @@ export async function commitImportBatch(
           Math.round(checkpoint.statementBalanceMinor),
           account.account_kind
         ),
+        normalizeStatementDate(checkpoint.paymentDueDate),
+        normalizeMinimumPaymentMinor(checkpoint.minimumPaymentMinor),
         checkpoint.note ?? null
       ));
 
@@ -2687,4 +2692,11 @@ function offsetsFeesCategory(row: { entryType: string; categoryName?: string | n
   return row.entryType === "income"
     && row.categoryName === "Fees"
     && Boolean(classifyBankCharge(row.description)?.isReversal);
+}
+
+// A statement's minimum payment in cents, or nothing when it is missing or
+// not a positive whole amount.
+function normalizeMinimumPaymentMinor(value: unknown) {
+  const amount = Math.round(Number(value));
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
 }

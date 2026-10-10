@@ -52,7 +52,8 @@ import type {
   ImportPreviewStatementReconciliationDto,
   StatementCheckpointDraftDto,
   StatementDiagnosisDto,
-  StatementFixDto
+  StatementFixDto,
+  StatementNoticeDto
 } from "../types/dto";
 
 export async function buildImportPreview(
@@ -2164,7 +2165,14 @@ function buildImportPreviewStatementReconciliations(input: {
       deltaMinor,
       supersededLedgerRows
     });
-    const accountLast4 = checkpoint.accountLast4 ? { accountLast4: checkpoint.accountLast4 } : {};
+    // What the statement says about the card itself: its number, what to
+    // pay by when, and the bank's notices.
+    const statementCardFacts = {
+      ...(checkpoint.accountLast4 ? { accountLast4: checkpoint.accountLast4 } : {}),
+      ...(normalizeStatementDate(checkpoint.paymentDueDate) ? { paymentDueDate: normalizeStatementDate(checkpoint.paymentDueDate)! } : {}),
+      ...(Number(checkpoint.minimumPaymentMinor) > 0 ? { minimumPaymentMinor: Math.round(Number(checkpoint.minimumPaymentMinor)) } : {}),
+      ...(checkpoint.notices?.length ? { notices: checkpoint.notices.filter(isStatementNotice) } : {})
+    };
     const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
       breakItem.account_id === account.id
       && breakItem.missing_checkpoint_month < checkpoint.checkpointMonth
@@ -2174,7 +2182,7 @@ function buildImportPreviewStatementReconciliations(input: {
         accountName: account.name,
         accountId: account.id,
         accountKind: account.kind,
-        ...accountLast4,
+        ...statementCardFacts,
         checkpointMonth: checkpoint.checkpointMonth,
         statementStartDate,
         statementEndDate,
@@ -2195,7 +2203,7 @@ function buildImportPreviewStatementReconciliations(input: {
       accountName: account.name,
       accountId: account.id,
       accountKind: account.kind,
-      ...accountLast4,
+      ...statementCardFacts,
       checkpointMonth: checkpoint.checkpointMonth,
       statementStartDate,
       statementEndDate,
@@ -2606,4 +2614,14 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
   }
 
   return Array.from(importsById.values());
+}
+
+// Only the notices the app knows how to say, as the parser wrote them.
+function isStatementNotice(notice: unknown): notice is StatementNoticeDto {
+  if (!notice || typeof notice !== "object") {
+    return false;
+  }
+  const value = notice as { code?: unknown; annualRatePercent?: unknown };
+  return value.code === "past_due"
+    || (value.code === "penalty_interest" && typeof value.annualRatePercent === "number" && value.annualRatePercent > 0 && value.annualRatePercent < 100);
 }

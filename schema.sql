@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
   statement_start_date TEXT,
   statement_end_date TEXT,
   statement_balance_minor INTEGER NOT NULL,
+  -- What the statement asked for: pay by this date, at least this much.
+  payment_due_date TEXT,
+  minimum_payment_minor INTEGER,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

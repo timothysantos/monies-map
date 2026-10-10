@@ -63,6 +63,9 @@ export interface AccountCheckpointDto {
   statementStartDate?: string;
   statementEndDate?: string;
   statementBalanceMinor: number;
+  // What the statement asked for (card statements that print it).
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
   computedBalanceMinor: number;
   deltaMinor: number;
   note?: string;
@@ -755,8 +758,16 @@ export interface StatementCheckpointDraftDto {
   statementBalanceMinor: number;
   previousBalanceMinor?: number;
   accountLast4?: string;
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
+  notices?: StatementNoticeDto[];
   note?: string;
 }
+
+// The bank's own notice about a card, printed on its statement.
+export type StatementNoticeDto =
+  | { code: "past_due" }
+  | { code: "penalty_interest"; annualRatePercent: number };
 
 export interface ImportPreviewStatementReconciliationDto {
   accountName: string;
@@ -764,6 +775,10 @@ export interface ImportPreviewStatementReconciliationDto {
   accountId?: string;
   // The card or account number's last four digits printed on the statement.
   accountLast4?: string;
+  // What the statement asks for, and the bank's notices about the card.
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
+  notices?: StatementNoticeDto[];
   checkpointMonth: string;
   statementStartDate?: string;
   statementEndDate?: string;
