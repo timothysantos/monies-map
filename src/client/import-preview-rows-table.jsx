@@ -27,6 +27,7 @@ export function ImportPreviewRowsTable({
   statementImportSourceType = "csv",
   hasAlreadyCoveredCheckpointRefresh = false,
   hasEmptyStatementCheckpointOnly = false,
+  ledgerMatchedStatement = null,
   jumpToSkippedRowsRequestKey = 0,
   onUpdatePreviewRow,
   onUpdatePreviewRowAccount,
@@ -73,7 +74,9 @@ export function ImportPreviewRowsTable({
         />
       ) : (
         <EmptyState>
-          {hasAlreadyCoveredCheckpointRefresh
+          {ledgerMatchedStatement
+            ? messages.imports.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount)
+            : hasAlreadyCoveredCheckpointRefresh
             ? messages.imports.noRowsToImportCoveredStatement
             : hasEmptyStatementCheckpointOnly
               ? messages.imports.noRowsToImportEmptyStatement

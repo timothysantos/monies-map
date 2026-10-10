@@ -345,8 +345,13 @@ Rules:
   `orderIntakeQueue` ranks after every file not skipped) and
   `describeCommitLabel` ("Commit and open next" while a file waits, or
   "Refresh checkpoints and open next" for a statement whose rows are all
-  covered, by the preview model's `commitKind`; an empty statement
-  checkpoint keeps its own words). The
+  covered, or "Certify and open next" for one whose rows all match
+  uncertified ledger entries, by the preview model's `commitKind`; an
+  empty statement checkpoint keeps its own words). `commitKind` is
+  `empty_checkpoint` only for a statement with no rows; when every row
+  is already in the ledger and the cards balance, the preview model's
+  `ledgerMatchedStatement` ({ matchedCount, toCertifyCount }) gives the
+  commit bar its one-sentence summary. The
   panel opens the next file from the render after the commit's reset
   (`pendingNextItemId`), so it starts from a clean form, and keeps
   `lastCommitSummary` while a file of the batch is open: `ImportDoneCard`

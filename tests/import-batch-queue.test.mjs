@@ -105,4 +105,7 @@ test("the commit button says it opens the next file while one waits, and keeps i
   // Saving an empty statement has no "and open next" words: it keeps its
   // own, and never reads "Commit".
   assert.equal(describeCommitLabel({ commitKind: "empty_checkpoint", commitLabel: "Save empty statement checkpoint", nextItem: may }), "Save empty statement checkpoint");
+  // Certifying mid-cycle entries says so, with the suffix.
+  assert.equal(describeCommitLabel({ commitKind: "certify_rows", commitLabel: "Certify 2 matched entries", nextItem: may }), "Certify and open next");
+  assert.equal(describeCommitLabel({ commitKind: "certify_rows", commitLabel: "Certify 2 matched entries", nextItem: null }), "Certify 2 matched entries");
 });

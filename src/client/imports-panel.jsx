@@ -504,6 +504,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
+    ledgerMatchedStatement,
     commitKind,
     commitLabel,
     knownAccountNames,
@@ -2449,6 +2450,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               statementImportSourceType={statementImportMeta.sourceType}
               hasAlreadyCoveredCheckpointRefresh={hasAlreadyCoveredCheckpointRefresh}
               hasEmptyStatementCheckpointOnly={hasEmptyStatementCheckpointOnly}
+              ledgerMatchedStatement={ledgerMatchedStatement}
               jumpToSkippedRowsRequestKey={jumpToSkippedRowsRequestKey}
               onUpdatePreviewRow={trackReviewChange(updatePreviewRow)}
               onUpdatePreviewRowAccount={trackReviewChange(updatePreviewRowAccount)}
@@ -2462,6 +2464,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <ImportCommitBar
               previewRows={previewRows}
               statementCheckpointCount={statementCheckpoints.length}
+              ledgerMatchedStatement={ledgerMatchedStatement}
               reconciledExistingRowCount={reconciledExistingRowCount}
               statementImportSourceType={statementImportMeta.sourceType}
               isCommitDisabled={isCommitDisabled}

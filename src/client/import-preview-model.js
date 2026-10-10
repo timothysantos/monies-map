@@ -7,10 +7,19 @@ import { messages } from "./copy/en-SG";
 //   whether the commit is disabled or asks first)
 // - which helper sections the preview page should render
 const COMMIT_LABELS = {
-  covered_checkpoint: messages.imports.refreshCoveredStatementCheckpoint,
-  empty_checkpoint: messages.imports.saveEmptyStatementCheckpoint,
-  rows: messages.imports.commit
+  certify_rows: messages.imports.certifyMatchedEntries,
+  covered_checkpoint: () => messages.imports.refreshCoveredStatementCheckpoint,
+  empty_checkpoint: () => messages.imports.saveEmptyStatementCheckpoint,
+  rows: () => messages.imports.commit
 };
+
+// A row paired with an entry the ledger already has: confirmed by the
+// statement, already covered, or resolved by an earlier statement match.
+export function isLedgerMatchedPreviewRow(row) {
+  return Boolean(row.reconciliationTargetTransactionId)
+    || Boolean(row.isStatementMatchResolved)
+    || (row.commitStatus === "skipped" && !row.commitStatusExplicit && !row.isCertifiedConflict);
+}
 
 export function buildImportPreviewModel({
   accounts,
@@ -67,18 +76,36 @@ export function buildImportPreviewModel({
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
   const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && commitPayloadPreviewRows.length === 0;
-  const hasAlreadyCoveredCheckpointRefresh = hasCheckpointOnlyCommit && skippedPreviewRowCount > 0;
-  const hasEmptyStatementCheckpointOnly = hasCheckpointOnlyCommit && skippedPreviewRowCount === 0;
+  // A statement is empty only when it has no rows at all. Rows the ledger
+  // already has are hidden from the review once the card balances, so a
+  // statement uploaded again is covered, never empty.
+  const hasEmptyStatementCheckpointOnly = hasCheckpointOnlyCommit && previewRows.length === 0;
+  const hasAlreadyCoveredCheckpointRefresh = hasCheckpointOnlyCommit && !hasEmptyStatementCheckpointOnly;
+  const isStatementBalanced = statementReconciliations.length > 0
+    && statementReconciliations.every((item) => item.status === "matched");
+  const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit && isStatementBalanced;
+  const matchedPreviewRowCount = previewRows.filter(isLedgerMatchedPreviewRow).length;
+  // Mid-cycle entries the statement certifies on commit.
+  const toCertifyRowCount = commitPayloadPreviewRows.filter((row) => row.reconciliationTargetTransactionId).length;
+  // Every statement row is already in the ledger and the cards balance:
+  // nothing new is added; the commit certifies what is not certified yet.
+  const ledgerMatchedStatement = statementCheckpoints.length > 0
+    && isStatementBalanced
+    && previewRows.length > 0
+    && needsReviewPreviewRowCount === 0
+    && matchedPreviewRowCount === previewRows.length
+    && toCertifyRowCount === commitPayloadPreviewRows.length
+    ? { matchedCount: matchedPreviewRowCount, toCertifyCount: toCertifyRowCount }
+    : null;
   // What the commit saves, which names its button (describeCommitLabel
   // adds "and open next" while another file waits).
   const commitKind = hasAlreadyCoveredCheckpointRefresh
     ? "covered_checkpoint"
     : hasEmptyStatementCheckpointOnly
       ? "empty_checkpoint"
-      : "rows";
-  const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
-    && statementReconciliations.length > 0
-    && statementReconciliations.every((item) => item.status === "matched");
+      : ledgerMatchedStatement?.toCertifyCount
+        ? "certify_rows"
+        : "rows";
   const unmappedCommitRows = commitPayloadPreviewRows.filter((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
   const hasUnmappedAccounts = unmappedCommitRows.length > 0;
   // The account labels still to map, one per label (a row without one counts
@@ -87,13 +114,6 @@ export function buildImportPreviewModel({
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
   const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
-  // Rows paired with an entry the ledger already has: confirmed by the
-  // statement, already covered, or resolved by an earlier statement match.
-  const matchedPreviewRowCount = previewRows.filter((row) => (
-    Boolean(row.reconciliationTargetTransactionId)
-    || row.isStatementMatchResolved
-    || (row.commitStatus === "skipped" && !row.commitStatusExplicit && !row.isCertifiedConflict)
-  )).length;
 
   return {
     accountMappingAccountNames,
@@ -107,6 +127,7 @@ export function buildImportPreviewModel({
     hasCommitPayload,
     hasCheckpointOnlyCommit,
     hasMatchedCheckpointOnlyCommit,
+    ledgerMatchedStatement,
     matchedPreviewRowCount,
     certifiedConflictRows,
     knownAccountNames,
@@ -117,7 +138,7 @@ export function buildImportPreviewModel({
     reconciledExistingRowCount,
     skippedPreviewRowCount,
     commitKind,
-    commitLabel: COMMIT_LABELS[commitKind],
+    commitLabel: COMMIT_LABELS[commitKind](toCertifyRowCount),
     // A statement whose cards all map to one account each only shows the
     // mapping on request; an unknown, ambiguous or unmapped card needs it.
     needsStatementAccountMapping: unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || hasUnmappedAccounts,

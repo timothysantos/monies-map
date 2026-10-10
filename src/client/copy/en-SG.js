@@ -423,6 +423,7 @@ export const messages = {
     commit: "Commit import to ledger",
     refreshCoveredStatementCheckpoint: "Refresh covered statement checkpoint",
     saveEmptyStatementCheckpoint: "Save empty statement checkpoint",
+    certifyMatchedEntries: (count) => `Certify ${countOf(count, "matched entry", "matched entries")}`,
     commitFailed: "Import commit failed. No partial transactions were kept.",
     clearPreview: "Clear preview",
     startOver: "Start over",
@@ -564,6 +565,7 @@ export const messages = {
     // Moving through the batch from the commit bar.
     commitAndOpenNext: "Commit and open next",
     refreshCheckpointsAndOpenNext: "Refresh checkpoints and open next",
+    certifyAndOpenNext: "Certify and open next",
     skipForNow: "Skip for now",
     doneTitle: (title) => `${title} saved`,
     doneAllBalanced: "Every card balanced",
@@ -612,6 +614,7 @@ export const messages = {
     statementMoreChecks: "More checks",
     statementHowItAddsUp: "How the difference adds up",
     statementCardDifference: (amount, after) => after ? `difference ${amount} → ${after} after the fix` : `difference ${amount}`,
+    statementAlreadyImported: (dateLabel, sourceLabel) => `Already imported on ${dateLabel} from ${sourceLabel}`,
     statementCardCounts: (added, confirmed) => `${countOf(added, "new row")} · ${confirmed} ${confirmed === 1 ? "confirms an entry" : "confirm entries"} you have`,
     statementCardShow: "Show",
     statementCardHide: "Hide",
@@ -814,6 +817,16 @@ export const messages = {
     noRowsToImport: "No new ledger rows will be created. You can still refresh statement checkpoints and certification when the checks match.",
     noRowsToImportCoveredStatement: "This statement's rows are already in the ledger. No duplicate ledger rows will be created. You can still refresh the statement checkpoint and certification.",
     noRowsToImportEmptyStatement: "This statement has no transaction rows. Only the statement checkpoint will be saved.",
+    noRowsToImportAllInLedger: (matchedCount, toCertifyCount) => {
+      const rows = matchedCount === 1 ? "The 1 row on this statement is" : `All ${matchedCount} rows on this statement are`;
+      if (toCertifyCount === 0) {
+        return `${rows} already in your ledger and certified, and the balance matches. Nothing new will be added.`;
+      }
+      const certifies = toCertifyCount === matchedCount
+        ? (matchedCount === 1 ? "it" : "them")
+        : `the ${toCertifyCount} not certified yet`;
+      return `${rows} already in your ledger and the balance matches. Saving certifies ${certifies}.`;
+    },
     skipPreviewRow: "Exclude row",
     matchedExistingPreviewRow: "Matched to ledger",
     restorePreviewRow: "Include row",

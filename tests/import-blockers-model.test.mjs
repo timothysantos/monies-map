@@ -454,3 +454,74 @@ test("the preview names what a commit saves, which picks the commit button's wor
   // Without a checkpoint, nothing to import is still a row commit.
   assert.deepEqual(kind([], []), { kind: "rows", label: "Commit import to ledger" });
 });
+
+// Rows the ledger already has, as a statement preview marks them once the
+// card balances: certified earlier (skipped) or a mid-cycle entry the commit
+// certifies (included with a reconciliation target).
+const MATCHED = { reconciliationMatch: { existingTransactionId: "entry-1", matchKind: "exact" }, isStatementMatchResolved: true };
+const certifiedRow = (rowId) => row({ rowId, accountId: LADYS.id, accountName: LADYS.name, commitStatus: "skipped", ...MATCHED });
+const midCycleRow = (rowId) => row({ rowId, accountId: LADYS.id, accountName: LADYS.name, reconciliationTargetTransactionId: `entry-${rowId}`, ...MATCHED });
+const ladysCheckpoint = [{ detectedAccountName: LADYS.name, accountName: LADYS.name, accountId: LADYS.id, checkpointMonth: "2026-05" }];
+const ladysMatched = [{ accountName: LADYS.name, accountId: LADYS.id, status: "matched", deltaMinor: 0, checkpointMonth: "2026-05" }];
+const ladysMismatch = [{ accountName: LADYS.name, accountId: LADYS.id, status: "mismatch", deltaMinor: -1240, checkpointMonth: "2026-05" }];
+
+test("a statement already in the ledger is never called empty", () => {
+  // The same statement uploaded again: every row was certified by the first
+  // import, so the review hides them all. It is covered, not empty.
+  const model = previewModelFor({
+    previewRows: [certifiedRow("a"), certifiedRow("b"), certifiedRow("c")],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: ladysMatched
+  });
+  assert.equal(model.commitKind, "covered_checkpoint");
+  assert.equal(model.commitLabel, "Refresh covered statement checkpoint");
+  assert.equal(model.hasEmptyStatementCheckpointOnly, false);
+  assert.equal(model.hasAlreadyCoveredCheckpointRefresh, true);
+  assert.deepEqual(model.ledgerMatchedStatement, { matchedCount: 3, toCertifyCount: 0 });
+  assert.equal(model.matchedPreviewRowCount, 3);
+});
+
+test("a statement whose rows all match mid-cycle entries certifies them", () => {
+  const model = previewModelFor({
+    previewRows: [midCycleRow("a"), midCycleRow("b"), certifiedRow("c")],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: ladysMatched
+  });
+  assert.equal(model.commitKind, "certify_rows");
+  assert.equal(model.commitLabel, "Certify 2 matched entries");
+  assert.deepEqual(model.ledgerMatchedStatement, { matchedCount: 3, toCertifyCount: 2 });
+
+  const one = previewModelFor({ previewRows: [midCycleRow("a")], statementCheckpoints: ladysCheckpoint, statementReconciliations: ladysMatched });
+  assert.equal(one.commitLabel, "Certify 1 matched entry");
+});
+
+test("a statement with a new row, or one that does not balance, is not all matched", () => {
+  const withNewRow = previewModelFor({
+    previewRows: [midCycleRow("a"), row({ rowId: "new", accountId: LADYS.id, accountName: LADYS.name })],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: ladysMatched
+  });
+  assert.equal(withNewRow.commitKind, "rows");
+  assert.equal(withNewRow.commitLabel, "Commit import to ledger");
+  assert.equal(withNewRow.ledgerMatchedStatement, null);
+
+  const unbalanced = previewModelFor({
+    previewRows: [certifiedRow("a"), certifiedRow("b")],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: ladysMismatch
+  });
+  assert.equal(unbalanced.commitKind, "covered_checkpoint");
+  assert.equal(unbalanced.ledgerMatchedStatement, null);
+
+  const waitingOnReview = previewModelFor({
+    previewRows: [midCycleRow("a"), row({ rowId: "review", accountId: LADYS.id, accountName: LADYS.name, commitStatus: "needs_review" })],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: ladysMatched
+  });
+  assert.equal(waitingOnReview.ledgerMatchedStatement, null);
+
+  // Mid-cycle matches without a statement checkpoint are a plain commit.
+  const noCheckpoint = previewModelFor({ previewRows: [midCycleRow("a")], sourceType: "csv" });
+  assert.equal(noCheckpoint.commitKind, "rows");
+  assert.equal(noCheckpoint.ledgerMatchedStatement, null);
+});

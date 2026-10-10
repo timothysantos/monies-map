@@ -47,11 +47,15 @@ when the import changes shared ledger evidence or reference data.
 Imports owns:
 
 - the three import steps (Bring files, Review, Done; design.md, "Import Page
-  Stages"). A statement is reviewed card by card under one header; the
+  Stages"). A statement is reviewed card by card under one header (a card
+  whose account and month a completed import already confirmed reads
+  "Already imported on {date} from {file}"); the
   commit bar stays in view. While another file waits the commit reads
   "Commit and open next" ("Refresh checkpoints and open next" for a
-  statement whose rows are all covered; "Save empty statement checkpoint"
-  keeps its own words): a successful commit opens that file and keeps a
+  statement whose rows are all covered; "Certify and open next" for one
+  whose rows all match uncertified ledger entries; "Save empty statement
+  checkpoint", only for a statement with no rows at all, keeps its own
+  words): a successful commit opens that file and keeps a
   compact Done card (what changed, with rollback) above its review; rolling
   back from it leaves that review as it is and takes the rolled-back file
   off the file chips ("File i of n" follows). The last file commits with its

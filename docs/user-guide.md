@@ -500,7 +500,8 @@ receipt button adds a shared expense.
   are typing in a field).
 - **Commit and open next**: while another file waits, the commit button
   says so (**Refresh checkpoints and open next** for a statement whose rows
-  are all in already). After the commit the next file opens straight away,
+  are all in already, **Certify and open next** for one whose rows all match
+  entries you have). After the commit the next file opens straight away,
   with a short summary of the file you just committed above it and its
   **Roll back this import**. The last file's button keeps its usual words,
   and the full **Done** step shows when it is committed.
@@ -816,10 +817,23 @@ For every import:
   the statement import as usual.
 
 A statement preview shows **Matched** for each account when its balance
-agrees with the bank. When every row is already in your ledger, the button
-becomes **Refresh covered statement checkpoint** (**Refresh checkpoints and
-open next** while another file waits), which saves the proof without adding
-duplicates.
+agrees with the bank. When every row on the statement is already in your
+ledger and the balance matches, the bar above the button says so, for
+example "All 31 rows on this statement are already in your ledger and the
+balance matches":
+
+- If some of those rows came from an activity export (CSV or XLS) and are
+  not certified yet, the button reads **Certify 31 matched entries**
+  (**Certify and open next** while another file waits). Saving certifies
+  them against the statement; nothing new is added.
+- If you imported this statement before, each card says **Already imported
+  on** the date and the file it came from, and the button reads **Refresh
+  covered statement checkpoint** (**Refresh checkpoints and open next**
+  while another file waits). It saves the proof again without adding
+  duplicates.
+
+**Save empty statement checkpoint** only appears for a statement with no
+transactions at all.
 
 ## Fix a statement that does not balance
 

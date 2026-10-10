@@ -2103,17 +2103,24 @@ test.describe("import flow", () => {
     await screenshot("01-jan-two-card-pdf-mapped-and-matched");
     await commitCurrentPreview();
 
+    // The same statement again: every row is already certified, so it is
+    // covered (never "empty") and each card names the earlier import.
     await uploadPdfAndMap(janPdfPath, { expectUnknownAccounts: false });
-    await expect(importFlowPage.getByText("2 statement checkpoints will refresh").first()).toBeVisible();
-    await expect(importFlowPage.getByText("This statement has no transaction rows. Only the statement checkpoint will be saved.").first()).toBeVisible();
-    await expect(importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" }).first()).toBeEnabled();
+    const commitBar = importFlowPage.locator(".import-commit-bar");
+    await expect(commitBar).toContainText(/^All \d+ rows on this statement are already in your ledger and certified, and the balance matches\. Nothing new will be added\./);
+    await expect(importFlowPage.getByText("This statement has no transaction rows.", { exact: false })).toHaveCount(0);
+    await expect(importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" })).toHaveCount(0);
+    const previousImportLines = importFlowPage.locator(".statement-card-previous-import");
+    await expect(previousImportLines).toHaveCount(2);
+    await expect(previousImportLines.first()).toHaveText(/^Already imported on \d{1,2} \w{3} \d{4} from \S/);
+    await expect(importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first()).toBeEnabled();
     await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
-    const emptyCheckpointResponse = importFlowPage.waitForResponse(
+    const coveredCheckpointResponse = importFlowPage.waitForResponse(
       (response) => response.url().includes("/api/imports/commit") && response.ok(),
       { timeout: 60_000 }
     );
-    await importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" }).first().click();
-    await emptyCheckpointResponse;
+    await importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first().click();
+    await coveredCheckpointResponse;
     await expect(importFlowPage.locator(".import-done-card").first()).toBeVisible({ timeout: 60_000 });
     await expect(importFlowPage.locator(".import-commit-bar")).toHaveCount(0);
 

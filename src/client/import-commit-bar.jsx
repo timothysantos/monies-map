@@ -10,10 +10,12 @@ import { ImportAskFirst } from "./import-batch-bar";
 // blockers remain (import-blockers-model.js) it says how many, with a jump
 // to the first (J and K step through them, import-blocker-keys.js). On a
 // phone the count opens the import progress sheet. While another file
-// waits, "Skip for now" sends this one to the end of the queue.
+// waits, "Skip for now" sends this one to the end of the queue. A statement
+// whose rows are all in the ledger already says so in one sentence.
 export function ImportCommitBar({
   previewRows,
   statementCheckpointCount = 0,
+  ledgerMatchedStatement = null,
   reconciledExistingRowCount = 0,
   statementImportSourceType = "csv",
   isCommitDisabled,
@@ -35,7 +37,9 @@ export function ImportCommitBar({
   )).length;
   const skippedCount = visibleRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
-  const summaryItems = [
+  const summaryItems = ledgerMatchedStatement ? [
+    { text: messages.imports.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount) }
+  ] : [
     newImportCount || !statementCheckpointCount ? { text: messages.imports.willImportRows(newImportCount) } : null,
     reconciledExistingRowCount ? { text: messages.imports.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType) } : null,
     statementCheckpointCount ? { text: messages.imports.willSaveStatementCheckpoints(statementCheckpointCount) } : null,

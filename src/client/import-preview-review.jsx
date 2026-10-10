@@ -13,6 +13,7 @@ import { moneyToneClass } from "./money-tone-class";
 import { useMoneyPrivacy } from "./money-privacy";
 import { entryAmountTone } from "../domain/money-tone";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
+import { isLedgerMatchedPreviewRow } from "./import-preview-model";
 
 const {
   accounts: accountService,
@@ -1745,7 +1746,10 @@ function StatementCardSection({
   const deltaMinor = reconciliation.deltaMinor ?? 0;
   const projectedDeltaMinor = card?.projectedDeltaMinor ?? deltaMinor;
   const addedCount = rows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review" && !row.reconciliationTargetTransactionId).length;
-  const confirmedCount = rows.filter((row) => row.reconciliationTargetTransactionId).length;
+  // Every row the ledger already has, whether this commit certifies it or an
+  // earlier statement did.
+  const confirmedCount = rows.filter(isLedgerMatchedPreviewRow).length;
+  const previousImport = reconciliation.previousStatementImport;
 
   return (
     <article
@@ -1772,6 +1776,11 @@ function StatementCardSection({
                 : ""}
             </span>
             <span className="import-history-inline">{messages.imports.statementCardCounts(addedCount, confirmedCount)}</span>
+            {previousImport ? (
+              <span className="import-history-inline statement-card-previous-import">
+                {messages.imports.statementAlreadyImported(formatService.formatDateOnly(previousImport.importedAt), previousImport.sourceLabel)}
+              </span>
+            ) : null}
           </div>
         </div>
         <button type="button" className="subtle-action" aria-expanded={isOpen} onClick={() => setManualOpen(!isOpen)}>
