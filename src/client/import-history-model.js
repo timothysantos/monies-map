@@ -35,25 +35,22 @@ export function getRecentImportAccountOptions(recentImports, accounts = []) {
   return Array.from(accountLabels).sort((left, right) => left.localeCompare(right));
 }
 
+// Batch account names and dropdown values are both "Account - Owner"
+// labels, so the match is exact: two people's accounts can share a name
+// ("UOB One - Tim", "UOB One - Joyce") and must not match each other.
 export function filterRecentImportsByAccount(recentImports, accountFilter) {
   if (!accountFilter) {
     return recentImports;
   }
 
-  const normalizedFilter = normalizeRecentImportAccountKey(accountFilter);
+  const filterKey = normalizeRecentImportAccountKey(accountFilter);
   return recentImports.filter((item) => (
-    item.accountNames?.some((accountName) => (
-      normalizeRecentImportAccountKey(accountName) === normalizedFilter
-      || accountName.trim() === accountFilter.trim()
-    ))
+    item.accountNames?.some((accountName) => normalizeRecentImportAccountKey(accountName) === filterKey)
   ));
 }
 
 function normalizeRecentImportAccountKey(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s*[-•]\s*.+$/, "");
+  return String(value ?? "").trim().toLowerCase();
 }
 
 function groupRecentImportsByDate(recentImports) {

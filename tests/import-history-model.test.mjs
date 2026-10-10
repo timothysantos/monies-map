@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { filterRecentImportsByAccount } from "../src/client/import-history-model.js";
 
-test("recent imports account filter matches owner-labeled dropdown values and raw account names", () => {
+test("recent imports account filter matches owner-labeled dropdown values", () => {
   const imports = [
     {
       id: "import-1",
@@ -21,11 +21,6 @@ test("recent imports account filter matches owner-labeled dropdown values and ra
   );
 
   assert.deepEqual(
-    filterRecentImportsByAccount(imports, "Child Development Acc (CDA)").map((item) => item.id),
-    ["import-1"]
-  );
-
-  assert.deepEqual(
     filterRecentImportsByAccount(imports, "UOB Lady's Card - Joyce").map((item) => item.id),
     ["import-2"]
   );
@@ -34,6 +29,30 @@ test("recent imports account filter matches owner-labeled dropdown values and ra
     filterRecentImportsByAccount(imports, "").map((item) => item.id),
     ["import-1", "import-2"]
   );
+});
+
+test("recent imports account filter keeps one owner's account apart from another owner's account of the same name", () => {
+  const imports = [
+    { id: "tim-statement", accountNames: ["UOB One - Tim"] },
+    { id: "joyce-statement", accountNames: ["UOB One - Joyce"] },
+    { id: "joyce-mid-cycle", accountNames: ["UOB One - Joyce"] },
+    { id: "both", accountNames: ["UOB One - Joyce", "UOB One - Tim"] },
+    { id: "unowned", accountNames: ["UOB One"] }
+  ];
+
+  assert.deepEqual(
+    filterRecentImportsByAccount(imports, "UOB One - Tim").map((item) => item.id),
+    ["tim-statement", "both"]
+  );
+  assert.deepEqual(
+    filterRecentImportsByAccount(imports, "UOB One - Joyce").map((item) => item.id),
+    ["joyce-statement", "joyce-mid-cycle", "both"]
+  );
+  assert.deepEqual(
+    filterRecentImportsByAccount(imports, "UOB One").map((item) => item.id),
+    ["unowned"]
+  );
+  assert.deepEqual(filterRecentImportsByAccount(imports, "UOB Lady's Card - Tim"), []);
 });
 
 test("the commit notice lists the five completed imports before the one just committed", async () => {
