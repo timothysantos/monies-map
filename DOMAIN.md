@@ -198,6 +198,58 @@ Important distinctions:
   statement (uploaded again and saved anyway). Rolling back one of them
   keeps the checkpoint while another completed import still has a
   certificate for that account and month; the last rollback removes it.
+- A card statement checkpoint may keep what the statement asked for: its
+  `payment due date` (`payment_due_date`) and `minimum payment`
+  (`minimum_payment_minor`). OCBC prints "IMMEDIATE" for an account already
+  past due; the due date is then the statement date. A manual Settings
+  checkpoint leaves them as they were.
+- A statement's `notices` (OCBC's "past due" reminder and its "penalty
+  interest rate") are read for the import review only and not stored.
+
+### Bank Charge
+
+A card statement row the bank charges itself: a late charge, interest, an
+annual (membership) fee, a currency conversion or DCC fee, or another bank
+fee (over limit, cash advance). Its `reversal` is the credit the bank posts
+when it waives one ("CR LATE CHARGE", "AUTOLATEFEEREVERSAL",
+"ANNUALMEMBERFEEREV", "INTEREST REVERSAL").
+
+Canonical term:
+- `bank charge`, `bank charge reversal`
+
+Aliases:
+- `classifyBankCharge`, `findUnreversedBankCharges` (`src/domain/bank-charges.ts`)
+
+Important distinctions:
+- Recognised by the description's leading words with spaces and punctuation
+  removed, never by a word inside a shop's name ("AMAZE*FEES", "Cabcharge").
+- Statement parsers file a bank charge and its reversal under `Fees`.
+  Money in that is not a reversal ("INTEREST CREDIT" on savings) stays
+  income. The import commit saves a reversal kept in Fees with
+  `offsets_category`, so a waived charge nets to nothing in Fees.
+- An `unreversed bank charge` is one no reversal of the same kind and amount
+  on the same account, dated on or after it, has cancelled. Each reversal
+  cancels one charge. Currency fees are the price of foreign purchases, so
+  they are never listed as unreversed.
+
+### Card Bill
+
+What a card account's latest statement checkpoint asks for (amount owed, due
+date, minimum) and what the ledger shows paid to the card since the
+statement closed (transfers into the card dated after the statement date).
+
+Canonical term:
+- `card bill`
+
+Aliases:
+- DTO `CardBillDto` on `SummaryAccountPillDto.cardBill`
+  (`src/domain/card-bill-projection.ts`)
+
+Important distinctions:
+- Only for a statement that owes money and has a due date, and only until
+  45 days after the due date.
+- A payment from a bank account not imported yet is not seen; the check-in
+  says so instead of claiming the bill is unpaid.
 
 ### Category
 
@@ -1441,10 +1493,11 @@ These boundaries are important enough to preserve explicitly:
   deterministic rule over data the page already loaded that either fires
   with its numbers or stays silent (`src/domain/money-signals/`). Each
   signal has a `signal kind`, shown as a chip: `Quick fix` (makes the
-  numbers trustworthy or settles an obligation: a statement gap, an
-  unlinked planned bill, a split balance, entries in Other), `Bigger
-  question` (a pattern worth a decision; at most one at a time), `Worth a
-  look` (may be fine but easy to miss), `Going well`, `Just for fun`
+  numbers trustworthy or settles an obligation: a statement gap, a card
+  bill due within a week or overdue with no payment yet, an unlinked planned
+  bill, a split balance, entries in Other), `Bigger question` (a pattern
+  worth a decision; at most one at a time), `Worth a look` (may be fine but
+  easy to miss, such as a bank charge with no reversal), `Going well`, `Just for fun`
   (trivia from the user's own data, shown only when the headline is not a
   bigger question) and `Long view` (a quieter zoomed-out line: keep rate,
   cushion, fixed costs, same season, share of costs). A signal carries 3 to
