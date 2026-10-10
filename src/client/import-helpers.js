@@ -85,10 +85,9 @@ export async function extractPdfText(file) {
   return `${pages.join("\n")}\n__PDF_LAYOUT_TEXT__\n${layoutPages.join("\n")}\n__PDF_SPACED_LAYOUT_TEXT__\n${spacedLayoutPages.join("\n")}`;
 }
 
-// pageSegMode is Tesseract's page layout mode: "4" (one column of
-// variable-size text) is the first pass; a second pass in "6" (one uniform
-// block) reads some rows the first one cannot.
-export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } = {}) {
+// The OCR engine and renderer every image statement goes through: the PDF's
+// pages rendered at 220 dpi (the parsers' reference frame) and one worker.
+export async function openOcrSession(file, onProgress) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   const tesseractModule = await importRuntimeModule("/vendor/tesseract/tesseract.esm.min.js");
@@ -112,24 +111,36 @@ export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } 
       }
     }
   });
+  return { document, worker };
+}
 
+export async function renderPdfPageForOcr(document, pageNumber) {
+  const page = await document.getPage(pageNumber);
+  const viewport = page.getViewport({ scale: 220 / 72 });
+  const canvas = globalThis.document.createElement("canvas");
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) {
+    throw new Error("Could not create OCR canvas.");
+  }
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: context, viewport }).promise;
+  return canvas;
+}
+
+// pageSegMode is Tesseract's page layout mode: "4" (one column of
+// variable-size text) is the first pass; a second pass in "6" (one uniform
+// block) reads some rows the first one cannot.
+export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } = {}) {
+  const { document, worker } = await openOcrSession(file, onProgress);
   try {
     await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
     const tsvPages = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       onProgress?.({ status: "rendering page", pageNumber, pageCount: document.numPages });
-      const page = await document.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 220 / 72 });
-      const canvas = globalThis.document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const context = canvas.getContext("2d", { alpha: false });
-      if (!context) {
-        throw new Error("Could not create OCR canvas.");
-      }
-      context.fillStyle = "#fff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: context, viewport }).promise;
+      const canvas = await renderPdfPageForOcr(document, pageNumber);
       onProgress?.({ status: "recognizing text", pageNumber, pageCount: document.numPages });
       const result = await worker.recognize(canvas, {}, { text: true, tsv: true });
       tsvPages.push(result.data.tsv ?? "");
@@ -144,16 +155,24 @@ export async function extractPdfOcrText(file, onProgress, { pageSegMode = "4" } 
 // Parses an image statement from its first OCR pass. When the parser cannot
 // reconcile that reading, or reports it as doubtful (an inferred amount or a
 // barely legible row), the PDF is OCR'd again in a second page layout mode
-// and both passes are parsed together; the statement's totals then choose
-// between the two readings. Each pass is an "__OCR_TSV__" package, so the
-// two packages joined by a newline are the two-pass package.
+// and the cells the parser points at are read one by one; all passes are
+// parsed together and the statement's totals choose between the readings.
+// Each pass is an "__OCR_TSV__" package, so packages joined by newlines are
+// the multi-pass package.
 export async function parseImageStatement({ file, firstPass, parse, onProgress }) {
   const first = attemptParse(parse, firstPass);
   if (first.parsed && !first.parsed.ocrReview?.wantsSecondPass) {
     return first.parsed;
   }
   const secondPass = await extractPdfOcrText(file, onProgress, { pageSegMode: "6" });
-  return chooseImageStatementParse(first, attemptParse(parse, `${firstPass}\n${secondPass}`));
+  const cellRegions = first.parsed?.ocrReview?.cellRegions;
+  // The cell reader loads only when a statement needs it (Imports, never the
+  // first screen).
+  const cellPass = cellRegions?.length
+    ? await (await import("./import-ocr-cells")).extractPdfOcrCells(file, { cellRegions, referenceSize: first.parsed.ocrReview.referenceSize }, onProgress)
+    : "";
+  const passes = [firstPass, secondPass, cellPass].filter(Boolean).join("\n");
+  return chooseImageStatementParse(first, attemptParse(parse, passes));
 }
 
 export function isExtractedPdfTextEmpty(text) {

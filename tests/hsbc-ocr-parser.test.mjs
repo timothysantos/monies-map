@@ -343,11 +343,19 @@ test("HSBC first OCR pass never moves a missing amount onto a row it read", asyn
     ["2026-08-17", "64.70", "", "txn date: 2026-08-14"],
     ["2026-09-02", "", "523.70", "txn date: 2026-09-02"]
   ]);
-  assert.deepEqual(parsed.ocrReview, {
+  const { cellRegions, referenceSize, ...review } = parsed.ocrReview;
+  assert.deepEqual(review, {
     passCount: 1,
     inferredAmounts: [{ date: "2026-08-17", description: "IKEA SINGAPORE SG", amount: "64.70" }],
     wantsSecondPass: true
   });
+  // The app is asked to read each row's two dates and its amount on their own.
+  assert.deepEqual(referenceSize, { width: 1820, height: 2572 });
+  assert.deepEqual(cellRegions.map((region) => [region.page, region.left, region.top, region.right, region.bottom, region.characters]), [
+    [1, 160, 1067, 270, 1107, "date"], [1, 290, 1067, 400, 1107, "date"], [1, 960, 1067, 1160, 1107, "amount"],
+    [1, 160, 1154, 270, 1194, "date"], [1, 290, 1154, 400, 1194, "date"], [1, 960, 1154, 1160, 1194, "amount"],
+    [1, 160, 1208, 270, 1248, "date"], [1, 290, 1208, 400, 1248, "date"], [1, 960, 1208, 1160, 1248, "amount"]
+  ]);
 });
 
 test("HSBC first OCR pass asks for a second pass when a description is barely legible", async () => {
@@ -391,11 +399,9 @@ test("HSBC OCR takes a lone purchase's amount from the total and reports it", ()
   ]);
   const parsed = parseStatementText(`__OCR_TSV__\n${tsv}`, "hsbc-visa-revolution-sep.pdf");
   assert.deepEqual(rowAmounts(parsed), [["2026-08-08", "523.70", "", "txn date: 2026-08-06"]]);
-  assert.deepEqual(parsed.ocrReview, {
-    passCount: 1,
-    inferredAmounts: [{ date: "2026-08-08", description: "MOTHERCARE", amount: "523.70" }],
-    wantsSecondPass: true
-  });
+  assert.deepEqual(parsed.ocrReview.inferredAmounts, [{ date: "2026-08-08", description: "MOTHERCARE", amount: "523.70" }]);
+  assert.equal(parsed.ocrReview.wantsSecondPass, true);
+  assert.equal(parsed.ocrReview.cellRegions.length, 3);
 });
 
 test("HSBC OCR returns a reconciliation review when the statement balance does not agree", () => {
@@ -493,3 +499,69 @@ function buildOcrTsv(words) {
     ))
   ].join("\n");
 }
+
+// Cells the parser pointed at, OCR'd one by one (sanitized image PDFs): each
+// row's two dates and its amount, restricted to their characters.
+function cellPass(month) {
+  return readBrowserOcrFixture(month, "-cells").then((tsv) => ({ kind: "cells", tsv }));
+}
+
+test("HSBC cell reads settle every Aug-Oct 2026 amount and date without inferring any", async () => {
+  for (const item of AUG_TO_OCT_2026) {
+    const text = joinOcrTsvPasses([
+      await readBrowserOcrFixture(item.month),
+      await readBrowserOcrFixture(item.month, "-pass2"),
+      await cellPass(item.month)
+    ]);
+    const parsed = parseStatementText(text, `hsbc-visa-revolution-${item.month}_2026.pdf`);
+    assert.deepEqual(rowValues(parsed), item.rows, item.month);
+    assert.deepEqual(parsed.ocrReview.inferredAmounts, [], item.month);
+    assert.equal(parsed.reconciliation, undefined, item.month);
+  }
+});
+
+test("HSBC cell reads read March's IKEA 683.00 that the page pass missed", async () => {
+  // OCR of the sanitized March image PDF cannot read IKEA's amount, so the
+  // page pass alone takes it from the purchases total.
+  const pagePass = await readBrowserOcrFixture("mar", "-sanitized-pdf");
+  const first = parseStatementText(`__OCR_TSV__\n${pagePass}`, "hsbc-visa-revolution-mar_2026.pdf");
+  assert.deepEqual(first.ocrReview.inferredAmounts.map((item) => item.amount), ["683.00"]);
+  const parsed = parseStatementText(joinOcrTsvPasses([pagePass, await cellPass("mar")]), "hsbc-visa-revolution-mar_2026.pdf");
+  assert.deepEqual(rowAmounts(parsed), [
+    ["2026-02-23", "683.00", "", "txn date: 2026-02-20"],
+    ["2026-03-04", "", "683.00", "txn date: 2026-03-03"]
+  ]);
+  assert.deepEqual(parsed.ocrReview.inferredAmounts, []);
+});
+
+test("HSBC cell reads recover a row whose dates the page passes could not read", async () => {
+  // Etsy's dates are unreadable on the page, so its line is only a leftover;
+  // its cells read 03 Oct, 01 Oct and 29.92, and the row comes back whole.
+  const damagedFirst = (await readBrowserOcrFixture("oct")).replace(/\t03Oct$/m, "\t~").replace(/\t010ct$/m, "\t~");
+  const parsed = parseStatementText(joinOcrTsvPasses([damagedFirst, await cellPass("oct")]), "hsbc-visa-revolution-oct_2026.pdf");
+  assert.equal(parsed.reconciliation, undefined);
+  assert.deepEqual(parsed.ocrReview.inferredAmounts, []);
+  assert.deepEqual(
+    parsed.rows.filter((row) => /Etsy/.test(row.description)).map((row) => [row.date, row.description, row.expense, row.note]),
+    [["2026-10-03", "Etsy WWW.ETSY.COM", "29.92", "txn date: 2026-10-01"]]
+  );
+});
+
+test("HSBC cell reads cannot slip a wrong amount past the statement totals", async () => {
+  // A cell misreads IKEA as 84.70. Without another reading the totals refuse
+  // it and the statement goes to the recovery review, never certified.
+  const wrongCells = (await readBrowserOcrFixture("sep", "-cells")).replace(/\t64\.70$/m, "\t84.70");
+  const parsed = parseStatementText(
+    joinOcrTsvPasses([await readBrowserOcrFixture("sep"), { kind: "cells", tsv: wrongCells }]),
+    "hsbc-visa-revolution-sep_2026.pdf"
+  );
+  assert.equal(parsed.reconciliation.expectedDebitMinor, 52370);
+  assert.equal(parsed.rows.some((row) => row.description === "IKEA SINGAPORE SG" && row.expense === "64.70"), false);
+  // With the second page pass's 64.70 as well, the totals pick the right one.
+  const withSecond = parseStatementText(
+    joinOcrTsvPasses([await readBrowserOcrFixture("sep"), await readBrowserOcrFixture("sep", "-pass2"), { kind: "cells", tsv: wrongCells }]),
+    "hsbc-visa-revolution-sep_2026.pdf"
+  );
+  assert.equal(withSecond.reconciliation, undefined);
+  assert.equal(withSecond.rows.find((row) => row.description === "IKEA SINGAPORE SG").expense, "64.70");
+});

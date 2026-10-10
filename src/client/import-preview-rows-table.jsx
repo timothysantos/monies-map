@@ -8,6 +8,7 @@ import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { entryAmountTone } from "../domain/money-tone";
+import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
 
 const {
   accounts: accountService,
@@ -121,6 +122,7 @@ function PreviewRowsTable({
   isSkippedTable = false
 }) {
   const [restoreTarget, setRestoreTarget] = useState(null);
+  const inferredAmountKeys = useInferredAmountKeys();
   return (
     <div className="table-wrap import-table-wrap">
       <table className="summary-table import-preview-table">
@@ -205,6 +207,11 @@ function PreviewRowsTable({
                       })}
                       disabled={isSkippedTable}
                     />
+                    {isInferredAmountRow(row, inferredAmountKeys) ? (
+                      <span className="import-inferred-amount-note" title={messages.imports.statementInferredAmountHint}>
+                        {messages.imports.statementInferredAmount}
+                      </span>
+                    ) : null}
                   </td>
                   <td>
                     <select className="table-edit-input" value={row.entryType} onChange={(event) => onUpdatePreviewRow(row.rowId, { entryType: event.target.value })} disabled={isSkippedTable}>

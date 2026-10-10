@@ -10,7 +10,7 @@
 .pill.pill-butter {
   border-color: var(--pastel-butter-line);
   background: var(--pastel-butter);
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
 }
 
 .pill.pill-lavender {
@@ -123,6 +123,18 @@
   text-align: right;
 }
 
+/* The row's status chip, and a statement-total mark beside it when present. */
+.statement-card-row-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.statement-card-row-chips .pill {
+  white-space: nowrap;
+}
+
 .statement-card-rows > summary,
 .statement-card-breakdown > summary,
 .statement-more-checks > summary {
@@ -164,7 +176,7 @@
 }
 
 .import-commit-bar-summary .is-warning {
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
   font-weight: 600;
 }
 
@@ -186,6 +198,13 @@
 
   .statement-card-row {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Two chips do not fit beside a description on a phone: they take their
+     own line under it. */
+  .statement-card-row-chips.has-mark {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 
   .statement-card-row-date {
@@ -661,7 +680,7 @@
 .import-blocker-chip {
   border-color: var(--pastel-butter-line);
   background: var(--pastel-butter);
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
   font-weight: 600;
 }
 
@@ -686,7 +705,7 @@
 
 .import-commit-bar-left {
   margin-left: auto;
-  color: var(--pastel-butter-ink);
+  color: var(--pastel-lavender-ink);
   font-size: 0.92rem;
   font-weight: 600;
   white-space: nowrap;
@@ -793,4 +812,14 @@
 
 .import-statement-recovery-amount {
   width: 7rem;
+}
+
+/* A row whose amount the scan could not read and the statement total filled. */
+.import-inferred-amount-note {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--pastel-lavender-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
