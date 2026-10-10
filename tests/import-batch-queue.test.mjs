@@ -100,8 +100,10 @@ test("the commit button says it opens the next file while one waits, and keeps i
   assert.equal(describeCommitLabel({ commitKind: "rows", commitLabel: "Commit import to ledger", nextItem: undefined }), "Commit import to ledger");
   // A statement whose rows are all covered keeps its own words, with the
   // suffix.
-  assert.equal(describeCommitLabel({ commitKind: "covered_checkpoint", commitLabel: "Refresh covered statement checkpoint", nextItem: may }), "Refresh checkpoints and open next");
-  assert.equal(describeCommitLabel({ commitKind: "covered_checkpoint", commitLabel: "Refresh covered statement checkpoint", nextItem: null }), "Refresh covered statement checkpoint");
+  assert.equal(describeCommitLabel({ commitKind: "covered_checkpoint", commitLabel: "Save statement balance", nextItem: may }), "Save statement balance and open next");
+  assert.equal(describeCommitLabel({ commitKind: "covered_checkpoint", commitLabel: "Save statement balance", nextItem: null }), "Save statement balance");
+  // Saving a statement again keeps its own words: it asks first.
+  assert.equal(describeCommitLabel({ commitKind: "saved_again", commitLabel: "Save it again anyway", nextItem: may }), "Save it again anyway");
   // Saving an empty statement has no "and open next" words: it keeps its
   // own, and never reads "Commit".
   assert.equal(describeCommitLabel({ commitKind: "empty_checkpoint", commitLabel: "Save empty statement checkpoint", nextItem: may }), "Save empty statement checkpoint");

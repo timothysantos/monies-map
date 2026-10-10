@@ -70,21 +70,22 @@ export function skipIntakeItem(queue, itemId) {
 }
 
 // The words a commit that also opens the next file uses, by what it saves.
-// Saving an empty statement has none and keeps its own words.
+// Saving an empty statement, or one saved before, has none and keeps its
+// own words.
 const OPEN_NEXT_LABELS = {
   rows: messages.imports.commitAndOpenNext,
   certify_rows: messages.imports.certifyAndOpenNext,
-  covered_checkpoint: messages.imports.refreshCheckpointsAndOpenNext
+  covered_checkpoint: messages.imports.saveStatementBalanceAndOpenNext
 };
 
 /**
- * The commit button's words: "Commit and open next" (or "Refresh
- * checkpoints and open next") while another file waits; the last file, and
+ * The commit button's words: "Commit and open next" (or "Save statement
+ * balance and open next") while another file waits; the last file, and
  * a commit with no such words, keep their own.
  *
  * @param {{ commitKind?: string, commitLabel: string, nextItem?: object | null }} input
  *   commitKind from buildImportPreviewModel: rows, certify_rows,
- *   covered_checkpoint or empty_checkpoint
+ *   covered_checkpoint, saved_again or empty_checkpoint
  */
 export function describeCommitLabel({ commitKind = "rows", commitLabel, nextItem }) {
   return nextItem ? OPEN_NEXT_LABELS[commitKind] ?? commitLabel : commitLabel;

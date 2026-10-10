@@ -423,7 +423,11 @@ export const messages = {
     openErrorDiagnostics: "Open error diagnostics",
     preview: "Preview import",
     commit: "Commit import to ledger",
-    refreshCoveredStatementCheckpoint: "Refresh covered statement checkpoint",
+    // Every row is already in the ledger: the commit only saves each card's
+    // statement balance and dates. "Again" when this statement was saved
+    // before, which adds nothing but a second import.
+    saveStatementBalance: "Save statement balance",
+    saveStatementAgain: "Save it again anyway",
     saveEmptyStatementCheckpoint: "Save empty statement checkpoint",
     certifyMatchedEntries: (count) => `Certify ${countOf(count, "matched entry", "matched entries")}`,
     commitFailed: "Import commit failed. No partial transactions were kept.",
@@ -566,7 +570,7 @@ export const messages = {
     blockerJumpKeys: "Next: J · Previous: K",
     // Moving through the batch from the commit bar.
     commitAndOpenNext: "Commit and open next",
-    refreshCheckpointsAndOpenNext: "Refresh checkpoints and open next",
+    saveStatementBalanceAndOpenNext: "Save statement balance and open next",
     certifyAndOpenNext: "Certify and open next",
     skipForNow: "Skip for now",
     doneTitle: (title) => `${title} saved`,
@@ -688,6 +692,8 @@ export const messages = {
     commitStatementMismatchWarning: (accountNames) => `${accountNames} ${accountNames.includes(" and ") ? "don't" : "doesn't"} match the statement yet. Committing now saves the statement with a difference.`,
     commitStatementStaleWarning: "You changed rows after the statement check ran. Refresh the check before committing.",
     commitAnyway: "Commit anyway",
+    commitSaveAgainWarning: (sourceLabel, dateLabel) => `This statement is already saved, from ${sourceLabel} on ${dateLabel}. Saving again adds a second import with no new rows.`,
+    commitSaveAgain: "Save again",
     commitWarningCancel: "Cancel",
     statementReconciliationRefreshing: "Refreshing statement certification check.",
     statementReconciliationRefreshed: "Statement certification check refreshed.",
@@ -833,7 +839,7 @@ export const messages = {
     willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
     needsReviewRows: (count) => `${countOf(count, "row")} ${count === 1 ? "needs" : "need"} review`,
     noRowsToImport: "No new ledger rows will be created. You can still refresh statement checkpoints and certification when the checks match.",
-    noRowsToImportCoveredStatement: "This statement's rows are already in the ledger. No duplicate ledger rows will be created. You can still refresh the statement checkpoint and certification.",
+    noRowsToImportCoveredStatement: "This statement's rows are already in the ledger, so nothing new will be added. Saving still records the statement's balance and dates.",
     noRowsToImportEmptyStatement: "This statement has no transaction rows. Only the statement checkpoint will be saved.",
     noRowsToImportAllInLedger: (matchedCount, toCertifyCount) => {
       const rows = matchedCount === 1 ? "The 1 row on this statement is" : `All ${matchedCount} rows on this statement are`;

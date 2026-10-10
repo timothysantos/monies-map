@@ -444,10 +444,10 @@ test("the preview names what a commit saves, which picks the commit button's wor
     return { kind: model.commitKind, label: model.commitLabel };
   };
   assert.deepEqual(kind([row({ rowId: "a", accountId: LADYS.id, accountName: LADYS.name })]), { kind: "rows", label: "Commit import to ledger" });
-  // Every row already covered: only the checkpoint is refreshed.
+  // Every row already covered: only the statement balance is saved.
   assert.deepEqual(kind([row({ rowId: "a", accountId: LADYS.id, accountName: LADYS.name, commitStatus: "skipped" })]), {
     kind: "covered_checkpoint",
-    label: "Refresh covered statement checkpoint"
+    label: "Save statement balance"
   });
   // No rows at all: an empty statement checkpoint.
   assert.deepEqual(kind([]), { kind: "empty_checkpoint", label: "Save empty statement checkpoint" });
@@ -466,15 +466,16 @@ const ladysMatched = [{ accountName: LADYS.name, accountId: LADYS.id, status: "m
 const ladysMismatch = [{ accountName: LADYS.name, accountId: LADYS.id, status: "mismatch", deltaMinor: -1240, checkpointMonth: "2026-05" }];
 
 test("a statement already in the ledger is never called empty", () => {
-  // The same statement uploaded again: every row was certified by the first
-  // import, so the review hides them all. It is covered, not empty.
+  // Every row came in earlier (an activity export certified by an earlier
+  // statement), so the review hides them all. It is covered, not empty.
   const model = previewModelFor({
     previewRows: [certifiedRow("a"), certifiedRow("b"), certifiedRow("c")],
     statementCheckpoints: ladysCheckpoint,
     statementReconciliations: ladysMatched
   });
   assert.equal(model.commitKind, "covered_checkpoint");
-  assert.equal(model.commitLabel, "Refresh covered statement checkpoint");
+  assert.equal(model.commitLabel, "Save statement balance");
+  assert.equal(model.previousStatementImport, null);
   assert.equal(model.hasEmptyStatementCheckpointOnly, false);
   assert.equal(model.hasAlreadyCoveredCheckpointRefresh, true);
   assert.deepEqual(model.ledgerMatchedStatement, { matchedCount: 3, toCertifyCount: 0 });
@@ -524,4 +525,50 @@ test("a statement with a new row, or one that does not balance, is not all match
   const noCheckpoint = previewModelFor({ previewRows: [midCycleRow("a")], sourceType: "csv" });
   assert.equal(noCheckpoint.commitKind, "rows");
   assert.equal(noCheckpoint.ledgerMatchedStatement, null);
+});
+
+const earlierImport = { importId: "import-may", sourceLabel: "eStatement_UOB_Cards_12May2026", importedAt: "2026-05-14 03:00:00" };
+const ladysSavedBefore = [{ ...ladysMatched[0], previousStatementImport: earlierImport }];
+
+test("a statement saved before says so: save it again only after a question", () => {
+  const input = {
+    previewRows: [certifiedRow("a"), certifiedRow("b")],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: ladysSavedBefore
+  };
+  const model = previewModelFor(input);
+  assert.equal(model.commitKind, "saved_again");
+  assert.equal(model.commitLabel, "Save it again anyway");
+  assert.deepEqual(model.previousStatementImport, earlierImport);
+
+  const result = blockersFor(input);
+  assert.equal(result.isCommitDisabled, false);
+  assert.deepEqual(result.blockers, []);
+  assert.deepEqual(result.commitQuestion, {
+    kind: "save_again",
+    message: "This statement is already saved, from eStatement_UOB_Cards_12May2026 on 14 May 2026. Saving again adds a second import with no new rows.",
+    confirmLabel: "Save again"
+  });
+});
+
+test("a statement saved before only for some cards, or never, saves its balance without asking", () => {
+  const partly = {
+    previewRows: [certifiedRow("a")],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: [...ladysSavedBefore, { accountName: PRVI.name, accountId: PRVI.id, status: "matched", deltaMinor: 0, checkpointMonth: "2026-05" }]
+  };
+  assert.equal(previewModelFor(partly).commitKind, "covered_checkpoint");
+  assert.equal(blockersFor(partly).commitQuestion, null);
+
+  const never = { previewRows: [certifiedRow("a")], statementCheckpoints: ladysCheckpoint, statementReconciliations: ladysMatched };
+  assert.equal(blockersFor(never).commitQuestion, null);
+});
+
+test("a statement saved before that does not balance asks about the difference first", () => {
+  const result = blockersFor({
+    previewRows: [certifiedRow("a")],
+    statementCheckpoints: ladysCheckpoint,
+    statementReconciliations: [{ ...ladysMismatch[0], previousStatementImport: earlierImport }]
+  });
+  assert.equal(result.commitQuestion.kind, "statement_mismatch");
 });

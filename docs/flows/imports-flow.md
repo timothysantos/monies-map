@@ -51,8 +51,9 @@ Imports owns:
   whose account and month a completed import already confirmed reads
   "Already imported on {date} from {file}"); the
   commit bar stays in view. While another file waits the commit reads
-  "Commit and open next" ("Refresh checkpoints and open next" for a
-  statement whose rows are all covered; "Certify and open next" for one
+  "Commit and open next" ("Save statement balance and open next" for a
+  statement whose rows are all covered and never saved; "Save it again
+  anyway", which asks first, keeps its own words for one saved before; "Certify and open next" for one
   whose rows all match uncertified ledger entries; "Save empty statement
   checkpoint", only for a statement with no rows at all, keeps its own
   words): a successful commit opens that file and keeps a

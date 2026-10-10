@@ -186,8 +186,8 @@
   align-items: center;
 }
 
-/* A fully covered statement has nothing left to import. Clearing the draft
-   is the useful next step; refreshing its checkpoint is optional maintenance. */
+/* A statement saved before has nothing left to import or save. Clearing the
+   draft is the useful next step; saving it again only adds a second import. */
 .import-commit-bar .import-commit-secondary {
   border: 0;
   background: transparent;

@@ -499,11 +499,11 @@ receipt button adds a shared expense.
   for the next thing to fix and **K** for the previous one (not while you
   are typing in a field).
 - **Commit and open next**: while another file waits, the commit button
-  says so (**Refresh checkpoints and open next** for a statement whose rows
-  are all in already, **Certify and open next** for one whose rows all match
-  entries you have). After the commit the next file opens straight away,
-  with a short summary of the file you just committed above it and its
-  **Roll back this import**. The last file's button keeps its usual words,
+  says so (**Save statement balance and open next** for a statement whose
+  rows are all in already, **Certify and open next** for one whose rows all
+  match entries you have). After the commit the next file opens straight
+  away, with a short summary of the file you just committed above it and
+  its **Roll back this import**. The last file's button keeps its usual words,
   and the full **Done** step shows when it is committed.
 - **Skip for now**: while another file waits, moves the file in review to
   the end of your files and opens the next one. Reopen it from its chip
@@ -837,12 +837,15 @@ balance matches":
   not certified yet, the button reads **Certify 31 matched entries**
   (**Certify and open next** while another file waits). Saving certifies
   them against the statement; nothing new is added.
+- If the rows came in earlier (for example from activity exports) but this
+  statement was never saved, the button reads **Save statement balance**
+  (**Save statement balance and open next** while another file waits). It
+  adds no entries; it saves each card's closing balance and dates, which
+  marks the month as confirmed by the bank.
 - If you imported this statement before, each card says **Already imported
-  on** the date and the file it came from, and the button reads **Refresh
-  covered statement checkpoint** (**Refresh checkpoints and open next**
-  while another file waits). **Start over** is the primary action in this
-  case because the statement needs no re-import; refreshing the checkpoint is
-  optional maintenance. It saves the proof again without adding duplicates.
+  on** the date and the file it came from. Saving it again would only add a
+  second import with no new rows, so **Start over** is the main button and
+  **Save it again anyway** asks first.
 
 **Save empty statement checkpoint** only appears for a statement with no
 transactions at all.

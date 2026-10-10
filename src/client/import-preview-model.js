@@ -8,7 +8,8 @@ import { messages } from "./copy/en-SG";
 // - which helper sections the preview page should render
 const COMMIT_LABELS = {
   certify_rows: messages.imports.certifyMatchedEntries,
-  covered_checkpoint: () => messages.imports.refreshCoveredStatementCheckpoint,
+  covered_checkpoint: () => messages.imports.saveStatementBalance,
+  saved_again: () => messages.imports.saveStatementAgain,
   empty_checkpoint: () => messages.imports.saveEmptyStatementCheckpoint,
   rows: () => messages.imports.commit
 };
@@ -97,10 +98,16 @@ export function buildImportPreviewModel({
     && toCertifyRowCount === commitPayloadPreviewRows.length
     ? { matchedCount: matchedPreviewRowCount, toCertifyCount: toCertifyRowCount }
     : null;
+  // Every card names the import that already saved this statement: saving
+  // it again adds nothing to the ledger.
+  const previousStatementImport = statementReconciliations.length > 0
+    && statementReconciliations.every((item) => item.previousStatementImport)
+    ? statementReconciliations[0].previousStatementImport
+    : null;
   // What the commit saves, which names its button (describeCommitLabel
   // adds "and open next" while another file waits).
   const commitKind = hasAlreadyCoveredCheckpointRefresh
-    ? "covered_checkpoint"
+    ? previousStatementImport ? "saved_again" : "covered_checkpoint"
     : hasEmptyStatementCheckpointOnly
       ? "empty_checkpoint"
       : ledgerMatchedStatement?.toCertifyCount
@@ -134,6 +141,7 @@ export function buildImportPreviewModel({
     needsReviewPreviewRowCount,
     hasAlreadyCoveredCheckpointRefresh,
     hasEmptyStatementCheckpointOnly,
+    previousStatementImport,
     previewReconciliationRowCount,
     reconciledExistingRowCount,
     skippedPreviewRowCount,

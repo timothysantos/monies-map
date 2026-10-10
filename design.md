@@ -353,8 +353,10 @@ Rules:
   copy), `skipIntakeItem` (gives the item a `skipOrder`, which
   `orderIntakeQueue` ranks after every file not skipped) and
   `describeCommitLabel` ("Commit and open next" while a file waits, or
-  "Refresh checkpoints and open next" for a statement whose rows are all
-  covered, or "Certify and open next" for one whose rows all match
+  "Save statement balance and open next" for a statement whose rows are all
+  covered and that no import saved yet (`saved_again`, every card naming
+  an earlier import, keeps "Save it again anyway" and asks first), or
+  "Certify and open next" for one whose rows all match
   uncertified ledger entries, by the preview model's `commitKind`; an
   empty statement checkpoint keeps its own words). `commitKind` is
   `empty_checkpoint` only for a statement with no rows; when every row

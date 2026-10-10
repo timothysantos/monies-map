@@ -2119,15 +2119,33 @@ test.describe("import flow", () => {
     const previousImportLines = importFlowPage.locator(".statement-card-previous-import");
     await expect(previousImportLines).toHaveCount(2);
     await expect(previousImportLines.first()).toHaveText(/^Already imported on \d{1,2} \w{3} \d{4} from \S/);
-    await expect(importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first()).toBeEnabled();
+    // Saved before: Start over leads, and saving again asks first.
+    const saveAgain = commitBar.getByRole("button", { name: "Save it again anyway" });
+    await expect(saveAgain).toBeEnabled();
     await expect(commitBar.getByRole("button", { name: "Start over" })).toHaveClass(/import-commit-start-over/);
-    await expect(importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first()).toHaveClass(/import-commit-secondary/);
+    await expect(saveAgain).toHaveClass(/import-commit-secondary/);
     await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
+    let commitRequests = 0;
+    const countCommit = (request) => {
+      if (request.url().includes("/api/imports/commit")) {
+        commitRequests += 1;
+      }
+    };
+    importFlowPage.on("request", countCommit);
+    await saveAgain.click();
+    const question = importFlowPage.locator(".import-commit-warning");
+    await expect(question).toContainText(/^This statement is already saved, from \S.* on \d{1,2} \w{3,4} \d{4}\. Saving again adds a second import with no new rows\./);
+    // Cancel saves nothing.
+    await question.getByRole("button", { name: "Cancel" }).click();
+    await expect(question).toHaveCount(0);
+    expect(commitRequests).toBe(0);
+    importFlowPage.off("request", countCommit);
     const coveredCheckpointResponse = importFlowPage.waitForResponse(
       (response) => response.url().includes("/api/imports/commit") && response.ok(),
       { timeout: 60_000 }
     );
-    await importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first().click();
+    await saveAgain.click();
+    await importFlowPage.locator(".import-commit-warning").getByRole("button", { name: "Save again" }).click();
     await coveredCheckpointResponse;
     await expect(importFlowPage.locator(".import-done-card").first()).toBeVisible({ timeout: 60_000 });
     await expect(importFlowPage.locator(".import-commit-bar")).toHaveCount(0);

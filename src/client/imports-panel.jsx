@@ -2488,7 +2488,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               } : undefined}
               onCommit={handleCommit}
               onStartOver={() => resetImportForm()}
-              isCoveredStatement={commitKind === "covered_checkpoint"}
+              isStatementSavedBefore={commitKind === "saved_again"}
             />
           ) : (
             <EmptyState>{messages.imports.previewEmpty}</EmptyState>

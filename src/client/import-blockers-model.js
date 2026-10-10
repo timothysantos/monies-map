@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { formatDateOnly } from "./formatters";
 
 // What stands between the file in review and a clean commit, in the order
 // the user should fix it. This is the one place the commit rules live: the
@@ -140,7 +141,7 @@ export function buildImportBlockers({
     blockers,
     remainingCount: blockers.length,
     isCommitDisabled: isSubmitting || isParsingStatement || blockers.some((item) => item.effect === "disable"),
-    commitQuestion: hasOcrRecovery ? null : buildCommitQuestion({ isStatement, isPreviewDirty, openCards }),
+    commitQuestion: hasOcrRecovery ? null : buildCommitQuestion({ isStatement, isPreviewDirty, openCards, previewModel }),
     matched: matchedCount ? { count: matchedCount, label: messages.imports.blockerRowsMatched(matchedCount) } : null
   };
 }
@@ -175,9 +176,10 @@ function describeCardLabel(card, { areTotalsVisible, formatMoney }) {
     : messages.imports.blockerCardNoMatch(card.accountName);
 }
 
-// Committing a statement that does not close, or whose check is out of
-// date after a row edit, asks first. The panel adds what each answer does.
-function buildCommitQuestion({ isStatement, isPreviewDirty, openCards }) {
+// Committing a statement that does not close, whose check is out of date
+// after a row edit, or that was saved before, asks first. The panel adds
+// what each answer does.
+function buildCommitQuestion({ isStatement, isPreviewDirty, openCards, previewModel }) {
   if (!isStatement) {
     return null;
   }
@@ -189,7 +191,15 @@ function buildCommitQuestion({ isStatement, isPreviewDirty, openCards }) {
     };
   }
   if (!openCards.length) {
-    return null;
+    // A card that does not close asks about that first.
+    const previous = previewModel.commitKind === "saved_again" ? previewModel.previousStatementImport : null;
+    return previous
+      ? {
+        kind: "save_again",
+        message: messages.imports.commitSaveAgainWarning(previous.sourceLabel, formatDateOnly(previous.importedAt)),
+        confirmLabel: messages.imports.commitSaveAgain
+      }
+      : null;
   }
   const accountNames = openCards.map((item) => item.accountName);
   return {
