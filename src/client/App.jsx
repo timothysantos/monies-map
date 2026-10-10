@@ -1861,9 +1861,10 @@ export function App() {
   const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
   const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = renderedTabId === "splits";
-  // Imports, Settings and FAQ do not depend on a period, so the header shows
-  // no period text or arrows there; the view switch stays.
+  // Imports, Settings and FAQ do not depend on a period, so the header keeps
+  // the period control in place but greyed out and disabled there.
   const routeUsesPeriod = !["imports", "settings", "faq"].includes(renderedTabId);
+  const isPeriodPassive = isSplitsTab || !routeUsesPeriod;
   // A page load error names the page the person asked for.
   const selectedPageLabel = routeTabs.find((tab) => tab.id === selectedTabId)?.label ?? "";
   // Detail tabs use the current month index to decide whether the navigation
@@ -2453,12 +2454,20 @@ export function App() {
   }
 
   // The top chrome reflects the active period semantics of the current route.
-  const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
-  const periodLabel = isDetailMonthTab
+  // A route without a period shows the last Summary range it knows (loaded,
+  // then the URL), or the selected month when no range is known yet.
+  const passiveRangeStart = summaryPageData?.summaryPage?.rangeStartMonth ?? selectedSummaryStart;
+  const passiveRangeEnd = summaryPageData?.summaryPage?.rangeEndMonth ?? selectedSummaryEnd;
+  const showsPassiveRange = !routeUsesPeriod && Boolean(passiveRangeStart && passiveRangeEnd);
+  const showsMonthPeriod = isDetailMonthTab || (!routeUsesPeriod && !showsPassiveRange);
+  const periodMode = showsMonthPeriod ? messages.period.month : messages.period.year;
+  const periodLabel = showsMonthPeriod
     ? formatMonthLabel(selectedMonth)
-    : pageView?.summaryPage?.rangeStartMonth && pageView?.summaryPage?.rangeEndMonth
-      ? `${formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
-      : pageView.label;
+    : showsPassiveRange
+      ? `${formatMonthLabel(passiveRangeStart)} - ${formatMonthLabel(passiveRangeEnd)}`
+      : pageView?.summaryPage?.rangeStartMonth && pageView?.summaryPage?.rangeEndMonth
+        ? `${formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
+        : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
   const cachedSettingsPage = /** @type {any} */ (queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST)));
@@ -2803,65 +2812,65 @@ export function App() {
             getNavIntentProps={getNavIntentProps}
             pendingCategorySuggestionCount={pendingCategorySuggestionCount}
           />
-          {routeUsesPeriod ? (
-            <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
-              <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
-              <div className="period-display">
-                <span className="period-mode">{periodMode}</span>
-                {isDetailMonthTab ? (
-                  <strong className="period-range-value">
-                    <PeriodMonthPicker
-                      triggerLabel={periodLabel}
-                      disabled={isSplitsTab}
-                      title="Month"
-                      hint="Choose a single month for this view."
-                      yearsAriaLabel="Available years"
-                      years={detailAvailableYears}
-                      activeYear={monthPickerYear}
-                      onYearChange={setMonthPickerYear}
-                      months={detailAvailableMonthsForPickerYear}
-                      selectedMonth={selectedMonth}
-                      closeOnSelect
-                      onSelect={handleDetailMonthSelect}
-                    />
-                  </strong>
-                ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
-                  <strong className="period-range-value">
-                    <PeriodMonthPicker
-                      triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
-                      title="Start month"
-                      hint="Choose the first month in the summary range."
-                      yearsAriaLabel="Available start years"
-                      years={summaryAvailableYears}
-                      activeYear={rangePickerStartYear}
-                      onYearChange={setRangePickerStartYear}
-                      months={summaryAvailableMonthsForPickerYear}
-                      selectedMonth={pageView.summaryPage.rangeStartMonth}
-                      isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
-                      onSelect={handleSummaryStartMonthSelect}
-                    />
-                    <span className="period-range-separator" aria-hidden="true">-</span>
-                    <PeriodMonthPicker
-                      triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
-                      title="End month"
-                      hint="Choose the last month in the summary range."
-                      yearsAriaLabel="Available end years"
-                      years={summaryAvailableYears}
-                      activeYear={rangePickerEndYear}
-                      onYearChange={setRangePickerEndYear}
-                      months={summaryAvailableMonthsForEndPickerYear}
-                      selectedMonth={pageView.summaryPage.rangeEndMonth}
-                      isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
-                      onSelect={handleSummaryEndMonthSelect}
-                    />
-                  </strong>
-                ) : (
-                  <strong className="period-range-value">{periodLabel}</strong>
-                )}
-              </div>
-              <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
+          <div className={`period-nav-cluster ${isPeriodPassive ? "is-passive" : ""}`} aria-disabled={isPeriodPassive || undefined}>
+            <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isPeriodPassive}>‹</button>
+            <div className="period-display">
+              <span className="period-mode">{periodMode}</span>
+              {!routeUsesPeriod ? (
+                <strong className="period-range-value">{periodLabel}</strong>
+              ) : isDetailMonthTab ? (
+                <strong className="period-range-value">
+                  <PeriodMonthPicker
+                    triggerLabel={periodLabel}
+                    disabled={isSplitsTab}
+                    title="Month"
+                    hint="Choose a single month for this view."
+                    yearsAriaLabel="Available years"
+                    years={detailAvailableYears}
+                    activeYear={monthPickerYear}
+                    onYearChange={setMonthPickerYear}
+                    months={detailAvailableMonthsForPickerYear}
+                    selectedMonth={selectedMonth}
+                    closeOnSelect
+                    onSelect={handleDetailMonthSelect}
+                  />
+                </strong>
+              ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
+                <strong className="period-range-value">
+                  <PeriodMonthPicker
+                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                    title="Start month"
+                    hint="Choose the first month in the summary range."
+                    yearsAriaLabel="Available start years"
+                    years={summaryAvailableYears}
+                    activeYear={rangePickerStartYear}
+                    onYearChange={setRangePickerStartYear}
+                    months={summaryAvailableMonthsForPickerYear}
+                    selectedMonth={pageView.summaryPage.rangeStartMonth}
+                    isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
+                    onSelect={handleSummaryStartMonthSelect}
+                  />
+                  <span className="period-range-separator" aria-hidden="true">-</span>
+                  <PeriodMonthPicker
+                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                    title="End month"
+                    hint="Choose the last month in the summary range."
+                    yearsAriaLabel="Available end years"
+                    years={summaryAvailableYears}
+                    activeYear={rangePickerEndYear}
+                    onYearChange={setRangePickerEndYear}
+                    months={summaryAvailableMonthsForEndPickerYear}
+                    selectedMonth={pageView.summaryPage.rangeEndMonth}
+                    isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
+                    onSelect={handleSummaryEndMonthSelect}
+                  />
+                </strong>
+              ) : (
+                <strong className="period-range-value">{periodLabel}</strong>
+              )}
             </div>
-          ) : null}
+            <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isPeriodPassive}>›</button>
+          </div>
           <TotalsVisibilityToggle className="totals-visibility-toggle--header" />
         </div>
       </section>

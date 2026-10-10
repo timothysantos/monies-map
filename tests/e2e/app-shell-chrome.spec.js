@@ -166,21 +166,33 @@ test.describe("month and range pickers", () => {
     await expect(page.getByRole("button", { name: /previous/i }).first()).toBeDisabled();
   });
 
-  // Imports, Settings and FAQ do not use a period: the header used to show
-  // "Range Household" between arrows that did nothing. The period controls
-  // are gone there, on desktop and phone, and the view switch still works.
+  // Imports, Settings and FAQ do not use a period. On a desktop the period
+  // control keeps its place there, greyed out and disabled, and shows the
+  // Summary range last opened (never the page name, as "Range Household"
+  // once did). A phone hides it, as on Splits. The view switch still works.
   for (const [path, heading] of [["/imports", "Imports"], ["/settings", "Settings"], ["/faq", "FAQ"]]) {
-    test(`on ${heading} the period controls are hidden and the view switch still works`, async ({ page }) => {
-      for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
-        await page.setViewportSize(viewport);
-        await page.goto(`${path}?view=household&month=2026-05`);
-        await waitUsable(page);
-        await expect(page.locator(".period-nav-cluster")).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "Previous period" })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "Next period" })).toHaveCount(0);
-        await expect(page.locator(".control-bar")).not.toContainText("Range");
-        await expect(page.locator(".control-bar .period-display")).toHaveCount(0);
-      }
+    test(`on ${heading} the period controls are disabled and the view switch still works`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto("/summary?view=household&month=2026-05&summary_start=2025-07&summary_end=2025-09");
+      await waitUsable(page);
+      await page.locator(`nav.tab-strip > a.tab:has-text("${heading}")`).click();
+      await waitUsable(page);
+      const cluster = page.locator(".period-nav-cluster");
+      await expect(cluster).toHaveClass(/is-passive/);
+      await expect(page.getByRole("button", { name: "Previous period" })).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Next period" })).toBeDisabled();
+      await expect(page.locator(".control-bar .period-display")).toHaveText(/^Range\s*Jul 2025 - Sept? 2025$/);
+      await expect(page.locator(".control-bar .period-display button")).toHaveCount(0);
+
+      // Opened directly, no range is known yet, so it shows the month.
+      await page.goto(`${path}?view=household&month=2026-05`);
+      await waitUsable(page);
+      await expect(page.locator(".control-bar .period-display")).toHaveText(/^Month\s*May 2026$/);
+      await expect(page.getByRole("button", { name: "Previous period" })).toBeDisabled();
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(cluster).toBeHidden();
+
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.locator(".context-block .pill[title='Tim']").click();
       await expect(page).toHaveURL(/view=person-tim/);
