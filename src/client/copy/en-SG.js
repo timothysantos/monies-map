@@ -1,5 +1,7 @@
 // "1 row", "2 rows": a count with the matching form of its noun.
 const countOf = (count, singular, plural = `${singular}s`) => `${count} ${count === 1 ? singular : plural}`;
+// "A", "A and B", "A, B and C".
+const listOf = (names) => names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] ?? "";
 
 export const messages = {
   common: {
@@ -581,6 +583,19 @@ export const messages = {
       later ? `${countOf(later, "entry", "entries")} ${later === 1 ? "stays" : "stay"} for the next statement` : ""
     ].filter(Boolean).join(" · "),
     doneRowsDetail: ({ added, confirmed }) => `${countOf(added, "row")} added · ${countOf(confirmed, "entry", "entries")} confirmed`,
+    // The Done card's plain answer: which file went where, for which period,
+    // and whether anything is left to do.
+    doneConfirmation: ({ fileName, accountNames, period, isStatement, unbalancedCount }) => {
+      const into = accountNames.length ? ` into ${listOf(accountNames)}` : "";
+      if (isStatement) {
+        const forPeriod = period ? ` for the ${period} statement` : "";
+        return unbalancedCount
+          ? `The import of ${fileName}${into}${forPeriod} is saved. Check the ${unbalancedCount === 1 ? "card" : "cards"} saved with a difference.`
+          : `The import of ${fileName}${into}${forPeriod} is done. No further action needed.`;
+      }
+      return `The import of ${fileName}${into}${period ? `, covering ${period},` : ""} is done. No further action needed.`;
+    },
+    donePeriod: (start, end) => `${start} – ${end}`,
     doneRollback: "Roll back this import",
     doneClose: "Close",
     doneReviewNext: (fileName) => `Review next: ${fileName}`,

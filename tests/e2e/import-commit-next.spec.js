@@ -96,9 +96,18 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   await commitButton(page).click();
   await expect(fullDoneCard(page)).toContainText("ladys-card-activity.csv saved", { timeout: 30_000 });
   await expect(fullDoneCard(page)).toContainText("1 row added");
+  // It says which file went into which account, and that nothing is left.
+  await expect(fullDoneCard(page).locator(".import-done-confirmation")).toHaveText(
+    `The import of ladys-card-activity.csv into ${LADYS_CARD}, covering 20 May 2026, is done. No further action needed.`
+  );
+  // A sky notice; Close sits by the title, the rollback at the foot.
+  await expect(fullDoneCard(page)).toHaveCSS("background-color", "rgb(227, 236, 246)");
+  await expect(fullDoneCard(page).locator(".import-done-head").getByRole("button", { name: "Close" })).toBeVisible();
+  await expect(fullDoneCard(page).locator(".import-done-actions").getByRole("button", { name: "Roll back this import" })).toBeVisible();
   await expect(compactSummary(page)).toHaveCount(0);
   await expect(page.locator(".import-stepper .is-current")).toContainText("3 · Done");
   await expect(page.locator(".import-commit-bar")).toHaveCount(0);
+
 });
 
 test("a failed commit opens nothing and keeps the review", async ({ page }, testInfo) => {

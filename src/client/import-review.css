@@ -322,15 +322,38 @@
   font-size: 0.82rem;
 }
 
-/* What the last commit did. */
+/* What the last commit did: a sky notice, so it reads apart from the
+   white review cards around it. */
 .import-done-card {
   display: grid;
   gap: 12px;
   margin-bottom: 16px;
   padding: 18px 20px;
-  border: 1px solid var(--pastel-mint-line);
+  border: 1px solid var(--pastel-sky-line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--pastel-sky);
+}
+
+/* Close stays top right and the status pill bottom right, on a phone too. */
+.import-done-card:not(.is-compact) .import-done-head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.import-done-card:not(.is-compact) .import-done-next {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  max-width: 60%;
+}
+
+.import-done-actions > .pill {
+  margin-left: auto;
+}
+
+.import-done-confirmation {
+  margin: 0;
+  color: var(--pastel-sky-ink);
+  font-weight: 600;
 }
 
 .import-done-head {
@@ -354,6 +377,12 @@
 .import-done-account {
   display: grid;
   gap: 4px;
+}
+
+/* A card's counts can run long ("… stays for the next statement"): wrap
+   them inside the card instead of past its edge. */
+.import-done-account .import-history-inline {
+  white-space: normal;
 }
 
 .import-done-actions,

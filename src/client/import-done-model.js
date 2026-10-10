@@ -1,19 +1,31 @@
 import { messages } from "./copy/en-SG";
+import { formatDateOnly, formatMonthLabel } from "./formatters";
 
 // What a commit did, read from the preview it committed: one entry per
 // statement card (balance, rows added, entries confirmed or moved, entries
-// left for the next statement), or a row count for an activity file.
-export function buildImportDoneSummary({ importId, title, sourceLabel, preview, previewRows, statementReconciliations, isStatement }) {
+// left for the next statement), or a row count for an activity file, and a
+// sentence naming the file, its accounts and its period. `fileName` is the
+// file as the user picked it; pasted rows fall back to the source label.
+export function buildImportDoneSummary({ importId, title, sourceLabel, fileName = "", preview, previewRows, statementReconciliations, isStatement }) {
   const committedRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const count = (rows) => ({
     added: rows.filter((row) => !row.reconciliationTargetTransactionId).length,
     confirmed: rows.filter((row) => row.reconciliationTargetTransactionId).length
   });
+  const shownFileName = fileName || sourceLabel;
   if (!isStatement) {
+    const dates = committedRows.map((row) => row.date).filter(Boolean).sort();
     return {
       importId,
       sourceLabel,
       title: messages.imports.doneTitle(title),
+      confirmation: messages.imports.doneConfirmation({
+        fileName: shownFileName,
+        accountNames: uniqueNames(committedRows.map((row) => row.accountName)),
+        period: dates.length ? formatPeriod(dates[0], dates[dates.length - 1]) : "",
+        isStatement: false,
+        unbalancedCount: 0
+      }),
       cards: [],
       counts: count(committedRows)
     };
@@ -37,8 +49,37 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, preview, 
     importId,
     sourceLabel,
     title: messages.imports.doneTitle(title),
+    confirmation: messages.imports.doneConfirmation({
+      fileName: shownFileName,
+      accountNames: uniqueNames(cards.map((card) => card.name)),
+      period: statementPeriod(statementReconciliations[0]),
+      isStatement: true,
+      unbalancedCount: unbalanced
+    }),
     statusLabel: unbalanced ? messages.imports.doneSavedWithDifference(unbalanced) : messages.imports.doneAllBalanced,
     statusTone: unbalanced ? "warning" : "success",
     cards
   };
+}
+
+function uniqueNames(names) {
+  return [...new Set(names.filter(Boolean))];
+}
+
+function formatPeriod(startDate, endDate) {
+  return startDate === endDate
+    ? formatDateOnly(startDate)
+    : messages.imports.donePeriod(formatDateOnly(startDate), formatDateOnly(endDate));
+}
+
+// The cards of one statement share its period; the first card's dates are
+// the statement's. Without dates, its month names it.
+function statementPeriod(reconciliation) {
+  if (!reconciliation) {
+    return "";
+  }
+  if (reconciliation.statementStartDate && reconciliation.statementEndDate) {
+    return formatPeriod(reconciliation.statementStartDate, reconciliation.statementEndDate);
+  }
+  return reconciliation.checkpointMonth ? formatMonthLabel(reconciliation.checkpointMonth) : "";
 }

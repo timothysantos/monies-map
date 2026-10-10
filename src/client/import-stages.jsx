@@ -86,12 +86,22 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
       </section>
     );
   }
+  // Close and the next file sit by the title; the rollback and how the
+  // cards closed sit at the foot.
   return (
     <section className="import-done-card" aria-label={summary.title}>
       <div className="import-done-head">
         <h3>{summary.title}</h3>
-        {summary.statusLabel ? <span className={`pill ${summary.statusTone}`}>{summary.statusLabel}</span> : null}
+        <div className="import-done-next">
+          <button type="button" className="subtle-action" onClick={onClose}>{messages.imports.doneClose}</button>
+          {nextItem ? (
+            <button type="button" className="import-commit-button" onClick={onReviewNext}>
+              {messages.imports.doneReviewNext(nextItem.fileName)}
+            </button>
+          ) : null}
+        </div>
       </div>
+      {summary.confirmation ? <p className="import-done-confirmation">{summary.confirmation}</p> : null}
       {summary.cards.length ? (
         <div className="import-done-cards">
           {summary.cards.map((card) => (
@@ -107,14 +117,7 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
       )}
       <div className="import-done-actions">
         {rollback ?? <span />}
-        <div className="import-done-next">
-          <button type="button" className="subtle-action" onClick={onClose}>{messages.imports.doneClose}</button>
-          {nextItem ? (
-            <button type="button" className="import-commit-button" onClick={onReviewNext}>
-              {messages.imports.doneReviewNext(nextItem.fileName)}
-            </button>
-          ) : null}
-        </div>
+        {summary.statusLabel ? <span className={`pill ${summary.statusTone}`}>{summary.statusLabel}</span> : null}
       </div>
     </section>
   );

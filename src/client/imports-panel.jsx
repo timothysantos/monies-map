@@ -858,7 +858,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsParsingStatement(true);
     try {
       const parsedImport = await parseImportFileForIntake(file);
-      await loadParsedImport(parsedImport);
+      // A parsed statement does not carry its file's name; the Done card
+      // and the commit notice name it.
+      await loadParsedImport({ ...parsedImport, fileName: parsedImport.fileName ?? file.name });
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
@@ -1308,8 +1310,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       previewRows
     }));
     setRecentImportStatus(null);
+    // The file as the user picked it; pasted rows have none.
+    const committedFileName = intakeQueue.find((item) => item.id === activeIntakeItemId)?.fileName
+      ?? currentImportSourceRef.current?.fileName
+      ?? "";
     const doneSummary = buildImportDoneSummary({
       importId: commitResult.importId,
+      fileName: committedFileName,
       title: isStatementReview
         ? buildStatementTitle({ parserKey: statementImportMeta.parserKey, statementReconciliations, sourceLabel: committedSourceLabel })
         : committedSourceLabel || DEFAULT_SOURCE_LABEL,
