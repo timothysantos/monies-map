@@ -95,3 +95,28 @@ test("several charges on one card are named together; charges older than two mon
   assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card was charged a $100.00 late charge and $4.37 interest since Mon 24 Aug, and no reversal of them is in the app yet.");
   assert.equal(bankChargesSignal({ accountPills: pills, audience: "household", viewLabel: "Household", today: "2026-11-05", formatMoney }), null);
 });
+
+test("a card on penalty interest with money owed is worth a look, naming the rate beside the amount", async () => {
+  const { penaltyInterestSignal } = await import("../src/domain/money-signals/shared-signals.ts");
+  const { findPercentWithoutMoney } = await import("../src/domain/money-signals/tone.ts");
+  const pill = (owedMinor) => ({
+    accountId: "ocbc",
+    accountName: "OCBC 365 Credit Card",
+    ownerLabel: "Joyce",
+    cardNotices: { statementMonth: "2026-10", owedMinor, notices: [{ code: "penalty_interest", annualRatePercent: 30.78 }] }
+  });
+  const signal = penaltyInterestSignal({ accountPills: [pill(3315)], audience: "household", viewLabel: "Household", formatMoney });
+  assert.equal(signal.kind, "worth_a_look");
+  assert.equal(signal.key, "penalty-interest:ocbc:2026-10");
+  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card is charged penalty interest of 30.78% a year, says its October statement, with $33.15 owed.");
+  assertTone(signal);
+  for (const phrasing of signal.phrasings) {
+    assert.deepEqual(findPercentWithoutMoney(phrasing.fact), [], phrasing.fact);
+  }
+  // Nothing owed, or only a past-due notice: nothing to say here.
+  assert.equal(penaltyInterestSignal({ accountPills: [pill(0)], audience: "household", viewLabel: "Household", formatMoney }), null);
+  assert.equal(penaltyInterestSignal({
+    accountPills: [{ ...pill(3315), cardNotices: { statementMonth: "2026-10", owedMinor: 3315, notices: [{ code: "past_due" }] } }],
+    audience: "household", viewLabel: "Household", formatMoney
+  }), null);
+});

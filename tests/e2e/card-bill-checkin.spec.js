@@ -46,6 +46,7 @@ test("a card bill due in 3 days and an unreversed late charge reach the account 
     statementBalanceMinor: 13315,
     paymentDueDate: dueDate,
     minimumPaymentMinor: 5000,
+    notices: [{ code: "penalty_interest", annualRatePercent: 30.78 }],
     note: "Imported from OCBC credit card statement"
   };
   const rows = [
@@ -77,6 +78,7 @@ test("a card bill due in 3 days and an unreversed late charge reach the account 
     paidSinceMinor: 0
   });
   expect(pill.unreversedCharges).toEqual([{ date: isoDay(-11), kind: "late_fee", amountMinor: 10000 }]);
+  expect(pill.cardNotices).toEqual({ statementMonth: statementEnd.slice(0, 7), owedMinor: 13315, notices: [{ code: "penalty_interest", annualRatePercent: 30.78 }] });
 
   // Joyce's Summary leads with the bill.
   await page.goto(`/summary?view=person-joyce&month=${isoDay(0).slice(0, 7)}&scope=direct_plus_shared`);
@@ -90,5 +92,11 @@ test("a card bill due in 3 days and an unreversed late charge reach the account 
     `Coming up: your Test Card bill of $133.15, due in 3 days (${shortDay(dueDate)}).`
   ];
   expect(billLines.some((line) => narrative.includes(line)), narrative).toBe(true);
+  // The late charge and the penalty rate are in the full list.
+  await insight.getByRole("button", { name: "See all insights" }).click();
+  const all = (await insight.innerText()).replace(/\s+/g, " ");
+  expect(all, all).toMatch(/Test Card (was charged a \$100\.00 late charge|from .* hasn't been reversed)|No reversal yet for a \$100\.00 late charge|The bank charged your Test Card a \$100\.00 late charge/);
+  expect(all, all).toContain("30.78% a year");
+  expect(all, all).toContain("$133.15");
   await insight.screenshot({ path: test.info().outputPath("card-bill-checkin.png") });
 });

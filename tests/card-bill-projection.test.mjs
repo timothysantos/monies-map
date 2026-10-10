@@ -76,3 +76,27 @@ test("charges from the last four months with no reversal are listed per card; cu
   assert.deepEqual(facts.get("uob-joyce").unreversedCharges, [{ date: "2026-08-31", kind: "annual_fee", amountMinor: 19620 }]);
   assert.equal(facts.get("uob-tim")?.unreversedCharges, undefined);
 });
+
+// Joyce's OCBC 365: the Oct 2026 statement says penalty interest is charged.
+test("the latest statement's notices are carried while it is recent; an older statement's are not", () => {
+  const penalty = [{ code: "penalty_interest", annualRatePercent: 30.78 }];
+  const facts = buildCardBillFacts({
+    today: "2026-10-12",
+    accounts: [
+      card("ocbc", [
+        checkpoint("2026-10", "2026-10-01", -3315, { notices: penalty }),
+        checkpoint("2026-09", "2026-09-01", -26434, { notices: [{ code: "past_due" }] })
+      ]),
+      // The latest statement no longer prints the notice.
+      card("cleared", [
+        checkpoint("2026-10", "2026-10-01", -100),
+        checkpoint("2026-09", "2026-09-01", -100, { notices: penalty })
+      ]),
+      card("stale", [checkpoint("2026-07", "2026-07-01", -100, { notices: penalty })])
+    ],
+    transactions: []
+  });
+  assert.deepEqual(facts.get("ocbc").cardNotices, { statementMonth: "2026-10", owedMinor: 3315, notices: penalty });
+  assert.equal(facts.get("cleared"), undefined);
+  assert.equal(facts.get("stale"), undefined);
+});

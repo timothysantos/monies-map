@@ -204,7 +204,10 @@ Important distinctions:
   past due; the due date is then the statement date. A manual Settings
   checkpoint leaves them as they were.
 - A statement's `notices` (OCBC's "past due" reminder and its "penalty
-  interest rate") are read for the import review only and not stored.
+  interest rate") are saved with it (`statement_notices_json`), keeping only
+  the notices the app knows how to say (`src/domain/statement-notices.ts`).
+  The check-in reads the latest statement's notices while it closed within
+  62 days; a later statement without the notice ends it.
 
 ### Bank Charge
 

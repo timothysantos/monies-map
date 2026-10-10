@@ -52,9 +52,9 @@ import type {
   ImportPreviewStatementReconciliationDto,
   StatementCheckpointDraftDto,
   StatementDiagnosisDto,
-  StatementFixDto,
-  StatementNoticeDto
+  StatementFixDto
 } from "../types/dto";
+import { cleanStatementNotices } from "./statement-notices";
 
 export async function buildImportPreview(
   db: D1Database,
@@ -2171,7 +2171,7 @@ function buildImportPreviewStatementReconciliations(input: {
       ...(checkpoint.accountLast4 ? { accountLast4: checkpoint.accountLast4 } : {}),
       ...(normalizeStatementDate(checkpoint.paymentDueDate) ? { paymentDueDate: normalizeStatementDate(checkpoint.paymentDueDate)! } : {}),
       ...(Number(checkpoint.minimumPaymentMinor) > 0 ? { minimumPaymentMinor: Math.round(Number(checkpoint.minimumPaymentMinor)) } : {}),
-      ...(checkpoint.notices?.length ? { notices: checkpoint.notices.filter(isStatementNotice) } : {})
+      ...(cleanStatementNotices(checkpoint.notices).length ? { notices: cleanStatementNotices(checkpoint.notices) } : {})
     };
     const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
       breakItem.account_id === account.id
@@ -2616,12 +2616,3 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
   return Array.from(importsById.values());
 }
 
-// Only the notices the app knows how to say, as the parser wrote them.
-function isStatementNotice(notice: unknown): notice is StatementNoticeDto {
-  if (!notice || typeof notice !== "object") {
-    return false;
-  }
-  const value = notice as { code?: unknown; annualRatePercent?: unknown };
-  return value.code === "past_due"
-    || (value.code === "penalty_interest" && typeof value.annualRatePercent === "number" && value.annualRatePercent > 0 && value.annualRatePercent < 100);
-}

@@ -1278,8 +1278,11 @@ A small label says what kind of line it is:
   one at a time.
 - **Worth a look**: something that may well be fine but is easy to miss:
   subscriptions adding up, a category creeping up, a possible double
-  charge, or a late charge, interest or annual fee from the last two months
-  that the bank hasn't reversed.
+  charge, a late charge, interest or annual fee from the last two months
+  that the bank hasn't reversed, or a card whose latest statement says it is
+  charged penalty interest while it owes money ("Joyce's OCBC 365 Credit
+  Card is charged penalty interest of 30.78% a year, says its October
+  statement, with $33.15 owed").
 - **Going well**: plan left over, months under plan, savings on track.
 - **Just for fun**: a light line from your own spending, such as your
   regular spot or the priciest thing on a trip. It never sits next to a

@@ -28,7 +28,7 @@ import {
 } from "./format";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
-import { bankChargesSignal, cardBillSignal, statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
+import { bankChargesSignal, cardBillSignal, penaltyInterestSignal, statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
 const UNSPENT_PLAN_THINKS = ["Unspent plan isn't spent money yet.", "A small decision now keeps it yours.", "Leftover plan is room, not a rule."];
@@ -989,6 +989,7 @@ export function buildMonthSignals(input: MonthSignalInput): MoneySignal[] {
     statementGap ? { ...statementGap, yieldsToBiggerQuestion: true } : null,
     cardBillSignal(accountSignalInput),
     bankChargesSignal(accountSignalInput),
+    penaltyInterestSignal(accountSignalInput),
     unlinkedBillsSignal(input),
     oneOffOverPlanSignal(input),
     categoryOverPlanSignal(input),

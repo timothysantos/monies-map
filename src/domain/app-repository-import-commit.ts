@@ -47,6 +47,7 @@ import type {
 } from "../types/dto";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { classifyBankCharge } from "./bank-charges";
+import { statementNoticesToJson } from "./statement-notices";
 
 // D1 applies its per-query limits (100 bound parameters, 100 KB of SQL,
 // 30 s) to each statement in a batch and documents no statement-count limit,
@@ -865,14 +866,15 @@ export async function commitImportBatch(
       .prepare(`
         INSERT INTO account_balance_checkpoints (
           id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor,
-          payment_due_date, minimum_payment_minor, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          payment_due_date, minimum_payment_minor, statement_notices_json, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
           statement_start_date = excluded.statement_start_date,
           statement_end_date = excluded.statement_end_date,
           statement_balance_minor = excluded.statement_balance_minor,
           payment_due_date = excluded.payment_due_date,
           minimum_payment_minor = excluded.minimum_payment_minor,
+          statement_notices_json = excluded.statement_notices_json,
           note = excluded.note,
           updated_at = CURRENT_TIMESTAMP
       `)
@@ -889,6 +891,7 @@ export async function commitImportBatch(
         ),
         normalizeStatementDate(checkpoint.paymentDueDate),
         normalizeMinimumPaymentMinor(checkpoint.minimumPaymentMinor),
+        statementNoticesToJson(checkpoint.notices),
         checkpoint.note ?? null
       ));
 

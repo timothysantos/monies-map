@@ -1,3 +1,4 @@
+import { statementNoticesFromJson } from "./statement-notices";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   buildAccountHealth,
@@ -140,6 +141,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
         statement_balance_minor,
         payment_due_date,
         minimum_payment_minor,
+        statement_notices_json,
         note
       FROM account_balance_checkpoints
       WHERE household_id = ?
@@ -154,6 +156,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       statement_balance_minor: number;
       payment_due_date: string | null;
       minimum_payment_minor: number | null;
+      statement_notices_json: string | null;
       note: string | null;
     }>();
 
@@ -244,6 +247,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       deltaMinor: computedBalanceMinor - statementBalanceMinor,
       ...(checkpoint.payment_due_date ? { paymentDueDate: checkpoint.payment_due_date } : {}),
       ...(checkpoint.minimum_payment_minor ? { minimumPaymentMinor: checkpoint.minimum_payment_minor } : {}),
+      ...(statementNoticesFromJson(checkpoint.statement_notices_json).length ? { notices: statementNoticesFromJson(checkpoint.statement_notices_json) } : {}),
       note: checkpoint.note ?? undefined
     });
     checkpointHistoryByAccountId.set(checkpoint.account_id, currentHistory);

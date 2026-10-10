@@ -388,6 +388,7 @@ async function ensureDemoSchemaOnce(db: D1Database) {
         statement_balance_minor INTEGER NOT NULL,
         payment_due_date TEXT,
         minimum_payment_minor INTEGER,
+        statement_notices_json TEXT,
         note TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -564,6 +565,11 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   const hasMinimumPayment = checkpointColumns.results.some((column) => column.name === "minimum_payment_minor");
   if (!hasMinimumPayment && checkpointColumns.results.length > 0) {
     await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN minimum_payment_minor INTEGER").run();
+  }
+
+  const hasStatementNotices = checkpointColumns.results.some((column) => column.name === "statement_notices_json");
+  if (!hasStatementNotices && checkpointColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN statement_notices_json TEXT").run();
   }
 
   const statementCertificateColumns = await db

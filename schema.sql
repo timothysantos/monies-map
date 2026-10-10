@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
   -- What the statement asked for: pay by this date, at least this much.
   payment_due_date TEXT,
   minimum_payment_minor INTEGER,
+  -- The bank's notices on the statement (past due, penalty interest), JSON.
+  statement_notices_json TEXT,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

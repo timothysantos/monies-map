@@ -87,6 +87,19 @@ export const SHARED_COPY = {
       think: "The payment is in the app."
     }
   },
+  penaltyInterest: {
+    phrasings: [
+      "{whose} {account} is charged penalty interest of {rate}% a year, says its {month} statement, with {amount} owed.",
+      "{whose} {account} {month} statement owes {amount} at a penalty interest rate of {rate}% a year.",
+      "The bank moved {whose} {account} to penalty interest of {rate}% a year; its {month} statement owes {amount}.",
+      "{amount} owed on {whose} {account}, at penalty interest of {rate}% a year, per its {month} statement."
+    ],
+    think: [
+      "Banks raise a card's rate after a missed minimum payment. Paying each statement in full by its due date keeps interest off the card.",
+      "The rate only costs money on a balance carried past the due date, so paying the {amount} in full by then means no interest at all.",
+      "Each statement says whether the penalty rate still applies; this line goes once a statement no longer does."
+    ]
+  },
   bankCharges: {
     phrasingsOne: [
       "{whose} {account} was charged {charges} on {date}, and no reversal of it is in the app yet.",
@@ -125,6 +138,11 @@ export interface WalletHealthPill {
     paidSinceMinor: number;
   };
   unreversedCharges?: Array<{ date: string; kind: "late_fee" | "interest" | "annual_fee" | "other_fee"; amountMinor: number }>;
+  cardNotices?: {
+    statementMonth: string;
+    owedMinor: number;
+    notices: Array<{ code: string; annualRatePercent?: number }>;
+  };
 }
 
 // "Serene's" for the household, "your" for the person's own account, and
@@ -298,4 +316,42 @@ function describeCharge(kind: string, amount: string) {
     default:
       return `${amount} in bank fees`;
   }
+}
+
+// Worth a look: a card whose latest statement says it is charged penalty
+// interest, while that statement owes money (the rate costs nothing on a
+// card paid in full). The highest balance first.
+export function penaltyInterestSignal(input: {
+  accountPills: WalletHealthPill[] | null | undefined;
+  audience: Audience;
+  viewLabel: string;
+  formatMoney: FormatMoney;
+}): MoneySignal | null {
+  const cards = (input.accountPills ?? []).flatMap((pill) => {
+    const notice = pill.cardNotices?.notices.find((item) => item.code === "penalty_interest" && Number(item.annualRatePercent) > 0);
+    return notice && pill.cardNotices && pill.cardNotices.owedMinor > 0
+      ? [{ pill, rate: Number(notice.annualRatePercent), owedMinor: pill.cardNotices.owedMinor, month: pill.cardNotices.statementMonth }]
+      : [];
+  }).sort((left, right) => right.owedMinor - left.owedMinor || left.pill.accountName.localeCompare(right.pill.accountName));
+  const pick = cards[0];
+  if (!pick) {
+    return null;
+  }
+  const amount = input.formatMoney(pick.owedMinor);
+  const values = {
+    whose: whoseAccount(pick.pill, input.audience, input.viewLabel),
+    account: pick.pill.accountName,
+    rate: String(pick.rate),
+    month: monthName(pick.month),
+    amount
+  };
+  return {
+    key: `penalty-interest:${pick.pill.accountId}:${pick.month}`,
+    kind: "worth_a_look",
+    weight: pick.owedMinor,
+    numbers: { primaryMinor: pick.owedMinor },
+    primaryText: amount,
+    phrasings: phrase(SHARED_COPY.penaltyInterest, values),
+    topic: "small-costs"
+  };
 }

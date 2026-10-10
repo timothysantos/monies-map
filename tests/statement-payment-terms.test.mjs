@@ -69,8 +69,25 @@ test("a statement's due date, minimum and notices show on its card and the due d
     rows: preview.payload.preview.previewRows.filter((item) => item.commitStatus === "included")
   });
   assert.equal(commit.status, 200, JSON.stringify(commit.payload));
-  const [saved] = await rows(db, "SELECT payment_due_date, minimum_payment_minor FROM account_balance_checkpoints WHERE account_id = ? AND checkpoint_month = '2030-10'", account.id);
-  assert.deepEqual(saved, { payment_due_date: "2030-10-23", minimum_payment_minor: 3315 });
+  const [saved] = await rows(db, "SELECT payment_due_date, minimum_payment_minor, statement_notices_json FROM account_balance_checkpoints WHERE account_id = ? AND checkpoint_month = '2030-10'", account.id);
+  assert.deepEqual(saved, {
+    payment_due_date: "2030-10-23",
+    minimum_payment_minor: 3315,
+    statement_notices_json: JSON.stringify([{ code: "penalty_interest", annualRatePercent: 30.78 }])
+  });
+
+  // The card's pill carries the bill and the notice for the check-in.
+  const pills = await api("/api/summary-account-pills?view=household");
+  const pill = pills.payload.accountPills.find((item) => item.accountId === account.id);
+  assert.deepEqual(pill.cardBill, {
+    statementMonth: "2030-10",
+    statementEndDate: "2030-10-01",
+    paymentDueDate: "2030-10-23",
+    owedMinor: 3315,
+    minimumMinor: 3315,
+    paidSinceMinor: 0
+  });
+  assert.deepEqual(pill.cardNotices, { statementMonth: "2030-10", owedMinor: 3315, notices: [{ code: "penalty_interest", annualRatePercent: 30.78 }] });
 });
 
 test("a statement with no due date or a bad minimum saves neither", async (t) => {
@@ -97,6 +114,6 @@ test("a statement with no due date or a bad minimum saves neither", async (t) =>
     rows: preview.payload.preview.previewRows.filter((item) => item.commitStatus === "included")
   });
   assert.equal(commit.status, 200, JSON.stringify(commit.payload));
-  const [saved] = await rows(db, "SELECT payment_due_date, minimum_payment_minor FROM account_balance_checkpoints WHERE account_id = ? AND checkpoint_month = '2030-10'", account.id);
-  assert.deepEqual(saved, { payment_due_date: null, minimum_payment_minor: null });
+  const [saved] = await rows(db, "SELECT payment_due_date, minimum_payment_minor, statement_notices_json FROM account_balance_checkpoints WHERE account_id = ? AND checkpoint_month = '2030-10'", account.id);
+  assert.deepEqual(saved, { payment_due_date: null, minimum_payment_minor: null, statement_notices_json: null });
 });

@@ -1257,7 +1257,8 @@ comparison use `post_date`.
   statement checkpoint's `paymentDueDate` and `minimumPaymentMinor` are saved
   on `account_balance_checkpoints` (`payment_due_date`,
   `minimum_payment_minor`); `/api/summary-account-pills` turns the latest
-  one into `cardBill` and lists `unreversedCharges` for the check-in
+  one into `cardBill`, its saved notices (`statement_notices_json`) into
+  `cardNotices`, and lists `unreversedCharges` for the check-in
   (`src/domain/card-bill-projection.ts`).
 - Citibank current-activity CSV files are headerless. In the single-file flow,
   the app applies the Citi activity parser when the selected default account is

@@ -66,6 +66,7 @@ export interface AccountCheckpointDto {
   // What the statement asked for (card statements that print it).
   paymentDueDate?: string;
   minimumPaymentMinor?: number;
+  notices?: StatementNoticeDto[];
   computedBalanceMinor: number;
   deltaMinor: number;
   note?: string;
@@ -84,6 +85,15 @@ export interface SummaryAccountPillDto {
   // reversal cancelled (card-bill-projection.ts).
   cardBill?: CardBillDto;
   unreversedCharges?: UnreversedChargeDto[];
+  // The bank's notices on the card's latest statement, while it is recent.
+  cardNotices?: CardNoticesDto;
+}
+
+export interface CardNoticesDto {
+  statementMonth: string;
+  // What that statement says the card owes (positive), 0 when nothing.
+  owedMinor: number;
+  notices: StatementNoticeDto[];
 }
 
 // What a card's latest statement asks for, and what has been paid to the

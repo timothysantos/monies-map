@@ -201,6 +201,23 @@ Way to think about it, in turn:
 
 Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
 
+### penaltyInterest (Worth a look)
+
+A card's latest statement (closed in the last 62 days) prints a penalty interest rate and owes money (the card with the most owed). Summary and Month.
+
+Phrasings:
+
+- {whose} {account} is charged penalty interest of {rate}% a year, says its {month} statement, with {amount} owed.
+- {whose} {account} {month} statement owes {amount} at a penalty interest rate of {rate}% a year.
+- The bank moved {whose} {account} to penalty interest of {rate}% a year; its {month} statement owes {amount}.
+- {amount} owed on {whose} {account}, at penalty interest of {rate}% a year, per its {month} statement.
+
+Way to think about it, in turn:
+
+- Banks raise a card's rate after a missed minimum payment. Paying each statement in full by its due date keeps interest off the card.
+- The rate only costs money on a balance carried past the due date, so paying the {amount} in full by then means no interest at all.
+- Each statement says whether the penalty rate still applies; this line goes once a statement no longer does.
+
 ### bankCharges (Worth a look)
 
 A card was charged a late charge, interest, an annual fee or another bank fee in the last 60 days and no reversal of the same kind and amount is in the ledger (the card with the most). Summary and Month.
