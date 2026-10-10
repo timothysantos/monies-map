@@ -1196,6 +1196,9 @@ Your card's own amount may differ a little. When you import the card's
 activity export, each of these purchases is matched to the card's row and
 takes its current amount; a later export updates it again if the amount
 changed, and the statement sets the final amount. It is never added twice.
+Before you import, the matched row says what will change, for example
+"update the estimate for IDR 159,000 from SGD 11.34 to the card's SGD
+11.66".
 
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
 to your first card in **Default account priority**. Under **Paying in another

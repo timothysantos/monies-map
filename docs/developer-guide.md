@@ -471,13 +471,19 @@ sent. The last rate per pair is saved in `fx_rates` and reused for 12 hours,
 and for up to 14 days when both sources are down. With no usable rate the
 request is refused with 503 and saves nothing. `FX_RATES_OFFLINE=true` (the
 test Worker) uses saved rates only. When the card's statement or activity
-export arrives, the import preview matches its SGD row to the estimate within
-5% (`isWithinEstimateBand` in `app-repository-import-preview.ts`), by
-wording, by the card's cut-off shop name behind the payment app's prefix
-(`isCardMerchantPrefixMatch` in `statement-row-matching.ts`), or, for rows
-that name only a gateway, when the row has the payment app's prefix and the
-pair is each other's only fit (`isOnlyEstimatePair`); the commit then writes
-the card's amount. An estimate stays open to later activity exports (the
+export arrives, the import preview matches its SGD row to the estimate when
+it is at most 5% over and 2% under it (`isEstimateAmountFit` in
+`app-repository-import-preview.ts`; a row printing a different foreign
+amount never fits). `pairForeignCurrencyEstimates` pairs the whole file at
+once, surest first: the foreign amount the row prints
+(`readCardForeignAmountMinor` in `statement-row-matching.ts`), then the
+card's cut-off shop name behind the payment app's prefix
+(`isCardMerchantPrefixMatch`; several at one shop on one day pair by size),
+then a payment-app row naming no shop when it and the estimate are each
+other's only fit among what is left. Wording matches work as for any entry.
+The commit then writes the card's amount, and the preview says so ("will
+update the estimate for IDR 1,233,430 from SGD 87.95 to the card's SGD
+90.30"). An estimate stays open to later activity exports (the
 mid-cycle isolation in `isReconciliationCandidateEligibleForSource` does not
 apply to it): a newer interim amount updates it, the same amount is skipped,
 the promotion snapshot keeps the earlier export's link, and rollback restores
@@ -485,7 +491,10 @@ that link and refuses an earlier export while a later one holds the entry.
 `tests/foreign-estimate-matching-api.test.mjs` covers the matches and the
 refusals; `tests/foreign-estimate-real-citi.test.mjs` runs the 45 Amaze rows
 of a real Citi Rewards statement (wording and dates real, amounts scaled)
-against simulated Wallet estimates and requires zero wrong pairings. `amountMinor` also works
+against simulated Wallet estimates and requires zero wrong pairings;
+`tests/foreign-estimate-real-citi-activity.test.mjs` runs a real Citi
+activity export from a trip to Bali against the 19 estimates saved for it
+and requires each to pair with its own row. `amountMinor` also works
 if the caller already uses integer cents; when both forms are sent, they must
 agree.
 

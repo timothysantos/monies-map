@@ -1237,14 +1237,20 @@ Important distinctions:
   in a currency its account does not use.
 - The estimate is provisional like any manual entry. The card's statement
   carries the exact amount: a statement or activity-export row on the same
-  account matches the estimate when its amount is within 5% (at least 10
-  cents) of it, the day fits the velocity rule, and either the wording
-  matches, the card's cut-off shop name starts the Wallet name (Citi prints
-  "AMAZE*E-MARTYONGS" for "E-MART Yongsan"; a payment gateway such as
-  "AMAZE*EXIMBAYCO.," never counts as a shop), or the row comes from the
-  payment app ("AMAZE*...") and the two are each other's only fit by amount
-  and day. An ordinary card row ("SHOPEESGMP") near an estimate's amount
-  is never taken for it without the shop's name.
+  account can be the estimate's purchase when its amount is at most 5% over
+  it and at most 2% under it (at least 10 cents either way; the card's fees
+  only add, and once an export has set the card's amount the next may move
+  it 5% either way), and the day fits the velocity rule. A row that prints a
+  different amount in the purchase's currency is never that purchase. The
+  whole file is paired at once, surest first: a row that prints the
+  purchase's own foreign amount ("Grab* ... IDR 166,600"); a row whose
+  wording matches or whose cut-off shop name starts the Wallet name (Citi
+  prints "AMAZE*E-MARTYONGS" for "E-MART Yongsan"; a payment gateway such
+  as "AMAZE*EXIMBAYCO.," never counts as a shop), several purchases at one
+  shop on one day pairing by size; then a payment-app row naming no shop
+  ("AMAZE* GOPAYID") when it and the estimate are each other's only fit
+  among the rows and estimates left. An ordinary card row ("SHOPEESGMP")
+  near an estimate's amount is never taken for it without the shop's name.
 - An estimate stays open until its statement: each activity export may
   update it to the card's latest interim amount (the same amount again is
   skipped as the same row), keeping the earlier link and amount for the
