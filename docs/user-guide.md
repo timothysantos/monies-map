@@ -693,9 +693,14 @@ words.
    **Before you can commit:** at the top, or **Jump to next** beside the
    commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
-   batch appears under **Recent imports**. The **Done** step says what
+   batch appears under **Recent imports**. The **Done** step (a blue box)
+   names the file, the accounts it went into and the statement period, and
+   says **No further action needed** when every card balanced. It shows what
    changed on each card (rows added, entries confirmed or moved, entries left
-   for the next statement), with **Roll back this import**. When more
+   for the next statement), with **Close** at the top and **Roll back this
+   import** at the bottom. **Recent imports** says **File imported:** with
+   the file's name, and lists the five imports before it, so you can check
+   them against your files. When more
    files are queued the button reads **Commit and open next**; the next file
    opens after the commit under a short summary of the one you committed.
 
@@ -783,6 +788,12 @@ and period, each card has its own section with an outcome:
 - **Needs manual review**: the app found causes it can't fix for you, listed
   under **Also check**.
 - **Still mismatched**: nothing explains the difference yet.
+
+Under its name each card counts its rows, for example "34 new rows · none
+already in your ledger". New rows become new entries. Rows already in your
+ledger are entries you added before, from an activity export or by hand,
+that this statement confirms, or rows an earlier import of this statement
+saved. They are not added twice.
 
 Each card lists its rows read-only (**Rows on this card's statement**) and,
 when it does not balance, **How the difference adds up**. **Edit rows** opens

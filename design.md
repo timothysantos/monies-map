@@ -261,7 +261,16 @@ Rules:
 - a file dropped anywhere on the page goes to the drop zone's handler
   (`usePageFileDrop`, `import-page-drop.js`), except on the file in review
   (`data-page-drop="off"`), dialogs and popovers
-- Recent imports starts closed; its status line shows either way
+- Recent imports starts closed; its status line shows either way. After a
+  commit it reads "File imported: <file>" (the file as picked, else the
+  source label) and lists, quieter, the five completed imports before it
+  (`buildEarlierImportLines` in `import-history-model.js`: accounts, the
+  dates their rows cover, label)
+- the full Done card (`ImportDoneCard`) is a sky notice: title with Close
+  (and Review next) at the top right, then `buildImportDoneSummary`'s
+  `confirmation` sentence (file, accounts, statement period or row dates;
+  "No further action needed" only when every card balanced), the cards,
+  and Roll back at the bottom left with the status pill at the bottom right
 - the Bring files styles load with the route (`import-bring-files.css`)
 - an official statement is reviewed by `StatementReview` in
   `import-preview-review.jsx`: one header, one section per card with its
