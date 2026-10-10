@@ -80,6 +80,28 @@ export interface SummaryAccountPillDto {
   latestCheckpointMonth?: string;
   latestCheckpointDeltaMinor?: number;
   reconciliationStatus?: ReconciliationStatus;
+  // Card accounts only: the latest statement's bill, and bank charges no
+  // reversal cancelled (card-bill-projection.ts).
+  cardBill?: CardBillDto;
+  unreversedCharges?: UnreversedChargeDto[];
+}
+
+// What a card's latest statement asks for, and what has been paid to the
+// card since it closed. Amounts are positive.
+export interface CardBillDto {
+  statementMonth: string;
+  statementEndDate: string;
+  paymentDueDate: string;
+  owedMinor: number;
+  minimumMinor?: number;
+  paidSinceMinor: number;
+}
+
+// A late charge, interest, annual fee or other bank fee with no reversal.
+export interface UnreversedChargeDto {
+  date: string;
+  kind: "late_fee" | "interest" | "annual_fee" | "other_fee";
+  amountMinor: number;
 }
 
 export interface CategoryDto {
