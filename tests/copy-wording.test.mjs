@@ -86,3 +86,9 @@ test("the Apple Pay section uses plain words", () => {
     assert.doesNotMatch(text, /API|accountId|accountName|account_id/);
   }
 });
+
+test("a statement card counts the rows the ledger already has in plain words", () => {
+  assert.equal(messages.imports.statementCardCounts(34, 0), "34 new rows · none already in your ledger");
+  assert.equal(messages.imports.statementCardCounts(1, 26), "1 new row · 26 already in your ledger");
+  assert.doesNotMatch(messages.imports.statementCardCounts(34, 0), /confirm entries you have/);
+});

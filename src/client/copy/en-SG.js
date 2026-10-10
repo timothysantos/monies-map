@@ -615,7 +615,10 @@ export const messages = {
     statementHowItAddsUp: "How the difference adds up",
     statementCardDifference: (amount, after) => after ? `difference ${amount} → ${after} after the fix` : `difference ${amount}`,
     statementAlreadyImported: (dateLabel, sourceLabel) => `Already imported on ${dateLabel} from ${sourceLabel}`,
-    statementCardCounts: (added, confirmed) => `${countOf(added, "new row")} · ${confirmed} ${confirmed === 1 ? "confirms an entry" : "confirm entries"} you have`,
+    // Confirmed rows are the ones the ledger already has: a mid-cycle or
+    // hand-entered entry this statement certifies, or a row an earlier
+    // import of this statement covered.
+    statementCardCounts: (added, confirmed) => `${countOf(added, "new row")} · ${confirmed ? confirmed : "none"} already in your ledger`,
     statementCardShow: "Show",
     statementCardHide: "Hide",
     statementCardRowsTitle: (count) => `Rows on this card's statement (${count})`,
