@@ -13,7 +13,7 @@ import { moneyToneClass } from "./money-tone-class";
 import { useMoneyPrivacy } from "./money-privacy";
 import { entryAmountTone } from "../domain/money-tone";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
-import { isLedgerMatchedPreviewRow } from "./import-preview-model";
+import { getMissingStatementMonths, isLedgerMatchedPreviewRow } from "./import-preview-model";
 import { getPersonColourVars } from "./person-colour";
 import "./import-review.css";
 
@@ -1576,6 +1576,11 @@ export function getStatementCardStatus({ reconciliation, diagnosis }) {
   }
   if ((reconciliation.deltaMinor ?? 0) === 0) {
     return { key: "resolved", tone: "success", label: labels.resolved };
+  }
+  // A statement or more was never imported between the last saved one and
+  // this one: importing them is the fix, so say that rather than "review".
+  if (reconciliation.accountId && getMissingStatementMonths(diagnosis, reconciliation.accountId).length) {
+    return { key: "missing_statements", tone: "pill-lavender", label: labels.missing_prior_statement };
   }
   const outcome = card?.outcome ?? "still_mismatched";
   if (outcome === "partially_resolved") {

@@ -68,6 +68,10 @@ test("a statement after months that were never imported names them, and the card
     "Your Jul 2026 and Aug 2026 statements aren't imported yet. Your ledger stops at the 1 Jun 2026 statement ($0.00), and this statement starts from $101.86 owed. Import them first, then this one."
   );
   await expect(card.locator(".statement-fix-check")).not.toContainText("An earlier statement may be missing");
+  // The pill, the blocker chip and the balance line say the same thing.
+  await expect(card.locator(".pill").first()).toHaveText("Earlier statement missing");
+  await expect(card).toContainText("Statement: $240.56 owed • Ledger after import: $138.70 owed • difference $101.86");
+  await expect(page.locator(".import-blockers").getByRole("button", { name: "OCBC 365 Credit Card: import Jul 2026 and Aug 2026 first" })).toBeVisible();
 });
 
 test("a statement right after the last saved one keeps the general opening-balance wording", async ({ page }, testInfo) => {
@@ -104,4 +108,6 @@ test("a statement right after the last saved one keeps the general opening-balan
     { timeout: 60_000 }
   );
   await expect(card.locator(".statement-fix-check")).not.toContainText("imported yet");
+  await expect(card.locator(".pill").first()).toHaveText("Needs manual review");
+  await expect(page.locator(".import-blockers").getByRole("button", { name: "OCBC 365 Credit Card off by $101.86" })).toBeVisible();
 });

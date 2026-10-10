@@ -431,6 +431,9 @@ receipt button adds a shared expense.
   - **Before you can commit:** what still needs you in the file in review,
     in the order to fix it: accounts to map, cards that don't match the
     statement (with the amount when money totals are shown), rows to check.
+    A card whose earlier statement was never imported says which one to
+    import first instead, for example "OCBC 365 Credit Card: import Sept 2026
+    first".
     A card that has no account yet is counted once, under **Map 1 account**.
     Select one to go straight to it. A green chip counts the rows already
     matched to your entries.
@@ -786,6 +789,8 @@ and period, each card has its own section with an outcome:
 - **Fix ready**: a suggested fix would make it match
   ([Fix a statement that does not balance](#fix-a-statement-that-does-not-balance)).
 - **Partially resolved**: the fixes leave some of the difference.
+- **Earlier statement missing**: a statement between the last one you saved
+  and this one was never imported. **Also check** names it; import it first.
 - **Needs manual review**: the app found causes it can't fix for you, listed
   under **Also check**.
 - **Still mismatched**: nothing explains the difference yet.
@@ -798,8 +803,10 @@ account, use **Change card accounts**. After the first statement is saved, the
 account remembers those four digits, so the next statement finds it even if
 the bank renames the card.
 
-Under its name each card counts its rows, for example "34 new rows · none
-already in your ledger". New rows become new entries. Rows already in your
+Under its name a card shows the statement's balance and your ledger's
+balance once this import is saved, for example "Statement: $33.15 owed •
+Ledger after import: $119.26 in credit • difference $152.41". Under that it
+counts its rows, for example "34 new rows · none already in your ledger". New rows become new entries. Rows already in your
 ledger are entries you added before, from an activity export or by hand,
 that this statement confirms, or rows an earlier import of this statement
 saved. They are not added twice.

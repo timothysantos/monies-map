@@ -542,6 +542,7 @@ export const messages = {
     blockersLabel: "What to fix before committing",
     blockerMapAccounts: (count) => `Map ${countOf(count, "account")}`,
     blockerCardOff: (card, amount) => `${card} off by ${amount}`,
+    blockerCardImportFirst: (card, months) => `${card}: import ${months} first`,
     blockerCardNoMatch: (card) => `${card} doesn't match`,
     blockerRowsToCheck: (count) => `${countOf(count, "row")} to check`,
     blockerRowsMatched: (count) => `${countOf(count, "row")} matched`,

@@ -154,9 +154,21 @@ export function buildImportPreviewModel({
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),
     statementReconciliations,
+    statementDiagnosis: preview?.statementDiagnosis,
     unknownPreviewAccountNames,
     visibleOverlapImports
   };
+}
+
+// The months with no saved statement between the account's last saved
+// statement and this one, when they explain why the balance before this
+// statement is off (the diagnosis's missing_statements fact). Empty when
+// nothing is missing.
+export function getMissingStatementMonths(diagnosis, accountId) {
+  const gap = (diagnosis?.findings ?? []).find((finding) => (
+    finding.kind === "opening_balance_gap" && finding.accountId === accountId
+  ));
+  return gap?.facts?.find((fact) => fact.code === "missing_statements")?.months ?? [];
 }
 
 function buildAccountNameCounts(accounts) {

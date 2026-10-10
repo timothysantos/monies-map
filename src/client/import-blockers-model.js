@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
-import { formatDateOnly } from "./formatters";
+import { formatDateOnly, formatMonthLabel } from "./formatters";
+import { getMissingStatementMonths } from "./import-preview-model";
 
 // What stands between the file in review and a clean commit, in the order
 // the user should fix it. This is the one place the commit rules live: the
@@ -117,7 +118,11 @@ export function buildImportBlockers({
         id: `statement-card:${card.accountName}:${card.checkpointMonth ?? ""}`,
         effect: cardEffect,
         order: BLOCKER_ORDER["statement-card"] + index / 100,
-        label: describeCardLabel(card, { areTotalsVisible, formatMoney }),
+        label: describeCardLabel(card, {
+          areTotalsVisible,
+          formatMoney,
+          missingMonths: card.accountId ? getMissingStatementMonths(previewModel.statementDiagnosis, card.accountId) : []
+        }),
         target: { kind: "statement-card", accountName: card.accountName, checkpointMonth: card.checkpointMonth }
       }));
     });
@@ -168,8 +173,13 @@ function buildColumnBlockers({ readyForMapping, missingRequiredFields = [], dupl
 }
 
 // "UOB Lady's Card off by $12.40". Hidden money names the card only: no
-// amount and no word that gives away which way it is off.
-function describeCardLabel(card, { areTotalsVisible, formatMoney }) {
+// amount and no word that gives away which way it is off. A card whose
+// earlier statements were never imported says which to import first
+// ("OCBC 365 Credit Card: import Sept 2026 first"), with or without money.
+function describeCardLabel(card, { areTotalsVisible, formatMoney, missingMonths = [] }) {
+  if (missingMonths.length) {
+    return messages.imports.blockerCardImportFirst(card.accountName, missingMonths.map(formatMonthLabel).join(" and "));
+  }
   const deltaMinor = Number(card.deltaMinor ?? 0);
   return areTotalsVisible && deltaMinor !== 0
     ? messages.imports.blockerCardOff(card.accountName, formatMoney(Math.abs(deltaMinor)))

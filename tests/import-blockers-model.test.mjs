@@ -25,10 +25,10 @@ function row(overrides) {
   };
 }
 
-function previewModelFor({ accounts = [LADYS, PRVI], previewRows, statementCheckpoints = [], statementReconciliations = [], sourceType = "pdf", unknownCategories = [], unknownCategoryMode = "other" }) {
+function previewModelFor({ accounts = [LADYS, PRVI], previewRows, statementCheckpoints = [], statementReconciliations = [], statementDiagnosis, sourceType = "pdf", unknownCategories = [], unknownCategoryMode = "other" }) {
   return buildImportPreviewModel({
     accounts,
-    preview: { statementReconciliations, unknownCategories, overlapImports: [] },
+    preview: { statementReconciliations, unknownCategories, overlapImports: [], ...(statementDiagnosis ? { statementDiagnosis } : {}) },
     previewRows,
     statementCheckpoints,
     statementImportMeta: { sourceType, parserKey: sourceType === "pdf" ? "uob_credit_card_pdf" : "generic_csv" },
@@ -173,6 +173,38 @@ test("hidden money names the card without an amount or anything that shows its s
   for (const blocker of result.blockers) {
     assert.doesNotMatch(blocker.label, /\$|\d+\.\d{2}|off by|owed|credit|short|over/i, blocker.label);
   }
+});
+
+// The Oct 2026 OCBC 365 case: the Sept statement was never imported, so the
+// chip says what to do instead of how far off the card is.
+test("a card whose earlier statements were never imported says which to import first", () => {
+  const statementDiagnosis = {
+    cards: [],
+    findings: [{
+      id: `opening_balance_gap:${LADYS.id}`,
+      kind: "opening_balance_gap",
+      accountId: LADYS.id,
+      effectMinor: -15241,
+      confidence: "medium",
+      applied: false,
+      facts: [{ code: "missing_statements", months: ["2026-08", "2026-09"], lastStatementMonth: "2026-07", lastStatementEndDate: "2026-07-01", previousStatementBalanceMinor: -26434 }]
+    }]
+  };
+  const input = {
+    statementCheckpoints: [{ detectedAccountName: LADYS.name, accountName: LADYS.name, accountId: LADYS.id, checkpointMonth: "2026-10" }],
+    statementReconciliations: [{ accountName: LADYS.name, accountId: LADYS.id, status: "mismatch", deltaMinor: 15241, checkpointMonth: "2026-10" }],
+    statementDiagnosis,
+    previewRows: [row({ rowId: "ladys-1", accountId: LADYS.id, accountName: LADYS.name })]
+  };
+  const shown = blockersFor(input).blockers.find((blocker) => blocker.kind === "statement-card");
+  assert.equal(shown.label, "UOB Lady's Card: import Aug 2026 and Sept 2026 first");
+  // It says nothing about the amount, so hidden money shows the same words.
+  const hidden = blockersFor(input, { areTotalsVisible: false }).blockers.find((blocker) => blocker.kind === "statement-card");
+  assert.equal(hidden.label, "UOB Lady's Card: import Aug 2026 and Sept 2026 first");
+
+  // A gap with no missing month keeps the amount.
+  const plain = blockersFor({ ...input, statementDiagnosis: { cards: [], findings: [{ ...statementDiagnosis.findings[0], facts: [] }] } });
+  assert.equal(plain.blockers.find((blocker) => blocker.kind === "statement-card").label, "UOB Lady's Card off by $152.41");
 });
 
 test("a row edit the statement check has not seen asks to refresh the check first", () => {

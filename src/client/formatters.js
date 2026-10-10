@@ -177,11 +177,27 @@ export function formatStatementReconciliationLine(item) {
     return `Statement ${money(item.statementBalanceMinor)}`;
   }
 
+  // The ledger side is the balance once this import is saved, so it says so.
   if (item.accountKind === "credit_card") {
-    return `${formatCreditCardStatementSide("Statement", item.statementBalanceMinor)} • ${formatCreditCardStatementSide("Ledger", item.projectedLedgerBalanceMinor)}`;
+    return `Statement: ${formatCreditCardBalance(item.statementBalanceMinor)} • Ledger after import: ${formatCreditCardBalance(item.projectedLedgerBalanceMinor)}`;
   }
 
-  return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.projectedLedgerBalanceMinor)}`;
+  return `Statement: ${money(item.statementBalanceMinor)} • Ledger after import: ${money(item.projectedLedgerBalanceMinor)}`;
+}
+
+// "$33.15 owed" or "$119.26 in credit", the way a card statement reads.
+// Hidden money shows no word that gives away the sign.
+function formatCreditCardBalance(valueMinor) {
+  if (isMoneyPrivacyHidden()) {
+    return money(valueMinor);
+  }
+  if (valueMinor < 0) {
+    return `${money(Math.abs(valueMinor))} owed`;
+  }
+  if (valueMinor > 0) {
+    return `${money(valueMinor)} in credit`;
+  }
+  return money(0);
 }
 
 function formatCreditCardStatementSide(label, valueMinor) {
