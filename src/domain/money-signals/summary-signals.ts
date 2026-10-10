@@ -20,7 +20,7 @@ import {
 } from "./format";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
-import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
+import { bankChargesSignal, cardBillSignal, statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
 export const SUMMARY_COPY = {
@@ -908,6 +908,8 @@ export function anniversaryTrivia(input: SummarySignalInput): MoneySignal | null
 export function buildSummarySignals(input: SummarySignalInput): MoneySignal[] {
   return [
     statementGapSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, formatMoney: input.formatMoney }),
+    cardBillSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, today: input.today, formatMoney: input.formatMoney }),
+    bankChargesSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, today: input.today, formatMoney: input.formatMoney }),
     spendingAboveIncomeSignal(input),
     categoryCreepSignal(input),
     subscriptionsSignal(input),

@@ -32,7 +32,11 @@ export const CATALOGUES = [
     title: "Summary and Month (shared)",
     copy: SHARED_COPY,
     entries: {
-      statementGap: ["quick_fix", "A wallet's latest statement does not match the app (the largest gap). Summary and Month."]
+      statementGap: ["quick_fix", "A wallet's latest statement does not match the app (the largest gap). Summary and Month."],
+      cardBillDue: ["quick_fix", "A card's latest statement is due within 7 days and no payment to the card has been recorded since it closed. Summary and Month."],
+      cardBillPart: ["quick_fix", "As above, with part of the bill paid since the statement closed: the rest still to pay. Summary and Month."],
+      cardBillOverdue: ["quick_fix", "A card's latest statement was due up to 30 days ago and less than its minimum (or the whole bill) has been paid since it closed. Shown ahead of bills only due. Summary and Month."],
+      bankCharges: ["worth_a_look", "A card was charged a late charge, interest, an annual fee or another bank fee in the last 60 days and no reversal of the same kind and amount is in the ledger (the card with the most). Summary and Month."]
     }
   },
   {
