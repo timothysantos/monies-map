@@ -595,6 +595,25 @@ export interface ImportNoLongerListedEntryDto {
   entryType: EntryType;
 }
 
+// A foreign currency estimate an earlier activity export updated from a row
+// this one, covering its date, no longer lists (usually a hold the bank
+// released). Its final charge may be a row of this file at another foreign
+// amount, which never pairs by itself: the user links it, or the commit puts
+// the estimate back to its own saved amount.
+export interface ImportUnlistedEstimateDto {
+  transactionId: string;
+  importId: string;
+  accountId: string;
+  accountName: string;
+  date: string;
+  walletDescription: string;
+  originalAmount: string;
+  currency: string;
+  amountMinor: number;
+  restoredAmountMinor: number;
+  candidates: { rowId: string; date: string; description: string; amountMinor: number }[];
+}
+
 export interface ImportPreviewDto {
   sourceLabel: string;
   parserKey: string;
@@ -618,6 +637,7 @@ export interface ImportPreviewDto {
   // because their printed name matches no account.
   // Activity exports only: entries the bank no longer lists.
   noLongerListedEntries?: ImportNoLongerListedEntryDto[];
+  unlistedEstimates?: ImportUnlistedEstimateDto[];
   statementAccountMatches?: {
     detectedAccountName: string;
     accountId: string;

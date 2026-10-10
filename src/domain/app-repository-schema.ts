@@ -463,12 +463,19 @@ async function ensureDemoSchemaOnce(db: D1Database) {
           -- later export removed one of its entries.
           entry_import_id TEXT NOT NULL,
           entry_snapshot_json TEXT NOT NULL,
+          -- 'removed': the entry was deleted; 'estimate_reopened': a foreign
+          -- currency estimate went back to its own saved amount.
+          kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened')),
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (household_id) REFERENCES households(id),
           FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
         )
     `)
     .run();
+  const noLongerListedColumns = await db.prepare("PRAGMA table_info(import_no_longer_listed_entries)").all<{ name: string }>();
+  if (!noLongerListedColumns.results.some((column) => column.name === "kind")) {
+    await db.prepare("ALTER TABLE import_no_longer_listed_entries ADD COLUMN kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened'))").run();
+  }
 
   // Corrections applied from a Settings statement comparison after the
   // statement was saved, for their undo. A removed entry keeps its row here.

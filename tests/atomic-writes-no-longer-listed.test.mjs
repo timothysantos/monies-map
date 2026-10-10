@@ -13,6 +13,7 @@ import {
   openSeededDatabase,
   rows
 } from "./support/d1-workspace.mjs";
+import { enableShortcut, postWalletPurchase, saveRate } from "./support/foreign-wallet.mjs";
 
 let template;
 test.before(async () => {
@@ -78,6 +79,55 @@ test("a rollback that fails partway leaves the entry removed and the export in p
   const { db, api } = await openSeededDatabase(t, template);
   await importExport(api, "Citi activity 8 Oct", FIRST);
   const { commit } = await importExport(api, "Citi activity 10 Oct", NEXT);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /UPDATE imports SET status = 'rolled_back'/);
+
+  const { status } = await api("/api/imports/rollback", { importId: commit.payload.importId }, { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.equal(status, 500);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+// An estimate saved at a hold's amount, updated by the first export's hold
+// row; the next export no longer lists the hold.
+async function estimateOnReleasedHold(t) {
+  const workspace = await openSeededDatabase(t, template);
+  const { db, api, fetch: fetchWorker } = workspace;
+  const [citi] = await rows(db, "SELECT id FROM accounts WHERE account_name = ?", "Citi Rewards");
+  await enableShortcut(db, { foreignCurrencyAccountId: citi.id });
+  await saveRate(db);
+  const { payload } = await postWalletPurchase(fetchWorker, { amount: "IDR 502,200", description: "GrabFood Mr.Smash Burger", date: "2026-10-05" });
+  assert.equal((await importExport(api, "Citi activity 8 Oct", FIRST)).commit.status, 200);
+  const next = await api("/api/imports/preview", { sourceLabel: "Citi activity 10 Oct", sourceType: "csv", rows: NEXT, ownershipType: "direct", ownerName: "Tim" });
+  const body = {
+    sourceLabel: "Citi activity 10 Oct",
+    sourceType: "csv",
+    parserKey: "citibank_credit_card_activity_csv",
+    rows: next.payload.preview.previewRows.filter((item) => item.commitStatus === "included"),
+    reopenedEstimates: next.payload.preview.unlistedEstimates.map(({ transactionId, importId }) => ({ transactionId, importId }))
+  };
+  assert.deepEqual(body.reopenedEstimates.map((entry) => entry.transactionId), [payload.entryId]);
+  return { ...workspace, body, estimateId: payload.entryId };
+}
+
+test("an export commit that fails partway leaves the estimate on the hold's row", async (t) => {
+  const { db, api, body } = await estimateOnReleasedHold(t);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /UPDATE imports\s+SET status = 'completed'/);
+
+  const { status } = await api("/api/imports/commit", body, { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("a rollback that fails partway leaves the estimate back at its own amount", async (t) => {
+  const { db, api, body, estimateId } = await estimateOnReleasedHold(t);
+  const commit = await api("/api/imports/commit", body);
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  assert.deepEqual(await rows(db, "SELECT import_id FROM transactions WHERE id = ?", estimateId), [{ import_id: null }]);
   const before = await dumpDatabase(db);
   const faulty = failingStatement(db, /UPDATE imports SET status = 'rolled_back'/);
 

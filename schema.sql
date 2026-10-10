@@ -124,6 +124,9 @@ CREATE TABLE IF NOT EXISTS import_no_longer_listed_entries (
   -- later export removed one of its entries.
   entry_import_id TEXT NOT NULL,
   entry_snapshot_json TEXT NOT NULL,
+  -- 'removed': the entry was deleted; 'estimate_reopened': a foreign
+  -- currency estimate went back to its own saved amount.
+  kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id),
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE

@@ -2034,6 +2034,7 @@ export default {
         }[];
         statementFixes?: StatementFixDto[];
         noLongerListedEntries?: { transactionId: string; importId: string }[];
+        reopenedEstimates?: { transactionId: string; importId: string }[];
       }>();
 
       if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length)) {
@@ -2054,6 +2055,9 @@ export default {
             statementFixes: Array.isArray(body.statementFixes) ? body.statementFixes : [],
             noLongerListedEntries: Array.isArray(body.noLongerListedEntries)
               ? body.noLongerListedEntries.filter((entry) => typeof entry?.transactionId === "string" && typeof entry?.importId === "string")
+              : [],
+            reopenedEstimates: Array.isArray(body.reopenedEstimates)
+              ? body.reopenedEstimates.filter((entry) => typeof entry?.transactionId === "string" && typeof entry?.importId === "string")
               : [],
             rows: body.rows ?? []
           }))

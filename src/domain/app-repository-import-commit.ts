@@ -29,7 +29,7 @@ import {
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
-import { buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, hasLaterNoLongerListedRemoval } from "./import-no-longer-listed-entries";
+import { buildEstimateReopen, buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, findLaterNoLongerListedChange } from "./import-no-longer-listed-entries";
 import {
   assertStatementFixesMatchCertification,
   buildStatementFixCleanupStatement,
@@ -431,6 +431,9 @@ export async function commitImportBatch(
     // Activity exports: the entries the bank no longer lists that the user
     // did not keep (preview's noLongerListedEntries).
     noLongerListedEntries?: Array<{ transactionId: string; importId: string }>;
+    // Activity exports: the estimates whose row the bank no longer lists that
+    // the user did not link to a row (preview's unlistedEstimates).
+    reopenedEstimates?: Array<{ transactionId: string; importId: string }>;
     note?: string;
   }
 ) {
@@ -564,6 +567,14 @@ export async function commitImportBatch(
     const removal = await buildNoLongerListedEntryRemoval(db, importId, input.noLongerListedEntries);
     removal.statements.forEach(write);
     removal.months.forEach((month) => monthsToRecalculate.add(month));
+  }
+  if (!isOfficialStatementImport && input.reopenedEstimates?.length) {
+    const reopen = await buildEstimateReopen(db, importId, {
+      estimates: input.reopenedEstimates,
+      linkedTransactionIds: new Set(input.rows.flatMap((row) => row.reconciliationTargetTransactionId ? [row.reconciliationTargetTransactionId] : []))
+    });
+    reopen.statements.forEach(write);
+    reopen.months.forEach((month) => monthsToRecalculate.add(month));
   }
 
   // Before the rows: a moved entry must be on its statement card when its
@@ -1361,8 +1372,11 @@ export async function rollbackImportBatch(
   if (laterHolder) {
     throw new Error("This import cannot be rolled back yet: a later import updated one of its entries. Roll back the later import first.");
   }
-  if (await hasLaterNoLongerListedRemoval(db, input.importId)) {
-    throw new Error("This import cannot be rolled back yet: a later import removed one of its entries. Roll back the later import first.");
+  const laterChange = await findLaterNoLongerListedChange(db, input.importId);
+  if (laterChange) {
+    throw new Error(laterChange === "removed"
+      ? "This import cannot be rolled back yet: a later import removed one of its entries. Roll back the later import first."
+      : "This import cannot be rolled back yet: a later import updated one of its entries. Roll back the later import first.");
   }
   // A second copy was removed because this import's entry covers it; rolling
   // back would remove both copies.

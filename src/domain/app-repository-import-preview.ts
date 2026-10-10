@@ -21,7 +21,7 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import { formatForeignAmount } from "./foreign-currency";
-import { findNoLongerListedEntries } from "./import-no-longer-listed-entries";
+import { findNoLongerListedEntries, loadUnlistedEstimates } from "./import-no-longer-listed-entries";
 import {
   diagnoseStatementMismatches,
   getFixKey,
@@ -380,7 +380,10 @@ export async function buildImportPreview(
     exceptionSummary,
     ...(statementDiagnosis ? { statementDiagnosis } : {}),
     ...(statementAccountMatches.length ? { statementAccountMatches } : {}),
-    ...(input.sourceType !== "pdf" ? { noLongerListedEntries: findNoLongerListedEntries({ sourceType: input.sourceType, previewRows, ledgerRows }) } : {})
+    ...(input.sourceType !== "pdf" ? {
+      noLongerListedEntries: findNoLongerListedEntries({ sourceType: input.sourceType, previewRows, ledgerRows }),
+      unlistedEstimates: await loadUnlistedEstimates(db, { sourceType: input.sourceType, previewRows, ledgerRows })
+    } : {})
   };
 }
 
