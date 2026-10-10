@@ -697,12 +697,13 @@ words.
    names the file, the accounts it went into and the statement period, and
    says **No further action needed** when every card balanced. It shows what
    changed on each card (rows added, entries confirmed or moved, entries left
-   for the next statement), with **Close** at the top and **Roll back this
-   import** at the bottom. **Recent imports** says **File imported:** with
-   the file's name, and lists the five imports before it, so you can check
-   them against your files. When more
-   files are queued the button reads **Commit and open next**; the next file
-   opens after the commit under a short summary of the one you committed.
+   for the next statement), with **Import another file** at the top
+   (**Close** while another file waits) and **Roll back this import** at the
+   bottom. **Recent imports** says **File imported:** with the file's name,
+   and lists the five imports before it, so you can check them against your
+   files. When more files are queued the button reads **Commit and open
+   next**; the next file opens after the commit under a short summary of
+   the one you committed.
 
 ![A bank export turned into preview rows, ready to commit](/faq/guide/desktop/thumbs/imports-preview.webp)
 

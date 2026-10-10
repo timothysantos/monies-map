@@ -1317,6 +1317,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     const doneSummary = buildImportDoneSummary({
       importId: commitResult.importId,
       fileName: committedFileName,
+      accounts,
       title: isStatementReview
         ? buildStatementTitle({ parserKey: statementImportMeta.parserKey, statementReconciliations, sourceLabel: committedSourceLabel })
         : committedSourceLabel || DEFAULT_SOURCE_LABEL,
@@ -1356,9 +1357,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         .sort();
       setPostImportSplitMatchMonth(commitMonths[commitMonths.length - 1] ?? "");
       dispatchSplitCleanup({ type: "commitRefreshed", commitKey: splitCleanupCommitKey });
+      // The saved batch names its accounts with their owners.
+      const committedBatch = latestPage?.importsPage?.recentImports?.find((item) => item.id === committedImportId);
       setRecentImportStatus({
         tone: "success",
-        message: messages.imports.recentCommitSuccess(committedFileName || committedSourceLabel || DEFAULT_SOURCE_LABEL),
+        message: messages.imports.recentCommitSuccess(
+          committedFileName || committedSourceLabel || DEFAULT_SOURCE_LABEL,
+          committedBatch?.accountNames ?? []
+        ),
         earlierImports: buildEarlierImportLines(latestPage?.importsPage?.recentImports ?? [], committedImportId)
       });
       return true;

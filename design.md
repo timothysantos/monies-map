@@ -266,8 +266,9 @@ Rules:
   source label) and lists, quieter, the five completed imports before it
   (`buildEarlierImportLines` in `import-history-model.js`: accounts, the
   dates their rows cover, label)
-- the full Done card (`ImportDoneCard`) is a sky notice: title with Close
-  (and Review next) at the top right, then `buildImportDoneSummary`'s
+- the full Done card (`ImportDoneCard`) is a sky notice: title with Import
+  another file (Close and Review next while a file waits) at the top right,
+  then `buildImportDoneSummary`'s
   `confirmation` sentence (file, accounts, statement period or row dates;
   "No further action needed" only when every card balanced), the cards,
   and Roll back at the bottom left with the status pill at the bottom right

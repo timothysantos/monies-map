@@ -46,6 +46,34 @@ test("a balanced statement's Done card names the file, the account and the state
   assert.deepEqual(summary.cards[0].counts, { added: 1, confirmed: 1, moved: 0, later: 0 });
 });
 
+test("the Done card names each account with its owner, as Recent imports does", () => {
+  const summary = buildImportDoneSummary({
+    importId: "import-owner",
+    title: "UOB card statement · Sept 2026",
+    sourceLabel: "PERSONAL CREDIT CARD STATEMENT_Sep 2026",
+    fileName: "PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf",
+    accounts: [
+      { id: "acct-one", name: "UOB One Card", ownerLabel: "Tim" },
+      { id: "acct-privi", name: "UOB Privi Miles", ownerLabel: "Tim" },
+      { id: "acct-other", name: "UOB One Card", ownerLabel: "Joyce" }
+    ],
+    preview: {},
+    previewRows: [row({ accountId: "acct-one" }), row({ accountId: "acct-privi" })],
+    statementReconciliations: [
+      reconciliation({ accountId: "acct-one", accountName: "UOB One Card", statementStartDate: "2026-08-13", statementEndDate: "2026-09-13" }),
+      reconciliation({ accountId: "acct-privi", accountName: "UOB Privi Miles", statementStartDate: "2026-08-13", statementEndDate: "2026-09-13" })
+    ],
+    isStatement: true
+  });
+
+  assert.equal(
+    summary.confirmation,
+    "The import of PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf into UOB One Card - Tim and UOB Privi Miles - Tim for the 13 Aug 2026 – 13 Sept 2026 statement is done. No further action needed."
+  );
+  // The card headings keep the plain account name.
+  assert.deepEqual(summary.cards.map((card) => card.name), ["UOB One Card", "UOB Privi Miles"]);
+});
+
 test("a statement saved with a difference does not say no further action is needed", () => {
   const summary = buildImportDoneSummary({
     importId: "import-2",

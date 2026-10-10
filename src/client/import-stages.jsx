@@ -86,14 +86,17 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
       </section>
     );
   }
-  // Close and the next file sit by the title; the rollback and how the
+  // Import another file (Close while a file waits) and the next file sit by
+  // the title; the rollback and how the
   // cards closed sit at the foot.
   return (
     <section className="import-done-card" aria-label={summary.title}>
       <div className="import-done-head">
         <h3>{summary.title}</h3>
         <div className="import-done-next">
-          <button type="button" className="subtle-action" onClick={onClose}>{messages.imports.doneClose}</button>
+          <button type="button" className="subtle-action" onClick={onClose}>
+            {nextItem ? messages.imports.doneClose : messages.imports.doneImportAnother}
+          </button>
           {nextItem ? (
             <button type="button" className="import-commit-button" onClick={onReviewNext}>
               {messages.imports.doneReviewNext(nextItem.fileName)}

@@ -1172,7 +1172,7 @@ test.describe("import flow", () => {
       await page.getByRole("button", { name: "Commit import" }).first().click();
       await followUpImportsPageRefresh;
       await expect(page.locator(".import-history-refreshing.is-active")).toHaveCount(0);
-      await expect(page.getByText(`File imported: ${secondImportLabel}. Recent imports have been updated.`)).toBeVisible({
+      await expect(page.getByText(`File imported: ${secondImportLabel} into `, { exact: false })).toBeVisible({
         timeout: 30_000
       });
       await openRecentImports(page);
@@ -1293,13 +1293,13 @@ test.describe("import flow", () => {
       await hiddenRefreshAfterCommit;
 
       await expect(cleanupCard).toContainText("possible split link", { timeout: 60_000 });
-      await expect(page.getByText(`File imported: ${firstLabel}. Recent imports have been updated.`)).toHaveCount(0);
+      await expect(page.getByText(`File imported: ${firstLabel} into `, { exact: false })).toHaveCount(0);
       await cleanupCard.getByRole("button", { name: "Later" }).click();
       await expect(cleanupCard).toHaveCount(0);
 
       // The refresh that started before the click now finishes.
       releaseImportsPage = true;
-      await expect(page.getByText(`File imported: ${firstLabel}. Recent imports have been updated.`)).toBeVisible({
+      await expect(page.getByText(`File imported: ${firstLabel} into `, { exact: false })).toBeVisible({
         timeout: 30_000
       });
       await expect(cleanupCard).toHaveCount(0);
@@ -1318,7 +1318,7 @@ test.describe("import flow", () => {
     await page.getByRole("button", { name: "Preview import" }).click();
     await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
     await page.getByRole("button", { name: "Commit import" }).first().click();
-    await expect(page.getByText(`File imported: ${secondLabel}. Recent imports have been updated.`)).toBeVisible({
+    await expect(page.getByText(`File imported: ${secondLabel} into `, { exact: false })).toBeVisible({
       timeout: 30_000
     });
     await expect(cleanupCard).toContainText("possible split link");

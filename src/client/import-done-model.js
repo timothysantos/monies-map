@@ -1,18 +1,25 @@
 import { messages } from "./copy/en-SG";
+import { formatAccountSelectLabel } from "./account-display";
 import { formatDateOnly, formatMonthLabel } from "./formatters";
 
 // What a commit did, read from the preview it committed: one entry per
 // statement card (balance, rows added, entries confirmed or moved, entries
 // left for the next statement), or a row count for an activity file, and a
-// sentence naming the file, its accounts and its period. `fileName` is the
-// file as the user picked it; pasted rows fall back to the source label.
-export function buildImportDoneSummary({ importId, title, sourceLabel, fileName = "", preview, previewRows, statementReconciliations, isStatement }) {
+// sentence naming the file, its accounts (with their owner, "UOB One Card -
+// Tim") and its period. `fileName` is the file as the user picked it;
+// pasted rows fall back to the source label.
+export function buildImportDoneSummary({ importId, title, sourceLabel, fileName = "", accounts = [], preview, previewRows, statementReconciliations, isStatement }) {
   const committedRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const count = (rows) => ({
     added: rows.filter((row) => !row.reconciliationTargetTransactionId).length,
     confirmed: rows.filter((row) => row.reconciliationTargetTransactionId).length
   });
   const shownFileName = fileName || sourceLabel;
+  const accountLabel = (accountId, accountName) => {
+    const account = accounts.find((item) => (accountId && item.id === accountId))
+      ?? accounts.find((item) => (item.name ?? item.accountName) === accountName);
+    return account ? formatAccountSelectLabel(account) : accountName;
+  };
   if (!isStatement) {
     const dates = committedRows.map((row) => row.date).filter(Boolean).sort();
     return {
@@ -21,7 +28,7 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
       title: messages.imports.doneTitle(title),
       confirmation: messages.imports.doneConfirmation({
         fileName: shownFileName,
-        accountNames: uniqueNames(committedRows.map((row) => row.accountName)),
+        accountNames: uniqueNames(committedRows.map((row) => accountLabel(row.accountId, row.accountName))),
         period: dates.length ? formatPeriod(dates[0], dates[dates.length - 1]) : "",
         isStatement: false,
         unbalancedCount: 0
@@ -51,7 +58,7 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
     title: messages.imports.doneTitle(title),
     confirmation: messages.imports.doneConfirmation({
       fileName: shownFileName,
-      accountNames: uniqueNames(cards.map((card) => card.name)),
+      accountNames: uniqueNames(cards.map((card) => accountLabel(card.reconciliation.accountId, card.name))),
       period: statementPeriod(statementReconciliations[0]),
       isStatement: true,
       unbalancedCount: unbalanced

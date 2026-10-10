@@ -98,11 +98,13 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   await expect(fullDoneCard(page)).toContainText("1 row added");
   // It says which file went into which account, and that nothing is left.
   await expect(fullDoneCard(page).locator(".import-done-confirmation")).toHaveText(
-    `The import of ladys-card-activity.csv into ${LADYS_CARD}, covering 20 May 2026, is done. No further action needed.`
+    `The import of ladys-card-activity.csv into ${LADYS_CARD} - Tim, covering 20 May 2026, is done. No further action needed.`
   );
-  // A sky notice; Close sits by the title, the rollback at the foot.
+  // A sky notice; with nothing waiting, Import another file sits by the
+  // title and the rollback at the foot.
   await expect(fullDoneCard(page)).toHaveCSS("background-color", "rgb(227, 236, 246)");
-  await expect(fullDoneCard(page).locator(".import-done-head").getByRole("button", { name: "Close" })).toBeVisible();
+  await expect(fullDoneCard(page).locator(".import-done-head").getByRole("button", { name: "Import another file" })).toBeVisible();
+  await expect(fullDoneCard(page).getByRole("button", { name: "Close" })).toHaveCount(0);
   await expect(fullDoneCard(page).locator(".import-done-actions").getByRole("button", { name: "Roll back this import" })).toBeVisible();
   await expect(compactSummary(page)).toHaveCount(0);
   await expect(page.locator(".import-stepper .is-current")).toContainText("3 · Done");
@@ -110,7 +112,7 @@ test("a commit opens the next file under the last commit's summary, whose rollba
 
   // Recent imports names the file, then the imports before it, newest
   // first; the statement rolled back above is not one of them.
-  await expect(page.getByText("File imported: ladys-card-activity.csv. Recent imports have been updated.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(`File imported: ladys-card-activity.csv into ${LADYS_CARD} - Tim. Recent imports have been updated.`)).toBeVisible({ timeout: 30_000 });
   const earlier = page.locator(".import-history-earlier li");
   // Accounts carry their owner, as the Recent imports rows do.
   await expect(earlier.first()).toHaveText(`${ONE_CARD} - Tim · 15 May 2026 · one-card-activity.csv`);

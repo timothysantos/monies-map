@@ -98,4 +98,8 @@ test("the commit notice names the file it imported", () => {
     messages.imports.recentCommitSuccess("One Account_Sep 2026.pdf"),
     "File imported: One Account_Sep 2026.pdf. Recent imports have been updated."
   );
+  assert.equal(
+    messages.imports.recentCommitSuccess("PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf", ["UOB One Card - Tim", "UOB Privi Miles - Tim"]),
+    "File imported: PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf into UOB One Card - Tim and UOB Privi Miles - Tim. Recent imports have been updated."
+  );
 });

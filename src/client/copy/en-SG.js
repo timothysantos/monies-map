@@ -602,6 +602,9 @@ export const messages = {
     donePeriod: (start, end) => `${start} – ${end}`,
     doneRollback: "Roll back this import",
     doneClose: "Close",
+    // Nothing waits: the import is saved and the form is empty, so this
+    // leaves the summary for Bring files.
+    doneImportAnother: "Import another file",
     doneReviewNext: (fileName) => `Review next: ${fileName}`,
     // Statement review: one statement, a section per card.
     statementKindCard: "card statement",
@@ -873,7 +876,7 @@ export const messages = {
     recentTitle: "Recent imports",
     recentDetail: "Recent import batches with coverage and overlap signals.",
     recentCommitWorking: "Importing...",
-    recentCommitSuccess: (fileName) => `File imported: ${fileName || "Import"}. Recent imports have been updated.`,
+    recentCommitSuccess: (fileName, accountNames = []) => `File imported: ${fileName || "Import"}${accountNames.length ? ` into ${listOf(accountNames)}` : ""}. Recent imports have been updated.`,
     recentEarlierTitle: "Imported before it:",
     recentEarlierItem: ({ accountNames, period, sourceLabel }) => [listOf(accountNames), period, sourceLabel].filter(Boolean).join(" · "),
     splitCleanupTitle: (count) => `${count} possible split ${count === 1 ? "link" : "links"} after this import`,
