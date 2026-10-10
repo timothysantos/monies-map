@@ -8,6 +8,7 @@ import {
   getEntrySearchSuggestions
 } from "./entry-search";
 import { projectEntriesForView } from "./entry-row-projection";
+import { getEntryTotals, getExpenseBreakdown } from "./entry-totals";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -78,59 +79,7 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
 }
 
 export { entryMatchesSearch, getEntrySearchSuggestions };
-
-export function getEntryTotals(entries) {
-  return entries.reduce((totals, entry) => {
-    const visibleAmountMinor = entry.visibleAmountMinor ?? entry.amountMinor;
-    const grossAmountMinor = entry.grossAmountMinor ?? entry.totalAmountMinor ?? entry.amountMinor;
-
-    // Entries keeps income/expense/transfer math separate so the page can show
-    // both net cash flow and total money moved out.
-    if (entry.entryType === "income") {
-      totals.incomeMinor += visibleAmountMinor;
-    } else if (entry.entryType === "expense") {
-      totals.spendMinor += visibleAmountMinor;
-      totals.grossSpendMinor += grossAmountMinor;
-    } else if (entry.entryType === "transfer" && entry.transferDirection === "out") {
-      totals.transferOutMinor += visibleAmountMinor;
-      totals.grossTransferOutMinor += grossAmountMinor;
-    } else if (entry.entryType === "transfer" && entry.transferDirection === "in") {
-      totals.transferInMinor += visibleAmountMinor;
-    }
-
-    return totals;
-  }, {
-    incomeMinor: 0,
-    spendMinor: 0,
-    grossSpendMinor: 0,
-    transferInMinor: 0,
-    transferOutMinor: 0,
-    grossTransferOutMinor: 0
-  });
-}
-
-export function getExpenseBreakdown(entries) {
-  const grouped = new Map();
-  for (const entry of entries) {
-    if (entry.entryType !== "expense") {
-      continue;
-    }
-    const key = entry.categoryName;
-    const current = grouped.get(key) ?? {
-      key,
-      label: key,
-      categoryName: key,
-      valueMinor: 0,
-      entryCount: 0
-    };
-    current.valueMinor += entry.visibleAmountMinor ?? entry.amountMinor;
-    current.entryCount += 1;
-    grouped.set(key, current);
-  }
-
-  return Array.from(grouped.values())
-    .sort((left, right) => right.valueMinor - left.valueMinor);
-}
+export { getEntryTotals, getExpenseBreakdown };
 
 export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds }) {
   const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds });

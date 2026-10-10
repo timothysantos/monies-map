@@ -1,5 +1,6 @@
 // First, so these rules load before the stylesheets the modules below import.
 import "./month-route.css";
+import { spendingMinor } from "../domain/category-offset";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -378,18 +379,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
 
     const monthPage = await monthPagePromise;
     const actualMinor = (monthPage?.entries ?? []).reduce((sum, entry) => {
-      if (entry.entryType !== "expense" || entry.categoryName !== categoryName) {
+      if (entry.categoryName !== categoryName || !entryService.entryMatchesScope(entry, view.id, view.monthPage.selectedScope)) {
         return sum;
       }
-      if (!entryService.entryMatchesScope(entry, view.id, view.monthPage.selectedScope)) {
-        return sum;
-      }
-      return sum + entry.amountMinor;
+      // Expenses add and paybacks take away, as in the budget bucket.
+      return sum + spendingMinor(entry);
     }, 0);
 
     return {
       month: previousMonth,
-      actualMinor
+      actualMinor: Math.max(0, actualMinor)
     };
   }, [view.id, view.monthPage.month, view.monthPage.selectedScope]);
 

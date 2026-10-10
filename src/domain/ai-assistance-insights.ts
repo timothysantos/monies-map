@@ -1,4 +1,5 @@
 import { redactAiText } from "./ai-assistance";
+import { incomeMinor, spendingMinor } from "./category-offset";
 import { findToneProblems } from "./money-signals/tone";
 import type { EntryDto, ImportPreviewDto, ImportPreviewStatementReconciliationDto, SummaryMonthDto } from "../types/dto";
 
@@ -69,8 +70,12 @@ export function buildMonthlyNarrativeFacts(
 ): MonthlyNarrativeFacts {
   const expenses = entries.filter((entry) => entry.entryType === "expense");
   const categoryTotals = new Map<string, number>();
-  for (const entry of expenses) {
-    categoryTotals.set(entry.categoryName, (categoryTotals.get(entry.categoryName) ?? 0) + Math.abs(entry.amountMinor));
+  // Paybacks lower their category (category-offset.ts).
+  for (const entry of entries) {
+    const amountMinor = spendingMinor(entry, Math.abs(entry.amountMinor));
+    if (amountMinor) {
+      categoryTotals.set(entry.categoryName, (categoryTotals.get(entry.categoryName) ?? 0) + amountMinor);
+    }
   }
   const [topCategoryName, topCategoryMinor] = [...categoryTotals.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? ["No spending category", 0];
@@ -79,7 +84,7 @@ export function buildMonthlyNarrativeFacts(
 
   return {
     monthName: formatMonthName(month),
-    spend: formatMoney(summary?.realExpensesMinor ?? expenses.reduce((total, entry) => total + Math.abs(entry.amountMinor), 0)),
+    spend: formatMoney(summary?.realExpensesMinor ?? entries.reduce((total, entry) => total + spendingMinor(entry, Math.abs(entry.amountMinor)), 0)),
     income: formatMoney(summary?.actualIncomeMinor ?? 0),
     topCategoryName: redactAiText(topCategoryName, 80) || "No spending category",
     topCategoryAmount: formatMoney(topCategoryMinor),
@@ -108,14 +113,17 @@ export function buildFinancialInsightFacts(input: {
   entryCount?: number;
 }) : FinancialInsightFacts {
   const expenses = input.records.filter((record) => record.entryType === "expense");
-  const incomeMinor = input.records
-    .filter((record) => record.entryType === "income")
-    .reduce((total, record) => total + Math.abs(record.amountMinor), 0);
-  const spendMinor = expenses.reduce((total, record) => total + Math.abs(record.amountMinor), 0);
+  // A payback counts as less spending in its category, not income.
+  const incomeTotalMinor = input.records.reduce((total, record) => total + incomeMinor(record, Math.abs(record.amountMinor)), 0);
+  const spendMinor = input.records.reduce((total, record) => total + spendingMinor(record, Math.abs(record.amountMinor)), 0);
   const categoryTotals = new Map<string, number>();
-  for (const record of expenses) {
+  for (const record of input.records) {
+    const amountMinor = spendingMinor(record, Math.abs(record.amountMinor));
+    if (!amountMinor) {
+      continue;
+    }
     const categoryName = redactAiText(record.categoryName, 80) || "Uncategorized spending";
-    categoryTotals.set(categoryName, (categoryTotals.get(categoryName) ?? 0) + Math.abs(record.amountMinor));
+    categoryTotals.set(categoryName, (categoryTotals.get(categoryName) ?? 0) + amountMinor);
   }
   const [topCategoryName, topCategoryMinor] = [...categoryTotals.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? ["No spending category", 0];
@@ -134,8 +142,8 @@ export function buildFinancialInsightFacts(input: {
     audienceName,
     entryCount: Math.max(0, Math.round(input.entryCount ?? input.records.length)),
     spend: input.formatMoney(spendMinor),
-    income: input.formatMoney(incomeMinor),
-    net: input.formatMoney(incomeMinor - spendMinor),
+    income: input.formatMoney(incomeTotalMinor),
+    net: input.formatMoney(incomeTotalMinor - spendMinor),
     topCategoryName,
     topCategoryAmount: input.formatMoney(topCategoryMinor),
     topMerchantName,

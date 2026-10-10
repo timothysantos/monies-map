@@ -19,6 +19,7 @@ import {
   type CopyCatalogue,
   type FormatMoney
 } from "./format";
+import { incomeMinor } from "../category-offset";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { triviaSignal } from "./shared-signals";
@@ -539,7 +540,8 @@ export function sharedEntriesTrivia(input: EntriesSignalInput): MoneySignal | nu
 
 // Just for fun: the month's income entries.
 export function incomeEntriesTrivia(input: EntriesSignalInput): MoneySignal | null {
-  const income = input.entries.filter((entry) => entry.entryType === "income" && entry.amountMinor > 0);
+  // A payback lowers its category's spending; it is not income.
+  const income = input.entries.filter((entry) => incomeMinor(entry) > 0);
   if (!income.length || input.entries.length < MIN_LIST) {
     return null;
   }

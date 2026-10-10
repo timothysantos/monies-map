@@ -216,10 +216,37 @@ Relationships:
 - has many `month plan rows`
 - has many `month plan match hints`
 
+### Category Offset
+
+Money in under a spending category corrects what was spent there: a refund, or
+a friend paying back their share of a court booking or a dinner. It lowers that
+category's spending everywhere (Summary, Month budget buckets and totals,
+Entries totals and breakdown, check-ins and insight facts) and is not counted
+as income, so net is unchanged.
+
+The category decides, not the entry (`src/domain/category-offset.ts`). Income
+categories (`Income`, `Salary`, `Extra Income`, `Other - Income`, any name
+containing "Income"), money that is not spending (`Transfer`, `Savings`,
+`Investments`, `Loans`) and the uncategorised `Other` never offset; money in
+there is income. A gift received belongs in `Extra Income`, not `Gifts`.
+
+A category's spending may reach zero but is never shown below zero. Totals are
+not clamped, so income minus spending stays the real net.
+
+Storage:
+- derived from `transactions.entry_type` and the entry's category. The old
+  per-entry `transactions.offsets_category` column is still written by some
+  paths but no longer read.
+
 ### Category Match Rule
 
 A persistent household rule that maps a description pattern to a category during
-import and classification workflows.
+import and classification workflows. The first active rule by priority wins and
+overrides the parser's own guess. Default rules live in
+`src/domain/category-match-defaults.ts`; a retired default id goes in
+`deprecatedDefaultCategoryMatchRuleIds` so it is removed from existing
+households. No two default rules may duplicate or overlap
+(`tests/category-match-defaults.test.mjs`).
 
 Storage:
 - `category_match_rules`
@@ -664,8 +691,9 @@ Canonical terms:
 - `outflow`
 
 Definitions:
-- `spend` means the gross total of expense-category rows only. It excludes
-  transfer entries.
+- `spend` means the total of expense rows less any `category offset`
+  (paybacks and refunds under a spending category). It excludes transfer
+  entries.
 - `transfer-out total` means the gross sum of ledger entries where
   `entry_type = 'transfer'` and the transfer direction is out of the current
   account.

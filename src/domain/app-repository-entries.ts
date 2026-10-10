@@ -1,4 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { offsetsCategory } from "./category-offset";
 import { getMonthBounds, groupSplits } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
 import { homeCurrencyShareAmounts } from "./split-allocation";
@@ -258,7 +259,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       ownershipType: "direct",
       ownerName: row.owner_name ?? undefined,
       amountMinor: row.amount_minor,
-      offsetsCategory: Boolean(row.offsets_category),
+      offsetsCategory: offsetsCategory({ entryType: row.entry_type, categoryName: row.category_name }),
       note: row.note ?? undefined,
       bankCertificationStatus: getEntryBankCertificationStatus(row),
       bankCertificationLabel: getEntryBankCertificationLabel(row),

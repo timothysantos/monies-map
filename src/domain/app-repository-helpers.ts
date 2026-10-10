@@ -1,4 +1,5 @@
 import { getCurrentMonthKey } from "../lib/month";
+import { spendingMinor } from "./category-offset";
 import { personEntryAmountMinor } from "./person-entry-amount";
 import type {
   AccountDto,
@@ -259,16 +260,13 @@ export function buildSnapshotRowsForScope(rows: MonthPlanRowDto[], personScope: 
 // A scope's stored month spend: every expense at its full amount for the
 // household, the person's own part (personEntryAmountMinor) for a person.
 export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string) {
+  // Expenses add and paybacks take away (category-offset.ts).
   return entries.reduce((sum, entry) => {
-    if (entry.entryType !== "expense") {
-      return sum;
-    }
-
     if (personScope === "household") {
-      return sum + entry.amountMinor;
+      return sum + spendingMinor(entry);
     }
 
-    return sum + (personEntryAmountMinor(entry, personScope) ?? 0);
+    return sum + spendingMinor(entry, personEntryAmountMinor(entry, personScope) ?? 0);
   }, 0);
 }
 

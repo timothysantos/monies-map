@@ -321,6 +321,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   merchant TEXT,
   category_id TEXT,
   owner_person_id TEXT,
+  -- Legacy: no longer read. Whether money in lowers its category's spending
+  -- is decided by the category (src/domain/category-offset.ts).
   offsets_category INTEGER NOT NULL DEFAULT 0,
   note TEXT,
   external_reference TEXT,

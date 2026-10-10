@@ -3,6 +3,7 @@
 // range and donut months, and the accounts shown for a person.
 
 import { buildPlanRowsForView } from "./month-projection";
+import { incomeMinor, spendingMinor } from "./category-offset";
 import { buildDonutChart } from "./donut-chart-projection";
 import { flowTone, signTone, spendTone } from "./money-tone";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
@@ -108,12 +109,9 @@ export function buildSummaryPage(
 
 export function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): SummaryMonthDto {
   const monthEntries = visibleEntries.filter((entry) => entry.date.slice(0, 7) === month);
-  const actualIncomeMinor = monthEntries
-    .filter((entry) => entry.entryType === "income")
-    .reduce((sum, entry) => sum + entry.amountMinor, 0);
-  const realExpensesMinor = monthEntries
-    .filter((entry) => entry.entryType === "expense")
-    .reduce((sum, entry) => sum + entry.amountMinor, 0);
+  // A payback counts as less spending, not income (category-offset.ts).
+  const actualIncomeMinor = monthEntries.reduce((sum, entry) => sum + incomeMinor(entry), 0);
+  const realExpensesMinor = monthEntries.reduce((sum, entry) => sum + spendingMinor(entry), 0);
 
   return {
     month,

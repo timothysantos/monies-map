@@ -26,6 +26,7 @@ import {
   type FormatMoney,
   type MonthPhase
 } from "./format";
+import { incomeMinor } from "../category-offset";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
@@ -557,7 +558,7 @@ export function incomeArrivedSignal(input: MonthSignalInput): MoneySignal | null
   }
   const since = addDays(input.today, -3);
   const arrived = input.entries
-    .filter((entry) => entry.entryType === "income" && entry.date >= since && entry.date <= input.today && entry.amountMinor > 0)
+    .filter((entry) => incomeMinor(entry) > 0 && entry.date >= since && entry.date <= input.today && entry.amountMinor > 0)
     .sort((left, right) => right.amountMinor - left.amountMinor || right.date.localeCompare(left.date))[0];
   if (!arrived) {
     return null;

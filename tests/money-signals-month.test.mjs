@@ -156,6 +156,13 @@ test("payday: income that arrived in the last few days of the month in progress"
   assert.equal(incomeArrivedSignal(input({ entries: [salary], month: "2026-08", today: "2026-09-02" })), null);
 });
 
+test("payday: a friend paying back their share of a court booking is not income", () => {
+  const payback = { id: "payback", date: "2026-08-13", description: "PAYNOW FROM CHRIS", amountMinor: 475, entryType: "income", categoryName: "Sports & Hobbies" };
+  assert.equal(incomeArrivedSignal(input({ entries: [payback] })), null);
+  const salary = { id: "salary", date: "2026-08-12", description: "SALARY", amountMinor: 650_000, entryType: "income", categoryName: "Salary" };
+  assert.equal(incomeArrivedSignal(input({ entries: [payback, salary] })).numbers.primaryMinor, 650_000);
+});
+
 test("plan left: going well, with a wrap-up for a finished month", () => {
   const signal = planLeftSignal(input({ summary: { estimatedExpensesMinor: 500_000, realExpensesMinor: 391_941 } }));
   assert.deepEqual(facts(signal), [

@@ -516,7 +516,9 @@ The shortcut endpoint accepts these optional fields:
 - `transferDirection`
 - `ownershipType`
 - `ownerName`
-- `offsetsCategory`
+- `offsetsCategory` (accepted so older shortcuts keep working, but ignored:
+  the category decides whether money in lowers spending, see "Category
+  offset" in `DOMAIN.md`)
 - `note`
 - `requestId`
 - `clientVersion`
@@ -1798,9 +1800,12 @@ After a planned item is matched, the app remembers lightweight matching hints
 from the linked ledger entries so future months can suggest likely matches. It
 does not auto-link them yet; the user still confirms the matches.
 
-Budget buckets can also be reduced by category-offsetting income, such as a
-reimbursement, when that income row is explicitly marked as offsetting the same
-category. Transfers still do not count toward budget-bucket actuals.
+Budget buckets are reduced by money in under the same spending category, such
+as a refund or a friend paying back their share (`src/domain/category-offset.ts`,
+"Category offset" in `DOMAIN.md`). The same rule lowers spending on Summary,
+the Month totals, the Entries totals and breakdown, and the check-ins, and keeps
+that money out of income, so net is unchanged. Transfers still do not count
+toward budget-bucket actuals.
 
 Monthly planning is person-based first. The primary person and partner can have
 different month plans, and the household month view should be derived by

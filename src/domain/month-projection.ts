@@ -2,6 +2,7 @@
 // income-row actuals, and how entries and plan rows are adjusted and
 // filtered for a person view. Pure functions over loaded rows.
 
+import { incomeMinor, offsetsCategory, spendingMinor } from "./category-offset";
 import { buildDonutChart } from "./donut-chart-projection";
 import { headroomTone, spendTone } from "./money-tone";
 import { buildPersonScopes, effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
@@ -35,7 +36,7 @@ export function buildMonthPage(
   const visibleIncomeRows = deriveIncomeRowActuals(incomeRows, visibleEntries, selectedPersonId);
   const plannedExpenseMinor = visiblePlanRows.reduce((sum, row) => sum + row.plannedMinor, 0);
   const actualExpenseMinor = currentSummaryMonth?.realExpensesMinor
-    ?? visibleEntries.reduce((sum, entry) => entry.entryType === "expense" ? sum + entry.amountMinor : sum, 0);
+    ?? visibleEntries.reduce((sum, entry) => sum + spendingMinor(entry), 0);
   const varianceMinor = plannedExpenseMinor - actualExpenseMinor;
   const targetSavingsMinor = visiblePlanRows
     .filter((row) => row.label === "Savings")
@@ -98,7 +99,8 @@ export function deriveIncomeRowActuals(
   return rows.map((row) => {
     const rowCategory = normalizeCategoryLabel(row.categoryName);
     const actualEntries = entries.filter((entry) => {
-      if (entry.entryType !== "income") {
+      // A payback lowers its category's spending instead.
+      if (incomeMinor(entry) === 0) {
         return false;
       }
 
@@ -191,21 +193,9 @@ export function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[
         return !linkedExpenseIds.has(entry.id);
       }
 
-      if (entry.entryType === "income" && entry.offsetsCategory) {
-        return true;
-      }
-
-      return false;
+      return offsetsCategory(entry);
     });
-    const categoryActualMinor = actualEntries.reduce((sum, entry) => {
-      if (entry.entryType === "expense") {
-        return sum + entry.amountMinor;
-      }
-      if (entry.entryType === "income" && entry.offsetsCategory) {
-        return sum - entry.amountMinor;
-      }
-      return sum;
-    }, 0);
+    const categoryActualMinor = actualEntries.reduce((sum, entry) => sum + spendingMinor(entry), 0);
     const actualMinor = Math.max(0, categoryActualMinor);
 
     return {
