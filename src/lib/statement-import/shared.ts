@@ -390,13 +390,15 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/NEW CREATION CHURCH/.test(normalized)) {
     return "Church";
   }
-  if (/CONVERSION ?FEE|CONVERSIONFEES?/.test(normalized)) {
+  // OCBC's monthly account fee is a row of exactly these words; a condo or
+  // restaurant "service charge" carries a name with it.
+  if (/CONVERSION ?FEE|CONVERSIONFEES?/.test(normalized) || /^SERVICE CHARGE$/.test(normalized.trim())) {
     return "Fees";
   }
   if (/SINGLIFE|INCOMEINSURANCE/.test(normalized)) {
     return "Insurance";
   }
-  if (/AXSPTELTD|KEPPEL ELECTRIC|M1LIMITED|M1APP/.test(normalized)) {
+  if (/AXSPTELTD|KEPPEL ELECTRIC|M1LIMITED|M1APP|STARHUB|VIVIFI/.test(normalized)) {
     return "Bills";
   }
   if (/JOSEPHPRINCE/.test(normalized)) {
@@ -411,13 +413,14 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/FAIRPRICE|CS FRESH|FINEST|MARKET PLACE|COLD STORAGE|DON DON DONKI|GROCER|NITORI/.test(normalized)) {
     return "Groceries";
   }
-  if (/APPLE\.COM\/BILL|GOOGLE\*?YOUTUBE|YOUTUBEPREMIUM|NETFLIX|OPENAI|VIVIFI|STARHUB/.test(normalized)) {
+  if (/APPLE\.COM\/BILL|GOOGLE\*?YOUTUBE|YOUTUBEPREMIUM|NETFLIX|OPENAI/.test(normalized)) {
     return "Subscriptions MO";
   }
   if (/KINOKUNIYA|BOOK/.test(normalized)) {
     return "Education";
   }
-  if (/DAILY CUT|SALON|BEAUTY/.test(normalized)) {
+  // "The Daily Cut" is a salad bar, not a barber.
+  if (/SALON|BEAUTY/.test(normalized)) {
     return "Beauty";
   }
   if (/SHAW THEATRES|SHAW CONCESSIONS|GOLDENVILLAGE|GOLDEN VILLAGE/.test(normalized)) {
