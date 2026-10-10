@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { entryAmountTone } from "../domain/money-tone";
+import { getPersonColour } from "./person-colour";
 
 export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
   const splitPercent = getVisibleSplitPercent(entry, viewId);
@@ -68,7 +69,7 @@ export function getEntryOwnerCue(entry, isLinkedToSplits = false) {
   const ownerKey = isLinkedToSplits
     ? "linked-splits"
     : entry.ownerName ?? entry.accountOwnerLabel ?? "unassigned";
-  const color = getOwnerCueColor(ownerKey);
+  const color = getPersonColour(ownerKey);
 
   return {
     style: {
@@ -162,31 +163,6 @@ function getSignedTotalAmountMinor(entry) {
   }
 
   return -totalAmountMinor;
-}
-
-function getOwnerCueColor(ownerKey) {
-  const normalized = ownerKey.trim().toLowerCase();
-
-  // Colours from the category palette (src/domain/category-palette.ts), in
-  // the former hue families: green, coral, terracotta for Splits.
-  if (normalized.includes("tim")) {
-    return "#33A471";
-  }
-
-  if (normalized.includes("joyce")) {
-    return "#DE726D";
-  }
-
-  if (normalized === "linked-splits") {
-    return "#BF7D51";
-  }
-
-  const palette = ["#6A7A73", "#7C8791", "#7F9B43", "#BF7D51", "#48988A", "#9385D9"];
-  let hash = 0;
-  for (let index = 0; index < normalized.length; index += 1) {
-    hash = ((hash << 5) - hash + normalized.charCodeAt(index)) | 0;
-  }
-  return palette[Math.abs(hash) % palette.length];
 }
 
 function hexToRgba(hex, alpha) {

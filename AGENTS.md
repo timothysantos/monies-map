@@ -276,6 +276,10 @@ Details and the reasons are in `docs/code-spec.md` and
   `src/domain/category-palette.ts`. Don't introduce saturated fills or new
   hex colours outside the tokens: a raw colour may only be a neutral or the
   terracotta accent (design.md, "Pastel palette").
+- A per-person or per-owner cue (an edge, chip, band or row wash) uses that
+  person's colour from `src/client/person-colour.js` (`getPersonColour`,
+  `getPersonColourVars`), the same colour as the Entries row edge. Never
+  give people a new hue scheme; text on a person tint uses `--person-ink`.
 - Money direction and outcome colours come only from the money tones
   (`src/domain/money-tone.ts`, rendered with `moneyToneClass`): money in is
   mint; money out in a list (an expense row, a negative day) is rose text;
