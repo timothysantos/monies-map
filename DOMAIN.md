@@ -194,6 +194,10 @@ Important distinctions:
   row if that is older. It does not start on the first printed row, so a
   provisional entry between the cycle start and the first row is inside the
   period.
+- One checkpoint per account and month, even when two imports saved the same
+  statement (uploaded again and saved anyway). Rolling back one of them
+  keeps the checkpoint while another completed import still has a
+  certificate for that account and month; the last rollback removes it.
 
 ### Category
 

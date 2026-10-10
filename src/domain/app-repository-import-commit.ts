@@ -2430,6 +2430,20 @@ function readSignedMinorFromRawImportRow(rawRow: Record<string, unknown>) {
   return amount;
 }
 
+// Another completed import has a certificate for this account and month,
+// so the month's checkpoint is still saved. Binds household, account,
+// month and the import being rolled back.
+const OTHER_IMPORT_SAVES_CHECKPOINT_SQL = `EXISTS (
+  SELECT 1
+  FROM statement_reconciliation_certificates other_certificate
+  JOIN imports other_import ON other_import.id = other_certificate.import_id
+  WHERE other_certificate.household_id = ?
+    AND other_certificate.account_id = ?
+    AND other_certificate.checkpoint_month = ?
+    AND other_certificate.import_id != ?
+    AND other_import.status = 'completed'
+)`;
+
 // Records the statement-chain gaps a PDF rollback opens (a later month that
 // now lacks its earlier statement).
 async function buildStatementChainBreakStatementsForRollback(db: D1Database, importId: string) {
@@ -2451,6 +2465,14 @@ async function buildStatementChainBreakStatementsForRollback(db: D1Database, imp
 
   const blockers: D1PreparedStatement[] = [];
   for (const certificate of certificates.results) {
+    // Another import still saves this month: no gap opens.
+    const stillSaved = await db
+      .prepare(`SELECT ${OTHER_IMPORT_SAVES_CHECKPOINT_SQL} AS saved`)
+      .bind(DEFAULT_HOUSEHOLD_ID, certificate.account_id, certificate.checkpoint_month, importId)
+      .first<{ saved: number }>();
+    if (stillSaved?.saved) {
+      continue;
+    }
     const earlierCheckpoint = await db
       .prepare(`
         SELECT 1
@@ -2609,6 +2631,8 @@ async function buildStatementImportMetadataCleanupStatements(db: D1Database, imp
       statement_balance_minor: number;
     }>();
 
+  // A statement saved twice (uploaded again and saved anyway) has one
+  // checkpoint that both imports claim: it goes only with the last of them.
   const statements = certificates.results.map((certificate) => db
     .prepare(`
       DELETE FROM account_balance_checkpoints
@@ -2618,6 +2642,7 @@ async function buildStatementImportMetadataCleanupStatements(db: D1Database, imp
         AND COALESCE(statement_start_date, '') = COALESCE(?, '')
         AND COALESCE(statement_end_date, '') = COALESCE(?, '')
         AND statement_balance_minor = ?
+        AND NOT ${OTHER_IMPORT_SAVES_CHECKPOINT_SQL}
     `)
     .bind(
       DEFAULT_HOUSEHOLD_ID,
@@ -2625,7 +2650,11 @@ async function buildStatementImportMetadataCleanupStatements(db: D1Database, imp
       certificate.checkpoint_month,
       certificate.statement_start_date,
       certificate.statement_end_date,
-      certificate.statement_balance_minor
+      certificate.statement_balance_minor,
+      DEFAULT_HOUSEHOLD_ID,
+      certificate.account_id,
+      certificate.checkpoint_month,
+      importId
     ));
 
   statements.push(db
