@@ -106,10 +106,13 @@ TOTAL AMOUNT DUE 2 , 127 . 41
   assert.deepEqual(parsed.checkpoints[0], {
     accountName: "OCBC Infinity Cashback",
     checkpointMonth: "2026-05",
-    statementStartDate: "2026-04-30",
+    // The cycle opens the day after the previous statement date (27 Apr),
+    // not on the first row (30 Apr).
+    statementStartDate: "2026-04-28",
     statementEndDate: "2026-05-27",
     statementBalanceMinor: 212741,
     previousBalanceMinor: 134933,
+    accountLast4: "2572",
     note: "Imported from OCBC credit card statement"
   });
   assert.deepEqual(parsed.rows.map((row) => ({
@@ -166,10 +169,11 @@ TOTAL AMOUNT DUE 1 , 349 . 33
   assert.deepEqual(parsed.checkpoints[0], {
     accountName: "OCBC Infinity Cashback",
     checkpointMonth: "2026-04",
-    statementStartDate: "2026-04-23",
+    statementStartDate: "2026-03-28",
     statementEndDate: "2026-04-27",
     statementBalanceMinor: 134933,
     previousBalanceMinor: 0,
+    accountLast4: "2572",
     note: "Imported from OCBC credit card statement"
   });
   assert.deepEqual(parsed.rows.map((row) => ({
