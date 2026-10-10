@@ -27,7 +27,8 @@ export function ImportCommitBar({
   onShowRemaining,
   skip,
   onCommit,
-  onStartOver
+  onStartOver,
+  isCoveredStatement = false
 }) {
   const visibleRows = previewRows.filter((row) => (
     !row.isStatementMatchResolved && !(row.isCertifiedConflict && row.commitStatus === "skipped")
@@ -71,7 +72,12 @@ export function ImportCommitBar({
       ) : null}
       <div className="import-commit-bar-actions">
         {onStartOver ? (
-          <button type="button" className="subtle-action" onClick={onStartOver} disabled={isSubmitting}>
+          <button
+            type="button"
+            className={isCoveredStatement ? "import-commit-button import-commit-start-over" : "subtle-action"}
+            onClick={onStartOver}
+            disabled={isSubmitting}
+          >
             {messages.imports.startOver}
           </button>
         ) : null}
@@ -90,18 +96,19 @@ export function ImportCommitBar({
           onCommit={onCommit}
           label={commitLabel}
           warning={commitWarning}
+          isSecondary={isCoveredStatement}
         />
       </div>
     </div>
   );
 }
 
-function ImportCommitButton({ disabled, isSubmitting, onCommit, label, warning }) {
+function ImportCommitButton({ disabled, isSubmitting, onCommit, label, warning, isSecondary = false }) {
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const button = (
     <button
       type="button"
-      className="import-commit-button"
+      className={`import-commit-button${isSecondary ? " import-commit-secondary" : ""}`}
       disabled={disabled}
       onClick={warning ? undefined : onCommit}
     >

@@ -2120,6 +2120,8 @@ test.describe("import flow", () => {
     await expect(previousImportLines).toHaveCount(2);
     await expect(previousImportLines.first()).toHaveText(/^Already imported on \d{1,2} \w{3} \d{4} from \S/);
     await expect(importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first()).toBeEnabled();
+    await expect(commitBar.getByRole("button", { name: "Start over" })).toHaveClass(/import-commit-start-over/);
+    await expect(importFlowPage.getByRole("button", { name: "Refresh covered statement checkpoint" }).first()).toHaveClass(/import-commit-secondary/);
     await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
     const coveredCheckpointResponse = importFlowPage.waitForResponse(
       (response) => response.url().includes("/api/imports/commit") && response.ok(),

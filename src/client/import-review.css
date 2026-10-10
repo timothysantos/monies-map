@@ -186,6 +186,30 @@
   align-items: center;
 }
 
+/* A fully covered statement has nothing left to import. Clearing the draft
+   is the useful next step; refreshing its checkpoint is optional maintenance. */
+.import-commit-bar .import-commit-secondary {
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  box-shadow: none;
+  font-weight: 600;
+  padding: 0;
+}
+
+.import-commit-bar .import-commit-secondary:hover {
+  background: transparent;
+  color: var(--accent);
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.import-commit-bar .import-commit-secondary:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+}
+
 @media (max-width: 760px) {
   .statement-card-head {
     flex-direction: column;
@@ -239,6 +263,14 @@
 
   .import-commit-bar-actions .subtle-action {
     white-space: nowrap;
+  }
+
+  .import-commit-bar-actions .import-commit-start-over {
+    flex: 1 1 100%;
+  }
+
+  .import-commit-bar-actions .import-commit-button.import-commit-secondary {
+    flex: 0 0 auto;
   }
 
   .import-commit-bar-actions .import-commit-button {

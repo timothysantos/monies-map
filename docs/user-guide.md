@@ -840,8 +840,9 @@ balance matches":
 - If you imported this statement before, each card says **Already imported
   on** the date and the file it came from, and the button reads **Refresh
   covered statement checkpoint** (**Refresh checkpoints and open next**
-  while another file waits). It saves the proof again without adding
-  duplicates.
+  while another file waits). **Start over** is the primary action in this
+  case because the statement needs no re-import; refreshing the checkpoint is
+  optional maintenance. It saves the proof again without adding duplicates.
 
 **Save empty statement checkpoint** only appears for a statement with no
 transactions at all.
