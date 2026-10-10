@@ -56,6 +56,7 @@ import { buildInferredAmountKeys, InferredAmountsContext } from "./import-inferr
 import { buildRecoveryImportRow, buildStatementRecovery } from "./import-statement-recovery-model";
 import { moniesClient } from "./monies-client-service";
 import { AccountDialog } from "./account-dialog";
+import { formatAccountSelectLabel } from "./account-display";
 import { saveAccount } from "./accounts-api";
 import { inspectCsv } from "../lib/csv";
 import {
@@ -1307,7 +1308,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       rowsToCommit,
       statementCheckpoints,
       statementImportMeta,
-      previewRows
+      previewRows,
+      accounts
     }));
     setRecentImportStatus(null);
     // The file as the user picked it; pasted rows have none.
@@ -2577,11 +2579,19 @@ function buildOptimisticRecentImportBatch({
   rowsToCommit,
   statementCheckpoints,
   statementImportMeta,
-  previewRows
+  previewRows,
+  accounts
 }) {
+  // Same "Account - Owner" label the server gives the saved batch, so the
+  // Recent imports account filter keeps this row until the server one lands.
+  const accountsById = new Map(accounts.map((account) => [account.id, account]));
+  const labelFor = (item) => {
+    const account = item.accountId ? accountsById.get(item.accountId) : null;
+    return account ? formatAccountSelectLabel(account) : item.accountName;
+  };
   const accountNames = Array.from(new Set([
-    ...previewRows.map((row) => row.accountName).filter(Boolean),
-    ...statementCheckpoints.map((checkpoint) => checkpoint.accountName).filter(Boolean)
+    ...previewRows.map(labelFor).filter(Boolean),
+    ...statementCheckpoints.map(labelFor).filter(Boolean)
   ])).sort();
   const dateValues = rowsToCommit
     .map((row) => row.date)
