@@ -269,6 +269,13 @@ routine production path is to use Node 22.23.0 or newer, then run
 once and publish all three Workers (production, Shortcut API and demo). If the app change
 depends on a schema update, run the matching D1 migration before deploy.
 
+Every deploy script first runs `scripts/check-deploy-source.mjs`, which
+fetches and refuses unless HEAD is exactly `origin/master` with no
+uncommitted changes. Merge and push your branch first, then deploy from a
+clean checkout of `origin/master`; a deploy from a branch or a stale master
+rolls back whatever the previous deploy shipped. In an emergency,
+`ALLOW_DEPLOY_FROM_BRANCH=1` skips the check.
+
 The deploy scripts set `WRANGLER_NO_SKILLS_UPDATE_PROMPTS=true`, so Wrangler's
 interactive "Cloudflare skills might be out of date" question cannot pause a
 deploy halfway (Wrangler 4.141 asks it before a deploy on an interactive

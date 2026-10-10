@@ -109,6 +109,14 @@ team conventions evolve.
   matches the surrounding desktop and mobile experience.
 - Use `npm run test:e2e:smoke` as the standard smoke-bundle command when you
   need to verify the core desktop and mobile workflows together.
+- Several sessions and agents work in parallel worktrees. Before pushing,
+  `git fetch origin` and make sure your branch contains the current
+  `origin/master` (rebase or merge first, then rerun the gates); never
+  force-push `master`. Deploy only the exact pushed `origin/master` commit
+  from a clean tree: a deploy from a branch or a stale master silently rolls
+  back what the last deploy shipped. `npm run deploy:*` enforces this
+  (`scripts/check-deploy-source.mjs`); override with
+  `ALLOW_DEPLOY_FROM_BRANCH=1` only in an emergency, and say why.
 - Use `npm run verify` as the local merge gate. It must pass strict TypeScript,
   unit and parser contracts, the production build, and the smoke bundle.
 - Keep `npm run lint` (correctness-only ESLint) and `npm run typecheck:client`
