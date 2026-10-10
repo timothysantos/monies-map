@@ -329,12 +329,31 @@ test("OCBC 365 card PDF text parses spaced amounts and dates across a year bound
     statementEndDate: "2027-01-27",
     statementBalanceMinor: 44820,
     previousBalanceMinor: 61245,
+    accountLast4: "3333",
     note: "Imported from OCBC credit card statement"
   }]);
   assert.equal(61245 - sumMinor(parsed.rows, "OCBC 365 Credit Card"), 44820);
   for (const row of parsed.rows) {
     assert.doesNotMatch(row.description, /LAST MONTH|SUBTOTAL|TOTAL AMOUNT|Oversea-Chinese|Page \d|- 3333/);
   }
+});
+
+// A payment pushed to the card by another bank ("Bill Payment mBK-OCBC CC"
+// from UOB) prints as "PAYMENT - VISA DIRECT". It settles the card, so it is
+// a transfer to be linked to the bank's payment, never income.
+test("OCBC 365 card PDF text reads any card payment as a transfer, and a refund stays income", () => {
+  const text = replaceOnce(
+    readStatementFixture("ocbc-365-card-jan-2027-sanitized.pdf-text.txt"),
+    "29 / 12 PAYMENT BY INTERNET ( 612 . 45 )",
+    "29 / 12 PAYMENT - VISA DIRECT ( 612 . 45 )"
+  );
+  const parsed = parseStatementText(text, "OCBC 365 CREDIT CARD-3333-Jan-27.pdf");
+  const credits = parsed.rows.filter((row) => row.income).map((row) => [row.description, row.type, row.category]);
+  assert.deepEqual(credits, [
+    ["PAYMENT - VISA DIRECT", "transfer", "Transfer"],
+    ["CASH REBATE", "income", "Other - Income"],
+    ["COLD STORAGE - JELITA SINGAPORE SGP", "income", "Groceries"]
+  ]);
 });
 
 test("OCBC 365 card PDF text rejects a statement whose rows do not reach the printed subtotal", () => {

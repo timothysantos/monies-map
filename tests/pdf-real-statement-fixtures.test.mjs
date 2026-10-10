@@ -60,10 +60,16 @@ test("a real OCBC 360 row valued at month end but made the next day stays on the
   assert.equal(parsed.rows.some((row) => /posted date/.test(row.note)), false);
 });
 
+// OCBC prints no cycle start. The cycle runs from the day after the
+// previous statement date, so a card whose first row comes late in the
+// cycle still covers the whole cycle (a hand-entered purchase on an early
+// day is then checked against this statement, not blamed on the balance
+// before it). The card number printed above the previous balance gives the
+// account its last four digits.
 test("a real OCBC 365 card statement reads parenthesised credits and a card suffix prefix", () => {
   const parsed = parseFixture("ocbc-365-card-jun-2026-real");
   assert.equal(parsed.parserKey, "ocbc_365_credit_card_pdf");
-  assert.deepEqual(parsed.checkpoints.map((c) => [c.statementStartDate, c.statementEndDate, c.previousBalanceMinor, c.statementBalanceMinor]), [["2026-05-11", "2026-06-01", 94215, 1]]);
+  assert.deepEqual(parsed.checkpoints.map((c) => [c.statementStartDate, c.statementEndDate, c.previousBalanceMinor, c.statementBalanceMinor, c.accountLast4]), [["2026-05-02", "2026-06-01", 94215, 1, "7528"]]);
   assert.equal(parsed.rows.length, 11);
   assert.deepEqual(parsed.rows.filter((row) => row.income).map((row) => [row.date, row.description, row.income, row.type]), [
     ["2026-05-18", "PAYMENT BY INTERNET", "942.15", "transfer"],
@@ -80,7 +86,8 @@ test("a real OCBC 365 card statement reads parenthesised credits and a card suff
 test("a real OCBC 365 card statement with a past-due reminder beside the card name still parses", () => {
   const parsed = parseFixture("ocbc-365-card-sep-2026-real");
   assert.equal(parsed.parserKey, "ocbc_365_credit_card_pdf");
-  assert.deepEqual(parsed.checkpoints.map((c) => [c.accountName, c.statementEndDate, c.previousBalanceMinor, c.statementBalanceMinor]), [["OCBC 365 Credit Card", "2026-09-01", 10186, 24056]]);
+  assert.deepEqual(parsed.checkpoints.map((c) => [c.accountName, c.statementStartDate, c.statementEndDate, c.previousBalanceMinor, c.statementBalanceMinor, c.accountLast4]), [["OCBC 365 Credit Card", "2026-08-02", "2026-09-01", 10186, 24056, "7528"]]);
+  // The payment-slip card number on page 3 (all zeros here) is not read.
   assert.deepEqual(parsed.rows.map((row) => [row.date, row.description, row.expense || `+${row.income}`]), [
     ["2026-08-24", "CASH REBATE", "+0.25"],
     ["2026-08-24", "LATE CHARGE", "91.00"],

@@ -2,6 +2,7 @@ import {
   cleanOcbcDescription,
   compareImportRowsByDate,
   dateFromNumericStatementDate,
+  estimateMonthlyStatementCycleStartDate,
   findOcbc360Period,
   findOcbcStatementDate,
   formatDate,
@@ -17,6 +18,7 @@ import {
 
 interface OcbcStatementSection {
   accountName: string;
+  accountLast4?: string;
   previousBalanceMinor: number;
   totalBalanceMinor: number;
   minDate?: string;
@@ -46,10 +48,13 @@ export function parseOcbcCreditCardStatement(lines: string[], fileName?: string)
     checkpoints: [{
       accountName: section.accountName,
       checkpointMonth,
-      statementStartDate: section.minDate,
+      // OCBC prints no cycle start: the cycle opens the day after the
+      // previous statement date, not on the first row's date.
+      statementStartDate: estimateMonthlyStatementCycleStartDate(statementDate, section.minDate),
       statementEndDate: statementDate,
       statementBalanceMinor: section.totalBalanceMinor,
       previousBalanceMinor: section.previousBalanceMinor,
+      ...(section.accountLast4 ? { accountLast4: section.accountLast4 } : {}),
       note: "Imported from OCBC credit card statement"
     }],
     warnings: []
@@ -257,7 +262,21 @@ function parseOcbcCreditCardSection(lines: string[], statementDate: string, acco
     throw new Error(`OCBC card section did not reconcile. Expected ${minorToDecimal(totalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
   }
 
-  return { accountName, previousBalanceMinor, totalBalanceMinor, minDate, maxDate, rows };
+  const accountLast4 = findOcbcCardLast4(lines, previousIndex);
+  return { accountName, ...(accountLast4 ? { accountLast4 } : {}), previousBalanceMinor, totalBalanceMinor, minDate, maxDate, rows };
+}
+
+// The card number sits on the cardholder line just above "LAST MONTH'S
+// BALANCE" ("JOYCE LI 4524-1920-1224-7528"). The payment slip repeats it
+// later on, so only the lines above the previous balance are read.
+function findOcbcCardLast4(lines: string[], previousIndex: number) {
+  for (let index = previousIndex - 1; index >= Math.max(0, previousIndex - 4); index -= 1) {
+    const match = lines[index].match(/\b\d{4}\s*-\s*\d{4}\s*-\s*\d{4}\s*-\s*(\d{4})\b/);
+    if (match) {
+      return match[1];
+    }
+  }
+  return undefined;
 }
 
 function findOcbcCreditCardAccountName(lines: string[]) {
@@ -373,7 +392,11 @@ function parseOcbcCardTransactionLine(line: string, accountName: string, stateme
 
   const isCredit = /^\s*\(/.test(amountText);
   const description = cleanOcbcDescription(match[3]);
-  const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";
+  // Every credit that starts with PAYMENT settles the card ("PAYMENT BY
+  // INTERNET", "PAYMENT - VISA DIRECT" when another bank pays it), so it is a
+  // transfer from the paying account, never income.
+  const isCardPayment = isCredit && /^PAYMENT\b/i.test(description);
+  const type = isCardPayment || isTransferDescription(description) ? "transfer" : isCredit ? "income" : "expense";
 
   return {
     date,
