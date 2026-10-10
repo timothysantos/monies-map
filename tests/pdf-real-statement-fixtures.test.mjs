@@ -130,3 +130,36 @@ test("a real Citi Rewards statement parses from pdf.js 4 text with its grand tot
   const previous = Number(/BALANCEPREVIOUSSTATEMENT([\d,]+\.\d{2})/.exec(readFileSync(new URL("./fixtures/pdf-statement-text/citibank-rewards-aug-2026-real-sanitized.pdf-text.txt", import.meta.url), "utf8"))[1].replace(/,/g, "")) * 100;
   assert.equal(Math.round(previous) - netMinor(parsed.rows), 14882);
 });
+
+// What a card statement asks for. OCBC's Sept 2026 statement for a card
+// whose August bill went unpaid prints "IMMEDIATE" for the due date and the
+// past-due reminder beside the card's name. (The sanitized fixture zeroes
+// the minimum, so none is read.)
+test("a real OCBC 365 statement for an unpaid card is due at once and says it is past due", () => {
+  const [checkpoint] = parseFixture("ocbc-365-card-sep-2026-real").checkpoints;
+  assert.equal(checkpoint.paymentDueDate, "2026-09-01");
+  assert.equal(checkpoint.minimumPaymentMinor, undefined);
+  assert.deepEqual(checkpoint.notices, [{ code: "past_due" }]);
+});
+
+// The Oct 2026 statement replaced the reminder with the penalty rate notice,
+// worded and split as pdf.js read it from the real PDF, and printed a real
+// due date and minimum.
+test("an OCBC 365 statement's penalty interest notice, due date and minimum are read", () => {
+  const text = readFileSync(new URL("./fixtures/pdf-statement-text/ocbc-365-card-sep-2026-real-sanitized.pdf-text.txt", import.meta.url), "utf8")
+    .replace(
+      "OCBC 365 CREDIT CARD Just a reminder that your account is past due . Kindly arrange payment to regularise",
+      "OCBC 365 CREDIT CARD Note : You are currently being charged a penalty interest rate of 30 . 78 % per annum . For"
+    )
+    .replace("01 - 09 - 2026 IMMEDIATE S $ 5 , 000 S $ 0 , 000 . 00 S $ 000 . 00", "01 - 09 - 2026 23 - 09 - 2026 S $ 5 , 000 S $ 4 , 966 . 85 S $ 33 . 15");
+  const [checkpoint] = parseStatementText(text, "OCBC 365 CREDIT CARD-7528-Sep-26.pdf").checkpoints;
+  assert.deepEqual([checkpoint.paymentDueDate, checkpoint.minimumPaymentMinor, checkpoint.notices], ["2026-09-23", 3315, [{ code: "penalty_interest", annualRatePercent: 30.78 }]]);
+});
+
+test("a statement with nothing to pay has no due date, and a real Citi statement's due date is read", () => {
+  // OCBC prints "N . A" when the card owes nothing.
+  const [ocbc] = parseFixture("ocbc-365-card-jun-2026-real").checkpoints;
+  assert.deepEqual([ocbc.paymentDueDate, ocbc.minimumPaymentMinor, ocbc.notices], [undefined, undefined, undefined]);
+  const [citi] = parseFixture("citibank-rewards-aug-2026-real").checkpoints;
+  assert.equal(citi.paymentDueDate, "2026-09-05");
+});

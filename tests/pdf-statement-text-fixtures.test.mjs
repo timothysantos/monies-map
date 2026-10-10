@@ -88,6 +88,7 @@ test("Citibank card PDF text parses both card sections with compact descriptions
       statementEndDate: "2026-08-27",
       statementBalanceMinor: 11170,
       previousBalanceMinor: 120820,
+      paymentDueDate: "2026-09-18",
       note: "Imported from Citibank credit card statement"
     },
     {
@@ -97,6 +98,7 @@ test("Citibank card PDF text parses both card sections with compact descriptions
       statementEndDate: "2026-08-27",
       statementBalanceMinor: 110950,
       previousBalanceMinor: -2500,
+      paymentDueDate: "2026-09-18",
       note: "Imported from Citibank credit card statement"
     }
   ]);
@@ -177,6 +179,7 @@ test("UOB card PDF text parses a two-card statement with post and transaction da
       statementBalanceMinor: 5796,
       previousBalanceMinor: 15000,
       accountLast4: "1111",
+      paymentDueDate: "2026-06-02",
       note: "Imported from UOB credit card statement"
     },
     {
@@ -187,6 +190,7 @@ test("UOB card PDF text parses a two-card statement with post and transaction da
       statementBalanceMinor: 11705,
       previousBalanceMinor: -1250,
       accountLast4: "2222",
+      paymentDueDate: "2026-06-02",
       note: "Imported from UOB credit card statement"
     }
   ]);
@@ -330,6 +334,8 @@ test("OCBC 365 card PDF text parses spaced amounts and dates across a year bound
     statementBalanceMinor: 44820,
     previousBalanceMinor: 61245,
     accountLast4: "3333",
+    paymentDueDate: "2027-02-18",
+    minimumPaymentMinor: 5000,
     note: "Imported from OCBC credit card statement"
   }]);
   assert.equal(61245 - sumMinor(parsed.rows, "OCBC 365 Credit Card"), 44820);
