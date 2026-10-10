@@ -1031,6 +1031,15 @@ back. `tests/no-longer-listed-entries-api.test.mjs` replays a real released
 Grab hold; `tests/atomic-writes-no-longer-listed.test.mjs` covers the batch
 failures.
 
+An estimate is never removed that way. When the row that last updated a
+foreign currency estimate is gone, `loadUnlistedEstimates` returns it as
+`unlistedEstimates` with up to three rows that may be its final charge. The
+client links one by setting that row's `reconciliationTargetTransactionId`
+(the usual estimate update and its rollback); the others go back with the
+commit as `reopenedEstimates`, and `buildEstimateReopen` restores the bank
+facts from the earlier export row's promotion snapshot
+(`tests/foreign-estimate-released-hold-api.test.mjs`).
+
 Status guards only apply in that second lane. `statement_certified` ledger rows
 cannot be chosen as reconciliation targets, and non-PDF mid-cycle imports
 cannot reconcile against existing imported provisional rows. Exact duplicate

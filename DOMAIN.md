@@ -1353,6 +1353,17 @@ Important distinctions:
   not a foreign currency estimate, not a manual entry an export promoted,
   not a transfer. A purchase the user saved stays even when the bank row
   that updated it is gone.
+- A foreign currency estimate an export updated from a row a later export
+  no longer lists (Apple Pay saved a hold's amount, IDR 502,200; the card
+  then charged IDR 375,500) is an unlisted estimate
+  (`ImportPreviewDto.unlistedEstimates`). Its final charge prints another
+  foreign amount, so it never pairs by itself: the preview offers the new
+  rows of the same card within three days that print an amount in that
+  currency, come from a payment app or name the shop. A row the user links
+  updates the estimate as any export row does; left unlinked, the commit
+  puts the estimate back on the bank facts it had before that export
+  (usually its own saved amount; `kind = 'estimate_reopened'`, undone by
+  the export's rollback).
 - An entry any row of the file matched, skipped as a duplicate or left for
   review is still listed.
 - The commit removes them unless the user keeps them (one choice for all),

@@ -1235,6 +1235,11 @@ Your card's own amount may differ a little. When you import the card's
 activity export, each of these purchases is matched to the card's row and
 takes its current amount; a later export updates it again if the amount
 changed, and the statement sets the final amount. It is never added twice.
+If Apple Pay saved a hold's amount (a hotel deposit, or a ride held before
+a discount) and a later export no longer lists that hold, the preview asks
+which row is the final charge: pick **Same purchase** to move your purchase
+onto it, or leave **Not in this file** and it goes back to the amount you
+saved.
 Before you import, the matched row says what will change, for example
 "Updates your estimate for IDR 159,000 from SGD 11.34 to the card's SGD
 11.66". After the import, the Done card counts any entries the bank no
