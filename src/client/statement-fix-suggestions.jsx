@@ -121,7 +121,7 @@ export function StatementFixSuggestions({
           <strong>{messages.imports.statementFixAlsoCheck}</strong>
           <ul>
             {toCheck.map((finding) => (
-              <li key={finding.id}>{describeFindingToCheck(finding, accountName)}</li>
+              <li key={finding.id}>{describeFindingToCheck(finding, accountName, accounts.find((account) => account.id === finding.accountId)?.kind)}</li>
             ))}
           </ul>
         </div>
@@ -249,7 +249,7 @@ function AppliedFixes({ message, findings, isSubmitting, onUndo }) {
   );
 }
 
-function describeFindingToCheck(finding, accountName) {
+function describeFindingToCheck(finding, accountName, accountKind) {
   const explain = messages.imports.statementFixExplanation;
   const amount = (minor) => formatService.money(Math.abs(minor ?? 0));
   const description = finding.entry?.description ?? finding.statementRow?.description ?? "";
@@ -260,8 +260,19 @@ function describeFindingToCheck(finding, accountName) {
       return explain.amount_differs(description, amount(finding.entry.signedAmountMinor), amount(finding.statementRow.signedAmountMinor));
     case "excluded_statement_row":
       return explain.excluded_statement_row(description, amount(finding.statementRow.signedAmountMinor));
-    case "opening_balance_gap":
+    case "opening_balance_gap": {
+      const missing = finding.facts.find((fact) => fact.code === "missing_statements");
+      if (missing) {
+        return explain.opening_balance_missing_statements(
+          missing.months.map((month) => formatService.formatMonthLabel(month)).join(" and "),
+          missing.months.length,
+          formatService.formatDateOnly(missing.lastStatementEndDate),
+          missing.lastStatementBalanceMinor == null ? "" : formatBalanceForAccount(missing.lastStatementBalanceMinor, accountKind),
+          formatBalanceForAccount(missing.previousStatementBalanceMinor, accountKind)
+        );
+      }
       return explain.opening_balance_gap(amount(finding.effectMinor));
+    }
     case "wrong_account":
       return explain.wrong_account(description, amount(finding.entry.signedAmountMinor), finding.entry.accountName);
     case "next_statement":
@@ -269,6 +280,16 @@ function describeFindingToCheck(finding, accountName) {
     default:
       return explain.not_on_statement(description, amount(finding.entry?.signedAmountMinor));
   }
+}
+
+// A statement balance in the internal sign, read the way the statement
+// prints it: a card's balance is owed or in credit.
+function formatBalanceForAccount(valueMinor, accountKind) {
+  if (accountKind !== "credit_card" || valueMinor === 0) {
+    return formatService.money(valueMinor);
+  }
+  const amount = formatService.money(Math.abs(valueMinor));
+  return valueMinor < 0 ? messages.imports.statementBalanceOwed(amount) : messages.imports.statementBalanceInCredit(amount);
 }
 
 export function groupBy(items, key) {

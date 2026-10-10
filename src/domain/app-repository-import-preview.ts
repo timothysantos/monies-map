@@ -2157,6 +2157,7 @@ function buildImportPreviewStatementReconciliations(input: {
       deltaMinor,
       supersededLedgerRows
     });
+    const accountLast4 = checkpoint.accountLast4 ? { accountLast4: checkpoint.accountLast4 } : {};
     const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
       breakItem.account_id === account.id
       && breakItem.missing_checkpoint_month < checkpoint.checkpointMonth
@@ -2166,6 +2167,7 @@ function buildImportPreviewStatementReconciliations(input: {
         accountName: account.name,
         accountId: account.id,
         accountKind: account.kind,
+        ...accountLast4,
         checkpointMonth: checkpoint.checkpointMonth,
         statementStartDate,
         statementEndDate,
@@ -2186,6 +2188,7 @@ function buildImportPreviewStatementReconciliations(input: {
       accountName: account.name,
       accountId: account.id,
       accountKind: account.kind,
+      ...accountLast4,
       checkpointMonth: checkpoint.checkpointMonth,
       statementStartDate,
       statementEndDate,

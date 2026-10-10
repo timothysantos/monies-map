@@ -680,12 +680,21 @@ export const messages = {
       ? `Bought ${transactionDate}, posted ${postedDate}`
       : `Bought ${transactionDate}`,
     statementFixAlsoCheck: "Also check",
+    statementBalanceOwed: (amount) => `${amount} owed`,
+    statementBalanceInCredit: (amount) => `${amount} in credit`,
     statementFixExplanation: {
       duplicate_entry: (description, amount, otherName) => `${description} (${amount}) looks like a second copy of a purchase this statement already matched${otherName ? ` on ${otherName}` : ""}.`,
       amount_differs: (description, amount, statementAmount) => `${description} is ${amount} in your ledger but ${statementAmount} on the statement.`,
       not_on_statement: (description, amount) => `${description} (${amount}) isn't on this statement.`,
       excluded_statement_row: (description, amount) => `${description} (${amount}) is left out of this import.`,
       opening_balance_gap: (amount) => `The balance before this statement is off by ${amount}. An earlier statement may be missing, or an earlier entry is off.`,
+      // The months between the last saved statement and this one have no
+      // statement, so their rows never reached the ledger.
+      opening_balance_missing_statements: (monthsLabel, count, lastStatementLabel, lastBalance, previousBalance) => (
+        `Your ${monthsLabel} statement${count === 1 ? " isn't" : "s aren't"} imported yet. `
+        + `Your ledger stops at the ${lastStatementLabel} statement${lastBalance ? ` (${lastBalance})` : ""}, and this statement starts from ${previousBalance}. `
+        + `Import ${count === 1 ? "it" : "them"} first, then this one.`
+      ),
       wrong_account: (description, amount, accountName) => `${description} (${amount}) on ${accountName} may be one of this statement's rows, but it can't be moved for you.`,
       next_statement: (description, amount) => `${description} (${amount}) may belong to the next statement.`
     },
@@ -701,6 +710,7 @@ export const messages = {
     statementReconciliationRefreshing: "Refreshing statement certification check.",
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
+    statementCardEnding: (last4) => `ending ${last4}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationBreakdownTitle: "Why this does not close",
     statementReconciliationMatchedBreakdownTitle: "Why this closes",

@@ -884,3 +884,18 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* Whose account a statement card goes to: a chip in that person's colour
+   (person-colour.js), the same chip as the Import inbox owner groups. */
+.statement-card-owner {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 9px;
+  border: 1px solid var(--person-chip-border);
+  border-radius: 999px;
+  background: var(--person-chip-bg);
+  color: var(--person-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  vertical-align: 0.1em;
+}

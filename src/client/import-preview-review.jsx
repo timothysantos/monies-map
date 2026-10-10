@@ -14,6 +14,8 @@ import { useMoneyPrivacy } from "./money-privacy";
 import { entryAmountTone } from "../domain/money-tone";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
 import { isLedgerMatchedPreviewRow } from "./import-preview-model";
+import { getPersonColourVars } from "./person-colour";
+import "./import-review.css";
 
 const {
   accounts: accountService,
@@ -1750,6 +1752,11 @@ function StatementCardSection({
   // earlier statement did.
   const confirmedCount = rows.filter(isLedgerMatchedPreviewRow).length;
   const previousImport = reconciliation.previousStatementImport;
+  // Whose account the statement goes to, in that person's colour, so a
+  // card with the same name for two people can't be mixed up.
+  const owner = reconciliation.accountId
+    ? accounts.find((account) => account.id === reconciliation.accountId)?.ownerLabel
+    : undefined;
 
   return (
     <article
@@ -1762,10 +1769,16 @@ function StatementCardSection({
         <div className="statement-card-title">
           <span className={`pill ${status.tone}`}>{status.label}</span>
           <div className="statement-reconciliation-card-title">
-            <strong>{messages.imports.statementReconciliationAccount(
-              reconciliation.accountName,
-              formatService.formatMonthLabel(reconciliation.checkpointMonth)
-            )}</strong>
+            <strong>
+              {owner ? (
+                <span className="statement-card-owner" style={getPersonColourVars(owner)}>{owner}</span>
+              ) : null}
+              {messages.imports.statementReconciliationAccount(
+                reconciliation.accountName,
+                formatService.formatMonthLabel(reconciliation.checkpointMonth)
+              )}
+              {reconciliation.accountLast4 ? ` • ${messages.imports.statementCardEnding(reconciliation.accountLast4)}` : ""}
+            </strong>
             <span className="import-history-inline">
               {formatService.formatStatementReconciliationLine(reconciliation)}
               {deltaMinor !== 0
