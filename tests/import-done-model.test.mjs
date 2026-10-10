@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildImportDoneSummary } from "../src/client/import-done-model.js";
+import { messages } from "../src/client/copy/en-SG.js";
 
 const reconciliation = (overrides = {}) => ({
   accountId: "acct-uob-one",
@@ -43,7 +44,7 @@ test("a balanced statement's Done card names the file, the account and the state
   );
   assert.equal(summary.statusLabel, "Every card balanced");
   assert.equal(summary.statusTone, "success");
-  assert.deepEqual(summary.cards[0].counts, { added: 1, confirmed: 1, moved: 0, later: 0 });
+  assert.deepEqual(summary.cards[0].counts, { added: 1, confirmed: 1, moved: 0, later: 0, removed: 0 });
 });
 
 test("the Done card names each account with its owner, as Recent imports does", () => {
@@ -135,6 +136,32 @@ test("an activity file's Done card covers the dates of the rows it committed, ac
     summary.confirmation,
     "The import of ACCT_activity.csv into OCBC 360 and UOB One, covering 3 Sept 2026 – 9 Sept 2026, is done. No further action needed."
   );
-  assert.deepEqual(summary.counts, { added: 2, confirmed: 0 });
+  assert.deepEqual(summary.counts, { added: 2, confirmed: 0, removed: 0 });
   assert.equal(summary.statusLabel, undefined);
+});
+
+test("the Done card counts the entries the bank no longer lists that the import removed", () => {
+  const activity = buildImportDoneSummary({
+    importId: "import-5",
+    title: "ACCT_349_11_10_2026",
+    sourceLabel: "ACCT_349_11_10_2026",
+    preview: {},
+    previewRows: [row({ date: "2026-10-09", accountName: "Citi Rewards" })],
+    statementReconciliations: [],
+    isStatement: false,
+    removedEntryCount: 1
+  });
+  assert.equal(messages.imports.doneRowsDetail(activity.counts), "1 row added · 0 entries confirmed · 1 entry the bank no longer lists removed");
+
+  // A statement removes a card's superseded rows only when the card balances.
+  const statement = (status) => buildImportDoneSummary({
+    importId: "import-6",
+    title: "Citi Rewards Oct 2026",
+    sourceLabel: "Citi Rewards Oct 2026",
+    preview: {},
+    previewRows: [],
+    statementReconciliations: [reconciliation({ status, supersededLedgerRows: [{ transactionId: "txn-hold" }] })],
+    isStatement: true
+  }).cards[0].counts.removed;
+  assert.deepEqual([statement("matched"), statement("mismatch")], [1, 0]);
 });

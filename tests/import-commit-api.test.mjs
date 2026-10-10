@@ -762,7 +762,7 @@ test("current-activity import promotes shortcut rows with compact merchant alias
   expect(previewRow.reconciliationMatch?.existingSourceType).toBe("manual");
   expect(previewRow.reconciliationMatch?.matchKind).toBe("probable");
   expect(previewRow.commitStatus).toBe("included");
-  expect(previewRow.commitStatusReason).toContain("Current-activity import will promote the existing manual ledger row");
+  expect(previewRow.commitStatusReason).toContain("Matches the entry you added.");
 });
 
 test("compact Citi PDF merchant text can still promote the spaced mid-cycle CSV row", async (t) => {

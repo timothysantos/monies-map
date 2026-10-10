@@ -107,7 +107,7 @@ test("the preview says the card's amount replaces the estimate", async (t) => {
   const previewRows = await previewActivity(api);
 
   const naughtyNuri = previewRows.find((row) => row.reconciliationTargetTransactionId === ids[1]);
-  assert.equal(naughtyNuri.commitStatusReason, "Current-activity import will update the estimate for IDR 1,233,430 from SGD 87.95 to the card's SGD 90.30.");
+  assert.equal(naughtyNuri.commitStatusReason, "Updates your estimate for IDR 1,233,430 from SGD 87.95 to the card's SGD 90.30.");
 });
 
 test("a card row printing another IDR amount is never that estimate, however close its SGD", async (t) => {

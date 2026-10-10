@@ -230,7 +230,7 @@ test("a second activity export with a newer interim amount updates the same esti
   const first = await importActivity(api, "Citi activity 4 Oct", "11.50");
   const second = await importActivity(api, "Citi activity 6 Oct", "11.58", { date: "2026-10-05" });
   assert.deepEqual([second.row.reconciliationTargetTransactionId, second.row.commitStatus], [digimap, "included"]);
-  assert.equal(second.row.commitStatusReason, "Current-activity import will update the estimate for IDR 159,000 from SGD 11.50 to the card's SGD 11.58.");
+  assert.equal(second.row.commitStatusReason, "Updates your estimate for IDR 159,000 from SGD 11.50 to the card's SGD 11.58.");
   assert.deepEqual(await digimapEntries(db), [{ id: digimap, amount_minor: 1158, import_id: second.importId, bank_certification_status: "provisional" }]);
 
   // The statement's final amount still settles it.

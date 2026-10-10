@@ -8,7 +8,9 @@ import { formatDateOnly, formatMonthLabel } from "./formatters";
 // sentence naming the file, its accounts (with their owner, "UOB One Card -
 // Tim") and its period. `fileName` is the file as the user picked it;
 // pasted rows fall back to the source label.
-export function buildImportDoneSummary({ importId, title, sourceLabel, fileName = "", accounts = [], preview, previewRows, statementReconciliations, isStatement }) {
+// `removedEntryCount` is the entries an activity file removed because the
+// bank no longer lists them; a statement card counts its own.
+export function buildImportDoneSummary({ importId, title, sourceLabel, fileName = "", accounts = [], preview, previewRows, statementReconciliations, isStatement, removedEntryCount = 0 }) {
   const committedRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const count = (rows) => ({
     added: rows.filter((row) => !row.reconciliationTargetTransactionId).length,
@@ -34,7 +36,7 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
         unbalancedCount: 0
       }),
       cards: [],
-      counts: count(committedRows)
+      counts: { ...count(committedRows), removed: removedEntryCount }
     };
   }
 
@@ -48,7 +50,7 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
       name: reconciliation.accountName,
       balanced: reconciliation.status === "matched",
       reconciliation,
-      counts: { ...count(rows), moved, later }
+      counts: { ...count(rows), moved, later, removed: countRemovedByStatement(reconciliation) }
     };
   });
   const unbalanced = cards.filter((card) => !card.balanced).length;
@@ -67,6 +69,11 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
     statusTone: unbalanced ? "warning" : "success",
     cards
   };
+}
+
+// The commit removes a card's superseded rows only when the card balances.
+export function countRemovedByStatement(reconciliation) {
+  return reconciliation.status === "matched" ? reconciliation.supersededLedgerRows?.length ?? 0 : 0;
 }
 
 function uniqueNames(names) {

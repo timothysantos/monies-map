@@ -17,6 +17,7 @@ export function ImportCommitBar({
   statementCheckpointCount = 0,
   ledgerMatchedStatement = null,
   reconciledExistingRowCount = 0,
+  removedEntryCount = 0,
   statementImportSourceType = "csv",
   isCommitDisabled,
   isSubmitting,
@@ -45,6 +46,7 @@ export function ImportCommitBar({
     reconciledExistingRowCount ? { text: messages.imports.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType) } : null,
     statementCheckpointCount ? { text: messages.imports.willSaveStatementCheckpoints(statementCheckpointCount) } : null,
     skippedCount ? { text: messages.imports.willSkipRows(skippedCount) } : null,
+    removedEntryCount ? { text: messages.imports.willRemoveEntries(removedEntryCount) } : null,
     needsReviewCount ? { text: messages.imports.needsReviewRows(needsReviewCount), tone: "warning" } : null
   ].filter(Boolean);
 

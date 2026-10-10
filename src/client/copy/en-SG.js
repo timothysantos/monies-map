@@ -590,13 +590,14 @@ export const messages = {
     doneOwed: (amount) => `Owed ${amount}`,
     doneCredit: (amount) => `Credit ${amount}`,
     doneBalance: (amount) => `Balance ${amount}`,
-    doneCardDetail: ({ added, confirmed, moved, later }) => [
+    doneCardDetail: ({ added, confirmed, moved, later, removed }) => [
       `${countOf(added, "row")} added`,
       `${countOf(confirmed, "entry", "entries")} confirmed`,
       moved ? `${countOf(moved, "entry", "entries")} moved here` : "",
+      removed ? `${countOf(removed, "entry", "entries")} not on the statement removed` : "",
       later ? `${countOf(later, "entry", "entries")} ${later === 1 ? "stays" : "stay"} for the next statement` : ""
     ].filter(Boolean).join(" · "),
-    doneRowsDetail: ({ added, confirmed }) => `${countOf(added, "row")} added · ${countOf(confirmed, "entry", "entries")} confirmed`,
+    doneRowsDetail: ({ added, confirmed, removed }) => `${countOf(added, "row")} added · ${countOf(confirmed, "entry", "entries")} confirmed${removed ? ` · ${countOf(removed, "entry", "entries")} the bank no longer lists removed` : ""}`,
     // The Done card's plain answer: which file went where, for which period,
     // and whether anything is left to do.
     doneConfirmation: ({ fileName, accountNames, period, isStatement, unbalancedCount }) => {
@@ -824,7 +825,7 @@ export const messages = {
       : `Delete all ${count} unresolved ledger rows shown here now? Together these rows net to ${amount}. Use this only after checking the PDF/account mapping and confirming these rows are absent from this card's PDF, duplicated, or belong to another card/account.`,
     deleteDiagnosticEntriesProgress: (count) => `Deleting ${countOf(count, "ledger row")} and refreshing statement check.`,
     deleteDiagnosticEntriesSuccess: (count) => `${countOf(count, "ledger row")} deleted. Statement check refreshed.`,
-    statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
+    statementReconciliationSupersededRowsTitle: "This statement doesn't list these entries from earlier imports. Importing removes them.",
     statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {
       matched: "Matched",
@@ -860,6 +861,7 @@ export const messages = {
       : `${count} existing row${count === 1 ? "" : "s"} will be promoted in place`,
     willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will refresh`,
     willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
+    willRemoveEntries: (count) => `${countOf(count, "entry", "entries")} will be removed`,
     needsReviewRows: (count) => `${countOf(count, "row")} ${count === 1 ? "needs" : "need"} review`,
     noRowsToImport: "No new ledger rows will be created. You can still refresh statement checkpoints and certification when the checks match.",
     noRowsToImportCoveredStatement: "This statement's rows are already in the ledger, so nothing new will be added. Saving still records the statement's balance and dates.",

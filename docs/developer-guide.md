@@ -481,9 +481,8 @@ card's cut-off shop name behind the payment app's prefix
 (`isCardMerchantPrefixMatch`; several at one shop on one day pair by size),
 then a payment-app row naming no shop when it and the estimate are each
 other's only fit among what is left. Wording matches work as for any entry.
-The commit then writes the card's amount, and the preview says so ("will
-update the estimate for IDR 1,233,430 from SGD 87.95 to the card's SGD
-90.30"). An estimate stays open to later activity exports (the
+The commit then writes the card's amount, and the preview says so ("Updates
+your estimate for IDR 1,233,430 from SGD 87.95 to the card's SGD 90.30"). An estimate stays open to later activity exports (the
 mid-cycle isolation in `isReconciliationCandidateEligibleForSource` does not
 apply to it): a newer interim amount updates it, the same amount is skipped,
 the promotion snapshot keeps the earlier export's link, and rollback restores

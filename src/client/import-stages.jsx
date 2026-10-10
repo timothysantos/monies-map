@@ -134,8 +134,9 @@ function totalDoneCounts(summary) {
   }
   return summary.cards.reduce((total, card) => ({
     added: total.added + card.counts.added,
-    confirmed: total.confirmed + card.counts.confirmed
-  }), { added: 0, confirmed: 0 });
+    confirmed: total.confirmed + card.counts.confirmed,
+    removed: total.removed + (card.counts.removed ?? 0)
+  }), { added: 0, confirmed: 0, removed: 0 });
 }
 
 // The statement's own balance in bank terms: what a card owes, or a credit.

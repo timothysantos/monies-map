@@ -39,7 +39,7 @@ import {
 } from "./import-batch-model";
 import { useImportBlockerKeys } from "./import-blocker-keys";
 import { jumpToImportTarget, revealAndFocus } from "./import-jump";
-import { buildImportDoneSummary } from "./import-done-model";
+import { buildImportDoneSummary, countRemovedByStatement } from "./import-done-model";
 import { isInboxOpenByDefault } from "./import-inbox-model";
 import { usePageFileDrop } from "./import-page-drop";
 import { useFollowingFold } from "./use-following-fold";
@@ -1331,7 +1331,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       preview,
       previewRows,
       statementReconciliations,
-      isStatement: isStatementReview
+      isStatement: isStatementReview,
+      removedEntryCount: isStatementReview ? 0 : noLongerListedEntries.length
     });
     const committedIntakeItemId = activeIntakeItemId;
     if (currentBatchFile) {
@@ -2489,6 +2490,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               statementCheckpointCount={statementCheckpoints.length}
               ledgerMatchedStatement={ledgerMatchedStatement}
               reconciledExistingRowCount={reconciledExistingRowCount}
+              removedEntryCount={statementImportMeta.sourceType === "pdf"
+                ? statementReconciliations.reduce((total, reconciliation) => total + countRemovedByStatement(reconciliation), 0)
+                : importPreviewModel.noLongerListedEntriesToRemove.length}
               statementImportSourceType={statementImportMeta.sourceType}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}

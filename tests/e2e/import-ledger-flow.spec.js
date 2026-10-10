@@ -1479,7 +1479,7 @@ test.describe("import flow", () => {
               reconciliationMatchCount: 1,
               commitStatus: "skipped",
               commitStatusExplicit: false,
-              commitStatusReason: "Current-activity import will promote the existing manual ledger row while preserving user edits and split links.",
+              commitStatusReason: "Matches the entry you added. Keeps your category, notes and splits, and takes the card's date.",
               reconciliationTargetTransactionId: "txn-restore-1",
               isCertifiedConflict: true
             }],
@@ -1605,8 +1605,7 @@ test.describe("import flow", () => {
 
     await expect(page.getByText("Matched to ledger")).toBeVisible();
     await expect(page.getByRole("button", { name: "Exclude row" })).toHaveCount(0);
-    await expect(page.getByText("Current-activity import will promote the existing manual ledger row")).toBeVisible();
-    await expect(page.getByText("It will keep transaction date 2025-06-11 for spending history and set posted date 2025-06-13 for statement reconciliation.")).toBeVisible();
+    await expect(page.getByText("Matches the entry you added. Keeps your date, category, notes and splits, and adds the card's posted date, 2025-06-13.")).toBeVisible();
   });
 
   test("official statement certifies shifted mid-cycle rows and supersedes absent provisional rows", async ({ page }) => {
@@ -2411,11 +2410,13 @@ test.describe("import flow", () => {
     await expect(notice).toBeVisible();
     await expect(notice).toContainText("Grab* A-9TSU83RWW566AV");
     await expect(notice.getByRole("checkbox", { name: "Keep this entry" })).not.toBeChecked();
-    await notice.screenshot({ path: testInfo.outputPath("no-longer-listed.png") });
+    await expect(page.locator(".import-commit-bar")).toContainText("1 entry will be removed");
+    await page.screenshot({ path: testInfo.outputPath("no-longer-listed.png"), fullPage: true });
 
     const holdIsInLedger = async () => JSON.stringify(await loadEntriesPage(page, { view: "household", month: "2026-10" })).includes("A-9TSU83RWW566AV");
     expect(await holdIsInLedger()).toBe(true);
     await commitAndWait();
+    await expect(page.locator(".import-done-card")).toContainText("1 entry the bank no longer lists removed");
     expect(await holdIsInLedger()).toBe(false);
   });
 });

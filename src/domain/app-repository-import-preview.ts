@@ -1376,22 +1376,23 @@ function describeEstimateReplacement(
   return `Official statement will replace the estimate for ${match.originalAmount} (about ${formatForeignAmount(match.amountMinor, currency, 2)}) with the card's ${formatForeignAmount(previewRow.amountMinor, currency, 2)}.`;
 }
 
-// "Current-activity import will update the estimate for IDR 159,000 from SGD
-// 11.50 to the card's SGD 11.58."
+// "Updates your estimate for IDR 159,000 from SGD 11.50 to the card's SGD
+// 11.58."
 function describeEstimateInterimUpdate(
   previewRow: ImportPreviewRowDto,
   match: NonNullable<ImportPreviewRowDto["reconciliationMatch"]>
 ) {
   const currency = match.currency ?? "SGD";
-  return `Current-activity import will update the estimate for ${match.originalAmount} from ${formatForeignAmount(match.amountMinor, currency, 2)} to the card's ${formatForeignAmount(previewRow.amountMinor, currency, 2)}.`;
+  return `Updates your estimate for ${match.originalAmount} from ${formatForeignAmount(match.amountMinor, currency, 2)} to the card's ${formatForeignAmount(previewRow.amountMinor, currency, 2)}.`;
 }
 
 function buildCurrentActivityManualPromotionReason(previewRow: ImportPreviewRowDto) {
   const dateContext = getPreviewRowDateContext(previewRow);
-  const dateAction = dateContext.eventDate !== dateContext.postedDate
-    ? ` It will keep transaction date ${dateContext.eventDate} for spending history and set posted date ${dateContext.postedDate} for statement reconciliation.`
-    : ` It will use ${dateContext.postedDate} as both the transaction date and posted date because this source has only one date.`;
-  return `Current-activity import will promote the existing manual ledger row while preserving user edits and split links.${dateAction}`;
+  // The commit keeps the entry's own date and adds the card's as its posted
+  // date; with one date on each side they are the same day.
+  return dateContext.eventDate !== dateContext.postedDate
+    ? `Matches the entry you added. Keeps your date, category, notes and splits, and adds the card's posted date, ${dateContext.postedDate}.`
+    : "Matches the entry you added. Keeps your category, notes and splits, and takes the card's date.";
 }
 
 function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: string) {
