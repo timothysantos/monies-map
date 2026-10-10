@@ -1926,7 +1926,13 @@ test.describe("import flow", () => {
     expect(firstPreview.preview.statementReconciliations[0].status).toBe("matched");
     expect(firstPreview.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
     await expect(importFlowPage.getByText("1 statement mismatch")).toHaveCount(0);
-    await expect(importFlowPage.getByText("1 existing row will be certified by the statement").first()).toBeVisible();
+    // The statement's only row is the mid-cycle entry: nothing new, and the
+    // commit says it certifies that entry.
+    await expect(importFlowPage.locator(".import-commit-bar-summary")).toHaveText(
+      "The 1 row on this statement is already in your ledger and the balance matches. Saving certifies it."
+    );
+    await expect(importFlowPage.getByRole("button", { name: "Certify 1 matched entry" })).toBeEnabled();
+    await expect(importFlowPage.getByRole("button", { name: "Commit import to ledger" })).toHaveCount(0);
   });
 
   test("multi-card statements reconcile while certifying growing midcycle rows", async ({ page }, testInfo) => {
