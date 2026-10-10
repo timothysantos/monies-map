@@ -79,7 +79,8 @@ export function ImportPreviewReview({
   autoAppliedStatementFixCount = 0,
   onAutomaticStatementFixesChange,
   keepsNoLongerListedEntries = false,
-  onKeepsNoLongerListedEntriesChange
+  onKeepsNoLongerListedEntriesChange,
+  onLinkUnlistedEstimate
 }) {
   if (!preview) {
     return null;
@@ -224,6 +225,17 @@ export function ImportPreviewReview({
           onKeptChange={onKeepsNoLongerListedEntriesChange}
         />
       ) : null}
+
+      {/* Estimates whose bank row this file no longer lists: link the final charge or put them back. */}
+      {(preview.unlistedEstimates ?? []).map((estimate) => (
+        <UnlistedEstimate
+          key={estimate.transactionId}
+          estimate={estimate}
+          linkedRowId={previewRows.find((row) => row.reconciliationTargetTransactionId === estimate.transactionId)?.rowId ?? null}
+          isSubmitting={isSubmitting}
+          onLink={(rowId) => onLinkUnlistedEstimate?.(estimate, rowId)}
+        />
+      ))}
 
       {/* Overlap imports explain why some rows may already be covered by previous work. */}
       {visibleOverlapImports.length ? (
@@ -408,6 +420,35 @@ function NoLongerListedEntries({ entries, isKept, isSubmitting, onKeptChange }) 
         />
         <span>{messages.imports.noLongerListedKeep(entries.length)}</span>
       </label>
+    </div>
+  );
+}
+
+// A foreign currency estimate an earlier export matched to a row this file
+// no longer lists (usually a hold). Its final charge prints another foreign
+// amount, so it never pairs by itself: the user picks it, or the estimate
+// goes back to its own saved amount (the default).
+function UnlistedEstimate({ estimate, linkedRowId, isSubmitting, onLink }) {
+  const restoredAmount = formatService.money(estimate.restoredAmountMinor);
+  const name = `unlisted-estimate-${estimate.transactionId}`;
+  return (
+    <div className="import-warning">
+      <strong>{messages.imports.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}</strong>
+      <p className="lede compact">{messages.imports.unlistedEstimateDetail(restoredAmount, estimate.candidates.length > 0)}</p>
+      {estimate.candidates.length ? (
+        <div className="import-estimate-choices" role="radiogroup" aria-label={messages.imports.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}>
+          {estimate.candidates.map((candidate) => (
+            <label key={candidate.rowId} className="import-keep-entries">
+              <input type="radio" name={name} checked={linkedRowId === candidate.rowId} disabled={isSubmitting} onChange={() => onLink(candidate.rowId)} />
+              <span>{messages.imports.unlistedEstimateSamePurchase(formatService.formatDateOnly(candidate.date), candidate.description, formatService.money(candidate.amountMinor))}</span>
+            </label>
+          ))}
+          <label className="import-keep-entries">
+            <input type="radio" name={name} checked={!linkedRowId} disabled={isSubmitting} onChange={() => onLink(null)} />
+            <span>{messages.imports.unlistedEstimateNotInFile(restoredAmount)}</span>
+          </label>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1250,7 +1250,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     // still matter during preview because they affect statement reconciliation.
     const rowsToCommit = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
     const noLongerListedEntries = importPreviewModel.noLongerListedEntriesToRemove;
-    if (!rowsToCommit.length && !statementCheckpoints.length && !noLongerListedEntries.length) {
+    const reopenedEstimates = importPreviewModel.reopenedEstimates;
+    if (!rowsToCommit.length && !statementCheckpoints.length && !noLongerListedEntries.length && !reopenedEstimates.length) {
       return;
     }
 
@@ -1270,6 +1271,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
         statementFixes: statementImportMeta.sourceType === "pdf" ? preview?.statementDiagnosis?.appliedFixes ?? [] : [],
         noLongerListedEntries,
+        reopenedEstimates,
         rows: rowsToCommit,
         diagnosticContext: {
           source: "import_commit",
@@ -1668,6 +1670,38 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setOptimisticRecentImport(null);
     }
   }, [optimisticRecentImport, safeImportsPage.recentImports]);
+
+  // Links an estimate whose bank row is gone to the row of this file the
+  // user picked as its final charge (rowId null: none); a row linked before
+  // goes back to how the preview had it.
+  function linkUnlistedEstimate(estimate, rowId) {
+    setPreviewRows((currentRows) => currentRows.map((row) => {
+      if (row.rowId === rowId) {
+        return {
+          ...row,
+          reconciliationTargetTransactionId: estimate.transactionId,
+          commitStatus: "included",
+          commitStatusReason: messages.imports.unlistedEstimateLinkedReason(
+            estimate.originalAmount,
+            formatService.money(estimate.amountMinor),
+            formatService.money(row.amountMinor)
+          ),
+          commitStatusExplicit: true
+        };
+      }
+      if (row.reconciliationTargetTransactionId === estimate.transactionId) {
+        const original = preview?.previewRows?.find((item) => item.rowId === row.rowId);
+        return {
+          ...row,
+          reconciliationTargetTransactionId: original?.reconciliationTargetTransactionId,
+          commitStatus: original?.commitStatus ?? "included",
+          commitStatusReason: original?.commitStatusReason,
+          commitStatusExplicit: false
+        };
+      }
+      return row;
+    }));
+  }
 
   function promotePreviewRowReconciliationTarget(rowId, targetTransactionId) {
     const nextRows = previewRows.map((row) => (
@@ -2460,6 +2494,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onAutomaticStatementFixesChange={changeAutomaticStatementFixes}
             keepsNoLongerListedEntries={keepsNoLongerListedEntries}
             onKeepsNoLongerListedEntriesChange={trackReviewChange(setKeepsNoLongerListedEntries)}
+            onLinkUnlistedEstimate={trackReviewChange(linkUnlistedEstimate)}
           />
 
           {isStatementReview ? null : optionalAiChecks}
@@ -2493,6 +2528,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               removedEntryCount={statementImportMeta.sourceType === "pdf"
                 ? statementReconciliations.reduce((total, reconciliation) => total + countRemovedByStatement(reconciliation), 0)
                 : importPreviewModel.noLongerListedEntriesToRemove.length}
+              reopenedEstimateCount={importPreviewModel.reopenedEstimates.length}
               statementImportSourceType={statementImportMeta.sourceType}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}

@@ -124,7 +124,13 @@ export function buildImportPreviewModel({
   // commit removes them unless the user keeps them, so removing them alone
   // is something to commit.
   const noLongerListedEntriesToRemove = keepsNoLongerListedEntries ? [] : (preview?.noLongerListedEntries ?? []);
-  const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0 || noLongerListedEntriesToRemove.length > 0;
+  // Estimates whose bank row is gone and that the user did not link to a
+  // row of this file go back to their own saved amount on commit.
+  const reopenedEstimates = (preview?.unlistedEstimates ?? []).filter((estimate) => (
+    !previewRows.some((row) => row.reconciliationTargetTransactionId === estimate.transactionId)
+  ));
+  const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0
+    || noLongerListedEntriesToRemove.length > 0 || reopenedEstimates.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
 
   return {
@@ -138,6 +144,7 @@ export function buildImportPreviewModel({
     unmappedCommitAccountNames,
     hasCommitPayload,
     noLongerListedEntriesToRemove,
+    reopenedEstimates,
     hasCheckpointOnlyCommit,
     hasMatchedCheckpointOnlyCommit,
     ledgerMatchedStatement,

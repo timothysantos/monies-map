@@ -933,3 +933,9 @@
   margin: 0;
   color: inherit;
 }
+
+/* The choices for an estimate whose bank row the file no longer lists. */
+.import-estimate-choices {
+  display: grid;
+  gap: 2px;
+}
