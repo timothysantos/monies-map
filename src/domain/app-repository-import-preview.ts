@@ -21,6 +21,7 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import { formatForeignAmount } from "./foreign-currency";
+import { findNoLongerListedEntries } from "./import-no-longer-listed-entries";
 import {
   diagnoseStatementMismatches,
   getFixKey,
@@ -93,7 +94,8 @@ export async function buildImportPreview(
         transactions.original_amount_minor,
         transactions.original_currency,
         accounts.account_name,
-        COALESCE(statement_import_rows.normalized_hash, import_rows.normalized_hash) AS normalized_hash
+        COALESCE(statement_import_rows.normalized_hash, import_rows.normalized_hash) AS normalized_hash,
+        import_rows.promoted_entry_snapshot_json IS NOT NULL AS promotes_manual_entry
       FROM transactions
       LEFT JOIN imports ON imports.id = transactions.import_id
       LEFT JOIN import_rows ON import_rows.id = transactions.import_row_id
@@ -122,6 +124,7 @@ export async function buildImportPreview(
       original_currency: string | null;
       account_name: string;
       normalized_hash: string | null;
+      promotes_manual_entry: number;
     }>();
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(accounts);
@@ -375,7 +378,8 @@ export async function buildImportPreview(
     statementReconciliations,
     exceptionSummary,
     ...(statementDiagnosis ? { statementDiagnosis } : {}),
-    ...(statementAccountMatches.length ? { statementAccountMatches } : {})
+    ...(statementAccountMatches.length ? { statementAccountMatches } : {}),
+    ...(input.sourceType !== "pdf" ? { noLongerListedEntries: findNoLongerListedEntries({ sourceType: input.sourceType, previewRows, ledgerRows }) } : {})
   };
 }
 
@@ -542,6 +546,8 @@ type PreviewLedgerRow = {
   original_currency: string | null;
   account_name: string;
   normalized_hash: string | null;
+  // A manual entry an export promoted rather than created.
+  promotes_manual_entry: number;
 };
 
 // The velocity rule's repetition test for this preview (DOMAIN.md,

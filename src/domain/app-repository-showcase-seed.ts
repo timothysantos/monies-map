@@ -57,6 +57,7 @@ const SHOWCASE_CLEAR_TABLES = [
   "statement_reconciliation_certificates",
   "statement_chain_breaks",
   "import_statement_fixes",
+  "import_no_longer_listed_entries",
   "statement_corrections",
   "import_rows",
   "imports",

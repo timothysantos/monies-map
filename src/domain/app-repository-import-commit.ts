@@ -29,6 +29,7 @@ import {
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
+import { buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, hasLaterNoLongerListedRemoval } from "./import-no-longer-listed-entries";
 import {
   assertStatementFixesMatchCertification,
   buildStatementFixCleanupStatement,
@@ -425,6 +426,9 @@ export async function commitImportBatch(
     statementCheckpoints?: StatementCheckpointDraftDto[];
     // Fixes the user approved in the statement check; written in this batch.
     statementFixes?: StatementFixDto[];
+    // Activity exports: the entries the bank no longer lists that the user
+    // did not keep (preview's noLongerListedEntries).
+    noLongerListedEntries?: Array<{ transactionId: string; importId: string }>;
     note?: string;
   }
 ) {
@@ -552,6 +556,12 @@ export async function commitImportBatch(
     if (row.postedDate) {
       monthsToRecalculate.add(row.postedDate.slice(0, 7));
     }
+  }
+
+  if (!isOfficialStatementImport && input.noLongerListedEntries?.length) {
+    const removal = await buildNoLongerListedEntryRemoval(db, importId, input.noLongerListedEntries);
+    removal.statements.forEach(write);
+    removal.months.forEach((month) => monthsToRecalculate.add(month));
   }
 
   // Before the rows: a moved entry must be on its statement card when its
@@ -1341,6 +1351,9 @@ export async function rollbackImportBatch(
   if (laterHolder) {
     throw new Error("This import cannot be rolled back yet: a later import updated one of its entries. Roll back the later import first.");
   }
+  if (await hasLaterNoLongerListedRemoval(db, input.importId)) {
+    throw new Error("This import cannot be rolled back yet: a later import removed one of its entries. Roll back the later import first.");
+  }
   // A second copy was removed because this import's entry covers it; rolling
   // back would remove both copies.
   const coveredRemoval = await db
@@ -1366,6 +1379,7 @@ export async function rollbackImportBatch(
     .filter((fix) => fix.fix_kind === "move_to_statement_account")
     .map((fix) => [fix.transaction_id, fix.from_account_id])));
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
+  const noLongerListedRestore = await buildNoLongerListedEntryRestore(db, input.importId);
   const promotedRestore = importRecord.source_type === "pdf"
     ? { statements: [], months: new Set<string>(), amountChanges: [] }
     : await buildPromotedEntryRestore(db, input.importId);
@@ -1403,6 +1417,7 @@ export async function rollbackImportBatch(
     ...fixRestore.months,
     ...certifiedRestore.months,
     ...supersededRestore.months,
+    ...noLongerListedRestore.months,
     ...promotedRestore.months,
     ...removedEntryMonths.results.flatMap((row) => [row.event_month, row.cleared_month])
   ]);
@@ -1416,6 +1431,7 @@ export async function rollbackImportBatch(
     // and goes back to the account it was on.
     ...fixRestore.statements,
     ...supersededRestore.statements,
+    ...noLongerListedRestore.statements,
     // Before the cleanup: a restored entry no longer carries this import's
     // id, so the cleanup neither unlinks its splits nor deletes it.
     ...promotedRestore.statements,

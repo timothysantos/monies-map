@@ -546,6 +546,20 @@ export interface ImportPreviewRowDto {
   certifiedStatement?: { checkpointMonth: string; covered: boolean };
 }
 
+// An entry an earlier activity export created that this one, covering its
+// date, no longer lists: a pending hold the bank released, or a charge it
+// posted again at another amount. The commit removes it unless kept.
+export interface ImportNoLongerListedEntryDto {
+  transactionId: string;
+  importId: string;
+  accountId: string;
+  accountName: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  entryType: EntryType;
+}
+
 export interface ImportPreviewDto {
   sourceLabel: string;
   parserKey: string;
@@ -567,6 +581,8 @@ export interface ImportPreviewDto {
   statementDiagnosis?: StatementDiagnosisDto;
   // Statement sections matched to an account by the card's last four digits
   // because their printed name matches no account.
+  // Activity exports only: entries the bank no longer lists.
+  noLongerListedEntries?: ImportNoLongerListedEntryDto[];
   statementAccountMatches?: {
     detectedAccountName: string;
     accountId: string;

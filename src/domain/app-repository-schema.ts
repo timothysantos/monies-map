@@ -447,6 +447,26 @@ async function ensureDemoSchemaOnce(db: D1Database) {
     `)
     .run();
 
+  // Entries an activity export removed because the bank no longer lists
+  // them, for the export's rollback.
+  await db
+    .prepare(`
+        CREATE TABLE IF NOT EXISTS import_no_longer_listed_entries (
+          id TEXT PRIMARY KEY,
+          household_id TEXT NOT NULL,
+          import_id TEXT NOT NULL,
+          transaction_id TEXT NOT NULL,
+          -- The entry's import, kept apart so a rollback of that import can see a
+          -- later export removed one of its entries.
+          entry_import_id TEXT NOT NULL,
+          entry_snapshot_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (household_id) REFERENCES households(id),
+          FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+        )
+    `)
+    .run();
+
   // Corrections applied from a Settings statement comparison after the
   // statement was saved, for their undo. A removed entry keeps its row here.
   await db
