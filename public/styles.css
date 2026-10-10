@@ -7546,6 +7546,19 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   color: var(--negative);
 }
 
+/* The imports before the one just committed: quieter than the notice. */
+.import-history-earlier {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.import-history-earlier ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .import-history-refreshing .app-spinner {
   width: 18px;
   height: 18px;

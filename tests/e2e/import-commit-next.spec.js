@@ -108,6 +108,14 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   await expect(page.locator(".import-stepper .is-current")).toContainText("3 · Done");
   await expect(page.locator(".import-commit-bar")).toHaveCount(0);
 
+  // Recent imports names the file, then the imports before it, newest
+  // first; the statement rolled back above is not one of them.
+  await expect(page.getByText("File imported: ladys-card-activity.csv. Recent imports have been updated.")).toBeVisible({ timeout: 30_000 });
+  const earlier = page.locator(".import-history-earlier li");
+  // Accounts carry their owner, as the Recent imports rows do.
+  await expect(earlier.first()).toHaveText(`${ONE_CARD} - Tim · 15 May 2026 · one-card-activity.csv`);
+  await expect(earlier.filter({ hasText: "ladys-card-activity.csv" })).toHaveCount(0);
+  await expect(earlier.filter({ hasText: "eStatement_UOB_Cards_12May2026" })).toHaveCount(0);
 });
 
 test("a failed commit opens nothing and keeps the review", async ({ page }, testInfo) => {

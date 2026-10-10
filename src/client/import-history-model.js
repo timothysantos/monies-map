@@ -1,5 +1,9 @@
 import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { getAccountSelectOptions } from "./account-display";
+import { messages } from "./copy/en-SG";
+import { formatDateOnly } from "./formatters";
+
+const EARLIER_IMPORT_LIMIT = 5;
 
 export function buildRecentImportModel(recentImports, recentImportPage) {
   const pageCount = Math.max(1, Math.ceil(recentImports.length / RECENT_IMPORTS_PAGE_SIZE));
@@ -62,4 +66,25 @@ function groupRecentImportsByDate(recentImports) {
     grouped.get(dateKey).push(item);
   }
   return Array.from(grouped.entries()).map(([date, items]) => ({ date, items }));
+}
+
+// The imports saved before the one just committed, newest first, so the
+// commit notice can list them under the file it names: accounts, the dates
+// their rows cover, and the file's label. Rolled-back imports are left out.
+export function buildEarlierImportLines(recentImports, committedImportId, limit = EARLIER_IMPORT_LIMIT) {
+  return recentImports
+    .filter((item) => item.id !== committedImportId && item.status === "completed")
+    .slice(0, limit)
+    .map((item) => ({
+      id: item.id,
+      text: messages.imports.recentEarlierItem({
+        accountNames: item.accountNames ?? [],
+        period: item.startDate && item.endDate
+          ? item.startDate === item.endDate
+            ? formatDateOnly(item.startDate)
+            : messages.imports.donePeriod(formatDateOnly(item.startDate), formatDateOnly(item.endDate))
+          : "",
+        sourceLabel: item.sourceLabel
+      })
+    }));
 }

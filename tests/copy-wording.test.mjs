@@ -92,3 +92,10 @@ test("a statement card counts the rows the ledger already has in plain words", (
   assert.equal(messages.imports.statementCardCounts(1, 26), "1 new row · 26 already in your ledger");
   assert.doesNotMatch(messages.imports.statementCardCounts(34, 0), /confirm entries you have/);
 });
+
+test("the commit notice names the file it imported", () => {
+  assert.equal(
+    messages.imports.recentCommitSuccess("One Account_Sep 2026.pdf"),
+    "File imported: One Account_Sep 2026.pdf. Recent imports have been updated."
+  );
+});

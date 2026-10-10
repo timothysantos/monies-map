@@ -66,6 +66,14 @@ export function ImportRecentHistorySection({
           ) : null}
         </div>
       ) : null}
+      {recentImportStatus?.earlierImports?.length ? (
+        <div className="import-history-earlier">
+          <span>{messages.imports.recentEarlierTitle}</span>
+          <ul>
+            {recentImportStatus.earlierImports.map((line) => <li key={line.id}>{line.text}</li>)}
+          </ul>
+        </div>
+      ) : null}
       {recentImportsOpen ? (
         <div className="import-history-groups">
           <label className="entries-filter import-history-filter">

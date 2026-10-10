@@ -67,7 +67,7 @@ test("a wrong-card purchase is found, moved on approval, committed and undone by
   const commitResponse = page.waitForResponse((response) => response.url().includes("/api/imports/commit"));
   await page.locator(".import-commit-button").first().click();
   expect((await commitResponse).ok()).toBe(true);
-  await expect(page.getByText("eStatement_UOB_Cards_12May2026 committed successfully.", { exact: false })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("File imported: eStatement_UOB_Cards_12May2026", { exact: false })).toBeVisible({ timeout: 30_000 });
   expect(await entryAccountName(page, openaiId)).toBe(ONE_CARD);
 
   // Rolling the statement back puts the entries back on Lady's Card.

@@ -527,7 +527,7 @@ const SHOTS = [
       await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), STUCK_IMPORT_BAR_OFFSET);
       await capture("imports-preview");
       await page.getByRole("button", { name: "Commit import to ledger" }).first().click();
-      await page.getByText(/committed successfully/).first().waitFor({ timeout: 60_000 });
+      await page.getByText(/^File imported:/).first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(800);
       // Recent imports starts closed.
       await page.locator(".import-history-toggle").click();

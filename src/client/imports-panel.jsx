@@ -9,7 +9,7 @@ import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./im
 import { ImportRecentHistorySection } from "./import-history";
 import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
 import { buildIntakeQueueItem, summarizeIntakeQueue } from "./import-intake-model";
-import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
+import { buildEarlierImportLines, buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
@@ -1358,7 +1358,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       dispatchSplitCleanup({ type: "commitRefreshed", commitKey: splitCleanupCommitKey });
       setRecentImportStatus({
         tone: "success",
-        message: messages.imports.recentCommitSuccess(committedSourceLabel || DEFAULT_SOURCE_LABEL)
+        message: messages.imports.recentCommitSuccess(committedFileName || committedSourceLabel || DEFAULT_SOURCE_LABEL),
+        earlierImports: buildEarlierImportLines(latestPage?.importsPage?.recentImports ?? [], committedImportId)
       });
       return true;
     });
