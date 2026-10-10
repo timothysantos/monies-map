@@ -36,6 +36,7 @@ import {
   createRepetitionIndex,
   hasCardPaymentAppPrefix,
   isCardMerchantPrefixMatch,
+  readCardForeignAmountMinor,
   getDuplicateCandidateDayDistance,
   getDuplicateMatchKind,
   getExistingTransactionDateContext,
@@ -549,13 +550,19 @@ type PreviewLedgerRow = {
 // for its account, the entry among the ledger's.
 interface PreviewMatchContext {
   repeats(rowIndex: number, transactionId?: string): boolean;
-  // A foreign currency estimate and a file row are each other's only
-  // candidate within the amount band and the day window.
-  isOnlyEstimatePair(rowIndex: number, transactionId: string, maxDayDistance: number): boolean;
+  // The foreign currency estimate a file row stands for, settled across the
+  // whole file (pairForeignCurrencyEstimates), or undefined.
+  pairedEstimateId(rowIndex: number): string | undefined;
+  isEstimatePairedWithAnotherRow(rowIndex: number, transactionId: string): boolean;
 }
 
+type PreviewFileCharge = {
+  rowIndex: number;
+  charge: { accountId: string | undefined; signedAmountMinor: number; description: string } & ReturnType<typeof getPreviewRowDateContext>;
+};
+
 function buildPreviewMatchContext(rows: Record<string, string>[], ledgerRows: PreviewLedgerRow[], defaultAccountName?: string): PreviewMatchContext {
-  const fileCharges = rows.flatMap((rawRow, index) => {
+  const fileCharges: PreviewFileCharge[] = rows.flatMap((rawRow, index) => {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
       return [];
@@ -584,46 +591,139 @@ function buildPreviewMatchContext(rows: Record<string, string>[], ledgerRows: Pr
     ...getExistingTransactionDateContext(row)
   }));
   const ledgerById = new Map(ledgerRows.map((row) => [row.transaction_id, row]));
+  const repeats = (rowIndex: number, transactionId?: string) => {
+    const fileRow = fileByRowIndex.get(rowIndex);
+    const ledgerRow = transactionId ? ledgerById.get(transactionId) : undefined;
+    return Boolean((fileRow && fileRepeats(fileRow)) || (ledgerRow && ledgerRepeats(ledgerRow)));
+  };
   const isOnAccount = (accountKey: string | undefined, row: PreviewLedgerRow) => accountKey === row.account_id || accountKey === row.account_name;
-  const dayDistanceBetween = (fileRow: (typeof fileCharges)[number], row: PreviewLedgerRow) => getDuplicateCandidateDayDistance({
-    previewRow: fileRow.charge,
-    candidate: getExistingTransactionDateContext(row)
-  });
-  const fitsEstimate = (fileRow: (typeof fileCharges)[number], row: PreviewLedgerRow, maxDayDistance: number) => isForeignCurrencyEstimate(row)
-    && isOnAccount(fileRow.charge.accountId, row)
+  const fitsEstimate = (fileRow: PreviewFileCharge, row: PreviewLedgerRow) => isOnAccount(fileRow.charge.accountId, row)
     && Math.sign(fileRow.charge.signedAmountMinor) === Math.sign(getExistingRowSignedAmountMinor(row))
-    && isWithinEstimateBand(Number(row.amount_minor), Math.abs(fileRow.charge.signedAmountMinor))
-    && dayDistanceBetween(fileRow, row) <= maxDayDistance;
+    && isEstimateAmountFit(row, Math.abs(fileRow.charge.signedAmountMinor), fileRow.charge.description)
+    && getDuplicateCandidateDayDistance({ previewRow: fileRow.charge, candidate: getExistingTransactionDateContext(row) })
+      <= getDuplicateCandidateMaxDayDistance({ repeats: repeats(fileRow.rowIndex, row.transaction_id) });
+  const estimatePairs = pairForeignCurrencyEstimates(fileCharges, ledgerRows.filter(isForeignCurrencyEstimate), fitsEstimate);
+  const pairedRowIndexByEstimateId = new Map([...estimatePairs].map(([rowIndex, transactionId]) => [transactionId, rowIndex]));
   return {
-    repeats(rowIndex, transactionId) {
-      const fileRow = fileByRowIndex.get(rowIndex);
-      const ledgerRow = transactionId ? ledgerById.get(transactionId) : undefined;
-      return Boolean((fileRow && fileRepeats(fileRow)) || (ledgerRow && ledgerRepeats(ledgerRow)));
-    },
-    isOnlyEstimatePair(rowIndex, transactionId, maxDayDistance) {
-      const fileRow = fileByRowIndex.get(rowIndex);
-      const ledgerRow = ledgerById.get(transactionId);
-      if (!fileRow || !ledgerRow || !fitsEstimate(fileRow, ledgerRow, maxDayDistance)) {
-        return false;
-      }
-      return ledgerRows.filter((row) => fitsEstimate(fileRow, row, maxDayDistance)).length === 1
-        && fileCharges.filter((other) => fitsEstimate(other, ledgerRow, maxDayDistance)).length === 1;
+    repeats,
+    pairedEstimateId: (rowIndex) => estimatePairs.get(rowIndex),
+    isEstimatePairedWithAnotherRow(rowIndex, transactionId) {
+      const pairedRowIndex = pairedRowIndexByEstimateId.get(transactionId);
+      return pairedRowIndex !== undefined && pairedRowIndex !== rowIndex;
     }
   };
 }
 
+// Pairs each foreign currency estimate with the card's row for it, looking
+// at the whole file at once so a row that surely belongs to one estimate is
+// not counted as a rival for another. In order of certainty:
+//   1. the row prints the purchase's own foreign amount ("IDR 166,600");
+//   2. the row names the shop ("AMAZE* NAUGHTY NURI"); several purchases at
+//      one shop on one day pair by size, as one day's rate keeps the larger
+//      purchase the larger charge;
+//   3. a payment-app row naming no shop ("AMAZE* GOPAYID") stands for the
+//      one estimate left that it fits, when no other row left fits it.
+// Anything else stays for review. Returns estimate ids by file row index.
+function pairForeignCurrencyEstimates(
+  fileCharges: PreviewFileCharge[],
+  estimates: PreviewLedgerRow[],
+  fits: (fileRow: PreviewFileCharge, estimate: PreviewLedgerRow) => boolean
+) {
+  type Link = { fileRow: PreviewFileCharge; estimate: PreviewLedgerRow };
+  const pairs = new Map<number, string>();
+  const pairedEstimateIds = new Set<string>();
+  const pair = ({ fileRow, estimate }: Link) => {
+    pairs.set(fileRow.rowIndex, estimate.transaction_id);
+    pairedEstimateIds.add(estimate.transaction_id);
+  };
+  const isOpen = ({ fileRow, estimate }: Link) => !pairs.has(fileRow.rowIndex) && !pairedEstimateIds.has(estimate.transaction_id);
+  const isOnlyLinkOfBoth = (link: Link, links: Link[]) => links.filter((other) => other.fileRow === link.fileRow || other.estimate === link.estimate).length === 1;
+  const links: Link[] = fileCharges.flatMap((fileRow) => estimates.filter((estimate) => fits(fileRow, estimate)).map((estimate) => ({ fileRow, estimate })));
+
+  const byForeignAmount = links.filter(({ fileRow, estimate }) => (
+    readCardForeignAmountMinor(fileRow.charge.description, estimate.original_currency ?? "") === Number(estimate.original_amount_minor)
+  ));
+  byForeignAmount.filter((link) => isOnlyLinkOfBoth(link, byForeignAmount)).forEach(pair);
+
+  const byName = links.filter((link) => isOpen(link) && isCardMerchantPrefixMatch(link.fileRow.charge.description, link.estimate.description));
+  for (const group of groupCompleteLinks(byName)) {
+    const bySize = (amounts: number[]) => amounts.map((amount, index) => [amount, index]).sort((left, right) => right[0] - left[0]).map(([, index]) => index);
+    const fileOrder = bySize(group.fileRows.map((fileRow) => Math.abs(fileRow.charge.signedAmountMinor)));
+    const estimateOrder = bySize(group.estimates.map((estimate) => Number(estimate.amount_minor)));
+    fileOrder.forEach((fileIndex, rank) => pair({ fileRow: group.fileRows[fileIndex], estimate: group.estimates[estimateOrder[rank]] }));
+  }
+
+  const linkedRowIndexes = new Set([...byForeignAmount, ...byName].map((link) => link.fileRow.rowIndex));
+  const linkedEstimateIds = new Set([...byForeignAmount, ...byName].map((link) => link.estimate.transaction_id));
+  const left = links.filter((link) => isOpen(link)
+    && !linkedRowIndexes.has(link.fileRow.rowIndex)
+    && !linkedEstimateIds.has(link.estimate.transaction_id));
+  left
+    .filter((link) => hasCardPaymentAppPrefix(link.fileRow.charge.description) && isOnlyLinkOfBoth(link, left))
+    .forEach(pair);
+  return pairs;
+}
+
+// Groups of file rows and estimates in which every row is linked to every
+// estimate and to nothing outside the group, with as many rows as estimates.
+function groupCompleteLinks<FileRow, Estimate>(links: Array<{ fileRow: FileRow; estimate: Estimate }>) {
+  const estimatesByRow = new Map<FileRow, Set<Estimate>>();
+  const rowsByEstimate = new Map<Estimate, Set<FileRow>>();
+  for (const { fileRow, estimate } of links) {
+    estimatesByRow.set(fileRow, (estimatesByRow.get(fileRow) ?? new Set()).add(estimate));
+    rowsByEstimate.set(estimate, (rowsByEstimate.get(estimate) ?? new Set()).add(fileRow));
+  }
+  const sameMembers = <T>(left: Set<T> | undefined, right: T[]) => left?.size === right.length && right.every((item) => left.has(item));
+  const groups: Array<{ fileRows: FileRow[]; estimates: Estimate[] }> = [];
+  const grouped = new Set<FileRow>();
+  for (const [fileRow, estimateSet] of estimatesByRow) {
+    if (grouped.has(fileRow)) {
+      continue;
+    }
+    const estimates = [...estimateSet];
+    const fileRows = [...(rowsByEstimate.get(estimates[0]) ?? [])];
+    fileRows.forEach((member) => grouped.add(member));
+    if (
+      fileRows.length === estimates.length
+      && estimates.every((estimate) => sameMembers(rowsByEstimate.get(estimate), fileRows))
+      && fileRows.every((member) => sameMembers(estimatesByRow.get(member), estimates))
+    ) {
+      groups.push({ fileRows, estimates });
+    }
+  }
+  return groups;
+}
+
 // The card's amount for a purchase saved as a foreign currency estimate
 // differs by the card's own rate and fees (an Amaze conversion runs a few
-// percent off the day's reference rate).
-const FOREIGN_ESTIMATE_TOLERANCE = 0.05;
+// percent above the day's reference rate). The fees only ever add, so a
+// fresh estimate allows less room under it than over it; once an export has
+// set the card's amount, the next one may move it either way.
+const FOREIGN_ESTIMATE_OVER_TOLERANCE = 0.05;
+const FOREIGN_ESTIMATE_UNDER_TOLERANCE = 0.02;
 const FOREIGN_ESTIMATE_MIN_TOLERANCE_MINOR = 10;
 
 function isForeignCurrencyEstimate(row: { original_currency: string | null; bank_certification_status: string }) {
   return Boolean(row.original_currency) && row.bank_certification_status === "provisional";
 }
 
-function isWithinEstimateBand(estimateMinor: number, bankMinor: number) {
-  return Math.abs(bankMinor - estimateMinor) <= Math.max(Math.round(estimateMinor * FOREIGN_ESTIMATE_TOLERANCE), FOREIGN_ESTIMATE_MIN_TOLERANCE_MINOR);
+// Whether a card row's amount can be this estimate's purchase. A row that
+// prints a different amount in the purchase's currency is another purchase,
+// however close its own amount.
+function isEstimateAmountFit(
+  estimate: { amount_minor: number; import_id: string | null; original_amount_minor: number | null; original_currency: string | null },
+  bankMinor: number,
+  bankDescription: string
+) {
+  const printedForeignMinor = readCardForeignAmountMinor(bankDescription, estimate.original_currency ?? "");
+  if (printedForeignMinor !== undefined && printedForeignMinor !== Number(estimate.original_amount_minor)) {
+    return false;
+  }
+  const estimateMinor = Number(estimate.amount_minor);
+  const room = (share: number) => Math.max(Math.round(estimateMinor * share), FOREIGN_ESTIMATE_MIN_TOLERANCE_MINOR);
+  const overMinor = bankMinor - estimateMinor;
+  return overMinor <= room(FOREIGN_ESTIMATE_OVER_TOLERANCE)
+    && -overMinor <= room(estimate.import_id ? FOREIGN_ESTIMATE_OVER_TOLERANCE : FOREIGN_ESTIMATE_UNDER_TOLERANCE);
 }
 
 // Applies the approved statement fixes to the ledger rows the preview
@@ -920,9 +1020,16 @@ function findReconciliationMatches(input: {
 
       // A foreign currency estimate meets the card's own amount within a few
       // percent; every other entry needs the exact amount.
+      if (isForeignCurrencyEstimate(candidate) && input.matchContext.isEstimatePairedWithAnotherRow(input.previewRow.rowIndex, candidate.transaction_id)) {
+        return undefined;
+      }
+      const pairedEstimateId = input.matchContext.pairedEstimateId(input.previewRow.rowIndex);
+      if (pairedEstimateId && isForeignCurrencyEstimate(candidate) && candidate.transaction_id !== pairedEstimateId) {
+        return undefined;
+      }
       const isEstimate = isForeignCurrencyEstimate(candidate)
         && candidate.entry_type === input.previewRow.entryType
-        && isWithinEstimateBand(Number(candidate.amount_minor), Number(input.previewRow.amountMinor));
+        && isEstimateAmountFit(candidate, Number(input.previewRow.amountMinor), input.previewRow.description);
       if (!isEstimate && !isSameAmountAndAccountCandidate(input.previewRow, candidate)) {
         return undefined;
       }
@@ -983,22 +1090,13 @@ function findReconciliationMatches(input: {
         descriptionSimilarity,
         tokenSimilarity
       });
-      // The card's row for an estimate may name only the payment app
-      // ("AMAZE* GRAB* A-8ABC"): when the two are each other's only fit by
-      // amount and day, that is enough. Two estimates that both fit wait
-      // for wording to tell them apart.
-      // A card row cuts the shop's name behind the payment app's prefix
-      // ("AMAZE*E-MARTYONGS" for "E-MART Yongsan"): a name that starts the
-      // other counts as the same shop.
-      // Without the shop's name, only a payment-app row ("AMAZE*EXIMBAYCO.,")
-      // may stand for an estimate: an ordinary card row near its amount
-      // ("SHOPEESGMP") is another purchase.
+      // An estimate pairs with the card's row by the foreign amount the row
+      // prints, the shop it names, or the payment app alone when nothing
+      // else fits (pairForeignCurrencyEstimates). A shop named in a group
+      // the file cannot tell apart still shows as a probable match.
       const isEstimateFit = isEstimate && wordingMatchKind !== "exact" && wordingMatchKind !== "probable" && (
-        isCardMerchantPrefixMatch(input.previewRow.description, candidate.description)
-        || (
-          hasCardPaymentAppPrefix(input.previewRow.description)
-          && input.matchContext.isOnlyEstimatePair(input.previewRow.rowIndex, candidate.transaction_id, getDuplicateCandidateMaxDayDistance({ repeats }))
-        )
+        candidate.transaction_id === pairedEstimateId
+        || isCardMerchantPrefixMatch(input.previewRow.description, candidate.description)
       );
       const matchKind = isEstimateFit ? "probable" : wordingMatchKind;
       if (!matchKind) {
@@ -1194,7 +1292,7 @@ function applySourceAuthorityToPreviewRow(
 
   if (sourceType === "csv" && canPromoteManualReconciliationMatch(previewRow, strongestMatch)) {
     previewRow.commitStatus = "included";
-    previewRow.commitStatusReason = strongestMatch.originalAmount && strongestMatch.existingImportId
+    previewRow.commitStatusReason = strongestMatch.originalAmount
       ? describeEstimateInterimUpdate(previewRow, strongestMatch)
       : buildCurrentActivityManualPromotionReason(previewRow);
     previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;

@@ -143,9 +143,11 @@ test("on a real Amaze statement, no estimate is ever paired with another purchas
     }
   });
   assert.deepEqual(outcome.wrong, []);
-  // Every row that names its shop matches. Left for review: the 11 rows
-  // naming only the gateway, and "AMAZE*CLO", too short to trust as a name.
-  assert.deepEqual({ right: outcome.right, review: outcome.review }, { right: 33, review: 12 });
+  // Every row that names its shop matches, and so does a gateway row once
+  // the named rows are paired and it is the only fit left for its estimate.
+  // Left for review: gateway rows that still fit more than one estimate,
+  // and "AMAZE*CLO", too short to trust as a name.
+  assert.deepEqual({ right: outcome.right, review: outcome.review }, { right: 41, review: 4 });
 });
 
 test("a card row names the shop when the Wallet name starts with what the card printed", () => {

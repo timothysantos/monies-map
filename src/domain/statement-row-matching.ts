@@ -189,3 +189,19 @@ export function isCardMerchantPrefixMatch(cardDescription: string, walletDescrip
   }
   return walletMerchant.startsWith(cardMerchant) || cardMerchant.startsWith(walletMerchant);
 }
+
+// A card charged in another currency prints the amount it was charged in
+// ("Grab* A-9THL7BTGWXEOAV JAKARTA PUSATID IDR 166,600 Rp. 166,600",
+// "CLOUDFLARE SAN FRANCISCO USA USD 3.34"). The amount in that currency, in
+// minor units, or undefined when the row does not print one.
+export function readCardForeignAmountMinor(cardDescription: string, currency: string) {
+  const code = currency.toUpperCase().replace(/[^A-Z]/g, "");
+  const match = code
+    ? new RegExp(`\\b${code} (\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.(\\d{1,2}))?(?![\\d,.])`).exec(cardDescription.replace(/\s+/g, " "))
+    : null;
+  if (!match) {
+    return undefined;
+  }
+  const [, whole, fraction = ""] = match;
+  return Number(whole.replace(/,/g, "")) * 100 + Number(fraction.padEnd(2, "0"));
+}
