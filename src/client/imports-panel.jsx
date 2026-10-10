@@ -204,6 +204,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // The suggestions the user chose to keep as they are. The approved fixes
   // themselves live in statementFixesRef and the preview's appliedFixes.
   const [dismissedStatementFindingIds, setDismissedStatementFindingIds] = useState([]);
+  const [keepsNoLongerListedEntries, setKeepsNoLongerListedEntries] = useState(false);
   // A statement's rows are read-only in its card sections; this opens the
   // full row editor.
   const [isEditingStatementRows, setIsEditingStatementRows] = useState(false);
@@ -363,9 +364,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementCheckpoints,
       statementImportMeta,
       dismissedOverlapIds,
-      unknownCategoryMode
+      unknownCategoryMode,
+      keepsNoLongerListedEntries
     }),
-    [accounts, dismissedOverlapIds, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
+    [accounts, dismissedOverlapIds, keepsNoLongerListedEntries, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
   );
   const currentPreviewSignature = useMemo(
     () => buildStatementPreviewSnapshot(previewRows, statementCheckpoints),
@@ -1247,7 +1249,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     // `needs_review` and `skipped` rows stay out of the commit payload. They
     // still matter during preview because they affect statement reconciliation.
     const rowsToCommit = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
-    if (!rowsToCommit.length && !statementCheckpoints.length) {
+    const noLongerListedEntries = importPreviewModel.noLongerListedEntriesToRemove;
+    if (!rowsToCommit.length && !statementCheckpoints.length && !noLongerListedEntries.length) {
       return;
     }
 
@@ -1266,6 +1269,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementControlRows: statementImportMeta.sourceType === "pdf" ? previewRows : undefined,
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
         statementFixes: statementImportMeta.sourceType === "pdf" ? preview?.statementDiagnosis?.appliedFixes ?? [] : [],
+        noLongerListedEntries,
         rows: rowsToCommit,
         diagnosticContext: {
           source: "import_commit",
@@ -1482,6 +1486,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setAutoAppliedStatementFixCount(0);
     setDismissedStatementFindingIds([]);
     setIsEditingStatementRows(false);
+    setKeepsNoLongerListedEntries(false);
   }
 
   // `context` carries the file's source type and checkpoints when this runs
@@ -2452,6 +2457,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             isAutomaticStatementFixes={isAutomaticStatementFixes}
             autoAppliedStatementFixCount={autoAppliedStatementFixCount}
             onAutomaticStatementFixesChange={changeAutomaticStatementFixes}
+            keepsNoLongerListedEntries={keepsNoLongerListedEntries}
+            onKeepsNoLongerListedEntriesChange={trackReviewChange(setKeepsNoLongerListedEntries)}
           />
 
           {isStatementReview ? null : optionalAiChecks}

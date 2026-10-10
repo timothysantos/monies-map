@@ -29,7 +29,8 @@ export function buildImportPreviewModel({
   statementCheckpoints,
   statementImportMeta,
   dismissedOverlapIds,
-  unknownCategoryMode
+  unknownCategoryMode,
+  keepsNoLongerListedEntries = false
 }) {
   const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict && row.commitStatus === "skipped");
   const knownAccountNames = new Set(accounts.map((account) => account.name));
@@ -119,7 +120,11 @@ export function buildImportPreviewModel({
   // as one more).
   const unmappedCommitAccountNames = Array.from(new Set(unmappedCommitRows.map((row) => row.statementAccountName ?? row.accountName ?? "")));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
-  const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0;
+  // Entries an earlier export created that this one no longer lists: the
+  // commit removes them unless the user keeps them, so removing them alone
+  // is something to commit.
+  const noLongerListedEntriesToRemove = keepsNoLongerListedEntries ? [] : (preview?.noLongerListedEntries ?? []);
+  const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0 || noLongerListedEntriesToRemove.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
 
   return {
@@ -132,6 +137,7 @@ export function buildImportPreviewModel({
     hasUnmappedAccounts,
     unmappedCommitAccountNames,
     hasCommitPayload,
+    noLongerListedEntriesToRemove,
     hasCheckpointOnlyCommit,
     hasMatchedCheckpointOnlyCommit,
     ledgerMatchedStatement,

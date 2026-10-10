@@ -899,3 +899,18 @@
   font-weight: 700;
   vertical-align: 0.1em;
 }
+
+/* "Keep these entries" under the entries the bank no longer lists. */
+.import-keep-entries {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.import-keep-entries input {
+  width: 18px;
+  height: 18px;
+}

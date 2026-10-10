@@ -469,6 +469,15 @@ export const messages = {
     previewGuardrailsLabel: "Import preview checks",
     previewCommitSummaryLabel: "Import commit summary",
     previewCoverage: (start, end) => `Preview coverage ${start} - ${end}`,
+    noLongerListedTitle: (count, accountNames) => `${accountNames} no longer lists ${count === 1 ? "1 entry" : `${count} entries`} from an earlier import`,
+    noLongerListedDetail: (count) => (count === 1
+      ? "This file covers its date but doesn't include it, so the bank dropped it, usually a pending hold it released. Importing removes it; rolling this import back brings it back."
+      : "This file covers their dates but doesn't include them, so the bank dropped them, usually pending holds it released. Importing removes them; rolling this import back brings them back."),
+    noLongerListedKeptDetail: (count) => (count === 1
+      ? "This file covers its date but doesn't include it. You chose to keep it, so importing leaves it as it is."
+      : "This file covers their dates but doesn't include them. You chose to keep them, so importing leaves them as they are."),
+    noLongerListedListLabel: "Entries the bank no longer lists",
+    noLongerListedKeep: (count) => (count === 1 ? "Keep this entry" : "Keep these entries"),
     previewOverlapTitle: "Prior import context",
     previewOverlapScopeAriaLabel: "How overlap checks work",
     previewOverlapScopeTitle: "Scope",

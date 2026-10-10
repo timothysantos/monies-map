@@ -2363,4 +2363,59 @@ test.describe("import flow", () => {
 
     await expectImportRowsReady(page, "3 rows ready for review.", { timeout: 30_000 });
   });
+
+  // A pending hold the bank released is in one activity export and gone from
+  // the next: the next export lists it, removes it on commit, and the ledger
+  // no longer counts it.
+  test("a later Citi activity export removes the pending hold the bank released", async ({ page }, testInfo) => {
+    await reseedDemo(page);
+    // A card of its own: the demo has two "Citi Rewards - Joyce" cards.
+    await postJson(page, "/api/accounts/create", {
+      name: "Citi Rewards Hold",
+      institution: "Citibank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "person-joyce",
+      isJoint: false
+    });
+    const citiLine = (date, description, amount) => `"${date}","${description}","-${amount}","","'5000000000006349'"`;
+    const coffee = citiLine("03/10/2026", "COFFEE CORNER          SINGAPORE     SGP", "4.20");
+    const hold = citiLine("05/10/2026", "Grab* A-9TSU83RWW566AV JAKARTA PUSAT IDN IDR 502,200 Rp. 502,200", "36.06");
+    const bookshop = citiLine("07/10/2026", "BOOKSHOP               SINGAPORE     SGP", "12.00");
+    const bakery = citiLine("09/10/2026", "BAKERY                 SINGAPORE     SGP", "6.50");
+    const pasteExport = async (lines) => {
+      await gotoImportsPage(page, "2026-10");
+      await selectImportField(page, "Default account", { label: "Citi Rewards Hold - Joyce" });
+      await fillImportField(page, "CSV content", lines.join("\n"));
+      await expectImportRowsReady(page, "3 rows ready for review.", { timeout: 30_000 });
+      // Pasted rows name the card by its label: map it once per file.
+      const mapping = page.getByRole("combobox", { name: "Detected: Citi Rewards Hold - Joyce" });
+      if (await mapping.isVisible()) {
+        await mapping.selectOption({ label: "Citi Rewards Hold - Joyce" });
+      }
+      await expect(page.getByRole("button", { name: "Commit import to ledger" }).first()).toBeEnabled({ timeout: 30_000 });
+    };
+    const commitAndWait = async () => {
+      const commit = page.waitForResponse((response) => response.url().includes("/api/imports/commit"));
+      await page.getByRole("button", { name: "Commit import to ledger" }).first().click();
+      expect((await commit).ok()).toBe(true);
+    };
+
+    // The first export has the hold; the next, two days on, no longer does.
+    await pasteExport([bookshop, hold, coffee]);
+    await commitAndWait();
+    await pasteExport([bakery, bookshop, coffee]);
+
+    const notice = page.locator(".import-warning").filter({ hasText: "no longer lists 1 entry from an earlier import" });
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText("Grab* A-9TSU83RWW566AV");
+    await expect(notice.getByRole("checkbox", { name: "Keep this entry" })).not.toBeChecked();
+    await notice.screenshot({ path: testInfo.outputPath("no-longer-listed.png") });
+
+    const holdIsInLedger = async () => JSON.stringify(await loadEntriesPage(page, { view: "household", month: "2026-10" })).includes("A-9TSU83RWW566AV");
+    expect(await holdIsInLedger()).toBe(true);
+    await commitAndWait();
+    expect(await holdIsInLedger()).toBe(false);
+  });
 });

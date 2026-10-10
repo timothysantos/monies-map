@@ -172,6 +172,7 @@ export function commitImportBatch({
   statementControlRows,
   statementReconciliations,
   statementFixes = [],
+  noLongerListedEntries = [],
   rows,
   diagnosticContext
 }) {
@@ -189,6 +190,7 @@ export function commitImportBatch({
       })),
       statementReconciliations,
       statementFixes,
+      noLongerListedEntries: noLongerListedEntries.map(({ transactionId, importId }) => ({ transactionId, importId })),
       rows: rows.map((row) => ({
         ...row,
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)

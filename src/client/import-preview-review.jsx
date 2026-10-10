@@ -75,7 +75,9 @@ export function ImportPreviewReview({
   moreChecks = null,
   isAutomaticStatementFixes = false,
   autoAppliedStatementFixCount = 0,
-  onAutomaticStatementFixesChange
+  onAutomaticStatementFixesChange,
+  keepsNoLongerListedEntries = false,
+  onKeepsNoLongerListedEntriesChange
 }) {
   if (!preview) {
     return null;
@@ -209,6 +211,16 @@ export function ImportPreviewReview({
       {/* The exception register is the short list of why this preview needs attention. */}
       {preview.exceptionSummary?.length ? (
         <ExceptionRegister exceptions={preview.exceptionSummary} />
+      ) : null}
+
+      {/* Entries an earlier export created that this one no longer lists. */}
+      {preview.noLongerListedEntries?.length ? (
+        <NoLongerListedEntries
+          entries={preview.noLongerListedEntries}
+          isKept={keepsNoLongerListedEntries}
+          isSubmitting={isSubmitting}
+          onKeptChange={onKeepsNoLongerListedEntriesChange}
+        />
       ) : null}
 
       {/* Overlap imports explain why some rows may already be covered by previous work. */}
@@ -362,6 +374,39 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
         </Dialog.Portal>
       </Dialog.Root>
     </>
+  );
+}
+
+// The bank's export lists every charge over its dates, so an earlier
+// export's entry it no longer lists was dropped by the bank (a released
+// pending hold). One choice for all of them: removed by default, kept on
+// request; rolling the import back brings removed ones back.
+function NoLongerListedEntries({ entries, isKept, isSubmitting, onKeptChange }) {
+  const accountNames = Array.from(new Set(entries.map((entry) => entry.accountName)));
+  return (
+    <div className="import-warning">
+      <strong>{messages.imports.noLongerListedTitle(entries.length, accountNames.join(", "))}</strong>
+      <p className="lede compact">{isKept ? messages.imports.noLongerListedKeptDetail(entries.length) : messages.imports.noLongerListedDetail(entries.length)}</p>
+      <div className="import-overlap-entry-list" aria-label={messages.imports.noLongerListedListLabel}>
+        {entries.map((entry) => (
+          <div key={entry.transactionId} className="import-overlap-entry-row">
+            <span className="import-overlap-entry-date">{formatService.formatDateOnly(entry.date)}</span>
+            <span className="import-overlap-entry-description">{entry.description}</span>
+            <span className="import-overlap-entry-account">{entry.accountName}</span>
+            <strong className="import-overlap-entry-amount">{formatService.money(entry.amountMinor)}</strong>
+          </div>
+        ))}
+      </div>
+      <label className="import-keep-entries">
+        <input
+          type="checkbox"
+          checked={isKept}
+          disabled={isSubmitting}
+          onChange={(event) => onKeptChange?.(event.target.checked)}
+        />
+        <span>{messages.imports.noLongerListedKeep(entries.length)}</span>
+      </label>
+    </div>
   );
 }
 
