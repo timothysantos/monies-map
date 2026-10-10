@@ -4,6 +4,8 @@ import test from "node:test";
 import { buildIntakeQueueItem } from "../src/client/import-intake-model.js";
 import {
   buildInboxChecklistProgress,
+  groupInboxFilesByAccount,
+  groupInboxFilesByOwner,
   isInboxOpenByDefault,
   nextFoldState
 } from "../src/client/import-inbox-model.js";
@@ -147,4 +149,87 @@ test("a fold that only opens with its default keeps the user's open choice when 
   assert.deepEqual(nextFoldState({ defaultOpen: false, open: false }, true, { followClose: false }), { defaultOpen: true, open: true });
   // Closed by the user while not needed stays closed.
   assert.deepEqual(nextFoldState({ defaultOpen: true, open: false }, false, { followClose: false }), { defaultOpen: false, open: false });
+});
+
+test("a bank's lines group by account, keeping the download order of accounts and months", () => {
+  const cdaJun = expectedFile({ id: "cda:2026-06", institution: "OCBC", accountName: "CDA", periodMonth: "2026-06" });
+  const cdaJul = expectedFile({ id: "cda:2026-07", institution: "OCBC", accountName: "CDA", periodMonth: "2026-07" });
+  const joyce360 = { ...expectedFile({ id: "360:2026-08", institution: "OCBC", accountName: "OCBC 360", periodMonth: "2026-08" }), ownerLabel: "Joyce" };
+  const cdaAug = expectedFile({ id: "cda:2026-08", institution: "OCBC", accountName: "CDA", periodMonth: "2026-08" });
+  const shared = expectedFile({
+    id: "one:2026-09+lady:2026-09",
+    institution: "OCBC",
+    accountName: "One and Lady's",
+    periodMonth: "2026-09",
+    coveredAccounts: [{ accountId: "one", accountName: "One" }, { accountId: "lady", accountName: "Lady's" }]
+  });
+
+  const groups = groupInboxFilesByAccount([cdaJun, cdaJul, joyce360, cdaAug, shared]);
+
+  assert.deepEqual(groups.map((group) => ({
+    accountName: group.accountName,
+    ownerLabel: group.ownerLabel,
+    coveredAccountNames: group.coveredAccountNames,
+    months: group.files.map((file) => file.periodMonth)
+  })), [
+    { accountName: "CDA", ownerLabel: "Tim", coveredAccountNames: [], months: ["2026-06", "2026-07", "2026-08"] },
+    { accountName: "OCBC 360", ownerLabel: "Joyce", coveredAccountNames: [], months: ["2026-08"] },
+    { accountName: "One and Lady's", ownerLabel: "Tim", coveredAccountNames: ["One", "Lady's"], months: ["2026-09"] }
+  ]);
+  assert.equal(groups[0].institution, "OCBC");
+  assert.deepEqual(groups[0].supportedFileTypes, ["PDF"]);
+});
+
+test("the same account name with another owner or file kind is its own group", () => {
+  const timStatement = expectedFile({ id: "a", accountName: "Savings", periodMonth: "2026-05" });
+  const joyceStatement = { ...expectedFile({ id: "b", accountName: "Savings", periodMonth: "2026-05" }), ownerLabel: "Joyce" };
+  const timActivity = expectedFile({ id: "c", accountName: "Savings", sourceType: "activity_export", priority: "optional" });
+
+  const groups = groupInboxFilesByAccount([timStatement, joyceStatement, timActivity]);
+
+  assert.deepEqual(groups.map((group) => group.files.map((file) => file.id)), [["a"], ["b"], ["c"]]);
+  assert.deepEqual(groupInboxFilesByAccount(), []);
+});
+
+test("a bank's lines group by owner first, each owner's accounts in download order", () => {
+  const owned = (id, accountName, ownerLabel, periodMonth) => ({
+    ...expectedFile({ id, institution: "OCBC", accountName, periodMonth }),
+    ownerLabel
+  });
+  const files = [
+    owned("cda:06", "CDA", "Tim", "2026-06"),
+    owned("360:08", "OCBC 360", "Joyce", "2026-08"),
+    owned("cda:07", "CDA", "Tim", "2026-07"),
+    owned("365:09", "OCBC 365", "Joyce", "2026-09"),
+    owned("float:09", "Household Float", "Shared", "2026-09"),
+    owned("infinity:08", "Infinity", "Tim", "2026-08")
+  ];
+
+  const owners = groupInboxFilesByOwner(files);
+
+  assert.deepEqual(owners.map((owner) => ({
+    ownerLabel: owner.ownerLabel,
+    accounts: owner.accounts.map((account) => [account.accountName, account.files.map((file) => file.periodMonth)])
+  })), [
+    { ownerLabel: "Tim", accounts: [["CDA", ["2026-06", "2026-07"]], ["Infinity", ["2026-08"]]] },
+    { ownerLabel: "Joyce", accounts: [["OCBC 360", ["2026-08"]], ["OCBC 365", ["2026-09"]]] },
+    { ownerLabel: "Shared", accounts: [["Household Float", ["2026-09"]]] }
+  ]);
+  assert.deepEqual(groupInboxFilesByOwner(), []);
+});
+
+test("an owner group takes the person's colour from Entries, the same in every bank", async () => {
+  const { getPersonColour, getPersonColourVars } = await import("../src/client/person-colour.js");
+  assert.equal(getPersonColour("Tim"), "#33A471");
+  assert.equal(getPersonColour("Joyce"), "#DE726D");
+  assert.equal(getPersonColour("Shared"), getPersonColour("shared"));
+  assert.deepEqual(getPersonColourVars("Joyce"), {
+    "--person-colour": "#DE726D",
+    "--person-chip-bg": "color-mix(in srgb, #DE726D 16%, white)",
+    "--person-chip-border": "color-mix(in srgb, #DE726D 45%, white)",
+    "--person-ink": "color-mix(in srgb, #DE726D 55%, var(--text))",
+    "--person-band": "color-mix(in srgb, #DE726D 10%, white)",
+    "--person-wash": "color-mix(in srgb, #DE726D 6%, white)"
+  });
+  assert.notEqual(getPersonColour("Tim"), getPersonColour("Joyce"));
 });

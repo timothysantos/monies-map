@@ -147,7 +147,8 @@ Imports owns:
   and `import-commit-next.spec.js`
 - import inbox planning. The inbox groups expected
   downloads by bank session so a user can log into one bank and collect every
-  missing statement/activity file for that institution, while the review queue
+  missing statement/activity file for that institution, and inside a bank by
+  owner, then account (one box per account listing its missing months), while the review queue
   remains ordered by statement chronology and trust level. This planning must
   not depend on local filename conventions, and split cleanup remains a separate
   post-bank-files lane. Multi-file intake is browser-only: it may keep parsed

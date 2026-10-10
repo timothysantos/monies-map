@@ -25,9 +25,9 @@ test("stale import banner opens Imports and FAQ remains reachable", async ({ pag
   await expect(page.getByRole("heading", { name: "Imports", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Import inbox", exact: true })).toBeVisible();
 
-  const firstInboxFileRow = page.locator(".import-inbox-file-row").first();
-  await expect(firstInboxFileRow).toContainText(/Owner:/);
-  await expect(firstInboxFileRow).toContainText(/\(\d{4}-\d{2}\)/);
+  const firstInboxOwner = page.locator(".import-inbox-owner-group").first();
+  await expect(firstInboxOwner.locator(".import-inbox-owner-label")).toHaveText(/\S/);
+  await expect(firstInboxOwner.locator(".import-inbox-file-row").first()).toContainText(/\(\d{4}-\d{2}\)/);
 
   await page.getByRole("link", { name: "FAQ", exact: true }).click();
   await expect(page).toHaveURL(/\/faq\?/);

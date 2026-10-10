@@ -2,7 +2,8 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { CheckCircle2, CircleAlert, Clock3, FileText, Landmark, ListChecks } from "lucide-react";
 
 import { describeIntakeCoverage, describeIntakeSource, orderIntakeQueue } from "./import-intake-model";
-import { buildInboxChecklistProgress } from "./import-inbox-model";
+import { buildInboxChecklistProgress, groupInboxFilesByOwner } from "./import-inbox-model";
+import { getPersonColourVars } from "./person-colour";
 import { ImportAskFirst } from "./import-batch-bar";
 import { useFollowingFold } from "./use-following-fold";
 import { messages } from "./copy/en-SG";
@@ -292,10 +293,11 @@ function ImportInboxMetric({ icon, label, value }) {
 function ImportInboxSession({ session, sessionProgress, tickedFileIds, snoozedFileIds, onSelectExpectedFile, onSnoozeFile }) {
   const requiredFiles = session.expectedFiles.filter((file) => file.priority === "required");
   const optionalFiles = session.expectedFiles.filter((file) => file.priority === "optional");
-  const renderFile = (file) => (
+  const renderFile = (file, { inGroup = false } = {}) => (
     <ImportInboxFileRow
       key={file.id}
       file={file}
+      inGroup={inGroup}
       isTicked={tickedFileIds.has(file.id)}
       isSnoozed={snoozedFileIds.has(file.id)}
       onSelectExpectedFile={onSelectExpectedFile}
@@ -338,7 +340,21 @@ function ImportInboxSession({ session, sessionProgress, tickedFileIds, snoozedFi
         ) : null}
 
         <div className="import-inbox-file-list">
-          {requiredFiles.map(renderFile)}
+          {groupInboxFilesByOwner(requiredFiles).map((owner) => (
+            <section
+              key={owner.ownerLabel}
+              className="import-inbox-owner-group"
+              style={getPersonColourVars(owner.ownerLabel)}
+              aria-label={owner.ownerLabel}
+            >
+              <h4 className="import-inbox-owner-label">{owner.ownerLabel}</h4>
+              {owner.accounts.map((group) => (
+                <ImportInboxAccountGroup key={group.key} group={group}>
+                  {group.files.map((file) => renderFile(file, { inGroup: true }))}
+                </ImportInboxAccountGroup>
+              ))}
+            </section>
+          ))}
           {optionalFiles.length ? (
             <details className="import-inbox-optional-files">
               <summary>{messages.imports.inboxOptionalSection(optionalFiles.length)}</summary>
@@ -351,21 +367,46 @@ function ImportInboxSession({ session, sessionProgress, tickedFileIds, snoozedFi
   );
 }
 
+// One account's statements, under its owner's heading: its name and
+// download step once, then a line per month still missing.
+function ImportInboxAccountGroup({ group, children }) {
+  return (
+    <div className="import-inbox-account-group">
+      <div className="import-inbox-file-main">
+        <strong>{group.accountName}</strong>
+        <span>{messages.imports.inboxAccountGroupDetail({
+          institution: group.institution,
+          coveredAccountNames: group.coveredAccountNames,
+          fileCount: group.files.length,
+          fileTypes: group.supportedFileTypes.join(", ")
+        })}</span>
+      </div>
+      <div className="import-inbox-account-months">{children}</div>
+    </div>
+  );
+}
+
 // A checklist line. Its actions ("Use with import form" fills the import
 // defaults from this file; "Not available" pauses it for a few days) show
-// on hover or focus instead of on every line; a tap focuses the line.
-function ImportInboxFileRow({ file, isTicked, isSnoozed, onSelectExpectedFile, onSnoozeFile }) {
+// on hover or focus instead of on every line; a tap focuses the line. In an
+// account group the line is just its month.
+function ImportInboxFileRow({ file, inGroup = false, isTicked, isSnoozed, onSelectExpectedFile, onSnoozeFile }) {
+  const monthLabel = `${formatService.formatMonthLabel(file.periodMonth)} (${file.periodMonth})`;
   return (
-    <div className={`import-inbox-file-row${isSnoozed ? " is-snoozed" : ""}${isTicked ? " is-ticked" : ""}`} tabIndex={-1}>
+    <div className={`import-inbox-file-row${inGroup ? " is-month" : ""}${isSnoozed ? " is-snoozed" : ""}${isTicked ? " is-ticked" : ""}`} tabIndex={-1}>
       {isTicked ? <CheckCircle2 className="import-inbox-file-tick" size={18} aria-hidden="true" /> : null}
       <div className="import-inbox-file-main">
-        <strong>{file.accountName}</strong>
-        <strong>{`${formatService.formatMonthLabel(file.periodMonth)} (${file.periodMonth})`}</strong>
-        <span>{messages.imports.inboxFileOwner(file.ownerLabel)}</span>
-        <span>{messages.imports.inboxFileDetail(
-          file.detail,
-          file.supportedFileTypes.join(", ")
-        )}</span>
+        {inGroup ? <strong>{monthLabel}</strong> : (
+          <>
+            <strong>{file.accountName}</strong>
+            <strong>{monthLabel}</strong>
+            <span>{messages.imports.inboxFileOwner(file.ownerLabel)}</span>
+            <span>{messages.imports.inboxFileDetail(
+              file.detail,
+              file.supportedFileTypes.join(", ")
+            )}</span>
+          </>
+        )}
         {isSnoozed ? <span>{messages.imports.inboxSnoozed}</span> : null}
       </div>
       <div className="import-inbox-file-actions">

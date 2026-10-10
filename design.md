@@ -237,7 +237,10 @@ Rules:
 - the inbox folds to "Still missing: N of M" and each bank to one row
   (`import-inbox-model.js`: `buildInboxChecklistProgress` ticks off lines
   from the intake model's matches, `isInboxOpenByDefault`, `nextFoldState`
-  behind `useFollowingFold`)
+  behind `useFollowingFold`); inside a bank, `groupInboxFilesByOwner`
+  puts each owner's accounts under their name and `groupInboxFilesByAccount`
+  makes one box per account (or shared statement) listing its missing
+  months
 - pasted rows and the import defaults sit behind "Paste rows or set
   defaults", opened when a plain CSV needs mapping; upload status and the AI
   consent stay beside the drop zone
@@ -553,6 +556,17 @@ a soft fill (status pills, chips, Imports inbox and intake states), and the
 full fill for banners that need attention (the environment banners: demo
 sky, local mint; the tab badge; the danger button; statement results). `--muted` keeps 4.54 on the neutral fill; on any
 other tint, text uses that tint's ink instead.
+
+## Person Colour
+
+Each person keeps one colour across the app, from the category palette:
+`src/client/person-colour.js` (`getPersonColour`) gives Tim green, Joyce
+coral, Splits-linked rows terracotta and any other owner (Shared) a stable
+palette pick. Entries draws it as the row's 5px edge; the Import inbox
+owner groups use `getPersonColourVars`: a chip (16% tint, `--person-ink`),
+the solid account edge, a 10% header band and a 6% wash on alternate
+months. `--person-ink` is the colour 55% into `--text`, 5.4:1 or more on
+the chip and band. Any later per-person cue reuses these, never new hues.
 
 ## Money Colour
 

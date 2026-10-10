@@ -449,8 +449,11 @@ receipt button adds a shared expense.
   accounts that are current and split cleanup. Each bank is one row with
   how many of its files are still missing; open a bank for its steps, an
   **Open portal** link and each file you still need (for example the OCBC
-  365 Card statement for Aug 2026). A statement that covers several cards
-  is asked for once ("covers UOB Lady's Card and UOB One Card").
+  365 Card statement for Aug 2026). Files are grouped by owner (Tim, Joyce,
+  Shared), and each account is one box with its download step, listing
+  every month it still needs. A statement that
+  covers several cards is asked for once ("covers UOB Lady's Card and UOB
+  One Card").
 - **Review order**: statements are reviewed oldest month first; optional
   activity files come after.
 - **Recent imports**: every import batch, with its kind (PDF statement,

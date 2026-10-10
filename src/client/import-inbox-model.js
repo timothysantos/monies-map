@@ -20,6 +20,47 @@ export function buildInboxChecklistProgress(inbox, intakeQueue = []) {
   return { requiredCount, missingCount, tickedFileIds, sessions };
 }
 
+// A bank's checklist lines, one group per account (or per shared statement
+// that covers several accounts), so an account behind on several months is
+// one box listing its months. Groups and months keep the download order.
+export function groupInboxFilesByAccount(files = []) {
+  const groups = new Map();
+  for (const file of files) {
+    const key = `${file.accountName}\u0000${file.ownerLabel}\u0000${file.sourceType}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        accountName: file.accountName,
+        ownerLabel: file.ownerLabel,
+        institution: file.institution,
+        sourceType: file.sourceType,
+        supportedFileTypes: file.supportedFileTypes,
+        coveredAccountNames: file.coveredAccounts?.map((account) => account.accountName) ?? [],
+        files: []
+      });
+    }
+    groups.get(key).files.push(file);
+  }
+  return Array.from(groups.values());
+}
+
+// A bank's checklist lines by owner, then by account inside each owner, so
+// one person's downloads sit together. Owners keep the order they first
+// appear in the download order.
+export function groupInboxFilesByOwner(files = []) {
+  const filesByOwner = new Map();
+  for (const file of files) {
+    if (!filesByOwner.has(file.ownerLabel)) {
+      filesByOwner.set(file.ownerLabel, []);
+    }
+    filesByOwner.get(file.ownerLabel).push(file);
+  }
+  return Array.from(filesByOwner, ([ownerLabel, ownerFiles]) => ({
+    ownerLabel,
+    accounts: groupInboxFilesByAccount(ownerFiles)
+  }));
+}
+
 // The inbox is the plan before a bank run; once files are queued or one is
 // in review, the queue is the work and the inbox folds to one line.
 export function isInboxOpenByDefault({ queuedCount, isFileInReview }) {

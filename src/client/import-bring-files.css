@@ -189,10 +189,85 @@ button.import-upload-status.is-waiting {
   font-size: 0.88rem;
 }
 
+/* Each owner's accounts sit together under their name, in the person's
+   colour from Entries (person-colour.js): a chip for the name, a solid
+   edge and soft band on each account, and alternate months in a faint
+   wash. */
+.import-inbox-owner-group {
+  display: grid;
+  gap: 8px;
+}
+
+.import-inbox-owner-group + .import-inbox-owner-group {
+  margin-top: 10px;
+}
+
+.import-inbox-owner-label {
+  justify-self: start;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--person-chip-border);
+  border-radius: 999px;
+  background: var(--person-chip-bg);
+  color: var(--person-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* One box per account; its missing months are lines inside it. */
+.import-inbox-account-group {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--person-chip-border);
+  border-left: 5px solid var(--person-colour);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.import-inbox-account-group > .import-inbox-file-main {
+  padding: 9px 12px;
+  background: var(--person-band);
+}
+
+.import-inbox-account-group > .import-inbox-file-main strong,
+.import-inbox-account-group > .import-inbox-file-main span {
+  color: var(--person-ink);
+}
+
+.import-inbox-account-months {
+  display: grid;
+  padding: 4px;
+}
+
+.import-inbox-file-row.is-month {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.import-inbox-file-row.is-month:nth-child(even) {
+  background: var(--person-wash);
+}
+
+.import-inbox-file-row.is-month strong {
+  font-weight: 600;
+}
+
 /* A line a queued file matches is ticked off. */
 .import-inbox-file-row.is-ticked {
   border-color: var(--pastel-mint-line);
   background: var(--pastel-mint);
+}
+
+.import-inbox-file-row.is-month.is-ticked {
+  background: var(--pastel-mint);
+}
+
+.import-inbox-file-row.is-month.is-ticked strong {
+  color: var(--pastel-mint-ink);
 }
 
 .import-inbox-file-tick {

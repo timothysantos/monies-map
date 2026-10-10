@@ -301,6 +301,15 @@ export const messages = {
     inboxOptionalSection: (count) => `${count} optional activity export${count === 1 ? "" : "s"}`,
     inboxFileDetail: (detail, fileTypes) => `${detail} Supported: ${fileTypes}.`,
     inboxFileOwner: (ownerLabel) => `Owner: ${ownerLabel}`,
+    inboxAccountGroupDetail: ({ institution, coveredAccountNames, fileCount, fileTypes }) => {
+      const covers = coveredAccountNames.length > 1
+        ? `One ${institution} statement covers ${coveredAccountNames.slice(0, -1).join(", ")} and ${coveredAccountNames.at(-1)}. `
+        : "";
+      const download = fileCount === 1
+        ? `Download this PDF statement while signed in to ${institution}.`
+        : `Download each month's PDF statement while signed in to ${institution}.`;
+      return `${covers}${download} Supported: ${fileTypes}.`;
+    },
     inboxUseFile: "Use with import form",
     inboxNotAvailable: "Not available",
     inboxSnoozed: "Paused for a few days because the bank has not published it yet.",

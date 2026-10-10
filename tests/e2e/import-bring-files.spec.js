@@ -81,11 +81,11 @@ const PINNED_INBOX = {
   cleanup: { pendingSplitMatchCount: 0, status: "clear", detail: "" }
 };
 
-async function pinImportInbox(page) {
+async function pinImportInbox(page, inbox = PINNED_INBOX) {
   await page.route("**/api/imports-page**", async (route) => {
     const response = await route.fetch();
     const json = await response.json();
-    json.importsPage.importInbox = PINNED_INBOX;
+    json.importsPage.importInbox = inbox;
     await route.fulfill({ response, json });
   });
 }
@@ -162,10 +162,52 @@ test("the drop zone and queue come first, and the inbox folds to what is still m
   await banks.nth(1).locator(":scope > summary").click();
   const ticked = inbox.locator(".import-inbox-file-row.is-ticked");
   await expect(ticked).toHaveCount(1);
-  await expect(ticked).toContainText("UOB One Card + UOB Lady's Card");
+  await expect(ticked.locator(".import-inbox-file-main")).toHaveText("May 2026 (2026-05)");
+  await expect(inbox.locator(".import-inbox-account-group").filter({ has: page.locator(".import-inbox-file-row.is-ticked") }).locator(":scope > .import-inbox-file-main strong"))
+    .toHaveText("UOB One Card + UOB Lady's Card");
   // The unmatched OCBC file ticks no OCBC line.
   await expect(banks.nth(1).locator(".import-inbox-file-row.is-ticked")).toHaveCount(0);
   await expect(banks.nth(1).locator(".import-inbox-file-row")).toHaveCount(2);
+});
+
+test("a bank's files group by owner, and an account behind on several months is one box listing its months", async ({ page }) => {
+  // OCBC also needs Joyce's 365 Card statement, after Tim's two.
+  const joyceCard = { ...expectedFile({ id: "ocbc-365-2026-05", institution: "OCBC", accountName: "OCBC 365 Card" }), ownerLabel: "Joyce" };
+  await pinImportInbox(page, {
+    ...PINNED_INBOX,
+    sessions: PINNED_INBOX.sessions.map((session) => (session.institution === "OCBC"
+      ? { ...session, requiredFileCount: 3, expectedFiles: [OCBC_FILES[0], joyceCard, OCBC_FILES[1]] }
+      : session))
+  });
+  await openImports(page);
+  const bank = page.locator(".import-inbox-session").filter({ hasText: "OCBC" });
+  await bank.locator(":scope > summary").click();
+
+  // One heading per owner, in download order, each over its own accounts.
+  const owners = bank.locator(".import-inbox-owner-group");
+  await expect(owners.locator(".import-inbox-owner-label")).toHaveText(["Tim", "Joyce"]);
+  await expect(owners.nth(0).locator(".import-inbox-account-group > .import-inbox-file-main strong")).toHaveText(["OCBC 360 Account"]);
+  await expect(owners.nth(1).locator(".import-inbox-account-group > .import-inbox-file-main strong")).toHaveText(["OCBC 365 Card"]);
+
+  // OCBC 360 needs May and April: one box with the account and download
+  // step once, then a line per month; the owner is not repeated in it.
+  const tim360 = owners.nth(0).locator(".import-inbox-account-group");
+  await expect(tim360.locator(":scope > .import-inbox-file-main span")).toHaveText([
+    "Download each month's PDF statement while signed in to OCBC. Supported: PDF."
+  ]);
+  const months = tim360.locator(".import-inbox-file-row.is-month .import-inbox-file-main");
+  await expect(months).toHaveText(["May 2026 (2026-05)", "Apr 2026 (2026-04)"]);
+  await expect(bank.getByText("OCBC 360 Account", { exact: true })).toHaveCount(1);
+  await expect(bank.getByText(/^Owner:/)).toHaveCount(0);
+
+  // A one-month shared statement says it covers both cards.
+  const uob = page.locator(".import-inbox-session").filter({ hasText: "UOB" });
+  await uob.locator(":scope > summary").click();
+  await expect(uob.locator(".import-inbox-account-group").first().locator(":scope > .import-inbox-file-main span"))
+    .toHaveText("One UOB statement covers UOB One Card and UOB Lady's Card. Download this PDF statement while signed in to UOB. Supported: PDF.");
+  // The optional activity export is not grouped: it keeps its own line.
+  await uob.locator(".import-inbox-optional-files > summary").click();
+  await expect(uob.locator(".import-inbox-optional-files .import-inbox-file-row:not(.is-month)")).toContainText("UOB One Card");
 });
 
 test("an inbox line keeps its actions for hover and focus instead of repeating them on every line", async ({ page }) => {
