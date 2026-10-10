@@ -402,6 +402,11 @@ A persistence command is all-or-nothing:
   certifications, after re-checking them on rows read before the batch; a
   fix that no longer holds throws before anything is written
   (`tests/atomic-writes-statement-fixes.test.mjs`)
+- an activity export's removal of the entries the bank no longer lists
+  (`src/domain/import-no-longer-listed-entries.ts`) re-checks each entry,
+  then saves it to `import_no_longer_listed_entries` and deletes it in the
+  import's own final batch; the rollback re-creates it in the rollback's
+  batch (`tests/atomic-writes-no-longer-listed.test.mjs`)
 - statement corrections from Settings
   (`src/domain/app-repository-statement-corrections.ts`) apply or undo every
   move and removal with its `statement_corrections` row and audit event in

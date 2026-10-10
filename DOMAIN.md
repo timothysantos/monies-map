@@ -1271,6 +1271,45 @@ Important distinctions:
 - No rate, no entry: when no usable rate exists the Shortcut is told to run
   again and nothing is saved.
 
+### No Longer Listed Entry
+
+An entry an earlier activity export created that a later export of the same
+account no longer lists, although the later export covers its date. An
+activity export lists every charge the bank holds over its dates, pending
+ones included, so the bank dropped it: usually a pending hold it released
+(a Grab order held at IDR 502,200 before its discount, posted at IDR
+375,500), or a charge it posted again at another amount, which then comes in
+as the later export's own row.
+
+Canonical term:
+- `no longer listed entry`
+
+Code and storage:
+- `src/domain/import-no-longer-listed-entries.ts` (find, remove, restore)
+- `ImportPreviewDto.noLongerListedEntries`; the commit takes the ones to
+  remove as `noLongerListedEntries`
+- `import_no_longer_listed_entries` (one row per removed entry, with the
+  whole entry and its split links in `entry_snapshot_json`)
+
+Important distinctions:
+- The dates a file covers are, per account, its first to its last row's
+  date. An entry dated before a later export's first row is not in question.
+- Only an entry an export created and nothing else vouches for: provisional,
+  not a foreign currency estimate, not a manual entry an export promoted,
+  not a transfer. A purchase the user saved stays even when the bank row
+  that updated it is gone.
+- An entry any row of the file matched, skipped as a duplicate or left for
+  review is still listed.
+- The commit removes them unless the user keeps them (one choice for all),
+  in the import's own batch. Rolling the import back re-creates them with
+  their split links. An earlier export whose entry a later export removed is
+  rolled back only after the later one.
+- An official statement does the same at statement time through the
+  statement reconciliation (superseded rows): a provisional export row the
+  PDF does not contain is removed when the rows' total exactly explains the
+  statement's difference. The export check catches it weeks earlier and
+  does not depend on the totals.
+
 ### Statement Correction
 
 A statement fix for data that is already saved, applied from the Settings

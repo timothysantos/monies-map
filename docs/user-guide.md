@@ -968,7 +968,11 @@ and activity exports that grow during the month.
    only.
    ![All rows already covered: save the statement checkpoints only](/faq/guide/examples/thumbs/02-jan-two-card-pdf-all-duplicates-save-checkpoints.webp)
 3. **Import activity during the month.** Each new export repeats earlier rows;
-   the preview skips those and keeps only the new ones.
+   the preview skips those and keeps only the new ones. An export also lists
+   pending charges. If a later export no longer lists an entry from an
+   earlier one (usually a hold the bank released), the preview names it and
+   importing removes it. Tick **Keep this entry** to leave it, or roll the
+   import back to bring it back.
    ![A growing activity export: old rows skipped, new rows kept](/faq/guide/examples/thumbs/04-midcycle-snapshot-2.webp)
 4. **Import the next statement.** Rows you already have are confirmed in
    place, keeping your categories, notes and splits. Only rows missing from

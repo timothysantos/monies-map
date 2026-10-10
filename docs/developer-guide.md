@@ -1017,6 +1017,21 @@ the statement certification. If multiple possible row combinations could explain
 the same difference, the app leaves the mismatch open for review instead of
 guessing.
 
+A later activity export catches a dropped row before the statement does, and
+without the totals. `findNoLongerListedEntries`
+(`src/domain/import-no-longer-listed-entries.ts`) lists, per account, the
+provisional entries earlier exports created that are dated within the file's
+first and last row and that no row of the file matched (DOMAIN.md, "No Longer
+Listed Entry"); estimates, promoted manual entries and transfers never
+qualify. The preview returns them as `noLongerListedEntries`, the client
+sends the ones the user did not keep back with the commit, and the commit
+checks each again before removing it in its own batch, saving the entry in
+`import_no_longer_listed_entries` for the rollback. Rolling back an export
+whose entry a later export removed is refused until the later one is rolled
+back. `tests/no-longer-listed-entries-api.test.mjs` replays a real released
+Grab hold; `tests/atomic-writes-no-longer-listed.test.mjs` covers the batch
+failures.
+
 Status guards only apply in that second lane. `statement_certified` ledger rows
 cannot be chosen as reconciliation targets, and non-PDF mid-cycle imports
 cannot reconcile against existing imported provisional rows. Exact duplicate
