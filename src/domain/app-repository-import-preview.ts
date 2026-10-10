@@ -47,6 +47,7 @@ import type {
   ImportOverlapDto,
   ImportPreviewDto,
   ImportPreviewRowDto,
+  ImportPreviewStatementReconciliationDto,
   StatementCheckpointDraftDto,
   StatementDiagnosisDto,
   StatementFixDto
@@ -334,6 +335,7 @@ export async function buildImportPreview(
     statementChainBreaks,
     matchContext
   });
+  await attachPreviousStatementImports(db, statementReconciliations);
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
   markCertifiedConflictRows(previewRows, statementReconciliations);
   const statementDiagnosis = buildStatementDiagnosis({
@@ -1829,6 +1831,46 @@ async function loadStatementChainBreaks(
     }>();
 
   return rows.results;
+}
+
+// A statement uploaded again: the latest completed import that already
+// saved a statement for the same account and month, so the review can say
+// so instead of looking empty. A rolled-back import no longer counts.
+async function attachPreviousStatementImports(
+  db: D1Database,
+  statementReconciliations: ImportPreviewStatementReconciliationDto[]
+) {
+  const accountIds = Array.from(new Set(statementReconciliations.map((item) => item.accountId).filter((id): id is string => Boolean(id))));
+  if (!accountIds.length) {
+    return;
+  }
+
+  const placeholders = accountIds.map(() => "?").join(", ");
+  const rows = await db
+    .prepare(`
+      SELECT certificates.account_id, certificates.checkpoint_month,
+        imports.id AS import_id, imports.source_label, imports.imported_at
+      FROM statement_reconciliation_certificates AS certificates
+      INNER JOIN imports ON imports.id = certificates.import_id AND imports.status = 'completed'
+      WHERE certificates.household_id = ?
+        AND certificates.account_id IN (${placeholders})
+      ORDER BY imports.imported_at DESC
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...accountIds)
+    .all<{ account_id: string; checkpoint_month: string; import_id: string; source_label: string; imported_at: string }>();
+
+  for (const reconciliation of statementReconciliations) {
+    const previous = rows.results.find((row) => (
+      row.account_id === reconciliation.accountId && row.checkpoint_month === reconciliation.checkpointMonth
+    ));
+    if (previous) {
+      reconciliation.previousStatementImport = {
+        importId: previous.import_id,
+        sourceLabel: previous.source_label,
+        importedAt: previous.imported_at
+      };
+    }
+  }
 }
 
 function isDateWithinRange(value: string, startDate?: string, endDate?: string) {

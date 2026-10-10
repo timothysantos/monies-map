@@ -742,6 +742,13 @@ export interface ImportPreviewStatementReconciliationDto {
   projectedLedgerBalanceMinor?: number;
   deltaMinor?: number;
   status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
+  // The latest completed import that already saved this account's statement
+  // for the same month (the statement is being uploaded again).
+  previousStatementImport?: {
+    importId: string;
+    sourceLabel: string;
+    importedAt: string;
+  };
   supersededLedgerRows?: ImportPreviewSupersededLedgerRowDto[];
   reconciliationBreakdown?: ImportPreviewStatementReconciliationBreakdownDto;
 }

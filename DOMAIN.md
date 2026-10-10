@@ -428,6 +428,12 @@ Important distinctions:
   default with a reason the user reads, and can still be included. This
   keeps a later activity export from unbalancing a closed statement. The
   preview row carries `certifiedStatement: { checkpointMonth, covered }`.
+- A statement uploaded again for an account and month that a completed
+  import already confirmed names that import on its statement
+  reconciliation (`previousStatementImport`: import id, source label,
+  imported at). Its rows are already certified, so it is a covered
+  statement, never an empty one: an empty statement is one with no rows at
+  all.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely
