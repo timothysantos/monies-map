@@ -139,8 +139,10 @@ const month = (overrides) => ({
   ...overrides
 });
 
+// Income is filed as Salary: money in under a spending category would be a
+// payback that lowers spending instead (category-offset.ts).
 const entry = (id, entryType, amountMinor) => ({
-  id, date: "2026-05-10", description: id, accountName: "UOB One", categoryName: "Groceries",
+  id, date: "2026-05-10", description: id, accountName: "UOB One", categoryName: entryType === "income" ? "Salary" : "Groceries",
   entryType, ownershipType: "direct", ownerName: "Tim", amountMinor, offsetsCategory: false,
   splits: [{ personId: "person-tim", personName: "Tim", amountMinor, ratioBasisPoints: 10_000 }]
 });
