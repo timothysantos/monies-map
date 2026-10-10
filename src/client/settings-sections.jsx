@@ -371,6 +371,7 @@ export function SettingsCategoryMatchRulesSection({
   rules,
   categories,
   suggestions,
+  backfills = [],
   ignoredIssueIds = [],
   isOpen,
   onToggle,
@@ -381,6 +382,7 @@ export function SettingsCategoryMatchRulesSection({
   onEditSuggestion,
   onIgnoreSuggestion,
   onIgnoreIssue,
+  onApplyBackfill,
   aiStatus = "",
   isAiWorking = false,
   onRequestAiSuggestions
@@ -438,6 +440,35 @@ export function SettingsCategoryMatchRulesSection({
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {backfills.length ? (
+            <section className="settings-suggestion-panel settings-rule-backfill-panel" aria-label={messages.settings.categoryRuleBackfillsTitle}>
+              <div className="settings-rule-group-header">
+                <strong>{messages.settings.categoryRuleBackfillsTitle}</strong>
+                <span>{messages.settings.categoryRuleBackfillsCount(backfills.length)}</span>
+              </div>
+              <p className="lede compact">{messages.settings.categoryRuleBackfillsDetail}</p>
+              <div className="settings-suggestion-list">
+                {backfills.map((backfill) => (
+                  <div key={backfill.ruleId} className="settings-account-row settings-suggestion-row">
+                    <div className="settings-account-main">
+                      <strong>{backfill.pattern}</strong>
+                      <p>{messages.settings.categoryRuleBackfillSummary(backfill.categoryName, backfill.entryCount)}</p>
+                      <ul className="settings-rule-suggestion-samples">
+                        {backfill.sampleDescriptions.map((sample) => (
+                          <li key={sample}>{sample}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="settings-account-actions settings-suggestion-actions">
+                      <button type="button" className="subtle-action" onClick={() => onApplyBackfill(backfill)}>
+                        {messages.settings.applyCategoryRuleBackfill(backfill.entryCount)}
+                      </button>
                     </div>
                   </div>
                 ))}

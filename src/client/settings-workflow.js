@@ -14,6 +14,7 @@ export function buildSafeSettingsPage(settingsPage) {
     },
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
+    categoryRuleBackfills: [],
     ignoredCategoryMatchRuleIssueIds: [],
     unresolvedTransfers: [],
     reconciliationExceptions: [],

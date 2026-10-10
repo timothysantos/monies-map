@@ -24,6 +24,7 @@ import {
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer,
   ignoreCategoryMatchRuleIssue,
+  applyCategoryMatchRuleToPastEntries,
   ignoreCategoryMatchRuleSuggestion,
   retainLatestErrorDiagnostics,
   requestAiCategoryRuleSuggestions,
@@ -731,6 +732,18 @@ export function SettingsPanel({
     }
   }
 
+  async function handleApplyCategoryRuleBackfill(backfill) {
+    setIsSubmitting(true);
+    try {
+      await applyCategoryMatchRuleToPastEntries(backfill.ruleId);
+      await onRefresh(buildSettingsRefreshPlan("category_rule_applied_to_past"));
+    } catch (error) {
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to apply the rule to past entries");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleIgnoreCategoryRuleIssue(issue) {
     setIsSubmitting(true);
     try {
@@ -1282,6 +1295,7 @@ export function SettingsPanel({
         rules={safeSettingsPage.categoryMatchRules ?? []}
         categories={categories}
         suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
+        backfills={safeSettingsPage.categoryRuleBackfills ?? []}
         ignoredIssueIds={safeSettingsPage.ignoredCategoryMatchRuleIssueIds ?? []}
         isOpen={settingsSectionsOpen.categoryRules}
         onToggle={() => toggleSettingsSection("categoryRules")}
@@ -1292,6 +1306,7 @@ export function SettingsPanel({
         onEditSuggestion={openCategoryRuleSuggestionDialog}
         onIgnoreSuggestion={handleIgnoreCategoryRuleSuggestion}
         onIgnoreIssue={handleIgnoreCategoryRuleIssue}
+        onApplyBackfill={(backfill) => void handleApplyCategoryRuleBackfill(backfill)}
         aiStatus={aiCategoryRuleStatus}
         isAiWorking={isSubmitting}
         onRequestAiSuggestions={() => void handleRequestAiCategoryRules()}

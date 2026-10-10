@@ -65,6 +65,13 @@ const TRANSFER_MUTATION_PLAN = Object.freeze({
   invalidateSummary: true
 });
 
+// Applying a rule to past entries recategorises ledger entries, which moves
+// Month, Summary and Entries totals.
+const CATEGORY_RULE_BACKFILL_PLAN = Object.freeze({
+  ...TRANSFER_MUTATION_PLAN,
+  invalidateImports: true
+});
+
 // A statement correction moves or removes ledger entries, and an import
 // whose entry covers a removed copy can no longer be rolled back.
 const STATEMENT_CORRECTION_PLAN = Object.freeze({
@@ -89,6 +96,10 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "legacy_ledger_ownership_repaired"
   ) {
     return REFERENCE_DATA_PLAN;
+  }
+
+  if (kind === "category_rule_applied_to_past") {
+    return CATEGORY_RULE_BACKFILL_PLAN;
   }
 
   if (

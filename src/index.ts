@@ -89,6 +89,7 @@ import {
 } from "./domain/app-repository-entry-commands";
 import { ensureDemoSchemaTimed } from "./domain/app-repository-schema";
 import { ignoreCategoryMatchRuleIssue } from "./domain/app-repository-category-match-rules";
+import { applyCategoryRuleToPastEntries } from "./domain/app-repository-category-rule-backfill";
 import {
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer
@@ -1748,6 +1749,20 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete category match rule" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/category-match-rules/apply-to-past" && request.method === "POST") {
+      const body = await request.json<{ ruleId?: string }>();
+
+      if (!body.ruleId) {
+        return json({ ok: false, error: "Missing category match rule id" }, 400);
+      }
+
+      try {
+        return json({ ok: true, ...(await applyCategoryRuleToPastEntries(env.DB, body.ruleId)) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to apply the rule to past entries" }, 400);
       }
     }
 

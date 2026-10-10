@@ -248,6 +248,12 @@ overrides the parser's own guess. Default rules live in
 households. No two default rules may duplicate or overlap
 (`tests/category-match-defaults.test.mjs`).
 
+A rule files new imports. Past entries still in `Other` or `Other - Income`
+that a rule now matches (it is the first active rule to match them) are listed
+in Settings as a `category rule backfill` and can be moved to the rule's
+category in one go (`app-repository-category-rule-backfill.ts`). Entries in
+any other category are never changed.
+
 Storage:
 - `category_match_rules`
 

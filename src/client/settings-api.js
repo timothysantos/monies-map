@@ -81,6 +81,14 @@ export function deleteCategoryMatchRule(ruleId) {
   );
 }
 
+export function applyCategoryMatchRuleToPastEntries(ruleId) {
+  return postJson(
+    "/api/category-match-rules/apply-to-past",
+    { ruleId },
+    "Failed to apply the rule to past entries"
+  );
+}
+
 export function ignoreCategoryMatchRuleIssue(issueId) {
   return postJson(
     "/api/category-match-rules/ignore-issue",

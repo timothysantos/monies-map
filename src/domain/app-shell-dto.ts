@@ -112,6 +112,7 @@ export async function buildEntriesShellDto(
       demo,
       categoryMatchRules: [],
       categoryMatchRuleSuggestions: [],
+      categoryRuleBackfills: [],
       ignoredCategoryMatchRuleIssueIds: [],
       unresolvedTransfers: [],
       reconciliationExceptions: [],

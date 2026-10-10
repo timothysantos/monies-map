@@ -10,6 +10,7 @@ import {
   loadUnresolvedTransfers,
   TRANSFER_REVIEW_PAGE_LIMIT
 } from "../app-repository";
+import { loadCategoryRuleBackfills } from "../app-repository-category-rule-backfill";
 import { loadShortcutSettings } from "../app-repository-shortcuts";
 import type { SettingsPageDto } from "../../types/dto";
 
@@ -39,6 +40,7 @@ export async function buildSettingsPageDto(
     loadAuditEvents(db),
     loadAppErrorDiagnostics(db)
   ]);
+  const categoryRuleBackfills = await loadCategoryRuleBackfills(db, categoryMatchRules);
   const shortcutSettings = await loadShortcutSettings(
     db,
     accounts,
@@ -52,6 +54,7 @@ export async function buildSettingsPageDto(
       demo,
       categoryMatchRules,
       categoryMatchRuleSuggestions,
+      categoryRuleBackfills,
       ignoredCategoryMatchRuleIssueIds,
       unresolvedTransfers,
       reconciliationExceptions,

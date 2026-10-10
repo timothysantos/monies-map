@@ -99,6 +99,16 @@ export interface CategoryMatchRuleDto {
   note?: string;
 }
 
+// A rule's past entries still in Other or Other - Income that it now matches
+// (app-repository-category-rule-backfill.ts).
+export interface CategoryMatchRuleBackfillDto {
+  ruleId: string;
+  pattern: string;
+  categoryName: string;
+  entryCount: number;
+  sampleDescriptions: string[];
+}
+
 export interface CategoryMatchRuleSuggestionDto {
   id: string;
   pattern: string;
@@ -1058,6 +1068,7 @@ export interface SettingsPageDto {
   demo: DemoSettingsDto;
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];
+  categoryRuleBackfills: CategoryMatchRuleBackfillDto[];
   ignoredCategoryMatchRuleIssueIds: string[];
   unresolvedTransfers: TransferIssueDto[];
   reconciliationExceptions: ReconciliationExceptionDto[];

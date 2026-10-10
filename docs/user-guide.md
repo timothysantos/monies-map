@@ -1345,11 +1345,19 @@ icon and colour by selecting its icon on Summary.
 
 ![Category matching shows overlapping rules to review](/faq/guide/desktop/thumbs/settings-category-rules.webp)
 
+**Money back lowers spending.** When money comes in under a spending
+category, such as a refund or a friend paying you back for dinner, it lowers
+that category's spending instead of counting as income. Money in under
+Salary, Extra Income, Other - Income, Savings, Investments, Transfer or Other
+stays income, so put a gift you received in Extra Income.
+
 When you keep re-categorising similar rows, the app suggests a rule (a
 number appears on the Settings tab). For each suggestion choose **Add rule**,
 edit it first, or **Ignore**. Overlapping rules are listed first so you can
-tidy them. Rules affect future imports only, never entries you already
-committed.
+tidy them. Rules file new imports. When a rule matches past entries that are
+still in Other or Other - Income, they are listed under **Past entries your
+rules now match**; choose **Move** to file them. Entries already in another
+category are never changed.
 
 ## Review unresolved transfers
 
