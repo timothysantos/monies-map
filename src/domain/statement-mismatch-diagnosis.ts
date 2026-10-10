@@ -53,7 +53,8 @@ export interface DiagnosisAccount {
   institutionId?: string;
   // Saved statement checkpoints. An entry dated on or before one of these
   // belongs to a closed statement and is never moved off its account.
-  savedCheckpoints: { month: string; endDate: string }[];
+  // balanceMinor is the saved statement balance (internal sign).
+  savedCheckpoints: { month: string; endDate: string; balanceMinor?: number }[];
 }
 
 export interface DiagnosisLedgerEntry {
@@ -260,13 +261,14 @@ export function diagnoseStatementMismatches(input: DiagnosisInput): StatementDia
     if (card.previousStatementBalanceMinor != null && card.priorLedgerBalanceMinor != null) {
       const openingGapMinor = card.priorLedgerBalanceMinor - card.previousStatementBalanceMinor;
       if (openingGapMinor !== 0) {
+        const missingStatements = findMissingStatements(card, accountsById.get(card.accountId));
         findings.push({
           id: `opening_balance_gap:${card.accountId}`,
           kind: "opening_balance_gap",
           confidence: "medium",
           accountId: card.accountId,
           effectMinor: -openingGapMinor,
-          facts: [],
+          facts: missingStatements ? [{ ...missingStatements, previousStatementBalanceMinor: card.previousStatementBalanceMinor }] : [],
           applied: false
         });
       }
@@ -776,6 +778,37 @@ function isCoveredBySavedCheckpoint(entry: DiagnosisLedgerEntry, account: Diagno
   ));
 }
 
+// The statements between the account's last saved statement and this one.
+// A month with no saved statement there is the likeliest reason the balance
+// before this statement is off: its rows never reached the ledger.
+function findMissingStatements(card: DiagnosisCard, account: DiagnosisAccount | undefined) {
+  const lastSaved = (account?.savedCheckpoints ?? [])
+    .filter((checkpoint) => checkpoint.month < card.checkpointMonth)
+    .sort((left, right) => right.month.localeCompare(left.month))[0];
+  if (!lastSaved) {
+    return undefined;
+  }
+  const months: string[] = [];
+  for (let month = nextMonth(lastSaved.month); month < card.checkpointMonth; month = nextMonth(month)) {
+    months.push(month);
+  }
+  if (!months.length) {
+    return undefined;
+  }
+  return {
+    code: "missing_statements" as const,
+    months,
+    lastStatementMonth: lastSaved.month,
+    lastStatementEndDate: lastSaved.endDate,
+    ...(lastSaved.balanceMinor != null ? { lastStatementBalanceMinor: lastSaved.balanceMinor } : {})
+  };
+}
+
+function nextMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return monthNumber === 12 ? `${year + 1}-01` : `${year}-${String(monthNumber + 1).padStart(2, "0")}`;
+}
+
 function isWithinPeriod(date: string, card: DiagnosisCard) {
   return (!card.startDate || date >= card.startDate) && date <= card.endDate;
 }
@@ -962,7 +995,8 @@ export function toDiagnosisAccount(account?: AccountDto): DiagnosisAccount | und
     ...(account.institutionId ? { institutionId: account.institutionId } : {}),
     savedCheckpoints: (account.checkpointHistory ?? []).map((checkpoint) => ({
       month: checkpoint.month,
-      endDate: checkpoint.statementEndDate ?? getMonthEndDateForDiagnosis(checkpoint.month)
+      endDate: checkpoint.statementEndDate ?? getMonthEndDateForDiagnosis(checkpoint.month),
+      balanceMinor: checkpoint.statementBalanceMinor
     }))
   };
 }

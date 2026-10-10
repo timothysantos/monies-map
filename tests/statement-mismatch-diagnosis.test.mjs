@@ -310,6 +310,52 @@ test("an opening balance that differs from the statement's previous balance is i
   assert.deepEqual([lady.projectedDeltaMinor, lady.unexplainedMinor], [-1250, 0]);
 });
 
+// Joyce's OCBC 365 card, Oct 2026: the ledger stops at the Aug statement
+// (owed 111.93) and the Sep statement was never imported, so the Oct
+// statement's previous balance (owed 264.34) is 152.41 away. The finding
+// names the missing month and both balances instead of guessing.
+test("an opening gap after a month with no saved statement names the missing statement", () => {
+  const ladySavedCheckpoints = [
+    { month: "2026-03", endDate: "2026-03-12", balanceMinor: -5000 },
+    { month: "2026-02", endDate: "2026-02-12", balanceMinor: -2000 }
+  ];
+  const diagnosis = diagnose({
+    accountOverrides: { ladySavedCheckpoints },
+    cards: [card(ONE, 0), card(LADY, -4262 + 15241, { priorLedgerBalanceMinor: -11193, previousStatementBalanceMinor: -26434 })]
+  });
+
+  const gap = finding(diagnosis, `opening_balance_gap:${LADY}`);
+  assert.equal(gap.effectMinor, -15241);
+  assert.deepEqual(gap.facts, [{
+    code: "missing_statements",
+    months: ["2026-04"],
+    lastStatementMonth: "2026-03",
+    lastStatementEndDate: "2026-03-12",
+    lastStatementBalanceMinor: -5000,
+    previousStatementBalanceMinor: -26434
+  }]);
+
+  // Two months missing are both named, oldest first.
+  const twoMissing = diagnose({
+    accountOverrides: { ladySavedCheckpoints: [{ month: "2026-02", endDate: "2026-02-12", balanceMinor: -2000 }] },
+    cards: [card(ONE, 0), card(LADY, -4262 + 15241, { priorLedgerBalanceMinor: -11193, previousStatementBalanceMinor: -26434 })]
+  });
+  assert.deepEqual(finding(twoMissing, `opening_balance_gap:${LADY}`).facts[0].months, ["2026-03", "2026-04"]);
+});
+
+test("an opening gap right after the previous month's statement, or on a first statement, names no missing statement", () => {
+  const cards = [card(ONE, 0), card(LADY, -4262 + 15241, { priorLedgerBalanceMinor: -11193, previousStatementBalanceMinor: -26434 })];
+  // April is saved: the gap is an earlier entry, not a missing statement.
+  const consecutive = diagnose({ accountOverrides: { ladySavedCheckpoints: [{ month: "2026-04", endDate: "2026-04-12", balanceMinor: -11193 }] }, cards });
+  assert.deepEqual(finding(consecutive, `opening_balance_gap:${LADY}`).facts, []);
+  // No statement saved before: nothing to say is missing.
+  const first = diagnose({ cards });
+  assert.deepEqual(finding(first, `opening_balance_gap:${LADY}`).facts, []);
+  // A later saved statement (uploaded out of order) is not the last one before this.
+  const laterOnly = diagnose({ accountOverrides: { ladySavedCheckpoints: [{ month: "2026-06", endDate: "2026-06-12", balanceMinor: 0 }] }, cards });
+  assert.deepEqual(finding(laterOnly, `opening_balance_gap:${LADY}`).facts, []);
+});
+
 test("a statement row left out of the import explains its share of the difference", () => {
   const statementRows = [
     ...uobStatementRows(),

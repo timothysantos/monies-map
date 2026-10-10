@@ -638,6 +638,17 @@ export type StatementFindingFact =
   | { code: "no_posted_date" }
   | { code: "near_statement_end"; days: number }
   | { code: "excluded_by_you" }
+  // The balance before this statement is off and no statement is saved for
+  // the months between the account's last saved statement and this one.
+  // Balances use the internal sign (owed card balances are negative).
+  | {
+    code: "missing_statements";
+    months: string[];
+    lastStatementMonth: string;
+    lastStatementEndDate: string;
+    lastStatementBalanceMinor?: number;
+    previousStatementBalanceMinor: number;
+  }
   // After commit: the correction would unbalance a saved statement that
   // matches now, so it is not offered.
   | { code: "unbalances_saved_statement"; accountName: string; month: string };
@@ -735,6 +746,8 @@ export interface ImportPreviewStatementReconciliationDto {
   accountName: string;
   accountKind?: string;
   accountId?: string;
+  // The card or account number's last four digits printed on the statement.
+  accountLast4?: string;
   checkpointMonth: string;
   statementStartDate?: string;
   statementEndDate?: string;
