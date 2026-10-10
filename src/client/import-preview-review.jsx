@@ -15,6 +15,8 @@ import { entryAmountTone } from "../domain/money-tone";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
 import { getMissingStatementMonths, isLedgerMatchedPreviewRow } from "./import-preview-model";
 import { getPersonColourVars } from "./person-colour";
+import { StatementBankCharges } from "./statement-bank-charges";
+import { describePaymentDue, summarizeStatementCharges } from "./statement-charges-model";
 import "./import-review.css";
 
 const {
@@ -1794,7 +1796,10 @@ function StatementCardSection({
   // opens too: that amount needs checking against the PDF.
   const inferredAmountKeys = useInferredAmountKeys();
   const hasInferredAmount = rows.some((row) => isInferredAmountRow(row, inferredAmountKeys));
-  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes || hasInferredAmount);
+  // A card whose statement has bank charges or notices opens too, so a late
+  // charge on a statement that balances is still seen.
+  const hasBankCharges = summarizeStatementCharges(rows, reconciliation.notices).hasAnything;
+  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes || hasInferredAmount || hasBankCharges);
   const deltaMinor = reconciliation.deltaMinor ?? 0;
   const projectedDeltaMinor = card?.projectedDeltaMinor ?? deltaMinor;
   const addedCount = rows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review" && !row.reconciliationTargetTransactionId).length;
@@ -1804,6 +1809,7 @@ function StatementCardSection({
   const previousImport = reconciliation.previousStatementImport;
   // Whose account the statement goes to, in that person's colour, so a
   // card with the same name for two people can't be mixed up.
+  const paymentDue = describePaymentDue(reconciliation);
   const owner = reconciliation.accountId
     ? accounts.find((account) => account.id === reconciliation.accountId)?.ownerLabel
     : undefined;
@@ -1839,6 +1845,17 @@ function StatementCardSection({
                 : ""}
             </span>
             <span className="import-history-inline">{messages.imports.statementCardCounts(addedCount, confirmedCount)}</span>
+            {paymentDue ? (
+              <span className="import-history-inline statement-card-payment-due">
+                {paymentDue.isDueNow
+                  ? messages.imports.statementPaymentDueNow(formatService.money(paymentDue.owedMinor))
+                  : messages.imports.statementPaymentDue(
+                    formatService.money(paymentDue.owedMinor),
+                    formatService.formatDateOnly(paymentDue.dueDate),
+                    paymentDue.minimumMinor ? formatService.money(paymentDue.minimumMinor) : ""
+                  )}
+              </span>
+            ) : null}
             {previousImport ? (
               <span className="import-history-inline statement-card-previous-import">
                 {messages.imports.statementAlreadyImported(formatService.formatDateOnly(previousImport.importedAt), previousImport.sourceLabel)}
@@ -1852,6 +1869,7 @@ function StatementCardSection({
       </div>
       {isOpen ? (
         <div className="statement-card-body">
+          <StatementBankCharges rows={rows} notices={reconciliation.notices} />
           {reconciliation.accountId ? (
             <StatementFixSuggestions
               accountId={reconciliation.accountId}

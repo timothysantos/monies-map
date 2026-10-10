@@ -722,6 +722,22 @@ export const messages = {
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementCardEnding: (last4) => `ending ${last4}`,
+    // The payment a card statement asks for.
+    statementPaymentDue: (amount, dateLabel, minimum) => `Pay ${amount} by ${dateLabel}${minimum ? ` · minimum ${minimum}` : ""}`,
+    statementPaymentDueNow: (amount) => `Pay ${amount} now`,
+    // The bank's own charges on a statement card, and its notices.
+    statementChargesTitle: "Bank charges on this statement",
+    statementChargeKinds: {
+      late_fee: "Late charge",
+      interest: "Interest",
+      annual_fee: "Annual fee",
+      other_fee: "Other bank fees"
+    },
+    statementChargesReversed: (list) => `Reversed by the bank: ${list}`,
+    statementNotices: {
+      past_due: "The statement says this card is past due.",
+      penalty_interest: (rate) => `The statement says this card is charged penalty interest of ${rate}% a year.`
+    },
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationBreakdownTitle: "Why this does not close",
     statementReconciliationMatchedBreakdownTitle: "Why this closes",
