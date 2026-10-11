@@ -1,4 +1,5 @@
-import { ArrowUp, Camera, Mic } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { ArrowUp, Camera, ClipboardPaste, Image, Mic, Plus } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -125,6 +126,7 @@ function AskConversation({
   const [composerText, setComposerText] = useState("");
   const [working, setWorking] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [openPicker, setOpenPicker] = useState("");
   const [savedPicker, setSavedPicker] = useState(false);
   const [splitGroupsFromCache, setSplitGroupsFromCache] = useState(() => readCachedSplitGroups(queryClient, view.id));
@@ -607,6 +609,13 @@ function AskConversation({
     }
   }, [chipSignature]);
 
+  // The + menu closes first, then does what was chosen (a file picker or
+  // the paste reader) inside the same tap.
+  function chooseFromAddMenu(action) {
+    setAddMenuOpen(false);
+    action();
+  }
+
   function startVoice() {
     voiceBaseRef.current = composerText;
     setVoiceAnnouncement("");
@@ -621,6 +630,9 @@ function AskConversation({
     // Keeps focus (and the phone's keyboard) where it is, and stops a long
     // press from selecting text.
     event.preventDefault();
+    // The release reaches the mic even if it moves under the finger (Save
+    // turns into the narrower Send arrow once words arrive).
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     micPointerRef.current = true;
     if (micGesture.down(voice.getState().status !== "idle") === "start") {
       micRetryRef.current = !startVoice();
@@ -746,46 +758,72 @@ function AskConversation({
             ))}
           </div>
         ) : null}
-        <form className={`ask-composer${voiceState.status === "hidden" ? "" : " has-mic"}`} onSubmit={submitComposer}>
-          <button type="button" className="ask-icon-button" aria-label={askCopy.composer.attach} title={askCopy.composer.attach} disabled={Boolean(working)} onClick={() => attachInputRef.current?.click()}>
-            <Camera size={20} aria-hidden="true" />
-          </button>
-          {voiceState.status === "hidden" ? null : (
-            <button
-              type="button"
-              className={`ask-icon-button ask-mic${voiceState.status === "listening" ? " is-listening" : ""}`}
-              aria-label={voiceActive ? askCopy.voice.stop : askCopy.voice.start}
-              title={voiceActive ? askCopy.voice.stop : askCopy.voice.start}
-              disabled={Boolean(working) || voiceState.status === "transcribing"}
-              onPointerDown={handleMicPointerDown}
-              onPointerUp={handleMicPointerUp}
-              onPointerCancel={handleMicPointerCancel}
-              onClick={handleMicClick}
-              onContextMenu={(event) => event.preventDefault()}
-            >
-              <Mic size={20} aria-hidden="true" />
-            </button>
-          )}
+        <form className="ask-composer" onSubmit={submitComposer}>
           <span className="ask-sr-only" role="status" aria-live="polite">{voiceAnnouncement}</span>
           <input ref={cameraInputRef} className="ask-file-input" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
           <input ref={attachInputRef} className="ask-file-input" type="file" accept="image/*" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
-          <textarea
-            ref={composerRef}
-            className="ask-input"
-            rows={1}
-            aria-label={askCopy.composer.label}
-            placeholder={placeholder}
-            value={composerText}
-            readOnly={voiceState.status === "listening" || voiceState.status === "transcribing"}
-            enterKeyHint="send"
-            onChange={(event) => setComposerText(event.target.value)}
-            onPaste={handleComposerPaste}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                submitComposer(event);
-              }
-            }}
-          />
+          {/* One rounded field: the + glyph, the message box, the mic glyph.
+              Send (or Save) outside it is the only filled button. */}
+          <div className="ask-field">
+            <Popover.Root open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+              <Popover.Trigger asChild>
+                <button type="button" className="ask-glyph ask-plus" aria-label={askCopy.composer.add} title={askCopy.composer.add} disabled={Boolean(working)}>
+                  <Plus size={20} aria-hidden="true" />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content className="ask-add-menu" side="top" align="start" sideOffset={6} collisionPadding={12}>
+                  <div className="ask-add-menu-list" role="group" aria-label={askCopy.composer.add}>
+                    <button type="button" onClick={() => chooseFromAddMenu(() => cameraInputRef.current?.click())}>
+                      <Camera size={18} aria-hidden="true" />
+                      {askCopy.composer.menu.takePhoto}
+                    </button>
+                    <button type="button" onClick={() => chooseFromAddMenu(() => attachInputRef.current?.click())}>
+                      <Image size={18} aria-hidden="true" />
+                      {askCopy.composer.menu.choosePhoto}
+                    </button>
+                    <button type="button" onClick={() => chooseFromAddMenu(() => void pasteFromClipboard())}>
+                      <ClipboardPaste size={18} aria-hidden="true" />
+                      {askCopy.composer.menu.paste}
+                    </button>
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+            <textarea
+              ref={composerRef}
+              className="ask-input"
+              rows={1}
+              aria-label={askCopy.composer.label}
+              placeholder={placeholder}
+              value={composerText}
+              readOnly={voiceState.status === "listening" || voiceState.status === "transcribing"}
+              enterKeyHint="send"
+              onChange={(event) => setComposerText(event.target.value)}
+              onPaste={handleComposerPaste}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  submitComposer(event);
+                }
+              }}
+            />
+            {voiceState.status === "hidden" ? null : (
+              <button
+                type="button"
+                className={`ask-glyph ask-mic${voiceState.status === "listening" ? " is-listening" : ""}`}
+                aria-label={voiceActive ? askCopy.voice.stop : askCopy.voice.start}
+                title={voiceActive ? askCopy.voice.stop : askCopy.voice.start}
+                disabled={Boolean(working) || voiceState.status === "transcribing"}
+                onPointerDown={handleMicPointerDown}
+                onPointerUp={handleMicPointerUp}
+                onPointerCancel={handleMicPointerCancel}
+                onClick={handleMicClick}
+                onContextMenu={(event) => event.preventDefault()}
+              >
+                <Mic size={20} aria-hidden="true" />
+              </button>
+            )}
+          </div>
           {showSave ? (
             <button type="submit" className="ask-save" disabled={!canSave} aria-describedby={canSave ? undefined : "ask-save-hint"}>
               {card?.status === "saving" ? askCopy.composer.saving : askCopy.composer.save}

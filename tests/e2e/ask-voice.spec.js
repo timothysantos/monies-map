@@ -98,9 +98,11 @@ test.describe("voice input on the Ask page", () => {
     const message = page.getByRole("textbox", { name: "Message" });
     const mic = page.getByRole("button", { name: "Start voice input" });
     await expect(mic).toBeVisible();
-    // The mic sits between the camera and the message box.
-    const order = await page.locator(".ask-composer > button, .ask-composer > textarea").evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
-    expect(order.slice(0, 3)).toEqual(["Add a receipt photo", "Start voice input", "Message"]);
+    // Inside the one rounded field: the + glyph, the message box, the mic.
+    // Send (or Save) sits outside it.
+    const order = await page.locator(".ask-field > button, .ask-field > textarea").evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
+    expect(order).toEqual(["Add a photo or paste", "Message", "Start voice input"]);
+    await expect(page.locator(".ask-field").getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
 
     const box = await mic.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

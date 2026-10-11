@@ -94,10 +94,16 @@ export const askCopy = {
   composer: {
     label: "Message",
     chatPlaceholder: "Ask, or paste a receipt",
-    addPlaceholder: "Or say it: “Koufu lunch $12.50”",
+    addPlaceholder: "Type or say it…",
     changePlaceholder: "Anything to change?",
-    savedPlaceholder: "Ask, or add something else",
-    attach: "Add a receipt photo",
+    savedPlaceholder: "Ask, or add another",
+    // The + inside the message field and its little menu.
+    add: "Add a photo or paste",
+    menu: {
+      takePhoto: "Take a photo",
+      choosePhoto: "Choose a photo",
+      paste: "Paste"
+    },
     send: "Send",
     save: "Save",
     saving: "Saving…",
