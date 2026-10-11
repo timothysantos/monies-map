@@ -149,7 +149,7 @@ test("an entry edit whose refresh fails stays saved and raises the notice instea
   await waitUsable(page);
   const entryRow = page.locator(".entry-row").filter({ hasText: description });
   await entryRow.first().click();
-  const entryEditor = page.locator(".entry-edit-grid").first();
+  const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
   await entryEditor.locator("select").first().selectOption("Groceries");
 

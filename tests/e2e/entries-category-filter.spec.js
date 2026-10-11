@@ -29,7 +29,7 @@ test("category-filtered entry remains visible until the category edit is explici
   await expect(entryRow).toHaveCount(1);
 
   await entryRow.first().click();
-  const entryEditor = page.locator(".entry-edit-grid").first();
+  const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
   await entryEditor.locator("select").first().selectOption("Groceries");
 
@@ -76,7 +76,7 @@ test("category quick-save keeps the collapsed row on the saved category without 
   await expect(entryRow.first().locator(".entry-row-category")).toContainText("Other");
 
   await entryRow.first().click();
-  const entryEditor = page.locator(".entry-edit-grid").first();
+  const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
   await entryEditor.locator("select").first().selectOption("Travel");
 

@@ -133,13 +133,13 @@ test("desktop: typing and saving in the category dialog opened from an entry row
   await name.press("End");
   await name.pressSequentially(" x");
   await expect(name).toHaveValue(`${original} x`);
-  await expect(page.locator(".entry-edit-grid")).toHaveCount(0);
+  await expect(page.locator(".entry-edit-card")).toHaveCount(0);
 
   const saved = page.waitForResponse((response) => response.url().includes("/api/categories/update") && response.ok());
   await name.press("Enter");
   await saved;
   await expect(categoryDialog).toHaveCount(0);
-  await expect(page.locator(".entry-edit-grid")).toHaveCount(0);
+  await expect(page.locator(".entry-edit-card")).toHaveCount(0);
   await page.waitForTimeout(500);
   expect(categorySaves).toHaveLength(1);
   expect(entrySaves).toEqual([]);

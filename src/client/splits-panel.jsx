@@ -1,4 +1,5 @@
 // First, so these rules load before the stylesheets the modules below import.
+import "./ui/lead-support-detail.css";
 import "./splits-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";

@@ -386,3 +386,151 @@
   padding: 2px 6px;
   border-radius: 999px;
 }
+
+/* The entry edit card (entry-edit-card.jsx, design.md "Lead · Support ·
+   Detail"): the lead card and its lock line, then the Detail rows. On a
+   phone it fills the edit sheet; on a wide screen the card sits left of
+   the rows. The blocks themselves are in ui/lead-support-detail.css. */
+.entry-edit-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.entry-edit-card-lead {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.entry-edit-card .lsd-row-group {
+  display: contents;
+}
+
+.entry-edit-card .lsd-bubble-slot > .category-icon {
+  border: 1px solid color-mix(in srgb, var(--category-color) 35%, white);
+  background: color-mix(in srgb, var(--category-color) 20%, white);
+  box-shadow: none;
+  color: color-mix(in srgb, var(--category-color) 70%, var(--text));
+}
+
+.entry-edit-card .entry-lead-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-edit-card .lsd-row-note {
+  align-items: flex-start;
+  cursor: text;
+}
+
+.entry-edit-card .lsd-row-note .lsd-row-input {
+  min-height: 24px;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.entry-edit-card .lsd-row-date {
+  flex: 0 1 auto;
+  min-width: 0;
+  color-scheme: light;
+}
+
+.entry-edit-card .entry-edit-transfer-helper {
+  display: contents;
+}
+
+/* Hidden money hides the amount's sign with it. */
+html[data-money-privacy="hidden"] .lsd-amount-sign {
+  display: none;
+}
+
+/* Phone: the edit sheet. Its top row keeps the eye and a round close
+   button; its bottom bar stays at the bottom of the sheet with the primary
+   action under the thumb. */
+.entry-mobile-sheet.is-lead-sheet .entry-composer-head {
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.entry-mobile-sheet.is-lead-sheet .entry-composer-copy strong {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.entry-mobile-sheet.is-lead-sheet .entry-composer-close,
+.entry-mobile-sheet.is-lead-sheet .totals-visibility-toggle--form {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.entry-mobile-sheet.is-lead-sheet .entry-composer-close {
+  border: 0;
+  background: rgba(38, 35, 31, 0.06);
+  color: var(--text);
+}
+
+.entry-edit-sheet-actions {
+  flex: 0 0 auto;
+  margin: 0 -16px;
+  padding: 12px 16px max(14px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: rgba(255, 252, 249, 0.98);
+  box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.06);
+}
+
+.entry-edit-sheet-actions .lsd-bottom {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+/* Two destructive actions (Delete entry, Delete split) take their own line
+   above Cancel and Save. */
+.entry-edit-sheet-actions .lsd-bottom-start:has(> :nth-child(2)) {
+  flex: 1 0 100%;
+  justify-content: space-between;
+}
+
+.entry-edit-sheet-actions .lsd-primary {
+  flex: 0 1 160px;
+}
+
+/* Wide screen: the card left, the rows right, the actions under them. */
+.entry-edit-card.is-inline {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.entry-edit-card.is-inline .lsd-rows {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.entry-edit-inline-actions.lsd-bottom {
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.entry-edit-inline-actions .lsd-bottom-end {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .entry-edit-card.is-inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The certified line under the lead card: a quiet note, not a banner. */
+.entry-edit-card .entry-edit-lock-message {
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}

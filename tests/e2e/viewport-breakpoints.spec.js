@@ -110,7 +110,7 @@ test.describe("layout breakpoint switching", () => {
 
     const filterStack = page.locator(".entries-filter-stack");
     const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
-    const inlineEditor = page.locator(".entry-edit-grid");
+    const inlineEditor = page.locator(".entry-edit-card");
 
     const expectDesktopEntries = async () => {
       await expect(filterStack).toBeVisible();

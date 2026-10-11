@@ -7,6 +7,7 @@ import { RemoveScroll } from "react-remove-scroll";
 import { ResponsiveSelect } from "./responsive-select";
 import { findSheetOpener, returnFocusFromSheet } from "./sheet-focus-return";
 import { InlineError } from "./ui-states";
+import { useKeyboardInset } from "./use-keyboard-inset";
 
 // The mobile bottom sheet shared by Entries and Month. It behaves like the
 // modal desktop dialogs: focus moves into the sheet on open and stays inside
@@ -29,9 +30,13 @@ import { InlineError } from "./ui-states";
 //   inherit) stops keyboard scrolling of the page.
 // - The backdrop covers the viewport in every layout, so a tap outside the
 //   sheet lands on it and closes the sheet instead of reaching the page.
+// - The sheet lifts itself above the phone keyboard (use-keyboard-inset.js),
+//   so its Save bar and the focused field stay in sight.
 export function EntryMobileSheet({
   title,
   description,
+  className = "",
+  headerAction = null,
   errorMessage = "",
   errorContent = null,
   saveLabel,
@@ -57,6 +62,7 @@ export function EntryMobileSheet({
   // Touch and wheel scrolling stay allowed inside the sheet.
   const scrollShards = useMemo(() => (sheet ? [sheet] : []), [sheet]);
   usePageKeyboardScrollLock();
+  useKeyboardInset(sheet);
 
   return (
     <Dialog.Root
@@ -93,7 +99,7 @@ export function EntryMobileSheet({
         >
           <Dialog.Content
             ref={setSheet}
-            className="entry-composer entry-mobile-sheet"
+            className={`entry-composer entry-mobile-sheet${className ? ` ${className}` : ""}`}
             aria-label={title}
             aria-modal="true"
             // The FocusScope above owns focus on open and close.
@@ -118,14 +124,17 @@ export function EntryMobileSheet({
                   <Dialog.Title asChild><strong>{title}</strong></Dialog.Title>
                   <Dialog.Description asChild><p>{description}</p></Dialog.Description>
                 </div>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel entry-composer-close"
-                  aria-label={`Close ${title.toLowerCase()}`}
-                  onClick={onClose}
-                >
-                  <X size={16} />
-                </button>
+                <div className="entry-composer-head-actions">
+                  {headerAction}
+                  <button
+                    type="button"
+                    className="icon-action subtle-cancel entry-composer-close"
+                    aria-label={`Close ${title.toLowerCase()}`}
+                    onClick={onClose}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
               {errorContent ?? <InlineError message={errorMessage} className="entry-submit-error" />}
               {children}
@@ -165,116 +174,39 @@ function usePageKeyboardScrollLock() {
   }, []);
 }
 
-export function EntryMobileEditExpenseFooter({
-  mode,
-  addToSplitsLabel,
-  deleteEntryLabel,
-  deleteLabel,
-  saveLabel = "Save",
-  cancelLabel = "Cancel",
-  isWorking = false,
-  isSaveDisabled = false,
+// While Add to splits asks which group, the sheet's bottom bar becomes the
+// group question: the group picker opens over it, and Cancel backs out.
+export function EntrySplitGroupPickerFooter({
   splitGroupId = "",
   splitGroupOptions = [],
+  isWorking = false,
   isSplitSelectorOpen = false,
-  onViewSplit,
-  onDeleteSplit,
-  onDeleteEntry,
-  onCancel,
-  onSave,
-  onOpenAddToSplits,
   onSplitSelectorOpenChange,
   onSelectSplitGroup,
   onCancelSplitPicker
 }) {
-  if (mode === "linked") {
-    return (
-      <div className="entry-inline-actions entry-mobile-sheet-actions entry-mobile-sheet-linked-actions">
-        <div className="entry-mobile-sheet-secondary-row">
-          <button
-            type="button"
-            className="subtle-action entry-mobile-sheet-secondary"
-            disabled={isWorking}
-            onClick={onDeleteEntry}
-          >
-            {deleteEntryLabel}
-          </button>
-          <button
-            type="button"
-            className="subtle-action entry-mobile-sheet-secondary"
-            disabled={isWorking}
-            onClick={onViewSplit}
-          >
-            View split
-          </button>
-          <button
-            type="button"
-            className="subtle-action entry-mobile-sheet-secondary"
-            disabled={isWorking}
-            onClick={onDeleteSplit}
-          >
-            {deleteLabel}
-          </button>
-        </div>
-        <div className="entry-mobile-sheet-primary-row">
-          <button type="button" className="subtle-cancel" onClick={onCancel}>{cancelLabel}</button>
-          <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === "picker") {
-    return (
-        <div className="entry-mobile-sheet-confirm-actions">
-        <span className="entry-mobile-sheet-confirm-copy">Choose split group</span>
-        <ResponsiveSelect
-          title="Split group"
-          value={splitGroupId}
-          options={splitGroupOptions}
-          onValueChange={onSelectSplitGroup}
-          disabled={isWorking}
-          open={isSplitSelectorOpen}
-          onOpenChange={onSplitSelectorOpenChange}
-          hideMobileTrigger
-        />
-        <div className="entry-mobile-sheet-confirm-buttons">
-          <button
-            type="button"
-            className="subtle-cancel"
-            disabled={isWorking}
-            onClick={onCancelSplitPicker}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="entry-inline-actions entry-mobile-sheet-actions">
-      <div className="entry-mobile-sheet-secondary-row">
+    <div className="entry-mobile-sheet-confirm-actions">
+      <span className="entry-mobile-sheet-confirm-copy">Choose split group</span>
+      <ResponsiveSelect
+        title="Split group"
+        value={splitGroupId}
+        options={splitGroupOptions}
+        onValueChange={onSelectSplitGroup}
+        disabled={isWorking}
+        open={isSplitSelectorOpen}
+        onOpenChange={onSplitSelectorOpenChange}
+        hideMobileTrigger
+      />
+      <div className="entry-mobile-sheet-confirm-buttons">
         <button
           type="button"
-          className="subtle-action entry-mobile-sheet-secondary"
+          className="subtle-cancel"
           disabled={isWorking}
-          onClick={onOpenAddToSplits}
+          onClick={onCancelSplitPicker}
         >
-          {addToSplitsLabel}
+          Cancel
         </button>
-        <button
-          type="button"
-          className="subtle-action entry-mobile-sheet-secondary"
-          disabled={isWorking}
-          onClick={onDeleteEntry}
-        >
-          {deleteEntryLabel}
-        </button>
-      </div>
-      <div className="entry-mobile-sheet-primary-row">
-        <button type="button" className="subtle-cancel" onClick={onCancel}>{cancelLabel}</button>
-        <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
       </div>
     </div>
   );

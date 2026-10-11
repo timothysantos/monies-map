@@ -55,7 +55,7 @@ test.describe("route work status", () => {
 
     const row = page.locator(".entry-row").filter({ hasText: "Vivify" }).first();
     await row.click();
-    const editor = page.locator(".entry-edit-grid").first();
+    const editor = page.locator(".entry-edit-card").first();
     await expect(editor).toBeVisible();
     await waitForRouteWork(page, { ready: true, busy: true, usable: false, reason: "busy" });
 
