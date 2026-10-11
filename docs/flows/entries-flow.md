@@ -127,6 +127,13 @@ Watch area:
   settlement and invalidates Splits, and the draft is kept for a second save.
   A linked split in a closed group batch is refused the same way, naming the
   `batchId`, with `Undo settle-up` (`POST /api/splits/batches/reopen`)
+- the editor reads a cleared or unreadable amount as 0. `POST
+  /api/entries/update` refuses an `amountMinor` it is sent that is not
+  greater than zero (400 "Amount must be greater than zero", the create
+  rule) before any read or write, so the editor and phone sheet keep the
+  draft and show the reason. An update that leaves `amountMinor` out
+  keeps the stored amount (`tests/entry-update-amount.test.mjs`,
+  `tests/e2e/entries-zero-amount.spec.js`)
 - When the route-level page load fails, the shell shows the page error panel.
   When only the Entries owner (`entries-data-owner.js`) learns that the
   month failed, the panel shows the same `ErrorPanel` with "Try loading
