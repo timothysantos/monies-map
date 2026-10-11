@@ -473,6 +473,9 @@ test("stuck to the top, the import bar spans the window, casts a shadow and fold
   const flowTop = () => page.locator(".statement-review").evaluate((element) => Math.round(element.getBoundingClientRect().top + window.scrollY));
 
   // At the top of the page the bar is in its place, as wide as the panel.
+  // Opening a file scrolls its review into view, which can already stick
+  // the bar, so start from the top.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await expect(nav).not.toHaveClass(/is-stuck/);
   await expect(summary).toBeVisible();
   expect((await surface.boundingBox()).height).toBeGreaterThan(150);
