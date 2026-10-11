@@ -19,7 +19,7 @@ const IMAGE = { mediaType: "image/jpeg", base64: "/9j/AAAA" };
 const SCHEMA = { type: "object", additionalProperties: false, required: ["total"], properties: { total: { type: "string" } } };
 const parseTotal = (value) => (value && typeof value.total === "string" ? value : null);
 
-function createFakeDb({ quotaChanges = 1, usedUnits = 2 } = {}) {
+function createFakeDb({ quotaChanges = 1, usedUnits = 2, statusWrite } = {}) {
   const statements = [];
   return {
     statements,
@@ -27,7 +27,13 @@ function createFakeDb({ quotaChanges = 1, usedUnits = 2 } = {}) {
       const self = {
         args: [],
         bind(...values) { self.args = values; return self; },
-        async run() { statements.push({ sql, args: self.args }); return { meta: { changes: quotaChanges } }; },
+        async run() {
+          statements.push({ sql, args: self.args });
+          if (statusWrite && /ai_provider_status/.test(sql)) {
+            return statusWrite();
+          }
+          return { meta: { changes: quotaChanges } };
+        },
         async first() { statements.push({ sql, args: self.args }); return { used_units: usedUnits }; }
       };
       return self;
@@ -46,12 +52,13 @@ function stubWorkersAi(response) {
   };
 }
 
-function claudeResponse(json, { stopReason = "end_turn" } = {}) {
+function claudeResponse(json, { stopReason = "end_turn", usage = { input_tokens: 1_000, output_tokens: 400 } } = {}) {
   return new Response(JSON.stringify({
     id: "msg_test",
     type: "message",
     role: "assistant",
     stop_reason: stopReason,
+    usage,
     content: [{ type: "thinking", thinking: "", signature: "sig" }, { type: "text", text: typeof json === "string" ? json : JSON.stringify(json) }]
   }), { status: 200, headers: { "content-type": "application/json" } });
 }
@@ -201,7 +208,7 @@ for (const [label, respond] of [
     const result = await runVisionJson(db, { ...GATEWAY_BYOK, AI: ai }, visionInput());
     assert.deepEqual(result, { available: true, value: { total: "9.90" }, remaining: 10, provider: "workers-ai" });
     assert.equal(ai.calls.length, 1);
-    assert.equal(db.statements.filter((statement) => /INSERT/.test(statement.sql)).length, 1);
+    assert.equal(db.statements.filter((statement) => /INSERT INTO ai_assist_daily_usage/.test(statement.sql)).length, 1);
   });
 }
 
@@ -326,4 +333,121 @@ test("a non-Gemma fallback model gets the older Workers AI JSON mode shape", asy
   assert.deepEqual(ai.calls[0].input.response_format, { type: "json_schema", json_schema: SCHEMA });
   assert.equal(ai.calls[0].input.max_tokens, 400);
   assert.equal("chat_template_kwargs" in ai.calls[0].input, false);
+});
+
+// ------------------------------------------- Claude credit status recording
+
+const CREDIT_TOO_LOW = {
+  type: "error",
+  error: {
+    type: "invalid_request_error",
+    message: "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+  }
+};
+const statusWrites = (db) => db.statements.filter((statement) => /ai_provider_status/.test(statement.sql));
+
+test("a Claude success records its time and the estimated cost of its usage, and clears a stale failure", async (t) => {
+  mockFetch(t, () => claudeResponse({ total: "5.00" }, { usage: { input_tokens: 2_000, output_tokens: 600 } }));
+  const db = createFakeDb();
+  const result = await runVisionJson(db, GATEWAY_BYOK, visionInput());
+  assert.equal(result.provider, "claude");
+  const [write, ...rest] = statusWrites(db);
+  assert.equal(rest.length, 0);
+  assert.match(write.sql, /INSERT INTO ai_provider_status/);
+  assert.match(write.sql, /last_failure_category = CASE/);
+  assert.match(write.args[0], /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  // 2,000 x 0.10 + 600 x 0.50 micro-USD at the default prices.
+  assert.equal(write.args[1], 500);
+});
+
+test("Claude answers the caller rejects still count as a success, because the credit was spent", async (t) => {
+  mockFetch(t, () => claudeResponse({ unexpected: true }));
+  const db = createFakeDb();
+  const ai = stubWorkersAi({ response: "{\"total\":\"9.90\"}" });
+  const result = await runVisionJson(db, { ...GATEWAY_BYOK, AI: ai }, visionInput());
+  assert.equal(result.provider, "workers-ai");
+  assert.equal(statusWrites(db).length, 1);
+  assert.equal(statusWrites(db)[0].args[1], 300);
+});
+
+for (const [label, respond, category] of [
+  ["Anthropic's credit-balance 400", () => new Response(JSON.stringify(CREDIT_TOO_LOW), { status: 400 }), "credit_exhausted"],
+  ["the gateway's spend-limit 429", () => new Response("{\"success\":false,\"error\":[{\"code\":2003,\"message\":\"Spend limit exceeded\"}]}", { status: 429 }), "spend_capped"],
+  ["a rejected gateway token", () => new Response("{}", { status: 401 }), "auth"],
+  ["an overload", () => new Response("{}", { status: 529 }), "other"],
+  ["a network failure", () => { throw new TypeError("network down"); }, "other"]
+]) {
+  test(`${label} is recorded as ${category} and Workers AI still answers`, async (t) => {
+    mockFetch(t, respond);
+    t.mock.method(console, "warn", () => {});
+    const db = createFakeDb();
+    const ai = stubWorkersAi({ response: "{\"total\":\"9.90\"}" });
+    const result = await runVisionJson(db, { ...GATEWAY_BYOK, AI: ai }, visionInput());
+    assert.deepEqual(result, { available: true, value: { total: "9.90" }, remaining: 10, provider: "workers-ai" });
+    const writes = statusWrites(db);
+    assert.equal(writes.length, 1);
+    assert.match(writes[0].sql, /INSERT INTO ai_provider_status \(provider, last_failure_category, last_failure_at\)/);
+    assert.equal(writes[0].args[0], category);
+  });
+}
+
+test("a Claude call that times out is recorded as other", async (t) => {
+  mockFetch(t, (url, init) => new Promise((resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+  }));
+  const db = createFakeDb();
+  await runVisionJson(db, { ...GATEWAY_BYOK, AI: stubWorkersAi({ response: { total: "4.00" } }) }, visionInput({ timeoutMs: 30 }));
+  assert.equal(statusWrites(db)[0].args[0], "other");
+});
+
+test("with Claude not configured nothing is recorded about it", async (t) => {
+  mockFetch(t, () => { throw new Error("gateway must not be called"); });
+  const db = createFakeDb();
+  const result = await runVisionJson(db, { AI_ASSIST_ENABLED: "true", AI: stubWorkersAi({ response: "{\"total\":\"1.00\"}" }) }, visionInput());
+  assert.equal(result.provider, "workers-ai");
+  assert.equal(statusWrites(db).length, 0);
+});
+
+for (const [label, statusWrite] of [
+  ["throws", () => { throw new Error("no such table: ai_provider_status"); }],
+  ["rejects", () => Promise.reject(new Error("D1 overloaded"))],
+  ["hangs", () => new Promise(() => {})]
+]) {
+  test(`a status write that ${label} never breaks or holds the AI answer`, async (t) => {
+    mockFetch(t, () => claudeResponse({ total: "7.00" }));
+    const errors = t.mock.method(console, "error", () => {});
+    const db = createFakeDb({ statusWrite });
+    const started = Date.now();
+    const result = await runVisionJson(db, GATEWAY_BYOK, visionInput());
+    assert.deepEqual(result, { available: true, value: { total: "7.00" }, remaining: 10, provider: "claude" });
+    assert.ok(Date.now() - started < 2_000);
+    assert.equal(errors.mock.callCount(), 0);
+
+    mockFetch(t, () => new Response(JSON.stringify(CREDIT_TOO_LOW), { status: 400 }));
+    t.mock.method(console, "warn", () => {});
+    const fallback = await runVisionJson(createFakeDb({ statusWrite }), { ...GATEWAY_BYOK, AI: stubWorkersAi({ response: "{\"total\":\"2.00\"}" }) }, visionInput());
+    assert.equal(fallback.provider, "workers-ai");
+  });
+}
+
+test("only the allowance counter and the status row are written, with no prompt, image or answer in them", async (t) => {
+  const secretPrompt = "Read the receipt for Lumen Grocer card 4111";
+  const secretAnswer = "88.88";
+  for (const respond of [
+    () => claudeResponse({ total: secretAnswer }),
+    () => new Response(JSON.stringify(CREDIT_TOO_LOW), { status: 400 })
+  ]) {
+    mockFetch(t, respond);
+    t.mock.method(console, "warn", () => {});
+    const db = createFakeDb();
+    await runVisionJson(db, { ...GATEWAY_BYOK, AI: stubWorkersAi({ response: "{\"total\":\"88.88\"}" }) }, visionInput({ prompt: secretPrompt }));
+    assert.ok(db.statements.length >= 2);
+    for (const statement of db.statements) {
+      assert.match(statement.sql, /ai_assist_daily_usage|ai_provider_status/);
+      const args = JSON.stringify(statement.args);
+      for (const secret of [secretPrompt, secretAnswer, IMAGE.base64, "credit balance"]) {
+        assert.equal(args.includes(secret), false, `${secret} in ${statement.sql}`);
+      }
+    }
+  }
 });
