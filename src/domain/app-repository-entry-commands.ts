@@ -10,7 +10,7 @@ import {
   recalculateMonthlySnapshots,
   refreshMonthlySnapshotsAfterWrite
 } from "./app-repository-snapshots";
-import { normalizeStatementDate } from "./app-repository-helpers";
+import { getSignedLedgerAmountMinor, normalizeStatementDate } from "./app-repository-helpers";
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
@@ -46,13 +46,19 @@ async function assertUnlockedBankFactsForEntryUpdate(
     return;
   }
 
+  // The statement certifies which way the money moved, not how the app files
+  // it: income and transfer in both add to the balance, expense and transfer
+  // out both take from it. Refiling within one direction changes no
+  // certified balance, so only the signed amount is compared.
   const bankFactsChanged = input.current.account_id !== input.next.accountId
     || input.current.transaction_date !== input.next.date
     || (input.current.post_date ?? null) !== (input.next.postDate ?? null)
     || input.current.description !== input.next.description
-    || Number(input.current.amount_minor) !== Number(input.next.amountMinor)
-    || input.current.entry_type !== input.next.entryType
-    || (input.current.transfer_direction ?? null) !== (input.next.transferDirection ?? null);
+    || getSignedLedgerAmountMinor(input.current) !== getSignedLedgerAmountMinor({
+      entry_type: input.next.entryType,
+      transfer_direction: input.next.transferDirection,
+      amount_minor: input.next.amountMinor
+    });
 
   if (!bankFactsChanged) {
     return;

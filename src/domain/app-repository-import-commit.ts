@@ -1854,6 +1854,8 @@ function parsePromotedEntrySnapshot(value: string | null, entryId: string) {
 
 // Puts entries certified by this import back to their pre-certification bank
 // facts. Returns the statements and the months they touch.
+// An entry linked as a transfer since keeps its transfer entry type and
+// direction, which the kept link needs (as in buildPromotedEntryRestore).
 // `movedFromAccountIds` maps an entry this statement moved to the account it
 // came from, where the import rows it may return to were assigned.
 async function buildStatementCertifiedRowRestore(db: D1Database, importId: string, movedFromAccountIds = new Map<string, string>()) {
@@ -1870,6 +1872,7 @@ async function buildStatementCertifiedRowRestore(db: D1Database, importId: strin
         amount_minor,
         entry_type,
         transfer_direction,
+        transfer_group_id,
         statement_certified_previous_import_id,
         statement_certified_previous_import_row_id,
         statement_certified_previous_transaction_date,
@@ -1903,6 +1906,7 @@ async function buildStatementCertifiedRowRestore(db: D1Database, importId: strin
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
+      transfer_group_id: string | null;
       statement_certified_previous_import_id: string | null;
       statement_certified_previous_import_row_id: string | null;
       statement_certified_previous_transaction_date: string | null;
@@ -1997,8 +2001,8 @@ async function buildStatementCertifiedRowRestore(db: D1Database, importId: strin
               certifiedSnapshot.transaction.post_date,
               certifiedSnapshot.transaction.description,
               certifiedSnapshot.transaction.amount_minor,
-              certifiedSnapshot.transaction.entry_type,
-              certifiedSnapshot.transaction.transfer_direction,
+              row.transfer_group_id ? row.entry_type : certifiedSnapshot.transaction.entry_type,
+              row.transfer_group_id ? row.transfer_direction : certifiedSnapshot.transaction.transfer_direction,
               certifiedSnapshot.transaction.import_id,
               certifiedSnapshot.transaction.import_row_id,
               DEFAULT_HOUSEHOLD_ID,
