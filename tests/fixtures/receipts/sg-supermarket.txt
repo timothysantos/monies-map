@@ -1,0 +1,24 @@
+LUMEN GROCER PTE LTD
+Blk 000 Example Avenue 9 #01-00
+Singapore 000000
+GST Reg No: M0-0000000-0
+TAX INVOICE
+
+Date: 09/10/2026      Time: 18:42
+Cashier: 07   Till: 03   Rcpt: 0004417
+
+OAT MILK 1L                     4.50
+2 x FREE RANGE EGGS 10S         7.80
+BABY SPINACH 200G               3.25
+SOURDOUGH LOAF                  6.90
+MEMBER DISC                    -0.50
+--------------------------------------
+SUBTOTAL                       21.95
+GST 9% INCL.                    1.81
+ROUNDING                        0.00
+TOTAL                         S$21.95
+VISA ************2718          21.95
+CHANGE                          0.00
+
+Total items: 5   Total savings: 0.50
+THANK YOU! PLEASE COME AGAIN

@@ -1,0 +1,10 @@
+HAWKER STALL 00
+#01-00 Sample Food Centre
+
+~~/1~/2O26
+Char Kway Teow      5.50
+Lime Juice          2.00
+  ~~ ~~~ ~~
+   7.50
+
+NETS

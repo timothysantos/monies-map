@@ -25,7 +25,7 @@ function modelRead(overrides = {}) {
     totalAmount: "23.45",
     currency: "SGD",
     totalConfidence: "high",
-    cardDigits: "4821",
+    cardDigits: "2718",
     lineItems: [
       { description: "Oat milk 1L", amount: "4.50", quantity: 1 },
       { description: "Member discount", amount: "-0.50", quantity: null }
@@ -40,7 +40,7 @@ test("a clear receipt becomes a complete ReceiptReadDto with no questions", () =
     merchant: { value: "Lumen Grocer Pte Ltd", confidence: "high" },
     date: { value: "2026-10-09", confidence: "high" },
     total: { amountMinor: 2345, currency: "SGD", confidence: "high" },
-    cardLast4: "4821",
+    cardLast4: "2718",
     lineItems: [
       { description: "Oat milk 1L", amountMinor: 450, quantity: 1 },
       { description: "Member discount", amountMinor: -50, quantity: null }
@@ -78,9 +78,9 @@ test("a negative, zero or absurd total is rejected and asked about", () => {
 });
 
 test("a long printed card number keeps only its last four digits", () => {
-  for (const cardDigits of ["5000 0000 0000 6349", "************6349", "XXXX-XXXX-XXXX-6349", "6349"]) {
+  for (const cardDigits of ["5000 0000 0000 3141", "************3141", "XXXX-XXXX-XXXX-3141", "3141"]) {
     const read = finalizeReceiptRead(modelRead({ cardDigits }), { today: TODAY, source: "ai" });
-    assert.equal(read.cardLast4, "6349");
+    assert.equal(read.cardLast4, "3141");
   }
   assert.equal(finalizeReceiptRead(modelRead({ cardDigits: "49" }), { today: TODAY, source: "ai" }).cardLast4, null);
   assert.equal(finalizeReceiptRead(modelRead({ cardDigits: null }), { today: TODAY, source: "ai" }).cardLast4, null);
@@ -88,7 +88,7 @@ test("a long printed card number keeps only its last four digits", () => {
 
 test("long digit runs in merchant and item text are redacted so no card number leaks", () => {
   const read = finalizeReceiptRead(modelRead({
-    merchant: "Card 5000000000006349 Lumen",
+    merchant: "Card 5000000000003141 Lumen",
     lineItems: [{ description: "Ref 1234567890123 coffee", amount: "3.20", quantity: 1 }]
   }), { today: TODAY, source: "ai" });
   assert.equal(read.merchant.value, "Card [number] Lumen");
@@ -167,8 +167,8 @@ test("the model is asked for a strict schema with no free-text prose fields", ()
 // Mapping to the existing /api/entries/create field names, so the
 // entry-draft branch can merge with one call.
 const ACCOUNTS = [
-  { id: "acct-citi", currency: "SGD", last4: "6349", isActive: true },
-  { id: "acct-uob", currency: "SGD", last4: "4821", isActive: true },
+  { id: "acct-citi", currency: "SGD", last4: "3141", isActive: true },
+  { id: "acct-uob", currency: "SGD", last4: "2718", isActive: true },
   { id: "acct-old", currency: "SGD", last4: "1111", isActive: false },
   { id: "acct-dup-a", currency: "SGD", last4: "7777", isActive: true },
   { id: "acct-dup-b", currency: "SGD", last4: "7777", isActive: true }
@@ -196,7 +196,7 @@ test("no single active account match leaves the account for Default account prio
 });
 
 test("a foreign-currency total is a currency hint, not an account-currency amount", () => {
-  const read = finalizeReceiptRead(modelRead({ currency: "IDR", totalAmount: "45000", cardDigits: "6349" }), { today: TODAY, source: "ai" });
+  const read = finalizeReceiptRead(modelRead({ currency: "IDR", totalAmount: "45000", cardDigits: "3141" }), { today: TODAY, source: "ai" });
   assert.deepEqual(receiptReadToDraftFields(read, { accounts: ACCOUNTS }), {
     date: "2026-10-09",
     description: "Lumen Grocer Pte Ltd",
