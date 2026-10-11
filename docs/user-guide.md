@@ -1267,46 +1267,50 @@ about shared patterns and never compares the two of you.
 
 A small label says what kind of line it is:
 
-- **Quick fix**: something small that makes the numbers trustworthy or
-  settles something, such as a statement that is $42.80 away from the app,
-  a planned bill with no entry, money owed on a split or entries still in
-  Other. A card bill is one too: from a week before its statement's due
-  date, while no payment to the card is in the app ("Your OCBC 365 Credit
-  Card bill of $33.15 is due in 3 days"), and for a month after it, while
-  less than the minimum is. A payment from a bank account you haven't
-  imported yet isn't seen until you do. These come first, because every
-  other number depends on them. On
-  Month, a month's Bigger question comes before a card's statement gap,
+- **To do**: something small that keeps your numbers right or settles
+  something. For example: a card statement that differs from what's
+  recorded here by $42.80, a bill you planned that isn't matched to its
+  payment yet, money owed on a shared cost, or purchases with no category
+  yet (they sit under "Other" until you pick one). A card bill is one too:
+  from a week before its due date while no payment to the card is recorded
+  ("Your OCBC 365 Credit Card bill of $33.15 is due in 3 days"), and for a
+  month after it while less than the minimum is paid. A payment from a bank
+  account you haven't imported yet only shows once you import it. These come
+  first, because every other number depends on them. On Month, a month's
+  **Something to think about** comes before a card's statement difference,
   which then appears under **Also this month**.
-- **Bigger question**: a pattern worth an honest decision, such as one
-  large purchase that took the month over plan. There is never more than
-  one at a time.
-- **Worth a look**: something that may well be fine but is easy to miss:
-  subscriptions adding up, a category creeping up, a possible double
+- **Something to think about**: a pattern worth an honest decision, such as
+  one large cost that took the month past what you planned. There is never
+  more than one at a time.
+- **Worth knowing**: something that may well be fine but is easy to miss:
+  subscriptions adding up, a category slowly going up, a possible double
   charge, a late charge, interest or annual fee from the last two months
-  that the bank hasn't reversed, or a card whose latest statement says it is
-  charged penalty interest while it owes money ("Joyce's OCBC 365 Credit
-  Card is charged penalty interest of 30.78% a year, says its October
-  statement, with $33.15 owed").
-- **Going well**: plan left over, months under plan, savings on track.
-- **Just for fun**: a light line from your own spending, such as your
-  regular spot or the priciest thing on a trip. It never sits next to a
-  bigger question.
-- **Long view**: a quieter line that zooms out: how much of your income you
-  kept over the year, how many months your bank balances would cover, or
-  how much of the month's income your planned bills take.
+  that the bank hasn't refunded, or a card whose latest statement shows a
+  penalty interest rate while money is owed on it.
+- **Going well**: money left in the plan, months under plan, savings on
+  track.
+- **Fun fact**: a light line from your own spending, such as your regular
+  spot or the priciest thing on a trip. It never sits next to a
+  **Something to think about**.
+- **Big picture**: a quieter line that zooms out: how much of your income
+  you kept over the year, how many months your bank balances would cover,
+  or how much of the month's income your bills and subscriptions take.
+
+When a line needs one of the app's own words, it explains it in the same
+sentence, for example matching a bill to its payment ("linking") or paying
+back a shared balance ("settling up").
 
 1. Read the bold line and the line under it.
-2. If a link sits under them (**Review statement**, **Show those entries**,
-   **Settle group** or **Review matches**), select it to open exactly those
-   records.
+2. If a link sits under them (**Compare with the statement**, **Show these
+   purchases**, **Settle group** or **Review matches**), select it to open
+   exactly those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
 
 Money insights change month by month. Each month they word the same fact a
-different way and pick a different Just for fun line and quote, so none of
+different way and pick a different Fun fact and quote, so none of
 these comes back within a year on the same page. Something that is true
-almost every month, like your subscriptions or your five largest entries,
+almost every month, like your subscriptions or your five largest payments,
 only leads when it is unusual (your subscriptions changed, or a few one-off
 buys shaped the month); otherwise it waits under **See all insights**, or
 comes up now and then. A month with nothing unusual says so in one calm
@@ -1321,7 +1325,8 @@ browser; nothing about your visits is saved anywhere else.
 
 ![All insights expanded](/faq/guide/desktop/thumbs/summary-insight-expanded.webp)
 
-Money insights use the app's own figures and never change them. They never
+Money insights use the app's own figures and wording, and never change the
+figures. They never
 predict the future or tell you what is safe to spend; money left after
 spending still has to cover bills, transfers and savings.
 

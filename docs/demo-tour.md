@@ -31,8 +31,8 @@ Open **Summary** with **Household** selected.
 
 - The cards compare planned and actual income and spending over the last 12
   months. "Realized savings" is what was actually left over.
-- **Money insights** under the cards lead with a **Quick fix**: Serene's OCBC 365
-  Card statement is off by $42.80. Its **Long view** line says the household
+- **Money insights** under the cards lead with a **To do**: Serene's OCBC 365
+  Card statement differs from what's recorded by $42.80. Its **Big picture** line says the household
   kept about 61% of what came in over the last 11 complete months.
 - Scroll to **Intent vs Outcome**: most months finish under plan. One month,
   two months ago, sticks out above the plan. Hold that thought.
@@ -48,18 +48,18 @@ and the default range is only the last 12 months.
 1. Tap the **Range** control and set the start to the **earliest month**
    (17 months back). Keep the end at the current month.
 2. Under **Spending Mix**, pick **last month**.
-3. Read the Money insights **Long view** line.
+3. Read the Money insights **Big picture** line.
 
-With last year's month in the range, the Long view can compare the two:
+With last year's month in the range, the Big picture can compare the two:
 last month spent about $1,100 less than the same month last year (the year
-before had a Bali long weekend). The Long view takes turns by month with the
+before had a Bali long weekend). The Big picture takes turns by month with the
 household's keep rate and cushion, so on some months it shows one of those
 instead.
 
 Story: "It compares like with like, and only with months that are really
 there. It never forecasts."
 
-The headline is still the **Quick fix** for the card that is off against
+The headline is still the **To do** for the card that is off against
 its statement. We will look at that in step 6.
 
 ## 3. People and scopes (1 minute)
@@ -71,9 +71,9 @@ Switch the view to **Ethan**, stay on Summary.
   and bank spending), **Shared** (his half of shared bills, dinners and the
   Japan trip) and **Direct + Shared** (both). Each gives a different total,
   and the first two always add up to the third.
-- Money insights no longer lead with the statement Quick fix, because
+- Money insights no longer lead with the statement To do, because
   every account Ethan can see is reconciled. Switch to **Serene**: the
-  Quick fix is back, because the card with the problem is hers.
+  To do is back, because the card with the problem is hers.
 
 Story: "Each partner sees their own money honestly, and the household still
 sees everything."
@@ -85,7 +85,7 @@ Go back to **Household**, open **Month** and choose **two months ago**.
 - **Actual spend** is above **Planned spend** by about $3,100. The month
   note explains it: both aircon units were replaced and the new sofa
   arrived.
-- Money insights lead with a **Bigger question**: the aircon made up most of
+- Money insights lead with a **Something to think about**: the aircon made up most of
   the $3,128.14 over plan. Press **See all insights**: **Also this month**
   lists the card's statement gap.
 - Scroll to **Planned Items**: the HDB loan, S&CC, insurance and
