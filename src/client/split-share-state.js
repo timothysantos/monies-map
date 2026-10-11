@@ -1,6 +1,6 @@
-import { moniesClient } from "./monies-client-service";
-
-const { format: formatService } = moniesClient;
+// The formatter directly (not through moniesClient), so the share
+// calculation also loads in Node for tests/split-share-rows.test.mjs.
+import * as formatService from "./formatters";
 
 function clampBasisPoints(value) {
   return Math.max(0, Math.min(10000, Math.round(Number(value ?? 0))));
