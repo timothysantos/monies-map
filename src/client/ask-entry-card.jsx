@@ -9,13 +9,15 @@ import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { ResponsiveSelect } from "./responsive-select";
 import { getIconComponent } from "./ui-components";
-import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+import { messages } from "./copy/en-SG";
+import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
 
 // The Ask page's entry card (design.md "Ask page"): the hero card with the
 // category bubble, what it was, the amount and its date, wallet and person
-// chips, then the quiet detail rows, each opening the app's existing picker,
-// and the Splits switch. A saved card keeps the hero only, marked Saved.
+// chips (on a draft, each opens its row's picker: date, wallet, owner), then
+// the quiet detail rows, each opening the app's existing picker, and the
+// Splits switch. A saved card keeps the hero only, marked Saved.
 // Built on the shared Lead · Support · Detail blocks (ui/lead-support-detail).
 
 const SIGNS = { expense: "−", income: "+", transfer: "" };
@@ -52,7 +54,8 @@ export function AskEntryCard({
   today,
   descriptionRef,
   amountRef,
-  onChange
+  onChange,
+  onOpenField = undefined
 }) {
   const isSaved = card.status === "saved";
   const isEditable = card.status === "draft";
@@ -137,11 +140,39 @@ export function AskEntryCard({
       ) : null}
       chips={(
         <>
-          <MetaChip icon={CalendarDays}>{formatCardDate(card.fields.date, today)}</MetaChip>
+          <MetaChip
+            data-chip="date"
+            icon={CalendarDays}
+            control={isEditable ? (
+              <ChipDateField
+                value={card.fields.date}
+                label={messages.common.changeChip(askCopy.card.rows.date, formatCardDate(card.fields.date, today))}
+                onValueChange={(date) => onChange({ date })}
+              />
+            ) : null}
+          >
+            {formatCardDate(card.fields.date, today)}
+          </MetaChip>
           {!isTransfer && card.fields.accountName ? (
-            <MetaChip icon={CreditCard}>{card.fields.accountName}</MetaChip>
+            <MetaChip
+              data-chip="wallet"
+              icon={CreditCard}
+              actionLabel={messages.common.changeChip(askCopy.card.rows.wallet, card.fields.accountName)}
+              onClick={isEditable && onOpenField ? () => onOpenField("wallet") : undefined}
+            >
+              {card.fields.accountName}
+            </MetaChip>
           ) : null}
-          {card.fields.ownerName ? <MetaChip person={ownerKey}>{card.fields.ownerName}</MetaChip> : null}
+          {card.fields.ownerName ? (
+            <MetaChip
+              data-chip="owner"
+              person={ownerKey}
+              actionLabel={messages.common.changeChip(askCopy.card.rows.owner, card.fields.ownerName)}
+              onClick={isEditable && onOpenField ? () => onOpenField("owner") : undefined}
+            >
+              {card.fields.ownerName}
+            </MetaChip>
+          ) : null}
         </>
       )}
     >

@@ -12,6 +12,10 @@ export const messages = {
     close: "Close",
     saving: "Saving...",
     working: "Working...",
+    // A tappable Support chip's name for assistive tech, and what a locked
+    // chip adds after its text (design.md, "Tappable chips").
+    changeChip: (field, value) => `Change ${field.toLowerCase()}, ${value}`,
+    chipLockedByStatement: "locked by the statement",
     appShellErrorTitle: "Dashboard data could not load.",
     appShellRetry: "Try loading dashboard again",
     appShellResourceLimitTitle: "Cloudflare stopped the request before the app could return data.",
@@ -341,6 +345,8 @@ export const messages = {
       currency: "Currency",
       paidUsing: "Paid using",
       paidUsingLedger: "Paid using (ledger)",
+      sharesChip: "Shares",
+      paymentLockedByLedger: "set by the linked entry",
       evidence: "Evidence",
       moreDetails: "More details",
       fewerDetails: "Fewer details",
