@@ -1263,8 +1263,10 @@ comparison use `post_date`.
   that date for both the ledger event date and posted date. Each card gets the
   printed "Payment Due Date".
 - Every parser names categories through `inferCategory`, which files bank
-  charges and their reversals (`src/domain/bank-charges.ts`) under Fees. The
-  import commit saves a Fees reversal with `offsets_category = 1`. A
+  charges and their reversals (`src/domain/bank-charges.ts`) under Fees. A
+  Fees reversal lowers Fees through the category offset rule
+  (`src/domain/category-offset.ts`); the import commit also still writes
+  the legacy `offsets_category = 1`. A
   statement checkpoint's `paymentDueDate` and `minimumPaymentMinor` are saved
   on `account_balance_checkpoints` (`payment_due_date`,
   `minimum_payment_minor`); `/api/summary-account-pills` turns the latest

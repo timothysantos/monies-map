@@ -228,8 +228,8 @@ Important distinctions:
   removed, never by a word inside a shop's name ("AMAZE*FEES", "Cabcharge").
 - Statement parsers file a bank charge and its reversal under `Fees`.
   Money in that is not a reversal ("INTEREST CREDIT" on savings) stays
-  income. The import commit saves a reversal kept in Fees with
-  `offsets_category`, so a waived charge nets to nothing in Fees.
+  income. A reversal kept in Fees is money in under a spending category, so
+  it lowers Fees (`category offset`) and a waived charge nets to nothing.
 - An `unreversed bank charge` is one no reversal of the same kind and amount
   on the same account, dated on or after it, has cancelled. Each reversal
   cancels one charge. Currency fees are the price of foreign purchases, so
