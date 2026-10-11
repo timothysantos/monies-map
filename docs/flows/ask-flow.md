@@ -183,6 +183,16 @@ Ask reads nothing of its own:
   `composeCheckInHeadline` in `financial-insight.jsx`). Never fetched and no
   AI on open; with nothing cached the card does not show.
 
+The Claude credit status (`GET /api/ai-assist/provider-status`, DOMAIN.md
+"AI Provider Status") is the one thing Ask reads that no other page DTO
+holds, for the notice described under "Claude credits" below. It is read
+lazily: only once the Ask route is first usable (App passes
+`routeWork.usable` to Ask and Settings alone), never on the first screen and
+never blocking. It goes through `fetchQueryWithLease` under
+`queryKeys.claudeCreditStatus()` (`claude-credit-status.js`), so Settings
+reuses the same answer, and is read again only when the kept one is over
+five minutes old. A failed read shows nothing.
+
 Readers (`ask-api.js`, the one module to adjust when their branches land):
 
 - `POST /api/ai-assist/entry-draft` `{ text, viewId }` → an entry draft
@@ -235,6 +245,41 @@ ends any listening first.
   a polite live region says "Listening…", "Writing down what you said…" and
   then "Check the message, then send."
 
+### Claude credits
+
+While Claude credits are low, used up or capped, one calm inline notice
+sits at the top of the conversation, above the "since you last looked"
+card, in every way in (`AskClaudeCreditNotice` in
+`claude-credit-notice.jsx`, words and rules in `claude-credit-model.js`):
+
+- `low` (butter): "Claude credits are running low: about $X of $Y used. Ask
+  still works." With money hidden: "Claude credits are running low. Ask
+  still works." (no figures).
+- `exhausted` (rose): "Claude credits are used up, so Ask is using the basic
+  model for now."
+- `capped` (rose): "This month's Claude spending limit is reached, so Ask is
+  using the basic model until it resets."
+- `ok`, `unknown`, or a viewer the server does not show the status to
+  (`{ visible: false }`): no notice.
+
+Actions: "Top up in the Claude Console" (a link to `consoleBillingUrl` in a
+new tab; only an https address becomes a link), "I've topped up" and a ✕
+("Hide this notice"). I've topped up opens the app's own form (a bottom
+sheet on a phone, `EntryMobileSheet` with Save and Cancel in its bottom bar
+above the keyboard; a small dialog on a wide screen): the credit bought in
+US dollars with the number keypad, checked before it is sent (more than 0,
+at most 10,000, as the route checks), then
+`POST /api/ai-assist/provider-status/topped-up { creditUsd }`. Its answer
+is the fresh status, which replaces the kept one (a read still in flight is
+cancelled first); the form closes only on success and keeps the amount
+with an inline error otherwise. While the form is open the route is busy.
+
+The ✕ hides the notice for this browser tab's session: the dismissed state
+is kept in sessionStorage (`monies.claudeCreditNotice.v1`). The notice
+comes back when the state gets worse (low, then capped, then used up) and
+the dismissal is dropped once the credits are fine again, so a later drop
+shows.
+
 Writes, all existing routes:
 
 - Save: `POST /api/entries/create`, then `POST /api/splits/expenses/from-entry`
@@ -258,7 +303,9 @@ Ask owns:
 - the filter reader and the answer card;
 - the chip row and the question wording (the readers send structured
   questions; the client words them);
-- the receipt photo while it is on screen (memory only, revoked on leave).
+- the receipt photo while it is on screen (memory only, revoked on leave);
+- the Claude credit notice and its session dismissal (the status itself is
+  the query cache's, shared with Settings).
 
 Ask does not own:
 
@@ -291,13 +338,18 @@ Ask does not own:
   scope change waits for its chip.
 - Leaving Ask and coming back, or reloading the tab, keeps the
   conversation; the Ask tab shows a dot meanwhile.
+- Low, used up or capped Claude credits show one calm notice at the top of
+  the conversation with the Claude Console link and I've topped up; the ✕
+  hides it for the session until the state gets worse; hidden money shows
+  no dollar figure in it.
 - No system alert, confirm or prompt anywhere.
 
 ## Persisted / Query Contract
 
 - No new write route and no new table. A saved entry is an ordinary manual
   entry. The one new route, `/api/ai-assist/transcribe`, only writes the
-  shared AI allowance counter.
+  shared AI allowance counter. The Claude credit notice uses the existing
+  provider-status routes; I've topped up writes only that aggregate row.
 - A transfer card posts one row: the From wallet's side (or the To wallet's
   when turned round); the other wallet is shown but not posted, for the
   later transfer match, as the entry draft defines.
@@ -313,11 +365,18 @@ Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 `tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
 `tests/shortcut-gateway.test.mjs`, `tests/ask-filter-reader.test.mjs`,
 `tests/ask-filter-answer.test.mjs`, `tests/ask-conversation-store.test.mjs`,
+`tests/claude-credit-notice.test.mjs`,
 `tests/e2e/ask-page.spec.js`, `tests/e2e/ask-voice.spec.js`,
-`tests/e2e/ask-composer.spec.js`, `tests/e2e/ask-search.spec.js`, the last
-also in WebKit on an iPhone 13 profile) and runtime behaviour on a phone.
+`tests/e2e/ask-composer.spec.js`, `tests/e2e/ask-search.spec.js`,
+`tests/e2e/claude-credit-notice.spec.js`, the last two also in WebKit on an
+iPhone 13 profile) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
+
+- The Claude credit figures are the server's estimate from token counts
+  since the last "I've topped up"; the Claude Console balance is the real
+  one. Topping up does not lift a monthly spending limit (`capped`), which
+  stays until a Claude call succeeds.
 
 - Questions that are not a search or a filter are not answered yet (no
   answering endpoint); the page says so instead of reading them as entries.

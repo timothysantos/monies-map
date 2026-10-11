@@ -287,7 +287,13 @@ everyone when it is `"*"` (`isAiAlertViewer`; `wrangler.jsonc` ships `"*"`);
 anyone else gets `{ ok: true, visible: false }` with no database read.
 `POST .../topped-up { creditUsd }` (the same viewers, 403 otherwise; a
 number above 0 and at most 10,000, 400 otherwise) restarts the estimate at
-the new credit.
+the new credit. On the client the status has one store, the query cache
+entry `queryKeys.claudeCreditStatus()` (`claude-credit-status.js`): Ask and
+Settings read it with `fetchQueryWithLease` only once their route is
+usable (App passes `routeWork.usable` to those two routes alone), kept for
+five minutes; a top-up cancels any read in flight and then writes the
+POST's answer into that entry. A failed read leaves no status and shows
+nothing.
 
 Receipt reading (`POST /api/ai-assist/receipt-read`,
 `src/server/receipt-read-route.ts`) checks availability before reading the

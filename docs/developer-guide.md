@@ -364,8 +364,9 @@ records the success time and an estimated cost (the response's token counts
 times the prices below), or the failure's kind: credit used up (Anthropic's
 "credit balance is too low" 400, or a 402), the gateway's spend limit (its
 429), a rejected key (401/403) or anything else. No prompt, image, answer
-or error text is stored. The visible notice comes later; today the routes
-are:
+or error text is stored. Ask shows a notice for `low`, `exhausted` and
+`capped`, and Settings has an Ask and AI section (see "In the app" below).
+The routes:
 
 - `GET /api/ai-assist/provider-status` returns `{ ok, visible: true,
   claudeConfigured, state, estimatedSpendUsd, creditUsd, warnAtUsd,
@@ -414,6 +415,25 @@ yourself, as the browser tests do:
 curl -H "Cf-Access-Authenticated-User-Email: owner@example.com" \
   http://127.0.0.1:8787/api/ai-assist/provider-status
 ```
+
+In the app (`claude-credit-model.js`, `claude-credit-status.js`,
+`claude-credit-notice.jsx`; design.md "Claude credit notice"): Ask and
+Settings read the GET once their route is usable (never on the first
+screen), through `fetchQueryWithLease` under
+`queryKeys.claudeCreditStatus()`, kept for five minutes and shared by both.
+Ask shows one inline notice at the top of the conversation for `low`,
+`exhausted` or `capped`, with the Console link, "I've topped up" (an
+in-app form that posts the top-up route and keeps its answer as the new
+status) and a dismiss kept in sessionStorage
+(`monies.claudeCreditNotice.v1`) until the state gets worse. Settings →
+Ask and AI shows the same line, the two actions and when it was last
+checked, or "Claude isn't set up, so Ask uses the basic model." A viewer
+the GET answers `{ visible: false }` sees neither. `wrangler.test.jsonc`
+sets no `AI_ALERT_EMAILS`, so the browser tests stub the route for each
+state (`tests/e2e/claude-credit-notice.spec.js`; the phone tests also run
+in WebKit with `npm run test:e2e:webkit`), and
+`tests/claude-credit-notice.test.mjs` covers the words, tones, hidden
+money, dismissal and amount check.
 
 To remove Claude again, delete the secrets and vars; the app goes back to
 Workers AI directly.

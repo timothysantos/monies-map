@@ -612,7 +612,10 @@ last success time, estimated spend since the owner's last top-up mark) so
 `AI_ALERT_EMAILS` (everyone when it is `"*"`, as `wrangler.jsonc` ships)
 that credits are low, used up or capped by the gateway, with a link to the
 Claude Console billing page; anyone not listed sees nothing.
-The write never fails or holds an AI answer.
+The write never fails or holds an AI answer. Ask shows it as one inline
+notice at the top of the conversation and Settings in its Ask and AI
+section, both reading the status lazily once their route is usable
+(design.md "Claude credit notice").
 
 ```text
 receipt image (user pasted, dropped, scanned or shared; browser downscales,

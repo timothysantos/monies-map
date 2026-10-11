@@ -1710,6 +1710,10 @@ Important distinctions:
 - Only owners listed in `AI_ALERT_EMAILS` (Cloudflare Access emails) see it.
   It is not household data: no prompt, image, response, error text or
   request id is stored, and it is not part of any page DTO.
+- Shown in the app as the Claude credit notice on Ask (`low`, `exhausted`,
+  `capped`) and the Ask and AI section in Settings
+  (`src/client/claude-credit-model.js`, `claude-credit-status.js`,
+  `claude-credit-notice.jsx`); "I've topped up" there is the top-up mark.
 
 ### No Longer Listed Entry
 
