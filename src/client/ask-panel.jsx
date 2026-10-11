@@ -351,6 +351,15 @@ function AskConversation({
     }
     const behavior = prefersReducedMotion() ? "auto" : "smooth";
     const newItems = settled.slice(previous.length);
+    // A money answer or the check before it arrives after its question, and
+    // is often taller than the screen: the question right above it (else
+    // the card itself, after a check) goes to the top, so its lead shows.
+    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check");
+    if (money) {
+      const before = settled[settled.indexOf(money) - 1];
+      document.getElementById(before?.kind === "me" ? before.id : money.id)?.scrollIntoView?.({ block: "start", behavior });
+      return;
+    }
     const lastMine = [...newItems].reverse().find((item) => item.kind === "me");
     if (lastMine) {
       document.getElementById(lastMine.id)?.scrollIntoView?.({ block: "start", behavior });
@@ -1262,10 +1271,10 @@ function ThreadItem({ item, settled = false, answerProps }) {
     return <AskAnswerCard filter={item.filter} settled={settled} {...filterAnswerProps} />;
   }
   if (item.kind === "money-answer") {
-    return <AskMoneyAnswerCard answer={item.answer} wording={item.wording} intent={item.intent} settled={settled} />;
+    return <AskMoneyAnswerCard id={item.id} answer={item.answer} wording={item.wording} intent={item.intent} settled={settled} />;
   }
   if (item.kind === "money-check") {
-    return <AskSkewCheckCard candidate={item.candidate} status={item.status} today={answerProps.today} settled={settled} />;
+    return <AskSkewCheckCard id={item.id} candidate={item.candidate} status={item.status} today={answerProps.today} settled={settled} />;
   }
   if (item.kind === "me") {
     return <p className={`ask-me${settledClass}`} id={item.id}>{item.text}</p>;

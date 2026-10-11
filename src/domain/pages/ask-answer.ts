@@ -64,22 +64,6 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
   const months = intentMonths(intent, request.month, today);
   const base: AnsweredBase = { supported: true, intent: intent.kind, viewId, scope, months };
 
-  // Skew first: a high-confidence candidate that would change these facts
-  // is asked about before any figure is explained.
-  const kept = new Set((request.keepCandidateIds ?? []).slice(0, MAX_KEPT_CANDIDATE_IDS));
-  const candidates: SkewCandidateDto[] = [];
-  for (const month of months.filter((item) => trackedMonths.includes(item))) {
-    const skew = await buildSkewCandidatesDto(db, viewId, month, scope);
-    for (const candidate of skew.candidates) {
-      if (candidate.confidence === "high" && !kept.has(candidate.id) && changesFacts(candidate, intent.kind) && !candidates.some((item) => item.id === candidate.id)) {
-        candidates.push(candidate);
-      }
-    }
-  }
-  if (candidates.length) {
-    return { ...base, needsConfirmation: true, candidates: candidates.slice(0, MAX_CONFIRMATION_CANDIDATES) };
-  }
-
   const monthFacts = async (month: string): Promise<MonthFacts> => {
     if (!trackedMonths.includes(month)) {
       return emptyMonthFacts(month, viewId, scope);
@@ -90,23 +74,47 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
     const previous = addMonths(month, -1);
     return trackedMonths.includes(previous) ? monthFacts(previous) : null;
   };
+  const readFacts = async (): Promise<AskAnswerFacts> => {
+    if (intent.kind === "spending") {
+      const [current, previous] = await Promise.all([monthFacts(intent.month), previousIfTracked(intent.month)]);
+      return { kind: "spending", focus: intent.focus, current, previous };
+    }
+    if (intent.kind === "plan") {
+      return { kind: "plan", current: await monthFacts(intent.month), isCurrentMonth: intent.month === today.slice(0, 7) };
+    }
+    if (intent.kind === "compare") {
+      const [current, other] = await Promise.all([monthFacts(intent.month), monthFacts(intent.otherMonth)]);
+      return { kind: "compare", current, other, categoryChanges: compareCategories(current, other) };
+    }
+    if (intent.kind === "biggest") {
+      return { kind: "biggest", current: await monthFacts(intent.month) };
+    }
+    if (intent.kind === "income") {
+      const [current, previous] = await Promise.all([monthFacts(intent.month), previousIfTracked(intent.month)]);
+      return { kind: "income", current, previous };
+    }
+    return owedFacts(db, intent, { viewId, people, month: months[0] });
+  };
 
-  let facts: AskAnswerFacts;
-  if (intent.kind === "spending") {
-    facts = { kind: "spending", focus: intent.focus, current: await monthFacts(intent.month), previous: await previousIfTracked(intent.month) };
-  } else if (intent.kind === "plan") {
-    facts = { kind: "plan", current: await monthFacts(intent.month), isCurrentMonth: intent.month === today.slice(0, 7) };
-  } else if (intent.kind === "compare") {
-    const current = await monthFacts(intent.month);
-    const other = await monthFacts(intent.otherMonth);
-    facts = { kind: "compare", current, other, categoryChanges: compareCategories(current, other) };
-  } else if (intent.kind === "biggest") {
-    facts = { kind: "biggest", current: await monthFacts(intent.month) };
-  } else if (intent.kind === "income") {
-    facts = { kind: "income", current: await monthFacts(intent.month), previous: await previousIfTracked(intent.month) };
-  } else {
-    facts = await owedFacts(db, intent, { viewId, people, month: months[0] });
+  // Skew first: a high-confidence candidate that would change these facts
+  // is asked about before any figure is explained. The facts are read
+  // alongside (both only read) so an answer does not wait for one after the
+  // other; they are dropped when there is something to ask first.
+  const kept = new Set((request.keepCandidateIds ?? []).slice(0, MAX_KEPT_CANDIDATE_IDS));
+  const factsRead = readFacts();
+  // A rejected read that is never awaited must not surface as unhandled.
+  factsRead.catch(() => undefined);
+  const skews = await Promise.all(months.filter((item) => trackedMonths.includes(item)).map((month) => buildSkewCandidatesDto(db, viewId, month, scope)));
+  const candidates: SkewCandidateDto[] = [];
+  for (const candidate of skews.flatMap((skew) => skew.candidates)) {
+    if (candidate.confidence === "high" && !kept.has(candidate.id) && changesFacts(candidate, intent.kind) && !candidates.some((item) => item.id === candidate.id)) {
+      candidates.push(candidate);
+    }
   }
+  if (candidates.length) {
+    return { ...base, needsConfirmation: true, candidates: candidates.slice(0, MAX_CONFIRMATION_CANDIDATES) };
+  }
+  const facts = await factsRead;
 
   const groupNames = facts.kind === "owed" ? facts.balances.map((balance) => balance.groupName) : [];
   return {

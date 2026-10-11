@@ -26,12 +26,13 @@ const INTENT_ICONS = {
 // show; only the words may be AI-phrased (validated against those facts).
 // With money hidden, amounts are masked and the words and rows (which say
 // over, under, or who owes whom) give way to the usual hidden note.
-export function AskMoneyAnswerCard({ answer, wording, intent, settled = false }) {
+export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, settled = false }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const { lead } = answer;
   const plan = Number.isFinite(lead.planMinor) && lead.planMinor > 0 ? lead.planMinor : null;
   return (
     <LeadCard
+      id={id}
       className={`ask-answer ask-money-answer${settled ? " is-settled" : ""}`}
       aria-label={answer.title}
       data-ask-money-answer={intent}
@@ -88,7 +89,7 @@ export function AskMoneyAnswerCard({ answer, wording, intent, settled = false })
 // Candidate") that would change the figures, in plain words. Its chips
 // (Mark as settlement or Link as transfer, and It's real spending) live in
 // the chip row while it is the newest thing in the conversation.
-export function AskSkewCheckCard({ candidate, status = "open", today, settled = false }) {
+export function AskSkewCheckCard({ id = undefined, candidate, status = "open", today, settled = false }) {
   const side = candidate.outflowEntry ?? candidate.inflowEntry;
   const date = formatCardDate(side?.date ?? "", today);
   const settlement = candidate.kind === "settlement";
@@ -100,6 +101,7 @@ export function AskSkewCheckCard({ candidate, status = "open", today, settled = 
     : askCopy.money.check.ownTransfer(candidate.fromPerson?.name ?? "", date);
   return (
     <LeadCard
+      id={id}
       className={`ask-answer ask-skew-check${settled ? " is-settled" : ""}`}
       aria-label={askCopy.money.check.title}
       data-skew-check={status}
