@@ -135,12 +135,13 @@ test.describe("page chrome while editing on a phone", () => {
     await expect(dialog).toBeVisible();
     await expect(totalsButton).toBeHidden();
     await expect.poll(() => displayOf(groupRow)).toBe("none");
-    // Only the Entries add button gives way to a dialog.
-    expect(await displayOf(addButton)).not.toBe("none");
+    // The receipt button gives way to a dialog too, as the Entries + does.
+    await expect(addButton).toBeHidden();
 
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(totalsButton).toBeVisible();
+    await expect(addButton).toBeVisible();
     await expect.poll(() => displayOf(groupRow)).not.toBe("none");
 
     // Other pages keep the shared page background.
@@ -152,6 +153,44 @@ test.describe("page chrome while editing on a phone", () => {
     }));
     expect(entriesBackground.body).not.toBe(splitsBackground.body);
     expect(entriesBackground.shell).not.toBe(splitsBackground.shell);
+  });
+});
+
+// The Splits receipt button opens Add expense. It used to stay on top of the
+// dialog it had just opened (above its backdrop), so it could be tapped
+// again over the form. It now gives way like the Entries + button.
+test.describe("the Splits receipt button and its Add expense dialog", () => {
+  test.use({ viewport: iPhone });
+
+  test("the receipt button hides while its Add expense dialog is open and returns when it closes", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/");
+    await reseedDemo(page);
+    await gotoPageAfterApi(
+      page,
+      "/splits?view=person-tim&month=2025-10&split_group=split-group-none",
+      "/api/splits-page",
+      () => page.locator(".splits-fab")
+    );
+    const receiptButton = page.locator(".splits-fab");
+    await expect(receiptButton).toBeVisible();
+    await expect(receiptButton).toHaveAccessibleName("+ Add expense");
+
+    await receiptButton.click();
+    const dialog = page.getByRole("dialog", { name: "Create split expense" });
+    await expect(dialog).toBeVisible();
+    await expect(receiptButton).toBeHidden();
+    // Nothing of the button is left to tap over the form.
+    const dialogBox = await dialog.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest(".splits-fab") ?? null, [
+      iPhone.width - 16 - 27,
+      iPhone.height - 190 - 27
+    ])).toBeNull();
+
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(receiptButton).toBeVisible();
   });
 });
 

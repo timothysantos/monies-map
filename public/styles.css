@@ -2667,7 +2667,9 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   z-index: 81;
 }
 
-body:has(> .note-dialog-overlay) .entries-fab:not(.splits-fab) {
+/* An open dialog hides the floating add buttons, the Splits receipt button
+   too: it used to float above its own Add expense dialog. */
+body:has(> .note-dialog-overlay) .entries-fab {
   display: none;
 }
 
