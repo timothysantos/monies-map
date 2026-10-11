@@ -5,9 +5,11 @@
 // its conversation only through this store; a reader result or a save that
 // lands after the page has gone still lands here.
 //
-// It lives in the entry chunk because the shell shows a dot on the Ask tab
-// while a conversation is in progress, so it stays small: no Ask code, no
-// React. The Ask page binds it (ask-panel.jsx useAskConversation).
+// It ships with the Ask route; the shell's Ask tab reads only whether a
+// conversation is in progress, which this store publishes to the tiny
+// ask-conversation-presence.js on every change. The Ask page binds it
+// (ask-panel.jsx useAskConversation); a module singleton, so it outlives
+// the page.
 //
 // Mirror: sessionStorage only (this browser tab, gone when the tab closes),
 // never localStorage and never the server. Versioned key, size-capped, and
@@ -155,11 +157,15 @@ export function parseStoredConversations(text) {
   }
 }
 
-const EMPTY_SNAPSHOT = Object.freeze({ inProgress: false, resumeIntent: null });
+import { askConversationPresence, NO_ASK_CONVERSATION } from "./ask-conversation-presence";
 
-export function createAskConversationStore({ storage = null, maxStoredChars = DEFAULT_MAX_STORED_CHARS } = {}) {
+/** @typedef {import("./ask-conversation-presence").AskConversationPresence} AskConversationSnapshot */
+const EMPTY_SNAPSHOT = NO_ASK_CONVERSATION;
+
+export function createAskConversationStore({ storage = null, maxStoredChars = DEFAULT_MAX_STORED_CHARS, onSnapshot = undefined } = {}) {
   /** @type {any[]} oldest first */
   let slots = [];
+  /** @type {AskConversationSnapshot} */
   let snapshot = EMPTY_SNAPSHOT;
   const listeners = new Set();
 
@@ -172,6 +178,8 @@ export function createAskConversationStore({ storage = null, maxStoredChars = DE
   } catch {
     slots = [];
   }
+  computeSnapshot();
+  let published = snapshot;
 
   function persist() {
     try {
@@ -198,6 +206,10 @@ export function createAskConversationStore({ storage = null, maxStoredChars = DE
   }
 
   function notify() {
+    if (onSnapshot && published !== snapshot) {
+      published = snapshot;
+      onSnapshot(snapshot);
+    }
     for (const listener of [...listeners]) listener();
   }
 
@@ -285,6 +297,11 @@ function readSessionStorage() {
 
 /** The tab's one Ask conversation store, made on first use. */
 export function getAskConversationStore() {
-  defaultStore ??= createAskConversationStore({ storage: readSessionStorage() });
+  if (!defaultStore) {
+    defaultStore = createAskConversationStore({ storage: readSessionStorage(), onSnapshot: askConversationPresence.publish });
+    // What was read back from the tab corrects the shell's dot (after this
+    // render: the store is first asked for while Ask renders).
+    queueMicrotask(() => askConversationPresence.publish(defaultStore.getSnapshot()));
+  }
   return defaultStore;
 }

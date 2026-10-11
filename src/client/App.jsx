@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -47,6 +47,7 @@ import {
 import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ErrorPanel } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
+import { askConversationPresence } from "./ask-conversation-presence";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
@@ -250,6 +251,10 @@ export function App() {
   );
   const selectedMonth = searchParams.get("month") ?? getCurrentMonthKey();
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
+  // The Ask conversation lives above the routes (ask-conversation-store.js,
+  // loaded with Ask); the shell only reads whether one is in progress, for
+  // the Ask tab's dot and the way back in.
+  const askConversation = useSyncExternalStore(askConversationPresence.subscribe, askConversationPresence.getSnapshot, askConversationPresence.getSnapshot);
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
@@ -2093,6 +2098,7 @@ export function App() {
           accounts={accounts}
           categories={categories}
           people={appShell.household.people}
+          trackedMonths={appShell.trackedMonths}
           shortcutSettings={appShell.settingsPage?.shortcutSettings}
           fetchEntriesPage={fetchAskEntriesPage}
           onEntryMutation={broadcastEntryMutation}
@@ -2108,6 +2114,7 @@ export function App() {
     accounts,
     appShell?.household?.people,
     appShell?.settingsPage?.shortcutSettings,
+    appShell?.trackedMonths,
     appShell?.viewerIdentity,
     broadcastEntryMutation,
     broadcastSplitMutation,
@@ -2513,6 +2520,14 @@ export function App() {
     // parameters that belong to another tab.
     const params = new URLSearchParams(searchParams);
     sanitizeTabParams(params, tab.id);
+    // The Ask tab goes back to the conversation in progress: a new entry
+    // card from the Entries + or the Splits receipt button reopens there.
+    const resumeAsk = tab.id === "ask" && selectedTabId !== "ask" ? askConversation.resumeIntent : null;
+    if (resumeAsk) {
+      params.set("mode", resumeAsk.mode);
+      if (resumeAsk.from) params.set("from", resumeAsk.from);
+      if (resumeAsk.splitGroupId) params.set("split_group", resumeAsk.splitGroupId);
+    }
     if (tab.id === "settings" && pendingCategorySuggestionCount) {
       params.set("settings_section", "categoryRules");
     } else {
@@ -2847,6 +2862,7 @@ export function App() {
             buildTabTarget={buildTabTarget}
             getNavIntentProps={getNavIntentProps}
             pendingCategorySuggestionCount={pendingCategorySuggestionCount}
+            askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
           />
           <div className={`period-nav-cluster ${isPeriodPassive ? "is-passive" : ""}`} aria-disabled={isPeriodPassive || undefined}>
             <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isPeriodPassive}>‹</button>

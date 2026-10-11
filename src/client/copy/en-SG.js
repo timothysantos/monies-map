@@ -67,6 +67,7 @@ export const messages = {
     entries: "Entries",
     splits: "Splits",
     ask: "Ask",
+    askInProgress: "Ask, conversation in progress",
     imports: "Imports",
     settings: "Settings",
     faq: "FAQ",

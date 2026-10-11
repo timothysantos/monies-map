@@ -238,3 +238,21 @@ test("at most three ways in are kept, and one in progress outlives finished ones
   assert.equal(store.read("add|entries||").intent.mode, "add");
   assert.equal(store.read("add|ask||"), null);
 });
+
+test("every change that moves the snapshot is published once, for the shell's Ask tab", () => {
+  const published = [];
+  const store = createAskConversationStore({ storage: memoryStorage(), onSnapshot: (snapshot) => published.push(snapshot) });
+  store.begin(CHAT_KEY, () => emptyConversation(CHAT));
+  store.update(CHAT_KEY, (conversation) => ({ ...conversation, composerText: "g" }));
+  store.update(CHAT_KEY, (conversation) => ({ ...conversation, composerText: "gr" }));
+  store.update(CHAT_KEY, (conversation) => ({ ...conversation, composerText: "" }));
+  assert.deepEqual(published, [{ inProgress: true, resumeIntent: null }, { inProgress: false, resumeIntent: null }]);
+});
+
+test("a reloaded tab knows at once that a conversation is in progress", () => {
+  const storage = memoryStorage();
+  const store = createAskConversationStore({ storage });
+  store.begin(ADD_KEY, () => emptyConversation(ADD));
+  store.update(ADD_KEY, (conversation) => ({ ...conversation, card: draftCard() }));
+  assert.deepEqual(createAskConversationStore({ storage }).getSnapshot(), { inProgress: true, resumeIntent: { mode: "add", from: "entries", splitGroupId: "" } });
+});

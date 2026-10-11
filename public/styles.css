@@ -379,6 +379,17 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   transform: translateY(-0.35em);
 }
 
+/* An Ask conversation in progress, seen from another tab. */
+.tab-dot {
+  position: absolute;
+  top: -2px;
+  right: -9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+}
+
 .tab-overflow-trigger {
   display: none;
   align-items: center;

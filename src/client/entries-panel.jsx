@@ -17,7 +17,8 @@ import {
 } from "./entry-composer-section";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
-import { readEntriesFilterParams } from "./entry-filter-params";
+import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams } from "./entry-filter-params";
+import { EntriesAskChip } from "./entries-ask-chip";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
@@ -988,6 +989,21 @@ export function EntriesPanel({
     });
   }, [setSearchParams]);
 
+  // The From Ask chip: back to Ask (its conversation is kept), or ✕ to
+  // clear the filters an Ask answer set.
+  const showAskChip = hasAskFilterChip(searchParams);
+  const clearAskFilters = useCallback(() => {
+    setSearchParams((current) => clearAskFilterParams(current));
+  }, [setSearchParams]);
+  const returnToAsk = useCallback(() => {
+    const next = new URLSearchParams();
+    for (const key of ["view", "month", "scope"]) {
+      const value = searchParams.get(key);
+      if (value) next.set(key, value);
+    }
+    navigate({ pathname: "/ask", search: `?${next.toString()}` });
+  }, [navigate, searchParams]);
+
   function applySuggestedView(viewId) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -1071,7 +1087,7 @@ export function EntriesPanel({
   }, [onMobileFilterStateChange]);
 
   return (
-    <article className="panel entries-panel-root">
+    <article className={`panel entries-panel-root${showAskChip && useMobileEntrySheet ? " has-ask-chip" : ""}`}>
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.entries}</h2>
@@ -1096,6 +1112,17 @@ export function EntriesPanel({
           ))}
         </div>
       </div>
+
+      {showAskChip ? (
+        <EntriesAskChip
+          searchParams={searchParams}
+          accounts={accounts}
+          people={people}
+          floating={useMobileEntrySheet}
+          onReturn={returnToAsk}
+          onClear={clearAskFilters}
+        />
+      ) : null}
 
       {entriesLoadError ? (
         // The page on screen belongs to another month or view, so none of

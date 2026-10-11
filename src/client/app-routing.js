@@ -20,7 +20,10 @@ export function sanitizeTabParams(params, tabId) {
       "entry_wallet",
       "entry_category",
       "entry_person",
-      "entry_type"
+      "entry_type",
+      "entry_min",
+      "entry_max",
+      "from_ask"
     ].forEach((key) => params.delete(key));
   }
 

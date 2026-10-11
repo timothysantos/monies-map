@@ -41,6 +41,46 @@
   font-size: 0.9rem;
 }
 
+/* New chat: a quiet text button at the header's right, 44 px tall. */
+.ask-head.has-new-chat {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+}
+
+.ask-head.has-new-chat > h2,
+.ask-head.has-new-chat > .ask-context {
+  grid-column: 1;
+}
+
+.ask-new-chat {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ask-new-chat:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.ask-new-chat:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
 .ask-thread {
   flex: 1 1 auto;
   display: flex;
@@ -172,6 +212,76 @@
   object-fit: cover;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   transform: rotate(-2deg);
+}
+
+/* An answer (ask-answer-card.jsx): Lead (the total and what it counts),
+   Support (the filters as chips), Detail (a share line). */
+.ask-answer {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
+}
+
+.ask-answer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ask-answer-bubble {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cat) 20%, white);
+  color: color-mix(in srgb, var(--cat) 70%, var(--text));
+}
+
+.ask-answer-title {
+  min-width: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.ask-answer-amount {
+  margin-top: 4px;
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-answer-detail {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.ask-answer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-answer-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 /* The entry card. */
@@ -831,8 +941,14 @@
 
   .ask-thread > .ask-me,
   .ask-thread > .ask-note,
-  .ask-thread > .ask-card {
+  .ask-thread > .ask-card,
+  .ask-thread > .ask-answer {
     animation: ask-arrive 180ms ease-out;
+  }
+
+  /* Restored on coming back: already there, so no arrival. */
+  .ask-thread > .is-settled {
+    animation: none;
   }
 
   .ask-mic.is-listening::before {
