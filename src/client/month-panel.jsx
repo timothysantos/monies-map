@@ -35,6 +35,8 @@ import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { selectMonthInsightEntries } from "./month-insight-facts";
+import { selectMonthSpendingMix } from "./month-spending-mix";
+import { SpendingMixSection } from "./spending-mix-section";
 import { buildMonthSignals, monthCalmLines, MONTH_TRIVIA_ROTATION } from "../domain/money-signals/month-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
@@ -216,6 +218,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     () => monthService.withAccountHealth(visibleAccounts, view.accountPills),
     [view.accountPills, visibleAccounts]
   );
+  // Spending Mix for this month, from the Month page DTO (no request).
+  const monthSpendingMix = useMemo(() => selectMonthSpendingMix(view.monthPage), [view.monthPage]);
   // The check-in counts the entries the Actual spend card counts (a person's
   // own, in the selected scope), not every household entry the DTO carries.
   const insightEntries = useMemo(
@@ -1482,6 +1486,20 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         checkIn={checkIn}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-month"
+      />
+
+      {/* The Summary tab's picked month drives Spending Mix: this month's
+          spending by category, read from the Month page already loaded. It
+          sits after the money insights (the read-out) and before the plan
+          tables (the editing work), as on All months it sits above Intent
+          vs Outcome. A card's arrow opens Entries for the category in this
+          month and scope, like the tables' Actual drilldowns. */}
+      <SpendingMixSection
+        className="month-spending-mix"
+        donutData={monthSpendingMix.data}
+        categories={categories}
+        onCategoryAppearanceChange={onCategoryAppearanceChange}
+        onOpenEntriesForCategory={(categoryName) => handleOpenEntriesForActual({ categoryName })}
       />
 
       <MonthPlanStack

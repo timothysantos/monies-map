@@ -240,7 +240,7 @@ test.describe("Summary tab month choice on a phone", () => {
     }
   });
 
-  test("Spending Mix follows the month choice: All months shows the whole range, with no month chips of its own", async ({ page }) => {
+  test("Spending Mix follows the month choice: All months shows the whole range and a picked month that month, with no month chips", async ({ page }) => {
     const summary = await rangeSummary(page);
     // An old link that focused one month no longer narrows the Spending Mix.
     await page.goto(`${SUMMARY_URL}&summary_focus=${summary.rangeMonths.at(-1)}`);
@@ -254,12 +254,17 @@ test.describe("Summary tab month choice on a phone", () => {
     const top = summary.categoryShareChart[0];
     await expect(rows.first()).toContainText(moneyFormatter.format(top.valueMinor / 100));
 
-    // A picked month is the Month page, which has no Spending Mix.
+    // A picked month is the Month page: its Spending Mix shows that month
+    // only (tests/e2e/month-spending-mix.spec.js covers it in full).
+    const newest = summary.rangeMonths.at(-1);
+    const newestShare = summary.categoryShareByMonth.find((item) => item.month === newest).data;
     await page.locator(".mobile-context-sticky-wrap").getByRole("button", { name: /All months/ }).click();
     await page.getByRole("dialog", { name: "Pick a month" }).locator(".summary-month-tile").first().click();
-    await expect(page).toHaveURL(/\/month\?/);
+    await expect(page).toHaveURL(new RegExp(`/month\\?.*month=${newest}(&|$)`));
     await expect(page.locator(".month-panel-head")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Spending Mix" })).toHaveCount(0);
+    const monthMix = page.locator(".month-panel .chart-card").filter({ has: page.getByRole("heading", { name: "Spending Mix" }) });
+    await expect(monthMix.locator(".share-row")).toHaveCount(newestShare.length);
+    await expect(monthMix.locator(".summary-focus-button")).toHaveCount(0);
   });
 });
 
