@@ -32,8 +32,23 @@ export function invalidateAppDataCache() {
   appDataReadyPromise = null;
 }
 
-export function primeAppDataCache(demo: DemoSettings) {
-  appDataReadyPromise = Promise.resolve(demo);
+// A demo reset (reseed or empty state) clears and refills the same tables
+// as a cold start's seed (initializeAppData), so the two run one after the
+// other: the reset waits for a seed in flight, and a request that arrives
+// during the reset waits for it instead of starting a seed of its own.
+export async function resetAppData(reset: () => Promise<DemoSettings>): Promise<DemoSettings> {
+  const previous = appDataReadyPromise;
+  const next = (previous ? previous.catch(() => undefined) : Promise.resolve()).then(reset);
+  appDataReadyPromise = next;
+  try {
+    return await next;
+  } catch (error) {
+    // A failed reset must not leave every later request failing with it.
+    if (appDataReadyPromise === next) {
+      appDataReadyPromise = null;
+    }
+    throw error;
+  }
 }
 
 export async function loadAppShellContext(

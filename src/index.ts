@@ -5,7 +5,7 @@ import {
 } from "./domain/app-shell-dto";
 import {
   invalidateAppDataCache,
-  primeAppDataCache
+  resetAppData
 } from "./domain/app-shell";
 import type { StatementFixDto, StatementNoticeDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
@@ -485,8 +485,7 @@ export default {
       if (!canUseDemoControls(env, url)) {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
-      const demo = await reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH, env.DEMO_DATASET);
-      primeAppDataCache(demo);
+      const demo = await resetAppData(() => reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH, env.DEMO_DATASET));
       return json({ ok: true, demo });
     }
 
@@ -494,8 +493,7 @@ export default {
       if (!canUseDemoControls(env, url)) {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
-      const demo = await enterEmptyState(env.DB);
-      primeAppDataCache(demo);
+      const demo = await resetAppData(() => enterEmptyState(env.DB));
       return json({ ok: true, demo });
     }
 
