@@ -13,7 +13,27 @@ Route entry:
 - `/entries`
 
 The route state carries the active view, month, and entry filters. The browser
-location is the source of truth for the current filter contract.
+location is the source of truth for the current filter contract, read and
+written in one module (`entry-filter-params.js`, shared with the Ask page's
+answers):
+
+- `entry_search` (words every row must contain), `entry_wallet` (account
+  ids, repeated), `entry_category` (names, repeated), `entry_type`,
+  `entry_id` (the check-in's links), `entries_scope`;
+- `entry_min` / `entry_max`: an amount limit in dollars, compared with the
+  amount the row shows for the view. Only an Ask answer sets them; the
+  filters' Reset clears them;
+- `from_ask=1`: the filters came from an Ask answer's `Open in Entries`.
+
+None of these ride along to another tab (`sanitizeTabParams`).
+
+The From Ask chip (`entries-ask-chip.jsx`, design.md "From Ask chip") shows
+while `from_ask=1` and a list filter are in the URL: "From Ask · Groceries ·
+over $50.00 ✕". It names the filters as the URL now has them. Its main
+button goes back to `/ask` (view, month and scope), where the conversation
+is as it was; ✕ removes the list filters and `from_ask` and keeps the view,
+month and scope. On a phone it floats just above the View and scope bar,
+left of the + button; on a wide screen it sits at the top of the list.
 
 `editing_entry=<entryId>` links one entry's editor (from Splits, Settings,
 import review, a reload, or Add to splits keeping the open entry in the
@@ -64,7 +84,9 @@ evidence.
 
 Entries owns:
 
-- route filter parsing
+- route filter parsing (through `entry-filter-params.js`) and the list
+  filtering and totals (`entry-filtering.js`), which the Ask page's answers
+  run too, so an answer and this page always agree
 - row editing
 - quick-entry persistence
 - add-to-splits behavior
@@ -72,7 +94,9 @@ Entries owns:
 
 ## Audit Status
 
-Current status: aligned with tests and runtime behavior.
+Current status: aligned with tests and runtime behavior
+(`tests/ask-filter-answer.test.mjs` proves an Ask answer equals this page
+for the same filter; `tests/e2e/ask-search.spec.js` the From Ask chip).
 
 Watch area:
 

@@ -7,8 +7,9 @@ This doc describes the Ask page flow in three parts:
 - data flow
 
 The Ask page is one full page (not a sheet) where a person adds an entry by
-hand, from a typed or spoken sentence or from a receipt photo, and sees what
-changed since they last looked. Its visual design is in `design.md` ("Ask page").
+hand, from a typed or spoken sentence or from a receipt photo, finds entries
+by asking ("grab rides in september"), and sees what changed since they last
+looked. Its visual design is in `design.md` ("Ask page").
 
 ## Route Flow
 
@@ -32,14 +33,18 @@ Route entry:
 wide screen, and the shell never moves Ask's `month` to a tracked month (the
 Shortcut's entry month stays the entry's). `mode`, `from` and `saved_entry`
 never leak to another tab (`sanitizeTabParams`). A new way in (`mode`, `from`,
-`saved_entry` or `split_group` changing) starts a new conversation.
+`saved_entry` or `split_group` changing) has its own conversation, kept in
+the Ask conversation store (see "Continuity"); the Ask tab reopens the
+newest one in progress (an add-mode card carries its `mode`, `from` and
+`split_group` in the tab's link).
 
 On a phone the tab bar reads Summary, Entries, Splits, Ask, ···; Month sits
 under More pages until the Month tab is retired (branch
 `merge-summary-month`). On a wide screen the Ask tab is hidden for now (a
 docked panel comes later) and `/ask` renders in the main area.
 
-Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`), the entry's
+Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`, and an
+answer's `Open in Entries`, see "Search and filter"), the entry's
 editor (`Open this entry`: `/entries?editing_entry=<id>` in the entry's month),
 Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
 `/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
@@ -51,18 +56,23 @@ Splits expense dialog through `?split_action=add-expense`).
 Ask state is split between:
 
 - route state: the way in (`readAskIntent`) and the view, month and scope;
-- workflow state in `AskConversation` (`ask-panel.jsx`): the conversation
-  (the person's messages, receipt thumbnails, the page's notes), the one
-  entry card, what is being read or saved, which picker or detail fold is
-  open;
+- the conversation, owned by the Ask conversation store
+  (`ask-conversation-store.js`, see "Continuity"): the person's messages,
+  receipt thumbnails (memory only), the page's notes, answers, the one
+  entry card and where it sits in the thread, the words typed but not sent,
+  and an open follow-up (a filter question or a view change);
+- workflow state in `AskConversation` (`ask-panel.jsx`): what is being read
+  or saved, which picker or detail fold is open;
 - the card itself, a pure state machine (`ask-card-model.js`): `draft` →
   `saving` → `saved`, back to `draft` on a failed save or Undo; its variant
   (expense, income, transfer); `filled` (which fields a sentence, a rule, AI
   or a receipt supplied); `questions`; the `share` switch; `saved` (entry,
   split expense and group ids).
 
-The chip row is derived from the mode and the card (`ask-chips.js`); nothing
-else in Ask holds chip state. A card being edited, read or saved, or the mic
+The chip row is derived from the mode, the card and the newest thing in the
+conversation (`ask-chips.js`: `buildAskChips`, then `buildFilterChips` for
+an answer, a follow-up question or a view change); nothing else in Ask holds
+chip state. A card being edited, read or saved, or the mic
 listening, reports the route busy, so no optional warmup runs under it.
 
 Voice input has its own small state machine (`ask-voice.js`,
@@ -71,14 +81,100 @@ Voice input has its own small state machine (`ask-voice.js`,
 Its words only ever change the message box (`composerText`); see "Voice
 input" below.
 
+### Continuity
+
+The conversation lives above the routes in the Ask conversation store
+(`ask-conversation-store.js`, design.md "Ask conversation store"), one per
+way in, at most three. The page reads and writes it only through the store
+(`useAskConversation`), so a reader result or a save that lands after the
+person left still lands in it.
+
+- Leaving Ask (another tab, a chip, the From Ask chip's way back) and coming
+  back restores the thread, the card with its filled fields, the composer
+  text and the scroll position (near the bottom, as it was). What was there
+  shows at once, without arrival motion.
+- A reload in the same browser tab restores it from sessionStorage
+  (`monies.askConversation.v1`): versioned, at most 60,000 characters
+  (oldest messages dropped first), and anything unreadable is dropped and
+  cleared. Never localStorage, never the server.
+- Never stored: photos (and any blob: or data: value), audio, and status
+  lines. A receipt's read fields stay in the card; its thumbnail leaves the
+  conversation with the page. A card that was saving comes back as a draft.
+- `New chat` (chat mode, once there is something to start over from)
+  clears that conversation. A saved card in add mode ends that visit: the
+  next + starts a new card. Undo and Save work as before.
+- While a conversation is in progress (something said, a card being
+  filled, words typed) and the person is on another tab, the Ask tab shows
+  a small accent dot, and its link reads "Ask, conversation in progress".
+  The shell reads only that flag, from `ask-conversation-presence.js` (also
+  in sessionStorage, so a reload shows it without loading Ask).
+
+### Search and filter
+
+A typed request is read on the device by the filter reader
+(`ask-filter-reader.js`): no request and no AI. It uses the people, wallets
+(active ones) and categories already loaded, and the view, scope and month
+Ask is looking at:
+
+- month words: this month, last month, a month name ("sep", "september",
+  "Sep 2026", "2026-09"; a month later than this one means last year's),
+  "today" and "yesterday" (that day's date as search words);
+- people ("serene's") and the household; scope words (shared, direct or
+  personal, direct and shared); entry type words (income, transfers,
+  spending, spent);
+- wallets by full name, brand or bank ("citi", "posb"); categories by name,
+  singular or plural ("groceries", "public transport");
+- amount limits: over, above, more than, at least, under, below, less than,
+  between X and Y (compared with the amount the row shows for the view);
+- anything left (not a filler word) as search words ("grab").
+
+It returns one of:
+
+- a filter: an answer card (below);
+- a follow-up question when something could mean two things: a word that
+  fits several wallets or categories (one chip each, then "All of them"),
+  two months ("Entries shows one month at a time"), two people, a scope on
+  the household view, or an unknown category with near names. Questions
+  are asked one at a time; the chips are the only options;
+- a view change ("switch to Serene", "household view", "shared only"): a
+  "Switch to …" chip that sets the route's `view` and `scope`, the same
+  change the View and scope bar makes. Nothing changes until it is tapped;
+- unknown (a category named as a category that does not exist): a note;
+- none: an entry sentence (an amount without over or under, or today and
+  yesterday outside a question) goes to the entry reader as before, and a
+  question it cannot read gets the "not answered yet" note. While a card
+  is being filled, a plain sentence ("groceries", "split with Serene") is a
+  change to the card; only a question, or a request with a month,
+  someone's name with 's, or an amount limit, is read as a search.
+
+The answer card (`ask-answer-card.jsx`) leads with the total (Spent, Income
+or Transfers out, as the Entries totals strip names it, and the view's
+share when it differs), the count ("6 entries") and the filters as chips
+(month, person and scope, category, wallet, type, amount, search). Its
+numbers come from the Entries page DTO for that view and month: borrowed
+from the query cache, else read through the shell's lease
+(`fetchQueryWithLease`). The filter goes through the Entries URL it opens
+(`buildEntriesFilterSearch`) and back through the Entries page's own reader
+(`readEntriesFilterParams`) and filtering (`getEntryDerivedData` in
+`entry-filtering.js`), so the card and the page agree by construction. Only
+the filter is kept in the conversation; the numbers are read again each
+time it shows. A month with no entries at all says so and offers no Open
+in Entries (Entries would show the nearest month).
+
+`Open in Entries` (the answer's first chip, filled) opens
+`/entries?view&month&scope&entries_scope&entry_search&entry_wallet…&entry_category…&entry_type&entry_min&entry_max&from_ask=1`.
+`from_ask=1` shows the From Ask chip on Entries (`entries-flow.md`); its
+back button returns to `/ask` with the view, month and scope, where the
+conversation is as it was.
+
 ## Data Flow
 
 Ask reads nothing of its own:
 
 - the shell's people, wallets and categories (`appShell`, reference data);
 - the Entries page DTO of a view and month (`GET /api/entries-page`), for
-  the split groups the Splits switch offers and for the Shortcut's saved
-  entry. Read from the query cache when Entries or Splits loaded it, else
+  the split groups the Splits switch offers, for the Shortcut's saved
+  entry, and for an answer card's numbers. Read from the query cache when Entries or Splits loaded it, else
   fetched only when the card needs it, through the shell's required read
   (`fetchRoutePageResponse`, `fetchQueryWithLease` with the Entries route's
   query key), so going back to Entries joins that data;
@@ -158,7 +254,8 @@ the saved card and shows the retryable refresh notice.
 
 Ask owns:
 
-- the conversation and the entry card;
+- the conversation and the entry card (through the Ask conversation store);
+- the filter reader and the answer card;
 - the chip row and the question wording (the readers send structured
   questions; the client words them);
 - the receipt photo while it is on screen (memory only, revoked on leave).
@@ -166,6 +263,8 @@ Ask owns:
 Ask does not own:
 
 - any page DTO (Entries and Summary data are borrowed from the cache);
+- the Entries filtering or the filter URL (`entry-filtering.js`,
+  `entry-filter-params.js`, shared with Entries);
 - the create, delete or split rules (the existing routes and the Entries
   composer's create path).
 
@@ -187,6 +286,11 @@ Ask does not own:
 - The + inside the field opens an in-app menu (Take a photo, Choose a
   photo, Paste); each glyph keeps a 44 × 44 px hit area and every
   placeholder fits one line at 375 px.
+- An answer's total and count equal the Entries page `Open in Entries`
+  opens; a request that could mean two things asks with chips; a view or
+  scope change waits for its chip.
+- Leaving Ask and coming back, or reloading the tab, keeps the
+  conversation; the Ask tab shows a dot meanwhile.
 - No system alert, confirm or prompt anywhere.
 
 ## Persisted / Query Contract
@@ -197,21 +301,31 @@ Ask does not own:
 - A transfer card posts one row: the From wallet's side (or the To wallet's
   when turned round); the other wallet is shown but not posted, for the
   later transfer match, as the entry draft defines.
-- Nothing about the conversation, sentences, photos, voice clips or spoken
-  words is stored or logged.
+- The conversation is kept only in this browser tab's sessionStorage (text,
+  the card's fields, filters; never photos, audio or status lines) and is
+  gone when the tab closes. Nothing about it, the sentences, photos, voice
+  clips or spoken words is sent to be stored or logged.
 
 ## Audit Status
 
 Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,
 `tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
-`tests/shortcut-gateway.test.mjs`, `tests/e2e/ask-page.spec.js`,
-`tests/e2e/ask-voice.spec.js`, `tests/e2e/ask-composer.spec.js`) and runtime behaviour on a phone.
+`tests/shortcut-gateway.test.mjs`, `tests/ask-filter-reader.test.mjs`,
+`tests/ask-filter-answer.test.mjs`, `tests/ask-conversation-store.test.mjs`,
+`tests/e2e/ask-page.spec.js`, `tests/e2e/ask-voice.spec.js`,
+`tests/e2e/ask-composer.spec.js`, `tests/e2e/ask-search.spec.js`, the last
+also in WebKit on an iPhone 13 profile) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
 
-- Questions typed in chat mode are not answered yet (no answering endpoint);
-  the page says so instead of reading them as entries.
+- Questions that are not a search or a filter are not answered yet (no
+  answering endpoint); the page says so instead of reading them as entries.
+- The filter reader has no AI gap-filler: a request it cannot read gets the
+  "not answered yet" note. A later optional AI reader would be an explicit
+  action with a strict schema (AGENTS.md "Optional AI Assistance").
+- A reload while a save is in flight brings the card back as a draft; if
+  that save had reached the server, saving again would add it twice.
 - The two reader endpoints are stubbed in the browser tests until their
   branches land; `ask-api.js` accepts both the branch shape and the brief's
   flat shape.

@@ -1695,6 +1695,25 @@ calling `@cf/openai/whisper-large-v3-turbo`. The test Worker has AI off, so
 fallback. To try voice by hand in desktop Chrome, use `localhost` (the
 microphone needs a secure origin) and allow the microphone.
 
+The conversation (thread, card, typed words, an open follow-up) lives in
+`src/client/ask-conversation-store.js`, a module-level owner the page binds
+with `useSyncExternalStore`, so leaving Ask or reloading the tab restores
+it. It is mirrored to sessionStorage (`monies.askConversation.v1`, at most
+60,000 characters, never photos, audio or status lines) and publishes
+whether a conversation is in progress to the tiny
+`ask-conversation-presence.js`, the only part in the first screen, for the
+Ask tab's dot (`tests/ask-conversation-store.test.mjs`).
+
+Search and filter questions are read on the device by
+`src/client/ask-filter-reader.js` (no request, no AI) from the people,
+wallets and categories already loaded; `tests/ask-filter-reader.test.mjs`
+holds the scenario table. An answer's numbers go through the Entries URL it
+opens and back through the Entries page's own reader and filtering
+(`entry-filter-params.js`, `entry-filtering.js`, `ask-filter-answer.js`), so
+they always match the Entries page (`tests/ask-filter-answer.test.mjs`,
+`tests/e2e/ask-search.spec.js`). An answer adds `entry_min` / `entry_max`
+and `from_ask=1` to the Entries URL; the last shows the From Ask chip.
+
 ## How do Money insights work?
 
 Money insights (the "check-in" in code: `money-signals/checkin.ts`,

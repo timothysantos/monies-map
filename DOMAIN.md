@@ -805,6 +805,20 @@ Canonical terms:
   message field for the person to check and send; never sent by itself.
   The browser's own speech recognition first; a `voice clip` (at most 30 s,
   written down by the transcribe route) only in a browser without one
+- `conversation`: what has been said on Ask (the person's messages, the
+  page's notes, answers, the entry card and the words typed but not sent),
+  one per way in. Kept for the browser tab (`Ask conversation store`,
+  sessionStorage, never photos or audio) until `New chat`
+- `filter request`: a typed request such as "serene's shared groceries last
+  month", read by the deterministic `filter reader` into an `Entries filter`
+  (month, view, scope, search words, categories, wallets, entry type and an
+  optional amount limit). Never a guess: what could mean two things becomes
+  a `follow-up question` with chips
+- `answer card`: an Ask answer to a filter request. Its total and count come
+  from the Entries page DTO through the Entries page's own filtering, so
+  `Open in Entries` shows the same rows and total
+- `From Ask chip`: the chip on Entries naming the filters an answer set; it
+  goes back to the conversation, and its ✕ clears those filters
 
 ### Entry Card
 

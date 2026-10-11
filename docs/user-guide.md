@@ -51,7 +51,8 @@ appear in this order:
 7. **FAQ**: this guide.
 
 On a phone there is one more: **Ask**, where you add an entry by typing it,
-from a receipt photo, or by filling in a card ([Ask](#ask)).
+from a receipt photo, or by filling in a card, and find entries by asking
+for them ([Ask](#ask)).
 
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move between months or ranges and hide or show
@@ -367,6 +368,11 @@ navigation, and you can swipe between months.
 
 ![Entries on a phone](/faq/guide/phone/thumbs/phone-entries.webp)
 
+When you open Entries from an answer on Ask, a **From Ask** chip floats just
+above the View and scope bar and names what the list is showing, such as
+"From Ask · Groceries". Tap it to go back to your conversation on Ask; tap
+its **✕** to clear those filters and see the whole month again.
+
 ## Splits
 
 Splits has an intentional **dark orange theme**, on desktop and phone, so you
@@ -419,8 +425,8 @@ still opens the expense form.
 
 Ask is on the phone's bottom navigation. It is a page for adding an entry
 quickly, by typing or saying it, from a receipt photo, or by filling in a
-card. On a
-computer it opens from the **+** button on Entries.
+card, and for finding entries by asking, such as "grab rides in september".
+On a computer it opens from the **+** button on Entries.
 
 ![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
 
@@ -433,7 +439,10 @@ computer it opens from the **+** button on Entries.
   for more.
 - **The message box**: type a sentence such as "Koufu lunch $12.50, Citi",
   say it with the mic inside the box, or use the **+** inside the box for a
-  receipt photo.
+  receipt photo. Ask for entries the same way: "income in August", "food
+  over $50 this month".
+- **New chat**: at the top right once you have said something. It clears
+  the conversation and starts again.
 
 When you are adding an entry, a **card** shows it as it will be saved: the
 category, what it was, the amount (red for spending, green for money in,
@@ -482,8 +491,44 @@ The card is marked **Saved** and the suggestions change:
 
 ![A saved entry on Ask, with Back to Entries, Open this entry and Undo](/faq/guide/phone/thumbs/phone-ask-saved.webp)
 
-Ask doesn't answer questions about your money yet; use Summary, Month and
-Entries for that.
+### Find entries by asking
+
+Type what you are looking for, the way you would say it:
+
+- "How much on public transport?" or "groceries last month"
+- "Serene's shared groceries in September"
+- "income in Aug", "transfers to POSB", "show my Citi card spending"
+- "food over $50 this month", or "under $20", or "between $20 and $50"
+- "grab rides in September" finds entries that mention Grab
+
+Ask answers with a card: the total, how many entries it counts, and what it
+looked for (the month, whose entries, the category, the wallet). The total
+is the same as Entries shows for that list. **Open in Entries** opens
+exactly that list; the **From Ask** chip there brings you back.
+
+![An answer on Ask: the total for Public Transport this month, with Open in Entries](/faq/guide/phone/thumbs/phone-ask-answer.webp)
+
+![Entries opened from Ask, with the From Ask chip above the View and scope bar](/faq/guide/phone/thumbs/phone-entries-from-ask.webp)
+
+If what you typed could mean more than one thing (two cards both called
+"Citi", two months), Ask asks which and gives you buttons to choose; it
+never guesses. Asking to "switch to Serene" or for "shared only" gives you a
+**Switch to …** button; nothing changes until you tap it. Ask works these
+answers out on your phone from the entries it already has; nothing you type
+is sent anywhere for this.
+
+Other questions about your money, such as "am I on track?", aren't answered
+yet; use Summary, Month and Entries for those.
+
+### Your conversation is kept
+
+If you go to another page and come back to Ask, your conversation is where
+you left it: what you said, the answers, a card you were filling in and
+anything you had typed. It stays until you close the browser tab, or tap
+**New chat**. While a conversation is waiting for you, the Ask button at
+the bottom shows a small orange dot. Receipt photos are not kept: the card
+keeps what was read from the photo, but the photo itself goes when you
+leave Ask.
 
 ## Imports
 
