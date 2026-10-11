@@ -1540,6 +1540,21 @@ the last successful bootstrap payload from local browser storage immediately and
 then refresh it in the background. Any write that changes app data clears that
 stored bootstrap copy so stale ledger state does not survive edits or imports.
 
+## How are sheets and screen tops laid out?
+
+They follow one design language, Lead · Support · Detail (design.md): one
+lead card with the figure you look at first, a few Support chips inside it,
+Detail rows for the fields you change, and the main action in a bar at the
+bottom of a sheet. The blocks are `LeadCard`, `MetaChip`, `DetailRows`,
+`DetailRow`, `MoreDetails` and `BottomActions` in
+`src/client/ui/lead-support-detail.jsx` (with its own tokens-only CSS); a
+caller passes the copy, the controls and the handlers. The Summary top
+(`summary-lead.jsx`) and the Month plan-row sheet (`month-plan-sheet.jsx`)
+use them. `tests/lead-support-detail.test.mjs` renders each block's states;
+`tests/e2e/lead-support-detail.spec.js` checks the plan sheet on an iPhone
+13 profile (tagged `@webkit`), its 44px tap targets and the Summary lead's
+figures. The colour guard reads `src/client/ui` too.
+
 ## What does background prefetching do?
 
 After the first usable screen renders, the app also uses browser idle time to

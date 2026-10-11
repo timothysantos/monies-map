@@ -53,7 +53,13 @@ Summary data comes from:
 - `GET /api/summary-account-pills`
 
 The page uses the summary page DTO for range metrics, category share, and
-month cards. It uses the account-pill DTO for account health and drilldown.
+month cards. The range metrics show as one lead card and two pills
+(`summary-lead.jsx`, design.md "Lead · Support · Detail"): spend against
+plan with a bar, the percent of plan and how far under or over, then Income
+(with planned income) and Saved (with the savings target). They read the
+DTO's six metric cards (`buildSummaryLeadModel`), so the figures are the
+cards' own; `tests/e2e/lead-support-detail.spec.js` compares them with the
+API on a phone and a desktop. It uses the account-pill DTO for account health and drilldown.
 Spending Mix shows the whole range (`categoryShareChart`); it has no month
 chips of its own. The month sheet and the desktop month row read the same
 DTO's `rangeMonths` and `months` (`realExpensesMinor` against
