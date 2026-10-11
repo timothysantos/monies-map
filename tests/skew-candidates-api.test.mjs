@@ -289,6 +289,34 @@ test("an open group balance paid by PayNow is a settlement candidate with the ba
   });
 });
 
+test("a one-sided settlement that names nobody is hidden unless include=medium asks for it", async (t) => {
+  const { db, api, fetch } = await openSeededDatabase(t, template);
+  await setUpHousehold(api);
+  const settlement = await simplifySettlement(api, db);
+  const outflowId = await createEntry(api, {
+    date: "2026-05-22", description: "FAST PAYMENT 0412", accountName: OWN_ACCOUNT[settlement.fromPersonId], categoryName: "Other",
+    amountMinor: settlement.amountMinor, entryType: "expense", ownerName: NAME[settlement.fromPersonId]
+  });
+  const ours = (payload) => payload.candidates.filter((candidate) => candidate.entryIds.includes(outflowId));
+
+  const hidden = await getCandidates(fetch, { view: "household", month: MONTH });
+  assert.deepEqual(ours(hidden.payload), []);
+  assert.deepEqual(hidden.payload.totals, { spendingMinor: 0, incomeMinor: 0 });
+
+  const shown = await getCandidates(fetch, { view: "household", month: MONTH, include: "medium" });
+  const [candidate] = ours(shown.payload);
+  assert.equal(ours(shown.payload).length, 1);
+  assert.equal(candidate.kind, "settlement");
+  assert.equal(candidate.confidence, "medium");
+  assert.equal(candidate.bothSidesFound, false);
+  assert.deepEqual(candidate.settlement, { source: "settlement_checkpoint", checkpointId: settlement.checkpointId, anchorDate: "2026-05-20" });
+  assert.deepEqual(shown.payload.totals, { spendingMinor: settlement.amountMinor, incomeMinor: 0 });
+
+  // An unknown include value shows nothing extra.
+  const unknown = await getCandidates(fetch, { view: "household", month: MONTH, include: "low" });
+  assert.deepEqual(ours(unknown.payload), []);
+});
+
 test("the route only answers GET", async (t) => {
   const { fetch } = await openSeededDatabase(t, template);
   const response = await fetch("/api/skew-candidates?view=household&month=2026-05", { method: "POST" });

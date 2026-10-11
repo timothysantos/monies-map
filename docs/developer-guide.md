@@ -2078,7 +2078,9 @@ open activity, for a group balance), an own-account move within 3 days,
 accounts owned by one person, and never an entry that is already linked.
 Each candidate carries its reasons, how much it skews the view's spending
 and income for the month, and the existing routes that fix it (link as a
-transfer, then match the settlement). `tests/skew-candidates.test.mjs` and
+transfer, then match the settlement). A settlement where only one side was
+found and its description names nobody is `medium` confidence and hidden
+by default; add `&include=medium` to see those too. `tests/skew-candidates.test.mjs` and
 `tests/skew-candidates-api.test.mjs` hold the rules and their refusals.
 
 ## Why do notes matter so much?

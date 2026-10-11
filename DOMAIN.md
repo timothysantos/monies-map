@@ -1181,7 +1181,10 @@ Rules:
   person's view
 - `confidence` is `high` when both sides are found or the one side's
   description names the other person, otherwise `medium`; an own transfer
-  with two equally close receiving entries is `medium`
+  with two equally close receiving entries is `medium`. A `medium`
+  settlement (one side, naming nobody) is left out of the response and its
+  totals unless the caller asks with `include=medium` (for a later review
+  screen); it still holds its entry, so pairing is the same either way
 - each candidate lists its reasons (same amount, days from the settlement or
   apart, whose accounts, names in the description, how each entry is
   counted) and the existing routes that resolve it, in order: link as a
@@ -1192,8 +1195,9 @@ Rules:
   `/api/splits/matches/link-settlement`)
 
 Storage:
-- none: a projection served by `GET /api/skew-candidates?view=&month=&scope=`
-  (`SkewCandidatesDto`), never part of a page DTO
+- none: a projection served by
+  `GET /api/skew-candidates?view=&month=&scope=&include=medium`
+  (`SkewCandidatesDto`, `include` optional), never part of a page DTO
 
 ### Monthly Note
 

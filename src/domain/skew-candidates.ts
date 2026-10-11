@@ -81,6 +81,11 @@ export interface SkewCandidateInput {
   people: PersonDto[];
   settlementCheckpoints: SplitSettlementCheckpointDto[];
   groupBalances: SkewGroupBalance[];
+  // One-sided settlements whose description names nobody are `medium` and
+  // too weak to show by default; a review screen may ask for them. They are
+  // still found first either way, so an entry is paired the same with or
+  // without them.
+  includeMedium?: boolean;
 }
 
 export interface SkewCandidatesResult {
@@ -171,6 +176,7 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
   // this view and month is left out.
   const entryById = new Map(input.entries.map((entry) => [entry.id, entry]));
   const visible = found
+    .filter((candidate) => input.includeMedium || !isHiddenByDefault(candidate))
     .map((candidate) => ({ ...candidate, skew: skewForView(candidate, entryById, input) }))
     .filter((candidate) => candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0)
     .sort(compareCandidates);
@@ -186,6 +192,12 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
     ),
     omittedCandidateCount: Math.max(0, visible.length - MAX_SKEW_CANDIDATES)
   };
+}
+
+// A settlement candidate is medium only when one side was found and its
+// description names nobody.
+function isHiddenByDefault(candidate: SkewCandidateDto) {
+  return candidate.kind === "settlement" && candidate.confidence === "medium";
 }
 
 // Open group balances from the Splits projection seen by one person

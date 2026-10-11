@@ -1355,6 +1355,9 @@ export interface SkewCandidateDto {
   id: string;
   kind: SkewCandidateKind;
   // high: both sides found, or the one side names the other person.
+  // A medium settlement (one side, no name) is served only with
+  // `?include=medium`; a medium own transfer (two equally close receiving
+  // entries) is always served.
   confidence: "high" | "medium";
   amountMinor: number;
   currency: string;
@@ -1381,6 +1384,8 @@ export interface SkewCandidatesDto {
   month: string;
   scope: PersonScope;
   candidates: SkewCandidateDto[];
+  // Totals and omittedCandidateCount cover the candidates served for this
+  // request: hidden medium settlements count only with `?include=medium`.
   totals: { spendingMinor: number; incomeMinor: number };
   omittedCandidateCount: number;
 }

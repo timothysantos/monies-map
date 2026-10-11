@@ -140,7 +140,9 @@ Budget rules:
   groups, expenses, settle-ups and settlement checkpoints (with items and
   matches): 16 reads, no writes and no month refresh. It returns at most
   50 candidates (`omittedCandidateCount` counts the rest; totals cover all)
-  with descriptions bounded to 240 characters. Never add it to the app
+  with descriptions bounded to 240 characters. One-sided `medium`
+  settlements (naming nobody) are hidden unless `?include=medium` asks;
+  the reads are the same either way. Never add it to the app
   shell, a page DTO or warmup; a caller asks for it explicitly
 - page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
   `app` first because budget checks read the first `dur`

@@ -282,6 +282,7 @@ export default {
 
     // Read-only skew candidates for a view and month (DOMAIN.md "Skew
     // Candidate"); not part of any page or first-screen payload.
+    // `?include=medium` adds the one-sided settlements that name nobody.
     if (url.pathname === "/api/skew-candidates") {
       if (request.method !== "GET") {
         return json({ ok: false, error: "Skew candidates only answer GET." }, 405, { Allow: "GET" });
@@ -291,7 +292,12 @@ export default {
           env.DB,
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey(),
-          url.searchParams.get("scope")
+          url.searchParams.get("scope"),
+          {
+            includeMedium: url.searchParams.getAll("include")
+              .flatMap((value) => value.split(","))
+              .some((value) => value.trim() === "medium")
+          }
         ),
         timing
       );

@@ -189,12 +189,37 @@ test("only the payer's side imported: one-sided candidate that refiles the entry
   assert.deepEqual(result.totals, { spendingMinor: 18245, incomeMinor: 0 });
 });
 
-test("a one-sided candidate whose description names nobody is only medium confidence", () => {
-  const result = find({ entries: [payerOutflow({ description: "FAST PAYMENT 0412" })] });
+test("a one-sided candidate whose description names nobody is only medium confidence, shown only when asked for", () => {
+  const entries = [payerOutflow({ description: "FAST PAYMENT 0412" })];
 
+  // Hidden by default: one side and no name is too weak to show.
+  assert.deepEqual(find({ entries }), { candidates: [], totals: { spendingMinor: 0, incomeMinor: 0 }, omittedCandidateCount: 0 });
+
+  const result = find({ entries, includeMedium: true });
   assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].id, "settlement:split-checkpoint-may:entry-paynow-out:-");
   assert.equal(result.candidates[0].confidence, "medium");
+  assert.equal(result.candidates[0].bothSidesFound, false);
   assert.equal(result.candidates[0].reasons.some((reason) => reason.code === "counterparty_named"), false);
+  assert.deepEqual(result.totals, { spendingMinor: 18245, incomeMinor: 0 });
+});
+
+test("negative: hiding medium settlements keeps named one-sided settlements and medium own transfers", () => {
+  // A one-sided settlement that names the payee is high confidence and always shown.
+  const named = find({ entries: [payerOutflow()] });
+  assert.equal(named.candidates.length, 1);
+  assert.equal(named.candidates[0].confidence, "high");
+
+  // A hidden medium settlement still holds its entry, so the same entry is
+  // never offered as something else depending on the filter.
+  const hidden = find({
+    entries: [
+      payerOutflow({ description: "FAST PAYMENT 0412" }),
+      entry({ id: "entry-uob-in", date: "2026-05-13", accountId: "acct-uob-one", entryType: "income", categoryName: "Salary", amountMinor: 18245 })
+    ]
+  });
+  assert.deepEqual(hidden.candidates, []);
+  // Medium own transfers stay: see "two equally close receiving entries" below.
 });
 
 test("an amount one cent off the settlement is not a candidate", () => {

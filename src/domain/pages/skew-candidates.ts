@@ -20,11 +20,14 @@ import { loadRoutePageContext, resolveEffectiveMonth } from "../route-context";
 // counterparts across the month end), the account owners, the open
 // settlement checkpoints, and the open split group balances exactly as the
 // Splits page computes them, then leaves the matching to the pure finder.
+// One-sided `medium` settlements are left out unless `includeMedium` (the
+// route's `?include=medium`) asks for them.
 export async function buildSkewCandidatesDto(
   db: D1Database,
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey(),
-  selectedScope?: string | null
+  selectedScope?: string | null,
+  options: { includeMedium?: boolean } = {}
 ): Promise<SkewCandidatesDto> {
   const { household, categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const month = resolveEffectiveMonth(trackedMonths, selectedMonth);
@@ -65,7 +68,8 @@ export async function buildSkewCandidatesDto(
     accounts,
     people: household.people,
     settlementCheckpoints,
-    groupBalances
+    groupBalances,
+    includeMedium: options.includeMedium === true
   });
 
   return { viewId, label, month, scope, ...result };
