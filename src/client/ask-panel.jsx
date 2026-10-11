@@ -100,12 +100,18 @@ function threadItem(kind, fields = {}) {
 }
 
 // The page's conversation, read from and written to the Ask conversation
-// store. `restored` says the store already had it (the person came back).
+// store. `restored` says the store already had it (the person came back);
+// one this page itself just made is not "restored", even when React runs
+// the initializer twice (StrictMode).
+const conversationsMadeHere = new WeakSet();
 function useAskConversation(store, key, create) {
   const [initial] = useState(() => {
     const before = store.read(key);
     const conversation = store.begin(key, create);
-    return { conversation, restored: Boolean(before) && before === conversation };
+    if (conversation !== before) {
+      conversationsMadeHere.add(conversation);
+    }
+    return { conversation, restored: conversation === before && !conversationsMadeHere.has(conversation) };
   });
   const read = useCallback(() => store.read(key) ?? initial.conversation, [initial, key, store]);
   const conversation = useSyncExternalStore(store.subscribe, read, read);

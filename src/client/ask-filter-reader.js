@@ -15,6 +15,8 @@
 // docs/flows/ask-flow.md "Search and filter" has the contract;
 // tests/ask-filter-reader.test.mjs the scenarios.
 
+import { addDaysToIsoDate } from "./app-dates";
+
 /**
  * @typedef {{ month: string, viewId: string, scope: string, search: string, categories: string[], wallets: string[], type: "" | "expense" | "income" | "transfer", minAmountMinor: number | null, maxAmountMinor: number | null }} EntriesFilter
  * @typedef {{ key: string, label: string, patch: Partial<EntriesFilter> }} FilterOption
@@ -99,10 +101,6 @@ function addMonths(monthKey, delta) {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 }
 
-function shiftDate(isoDate, days) {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day - days)).toISOString().slice(0, 10);
-}
 
 function formatMonth(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
@@ -266,7 +264,7 @@ export function readFilterRequest(text, context, { cardOpen = false } = {}) {
       continue;
     }
     if (DATE_WORDS.has(token.text)) {
-      const date = shiftDate(context.today, DATE_WORDS.get(token.text));
+      const date = addDaysToIsoDate(context.today, -DATE_WORDS.get(token.text));
       months.add(date.slice(0, 7));
       dateSearch = date;
       dateWord = true;
