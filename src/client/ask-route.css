@@ -711,6 +711,81 @@
   }
 }
 
+/* Desktop Ask (ask-dock.jsx): the same page fills the docked panel or the
+   popup. The conversation scrolls inside it; the chips and composer stay
+   at its bottom; the header holds New chat, the expand control (popup) and
+   Close. */
+.ask-page.is-in-dock {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px var(--ask-dock-gutter) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.ask-page.is-in-dock .ask-thread {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 calc(-1 * var(--ask-dock-gutter));
+  padding: 2px var(--ask-dock-gutter) 12px;
+}
+
+.ask-page.is-in-dock .ask-bottom {
+  position: static;
+  background: transparent;
+  margin: 0 calc(-1 * var(--ask-dock-gutter));
+  padding: 8px var(--ask-dock-gutter) 12px;
+}
+
+.ask-page.is-in-dock .ask-chips {
+  margin: 0 calc(-1 * var(--ask-dock-gutter));
+  padding: 2px var(--ask-dock-gutter);
+}
+
+.ask-page.is-in-dock .ask-head h2 {
+  font-size: 1.7rem;
+}
+
+.ask-head.has-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+}
+
+.ask-head.has-actions > h2,
+.ask-head.has-actions > .ask-context {
+  grid-column: 1;
+}
+
+.ask-head-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  margin-top: -6px;
+  margin-right: -4px;
+}
+
+.ask-head-actions .ask-new-chat {
+  padding-right: 6px;
+}
+
+/* The popup's expand control: docks it beside the page. */
+.ask-dock-expand {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--accent-strong);
+  cursor: pointer;
+}
+
 /* A phone: Ask is a full page above the tab bar, with no header bar. The
    conversation scrolls; the chips and composer stay above the tabs. */
 @media (max-width: 760px) {

@@ -48,6 +48,7 @@ import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ErrorPanel } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
+import { AskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
@@ -125,9 +126,10 @@ const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
 // One Summary tab stands for two routes: /summary (All months) and /month (one
 // month of the range picked); see summary-month-choice.js. Primary tabs fill
 // the phone's bottom bar, the rest sit behind its ••• menu. Ask is a primary
-// tab on a phone only: a wide screen gets its own way in later (a docked
-// field), so there the tab is hidden for now (phoneOnly) and /ask opens from
-// the + and receipt buttons. The phone bar reads Summary, Entries, Splits, Ask.
+// tab on a phone only: a wide screen has its own way in, the Ask field at the
+// bottom right that opens the conversation beside the page (AskDock), so
+// there the tab is hidden (phoneOnly); /ask still opens from the + and
+// receipt buttons. The phone bar reads Summary, Entries, Splits, Ask.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary, routeIds: ["summary", "month"], primary: true },
   { id: "entries", path: "/entries", label: messages.tabs.entries, primary: true },
@@ -2214,6 +2216,53 @@ export function App() {
     selectedScope,
     syncAppShellAfterMutation
   ]);
+  // Desktop Ask (ask-dock.jsx): the Ask page beside the page on screen, in
+  // the dock's own conversation. It reports busy (a card being filled)
+  // under no route key, so optional work waits for it, but it never makes a
+  // route ready. Its view is the page's.
+  const askDockView = useMemo(
+    () => buildPageViewFromRouteData("ask", null, routeViewId, appShell),
+    [appShell, routeViewId]
+  );
+  const renderAskDockConversation = useCallback(({ layout, canExpand, intent }) => (
+    <RouteWorkProvider registry={routeWorkRegistry} routeKey={null}>
+      <AskPanel
+        placement={layout}
+        canExpand={canExpand}
+        intent={intent}
+        view={askDockView}
+        selectedMonth={selectedMonth}
+        selectedScope={selectedScope}
+        accounts={accounts}
+        categories={categories}
+        people={appShell?.household?.people ?? []}
+        trackedMonths={appShell?.trackedMonths}
+        shortcutSettings={appShell?.settingsPage?.shortcutSettings}
+        fetchEntriesPage={fetchAskEntriesPage}
+        onEntryMutation={broadcastEntryMutation}
+        onSplitMutation={broadcastSplitMutation}
+        runBackgroundRefresh={runBackgroundRefresh}
+        fetchRequiredQuery={fetchRequiredQuery}
+        routeUsable={routeWork.usable}
+      />
+    </RouteWorkProvider>
+  ), [
+    accounts,
+    appShell?.household?.people,
+    appShell?.settingsPage?.shortcutSettings,
+    appShell?.trackedMonths,
+    askDockView,
+    broadcastEntryMutation,
+    broadcastSplitMutation,
+    categories,
+    fetchAskEntriesPage,
+    fetchRequiredQuery,
+    routeWork.usable,
+    routeWorkRegistry,
+    runBackgroundRefresh,
+    selectedMonth,
+    selectedScope
+  ]);
   // The previous page stays on screen while the next one loads, so a crashed
   // screen retries both when a navigation starts and when its page settles.
   const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
@@ -3283,6 +3332,18 @@ export function App() {
             document.body
           )
         : null}
+
+      {/* Desktop Ask: the field at the bottom right, beside the + or receipt
+          button where there is one, and the panel or popup it opens. Not on
+          /ask itself, where the page is Ask, nor on a phone (its Ask tab). */}
+      {selectedTabId !== "ask" && pageView && referenceData ? (
+        <AskDock
+          besideFab={renderedTabId === "entries" || (renderedTabId === "splits" && pageView.id !== "household")}
+          intentProps={getNavIntentProps("ask")}
+          canLoad={routeWork.usable}
+          renderConversation={renderAskDockConversation}
+        />
+      ) : null}
     </main>
   );
 }

@@ -1,8 +1,8 @@
 import * as Popover from "@radix-ui/react-popover";
-import { ArrowUp, Camera, ClipboardPaste, Image, Mic, Plus, SquarePen } from "lucide-react";
+import { ArrowUp, Camera, ClipboardPaste, Image, Maximize2, Mic, Plus, SquarePen } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   addSavedEntryToSplits,
@@ -33,6 +33,7 @@ import { AskAnswerCard } from "./ask-answer-card";
 import { AskBriefCard } from "./ask-brief-card";
 import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
+import { getAskDockStore } from "./ask-dock-state";
 import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
@@ -61,9 +62,13 @@ import "./ask-route.css";
 // readers in ask-api.js; the card always works by hand. The composer's mic
 // (ask-voice.js) only fills the message box: the person checks and sends. Saving goes through
 // the Entries composer's create path.
+// On a desktop the same page also renders beside another page, in the Ask
+// dock (ask-dock.jsx): `placement` "docked" or "popup", with the way in
+// (`intent`) held by the dock instead of the URL, so a chip that would open
+// /ask changes the dock's conversation and the page beside it stays.
 export function AskPanel(props) {
   const [searchParams] = useSearchParams();
-  const intent = readAskIntent(searchParams);
+  const intent = props.intent ?? readAskIntent(searchParams);
   const conversationKey = askConversationKey(intent);
   // New chat remounts the conversation over a cleared store entry.
   const [chatRound, setChatRound] = useState(0);
@@ -145,9 +150,14 @@ function AskConversation({
   onSplitMutation,
   runBackgroundRefresh,
   fetchRequiredQuery,
-  routeUsable = false
+  routeUsable = false,
+  placement = "page",
+  canExpand = false
 }) {
   const queryClient = useQueryClient();
+  // Beside another page (the desktop dock) rather than at /ask.
+  const inDock = placement !== "page";
+  const location = useLocation();
   // The Claude credit status is read once Ask is first usable, never while
   // it loads; later busy moments (a card being edited) do not hide it.
   const [creditStatusEnabled, setCreditStatusEnabled] = useState(routeUsable);
@@ -466,7 +476,8 @@ function AskConversation({
     next.set("scope", pending.viewId === "household" ? "direct_plus_shared" : pending.scope);
     setPending(null);
     appendThread(threadItem("note", { text: askCopy.filter.nowShowing(viewLabel(pending.viewId, pending.scope)) }));
-    navigate({ pathname: "/ask", search: `?${next.toString()}` });
+    // In the dock, the page beside it changes view, as the header pills do.
+    navigate({ pathname: inDock ? location.pathname : "/ask", search: `?${next.toString()}` });
   }
 
   async function readSentence(text) {
@@ -715,18 +726,28 @@ function AskConversation({
     navigate({ pathname, search: `?${next.toString()}` });
   }
 
+  // Another way into Ask: the /ask route, or in the dock the dock's own
+  // conversation (the page beside it stays).
+  function openAsk(extra = {}) {
+    if (!inDock) {
+      goTo("/ask", extra);
+      return;
+    }
+    getAskDockStore().setIntent(readAskIntent(new URLSearchParams(Object.entries(extra).filter(([, value]) => value))));
+  }
+
   const actions = {
     scanReceipt: () => cameraInputRef.current?.click(),
     paste: () => void pasteFromClipboard(),
-    addEntry: () => goTo("/ask", { mode: "add", from: "ask" }),
-    addExpense: () => goTo("/ask", { mode: "expense", from: "ask" }),
+    addEntry: () => openAsk({ mode: "add", from: "ask" }),
+    addExpense: () => openAsk({ mode: "expense", from: "ask" }),
     back: () => {
       if (intent.from === "splits") {
         goTo("/splits", { split_group: intent.splitGroupId });
       } else if (intent.from === "entries") {
         goTo("/entries");
       } else {
-        goTo("/ask");
+        openAsk();
       }
     },
     variant: (variant) => changeVariant(variant),
@@ -839,6 +860,54 @@ function AskConversation({
   const showNewChat = !isAddMode && !isShortcut && Boolean(settledThread.length || card || composerText.trim() || pending);
   const answerProps = { queryClient, fetchEntriesPage, accounts, categories, people, trackedMonths };
 
+  // In the dock: the field hides once this conversation is here, the words
+  // typed into it (and a photo dropped on it) carry over once, and a
+  // person's open (or "/") puts focus in the message box.
+  useEffect(() => {
+    if (!inDock) return undefined;
+    const dock = getAskDockStore();
+    dock.setReady(true);
+    const handoff = dock.takeHandoff();
+    if (handoff.text) {
+      setComposerText(joinSpokenText(store.read(conversationKey)?.composerText ?? "", handoff.text));
+    }
+    if (handoff.file) {
+      void readReceipt(handoff.file);
+    }
+    const focusIfAsked = () => {
+      if (dock.takeFocusRequest()) composerRef.current?.focus();
+    };
+    focusIfAsked();
+    const unsubscribe = dock.subscribe(focusIfAsked);
+    return () => {
+      unsubscribe();
+      dock.setReady(false);
+    };
+    // Once per conversation shown in the dock.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inDock, conversationKey]);
+
+  // Escape closes the popup, unless something inside already handled it
+  // (a menu or picker) or the person is typing in a field on the page
+  // beside it; the docked panel, a fixture beside the page, closes only
+  // when focus is inside it. Focus then goes back to the Ask field.
+  const articleRef = useRef(/** @type {HTMLElement | null} */ (null));
+  useEffect(() => {
+    if (!inDock) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const active = document.activeElement;
+      const inside = Boolean(active && articleRef.current?.closest(".ask-dock")?.contains(active));
+      const typingOnPage = !inside && active instanceof HTMLElement && (active.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName));
+      if (inside || (placement === "popup" && !typingOnPage)) {
+        event.preventDefault();
+        getAskDockStore().close({ returnFocus: true });
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [inDock, placement]);
+
   // A new set of chips starts scrolled to its first chip (focus stays put).
   useLayoutEffect(() => {
     if (chipsRef.current) {
@@ -924,9 +993,17 @@ function AskConversation({
     void readSentence(text);
   }
 
+  const newChatButton = showNewChat ? (
+    <button type="button" className="ask-new-chat" onClick={onNewChat} disabled={Boolean(working)}>
+      <SquarePen size={16} aria-hidden="true" />
+      {askCopy.newChat}
+    </button>
+  ) : null;
+
   return (
     <article
-      className={`panel ask-page${isAddMode ? " is-add-mode" : ""}`}
+      ref={articleRef}
+      className={`panel ask-page${isAddMode ? " is-add-mode" : ""}${inDock ? ` is-in-dock is-${placement}` : ""}`}
       aria-labelledby="ask-page-title"
       onDragOver={(event) => {
         if ([...(event.dataTransfer?.types ?? [])].includes("Files")) {
@@ -935,15 +1012,22 @@ function AskConversation({
       }}
       onDrop={handleDrop}
     >
-      <header className={`ask-head${isAddMode ? " is-inline" : ""}${showNewChat ? " has-new-chat" : ""}`}>
+      <header className={`ask-head${isAddMode ? " is-inline" : ""}${showNewChat ? " has-new-chat" : ""}${inDock ? " has-actions" : ""}`}>
         <h2 id="ask-page-title">{title}</h2>
         <span className="ask-context">{contextLine}</span>
-        {showNewChat ? (
-          <button type="button" className="ask-new-chat" onClick={onNewChat} disabled={Boolean(working)}>
-            <SquarePen size={16} aria-hidden="true" />
-            {askCopy.newChat}
-          </button>
-        ) : null}
+        {inDock ? (
+          <span className="ask-head-actions">
+            {newChatButton}
+            {canExpand ? (
+              <button type="button" className="ask-dock-expand" aria-label={messages.askDock.expand} title={messages.askDock.expand} onClick={() => getAskDockStore().expand()}>
+                <Maximize2 size={18} aria-hidden="true" />
+              </button>
+            ) : null}
+            <button type="button" className="ask-dock-close" aria-label={messages.askDock.closeLabel} onClick={() => getAskDockStore().close({ returnFocus: true })}>
+              {messages.askDock.close}
+            </button>
+          </span>
+        ) : newChatButton}
       </header>
 
       <div ref={threadBoxRef} className="ask-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>

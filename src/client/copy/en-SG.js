@@ -73,6 +73,15 @@ export const messages = {
     faq: "FAQ",
     ariaLabel: "Dashboard sections"
   },
+  // The desktop Ask field and the panel or popup it opens (ask-dock.jsx).
+  askDock: {
+    fieldLabel: "Ask",
+    placeholder: "Ask, or drop a receipt…",
+    attach: "Add a receipt photo",
+    close: "Close",
+    closeLabel: "Close Ask",
+    expand: "Dock Ask beside the page"
+  },
   period: {
     month: "Month",
     year: "Range",
