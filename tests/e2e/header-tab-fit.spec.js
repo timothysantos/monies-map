@@ -113,7 +113,7 @@ test.describe("header on a narrow desktop window", () => {
         await openPage(page, path);
         const where = `${path} at ${width} px`;
         const header = await readHeader(page);
-        expect(header.tabHits.map((tab) => tab.name), where).toEqual(["Summary", "Month", "Entries", "Splits", "Imports", "Settings", "FAQ"]);
+        expect(header.tabHits.map((tab) => tab.name), where).toEqual(["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ"]);
         expect(header.tabHits.filter((tab) => !tab.left || !tab.centre || !tab.right), where).toEqual([]);
         expect(header.controls, where).toEqual([true, true, true, true]);
         // One row: the pills, the tabs and every period control share one
