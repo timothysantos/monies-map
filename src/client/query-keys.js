@@ -136,5 +136,10 @@ export const queryKeys = {
   },
   accountHealth({ accountId, month }) {
     return ["account-health", normalizeRecord({ accountId, month })];
+  },
+  // The Claude credit status (claude-credit-status.js): one per browser,
+  // not per view or month.
+  claudeCreditStatus() {
+    return ["claude-credit-status"];
   }
 };
