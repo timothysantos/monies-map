@@ -574,6 +574,53 @@ the same normalized ledger facts returns the existing entry; reusing it for
 different facts is a conflict. Bank imports continue to use import-row and
 reconciliation evidence rather than this API retry identity.
 
+### Entry Draft
+
+One typed sentence ("Koufu lunch $12.50 yesterday, Citi") read into the
+fields a new ledger entry needs, for the user to confirm. It is not a ledger
+entry and is never stored: it becomes one only when the user confirms and
+the client posts its create body to `/api/entries/create`.
+
+Canonical term:
+- `entry draft`
+
+Code:
+- `src/domain/entry-draft.ts` (`parseEntrySentence`, deterministic and pure)
+- `src/domain/entry-draft-context.ts` (read-only reference data)
+- `EntryDraftDto` in `src/types/dto.ts`
+- `POST /api/ai-assist/entry-draft`
+
+Field sources. Every field carries its value and where it came from:
+- `sentence`: read from the words typed (an amount, a date word, an account
+  name, a person, "with Serene", "came into").
+- `rule`: a category from the household's category match rules on the
+  description, as the Shortcut does.
+- `default`: filled because the sentence did not say: today's date, the
+  account from Default account priority (the card for other currencies for a
+  foreign amount, the first bank account for income, the payer's first
+  account for a shared expense someone else paid), the account's owner, an
+  even split, `Other` or `Other - Income`, `expense`, `direct`.
+- `ai`: filled by the optional AI gap-filler, only for an amount or
+  description the sentence left out, after validation (the amount stated in
+  the sentence, the description in its words). A `sentence`, `rule` or
+  `default` value always wins over AI.
+
+Important distinctions:
+- `missing` lists the create fields still unknown; `questions` are
+  structured follow-ups (field, reason, options) the client words. The draft
+  never guesses: two amounts, an account name matching several accounts, an
+  uneven split ("70/30"), "she paid" with no one named, an impossible or
+  conflicting date and an amount in another currency than the account's are
+  asked. A future date is kept but flagged and asked.
+- A foreign amount ("IDR 159,000") is kept as `foreignAmount`; the account
+  amount stays missing until confirmed, unlike a Shortcut `foreign currency
+  estimate`, which converts at the day's rate.
+- A shared hint is a suggestion of `shared ownership` with a share basis,
+  not a split write: the split expense is created by the normal create route
+  when the user saves.
+- A transfer draft records the outgoing side on the account money left; the
+  other account is `transferAccount`, for the normal transfer match later.
+
 ### Transaction Date & Reconciliation
 The system uses an event-first date model so planning and split workflows do
 not drift when the bank clears later:
@@ -1540,6 +1587,10 @@ These boundaries are important enough to preserve explicitly:
   never a ledger entry, category rule, statement checkpoint, reconciliation
   certificate, or transfer group until the user completes the existing review
   workflow.
+- Entry draft vs ledger entry:
+  an `entry draft` is a transient reading of a typed sentence with a source
+  per field. It is never stored, and only the user's confirmation, through
+  `/api/entries/create`, makes it a `ledger entry`.
 - Financial insight vs monthly note:
   a `Financial insight` is a transient explanation of the already-visible
   Summary, Month, Entries, or Splits figures. It updates with that view's

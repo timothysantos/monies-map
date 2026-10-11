@@ -234,6 +234,27 @@ removed). Their copy must distinguish full cash flow from a filtered
 investigation view and from split-settlement obligations, and must not
 invent forecasts, savings targets, or comparisons.
 
+The entry draft route (`POST /api/ai-assist/entry-draft`) is the pattern
+for an AI gap-filler over a deterministic answer. The pure parser
+(`parseEntrySentence` in `src/domain/entry-draft.ts`) runs first and its
+draft is always returned; `entryDraftWantsAi` allows AI only when the
+sentence named no amount at all or left no description (never for two
+amounts, an unknown currency or a foreign amount, which are the user's
+call). Then one allowance unit, 80 tokens, the redacted sentence only (no
+accounts, people, rules or settings), and the untrusted-data system prompt.
+`parseEntryDraftAiSuggestion` validates the answer like any input: an
+amount must be stated in the sentence (its digits, or number words), and
+every word of a description must be a sentence word. The merge re-runs the
+parser with the suggestion, so a deterministic value always wins and an AI
+value is marked `ai`. Reference data loads through `entry-draft-context.ts`
+(five reads, no ledger tables); the route writes nothing but the allowance
+counter, and only when AI is asked. A confirmed draft is saved by the client
+posting `createBody` to `/api/entries/create`. Proof:
+`tests/entry-draft.test.mjs` (scenario table with exact outputs and the
+never-guess cases) and `tests/ai-entry-draft-route.test.mjs` (AI off,
+missing, throwing, malformed, inventing and over its allowance each return
+the deterministic draft with no data write).
+
 Money insights (check-in) signals live in `src/domain/money-signals/`, one small pure
 function per signal returning `{ key, kind, weight, numbers, phrasings,
 action? }` or `null`, with its copy in the page's catalogue beside it. They

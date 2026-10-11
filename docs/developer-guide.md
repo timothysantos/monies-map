@@ -1580,7 +1580,8 @@ transfer matching, statement reconciliation, and the Import Inbox remain the
 source of truth.
 
 You can ask it to draft a Monthly Note, phrase a statement mismatch in simpler
-language, suggest category-rule drafts from existing categorized history, or
+language, suggest category-rule drafts from existing categorized history,
+fill a missing amount or description in an entry draft, or
 rank descriptions among candidates that the app has already constrained by
 account, amount, and date. Summary, Month, Entries, and Splits also show
 Money insights for the figures already on screen (see [How do Money
@@ -1630,6 +1631,28 @@ and private in-browser OCR first, including HSBC image statements. Only the
 locally extracted text is sent after you opt in; the original PDF is neither
 uploaded as a file nor stored. Fallback rows always start as **Needs review**
 and do not create a statement balance checkpoint automatically.
+
+**Entry drafts** (server groundwork; no screen calls it yet).
+`POST /api/ai-assist/entry-draft` with `{ "text": "Koufu lunch $12.50
+yesterday, Citi", "viewId": "person-…" }` returns `{ ok, draft, ai }`. The
+draft (`EntryDraftDto`) gives each create field with its source
+(`sentence`, `rule`, `default` or `ai`), a `missing` list, structured
+`questions` and `flags`, and, when nothing is missing, a `createBody` that
+`/api/entries/create` accepts unchanged. The reading is deterministic
+(`src/domain/entry-draft.ts`) and works with AI off: amounts and currencies
+(`$12.50`, `S$38.60`, `SGD 12.5`, `12 dollars`, `IDR 159,000`), date words
+(today, yesterday, a weekday meaning the most recent past one, `28 Sep`,
+`28/9`, `29/09/26`), account names, people, split words and transfer or
+income phrases. It never guesses: two amounts, an account name that matches
+several accounts, an uneven split, an unclear payer, a bad date and an
+amount in another currency are asked. AI is asked only when the sentence
+named no amount or left no description: one allowance unit, the redacted
+sentence alone, 80 tokens. Its answer fills only those gaps after
+validation (the amount must be stated in the sentence, the description must
+use its words), and when AI is off, failing, over its allowance or
+unusable, the deterministic draft comes back with `ai.available: false`
+and the reason. The route saves nothing; the user saves a confirmed draft
+through the normal create route.
 
 The app keeps only daily AI usage counters so it can stay within its configured
 allowance. It does not save prompts, model answers, original PDFs, credentials,

@@ -545,11 +545,26 @@ below): the headline is the bold fact and its think line as written. There
 is no AI rewording; the optional `/api/ai-assist/financial-insight` route was
 removed after it produced broken grammar in production.
 
+Entry drafts (backend groundwork for the future "Add or ask" card; no client
+calls it yet): `POST /api/ai-assist/entry-draft` takes `{ text, viewId? }`
+and returns `{ ok, draft: EntryDraftDto, ai }`. The deterministic parser
+(`src/domain/entry-draft.ts`) always answers, from read-only reference data
+(`entry-draft-context.ts`: accounts without balances, people, category names,
+category rules, the Shortcut's Default account priority and other-currency
+card). Only when the sentence named no amount or left no description does
+the route spend one allowance unit asking AI, sending the redacted sentence
+alone (300 characters, 80 tokens). The answer fills only those gaps, marked
+`ai`, after validation; anything else returns the deterministic draft with
+`ai.available: false` and the reason. The route writes nothing but the
+shared allowance counter: the user saves a confirmed draft through
+`/api/entries/create`, whose body the draft's `createBody` already matches.
+
 The Worker receives bounded, redacted text only. Statement fallback begins with
 browser-local PDF extraction and OCR; it sends extracted text after explicit
 consent and never uploads or stores the original binary. Model output is
 validated into drafts only: monthly note wording, pending category-rule
-suggestions, review-only statement rows, or semantic scores for candidates that
+suggestions, review-only statement rows, an entry draft's missing amount or
+description, or semantic scores for candidates that
 the deterministic matchers already selected. The ledger, D1 data, category
 rules, checkpoints, reconciliation calculations, and import inbox stay
 authoritative.

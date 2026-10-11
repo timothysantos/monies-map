@@ -99,6 +99,9 @@ a doc here in the same change.
   rule's "under $5" test against a repetition test, on real bank files.
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice.
+- [`audits/ai-entry-draft-audit.md`](audits/ai-entry-draft-audit.md):
+  entry draft parser and its optional AI gap-filler (privacy, cost, writes,
+  no-AI behaviour).
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):

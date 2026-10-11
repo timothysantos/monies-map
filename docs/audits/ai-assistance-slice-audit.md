@@ -46,6 +46,7 @@ use.
 | Category rule proposals | existing categories plus bounded, already-categorized merchant history | suggested pattern/category pairs | current deterministic suggestions and manual rule editor | user accepts through the existing rule editor |
 | Duplicate and transfer review | existing deterministic account/amount/date candidate set | ranked candidate references and explanation | current exact/probable/near matching and transfer review | never changes skip, merge, certification, or transfer links |
 | Import explanation | existing reconciliation breakdown and diagnostic row IDs | plain-language explanation and focus IDs | existing statement mismatch panels and diagnostic actions | no write path |
+| Entry draft gap-filler (2026-10-11, `ai-entry-draft-audit.md`) | the deterministic entry draft of one typed sentence | a missing amount or description, stated in the sentence | the deterministic draft and its questions | no write path; the user saves a confirmed draft through `/api/entries/create` |
 | Import plan and freshness | existing Import Inbox DTO | no AI dependency in this slice | current grouped bank-login Import Inbox, exact owner/account/period labels, and oldest-first review order | no write path |
 
 ## Privacy And Retention
