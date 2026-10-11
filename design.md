@@ -351,7 +351,9 @@ data in `claude-credit-status.js`. Flow:
   Apple Pay shortcut) shows the same sentence as text in the tone's ink
   (plain ink when fine), the two actions as neutral pills, and "Last
   checked …" muted; with Claude not set up, only the calm line "Claude
-  isn't set up, so Ask uses the basic model."
+  isn't set up, so Ask uses the basic model."; set up but not answered yet
+  (state unknown, no failure recorded), only "Claude hasn't been used
+  yet."
 
 ## Lead · Support · Detail
 
@@ -498,7 +500,10 @@ Where it is used:
 - The Entries edit sheet and inline editor (`entry-edit-card.jsx`). Lead:
   the category bubble (opens the category editor), what it was and the
   amount, typed in place unless a statement certified them (then read-only,
-  with the existing lock line under the card). The amount field shows
+  with the short lock line under the card, "Bank details are locked to the
+  statement. Category, owner, note and splits stay editable."; the full rule,
+  with the type choice, is the Statement certified chip's `title` and
+  accessible description). The amount field shows
   money with two decimals ("64.20") until it is focused and the raw text
   while it is typed in (`leadAmountFieldValue`). Support: date, wallet,
   owner, bank state. Detail: Category, Owner, Splits ("Add to splits" or
@@ -509,7 +514,7 @@ Where it is used:
   keeps an inline field, so Tab walks description, amount, the eye, then the
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
-- Create split expense (`split-expense-card.jsx`, from the Splits dialog in
+- New split expense (`split-expense-card.jsx`, from the Splits dialog in
   both layouts; editing and viewing a saved split keep the form for now).
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
@@ -1317,8 +1322,9 @@ not inside it, because closing the popover unmounts its content.
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
-Month plan sheets and the Entries add and edit sheets. It behaves like the
-modal desktop dialogs:
+Month plan sheets, the Entries add and edit sheets, the import progress
+sheet and the Claude "I've topped up" sheet. It behaves like the modal
+desktop dialogs, and swipes down to close (below):
 
 - Focus moves into the sheet on open. The sheet itself takes focus, not a
   field, so opening it does not raise the phone keyboard.
@@ -1375,6 +1381,44 @@ modal desktop dialogs:
   by unit test and on a real phone only.
 - `headerAction` adds a control before the close button (the Entries edit
   sheet's money eye) and `className` a variant (`is-lead-sheet`).
+- Swipe down to close (`sheet-swipe.jsx`, rules in the pure
+  `sheet-swipe-controller.js`). The phone Splits expense dialog uses the
+  same hook. A grab bar sits in the sheet's top padding (drawn only:
+  `aria-hidden`, not a tap target; the ✕ and Cancel stay the keyboard and
+  screen-reader ways out). The sheet follows the finger; released past
+  30% of its height (80 to 160 px) or flicked down (0.6 px/ms, 24 px or
+  more) it is dismissed.
+  - Discard rule: each sheet passes `isDirty`, whether its draft changed
+    since it opened (the Entries edit sheet's `hasEditingEntryChanges`; the
+    others `useDraftChanged(draft, pickFields)`, which keeps the draft it
+    opened with). Unchanged, the swipe closes it straight away. Changed, it
+    springs back and asks "Discard changes?" in a bar at the sheet's bottom,
+    under the thumb: **Discard** (destructive, `lsd-quiet is-danger`) closes
+    it through the sheet's own close (the same as Cancel), **Keep editing**
+    (`lsd-primary`, focused) keeps the draft. Escape or a tap outside while
+    it asks means Keep editing. Never a system confirm. The form behind is
+    `inert` while it asks.
+  - Where a drag may start: the grab bar and header, or the body
+    (`data-sheet-body`) while it is scrolled to its top. Never from a text
+    field, an active text selection, a long press (500 ms before moving),
+    content scrolled away from its top, or a scrollable list or chip row
+    inside the body (`.planned-link-list`, a sideways chip row): those keep
+    every touch. Sideways or upward movement hands the gesture back to the
+    browser.
+  - Scrolling stays native: `touchstart` is passive, `touchmove` cancels
+    only a move the controller claimed for the sheet (a clearly downward
+    one), and the sheet never sets `touch-action`. A touchmove the browser
+    already made uncancelable (it started scrolling) ends the drag. A click
+    right after a drag is eaten, so a drag never taps a row.
+  - While `isSubmitting` the swipe is ignored, as Escape is.
+  - `prefers-reduced-motion`: the sheet still follows the finger (direct
+    manipulation), but springing back and sliding away are instant.
+  - The styles (`sheet-swipe.css`) and copy (`copy/sheet-swipe-copy.js`)
+    ship with the routes, not the first screen.
+    `tests/sheet-swipe-controller.test.mjs` proves the rules and pins every
+    sheet's `isDirty`; `tests/e2e/sheet-swipe-dismiss.spec.js` proves them
+    in WebKit (iPhone 13) and Chromium, including real CDP touch scrolling
+    of the body and of a long list inside a sheet.
 - The opener is found by `sheet-focus-return.js`, not from
   `document.activeElement` alone: iPhone and iPad Safari (WebKit) do not
   focus a tapped or clicked button, so after a tap `activeElement` is

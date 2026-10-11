@@ -181,7 +181,12 @@ The app is designed for phones as well as desktops. The differences:
   with **‹** and **›** to step to the month before or after.
 - **Edit sheets.** Adding or editing a row opens a sheet from the bottom of
   the screen instead of editing inside the table. **Done** or **Save** saves;
-  **Cancel**, the ✕ or tapping outside closes it without saving. On Month the
+  **Cancel**, the ✕ or tapping outside closes it without saving. You can also
+  swipe the sheet down to close it (the small bar at the top shows where to
+  grab). If you have changed something, it springs back and asks
+  **Discard changes?**: **Keep editing** takes you back with your changes,
+  **Discard** closes it without saving. While a save is running, a swipe does
+  nothing. On Month the
   sheet starts with the planned amount: tap it to type a new one. Under it, a
   bar shows what has been spent against the plan and what is left (or how
   much it is over). The other fields are rows below it: tap a row to change
@@ -745,7 +750,9 @@ it.
 - **Ask and AI**: how much Claude credit Ask has left, with **Top up in the
   Claude Console** and **I've topped up**, and when it was last checked
   ([When Claude credits run low](#when-claude-credits-run-low)). If Claude
-  isn't set up, it says so: Ask then uses the basic model.
+  isn't set up, it says so: Ask then uses the basic model. If Claude is set
+  up but nobody has asked it anything yet, it says Claude hasn't been used
+  yet.
 - **Payment ways**: the account each person's PayNow, bank transfers and
   cash come from ([Choose your payment ways](#choose-your-payment-ways)).
 - **Categories**: the categories used everywhere, with their icon and colour.
@@ -1319,7 +1326,7 @@ There are two ways, depending on where the expense is.
    **More details** on a phone).
 6. Select **Save expense**.
 
-![Create split expense: the card with the total, then a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-add-expense.webp)
+![New split expense: the card with the total, then a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-add-expense.webp)
 
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
@@ -1740,7 +1747,10 @@ split is refused, with the same undo button.
 An entry marked **Statement certified** was confirmed by a bank statement, so
 its date, description, wallet and amount are locked, and so is whether the
 money came in or went out. You can still change the category, note, owner and
-splits.
+splits. The line under the entry card says so in short: "Bank details are
+locked to the statement. Category, owner, note and splits stay editable."
+Point at (or, with a screen reader, move to) the **Statement certified** chip
+for the full rule.
 
 The type can still change within the same direction. Money in can be
 **Income** or **Transfer** in, for example a credit from your own account
