@@ -68,7 +68,8 @@ test("LeadCard renders the lead line, an editable amount, the bar and the chips"
   assert.match(html, /<span class="probe-bubble"><\/span>/);
   assert.match(html, /<strong class="lead-card-title">Food &amp; Drinks<\/strong>/);
   assert.match(html, /<span class="lead-card-subtitle">Budget bucket<\/span>/);
-  assert.match(html, /<span class="lead-card-amount is-editable">/);
+  // The editable amount and its caption are one label.
+  assert.match(html, /<label class="lead-card-amount-column"><span class="lead-card-amount is-editable"><input aria-label="Planned"/);
   assert.match(html, /<small class="lead-card-amount-caption">planned<\/small>/);
   // A bar 93% full in the plain grey fill, under plan.
   assert.match(html, /<span class="lead-card-bar" aria-hidden="true"><span class="lead-card-bar-fill money-neutral" style="width:93%"><\/span><\/span>/);

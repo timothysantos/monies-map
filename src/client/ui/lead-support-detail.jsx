@@ -26,7 +26,9 @@ export function leadProgress(valueMinor, planMinor, { overIsShort = true } = {})
 
 // The one white card with the strong shadow. With a `title` it reads as a
 // head line (bubble, title and sub-label, the amount on the right); without
-// one the `eyebrow` and the amount stack (the Summary lead). `progress`
+// one the `eyebrow` and the amount stack (the Summary lead). `editable`
+// marks an amount the person types (a plan): a thin terracotta underline,
+// and the column is a <label>. `progress`
 // ({ valueMinor, planMinor, overIsShort }) draws the actual-vs-plan bar.
 // Hidden money keeps only the bar's empty track, because its length would
 // say over or under plan, and swaps the line under it for
@@ -55,6 +57,7 @@ export function LeadCard({
   const amountNode = amount === null ? null : (
     <span className={editable ? "lead-card-amount is-editable" : "lead-card-amount"}>{amount}</span>
   );
+  const AmountColumn = editable ? "label" : "span";
   const bar = progress ? leadProgress(progress.valueMinor, progress.planMinor, progress) : null;
   const lineStart = areTotalsVisible ? progressStart : hiddenProgressStart;
   const lineEnd = areTotalsVisible ? progressEnd : null;
@@ -70,10 +73,12 @@ export function LeadCard({
             {subtitle ? <span className="lead-card-subtitle">{subtitle}</span> : null}
           </span>
           {amountNode ? (
-            <span className="lead-card-amount-column">
+            // An editable amount is labelled by its caption ("planned"), so
+            // a tap on either opens the number keypad.
+            <AmountColumn className="lead-card-amount-column">
               {amountNode}
               {amountCaption ? <small className="lead-card-amount-caption">{amountCaption}</small> : null}
-            </span>
+            </AmountColumn>
           ) : null}
         </div>
       ) : amountNode ? (

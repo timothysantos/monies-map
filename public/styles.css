@@ -8293,6 +8293,7 @@ th {
 }
 
 .entry-composer.entry-mobile-sheet {
+  --bottom-actions-bleed: 16px;
   position: fixed;
   left: 0;
   right: 0;
