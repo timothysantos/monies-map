@@ -1,6 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { buildSplitInsightRecords, selectSplitDonutChart } from "./split-helpers";
+import { selectSplitDonutChart } from "./split-helpers";
 import {
   filterSplitActivityForSearch,
   filterSplitMatchesForSearch,
@@ -66,7 +66,6 @@ export function buildSplitsPanelModel({
     groups,
     groupOptions,
     groupSummaryLabel: view.id === "household" ? "" : getGroupSummaryLabel(groupBalanceMinor),
-    insightRecords: buildSplitInsightRecords(currentGroupActivity, view.id),
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,

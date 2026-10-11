@@ -6,8 +6,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMonthInsightFacts, selectMonthInsightEntries } from "../src/client/month-insight-facts.js";
-import { buildFinancialInsightCacheKey } from "../src/domain/ai-assistance-insights.ts";
+import { selectMonthInsightEntries } from "../src/client/month-insight-facts.js";
+import { incomeMinor, spendingMinor } from "../src/domain/category-offset.ts";
 import { adjustEntriesForView, buildMonthPage } from "../src/domain/month-projection.ts";
 import { buildPersonScopes, effectiveScopeForView } from "../src/domain/person-view-scope.ts";
 
@@ -49,17 +49,15 @@ function monthPageFor(viewId, scope) {
   return buildMonthPage(viewId, scope, [], adjustEntriesForView(LEDGER, viewId), [], [], MONTH, null);
 }
 
-function factsFor(viewId, scope) {
-  const monthPage = monthPageFor(viewId, scope);
-  return buildMonthInsightFacts({
-    viewId,
-    viewLabel: viewId === "household" ? "Household" : viewId === "person-joyce" ? "Joyce" : "Tim",
-    monthPage,
-    monthSummary: null,
-    accounts: [],
-    formatMoney: (amountMinor) => String(amountMinor),
-    formatMonthLabel: (month) => month
-  });
+// What the check-in's entries add up to, counted as the Actual spend card
+// counts them (a payback lowers its category: category-offset.ts).
+function totalsFor(viewId, scope) {
+  const entries = selectMonthInsightEntries(monthPageFor(viewId, scope), viewId);
+  return {
+    entryCount: entries.length,
+    spendMinor: entries.reduce((total, item) => total + spendingMinor(item, Math.abs(item.amountMinor)), 0),
+    incomeMinor: entries.reduce((total, item) => total + incomeMinor(item, Math.abs(item.amountMinor)), 0)
+  };
 }
 
 function actualSpendCard(monthPage) {
@@ -75,9 +73,8 @@ test("in every view and scope the check-in's spend is the Actual spend card", ()
   for (const [viewId, byScope] of Object.entries(expected)) {
     for (const [scope, spendMinor] of Object.entries(byScope)) {
       const monthPage = monthPageFor(viewId, scope);
-      const facts = factsFor(viewId, scope);
       assert.equal(actualSpendCard(monthPage), spendMinor, `${viewId} ${scope} card`);
-      assert.equal(facts.spend, String(spendMinor), `${viewId} ${scope} check-in`);
+      assert.equal(totalsFor(viewId, scope).spendMinor, spendMinor, `${viewId} ${scope} check-in`);
     }
   }
 });
@@ -97,35 +94,26 @@ test("a person's check-in counts only their entries in the scope, at their own a
     ["shared-utilities", 4_000]
   ]);
 
-  const joyce = factsFor("person-joyce", "direct_plus_shared");
-  assert.equal(joyce.audienceKind, "person");
-  assert.equal(joyce.audienceName, "Joyce");
+  const joyce = totalsFor("person-joyce", "direct_plus_shared");
   assert.equal(joyce.entryCount, 4);
   // Tim's salary is not Joyce's income, and his transport is not her spend.
-  assert.equal(joyce.income, "0");
-  assert.equal(joyce.topCategoryName, "Dining");
-  assert.equal(joyce.topCategoryAmount, String(35_660 + 11_704));
+  assert.equal(joyce.incomeMinor, 0);
+  assert.equal(joyce.spendMinor, 35_660 + 11_704 + 18_640 + 6_000);
 });
 
 test("the household check-in counts every entry whatever scope the route carries", () => {
   for (const scope of ["direct", "shared", "direct_plus_shared"]) {
-    const facts = factsFor("household", scope);
-    assert.equal(facts.audienceKind, "household");
-    assert.equal(facts.entryCount, LEDGER.length);
-    assert.equal(facts.income, "300000");
-    assert.equal(facts.spend, "130366");
+    const totals = totalsFor("household", scope);
+    assert.equal(totals.entryCount, LEDGER.length);
+    assert.equal(totals.incomeMinor, 300_000);
+    assert.equal(totals.spendMinor, 130_366);
   }
 });
 
-const HEADLINE = { headlineKind: "going_well", fact: "Savings are on plan this month.", think: "With savings covered, spending on what you enjoy is part of the plan, not a slip from it." };
-
-test("a scope change changes the facts and the wording cache key; the same scope keeps both", () => {
-  const direct = factsFor("person-joyce", "direct");
-  const shared = factsFor("person-joyce", "shared");
-  assert.notEqual(buildFinancialInsightCacheKey(direct, HEADLINE), buildFinancialInsightCacheKey(shared, HEADLINE));
-  assert.equal(buildFinancialInsightCacheKey(direct, HEADLINE), buildFinancialInsightCacheKey(factsFor("person-joyce", "direct"), HEADLINE));
-  // A different headline (another phrasing or signal) asks for wording again.
-  assert.notEqual(buildFinancialInsightCacheKey(direct, HEADLINE), buildFinancialInsightCacheKey(direct, { ...HEADLINE, fact: "$1,800 went to savings this month, as planned." }));
+test("a scope change changes the entries the check-in counts; the same scope keeps them", () => {
+  const ids = (scope) => selectMonthInsightEntries(monthPageFor("person-joyce", scope), "person-joyce").map((item) => item.id);
+  assert.notDeepEqual(ids("direct"), ids("shared"));
+  assert.deepEqual(ids("direct"), ids("direct"));
 });
 
 test("a scope the route does not know counts as Direct + Shared, and the household is always Combined", () => {
@@ -167,8 +155,8 @@ test("a person's Month check-in never calls a share of someone else's entry a pu
 
 // The Money consequence map (and its "Snapshot confidence" lane) is
 // retired. The view's wallet health reaches the Month check-in only as the
-// statement-gap Quick fix, whose "Review statement" replaced the map's
-// "Review bank-record gaps" link; the wording facts carry no wallet verdict.
+// statement-gap To do, whose "Compare with the statement" replaced the map's
+// "Review bank-record gaps" link.
 const pill = (accountId, fields) => ({
   accountId,
   accountName: accountId,
@@ -194,24 +182,21 @@ async function monthSignalsWith(accountPills) {
   });
 }
 
-test("a statement mismatch in the view's wallets is the Month check-in's Quick fix, with Review statement", async () => {
+test("a statement mismatch in the view's wallets is the Month check-in's To do, with Compare with the statement", async () => {
   const signals = await monthSignalsWith([
     pill("uob-one", { reconciliationStatus: "matched", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: 0 }),
     pill("ocbc-365", { reconciliationStatus: "mismatch", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: -4_280 })
   ]);
   const gap = signals.find((signal) => signal.key === "statement-gap:ocbc-365");
   assert.equal(gap.kind, "quick_fix");
-  assert.deepEqual(gap.action, { id: "review-statement", label: "Review statement" });
+  assert.deepEqual(gap.action, { id: "review-statement", label: "Compare with the statement" });
   assert.match(gap.phrasings.map((phrasing) => phrasing.fact).join(" "), /\$42\.80/);
 });
 
-test("matched wallets give no Quick fix, and the wording facts never carry wallet health", async () => {
+test("matched wallets give no Quick fix", async () => {
   const signals = await monthSignalsWith([
     pill("uob-one", { reconciliationStatus: "matched", latestCheckpointMonth: "2025-09", latestCheckpointDeltaMinor: 0 }),
     pill("ocbc-365", { reconciliationStatus: "needs_checkpoint", unresolvedTransferCount: 2 })
   ]);
   assert.equal(signals.some((signal) => signal.key.startsWith("statement-gap")), false);
-  const facts = factsFor("person-joyce", "direct_plus_shared");
-  assert.equal(Object.hasOwn(facts, "decisionMap"), false);
-  assert.doesNotMatch(JSON.stringify(facts), /confidence|proof gap|Needs review|checkpoint/i);
 });

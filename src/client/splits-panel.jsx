@@ -53,7 +53,6 @@ import {
   buildLinkedSplitRefreshOptions,
   createSplitRefreshGuard
 } from "./splits-workflow";
-import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { buildSplitsSignals, SPLITS_CALM_LINES, SPLITS_TRIVIA_ROTATION } from "../domain/money-signals/splits-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { todayInAppTimeZone } from "./app-dates";
@@ -66,7 +65,7 @@ function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
-export function SplitsPanel({ view, categories, people, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false }) {
+export function SplitsPanel({ view, categories, people, onRefresh, runBackgroundRefresh = runQuietly }) {
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
@@ -135,7 +134,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groups,
     groupOptions,
     groupSummaryLabel,
-    insightRecords,
     openGroupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
@@ -143,16 +141,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
-  const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
-    contextLabel: `${activeGroup?.name ?? "Split"} group${splitSearchQuery ? " search" : ""}`,
-    // A person view counts that person's share of each group expense, so
-    // the wording addresses them; the household view counts group totals.
-    audienceKind: isHouseholdView ? "household" : "person",
-    audienceName: isHouseholdView ? "" : view.label,
-    records: insightRecords,
-    // The records are one group's, so their amounts are in its currency.
-    formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD")
-  }), [activeGroup?.currency, activeGroup?.name, insightRecords, isHouseholdView, splitSearchQuery, view.label]);
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("splits", view.id, activeGroup?.id ?? "split-group-none"),
@@ -1215,12 +1203,11 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       </div>
 
       <FinancialInsight
-        facts={financialInsightFacts}
+        audienceName={isHouseholdView ? "" : view.label}
         checkIn={checkIn}
         actions={financialInsightActions}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-splits"
-        canRequestWording={canRequestWording}
       />
 
       <SplitsMainSection

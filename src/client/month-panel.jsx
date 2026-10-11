@@ -34,7 +34,7 @@ import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
-import { buildMonthInsightFacts, selectMonthInsightEntries } from "./month-insight-facts";
+import { selectMonthInsightEntries } from "./month-insight-facts";
 import { buildMonthSignals, monthCalmLines, MONTH_TRIVIA_ROTATION } from "../domain/money-signals/month-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
@@ -60,7 +60,7 @@ function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
-export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false, isDemoEnvironment = false }) {
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, isDemoEnvironment = false }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
@@ -222,13 +222,6 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     () => selectMonthInsightEntries(view.monthPage, view.id),
     [view.id, view.monthPage]
   );
-  const financialInsightFacts = useMemo(() => buildMonthInsightFacts({
-    viewId: view.id,
-    viewLabel: view.label,
-    monthPage: view.monthPage,
-    formatMoney: formatService.unmaskedMoney,
-    formatMonthLabel: formatService.formatMonthLabel
-  }), [view.id, view.label, view.monthPage]);
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
@@ -1485,11 +1478,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
 
       <FinancialInsight
-        facts={financialInsightFacts}
+        audienceName={view.id === "household" ? "" : view.label}
         checkIn={checkIn}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-month"
-        canRequestWording={canRequestWording}
       />
 
       <MonthPlanStack

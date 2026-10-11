@@ -49,7 +49,6 @@ import {
 } from "./quick-entry-url";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
-import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { buildEntriesSignals, ENTRIES_CALM_LINES, ENTRIES_TRIVIA_ROTATION } from "../domain/money-signals/entries-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
@@ -92,8 +91,7 @@ export function EntriesPanel({
   onInvalidateEntryMutation,
   onBroadcastSplitMutation,
   runBackgroundRefresh = runQuietly,
-  onRetryPageLoad,
-  canRequestWording = false
+  onRetryPageLoad
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -479,7 +477,6 @@ export function EntriesPanel({
     [entryFilters]
   );
   const {
-    aggregateEntries,
     filteredEntries,
     groupedEntries,
     entryTotals,
@@ -497,18 +494,6 @@ export function EntriesPanel({
     }),
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
   );
-  const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
-    contextLabel: activeEntryFilterCount
-      ? `Selected entries in ${formatService.formatMonthLabel(entryView.monthPage.month)}`
-      : formatService.formatMonthLabel(entryView.monthPage.month),
-    audienceKind: entryView.id === "household" ? "household" : "person",
-    audienceName: entryView.id === "household" ? "" : entryView.label,
-    records: aggregateEntries.map((entry) => ({
-      ...entry,
-      amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
-    })),
-    formatMoney: formatService.unmaskedMoney
-  }), [activeEntryFilterCount, aggregateEntries, entryView.id, entryView.label, entryView.monthPage.month]);
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
   const checkInEntries = useMemo(
@@ -1143,11 +1128,10 @@ export function EntriesPanel({
           />
 
           <FinancialInsight
-            facts={financialInsightFacts}
+            audienceName={entryView.id === "household" ? "" : entryView.label}
             checkIn={checkIn}
             onCheckInAction={handleCheckInAction}
             className="financial-insight-entries"
-            canRequestWording={canRequestWording}
           />
         </>
       )}

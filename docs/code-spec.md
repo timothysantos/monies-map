@@ -97,7 +97,7 @@ Budget rules:
 - the app shell must not statically import route-only UI, page editing controls,
   or a broad client facade that retains those modules; use route-owned lazy
   modules and direct shared helper imports for the few shell-level operations
-- optional work (route code warmup, speculative data, AI wording) starts only
+- optional work (route code warmup and speculative data) starts only
   when `routeWork.usable` is true and goes through the warmup scheduler; do
   not add new idle prefetch effects
 - mobile speculative data needs a row in `route-warmup-admissions.js`
@@ -226,12 +226,13 @@ evidence already selected by the app. The existing editor or review action is
 the only way to persist a change. Keep request payloads redacted and bounded;
 do not persist prompts, model responses, original bank files, raw OCR images,
 or embeddings. Each AI change needs a no-AI test and a failure-path test in
-addition to the normal behavior test. Financial insight wording must distinguish
-full cash flow from a filtered investigation view and from split-settlement
-obligations, and must not invent forecasts, savings targets, or comparisons.
-AI wording may only choose words around the check-in's fact and think line,
-which stay verbatim; a template without both, with its own figures, or
-failing the tone lint is refused.
+addition to the normal behavior test. Money insights use computed wording
+only: the headline is the signal's bold fact and its think line exactly as
+written, and no page sends a wording request (the
+`/api/ai-assist/financial-insight` route and its template parser are
+removed). Their copy must distinguish full cash flow from a filtered
+investigation view and from split-settlement obligations, and must not
+invent forecasts, savings targets, or comparisons.
 
 Money insights (check-in) signals live in `src/domain/money-signals/`, one small pure
 function per signal returning `{ key, kind, weight, numbers, phrasings,

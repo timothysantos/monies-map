@@ -29,10 +29,10 @@ export function moneyWithCurrency(valueMinor, currency = "SGD") {
   return formatCurrencyMinor(valueMinor, currency);
 }
 
-// Unmasked formatters for the money check-in facts only. FinancialInsight
-// shows no figures while totals are hidden, so its facts are built with the
+// Unmasked formatters for the money check-in signals only. FinancialInsight
+// shows no figures while totals are hidden, so its signals are built with the
 // real amounts: a page loaded with totals hidden must show the real sentence
-// the moment totals are revealed, not a "••••" baked into memoized facts.
+// the moment totals are revealed, not a "••••" baked into memoized signals.
 export function unmaskedMoney(valueMinor) {
   return moneyFormatter.format(valueMinor / 100);
 }

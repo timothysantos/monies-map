@@ -238,3 +238,25 @@ it bordered on a forecast. For the AI boundary:
 - No-AI path: unchanged. The check-in renders its computed wording at once,
   and `tests/money-consequence-map-retired.test.mjs` fails if any part of
   the map comes back.
+
+### Update, 11 October 2026: Money insights AI rewording removed
+
+The optional rewording of the Money insights headline produced broken
+grammar in production (a lead-in such as "after a recent Selected entries
+in Aug 2026. A quick fix might be to …" around the fact). The owner chose
+computed wording only, so the headline is always the bold fact and its
+think line as written. Removed end to end: the client request, debounce and
+in-memory cache in `financial-insight.jsx` (and the `canRequestWording`
+plumbing from App and the four panels), the `/api/ai-assist/financial-insight`
+route, its facts parser, template parser and prompt, and the
+`financial_insight` allowance capability name (a type only; nothing stored
+it, and the daily usage counter row is unchanged). For the AI boundary:
+
+- Privacy: no Money insights text leaves the browser any more.
+- Cost: the one debounced request per headline is gone, so the shared daily
+  allowance serves only explicit user actions.
+- Writes: unchanged; the rewording never wrote anything.
+- No-AI path: now the only path. `tests/e2e/financial-insight.spec.js`
+  fails if any page requests the removed route or the headline changes after
+  the page is usable, and `tests/ai-assistance-routes.test.mjs` proves the
+  Worker answers the old route with 404 without calling AI.

@@ -14,23 +14,18 @@ import {
   type AiAssistEnv
 } from "../domain/ai-assistance";
 import {
-  buildDeterministicFinancialInsight,
   buildDeterministicImportExplanation,
   buildDeterministicMonthlyNarrative,
   buildImportExplanationFacts,
   buildMonthlyNarrativeFacts,
-  parseFinancialInsightTemplate,
   parseImportExplanationTemplate,
-  parseNarrativeTemplate,
-  type CheckInHeadlineFacts,
-  type FinancialInsightWordingFacts
+  parseNarrativeTemplate
 } from "../domain/ai-assistance-insights";
 import { loadTransferMatchCandidates, recordVerifiedAiCategoryMatchSuggestion } from "../domain/app-repository";
 import { DEFAULT_HOUSEHOLD_ID } from "../domain/app-repository-constants";
 import { buildMonthPageDto } from "../domain/pages/month-page";
 import { getCurrentMonthKey } from "../lib/month";
 import type { ImportPreviewDto, PersonScope } from "../types/dto";
-import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { json } from "./json";
 
 export type AiAssistRouteEnv = AiAssistEnv & { DB: D1Database };
@@ -53,33 +48,6 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
       maxTokens: 180,
       prompt: `Write a concise two-sentence monthly finance note using ONLY these placeholders. Do not use numbers, currency symbols, or any other placeholders. Return JSON: {"template":"..."}. Facts: month {{monthName}}, spending {{spend}}, income {{income}}, largest category {{topCategoryName}} at {{topCategoryAmount}}, largest expense {{topMerchantName}} at {{topMerchantAmount}}.`,
       parse: (response) => parseNarrativeTemplate(response, facts)
-    });
-    return json({
-      ok: true,
-      available: result.available,
-      narrative: result.value ?? fallback,
-      source: result.available ? "ai" : "deterministic",
-      reason: result.reason,
-      remaining: result.remaining
-    });
-  }
-
-  if (url.pathname === "/api/ai-assist/financial-insight" && request.method === "POST") {
-    const body = await request.json<{ facts?: unknown }>();
-    const facts = parseFinancialInsightFacts(body.facts);
-    if (!facts) {
-      return json({ ok: true, available: false, reason: "There is not enough computed information for an insight." });
-    }
-    const fallback = buildDeterministicFinancialInsight(facts);
-    const audienceInstruction = facts.audienceKind === "person"
-      ? "Address the selected person naturally with {{audienceName}} exactly once."
-      : "Write for the household without naming people.";
-    const result = await runAiJson(env.DB, env, {
-      capability: "financial_insight",
-      units: 1,
-      maxTokens: 180,
-      prompt: `Write a short, warm money check-in of at most two sentences using ONLY these placeholders. {{fact}} is a computed fact and {{think}} is a way to think about it; include each exactly once, word for word, and only choose the few words around them (a short lead-in or link is enough). Do not add facts, numbers, money, dates, advice, or other placeholders. Keep the tone curious and kind: no exclamation marks, no emoji, and never words such as "should", "overspent", "cut back", "problem", "warning" or "non-essential". The fact is a "${SIGNAL_KIND_LABELS[facts.headlineKind]}" line. ${audienceInstruction} Return JSON: {"template":"..."}. Context {{contextLabel}}, fact {{fact}}, way to think about it {{think}}.`,
-      parse: (response) => parseFinancialInsightTemplate(response, facts)
     });
     return json({
       ok: true,
@@ -226,55 +194,6 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   }
 
   return null;
-}
-
-const HEADLINE_KINDS: Array<CheckInHeadlineFacts["headlineKind"]> = ["quick_fix", "bigger_question", "worth_a_look", "going_well"];
-
-function parseFinancialInsightFacts(value: unknown): FinancialInsightWordingFacts | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const input = value as Record<string, unknown>;
-  const entryCount = Number(input.entryCount);
-  if (!Number.isInteger(entryCount) || entryCount < 0 || entryCount > 100_000) {
-    return null;
-  }
-  // Only the named fields are read: anything else a page sends (a tab still
-  // open on an older version sends fields it no longer needs) is dropped
-  // here and never reaches the prompt.
-  const headlineKind = HEADLINE_KINDS.find((kind) => kind === input.headlineKind);
-  if (!headlineKind) {
-    return null;
-  }
-  const readText = (key: string, maxLength: number) => {
-    const candidate = input[key];
-    return typeof candidate === "string" ? redactAiText(candidate, maxLength) : "";
-  };
-  const facts = {
-    contextLabel: readText("contextLabel", 120),
-    audienceKind: input.audienceKind === "person" ? "person" : "household",
-    audienceName: readText("audienceName", 80),
-    entryCount,
-    spend: readText("spend", 40),
-    income: readText("income", 40),
-    net: readText("net", 40),
-    topCategoryName: readText("topCategoryName", 80),
-    topCategoryAmount: readText("topCategoryAmount", 40),
-    topMerchantName: readText("topMerchantName", 100),
-    topMerchantAmount: readText("topMerchantAmount", 40),
-    headlineKind,
-    fact: readText("fact", 240),
-    think: readText("think", 240)
-  } satisfies FinancialInsightWordingFacts;
-  return facts.contextLabel
-    && facts.spend
-    && facts.income
-    && facts.net
-    && facts.fact
-    && facts.think
-    && (facts.audienceKind !== "person" || facts.audienceName)
-    ? facts
-    : null;
 }
 
 function formatAiMoney(amountMinor: number) {
