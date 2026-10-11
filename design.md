@@ -448,7 +448,9 @@ Where it is used:
 - The Entries edit sheet and inline editor (`entry-edit-card.jsx`). Lead:
   the category bubble (opens the category editor), what it was and the
   amount, typed in place unless a statement certified them (then read-only,
-  with the existing lock line under the card). Support: date, wallet,
+  with the existing lock line under the card). The amount field shows
+  money with two decimals ("64.20") until it is focused and the raw text
+  while it is typed in (`leadAmountFieldValue`). Support: date, wallet,
   owner, bank state. Detail: Category, Owner, Splits ("Add to splits" or
   "View split"), the transfer match for a transfer, Note, then Date, Wallet,
   Posted date, Type (and Transfer direction); on a phone those last ones fold

@@ -131,9 +131,10 @@ test.describe("money field editability", () => {
     const editor = await openEntryEditor(page, description);
     const amountInput = editor.getByLabel("Amount");
     await amountInput.fill("48.5");
-    // Blur runs the editor's amount handler, which formats and applies the value.
+    // Blur runs the editor's amount handler, which formats and applies the
+    // value; the field then shows it as money.
     await amountInput.press("Tab");
-    await expect(amountInput).toHaveValue("48.5");
+    await expect(amountInput).toHaveValue("48.50");
     const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
     await page.getByRole("button", { name: "Done editing entry" }).click();
     await updateResponse;

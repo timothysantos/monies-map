@@ -181,7 +181,8 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     // Lead: what it was and the amount, typed in place; Support chips.
     const lead = sheet.locator(".lsd-card");
     await expect(lead.getByRole("textbox", { name: "Description" })).toHaveValue(description);
-    await expect(lead.getByRole("textbox", { name: "Amount" })).toHaveValue("32.1");
+    // A manual entry saved as "32.1" reads as money until it is typed in.
+    await expect(lead.getByRole("textbox", { name: "Amount" })).toHaveValue("32.10");
     await expect(lead.locator(".lsd-subtitle")).toHaveText("Groceries");
     await expect(lead.locator(".lsd-chip")).toHaveText(["Sun 24 May", "UOB One", "Tim", "Manual provisional"]);
     // Detail rows in the agreed order, the bank facts folded with a hint.
@@ -199,6 +200,11 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     await expect(sheet.getByRole("button", { name: "Delete entry" })).toBeVisible();
 
     await lead.getByRole("textbox", { name: "Description" }).fill(`${description} renamed`);
+    // While typing the field is the raw text; left, it is money again.
+    await lead.getByRole("textbox", { name: "Amount" }).fill("48.7");
+    await expect(lead.getByRole("textbox", { name: "Amount" })).toHaveValue("48.7");
+    await lead.getByRole("textbox", { name: "Amount" }).blur();
+    await expect(lead.getByRole("textbox", { name: "Amount" })).toHaveValue("48.70");
     await lead.getByRole("textbox", { name: "Amount" }).fill("48.76");
     await lead.getByRole("textbox", { name: "Amount" }).blur();
     await sheet.getByRole("textbox", { name: "Note", exact: true }).fill("Shelf brackets");
@@ -329,10 +335,10 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     const amount = sheet.locator(".lsd-card").getByRole("textbox", { name: "Amount" });
     await amount.fill("abc");
     await sheet.locator(".entry-composer-head").click();
-    await expect(amount).toHaveValue("0");
+    await expect(amount).toHaveValue("0.00");
     await amount.fill("12.5");
     await sheet.locator(".entry-composer-head").click();
-    await expect(amount).toHaveValue("12.5");
+    await expect(amount).toHaveValue("12.50");
     const update = page.waitForRequest((request) => request.url().includes("/api/entries/update"));
     await sheet.getByRole("button", { name: "Save", exact: true }).click();
     expect((await update).postDataJSON()).toMatchObject({ entryId, amountMinor: 1250 });

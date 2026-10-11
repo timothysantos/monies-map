@@ -337,12 +337,26 @@ export function EntryEditCard({
   );
 }
 
+// What the lead amount field shows: formatted money ("64.20") while it is
+// not being typed in, so a manual entry saved as "64.2" reads as the list
+// reads it; the raw text while it is focused; nothing (the placeholder)
+// when nothing is typed. The sign is its own span, so this is the size.
+export function leadAmountFieldValue({ focused, draft, amountMinor }) {
+  const text = String(draft ?? "");
+  if (focused) {
+    return text;
+  }
+  return text.trim() ? formatService.minorToDecimalString(Math.abs(amountMinor)) : "";
+}
+
 // The lead amount: the entry's amount in its money tone with its sign
 // (hidden with the money), typed in place unless the statement certified it.
-function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, locked, onChange, onAmountChange, action }) {
+export function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, locked, onChange, onAmountChange, action }) {
   const resolvedAmountMinor = typeof amountMinorValue === "number" ? amountMinorValue : entry.amountMinor;
   const resolvedAmountInput = amountInputValue ?? entry.amountInput ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
+  const [isFocused, setIsFocused] = useState(false);
+  const shownAmount = leadAmountFieldValue({ focused: isFocused, draft: amountDraft, amountMinor: resolvedAmountMinor });
   const inputId = useId();
   // Hidden money hides the sign with the amount (design.md, "Money Colour").
   const { areTotalsVisible } = useMoneyPrivacy();
@@ -378,7 +392,7 @@ function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, locked, on
 
   return (
     <span className="entry-lead-amount">
-      <label htmlFor={inputId} className={`lsd-amount-field${amountDraft ? "" : " is-empty"}`}>
+      <label htmlFor={inputId} className={`lsd-amount-field${shownAmount ? "" : " is-empty"}`}>
         <span className="lsd-amount-sign" aria-hidden="true">{sign}</span>
         <span aria-hidden="true">$</span>
         <input
@@ -390,13 +404,20 @@ function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, locked, on
           autoComplete="off"
           placeholder="0.00"
           enterKeyHint="next"
-          style={{ width: `${Math.max(3, String(amountDraft ?? "").length) + 0.5}ch` }}
-          value={amountDraft}
+          style={{ width: `${Math.max(3, shownAmount.length) + 0.5}ch` }}
+          value={shownAmount}
           onMouseDown={selectAllOnFocus}
-          onFocus={selectAllOnFocus}
+          onFocus={(event) => {
+            // Typing starts from the figure as shown ("64.20"), so the
+            // value does not change under the select-all.
+            setAmountDraft(shownAmount);
+            setIsFocused(true);
+            selectAllOnFocus(event);
+          }}
           onInput={(event) => handleAmountDraftChange(event.currentTarget.value)}
           onChange={(event) => handleAmountDraftChange(event.target.value)}
           onBlur={(event) => {
+            setIsFocused(false);
             const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
             const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
             setAmountDraft(formattedAmountInput);
