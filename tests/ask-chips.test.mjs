@@ -117,3 +117,35 @@ test("Ask has its own route; its params never leak into other tabs", () => {
   assert.equal(staying.toString(), "mode=add&from=entries");
   assert.deepEqual(buildPageViewFromRouteData("ask", null, "person-joyce", { household: { people: [{ id: "person-joyce", name: "Joyce" }] } }), { id: "person-joyce", label: "Joyce" });
 });
+
+test("an answer leads the chips with Open in Entries; a follow-up shows only its options; a view change waits for its chip", async () => {
+  const { buildFilterChips } = await import("../src/client/ask-chips.js");
+  const { applyFilterOption } = await import("../src/client/ask-filter-reader.js");
+  const base = buildAskChips({ intent: chat, card: null, context, actions });
+
+  const answer = buildFilterChips({ focus: { kind: "answer", filter: {} }, base, actions });
+  assert.deepEqual(labels(answer), ["Open in Entries", "Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.equal(answer.items[0].primary, true);
+  assert.ok(answer.items.slice(1).every((item) => !item.primary));
+
+  const option = { key: "acct-uob", label: "UOB One", patch: { wallets: ["acct-uob"] } };
+  const question = buildFilterChips({ focus: { kind: "question", filter: {}, questions: [{ field: "wallet", options: [option, { key: "all", label: "All of them", patch: { wallets: ["acct-citi", "acct-uob"] } }] }] }, base, actions });
+  assert.equal(question.prompt, "Which card or account?");
+  assert.deepEqual(labels(question), ["UOB One", "All of them"]);
+  const unknown = buildFilterChips({ focus: { kind: "question", filter: {}, questions: [{ field: "category", reason: "unknown", word: "groceriez", options: [] }] }, base, actions });
+  assert.equal(unknown.prompt, "I couldn't find a category called “groceriez”. Did you mean one of these?");
+
+  const view = buildFilterChips({ focus: { kind: "view", viewId: "person-joyce", scope: "shared" }, base, viewLabel: "Joyce · Shared", actions });
+  assert.equal(view.prompt, "Change the view?");
+  assert.deepEqual(labels(view).slice(0, 2), ["Switch to Joyce · Shared", "Scan receipt"]);
+
+  // A chosen option adds a wallet or category, and replaces the month or the view.
+  assert.deepEqual(applyFilterOption({ wallets: ["acct-citi"], month: "2026-09" }, option), { wallets: ["acct-citi", "acct-uob"], month: "2026-09" });
+  assert.deepEqual(applyFilterOption({ wallets: [], month: "2026-09" }, { patch: { month: "2026-08" } }), { wallets: [], month: "2026-08" });
+});
+
+test("sanitizeTabParams drops the Ask answer's Entries params from other tabs", () => {
+  const params = new URLSearchParams("view=person-tim&month=2026-05&entry_min=50.00&entry_max=80.00&from_ask=1&entry_category=Bills");
+  sanitizeTabParams(params, "summary");
+  assert.equal(params.toString(), "view=person-tim&month=2026-05");
+});

@@ -23,17 +23,23 @@ export function ShellRouteTabs({
   selectedTabId,
   buildTabTarget,
   getNavIntentProps,
-  pendingCategorySuggestionCount
+  pendingCategorySuggestionCount,
+  askInProgress = false
 }) {
   const titleFor = (tab) => (
     tab.id === "settings" && pendingCategorySuggestionCount
       ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)
       : undefined
   );
+  // A conversation left in progress on Ask: a small accent dot on its tab,
+  // named in the link's label for screen readers.
+  const showsAskDot = (tab) => tab.id === "ask" && askInProgress;
+  const ariaLabelFor = (tab) => (showsAskDot(tab) ? messages.tabs.askInProgress : undefined);
   const renderTabLabel = (tab) => (
     <span className="tab-label-with-badge">
       {tab.icon === "ask" ? <Sparkles size={15} aria-hidden="true" className="tab-icon" /> : null}
       <span>{tab.label}</span>
+      {showsAskDot(tab) ? <span className="tab-dot" aria-hidden="true" /> : null}
       {tab.id === "settings" && pendingCategorySuggestionCount ? (
         <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
           {pendingCategorySuggestionCount}
@@ -51,6 +57,7 @@ export function ShellRouteTabs({
         aria-current={isActive ? "page" : undefined}
         to={buildTabTarget(tab)}
         title={titleFor(tab)}
+        aria-label={ariaLabelFor(tab)}
       >
         {renderTabLabel(tab)}
       </Link>

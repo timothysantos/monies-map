@@ -1,13 +1,9 @@
-import { entryBypassesFieldFilters } from "./entry-filter-pins";
-import {
-  categoryMatchesEntryFilter,
-  countActiveEntryFilters
-} from "./entry-filter-values";
+import { countActiveEntryFilters } from "./entry-filter-values";
+import { getEntryDerivedData, getFilteredEntries } from "./entry-filtering";
 import {
   entryMatchesSearch,
   getEntrySearchSuggestions
 } from "./entry-search";
-import { projectEntriesForView } from "./entry-row-projection";
 import { getEntryTotals, getExpenseBreakdown } from "./entry-totals";
 import { moniesClient } from "./monies-client-service";
 
@@ -44,58 +40,6 @@ export function getActiveEntryFilterCount(entryFilters) {
   return countActiveEntryFilters(entryFilters);
 }
 
-export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [] }) {
-  return entries.filter((entry) => {
-    // Scope is the first gate because it is the page-level visibility rule.
-    if (!entryService.entryMatchesScope(entry, viewId, selectedScope)) {
-      return false;
-    }
-    if (entryBypassesFieldFilters(entry.id, pinnedEntryIds)) {
-      return true;
-    }
-    if (
-      entryFilters.entryIds?.length
-      && !entryFilters.entryIds.includes(entry.id)
-    ) {
-      return false;
-    }
-    if (
-      entryFilters.wallets?.length
-      && !entryFilters.wallets.some((wallet) => entry.accountId === wallet || entry.accountName === wallet)
-    ) {
-      return false;
-    }
-    if (!categoryMatchesEntryFilter(entry.categoryName, entryFilters.categories)) {
-      return false;
-    }
-    if (entryFilters.type && entry.entryType !== entryFilters.type) {
-      return false;
-    }
-    if (entryFilters.search && !entryMatchesSearch(entry, entryFilters.search)) {
-      return false;
-    }
-    return true;
-  });
-}
-
+export { getEntryDerivedData, getFilteredEntries };
 export { entryMatchesSearch, getEntrySearchSuggestions };
 export { getEntryTotals, getExpenseBreakdown };
-
-export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds }) {
-  const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds });
-  const { aggregateEntries, rowEntries } = projectEntriesForView(filteredEntries, viewId);
-  const groupedEntries = entryService.groupByDate(rowEntries);
-  const entryTotals = getEntryTotals(aggregateEntries);
-
-  return {
-    filteredEntries,
-    groupedEntries,
-    entryTotals,
-    // "Outflow" includes transfers out, while "net" ignores transfer pairs and
-    // only compares income against expenses.
-    entryOutflowMinor: entryTotals.spendMinor + entryTotals.transferOutMinor,
-    entryGrossOutflowMinor: entryTotals.grossSpendMinor + entryTotals.grossTransferOutMinor,
-    entryNetMinor: entryTotals.incomeMinor - entryTotals.spendMinor,
-    expenseBreakdown: getExpenseBreakdown(aggregateEntries)
-  };
-}

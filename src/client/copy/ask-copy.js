@@ -55,6 +55,7 @@ export const askCopy = {
   savedTitle: "Saved",
   contextLine: (items) => items.filter(Boolean).join(" · "),
   threadLabel: "Conversation",
+  newChat: "New chat",
   greeting: "Ask about your money, or add something.",
   sinceLastLooked: "Since you last looked",
   briefHidden: "Reveal money totals to read these insights.",
@@ -84,6 +85,7 @@ export const askCopy = {
     shareOnSplits: "Share on Splits",
     addToGroup: (name) => `Add to ${name}`,
     chooseCategory: "Choose category",
+    openInEntries: "Open in Entries",
     newEntry: "Add another"
   },
   backLabels: {
@@ -210,5 +212,44 @@ export const askCopy = {
     shareOnSplits: "Share it on Splits?",
     checkField: (label) => `Check the ${label.toLowerCase()}.`
   },
-  shareOption: (name, percent) => `${name} ${percent}%`
+  shareOption: (name, percent) => `${name} ${percent}%`,
+  // An answer to a search or filter request (ask-answer-card.jsx).
+  answer: {
+    leads: {
+      spend: "Spent",
+      income: "Income",
+      transfersOut: "Transfers out",
+      transfersIn: "Transfers in"
+    },
+    detail: (label, count) => `${label} · ${count === 1 ? "1 entry" : `${count} entries`}`,
+    share: (name) => (name ? `${name}'s share` : "Your share"),
+    more: (first, count) => `${first} +${count}`,
+    searched: (words) => `“${words}”`,
+    types: {
+      expense: "Spending",
+      income: "Income",
+      transfer: "Transfers"
+    },
+    allEntries: "All entries",
+    loading: "Adding it up…",
+    noMonth: (month) => `There are no entries for ${month} yet.`,
+    loadFailed: "This month's entries couldn't be loaded. Open in Entries to try again.",
+    filtersLabel: "Filters"
+  },
+  // Follow-ups when a request could mean more than one thing, and view
+  // changes, which always wait for a tap.
+  filter: {
+    questions: {
+      month: "Which month? Entries shows one month at a time.",
+      wallet: "Which card or account?",
+      category: "Which category?",
+      person: "Whose entries?"
+    },
+    unknownCategoryQuestion: (word) => `I couldn't find a category called “${word}”. Did you mean one of these?`,
+    unknownCategory: (word) => `I couldn't find a category called “${word}”.`,
+    switchPrompt: "Change the view?",
+    switchTo: (label) => `Switch to ${label}`,
+    nowShowing: (label) => `Now showing ${label}.`,
+    alreadyShowing: (label) => `You're already looking at ${label}.`
+  }
 };

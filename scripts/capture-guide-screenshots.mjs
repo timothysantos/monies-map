@@ -90,6 +90,17 @@ async function open(page, url) {
   await waitUsable(page);
 }
 
+// Ask, asked how much went on public transport this month.
+async function openAskAnswer(page) {
+  await open(page, `/ask?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
+  const message = page.getByRole("textbox", { name: "Message" });
+  await message.fill("How much on public transport?");
+  await message.press("Enter");
+  await page.locator(".ask-answer[data-ask-answer]:not([data-ask-answer=''])").waitFor();
+  await message.blur();
+  await waitUsable(page);
+}
+
 async function hideCaret(page) {
   await page.addStyleTag({ content: "*{caret-color:transparent !important} ::-webkit-scrollbar{display:none}" });
 }
@@ -470,6 +481,26 @@ const SHOTS = [
       await open(page, `/summary?view=person-ethan&month=${MONTH}`);
       await page.locator("nav.tab-strip").getByRole("link", { name: "Ask" }).click();
       await page.getByRole("heading", { name: "Ask", exact: true }).waitFor();
+      await waitUsable(page);
+    }
+  },
+  {
+    // A question answered on Ask: the total, the count and the filters,
+    // with Open in Entries first in the chips.
+    name: "phone-ask-answer", device: "phone",
+    run: async (page) => {
+      await openAskAnswer(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // Open in Entries from that answer: the list it counted, with the
+    // From Ask chip above the View and scope bar.
+    name: "phone-entries-from-ask", device: "phone",
+    run: async (page) => {
+      await openAskAnswer(page);
+      await page.getByRole("group", { name: "Suggestions" }).getByRole("button", { name: "Open in Entries" }).click();
+      await page.getByRole("group", { name: "From Ask" }).waitFor();
       await waitUsable(page);
     }
   },

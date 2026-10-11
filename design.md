@@ -123,15 +123,19 @@ Layout, top to bottom:
 
 - Header: "Ask" (chat mode) or "New entry" / "New income" / "New transfer" /
   "Saved" (add mode) with a context line: person · scope · month in chat,
-  person · month beside the title in add mode.
+  person · month beside the title in add mode. In chat mode, once there is
+  something to start over from, a quiet "New chat" text button (accent
+  text with a pen glyph, 44 px tall) sits at the header's right.
 - Conversation (`role="log"`, polite live region), which scrolls: in chat
   mode first a "since you last looked" card (`ask-brief-card.jsx`: the
   Summary check-in's headline and kind chip, its action when it is
   Imports or a category, and the month's spend against its plan with a sky
   plan and a bar that turns rose only over plan), then the person's messages
   (right, accent tint), receipt thumbnails, the page's notes (muted, left),
-  and the entry card. The card sits under the message that filled it and
-  above what happened to it since.
+  answer cards, and the entry card. The card sits under the message that
+  filled it and above what happened to it since. Coming back to a kept
+  conversation opens it near the bottom, as it was, with no arrival motion
+  for what was already there.
 - Bottom stack above the tab bar: one horizontally scrolling row of chips
   (buttons; the main way on first and filled; a back chip in accent text),
   then the composer (below). When a card is open and nothing is typed the
@@ -213,6 +217,27 @@ Hidden money masks the typed amount (`-webkit-text-security`), shows the
 saved amount as `••••` and drops every tone. Arrival motion and the switch
 slide run only under `prefers-reduced-motion: no-preference`.
 
+### Answer card
+
+`ask-answer-card.jsx`, the approved "Lead · Support · Detail" look (white,
+22 px radius, the entry card's shadow):
+
+- Head: a 34 px bubble (the category's palette colour at 20% with its icon
+  for one category; a neutral bubble with a card or search glyph for a
+  wallet, searched words or a type) and the subject in bold ("Public
+  Transport", "Citi Rewards", “grab”, "Income", "All entries").
+- Lead: the total, 2.1 rem, 800 weight. Spending stays plain ink (spending
+  is not bad for being spending; there is no plan here), income is mint,
+  transfers ink; hidden money masks it and drops the tone.
+- Detail: "Spent · 6 entries" in muted text, plus "Serene's share $30.00"
+  when the view's share differs from the whole amount.
+- Support: the filters as small neutral pills (month, person and scope,
+  category, wallet, type, amount, search).
+
+While it adds up it says "Adding it up…"; a month with no entries says so.
+"Open in Entries" is the first chip of the row (filled) while the answer is
+the newest thing in the conversation.
+
 ### Bottom chips
 
 `ask-chips.js` derives the row from the mode and the card:
@@ -228,7 +253,54 @@ slide run only under `prefers-reduced-motion: no-preference`.
 - saved: Back to Entries (or Splits, filled), Open this entry, Open on
   Splits when shared, Undo; the Apple Pay Shortcut's saved card offers Open
   this entry (filled), category chips and Choose category when it landed in
-  Other, and Splits.
+  Other, and Splits;
+- after an answer (`buildFilterChips`): Open in Entries (filled), then the
+  chips above; a follow-up question: only its options (one per wallet,
+  category, month or person, then "All of them"), with the question as the
+  line above the row; a view change: "Switch to Serene · Shared" (filled),
+  then the chips above, under "Change the view?".
+
+### Ask conversation store
+
+`ask-conversation-store.js` owns the conversation, like the other `*-owner`
+modules own their data: a module-level store (`subscribe`, `getSnapshot`,
+`read`, `begin`, `update`, `leave`, `clear`) made once per browser tab
+(`getAskConversationStore`), outliving the page. The page binds it with
+`useSyncExternalStore` (`useAskConversation` in `ask-panel.jsx`) and writes
+only through it, so an async reader result or save lands even after the
+page has gone; App keeps no copy. One conversation per way in (the intent
+key), at most three, the oldest finished one going first; `begin` restores
+the kept one or makes a new one (a saved add-mode card is finished, so the
+next + starts fresh); `leave` drops photo thumbnails and status lines and
+keeps the scroll offset; `clear` is New chat.
+
+It ships with the Ask route. The shell reads only
+`ask-conversation-presence.js` (in the entry chunk, a few hundred bytes):
+whether a conversation is in progress and which add-mode way in to reopen,
+published by the store on every change and kept in sessionStorage so a
+reload shows the Ask tab's dot without loading Ask. The dot is a 7 px
+accent disc at the tab label's top right (`.tab-dot`); the link's label
+reads "Ask, conversation in progress".
+
+Mirror: sessionStorage `monies.askConversation.v1` (versioned, at most
+60,000 characters with the oldest messages dropped first, unreadable data
+dropped and cleared; text, the card's fields and filters only, never a
+blob: or data: value, photo, audio or status line). Never localStorage or
+the server.
+
+## From Ask Chip
+
+`entries-ask-chip.jsx`, on Entries while `from_ask=1` and a list filter are
+in the URL: one white pill like the View and scope bar (14 px radius, the
+bar's shadow) with two 44 px targets: "✦ From Ask · Groceries · over
+$50.00" (accent "From Ask", the filters in ink, cut with an ellipsis when
+long) goes back to Ask; "✕" (muted, behind a hairline) clears the filters
+Ask set. On a phone it floats just above the View and scope bar (bottom
+140 px) and left of the round + button: in the thumb zone and in view
+while the list scrolls, so the person can always see the list is narrowed
+and undo it with one tap; the list gets 56 px more bottom padding, and the
+chip hides under a sheet or dialog as the bar does. On a wide screen it sits
+at the top of the list, under the page title.
 
 ## Apple Shortcut Install Boundary
 

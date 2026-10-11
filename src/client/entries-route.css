@@ -386,3 +386,90 @@
   padding: 2px 6px;
   border-radius: 999px;
 }
+
+/* The From Ask chip (entries-ask-chip.jsx): white like the View and scope
+   bar, accent text, two 44 px targets (back to Ask, and ✕). */
+.entries-ask-chip {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  margin: 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 18px rgba(27, 24, 21, 0.08);
+}
+
+.entries-ask-chip-back,
+.entries-ask-chip-clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.entries-ask-chip-back {
+  gap: 7px;
+  min-width: 0;
+  padding: 0 4px 0 12px;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.entries-ask-chip-back svg {
+  flex: 0 0 auto;
+}
+
+.entries-ask-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entries-ask-chip-text strong {
+  color: var(--accent-strong);
+}
+
+.entries-ask-chip-clear {
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 44px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.entries-ask-chip-back:focus-visible,
+.entries-ask-chip-clear:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+/* A phone: just above the View and scope bar (bottom 80 px, about 52 px
+   tall) and left of the + button (54 px at the right). */
+.entries-ask-chip.is-floating {
+  position: fixed;
+  left: 16px;
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  z-index: 58;
+  max-width: calc(100vw - 96px);
+  margin: 0;
+  box-shadow: 0 10px 26px rgba(27, 24, 21, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+body:has(> .note-dialog-overlay) > .entries-ask-chip,
+body:has(> .entry-mobile-sheet) > .entries-ask-chip,
+body[data-entry-inline-editor] > .entries-ask-chip {
+  display: none;
+}
+
+.entries-panel-root.has-ask-chip {
+  padding-bottom: 56px;
+}

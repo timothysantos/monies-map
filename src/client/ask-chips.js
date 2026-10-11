@@ -195,3 +195,34 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
   }
   return { items, prompt };
 }
+
+// The chip row while an answer, a follow-up question or a view change is
+// the newest thing in the conversation (docs/flows/ask-flow.md "Search and
+// filter"):
+// - a follow-up question: its options only, with the question above;
+// - a view change: Switch to <view> first and filled, then the usual chips;
+// - an answer: Open in Entries first and filled, then the usual chips.
+export function buildFilterChips({ focus, base, viewLabel = "", actions }) {
+  const rest = base.items.map((item) => ({ ...item, primary: false }));
+  if (focus.kind === "question") {
+    const question = focus.questions[0];
+    return {
+      prompt: question.reason === "unknown" ? askCopy.filter.unknownCategoryQuestion(question.word) : askCopy.filter.questions[question.field] ?? "",
+      items: /** @type {AskChip[]} */ (question.options.map((option) => ({
+        key: `filter-${question.field}-${option.key}`,
+        label: option.label,
+        onClick: () => actions.chooseFilterOption(option)
+      })))
+    };
+  }
+  if (focus.kind === "view") {
+    return {
+      prompt: askCopy.filter.switchPrompt,
+      items: /** @type {AskChip[]} */ ([{ key: "switch-view", label: askCopy.filter.switchTo(viewLabel), primary: true, onClick: actions.switchView }, ...rest])
+    };
+  }
+  return {
+    prompt: base.prompt,
+    items: /** @type {AskChip[]} */ ([{ key: "open-in-entries", label: askCopy.chips.openInEntries, primary: true, onClick: actions.openInEntries }, ...rest])
+  };
+}

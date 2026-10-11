@@ -45,6 +45,7 @@ function partnerName(context, ownerName) {
 }
 
 export function AskEntryCard({
+  settled = false,
   card,
   context,
   today,
@@ -74,7 +75,7 @@ export function AskEntryCard({
   const ownerVars = getPersonColourVars(card.fields.ownerName === SHARED_OWNER ? "shared" : card.fields.ownerName);
 
   return (
-    <section className={`ask-card${isSaved ? " is-saved" : ""}`} aria-label={isSaved ? askCopy.card.savedTo : askCopy.card.label} data-ask-card={card.status}>
+    <section className={`ask-card${isSaved ? " is-saved" : ""}${settled ? " is-settled" : ""}`} aria-label={isSaved ? askCopy.card.savedTo : askCopy.card.label} data-ask-card={card.status}>
       {tag ? (
         <span className={`ask-card-tag ${tag.className}`}>
           {tag.icon}
