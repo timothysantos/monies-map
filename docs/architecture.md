@@ -532,12 +532,37 @@ Exit criteria:
 
 ## Optional AI Assistance
 
-Workers AI is a non-authoritative assistance boundary. It is never on the
+AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
-path. Every AI action is an explicit user action. Each request is capped by a
-shared D1 daily usage counter and returns an ordinary unavailable response
+path. Every AI action is an explicit user action; within a conversation the
+user started, the chat may ask follow-up questions. Each request is capped by
+a shared D1 daily usage counter and returns an ordinary unavailable response
 when the binding is disabled, the allowance is exhausted, or a model response
 fails validation.
+
+Providers sit behind one deep module, `src/domain/ai-provider.ts`
+(`runVisionJson`, `runTextJson`). When the owner configures Cloudflare AI
+Gateway and a key, Claude Haiku (`claude-haiku-5-5`) answers first, with
+gateway logging and caching off on every request and a hard monthly gateway
+spend limit; Workers AI (Gemma 4) is the fallback for a rate limit, spend
+cap, failure, timeout or unusable answer. With no gateway config, Workers AI
+is used directly. Neither provider is required: the route answers
+unavailable and the client uses its deterministic fallback.
+
+```text
+receipt image (user pasted, dropped, scanned or shared; browser downscales,
+strips EXIF/location)
+  -> POST /api/ai-assist/receipt-read (type, bytes and 1.5 MiB checks)
+  -> AI off/unconfigured? -> { available: false } -> in-browser OCR
+                                -> readReceiptOcrText -> ReceiptReadDto
+  -> reserve daily allowance (aggregate counter is the only write)
+  -> Claude via AI Gateway (if configured) -> else/fallback Workers AI
+  -> finalizeReceiptRead (app validates date, total, currency, card last 4;
+     builds questions)
+  -> ReceiptReadDto draft -> receiptReadToDraftFields -> entry editor
+  -> user taps save -> normal /api/entries/create
+(the image is discarded after the provider call; nothing else is stored)
+```
 
 Summary, Month, Entries, and Splits render their Money insights from
 already-loaded figures with computed wording only (see "Money insights"
@@ -545,7 +570,8 @@ below): the headline is the bold fact and its think line as written. There
 is no AI rewording; the optional `/api/ai-assist/financial-insight` route was
 removed after it produced broken grammar in production.
 
-The Worker receives bounded, redacted text only. Statement fallback begins with
+Apart from a receipt image the user explicitly supplies, the Worker receives
+bounded, redacted text only. Statement fallback begins with
 browser-local PDF extraction and OCR; it sends extracted text after explicit
 consent and never uploads or stores the original binary. Model output is
 validated into drafts only: monthly note wording, pending category-rule

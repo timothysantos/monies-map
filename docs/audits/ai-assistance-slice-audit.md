@@ -260,3 +260,83 @@ it, and the daily usage counter row is unchanged). For the AI boundary:
   fails if any page requests the removed route or the headline changes after
   the page is usable, and `tests/ai-assistance-routes.test.mjs` proves the
   Worker answers the old route with 404 without calling AI.
+
+### Update, 11 October 2026: Claude through AI Gateway and receipt reading
+
+The owner approved two rule changes and a provider choice (branch
+`ai-provider-receipts`, server and domain only; no visible client UI yet):
+
+1. A receipt image, or one rendered page of a PDF receipt, that the user
+   explicitly pastes, drops, scans or shares may be sent to the AI provider.
+   This replaces "Raw PDF/image upload to an AI provider" in Out-of-Scope
+   above for receipts only; statements still send extracted text only.
+2. Within a conversation the user started, the chat may ask follow-up
+   questions. It never starts a conversation itself.
+
+Unchanged: AI only drafts and never writes; nothing is saved without the
+user's tap; the numbers shown come from the app; there is no scheduled or
+hidden inference; prompts, responses, images and files are never persisted.
+
+Provider: Claude Haiku (`claude-haiku-5-5`) through Cloudflare AI Gateway as
+the main model when configured, Workers AI Gemma 4
+(`@cf/google/gemma-4-26b-a4b-it`, vision-capable, confirmed in the Workers AI
+model catalogue on 11 October 2026) as the fallback and as the direct path
+when no gateway is configured. `AI_FALLBACK_MODEL` can switch to
+`@cf/meta/llama-4-scout-17b-16e-instruct`. The Anthropic key may come from
+any Anthropic account and may be added later; until then nothing calls the
+gateway.
+
+- Privacy: the receipt image goes to one provider once and is discarded.
+  The route never stores, logs or caches it; the browser must downscale it
+  (at most 1.5 MiB) and strip EXIF and location before sending, and the
+  Worker refuses anything but JPEG, PNG or WebP whose bytes match the
+  declared type. Gateway requests carry `cf-aig-collect-log: false` (no log
+  entry, metadata included) and `cf-aig-skip-cache: true`, and the
+  gateway's own Logs setting is to be off. A printed card number is cut to
+  its last four digits by the app, and long digit runs in merchant or item
+  text are redacted. Anthropic's commercial API terms: inputs and outputs
+  are not used for training, are deleted from Anthropic's backend within 30
+  days (Anthropic privacy centre, "How long do you store personal data?";
+  check the current figure before relying on it), and zero data retention
+  is available by agreement for eligible organisations. Cloudflare's
+  Workers AI terms are to be checked the same way. The owner should
+  re-check both providers' terms when the key is added.
+- Cost: a hard monthly spend limit (about US$10) on the gateway, set in
+  the dashboard, answers 429 when spent, which the app treats as a fallback
+  to Workers AI; the limit is in beta, eventually consistent and an
+  estimate, so an Anthropic Console spend limit is the second backstop.
+  The app's shared daily allowance (`AI_ASSIST_DAILY_LIMIT`, default 12,
+  4 to 60) is reserved once per request before inference; a receipt image
+  costs `AI_ASSIST_VISION_UNITS` (default 2, 1 to 10), so at most six
+  receipt reads a day by default. At Claude Haiku 5.5's list price ($0.10
+  input, $0.50 output per million tokens) a receipt read is a small
+  fraction of a cent. Haiku runs at low effort with a JSON schema.
+- Writes: the receipt route's only database write is the aggregate
+  allowance counter (`tests/receipt-read-route.test.mjs` fails on any other
+  statement or on any console output). The answer is a `ReceiptReadDto`
+  draft; `receiptReadToDraftFields` maps it to the `/api/entries/create`
+  field names, and only the user's save in the normal entry editor writes an
+  entry.
+- Validation: the model returns raw fields only, with no prose. The app
+  checks an ISO date at most a day ahead (a misread future date is dropped
+  and asked about), a positive bounded total converted to minor units by
+  the app, an allowlisted currency code and a four-digit card ending, and
+  builds `questions` from reasons and validated candidates (an ambiguous
+  03/04 offers both dates).
+- Retention: none in the app. AI Gateway logging and caching are off; the
+  providers' retention is set by their terms above.
+- No-AI path: with AI off or unconfigured, the route answers
+  `available: false` before reading the image; with the allowance spent or
+  both providers failing it answers the same after the checks. The client
+  then reads the same image with the existing in-browser Tesseract helpers
+  and `readReceiptOcrText`, which builds the same DTO from patterns
+  (`tests/receipt-ocr-text.test.mjs`, near-real fixtures under
+  `tests/fixtures/receipts/` with made-up shops). Provider fallbacks are
+  covered in `tests/ai-provider.test.mjs`: success, 429, 529, 500, network
+  failure, timeout, malformed JSON, parser rejection, refusal, cut-off,
+  both down, and no Anthropic config (Workers AI used directly, no gateway
+  call, no log line).
+- Not verified here: a real gateway call, the gateway's spend-limit 429 on
+  the provider-native endpoint, Gemma 4's actual image accuracy, and Llama 4
+  Scout's image input shape (the provider sends OpenAI-style `image_url`
+  parts, as Gemma 4's published schema documents).

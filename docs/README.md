@@ -98,7 +98,8 @@ a doc here in the same change.
 - [`audits/velocity-rule.md`](audits/velocity-rule.md): the velocity
   rule's "under $5" test against a repetition test, on real bank files.
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
-  optional AI assistance slice.
+  optional AI assistance slice, including the Claude-through-AI-Gateway
+  provider and receipt reading (11 October 2026).
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):
