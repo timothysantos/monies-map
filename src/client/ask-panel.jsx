@@ -32,7 +32,7 @@ import {
 import { AskAnswerCard } from "./ask-answer-card";
 import { AskBriefCard } from "./ask-brief-card";
 import { getAskConversationStore } from "./ask-conversation-store";
-import { applyFilterOption, isQueryForm, readFilterRequest } from "./ask-filter-reader";
+import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
 import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
@@ -459,15 +459,14 @@ function AskConversation({
     if (pending) {
       setPending(null);
     }
-    // A search or filter request, unless a card is being filled and this
-    // reads as a change to it rather than a question.
+    // A search or filter request. While a card is being filled, a plain
+    // sentence is a change to it; a question, or a request naming a month,
+    // someone's ("Serene's") or an amount limit, is still a search.
     const cardOpen = Boolean(card && card.status !== "saved");
-    if (!cardOpen || isQueryForm(text)) {
-      const reading = readFilterRequest(text, filterContext);
-      if (reading.kind !== "none") {
-        answerFilterRequest(reading);
-        return;
-      }
+    const reading = readFilterRequest(text, filterContext, { cardOpen });
+    if (reading.kind !== "none") {
+      answerFilterRequest(reading);
+      return;
     }
     if (!cardOpen && looksLikeQuestion(text)) {
       appendThread(threadItem("note", { text: askCopy.notes.askNotReady }));

@@ -189,9 +189,13 @@ function categoryCore(category) {
 /**
  * @param {string} text
  * @param {{ today: string, month: string, viewId: string, scope: string, people?: { id: string, name: string }[], accounts?: { id: string, name: string, institution?: string, isActive?: boolean }[], categories?: { name: string }[] }} context
+ * @param {{ cardOpen?: boolean }} [options] cardOpen: an entry card is being
+ *   filled, so a plain sentence ("groceries", "Citi", "split with Serene") is
+ *   a change to it; only a question, or a request with a month, a person's
+ *   name with 's or an amount limit, reads as a search.
  * @returns {FilterReading}
  */
-export function readFilterRequest(text, context) {
+export function readFilterRequest(text, context, { cardOpen = false } = {}) {
   const tokens = tokenize(text);
   if (!tokens.length) {
     return { kind: "none" };
@@ -399,6 +403,13 @@ export function readFilterRequest(text, context) {
 
   // Entry sentences stay with the entry reader.
   if (!queryForm && (bareAmount || dateWord)) {
+    return { kind: "none" };
+  }
+  // "Split with Serene" or "make it shared" change the card; "Serene's",
+  // a month or an amount limit only ever describe a search.
+  const searchShaped = months.size > 0 || minAmountMinor !== null || maxAmountMinor !== null
+    || tokens.some((token) => token.possessive && people.some((person) => nameWords(person.name)[0] === token.text));
+  if (cardOpen && !queryForm && !searchShaped) {
     return { kind: "none" };
   }
   if (queryForm && bareAmount && !signals.strong) {

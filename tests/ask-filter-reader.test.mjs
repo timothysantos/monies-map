@@ -180,6 +180,19 @@ test("questions it cannot read are left for the not-answered note", () => {
   }
 });
 
+test("while a card is being filled, a plain sentence is a change to it, not a search", () => {
+  const open = { cardOpen: true };
+  for (const text of ["groceries", "Citi cash back", "make it food", "transfers", "split with Serene", "make it shared", "household"]) {
+    assert.deepEqual(readFilterRequest(text, context, open), { kind: "none" }, text);
+  }
+  assert.deepEqual(readFilterRequest("serene's shared groceries last month", context, open), {
+    kind: "filter",
+    filter: filter({ month: "2026-09", viewId: "person-serene", scope: "shared", categories: ["Groceries"] })
+  });
+  assert.equal(readFilterRequest("how much on bills?", context, open).kind, "filter");
+  assert.equal(readFilterRequest("food over $50", context, open).kind, "filter");
+});
+
 test("isQueryForm tells a question or a search command from an entry sentence", () => {
   assert.equal(isQueryForm("show my citi card spending"), true);
   assert.equal(isQueryForm("How much on food?"), true);
