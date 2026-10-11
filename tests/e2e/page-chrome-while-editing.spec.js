@@ -156,29 +156,27 @@ test.describe("page chrome while editing on a phone", () => {
   });
 });
 
-// The Splits receipt button opens Add expense. It used to stay on top of the
-// dialog it had just opened (above its backdrop), so it could be tapped
-// again over the form. It now gives way like the Entries + button.
+// The Splits receipt button used to stay on top of the Add expense dialog
+// (above its backdrop), so it could be tapped again over the form. It now
+// gives way like the Entries + button. The button itself opens Ask's card,
+// so the dialog is opened the way Ask's "Edit in form" opens it.
 test.describe("the Splits receipt button and its Add expense dialog", () => {
   test.use({ viewport: iPhone });
 
-  test("the receipt button hides while its Add expense dialog is open and returns when it closes", async ({ page }) => {
+  test("the receipt button hides while the Add expense dialog is open and returns when it closes", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.goto("/");
     await reseedDemo(page);
     await gotoPageAfterApi(
       page,
-      "/splits?view=person-tim&month=2025-10&split_group=split-group-none",
+      "/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense",
       "/api/splits-page",
-      () => page.locator(".splits-fab")
+      () => page.getByRole("dialog", { name: "Create split expense" })
     );
     const receiptButton = page.locator(".splits-fab");
-    await expect(receiptButton).toBeVisible();
-    await expect(receiptButton).toHaveAccessibleName("+ Add expense");
-
-    await receiptButton.click();
     const dialog = page.getByRole("dialog", { name: "Create split expense" });
     await expect(dialog).toBeVisible();
+    await expect(receiptButton).toHaveCount(1);
     await expect(receiptButton).toBeHidden();
     // Nothing of the button is left to tap over the form.
     const dialogBox = await dialog.boundingBox();

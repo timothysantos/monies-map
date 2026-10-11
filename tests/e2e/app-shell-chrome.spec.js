@@ -68,8 +68,11 @@ test.describe("route tabs and the More pages menu", () => {
     await page.goto("/summary?view=person-tim&month=2026-05");
     await waitUsable(page);
     const tabs = page.getByRole("navigation", { name: /./ }).first();
-    // Month is no tab of its own; the Summary tab covers it.
+    // Month is no tab of its own; the Summary tab covers it. Ask is a phone
+    // tab only for now: the wide header leaves it out.
     await expect(tabs.getByRole("link", { name: "Month", exact: true })).toHaveCount(0);
+    await expect(tabs.locator("> a.tab:visible")).toHaveText(["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ"]);
+    await expect(tabs.getByRole("link", { name: "Ask" })).toBeHidden();
     await tabs.getByRole("link", { name: "Entries", exact: true }).click();
     await expect(page).toHaveURL(/\/entries\?.*view=person-tim/);
     await expect(page).toHaveURL(/month=2026-05/);
@@ -95,8 +98,9 @@ test.describe("route tabs and the More pages menu", () => {
     await page.keyboard.press("Enter");
     const menu = page.locator(".tab-overflow-popover");
     await expect(menu).toBeVisible();
-    // Month sits here on a phone, whose tab bar is Summary, Entries, Splits, Ask.
-    await expect(menu.getByRole("link")).toHaveText(["Month", "Imports", "Settings", "FAQ"]);
+    // The phone's tab bar is Summary, Entries, Splits, Ask; Month is no page
+    // of its own (the Summary tab's month choice), so it is not here either.
+    await expect(menu.getByRole("link")).toHaveText(["Imports", "Settings", "FAQ"]);
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(trigger).toBeFocused();

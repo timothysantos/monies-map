@@ -48,11 +48,16 @@ test.describe("Summary tab month choice on a phone", () => {
     await page.goto(SUMMARY_URL);
     await waitUsable(page);
     const tabs = page.locator("nav.tab-strip");
-    await expect(tabs.locator("> a.tab:visible")).toHaveText(["Summary", "Entries", "Splits"]);
+    await expect(tabs.locator("> a.tab:visible")).toHaveText(["Summary", "Entries", "Splits", "Ask"]);
     await expect(tabs.getByRole("link", { name: "Month", exact: true })).toHaveCount(0);
     await expect(tabs.getByRole("button", { name: "More pages" })).toBeVisible();
-    // One grid column per primary tab, then the ••• menu.
-    expect(await tabs.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(4);
+    // One grid column per primary tab, then the ••• menu, and every tab fits
+    // its column on one line.
+    expect(await tabs.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(5);
+    const overflowing = await tabs.locator("> a.tab:visible, > button.tab").evaluateAll((items) => items
+      .filter((item) => item.scrollWidth > item.clientWidth + 1 || item.getBoundingClientRect().height > 60)
+      .map((item) => item.textContent.trim()));
+    expect(overflowing).toEqual([]);
   });
 
   test("picking a month in the sheet opens Month for it, pins the range and reuses the loaded Summary", async ({ page }) => {

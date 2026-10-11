@@ -36,12 +36,14 @@ test.describe("the Ask page on a phone", () => {
     await reseedDemo(page);
   });
 
-  test("the tab bar reads Summary, Entries, Splits, Ask, and Month moves under More pages", async ({ page }) => {
+  test("the tab bar reads Summary, Entries, Splits, Ask, and Month is no page under More pages", async ({ page }) => {
     await gotoPageAfterApi(page, `/summary?view=person-tim&month=${MONTH}`, "/api/summary-page", () => page.locator("nav.tab-strip"));
     const visibleTabs = await page.locator("nav.tab-strip > a.tab:visible").allInnerTexts();
     expect(visibleTabs.map((text) => text.trim())).toEqual(["Summary", "Entries", "Splits", "Ask"]);
     await page.getByRole("button", { name: "More pages" }).click();
-    await expect(page.locator(".tab-overflow-popover").getByRole("link", { name: "Month" })).toBeVisible();
+    const overflow = page.locator(".tab-overflow-popover");
+    await expect(overflow.getByRole("link")).toHaveText(["Imports", "Settings", "FAQ"]);
+    await expect(overflow.getByRole("link", { name: "Month" })).toHaveCount(0);
 
     await page.keyboard.press("Escape");
     await page.locator("nav.tab-strip").getByRole("link", { name: "Ask" }).click();
