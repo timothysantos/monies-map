@@ -212,3 +212,15 @@ test("a typed sentence uses the saved payment way through the entry draft route"
   const timCash = await api("/api/ai-assist/entry-draft", { text: "taxi 15 cash", viewId: "person-tim" });
   assert.equal(timCash.payload.draft.fields.accountId.source, "default");
 });
+
+test("a demo reseed forgets the payment ways (its people and accounts are replaced) but keeps the Shortcut settings", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  await api("/api/settings/shortcuts/save", { apiKey: "mm_kept", defaultAccountPriorityIds: ["acct-uob-one"] });
+  await api("/api/settings/payment-ways/save", { personId: "person-joyce", bankTransferAccountId: "acct-household" });
+
+  const reseed = await api("/api/demo/reseed", {});
+  assert.equal(reseed.status, 200);
+
+  assert.deepEqual(await rows(db, "SELECT key FROM app_settings ORDER BY key"), [{ key: "shortcut_api" }]);
+  assert.deepEqual((await paymentWays(api))[1], { personId: "person-joyce", bankTransferAccountId: "", cashAccountId: "" });
+});

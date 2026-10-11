@@ -3,6 +3,8 @@
 // an already seeded demo database aligned with the current demo fixtures.
 
 import { ensureDemoSchema } from "./app-repository-schema";
+import { ensureAppSettingsTable } from "./app-settings-table";
+import { PAYMENT_WAYS_SETTINGS_KEY } from "./payment-ways";
 import { recalculateMonthlySnapshots } from "./app-repository-snapshots";
 import {
   accounts as demoAccounts,
@@ -303,6 +305,10 @@ async function reassignPersonReferences(db: D1Database, fromPersonId: string, to
 }
 
 export async function clearDemoData(db: D1Database) {
+  // Payment ways name people and accounts, which are replaced below. The
+  // Shortcut settings stay: an installed shortcut depends on their key.
+  await ensureAppSettingsTable(db);
+  await db.prepare("DELETE FROM app_settings WHERE key = ?").bind(PAYMENT_WAYS_SETTINGS_KEY).run();
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
     "DELETE FROM split_activity_history",
