@@ -109,6 +109,7 @@ export async function buildEntriesShellDto(
         apiKey: "",
         apiKeySource: "none"
       },
+      paymentWays: [],
       demo,
       categoryMatchRules: [],
       categoryMatchRuleSuggestions: [],

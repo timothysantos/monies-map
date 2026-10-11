@@ -1142,6 +1142,8 @@ export interface ContextViewDto {
 export interface SettingsPageDto {
   accounts: AccountDto[];
   shortcutSettings: ShortcutSettingsDto;
+  // One row per household person, in household order.
+  paymentWays: PaymentWayDto[];
   demo: DemoSettingsDto;
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];

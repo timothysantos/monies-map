@@ -1,5 +1,6 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { recordAuditEvent } from "./app-repository-audit";
+import { ensureAppSettingsTable } from "./app-settings-table";
 import type { AccountDto, ShortcutSettingsDto } from "../types/dto";
 
 const SHORTCUT_SETTINGS_KEY = "shortcut_api";
@@ -19,16 +20,6 @@ export interface ShortcutAccountSelection {
   name: string;
   currency: string;
   resolution: "explicit" | "wallet_name" | "priority" | "foreign_currency";
-}
-
-export async function ensureAppSettingsTable(db: D1Database) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS app_settings (
-      key TEXT PRIMARY KEY,
-      value_json TEXT NOT NULL,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
 }
 
 export function buildDefaultShortcutAccountPriorityIds(accounts: AccountDto[]) {
