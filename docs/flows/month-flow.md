@@ -119,6 +119,18 @@ Month data comes from:
   the URL's range and the month controls wait. After a Month save clears
   the Summary cache, opening the month sheet reads it again.
 
+Spending Mix for the picked month (below the money insights, above the
+plan tables) reads `monthPage.categoryShareChart` from this DTO
+(`selectMonthSpendingMix` in `month-spending-mix.js`): no request of its
+own, also on a deep link before the range's Summary page lands. It is the
+same projection as the Summary page's `categoryShareByMonth` entry for the
+month (`buildDonutChart` over the view's entries in the scope);
+`tests/month-spending-mix.test.mjs` holds the two equal for every view and
+scope. A category card's arrow opens Entries for that category in this
+month and scope (`handleOpenEntriesForActual`, as the tables' Actual
+drilldowns). `tests/e2e/month-spending-mix.spec.js` proves it on a phone
+and a desktop.
+
 Month mutations may also cause targeted refreshes in:
 
 - `entries`

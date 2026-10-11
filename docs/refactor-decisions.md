@@ -203,6 +203,10 @@ Decision (owner-approved, 2026-10-11):
   plus the ••• menu; its grid has one column per primary tab, so the Ask
   tab another branch adds is one `primary: true` registry line.
 - Spending Mix lost its own month chips: the tab's month choice drives it.
+  All months shows the range; a picked month shows that month in the Month
+  content, below the money insights, from the Month page DTO's
+  `categoryShareChart` (the same projection as Summary's
+  `categoryShareByMonth`, so no request and no wait for the range page).
 - With a month picked, the range's Summary page loads beside the Month page
   through the Summary owner; it is optional for the Month page (never its
   error screen), and from All months it is already cached.

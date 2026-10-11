@@ -227,7 +227,8 @@ plan.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
-  with a list of categories below it.
+  with a list of categories below it. Pick a month to see that month's
+  ([Month](#month)).
 - **Intent vs Outcome**: one card per month comparing planned and actual
   income, spending and savings.
 - **Wallets in view**: the current balance of each account and whether a
@@ -307,6 +308,10 @@ stays highlighted, and the range at the top stays as it was.
   income minus planned spend; it says Overplanned when negative), Actual
   spend, Savings target and Spend gap (planned minus actual).
 - **Money insights** for the month.
+- **Spending Mix**: the month's spending by category, the same donut and
+  list as on Summary. Select a category to hide or show it in the donut; its
+  **›** opens that category's entries for this month. A month with no
+  spending says so instead of showing an empty donut.
 - **Income**: planned income sources.
 - **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
