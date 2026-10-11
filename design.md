@@ -593,7 +593,9 @@ plan-row sheet and the Summary top; the Entries edit sheet and the Splits
 expense dialog are to follow with the same blocks.
 
 Blocks (`src/client/ui/lead-support-detail.jsx` and its CSS; small props,
-callers pass copy, controls and handlers):
+callers pass copy, controls and handlers). `ui-components.jsx` re-exports
+them so they share its chunk: on their own they were two more first-screen
+files for `check:bundle`.
 
 - `LeadCard`: the one white card with the strong shadow
   (`0 14px 32px`, radius 20px). With a `title` it is a head line: an
