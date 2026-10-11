@@ -128,7 +128,7 @@ test("linked entry category save preserves ledger amount and can update the conn
   await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=direct_plus_shared&editing_entry=${entry.entryId}`);
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
-  await expect(editor.getByLabel("Amount")).toHaveValue("22");
+  await expect(editor.getByLabel("Amount")).toHaveValue("22.00");
 
   await editor.locator("select").first().selectOption("Entertainment");
   await editor.getByRole("button", { name: "Done editing entry" }).click();
