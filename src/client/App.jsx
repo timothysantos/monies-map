@@ -28,6 +28,7 @@ import {
   writePersistedAppShell
 } from "./app-shell-query";
 import {
+  buildAskLocation,
   buildEntriesPageParams,
   buildPageViewFromRouteData,
   buildRoutePageRequest,
@@ -3089,10 +3090,10 @@ export function App() {
       {renderedTabId === "entries" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab" onClick={() => {
-              const trigger = document.querySelector("[data-entries-fab-trigger='true']");
-              if (trigger instanceof HTMLButtonElement) {
-                trigger.click();
-              }
+              // The + button opens the Ask page's new entry card; the
+              // Entries composer stays on "+ Add entry" and the card's
+              // "Edit in form".
+              navigate(buildAskLocation(searchParams, { mode: "add", from: "entries" }));
             }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
               <Plus size={24} />
             </button>,
@@ -3114,10 +3115,10 @@ export function App() {
       {renderedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab splits-fab" onClick={() => {
-              const trigger = document.querySelector("[data-splits-fab-trigger='true']");
-              if (trigger instanceof HTMLButtonElement) {
-                trigger.click();
-              }
+              // The receipt button opens the Ask page's card with the
+              // Splits switch on for the open group; the Splits expense
+              // dialog stays on "+ Add expense" and the card's "Edit in form".
+              navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup: searchParams.get("split_group") ?? "" }));
             }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
               <Receipt size={24} />
             </button>,
