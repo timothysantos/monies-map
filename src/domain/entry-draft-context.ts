@@ -1,12 +1,13 @@
 // Read-only reference data the entry draft parser needs (entry-draft.ts):
 // accounts without balances, people in household order, category names,
-// category rules and the Shortcut's account settings. It writes nothing
-// (loadShortcutSettings only creates its settings table if it is missing,
-// as on every Shortcut request), and the Shortcut API key it reads is never
-// passed on.
+// category rules, the Shortcut's account settings and the payment ways. It
+// writes nothing (the settings loaders only create their table if it is
+// missing, as on every Shortcut request), and the Shortcut API key it reads
+// is never passed on.
 
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadCategoryMatchRules } from "./app-repository-category-match-rules";
+import { loadPaymentWays } from "./app-repository-payment-ways";
 import { loadShortcutAccountReferences, loadShortcutSettings } from "./app-repository-shortcuts";
 import type { EntryDraftContext } from "./entry-draft";
 
@@ -27,6 +28,11 @@ export async function loadEntryDraftContext(
     .all<{ name: string }>();
 
   const householdPeople = people.results.map((person) => ({ id: person.id, name: person.display_name }));
+  const paymentWays = await loadPaymentWays(db, {
+    accounts,
+    people: householdPeople,
+    priorityIds: settings.defaultAccountPriorityIds
+  });
   const viewerName = householdPeople.find((person) => person.id === input.viewId)?.name;
   return {
     today: input.today,
@@ -36,6 +42,7 @@ export async function loadEntryDraftContext(
     categoryMatchRules,
     defaultAccountPriorityIds: settings.defaultAccountPriorityIds,
     foreignCurrencyAccountId: settings.foreignCurrencyAccountId || undefined,
+    paymentWays,
     ...(viewerName ? { viewerName } : {})
   };
 }

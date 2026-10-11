@@ -5,12 +5,14 @@ import {
   loadAppErrorDiagnostics,
   loadCategoryMatchRules,
   loadCategoryMatchRuleSuggestions,
+  loadHousehold,
   loadIgnoredCategoryMatchRuleIssueIds,
   loadReconciliationExceptions,
   loadUnresolvedTransfers,
   TRANSFER_REVIEW_PAGE_LIMIT
 } from "../app-repository";
 import { loadCategoryRuleBackfills } from "../app-repository-category-rule-backfill";
+import { loadPaymentWays } from "../app-repository-payment-ways";
 import { loadShortcutSettings } from "../app-repository-shortcuts";
 import type { SettingsPageDto } from "../../types/dto";
 
@@ -29,7 +31,8 @@ export async function buildSettingsPageDto(
     unresolvedTransfers,
     reconciliationExceptions,
     recentAuditEvents,
-    errorDiagnostics
+    errorDiagnostics,
+    household
   ] = await Promise.all([
     loadAccounts(db),
     loadCategoryMatchRules(db),
@@ -38,7 +41,8 @@ export async function buildSettingsPageDto(
     loadUnresolvedTransfers(db, { limit: TRANSFER_REVIEW_PAGE_LIMIT }),
     loadReconciliationExceptions(db),
     loadAuditEvents(db),
-    loadAppErrorDiagnostics(db)
+    loadAppErrorDiagnostics(db),
+    loadHousehold(db)
   ]);
   const categoryRuleBackfills = await loadCategoryRuleBackfills(db, categoryMatchRules);
   const shortcutSettings = await loadShortcutSettings(
@@ -47,10 +51,18 @@ export async function buildSettingsPageDto(
     environmentShortcutToken,
     shortcutEndpoint?.trim() || undefined
   );
+  // The PayNow default follows Default account priority, so it is resolved
+  // after the Shortcut settings.
+  const paymentWays = await loadPaymentWays(db, {
+    accounts,
+    people: household.people,
+    priorityIds: shortcutSettings.defaultAccountPriorityIds
+  });
   return {
     settingsPage: {
       accounts,
       shortcutSettings,
+      paymentWays,
       demo,
       categoryMatchRules,
       categoryMatchRuleSuggestions,

@@ -12,6 +12,7 @@ export function buildSafeSettingsPage(settingsPage) {
       defaultParams: "",
       foreignCurrencyAccountId: ""
     },
+    paymentWays: [],
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
     categoryRuleBackfills: [],
@@ -35,6 +36,29 @@ export function buildShortcutSettingsDraft(shortcutSettings, accounts) {
     defaultAccountPriorityIds: [...savedPriorityIds, ...remainingPriorityIds],
     foreignCurrencyAccountId: activeAccountIds.has(shortcutSettings?.foreignCurrencyAccountId) ? shortcutSettings.foreignCurrencyAccountId : ""
   };
+}
+
+// Settings -> Payment ways: the accounts each select offers. PayNow and bank
+// transfers may come from any active bank account (the person's own first,
+// then shared ones, then other people's); cash from any active cash account.
+export function buildPaymentWayAccountOptions(accounts, personId) {
+  const ownerRank = (account) => (account.ownerPersonId === personId ? 0 : account.isJoint || !account.ownerPersonId ? 1 : 2);
+  const byOwnerThenName = (left, right) => ownerRank(left) - ownerRank(right) || left.name.localeCompare(right.name);
+  const active = (accounts ?? []).filter((account) => account.isActive);
+  return {
+    bankTransfer: active.filter((account) => account.kind === "bank").sort(byOwnerThenName),
+    cash: active.filter((account) => account.kind === "cash").sort(byOwnerThenName)
+  };
+}
+
+export function buildPaymentWaysDraft(paymentWays, people) {
+  const byPerson = new Map((paymentWays ?? []).map((way) => [way.personId, way]));
+  return (people ?? []).map((person) => ({
+    personId: person.id,
+    personName: person.name,
+    bankTransferAccountId: byPerson.get(person.id)?.bankTransferAccountId ?? "",
+    cashAccountId: byPerson.get(person.id)?.cashAccountId ?? ""
+  }));
 }
 
 export function reorderShortcutAccountPriorityIds(accountIds, fromIndex, toIndex) {

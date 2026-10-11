@@ -58,6 +58,16 @@ export interface ShortcutSettingsDto {
   foreignCurrencyAccountId: string;
 }
 
+// Settings -> Payment ways (DOMAIN.md "Payment Way"): for one person, the
+// account their PayNow and bank transfers (and NETS, GIRO) come from and
+// their cash wallet. "" means none: the entry draft then keeps Default
+// account priority.
+export interface PaymentWayDto {
+  personId: string;
+  bankTransferAccountId: string;
+  cashAccountId: string;
+}
+
 export interface AccountCheckpointDto {
   month: string;
   statementStartDate?: string;
@@ -1132,6 +1142,8 @@ export interface ContextViewDto {
 export interface SettingsPageDto {
   accounts: AccountDto[];
   shortcutSettings: ShortcutSettingsDto;
+  // One row per household person, in household order.
+  paymentWays: PaymentWayDto[];
   demo: DemoSettingsDto;
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];

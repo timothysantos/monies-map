@@ -340,7 +340,7 @@ every word of a description must be a sentence word. The merge re-runs the
 parser with the suggestion, so a deterministic value always wins and an AI
 value is marked `ai`; number words that spell an AI amount leave the
 sentence description, and nothing else does. Reference data loads through `entry-draft-context.ts`
-(five reads, no ledger tables); the route writes nothing but the allowance
+(six reads, no ledger tables); the route writes nothing but the allowance
 counter, and only when AI is asked. A confirmed draft is saved by the client
 posting `createBody` to `/api/entries/create`. Proof:
 `tests/entry-draft.test.mjs` (scenario table with exact outputs and the
@@ -543,6 +543,11 @@ A persistence command is all-or-nothing:
   rows are staged, every visible change is one final batch, and a failure
   discards the staged rows. Do not add another staged write without a measured
   limit and the same invisibility argument
+- a payment way save (`src/domain/app-repository-payment-ways.ts`) checks
+  the person and accounts first, then commits the setting and its audit
+  event in one batch; the person's entry is merged into the stored JSON
+  inside the statement (`json_patch`), so two people saved at once cannot
+  overwrite each other (`tests/atomic-writes-payment-ways.test.mjs`)
 - a repeated destructive command is rejected, not re-run (rolling back a
   rolled-back import returns 409)
 - a check on the record's own state that a concurrent request can make stale

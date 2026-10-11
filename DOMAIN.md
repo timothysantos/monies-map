@@ -599,6 +599,7 @@ Field sources. Every field carries its value and where it came from:
   name, a person, "with Serene", "came into").
 - `rule`: a category from the household's category match rules on the
   description, as the Shortcut does.
+- `rule`: also the account a payment word means (see "Payment Way" below).
 - `default`: filled because the sentence did not say: today's date, the
   account from Default account priority (the card for other currencies for a
   foreign amount, the first bank account for income, the payer's first
@@ -632,6 +633,61 @@ Important distinctions:
   other account is `transferAccount`, for the normal transfer match later.
   With no description typed it is "Transfer to <account>" (owner-approved
   copy, 2026-10-11).
+
+### Payment Way
+
+How one person pays when no card or account is named: the account their
+PayNow and bank transfers come from, and their cash wallet. Chosen per
+person in Settings -> Payment ways; used by the entry draft when a sentence
+says how it was paid ("lunch at nasi lemak bmv 7.20, paynow, mine").
+
+Canonical term:
+- `payment way` (the two kinds: `PayNow and bank transfers`, `Cash`)
+
+Code:
+- `src/domain/payment-ways.ts` (pure: which accounts count, defaults)
+- `src/domain/app-repository-payment-ways.ts` (`loadPaymentWays`,
+  `savePaymentWay`)
+- `PaymentWayDto` in `src/types/dto.ts`; `settingsPage.paymentWays`
+- `POST /api/settings/payment-ways/save` with
+  `{ personId, bankTransferAccountId, cashAccountId }` ("" = none)
+
+Rules:
+- Payment words: PayNow ("paynow", "pay now"), FAST, GIRO, NETS (a debit
+  card network, so the bank account) and "bank transfer" mean the PayNow and
+  bank transfers account; "cash" means the cash wallet. FAST, NETS and cash
+  are also ordinary words, so they count only in capitals (FAST, NETS),
+  after "by", "via", "with", "using", "in" or "through", after "paid"/"pay"
+  (cash), or closing a clause ("taxi 15 cash"). "Cash back" is a card name.
+  The words always leave the description; two different ways in one
+  sentence use neither.
+- Whose payment way: the payer or owner the sentence names, "mine" or "I"
+  the viewer, else the viewer, else the owner of the account Default
+  account priority gives. An unclear payer ("she paid", no one named) uses
+  none.
+- A named account always wins. A payment way never applies to a transfer.
+  Another person's payment way is never used.
+- Nothing chosen for that person and that kind (or an unclear payer):
+  cash is never recorded on a card or another default account; the account
+  is left out and asked (`accountId`, reason `missing`), offering that
+  person's active accounts with cash accounts first. PayNow, FAST, GIRO,
+  NETS and a bank transfer keep the Default account priority fallback,
+  unless it is a credit card: PayNow never comes from a card, so that is
+  asked too, offering that person's active accounts that are not cards,
+  bank accounts first. (Owner-approved, 2026-10-11.)
+- PayNow and bank transfers may be any active bank account, a joint one or
+  another person's included (people do pay from a shared or a partner's
+  account). Cash must be an active `cash` account. A save naming anything
+  else (a card, an archived or unknown account, a person outside the
+  household) is refused before anything is written.
+- Default: a person who has never chosen gets their own first bank account
+  in Default account priority (never a joint one), else none, and no cash
+  wallet. A choice is kept as made, none included. A chosen account that is
+  archived or no longer of its kind counts as not chosen.
+- Stored household-wide in `app_settings` under `payment_ways`
+  (`{"people":{"<personId>":{"bankTransferAccountId","cashAccountId"}}}`);
+  a demo reseed clears it, because it names the people and accounts the
+  reseed replaces. The Shortcut settings in the same table stay.
 
 ### Transaction Date & Reconciliation
 The system uses an event-first date model so planning and split workflows do

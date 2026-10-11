@@ -96,6 +96,7 @@ import {
   dismissUnresolvedTransfer
 } from "./domain/app-repository-settings";
 import { reopenSplitBatchRecord } from "./domain/app-repository-splits";
+import { savePaymentWay } from "./domain/app-repository-payment-ways";
 import {
   loadShortcutSettings,
   resolveShortcutAccountSelection,
@@ -455,6 +456,27 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save shortcut settings" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/settings/payment-ways/save" && request.method === "POST") {
+      const body = await request.json<{
+        personId?: unknown;
+        bankTransferAccountId?: unknown;
+        cashAccountId?: unknown;
+      }>().catch(() => null);
+      const text = (value: unknown) => (typeof value === "string" ? value : "");
+      try {
+        return json({
+          ok: true,
+          ...(await savePaymentWay(env.DB, {
+            personId: text(body?.personId),
+            bankTransferAccountId: text(body?.bankTransferAccountId),
+            cashAccountId: text(body?.cashAccountId)
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save payment ways" }, 400);
       }
     }
 

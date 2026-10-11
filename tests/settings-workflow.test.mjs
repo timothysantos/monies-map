@@ -6,6 +6,8 @@ import {
   buildCreateAccountDialog,
   buildCreateCategoryRuleDialog,
   buildEditAccountDialog,
+  buildPaymentWayAccountOptions,
+  buildPaymentWaysDraft,
   buildReconciliationDialog,
   buildSafeSettingsPage,
   buildShortcutSettingsDraft,
@@ -266,4 +268,28 @@ test("reconciliation dialog builder keeps checkpoint defaults explicit", () => {
       history: [{ month: "2026-05" }]
     }
   );
+});
+
+test("payment way selects offer active bank accounts, own first, then shared, then other people's, and active cash accounts", () => {
+  const accounts = [
+    { id: "joyce-bank", name: "Joyce DBS", kind: "bank", ownerPersonId: "person-joyce", isJoint: false, isActive: true },
+    { id: "joint", name: "Household Float", kind: "bank", isJoint: true, isActive: true },
+    { id: "tim-bank", name: "UOB Savings", kind: "bank", ownerPersonId: "person-tim", isJoint: false, isActive: true },
+    { id: "tim-old", name: "Old Bank", kind: "bank", ownerPersonId: "person-tim", isJoint: false, isActive: false },
+    { id: "tim-card", name: "UOB One", kind: "credit_card", ownerPersonId: "person-tim", isJoint: false, isActive: true },
+    { id: "purse", name: "Purse", kind: "cash", ownerPersonId: "person-joyce", isJoint: false, isActive: true }
+  ];
+  const options = buildPaymentWayAccountOptions(accounts, "person-tim");
+  assert.deepEqual(options.bankTransfer.map((account) => account.id), ["tim-bank", "joint", "joyce-bank"]);
+  assert.deepEqual(options.cash.map((account) => account.id), ["purse"]);
+  assert.deepEqual(buildPaymentWayAccountOptions(accounts, "person-joyce").bankTransfer.map((account) => account.id), ["joyce-bank", "joint", "tim-bank"]);
+});
+
+test("the payment ways draft has one row per person in household order, none when the page has no row", () => {
+  const people = [{ id: "person-tim", name: "Tim" }, { id: "person-joyce", name: "Joyce" }];
+  assert.deepEqual(buildPaymentWaysDraft([{ personId: "person-tim", bankTransferAccountId: "tim-bank", cashAccountId: "" }], people), [
+    { personId: "person-tim", personName: "Tim", bankTransferAccountId: "tim-bank", cashAccountId: "" },
+    { personId: "person-joyce", personName: "Joyce", bankTransferAccountId: "", cashAccountId: "" }
+  ]);
+  assert.deepEqual(buildSafeSettingsPage(null).paymentWays, []);
 });

@@ -116,6 +116,8 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
     invalidateSplits: false,
     invalidateSummary: false
   });
+  // Payment ways change only how a typed entry draft picks its account.
+  assert.deepEqual(buildSettingsRefreshPlan("payment_way_saved"), buildSettingsRefreshPlan("shortcut_settings_saved"));
 });
 
 test("settings transfer fixes refresh affected ledger route families", () => {

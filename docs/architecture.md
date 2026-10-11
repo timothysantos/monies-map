@@ -639,7 +639,9 @@ and returns `{ ok, draft: EntryDraftDto, ai }`. The deterministic parser
 (`src/domain/entry-draft.ts`) always answers, from read-only reference data
 (`entry-draft-context.ts`: accounts without balances, people, category names,
 category rules, the Shortcut's Default account priority and other-currency
-card). Only when the sentence named no amount or left no description does
+card, and each person's payment ways). A payment word ("paynow", "NETS",
+"cash") with no account named picks that person's payment way account,
+marked `rule` (DOMAIN.md, "Payment Way"). Only when the sentence named no amount or left no description does
 the route spend one allowance unit asking AI, sending the redacted sentence
 alone (300 characters, 80 tokens). The answer fills only those gaps, marked
 `ai`, after validation; anything else returns the deterministic draft with

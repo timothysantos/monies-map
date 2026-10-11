@@ -12,6 +12,8 @@
 // anywhere in the SQL.
 
 import { ensureDemoSchema } from "./app-repository-schema";
+import { ensureAppSettingsTable } from "./app-settings-table";
+import { PAYMENT_WAYS_SETTINGS_KEY } from "./payment-ways";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshots } from "./app-repository-snapshots";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { isoDateInAppTimeZone } from "../lib/app-calendar";
@@ -229,6 +231,9 @@ export function buildShowcaseInsertSqlStatements(dataset: ShowcaseDataset) {
 export function buildShowcaseSeedStatements(db: D1Database, dataset: ShowcaseDataset, extraStatements: D1PreparedStatement[] = []) {
   return [
     ...SHOWCASE_CLEAR_TABLES.map((table) => db.prepare(`DELETE FROM ${table}`)),
+    // Payment ways name the people and accounts replaced here; the Shortcut
+    // settings in the same table stay.
+    db.prepare("DELETE FROM app_settings WHERE key = ?").bind(PAYMENT_WAYS_SETTINGS_KEY),
     ...buildShowcaseInsertSqlStatements(dataset).map((sql) => db.prepare(sql)),
     ...buildMonthlySnapshotRefreshMarkers(db, dataset.months),
     ...extraStatements
@@ -254,6 +259,7 @@ export async function reseedShowcaseData(
   options: { seedMonth?: string; now?: Date; extraStatements?: D1PreparedStatement[] } = {}
 ) {
   await ensureDemoSchema(db);
+  await ensureAppSettingsTable(db);
   const dataset = buildShowcaseDataset(resolveShowcaseSeedWindow(options.seedMonth, options.now));
   await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? []));
   await refreshMonthlySnapshots(db, dataset.months);

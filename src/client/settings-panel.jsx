@@ -31,6 +31,7 @@ import {
   resolveReconciliationException,
   runDemoAction,
   saveCategoryMatchRule,
+  savePaymentWay,
   saveShortcutSettings,
   saveSettingsCategory,
   updateSettingsPerson
@@ -46,6 +47,7 @@ import {
   SettingsCategoryMatchRulesSection,
   SettingsDemoSection,
   SettingsErrorDiagnosticsSection,
+  SettingsPaymentWaysSection,
   SettingsPeopleSection,
   SettingsShortcutApiSection,
   SettingsTransfersSection,
@@ -64,6 +66,7 @@ import {
   buildEditCategoryRuleDialog,
   buildPersonDialog,
   buildReconciliationDialog,
+  buildPaymentWaysDraft,
   buildSafeSettingsPage,
   buildShortcutSettingsDraft,
   buildStatementComparePanel,
@@ -139,6 +142,7 @@ export function SettingsPanel({
     people: false,
     accounts: false,
     shortcutApi: false,
+    paymentWays: false,
     categories: false,
     categoryRules: false,
     trust: false,
@@ -196,6 +200,9 @@ export function SettingsPanel({
   const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
   const [shortcutSettingsError, setShortcutSettingsError] = useState("");
   const [shortcutSettingsStatus, setShortcutSettingsStatus] = useState("");
+  const [paymentWaysDraft, setPaymentWaysDraft] = useState(() => buildPaymentWaysDraft(safeSettingsPage.paymentWays, people));
+  const [paymentWaysError, setPaymentWaysError] = useState("");
+  const [paymentWaysStatus, setPaymentWaysStatus] = useState("");
   useRouteWorkReport({
     busy: isSubmitting
       || emptyStateDialogOpen
@@ -218,6 +225,10 @@ export function SettingsPanel({
   useEffect(() => {
     setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
   }, [safeSettingsPage.shortcutSettings, accounts]);
+
+  useEffect(() => {
+    setPaymentWaysDraft(buildPaymentWaysDraft(safeSettingsPage.paymentWays, people));
+  }, [safeSettingsPage.paymentWays, people]);
 
   useEffect(() => {
     const targetSection = searchParams.get("settings_section");
@@ -1169,6 +1180,31 @@ export function SettingsPanel({
     }
   }
 
+  // Saves straight away, like the account priority. The other select keeps
+  // the person's current value.
+  async function handlePaymentWayChange(personId, change) {
+    const current = paymentWaysDraft.find((way) => way.personId === personId);
+    if (!current) {
+      return;
+    }
+    const next = { ...current, ...change };
+    setPaymentWaysDraft((ways) => ways.map((way) => (way.personId === personId ? next : way)));
+    setPaymentWaysError("");
+    setPaymentWaysStatus(messages.settings.paymentWaysSaving);
+    setIsSubmitting(true);
+    try {
+      await savePaymentWay(next);
+      setPaymentWaysStatus(messages.settings.paymentWaysSaved(next.personName));
+      await onRefresh(buildSettingsRefreshPlan("payment_way_saved"));
+    } catch (error) {
+      setPaymentWaysDraft((ways) => ways.map((way) => (way.personId === personId ? current : way)));
+      setPaymentWaysError(error instanceof Error ? error.message : messages.settings.paymentWaysSaveFailed);
+      setPaymentWaysStatus("");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSaveShortcutSettings() {
     setIsSubmitting(true);
     setShortcutSettingsError("");
@@ -1279,6 +1315,17 @@ export function SettingsPanel({
         onForeignCurrencyAccountChange={handleForeignCurrencyAccountChange}
         onToggle={() => toggleSettingsSection("shortcutApi")}
         onSave={handleSaveShortcutSettings}
+      />
+
+      <SettingsPaymentWaysSection
+        accounts={accounts}
+        draft={paymentWaysDraft}
+        error={paymentWaysError}
+        isOpen={settingsSectionsOpen.paymentWays}
+        isSubmitting={isSubmitting}
+        status={paymentWaysStatus}
+        onChange={handlePaymentWayChange}
+        onToggle={() => toggleSettingsSection("paymentWays")}
       />
 
       <SettingsCategoriesSection

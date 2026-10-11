@@ -7,12 +7,15 @@
 // Reading order matters, because each step consumes the words it understood
 // so the next one cannot misread them: a split ratio ("50/50") before dates
 // (so it is not 50 September), dates before amounts (so "28 Sep" is not $28),
+// payment words ("paynow", "bank transfer", "cash") before type phrases (so a
+// bank transfer is how an expense was paid, not a transfer between accounts),
 // type phrases ("came into") before accounts (so the account keeps its
 // preposition), accounts before amounts (so "OCBC 360" is not $360), then
 // people. Whatever is left is the description.
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { selectShortcutAccount } from "./app-repository-shortcuts";
+import { isBankTransferAccount, isCashWalletAccount, paymentWayAccountId, type PaymentWayKind } from "./payment-ways";
 import type {
   AccountDto,
   CategoryMatchRuleDto,
@@ -24,6 +27,7 @@ import type {
   EntryDraftFlag,
   EntryDraftQuestionDto,
   EntryType,
+  PaymentWayDto,
   PersonDto
 } from "../types/dto";
 
@@ -44,6 +48,9 @@ export interface EntryDraftContext {
   // purchases in another currency, exactly as the Shortcut reads them.
   defaultAccountPriorityIds: string[];
   foreignCurrencyAccountId?: string;
+  // Settings -> Payment ways, defaults applied (resolvePaymentWays): the
+  // account a payment word ("paynow", "cash") means for each person.
+  paymentWays?: PaymentWayDto[];
   // The person whose view is open, for "mine" and "I paid".
   viewerName?: string;
 }
@@ -96,6 +103,7 @@ export function parseEntrySentence(
 
   const ratio = readSplitRatio(scanner);
   const dates = readDates(scanner, context.today);
+  const paymentWay = readPaymentWords(scanner);
   const typeWords = readTypeWords(scanner);
   // Inactive accounts are read too, only so that a name matching one ("DBS
   // Altitude") is asked rather than moved to another account of the bank.
@@ -179,7 +187,26 @@ export function parseEntrySentence(
         amountCurrency: namedCurrency ?? undefined,
         preferredOwnerId: context.people.find((person) => person.name === preferredOwner)?.id
       });
-      if (chosen) {
+      // A payment word with no account named: the account that person chose
+      // for it. Whose: the payer or owner named, else the viewer, else the
+      // owner of the account Default account priority gives. Another
+      // person's payment way is never used. With nothing chosen (or an
+      // unclear payer, "she paid" with no one named), cash is asked rather
+      // than recorded on a card, and PayNow or a bank transfer keeps the
+      // default unless that is a card, which is asked too.
+      const paymentOwner = payerUnclear
+        ? undefined
+        : explicitOwner ?? context.viewerName ?? (chosen ? personForAccount(chosen, context.people) : undefined);
+      const paymentOwnerId = context.people.find((person) => person.name === paymentOwner)?.id;
+      const paymentAccount = paymentWay
+        ? paymentWayAccount(context, activeAccounts, paymentWay, paymentOwnerId)
+        : undefined;
+      if (paymentAccount) {
+        account = { value: paymentAccount, source: "rule" };
+      } else if (paymentWay && (paymentWay === "cash" || !chosen || chosen.kind === "credit_card")) {
+        const candidates = paymentWayCandidates(priorityAccounts, paymentWay, paymentOwnerId);
+        questions.push(accountQuestion("missing", candidates, candidates));
+      } else if (chosen) {
         account = fallback(chosen);
       } else {
         questions.push(accountQuestion("missing", [], context.accounts));
@@ -525,6 +552,40 @@ function readDates(scanner: SentenceScanner, today: string): DateMention[] {
   return mentions.sort((left, right) => left.index - right.index);
 }
 
+// How it was paid. PayNow, FAST, GIRO, NETS and a bank transfer take money
+// from a bank account; cash from a cash wallet. "FAST", "NETS" and "cash"
+// are also ordinary words ("fast food", "badminton nets", "cash
+// withdrawal"), so they count only when written in capitals (FAST, NETS),
+// after "by", "via", "with" and the like, after "paid"/"pay" (cash), or
+// (cash) closing a clause ("taxi 15 cash"). "Cash back" is a card's name.
+// A preposition before the word goes with it. The words leave the
+// description even when two ways are named; then none is used.
+const PAYMENT_CONNECTOR = "(?<connector>(?:by|via|with|using|in|thru|through)\\s+)?";
+
+function readPaymentWords(scanner: SentenceScanner): PaymentWayKind | undefined {
+  const kinds = new Set<PaymentWayKind>();
+  const take = (pattern: string, kind: PaymentWayKind, accept: (match: RegExpExecArray) => boolean = () => true) => {
+    for (const match of scanner.find(pattern)) {
+      if (accept(match)) {
+        scanner.consumeMatch(match);
+        kinds.add(kind);
+      }
+    }
+  };
+  take(`${START}${PAYMENT_CONNECTOR}(?:pay\\s*-?\\s*now|bank\\s+(?:transferred|transfer|tsf|tfr)|fast\\s+transfer|giro)${END}`, "bank_transfer");
+  take(`${START}${PAYMENT_CONNECTOR}(?<word>fast|nets)${END}`, "bank_transfer", (match) => {
+    const word = match.groups?.word ?? "";
+    return Boolean(match.groups?.connector) || word === word.toUpperCase();
+  });
+  take(`${START}${PAYMENT_CONNECTOR}cash(?!\\s*back)${END}`, "cash", (match) => {
+    const end = match.index + match[0].length;
+    return Boolean(match.groups?.connector)
+      || /(?<![\p{L}\p{N}])(?:paid|pay)\s+$/iu.test(scanner.text.slice(0, match.index))
+      || /^\s*(?:[,;.!?]|$)/u.test(scanner.text.slice(end));
+  });
+  return kinds.size === 1 ? [...kinds][0] : undefined;
+}
+
 function readTypeWords(scanner: SentenceScanner) {
   let transfer = false;
   let income = false;
@@ -854,6 +915,32 @@ function defaultAccount(input: {
   // starts on that person's first account in the priority list.
   return (input.preferredOwnerId ? pool.find((account) => account.ownerPersonId === input.preferredOwnerId) : undefined)
     ?? pool[0];
+}
+
+function paymentWayAccount(
+  context: EntryDraftContext,
+  activeAccounts: AccountDto[],
+  kind: PaymentWayKind,
+  personId: string | undefined
+) {
+  const accountId = paymentWayAccountId(context.paymentWays, personId, kind);
+  const account = accountId ? activeAccounts.find((candidate) => candidate.id === accountId) : undefined;
+  if (!account) {
+    return undefined;
+  }
+  return (kind === "cash" ? isCashWalletAccount(account) : isBankTransferAccount(account)) ? account : undefined;
+}
+
+// What an unanswered payment way offers: that person's active accounts
+// (everyone's when the person is unknown or has none) in Default account
+// priority order, the payment way's own kind first. PayNow and bank
+// transfers never come from a card, so cards are left out for them.
+function paymentWayCandidates(priorityAccounts: AccountDto[], kind: PaymentWayKind, personId: string | undefined) {
+  const own = personId ? priorityAccounts.filter((account) => account.ownerPersonId === personId) : [];
+  const pool = (own.length ? own : priorityAccounts)
+    .filter((account) => kind === "cash" || account.kind !== "credit_card");
+  const wanted = kind === "cash" ? "cash" : "bank";
+  return [...pool.filter((account) => account.kind === wanted), ...pool.filter((account) => account.kind !== wanted)];
 }
 
 function orderByPriority(accounts: AccountDto[], priorityIds: string[]) {
