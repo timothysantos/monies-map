@@ -58,7 +58,8 @@ test("editing a linked entry's amount in a person view moves the viewer's split 
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
   const amountInput = editor.getByRole("textbox", { name: /^Amount/ });
-  await expect(amountInput).toHaveValue("60");
+  // The entry's total, shown as money while the field is not typed in.
+  await expect(amountInput).toHaveValue("60.00");
   await amountInput.fill("80.50");
   await amountInput.blur();
   const entryUpdate = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
@@ -110,7 +111,7 @@ test("a household edit of a linked entry keeps the total on the row and moves ea
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible({ timeout: 60_000 });
   const amountInput = editor.getByRole("textbox", { name: /^Amount/ });
-  await expect(amountInput).toHaveValue("60");
+  await expect(amountInput).toHaveValue("60.00");
   await amountInput.fill("70.01");
   await amountInput.blur();
   const entryUpdate = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
@@ -143,12 +144,12 @@ test("after a description edit in a person view, the amount field still shows th
   await expect(editor).toBeVisible({ timeout: 60_000 });
   await editor.getByRole("textbox", { name: "Description" }).fill(`${description} renamed`);
   const amountInput = editor.getByRole("textbox", { name: /^Amount/ });
-  await expect(amountInput).toHaveValue("60");
+  await expect(amountInput).toHaveValue("60.00");
 
   // Tabbing through the untouched amount field and saving keeps the total.
   await amountInput.focus();
   await amountInput.blur();
-  await expect(amountInput).toHaveValue("60");
+  await expect(amountInput).toHaveValue("60.00");
   const entryUpdate = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
   await editor.getByRole("button", { name: "Done editing entry" }).click();
   const saved = await entryUpdate;
@@ -157,7 +158,7 @@ test("after a description edit in a person view, the amount field still shows th
   const savedRow = page.locator(".entry-row").filter({ hasText: `${description} renamed` }).first();
   await expect(savedRow).not.toContainText("Updating");
   await savedRow.click();
-  await expect(page.locator(".entry-inline-editor").first().getByRole("textbox", { name: /^Amount/ })).toHaveValue("60");
+  await expect(page.locator(".entry-inline-editor").first().getByRole("textbox", { name: /^Amount/ })).toHaveValue("60.00");
 
   const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
   const savedEntry = entriesData.monthPage.entries.find((item) => item.id === entryId);
