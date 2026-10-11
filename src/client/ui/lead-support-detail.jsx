@@ -374,7 +374,9 @@ export function BottomActions({
   const builtPrimary = primaryLabel ? (
     <button
       type={onPrimary ? "button" : "submit"}
-      className="lsd-primary"
+      // dialog-primary: the app's primary button, which the sheet's save
+      // hooks and browser tests look for.
+      className="lsd-primary dialog-primary"
       disabled={primaryDisabled}
       onClick={onPrimary}
     >

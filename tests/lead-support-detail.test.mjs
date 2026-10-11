@@ -289,15 +289,15 @@ test("the bar builds its own buttons from labels: the quiet action at the start,
   assert.equal(
     html,
     '<div class="lsd-bottom is-sheet-bar"><div class="lsd-bottom-start"><button type="button" class="lsd-quiet">Cancel</button></div>'
-      + '<div class="lsd-bottom-end"><button type="submit" class="lsd-primary">Done</button></div></div>'
+      + '<div class="lsd-bottom-end"><button type="submit" class="lsd-primary dialog-primary">Done</button></div></div>'
   );
 
   const busy = render(h(BottomActions, { primaryLabel: "Saving...", primaryDisabled: true, quietLabel: "Delete", quietTone: "danger", onQuiet: () => {} }));
   assert.match(busy, /class="lsd-quiet is-danger"/);
-  assert.match(busy, /<button type="submit" class="lsd-primary" disabled="">Saving...<\/button>/);
+  assert.match(busy, /<button type="submit" class="lsd-primary dialog-primary" disabled="">Saving...<\/button>/);
 
   // A primary with its own handler is a plain button, not a submit.
-  assert.match(render(h(BottomActions, { primaryLabel: "Next", onPrimary: () => {} })), /<button type="button" class="lsd-primary">Next<\/button>/);
+  assert.match(render(h(BottomActions, { primaryLabel: "Next", onPrimary: () => {} })), /<button type="button" class="lsd-primary dialog-primary">Next<\/button>/);
   // With no quiet action only the primary shows.
   assert.doesNotMatch(render(h(BottomActions, { primaryLabel: "Done" })), /lsd-quiet|lsd-bottom-start/);
 });
