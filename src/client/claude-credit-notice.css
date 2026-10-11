@@ -1,0 +1,130 @@
+/* The Claude credit notice on Ask and the Ask and AI line in Settings
+   (claude-credit-notice.jsx, design.md "Claude credit notice"). Imported by
+   that module, so it ships with those two routes, never with the first
+   screen. State tones only: butter for low, rose for used up or capped,
+   text in the hue's -ink; the only raw colour is neutral white. */
+
+.claude-credit-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 6px;
+  padding: 12px 4px 12px 14px;
+  border: 1px solid var(--pastel-butter-line);
+  border-radius: 16px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.claude-credit-notice.is-rose {
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+}
+
+.claude-credit-notice > p {
+  margin: 0;
+  padding-top: 2px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.claude-credit-notice .claude-credit-actions {
+  grid-column: 1 / -1;
+}
+
+.claude-credit-dismiss {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px 0 -10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.claude-credit-dismiss:focus-visible,
+.claude-credit-action:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.claude-credit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.claude-credit-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Settings: the same words as text, toned only when there is something to
+   act on; the actions use the neutral ink there. */
+.settings-claude-credit {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 2px;
+}
+
+.claude-credit-line {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.claude-credit-line.is-butter {
+  color: var(--pastel-butter-ink);
+}
+
+.claude-credit-line.is-rose {
+  color: var(--pastel-rose-ink);
+}
+
+.settings-claude-credit .claude-credit-action {
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.claude-credit-checked {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.claude-topup-body {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+
+.claude-topup-field {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.claude-topup-field input {
+  min-height: 44px;
+  font-size: 1.05rem;
+}
+
+.claude-topup-dialog {
+  width: min(420px, calc(100vw - 32px));
+}

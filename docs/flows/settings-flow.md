@@ -54,6 +54,25 @@ none). Each change posts that person's two values to
 priority, and refreshes with the `payment_way_saved` plan (Settings only).
 A refusal shows its reason above the people and puts the select back.
 
+The Ask and AI section (after the Apple Pay shortcut) shows the Claude
+credit status from `GET /api/ai-assist/provider-status` (DOMAIN.md "AI
+Provider Status"), not from the settings page DTO. It is read lazily, once
+Settings is first usable, through `useClaudeCreditStatus`
+(`claude-credit-status.js`: `fetchQueryWithLease` under
+`queryKeys.claudeCreditStatus()`, the same entry the Ask notice reads, kept
+for five minutes); a failed read or `{ visible: false }` leaves the section
+out. Opened, the section shows the same status line as the Ask notice
+(`buildClaudeCreditLine`; "Claude credits are fine: about $X of $Y used."
+when fine, figures dropped with money hidden), the "Top up in the Claude
+Console" link and "I've topped up", and "Last checked" with the time the
+status was read. When Claude is not set up (or the state is unknown) it
+shows only "Claude isn't set up, so Ask uses the basic model." I've topped
+up opens the same form as on Ask and posts
+`POST /api/ai-assist/provider-status/topped-up { creditUsd }`; its answer
+replaces the kept status. Nothing else on Settings refreshes. Design and
+flow details: design.md "Claude credit notice", `docs/flows/ask-flow.md`
+"Claude credits".
+
 Reference-data settings changes may also refresh:
 
 - `entries`
@@ -90,6 +109,8 @@ Settings owns:
   default account fallback order
 - payment ways: each person's PayNow and bank transfers account and cash
   wallet, read by the entry draft
+- the Ask and AI section's display (the Claude credit status itself is the
+  query cache's, shared with the Ask notice)
 
 The Apple Pay shortcut install flow is ordered deliberately:
 

@@ -451,3 +451,32 @@ mark a top-up (`POST /api/ai-assist/provider-status/topped-up`).
   signed in or not, sees the figures and may mark a top-up; a `*` inside an
   address is not a wildcard), the email list (unchanged) and the shipped
   `wrangler.jsonc` value.
+
+### Update, 12 October 2026: the Claude credit notice in the app
+
+Ask shows one calm inline notice at the top of the conversation while
+Claude credits are `low`, `exhausted` or `capped`, and Settings has an Ask
+and AI section with the same line (design.md "Claude credit notice";
+`docs/flows/ask-flow.md` "Claude credits").
+
+- No AI: nothing here calls a model. The status is read from the existing
+  provider-status route once the route is usable, never on the first screen
+  or during a load, save or reconciliation, and kept for five minutes.
+  Ask, Settings and every reader work the same when the read fails, the
+  route says `{ visible: false }`, or Claude is not set up (then Settings
+  says "Claude isn't set up, so Ask uses the basic model.").
+- Privacy: the client keeps only the aggregate fields (state, estimated
+  spend, credit, warn amount, times, an https billing link); hidden money
+  drops the dollar figures from the words. The dismissal is one state name
+  in sessionStorage; nothing is stored on the server for it.
+- Writes: "I've topped up" posts the existing top-up mark (an in-app form,
+  checked on the client as on the server: more than 0, at most 10,000 US
+  dollars). It never changes ledger data or buys anything; the Console link
+  opens Claude's own billing page in a new tab.
+- Cost: one small GET per Ask or Settings visit at most every five minutes;
+  no inference.
+- Tests: `tests/claude-credit-notice.test.mjs` (words, tones, actions,
+  hidden money, dismissal and worse-state return, amount check, request
+  failures) and `tests/e2e/claude-credit-notice.spec.js` (the route stubbed
+  for each state on an iPhone, also in WebKit, and a wide screen; a failed
+  read shows nothing; no read on the first screen).

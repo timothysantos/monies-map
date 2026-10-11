@@ -149,7 +149,7 @@ test("every bottom sheet with a bottom bar lifts itself above the keyboard", () 
   const withBar = files.filter((name) => /<BottomActions\b/.test(read(`src/client/${name}`)));
   // The wide-screen inline editor is not a sheet and has no keyboard.
   const notSheets = new Set(["entries-list.jsx"]);
-  assert.deepEqual(withBar.sort(), ["entries-list.jsx", "entries-panel.jsx", "month-plan-sheet.jsx", "splits-dialogs.jsx"]);
+  assert.deepEqual(withBar.sort(), ["claude-credit-notice.jsx", "entries-list.jsx", "entries-panel.jsx", "month-plan-sheet.jsx", "splits-dialogs.jsx"]);
   for (const name of withBar.filter((file) => !notSheets.has(file))) {
     const source = read(`src/client/${name}`);
     const lifted = /useKeyboardInset\(/.test(source) || /<EntryMobileSheet\b/.test(source);

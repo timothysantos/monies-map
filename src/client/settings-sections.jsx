@@ -2,7 +2,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowDown, ArrowUp, ChevronRight, ExternalLink, Eye, EyeOff, GripVertical, ShieldCheck, SquarePen, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { buildClaudeCreditLine } from "./claude-credit-model";
+import { ClaudeCreditActions, ClaudeTopUpForm } from "./claude-credit-notice";
+import { claudeCreditCopy } from "./copy/claude-credit-copy";
 import { messages } from "./copy/en-SG";
+import { useMoneyPrivacy } from "./money-privacy";
 import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
@@ -1010,6 +1014,36 @@ export function SettingsTransfersSection({
           )}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+// Ask and AI (design.md "Claude credit notice"): the Claude credit line,
+// the Claude Console link and "I've topped up", and when the status was
+// last read. Shown only to a viewer the server lets see the status.
+export function SettingsAskAiSection({ status, checkedAt, isOpen, onToggle, onMarkToppedUp }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const [formOpen, setFormOpen] = useState(false);
+  const line = buildClaudeCreditLine(status, { areTotalsVisible });
+  if (!line) {
+    return null;
+  }
+  return (
+    <section id="settings-ask-ai" className="chart-card settings-card">
+      <SettingsSectionToggle
+        title={claudeCreditCopy.settingsTitle}
+        detail={claudeCreditCopy.settingsDetail}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen ? (
+        <div className="settings-claude-credit" data-credit-state={line.state}>
+          <p className={`claude-credit-line is-${line.tone}`}>{line.text}</p>
+          {line.actions.length ? <ClaudeCreditActions actions={line.actions} onToppedUp={() => setFormOpen(true)} /> : null}
+          {checkedAt ? <p className="claude-credit-checked">{claudeCreditCopy.lastChecked(formatService.formatDate(checkedAt))}</p> : null}
+        </div>
+      ) : null}
+      {formOpen ? <ClaudeTopUpForm onClose={() => setFormOpen(false)} onSave={onMarkToppedUp} /> : null}
     </section>
   );
 }

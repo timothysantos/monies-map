@@ -585,6 +585,31 @@ is sent anywhere for this.
 Other questions about your money, such as "am I on track?", aren't answered
 yet; use Summary, Month and Entries for those.
 
+### When Claude credits run low
+
+Reading your sentences and receipts can use Claude, a paid helper, when it
+is set up. When its credits run low, Ask shows a small note at the top of
+the conversation:
+
+- **Claude credits are running low**: with how much of the credit is used
+  (hidden while money totals are hidden). Ask still works as usual.
+- **Claude credits are used up** or **This month's Claude spending limit is
+  reached**: Ask keeps working with the basic model, a simpler free reader,
+  until you top up or the month resets. Check what it fills in a little more
+  carefully.
+
+On the note:
+
+- **Top up in the Claude Console**: opens Claude's billing page in a new
+  tab, where you buy more credit. The app can't buy it for you.
+- **I've topped up**: after buying credit, enter how much you bought in US
+  dollars and tap **Save**. The note goes away and Ask counts from the new
+  amount.
+- **✕**: hides the note until you close the browser tab. It comes back
+  sooner only if things get worse, for example from running low to used up.
+
+The same line, with both buttons, is in **Settings** under **Ask and AI**.
+
 ### Your conversation is kept
 
 If you go to another page and come back to Ask, your conversation is where
@@ -717,6 +742,10 @@ it.
 - **People**: rename the two household members.
 - **Accounts**: add, edit, archive and reconcile accounts.
 - **Apple Pay shortcut**: record Apple Pay purchases automatically.
+- **Ask and AI**: how much Claude credit Ask has left, with **Top up in the
+  Claude Console** and **I've topped up**, and when it was last checked
+  ([When Claude credits run low](#when-claude-credits-run-low)). If Claude
+  isn't set up, it says so: Ask then uses the basic model.
 - **Payment ways**: the account each person's PayNow, bank transfers and
   cash come from ([Choose your payment ways](#choose-your-payment-ways)).
 - **Categories**: the categories used everywhere, with their icon and colour.

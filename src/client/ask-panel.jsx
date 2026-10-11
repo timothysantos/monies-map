@@ -31,6 +31,7 @@ import {
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
 import { AskBriefCard } from "./ask-brief-card";
+import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
 import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
@@ -142,9 +143,17 @@ function AskConversation({
   fetchEntriesPage,
   onEntryMutation,
   onSplitMutation,
-  runBackgroundRefresh
+  runBackgroundRefresh,
+  fetchRequiredQuery,
+  routeUsable = false
 }) {
   const queryClient = useQueryClient();
+  // The Claude credit status is read once Ask is first usable, never while
+  // it loads; later busy moments (a card being edited) do not hide it.
+  const [creditStatusEnabled, setCreditStatusEnabled] = useState(routeUsable);
+  if (routeUsable && !creditStatusEnabled) {
+    setCreditStatusEnabled(true);
+  }
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobileLayout();
@@ -938,6 +947,7 @@ function AskConversation({
       </header>
 
       <div ref={threadBoxRef} className="ask-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>
+        <AskClaudeCreditNotice queryClient={queryClient} enabled={creditStatusEnabled} fetchRequiredQuery={fetchRequiredQuery} />
         {!isAddMode && !isShortcut ? (
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
         ) : null}

@@ -817,6 +817,11 @@ export function App() {
     return data;
   }, [queryClient, updateLoadingStatus]);
 
+  // A required read for the small optional reads a route makes itself (the
+  // Claude credit status on Ask and Settings), so they share the shell's
+  // leases and timing without importing query-leases into a route chunk.
+  const fetchRequiredQuery = useCallback((options) => fetchQueryWithLease(queryClient, options), [queryClient]);
+
   // The Ask page borrows the Entries page DTO (its split groups, and the
   // Apple Pay Shortcut's saved entry) through the same required read, so a
   // later visit to Entries joins it.
@@ -2034,6 +2039,10 @@ export function App() {
     selectedViewId,
     summaryPage
   ]);
+  // Ask and Settings read the Claude credit status once they are usable
+  // (claude-credit-status.js). Only those two routes see the flag, so it
+  // never re-renders another route as optional work starts and stops.
+  const creditStatusRouteUsable = (renderedTabId === "ask" || renderedTabId === "settings") && routeWork.usable;
   const renderedRouteElement = useMemo(() => {
     if (!appShell || !pageView || !referenceData) {
       return null;
@@ -2135,6 +2144,8 @@ export function App() {
           onUnregisterLogin={handleUnregisterLogin}
           onLogout={handleLogout}
           onRefresh={(options) => refreshCurrentSettingsPage(options)}
+          fetchRequiredQuery={fetchRequiredQuery}
+          routeUsable={creditStatusRouteUsable}
         />
       );
     }
@@ -2158,6 +2169,8 @@ export function App() {
           onEntryMutation={broadcastEntryMutation}
           onSplitMutation={broadcastSplitMutation}
           runBackgroundRefresh={runBackgroundRefresh}
+          fetchRequiredQuery={fetchRequiredQuery}
+          routeUsable={creditStatusRouteUsable}
         />
       );
     }
@@ -2173,7 +2186,9 @@ export function App() {
     broadcastEntryMutation,
     broadcastSplitMutation,
     categories,
+    creditStatusRouteUsable,
     fetchAskEntriesPage,
+    fetchRequiredQuery,
     closeMobileContext,
     entriesExternalRefreshToken,
     handleCategoryAppearanceChange,

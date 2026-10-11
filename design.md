@@ -126,8 +126,10 @@ Layout, top to bottom:
   person · month beside the title in add mode. In chat mode, once there is
   something to start over from, a quiet "New chat" text button (accent
   text with a pen glyph, 44 px tall) sits at the header's right.
-- Conversation (`role="log"`, polite live region), which scrolls: in chat
-  mode first a "since you last looked" card (`ask-brief-card.jsx`: the
+- Conversation (`role="log"`, polite live region), which scrolls: first,
+  only while Claude credits are low, used up or capped, the Claude credit
+  notice (see "Claude credit notice"), in every mode; then in chat
+  mode a "since you last looked" card (`ask-brief-card.jsx`: the
   Summary check-in's headline and kind chip, its action when it is
   Imports or a category, and the month's spend against its plan with a sky
   plan and a bar that turns rose only over plan), then the person's messages
@@ -316,6 +318,40 @@ while the list scrolls, so the person can always see the list is narrowed
 and undo it with one tap; the list gets 56 px more bottom padding, and the
 chip hides under a sheet or dialog as the bar does. On a wide screen it sits
 at the top of the list, under the page title.
+
+## Claude Credit Notice
+
+`claude-credit-notice.jsx` (its own `claude-credit-notice.css`, so it ships
+with Ask and Settings only), words and rules in `claude-credit-model.js`,
+data in `claude-credit-status.js`. Flow:
+[`docs/flows/ask-flow.md`](docs/flows/ask-flow.md) "Claude credits".
+
+- Placement: on Ask, the first thing in the conversation (above the "since
+  you last looked" card), inline and scrolling with it: never a modal, a
+  banner over the page or a browser alert. It shows only for `low`,
+  `exhausted` and `capped`; there is at most one.
+- Look: a rounded card (16 px) in the state tone at full pastel strength,
+  text in that hue's ink: butter for low (Ask still works), rose for used
+  up and capped (Ask is on the basic model). The sentence first, a 44 px ✕
+  ("Hide this notice") at its right, then the two actions as 44 px pills
+  in the same ink on a light white wash: "Top up in the Claude Console"
+  (a link with an external-link glyph, new tab) and "I've topped up".
+- Hidden money: the sentence drops its dollar figures ("Claude credits are
+  running low. Ask still works."); the actions stay.
+- Dismiss: hidden for this browser tab's session; it comes back when the
+  state gets worse and after the credits were fine again.
+- "I've topped up": the app's own form, never `prompt()`. On a phone an
+  `EntryMobileSheet` (it lifts above the keyboard) with one field, "Credit
+  bought (US$)" (`inputMode="decimal"`), and Cancel and Save in its
+  `BottomActions` bar under the thumb; on a wide screen a small Radix
+  dialog with the same field and Cancel and Save at its bottom right. Save
+  stays disabled while the field is empty; a refused amount or a failed
+  save shows an inline error and keeps the form open.
+- Settings: the Ask and AI section (collapsible like the others, after the
+  Apple Pay shortcut) shows the same sentence as text in the tone's ink
+  (plain ink when fine), the two actions as neutral pills, and "Last
+  checked …" muted; with Claude not set up, only the calm line "Claude
+  isn't set up, so Ask uses the basic model."
 
 ## Lead · Support · Detail
 
@@ -1333,7 +1369,7 @@ modal desktop dialogs:
   field scrolls back into view inside the sheet. The phone Splits dialog
   does the same. Every bottom sheet with a `BottomActions` bar is one of
   these two (the Entries edit sheet, the Month plan-row sheet, Create split
-  expense); `tests/keyboard-inset.test.mjs` fails if a new one is not, and
+  expense, the Claude credit "I've topped up" sheet); `tests/keyboard-inset.test.mjs` fails if a new one is not, and
   tests `attachKeyboardInset` (the hook's body) with a stand-in visual
   viewport. Browser tests cannot open an iPhone keyboard, so this is checked
   by unit test and on a real phone only.

@@ -62,7 +62,9 @@ const GUIDE_STACK = {
   viteCacheDir: "node_modules/.vite-guide",
   serverLog: "test-results/guide-screenshots/servers.log",
   // Over wrangler.test.jsonc: reseed builds the showcase around SEED_MONTH.
-  vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: SEED_MONTH }
+  // AI_ALERT_EMAILS "*" as wrangler.jsonc ships it, so Settings lists Ask
+  // and AI as it does in production (Claude is not set up here).
+  vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: SEED_MONTH, AI_ALERT_EMAILS: "*" }
 };
 
 // Output sizes. Desktop shots are taken at 1280x800 (device scale 1); phone
