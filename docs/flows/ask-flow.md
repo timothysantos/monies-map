@@ -109,6 +109,9 @@ checks them and taps Send, which then goes through the entry-draft reader
 like any typed sentence. Voice never sends anything by itself, and Send
 ends any listening first.
 
+- Place: the mic glyph sits at the right inside the message field (the +
+  at its left opens Take a photo, Choose a photo and Paste; design.md
+  "Composer").
 - Gesture: hold the mic to talk and let go to stop, or tap to start and tap
   again to stop; Enter or Space on the focused mic toggles it
   (`createPressGesture`). A press still waiting for microphone permission
@@ -181,6 +184,9 @@ Ask does not own:
 - After a save the card shows Saved and the chips offer the way back first.
 - Spoken words land in the message box and are sent only when the person
   taps Send; the mic is hidden when neither voice path is available.
+- The + inside the field opens an in-app menu (Take a photo, Choose a
+  photo, Paste); each glyph keeps a 44 × 44 px hit area and every
+  placeholder fits one line at 375 px.
 - No system alert, confirm or prompt anywhere.
 
 ## Persisted / Query Contract
@@ -200,7 +206,7 @@ Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,
 `tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
 `tests/shortcut-gateway.test.mjs`, `tests/e2e/ask-page.spec.js`,
-`tests/e2e/ask-voice.spec.js`) and runtime behaviour on a phone.
+`tests/e2e/ask-voice.spec.js`, `tests/e2e/ask-composer.spec.js`) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
 

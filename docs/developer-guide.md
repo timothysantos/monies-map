@@ -1673,6 +1673,12 @@ its thumbnail, and read on the device by the app's own Tesseract worker
 when the reader is unavailable. The browser tests stub both readers
 (`tests/e2e/ask-page.spec.js`).
 
+The composer is one field holding a + glyph (a Radix popover with Take a
+photo, Choose a photo and Paste over the existing file inputs and paste
+reader) and the mic glyph, with Send or Save outside it;
+`tests/e2e/ask-composer.spec.js` measures the 44 px hit areas, the
+three-line growth and that every placeholder fits at 375 px.
+
 The composer's mic (`src/client/ask-voice.js`) is a small state machine
 (`createVoiceController`: idle, starting, listening, transcribing, hidden)
 with a hold-or-tap gesture (`createPressGesture`), unit tested in

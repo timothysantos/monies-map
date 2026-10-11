@@ -432,7 +432,8 @@ computer it opens from the **+** button on Entries.
 - **Suggestions**: a row of buttons above the message box. Swipe it sideways
   for more.
 - **The message box**: type a sentence such as "Koufu lunch $12.50, Citi",
-  say it with the mic button, or use the camera button for a receipt photo.
+  say it with the mic inside the box, or use the **+** inside the box for a
+  receipt photo.
 
 When you are adding an entry, a **card** shows it as it will be saved: the
 category, what it was, the amount (red for spending, green for money in,
@@ -442,13 +443,15 @@ posted date, the owner and a note. Tap any of them to change it.
 
 ### What each control does
 
-- **Scan receipt** or the camera button: take or pick a photo of a receipt.
-  The app reads the shop, the total and the date into the card. The photo is
-  made smaller on your phone first and is not kept.
-- **Paste**: paste a copied receipt photo or sentence.
-- **The mic button**: tap and hold the mic and say what you bought, then
-  let go. Or tap it once to start and tap again to stop. While it listens
-  it turns orange. Your words appear in the message box; check them, change
+- **Scan receipt**, or **+** then **Take a photo** or **Choose a photo**:
+  take or pick a photo of a receipt. The app reads the shop, the total and
+  the date into the card. The photo is made smaller on your phone first and
+  is not kept.
+- **Paste** (a suggestion, or in the **+** menu): paste a copied receipt
+  photo or sentence.
+- **The mic** (at the right of the message box): tap and hold the mic and
+  say what you bought, then let go. Or tap it once to start and tap again
+  to stop. While it listens it turns orange with a ring around it. Your words appear in the message box; check them, change
   anything that's wrong, then tap the send arrow. Nothing is sent until you
   do. The first time, your phone asks to use the microphone. If the mic
   isn't there, your browser can't take voice input; type instead.

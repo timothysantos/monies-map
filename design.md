@@ -134,24 +134,45 @@ Layout, top to bottom:
   above what happened to it since.
 - Bottom stack above the tab bar: one horizontally scrolling row of chips
   (buttons; the main way on first and filled; a back chip in accent text),
-  then the composer: a camera button (pick or take a receipt photo), the
-  mic, the message field, and the send arrow. When a card is open and nothing is
-  typed the arrow becomes Save, disabled until the card is valid.
+  then the composer (below). When a card is open and nothing is typed the
+  send arrow becomes Save, disabled until the card is valid.
 
-### Composer mic
+### Composer
 
-The mic (`ask-voice.js`, flow in `docs/flows/ask-flow.md` "Voice input")
-sits between the camera and the message field, a 44 px icon button like the
-camera, always in the same place (not swapped in on focus, so it can be
-held without first opening the phone's keyboard). Hold to talk, or tap to
-start and tap to stop; the words fill the message field, which is read-only
-while listening, and the person sends. Listening: the button takes the send
-button's accent fill with an accent ring, which pulses only under
-`prefers-reduced-motion: no-preference`; the field's placeholder reads
-"Listening…". The label switches between "Start voice input" and "Stop
-voice input", and a polite live region announces the change. The mic is
-hidden when the browser has neither speech recognition nor the recorded
-fallback; failures are calm notes in the conversation.
+One rounded white field (`.ask-field`, 22 px radius, a 1 px inset outline)
+holds `[ + ] message [ mic ]`; Send (the accent arrow) or Save sits outside
+it and is the composer's only filled button. The + and the mic are plain
+20 px glyphs in muted ink with no border or fill, each in a 44 × 44 px hit
+area. The field is 44 px tall, grows with the message to three lines, then
+scrolls (`field-sizing: content`, `max-height: 3lh` plus padding); the
+glyphs stay on its bottom line. The field shows the accent focus ring when
+the message box has keyboard focus.
+
+Placeholders, each fitting one line at 375 px (`tests/e2e/ask-composer.spec.js`):
+"Ask, or paste a receipt" (chat), "Type or say it…" (a new card),
+"Anything to change?" (a filled card), "Ask, or add another" (saved),
+"Listening…" while the mic listens.
+
+- The + opens a small in-app popover above it (Radix Popover, as the "More
+  pages" menu uses): Take a photo (the camera picker), Choose a photo (the
+  photo picker) and Paste (the paste reader), each a 44 px row with an
+  accent icon. It opens focused on itself, not on an option, so a tap marks
+  nothing as chosen; Tab reaches the options and Escape returns to the +.
+  The Scan receipt and Paste chips stay in the chip row as the one-tap
+  suggestions.
+- The mic (`ask-voice.js`, flow in `docs/flows/ask-flow.md` "Voice input")
+  is always in the same place (not swapped in on focus, so it can be held
+  without first opening the phone's keyboard). Hold to talk, or tap to
+  start and tap to stop; the words fill the message box, which is read-only
+  while listening, and the person sends. Listening turns the glyph accent
+  with a subtle accent ring around it (a 10% accent disc with a 2 px ring),
+  which pulses only under `prefers-reduced-motion: no-preference`. The
+  label switches between "Start voice input" and "Stop voice input", and a
+  polite live region announces the change. The mic captures the pointer, so
+  a hold ends on release even when Save turns into the narrower Send arrow
+  and the field widens. It is hidden when the browser has neither speech
+  recognition nor the recorded fallback; failures are calm notes in the
+  conversation.
 
 On a phone the page is `position: fixed` above the tab bar (`ask-route.css`)
 with its own scrolling conversation; the shell's header bar is underneath

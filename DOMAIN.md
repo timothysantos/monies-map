@@ -799,8 +799,8 @@ Canonical terms:
 - `since you last looked`: the Summary check-in's headline for the view,
   read from data already loaded; never a fetch or AI call on open
 - `chip row`: the one row of suggestion buttons above the composer
-- `composer`: the message field with its photo, mic and send (or Save)
-  buttons
+- `composer`: the message field, holding a `+` (take or choose a photo,
+  or paste) and the mic, with the send (or Save) button beside it
 - `voice input`: words spoken through the composer's mic, put in the
   message field for the person to check and send; never sent by itself.
   The browser's own speech recognition first; a `voice clip` (at most 30 s,
