@@ -109,16 +109,19 @@ export function buildClaudeCreditNotice(status, { areTotalsVisible }) {
 }
 
 // The Settings line: every state, with the two actions while Claude is set
-// up and none when it is not (or the state is unknown).
+// up and none when it is not (or the state is unknown). An unknown state
+// with Claude set up and no failure recorded means Claude has not answered
+// yet, which is not the same as not set up.
 export function buildClaudeCreditLine(status, { areTotalsVisible }) {
   if (!status?.visible) {
     return null;
   }
   const known = status.claudeConfigured && status.state !== "unknown";
+  const notUsedYet = status.claudeConfigured && status.state === "unknown" && !status.lastFailureAt;
   return {
     state: known ? status.state : "unknown",
     tone: known ? NOTICE_STATES[status.state]?.tone ?? "neutral" : "neutral",
-    text: known ? describeState(status, areTotalsVisible) : copy.notSetUp,
+    text: known ? describeState(status, areTotalsVisible) : notUsedYet ? copy.notUsedYet : copy.notSetUp,
     actions: known ? buildActions(status) : []
   };
 }
