@@ -33,9 +33,9 @@ appear in this order:
    balances. This is **All months**.
    ![Summary shows planned and actual totals, money insights, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
    Pick one month of the range to see its plan (the **Month** page): income,
-   budget buckets and planned items next to what was actually spent
-   ([Pick a month](#pick-a-month)).
-   ![Month shows each plan row with planned, actual and variance](/faq/guide/desktop/thumbs/month-person.webp)
+   budget buckets and planned items next to what was actually spent, and
+   where that month's money went ([Pick a month](#pick-a-month)).
+   ![Month shows the month's totals, money insights and Spending Mix, with the plan rows below](/faq/guide/desktop/thumbs/month-person.webp)
 2. **Entries**: every transaction for the month, grouped by day, with search
    and filters. This is where you add, fix and categorise spending.
    ![Entries lists transactions by day with totals and filters](/faq/guide/desktop/thumbs/entries-person.webp)
