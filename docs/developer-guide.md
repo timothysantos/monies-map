@@ -911,7 +911,10 @@ adjustment. The lock (`assertUnlockedBankFactsForEntryUpdate` in
 `src/domain/app-repository-entry-commands.ts`) compares the signed amount from
 `getSignedLedgerAmountMinor`, so refiling within one direction (income and
 transfer in, or expense and transfer out) is allowed: it changes no certified
-balance. Expense to income, or transfer in to transfer out, is refused.
+balance. Expense to income, or transfer in to transfer out, is refused. The
+entry editor offers the same choice: on a certified row, Type lists only the
+types in its direction (`src/client/entry-type-options.js`) and the transfer
+direction stays locked.
 Rolling the statement back keeps a transfer entry type that a transfer link
 made since needs.
 

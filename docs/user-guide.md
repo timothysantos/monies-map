@@ -610,8 +610,10 @@ Good to know:
   updates the split too, keeping each person's percentage. Changing the note
   or category asks whether to update the split as well.
 - On an entry a bank statement has confirmed, the bank details (date,
-  description, wallet, amount, type) are locked. You can still change the
-  category, note, owner and splits
+  description, wallet, amount) are locked, and so is whether the money came
+  in or went out. You can still change the category, note, owner and splits,
+  and switch the type between Income and Transfer in, or Expense and
+  Transfer out
   ([I can't change a statement-confirmed entry](#i-cant-change-a-statement-confirmed-entry)).
 - If the entry is part of a settled split, some changes are refused until you
   undo the settle-up ([I can't change a split](#i-cant-change-a-split)).
@@ -1471,8 +1473,15 @@ split is refused, with the same undo button.
 ## I can't change a statement-confirmed entry
 
 An entry marked **Statement certified** was confirmed by a bank statement, so
-its date, description, wallet, amount, type and transfer direction are locked.
-You can still change the category, note, owner and splits.
+its date, description, wallet and amount are locked, and so is whether the
+money came in or went out. You can still change the category, note, owner and
+splits.
+
+The type can still change within the same direction. Money in can be
+**Income** or **Transfer** in, for example a credit from your own account
+that was filed as income. Money out can be **Expense** or **Transfer** out.
+Changing money in to money out (or the other way) is not possible, because
+the statement balance depends on it.
 
 If the bank details really are wrong, the statement import was probably
 mapped to the wrong account or needs correcting: roll back the newest
