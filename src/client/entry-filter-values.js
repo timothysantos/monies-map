@@ -13,5 +13,6 @@ export function countActiveEntryFilters(entryFilters) {
     + (entryFilters.categories?.length ? 1 : 0)
     + (entryFilters.entryIds?.length ? 1 : 0)
     + (entryFilters.type ? 1 : 0)
-    + (entryFilters.search ? 1 : 0);
+    + (entryFilters.search ? 1 : 0)
+    + (Number.isFinite(entryFilters.minAmountMinor) || Number.isFinite(entryFilters.maxAmountMinor) ? 1 : 0);
 }

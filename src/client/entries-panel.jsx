@@ -17,6 +17,7 @@ import {
 } from "./entry-composer-section";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
+import { readEntriesFilterParams } from "./entry-filter-params";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
@@ -942,12 +943,12 @@ export function EntriesPanel({
       const paramKey = `entry_${key}`;
       if (key === "wallet") {
         next.delete(paramKey);
-        normalizeWalletFilterValues(value).forEach((wallet) => next.append(paramKey, wallet));
+        normalizeEntryFilterValues(value).forEach((wallet) => next.append(paramKey, wallet));
         return next;
       }
       if (key === "category") {
         next.delete(paramKey);
-        normalizeCategoryFilterValues(value).forEach((category) => next.append(paramKey, category));
+        normalizeEntryFilterValues(value).forEach((category) => next.append(paramKey, category));
         return next;
       }
       if (!value) {
@@ -980,6 +981,9 @@ export function EntriesPanel({
       next.delete("entry_category");
       next.delete("entry_type");
       next.delete("entry_search");
+      next.delete("entry_min");
+      next.delete("entry_max");
+      next.delete("from_ask");
       return next;
     });
   }, [setSearchParams]);
@@ -1631,84 +1635,32 @@ function useEntriesPageData({
   };
 }
 
+// The URL is the filter's one source (entry-filter-params.js, shared with
+// the Ask page's answers). Each value keeps its identity while the URL
+// says the same, so the derived rows are not recomputed on unrelated
+// param changes.
 function useEntriesSearchFilters(searchParams, defaultScope) {
   const searchParamsKey = searchParams.toString();
-  const selectedScope = searchParams.get("entries_scope") ?? defaultScope;
-  const walletFilters = useMemo(
-    () => getWalletFilterValues(searchParams),
-    [searchParamsKey, searchParams]
+  const read = readEntriesFilterParams(searchParams, defaultScope);
+  const { selectedScope } = read;
+  const walletFilterKey = read.entryFilters.wallets.join("\u0000");
+  const categoryFilterKey = read.entryFilters.categories.join("\u0000");
+  const entryIdFilterKey = read.entryFilters.entryIds.join("\u0000");
+  const { type, search: searchQuery, minAmountMinor, maxAmountMinor } = read.entryFilters;
+  const entryFilters = useMemo(
+    () => read.entryFilters,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categoryFilterKey, entryIdFilterKey, maxAmountMinor, minAmountMinor, searchQuery, type, walletFilterKey]
   );
-  const walletFilterKey = walletFilters.join("\u0000");
-  const categoryFilters = useMemo(
-    () => getCategoryFilterValues(searchParams),
-    [searchParamsKey, searchParams]
-  );
-  const categoryFilterKey = categoryFilters.join("\u0000");
-  const entryIdFilters = useMemo(
-    () => searchParams.getAll("entry_id"),
-    [searchParamsKey, searchParams]
-  );
-  const entryIdFilterKey = entryIdFilters.join("\u0000");
-  const typeFilter = searchParams.get("entry_type") ?? "";
-  const searchQuery = searchParams.get("entry_search") ?? "";
-  const entryFilters = useMemo(() => ({
-    entryIds: entryIdFilters,
-    wallets: walletFilters,
-    categories: categoryFilters,
-    type: typeFilter,
-    search: searchQuery
-  }), [categoryFilterKey, categoryFilters, entryIdFilterKey, searchQuery, typeFilter, walletFilterKey, walletFilters]);
 
   return {
     searchParamsKey,
     selectedScope,
-    walletFilters,
+    walletFilters: entryFilters.wallets,
     walletFilterKey,
     searchQuery,
     entryFilters
   };
-}
-
-function getWalletFilterValues(searchParams) {
-  const values = searchParams.getAll("entry_wallet");
-  if (values.length > 1) {
-    return normalizeWalletFilterValues(values);
-  }
-
-  const singleValue = values[0] ?? searchParams.get("entry_wallet") ?? "";
-  if (!singleValue) {
-    return [];
-  }
-
-  return normalizeWalletFilterValues(singleValue
-    .split(",")
-    .map((value) => value.trim())
-  );
-}
-
-function getCategoryFilterValues(searchParams) {
-  const values = searchParams.getAll("entry_category");
-  if (values.length > 1) {
-    return normalizeCategoryFilterValues(values);
-  }
-
-  const singleValue = values[0] ?? searchParams.get("entry_category") ?? "";
-  if (!singleValue) {
-    return [];
-  }
-
-  return normalizeCategoryFilterValues(singleValue
-    .split(",")
-    .map((value) => value.trim())
-  );
-}
-
-function normalizeWalletFilterValues(values) {
-  return normalizeEntryFilterValues(values);
-}
-
-function normalizeCategoryFilterValues(values) {
-  return normalizeEntryFilterValues(values);
 }
 
 function getEntriesEmptyStateSuggestion({ accounts, people, walletFilters, filteredEntries, viewId, searchParams }) {
