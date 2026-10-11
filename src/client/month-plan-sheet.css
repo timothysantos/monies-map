@@ -48,6 +48,11 @@
   margin-right: 1px;
 }
 
+/* The figure starts right after its "$"; the input is sized to it. */
+.lead-card-amount > .month-plan-lead-input {
+  text-align: left;
+}
+
 html[data-money-privacy="hidden"] .month-plan-lead-currency {
   display: none;
 }

@@ -120,6 +120,10 @@ test("DetailRow states: a field row labels its control, an action row is a butto
   assert.match(field, /^<label class="detail-row is-field"><span class="detail-row-label">Item name<\/span><span class="detail-row-value"><input/);
   assert.match(field, /class="[^"]*detail-row-chevron"/);
 
+  // A picker that is itself a button is named by the row label's id.
+  const picker = render(h(DetailRow, { label: "Category", labelId: "category-label" }, h("button", { type: "button", "aria-labelledby": "category-label" }, "Savings")));
+  assert.match(picker, /<span id="category-label" class="detail-row-label">Category<\/span>/);
+
   const action = render(h(DetailRow, { label: "Actual", value: "See the 10 entries", action: true, onClick: () => {} }));
   assert.match(action, /^<button type="button" class="detail-row is-button is-action">/);
   assert.match(action, /<span class="detail-row-value">See the 10 entries<\/span>/);

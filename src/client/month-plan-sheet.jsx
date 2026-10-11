@@ -1,5 +1,6 @@
 import "./month-plan-sheet.css";
 import { CalendarDays, List } from "lucide-react";
+import { useId } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -53,6 +54,8 @@ export function MonthPlanSheet({
   });
   const actualMoney = formatService.money(lead.progress.valueMinor);
   const saveLabel = isSaving ? messages.common.saving : messages.month.doneEdit;
+  const categoryLabelId = useId();
+  const accountLabelId = useId();
 
   return (
     <EntryMobileSheet
@@ -136,9 +139,10 @@ export function MonthPlanSheet({
               onChange={(event) => onChange({ label: event.target.value, autoLabelFromCategory: false })}
             />
           </DetailRow>
-          <DetailRow label={table.category}>
+          <DetailRow label={table.category} labelId={categoryLabelId}>
             <ResponsiveSelect
               className="table-edit-input"
+              labelId={categoryLabelId}
               title={table.category}
               value={dialog.categoryValue ?? ""}
               options={categoryOptions}
@@ -155,9 +159,10 @@ export function MonthPlanSheet({
             </DetailRow>
           ) : null}
           {isPlannedItem ? (
-            <DetailRow label={table.account}>
+            <DetailRow label={table.account} labelId={accountLabelId}>
               <ResponsiveSelect
                 className="table-edit-input"
+                labelId={accountLabelId}
                 title={table.account}
                 value={dialog.accountName ?? ""}
                 options={[{ value: "", label: messages.common.emptyValue }, ...accountOptions]}

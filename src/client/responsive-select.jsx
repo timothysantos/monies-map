@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 
@@ -13,9 +13,14 @@ export function ResponsiveSelect({
   disabled = false,
   open = undefined,
   onOpenChange = undefined,
-  hideMobileTrigger = false
+  hideMobileTrigger = false,
+  // The id of a visible label (a Detail row's). The native select is named
+  // by it; the phone trigger by it and its value ("Category Savings"), so a
+  // label around the trigger cannot hide the value it shows.
+  labelId = undefined
 }) {
   const useMobilePicker = useIsMobileLayout();
+  const valueId = useId();
   const [isOpenInternal, setIsOpenInternal] = useState(false);
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? options[0] ?? null,
@@ -37,6 +42,7 @@ export function ResponsiveSelect({
     return (
       <select
         className={className}
+        aria-labelledby={labelId}
         value={value}
         disabled={disabled}
         onChange={(event) => onValueChange(event.target.value)}
@@ -57,12 +63,13 @@ export function ResponsiveSelect({
           disabled={disabled}
           aria-haspopup="dialog"
           aria-expanded={isOpen}
+          aria-labelledby={labelId ? `${labelId} ${valueId}` : undefined}
           onClick={(event) => {
             event.currentTarget.blur();
             updateOpen(true);
           }}
         >
-          <span className="responsive-select-value">{selectedOption?.label ?? ""}</span>
+          <span id={valueId} className="responsive-select-value">{selectedOption?.label ?? ""}</span>
           <ChevronDown size={18} />
         </button>
       ) : null}

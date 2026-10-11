@@ -97,8 +97,13 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
 
   const overPlan = amount("Actual spend") > amount("Planned spend");
   expect((await looks(page.locator(".summary-lead-spent .private-money"))).color).toBe(overPlan ? INK.short : INK.text);
-  expect((await looks(page.locator(".summary-lead-headroom"))).color).toBe(overPlan ? INK.short : INK.in);
-  await expect(page.locator(".summary-lead-headroom")).toContainText(overPlan ? "over plan" : "under plan");
+  if (amount("Planned spend") > 0 || amount("Actual spend") > 0) {
+    expect((await looks(page.locator(".summary-lead-headroom"))).color).toBe(overPlan ? INK.short : INK.in);
+    await expect(page.locator(".summary-lead-headroom")).toContainText(overPlan ? "over plan" : "under plan");
+  } else {
+    // Nothing spent against no plan: neither under nor over.
+    await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
+  }
   const fill = await looks(page.locator(".summary-lead .lead-card-bar-fill"));
   expect(fill.className).toContain(overPlan ? "money-short" : "money-neutral");
   const savings = amount("Realized savings");

@@ -144,6 +144,9 @@ export function DetailRows({ label = undefined, className = "", children }) {
 // - otherwise a plain row.
 // `action` is terracotta, an empty `value` shows `emptyLabel` muted, and
 // `locked` is muted with a lock instead of the `›` and never clickable.
+// `labelId` names the label so a control that is itself a button (a
+// ResponsiveSelect trigger, which takes `labelId`) can say both the label
+// and its value.
 export function DetailRow({
   label,
   value = null,
@@ -152,6 +155,7 @@ export function DetailRow({
   locked = false,
   disabled = false,
   onClick = undefined,
+  labelId = undefined,
   className = "",
   children = null,
   ...rest
@@ -165,7 +169,7 @@ export function DetailRow({
   ].filter(Boolean).join(" ");
   const content = (
     <>
-      <span className="detail-row-label">{label}</span>
+      <span id={labelId} className="detail-row-label">{label}</span>
       <span className="detail-row-value">{children ?? (isEmpty ? emptyLabel : value)}</span>
       {locked
         ? <Lock className="detail-row-lock" size={14} aria-hidden="true" />
