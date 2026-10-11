@@ -228,9 +228,11 @@ test("a valid AI answer fills only the missing amount, marked ai, from a bounded
 
   assert.deepEqual(payload.ai, { requested: true, available: true, remaining: 11 });
   assert.deepEqual(payload.draft.fields.amountMinor, { value: 1250, source: "ai" });
-  // The sentence's own description wins over the model's.
+  // The sentence's own description wins over the model's, without the
+  // number words AI read as the amount.
   assert.equal(payload.draft.fields.description.source, "sentence");
-  assert.match(payload.draft.fields.description.value, /^Koufu lunch twelve fifty/);
+  assert.match(payload.draft.fields.description.value, /^Koufu lunch card/);
+  assert.doesNotMatch(payload.draft.fields.description.value, /twelve|fifty/);
   assert.deepEqual(payload.draft.fields.categoryName, r("Food & Drinks"));
   assert.equal(payload.draft.createBody.amountMinor, 1250);
 

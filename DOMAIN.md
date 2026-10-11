@@ -607,7 +607,10 @@ Field sources. Every field carries its value and where it came from:
 - `ai`: filled by the optional AI gap-filler, only for an amount or
   description the sentence left out, after validation (the amount stated in
   the sentence, the description in its words). A `sentence`, `rule` or
-  `default` value always wins over AI.
+  `default` value always wins over AI. When AI reads the amount from number
+  words ("Koufu lunch twelve fifty"), only the words that spell that amount
+  leave the description ("Koufu lunch"); other words, number words that
+  spell something else ("Seven Eleven") included, stay.
 
 Important distinctions:
 - `missing` lists the create fields still unknown; `questions` are

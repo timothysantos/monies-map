@@ -106,5 +106,7 @@ not a split write.
    uncategorised income), not `Other`.
 3. A transfer with no description defaults to "Transfer to <account>"; this
    text would be shown and saved, so it needs copy approval with the card.
-4. Number words ("twelve fifty") stay in the description when AI fills the
-   amount, because a sentence value always wins.
+4. Resolved (owner, 2026-10-11): when AI fills the amount from number
+   words ("Koufu lunch twelve fifty"), the words that spell that amount
+   leave the description ("Koufu lunch"); other words stay
+   (`removeAmountWords` in `src/domain/entry-draft.ts`).

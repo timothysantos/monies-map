@@ -460,6 +460,37 @@ test("AI suggestion: deterministic values always win; AI fills only what is miss
   assert.equal(conflict.fields.amountMinor, undefined, "AI never settles a conflicting amount");
 });
 
+test("AI amount from number words: the words that made up the amount leave the description, other words stay", () => {
+  const filled = parseEntrySentence("Koufu lunch twelve fifty", CONTEXT, { amountMinor: 1250 });
+  assert.deepEqual(filled.fields.description, s("Koufu lunch"));
+  assert.equal(filled.createBody.description, "Koufu lunch");
+  assert.deepEqual(filled.fields.categoryName, r("Food & Drinks"));
+
+  const cases = [
+    ["Grab twenty dollars yesterday", 2000, "Grab"],
+    ["kopi two fifty at Tiong Bahru", 250, "kopi at Tiong Bahru"],
+    ["one hundred and twenty for aircon servicing", 12_000, "aircon servicing"],
+    ["Seven Eleven snacks three twenty", 320, "Seven Eleven snacks"]
+  ];
+  for (const [text, amountMinor, description] of cases) {
+    const draft = parseEntrySentence(text, CONTEXT, { amountMinor });
+    assert.deepEqual(draft.fields.amountMinor, { value: amountMinor, source: "ai" }, text);
+    assert.deepEqual(draft.fields.description, s(description), text);
+  }
+});
+
+test("negative: number words that are not the AI amount stay in the description", () => {
+  // "Seven Eleven" names the shop; the amount "$3.20" was AI's reading of other words.
+  const kept = parseEntrySentence("Seven Eleven snacks three twenty", CONTEXT, { amountMinor: 320 });
+  assert.ok(kept.fields.description.value.startsWith("Seven Eleven"));
+  // Without an AI amount nothing is removed: the words are the description.
+  const noAi = parseEntrySentence("Koufu lunch twelve fifty", CONTEXT);
+  assert.deepEqual(noAi.fields.description, s("Koufu lunch twelve fifty"));
+  // An AI amount the number words do not spell leaves them in place.
+  const mismatch = parseEntrySentence("Koufu lunch twelve fifty", CONTEXT, { amountMinor: 999 });
+  assert.deepEqual(mismatch.fields.description, s("Koufu lunch twelve fifty"));
+});
+
 test("AI suggestion validation: amounts and words must come from the sentence", () => {
   assert.deepEqual(parseEntryDraftAiSuggestion({ amount: "12.50", description: "lunch" }, "lunch twelve fifty"), { amountMinor: 1250, description: "lunch" });
   assert.deepEqual(parseEntryDraftAiSuggestion({ amount: 7, description: null }, "kopi 7"), { amountMinor: 700 });

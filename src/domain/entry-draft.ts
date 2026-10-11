@@ -100,7 +100,7 @@ export function parseEntrySentence(
   const mentions = readAccountMentions(scanner, activeAccounts, context.people);
   const amounts = readAmounts(scanner);
   const people = readPeople(scanner, context.people, context.viewerName);
-  const sentenceDescription = buildDescription(scanner.remainder());
+  const remainder = scanner.remainder();
 
   // Entry type. Two account mentions "from A to B" are a transfer even
   // without a transfer verb; a transfer verb beside an income word ("salary
@@ -235,7 +235,11 @@ export function parseEntrySentence(
     date = fallback(context.today);
   }
 
-  // Description.
+  // Description. When AI read the amount from number words ("twelve fifty"),
+  // those words were the amount, not the description.
+  const sentenceDescription = buildDescription(
+    amountMinor?.source === "ai" ? removeAmountWords(remainder, amountMinor.value) : remainder
+  );
   let description: EntryDraftFieldDto<string> | undefined;
   if (sentenceDescription) {
     description = sentence(sentenceDescription);
@@ -914,6 +918,128 @@ function sentenceStatesAmount(text: string, amountMinor: number) {
   const stated = (text.match(/\d[\d,]*(?:\.\d+)?/g) ?? [])
     .map((value) => toMinor(Number(value.replace(/,/g, ""))));
   return stated.includes(amountMinor) || NUMBER_WORDS.test(text);
+}
+
+const UNIT_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19
+};
+const TENS_WORDS: Record<string, number> = {
+  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90
+};
+// Words that may sit inside or at the end of a spoken amount without being
+// a number themselves: "one hundred and twenty", "twelve point five",
+// "twenty dollars", "twelve dollars fifty".
+const AMOUNT_JOIN_WORDS = new Set(["and", "point"]);
+const AMOUNT_CURRENCY_WORDS = new Set(["dollar", "dollars", "buck", "bucks", "cents"]);
+
+// Blanks out the first run of number words that spells `amountMinor`, so
+// "Koufu lunch twelve fifty" with an AI amount of 1250 leaves "Koufu lunch".
+// Number words that spell something else ("Seven Eleven") stay.
+function removeAmountWords(remainder: string, amountMinor: number) {
+  const tokens = [...remainder.matchAll(/[\p{L}\p{N}]+/gu)].map((match) => ({
+    word: match[0].toLowerCase(),
+    start: match.index,
+    end: match.index + match[0].length
+  }));
+  const isNumberWord = (word: string) => word in UNIT_WORDS || word in TENS_WORDS || word === "hundred" || word === "thousand";
+  const inRun = (word: string) => isNumberWord(word) || AMOUNT_JOIN_WORDS.has(word) || AMOUNT_CURRENCY_WORDS.has(word);
+  for (let first = 0; first < tokens.length; first += 1) {
+    if (!isNumberWord(tokens[first].word)) {
+      continue;
+    }
+    let last = first;
+    while (last + 1 < tokens.length && inRun(tokens[last + 1].word)) {
+      last += 1;
+    }
+    // A run never ends on a joining word: "twenty and" keeps its "and".
+    while (AMOUNT_JOIN_WORDS.has(tokens[last].word)) {
+      last -= 1;
+    }
+    const run = tokens.slice(first, last + 1).map((token) => token.word);
+    if (spokenAmountsMinor(run).includes(amountMinor)) {
+      const start = tokens[first].start;
+      const end = tokens[last].end;
+      return remainder.slice(0, start) + " ".repeat(end - start) + remainder.slice(end);
+    }
+    first = last;
+  }
+  return remainder;
+}
+
+// Every amount a run of number words can mean: a whole number of dollars
+// ("one hundred and twenty"), or dollars then cents ("twelve fifty",
+// "twelve point five", "twelve dollars fifty"), or "one twenty" as $120.
+function spokenAmountsMinor(run: string[]) {
+  const amounts: number[] = [];
+  const marker = run.findIndex((word) => word === "point" || (AMOUNT_CURRENCY_WORDS.has(word) && word !== "cents"));
+  const numbers = (words: string[]) => words.filter((word) => !AMOUNT_JOIN_WORDS.has(word) && !AMOUNT_CURRENCY_WORDS.has(word));
+  if (marker > 0 && marker < run.length - 1) {
+    const dollars = spokenNumber(numbers(run.slice(0, marker)));
+    const centWords = numbers(run.slice(marker + 1));
+    const cents = spokenNumber(centWords);
+    if (dollars !== undefined && cents !== undefined) {
+      // "twelve point five" is $12.50; "twelve dollars five" is $12.05.
+      amounts.push(dollars * 100 + (run[marker] === "point" && cents < 10 && centWords.length === 1 ? cents * 10 : cents));
+    }
+    return amounts;
+  }
+  const words = numbers(run);
+  const whole = spokenNumber(words);
+  if (whole !== undefined) {
+    amounts.push(whole * 100);
+  }
+  for (let split = 1; split < words.length; split += 1) {
+    const dollars = spokenNumber(words.slice(0, split));
+    const cents = spokenNumber(words.slice(split));
+    if (dollars !== undefined && cents !== undefined && cents < 100) {
+      amounts.push(dollars * 100 + cents);
+      if (dollars < 10 && cents >= 10) {
+        amounts.push((dollars * 100 + cents) * 100);
+      }
+    }
+  }
+  return amounts;
+}
+
+// A cardinal in words ("one hundred twenty three", "two thousand"), or
+// undefined when the words are not exactly one number.
+function spokenNumber(words: string[]): number | undefined {
+  let index = 0;
+  const belowHundred = () => {
+    const word = words[index];
+    if (word in UNIT_WORDS) {
+      index += 1;
+      return UNIT_WORDS[word];
+    }
+    if (word in TENS_WORDS) {
+      index += 1;
+      const next = words[index];
+      if (next in UNIT_WORDS && UNIT_WORDS[next] < 10) {
+        index += 1;
+        return TENS_WORDS[word] + UNIT_WORDS[next];
+      }
+      return TENS_WORDS[word];
+    }
+    return undefined;
+  };
+  const belowThousand = () => {
+    const leading = belowHundred();
+    if (words[index] === "hundred") {
+      index += 1;
+      return (leading ?? 1) * 100 + (belowHundred() ?? 0);
+    }
+    return leading;
+  };
+  if (!words.length) {
+    return undefined;
+  }
+  let value = belowThousand();
+  if (words[index] === "thousand") {
+    index += 1;
+    value = (value ?? 1) * 1000 + (belowThousand() ?? 0);
+  }
+  return value !== undefined && index === words.length ? value : undefined;
 }
 
 function sanitizeDescription(value: unknown) {

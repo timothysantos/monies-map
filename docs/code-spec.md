@@ -290,7 +290,8 @@ accounts, people, rules or settings), and the untrusted-data system prompt.
 amount must be stated in the sentence (its digits, or number words), and
 every word of a description must be a sentence word. The merge re-runs the
 parser with the suggestion, so a deterministic value always wins and an AI
-value is marked `ai`. Reference data loads through `entry-draft-context.ts`
+value is marked `ai`; number words that spell an AI amount leave the
+sentence description, and nothing else does. Reference data loads through `entry-draft-context.ts`
 (five reads, no ledger tables); the route writes nothing but the allowance
 counter, and only when AI is asked. A confirmed draft is saved by the client
 posting `createBody` to `/api/entries/create`. Proof:
