@@ -8,12 +8,14 @@ import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
-import { updateSplitExpenseDraft } from "./split-editing";
+import { buildComparableSplitDraft, updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
+import { SheetDiscardConfirm, SheetDragHandle, useSheetSwipeDismiss } from "./sheet-swipe";
 import { OddCentChooser, SplitExpenseCard, splitSharePreview } from "./split-expense-card";
 import { BottomActions } from "./ui/lead-support-detail";
+import { useDraftChanged } from "./use-draft-changed";
 import { useKeyboardInset } from "./use-keyboard-inset";
 import { useIsMobileLayout } from "./use-viewport";
 
@@ -312,6 +314,10 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
   // editing and viewing a saved one keep the form for now.
   const isCreate = Boolean(dialog) && !dialog?.id && !readOnly;
   useKeyboardInset(isMobileLayout ? content : null);
+  // On a phone the dialog is a bottom sheet and swipes down to close, asking
+  // first when the draft changed since it opened.
+  const isDirty = useDraftChanged(readOnly ? null : dialog, buildComparableSplitDraft);
+  const swipe = useSheetSwipeDismiss({ sheet: content, enabled: isMobileLayout, isDirty, isSubmitting, onClose });
   const groupName = groupOptions.find((group) => group.id === dialog?.groupId)?.name ?? "";
 
   return (
@@ -322,8 +328,11 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
           ref={setContent}
           className={`note-dialog-content split-dialog-content${isCreate ? " split-expense-create" : ""}`}
           onOpenAutoFocus={(event) => event.preventDefault()}
+          {...swipe.contentProps}
         >
+          {isMobileLayout ? <SheetDragHandle /> : null}
           <form
+            inert={swipe.isConfirmOpen}
             onSubmit={(event) => {
               event.preventDefault();
               if (isSubmitting || isSaveDisabled) {
@@ -357,7 +366,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
                 <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Create or edit a split expense without touching the bank import workflow."}</Dialog.Description>
               </div>
             )}
-            <div className="split-dialog-scroll">
+            <div className="split-dialog-scroll" data-sheet-body>
               {isCreate ? (
                 <SplitExpenseCard
                   dialog={dialog}
@@ -424,6 +433,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               </div>
             )}
           </form>
+          <SheetDiscardConfirm open={swipe.isConfirmOpen} onKeepEditing={swipe.keepEditing} onDiscard={swipe.discard} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

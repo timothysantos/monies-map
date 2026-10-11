@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { EmptyState, InlineError } from "./ui-states";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+import { useDraftChanged } from "./use-draft-changed";
 import { MonthPlanSheet } from "./month-plan-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
@@ -57,6 +58,10 @@ const {
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
+function pickPlanLinkSelection(dialog) {
+  return [dialog.rowId, [...(dialog.draftEntryIds ?? [])].sort()];
+}
+
 function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
@@ -140,6 +145,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     [view]
   );
   const planLinkRowId = planLinkDialog?.rowId ?? null;
+  // Only the ticked entries are the draft; the filters are just the view.
+  const hasPlanLinkChanges = useDraftChanged(planLinkDialog, pickPlanLinkSelection);
   const planLinkTargetRow = useMemo(
     () => planLinkRowId ? monthService.getPlanRowById(planSections, planLinkRowId) : null,
     [planLinkRowId, planSections]
@@ -1644,6 +1651,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           errorMessage={planLinkError}
           isSubmitting={isSavingPlanLinks}
           isSaveDisabled={isSavingPlanLinks}
+          isDirty={hasPlanLinkChanges}
           onClose={closePlanLinkDialog}
           onSave={() => void savePlanLinkDialog()}
         >
