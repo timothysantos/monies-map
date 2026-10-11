@@ -623,7 +623,7 @@ test("PayNow spellings and bank words all mean the PayNow and bank transfers acc
   }
 });
 
-test("taxi 15 cash: the cash wallet when one is set, else Default account priority, and cash leaves the description", () => {
+test("taxi 15 cash: the cash wallet when one is set, and cash leaves the description", () => {
   const withWallet = parseEntrySentence("taxi 15 cash", PAY_CONTEXT);
   assert.deepEqual(withWallet.fields, {
     date: d(TODAY),
@@ -637,11 +637,6 @@ test("taxi 15 cash: the cash wallet when one is set, else Default account priori
     ownerName: d("Ethan")
   });
   assert.equal(withWallet.createBody.accountId, "acct-ethan-cash");
-
-  const withoutWallet = parseEntrySentence("taxi 15 cash", { ...PAY_CONTEXT, viewerName: "Serene" });
-  assert.deepEqual(withoutWallet.fields.accountId, d("acct-citi-cash-back"));
-  assert.deepEqual(withoutWallet.fields.description, s("taxi"));
-  assert.deepEqual(withoutWallet.fields.amountMinor, s(1500));
 
   const paidInCash = parseEntrySentence("paid in cash for taxi $15", PAY_CONTEXT);
   assert.deepEqual(paidInCash.fields.accountId, r("acct-ethan-cash"));
@@ -672,24 +667,89 @@ test("with no viewer the owner of the default account is whose payment way appli
   assert.deepEqual(draft.fields.ownerName, d("Ethan"));
 });
 
-test("negative: an empty payment way falls back to Default account priority and never borrows another person's", () => {
+test("negative: cash with no cash wallet set is asked, never put on a card, offering that person's accounts cash first", () => {
+  const draft = parseEntrySentence("taxi 15 cash", { ...PAY_CONTEXT, viewerName: "Serene" });
+  assert.deepEqual(draft.fields, {
+    date: d(TODAY),
+    description: s("taxi"),
+    categoryName: d("Other"),
+    amountMinor: s(1500),
+    entryType: d("expense"),
+    ownershipType: d("direct"),
+    ownerName: d("Serene")
+  });
+  assert.deepEqual(draft.missing, ["accountId"]);
+  // Serene has no cash account: her accounts in Default account priority order.
+  assert.deepEqual(draft.questions, [{
+    field: "accountId",
+    reason: "missing",
+    options: [
+      { accountId: "acct-ocbc-365", accountName: "OCBC 365 Card" },
+      { accountId: "acct-uob-prvi", accountName: "UOB PRVI Miles Card" },
+      { accountId: "acct-uob-one", accountName: "UOB One Account" }
+    ]
+  }]);
+  assert.equal(draft.createBody, undefined);
+
+  // Ethan has a cash account but did not choose it as his wallet: asked,
+  // with the cash account first.
+  const paidCash = parseEntrySentence("paid cash for taxi $15", {
+    ...PAY_CONTEXT,
+    paymentWays: [{ personId: "person-ethan", bankTransferAccountId: "acct-ocbc-360", cashAccountId: "" }]
+  });
+  assert.equal(paidCash.fields.accountId, undefined);
+  assert.deepEqual(paidCash.fields.description, s("taxi"));
+  assert.deepEqual(paidCash.questions, [{
+    field: "accountId",
+    reason: "missing",
+    options: [
+      { accountId: "acct-ethan-cash", accountName: "Ethan's Wallet" },
+      { accountId: "acct-citi-cash-back", accountName: "Citi Cash Back Card" },
+      { accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" }
+    ]
+  }]);
+});
+
+test("negative: an empty PayNow way keeps the Default account priority fallback unless it is a card, and never borrows another person's", () => {
+  // The fallback is a bank account: kept, as before.
+  const bankFirst = parseEntrySentence("lunch 7.20 paynow mine", {
+    ...CONTEXT,
+    viewerName: "Ethan",
+    defaultAccountPriorityIds: ["acct-ocbc-360", ...CONTEXT.defaultAccountPriorityIds.filter((id) => id !== "acct-ocbc-360")]
+  });
+  assert.deepEqual(bankFirst.fields.accountId, d("acct-ocbc-360"));
+  assert.deepEqual(bankFirst.fields.description, s("lunch"));
+  assert.deepEqual(bankFirst.questions, []);
+
+  // The fallback would be the Citi card: PayNow never comes from a card, so
+  // the account is asked, offering Ethan's accounts that are not cards.
   const emptyWay = parseEntrySentence("lunch 7.20 paynow mine", {
     ...PAY_CONTEXT,
     paymentWays: [{ personId: "person-ethan", bankTransferAccountId: "", cashAccountId: "" }, PAYMENT_WAYS[1]]
   });
-  assert.deepEqual(emptyWay.fields.accountId, d("acct-citi-cash-back"));
+  assert.equal(emptyWay.fields.accountId, undefined);
   assert.deepEqual(emptyWay.fields.description, s("lunch"));
   assert.deepEqual(emptyWay.fields.ownerName, s("Ethan"));
+  assert.deepEqual(emptyWay.missing, ["accountId"]);
+  assert.deepEqual(emptyWay.questions, [{
+    field: "accountId",
+    reason: "missing",
+    options: [
+      { accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" },
+      { accountId: "acct-ethan-cash", accountName: "Ethan's Wallet" }
+    ]
+  }]);
 
-  const noSetting = parseEntrySentence("lunch 7.20 paynow mine", { ...CONTEXT, viewerName: "Ethan" });
-  assert.deepEqual(noSetting.fields.accountId, d("acct-citi-cash-back"));
-  assert.deepEqual(noSetting.fields.description, s("lunch"));
+  const noSetting = parseEntrySentence("lunch 7.20 bank transfer mine", { ...CONTEXT, viewerName: "Ethan" });
+  assert.equal(noSetting.fields.accountId, undefined);
+  assert.deepEqual(noSetting.questions[0].options, [{ accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" }]);
 
-  // Only Ethan has a payment way: Serene's PayNow is not guessed as his.
+  // Only Ethan has a payment way: Serene's PayNow is not guessed as his, and
+  // the Citi card the default gives is not used either.
   const onlyEthan = parseEntrySentence("chicken rice 6.50 Serene paid by paynow", { ...PAY_CONTEXT, paymentWays: [PAYMENT_WAYS[0]] });
-  assert.notEqual(onlyEthan.fields.accountId.value, "acct-ocbc-360");
-  assert.deepEqual(onlyEthan.fields.accountId, d("acct-citi-cash-back"));
+  assert.equal(onlyEthan.fields.accountId, undefined);
   assert.deepEqual(onlyEthan.fields.ownerName, s("Serene"));
+  assert.deepEqual(onlyEthan.questions[0].options, [{ accountId: "acct-uob-one", accountName: "UOB One Account" }]);
 });
 
 test("negative: a named account wins over the payment way, and two payment ways are not guessed", () => {

@@ -208,9 +208,11 @@ test("a typed sentence uses the saved payment way through the entry draft route"
   // Tim has chosen nothing: his default PayNow account is UOB Savings.
   const tim = await api("/api/ai-assist/entry-draft", { text: "kopi 2.40 paynow", viewId: "person-tim" });
   assert.deepEqual(tim.payload.draft.fields.accountId, { value: "acct-uob-savings", source: "rule" });
-  // Tim has no cash wallet: cash keeps Default account priority.
+  // Tim has no cash wallet: the account is asked, never put on a card.
   const timCash = await api("/api/ai-assist/entry-draft", { text: "taxi 15 cash", viewId: "person-tim" });
-  assert.equal(timCash.payload.draft.fields.accountId.source, "default");
+  assert.equal(timCash.payload.draft.fields.accountId, undefined);
+  assert.deepEqual(timCash.payload.draft.missing, ["accountId"]);
+  assert.deepEqual(timCash.payload.draft.questions.map((question) => [question.field, question.reason]), [["accountId", "missing"]]);
 });
 
 test("a demo reseed forgets the payment ways (its people and accounts are replaced) but keeps the Shortcut settings", async (t) => {

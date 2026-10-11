@@ -189,17 +189,23 @@ export function parseEntrySentence(
       });
       // A payment word with no account named: the account that person chose
       // for it. Whose: the payer or owner named, else the viewer, else the
-      // owner of the account Default account priority gives. An unclear
-      // payer ("she paid", no one named) or an empty setting keeps the
-      // default; another person's payment way is never used.
+      // owner of the account Default account priority gives. Another
+      // person's payment way is never used. With nothing chosen (or an
+      // unclear payer, "she paid" with no one named), cash is asked rather
+      // than recorded on a card, and PayNow or a bank transfer keeps the
+      // default unless that is a card, which is asked too.
       const paymentOwner = payerUnclear
         ? undefined
         : explicitOwner ?? context.viewerName ?? (chosen ? personForAccount(chosen, context.people) : undefined);
+      const paymentOwnerId = context.people.find((person) => person.name === paymentOwner)?.id;
       const paymentAccount = paymentWay
-        ? paymentWayAccount(context, activeAccounts, paymentWay, context.people.find((person) => person.name === paymentOwner)?.id)
+        ? paymentWayAccount(context, activeAccounts, paymentWay, paymentOwnerId)
         : undefined;
       if (paymentAccount) {
         account = { value: paymentAccount, source: "rule" };
+      } else if (paymentWay && (paymentWay === "cash" || !chosen || chosen.kind === "credit_card")) {
+        const candidates = paymentWayCandidates(priorityAccounts, paymentWay, paymentOwnerId);
+        questions.push(accountQuestion("missing", candidates, candidates));
       } else if (chosen) {
         account = fallback(chosen);
       } else {
@@ -923,6 +929,18 @@ function paymentWayAccount(
     return undefined;
   }
   return (kind === "cash" ? isCashWalletAccount(account) : isBankTransferAccount(account)) ? account : undefined;
+}
+
+// What an unanswered payment way offers: that person's active accounts
+// (everyone's when the person is unknown or has none) in Default account
+// priority order, the payment way's own kind first. PayNow and bank
+// transfers never come from a card, so cards are left out for them.
+function paymentWayCandidates(priorityAccounts: AccountDto[], kind: PaymentWayKind, personId: string | undefined) {
+  const own = personId ? priorityAccounts.filter((account) => account.ownerPersonId === personId) : [];
+  const pool = (own.length ? own : priorityAccounts)
+    .filter((account) => kind === "cash" || account.kind !== "credit_card");
+  const wanted = kind === "cash" ? "cash" : "bank";
+  return [...pool.filter((account) => account.kind === wanted), ...pool.filter((account) => account.kind !== wanted)];
 }
 
 function orderByPriority(accounts: AccountDto[], priorityIds: string[]) {
