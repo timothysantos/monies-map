@@ -624,12 +624,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   flex-wrap: wrap;
 }
 
-.summary-head-metrics {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin-bottom: 0;
-}
-
 .panel-subhead {
   margin-bottom: 14px;
 }
@@ -819,20 +813,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .metric-row-month .metric strong {
   font-size: clamp(1rem, 1.65vw, 1.28rem);
-}
-
-.summary-head-metrics .metric {
-  min-width: 0;
-  padding: 11px 14px;
-}
-
-.summary-head-metrics .metric strong {
-  font-size: clamp(1rem, 1.45vw, 1.26rem);
-}
-
-.summary-head-metrics .metric > span {
-  margin-bottom: 5px;
-  font-size: 0.68rem;
 }
 
 .metric {
@@ -9174,8 +9154,7 @@ th {
   }
 
   .metric-row-summary,
-  .metric-row-month,
-  .summary-head-metrics {
+  .metric-row-month {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -9189,7 +9168,6 @@ th {
 
   .metric-row-summary::-webkit-scrollbar,
   .metric-row-month::-webkit-scrollbar,
-  .summary-head-metrics::-webkit-scrollbar,
   .summary-mix-months::-webkit-scrollbar,
   .share-list::-webkit-scrollbar,
   .entries-summary-metrics::-webkit-scrollbar {
@@ -9197,8 +9175,7 @@ th {
   }
 
   .metric-row-summary .metric,
-  .metric-row-month .metric,
-  .summary-head-metrics .metric {
+  .metric-row-month .metric {
     flex: 0 0 170px;
     min-width: 170px;
     padding: 12px 13px;

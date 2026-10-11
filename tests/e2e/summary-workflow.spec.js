@@ -50,7 +50,7 @@ test.describe("summary workflow", () => {
     await page.goto("/summary?view=person-joyce&month=2025-10&scope=shared&summary_start=2025-10&summary_end=2025-10");
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
     const scope = page.getByRole("group", { name: "Scope" });
-    const actualSpend = page.locator(".summary-head-metrics .metric").filter({ hasText: "Actual spend" }).locator("strong");
+    const actualSpend = page.locator(".summary-lead-spent");
     const direct = scope.getByRole("button", { name: "Direct", exact: true });
     const shared = scope.getByRole("button", { name: "Shared", exact: true });
     const both = scope.getByRole("button", { name: "Both", exact: true });
@@ -89,7 +89,7 @@ test.describe("summary workflow", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/summary?view=household&month=2025-10&scope=shared&summary_start=2025-10&summary_end=2025-10");
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
-    await expect(page.locator(".summary-head-metrics .metric").first()).toBeVisible();
+    await expect(page.locator(".summary-lead")).toBeVisible();
     await expect(page.getByRole("group", { name: "Scope" })).toHaveCount(0);
   });
 
@@ -104,7 +104,7 @@ test.describe("summary workflow", () => {
       return {
         head: box(document.querySelector(".summary-head")),
         title: box(document.querySelector(".summary-head > div:first-child")),
-        cards: [...document.querySelectorAll(".summary-head-metrics .metric")].map(box),
+        cards: [...document.querySelectorAll(".summary-lead-group > *")].map(box),
         insight: box(document.querySelector(".financial-insight-summary"))
       };
     });
@@ -145,7 +145,7 @@ test.describe("summary workflow", () => {
       page,
       "/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-05",
       "/api/summary-page",
-      () => page.locator(".summary-head-metrics .metric").first()
+      () => page.locator(".summary-lead")
     );
     await expect(page.getByRole("group", { name: "Scope" })).toHaveCount(0);
     await expect(page.locator(".summary-scope-switch")).toHaveCount(0);
@@ -171,7 +171,7 @@ test.describe("summary workflow", () => {
     const stickyBar = page.locator(".mobile-context-sticky-wrap");
     const trigger = stickyBar.locator(".mobile-context-trigger");
     const triggerLabel = trigger.locator(".mobile-context-trigger-label");
-    const actualSpend = page.locator(".summary-head-metrics .metric").filter({ hasText: "Actual spend" }).locator("strong");
+    const actualSpend = page.locator(".summary-lead-spent");
     await expect(inlineScope).toBeVisible();
 
     // Turning to the phone layout swaps the switch for the bar without a reload.

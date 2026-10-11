@@ -98,6 +98,19 @@ export const messages = {
       nextMonth: "Next month",
       done: "Done"
     },
+    // The Summary top: one lead card for spend against plan, and the Income
+    // and Saved pills with their plans (summary-lead.jsx). "of" and "plan"
+    // around the planned spend are monthChoice.planPrefix / planSuffix.
+    lead: {
+      spent: (rangeLabel) => rangeLabel ? `Spent · ${rangeLabel}` : "Spent",
+      percentOfPlan: (percent) => `${percent}% of plan`,
+      underPlan: "under plan",
+      overPlan: "over plan",
+      income: "Income",
+      incomePlan: "plan",
+      saved: "Saved",
+      savedTarget: "target"
+    },
     fromMonth: "From",
     toMonth: "To",
     focusMonth: "Focus",

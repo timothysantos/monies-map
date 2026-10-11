@@ -14,7 +14,7 @@ test("money values start hidden, reveal together, and cover individual activity"
 
   const toggle = page.getByRole("button", { name: "Show money totals" });
   await expect(toggle).toBeVisible();
-  await expect(page.locator(".metric strong").first()).toHaveText("••••");
+  await expect(page.locator(".summary-lead-spent")).toHaveText("••••");
   await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read these insights.");
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -30,7 +30,7 @@ test("money values start hidden, reveal together, and cover individual activity"
 
   await toggle.click();
   await expect(page.getByRole("button", { name: "Hide money totals" })).toBeVisible();
-  await expect(page.locator(".metric strong").first()).not.toHaveText("••••");
+  await expect(page.locator(".summary-lead-spent")).not.toHaveText("••••");
   await expect(page.locator(".financial-insight-summary")).not.toContainText("Reveal money totals to read these insights.");
 
   await page.reload();
