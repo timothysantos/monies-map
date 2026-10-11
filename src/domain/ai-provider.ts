@@ -133,19 +133,30 @@ export function resolveClaudeGateway(env: AiProviderEnv): ClaudeGateway | null {
   };
 }
 
+// Why AI cannot run at all in this environment, or null when a provider is
+// available. Routes call it first so a switched-off AI answers at once,
+// without reading the request body.
+export function getAiProviderUnavailableReason(env: AiProviderEnv) {
+  if (env.AI_ASSIST_ENABLED !== "true") {
+    return "AI assistance is turned off.";
+  }
+  if (!resolveClaudeGateway(env) && !env.AI) {
+    return "AI assistance is not configured for this environment.";
+  }
+  return null;
+}
+
 async function runJson<T>(
   db: D1Database,
   env: AiProviderEnv,
   input: JsonRequest<T>,
   request: { units: number; images: AiImage[] | null }
 ): Promise<AiProviderResult<T>> {
-  if (env.AI_ASSIST_ENABLED !== "true") {
-    return unavailable("AI assistance is turned off.");
+  const offReason = getAiProviderUnavailableReason(env);
+  if (offReason) {
+    return unavailable(offReason);
   }
   const claude = resolveClaudeGateway(env);
-  if (!claude && !env.AI) {
-    return unavailable("AI assistance is not configured for this environment.");
-  }
   if (!request.images) {
     return unavailable("No readable image was supplied.");
   }
