@@ -2350,6 +2350,22 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--accent-strong);
 }
 
+/* Desktop and tablet: the Summary tab's month row under the header (All
+   months, then the range's months). A phone uses the island control. */
+.summary-month-selector {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.summary-month-selector .summary-focus-button {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
 .spending-mix-chart-shell {
   width: 100%;
 }
@@ -8202,7 +8218,9 @@ th {
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     z-index: 50;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) 44px;
+    /* One column per primary tab (ShellRouteTabs sets the count), then the
+       ••• menu. */
+    grid-template-columns: repeat(var(--primary-tab-count, 3), minmax(0, 1fr)) 44px;
     gap: 6px;
     width: auto;
     padding: 8px;
@@ -8988,6 +9006,89 @@ th {
     min-width: 46px;
     padding: 0 10px;
     border-radius: 14px;
+  }
+
+  /* The Summary tab's month choice beside the View and scope trigger:
+     "All months ▾", or "‹ Sep 2026 ›" with a month picked. One row, the
+     island's 46px height (summary-month-picker.jsx). */
+  .mobile-month-choice {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    padding: 0 4px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 10px 26px rgba(27, 24, 21, 0.12);
+    backdrop-filter: blur(10px);
+    color: var(--text);
+  }
+
+  .mobile-month-choice-all {
+    gap: 10px;
+    padding: 6px 12px 6px 14px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .mobile-month-choice-copy,
+  .mobile-month-choice-open {
+    display: grid;
+    text-align: left;
+  }
+
+  .mobile-month-choice strong {
+    font-size: 0.84rem;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .mobile-month-choice-copy > span,
+  .mobile-month-choice-open > span {
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .mobile-month-choice-caret,
+  .mobile-month-choice-open > span > span {
+    color: var(--accent-strong);
+    font-size: 0.92rem;
+  }
+
+  .mobile-month-choice-open > span > span {
+    font-size: 0.72rem;
+  }
+
+  .mobile-month-choice-open {
+    padding: 4px 6px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .mobile-month-choice-step {
+    width: 30px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent-strong);
+    font-size: 1.35rem;
+    cursor: pointer;
+  }
+
+  .mobile-month-choice-step:disabled,
+  .mobile-month-choice:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .summary-month-selector {
+    display: none;
   }
 
   .mobile-context-dialog {

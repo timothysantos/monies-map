@@ -1,5 +1,3 @@
-export const SUMMARY_FOCUS_OVERALL = "overall";
-
 export function buildSummaryMutationRefreshPlan({
   kind,
   refreshShell = false
@@ -52,18 +50,6 @@ export function buildSummaryEntriesLocation(search, nextFilters) {
 
   return {
     pathname: "/entries",
-    search: `?${next.toString()}`
-  };
-}
-
-// Opening a month from Summary should keep the surrounding range context while
-// only swapping the active month route parameter.
-export function buildSummaryMonthLocation(search, month) {
-  const next = new URLSearchParams(search);
-  next.set("month", month);
-
-  return {
-    pathname: "/month",
     search: `?${next.toString()}`
   };
 }

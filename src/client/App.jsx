@@ -60,7 +60,7 @@ import {
 } from "./request-errors";
 import { fetchTextWithTransientWorkerRetry } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
-import { queryKeys } from "./query-keys";
+import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
 import { useAppShellState } from "./use-app-shell-state";
@@ -95,9 +95,16 @@ import {
   buildSummaryPageParams,
   buildSummaryPageView,
   fetchSummaryAccountPillsQuery,
-  fetchSummaryPageQuery
+  fetchSummaryPageQuery,
+  seedPinnedSummaryPage
 } from "./summary-query";
 import { buildSummaryMutationRefreshPlan } from "./summary-workflow";
+import {
+  buildSummaryMonthChoiceLocation,
+  clampMonthToRange,
+  stepMonthInRange
+} from "./summary-month-choice";
+import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -108,22 +115,29 @@ const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ defau
 const SettingsPanel = lazy(() => loadRouteModule("settings").then((module) => ({ default: module.SettingsPanel })));
 const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ default: module.SplitsPanel })));
 const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
+// The phone's "Pick a month" sheet loads when it is first opened.
+const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
 
-// Shared UI constants used by the month and summary pickers.
-const SUMMARY_FOCUS_OVERALL = "overall";
 // Canonical route registry for the top navigation and route-based prefetching.
+// One Summary tab stands for two routes: /summary (All months) and /month (one
+// month of the range picked); see summary-month-choice.js. Primary tabs fill
+// the phone's bottom bar, the rest sit behind its ••• menu; a new primary tab
+// (the Ask tab) is one more `primary: true` line here.
 const routeTabs = [
-  { id: "summary", path: "/summary", label: messages.tabs.summary },
-  { id: "month", path: "/month", label: messages.tabs.month },
-  { id: "entries", path: "/entries", label: messages.tabs.entries },
-  { id: "splits", path: "/splits", label: messages.tabs.splits },
+  { id: "summary", path: "/summary", label: messages.tabs.summary, routeIds: ["summary", "month"], primary: true },
+  { id: "entries", path: "/entries", label: messages.tabs.entries, primary: true },
+  { id: "splits", path: "/splits", label: messages.tabs.splits, primary: true },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
   { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
 ];
-// Split the tabs so the primary shell keeps the highest-frequency routes in view.
-const primaryRouteTabs = routeTabs.slice(0, 4);
-const secondaryRouteTabs = routeTabs.slice(4);
+const primaryRouteTabs = routeTabs.filter((tab) => tab.primary);
+const secondaryRouteTabs = routeTabs.filter((tab) => !tab.primary);
+// Page names for a load error: the Month page keeps its own name.
+const routePageLabels = {
+  ...Object.fromEntries(routeTabs.map((tab) => [tab.id, tab.label])),
+  month: messages.tabs.month
+};
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
 function createLoadingStatus(overrides = {}) {
@@ -203,6 +217,8 @@ export function App() {
   // Mobile context state only controls the sheet chrome around the current
   // route, not the route payload itself.
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
+  // The phone's "Pick a month" sheet on the Summary tab.
+  const [monthSheetOpen, setMonthSheetOpen] = useState(false);
   const [entriesMobileFilterProps, setEntriesMobileFilterProps] = useState(null);
   // The entries filter stack mirrors route state but only updates when the
   // effective filter props actually change.
@@ -1626,14 +1642,7 @@ export function App() {
     }
 
     const controller = new AbortController();
-    const summaryQueryKey = queryKeys.summaryPage({
-      viewId: selectedViewId,
-      month: selectedMonth,
-      scope: selectedScope,
-      startMonth: selectedSummaryStart ?? "",
-      endMonth: selectedSummaryEnd ?? ""
-    });
-    const hasCachedPage = Boolean(queryClient.getQueryData(summaryQueryKey));
+    const hasCachedPage = Boolean(queryClient.getQueryData(summaryPageKeyFromParams(summaryPageParams)));
     setRoutePageError("");
     if (!hasCachedPage) {
       updateLoadingStatus({
@@ -1676,6 +1685,29 @@ export function App() {
     summaryPageParams,
     updateLoadingStatus
   ]);
+
+  // With a month picked (/month) the Summary tab still shows the range: the
+  // header's range control, the month arrows and the month sheet read the
+  // Summary page for it. Coming from All months the page is already cached
+  // (picking a month reuses it under the pinned range), so this costs no
+  // request; only a /month deep link fetches it, beside the month page. It
+  // never blocks the Month page or raises its error screen: without it the
+  // header shows the range from the URL and the month controls wait.
+  const loadSummaryRangeContext = useCallback((signal) => (
+    summaryOwner.load({ pageParams: summaryPageParams, pillsParams: summaryAccountPillsParams, signal })
+      .catch((error) => {
+        reportLoadingIssue("Summary range load failed", error);
+        return false;
+      })
+  ), [reportLoadingIssue, summaryAccountPillsParams, summaryOwner, summaryPageParams]);
+  useEffect(() => {
+    if (selectedTabId !== "month") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    void loadSummaryRangeContext(controller.signal);
+    return () => controller.abort();
+  }, [loadSummaryRangeContext, selectedTabId]);
 
   // Route-page loading starts as soon as the route is known so shell and page
   // requests can overlap when the page does not need shell-derived inputs.
@@ -1794,7 +1826,8 @@ export function App() {
       routeDataReady,
       snapshot: routeWorkSnapshot,
       requiredCount: requiredWorkCount,
-      mobileContextOpen,
+      // An open month sheet holds optional work back like the View sheet.
+      mobileContextOpen: mobileContextOpen || monthSheetOpen,
       loginRegistrationBlocking
     }),
     [
@@ -1804,6 +1837,7 @@ export function App() {
       isAppShellLoading,
       loginRegistrationBlocking,
       mobileContextOpen,
+      monthSheetOpen,
       referenceData,
       requiredWorkCount,
       routeDataReady,
@@ -1858,15 +1892,33 @@ export function App() {
     availableMonths,
     summaryRange: warmupSummaryRange
   });
-  const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
+  // Entries and Splits show one month in the header's month picker. The
+  // Summary tab (Summary for All months, Month for a picked month) keeps the
+  // header on its range and picks the month in the island, sheet or row.
+  const isDetailMonthTab = renderedTabId === "entries" || renderedTabId === "splits";
   const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
+  const isSummaryTab = renderedTabId === "summary" || renderedTabId === "month";
+  // The month the Summary tab has picked, "" for All months. It follows the
+  // URL at once, so the controls answer a tap before the Month page loads.
+  const pickedSummaryMonth = isSummaryTab && selectedTabId === "month" ? selectedMonth : "";
+  // The range on screen: Summary's own page, or with a month picked the
+  // Summary page loaded beside it for the same range (never another view's
+  // or scope's page still held by the owner).
+  const summaryRangePage = renderedTabId === "summary"
+    ? summaryPage
+    : renderedTabId === "month" && summaryPageDataRequestKey === summaryPageParams.toString()
+      ? summaryPageData?.summaryPage ?? null
+      : null;
+  const summaryRangeMonths = useMemo(() => summaryRangePage?.rangeMonths ?? [], [summaryRangePage]);
+  const previousSummaryMonth = pickedSummaryMonth ? stepMonthInRange(summaryRangeMonths, pickedSummaryMonth, -1) : "";
+  const nextSummaryMonth = pickedSummaryMonth ? stepMonthInRange(summaryRangeMonths, pickedSummaryMonth, 1) : "";
   const isSplitsTab = renderedTabId === "splits";
   // Imports, Settings and FAQ do not depend on a period, so the header keeps
   // the period control in place but greyed out and disabled there.
   const routeUsesPeriod = !["imports", "settings", "faq"].includes(renderedTabId);
   const isPeriodPassive = isSplitsTab || !routeUsesPeriod;
   // A page load error names the page the person asked for.
-  const selectedPageLabel = routeTabs.find((tab) => tab.id === selectedTabId)?.label ?? "";
+  const selectedPageLabel = routePageLabels[selectedTabId] ?? "";
   // Detail tabs use the current month index to decide whether the navigation
   // arrows should remain enabled.
   const currentDetailMonthIndex = useMemo(
@@ -1894,25 +1946,30 @@ export function App() {
   // The summary range picker uses the same month list but renders year buckets
   // separately for start and end selection.
   const summaryAvailableYears = useMemo(
-    () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths
-      ? [...new Set(pageView.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
+    () => summaryRangePage?.availableMonths
+      ? [...new Set(summaryRangePage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
       : [],
-    [isDetailMonthTab, pageView]
+    [summaryRangePage]
   );
   // Filter the summary picker months for the active start-year bucket.
   const summaryAvailableMonthsForPickerYear = useMemo(
-    () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths && rangePickerStartYear != null
-      ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerStartYear)
+    () => summaryRangePage?.availableMonths && rangePickerStartYear != null
+      ? summaryRangePage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerStartYear)
       : [],
-    [isDetailMonthTab, rangePickerStartYear, pageView]
+    [rangePickerStartYear, summaryRangePage]
   );
   // Filter the summary picker months for the active end-year bucket.
   const summaryAvailableMonthsForEndPickerYear = useMemo(
-    () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths && rangePickerEndYear != null
-      ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerEndYear)
+    () => summaryRangePage?.availableMonths && rangePickerEndYear != null
+      ? summaryRangePage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerEndYear)
       : [],
-    [isDetailMonthTab, rangePickerEndYear, pageView]
+    [rangePickerEndYear, summaryRangePage]
   );
+  // Summary's month cards pick a month like the month controls do. The panel
+  // gets a stable callback (the route element is memoized) that calls the
+  // latest selectSummaryMonth, assigned below with the other handlers.
+  const selectSummaryMonthRef = useRef(null);
+  const openSummaryMonth = useCallback((month) => selectSummaryMonthRef.current?.(month), []);
   const saveSummaryMonthNote = useCallback(async ({ month, note }) => {
     const refreshPlan = buildSummaryMutationRefreshPlan({ kind: "note-save" });
     const response = await fetch("/api/month-note/update", {
@@ -1973,6 +2030,7 @@ export function App() {
           accounts={accounts}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={saveSummaryMonthNote}
+          onOpenMonth={openSummaryMonth}
         />
       );
     }
@@ -2084,6 +2142,7 @@ export function App() {
     isUnregisteringLogin,
     loginIdentityError,
     mobileContextOpen,
+    openSummaryMonth,
     pageView,
     referenceData,
     refreshCurrentSettingsPage,
@@ -2259,24 +2318,22 @@ export function App() {
     navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
   }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
 
-  // Initialize the summary range picker year buckets from the active summary
-  // window.
+  // Repair an explicit Summary range the data does not have (both tabs of the
+  // Summary tab carry it), so the pickers and the URL agree.
   useEffect(() => {
-    if (isDetailMonthTab || !summaryPage?.availableMonths?.length) {
+    if (!isSummaryTab || !summaryRangePage?.availableMonths?.length) {
       return;
     }
 
-    const summaryMonths = summaryPage.availableMonths;
+    const summaryMonths = summaryRangePage.availableMonths;
     const hasExplicitSummaryRange = Boolean(selectedSummaryStart || selectedSummaryEnd);
-    const focus = searchParams.get("summary_focus");
-    const hasInvalidFocus = Boolean(focus && focus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(focus));
     const startIsValid = selectedSummaryStart && summaryMonths.includes(selectedSummaryStart);
     const endIsValid = selectedSummaryEnd && summaryMonths.includes(selectedSummaryEnd);
-    if (!hasExplicitSummaryRange && !hasInvalidFocus) {
+    if (!hasExplicitSummaryRange) {
       return;
     }
 
-    if (startIsValid && endIsValid && selectedSummaryStart <= selectedSummaryEnd && !hasInvalidFocus) {
+    if (startIsValid && endIsValid && selectedSummaryStart <= selectedSummaryEnd) {
       return;
     }
 
@@ -2287,24 +2344,20 @@ export function App() {
       const next = new URLSearchParams(current);
       next.set("summary_start", startMonth);
       next.set("summary_end", resolvedEndMonth);
-      const nextFocus = next.get("summary_focus");
-      if (nextFocus && nextFocus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(nextFocus)) {
-        next.delete("summary_focus");
-      }
       return next;
     }, { replace: true });
-  }, [isDetailMonthTab, searchParams, selectedSummaryEnd, selectedSummaryStart, setSearchParams, summaryPage]);
+  }, [isSummaryTab, selectedSummaryEnd, selectedSummaryStart, setSearchParams, summaryRangePage]);
 
-  // Initialize the detail month picker year bucket from the active month.
+  // Initialize the range picker year buckets from the range on screen.
   useEffect(() => {
     // Summary can briefly hydrate without a fully bounded range, so this
     // effect only runs when both boundary months are actually present.
-    if (isDetailMonthTab || !summaryPage?.rangeStartMonth || !summaryPage?.rangeEndMonth) {
+    if (!summaryRangePage?.rangeStartMonth || !summaryRangePage?.rangeEndMonth) {
       return;
     }
 
-    const nextStartYear = Number(summaryPage.rangeStartMonth.slice(0, 4));
-    const nextEndYear = Number(summaryPage.rangeEndMonth.slice(0, 4));
+    const nextStartYear = Number(summaryRangePage.rangeStartMonth.slice(0, 4));
+    const nextEndYear = Number(summaryRangePage.rangeEndMonth.slice(0, 4));
     setRangePickerStartYear((current) => {
       if (current != null && summaryAvailableYears.includes(current)) {
         return current;
@@ -2317,7 +2370,7 @@ export function App() {
       }
       return nextEndYear;
     });
-  }, [isDetailMonthTab, summaryAvailableYears, summaryPage]);
+  }, [summaryAvailableYears, summaryRangePage]);
 
   useEffect(() => {
     if (!isDetailMonthTab || !detailAvailableYears.length) {
@@ -2376,9 +2429,11 @@ export function App() {
     ? messages.views.scopeHint[selectedMobileScope.key]?.(pageView?.label ?? "") ?? ""
     : "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
-  // Summary moves its range from the header; the bar's month arrows step the
-  // single month of Month and Entries.
+  // The Summary tab moves its range from the header and picks its month in
+  // the bar (All months, or one month with arrows); Entries keeps the bar's
+  // month arrows for its single month.
   const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
+  const showMobileMonthChoice = showMobileContextSticky && isSummaryTab;
   const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
   // Collapse the mobile sheet when the sticky context is no longer relevant.
@@ -2460,9 +2515,14 @@ export function App() {
     ? formatMonthLabel(selectedMonth)
     : showsPassiveRange
       ? `${formatMonthLabel(passiveRangeStart)} - ${formatMonthLabel(passiveRangeEnd)}`
-      : pageView?.summaryPage?.rangeStartMonth && pageView?.summaryPage?.rangeEndMonth
-        ? `${formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
-        : pageView.label;
+      : summaryRangePage?.rangeStartMonth && summaryRangePage?.rangeEndMonth
+        ? `${formatMonthLabel(summaryRangePage.rangeStartMonth)} - ${formatMonthLabel(summaryRangePage.rangeEndMonth)}`
+        // A picked month's range is still loading: the URL's range, or the month.
+        : renderedTabId === "month"
+          ? selectedSummaryStart && selectedSummaryEnd
+            ? `${formatMonthLabel(selectedSummaryStart)} - ${formatMonthLabel(selectedSummaryEnd)}`
+            : formatMonthLabel(selectedMonth)
+          : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
   const cachedSettingsPage = /** @type {any} */ (queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST)));
@@ -2470,6 +2530,8 @@ export function App() {
   const buildTabTarget = (tab) => {
     // Each nav link preserves the relevant route query while stripping
     // parameters that belong to another tab.
+    // The Summary tab always opens All months (/summary), also from a picked
+    // month, like tapping a phone's active tab returns to its top level.
     const params = new URLSearchParams(searchParams);
     sanitizeTabParams(params, tab.id);
     if (tab.id === "settings" && pendingCategorySuggestionCount) {
@@ -2545,14 +2607,13 @@ export function App() {
       return;
     }
 
-    if (!summaryPage) {
+    if (!summaryRangePage) {
       return;
     }
 
-    const rangeMonths = summaryPage.rangeMonths;
-    const availableSummaryMonths = summaryPage.availableMonths;
-    const startIndex = availableSummaryMonths.indexOf(summaryPage.rangeStartMonth);
-    const endIndex = availableSummaryMonths.indexOf(summaryPage.rangeEndMonth);
+    const availableSummaryMonths = summaryRangePage.availableMonths;
+    const startIndex = availableSummaryMonths.indexOf(summaryRangePage.rangeStartMonth);
+    const endIndex = availableSummaryMonths.indexOf(summaryRangePage.rangeEndMonth);
     if (startIndex === -1 || endIndex === -1) {
       return;
     }
@@ -2563,13 +2624,21 @@ export function App() {
       return;
     }
 
+    applySummaryRange(availableSummaryMonths[nextStartIndex], availableSummaryMonths[nextEndIndex]);
+  }
+
+  // A new range from the header (arrows or either end's picker). With a month
+  // picked, a month the new range no longer has moves to its nearest month,
+  // so the Month page always shows a month the range offers.
+  function applySummaryRange(startMonth, endMonth) {
+    const nextRangeMonths = summaryRangePage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.set("summary_start", availableSummaryMonths[nextStartIndex]);
-      next.set("summary_end", availableSummaryMonths[nextEndIndex]);
-      const focus = next.get("summary_focus");
-      if (focus && focus !== SUMMARY_FOCUS_OVERALL && !rangeMonths.includes(focus)) {
-        next.delete("summary_focus");
+      next.set("summary_start", startMonth);
+      next.set("summary_end", endMonth);
+      next.delete("summary_focus");
+      if (pickedSummaryMonth) {
+        next.set("month", clampMonthToRange(pickedSummaryMonth, nextRangeMonths));
       }
       return next;
     });
@@ -2588,53 +2657,69 @@ export function App() {
     });
   }
 
-  // The summary range start picker keeps the end month fixed and clamps the
-  // focus into the new interval.
+  // The summary range start picker keeps the end month fixed.
   function handleSummaryStartMonthSelect(startMonth) {
-    if (isDetailMonthTab || !summaryPage) {
+    if (!summaryRangePage || startMonth > summaryRangePage.rangeEndMonth) {
       return;
     }
-
-    const endMonth = summaryPage.rangeEndMonth;
-    if (startMonth > endMonth) {
-      return;
-    }
-
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("summary_start", startMonth);
-      next.set("summary_end", endMonth);
-      const focus = next.get("summary_focus");
-      const nextRangeMonths = summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
-      if (focus && focus !== SUMMARY_FOCUS_OVERALL && !nextRangeMonths.includes(focus)) {
-        next.delete("summary_focus");
-      }
-      return next;
-    });
+    applySummaryRange(startMonth, summaryRangePage.rangeEndMonth);
   }
 
   // The summary range end picker mirrors the start picker but updates the
   // right edge of the range.
   function handleSummaryEndMonthSelect(endMonth) {
-    if (isDetailMonthTab || !summaryPage) {
+    if (!summaryRangePage || endMonth < summaryRangePage.rangeStartMonth) {
       return;
     }
+    applySummaryRange(summaryRangePage.rangeStartMonth, endMonth);
+  }
 
-    const startMonth = summaryPage.rangeStartMonth;
-    if (endMonth < startMonth) {
-      return;
+  // The Summary tab's month choice (island, sheet, desktop row and Summary's
+  // month cards): a month opens the Month page for it, "" returns to All
+  // months. The range on screen is pinned into the URL so it stays put while
+  // months change, and the loaded Summary page is kept for the pinned range.
+  function selectSummaryMonth(month) {
+    setMonthSheetOpen(false);
+    const range = summaryRangePage?.rangeStartMonth && summaryRangePage?.rangeEndMonth
+      ? { startMonth: summaryRangePage.rangeStartMonth, endMonth: summaryRangePage.rangeEndMonth }
+      : null;
+    const target = buildSummaryMonthChoiceLocation(location.search, month, range);
+    if (range && !(selectedSummaryStart && selectedSummaryEnd) && summaryPageDataRequestKey) {
+      seedPinnedSummaryPage(
+        queryClient,
+        new URLSearchParams(summaryPageDataRequestKey),
+        buildSummaryPageParams({
+          viewId: selectedViewId,
+          month: month || selectedMonth,
+          scope: selectedScope,
+          summaryStart: range.startMonth,
+          summaryEnd: range.endMonth
+        })
+      );
     }
+    navigate(target);
+  }
+  selectSummaryMonthRef.current = selectSummaryMonth;
 
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("summary_start", startMonth);
-      next.set("summary_end", endMonth);
-      const focus = next.get("summary_focus");
-      const nextRangeMonths = summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
-      if (focus && focus !== SUMMARY_FOCUS_OVERALL && !nextRangeMonths.includes(focus)) {
-        next.delete("summary_focus");
+  // Opening the month sheet re-reads the range's Summary page when a save
+  // since cleared it (the sheet shows the figures it has meanwhile).
+  function openMonthSheet() {
+    setMonthSheetOpen(true);
+    if (renderedTabId === "month" && !queryClient.getQueryData(summaryPageKeyFromParams(summaryPageParams))) {
+      void loadSummaryRangeContext();
+    }
+  }
+
+  // "Change range" in the month sheet: close it and open the header's range
+  // start picker, scrolled into view.
+  function openHeaderRangePicker() {
+    setMonthSheetOpen(false);
+    window.scrollTo({ top: 0 });
+    window.requestAnimationFrame(() => {
+      const trigger = document.querySelector(".control-bar .period-range-segment");
+      if (trigger instanceof HTMLButtonElement) {
+        trigger.click();
       }
-      return next;
     });
   }
 
@@ -2830,10 +2915,10 @@ export function App() {
                     onSelect={handleDetailMonthSelect}
                   />
                 </strong>
-              ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
+              ) : summaryRangePage?.rangeStartMonth && summaryRangePage?.rangeEndMonth ? (
                 <strong className="period-range-value">
                   <PeriodMonthPicker
-                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                    triggerLabel={formatMonthLabel(summaryRangePage.rangeStartMonth)}
                     title="Start month"
                     hint="Choose the first month in the summary range."
                     yearsAriaLabel="Available start years"
@@ -2841,13 +2926,13 @@ export function App() {
                     activeYear={rangePickerStartYear}
                     onYearChange={setRangePickerStartYear}
                     months={summaryAvailableMonthsForPickerYear}
-                    selectedMonth={pageView.summaryPage.rangeStartMonth}
-                    isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
+                    selectedMonth={summaryRangePage.rangeStartMonth}
+                    isMonthDisabled={(month) => month > summaryRangePage.rangeEndMonth}
                     onSelect={handleSummaryStartMonthSelect}
                   />
                   <span className="period-range-separator" aria-hidden="true">-</span>
                   <PeriodMonthPicker
-                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                    triggerLabel={formatMonthLabel(summaryRangePage.rangeEndMonth)}
                     title="End month"
                     hint="Choose the last month in the summary range."
                     yearsAriaLabel="Available end years"
@@ -2855,8 +2940,8 @@ export function App() {
                     activeYear={rangePickerEndYear}
                     onYearChange={setRangePickerEndYear}
                     months={summaryAvailableMonthsForEndPickerYear}
-                    selectedMonth={pageView.summaryPage.rangeEndMonth}
-                    isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
+                    selectedMonth={summaryRangePage.rangeEndMonth}
+                    isMonthDisabled={(month) => month < summaryRangePage.rangeStartMonth}
                     onSelect={handleSummaryEndMonthSelect}
                   />
                 </strong>
@@ -2890,10 +2975,16 @@ export function App() {
                       {mobileContextScopeLabel ? (
                         <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
                       ) : null}
-                    </span>{" "}
-                    <span className="mobile-context-trigger-hint">
-                      {showMobileContextScopeSection ? "View and scope" : "View"}
                     </span>
+                    {/* Beside the month control the hint goes, so the bar stays one 46px row. */}
+                    {showMobileMonthChoice ? null : (
+                      <>
+                        {" "}
+                        <span className="mobile-context-trigger-hint">
+                          {showMobileContextScopeSection ? "View and scope" : "View"}
+                        </span>
+                      </>
+                    )}
                   </span>
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
@@ -3001,12 +3092,46 @@ export function App() {
                 </button>
               </div>
             ) : null}
+            {showMobileMonthChoice ? (
+              <SummaryMonthIslandControl
+                pickedMonth={pickedSummaryMonth}
+                previousMonth={previousSummaryMonth}
+                nextMonth={nextSummaryMonth}
+                disabled={!summaryRangeMonths.length}
+                onStep={selectSummaryMonth}
+                onOpen={openMonthSheet}
+                intentProps={getNavIntentProps("month")}
+              />
+            ) : null}
           </div>
         </section>
+      ) : null}
+      {showMobileMonthChoice && monthSheetOpen ? (
+        <Suspense fallback={null}>
+          <SummaryMonthSheet
+            open
+            onOpenChange={setMonthSheetOpen}
+            rangeStartMonth={summaryRangePage?.rangeStartMonth ?? ""}
+            rangeEndMonth={summaryRangePage?.rangeEndMonth ?? ""}
+            months={summaryRangePage?.months ?? []}
+            pickedMonth={pickedSummaryMonth}
+            onPick={selectSummaryMonth}
+            onChangeRange={openHeaderRangePicker}
+          />
+        </Suspense>
       ) : null}
 
       {/* The routed panel area is the actual screen body; every tab renders through this slot. */}
       <section className="grid app-route-grid" aria-busy={isAppShellLoading ? "true" : "false"}>
+        {/* Desktop and tablet pick the Summary tab's month here (a phone uses the island). */}
+        {isSummaryTab ? (
+          <SummaryMonthSelector
+            rangeMonths={summaryRangeMonths}
+            pickedMonth={pickedSummaryMonth}
+            onPick={selectSummaryMonth}
+            intentProps={getNavIntentProps("month")}
+          />
+        ) : null}
         {/* Route panels can hydrate lazily, so the fallback stays inside the
             routed region instead of replacing the whole shell. */}
         {showImportInboxBanner ? (
