@@ -1,0 +1,58 @@
+/* The Month plan-row sheet (month-plan-sheet.jsx): a lead card, then the
+   Detail rows. The blocks' own styles are in ui/lead-support-detail.css. */
+.month-plan-sheet {
+  display: grid;
+  gap: 12px;
+  padding: 6px 0 4px;
+}
+
+.month-plan-sheet .month-shared-edit-hint {
+  margin: 0;
+}
+
+.month-plan-sheet .month-budget-default-hint {
+  margin: -4px 0 0;
+}
+
+/* The close button is a 44px round target, top right; Done and Cancel are
+   in the bottom bar, so it is never the only way out. */
+.month-plan-sheet-dialog .entry-composer-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(38, 35, 31, 0.06);
+}
+
+.month-plan-sheet-dialog .entry-composer-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The sheet takes focus itself on open (so the keyboard stays down); it is
+   not a control, so it shows no focus ring. */
+.month-plan-sheet-dialog:focus-visible {
+  outline: none;
+}
+
+/* The phone head: the sub-line is now the short "Person · Month" context. */
+.month-plan-sheet-dialog .entry-composer-head {
+  align-items: center;
+  padding-bottom: 4px;
+  border-bottom: 0;
+}
+
+/* The "$" before the planned amount goes with the figure when money is
+   hidden: the input shows dots. */
+.month-plan-lead-currency {
+  margin-right: 1px;
+}
+
+/* The figure starts right after its "$"; the input is sized to it. */
+.lead-card-amount > .month-plan-lead-input {
+  text-align: left;
+}
+
+html[data-money-privacy="hidden"] .month-plan-lead-currency {
+  display: none;
+}

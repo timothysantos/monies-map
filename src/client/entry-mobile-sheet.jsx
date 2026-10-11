@@ -40,6 +40,7 @@ export function EntryMobileSheet({
   isSubmitting = false,
   secondaryAction = null,
   footerContent = null,
+  className = "",
   onClose,
   onSave,
   children
@@ -93,7 +94,7 @@ export function EntryMobileSheet({
         >
           <Dialog.Content
             ref={setSheet}
-            className="entry-composer entry-mobile-sheet"
+            className={`entry-composer entry-mobile-sheet ${className}`.trim()}
             aria-label={title}
             aria-modal="true"
             // The FocusScope above owns focus on open and close.

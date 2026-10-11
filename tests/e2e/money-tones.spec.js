@@ -49,7 +49,7 @@ async function openSummary(page, view, month) {
   );
 }
 
-const card = (page, label) => page.locator(".summary-head-metrics .metric, .metric-row-month .metric")
+const card = (page, label) => page.locator(".metric-row-month .metric")
   .filter({ has: page.locator(":scope > span", { hasText: new RegExp(`^${label}$`) }) });
 const cardValue = (page, label) => card(page, label).locator("strong .private-money");
 
@@ -68,32 +68,46 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("Summary pills: plans are sky text, outcomes a soft tint, spending within plan plain", async ({ page }) => {
+// The Summary top (design.md, "Lead · Support · Detail"): the lead card's
+// planned spend is sky text, its spend plain (rose over plan), the headroom
+// mint under plan and rose over; Income and Saved are soft-tint pills.
+const summaryPill = (page, metric) => page.locator(`.summary-support-pill[data-metric="${metric}"]`);
+
+test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spending within plan plain", async ({ page }) => {
   await revealMoney(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   const summary = await page.request.get("/api/summary-page?view=household&month=2026-04&scope=direct_plus_shared&summary_start=2026-04&summary_end=2026-04").then((response) => response.json());
   const amount = (label) => summary.summaryPage.metricCards.find((item) => item.label === label).amountMinor;
   await openSummary(page, "household", "2026-04");
 
-  for (const label of ["Planned income", "Planned spend", "Savings target"]) {
-    const value = await looks(cardValue(page, label));
-    expect(value.color, `${label} value`).toBe(INK.plan);
-    // A plan is text only: the card keeps the plain surface.
-    expect((await looks(card(page, label))).className).not.toContain("money-soft");
-  }
+  const plan = await looks(page.locator(".summary-lead-plan"));
+  expect(plan.color, "planned spend").toBe(INK.plan);
+  // A plan is text only: no tint behind it.
+  expect(plan.background).toBe(TRANSPARENT);
 
   expect(amount("Actual income")).toBeGreaterThan(0);
-  expect((await looks(cardValue(page, "Actual income"))).color).toBe(INK.in);
-  const incomeCard = await looks(card(page, "Actual income"));
-  expect(incomeCard.className).toContain("money-soft");
-  expect(incomeCard.background).not.toBe(TRANSPARENT);
-  // The label on a tinted card is the tone's ink too (muted grey would fail AA there).
-  expect((await looks(card(page, "Actual income").locator(":scope > span"))).color).toBe(INK.in);
+  const incomePill = await looks(summaryPill(page, "income"));
+  expect(incomePill.className).toContain("money-soft");
+  expect(incomePill.background).not.toBe(TRANSPARENT);
+  expect((await looks(summaryPill(page, "income").locator("strong .private-money"))).color).toBe(INK.in);
+  // The label and the plan line on a tinted pill are the tone's ink too
+  // (muted grey would fail AA there).
+  expect((await looks(summaryPill(page, "income").locator(".summary-support-pill-label"))).color).toBe(INK.in);
+  expect((await looks(summaryPill(page, "income").locator("small"))).color).toBe(INK.in);
 
   const overPlan = amount("Actual spend") > amount("Planned spend");
-  expect((await looks(cardValue(page, "Actual spend"))).color).toBe(overPlan ? INK.short : INK.text);
+  expect((await looks(page.locator(".summary-lead-spent .private-money"))).color).toBe(overPlan ? INK.short : INK.text);
+  if (amount("Planned spend") > 0 || amount("Actual spend") > 0) {
+    expect((await looks(page.locator(".summary-lead-headroom"))).color).toBe(overPlan ? INK.short : INK.in);
+    await expect(page.locator(".summary-lead-headroom")).toContainText(overPlan ? "over plan" : "under plan");
+  } else {
+    // Nothing spent against no plan: neither under nor over.
+    await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
+  }
+  const fill = await looks(page.locator(".summary-lead .lead-card-bar-fill"));
+  expect(fill.className).toContain(overPlan ? "money-short" : "money-neutral");
   const savings = amount("Realized savings");
-  expect((await looks(cardValue(page, "Realized savings"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
+  expect((await looks(summaryPill(page, "saved").locator("strong .private-money"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
 
   // Intent vs Outcome is a table: text only, no tint behind the numbers.
   const varianceCells = page.locator(".plan-detail-table td[class*='money-']");
@@ -249,13 +263,21 @@ test("hidden money shows no tone", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openSummary(page, "household", "2026-04");
   await expect(page.getByRole("button", { name: "Show money totals" })).toBeVisible();
-  for (const label of ["Planned income", "Actual income", "Actual spend", "Realized savings"]) {
-    const value = await looks(cardValue(page, label));
-    expect(value.color, label).toBe(INK.text);
-    // The card keeps no mint or rose tint either (a neutral one is fine).
-    const surface = parseColour((await looks(card(page, label))).background).rgb;
-    expect(Math.max(...surface) - Math.min(...surface), `${label} tint`).toBeLessThan(12);
-    expect((await looks(card(page, label).locator(":scope > span"))).color).toBe(INK.muted);
+  // The lead: dots in plain ink, the plan muted, the bar's empty track only.
+  await expect(page.locator(".summary-lead-spent")).toHaveText("••••");
+  expect((await looks(page.locator(".summary-lead-spent .private-money"))).color).toBe(INK.text);
+  expect((await looks(page.locator(".summary-lead-plan"))).color).toBe(INK.muted);
+  await expect(page.locator(".summary-lead .lead-card-bar")).toBeVisible();
+  await expect(page.locator(".summary-lead .lead-card-bar-fill")).toHaveCount(0);
+  await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
+  for (const metric of ["income", "saved"]) {
+    const pill = summaryPill(page, metric);
+    await expect(pill.locator("strong")).toHaveText("••••");
+    expect((await looks(pill.locator("strong .private-money"))).color, metric).toBe(INK.text);
+    // The pill keeps no mint or rose tint either (a neutral one is fine).
+    const surface = parseColour((await looks(pill)).background).rgb;
+    expect(Math.max(...surface) - Math.min(...surface), `${metric} tint`).toBeLessThan(12);
+    expect((await looks(pill.locator(".summary-support-pill-label"))).color).toBe(INK.muted);
   }
 
   await gotoPageAfterApi(page, "/entries?view=person-tim&month=2026-04&scope=direct_plus_shared", "/api/entries-page", () => page.getByRole("heading", { name: "Entries", exact: true }));
@@ -274,7 +296,7 @@ test("hidden money shows no tone", async ({ page }) => {
 
 // Hiding money hides its sign in words too: no line may say a hidden figure
 // is over or under, owed or owing, or off.
-const SIGN_WORDING = /\b(To allocate|Overplanned|Over plan|Under plan|You owe|You are owed|owes you|Settled up|you lent|you borrowed|you received|you paid|is off by)\b|[-−]\s?••••/;
+const SIGN_WORDING = /\b(To allocate|Overplanned|Over plan|Under plan|over plan|under plan|% of plan|You owe|You are owed|owes you|Settled up|you lent|you borrowed|you received|you paid|is off by)\b|[-−]\s?••••/;
 
 test("hidden money shows no sign or outcome in words", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });

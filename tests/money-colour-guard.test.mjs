@@ -13,12 +13,13 @@ import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../src/domain/catego
 // Any other raw green, red, blue, amber or purple fails here: use a token.
 
 const root = path.resolve(import.meta.dirname, "..");
-const clientDir = path.join(root, "src/client");
+// src/client and its shared building blocks in src/client/ui.
+const clientFiles = ["src/client", "src/client/ui"].flatMap((dir) => readdirSync(path.join(root, dir)).map((name) => `${dir}/${name}`));
 const stylesheets = [
   "public/styles.css",
-  ...readdirSync(clientDir).filter((name) => name.endsWith(".css")).map((name) => `src/client/${name}`)
+  ...clientFiles.filter((name) => name.endsWith(".css"))
 ];
-const scripts = readdirSync(clientDir).filter((name) => /\.(jsx|js)$/.test(name)).map((name) => `src/client/${name}`);
+const scripts = clientFiles.filter((name) => /\.(jsx|js)$/.test(name));
 const PALETTE = new Set([...CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR].map((colour) => colour.toLowerCase()));
 
 function channels(literal) {

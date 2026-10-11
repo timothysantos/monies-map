@@ -46,6 +46,21 @@ the "Edit <label> row" button in the item cell, which is the keyboard path
 carries the click handler. The scope pills and match filter chips are toggle
 buttons and expose their state with `aria-pressed`.
 
+On the sheet layout the plan-row add and edit sheets are a plan card
+(`month-plan-sheet.jsx`, design.md "Lead · Support · Detail"): the planned
+amount is the editable lead (decimal keypad), actual against it is a bar
+with what is left or over (income: what is still to come), month, owner and
+entry count are chips, and Actual ("See the N entries", the same drilldown),
+Item name, Category, Date, Account and Note are rows that edit in place.
+Cancel and Done are in the bottom bar; the ✕ is a 44px target. Every field,
+the draft, the save request and the error handling are the ones the sheet
+had; `tests/e2e/lead-support-detail.spec.js` checks the save, Cancel, the
+tap targets (44px or more), hidden money and a failed save on an iPhone 13
+profile (tagged `@webkit`). There is no client check of the planned amount:
+text that is not a number saves as its digits, or $0.00, as before. The
+sheet has no swipe-down gesture and does not lift its bottom bar above the
+iPhone keyboard, so the keyboard can cover Done while a field is focused.
+
 The mobile edit, add and match sheets are modal dialogs (`EntryMobileSheet`).
 Focus moves into the sheet on open and stays inside it. Escape or a backdrop
 tap closes it and discards the draft, as the desktop dialogs do. Focus then

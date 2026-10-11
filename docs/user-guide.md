@@ -181,7 +181,12 @@ The app is designed for phones as well as desktops. The differences:
   with **‹** and **›** to step to the month before or after.
 - **Edit sheets.** Adding or editing a row opens a sheet from the bottom of
   the screen instead of editing inside the table. **Done** or **Save** saves;
-  **Cancel**, the ✕ or tapping outside closes it without saving.
+  **Cancel**, the ✕ or tapping outside closes it without saving. On Month the
+  sheet starts with the planned amount: tap it to type a new one. Under it, a
+  bar shows what has been spent against the plan and what is left (or how
+  much it is over). The other fields are rows below it: tap a row to change
+  it, or **See the entries** to open the entries behind the actual. **Done**
+  and **Cancel** are at the bottom, in reach of your thumb.
   ![Editing a plan row on a phone opens a sheet](/faq/guide/phone/thumbs/phone-month-sheet.webp)
 - **Floating buttons.** The round **+** button on Entries opens a new entry
   card on Ask; on Splits, the receipt button opens one that is already
@@ -219,15 +224,18 @@ each control does, the common tasks, and what changes on a phone.
 Money colours mean the same on every screen: green is money coming in or
 something going well, red is money going out, over plan, short or owed by
 you, blue is a plan, and transfers stay in plain text. In lists only the
-amount's text is coloured; the summary cards turn red only when you are over
-plan.
+amount's text is coloured; Summary's spending turns red only when you are
+over plan.
 
 ## Summary
 
 ### What you see
 
-- **Six cards**: Planned income, Actual income, Planned spend, Actual spend,
-  Savings target and Realized savings, added up over the selected range.
+- **Spent**: what you spent over the selected range against what you planned
+  to spend, with a bar, the share of the plan used and how much you are under
+  (green) or over (red) plan.
+- **Income** and **Saved**: the income that came in, with the planned income
+  under it, and what you kept, with your savings target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
@@ -289,12 +297,13 @@ there to reach other months.
   before or after, within the range.
 - The **Summary** button in the navigation always goes back to All months.
 
-With totals hidden, the amounts show as dots and nothing turns red or says
-"over".
+With totals hidden, the amounts show as dots, the bar is empty, and nothing
+turns red or says "under" or "over".
 
 ### On a phone
 
-The cards scroll sideways. The range sits at the top. The person and scope
+Spent sits on top, with Income and Saved side by side under it. The range
+sits at the top. The person and scope
 live in the floating **View and scope** bar above the navigation; tap it to
 change either. The month button beside it picks a month
 ([Pick a month](#pick-a-month)).
@@ -352,7 +361,8 @@ fixing an actual means fixing the entry.
 
 ### On a phone
 
-Rows open in an edit sheet. The view and scope live in the floating **View
+Rows open in an edit sheet that leads with the planned amount (see
+[On your phone](#on-your-phone)). The view and scope live in the floating **View
 and scope** bar. Beside it, **‹** and **›** step through the range's months,
 and the month's name opens **Pick a month**.
 

@@ -100,6 +100,19 @@ export const messages = {
       nextMonth: "Next month",
       done: "Done"
     },
+    // The Summary top: one lead card for spend against plan, and the Income
+    // and Saved pills with their plans (summary-lead.jsx). "of" and "plan"
+    // around the planned spend are monthChoice.planPrefix / planSuffix.
+    lead: {
+      spent: (rangeLabel) => rangeLabel ? `Spent · ${rangeLabel}` : "Spent",
+      percentOfPlan: (percent) => `${percent}% of plan`,
+      underPlan: "under plan",
+      overPlan: "over plan",
+      income: "Income",
+      incomePlan: "plan",
+      saved: "Saved",
+      savedTarget: "target"
+    },
     fromMonth: "From",
     toMonth: "To",
     focusMonth: "Focus",
@@ -162,6 +175,26 @@ export const messages = {
     newBudgetBucketNote: "New budget bucket.",
     doneEdit: "Done",
     cancelEdit: "Cancel",
+    // The plan-row sheet (month-plan-sheet.jsx, design.md "Lead · Support ·
+    // Detail"): the planned amount leads, actual against it under the bar.
+    planSheet: {
+      context: (personLabel, monthLabel) => [personLabel, monthLabel].filter(Boolean).join(" · "),
+      kind: { income: "Income", planned_items: "Planned item", budget_buckets: "Budget bucket" },
+      plannedCaption: "planned",
+      spent: "spent",
+      received: "received",
+      spentHidden: "Spent",
+      receivedHidden: "Received",
+      left: "left",
+      over: "over",
+      toCome: "to come",
+      entryCount: (count) => countOf(count, "entry", "entries"),
+      seeEntries: (count) => count === 1 ? "See the entry" : `See the ${count} entries`,
+      noEntries: "No contributing entries yet",
+      itemName: "Item name",
+      addNote: "Add a note",
+      detailsLabel: "Plan details"
+    },
     notesTitle: "Monthly Note",
     notesDetail: "Why the month looked like this.",
     accountsTitle: "Accounts",

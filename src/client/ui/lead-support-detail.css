@@ -1,0 +1,476 @@
+/* Lead · Support · Detail (design.md). Colours are tokens only: the pastel
+   pairs, the money tones (.money-<tone>), the person colour vars and the
+   terracotta accent. Every tappable here is at least 44px tall. */
+
+/* Lead: the one card on a sheet or screen top with this strong a shadow. */
+.lead-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
+}
+
+.lead-card-eyebrow {
+  color: var(--muted);
+  font: 500 0.68rem/1.2 ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lead-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.lead-card-bubble .category-icon {
+  width: 54px;
+  height: 54px;
+  background: color-mix(in srgb, var(--category-color) 20%, white);
+  border-color: color-mix(in srgb, var(--category-color) 35%, white);
+  box-shadow: none;
+}
+
+.lead-card-bubble .category-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.lead-card-heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lead-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.lead-card-subtitle {
+  color: color-mix(in srgb, var(--lead-accent, var(--muted)) 62%, var(--text));
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.lead-card-amount-column {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.lead-card-amount {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lead-card-amount.is-editable {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  border-bottom: 2px solid color-mix(in srgb, var(--accent-strong) 55%, white);
+}
+
+/* An editable lead amount is a plain input that reads as the figure. */
+.lead-card-amount > input {
+  display: block;
+  width: 6.2em;
+  max-width: 8em;
+  min-height: 44px;
+  padding: 2px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  /* The amount's own money tone (a plan is sky), else the card's ink. */
+  color: var(--money-ink, inherit);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-card-amount > input:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.lead-card-amount-caption {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.lead-card-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.lead-card-figure .lead-card-amount {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.lead-card-amount-aside {
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-card-progress {
+  display: grid;
+  gap: 7px;
+}
+
+/* The plan is the sky track; actual spend the grey fill, rose over plan. */
+.lead-card-bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pastel-sky) 85%, white);
+}
+
+.lead-card-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--money-ink, color-mix(in srgb, var(--text) 55%, white));
+}
+
+.lead-card-progress-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-card-progress-line strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.lead-card-progress-line :is(.money-in, .money-short) {
+  font-weight: 700;
+}
+
+/* Support: chips inside the lead card. They are not tappable. */
+.lead-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.meta-chip svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.meta-chip-person {
+  border-color: var(--person-chip-border);
+  background: var(--person-chip-bg);
+  color: var(--person-ink);
+}
+
+.meta-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--person-colour);
+}
+
+.meta-chip-mint { border-color: var(--pastel-mint-line); background: var(--pastel-mint); color: var(--pastel-mint-ink); }
+.meta-chip-rose { border-color: var(--pastel-rose-line); background: var(--pastel-rose); color: var(--pastel-rose-ink); }
+.meta-chip-sky { border-color: var(--pastel-sky-line); background: var(--pastel-sky); color: var(--pastel-sky-ink); }
+.meta-chip-butter { border-color: var(--pastel-butter-line); background: var(--pastel-butter); color: var(--pastel-butter-ink); }
+.meta-chip-lavender { background: var(--pastel-lavender); color: var(--pastel-lavender-ink); }
+
+.meta-chip:is(.meta-chip-mint, .meta-chip-rose, .meta-chip-sky, .meta-chip-butter, .meta-chip-lavender) svg {
+  color: inherit;
+}
+
+/* Detail: quiet rows, one per field you can change. */
+.detail-rows {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 4px 12px 4px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.detail-row:last-child {
+  border-bottom: 0;
+}
+
+.detail-row.is-button,
+.detail-row.is-field {
+  cursor: pointer;
+}
+
+.detail-row.is-button:disabled {
+  cursor: default;
+}
+
+.detail-row.is-button:disabled .detail-row-chevron {
+  visibility: hidden;
+}
+
+.detail-row.is-button:disabled .detail-row-value {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.detail-row.is-button:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+
+.detail-row.is-field:focus-within {
+  background: color-mix(in srgb, var(--accent-strong) 5%, white);
+}
+
+.detail-row-label {
+  flex: 0 0 auto;
+  max-width: 45%;
+  color: var(--muted);
+}
+
+.detail-row-value {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.detail-row.is-action .detail-row-value {
+  color: var(--accent-strong);
+}
+
+.detail-row:is(.is-empty, .is-locked) .detail-row-value {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.detail-row-chevron,
+.detail-row-lock {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+/* A control inside a row reads as the row's value until it is used. */
+.detail-row-value > :is(input, textarea, select),
+.detail-row-value > .responsive-select-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: right;
+  text-align-last: right;
+}
+
+.detail-row-value > select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.detail-row-value > textarea {
+  min-height: 40px;
+  height: auto;
+  padding: 10px 0;
+  line-height: 1.3;
+  max-height: 120px;
+  resize: none;
+  field-sizing: content;
+}
+
+.detail-row-value > .responsive-select-trigger {
+  display: flex;
+  justify-content: flex-end;
+  cursor: pointer;
+}
+
+.detail-row-value > .responsive-select-trigger > svg {
+  display: none;
+}
+
+.detail-row-value > :is(input, textarea)::placeholder {
+  color: var(--muted);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.detail-row-value > :is(input, textarea, select):focus-visible,
+.detail-row-value > .responsive-select-trigger:focus-visible {
+  outline: none;
+}
+
+/* The fold for fields most people never change on that screen. */
+.more-details {
+  display: grid;
+  gap: 8px;
+}
+
+.more-details-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 12px 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.more-details-toggle:disabled {
+  cursor: default;
+}
+
+.more-details-label {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.more-details-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-details-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.more-details.is-open .more-details-chevron {
+  transform: rotate(180deg);
+}
+
+/* The bottom action bar: quiet action left, primary right, in thumb reach.
+   A sheet with side padding sets --bottom-actions-bleed so the bar spans it. */
+.bottom-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 calc(-1 * var(--bottom-actions-bleed, 0px));
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  border-top: 1px solid var(--line);
+  background: rgba(255, 252, 249, 0.98);
+}
+
+.bottom-actions-quiet {
+  flex: 0 0 auto;
+  min-width: 88px;
+  min-height: 50px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bottom-actions-quiet.is-danger {
+  color: var(--pastel-rose-ink);
+}
+
+.bottom-actions-quiet:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.bottom-actions .bottom-actions-primary {
+  flex: 1 1 auto;
+  max-width: 62%;
+  min-height: 50px;
+  margin-left: auto;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.bottom-actions .bottom-actions-primary:only-child {
+  max-width: none;
+}

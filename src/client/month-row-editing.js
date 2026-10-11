@@ -57,6 +57,12 @@ export function getMonthPlanSharedEditHint({ row, viewId, viewLabel }) {
   return `You're editing the shared total. This ${viewLabel} view shows ${viewLabel}'s ${shareLabel}% share after save.`;
 }
 
+// Who the row belongs to, for the sheet's person chip: the owner of a direct
+// row, "Shared" for a shared one.
+export function getMonthRowOwnerLabel(row) {
+  return row.ownershipType === "shared" ? messages.views.scopeShortLabel.shared : (row.ownerName ?? "");
+}
+
 export function buildMobileMonthIncomeDialog(row) {
   return {
     mode: "edit",
@@ -68,6 +74,7 @@ export function buildMobileMonthIncomeDialog(row) {
     label: row.label ?? "",
     plannedMinor: formatService.formatMinorInput(row.plannedMinor),
     note: row.note ?? "",
+    ownerLabel: getMonthRowOwnerLabel(row),
     actualMinor: row.actualMinor ?? 0,
     actualEntryIds: row.actualEntryIds ?? []
   };
@@ -88,6 +95,7 @@ export function buildMobileMonthPlanDialog({ monthKey, row, sectionKey, viewId, 
     planDate: sectionKey === "planned_items" ? getRowDateValue(sourceRow, monthKey) : "",
     accountName: sectionKey === "planned_items" ? (sourceRow.accountName ?? "") : "",
     note: sourceRow.note ?? "",
+    ownerLabel: getMonthRowOwnerLabel(sourceRow),
     actualMinor: row.actualMinor ?? 0,
     actualEntryIds: row.actualEntryIds ?? [],
     autoLabelFromCategory: false,

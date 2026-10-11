@@ -1,0 +1,99 @@
+/* The Summary top: the spend lead card and the Income and Saved pills
+   (summary-lead.jsx, design.md "Lead · Support · Detail"). It sits in
+   .panel-head, whose `span` rule mutes every span, so the money spans here
+   take their tone (or the ink) back at a higher specificity. Hidden money
+   still wins: its rule in styles.css is more specific. */
+.summary-lead-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(220px, 1fr);
+  flex: 1 1 auto;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.summary-lead-group .lead-card-amount,
+.summary-lead-group .private-money {
+  color: inherit;
+}
+
+.summary-lead-group :is(.money-in, .money-short, .money-plan, .money-neutral) {
+  color: var(--money-ink, inherit);
+}
+
+html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-plan {
+  color: var(--muted);
+}
+
+.summary-support-pills {
+  display: grid;
+  gap: 10px;
+  align-content: stretch;
+  min-width: 0;
+}
+
+.summary-support-pill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-support-pill:not(.money-soft) {
+  background: var(--pastel-neutral);
+}
+
+.summary-support-pill .summary-support-pill-label {
+  grid-column: 1 / -1;
+  color: var(--money-ink, var(--muted));
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-support-pill strong {
+  min-width: 0;
+  font-size: 1.12rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.summary-support-pill small {
+  color: var(--money-ink, var(--muted));
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .summary-lead-group {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .summary-support-pills {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .summary-support-pill {
+    grid-template-columns: minmax(0, 1fr);
+    flex: 0 1 auto;
+    padding: 9px 12px;
+  }
+
+  .summary-support-pill small {
+    text-align: left;
+  }
+
+  .summary-support-pill strong {
+    font-size: 1.02rem;
+  }
+}

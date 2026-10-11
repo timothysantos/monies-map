@@ -806,6 +806,103 @@ picking the range on both routes; the months offered are the range's months
   (about 0.8 kB gzip); the sheet is not. The sheet draws its tick itself and
   takes tone classes from the rules module, so it adds no first-screen file.
 
+## Lead · Support · Detail
+
+The owner-approved design language for sheets, dialogs and screen tops
+(not lists: Entries rows, Splits activity and Imports tables stay flat).
+Each has **one thing you look at first** (Lead), **a few facts that explain
+it** (Support) and **quiet rows you tap to change things** (Detail), with
+the main action at the bottom where the thumb is. It is built on the Month
+plan-row sheet and the Summary top; the Entries edit sheet and the Splits
+expense dialog are to follow with the same blocks.
+
+Blocks (`src/client/ui/lead-support-detail.jsx` and its CSS; small props,
+callers pass copy, controls and handlers). `ui-components.jsx` re-exports
+them so they share its chunk: on their own they were two more first-screen
+files for `check:bundle`.
+
+- `LeadCard`: the one white card with the strong shadow
+  (`0 14px 32px`, radius 20px). With a `title` it is a head line: an
+  optional `bubble` (the category icon at 54px, its colour at 20% tint),
+  title, a `subtitle` in `accentColor` mixed 62% with the ink, and the
+  `amount` on the right with an `amountCaption`. Without a title the
+  `eyebrow` and the amount stack, with `amountAside` after it (the Summary
+  lead). `editable` marks an amount the person types: a thin terracotta
+  underline, and the amount column is a `<label>`. `progress`
+  (`{ valueMinor, planMinor, overIsShort }`) draws the actual-vs-plan bar:
+  sky track, grey fill, rose past the plan (`leadProgress`, the
+  `spendTone` rule, so spending with no plan is over); `progressStart` and
+  `progressEnd` are the line under it. `chips` holds the Support chips.
+- `MetaChip`: a Support pill (0.8rem/600, neutral fill, optional 14px
+  icon). `person` gives that person's chip from `getPersonColourVars`
+  (tint, border, `--person-ink`, a dot); `tone` a status in its pastel
+  pair (mint, rose, sky, butter, lavender). At most four per card; chips are
+  not tappable.
+- `DetailRows` / `DetailRow`: one rounded group of rows, label left (muted),
+  value right (600) and a `›`, 48px tall. With a control as children the row
+  is a `<label>` and the control edits in place (an input, a
+  `ResponsiveSelect`, a date input, a one-line textarea), so it keeps its
+  name and no extra tap is added; with `onClick` it is a button. A control
+  that is itself a button (the phone `ResponsiveSelect` trigger) takes the
+  row's `labelId`, so it is named by the label and its value ("Category
+  Savings") instead of the label alone. `action`
+  is terracotta ("See the 10 entries"), an empty value shows `emptyLabel`
+  muted (or a placeholder, "Add a note"), and `locked` is muted with a lock
+  instead of the `›`, never clickable.
+- `MoreDetails`: the fold for fields most people never change on that
+  screen; its toggle row lists what is inside. `forceOpen` keeps it open:
+  required fields and anything with an error never fold.
+- `BottomActions`: the bottom bar, one quiet text action on the left
+  (Cancel, or `quietTone="danger"` for Delete) and the terracotta primary on
+  the right (`dialog-primary`, submits the form unless `onPrimary`), both
+  50px tall, inside the safe-area insets. A sheet with side padding sets
+  `--bottom-actions-bleed` (the mobile sheet does) so the bar spans it.
+
+Rules:
+
+- Exactly one lead per sheet, card or screen top. Money in it uses the
+  money tones only: a plan sky, an expense rose, income mint, over plan
+  rose, transfers and totals plain; text only, never a fill. Summary's
+  Support figures are soft-tint pills (mint when good), their plan a quiet
+  line in the pill's ink.
+- Hidden money: the lead amount is dots in plain ink (an editable amount
+  masks its digits), the bar keeps only its empty track, side-of-zero words
+  go ("left", "over", "to come", "under plan", "% of plan") and pills lose
+  their tint. Chips without money stay.
+- Thumb zone: the primary action (Done, Save) and Cancel are in the bottom
+  bar of every sheet in this language; the top ✕ (a 44px round target) is
+  never the only way out. Every tappable is at least 44×44px; separate
+  targets keep 8px or more between them (Detail rows are one list, stacked
+  48px rows). Number fields use `inputMode="decimal"`. Nothing depends on
+  hover. The sheet has no swipe-down gesture (`EntryMobileSheet` has none;
+  Escape, the backdrop, ✕ and Cancel close it) and no visualViewport
+  handling of its own: on an iPhone the keyboard can cover the bottom bar
+  while a field is focused (see `docs/flows/month-flow.md`).
+- No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
+
+Where it is used:
+
+- Summary top (`summary-lead.jsx`, `summary-lead-model.js`): "Spent ·
+  range", the range's actual spend "of" its planned spend, the bar, the
+  percent of plan and how far under (mint) or over (rose) plan; Income and
+  Saved pills with planned income and the savings target. Every figure and
+  tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
+  stacks the pills under the lead; desktop and tablet put them in a column
+  on its right. The CSS is `summary-lead.css` in the Summary route chunk
+  (it sits in `.panel-head`, whose `span` rule mutes spans, so its money
+  spans take their tone back at a higher specificity).
+- Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
+  add and edit for income, planned items and budget buckets): the planned
+  amount is the editable lead under the row's name, kind and category
+  bubble (the existing `CategoryAppearancePopover`); actual against it is
+  the bar, with "$x spent" and "$y left" or "$y over" (income: "received"
+  and "to come"); a new row has no bar. Chips: month, owner (person colour;
+  "Shared" for a shared row) and entry count. Rows: Actual (See the N
+  entries, the existing drilldown), Item name, Category, Date and Account
+  (planned items) and Note. The sheet's sub-line is "Person · Month".
+  MonthPanel keeps the draft and every handler; desktop inline editing is
+  unchanged.
+
 ## Money Privacy Display Preference
 
 Money privacy is a display layer, not a financial-state change. A new browser
@@ -821,7 +918,9 @@ because its prose can expose the same figures. Hiding money also hides its
 sign, in colour and in words: every money tone (below) turns neutral, and
 wording that says which side of zero a hidden figure is on goes too. Month's
 Remaining budget drops its "To allocate" / "Overplanned" detail (a card sets
-`detailFollowsAmount`), wallet pills and Settings drop the statement health
+`detailFollowsAmount`), the Summary lead and the Month plan sheet drop
+"under / over plan", "% of plan", "left", "over" and "to come" and keep only
+their bar's empty track, wallet pills and Settings drop the statement health
 line ("off by"), the Splits strip labels its balance "Net" instead of "You
 owe" / "You are owed" / "Settled up", and Splits activity drops "you lent" /
 "you borrowed" / "you paid" / "you received". `tests/e2e/money-tones.spec.js`
@@ -895,11 +994,11 @@ Three strengths, never two on one element:
   month total, Splits activity (`you lent`, `you borrowed`, `you received`,
   `you paid`),
   Settings statement health, Imports preview amounts and statement rows, and
-  the planned cards on Summary and Month.
+  the planned cards on Month, and the planned spend in the Summary lead.
 - **Soft tint** (compact summary objects): the fill at 60% with a hairline
-  in the same hue, and every line in the ink. Summary and Month outcome
-  cards (actual income, actual spend over plan, realized savings, remaining
-  budget, spend gap), Entries strip items with a direction (income,
+  in the same hue, and every line in the ink. Summary's Income and Saved
+  pills, Month outcome cards (actual income, actual spend over plan,
+  realized savings, remaining budget, spend gap), Entries strip items with a direction (income,
   difference), wallet pills by statement health, and a statement movement
   that is off. Plans stay text-only so a row of cards does not read as a
   traffic light. Balances on the Splits orange (the summary strip and group
@@ -911,7 +1010,8 @@ Three strengths, never two on one element:
   rose with its ink).
 
 Intent vs Outcome bars take the tone's ink as their fill: the plan a light
-sky, actual spend the muted grey, or rose when over plan.
+sky, actual spend the muted grey, or rose when over plan. The lead card's
+actual-vs-plan bar (Summary, the Month plan sheet) follows the same rule.
 
 `tests/money-tone.test.mjs` pins the rule; `tests/e2e/money-tones.spec.js`
 reads the computed colours on Summary, Month, Entries and Splits, including
@@ -1152,6 +1252,10 @@ modal desktop dialogs:
   link, with no opener), and nothing else has taken focus, closing moves
   focus to the `<main>` landmark (given `tabindex="-1"`) instead of
   `<body>`, so a screen reader carries on from the page content.
+- `className` adds a class to the sheet (the Month plan sheet scopes its
+  44px close button with it), and `footerContent` replaces the default
+  footer (the plan sheet passes `BottomActions`, see "Lead · Support ·
+  Detail").
 - `npm run test:e2e:webkit` runs the `@webkit`-tagged sheet focus tests in
   WebKit with an iPhone profile (`playwright.webkit.config.js`); it is not
   part of the default suite. The same tests run in Chromium there.

@@ -6,11 +6,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { EmptyState, InlineError } from "./ui-states";
-import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+import { MonthPlanSheet } from "./month-plan-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
@@ -21,9 +20,10 @@ import {
   buildMobileMonthPlanDialog,
   canInlineEditMonthRow,
   canInlineEditMonthPlanRow,
-  canOpenMonthMobileSheet
+  canOpenMonthMobileSheet,
+  getMonthRowOwnerLabel
 } from "./month-row-editing";
-import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
+import { MonthPlanStack } from "./month-plan-tables";
 import {
   buildSavedMonthPlanFields,
   getMonthPlanEditSource,
@@ -32,7 +32,6 @@ import {
 } from "./month-state";
 import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { buildRequestErrorMessage } from "./request-errors";
-import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { selectMonthInsightEntries } from "./month-insight-facts";
 import { selectMonthSpendingMix } from "./month-spending-mix";
@@ -652,7 +651,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       mode: "create",
       kind: "income",
       title: messages.month.addIncomeSource,
-      description: "Add the row without squeezing controls into the month table.",
+      ownerLabel: getMonthRowOwnerLabel(nextRow),
       categoryValue: nextRow.categoryId ?? nextRow.categoryName,
       label: nextRow.label,
       plannedMinor: formatService.formatMinorInput(nextRow.plannedMinor),
@@ -667,7 +666,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       kind: "plan",
       sectionKey,
       title: sectionKey === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket,
-      description: "Add the row without squeezing controls into the month table.",
+      ownerLabel: getMonthRowOwnerLabel(nextRow),
       categoryValue: nextRow.categoryId ?? nextRow.categoryName,
       label: nextRow.label,
       plannedMinor: formatService.formatMinorInput(nextRow.plannedMinor),
@@ -1550,125 +1549,21 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       />
 
       {mobileAddDialog ? (
-        <EntryMobileSheet
-          title={mobileAddDialog.title}
-          description={mobileAddDialog.description ?? "Add the row without squeezing controls into the month table."}
+        <MonthPlanSheet
+          dialog={mobileAddDialog}
+          monthKey={monthKey}
+          categories={categories}
+          categoryOptions={mobileCategoryOptions}
+          accountOptions={mobileAccountOptions}
           errorMessage={monthRowError}
-          saveLabel={isSavingMonthRow ? messages.common.saving : messages.month.doneEdit}
-          isSaveDisabled={isSavingMonthRow}
-          isSubmitting={isSavingMonthRow}
+          isSaving={isSavingMonthRow}
+          onChange={(patch) => setMobileAddDialog((current) => current ? { ...current, ...patch } : current)}
+          onCategoryChange={handleMobileAddDialogCategoryChange}
+          onCategoryAppearanceChange={onCategoryAppearanceChange}
+          onOpenEntriesForActual={handleOpenEntriesForActual}
           onClose={() => setMobileAddDialog(null)}
           onSave={() => void saveMobileAddDialog()}
-        >
-          <div className="month-add-dialog-grid">
-            {mobileAddDialog.sharedEditHint ? (
-              <p className="month-shared-edit-hint">{mobileAddDialog.sharedEditHint}</p>
-            ) : null}
-            <label>
-              <span>{messages.month.table.category}</span>
-              <div className="month-add-dialog-category">
-                <CategoryAppearancePopover
-                  category={categoryService.get(categories, {
-                    categoryId: mobileAddDialog.categoryValue,
-                    categoryName: mobileAddDialog.categoryValue
-                  })}
-                  onChange={onCategoryAppearanceChange}
-                />
-                <ResponsiveSelect
-                  className="table-edit-input"
-                  title={messages.month.table.category}
-                  value={mobileAddDialog.categoryValue ?? ""}
-                  options={mobileCategoryOptions}
-                  onValueChange={handleMobileAddDialogCategoryChange}
-                />
-              </div>
-            </label>
-            {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
-              <label>
-                <span>{messages.month.table.day}</span>
-                <input
-                  className="table-edit-input"
-                  type="date"
-                  value={mobileAddDialog.planDate ?? ""}
-                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, planDate: event.target.value } : current)}
-                />
-              </label>
-            ) : null}
-            <label>
-              <span>{messages.month.table.item}</span>
-              <input
-                className="table-edit-input"
-                value={mobileAddDialog.label ?? ""}
-                onChange={(event) => setMobileAddDialog((current) => current ? {
-                  ...current,
-                  label: event.target.value,
-                  autoLabelFromCategory: false
-                } : current)}
-              />
-            </label>
-            <label>
-              <span>{messages.month.table.planned}</span>
-              <input
-                className="table-edit-input"
-                inputMode="decimal"
-                value={mobileAddDialog.plannedMinor ?? ""}
-                onMouseDown={selectAllOnFocus}
-                onFocus={selectAllOnFocus}
-                onChange={(event) => setMobileAddDialog((current) => current ? {
-                  ...current,
-                  plannedMinor: event.target.value,
-                  autoPlannedFromCategory: false
-                } : current)}
-              />
-              {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "budget_buckets" ? (
-                <LastPeriodBudgetHint
-                  actualMinor={mobileAddDialog.lastPeriodActualMinor}
-                  month={mobileAddDialog.lastPeriodMonth}
-                />
-              ) : null}
-            </label>
-            <label>
-              <span>{messages.month.table.actual}</span>
-              <button
-                type="button"
-                className="month-actual-drilldown month-actual-drilldown-mobile"
-                disabled={!mobileAddDialog.actualEntryIds?.length}
-                onClick={() => handleOpenEntriesForActual({
-                  categoryName: mobileAddDialog.categoryValue,
-                  entryIds: mobileAddDialog.actualEntryIds ?? []
-                })}
-              >
-                <strong>{formatService.money(mobileAddDialog.actualMinor ?? 0)}</strong>
-                <small>
-                  {mobileAddDialog.actualEntryIds?.length
-                    ? `View ${mobileAddDialog.actualEntryIds.length} contributing ${mobileAddDialog.actualEntryIds.length === 1 ? "entry" : "entries"}`
-                    : "No contributing entries yet"}
-                </small>
-              </button>
-            </label>
-            {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
-              <label>
-                <span>{messages.month.table.account}</span>
-                <ResponsiveSelect
-                  className="table-edit-input"
-                  title={messages.month.table.account}
-                  value={mobileAddDialog.accountName ?? ""}
-                  options={[{ value: "", label: messages.common.emptyValue }, ...mobileAccountOptions]}
-                  onValueChange={(nextValue) => setMobileAddDialog((current) => current ? { ...current, accountName: nextValue } : current)}
-                />
-              </label>
-            ) : null}
-            <label className="month-add-dialog-note">
-              <span>{messages.month.table.note}</span>
-              <textarea
-                className="table-edit-input table-edit-textarea"
-                value={mobileAddDialog.note ?? ""}
-                onChange={(event) => setMobileAddDialog((current) => current ? { ...current, note: event.target.value } : current)}
-                rows={3}
-              />
-            </label>
-          </div>
-        </EntryMobileSheet>
+        />
       ) : null}
 
       <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) closeNoteDialog(); }}>

@@ -11,10 +11,8 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesLocation } from "./summary-workflow";
-import {
-  BarLine,
-  MetricCard
-} from "./ui-components";
+import { BarLine } from "./ui-components";
+import { SummaryLead } from "./summary-lead";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
@@ -154,11 +152,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           {/* A phone switches scope from the floating View and scope bar instead. */}
           {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
         </div>
-        <div className="metric-row metric-row-summary summary-head-metrics">
-          {safeSummaryPage.metricCards.map((card) => (
-            <MetricCard key={card.label} card={card} />
-          ))}
-        </div>
+        <SummaryLead
+          metricCards={safeSummaryPage.metricCards}
+          rangeStartMonth={safeSummaryPage.rangeStartMonth}
+          rangeEndMonth={safeSummaryPage.rangeEndMonth}
+        />
       </div>
 
       <FinancialInsight

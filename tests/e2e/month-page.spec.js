@@ -417,7 +417,8 @@ test.describe("month page", () => {
     await page.getByRole("button", { name: "+ Add planned item" }).click();
     const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
     await expect(addSheet).toBeVisible();
-    await expect(addSheet.getByRole("button", { name: "Savings", exact: true })).toBeVisible();
+    // The category picker is the Category row's control, named by the row.
+    await expect(addSheet.getByRole("button", { name: "Category Savings", exact: true })).toBeVisible();
 
     await addSheet.getByRole("button", { name: "Edit Savings" }).click();
     await expect(page.getByText("Edit category")).toBeVisible();
