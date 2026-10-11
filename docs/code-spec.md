@@ -75,6 +75,7 @@ to stay well below that.
 | `importPreview` | `<= 700ms` | `1200ms` | heavy but draft-sensitive |
 | `splitsPage` | `<= 300ms` | `500ms` | slice-owned |
 | `settingsPage` | `<= 350ms` | `600ms` | settings forms plus full account diagnostics and checkpoint history |
+| `skewCandidates` (`GET /api/skew-candidates`) | `<= 250ms` | `400ms` | read-only, 16 D1 reads, no writes; entries for the month ±14 days, not a page DTO, at most 50 candidates |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
 Measured at the 10k stress fixture after the macro performance work
@@ -130,6 +131,17 @@ Budget rules:
   (`category-edit-dialog.jsx`)
 - a page DTO carries only what its route reads; do not embed another route's
   page DTO (Splits carries the month key and transfers, not the Month page)
+- skew candidates (DOMAIN.md "Skew Candidate") have their own read-only
+  route, `GET /api/skew-candidates?view=&month=&scope=`
+  (`pages/skew-candidates.ts`, pure finder `skew-candidates.ts`). Its
+  query budget is fixed: the page context (household, people, categories,
+  tracked months), the month's entries ±14 days with their split shares,
+  the transfer-grouped entry ids in that range, account references, split
+  groups, expenses, settle-ups and settlement checkpoints (with items and
+  matches): 16 reads, no writes and no month refresh. It returns at most
+  50 candidates (`omittedCandidateCount` counts the rest; totals cover all)
+  with descriptions bounded to 240 characters. Never add it to the app
+  shell, a page DTO or warmup; a caller asks for it explicitly
 - page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
   `app` first because budget checks read the first `dur`
 - enforced budgets: `npm run check:bundle` (first-screen JS and CSS, gzip,
