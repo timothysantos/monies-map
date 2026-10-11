@@ -10,14 +10,14 @@ import { fill } from "./format";
 export const CALM_LINE_TEMPLATES = [
   "Nothing in {place} needs a look right now.",
   "All clear in {place}: nothing needs a look.",
-  "Nothing in {place} is asking for attention right now.",
+  "Nothing in {place} needs your attention right now.",
   "{place} looks settled. Nothing to check.",
   "Nothing stands out in {place} right now.",
-  "A calm picture in {place}: nothing needs you.",
+  "{place} looks calm. Nothing needs you right now.",
   "No loose ends in {place} right now.",
-  "Nothing to sort in {place}. Enjoy the quiet.",
-  "{place} is quiet: nothing worth a look.",
-  "All calm in {place}. Nothing is waiting.",
+  "Nothing to tidy up in {place}. Enjoy the quiet.",
+  "{place} is quiet. Nothing to look into.",
+  "All calm in {place}. Nothing is waiting on you.",
   "Nothing in {place} calls for a look.",
   "Nothing pressing in {place} right now."
 ];

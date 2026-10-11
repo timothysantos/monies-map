@@ -57,21 +57,21 @@ test("statement gap: the wallet furthest from its statement, named for the view"
   assert.equal(household.kind, "quick_fix");
   assert.equal(household.weight, 4_280);
   assert.deepEqual(facts(household), [
-    "Serene's OCBC 365 Card statement is off by $42.80.",
-    "Serene's OCBC 365 Card July statement is $42.80 away from the app.",
-    "One statement doesn't match yet: Serene's OCBC 365 Card, off by $42.80.",
-    "$42.80 separates Serene's OCBC 365 Card statement from the app."
+    "Serene's OCBC 365 Card statement differs from what's recorded here by $42.80.",
+    "The July statement for Serene's OCBC 365 Card is $42.80 different from what's recorded here.",
+    "Serene's OCBC 365 Card doesn't match its bank statement yet: the two are $42.80 apart.",
+    "There's a $42.80 difference between Serene's OCBC 365 Card statement and what's recorded here."
   ]);
-  assert.equal(household.phrasings[0].think, "Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.");
-  assert.deepEqual(household.action, { id: "review-statement", label: "Review statement" });
-  assert.deepEqual(household.sorted, { fact: "Sorted: Serene's OCBC 365 Card now matches its statement.", think: "That's the part that makes every other number here trustworthy." });
+  assert.equal(household.phrasings[0].think, "The statement is the bank's own monthly list of payments. A gap like this is usually one payment missing here or recorded twice.");
+  assert.deepEqual(household.action, { id: "review-statement", label: "Compare with the statement" });
+  assert.deepEqual(household.sorted, { fact: "Sorted: Serene's OCBC 365 Card now matches its bank statement.", think: "The totals here for that account now agree with the bank." });
 
   // On Summary the statement gap keeps its Quick fix rank.
   assert.equal(household.yieldsToBiggerQuestion, undefined);
 
   const serene = statementGapSignal({ accountPills: pills, audience: "person", viewLabel: "Serene", formatMoney: sgd });
-  assert.equal(facts(serene)[0], "Your OCBC 365 Card statement is off by $42.80.");
-  assert.equal(facts(serene)[2], "One statement doesn't match yet: your OCBC 365 Card, off by $42.80.");
+  assert.equal(facts(serene)[0], "Your OCBC 365 Card statement differs from what's recorded here by $42.80.");
+  assert.equal(facts(serene)[2], "Your OCBC 365 Card doesn't match its bank statement yet: the two are $42.80 apart.");
 
   // Matched wallets, or a mismatch of zero, say nothing.
   assert.equal(statementGapSignal({ accountPills: [pills[0], { ...pills[1], latestCheckpointDeltaMinor: 0 }], audience: "household", viewLabel: "Household", formatMoney: sgd }), null);
@@ -85,9 +85,9 @@ test("spending above income: three or more complete months in a row", () => {
   assert.equal(signal.kind, "bigger_question");
   assert.equal(signal.weight, 360_000);
   assert.deepEqual(facts(signal), [
-    "Spending has been above income for 3 months running.",
-    "For 3 months running, more went out than came in: $3,600.00 in all.",
-    "The last 3 months each spent more than came in, $3,600.00 altogether."
+    "Spending has been higher than income for 3 months in a row.",
+    "For 3 months in a row, more went out than came in: $3,600.00 more in all.",
+    "In each of the last 3 months, spending was higher than income. Together that's $3,600.00 more out than in."
   ]);
   assert.equal(signal.phrasings[0].think, "Changing one category is easier than changing everything. Which one matters least to you?");
 
@@ -108,11 +108,11 @@ test("category creep: risen several months in a row and well above its average",
   assert.equal(signal.key, "category-creep:Food & Drinks");
   assert.equal(signal.kind, "worth_a_look");
   assert.deepEqual(facts(signal), [
-    "Food & Drinks has risen 3 months in a row and is $172 above its 10-month average.",
-    "Food & Drinks is $172 above its usual month, after 3 rises in a row.",
-    "3 months ago Food & Drinks was $420; now it's $600."
+    "Food & Drinks spending has gone up 3 months in a row. The latest month was $172 more than its average over the 10 months before.",
+    "Food & Drinks spending was $172 more than in a typical month, after going up 3 months in a row.",
+    "3 months ago, Food & Drinks spending was $420 for the month. It has gone up every month since, to $600."
   ]);
-  assert.equal(signal.phrasings[0].think, "Rises like this usually happen without anyone deciding. If it's spending you enjoy, keep it; just make it a choice.");
+  assert.equal(signal.phrasings[0].think, "Rises like this often happen without anyone choosing them. If it's spending you enjoy, it can stay. It just helps to choose it.");
 
   // Savings rising is not lifestyle creep; a flat category says nothing.
   const flat = Object.fromEntries(RANGE.map((key) => [key, { "Food & Drinks": 42_000 }]));
@@ -126,11 +126,11 @@ test("subscriptions: the month's total at its yearly and daily cost", () => {
   const signal = subscriptionsSignal(input({ categoryShareByMonth: shares(byMonth) }));
   assert.equal(signal.weight, 91_308);
   assert.deepEqual(facts(signal), [
-    "Subscriptions came to $76.09 in August, about $913 a year.",
-    "$913 a year goes to subscriptions. Still using all of them?",
+    "Subscriptions came to $76.09 in August. That's about $913 a year.",
+    "About $913 a year goes on subscriptions. Are you still using all of them?",
     "Your subscriptions cost about $2.50 a day."
   ]);
-  assert.equal(signal.phrasings[0].think, "Automatic payments are easy to stop noticing. Judge each one by its yearly cost.");
+  assert.equal(signal.phrasings[0].think, "Automatic payments are easy to stop noticing. Looking at each one's yearly cost makes it easier to judge.");
   assert.equal(signal.phrasings[1].think, "Automatic payments are easy to stop noticing.");
   // A focused month speaks about that month.
   assert.match(facts(subscriptionsSignal(input({ focusMonth: "2026-09", categoryShareByMonth: shares(byMonth) })))[0], /in September/);
@@ -142,11 +142,11 @@ test("months under plan: most of the last 12 complete months", () => {
   const signal = monthsUnderPlanSignal(input({ months }));
   assert.equal(signal.kind, "going_well");
   assert.deepEqual(facts(signal), [
-    "10 of the last 11 months came in under plan.",
-    "Under plan in 10 of the last 11 months, $10,000.00 below plan in all.",
-    "$10,000.00 stayed inside the plan across 10 of the last 11 months."
+    "In 10 of the last 11 months, spending stayed at or below what you planned.",
+    "Spending stayed within what you planned in 10 of the last 11 months, $10,000.00 under in all.",
+    "Across 10 of the last 11 months, spending came to $10,000.00 less than planned."
   ]);
-  assert.equal(signal.phrasings[0].think, "Consistency matters more than any single month. This is what a working plan looks like.");
+  assert.equal(signal.phrasings[0].think, "Keeping to the plan most months matters more than any single month. It means your plans fit how you really spend.");
   const mostlyOver = RANGE.map((key, index) => month(key, index % 2 ? { spend: 800_000 } : {}));
   assert.equal(monthsUnderPlanSignal(input({ months: mostlyOver })), null);
   assert.equal(monthsUnderPlanSignal(input({ months: RANGE.map((key) => month(key, { plan: 0 })) })), null);
@@ -156,13 +156,19 @@ test("keep rate: the share of income kept, with the amount beside the percentage
   const signal = keepRateSignal(input());
   assert.equal(signal.kind, "long_view");
   assert.deepEqual(facts(signal), [
-    "Over the last 11 months the household kept 40% of what came in ($44,000.00).",
-    "For every $10 that came in over the last 11 months, about $4 stayed.",
-    "$44,000.00 kept over the last 11 months. One heavy month barely moves that.",
-    "Kept over the last 11 months: $44,000.00, about 40% of what came in."
+    "Over the last 11 months, the household kept 40% of what came in: $44,000.00 that wasn't spent.",
+    "Of every $10 that came in over the last 11 months, about $4 was kept (not spent).",
+    "$44,000.00 of what came in over the last 11 months wasn't spent. One expensive month barely changes that.",
+    "Left over after spending in the last 11 months: $44,000.00, about 40% of what came in."
   ]);
-  assert.equal(signal.phrasings[0].think, "One heavy month barely moves a year; the year is the fairer scorecard.");
-  assert.match(facts(keepRateSignal(input({ audience: "person", viewLabel: "Ethan" })))[0], /^Over the last 11 months you kept 40%/);
+  assert.equal(signal.phrasings[0].think, "One expensive month barely changes a figure like this. That makes it a fair measure of how things are going.");
+  assert.match(facts(keepRateSignal(input({ audience: "person", viewLabel: "Ethan" })))[0], /^Over the last 11 months, you kept 40%/);
+  // The "of every $10" line keeps its cents: 18% kept is $1.80.
+  assert.equal(facts(keepRateSignal(input({ months: RANGE.map((key) => month(key, { spend: 820_000 })) })))[1], "Of every $10 that came in over the last 11 months, about $1.80 was kept (not spent).");
+  // Under half a percent kept rounds to $0 in $10, so that line is left out.
+  const barely = keepRateSignal(input({ months: RANGE.map((key) => month(key, { spend: 999_000 })) }));
+  assert.equal(barely.phrasings.length, 3);
+  assert.ok(facts(barely).every((fact) => !fact.startsWith("Of every")));
   // Nothing kept, or no income: silent.
   assert.equal(keepRateSignal(input({ months: RANGE.map((key) => month(key, { spend: 1_100_000 })) })), null);
   assert.equal(keepRateSignal(input({ months: RANGE.map((key) => month(key, { income: 0 })) })), null);
@@ -178,11 +184,11 @@ test("cushion: bank accounts only, against the range's usual spending", () => {
   const signal = cushionSignal(input({ accountPills: pills, accountKinds: kinds }));
   assert.equal(signal.kind, "long_view");
   assert.deepEqual(facts(signal), [
-    "Bank balances would cover about 21 months of your usual spending.",
-    "At your usual spending of about $6,000 a month, bank balances would last about 21 months.",
-    "$126,000 in bank accounts is about 21 months of your usual spending."
+    "Bank balances would cover about 21 months of your usual spending, which averages about $6,000 a month.",
+    "At your average spending of about $6,000 a month, the money in your bank accounts would last about 21 months.",
+    "$126,000 in your bank accounts is about 21 months of spending, at your average of $6,000 a month."
   ]);
-  assert.equal(signal.phrasings[0].think, "A cushion turns surprises into inconveniences. How big feels right is your call.");
+  assert.equal(signal.phrasings[0].think, "Money you can reach quickly (a \"cushion\") turns surprises into inconveniences. How big feels right is your call.");
   // No bank balance, only cards, or no spending: silent.
   assert.equal(cushionSignal(input({ accountPills: [pills[2]], accountKinds: kinds })), null);
   assert.equal(cushionSignal(input({ accountPills: pills, accountKinds: {} })), null);
@@ -193,11 +199,11 @@ test("same season: only when last year's month is already in the range", () => {
   const months = [month("2025-08", { spend: 651_230 }), ...RANGE.map((key) => month(key, key === "2026-08" ? { spend: 542_230 } : {}))];
   const signal = sameSeasonSignal(input({ months }));
   assert.deepEqual(facts(signal), [
-    "August spending was about $1,090 lower than August last year.",
-    "Compared with August last year, spending was about $1,090 lower.",
-    "August last year: $6,512.30. This August: $5,422.30."
+    "Spending in August 2026 was about $1,090 lower than in August 2025.",
+    "Compared with the same month a year earlier, August 2026 spending was about $1,090 lower.",
+    "Spending in August 2025: $6,512.30. A year later, in August 2026: $5,422.30."
   ]);
-  assert.equal(signal.phrasings[0].think, "The same month last year is the fair comparison: holidays, bonuses and school terms line up.");
+  assert.equal(signal.phrasings[0].think, "The same month a year earlier is the fair comparison, because holidays, bonuses and school terms line up.");
   // No August 2025 in a 12-month range: silent (no extra month is fetched).
   assert.equal(sameSeasonSignal(input()), null);
   // The month in progress is never compared.
@@ -209,7 +215,7 @@ test("Chinese New Year: last year's festive month, in the month before or of the
   const signal = chineseNewYearSignal(input({ today: "2027-01-12", months }));
   assert.equal(signal.key, "chinese-new-year:2027");
   assert.equal(signal.moment, true);
-  assert.equal(facts(signal)[0], "Chinese New Year falls in February. Last year's Chinese New Year month, February 2026, came to $8,123.00 of spending.");
+  assert.equal(facts(signal)[0], "Chinese New Year falls in February. Last year it fell in February 2026, when spending came to $8,123.00.");
   assert.equal(chineseNewYearSignal(input({ today: "2026-09-27", months })), null);
   assert.equal(chineseNewYearSignal(input({ today: "2027-01-12", months: [month("2026-12")] })), null);
 });
@@ -224,13 +230,13 @@ test("trivia: a category as a plain fraction, last year's top category, a year r
   assert.equal(fraction.kind, "just_for_fun");
   // Other is the largest here, but "went to other" says nothing: Groceries
   // at 12.1% is about one in every eight dollars.
-  assert.deepEqual(facts(fraction), ["About one in every eight dollars in August went to groceries."]);
+  assert.deepEqual(facts(fraction), ["About one in every eight dollars spent in August went on groceries."]);
   // A loan is not a fun fact: the next category is used.
-  assert.deepEqual(facts(categoryFractionTrivia(input({ categoryShareByMonth: shares({ "2026-08": { Loans: 40_000, Dining: 35_000, Groceries: 25_000 } }) }))), ["About one in every three dollars in August went to dining."]);
+  assert.deepEqual(facts(categoryFractionTrivia(input({ categoryShareByMonth: shares({ "2026-08": { Loans: 40_000, Dining: 35_000, Groceries: 25_000 } }) }))), ["About one in every three dollars spent in August went on dining."]);
   // More than half in one category is not "one in every N".
   assert.equal(categoryFractionTrivia(input({ categoryShareByMonth: shares({ "2026-08": { Travel: 90_000, Groceries: 10_000 } }) })), null);
 
-  assert.deepEqual(facts(lastYearTopTrivia(input({ categoryShareByMonth: shares(byMonth) }))), ["A year ago, Travel was your biggest category."]);
+  assert.deepEqual(facts(lastYearTopTrivia(input({ categoryShareByMonth: shares(byMonth) }))), ["A year ago, in August 2025, you spent more on Travel than on any other category."]);
   assert.equal(lastYearTopTrivia(input({ categoryShareByMonth: shares({ "2026-08": { Groceries: 1 } }) })), null);
 
   const recapShares = shares({ "2026-01": { Groceries: 50_000 }, "2026-02": { Groceries: 50_000, Travel: 10_000 }, "2026-03": { Travel: 20_000 } });
@@ -238,12 +244,12 @@ test("trivia: a category as a plain fraction, last year's top category, a year r
   // period in any twelve.
   const toDecember = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"].map((key) => month(key));
   const recap = yearRecapTrivia(input({ today: "2027-01-05", months: toDecember, categoryShareByMonth: recapShares }));
-  assert.deepEqual(facts(recap), ["2026 in numbers: 40 entries, and Groceries was the biggest category."]);
+  assert.deepEqual(facts(recap), ["2026 in numbers: 40 costs recorded, and more went on Groceries than on anything else."]);
   assert.equal(recap.moment, true);
   assert.equal(yearRecapTrivia(input({ today: "2026-12-05", categoryShareByMonth: recapShares })), null);
   assert.equal(yearRecapTrivia(input({ today: "2027-01-05", months: toDecember, categoryShareByMonth: recapShares.slice(0, 2) })), null);
 
-  assert.deepEqual(facts(anniversaryTrivia(input({ availableMonths: ["2025-09", "2025-10"] }))), ["A year of Monie's Map: your first month here was September 2025."]);
+  assert.deepEqual(facts(anniversaryTrivia(input({ availableMonths: ["2025-09", "2025-10"] }))), ["A year of Monie's Map: your records here begin in September 2025."]);
   assert.equal(anniversaryTrivia(input({ availableMonths: ["2025-10"] })), null);
   // Only on a range that ends this month.
   assert.equal(anniversaryTrivia(input({ today: "2026-10-02", availableMonths: ["2025-10"] })), null);

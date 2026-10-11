@@ -167,7 +167,7 @@ test("the same inputs always compose the same check-in", () => {
 test("a cleared quick fix is announced as sorted exactly once", () => {
   const gap = {
     ...signal("statement-gap:ocbc", "quick_fix", 4_280),
-    sorted: { fact: "Sorted: your OCBC 365 Card now matches its statement.", think: "That's the part that makes every other number here trustworthy." }
+    sorted: { fact: "Sorted: your OCBC 365 Card now matches its bank statement.", think: "The totals here for that account now agree with the bank." }
   };
   const planLeft = signal("plan-left", "going_well", 108_059);
   const wednesday = visit([gap, planLeft], emptyVisitMemory(), MON + 2 * DAY);
@@ -177,7 +177,7 @@ test("a cleared quick fix is announced as sorted exactly once", () => {
   assert.equal(friday.view.mode, "sorted");
   assert.deepEqual(
     [friday.view.headline.kind, friday.view.headline.fact, friday.view.headline.think],
-    ["going_well", "Sorted: your OCBC 365 Card now matches its statement.", "That's the part that makes every other number here trustworthy."]
+    ["going_well", "Sorted: your OCBC 365 Card now matches its bank statement.", "The totals here for that account now agree with the bank."]
   );
   assert.deepEqual(friday.view.also.map((line) => line.key), ["plan-left"]);
 

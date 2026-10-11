@@ -28,91 +28,91 @@ import type { Audience, MoneySignal } from "./types";
 export const ENTRIES_COPY = {
   uncategorized: {
     phrasings: [
-      "{count} entries {when} are still in Other.",
-      "Still in Other: {count} entries, {total} in all.",
-      "{count} entries {when} haven't found a category yet."
+      "{count} purchases {when}, {total} in all, don't have a category yet.",
+      "{count} purchases {when} have no category yet, {total} in all.",
+      "{total} of spending {when} has no category yet, across {count} purchases."
     ],
     phrasingsOne: [
-      "1 entry {when} is still in Other: {name}.",
-      "{name} is still in Other.",
-      "Still in Other: {name}, {total}."
+      "One purchase {when} has no category yet: {name}, {total}.",
+      "{name} ({total}) has no category yet.",
+      "{when}, {name} for {total} is the only purchase without a category."
     ],
     think: [
-      "Categories power every chart. Sorting these takes about a minute.",
-      "A category on each entry keeps the monthly picture accurate.",
-      "Once sorted, these show up in the right place on every chart.",
-      "A few taps now and the totals by category tell the full story."
+      "They sit under \"Other\", so your spending by category can't show what they were for. Giving each one a category fills that in.",
+      "Until then they're counted under \"Other\", so the categories they belong to look smaller than they are. Picking one for each takes about a minute.",
+      "For now they're grouped as \"Other\", the catch-all for anything without a category. Choosing one for each shows where that money really went.",
+      "Without a category they land in \"Other\", which says nothing about what they were. A few taps on each puts them with the right kind of spending."
     ],
     thinkOne: [
-      "Categories power every chart. Sorting it takes about a minute.",
-      "A category on it keeps the monthly picture accurate.",
-      "Once sorted, it shows up in the right place on every chart.",
-      "A few taps now and the totals by category tell the full story."
+      "It sits under \"Other\", so your spending by category can't show what it was for. Giving it a category fills that in.",
+      "Until then it's counted under \"Other\", so the category it belongs to looks smaller than it is. Picking one takes a moment.",
+      "For now it's grouped as \"Other\", the catch-all for anything without a category. Choosing one shows where that money really went.",
+      "Without a category it lands in \"Other\", which says nothing about what it was. A couple of taps puts it with the right kind of spending."
     ],
     sorted: {
-      fact: "Sorted: every entry {when} has a category.",
-      think: "Every chart here now tells the whole story."
+      fact: "Sorted: every purchase {when} now has a category.",
+      think: "Your spending by category now shows where all of it went."
     },
-    action: "Show those entries"
+    action: "Show these purchases"
   },
   possibleDuplicate: {
     phrasings: [
       "{name} charged {amount} twice, on {dates}.",
-      "Two entries for {name} at {amount} each, on {dates}.",
-      "Same amount, same place, close together: {name}, {amount}, on {dates}."
+      "Two payments of {amount} each to {name}, on {dates}.",
+      "{name} shows up twice for the same {amount}, on {dates}."
     ],
     think: [
-      "Might be right, might be a double charge. A quick look settles it.",
-      "Double charges are rare but worth catching. The bank statement shows which it is.",
-      "Two of the same close together is sometimes right, sometimes a slip. Either way it's quick to check.",
-      "If both are real, nothing to do. If not, removing one keeps the month's totals right."
+      "It could be two real purchases, or one charged twice. A quick look settles it.",
+      "Double charges are rare but worth catching. Your bank app or statement shows whether both went through.",
+      "The same charge twice within a week is sometimes real, sometimes a slip. Either way it's quick to check.",
+      "If both are real, there's nothing to do. If one was recorded here twice, removing it keeps the month's spending right."
     ],
-    action: "Show those entries"
+    action: "Show both payments"
   },
   topFive: {
     phrasings: [
-      "Your five largest entries were {rate}% of {whose} spending ({top}).",
-      "{top} of the {total} spent {when} came from just five entries.",
-      "Five entries, {top}: that's {rate}% of {whose} spending of {total}."
+      "Your five largest payments came to {top}, {rate}% of {whose} spending.",
+      "{top} of the {total} spent {when} went on just five payments.",
+      "Just five payments made up {rate}% of {whose} spending: {top} of {total}."
     ],
     think: [
       "A few big items usually shape a month more than many small ones. That's where a decision has the most effect.",
       "Big items are where a month's shape comes from. They're also the easiest to plan for.",
-      "The largest few entries usually explain most of a month.",
+      "The largest few payments usually explain most of a month's spending.",
       "Most of a month's money goes out in a few decisions. These were the big ones."
     ],
-    action: "Show those entries"
+    action: "Show those five"
   },
   smallestEntry: {
-    phrasings: ["Smallest entry {when}: {amount} at {name}."],
+    phrasings: ["Smallest purchase {when}: {amount} at {name}."],
     think: ""
   },
   largestEntry: {
-    phrasings: ["Largest entry {when}: {amount} at {name}."],
+    phrasings: ["Largest purchase {when}: {amount} at {name}."],
     think: ""
   },
   placesCount: {
-    phrasings: ["Entries {when} came from {count} different places."],
+    phrasings: ["Purchases {when} were spread across {count} different places."],
     think: ""
   },
   oneOffPlaces: {
-    phrasings: ["{count} places show up just once {when}."],
+    phrasings: ["{count} places had just one purchase each {when}."],
     think: ""
   },
   topPlace: {
-    phrasings: ["Most spent at one place {when}: {name}, {amount} over {count} entries."],
+    phrasings: ["Most spent at one place {when}: {name}, {amount} over {count} purchases."],
     think: ""
   },
   topAccount: {
-    phrasings: ["Most-used account or card {when}: {account}, with {count} entries."],
+    phrasings: ["Most-used account or card {when}: {account}, used {count} times."],
     think: ""
   },
   accountsCount: {
-    phrasings: ["Entries {when} used {count} different accounts and cards."],
+    phrasings: ["Money moved through {count} different accounts and cards {when}."],
     think: ""
   },
   averageEntry: {
-    phrasings: ["The average entry {when} came to {amount}, across {count} expenses."],
+    phrasings: ["Across {count} payments {when}, the average came to {amount}."],
     think: ""
   },
   medianEntry: {
@@ -120,7 +120,7 @@ export const ENTRIES_COPY = {
     think: ""
   },
   firstEntry: {
-    phrasings: ["First entry {when}: {name}, {amount}, on {day}."],
+    phrasings: ["First purchase {when}: {name}, {amount}, on {day}."],
     think: ""
   },
   firstDay: {
@@ -132,35 +132,35 @@ export const ENTRIES_COPY = {
     think: ""
   },
   entrySpan: {
-    phrasings: ["Entries {when} run from {first} to {last}, across {days} different days."],
+    phrasings: ["Money moved on {days} different days {when}, from {first} to {last}."],
     think: ""
   },
   repeatedAmount: {
-    phrasings: ["The most repeated amount {when}: {amount}, {times}."],
+    phrasings: ["The amount paid most often {when}: {amount}, {times}."],
     think: ""
   },
   categoryCount: {
-    phrasings: ["{category} had the most entries {when}: {count} of them."],
+    phrasings: ["{category} had the most payments {when}: {count} of them."],
     think: ""
   },
   busiestDate: {
-    phrasings: ["Busiest day {when}: {day}, with {count} entries."],
+    phrasings: ["Busiest day {when}: {day}, with {count} transactions."],
     think: ""
   },
   weekendEntries: {
-    phrasings: ["{count} of the {total} entries {when} fell on a weekend."],
+    phrasings: ["{count} of the {total} transactions {when} fell on a weekend."],
     think: ""
   },
   roundAmounts: {
-    phrasings: ["{count} entries {when} were round amounts, with no cents."],
+    phrasings: ["{count} payments {when} were round amounts, with no cents."],
     think: ""
   },
   sharedEntries: {
-    phrasings: ["{count} of the {total} entries {when} were shared costs."],
+    phrasings: ["{count} of the {total} transactions {when} were shared costs."],
     think: ""
   },
   incomeEntries: {
-    phrasings: ["Income {when}: {total} across {entries}."],
+    phrasings: ["Income {when} came to {total}, across {entries}."],
     think: ""
   }
 } satisfies CopyCatalogue;
@@ -275,7 +275,7 @@ export function uncategorizedSignal(input: EntriesSignalInput): MoneySignal | nu
     return null;
   }
   const totalMinor = sum(other.map(amountOf));
-  const values = { count: other.length, total: input.formatMoney(totalMinor), name: tidyName(other[0].description) || "One entry", ...when(input) };
+  const values = { count: other.length, total: input.formatMoney(totalMinor), name: tidyName(other[0].description) || "a payment", ...when(input) };
   const copy = ENTRIES_COPY.uncategorized;
   return {
     key: "uncategorized",
@@ -469,7 +469,7 @@ export function firstDayTrivia(input: EntriesSignalInput): MoneySignal | null {
   // Nothing that day has a readable name (a PayNow, a GIRO): say the day
   // and how many entries, never a code.
   if (!lead) {
-    return triviaSignal("first-day", firstDate, ENTRIES_COPY.firstDayCount, { day: shortDay(firstDate), entries: plural(sameDay.length, "entry", "entries"), ...when(input) });
+    return triviaSignal("first-day", firstDate, ENTRIES_COPY.firstDayCount, { day: shortDay(firstDate), entries: plural(sameDay.length, "payment", "payments"), ...when(input) });
   }
   const copy = sameDay.length === 1 ? ENTRIES_COPY.firstEntry : ENTRIES_COPY.firstDay;
   return triviaSignal("first-day", firstDate, copy, { name: lead.name, amount: input.formatMoney(amountOf(lead.entry)), day: shortDay(firstDate), ...when(input) });
@@ -546,7 +546,7 @@ export function incomeEntriesTrivia(input: EntriesSignalInput): MoneySignal | nu
     return null;
   }
   return triviaSignal("income", input.month, ENTRIES_COPY.incomeEntries, {
-    entries: plural(income.length, "entry", "entries"),
+    entries: plural(income.length, "payment", "payments"),
     total: input.formatMoney(sum(income.map((entry) => entry.amountMinor))),
     ...when(input)
   });

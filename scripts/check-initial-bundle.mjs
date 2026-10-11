@@ -57,9 +57,9 @@ export function measureInitialBundle(manifest, readAsset, stylesheet) {
 // from each pool, as the bundler keeps it. The markers are pinned to the
 // catalogues by tests/performance/check-initial-bundle.test.mjs.
 export const DEFERRED_COPY_MARKERS = [
-  { pool: "Summary phrasings and think lines", text: "Spending has been above income for {count} months running." },
-  { pool: "Summary Just for fun", text: "showed up in all {count} months of this range" },
-  { pool: "statement gap", text: "statement from the app." },
+  { pool: "Summary phrasings and think lines", text: "Spending has been higher than income for {count} months in a row." },
+  { pool: "Summary Just for fun", text: "came up in all {count} months from {span}" },
+  { pool: "statement gap", text: "differs from what's recorded here by" },
   { pool: "calm lines", text: "All clear in {place}: nothing needs a look." },
   { pool: "quotes", text: "Time is but the stream I go a-fishing in." }
 ];

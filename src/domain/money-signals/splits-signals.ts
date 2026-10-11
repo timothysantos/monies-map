@@ -10,19 +10,22 @@ import type { TriviaRotation } from "./rotation";
 import { triviaSignal } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
+// A balance's think lines pair with every phrasing, for either direction
+// and the household view, so none names who pays whom. The first teaches
+// "settling up", the Settle group button's word for paying the balance back.
 const TRIP_THINKS = [
-  "Settling while the trip is fresh keeps it light for both of you.",
-  "Trips are easiest to settle while everyone remembers the details.",
-  "A settled trip leaves only the memories to share.",
-  "Clearing the balance now keeps the next trip simple to plan."
+  "Paying back the balance (\"settling up\") while the trip is fresh keeps it easy for both of you.",
+  "The balance is simplest to clear while everyone still remembers who paid for what.",
+  "Once the balance is paid back, only the memories are left to share.",
+  "Clearing the balance now means the next trip starts from zero."
 ];
-const SPLIT_SORTED = { fact: "Sorted: {groupName} is settled up.", think: "Nothing open between you on this one." };
+const SPLIT_SORTED = { fact: "Sorted: nothing is left to pay back {groupFrom}.", think: "Neither of you owes the other anything here." };
 
 export const SPLITS_COPY = {
   owedToYou: {
     phrasings: [
       "{other} owes you {amount} {groupFrom}.",
-      "Still open {groupFrom}: {other} owes you {amount}.",
+      "{other} still owes you {amount} {groupFrom}.",
       "The balance {groupFrom}: {other} owes you {amount}."
     ],
     think: TRIP_THINKS,
@@ -32,7 +35,7 @@ export const SPLITS_COPY = {
   youOwe: {
     phrasings: [
       "You owe {other} {amount} {groupFrom}.",
-      "Still open {groupFrom}: you owe {other} {amount}.",
+      "You still owe {other} {amount} {groupFrom}.",
       "The balance {groupFrom}: you owe {other} {amount}."
     ],
     think: TRIP_THINKS,
@@ -41,9 +44,9 @@ export const SPLITS_COPY = {
   },
   openBetweenYou: {
     phrasings: [
-      "{amount} is still open between you {groupFrom}.",
-      "Still open {groupFrom}: {amount} between you.",
-      "The balance {groupFrom}: {amount} still to settle between you."
+      "{amount} still needs paying back between you {groupFrom}.",
+      "Not paid back yet {groupFrom}: {amount} between you.",
+      "The balance {groupFrom}: {amount} still to pay back between you."
     ],
     think: TRIP_THINKS,
     sorted: SPLIT_SORTED,
@@ -52,36 +55,36 @@ export const SPLITS_COPY = {
   settleRegularly: {
     phrasings: [],
     think: [
-      "Settling regularly keeps it light for both of you.",
+      "Paying back the balance now and then (\"settling up\") keeps it small and easy for both of you.",
       "Small balances are quick to clear.",
-      "A regular settle-up keeps shared money simple.",
-      "Clearing it now means a fresh start for the next round of shared costs."
+      "Clearing it every so often keeps shared money simple between you.",
+      "Clearing it now gives the next round of shared costs a fresh start."
     ]
   },
   bankMatch: {
     phrasings: [
-      "{count} bank payments may match splits you entered by hand.",
-      "{count} bank payments look like splits you already entered.",
-      "{count} bank payments are waiting to be matched to splits."
+      "{count} bank payments look like shared costs you already added by hand.",
+      "{count} bank payments may be shared costs you've already entered yourself.",
+      "{count} bank payments may already be in your shared costs, added by hand."
     ],
     phrasingsOne: [
-      "1 bank payment may match a split you entered by hand.",
-      "A bank payment looks like a split you already entered.",
-      "One bank payment is waiting to be matched to a split."
+      "1 bank payment looks like a shared cost you already added by hand.",
+      "A bank payment may be a shared cost you've already entered yourself.",
+      "One bank payment may already be in your shared costs, added by hand."
     ],
     think: [
-      "Linking them avoids counting the same cost twice.",
-      "Matched payments keep the split and the bank telling the same story.",
-      "A quick review links each payment to its split.",
-      "Once matched, each shared cost shows up exactly once."
+      "If they're the same, matching them stops the costs being counted twice.",
+      "Matching each payment to its shared cost means it's counted once, not twice.",
+      "A quick look shows which are the same cost, so none is counted twice.",
+      "Once matched, each shared cost is counted just once."
     ],
     thinkOne: [
-      "Linking it avoids counting the same cost twice.",
-      "A matched payment keeps the split and the bank telling the same story.",
-      "A quick review links the payment to its split.",
-      "Once matched, the shared cost shows up exactly once."
+      "If they're the same, matching them stops the cost being counted twice.",
+      "Matching the payment to its shared cost means it's counted once, not twice.",
+      "A quick look shows whether it's the same cost, so it isn't counted twice.",
+      "Once matched, the shared cost is counted just once."
     ],
-    sorted: { fact: "Sorted: no bank payments are waiting to be matched.", think: "Each cost is counted once." },
+    sorted: { fact: "Sorted: no bank payments are left to match with your shared costs.", think: "Each shared cost is counted once." },
     action: "Review matches"
   },
   shareOfCosts: {
@@ -91,10 +94,10 @@ export const SPLITS_COPY = {
       "{paid} of the {total} in shared costs {period} came from you."
     ],
     think: [
-      "Nothing to fix by itself. A good prompt for a friendly chat about how you split things.",
+      "Nothing to fix here. It can start a friendly chat about who pays for what.",
       "Who pays often evens out over time. This shows where it stands now.",
       "Uneven stretches are normal. Over a longer time it tends to balance.",
-      "A split that feels fair to both of you is the right one."
+      "Whatever share feels fair to both of you is the right one."
     ]
   },
   tripInNumbers: {
@@ -105,12 +108,15 @@ export const SPLITS_COPY = {
     phrasings: ["This group in numbers: {count} shared costs, and the priciest was the {name} ({amount})."],
     think: ""
   },
+  // Every line below puts {groupIn} right after "shared cost(s)", so it
+  // reads for a trip ("on the Japan trip"), a group ("in the Home group")
+  // and costs outside any group ("outside a group").
   payerCount: {
     phrasings: ["You paid for {count} of the {total} shared costs {groupIn}, {amount} in all."],
     think: ""
   },
   busiestDay: {
-    phrasings: ["Busiest day {groupIn}: {day}, with {count} shared costs."],
+    phrasings: ["The busiest day for shared costs {groupIn}: {day}, with {count} of them."],
     think: ""
   },
   weekdayMost: {
@@ -118,7 +124,7 @@ export const SPLITS_COPY = {
     think: ""
   },
   busiestMonth: {
-    phrasings: ["Busiest month {groupIn}: {month}, with {count} shared costs."],
+    phrasings: ["The busiest month for shared costs {groupIn}: {month}, with {count} of them."],
     think: ""
   },
   sharedTotal: {
@@ -130,7 +136,7 @@ export const SPLITS_COPY = {
     think: ""
   },
   priciestDay: {
-    phrasings: ["The priciest day {groupIn}: {day}, with {amount} of shared costs."],
+    phrasings: ["The priciest day for shared costs {groupIn}: {day}, {amount} in all."],
     think: ""
   },
   smallestCost: {
@@ -162,7 +168,7 @@ export const SPLITS_COPY = {
     think: ""
   },
   topCategory: {
-    phrasings: ["{category} was the biggest category {groupIn}, at {amount}."],
+    phrasings: ["{category} was the biggest kind of shared cost {groupIn}, at {amount}."],
     think: ""
   },
   categoriesCount: {
@@ -170,15 +176,15 @@ export const SPLITS_COPY = {
     think: ""
   },
   paymentMix: {
-    phrasings: ["Shared costs {groupIn}: {parts}."],
+    phrasings: ["How shared costs {groupIn} were paid: {parts}."],
     think: ""
   },
   largestSettlement: {
-    phrasings: ["The largest settle-up {groupIn}: {amount} on {day}."],
+    phrasings: ["The biggest repayment for shared costs {groupIn}: {amount} on {day}."],
     think: ""
   },
   settleCount: {
-    phrasings: ["{count} settle-ups so far {groupIn}."],
+    phrasings: ["{count} repayments so far for shared costs {groupIn}."],
     think: ""
   }
 } satisfies CopyCatalogue;
@@ -232,29 +238,39 @@ export interface SplitsSignalInput {
 }
 
 const TRIP = /trip|holiday|travel|vacation|getaway/i;
-// A name that already says what it is: "Non-group expenses", "Flat splits".
+// A name that already says what it is: "Flat splits", "Bali costs".
 const GROUPISH = /\b(group|splits?|expenses|costs)$/i;
+const NON_GROUP = /^non-group\b/i;
 const PAYMENT_WAYS: Record<string, string> = { card: "by card", cash: "in cash", bank: "by bank transfer", other: "another way" };
 
 function isTrip(group: SplitsSignalInput["group"]) {
   return Boolean(group && TRIP.test(group.name));
 }
 
-// "from the Japan trip", or "in the Home group".
+// The costs that belong to no group ("Non-group expenses").
+function isNonGroup(group: NonNullable<SplitsSignalInput["group"]>) {
+  return group.id === "split-group-none" || NON_GROUP.test(group.name);
+}
+
+// After a balance: "from the Japan trip", "in the Home group", or "for
+// shared costs outside a group".
 function groupFrom(group: NonNullable<SplitsSignalInput["group"]>) {
+  if (isNonGroup(group)) {
+    return "for shared costs outside a group";
+  }
   if (isTrip(group)) {
     return `from the ${group.name}`;
   }
   return GROUPISH.test(group.name) ? `in ${group.name}` : `in the ${group.name} group`;
 }
 
-// "on the Japan trip", or "in the Home group".
+// After "shared costs": "on the Japan trip", "in the Home group", or
+// "outside a group".
 function groupIn(group: NonNullable<SplitsSignalInput["group"]>) {
+  if (isNonGroup(group)) {
+    return "outside a group";
+  }
   return isTrip(group) ? `on the ${group.name}` : groupFrom(group);
-}
-
-function groupName(group: NonNullable<SplitsSignalInput["group"]>) {
-  return isTrip(group) ? `the ${group.name}` : GROUPISH.test(group.name) ? group.name : `the ${group.name} group`;
 }
 
 // "the {name}": a description that already starts with "The" drops it.
@@ -301,7 +317,7 @@ export function splitBalanceSignal(input: SplitsSignalInput): MoneySignal | null
   const copy = input.audience === "household"
     ? SPLITS_COPY.openBetweenYou
     : group.balanceMinor > 0 ? SPLITS_COPY.owedToYou : SPLITS_COPY.youOwe;
-  const values = { other, amount, groupFrom: groupFrom(group), groupName: groupName(group) };
+  const values = { other, amount, groupFrom: groupFrom(group) };
   return {
     key: `split-balance:${group.id}`,
     kind: "quick_fix",
@@ -316,7 +332,7 @@ export function splitBalanceSignal(input: SplitsSignalInput): MoneySignal | null
   };
 }
 
-// Quick fix: bank payments that may match a split entered by hand.
+// Quick fix: bank payments that may be shared costs already entered by hand.
 export function bankMatchSignal(input: SplitsSignalInput): MoneySignal | null {
   const count = Math.max(0, Math.round(input.pendingMatchCount));
   if (!count) {

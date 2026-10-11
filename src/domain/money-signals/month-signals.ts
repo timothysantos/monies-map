@@ -32,73 +32,73 @@ import type { TriviaRotation } from "./rotation";
 import { bankChargesSignal, cardBillSignal, penaltyInterestSignal, statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
-const UNSPENT_PLAN_THINKS = ["Unspent plan isn't spent money yet.", "A small decision now keeps it yours.", "Leftover plan is room, not a rule."];
+const UNSPENT_PLAN_THINKS = ["Until it's spent, it can still go anywhere you choose.", "A small decision now keeps it from slipping away.", "You don't have to spend it just because you planned to."];
 
 export const MONTH_COPY = {
   unlinkedBills: {
     phrasings: [
-      "{count} planned bills dated before today have no entry linked yet.",
-      "{count} planned bills, {total} in all, are still waiting for an entry.",
-      "Still unlinked: {count} planned bills dated before today, {total} in total."
+      "{count} bills you planned for {month}, {total} in all, aren't matched to a payment yet.",
+      "{count} bills you planned for {month} were due by now, {total} in all, and none is matched to a payment yet.",
+      "No payment is matched yet to {count} bills planned for {month}. They come to {total} and were due by now."
     ],
     phrasingsOne: [
-      "1 planned bill dated before today has no entry linked yet: {label}.",
-      "{label}, planned at {total}, is still waiting for an entry.",
-      "Still unlinked: {label}, {total}, dated before today."
+      "{label}, a bill you planned for {month} at {total}, isn't matched to a payment yet.",
+      "{label} was due by now, planned at {total}, and isn't matched to a payment yet.",
+      "No payment is matched yet to {label}, the {total} bill you planned for {month}."
     ],
     think: [
-      "Linking them keeps the plan honest and catches anything that didn't go out.",
-      "An unlinked bill might still be on its way, or might not have gone out. Linking shows which.",
-      "Matching bills to entries is what makes the plan line up with the bank.",
-      "Once linked, the plan and the entries tell the same story."
+      "They may still be coming, or they never went out. Matching each to its payment (\"linking\") shows which.",
+      "Some may have gone out under a different name. Matching each bill to its payment (\"linking\") shows which are still to come.",
+      "Once each bill is matched to its payment (\"linking\"), you can see what it really cost next to what you planned.",
+      "A bill that hasn't turned up may be late, or cancelled. Matching each to its payment (\"linking\") makes the missing ones easy to spot."
     ],
     thinkOne: [
-      "Linking it keeps the plan honest and catches anything that didn't go out.",
-      "An unlinked bill might still be on its way, or might not have gone out. Linking shows which.",
-      "Matching it to its entry is what makes the plan line up with the bank.",
-      "Once linked, the plan and the entries tell the same story."
+      "It may still be coming, or it never went out. Matching it to its payment (\"linking\") shows which.",
+      "It may have gone out under a different name. Matching the bill to its payment (\"linking\") shows whether it's still to come.",
+      "Once the bill is matched to its payment (\"linking\"), you can see what it really cost next to what you planned.",
+      "A bill that hasn't turned up may be late, or cancelled. Matching it to its payment (\"linking\") settles which."
     ],
     sorted: {
-      fact: "Sorted: every planned bill dated so far has an entry linked.",
-      think: "The plan and the entries agree again, so the numbers here tell the whole story."
+      fact: "Sorted: every bill you planned so far is matched to its payment.",
+      think: "Each one now shows what it really cost next to what you planned."
     }
   },
   oneOffOverPlan: {
     phrasings: [
-      "{items} made up most of {month}'s {over} over plan.",
-      "{month} went {over} over plan, mostly {items}.",
-      "Most of {month}'s {over} over plan came from {items}."
+      "{items} made up most of the {over} that {month} went past what you planned to spend.",
+      "{month}'s spending came to {over} more than you planned, mostly from {items}.",
+      "{month} went {over} past what you planned to spend. Most of that was {items}."
     ],
     think: [
-      "Big one-offs happen. Worth deciding: truly one-off, or something to plan for next year?",
-      "One big item can make a whole month look different. The rest of the month may be right on track.",
-      "A one-off is worth a quick question: a rare treat, or a cost that comes round each year?",
-      "Big purchases often have a season. Planning for the next one makes it feel lighter."
+      "Big one-offs happen. Was it truly a one-off, or something to plan for next year?",
+      "One big cost can make a whole month look different. The rest of the month may be right on track.",
+      "Worth a quick question: a rare treat, or a cost that comes round each year?",
+      "Big costs often have a season. Planning for the next one makes it feel lighter."
     ],
-    action: "Show those entries"
+    action: "Show these costs"
   },
   categoryOverPlan: {
     phrasings: [
-      "{label} went {over} over its {plan} plan.",
-      "{label} is at {actual} against a {plan} plan.",
-      "The {label} plan was {plan}; spending came to {actual}."
+      "{label} came to {actual}, {over} more than the {plan} you planned.",
+      "You planned {plan} for {label}, and {actual} has gone on it.",
+      "{label} spending went {over} past the {plan} you planned for it."
     ],
     think: [
-      "Plans are guesses made in advance. Adjust the plan or the spending; either is fine as long as it's a choice.",
-      "Going over in one category is information, not a verdict. It shows where the plan and life differ.",
-      "If this spending was worth it, the plan can grow to match. If not, next month is a fresh start.",
-      "A plan that matches real life is easier to keep. This is a useful clue for the next one."
+      "If it was worth it, raise next month's plan. If not, next month starts fresh.",
+      "Going over in one category isn't a verdict. It shows where real life and the plan differ.",
+      "A plan is a guess made in advance. Changing the plan or the spending are both fine, as long as it's a choice.",
+      "A plan that matches real life is easier to keep. This shows where to adjust it."
     ],
     action: "Review {category}"
   },
   incomeAbovePlan: {
     phrasings: [
-      "Income was {extra} above plan {when}.",
-      "{extra} more came in than planned {when}.",
-      "More came in than planned {when}: {extra} above plan."
+      "Income {when} was {extra} more than you planned.",
+      "{extra} more than you planned arrived {when}.",
+      "More money came in than you planned {when}: {extra} extra."
     ],
     think: [
-      "Extra money blends into everyday spending quickly. Deciding early how much goes to future you keeps the rest yours to enjoy on purpose.",
+      "Extra money blends into everyday spending quickly. Deciding early how much to put aside leaves the rest to enjoy on purpose.",
       "Extra income is a good moment to decide on purpose: some for later, some to enjoy.",
       "A bonus month is the easiest time to move some money toward a goal.",
       "Deciding early where extra money goes makes it feel like more."
@@ -106,12 +106,12 @@ export const MONTH_COPY = {
   },
   incomeArrived: {
     phrasings: [
-      "{amount} of income arrived on {day}.",
+      "{amount} of income came in on {day}.",
       "Payday: {amount} came in on {day}.",
       "{amount} landed on {day}."
     ],
     think: [
-      "Payday is the easiest moment to give money a job, before it blends into the month.",
+      "Payday is the easiest moment to decide where money goes, before it blends into the month.",
       "Right after payday is when a plan is easiest to follow.",
       "Setting savings aside first makes the rest of the month simpler.",
       "A few minutes now, deciding where it goes, saves second-guessing later."
@@ -119,51 +119,51 @@ export const MONTH_COPY = {
   },
   planLeft: {
     phrasings: [
-      "{left} of this month's plan is still unspent.",
-      { fact: "{left} of this month's plan is still unspent. Give it a job before it drifts.", think: UNSPENT_PLAN_THINKS },
-      { fact: "You have {left} of plan left. Savings, next month, or something you've been looking forward to?", think: UNSPENT_PLAN_THINKS },
-      { fact: "Under plan by {left} so far. Nice; decide where it goes while it's still a choice.", think: UNSPENT_PLAN_THINKS }
+      "{left} of what you planned to spend this month hasn't been spent yet.",
+      { fact: "{left} is still left to spend in this month's plan. It's worth deciding what it's for.", think: UNSPENT_PLAN_THINKS },
+      { fact: "You have {left} left in this month's plan. Savings, next month, or something you've been looking forward to?", think: UNSPENT_PLAN_THINKS },
+      { fact: "So far you've spent {left} less than you planned. Nice. Deciding where it goes now keeps it a choice.", think: UNSPENT_PLAN_THINKS }
     ],
     think: [
-      "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.",
-      "Money left in the plan is a choice waiting to be made.",
-      "Deciding before the month ends keeps it from quietly disappearing."
+      "Until it's spent, it can still go anywhere: savings, next month, or something you've been looking forward to.",
+      "Deciding what it's for is easier now than at the end of the month.",
+      "Deciding before the month ends keeps it from quietly disappearing into everyday spending."
     ]
   },
   planLeftPast: {
     phrasings: [
-      "{month} finished {left} under plan.",
-      "{month} came in {left} under plan.",
-      "Under plan by {left} in {month}."
+      "{month} finished {left} under what you planned to spend.",
+      "You spent {left} less than you planned in {month}.",
+      "{month} came in {left} under your plan."
     ],
     think: [
-      "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.",
-      "A finished month under plan is money with no job yet. Savings or next month are both good homes.",
-      "Coming in under plan is a quiet win. Deciding where it goes makes it count.",
-      "Months like this give the next one a head start."
+      "That money isn't set aside for anything yet. Savings or next month are both good homes.",
+      "Spending less than planned is a quiet win. Deciding where the difference goes makes it count.",
+      "Months like this give the next one a head start.",
+      "If the difference is still in your account, moving it to savings keeps it from being spent by accident."
     ]
   },
   savingsOnPlan: {
     phrasings: [
-      "Savings are on plan {when}.",
+      "You saved what you planned {when}.",
       "{saved} went to savings {when}, as planned.",
-      "Savings came to {saved} against a {planned} plan."
+      "You planned to save {planned} and saved {saved}."
     ],
     think: [
       "With savings covered, spending on what you enjoy is part of the plan, not a slip from it.",
-      "Savings done first makes everything else simpler.",
+      "Saving first makes everything else simpler.",
       "Future you is covered this month. The rest is room to live.",
-      "Meeting the savings plan is the part that builds up. Worth a moment of credit."
+      "Saving what you planned is the part that builds up over time. Worth a moment of credit."
     ]
   },
   upcomingBills: {
     phrasings: [
-      "{count} planned bills are due in the next 10 days, {total} in total.",
+      "{count} bills you planned are due in the next 10 days, {total} in all.",
       "Coming up in the next 10 days: {count} planned bills, {total} in all.",
-      "{total} of planned bills goes out over the next 10 days."
+      "{total} in planned bills goes out over the next 10 days."
     ],
     phrasingsOne: [
-      "1 planned bill is due in the next 10 days: {label}, {total}.",
+      "1 bill you planned is due in the next 10 days: {label}, {total}.",
       "Coming up in the next 10 days: {label}, {total}.",
       "{total} goes out for {label} in the next 10 days."
     ],
@@ -176,41 +176,41 @@ export const MONTH_COPY = {
   },
   paceSteady: {
     phrasings: [
-      "{spent} of the {plan} plan is used, with {days} days of {month} to go.",
-      "Mid-month check: {spent} spent against a {plan} plan.",
-      "{left} of the plan is left for the last {days} days of {month}."
+      "{spent} of the {plan} you planned is spent, with {days} days of {month} to go.",
+      "Mid-month: {spent} spent so far, out of the {plan} you planned for {month}.",
+      "{left} of the {plan} you planned is still left for the last {days} days of {month}."
     ],
     think: [
-      "Spending is keeping pace with the plan so far. A calm middle of the month usually makes for a calm end.",
-      "Halfway through and on pace: the plan is working as intended.",
-      "Steady spending mid-month leaves room for the unexpected later.",
-      "Nothing needs changing. The month is unfolding as planned."
+      "Spending is on pace with what you planned. A calm middle of the month usually makes for a calm end.",
+      "On pace so far, so the plan is working as intended.",
+      "Steady spending now leaves room for the unexpected later.",
+      "Nothing needs changing. The month is going as planned."
     ]
   },
   paceAhead: {
     phrasings: [
-      "{spent} of the {plan} plan is used, with {days} days of {month} to go.",
-      "Mid-month check: {spent} spent against a {plan} plan.",
-      "{left} of the plan is left for the last {days} days of {month}."
+      "{spent} of the {plan} you planned is spent, with {days} days of {month} to go.",
+      "Mid-month: {spent} spent so far, out of the {plan} you planned for {month}.",
+      "{left} of the {plan} you planned is still left for the last {days} days of {month}."
     ],
     think: [
-      "Spending is running ahead of the calendar. Nothing is fixed yet; the rest of the month decides where it lands.",
+      "That's a bit faster than the days gone by. Nothing is fixed yet. The rest of the month decides where it lands.",
       "Some months run ahead early. The second half often evens it out.",
-      "Ahead of the calendar is a nudge to glance at what's planned, nothing more.",
-      "There's still room in the plan. Knowing the pace now keeps the rest of the month a choice."
+      "Running a little ahead is a nudge to glance at what's still planned, nothing more.",
+      "There's still money left in the plan. Knowing the pace now keeps the rest of the month a choice."
     ]
   },
   fixedCosts: {
     phrasings: [
-      "Planned bills and subscriptions take {rate}% of {whose} income ({planned}).",
+      "Bills and subscriptions in your plan take {rate}% of {whose} income ({planned}).",
       "{planned} of {whose} {income} income is already spoken for by planned bills and subscriptions.",
-      "Planned bills and subscriptions: {planned}, against {income} of income."
+      "Planned bills and subscriptions come to {planned}, out of {income} of income."
     ],
     think: [
-      "Fixed costs set how much room every month has. The lower they are, the more freedom for everything else.",
-      "Fixed costs are the part of a budget that decides itself. Knowing the size helps every other choice.",
-      "The room left after fixed costs is where most choices happen.",
-      "Fixed costs rarely change, so any change there lasts month after month."
+      "\"Fixed costs\", the bills and subscriptions that come every month, set how much room is left. The lower they are, the more freedom for everything else.",
+      "\"Fixed costs\" (bills and subscriptions that come every month) mostly decide themselves. Knowing their size helps with every other choice.",
+      "What's left after \"fixed costs\", the bills that come every month, is where most choices happen.",
+      "\"Fixed costs\", the bills that come every month, rarely change. So any change there lasts month after month."
     ]
   },
   regularSpot: {
@@ -226,7 +226,7 @@ export const MONTH_COPY = {
     think: ""
   },
   busiestWeekday: {
-    phrasings: ["{weekday} was the busiest day of the week {when}, with {count} entries."],
+    phrasings: ["{weekday} was the busiest day of the week {when}, with spending recorded {count} times."],
     think: ""
   },
   noSpendDays: {
@@ -242,15 +242,15 @@ export const MONTH_COPY = {
     think: ""
   },
   biggestDay: {
-    phrasings: ["Your biggest day was {day}: {name}."],
+    phrasings: ["Your biggest spending day was {day}, led by {name}."],
     think: ""
   },
   busiestWeek: {
-    phrasings: ["The biggest week {when} began {day}, with {amount} spent."],
+    phrasings: ["The week starting {day} was the biggest {when}, with {amount} spent."],
     think: ""
   },
   halfway: {
-    phrasings: ["Half of the spending {when} had happened by {day}."],
+    phrasings: ["Half of all spending {when} was done by {day}."],
     think: ""
   },
   dayAverage: {
@@ -266,7 +266,7 @@ export const MONTH_COPY = {
     think: ""
   },
   topTwoCategories: {
-    phrasings: ["{top} and {second} were the two biggest categories {when}."],
+    phrasings: ["{top} and {second} were the two biggest spending categories {when}."],
     think: ""
   },
   categoriesCount: {
@@ -274,19 +274,19 @@ export const MONTH_COPY = {
     think: ""
   },
   categoryDays: {
-    phrasings: ["{category} showed up on {count} different days {when}."],
+    phrasings: ["You spent on {category} on {count} different days {when}."],
     think: ""
   },
   categoryLargest: {
-    phrasings: ["Largest {category} entry {when}: {name}, {amount}."],
+    phrasings: ["The biggest single amount spent on {category} {when}: {name}, {amount}."],
     think: ""
   },
   planCount: {
-    phrasings: ["The plan for {month} holds {parts}."],
+    phrasings: ["Your plan for {month} has {parts}."],
     think: ""
   },
   biggestBill: {
-    phrasings: ["The biggest planned bill {when}: {label}, {amount}."],
+    phrasings: ["The biggest bill in your plan {when}: {label}, {amount}."],
     think: ""
   }
 } satisfies CopyCatalogue;
@@ -462,7 +462,7 @@ export function unlinkedBillsSignal(input: MonthSignalInput): MoneySignal | null
     kind: "quick_fix",
     weight: totalMinor,
     numbers: { primaryMinor: totalMinor, count: due.length },
-    phrasings: phrase(MONTH_COPY.unlinkedBills, { count: due.length, total, label: due[0].label || due[0].categoryName || "A planned bill" }, { one: due.length === 1 }),
+    phrasings: phrase(MONTH_COPY.unlinkedBills, { count: due.length, total, month: monthName(input.month), label: due[0].label || due[0].categoryName || "a planned bill" }, { one: due.length === 1 }),
     sorted: MONTH_COPY.unlinkedBills.sorted,
     topic: "later"
   };

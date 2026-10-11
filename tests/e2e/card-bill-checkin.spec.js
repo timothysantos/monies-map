@@ -23,7 +23,6 @@ function shortDay(iso) {
 test("a card bill due in 3 days and an unreversed late charge reach the account pills and Joyce's check-in", async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
-  await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }));
   await page.goto("/");
   await reseedDemo(page);
   const { accountId } = await postJson(page, "/api/accounts/create", {
@@ -86,16 +85,16 @@ test("a card bill due in 3 days and an unreversed late charge reach the account 
   await expect(insight.locator(".financial-insight-narrative")).toBeVisible({ timeout: 30_000 });
   const narrative = (await insight.innerText()).replace(/\s+/g, " ");
   const billLines = [
-    `Your Test Card bill of $133.15 is due in 3 days (${shortDay(dueDate)}), and no payment to it is in the app yet.`,
+    `Your Test Card bill of $133.15 is due in 3 days (${shortDay(dueDate)}), with no payment to it recorded here yet.`,
     `$133.15 on your Test Card is due in 3 days (${shortDay(dueDate)}).`,
-    `Your Test Card statement asks for $133.15, due in 3 days (${shortDay(dueDate)}).`,
+    `Your Test Card bill asks for $133.15, due in 3 days (${shortDay(dueDate)}).`,
     `Coming up: your Test Card bill of $133.15, due in 3 days (${shortDay(dueDate)}).`
   ];
   expect(billLines.some((line) => narrative.includes(line)), narrative).toBe(true);
   // The late charge and the penalty rate are in the full list.
   await insight.getByRole("button", { name: "See all insights" }).click();
   const all = (await insight.innerText()).replace(/\s+/g, " ");
-  expect(all, all).toMatch(/Test Card (was charged a \$100\.00 late charge|from .* hasn't been reversed)|No reversal yet for a \$100\.00 late charge|The bank charged your Test Card a \$100\.00 late charge/);
+  expect(all, all).toMatch(/Test Card (was charged a \$100\.00 late charge|from .* hasn't been refunded)|No refund yet for a \$100\.00 late charge|The bank charged your Test Card a \$100\.00 late charge/);
   expect(all, all).toContain("30.78% a year");
   expect(all, all).toContain("$133.15");
   await insight.screenshot({ path: test.info().outputPath("card-bill-checkin.png") });

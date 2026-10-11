@@ -14,21 +14,30 @@ wins count; one hard question at a time; no blame between partners; fun
 stays kind; perspective, not advice. No exclamation marks, no emoji, and
 no percentage without the money amount beside it.
 
+Plain words (owner, 2026-10-11): say what happened to the reader's money
+in everyday words, then the number. The fact says what happened; the
+think line says why it matters and what the link under it does. Never
+describe the app's own state ("in the app", "unlinked", "every
+chart"). An app term a line needs (Other, linking, settle up, plan)
+is explained once in the same line, in quotes. Short sentences, read
+aloud like a calm friend. The headline is shown exactly as written here:
+there is no AI rewording.
+
 Words the tone lint rejects: overspent, overspend, overspending, blew, blown, bad month, cut back, cutting back, should, shouldn't, non-essential, nonessential, guilty, guilt, sacrifice, deny yourself, warning, alert, problem, problems.
 
 ## Kinds and order
 
-The headline is the first of: Quick fix, Bigger question (at most one),
-a moment (payday, a bonus, bills coming up, pace), Worth a look, Going
+The headline is the first of: To do, Something to think about (at most one),
+a moment (payday, a bonus, bills coming up, pace), Worth knowing, Going
 well; ties go to the larger amount, then to what was not seen recently.
-On Month, a statement gap (a Quick fix about a wallet, not the month)
-goes right after the month's own Bigger question, so the Bigger question
-leads and the gap is listed under "Also this month"; other Month quick
-fixes (planned bills with no entry) keep their place, and Summary still
+On Month, a statement gap (a To do about a wallet, not the month)
+goes right after the month's own Something to think about, so that line
+leads and the gap is listed under "Also this month"; other Month To do
+lines (planned bills with no payment linked) keep their place, and Summary still
 leads with a statement gap.
-Long view is a separate quieter line; Just for fun is one line shown only
-when the headline is not a Bigger question. "See all insights" adds up
-to three more signals and one quote (never beside a Bigger question);
+Big picture is a separate quieter line; Fun fact is one line shown only
+when the headline is not a Something to think about. "See all insights" adds up
+to three more signals and one quote (never beside a Something to think about);
 Splits also keeps its link to review bank matches there.
 
 ## Notability
@@ -47,10 +56,10 @@ with a Going well that fires, otherwise the calm line.
 - Month, category over plan: notable when 10% and $20 over its plan. Smaller overs: no turn.
 - Month, plan left (in progress or finished): turn 1. Savings on plan: turn 2.
 
-Long view lines (keep rate, cushion, fixed costs, same season, share of
-costs) and Just for fun lines (such as the average entry or a category's
+Big picture lines (keep rate, cushion, fixed costs, same season, share of
+costs) and Fun fact lines (such as the average entry or a category's
 share) never lead: they have their own line and their own year rotation.
-Quick fixes, Bigger questions and moments are notable whenever they fire.
+To do and Something to think about lines and moments are notable whenever they fire.
 
 ## The year rule
 
@@ -60,7 +69,7 @@ range's last month, Splits the current month for the selected group. For
 one page and view, nothing shown for a period comes back in the eleven
 periods before or after it:
 
-- Just for fun: each trivia type sits in one of twelve columns, one per
+- Fun fact: each trivia type sits in one of twelve columns, one per
   month number; a period tries its column's types in turn (the first one
   changes each year) and shows none rather than borrow from another
   column. Moments (a year recap, an anniversary) go first and fire in at
@@ -69,7 +78,7 @@ periods before or after it:
 - A signal's wording: every phrasing with every think line it may pair
   with, taken in turn by month (12 or more pairs per signal), all with the
   same numbers. The "also" list uses each signal's first phrasing.
-- Long view: a seasonal moment leads; otherwise the long views that fire
+- Big picture: a seasonal moment leads; otherwise the long views that fire
   take turns by month, each in its own wording turn.
 - Quote: the library is in 12 columns (a quote's place in the list, mod 12); each page reads a
   different column in the same month (Summary +0, Month +3, Entries +6, Splits +9) and
@@ -91,160 +100,160 @@ Quiet visit (nothing new since a visit in the last 3 days; never twice in
 a row). `{when}` is "earlier today", "yesterday", a weekday, or "your
 last visit":
 
-- Nothing new since {when}. The numbers here match your last visit.
+- Nothing new since {when}. Your numbers haven't changed.
 - All quiet since {when}. Nothing here has moved.
-- Same picture as {when}. Nothing new needs a look.
+- Same picture as {when}. Nothing new to look at.
 
 Calm lines when no signal fires, one per month in turn. `{place}` is
-`this range` on Summary, `{month}` on Month, `this list` on Entries, `this group` on Splits; each page keeps its own first line:
+`this period` on Summary, `{month}` on Month, `this list` on Entries, `this group` on Splits; each page keeps its own first line:
 
-- Summary, first line: Nothing in this range needs a look right now.
+- Summary, first line: Nothing in this period needs a look right now.
 - Month, first line: Nothing in {month} needs a look right now.
 - Entries, first line: Nothing in this list needs a look right now.
 - Splits, first line: Nothing needs a look in this group right now.
 - All clear in {place}: nothing needs a look.
-- Nothing in {place} is asking for attention right now.
+- Nothing in {place} needs your attention right now.
 - {place} looks settled. Nothing to check.
 - Nothing stands out in {place} right now.
-- A calm picture in {place}: nothing needs you.
+- {place} looks calm. Nothing needs you right now.
 - No loose ends in {place} right now.
-- Nothing to sort in {place}. Enjoy the quiet.
-- {place} is quiet: nothing worth a look.
-- All calm in {place}. Nothing is waiting.
+- Nothing to tidy up in {place}. Enjoy the quiet.
+- {place} is quiet. Nothing to look into.
+- All calm in {place}. Nothing is waiting on you.
 - Nothing in {place} calls for a look.
 - Nothing pressing in {place} right now.
 
 Heading of the expanded list:
 
-- Summary: Also in this range
+- Summary: Also in this period
 - Month: Also this month
 - Entries: Also this month
 - Splits: Also in this group
 
 ## Summary and Month (shared)
 
-### statementGap (Quick fix)
+### statementGap (To do)
 
 A wallet's latest statement does not match the app (the largest gap). Summary and Month.
 
 Phrasings:
 
-- {whose} {account} statement is off by {amount}.
-- {whose} {account} {month} statement is {amount} away from the app.
-- One statement doesn't match yet: {whose} {account}, off by {amount}.
-- {amount} separates {whose} {account} statement from the app.
+- {whose} {account} statement differs from what's recorded here by {amount}.
+- The {month} statement for {whose} {account} is {amount} different from what's recorded here.
+- {whose} {account} doesn't match its bank statement yet: the two are {amount} apart.
+- There's a {amount} difference between {whose} {account} statement and what's recorded here.
 
 Way to think about it, in turn:
 
-- Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.
-- A gap this size usually comes down to one entry. Finding it keeps the totals here honest.
-- The statement is the checkpoint for everything else here. One quick comparison usually closes it.
+- The statement is the bank's own monthly list of payments. A gap like this is usually one payment missing here or recorded twice.
+- Usually a single payment explains it, missing here or recorded twice. Comparing the bank's list with this one finds it.
+- Until the two match, totals here for that account may be off. Comparing them line by line usually turns up the one payment that differs.
 
-Said once when it clears (Going well): Sorted: {whose} {account} now matches its statement. / That's the part that makes every other number here trustworthy.
+Said once when it clears (Going well): Sorted: {whose} {account} now matches its bank statement. / The totals here for that account now agree with the bank.
 
-Action: Review statement
+Action: Compare with the statement
 
-### cardBillDue (Quick fix)
+### cardBillDue (To do)
 
 A card's latest statement is due within 7 days and no payment to the card has been recorded since it closed. Summary and Month.
 
 Phrasings:
 
-- {whose} {account} bill of {amount} is due {when}, and no payment to it is in the app yet.
+- {whose} {account} bill of {amount} is due {when}, with no payment to it recorded here yet.
 - {amount} on {whose} {account} is due {when}.
-- {whose} {account} statement asks for {amount}, due {when}.
+- {whose} {account} bill asks for {amount}, due {when}.
 - Coming up: {whose} {account} bill of {amount}, due {when}.
 
 Way to think about it, in turn:
 
-- If it's already paid, the payment shows here once that bank account's activity is imported.
-- Paying the statement in full by the due date keeps interest off the card.
+- If you've already paid it, the payment will show once the paying account's activity is added here.
+- Paying the full bill by the due date means no interest on the card.
 - Paying at least the minimum by the due date avoids a late charge.
 
-Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
+Said once when it clears (Going well): Paid: {whose} {account} bill. / Its payment now shows in your records.
 
-### cardBillPart (Quick fix)
+### cardBillPart (To do)
 
 As above, with part of the bill paid since the statement closed: the rest still to pay. Summary and Month.
 
 Phrasings:
 
 - {amount} of {whose} {account} bill is still to pay, due {when}.
-- {whose} {account} has {amount} left to pay on its statement, due {when}.
-- Part of {whose} {account} bill is paid; {amount} is left, due {when}.
-- {whose} {account} statement still has {amount} to pay, due {when}.
+- {whose} {account} still has {amount} left to pay on this bill, due {when}.
+- Part of {whose} {account} bill is paid, with {amount} still due {when}.
+- {whose} {account} bill still needs {amount}, due {when}.
 
 Way to think about it, in turn:
 
-- {paid} is paid so far. Paying the rest by the due date keeps interest off the card.
-- If the rest is already paid, it shows here once that bank account's activity is imported.
-- {paid} is in the app as paid since the statement closed.
+- {paid} is paid so far. Paying the rest by the due date means no interest on the card.
+- If you've paid the rest already, it will show once the paying account's activity is added here.
+- Your records here show {paid} paid since the bill came out.
 
-Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
+Said once when it clears (Going well): Paid: {whose} {account} bill. / Its payment now shows in your records.
 
-### cardBillOverdue (Quick fix)
+### cardBillOverdue (To do)
 
 A card's latest statement was due up to 30 days ago and less than its minimum (or the whole bill) has been paid since it closed. Shown ahead of bills only due. Summary and Month.
 
 Phrasings:
 
-- {whose} {account} bill of {amount} was due on {date}, and no payment to it is in the app yet.
-- No payment to {whose} {account} is in the app since its {amount} bill fell due on {date}.
-- {whose} {account} statement asked for {amount} by {date}; no payment is in the app yet.
-- The {amount} bill on {whose} {account} was due {date}, and the app hasn't seen a payment.
+- {whose} {account} bill was due on {date}, and {amount} still shows as unpaid here.
+- {amount} on {whose} {account} was due on {date}, and no payment for it is recorded here yet.
+- {whose} {account} needed {amount} paid by {date}, and no payment for it shows here yet.
+- The {amount} owed on {whose} {account} was due {date}, and your records here don't show it paid.
 
 Way to think about it, in turn:
 
-- If it's paid, the payment shows once that bank account's activity is imported. If not, the bank adds a late charge and interest until it is.
-- Card statements add a late charge when the minimum isn't paid by the due date.
-- If the payment came from an account the app doesn't track, this clears once the next statement is imported.
+- If you've paid it, the payment will show once the paying account's activity is added here. If not, the bank adds a late charge and interest until it's paid.
+- Banks add a late charge when a card's minimum isn't paid by the due date. Paying soon keeps the interest small.
+- If you paid from an account that isn't recorded here, this clears once the card's next statement is added.
 
-Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
+Said once when it clears (Going well): Paid: {whose} {account} bill. / Its payment now shows in your records.
 
-### penaltyInterest (Worth a look)
+### penaltyInterest (Worth knowing)
 
 A card's latest statement (closed in the last 62 days) prints a penalty interest rate and owes money (the card with the most owed). Summary and Month.
 
 Phrasings:
 
-- {whose} {account} is charged penalty interest of {rate}% a year, says its {month} statement, with {amount} owed.
-- {whose} {account} {month} statement owes {amount} at a penalty interest rate of {rate}% a year.
-- The bank moved {whose} {account} to penalty interest of {rate}% a year; its {month} statement owes {amount}.
-- {amount} owed on {whose} {account}, at penalty interest of {rate}% a year, per its {month} statement.
+- {whose} {account} {month} bill shows {amount} owed at a penalty interest rate of {rate}% a year.
+- {amount} is owed on {whose} {account}, and its {month} statement shows a penalty rate of {rate}% a year.
+- The bank moved {whose} {account} to a higher penalty interest rate of {rate}% a year, with {amount} owed on the {month} bill.
+- {amount} owed on {whose} {account} now costs penalty interest of {rate}% a year, says its {month} statement.
 
 Way to think about it, in turn:
 
-- Banks raise a card's rate after a missed minimum payment. Paying each statement in full by its due date keeps interest off the card.
-- The rate only costs money on a balance carried past the due date, so paying the {amount} in full by then means no interest at all.
-- Each statement says whether the penalty rate still applies; this line goes once a statement no longer does.
+- Banks raise a card's rate after a missed minimum payment. Paying each bill in full by its due date means no interest at all.
+- The rate only costs money on what's still owed after the due date. Paying the {amount} in full by then means no interest at all.
+- Each monthly statement says whether the penalty rate still applies. This note goes away once one no longer shows it.
 
-### bankCharges (Worth a look)
+### bankCharges (Worth knowing)
 
 A card was charged a late charge, interest, an annual fee or another bank fee in the last 60 days and no reversal of the same kind and amount is in the ledger (the card with the most). Summary and Month.
 
 Phrasings:
 
-- {whose} {account} was charged {charges} since {date}, and no reversal of them is in the app yet.
-- {total} in bank charges on {whose} {account} hasn't been reversed in the app: {charges}.
-- The bank charged {whose} {account} {charges} since {date}; no reversal is in the app.
-- No reversal yet for {total} in bank charges on {whose} {account}: {charges}.
+- {whose} {account} has been charged {charges} since {date}, and no refund shows here yet.
+- {total} in bank charges on {whose} {account} hasn't been refunded yet: {charges}.
+- The bank has charged {whose} {account} {charges} since {date}. None of it is refunded yet.
+- No refund yet for {total} in bank charges on {whose} {account}: {charges}.
 
 When the count is 1:
 
-- {whose} {account} was charged {charges} on {date}, and no reversal of it is in the app yet.
-- {charges} on {whose} {account} from {date} hasn't been reversed in the app.
-- The bank charged {whose} {account} {charges} on {date}; no reversal is in the app.
-- No reversal yet for {charges} on {whose} {account} from {date}.
+- {whose} {account} was charged {charges} on {date}, and no refund of it shows here yet.
+- {charges} on {whose} {account} from {date} hasn't been refunded, going by your records.
+- The bank charged {whose} {account} {charges} on {date}. No refund of it is recorded yet.
+- No refund yet for {charges} on {whose} {account} from {date}.
 
 Way to think about it, in turn:
 
-- Banks sometimes reverse these when asked. A reversal shows on the next statement.
-- If the bank has agreed to reverse it, the reversal shows on the next statement.
-- These are the bank's own charges, filed under Fees, not spending on anything.
+- Banks sometimes refund a charge like this when asked, which they call a "reversal". The refund shows on the next statement.
+- If the bank has agreed to take the charge back, the refund shows on the card's next statement.
+- Bank charges aren't purchases, so they're kept in their own category, "Fees".
 
 ## Summary
 
-Just for fun follows the range's last month. Month number, then the type tried first and its reserves:
+Fun fact follows the range's last month. Month number, then the type tried first and its reserves:
 
 - January: `category-fraction`
 - February: `every-month-category`, then `range-total`
@@ -261,48 +270,48 @@ Just for fun follows the range's last month. Month number, then the type tried f
 
 Moments, tried before the month's column: `year-recap`, `anniversary`.
 
-### spendingAboveIncome (Bigger question)
+### spendingAboveIncome (Something to think about)
 
 Spending was above income for 3 or more complete months in a row (once the range records income).
 
 Phrasings:
 
-- Spending has been above income for {count} months running.
-- For {count} months running, more went out than came in: {gap} in all.
-- The last {count} months each spent more than came in, {gap} altogether.
+- Spending has been higher than income for {count} months in a row.
+- For {count} months in a row, more went out than came in: {gap} more in all.
+- In each of the last {count} months, spending was higher than income. Together that's {gap} more out than in.
 
 Way to think about it, in turn:
 
 - Changing one category is easier than changing everything. Which one matters least to you?
-- Streaks like this often come from one or two big items. Knowing which ones makes the next step clearer.
-- A few months like this can happen for good reasons. Worth a calm look at whether it was planned.
-- One category usually carries most of a streak like this. Starting there keeps it simple.
+- Runs like this often come from one or two big costs. Finding them makes the next step clearer.
+- A few months like this can happen for good reasons, like a holiday or a big repair. It's worth checking whether this was planned.
+- The extra money came from savings or went onto a card. Usually one category explains most of it, so that's a simple place to start.
 
-### categoryCreep (Worth a look)
+### categoryCreep (Worth knowing)
 
 A category rose 3 or more complete months in a row and is $50 or more above its average.
 
 Phrasings:
 
-- {category} has risen {count} months in a row and is {above} above its {window}-month average.
-- {category} is {above} above its usual month, after {count} rises in a row.
-- {count} months ago {category} was {then}; now it's {now}.
+- {category} spending has gone up {count} months in a row. The latest month was {above} more than its average over the {window} months before.
+- {category} spending was {above} more than in a typical month, after going up {count} months in a row.
+- {count} months ago, {category} spending was {then} for the month. It has gone up every month since, to {now}.
 
 Way to think about it, in turn:
 
-- Rises like this usually happen without anyone deciding. If it's spending you enjoy, keep it; just make it a choice.
-- Gradual rises are easy to miss month to month. Seeing the trend is the useful part.
-- Some rises simply follow a change in life. Worth asking whether this one does.
-- A rising category is worth one question: is this still the amount you'd choose?
+- Rises like this often happen without anyone choosing them. If it's spending you enjoy, it can stay. It just helps to choose it.
+- Slow rises are easy to miss from one month to the next. Seeing them side by side is the useful part.
+- Some rises simply follow a change in life, like a new job or a new baby. It's worth asking whether this one does.
+- A rise like this is worth one question: is this still the amount you'd choose?
 
-### subscriptions (Worth a look)
+### subscriptions (Worth knowing)
 
 Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost. Steady unless they changed from the month before (see Notability).
 
 Phrasings:
 
-- Subscriptions came to {amount} in {month}, about {yearly} a year.
-- {yearly} a year goes to subscriptions. Still using all of them?
+- Subscriptions came to {amount} in {month}. That's about {yearly} a year.
+- About {yearly} a year goes on subscriptions. Are you still using all of them?
   - Think lines for this phrasing, in turn:
     - Automatic payments are easy to stop noticing.
     - The ones used every week are easy to keep.
@@ -312,10 +321,10 @@ Phrasings:
 
 Way to think about it, in turn:
 
-- Automatic payments are easy to stop noticing. Judge each one by its yearly cost.
-- A subscription that still earns its place is money well spent. The yearly cost makes that easy to judge.
+- Automatic payments are easy to stop noticing. Looking at each one's yearly cost makes it easier to judge.
+- A subscription you still use is money well spent. The yearly cost makes that easy to judge.
 - Once a year is a good rhythm for checking which ones you still use.
-- Small monthly amounts look different at their yearly cost. That view makes each one easier to judge.
+- Small monthly amounts look different at their yearly cost. That makes each one easier to judge.
 
 ### monthsUnderPlan (Going well)
 
@@ -323,83 +332,83 @@ At least two thirds (and 3 or more) of the last 12 complete months came in under
 
 Phrasings:
 
-- {under} of the last {total} months came in under plan.
-- Under plan in {under} of the last {total} months, {saved} below plan in all.
-- {saved} stayed inside the plan across {under} of the last {total} months.
+- In {under} of the last {total} months, spending stayed at or below what you planned.
+- Spending stayed within what you planned in {under} of the last {total} months, {saved} under in all.
+- Across {under} of the last {total} months, spending came to {saved} less than planned.
 
 Way to think about it, in turn:
 
-- Consistency matters more than any single month. This is what a working plan looks like.
-- Months like these are the plan doing its job. That's worth noticing.
+- Keeping to the plan most months matters more than any single month. It means your plans fit how you really spend.
+- Months like these mean your plans are realistic. That's worth noticing.
 - A plan that holds most months is a plan that fits your life.
-- Staying under plan this often leaves room for the things you care about.
+- Spending less than planned this often leaves room for the things you care about.
 
-### keepRate (Long view)
+### keepRate (Big picture)
 
 Income kept over the last (up to 12) complete months, when positive.
 
 Phrasings:
 
-- Over the last {count} months {subject} kept {rate}% of what came in ({kept}).
-- For every {ten} that came in over the last {count} months, about {stayed} stayed.
-- {kept} kept over the last {count} months. One heavy month barely moves that.
+- Over the last {count} months, {subject} kept {rate}% of what came in: {kept} that wasn't spent.
+- Of every {ten} that came in over the last {count} months, about {stayed} was kept (not spent).
+- {kept} of what came in over the last {count} months wasn't spent. One expensive month barely changes that.
   - Think lines for this phrasing, in turn:
-    - The year is the fairer scorecard.
-    - That's the steady part that builds up.
-    - Month to month it moves; the year shows the pattern.
-    - Over time, that's what gives plans room.
-- Kept over the last {count} months: {kept}, about {rate}% of what came in.
+    - Looking across many months gives the fairer picture.
+    - That's the steady part that builds up over time.
+    - Single months go up and down. Many months together show the pattern.
+    - Over time, money left over is what makes room for bigger plans.
+- Left over after spending in the last {count} months: {kept}, about {rate}% of what came in.
 
 Way to think about it, in turn:
 
-- One heavy month barely moves a year; the year is the fairer scorecard.
-- What stays over a year is the number that builds up over time.
-- Month to month it moves around; over a year the pattern shows.
-- Keeping some of each month's income is what gives future plans room.
+- One expensive month barely changes a figure like this. That makes it a fair measure of how things are going.
+- What's left over each month is what builds up into savings over time.
+- Single months go up and down. Looked at together, the pattern shows.
+- Keeping part of what comes in is what makes room for future plans.
 
-### cushion (Long view)
+### cushion (Big picture)
 
 Bank account balances (never cards) against the range's average monthly spend; skipped with no bank balance, no spending, or under a month.
 
 Phrasings:
 
-- Bank balances would cover about {months} of your usual spending.
-- At your usual spending of about {usual} a month, bank balances would last about {months}.
-- {balance} in bank accounts is about {months} of your usual spending.
+- Bank balances would cover about {months} of your usual spending, which averages about {usual} a month.
+- At your average spending of about {usual} a month, the money in your bank accounts would last about {months}.
+- {balance} in your bank accounts is about {months} of spending, at your average of {usual} a month.
 
 Way to think about it, in turn:
 
-- A cushion turns surprises into inconveniences. How big feels right is your call.
-- A cushion gives room to handle the unexpected calmly. How much is enough is yours to decide.
-- Months of cover is a simple way to see how much room you have.
-- Knowing the number is the useful part; the right size depends on your life.
+- Money you can reach quickly (a "cushion") turns surprises into inconveniences. How big feels right is your call.
+- Money set aside like this lets you handle the unexpected calmly. How much is enough is yours to decide.
+- Counting it in months of spending is a simple way to see how much room you have.
+- Knowing the number is the useful part. The right amount depends on your life.
 
-### sameSeason (Long view)
+### sameSeason (Big picture)
 
 The month against the same month last year, only when both are complete and already in the range.
 
 Phrasings:
 
-- {month} spending was about {diff} {direction} than {month} last year.
-- Compared with {month} last year, spending was about {diff} {direction}.
-- {month} last year: {then}. This {month}: {now}.
+- Spending in {monthNow} was about {diff} {direction} than in {monthThen}.
+- Compared with the same month a year earlier, {monthNow} spending was about {diff} {direction}.
+- Spending in {monthThen}: {then}. A year later, in {monthNow}: {now}.
 
 Way to think about it, in turn:
 
-- The same month last year is the fair comparison: holidays, bonuses and school terms line up.
-- Comparing like with like takes the seasons out of the picture.
+- The same month a year earlier is the fair comparison, because holidays, bonuses and school terms line up.
+- Comparing the same month takes seasonal costs out of the picture.
 - A year apart, the same month shows what really changed.
 - Seasonal costs repeat. Last year's month is a gentle guide to this one.
 
-### chineseNewYear (Long view)
+### chineseNewYear (Big picture)
 
 Seasonal: in the month before or of Chinese New Year, last year's Chinese New Year month, when it is in the range. Shown ahead of the other long views.
 
 Phrasings:
 
-- Chinese New Year falls in {cnyMonth}. Last year's Chinese New Year month, {lastMonth}, came to {amount} of spending.
-- Last Chinese New Year month, {lastMonth}, spending came to {amount}. This year's falls in {cnyMonth}.
-- {amount}: what {lastMonth}, last year's Chinese New Year month, came to.
+- Chinese New Year falls in {cnyMonth}. Last year it fell in {lastMonth}, when spending came to {amount}.
+- In {lastMonth}, last year's Chinese New Year month, spending came to {amount}. This year it falls in {cnyMonth}.
+- Last Chinese New Year, in {lastMonth}, spending came to {amount} for the month.
 
 Way to think about it, in turn:
 
@@ -408,7 +417,7 @@ Way to think about it, in turn:
 - Reunion dinners, red packets and visits add up. Last year's month is a useful guide.
 - Knowing roughly what the season costs lets you enjoy it without surprises.
 
-### categoryFraction (Just for fun)
+### categoryFraction (Fun fact)
 
 The month's biggest category (not Other, loans, rent, bills, insurance, tax, savings or transfers) as a plain fraction, between one in two and one in twelve.
 
@@ -416,9 +425,9 @@ Trivia type: `category-fraction`.
 
 Line:
 
-- About one in every {fraction} dollars in {month} went to {category}.
+- About one in every {fraction} dollars spent in {month} went on {category}.
 
-### halfOfSpending (Just for fun)
+### halfOfSpending (Fun fact)
 
 How few categories made up half of the focus (or latest complete) month's spending (two or more, and fewer than all).
 
@@ -426,9 +435,9 @@ Trivia type: `half-of-spending`.
 
 Line:
 
-- {count} categories made up half of {month}'s spending.
+- Half of {month}'s spending went on just {count} categories.
 
-### lastYearTop (Just for fun)
+### lastYearTop (Fun fact)
 
 The biggest category of the same month last year, when it is in the range.
 
@@ -436,9 +445,9 @@ Trivia type: `last-year-top`.
 
 Line:
 
-- A year ago, {category} was your biggest category.
+- A year ago, in {month}, you spent more on {category} than on any other category.
 
-### everyMonthCategory (Just for fun)
+### everyMonthCategory (Fun fact)
 
 Of the categories in every complete month of the range (3 or more months), the steadiest, with its monthly average.
 
@@ -446,9 +455,9 @@ Trivia type: `every-month-category`.
 
 Line:
 
-- {category} showed up in all {count} months of this range, about {amount} a month on average.
+- {category} came up in all {count} months from {span}, about {amount} a month on average.
 
-### mostEntriesMonth (Just for fun)
+### mostEntriesMonth (Fun fact)
 
 The complete month with the most entries (3 or more months, no tie).
 
@@ -456,9 +465,9 @@ Trivia type: `most-entries-month`.
 
 Line:
 
-- The month with the most entries in this range: {month}, with {count}.
+- Of the months from {span}, {month} had the most separate costs: {count}.
 
-### quietestMonth (Just for fun)
+### quietestMonth (Fun fact)
 
 The complete month with the least spending (3 or more months, no tie).
 
@@ -466,9 +475,9 @@ Trivia type: `quietest-month`.
 
 Line:
 
-- The quietest month for spending in this range: {month}, at {amount}.
+- Of the months from {span}, {month} had the least spending: {amount}.
 
-### biggestMonth (Just for fun)
+### biggestMonth (Fun fact)
 
 The complete month with the most spending (3 or more months, no tie).
 
@@ -476,9 +485,9 @@ Trivia type: `biggest-month`.
 
 Line:
 
-- The biggest month for spending in this range: {month}, at {amount}.
+- Of the months from {span}, {month} had the most spending: {amount}.
 
-### averageMonth (Just for fun)
+### averageMonth (Fun fact)
 
 An average complete month's spending (3 or more months).
 
@@ -486,9 +495,9 @@ Trivia type: `average-month`.
 
 Line:
 
-- An average month in this range came to about {amount} of spending.
+- From {span}, spending averaged about {amount} a month.
 
-### weeklyCategory (Just for fun)
+### weeklyCategory (Fun fact)
 
 The range's biggest everyday category (not Other, loans, rent, bills, insurance, tax, savings or transfers), per week.
 
@@ -496,9 +505,9 @@ Trivia type: `weekly-category`.
 
 Line:
 
-- {category} came to about {amount} a week across this range.
+- {category} came to about {amount} a week from {span}.
 
-### categoriesCount (Just for fun)
+### categoriesCount (Fun fact)
 
 How many categories the range's complete months used (3 or more).
 
@@ -506,9 +515,9 @@ Trivia type: `categories-count`.
 
 Line:
 
-- {count} different categories show up across this range.
+- Your spending from {span} fell into {count} different categories.
 
-### topCategoryMonths (Just for fun)
+### topCategoryMonths (Fun fact)
 
 The category that was biggest in the most complete months (2 or more, no tie).
 
@@ -516,9 +525,9 @@ Trivia type: `top-category-months`.
 
 Line:
 
-- {category} was the biggest category in {count} of the {total} months here.
+- {category} was your biggest spending category in {count} of the {total} months from {span}.
 
-### topCategoryEntries (Just for fun)
+### topCategoryEntries (Fun fact)
 
 The category with the most entries in the focus (or latest complete) month (2 or more, no tie, not Other).
 
@@ -526,9 +535,9 @@ Trivia type: `top-category-entries`.
 
 Line:
 
-- {category} had the most entries in {month}: {count}.
+- {category} came up most often in {month}: {count} times.
 
-### entriesTotal (Just for fun)
+### entriesTotal (Fun fact)
 
 The entries across the range's complete months (2 or more months).
 
@@ -536,9 +545,9 @@ Trivia type: `entries-total`.
 
 Line:
 
-- This range in numbers: {count} entries across {months} months.
+- From {span}, {count} separate costs were recorded over {months} months.
 
-### mostIncomeMonth (Just for fun)
+### mostIncomeMonth (Fun fact)
 
 The complete month with the most income (3 or more months with income, no tie).
 
@@ -546,9 +555,9 @@ Trivia type: `most-income-month`.
 
 Line:
 
-- The most money came in during {month}: {amount}.
+- Of the months from {span}, the most money came in during {month}: {amount}.
 
-### categoryPeak (Just for fun)
+### categoryPeak (Fun fact)
 
 The largest single everyday category-month in the range (3 or more complete months, no tie).
 
@@ -556,9 +565,9 @@ Trivia type: `category-peak`.
 
 Line:
 
-- The biggest single category month in this range: {category} in {month}, at {amount}.
+- From {span}, the most spent on one category in one month was {amount}, on {category} in {month}.
 
-### dailyAverage (Just for fun)
+### dailyAverage (Fun fact)
 
 The range's spending per day (2 or more complete months).
 
@@ -566,9 +575,9 @@ Trivia type: `daily-average`.
 
 Line:
 
-- Across this range, spending averaged about {amount} a day.
+- From {span}, spending averaged about {amount} a day.
 
-### rangeTotal (Just for fun)
+### rangeTotal (Fun fact)
 
 The range's spending in all (2 or more complete months).
 
@@ -576,9 +585,9 @@ Trivia type: `range-total`.
 
 Line:
 
-- Spending across this range came to about {amount} over {months} months.
+- Over {months} months, from {span}, spending came to about {amount} in all.
 
-### rangeShare (Just for fun)
+### rangeShare (Fun fact)
 
 The range's biggest everyday category as one in every N dollars (between one in two and one in twelve).
 
@@ -586,9 +595,9 @@ Trivia type: `range-share`.
 
 Line:
 
-- {category} took about one in every {fraction} dollars across this range.
+- From {span}, about one in every {fraction} dollars you spent went on {category}.
 
-### secondCategory (Just for fun)
+### secondCategory (Fun fact)
 
 The everyday category in second place across the range (no tie).
 
@@ -596,9 +605,9 @@ Trivia type: `second-category`.
 
 Line:
 
-- {category} came second across this range, after {top}.
+- From {span}, {category} was your second-biggest spending category, after {top}.
 
-### incomeMonths (Just for fun)
+### incomeMonths (Fun fact)
 
 How many complete months had income come in (1 or more, of 2 or more months).
 
@@ -606,9 +615,9 @@ Trivia type: `income-months`.
 
 Line:
 
-- Income came in during {count} of the {total} months here.
+- Money came in during {count} of the {total} months from {span}.
 
-### yearRecap (Just for fun)
+### yearRecap (Fun fact)
 
 Moment: a range ending in December recaps that year (3 or more of its months in the range).
 
@@ -616,9 +625,9 @@ Trivia type: `year-recap`.
 
 Line:
 
-- {year} in numbers: {entries} entries, and {category} was the biggest category.
+- {year} in numbers: {entries} costs recorded, and more went on {category} than on anything else.
 
-### anniversary (Just for fun)
+### anniversary (Fun fact)
 
 Moment: a range ending this month, 12, 24, ... months after the first month with data.
 
@@ -626,11 +635,11 @@ Trivia type: `anniversary`.
 
 Line:
 
-- {years} of Monie's Map: your first month here was {firstMonth}.
+- {years} of Monie's Map: your records here begin in {firstMonth}.
 
 ## Month
 
-Just for fun follows the month. Month number, then the type tried first and its reserves:
+Fun fact follows the month. Month number, then the type tried first and its reserves:
 
 - January: `regular-spot`, then `quiet-weekday`
 - February: `no-spend-days`
@@ -645,89 +654,89 @@ Just for fun follows the month. Month number, then the type tried first and its 
 - November: `day-average`
 - December: `biggest-bill`, then `top-two-categories`
 
-### unlinkedBills (Quick fix)
+### unlinkedBills (To do)
 
 Planned bills dated before today with no entry linked.
 
 Phrasings:
 
-- {count} planned bills dated before today have no entry linked yet.
-- {count} planned bills, {total} in all, are still waiting for an entry.
-- Still unlinked: {count} planned bills dated before today, {total} in total.
+- {count} bills you planned for {month}, {total} in all, aren't matched to a payment yet.
+- {count} bills you planned for {month} were due by now, {total} in all, and none is matched to a payment yet.
+- No payment is matched yet to {count} bills planned for {month}. They come to {total} and were due by now.
 
 When the count is 1:
 
-- 1 planned bill dated before today has no entry linked yet: {label}.
-- {label}, planned at {total}, is still waiting for an entry.
-- Still unlinked: {label}, {total}, dated before today.
+- {label}, a bill you planned for {month} at {total}, isn't matched to a payment yet.
+- {label} was due by now, planned at {total}, and isn't matched to a payment yet.
+- No payment is matched yet to {label}, the {total} bill you planned for {month}.
 
 Way to think about it, in turn:
 
-- Linking them keeps the plan honest and catches anything that didn't go out.
-- An unlinked bill might still be on its way, or might not have gone out. Linking shows which.
-- Matching bills to entries is what makes the plan line up with the bank.
-- Once linked, the plan and the entries tell the same story.
+- They may still be coming, or they never went out. Matching each to its payment ("linking") shows which.
+- Some may have gone out under a different name. Matching each bill to its payment ("linking") shows which are still to come.
+- Once each bill is matched to its payment ("linking"), you can see what it really cost next to what you planned.
+- A bill that hasn't turned up may be late, or cancelled. Matching each to its payment ("linking") makes the missing ones easy to spot.
 
 Way to think about it (count of 1), in turn:
 
-- Linking it keeps the plan honest and catches anything that didn't go out.
-- An unlinked bill might still be on its way, or might not have gone out. Linking shows which.
-- Matching it to its entry is what makes the plan line up with the bank.
-- Once linked, the plan and the entries tell the same story.
+- It may still be coming, or it never went out. Matching it to its payment ("linking") shows which.
+- It may have gone out under a different name. Matching the bill to its payment ("linking") shows whether it's still to come.
+- Once the bill is matched to its payment ("linking"), you can see what it really cost next to what you planned.
+- A bill that hasn't turned up may be late, or cancelled. Matching it to its payment ("linking") settles which.
 
-Said once when it clears (Going well): Sorted: every planned bill dated so far has an entry linked. / The plan and the entries agree again, so the numbers here tell the whole story.
+Said once when it clears (Going well): Sorted: every bill you planned so far is matched to its payment. / Each one now shows what it really cost next to what you planned.
 
-### oneOffOverPlan (Bigger question)
+### oneOffOverPlan (Something to think about)
 
 The month went over plan and one or two entries made up at least half of it.
 
 Phrasings:
 
-- {items} made up most of {month}'s {over} over plan.
-- {month} went {over} over plan, mostly {items}.
-- Most of {month}'s {over} over plan came from {items}.
+- {items} made up most of the {over} that {month} went past what you planned to spend.
+- {month}'s spending came to {over} more than you planned, mostly from {items}.
+- {month} went {over} past what you planned to spend. Most of that was {items}.
 
 Way to think about it, in turn:
 
-- Big one-offs happen. Worth deciding: truly one-off, or something to plan for next year?
-- One big item can make a whole month look different. The rest of the month may be right on track.
-- A one-off is worth a quick question: a rare treat, or a cost that comes round each year?
-- Big purchases often have a season. Planning for the next one makes it feel lighter.
+- Big one-offs happen. Was it truly a one-off, or something to plan for next year?
+- One big cost can make a whole month look different. The rest of the month may be right on track.
+- Worth a quick question: a rare treat, or a cost that comes round each year?
+- Big costs often have a season. Planning for the next one makes it feel lighter.
 
-Action: Show those entries
+Action: Show these costs
 
-### categoryOverPlan (Worth a look)
+### categoryOverPlan (Worth knowing)
 
 The category budget furthest over its plan (by $1 or more). Steady under 10% and $20 over (see Notability).
 
 Phrasings:
 
-- {label} went {over} over its {plan} plan.
-- {label} is at {actual} against a {plan} plan.
-- The {label} plan was {plan}; spending came to {actual}.
+- {label} came to {actual}, {over} more than the {plan} you planned.
+- You planned {plan} for {label}, and {actual} has gone on it.
+- {label} spending went {over} past the {plan} you planned for it.
 
 Way to think about it, in turn:
 
-- Plans are guesses made in advance. Adjust the plan or the spending; either is fine as long as it's a choice.
-- Going over in one category is information, not a verdict. It shows where the plan and life differ.
-- If this spending was worth it, the plan can grow to match. If not, next month is a fresh start.
-- A plan that matches real life is easier to keep. This is a useful clue for the next one.
+- If it was worth it, raise next month's plan. If not, next month starts fresh.
+- Going over in one category isn't a verdict. It shows where real life and the plan differ.
+- A plan is a guess made in advance. Changing the plan or the spending are both fine, as long as it's a choice.
+- A plan that matches real life is easier to keep. This shows where to adjust it.
 
 Action: Review {category}
 
-### incomeAbovePlan (Worth a look)
+### incomeAbovePlan (Worth knowing)
 
 A moment (a bonus): income $500 and 10% or more above its plan.
 
 Phrasings:
 
-- Income was {extra} above plan {when}.
-- {extra} more came in than planned {when}.
-- More came in than planned {when}: {extra} above plan.
+- Income {when} was {extra} more than you planned.
+- {extra} more than you planned arrived {when}.
+- More money came in than you planned {when}: {extra} extra.
 
 Way to think about it, in turn:
 
-- Extra money blends into everyday spending quickly. Deciding early how much goes to future you keeps the rest yours to enjoy on purpose.
+- Extra money blends into everyday spending quickly. Deciding early how much to put aside leaves the rest to enjoy on purpose.
 - Extra income is a good moment to decide on purpose: some for later, some to enjoy.
 - A bonus month is the easiest time to move some money toward a goal.
 - Deciding early where extra money goes makes it feel like more.
@@ -738,13 +747,13 @@ A moment (payday): income dated in the last 3 days of the month in progress.
 
 Phrasings:
 
-- {amount} of income arrived on {day}.
+- {amount} of income came in on {day}.
 - Payday: {amount} came in on {day}.
 - {amount} landed on {day}.
 
 Way to think about it, in turn:
 
-- Payday is the easiest moment to give money a job, before it blends into the month.
+- Payday is the easiest moment to decide where money goes, before it blends into the month.
 - Right after payday is when a plan is easiest to follow.
 - Setting savings aside first makes the rest of the month simpler.
 - A few minutes now, deciding where it goes, saves second-guessing later.
@@ -755,28 +764,28 @@ Plan still unspent in the month in progress. Steady (see Notability).
 
 Phrasings:
 
-- {left} of this month's plan is still unspent.
-- {left} of this month's plan is still unspent. Give it a job before it drifts.
+- {left} of what you planned to spend this month hasn't been spent yet.
+- {left} is still left to spend in this month's plan. It's worth deciding what it's for.
   - Think lines for this phrasing, in turn:
-    - Unspent plan isn't spent money yet.
-    - A small decision now keeps it yours.
-    - Leftover plan is room, not a rule.
-- You have {left} of plan left. Savings, next month, or something you've been looking forward to?
+    - Until it's spent, it can still go anywhere you choose.
+    - A small decision now keeps it from slipping away.
+    - You don't have to spend it just because you planned to.
+- You have {left} left in this month's plan. Savings, next month, or something you've been looking forward to?
   - Think lines for this phrasing, in turn:
-    - Unspent plan isn't spent money yet.
-    - A small decision now keeps it yours.
-    - Leftover plan is room, not a rule.
-- Under plan by {left} so far. Nice; decide where it goes while it's still a choice.
+    - Until it's spent, it can still go anywhere you choose.
+    - A small decision now keeps it from slipping away.
+    - You don't have to spend it just because you planned to.
+- So far you've spent {left} less than you planned. Nice. Deciding where it goes now keeps it a choice.
   - Think lines for this phrasing, in turn:
-    - Unspent plan isn't spent money yet.
-    - A small decision now keeps it yours.
-    - Leftover plan is room, not a rule.
+    - Until it's spent, it can still go anywhere you choose.
+    - A small decision now keeps it from slipping away.
+    - You don't have to spend it just because you planned to.
 
 Way to think about it, in turn:
 
-- Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.
-- Money left in the plan is a choice waiting to be made.
-- Deciding before the month ends keeps it from quietly disappearing.
+- Until it's spent, it can still go anywhere: savings, next month, or something you've been looking forward to.
+- Deciding what it's for is easier now than at the end of the month.
+- Deciding before the month ends keeps it from quietly disappearing into everyday spending.
 
 ### planLeftPast (Going well)
 
@@ -784,16 +793,16 @@ Wrap-up: a finished month that came in under plan. Steady (see Notability).
 
 Phrasings:
 
-- {month} finished {left} under plan.
-- {month} came in {left} under plan.
-- Under plan by {left} in {month}.
+- {month} finished {left} under what you planned to spend.
+- You spent {left} less than you planned in {month}.
+- {month} came in {left} under your plan.
 
 Way to think about it, in turn:
 
-- Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.
-- A finished month under plan is money with no job yet. Savings or next month are both good homes.
-- Coming in under plan is a quiet win. Deciding where it goes makes it count.
+- That money isn't set aside for anything yet. Savings or next month are both good homes.
+- Spending less than planned is a quiet win. Deciding where the difference goes makes it count.
 - Months like this give the next one a head start.
+- If the difference is still in your account, moving it to savings keeps it from being spent by accident.
 
 ### savingsOnPlan (Going well)
 
@@ -801,30 +810,30 @@ Every savings row in the plan is met. Steady (see Notability).
 
 Phrasings:
 
-- Savings are on plan {when}.
+- You saved what you planned {when}.
 - {saved} went to savings {when}, as planned.
-- Savings came to {saved} against a {planned} plan.
+- You planned to save {planned} and saved {saved}.
 
 Way to think about it, in turn:
 
 - With savings covered, spending on what you enjoy is part of the plan, not a slip from it.
-- Savings done first makes everything else simpler.
+- Saving first makes everything else simpler.
 - Future you is covered this month. The rest is room to live.
-- Meeting the savings plan is the part that builds up. Worth a moment of credit.
+- Saving what you planned is the part that builds up over time. Worth a moment of credit.
 
-### upcomingBills (Worth a look)
+### upcomingBills (Worth knowing)
 
 Early in the month (days 1 to 10): unlinked planned bills due in the next 10 days.
 
 Phrasings:
 
-- {count} planned bills are due in the next 10 days, {total} in total.
+- {count} bills you planned are due in the next 10 days, {total} in all.
 - Coming up in the next 10 days: {count} planned bills, {total} in all.
-- {total} of planned bills goes out over the next 10 days.
+- {total} in planned bills goes out over the next 10 days.
 
 When the count is 1:
 
-- 1 planned bill is due in the next 10 days: {label}, {total}.
+- 1 bill you planned is due in the next 10 days: {label}, {total}.
 - Coming up in the next 10 days: {label}, {total}.
 - {total} goes out for {label} in the next 10 days.
 
@@ -841,52 +850,52 @@ Mid-month (days 11 to 20): spending is at or behind the calendar's share of the 
 
 Phrasings:
 
-- {spent} of the {plan} plan is used, with {days} days of {month} to go.
-- Mid-month check: {spent} spent against a {plan} plan.
-- {left} of the plan is left for the last {days} days of {month}.
+- {spent} of the {plan} you planned is spent, with {days} days of {month} to go.
+- Mid-month: {spent} spent so far, out of the {plan} you planned for {month}.
+- {left} of the {plan} you planned is still left for the last {days} days of {month}.
 
 Way to think about it, in turn:
 
-- Spending is keeping pace with the plan so far. A calm middle of the month usually makes for a calm end.
-- Halfway through and on pace: the plan is working as intended.
-- Steady spending mid-month leaves room for the unexpected later.
-- Nothing needs changing. The month is unfolding as planned.
+- Spending is on pace with what you planned. A calm middle of the month usually makes for a calm end.
+- On pace so far, so the plan is working as intended.
+- Steady spending now leaves room for the unexpected later.
+- Nothing needs changing. The month is going as planned.
 
-### paceAhead (Worth a look)
+### paceAhead (Worth knowing)
 
 Mid-month (days 11 to 20): spending is ahead of the calendar but still under plan.
 
 Phrasings:
 
-- {spent} of the {plan} plan is used, with {days} days of {month} to go.
-- Mid-month check: {spent} spent against a {plan} plan.
-- {left} of the plan is left for the last {days} days of {month}.
+- {spent} of the {plan} you planned is spent, with {days} days of {month} to go.
+- Mid-month: {spent} spent so far, out of the {plan} you planned for {month}.
+- {left} of the {plan} you planned is still left for the last {days} days of {month}.
 
 Way to think about it, in turn:
 
-- Spending is running ahead of the calendar. Nothing is fixed yet; the rest of the month decides where it lands.
+- That's a bit faster than the days gone by. Nothing is fixed yet. The rest of the month decides where it lands.
 - Some months run ahead early. The second half often evens it out.
-- Ahead of the calendar is a nudge to glance at what's planned, nothing more.
-- There's still room in the plan. Knowing the pace now keeps the rest of the month a choice.
+- Running a little ahead is a nudge to glance at what's still planned, nothing more.
+- There's still money left in the plan. Knowing the pace now keeps the rest of the month a choice.
 
-### fixedCosts (Long view)
+### fixedCosts (Big picture)
 
 Planned bills and subscriptions against the month's income (actual, or planned before it arrives).
 
 Phrasings:
 
-- Planned bills and subscriptions take {rate}% of {whose} income ({planned}).
+- Bills and subscriptions in your plan take {rate}% of {whose} income ({planned}).
 - {planned} of {whose} {income} income is already spoken for by planned bills and subscriptions.
-- Planned bills and subscriptions: {planned}, against {income} of income.
+- Planned bills and subscriptions come to {planned}, out of {income} of income.
 
 Way to think about it, in turn:
 
-- Fixed costs set how much room every month has. The lower they are, the more freedom for everything else.
-- Fixed costs are the part of a budget that decides itself. Knowing the size helps every other choice.
-- The room left after fixed costs is where most choices happen.
-- Fixed costs rarely change, so any change there lasts month after month.
+- "Fixed costs", the bills and subscriptions that come every month, set how much room is left. The lower they are, the more freedom for everything else.
+- "Fixed costs" (bills and subscriptions that come every month) mostly decide themselves. Knowing their size helps with every other choice.
+- What's left after "fixed costs", the bills that come every month, is where most choices happen.
+- "Fixed costs", the bills that come every month, rarely change. So any change there lasts month after month.
 
-### regularSpot (Just for fun)
+### regularSpot (Fun fact)
 
 The place visited most often, at least 3 times (not transport, bills or transfers).
 
@@ -896,7 +905,7 @@ Line:
 
 - Your regular spot: {name}, {count} visits in {month}.
 
-### quietWeekday (Just for fun)
+### quietWeekday (Fun fact)
 
 The weekday with the fewest expenses, once the month has reached every weekday (no tie).
 
@@ -906,7 +915,7 @@ Line:
 
 - {weekday} was the quietest day of the week {when}.
 
-### weekdayPattern (Just for fun)
+### weekdayPattern (Fun fact)
 
 More than half of the dining out (at least 3) on one weekday.
 
@@ -916,7 +925,7 @@ Line:
 
 - Most of your dining out {when} happened on {weekday}s.
 
-### busiestWeekday (Just for fun)
+### busiestWeekday (Fun fact)
 
 The weekday with the most expenses (2 or more, no tie).
 
@@ -924,9 +933,9 @@ Trivia type: `busiest-weekday`.
 
 Line:
 
-- {weekday} was the busiest day of the week {when}, with {count} entries.
+- {weekday} was the busiest day of the week {when}, with spending recorded {count} times.
 
-### noSpendDays (Just for fun)
+### noSpendDays (Fun fact)
 
 Days with no expense in a finished month.
 
@@ -936,7 +945,7 @@ Line:
 
 - {count} days in {month} with nothing spent.
 
-### noSpendDaysSoFar (Just for fun)
+### noSpendDaysSoFar (Fun fact)
 
 Days with no expense so far in the month in progress.
 
@@ -946,7 +955,7 @@ Line:
 
 - {count} days so far in {month} with nothing spent.
 
-### longestRun (Just for fun)
+### longestRun (Fun fact)
 
 The longest run of days in a row with nothing spent (2 or more; the earliest when two are as long).
 
@@ -956,7 +965,7 @@ Line:
 
 - Longest stretch without spending {when}: {count} days, {start} to {end}.
 
-### biggestDay (Just for fun)
+### biggestDay (Fun fact)
 
 The date with the most spending (not savings, transfers or routine bills), and its largest named entry.
 
@@ -964,9 +973,9 @@ Trivia type: `biggest-day`.
 
 Line:
 
-- Your biggest day was {day}: {name}.
+- Your biggest spending day was {day}, led by {name}.
 
-### busiestWeek (Just for fun)
+### busiestWeek (Fun fact)
 
 The week (Monday to Sunday, within the month) with the most spending (no tie).
 
@@ -974,9 +983,9 @@ Trivia type: `busiest-week`.
 
 Line:
 
-- The biggest week {when} began {day}, with {amount} spent.
+- The week starting {day} was the biggest {when}, with {amount} spent.
 
-### halfway (Just for fun)
+### halfway (Fun fact)
 
 The date by which half of the month's spending had gone (3 or more expenses on 2 or more days).
 
@@ -984,9 +993,9 @@ Trivia type: `halfway`.
 
 Line:
 
-- Half of the spending {when} had happened by {day}.
+- Half of all spending {when} was done by {day}.
 
-### dayAverage (Just for fun)
+### dayAverage (Fun fact)
 
 Spending per day of the month (so far, in the month in progress).
 
@@ -996,7 +1005,7 @@ Line:
 
 - Spending {when} averaged about {amount} a day.
 
-### weekendShare (Just for fun)
+### weekendShare (Fun fact)
 
 Weekend spending as one in every N dollars (between one in two and one in twelve).
 
@@ -1006,7 +1015,7 @@ Line:
 
 - Weekends {when} came to {amount}, about one in every {fraction} dollars spent.
 
-### categoryShare (Just for fun)
+### categoryShare (Fun fact)
 
 The biggest everyday category (not savings, bills, insurance, loans, rent or tax) as one in every N dollars.
 
@@ -1016,7 +1025,7 @@ Line:
 
 - {category} took about one in every {fraction} dollars spent {when}.
 
-### topTwoCategories (Just for fun)
+### topTwoCategories (Fun fact)
 
 The month's two biggest everyday categories (not bills, insurance, loans, rent, tax or savings; no tie).
 
@@ -1024,9 +1033,9 @@ Trivia type: `top-two-categories`.
 
 Line:
 
-- {top} and {second} were the two biggest categories {when}.
+- {top} and {second} were the two biggest spending categories {when}.
 
-### categoriesCount (Just for fun)
+### categoriesCount (Fun fact)
 
 How many categories the month's spending touched (3 or more).
 
@@ -1036,7 +1045,7 @@ Line:
 
 - Spending {when} spread across {count} categories.
 
-### categoryDays (Just for fun)
+### categoryDays (Fun fact)
 
 The category that showed up on the most different days (3 or more).
 
@@ -1044,9 +1053,9 @@ Trivia type: `category-days`.
 
 Line:
 
-- {category} showed up on {count} different days {when}.
+- You spent on {category} on {count} different days {when}.
 
-### categoryLargest (Just for fun)
+### categoryLargest (Fun fact)
 
 The largest named entry of the biggest everyday category.
 
@@ -1054,9 +1063,9 @@ Trivia type: `category-largest`.
 
 Line:
 
-- Largest {category} entry {when}: {name}, {amount}.
+- The biggest single amount spent on {category} {when}: {name}, {amount}.
 
-### planCount (Just for fun)
+### planCount (Fun fact)
 
 How many planned bills and category budgets the month's plan holds (2 or more rows).
 
@@ -1064,9 +1073,9 @@ Trivia type: `plan-count`.
 
 Line:
 
-- The plan for {month} holds {parts}.
+- Your plan for {month} has {parts}.
 
-### biggestBill (Just for fun)
+### biggestBill (Fun fact)
 
 The largest planned bill (2 or more bills, no tie).
 
@@ -1074,11 +1083,11 @@ Trivia type: `biggest-bill`.
 
 Line:
 
-- The biggest planned bill {when}: {label}, {amount}.
+- The biggest bill in your plan {when}: {label}, {amount}.
 
 ## Entries
 
-Just for fun follows the month. Month number, then the type tried first and its reserves:
+Fun fact follows the month. Month number, then the type tried first and its reserves:
 
 - January: `smallest`, then `one-off-places`
 - February: `places`, then `income`
@@ -1093,79 +1102,79 @@ Just for fun follows the month. Month number, then the type tried first and its 
 - November: `accounts-count`
 - December: `busiest-date`, then `weekend-entries`
 
-### uncategorized (Quick fix)
+### uncategorized (To do)
 
 Expenses still in Other this month.
 
 Phrasings:
 
-- {count} entries {when} are still in Other.
-- Still in Other: {count} entries, {total} in all.
-- {count} entries {when} haven't found a category yet.
+- {count} purchases {when}, {total} in all, don't have a category yet.
+- {count} purchases {when} have no category yet, {total} in all.
+- {total} of spending {when} has no category yet, across {count} purchases.
 
 When the count is 1:
 
-- 1 entry {when} is still in Other: {name}.
-- {name} is still in Other.
-- Still in Other: {name}, {total}.
+- One purchase {when} has no category yet: {name}, {total}.
+- {name} ({total}) has no category yet.
+- {when}, {name} for {total} is the only purchase without a category.
 
 Way to think about it, in turn:
 
-- Categories power every chart. Sorting these takes about a minute.
-- A category on each entry keeps the monthly picture accurate.
-- Once sorted, these show up in the right place on every chart.
-- A few taps now and the totals by category tell the full story.
+- They sit under "Other", so your spending by category can't show what they were for. Giving each one a category fills that in.
+- Until then they're counted under "Other", so the categories they belong to look smaller than they are. Picking one for each takes about a minute.
+- For now they're grouped as "Other", the catch-all for anything without a category. Choosing one for each shows where that money really went.
+- Without a category they land in "Other", which says nothing about what they were. A few taps on each puts them with the right kind of spending.
 
 Way to think about it (count of 1), in turn:
 
-- Categories power every chart. Sorting it takes about a minute.
-- A category on it keeps the monthly picture accurate.
-- Once sorted, it shows up in the right place on every chart.
-- A few taps now and the totals by category tell the full story.
+- It sits under "Other", so your spending by category can't show what it was for. Giving it a category fills that in.
+- Until then it's counted under "Other", so the category it belongs to looks smaller than it is. Picking one takes a moment.
+- For now it's grouped as "Other", the catch-all for anything without a category. Choosing one shows where that money really went.
+- Without a category it lands in "Other", which says nothing about what it was. A couple of taps puts it with the right kind of spending.
 
-Said once when it clears (Going well): Sorted: every entry {when} has a category. / Every chart here now tells the whole story.
+Said once when it clears (Going well): Sorted: every purchase {when} now has a category. / Your spending by category now shows where all of it went.
 
-Action: Show those entries
+Action: Show these purchases
 
-### possibleDuplicate (Worth a look)
+### possibleDuplicate (Worth knowing)
 
 The same amount from the same place twice within 7 days.
 
 Phrasings:
 
 - {name} charged {amount} twice, on {dates}.
-- Two entries for {name} at {amount} each, on {dates}.
-- Same amount, same place, close together: {name}, {amount}, on {dates}.
+- Two payments of {amount} each to {name}, on {dates}.
+- {name} shows up twice for the same {amount}, on {dates}.
 
 Way to think about it, in turn:
 
-- Might be right, might be a double charge. A quick look settles it.
-- Double charges are rare but worth catching. The bank statement shows which it is.
-- Two of the same close together is sometimes right, sometimes a slip. Either way it's quick to check.
-- If both are real, nothing to do. If not, removing one keeps the month's totals right.
+- It could be two real purchases, or one charged twice. A quick look settles it.
+- Double charges are rare but worth catching. Your bank app or statement shows whether both went through.
+- The same charge twice within a week is sometimes real, sometimes a slip. Either way it's quick to check.
+- If both are real, there's nothing to do. If one was recorded here twice, removing it keeps the month's spending right.
 
-Action: Show those entries
+Action: Show both payments
 
-### topFive (Worth a look)
+### topFive (Worth knowing)
 
 The five largest entries are 40% or more of the month's spending (6 or more expenses). Steady unless one-off purchases among them are a quarter of the month (see Notability).
 
 Phrasings:
 
-- Your five largest entries were {rate}% of {whose} spending ({top}).
-- {top} of the {total} spent {when} came from just five entries.
-- Five entries, {top}: that's {rate}% of {whose} spending of {total}.
+- Your five largest payments came to {top}, {rate}% of {whose} spending.
+- {top} of the {total} spent {when} went on just five payments.
+- Just five payments made up {rate}% of {whose} spending: {top} of {total}.
 
 Way to think about it, in turn:
 
 - A few big items usually shape a month more than many small ones. That's where a decision has the most effect.
 - Big items are where a month's shape comes from. They're also the easiest to plan for.
-- The largest few entries usually explain most of a month.
+- The largest few payments usually explain most of a month's spending.
 - Most of a month's money goes out in a few decisions. These were the big ones.
 
-Action: Show those entries
+Action: Show those five
 
-### smallestEntry (Just for fun)
+### smallestEntry (Fun fact)
 
 The smallest purchase with a readable name (never a fee, interest, adjustment, or a PayNow or transfer reference).
 
@@ -1173,9 +1182,9 @@ Trivia type: `smallest`.
 
 Line:
 
-- Smallest entry {when}: {amount} at {name}.
+- Smallest purchase {when}: {amount} at {name}.
 
-### largestEntry (Just for fun)
+### largestEntry (Fun fact)
 
 The largest purchase at a place (not a bill, subscription, insurance or transfer).
 
@@ -1183,9 +1192,9 @@ Trivia type: `largest`.
 
 Line:
 
-- Largest entry {when}: {amount} at {name}.
+- Largest purchase {when}: {amount} at {name}.
 
-### placesCount (Just for fun)
+### placesCount (Fun fact)
 
 How many different places the month's purchases came from (3 or more).
 
@@ -1193,9 +1202,9 @@ Trivia type: `places`.
 
 Line:
 
-- Entries {when} came from {count} different places.
+- Purchases {when} were spread across {count} different places.
 
-### oneOffPlaces (Just for fun)
+### oneOffPlaces (Fun fact)
 
 Places that show up only once (2 or more, from 3 or more places).
 
@@ -1203,9 +1212,9 @@ Trivia type: `one-off-places`.
 
 Line:
 
-- {count} places show up just once {when}.
+- {count} places had just one purchase each {when}.
 
-### topPlace (Just for fun)
+### topPlace (Fun fact)
 
 The place with the most spent over two or more entries (no tie).
 
@@ -1213,9 +1222,9 @@ Trivia type: `top-place`.
 
 Line:
 
-- Most spent at one place {when}: {name}, {amount} over {count} entries.
+- Most spent at one place {when}: {name}, {amount} over {count} purchases.
 
-### topAccount (Just for fun)
+### topAccount (Fun fact)
 
 The account or card with the most entries (2 or more, no tie).
 
@@ -1223,9 +1232,9 @@ Trivia type: `top-account`.
 
 Line:
 
-- Most-used account or card {when}: {account}, with {count} entries.
+- Most-used account or card {when}: {account}, used {count} times.
 
-### accountsCount (Just for fun)
+### accountsCount (Fun fact)
 
 How many accounts and cards the month's entries used (2 or more).
 
@@ -1233,9 +1242,9 @@ Trivia type: `accounts-count`.
 
 Line:
 
-- Entries {when} used {count} different accounts and cards.
+- Money moved through {count} different accounts and cards {when}.
 
-### averageEntry (Just for fun)
+### averageEntry (Fun fact)
 
 The average expense (3 or more expenses).
 
@@ -1243,9 +1252,9 @@ Trivia type: `average`.
 
 Line:
 
-- The average entry {when} came to {amount}, across {count} expenses.
+- Across {count} payments {when}, the average came to {amount}.
 
-### medianEntry (Just for fun)
+### medianEntry (Fun fact)
 
 The median purchase: at least half came to this or less (4 or more).
 
@@ -1255,7 +1264,7 @@ Line:
 
 - Half of the purchases {when} came to {amount} or less.
 
-### firstEntry (Just for fun)
+### firstEntry (Fun fact)
 
 The first date with spending, when it has one entry.
 
@@ -1263,9 +1272,9 @@ Trivia type: `first-day`.
 
 Line:
 
-- First entry {when}: {name}, {amount}, on {day}.
+- First purchase {when}: {name}, {amount}, on {day}.
 
-### firstDay (Just for fun)
+### firstDay (Fun fact)
 
 The first date with spending, when it has several: the largest named one leads.
 
@@ -1275,7 +1284,7 @@ Line:
 
 - First day with spending {when}: {day}, led by {name} at {amount}.
 
-### firstDayCount (Just for fun)
+### firstDayCount (Fun fact)
 
 The first date with spending, when nothing that day has a readable name (a PayNow, a GIRO).
 
@@ -1285,7 +1294,7 @@ Line:
 
 - First day with spending {when}: {day}, with {entries}.
 
-### entrySpan (Just for fun)
+### entrySpan (Fun fact)
 
 The first and last dates in the list and the number of days with entries (2 or more).
 
@@ -1293,9 +1302,9 @@ Trivia type: `span`.
 
 Line:
 
-- Entries {when} run from {first} to {last}, across {days} different days.
+- Money moved on {days} different days {when}, from {first} to {last}.
 
-### repeatedAmount (Just for fun)
+### repeatedAmount (Fun fact)
 
 The amount that appears most often (twice or more, no tie).
 
@@ -1303,9 +1312,9 @@ Trivia type: `repeated-amount`.
 
 Line:
 
-- The most repeated amount {when}: {amount}, {times}.
+- The amount paid most often {when}: {amount}, {times}.
 
-### categoryCount (Just for fun)
+### categoryCount (Fun fact)
 
 The category with the most expenses (2 or more, no tie, not Other).
 
@@ -1313,9 +1322,9 @@ Trivia type: `category-count`.
 
 Line:
 
-- {category} had the most entries {when}: {count} of them.
+- {category} had the most payments {when}: {count} of them.
 
-### busiestDate (Just for fun)
+### busiestDate (Fun fact)
 
 The date with the most entries (2 or more, no tie).
 
@@ -1323,9 +1332,9 @@ Trivia type: `busiest-date`.
 
 Line:
 
-- Busiest day {when}: {day}, with {count} entries.
+- Busiest day {when}: {day}, with {count} transactions.
 
-### weekendEntries (Just for fun)
+### weekendEntries (Fun fact)
 
 Entries dated on a Saturday or Sunday (2 or more, from 5 or more entries).
 
@@ -1333,9 +1342,9 @@ Trivia type: `weekend-entries`.
 
 Line:
 
-- {count} of the {total} entries {when} fell on a weekend.
+- {count} of the {total} transactions {when} fell on a weekend.
 
-### roundAmounts (Just for fun)
+### roundAmounts (Fun fact)
 
 Expenses in whole dollars (2 or more).
 
@@ -1343,9 +1352,9 @@ Trivia type: `round-amounts`.
 
 Line:
 
-- {count} entries {when} were round amounts, with no cents.
+- {count} payments {when} were round amounts, with no cents.
 
-### sharedEntries (Just for fun)
+### sharedEntries (Fun fact)
 
 Shared entries in the list (2 or more, not all of them).
 
@@ -1353,9 +1362,9 @@ Trivia type: `shared`.
 
 Line:
 
-- {count} of the {total} entries {when} were shared costs.
+- {count} of the {total} transactions {when} were shared costs.
 
-### incomeEntries (Just for fun)
+### incomeEntries (Fun fact)
 
 The month's income entries and their total.
 
@@ -1363,11 +1372,11 @@ Trivia type: `income`.
 
 Line:
 
-- Income {when}: {total} across {entries}.
+- Income {when} came to {total}, across {entries}.
 
 ## Splits
 
-Just for fun follows the current month, for the selected group. Month number, then the type tried first and its reserves:
+Fun fact follows the current month, for the selected group. Month number, then the type tried first and its reserves:
 
 - January: `in-numbers`
 - February: `payer`, then `weekday-most`
@@ -1382,115 +1391,115 @@ Just for fun follows the current month, for the selected group. Month number, th
 - November: `settle-count`, then `span`
 - December: `payment-mix`
 
-### owedToYou (Quick fix)
+### owedToYou (To do)
 
 Person view: the group's balance is owed to you.
 
 Phrasings:
 
 - {other} owes you {amount} {groupFrom}.
-- Still open {groupFrom}: {other} owes you {amount}.
+- {other} still owes you {amount} {groupFrom}.
 - The balance {groupFrom}: {other} owes you {amount}.
 
 Way to think about it, in turn:
 
-- Settling while the trip is fresh keeps it light for both of you.
-- Trips are easiest to settle while everyone remembers the details.
-- A settled trip leaves only the memories to share.
-- Clearing the balance now keeps the next trip simple to plan.
+- Paying back the balance ("settling up") while the trip is fresh keeps it easy for both of you.
+- The balance is simplest to clear while everyone still remembers who paid for what.
+- Once the balance is paid back, only the memories are left to share.
+- Clearing the balance now means the next trip starts from zero.
 
-Said once when it clears (Going well): Sorted: {groupName} is settled up. / Nothing open between you on this one.
+Said once when it clears (Going well): Sorted: nothing is left to pay back {groupFrom}. / Neither of you owes the other anything here.
 
 Action: Settle group
 
-### youOwe (Quick fix)
+### youOwe (To do)
 
 Person view: you owe the group's balance.
 
 Phrasings:
 
 - You owe {other} {amount} {groupFrom}.
-- Still open {groupFrom}: you owe {other} {amount}.
+- You still owe {other} {amount} {groupFrom}.
 - The balance {groupFrom}: you owe {other} {amount}.
 
 Way to think about it, in turn:
 
-- Settling while the trip is fresh keeps it light for both of you.
-- Trips are easiest to settle while everyone remembers the details.
-- A settled trip leaves only the memories to share.
-- Clearing the balance now keeps the next trip simple to plan.
+- Paying back the balance ("settling up") while the trip is fresh keeps it easy for both of you.
+- The balance is simplest to clear while everyone still remembers who paid for what.
+- Once the balance is paid back, only the memories are left to share.
+- Clearing the balance now means the next trip starts from zero.
 
-Said once when it clears (Going well): Sorted: {groupName} is settled up. / Nothing open between you on this one.
+Said once when it clears (Going well): Sorted: nothing is left to pay back {groupFrom}. / Neither of you owes the other anything here.
 
 Action: Settle group
 
-### openBetweenYou (Quick fix)
+### openBetweenYou (To do)
 
 Household view: the group's open balance, never naming who owes whom.
 
 Phrasings:
 
-- {amount} is still open between you {groupFrom}.
-- Still open {groupFrom}: {amount} between you.
-- The balance {groupFrom}: {amount} still to settle between you.
+- {amount} still needs paying back between you {groupFrom}.
+- Not paid back yet {groupFrom}: {amount} between you.
+- The balance {groupFrom}: {amount} still to pay back between you.
 
 Way to think about it, in turn:
 
-- Settling while the trip is fresh keeps it light for both of you.
-- Trips are easiest to settle while everyone remembers the details.
-- A settled trip leaves only the memories to share.
-- Clearing the balance now keeps the next trip simple to plan.
+- Paying back the balance ("settling up") while the trip is fresh keeps it easy for both of you.
+- The balance is simplest to clear while everyone still remembers who paid for what.
+- Once the balance is paid back, only the memories are left to share.
+- Clearing the balance now means the next trip starts from zero.
 
-Said once when it clears (Going well): Sorted: {groupName} is settled up. / Nothing open between you on this one.
+Said once when it clears (Going well): Sorted: nothing is left to pay back {groupFrom}. / Neither of you owes the other anything here.
 
 Action: Settle group
 
-### settleRegularly (Quick fix)
+### settleRegularly (To do)
 
 The think lines for a balance in a group that is not a trip.
 
 Way to think about it, in turn:
 
-- Settling regularly keeps it light for both of you.
+- Paying back the balance now and then ("settling up") keeps it small and easy for both of you.
 - Small balances are quick to clear.
-- A regular settle-up keeps shared money simple.
-- Clearing it now means a fresh start for the next round of shared costs.
+- Clearing it every so often keeps shared money simple between you.
+- Clearing it now gives the next round of shared costs a fresh start.
 
-### bankMatch (Quick fix)
+### bankMatch (To do)
 
 Bank payments that may match a split entered by hand.
 
 Phrasings:
 
-- {count} bank payments may match splits you entered by hand.
-- {count} bank payments look like splits you already entered.
-- {count} bank payments are waiting to be matched to splits.
+- {count} bank payments look like shared costs you already added by hand.
+- {count} bank payments may be shared costs you've already entered yourself.
+- {count} bank payments may already be in your shared costs, added by hand.
 
 When the count is 1:
 
-- 1 bank payment may match a split you entered by hand.
-- A bank payment looks like a split you already entered.
-- One bank payment is waiting to be matched to a split.
+- 1 bank payment looks like a shared cost you already added by hand.
+- A bank payment may be a shared cost you've already entered yourself.
+- One bank payment may already be in your shared costs, added by hand.
 
 Way to think about it, in turn:
 
-- Linking them avoids counting the same cost twice.
-- Matched payments keep the split and the bank telling the same story.
-- A quick review links each payment to its split.
-- Once matched, each shared cost shows up exactly once.
+- If they're the same, matching them stops the costs being counted twice.
+- Matching each payment to its shared cost means it's counted once, not twice.
+- A quick look shows which are the same cost, so none is counted twice.
+- Once matched, each shared cost is counted just once.
 
 Way to think about it (count of 1), in turn:
 
-- Linking it avoids counting the same cost twice.
-- A matched payment keeps the split and the bank telling the same story.
-- A quick review links the payment to its split.
-- Once matched, the shared cost shows up exactly once.
+- If they're the same, matching them stops the cost being counted twice.
+- Matching the payment to its shared cost means it's counted once, not twice.
+- A quick look shows whether it's the same cost, so it isn't counted twice.
+- Once matched, the shared cost is counted just once.
 
-Said once when it clears (Going well): Sorted: no bank payments are waiting to be matched. / Each cost is counted once.
+Said once when it clears (Going well): Sorted: no bank payments are left to match with your shared costs. / Each shared cost is counted once.
 
 Action: Review matches
 
-### shareOfCosts (Long view)
+### shareOfCosts (Big picture)
 
 Person views only: the share of the group's costs you paid (last 3 months, or the open batch).
 
@@ -1502,12 +1511,12 @@ Phrasings:
 
 Way to think about it, in turn:
 
-- Nothing to fix by itself. A good prompt for a friendly chat about how you split things.
+- Nothing to fix here. It can start a friendly chat about who pays for what.
 - Who pays often evens out over time. This shows where it stands now.
 - Uneven stretches are normal. Over a longer time it tends to balance.
-- A split that feels fair to both of you is the right one.
+- Whatever share feels fair to both of you is the right one.
 
-### tripInNumbers (Just for fun)
+### tripInNumbers (Fun fact)
 
 A trip group's costs and its priciest.
 
@@ -1517,7 +1526,7 @@ Line:
 
 - The trip in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
 
-### groupInNumbers (Just for fun)
+### groupInNumbers (Fun fact)
 
 Any other group's costs and its priciest.
 
@@ -1527,7 +1536,7 @@ Line:
 
 - This group in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
 
-### payerCount (Just for fun)
+### payerCount (Fun fact)
 
 Person views only: how many of the costs you paid for, and how much. The household view never compares partners.
 
@@ -1537,7 +1546,7 @@ Line:
 
 - You paid for {count} of the {total} shared costs {groupIn}, {amount} in all.
 
-### busiestDay (Just for fun)
+### busiestDay (Fun fact)
 
 The date with the most shared costs (2 or more, no tie).
 
@@ -1545,9 +1554,9 @@ Trivia type: `busiest-day`.
 
 Line:
 
-- Busiest day {groupIn}: {day}, with {count} shared costs.
+- The busiest day for shared costs {groupIn}: {day}, with {count} of them.
 
-### weekdayMost (Just for fun)
+### weekdayMost (Fun fact)
 
 The weekday with the most shared costs (3 or more costs, no tie).
 
@@ -1557,7 +1566,7 @@ Line:
 
 - {weekday} saw the most shared costs {groupIn}.
 
-### busiestMonth (Just for fun)
+### busiestMonth (Fun fact)
 
 The month with the most shared costs (2 or more months, no tie).
 
@@ -1565,9 +1574,9 @@ Trivia type: `busiest-month`.
 
 Line:
 
-- Busiest month {groupIn}: {month}, with {count} shared costs.
+- The busiest month for shared costs {groupIn}: {month}, with {count} of them.
 
-### sharedTotal (Just for fun)
+### sharedTotal (Fun fact)
 
 What the shared costs add up to (2 or more, in the group's currency).
 
@@ -1577,7 +1586,7 @@ Line:
 
 - Shared costs {groupIn} add up to {amount}.
 
-### averageCost (Just for fun)
+### averageCost (Fun fact)
 
 The average shared cost, in whole units (3 or more).
 
@@ -1587,7 +1596,7 @@ Line:
 
 - The average shared cost {groupIn}: about {amount}.
 
-### priciestDay (Just for fun)
+### priciestDay (Fun fact)
 
 The date with the most money in shared costs (2 or more dates, no tie).
 
@@ -1595,9 +1604,9 @@ Trivia type: `priciest-day`.
 
 Line:
 
-- The priciest day {groupIn}: {day}, with {amount} of shared costs.
+- The priciest day for shared costs {groupIn}: {day}, {amount} in all.
 
-### smallestCost (Just for fun)
+### smallestCost (Fun fact)
 
 The smallest shared cost with a readable name (3 or more).
 
@@ -1607,7 +1616,7 @@ Line:
 
 - The smallest shared cost {groupIn}: {name}, {amount}.
 
-### firstCost (Just for fun)
+### firstCost (Fun fact)
 
 The first shared cost, when no other shares its date.
 
@@ -1617,7 +1626,7 @@ Line:
 
 - The first shared cost {groupIn}: {name} on {day}.
 
-### firstDay (Just for fun)
+### firstDay (Fun fact)
 
 The first day of shared costs, when several share that date.
 
@@ -1627,7 +1636,7 @@ Line:
 
 - Shared costs {groupIn} began on {day}, with {count} that day.
 
-### latestCost (Just for fun)
+### latestCost (Fun fact)
 
 The latest shared cost, when no other shares its date.
 
@@ -1637,7 +1646,7 @@ Line:
 
 - The latest shared cost {groupIn}: {name}, {amount}, on {day}.
 
-### repeatedCost (Just for fun)
+### repeatedCost (Fun fact)
 
 The cost entered most often (twice or more, no tie).
 
@@ -1647,7 +1656,7 @@ Line:
 
 - The most repeated shared cost {groupIn}: {name}, {times}.
 
-### costSpan (Just for fun)
+### costSpan (Fun fact)
 
 The days from the first shared cost to the last (2 or more dates).
 
@@ -1657,7 +1666,7 @@ Line:
 
 - Shared costs {groupIn} span {count} days, from {first} to {last}.
 
-### currencies (Just for fun)
+### currencies (Fun fact)
 
 The currencies the costs came in (2 or more).
 
@@ -1667,7 +1676,7 @@ Line:
 
 - Shared costs {groupIn} came in {count} currencies: {list}.
 
-### topCategory (Just for fun)
+### topCategory (Fun fact)
 
 The biggest category (2 or more categories, no tie).
 
@@ -1675,9 +1684,9 @@ Trivia type: `top-category`.
 
 Line:
 
-- {category} was the biggest category {groupIn}, at {amount}.
+- {category} was the biggest kind of shared cost {groupIn}, at {amount}.
 
-### categoriesCount (Just for fun)
+### categoriesCount (Fun fact)
 
 How many categories the costs spread across (2 or more).
 
@@ -1687,7 +1696,7 @@ Line:
 
 - Shared costs {groupIn} spread across {count} categories.
 
-### paymentMix (Just for fun)
+### paymentMix (Fun fact)
 
 How the costs were paid: by card, in cash, by bank transfer (2 or more ways).
 
@@ -1695,9 +1704,9 @@ Trivia type: `payment-mix`.
 
 Line:
 
-- Shared costs {groupIn}: {parts}.
+- How shared costs {groupIn} were paid: {parts}.
 
-### largestSettlement (Just for fun)
+### largestSettlement (Fun fact)
 
 The largest settle-up.
 
@@ -1705,9 +1714,9 @@ Trivia type: `largest-settlement`.
 
 Line:
 
-- The largest settle-up {groupIn}: {amount} on {day}.
+- The biggest repayment for shared costs {groupIn}: {amount} on {day}.
 
-### settleCount (Just for fun)
+### settleCount (Fun fact)
 
 How many settle-ups there have been (2 or more).
 
@@ -1715,11 +1724,11 @@ Trivia type: `settle-count`.
 
 Line:
 
-- {count} settle-ups so far {groupIn}.
+- {count} repayments so far for shared costs {groupIn}.
 
 ## Quotes
 
-Public domain; wording copied exactly from the source named. Shown only in the expanded view, at most one, never beside a Bigger question. Column is the quote's place in the list, mod 12.
+Public domain; wording copied exactly from the source named. Shown only in the expanded view, at most one, never beside a Something to think about. Column is the quote's place in the list, mod 12.
 
 - Column 1: “The cost of a thing is the amount of what I will call life which is required to be exchanged for it, immediately or in the long run.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: enjoy, calm.
 - Column 2: “A man is rich in proportion to the number of things which he can afford to let alone.” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: enough, calm.
