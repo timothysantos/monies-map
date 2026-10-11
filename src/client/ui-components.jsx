@@ -348,3 +348,9 @@ export function CategoryGlyph({ iconKey }) {
   const Icon = getIconComponent(iconKey);
   return <Icon size={18} strokeWidth={2.2} aria-hidden="true" />;
 }
+
+// The Lead · Support · Detail blocks (design.md) are re-exported here so the
+// bundler keeps them in this shared chunk: the Summary lead and the Month
+// plan sheet both use them, and on their own they were two more files on the
+// first screen (check:bundle counts files).
+export { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
