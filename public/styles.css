@@ -7847,8 +7847,19 @@ th {
   
 }
 
-/* One header row from 1,100 px: tighter spacing below 1,200 px. */
-@media (min-width: 1100px) and (max-width: 1199px) {
+/* The header reads the page's own width (the .shell container), not the
+   window's, so a docked Ask panel (ask-dock.jsx) that narrows the page
+   narrows it the same way. Without the panel the page is the window less
+   36 px, so 1,064 to 1,163 px here is a 1,100 to 1,199 px window. */
+@media (min-width: 761px) {
+  .shell {
+    container: shell / inline-size;
+  }
+}
+
+/* One header row from 1,100 px: tighter spacing below 1,200 px (and on a
+   narrower page, with the changes further down). */
+@container shell (min-width: 840px) and (max-width: 1163px) {
   .control-bar {
     gap: 10px;
   }
@@ -7891,6 +7902,40 @@ th {
 @media (min-width: 761px) and (max-width: 960px) {
   .period-inline {
     justify-content: flex-start;
+  }
+}
+
+/* A page 840 to 1,063 px wide (an 876 to 1,099 px window, or a docked Ask
+   panel beside a 1,280 to 1,499 px one): still one row, with the tighter
+   spacing above, the period box sized to its words, and Imports, Settings
+   and FAQ behind the "More pages" menu, as on a phone. */
+@container shell (min-width: 840px) and (max-width: 1063px) {
+  .control-bar,
+  .context-block {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .tab-secondary {
+    display: none;
+  }
+
+  .tab-overflow-trigger {
+    display: inline-flex;
+  }
+
+  .period-inline {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+
+  .period-nav-cluster {
+    display: contents;
+  }
+
+  .period-display {
+    min-width: 0;
   }
 }
 
