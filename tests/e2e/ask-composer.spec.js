@@ -159,6 +159,10 @@ test.describe("the Ask composer on a phone", () => {
     await plus.click();
     await expect(plus).toHaveAttribute("aria-expanded", "true");
     await expect(menu.getByRole("button")).toHaveText(["Take a photo", "Choose a photo", "Paste"]);
+    // No option looks chosen on open; Tab reaches the first one.
+    await expect(menu.getByRole("button", { name: "Take a photo" })).not.toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(menu.getByRole("button", { name: "Take a photo" })).toBeFocused();
     // The menu opens next to the + (above it, near its left edge).
     const plusBox = await plus.boundingBox();
     const menuBox = await menu.boundingBox();

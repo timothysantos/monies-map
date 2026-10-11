@@ -689,6 +689,7 @@
 /* The + menu, opened above the + (a popover, never a system sheet). */
 .ask-add-menu {
   z-index: 95;
+  outline: none;
   min-width: 200px;
   padding: 6px;
   border: 1px solid var(--line);

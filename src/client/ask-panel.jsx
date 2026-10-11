@@ -772,7 +772,21 @@ function AskConversation({
                 </button>
               </Popover.Trigger>
               <Popover.Portal>
-                <Popover.Content className="ask-add-menu" side="top" align="start" sideOffset={6} collisionPadding={12}>
+                <Popover.Content
+                  className="ask-add-menu"
+                  side="top"
+                  align="start"
+                  sideOffset={6}
+                  collisionPadding={12}
+                  tabIndex={-1}
+                  // Focus the menu itself, not its first option, so a tap
+                  // does not show "Take a photo" as chosen; Tab reaches the
+                  // options and Escape closes it.
+                  onOpenAutoFocus={(event) => {
+                    event.preventDefault();
+                    if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
+                  }}
+                >
                   <div className="ask-add-menu-list" role="group" aria-label={askCopy.composer.add}>
                     <button type="button" onClick={() => chooseFromAddMenu(() => cameraInputRef.current?.click())}>
                       <Camera size={18} aria-hidden="true" />
