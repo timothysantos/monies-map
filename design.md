@@ -146,8 +146,9 @@ a docked panel will be the wide-screen way in.
 
 ### Entry card
 
-`ask-entry-card.jsx` renders the card; `ask-card-model.js` is its pure state
-machine (`draft` → `saving` → `saved`, back to `draft` on failure or Undo).
+`ask-entry-card.jsx` renders the card on the shared blocks ("Lead ·
+Support · Detail" below); `ask-card-model.js` is its pure state machine
+(`draft` → `saving` → `saved`, back to `draft` on failure or Undo).
 
 - Hero card: a 56 px category bubble (the category's palette colour at 20%
   over white, glyph at 70% with the ink, the app's category icon; a neutral
@@ -193,6 +194,100 @@ slide run only under `prefers-reduced-motion: no-preference`.
   Splits when shared, Undo; the Apple Pay Shortcut's saved card offers Open
   this entry (filled), category chips and Choose category when it landed in
   Other, and Splits.
+
+## Lead · Support · Detail
+
+The owner-approved layout for sheets, dialogs and screen tops, first built
+for the Ask entry card. Each sheet or card has one thing you look at first
+(Lead), a few facts that explain it (Support) and quiet rows you tap to
+change things (Detail). Lists stay flat: Entries, Splits activity and the
+Imports preview rows do not become cards.
+
+Blocks (`src/client/ui/lead-support-detail.jsx`, styles in
+`lead-support-detail.css`, imported by each route that uses them so none of
+it is in the first-screen stylesheet):
+
+- `LeadCard {category, title, subtitle, amount, tone, editable, tag, chips,
+  children}`: the white card with the only strong shadow. `category`
+  (`{colorHex, iconKey, icon, bubble}`) draws the 56 px bubble (the colour
+  at 20% over white, the glyph at 70% with the ink) or takes a `bubble`
+  node such as the category editor button. `amount` is the largest text: a
+  string goes through `PrivateMoney`, a node (an input) is used as is;
+  `tone` is a money tone rendered with `moneyToneClass` (text only);
+  `editable` adds the accent underline. `children` sit under the lead line
+  (an actual vs plan bar), then the `chips` row.
+- `MetaChip {icon, person, tone, children}`: one Support pill.
+  `person` takes `getPersonColourVars`; `tone` is a pastel pair at the soft
+  strength (`mint`, `rose`, `sky`, `butter`, `lavender`), such as the mint
+  "Statement certified" chip with a lock. Chips are read-only: a value you
+  change has its own Detail row.
+- `DetailRows {label}` and `DetailRow {label, value, state, onClick,
+  children}`: rows of 48 px or more in one rounded group. `state` is
+  `empty` (muted, "Add a note"), `action` (accent, "Add to splits") or
+  `locked` (muted with a lock, not a button). Without `children` a row is a
+  button; with `children` (the field's own control) it is a `<label>`
+  around it, so the control keeps the row's name.
+- `MoreDetails {summary, open, onOpenChange, label, openLabel}`: the folding
+  row; it lists what it holds while closed. A field folds when most people
+  never change it on that screen. On a wide screen nothing folds.
+- `BottomActions {primary, secondary, destructive}`: the footer. The
+  primary action is last, under the right thumb; the quiet action beside
+  it; a destructive action (rose, `lsd-quiet is-danger`) sits on its own at
+  the start and asks in the app before it acts.
+
+`src/client/detail-field-rows.jsx` adds the field rows the edit sheets
+share: `PickerRow` (the phone picker sheet, `ResponsiveSelect`, in a sheet; a
+native select laid over the row on a wide screen), `DateRow` (a date field
+over the row in a sheet; a visible inline date field on a wide screen) and
+`GrowingTextarea` (what it was, a note).
+
+Where it is used:
+
+- The Ask entry card (`ask-entry-card.jsx`).
+- The Entries edit sheet and inline editor (`entry-edit-card.jsx`). Lead:
+  the category bubble (opens the category editor), what it was and the
+  amount, typed in place unless a statement certified them (then read-only,
+  with the existing lock line under the card). Support: date, wallet,
+  owner, bank state. Detail: Category, Owner, Splits ("Add to splits" or
+  "View split"), the transfer match for a transfer, Note, then Date, Wallet,
+  Posted date, Type (and Transfer direction); on a phone those last ones fold
+  into More details, and a certified entry lists only Posted date (locked)
+  and Type. On a wide screen the card sits left of the rows and each row
+  keeps an inline field, so Tab walks description, amount, the eye, then the
+  rows in order. Delete entry (and Delete split once it is on Splits),
+  Cancel and Save are in the bottom bar.
+- Create split expense (`split-expense-card.jsx`, from the Splits dialog in
+  both layouts; editing and viewing a saved split keep the form for now).
+  Lead: the group bubble (terracotta; a plane for a foreign currency
+  group), what it was, the group, and the total in the group currency
+  (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
+  (`50 / 50`) and how it was paid. Detail: one row per person's share
+  (`split-share-rows.js` reads them from the draft), Category, Group, then
+  Date, Paid by, Paid using, Currency, Evidence and Note (folded on a phone).
+  A share row opens the share editor: the share person's percent and amount,
+  linked through the existing `updateSplitExpenseDraft`, so what the card
+  shows and saves is what the form saved. The odd cent choice shows under
+  the share rows whenever it applies.
+
+Thumb zone (phone):
+
+- The primary action is in a bottom bar that stays at the bottom of the
+  sheet, with Cancel or Close beside it and a destructive action apart on
+  the left; the round close button at the top is never the only way out.
+- Every tappable is 44 x 44 px or more with at least 8 px to its
+  neighbours (`tests/e2e/lead-support-detail-sheets.spec.js` measures the
+  bounding boxes in WebKit on an iPhone 13 and in Chromium).
+- Money fields use `inputMode="decimal"`.
+- The sheet lifts itself above the keyboard (`use-keyboard-inset.js` sets
+  `--keyboard-inset`; see "Mobile Sheet"), and the bottom bar keeps the
+  safe-area inset.
+- No affordance depends on hover. Swipe down to dismiss is not supported:
+  neither the mobile sheet nor the Radix dialog has it, and adding it would
+  be a new gesture that discards a draft.
+
+Hidden money: the lead amount shows `••••` in plain ink with no sign (the
+sign is not rendered), a typed amount is masked, share rows show `••••` for
+the amount but keep the percent, and chips without money stay.
 
 ## Apple Shortcut Install Boundary
 
@@ -947,6 +1042,15 @@ modal desktop dialogs:
   inherited style (see "Mobile sheet: a lighter modal" in
   `docs/audits/macro-loading-baseline.md`). Keep it that way: a new modal
   behaviour for the sheet must not restyle `<body>` or the app root.
+- It lifts itself above the phone keyboard. iPhone Safari keeps the layout
+  viewport when the keyboard opens and only shrinks the visual viewport, so
+  `use-keyboard-inset.js` sets `--keyboard-inset` on the sheet (the height
+  the keyboard covers; toolbar wobbles under 120 px and pinch zoom are
+  ignored), the sheet's `bottom` and `max-height` use it, and the focused
+  field scrolls back into view inside the sheet. The phone Splits dialog
+  does the same.
+- `headerAction` adds a control before the close button (the Entries edit
+  sheet's money eye) and `className` a variant (`is-lead-sheet`).
 - The opener is found by `sheet-focus-return.js`, not from
   `document.activeElement` alone: iPhone and iPad Safari (WebKit) do not
   focus a tapped or clicked button, so after a tap `activeElement` is
