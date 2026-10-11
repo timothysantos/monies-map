@@ -261,8 +261,12 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     await expect(lead.locator(".lsd-chip.is-mint")).toHaveText("Statement certified");
     await expect(lead.locator(".lsd-chip")).toContainText([accountName]);
     await expect(sheet.locator(".entry-edit-lock-message")).toHaveText(
-      "This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Expense and Transfer out, and you can change the note, category, owner or splits."
+      "Bank details are locked to the statement. Category, owner, note and splits stay editable."
     );
+    // The full rule stays on the lock chip, for a hover and a screen reader.
+    const lockChip = lead.locator(".lsd-chip.is-mint");
+    await expect(lockChip).toHaveAttribute("title", "This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Expense and Transfer out, and you can change the note, category, owner or splits.");
+    await expect(lockChip).toHaveAccessibleDescription("This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Expense and Transfer out, and you can change the note, category, owner or splits.");
 
     await sheet.getByRole("button", { name: /More details/ }).click();
     // Date and wallet are in the chips only; posted date is a locked line.

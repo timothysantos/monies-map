@@ -6,7 +6,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { formatCardDate } from "./copy/ask-copy";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
-import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
+import { BANK_FACTS_LOCK_LINE, getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
@@ -71,6 +71,7 @@ export function EntryEditCard({
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
   useRouteWorkBusy(categoryQuickSaveOpen);
   const quickSaveCategoryNameRef = useRef("");
+  const lockDetailId = useId();
 
   const typeOptions = getEntryTypeOptions(entry, { bankFactsLocked });
   const walletOptions = accountOptions.map((option) => ({ value: option.value, label: option.label }));
@@ -302,7 +303,15 @@ export function EntryEditCard({
             entry.accountName ? <MetaChip key="wallet" icon={CreditCard}>{entry.accountName}</MetaChip> : null,
             <MetaChip key="owner" person={entry.ownershipType === "shared" ? "shared" : entry.ownerName}>{ownerLabel}</MetaChip>,
             bankState ? (
-              <MetaChip key="state" icon={bankFactsLocked ? Lock : null} tone={BANK_STATE_TONES[bankState.className]}>
+              <MetaChip
+                key="state"
+                icon={bankFactsLocked ? Lock : null}
+                tone={BANK_STATE_TONES[bankState.className]}
+                // The full lock rule, kept for a hover and a screen reader;
+                // the line under the card is the short version.
+                title={bankFactsLocked ? getBankFactsLockMessage(entry) : undefined}
+                aria-describedby={bankFactsLocked ? lockDetailId : undefined}
+              >
                 {bankState.label}
               </MetaChip>
             ) : null
@@ -311,9 +320,10 @@ export function EntryEditCard({
         {bankFactsLocked ? (
           <p className="lsd-note entry-edit-lock-message" role="status">
             <Lock size={14} aria-hidden="true" />
-            {getBankFactsLockMessage(entry)}
+            {BANK_FACTS_LOCK_LINE}
           </p>
         ) : null}
+        {bankFactsLocked ? <span id={lockDetailId} hidden>{getBankFactsLockMessage(entry)}</span> : null}
       </div>
       <DetailRows label={copy.editCard.detailsLabel} className="entry-edit-rows">
         {categoryRowWithQuickSave}
