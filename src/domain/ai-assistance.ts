@@ -3,7 +3,8 @@ export type AiAssistCapability =
   | "import_explanation"
   | "category_rules"
   | "statement_text_fallback"
-  | "match_ranking";
+  | "match_ranking"
+  | "speech_transcribe";
 
 export interface AiAssistEnv {
   AI?: Ai;
@@ -162,7 +163,9 @@ function unavailable(reason: string, remaining?: number): AiAssistResult<never> 
   return { available: false, reason, remaining };
 }
 
-async function reserveDailyAiBudget(
+// Shared by every AI call: one conservative daily allowance for the whole
+// deployment.
+export async function reserveDailyAiBudget(
   db: D1Database,
   env: AiAssistEnv,
   units: number

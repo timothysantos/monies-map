@@ -27,10 +27,15 @@ import { buildMonthPageDto } from "../domain/pages/month-page";
 import { getCurrentMonthKey } from "../lib/month";
 import type { ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
+import { handleTranscribe } from "./transcribe-route";
 
 export type AiAssistRouteEnv = AiAssistEnv & { DB: D1Database };
 
 export async function handleAiAssistRoute(request: Request, url: URL, env: AiAssistRouteEnv): Promise<Response | null> {
+  if (url.pathname === "/api/ai-assist/transcribe" && (request.method === "POST" || request.method === "GET")) {
+    return handleTranscribe(request, env);
+  }
+
   if (url.pathname === "/api/ai-assist/monthly-narrative" && request.method === "POST") {
     const body = await request.json<{ viewId?: string; month?: string; scope?: PersonScope }>();
     const month = body.month ?? getCurrentMonthKey();
