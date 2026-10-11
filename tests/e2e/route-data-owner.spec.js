@@ -40,7 +40,8 @@ test("a late background refresh of the previous month never replaces the month t
   await expect.poll(() => heldMay).toBe(1);
 
   // Meanwhile the person moves to the previous month, which loads at once.
-  await page.getByRole("button", { name: /previous/i }).first().click();
+  // The header moves the range; a month is picked in the month row.
+  await page.getByRole("group", { name: "Month" }).getByRole("button", { name: "Oct 2025", exact: true }).click();
   await expect(page).toHaveURL(/month=2025-10/);
   // Background refreshes count as required work (H03), so October is not
   // usable until the May refresh settles.
@@ -51,7 +52,7 @@ test("a late background refresh of the previous month never replaces the month t
   await waitUsable(page);
   await page.waitForTimeout(1_000);
   await expect(page).toHaveURL(/month=2025-10/);
-  await expect(page.locator(".period-range-segment")).toHaveText("Oct 2025");
+  await expect(page.getByRole("group", { name: "Month" }).getByRole("button", { name: "Oct 2025", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable)).toBe(true);
   await expect(page.locator(".app-loading-panel")).toHaveCount(0);
   await other.close();

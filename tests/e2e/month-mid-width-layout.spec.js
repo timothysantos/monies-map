@@ -134,7 +134,7 @@ for (const size of MID_WIDTHS) {
     test("every page tab and month control in the header is on screen and not covered", async ({ page }) => {
       const tabs = page.locator("nav.tab-strip > a.tab:visible");
       const tabNames = await tabs.allTextContents();
-      expect(tabNames.map((name) => name.trim())).toEqual(expect.arrayContaining(["Summary", "Month", "Entries", "Settings", "FAQ"]));
+      expect(tabNames.map((name) => name.trim())).toEqual(expect.arrayContaining(["Summary", "Entries", "Settings", "FAQ"]));
       const controls = [
         ...(await tabs.all()),
         page.getByRole("button", { name: "Previous period" }),

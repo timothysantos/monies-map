@@ -83,7 +83,7 @@ test("a failed background refresh from another tab's change shows the notice, no
 
   await expect(notice(page)).toBeVisible();
   await expect(page.locator(".app-loading-panel-error")).toHaveCount(0);
-  await expect(page.locator(".period-range-segment")).toHaveText("May 2026");
+  await expect(page.getByRole("group", { name: "Month" }).getByRole("button", { name: "May 2026", exact: true })).toHaveAttribute("aria-pressed", "true");
   await other.close();
 });
 
@@ -117,13 +117,14 @@ test("a refresh superseded by moving to another month stays silent", async ({ pa
   });
   await expect.poll(() => heldMay).toBeGreaterThan(0);
 
-  await page.getByRole("button", { name: /previous/i }).first().click();
+  // The header moves the range; a month is picked in the month row.
+  await page.getByRole("group", { name: "Month" }).getByRole("button", { name: "Oct 2025", exact: true }).click();
   await expect(page).toHaveURL(/month=2025-10/);
   releaseMay();
   await waitUsable(page);
   await page.waitForTimeout(1_000);
 
-  await expect(page.locator(".period-range-segment")).toHaveText("Oct 2025");
+  await expect(page.getByRole("group", { name: "Month" }).getByRole("button", { name: "Oct 2025", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(notice(page)).toHaveCount(0);
   await expect(page.locator(".app-loading-panel-error")).toHaveCount(0);
   await other.close();

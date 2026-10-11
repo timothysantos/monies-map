@@ -82,7 +82,9 @@ test.describe("mobile continuity", () => {
       await expect(trigger, path).toContainText("View and scope");
 
       const fit = await trigger.evaluate((element) => {
-        const clipped = [element, ...element.querySelectorAll("*")]
+        // The hint beside the Summary tab's month control is screen-reader
+        // only on purpose; nothing visible may be cut short.
+        const clipped = [element, ...element.querySelectorAll("*:not(.is-screen-reader-only)")]
           .filter((node) => node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight)
           .map((node) => node.className);
         const box = element.getBoundingClientRect();

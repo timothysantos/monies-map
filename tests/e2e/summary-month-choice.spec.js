@@ -65,8 +65,17 @@ test.describe("Summary tab month choice on a phone", () => {
     const island = page.locator(".mobile-context-sticky-wrap");
     const allMonths = island.getByRole("button", { name: /All months/ });
     await expect(allMonths).toHaveText(/All months\s*Month/);
-    // Beside the month control the scope trigger drops its hint: one row.
-    await expect(island.locator(".mobile-context-trigger-hint")).toHaveCount(0);
+    // Beside the month control the scope trigger shows no hint line (one
+    // row), but a screen reader still hears it.
+    const hint = island.locator(".mobile-context-trigger-hint");
+    expect(await hint.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+    await expect(island.locator(".mobile-context-trigger")).toHaveAccessibleName("Tim · Direct + Shared View and scope");
+    // On Entries the hint line still shows (negative case).
+    await page.goto("/entries?view=person-tim&month=2026-04");
+    await waitUsable(page);
+    expect(await hint.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThan(5);
+    await page.goto("/summary?view=person-tim&month=2026-04");
+    await waitUsable(page);
     const islandHeight = await island.locator(".mobile-context-sticky-bar").evaluate((element) => element.getBoundingClientRect().height);
     expect(islandHeight).toBeLessThanOrEqual(48);
 
