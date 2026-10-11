@@ -20,6 +20,8 @@ export interface AiAssistResult<T> {
   remaining?: number;
 }
 
+// Only when AI_ASSIST_DAILY_LIMIT is unset or not a number (local and test
+// Workers); production sets 40 in wrangler.jsonc. Either is clamped to 4-60.
 const DEFAULT_DAILY_LIMIT = 12;
 // The daily allowance is one cost guard for the whole deployment, not a
 // household record, so its counter row keeps its original key rather than

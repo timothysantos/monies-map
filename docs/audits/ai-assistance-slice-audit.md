@@ -67,8 +67,9 @@ use.
 ## Free-Tier Guardrails
 
 - The binding is guarded by `AI_ASSIST_ENABLED`; disabled is a normal state.
-- Requests share a conservative D1 cap of 12 daily allowance units before
-  inference. The cap is a product safeguard, not a promise about a provider's
+- Requests share a conservative D1 cap of daily allowance units before
+  inference: 40 in production (`wrangler.jsonc`, raised from 12 with the
+  owner's approval on 2026-10-11), 12 when the var is unset. The cap is a product safeguard, not a promise about a provider's
   changing free-tier terms.
 - Text prompts use a small instruction model with a maximum of 360 tokens;
   statement fallback is capped to 12,000 redacted characters, 700 tokens, and
@@ -306,10 +307,11 @@ gateway.
   the dashboard, answers 429 when spent, which the app treats as a fallback
   to Workers AI; the limit is in beta, eventually consistent and an
   estimate, so an Anthropic Console spend limit is the second backstop.
-  The app's shared daily allowance (`AI_ASSIST_DAILY_LIMIT`, default 12,
-  4 to 60) is reserved once per request before inference; a receipt image
-  costs `AI_ASSIST_VISION_UNITS` (default 2, 1 to 10), so at most six
-  receipt reads a day by default. At Claude Haiku 5.5's list price ($0.10
+  The app's shared daily allowance (`AI_ASSIST_DAILY_LIMIT`, 40 in
+  `wrangler.jsonc`, 12 when unset, 4 to 60) is reserved once per request
+  before inference; a receipt image costs `AI_ASSIST_VISION_UNITS`
+  (default 2, 1 to 10), so at most twenty receipt reads a day in
+  production. At Claude Haiku 5.5's list price ($0.10
   input, $0.50 output per million tokens) a receipt read is a small
   fraction of a cent. Haiku runs at low effort with a JSON schema.
 - Writes: the receipt route's only database write is the aggregate

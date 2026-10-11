@@ -346,8 +346,8 @@ To add Claude later:
    `AI_FALLBACK_MODEL` (default Gemma 4; use
    `@cf/meta/llama-4-scout-17b-16e-instruct` if Gemma 4 is withdrawn),
    `AI_ASSIST_VISION_UNITS` (allowance units per receipt image, default 2,
-   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, default 12,
-   4 to 60).
+   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, 4 to 60;
+   `wrangler.jsonc` sets 40, and a Worker without it uses 12).
 7. Deploy as usual. If Claude rejects the key, model or gateway (400, 401,
    403 or 404), `npx wrangler tail` shows `AI provider config rejected` with
    the status code only; receipts keep working through Workers AI.

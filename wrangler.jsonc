@@ -7,7 +7,7 @@
   "vars": {
     "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create",
     "AI_ASSIST_ENABLED": "true",
-    "AI_ASSIST_DAILY_LIMIT": "12"
+    "AI_ASSIST_DAILY_LIMIT": "40"
   },
   "ai": {
     "binding": "AI"

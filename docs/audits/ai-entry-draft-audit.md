@@ -44,7 +44,7 @@ the user. Wallet, date, type, owner, split and category never come from AI.
 ## Cost
 
 One allowance unit per AI request, 80 output tokens, on the shared daily
-allowance (`AI_ASSIST_DAILY_LIMIT`, default 12). Only an explicit request
+allowance (`AI_ASSIST_DAILY_LIMIT`, 40 in `wrangler.jsonc`). Only an explicit request
 from the user can reach it (the request itself is the action), and only when
 the amount or description is missing. No retry, no background or scheduled
 call.

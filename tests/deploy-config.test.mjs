@@ -32,3 +32,26 @@ test("the Node minimum is the same in engines, script guards and .nvmrc", async 
   assert.equal((workflow.match(/node-version-file: \.nvmrc/g) ?? []).length, setupNodeSteps);
   assert.doesNotMatch(workflow, /node-version:/);
 });
+
+// The production AI allowance (owner-approved 2026-10-11): 40 shared units a
+// day, inside the 4 to 60 clamp, so the Worker reserves against 40 exactly.
+test("production configures 40 daily AI allowance units and the Worker honours it unclamped", async () => {
+  const appConfig = JSON.parse(await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
+  assert.equal(appConfig.vars.AI_ASSIST_DAILY_LIMIT, "40");
+
+  const { reserveDailyAiBudget } = await import("../src/domain/ai-assistance.ts");
+  const bound = [];
+  const db = {
+    prepare: () => {
+      const statement = {
+        bind: (...values) => { bound.push(values); return statement; },
+        run: async () => ({ meta: { changes: 1 } }),
+        first: async () => ({ used_units: 1 })
+      };
+      return statement;
+    }
+  };
+  const result = await reserveDailyAiBudget(db, { AI_ASSIST_DAILY_LIMIT: appConfig.vars.AI_ASSIST_DAILY_LIMIT }, 1);
+  assert.deepEqual(result, { available: true, remaining: 39 });
+  assert.equal(bound[0].at(-1), 40, "the upsert caps usage at the configured limit");
+});
