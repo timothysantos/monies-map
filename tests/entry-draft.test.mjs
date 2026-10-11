@@ -393,6 +393,58 @@ test("negative: an inactive account is never matched", () => {
   assert.notEqual(draft.fields.accountId?.value, "acct-old-dbs");
 });
 
+test("negative: naming an inactive card does not fall through to another account of the same bank", () => {
+  // DBS Altitude is inactive; POSB Joint shares the DBS bank family but is not what was named.
+  const draft = parseEntrySentence("Lunch $10 on DBS Altitude", CONTEXT);
+  assert.equal(draft.fields.accountId, undefined);
+  assert.equal(draft.fields.accountName, undefined);
+  assert.deepEqual(draft.fields.description, s("Lunch"));
+  assert.deepEqual(draft.missing, ["accountId"]);
+  assert.deepEqual(draft.questions, [{ field: "accountId", reason: "invalid", options: [] }]);
+  assert.deepEqual(draft.flags, []);
+  assert.equal(draft.createBody, undefined);
+
+  // Leaving from an inactive card: the source is asked, never POSB Joint.
+  const transfer = parseEntrySentence("Moved $100 from DBS Altitude to OCBC 360", CONTEXT);
+  assert.deepEqual(transfer.fields.entryType, s("transfer"));
+  assert.equal(transfer.fields.accountId, undefined);
+  assert.deepEqual(transfer.transferAccount, s({ accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" }));
+  assert.deepEqual(transfer.questions, [{ field: "accountId", reason: "invalid", options: [] }]);
+
+  // Going to an inactive card: no destination is guessed.
+  const toInactive = parseEntrySentence("Moved $100 from OCBC 360 to DBS Altitude", CONTEXT);
+  assert.deepEqual(toInactive.fields.accountId, s("acct-ocbc-360"));
+  assert.equal(toInactive.transferAccount, undefined);
+  assert.deepEqual(toInactive.fields.description, d("Transfer"));
+
+  // An inactive card beside an active one: the active one is offered, not picked, and POSB Joint is not.
+  const bill = parseEntrySentence("Paid DBS Altitude bill $500 from OCBC 360", CONTEXT);
+  assert.equal(bill.fields.accountId, undefined);
+  assert.deepEqual(bill.questions, [{
+    field: "accountId",
+    reason: "invalid",
+    options: [{ accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" }]
+  }]);
+});
+
+test("the bank alone still finds its one active account, and two named cards are still asked", () => {
+  const dbs = parseEntrySentence("Lunch $10 on DBS", CONTEXT);
+  assert.deepEqual(dbs.fields.accountId, s("acct-posb-joint"));
+  assert.deepEqual(dbs.questions, []);
+
+  const bill = parseEntrySentence("Paid OCBC 365 bill $500 from OCBC 360", CONTEXT);
+  assert.equal(bill.fields.accountId, undefined);
+  assert.deepEqual(bill.flags, ["ambiguous_account"]);
+  assert.deepEqual(bill.questions, [{
+    field: "accountId",
+    reason: "ambiguous",
+    options: [
+      { accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" },
+      { accountId: "acct-ocbc-365", accountName: "OCBC 365 Card" }
+    ]
+  }]);
+});
+
 test("negative: an unknown currency symbol is flagged, not read as dollars", () => {
   const draft = parseEntrySentence("Lunch ₹500", CONTEXT);
   assert.equal(draft.fields.amountMinor, undefined);

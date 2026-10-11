@@ -1711,8 +1711,8 @@ draft (`EntryDraftDto`) gives each create field with its source
 (today, yesterday, a weekday meaning the most recent past one, `28 Sep`,
 `28/9`, `29/09/26`), account names, people, split words and transfer or
 income phrases. It never guesses: two amounts, an account name that matches
-several accounts, an uneven split, an unclear payer, a bad date and an
-amount in another currency are asked. AI is asked only when the sentence
+several accounts, an inactive account, an uneven split, an unclear payer,
+a bad date and an amount in another currency are asked. AI is asked only when the sentence
 named no amount or left no description: one allowance unit, the redacted
 sentence alone, 80 tokens. Its answer fills only those gaps after
 validation (the amount must be stated in the sentence, the description must

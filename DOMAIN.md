@@ -618,7 +618,10 @@ Important distinctions:
   never guesses: two amounts, an account name matching several accounts, an
   uneven split ("70/30"), "she paid" with no one named, an impossible or
   conflicting date and an amount in another currency than the account's are
-  asked. A future date is kept but flagged and asked.
+  asked. A future date is kept but flagged and asked. A name that matches
+  only an inactive account ("DBS Altitude") is never moved to another
+  account of the same bank: the account is asked (`invalid`), offering only
+  active accounts the sentence also named.
 - A foreign amount ("IDR 159,000") is kept as `foreignAmount`; the account
   amount stays missing until confirmed, unlike a Shortcut `foreign currency
   estimate`, which converts at the day's rate.

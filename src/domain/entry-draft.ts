@@ -97,7 +97,9 @@ export function parseEntrySentence(
   const ratio = readSplitRatio(scanner);
   const dates = readDates(scanner, context.today);
   const typeWords = readTypeWords(scanner);
-  const mentions = readAccountMentions(scanner, activeAccounts, context.people);
+  // Inactive accounts are read too, only so that a name matching one ("DBS
+  // Altitude") is asked rather than moved to another account of the bank.
+  const mentions = readAccountMentions(scanner, context.accounts, context.people);
   const amounts = readAmounts(scanner);
   const people = readPeople(scanner, context.people, context.viewerName);
   const remainder = scanner.remainder();
@@ -146,6 +148,8 @@ export function parseEntrySentence(
     }
     if (source?.accounts.length === 1) {
       account = sentence(source.accounts[0]);
+    } else if (source?.inactive) {
+      questions.push(accountQuestion("invalid", [], context.accounts));
     } else if (source && source.accounts.length > 1) {
       flags.push("ambiguous_account");
       questions.push(accountQuestion("ambiguous", source.accounts, context.accounts));
@@ -158,7 +162,9 @@ export function parseEntrySentence(
     }
   } else {
     const named = uniqueAccounts(mentions.flatMap((mention) => mention.accounts));
-    if (named.length === 1) {
+    if (mentions.some((mention) => mention.inactive)) {
+      questions.push(accountQuestion("invalid", named, context.accounts));
+    } else if (named.length === 1) {
       account = sentence(named[0]);
     } else if (named.length > 1) {
       flags.push("ambiguous_account");
@@ -539,7 +545,10 @@ function readTypeWords(scanner: SentenceScanner) {
 }
 
 interface AccountMention {
+  // The active accounts the words name; empty when they name only an
+  // inactive one.
   accounts: AccountDto[];
+  inactive?: boolean;
   role?: "from" | "to";
 }
 
@@ -580,7 +589,9 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
       continue;
     }
     const candidates = accounts.filter((account) => vocab.get(account.id)?.anchors.has(tokens[index].word));
-    if (!candidates.length) {
+    // A word that only an inactive account uses ("Altitude" alone) is left
+    // for the description, as before inactive accounts were read at all.
+    if (!candidates.some((account) => account.isActive)) {
       continue;
     }
     const known = (word: string) => candidates.some((account) => vocab.get(account.id)?.words.has(word));
@@ -595,7 +606,10 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
     const runWords = tokens.slice(first, last + 1).map((token) => token.word);
     const scores = candidates.map((account) => runWords.filter((word) => vocab.get(account.id)?.words.has(word)).length);
     const best = Math.max(...scores);
-    const winners = candidates.filter((_, candidateIndex) => scores[candidateIndex] === best);
+    const bestMatches = candidates.filter((_, candidateIndex) => scores[candidateIndex] === best);
+    // A tie with an active account goes to it ("DBS" is POSB Joint); a
+    // better match on an inactive one ("DBS Altitude") names that card.
+    const winners = bestMatches.filter((account) => account.isActive);
     for (let tokenIndex = first; tokenIndex <= last; tokenIndex += 1) {
       used.add(tokenIndex);
     }
@@ -614,7 +628,7 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
       }
     }
     scanner.consume(start, tokens[last].end);
-    mentions.push({ accounts: winners, ...(role ? { role } : {}) });
+    mentions.push({ accounts: winners, ...(winners.length ? {} : { inactive: true }), ...(role ? { role } : {}) });
   }
   return mentions;
 }
@@ -850,7 +864,7 @@ function orderByPriority(accounts: AccountDto[], priorityIds: string[]) {
 }
 
 function accountQuestion(
-  reason: "ambiguous" | "transfer_from" | "missing",
+  reason: "ambiguous" | "transfer_from" | "missing" | "invalid",
   candidates: AccountDto[],
   order: AccountDto[]
 ): EntryDraftQuestionDto {
