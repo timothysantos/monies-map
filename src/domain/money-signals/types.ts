@@ -12,13 +12,15 @@ export type SignalKind =
   | "just_for_fun"
   | "long_view";
 
+// The chip each kind shows says what the line asks of the reader, in plain
+// words (the code names are the kinds' older labels).
 export const SIGNAL_KIND_LABELS: Record<SignalKind, string> = {
-  quick_fix: "Quick fix",
-  bigger_question: "Bigger question",
-  worth_a_look: "Worth a look",
+  quick_fix: "To do",
+  bigger_question: "Something to think about",
+  worth_a_look: "Worth knowing",
   going_well: "Going well",
-  just_for_fun: "Just for fun",
-  long_view: "Long view"
+  just_for_fun: "Fun fact",
+  long_view: "Big picture"
 };
 
 // Headline order: a quick fix first, because every other number depends on

@@ -15,7 +15,7 @@ import { QUOTES } from "../src/domain/money-signals/quotes.ts";
 import { YEAR_MONTHS } from "../src/domain/money-signals/rotation.ts";
 import { SPLITS_CALM_LINES, SPLITS_COPY } from "../src/domain/money-signals/splits-signals.ts";
 import { SUMMARY_CALM_LINES } from "../src/domain/money-signals/summary-signals.ts";
-import { findPercentWithoutMoney, findToneProblems } from "../src/domain/money-signals/tone.ts";
+import { findAppJargon, findPercentWithoutMoney, findToneProblems } from "../src/domain/money-signals/tone.ts";
 
 function catalogueLines() {
   const lines = [];
@@ -74,9 +74,29 @@ test("every approved phrasing, think line, sorted line, trivia, quiet and calm l
   assert.ok(lines.length > 350, `${lines.length} lines`);
   const problems = lines.flatMap(([where, text]) => [
     ...findToneProblems(text).map((problem) => `${where}: "${text}" ${problem}`),
-    ...findPercentWithoutMoney(text).map((sentence) => `${where}: "${sentence}" shows a percentage without the money amount`)
+    ...findPercentWithoutMoney(text).map((sentence) => `${where}: "${sentence}" shows a percentage without the money amount`),
+    ...findAppJargon(text).map((problem) => `${where}: "${text}" ${problem}`)
   ]);
   assert.deepEqual(problems, []);
+});
+
+test("the plain-words lint catches app-centred phrases and lets everyday ones through", () => {
+  for (const bad of [
+    "Tim's OCBC 365 statement is $42.10 away from the app.",
+    "Once sorted, these show up in the right place on every chart.",
+    "Still unlinked: 3 planned bills.",
+    "That keeps every total here trustworthy.",
+    "The plan and the entries tell the same story."
+  ]) {
+    assert.ok(findAppJargon(bad).length > 0, bad);
+  }
+  for (const fine of [
+    "19 purchases in August don't have a category yet.",
+    "Matching each to its payment (\"linking\") shows which.",
+    "Happy charting the year ahead."
+  ]) {
+    assert.deepEqual(findAppJargon(fine), [], fine);
+  }
 });
 
 test("every signal has 3 to 5 phrasings with the same numbers; trivia has one line", () => {
