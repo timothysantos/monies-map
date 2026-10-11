@@ -13,6 +13,7 @@ import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { moneyToneClass } from "./money-tone-class";
 import { entryAmountTone } from "../domain/money-tone";
+import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 
 const {
   categories: categoryService,
@@ -60,7 +61,7 @@ export function EntryEditorFields({
   useRouteWorkBusy(categoryQuickSaveOpen);
   const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
   const quickSaveCategoryNameRef = useRef("");
-  const bankFactsLockMessage = "This row is statement certified. Description, date, posted date, wallet, amount, and type are locked to the saved statement. Use note, category, owner, or splits for annotations.";
+  const bankFactsLockMessage = getBankFactsLockMessage(entry);
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
@@ -272,12 +273,7 @@ export function EntryEditorFields({
             className={`table-edit-input ${typeToneClass}`}
             title={messages.entries.editType}
             value={entry.entryType}
-            disabled={bankFactsLocked}
-            options={[
-              { value: "expense", label: "Expense" },
-              { value: "income", label: "Income" },
-              { value: "transfer", label: "Transfer" }
-            ]}
+            options={getEntryTypeOptions(entry, { bankFactsLocked })}
             onValueChange={(nextEntryType) => {
               onChange({
                 entryType: nextEntryType,
@@ -286,7 +282,7 @@ export function EntryEditorFields({
                   : entry.categoryName === "Transfer"
                     ? "Other"
                     : entry.categoryName,
-                transferDirection: nextEntryType === "transfer" ? (entry.transferDirection ?? "out") : undefined
+                transferDirection: nextEntryType === "transfer" ? getTransferDirectionForTypeSwitch(entry, { bankFactsLocked }) : undefined
               });
             }}
           />
