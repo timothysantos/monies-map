@@ -905,8 +905,15 @@ were already covered, and whether any exception remained.
 
 After a row is statement-certified inside a saved statement period, its bank
 facts are locked. You can still edit user annotations such as category, note,
-ownership, and splits, but changing date, description, account, amount, type, or
-transfer direction requires a replacement statement or explicit adjustment.
+ownership, and splits, but changing date, description, account, amount, or the
+direction the money moved requires a replacement statement or explicit
+adjustment. The lock (`assertUnlockedBankFactsForEntryUpdate` in
+`src/domain/app-repository-entry-commands.ts`) compares the signed amount from
+`getSignedLedgerAmountMinor`, so refiling within one direction (income and
+transfer in, or expense and transfer out) is allowed: it changes no certified
+balance. Expense to income, or transfer in to transfer out, is refused.
+Rolling the statement back keeps a transfer entry type that a transfer link
+made since needs.
 
 ## How are duplicates and overlaps detected?
 

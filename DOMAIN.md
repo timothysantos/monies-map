@@ -500,7 +500,9 @@ Important distinctions:
   manual entry with its current bank facts rather than deleting it.
 - The newest PDF statement for an account remains rollbackable even when it
   certified existing provisional rows. Rollback restores those rows to their
-  prior working state and removes the statement certificate metadata. Older PDF
+  prior working state and removes the statement certificate metadata; an
+  entry linked as a transfer since keeps the transfer entry type and
+  direction its link needs, as in the current-activity rollback above. Older PDF
   statements stay locked once a later statement certificate exists for the same
   account.
 - Rows a statement superseded (deleted) are re-created by its rollback with
@@ -651,6 +653,20 @@ Important distinctions:
 - A `statement_certified` entry cannot be deleted on its own: a statement
   certificate counts it. Rolling back the statement import is the way to
   remove or restore it.
+- Inside a saved statement period (a `statement checkpoint` covers its
+  account and date), a `statement_certified` entry's bank facts are locked:
+  account, transaction date, posted date, description, amount, and the
+  direction the money moved. The lock compares the signed amount
+  (`getSignedLedgerAmountMinor`): `income` and transfer `in` add to the
+  balance, `expense` and transfer `out` take from it. Refiling within one
+  direction (income <-> transfer in, expense <-> transfer out) changes no
+  certified balance, so it is the app's reading of the row, not a bank fact,
+  and stays editable like category, note, ownership and splits. A change of
+  direction (expense <-> income, transfer in <-> transfer out) is refused.
+  The refile leaves the certificate and the `statement_certified_previous_*`
+  state underneath it unchanged, and a later copy of the same statement still
+  finds the row already certified, because certified cover matches on the
+  signed amount.
 
 ### Entry Share
 
