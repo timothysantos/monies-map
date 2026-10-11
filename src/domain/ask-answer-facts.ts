@@ -72,7 +72,10 @@ export interface MonthFacts {
   plannedMinor: number;
   incomeMinor: number;
   plannedIncomeMinor: number;
+  // Every entry the view counts this month, and the expenses among them
+  // (the rows Open in Entries shows for spending).
   entryCount: number;
+  expenseCount: number;
   categories: CategoryFact[];
   // Every category in the Spending Mix (for a comparison), largest first.
   allCategories: CategoryFact[];
@@ -113,6 +116,8 @@ export type AskAnswerFacts =
   | {
     kind: "owed";
     month: string;
+    // The view the question was asked in (Open Splits keeps it).
+    viewId: string;
     viewerPersonId: string;
     otherPersonId: string;
     personNameById: Record<string, string>;
@@ -176,6 +181,7 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
     incomeMinor: summaryMonth?.actualIncomeMinor ?? 0,
     plannedIncomeMinor: summaryMonth?.plannedIncomeMinor ?? 0,
     entryCount: visible.length,
+    expenseCount: visible.filter((entry) => entry.entryType === "expense").length,
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
     allCategories,
     biggest,

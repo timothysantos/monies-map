@@ -80,6 +80,8 @@ test("why was March so expensive: the Month page's figures, plan, Spending Mix a
   const opened = summarizeFilterAnswer(entriesPage, answer.links[0].filter);
   assert.equal(opened.totals.grossSpendMinor, entriesPage.monthPage.entries.filter((entry) => entry.entryType === "expense").reduce((sum, entry) => sum + entry.amountMinor, 0));
   assert.ok(opened.entryIds.length > 3);
+  // "Spent · N expenses" counts the rows Open in Entries shows.
+  assert.equal(answer.lead.label, `Spent · ${opened.count} expenses`);
 });
 
 test("where did April go leads with the categories, then the biggest cost and the plan", async (t) => {
@@ -159,7 +161,7 @@ test("what do I owe Serene: Ethan's Splits balances plus the settle-up still to 
     + open.reduce((sum, checkpoint) => sum + (checkpoint.toPersonId === ETHAN ? 1 : -1) * (checkpoint.amountMinor - (checkpoint.matchedAmountMinor ?? 0)), 0);
   assert.deepEqual(payload.answer.lead, { label: "Balance", amountMinor: Math.abs(homeNet), currency: "SGD", tone: "in" });
   assert.equal(homeNet, 118241);
-  assert.deepEqual(payload.answer.links, [{ kind: "splits", label: "Open Splits", month: "2026-05", viewId: ETHAN, groupId: "split-group-japan-trip" }]);
+  assert.deepEqual(payload.answer.links, [{ kind: "splits", label: "Open Splits", month: "2026-05", viewId: "household", groupId: "split-group-japan-trip" }]);
   assert.equal(payload.wording.text, "Serene owes you $1,182.41 on Splits. That's $1,019.17 from the 6 Apr settle-up and $303.15 for Home & Bills, less $139.91 for Dinners out. Japan trip has JP¥26,730 still open.");
 
   // On the household view with nobody named, both names are used.
@@ -201,7 +203,7 @@ test("a month with no entries says so instead of borrowing another month", async
   const payload = await ask(api, "why was November 2024 so expensive?");
   assert.deepEqual(payload.months, ["2024-11"]);
   assert.equal(payload.answer.lead.amountMinor, 0);
-  assert.equal(payload.wording.text, "There are no entries in November 2024 yet.");
+  assert.equal(payload.wording.text, "There are no entries for November 2024 yet.");
 });
 
 test("an unsupported question, a bad body or a GET is refused plainly, and nothing is written", async (t) => {

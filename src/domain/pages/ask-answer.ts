@@ -158,6 +158,7 @@ async function owedFacts(
   return {
     kind: "owed",
     month,
+    viewId,
     viewerPersonId,
     otherPersonId,
     personNameById: Object.fromEntries(people.map((person) => [person.id, person.name])),
@@ -177,6 +178,7 @@ function emptyMonthFacts(month: string, viewId: string, scope: PersonScope): Mon
     incomeMinor: 0,
     plannedIncomeMinor: 0,
     entryCount: 0,
+    expenseCount: 0,
     categories: [],
     allCategories: [],
     biggest: [],

@@ -7,7 +7,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   addSavedEntryToSplits,
   requestEntryDraft,
+  requestMoneyAnswer,
   requestReceiptRead,
+  resolveSkewCandidate,
   saveCardEntry,
   undoSavedEntry,
   updateSavedEntryCategory
@@ -30,6 +32,9 @@ import {
   validateCard
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
+import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
+import { skewCheckLabels } from "./ask-skew-check";
+import { readAnswerIntent } from "../domain/ask-answer-intent";
 import { AskBriefCard } from "./ask-brief-card";
 import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
@@ -415,6 +420,16 @@ function AskConversation({
     categories
   }), [accounts, categories, people, selectedMonth, selectedScope, today, view.id]);
 
+  // What the money-question reader knows (ask-answer-intent.ts, shared with
+  // the answer route): today, the month in view, the people, and the
+  // category and wallet names a filter request would name.
+  const answerContext = useMemo(() => ({
+    today,
+    month: selectedMonth,
+    people,
+    vocabulary: [...categories.map((category) => category.name), ...accounts.map((account) => account.name)]
+  }), [accounts, categories, people, selectedMonth, today]);
+
   function isTrackedMonth(month) {
     return !trackedMonths?.length || trackedMonths.includes(month);
   }
@@ -478,6 +493,12 @@ function AskConversation({
     // sentence is a change to it; a question, or a request naming a month,
     // someone's ("Serene's") or an amount limit, is still a search.
     const cardOpen = Boolean(card && card.status !== "saved");
+    // A money question ("why was August so expensive?") goes to the answer
+    // route before the filter reader could read it as a search.
+    if (readAnswerIntent(text, answerContext)) {
+      await askMoneyQuestion(text, { viewId: view.id, scope: filterContext.scope, month: selectedMonth });
+      return;
+    }
     const reading = readFilterRequest(text, filterContext, { cardOpen });
     if (reading.kind !== "none") {
       answerFilterRequest(reading);
@@ -502,6 +523,98 @@ function AskConversation({
     } finally {
       setStatus("");
       setWorking("");
+    }
+  }
+
+  // The answer route: an answer card, the check before one (a skew
+  // candidate that would change the figures), or the "not answered" note.
+  // `request` is the view, scope and month the question was asked in, kept
+  // with the check so asking again after it uses the same ones.
+  async function askMoneyQuestion(text, request, keepCandidateIds = []) {
+    setWorking("answer");
+    setStatus(askCopy.money.reading);
+    try {
+      const result = await requestMoneyAnswer({ text, ...request, keepCandidateIds });
+      if (!result.ok) {
+        appendThread(threadItem("note", { text: askCopy.money.failed, tone: "calm" }));
+      } else if (!result.answer.supported) {
+        appendThread(threadItem("note", { text: askCopy.notes.askNotReady }));
+      } else if (result.answer.needsConfirmation) {
+        appendThread(threadItem("money-check", { text, request, keepCandidateIds, candidate: result.answer.candidates[0], status: "open" }));
+      } else {
+        appendThread(threadItem("money-answer", { text, intent: result.answer.intent, answer: result.answer.answer, wording: result.answer.wording }));
+      }
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+  }
+
+  function setCheckStatus(itemId, status) {
+    updateConversation((current) => ({
+      ...current,
+      thread: current.thread.map((item) => (item.id === itemId ? { ...item, status } : item))
+    }));
+  }
+
+  function openCheckItem() {
+    const current = store.read(conversationKey) ?? conversation;
+    return active?.kind === "money-check" ? current.thread.find((item) => item.id === active.itemId && item.status === "open") ?? null : null;
+  }
+
+  // Mark as settlement / Link as transfer: the candidate's suggested
+  // actions through the existing routes, then the same question again.
+  async function resolveMoneyCheck() {
+    const item = openCheckItem();
+    if (!item || working) {
+      return;
+    }
+    setWorking("resolve");
+    let resolved = false;
+    try {
+      const result = await resolveSkewCandidate(item.candidate);
+      if (!result.ok) {
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      resolved = true;
+      setCheckStatus(item.id, "resolved");
+      const months = [...new Set([item.candidate.outflowEntry?.date, item.candidate.inflowEntry?.date].filter(Boolean).map((date) => date.slice(0, 7)))];
+      for (const month of months) {
+        onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+        if (item.candidate.kind === "settlement") {
+          onSplitMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+        }
+      }
+      appendThread(threadItem("note", { text: skewCheckLabels(item.candidate).resolved }));
+    } finally {
+      setWorking("");
+    }
+    if (resolved) {
+      await askMoneyQuestion(item.text, item.request, item.keepCandidateIds ?? []);
+    }
+  }
+
+  // It's real spending: nothing is changed; the question is asked again
+  // without this candidate (kept in the conversation only).
+  async function keepMoneyCheck() {
+    const item = openCheckItem();
+    if (!item || working) {
+      return;
+    }
+    setCheckStatus(item.id, "kept");
+    appendThread(threadItem("note", { text: skewCheckLabels(item.candidate).kept }));
+    await askMoneyQuestion(item.text, item.request, [...(item.keepCandidateIds ?? []), item.candidate.id]);
+  }
+
+  // An answer's links to the screens, with the view, month and scope they name.
+  function openAnswerLink(link) {
+    if (link.kind === "entries") {
+      navigate({ pathname: "/entries", search: `?${buildEntriesFilterSearch(link.filter).toString()}` });
+    } else if (link.kind === "month") {
+      goTo("/month", {}, buildContextParams(new URLSearchParams(), link.viewId, link.month, link.scope));
+    } else if (link.kind === "splits") {
+      goTo("/splits", { split_group: link.groupId && link.groupId !== "split-group-none" ? link.groupId : undefined }, buildContextParams(new URLSearchParams(), link.viewId, link.month, selectedScope));
     }
   }
 
@@ -776,6 +889,9 @@ function AskConversation({
     shareSaved: (splitGroupId) => void shareSavedEntry(splitGroupId),
     chooseFilterOption,
     switchView,
+    resolveCheck: () => void resolveMoneyCheck(),
+    keepCheck: () => void keepMoneyCheck(),
+    openAnswerLink,
     openInEntries: () => {
       if (active?.kind === "answer" && isTrackedMonth(active.filter.month)) {
         navigate({ pathname: "/entries", search: `?${buildEntriesFilterSearch(active.filter).toString()}` });
@@ -808,6 +924,7 @@ function AskConversation({
     // A month with no entries at all has no Entries page to open (Entries
     // would show the nearest month instead).
     canOpenAnswer: active?.kind !== "answer" || isTrackedMonth(active.filter.month),
+    moneyLabels: active?.kind === "money-check" ? skewCheckLabels(active.candidate) : null,
     actions
   });
 
@@ -837,7 +954,7 @@ function AskConversation({
   const questionPrompt = chips.prompt;
   // New chat: in chat mode, once there is something to start over from.
   const showNewChat = !isAddMode && !isShortcut && Boolean(settledThread.length || card || composerText.trim() || pending);
-  const answerProps = { queryClient, fetchEntriesPage, accounts, categories, people, trackedMonths };
+  const answerProps = { queryClient, fetchEntriesPage, accounts, categories, people, trackedMonths, today };
 
   // A new set of chips starts scrolled to its first chip (focus stays put).
   useLayoutEffect(() => {
@@ -1141,7 +1258,14 @@ function SavedCategoryPicker({ isMobile, open, onOpenChange, value, categories, 
 function ThreadItem({ item, settled = false, answerProps }) {
   const settledClass = settled ? " is-settled" : "";
   if (item.kind === "answer") {
-    return <AskAnswerCard filter={item.filter} settled={settled} {...answerProps} />;
+    const { today: _today, ...filterAnswerProps } = answerProps;
+    return <AskAnswerCard filter={item.filter} settled={settled} {...filterAnswerProps} />;
+  }
+  if (item.kind === "money-answer") {
+    return <AskMoneyAnswerCard answer={item.answer} wording={item.wording} intent={item.intent} settled={settled} />;
+  }
+  if (item.kind === "money-check") {
+    return <AskSkewCheckCard candidate={item.candidate} status={item.status} today={answerProps.today} settled={settled} />;
   }
   if (item.kind === "me") {
     return <p className={`ask-me${settledClass}`} id={item.id}>{item.text}</p>;

@@ -55,13 +55,19 @@ export function entryName(entry: Pick<EntryFact, "description" | "categoryName">
 }
 
 // A shouted bank description ("HDB HOUSING LOAN GIRO") in the case a
-// person writes it ("HDB Housing Loan Giro"); short or vowel-less words
-// stay as acronyms. Text with any lower case is kept as it is.
+// person writes it ("HDB Housing Loan Giro"); vowel-less words stay as
+// acronyms and small joining words go lower case. Text with any lower case
+// is kept as it is.
+const SMALL_WORDS = new Set(["to", "of", "and", "the", "for", "in", "at", "on", "by", "from", "own"]);
 function readableCase(text: string) {
   if (/[a-z]/.test(text)) {
     return text;
   }
-  return text.split(" ").map((word) => (word.length <= 3 || !/[AEIOU]/.test(word) ? word : word[0] + word.slice(1).toLowerCase())).join(" ");
+  return text.split(" ").map((word, index) => {
+    if (!/[AEIOU]/.test(word)) return word;
+    const lower = word.toLowerCase();
+    return index > 0 && SMALL_WORDS.has(lower) ? lower : word[0] + lower.slice(1);
+  }).join(" ");
 }
 
 function personName(facts: Extract<AskAnswerFacts, { kind: "owed" }>, personId: string) {
@@ -114,7 +120,7 @@ function entryLines(entries: EntryFact[]): AskAnswerLineDto[] {
 
 function spentLead(facts: MonthFacts) {
   return {
-    label: `Spent · ${plural(facts.entryCount, "entry", "entries")}`,
+    label: `Spent · ${plural(facts.expenseCount, "expense", "expenses")}`,
     amountMinor: facts.spentMinor,
     currency: "SGD",
     tone: spendTone(facts.spentMinor, facts.plannedMinor),
@@ -250,7 +256,7 @@ export function buildAnswerCard(facts: AskAnswerFacts, context: WordingContext):
         tone: "neutral"
       } satisfies AskAnswerLineDto))
     ],
-    links: [{ kind: "splits", label: "Open Splits", month: facts.month, viewId: facts.speaksToViewer ? facts.viewerPersonId : "household", groupId: facts.balances[0]?.groupId ?? null }]
+    links: [{ kind: "splits", label: "Open Splits", month: facts.month, viewId: facts.viewId, groupId: facts.balances[0]?.groupId ?? null }]
   };
 }
 
@@ -290,7 +296,7 @@ export function buildTemplateWording(facts: AskAnswerFacts, context: WordingCont
   const sentences: string[] = [];
   if (facts.kind === "spending" || facts.kind === "plan" || facts.kind === "biggest" || facts.kind === "income" || facts.kind === "compare") {
     if (facts.current.entryCount === 0) {
-      return `There are no entries in ${monthLabel(facts.current.month, today)} yet.`;
+      return `There are no entries for ${monthLabel(facts.current.month, today)} yet.`;
     }
   }
   if (facts.kind === "spending") {

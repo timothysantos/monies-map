@@ -221,6 +221,73 @@
   font-weight: 500;
 }
 
+/* A money answer (ask-money-answer-card.jsx): the answer in words, then
+   quiet Detail rows with the amount on the right; the check before an
+   answer reuses the card with the butter "Check this first" tag. */
+.ask-money-wording {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.ask-money-lines {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.ask-money-lines li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.ask-money-lines li:last-child {
+  border-bottom: 0;
+}
+
+.ask-money-line-text,
+.ask-money-line-figures {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ask-money-line-label {
+  overflow-wrap: anywhere;
+}
+
+.ask-money-line-figures {
+  justify-items: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ask-money-lines small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.ask-money-lines small.money-plan {
+  color: var(--money-ink);
+}
+
+.ask-skew-tag {
+  justify-self: start;
+}
+
+.ask-skew-check[data-skew-check="resolved"],
+.ask-skew-check[data-skew-check="kept"] {
+  opacity: 0.72;
+}
+
 /* The entry card: the shared LeadCard (ui/lead-support-detail.css) plus
    the Ask tag, the typed title and amount, the coax and saved lines. */
 .ask-card-tag {
@@ -679,7 +746,8 @@
   .ask-thread > .ask-me,
   .ask-thread > .ask-note,
   .ask-thread > .ask-card,
-  .ask-thread > .ask-answer {
+  .ask-thread > .ask-answer,
+  .ask-thread > .ask-money-answer {
     animation: ask-arrive 180ms ease-out;
   }
 

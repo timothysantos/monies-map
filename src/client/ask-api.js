@@ -16,6 +16,12 @@
 //   remaining }, or { ok, available: false, reason } when AI is off or out
 //   of allowance (the page then reads the photo on the device).
 //
+// - POST /api/ai-assist/answer (src/server/ask-answer-route.ts): a money
+//   question ("why was August so expensive?"). Body { text, viewId, scope,
+//   month, keepCandidateIds }. Response AskAnswerResponseDto: { supported },
+//   or { needsConfirmation, candidates } (skew candidates with their
+//   suggested actions), or { answer, wording: { text, source } }.
+//
 // Saving never uses a new route: the card goes through the Entries
 // composer's create path (entry-actions.js createEntryFromDraft), and the
 // follow-ups through the existing entry and split routes.
@@ -27,7 +33,8 @@ import { createEntryFromDraft } from "./entry-create-request";
 
 export const ASK_ENDPOINTS = Object.freeze({
   entryDraft: "/api/ai-assist/entry-draft",
-  receiptRead: "/api/ai-assist/receipt-read"
+  receiptRead: "/api/ai-assist/receipt-read",
+  answer: "/api/ai-assist/answer"
 });
 
 const DRAFT_FIELD_NAMES = [
@@ -227,4 +234,109 @@ export function addSavedEntryToSplits({ entryId, splitGroupId }, { fetchImpl = f
     "The entry could not be added to Splits.",
     fetchImpl
   );
+}
+
+const ANSWER_INTENTS = new Set(["spending", "plan", "compare", "biggest", "owed", "income"]);
+
+/**
+ * @typedef {{ supported: boolean, needsConfirmation?: boolean, intent?: string, viewId?: string, scope?: string, months?: string[], candidates?: any[], answer?: { title: string, lead: any, support: any[], lines: any[], links: any[] }, wording?: { text: string, source: "ai" | "template" } }} MoneyAnswer
+ */
+
+// The answer as the page keeps it: only the parts it renders, checked.
+/** @returns {MoneyAnswer | null} */
+export function readMoneyAnswerResponse(body) {
+  if (!body || typeof body !== "object" || body.ok !== true || typeof body.supported !== "boolean") {
+    return null;
+  }
+  if (!body.supported) {
+    return { supported: false };
+  }
+  if (!ANSWER_INTENTS.has(body.intent)) {
+    return null;
+  }
+  const base = { supported: true, intent: body.intent, viewId: String(body.viewId ?? ""), scope: String(body.scope ?? ""), months: Array.isArray(body.months) ? body.months.map(String) : [] };
+  if (body.needsConfirmation) {
+    const candidates = Array.isArray(body.candidates)
+      ? body.candidates.filter((candidate) => candidate && typeof candidate.id === "string" && Array.isArray(candidate.suggestedActions))
+      : [];
+    return candidates.length ? { ...base, needsConfirmation: true, candidates } : null;
+  }
+  const answer = body.answer;
+  const wording = body.wording;
+  if (!answer || typeof answer !== "object" || !answer.lead || !Number.isFinite(answer.lead.amountMinor) || !wording || typeof wording.text !== "string") {
+    return null;
+  }
+  return {
+    ...base,
+    needsConfirmation: false,
+    answer: {
+      title: String(answer.title ?? ""),
+      lead: answer.lead,
+      support: Array.isArray(answer.support) ? answer.support : [],
+      lines: Array.isArray(answer.lines) ? answer.lines : [],
+      links: Array.isArray(answer.links) ? answer.links.filter((link) => ["entries", "month", "splits"].includes(link?.kind)) : []
+    },
+    wording: { text: wording.text, source: wording.source === "ai" ? "ai" : "template" }
+  };
+}
+
+export async function requestMoneyAnswer({ text, viewId, scope, month, keepCandidateIds = [], signal = undefined, fetchImpl = fetch }) {
+  try {
+    const response = await fetchImpl(ASK_ENDPOINTS.answer, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, viewId, scope, month, keepCandidateIds }),
+      signal
+    });
+    if (!response.ok) {
+      return { ok: false, reason: response.status === 404 ? "unavailable" : "failed" };
+    }
+    const answer = readMoneyAnswerResponse(await readJson(response));
+    return answer ? { ok: true, answer } : { ok: false, reason: "unreadable" };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw error;
+    }
+    return { ok: false, reason: "network" };
+  }
+}
+
+// The only routes a skew candidate's suggested actions may call, by action
+// (DOMAIN.md "Skew Candidate"). The page never posts to a path it was sent
+// that is not one of these.
+const SKEW_ACTION_PATHS = Object.freeze({
+  link_transfer: "/api/transfers/link",
+  reclassify_as_transfer: "/api/entries/update-classification",
+  match_settlement_checkpoint: "/api/splits/checkpoints/match",
+  record_group_settle_up: "/api/splits/settlements/create"
+});
+const LINK_SETTLEMENT_PATH = "/api/splits/matches/link-settlement";
+
+/**
+ * Mark as settlement / Link as transfer: the candidate's suggested actions,
+ * in order, through the existing routes. A group settle-up is linked to its
+ * transfer entry once recorded. Stops at the first failure.
+ * @returns {Promise<{ ok: boolean, error: string }>}
+ */
+export async function resolveSkewCandidate(candidate, { fetchImpl = fetch } = {}) {
+  const steps = Array.isArray(candidate?.suggestedActions) ? candidate.suggestedActions : [];
+  if (!steps.length || steps.some((step) => SKEW_ACTION_PATHS[step?.action] !== step?.path || !step.body || typeof step.body !== "object")) {
+    return { ok: false, error: "This can't be sorted from here. Open Splits or Entries to fix it." };
+  }
+  for (const step of steps) {
+    const result = await postJson(step.path, step.body, "That didn't work. Nothing else was changed after it; try again.", fetchImpl);
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+    if (step.action === "record_group_settle_up" && step.linkTransactionId) {
+      if (typeof result.settlementId !== "string") {
+        return { ok: false, error: "The settle-up was recorded but could not be linked. Open Splits to link it." };
+      }
+      const linked = await postJson(LINK_SETTLEMENT_PATH, { settlementId: result.settlementId, transactionId: step.linkTransactionId }, "The settle-up was recorded but could not be linked. Open Splits to link it.", fetchImpl);
+      if (!linked.ok) {
+        return { ok: false, error: linked.error };
+      }
+    }
+  }
+  return { ok: true, error: "" };
 }
