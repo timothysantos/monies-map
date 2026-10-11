@@ -8,14 +8,13 @@ import { describeFilterParts } from "./copy/entry-filter-copy";
 import { flowTone } from "../domain/money-tone";
 import { money } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
-import { moneyToneClass } from "./money-tone-class";
-import { getIconComponent } from "./ui-components";
+import { getIconComponent, LeadCard, MetaChip } from "./ui-components";
 
 const NEUTRAL_BUBBLE_COLOUR = "#7C8791";
 
 // An Ask answer (design.md "Ask page", "Answer card"): Lead, the total in
-// big type with what it counts ("Spent · 6 entries"); Support, the applied
-// filters as chips; Detail, the view's share when it differs. Its numbers
+// big type with what it counts ("Spent · 6 entries") and the view's share
+// when it differs; Support, the applied filters as chips. Its numbers
 // come from the Entries page DTO of the filter's view and month (borrowed
 // from the query cache or read through the shell's lease, ask-data.js)
 // through the Entries page's own filtering (ask-filter-answer.js), so
@@ -33,40 +32,40 @@ export function AskAnswerCard({ filter, settled = false, queryClient, fetchEntri
   const subject = answerSubject(filter, { accounts, categories });
   const loading = !summary && !noMonth && entriesPage.status !== "error";
 
-  return (
-    <section className={`ask-answer${settled ? " is-settled" : ""}`} aria-label={subject.title} aria-busy={loading || undefined} data-ask-answer={summary ? summary.count : noMonth ? "none" : ""}>
-      <div className="ask-answer-head">
-        <span className="ask-answer-bubble" style={{ "--cat": subject.colour }} aria-hidden="true">
-          <subject.Icon size={18} strokeWidth={2.2} />
-        </span>
-        <strong className="ask-answer-title">{subject.title}</strong>
-      </div>
-      {summary ? (
+  const detail = summary ? (
+    <>
+      {askCopy.answer.detail(askCopy.answer.leads[summary.lead.kind], summary.count)}
+      {summary.lead.shareMinor !== null ? (
         <>
-          <strong className={`ask-answer-amount ${moneyToneClass(leadTone(summary.lead))}`}>
-            <PrivateMoney>{money(summary.lead.amountMinor)}</PrivateMoney>
-          </strong>
-          <span className="ask-answer-detail">
-            {askCopy.answer.detail(askCopy.answer.leads[summary.lead.kind], summary.count)}
-            {summary.lead.shareMinor !== null ? (
-              <>
-                {" · "}
-                {askCopy.answer.share(shareOwner(filter, people))} <PrivateMoney>{money(summary.lead.shareMinor)}</PrivateMoney>
-              </>
-            ) : null}
-          </span>
+          {" · "}
+          {askCopy.answer.share(shareOwner(filter, people))} <PrivateMoney>{money(summary.lead.shareMinor)}</PrivateMoney>
         </>
-      ) : noMonth ? (
-        <span className="ask-answer-detail">{askCopy.answer.noMonth(parts.find((part) => part.key === "month")?.label ?? filter.month)}</span>
-      ) : entriesPage.status === "error" ? (
-        <span className="ask-answer-detail">{askCopy.answer.loadFailed}</span>
-      ) : (
-        <span className="ask-answer-detail">{askCopy.answer.loading}</span>
-      )}
-      <ul className="ask-answer-chips" aria-label={askCopy.answer.filtersLabel}>
-        {parts.map((part) => <li key={part.key} className="ask-answer-chip" data-part={part.key}>{part.label}</li>)}
-      </ul>
-    </section>
+      ) : null}
+    </>
+  ) : noMonth
+    ? askCopy.answer.noMonth(parts.find((part) => part.key === "month")?.label ?? filter.month)
+    : entriesPage.status === "error" ? askCopy.answer.loadFailed : askCopy.answer.loading;
+
+  // The shared lead card (ui/lead-support-detail.jsx), as the entry card
+  // beside it: the subject's bubble and title, what the total counts under
+  // it, the total on the right, the filters as Support chips.
+  return (
+    <LeadCard
+      className={`ask-answer${settled ? " is-settled" : ""}`}
+      aria-label={subject.title}
+      aria-busy={loading || undefined}
+      data-ask-answer={summary ? summary.count : noMonth ? "none" : ""}
+      category={{ colorHex: subject.colour, icon: subject.Icon }}
+      title={<strong className="lsd-title ask-answer-title">{subject.title}</strong>}
+      subtitle={<span className="ask-answer-detail">{detail}</span>}
+      amount={summary ? (
+        <span className="ask-answer-amount"><PrivateMoney>{money(summary.lead.amountMinor)}</PrivateMoney></span>
+      ) : null}
+      tone={summary ? leadTone(summary.lead) : undefined}
+      chips={parts.map((part) => (
+        <MetaChip key={part.key} className="ask-answer-chip" data-part={part.key}>{part.label}</MetaChip>
+      ))}
+    />
   );
 }
 

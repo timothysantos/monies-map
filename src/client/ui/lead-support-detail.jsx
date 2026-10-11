@@ -177,14 +177,15 @@ function LeadBubble({ bubble, category, colour }) {
  * person's chip in their colour (person-colour.js, never a new hue); `tone`
  * a status in its pastel pair (an unknown tone is ignored); `icon` a 14px
  * lucide icon.
- * @param {{ icon?: any, person?: string | null, tone?: string, children?: any, className?: string }} props
+ * @param {{ icon?: any, person?: string | null, tone?: string, children?: any, className?: string, [key: string]: any }} props
  */
-export function MetaChip({ icon: Icon = null, person = undefined, tone = undefined, children = null, className = "" }) {
+export function MetaChip({ icon: Icon = null, person = undefined, tone = undefined, children = null, className = "", ...rest }) {
   const toneClass = tone && STATE_TONES.has(tone) ? `is-${tone}` : "";
   return (
     <span
       className={joinClasses("lsd-chip", person ? "is-person" : "", toneClass, className)}
       style={person ? getPersonColourVars(person) : undefined}
+      {...rest}
     >
       {Icon ? <Icon size={14} aria-hidden="true" /> : null}
       {children}

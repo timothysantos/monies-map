@@ -233,8 +233,7 @@ export const askCopy = {
     allEntries: "All entries",
     loading: "Adding it up…",
     noMonth: (month) => `There are no entries for ${month} yet.`,
-    loadFailed: "This month's entries couldn't be loaded. Open in Entries to try again.",
-    filtersLabel: "Filters"
+    loadFailed: "This month's entries couldn't be loaded. Open in Entries to try again."
   },
   // Follow-ups when a request could mean more than one thing, and view
   // changes, which always wait for a tap.

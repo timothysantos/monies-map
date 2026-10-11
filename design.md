@@ -220,20 +220,20 @@ slide run only under `prefers-reduced-motion: no-preference`.
 
 ### Answer card
 
-`ask-answer-card.jsx`, the approved "Lead · Support · Detail" look (white,
-22 px radius, the entry card's shadow):
+`ask-answer-card.jsx`, built on the shared `LeadCard` and `MetaChip`
+("Lead · Support · Detail"), laid out like the entry card beside it:
 
-- Head: a 34 px bubble (the category's palette colour at 20% with its icon
-  for one category; a neutral bubble with a card or search glyph for a
+- Head: the 56 px bubble (the category's palette colour at 20% with its
+  icon for one category; a neutral bubble with a card or search glyph for a
   wallet, searched words or a type) and the subject in bold ("Public
   Transport", "Citi Rewards", “grab”, "Income", "All entries").
-- Lead: the total, 2.1 rem, 800 weight. Spending stays plain ink (spending
-  is not bad for being spending; there is no plan here), income is mint,
-  transfers ink; hidden money masks it and drops the tone.
-- Detail: "Spent · 6 entries" in muted text, plus "Serene's share $30.00"
-  when the view's share differs from the whole amount.
-- Support: the filters as small neutral pills (month, person and scope,
-  category, wallet, type, amount, search).
+- Under the subject, in muted text: "Spent · 6 entries", plus "Serene's
+  share $30.00" when the view's share differs from the whole amount.
+- Lead: the total on the right, the lead amount size. Spending stays plain
+  ink (spending is not bad for being spending; there is no plan here),
+  income is mint, transfers ink; hidden money masks it and drops the tone.
+- Support: the filters as `MetaChip`s (month, person and scope, category,
+  wallet, type, amount, search).
 
 While it adds up it says "Adding it up…"; a month with no entries says so.
 "Open in Entries" is the first chip of the row (filled) while the answer is
@@ -442,7 +442,9 @@ Where it is used:
   (planned items) and Note. The sheet's sub-line is "Person · Month", and
   Done and Cancel are its `is-sheet-bar`. MonthPanel keeps the draft and
   every handler; desktop inline editing is unchanged.
-- The Ask entry card (`ask-entry-card.jsx`).
+- The Ask entry card (`ask-entry-card.jsx`) and the Ask answer card
+  (`ask-answer-card.jsx`: the subject's bubble and title, what the total
+  counts under it, the total on the right, the filters as chips).
 - The Entries edit sheet and inline editor (`entry-edit-card.jsx`). Lead:
   the category bubble (opens the category editor), what it was and the
   amount, typed in place unless a statement certified them (then read-only,

@@ -214,74 +214,11 @@
   transform: rotate(-2deg);
 }
 
-/* An answer (ask-answer-card.jsx): Lead (the total and what it counts),
-   Support (the filters as chips), Detail (a share line). */
-.ask-answer {
-  display: grid;
-  gap: 6px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
-}
-
-.ask-answer-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.ask-answer-bubble {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--cat) 20%, white);
-  color: color-mix(in srgb, var(--cat) 70%, var(--text));
-}
-
-.ask-answer-title {
-  min-width: 0;
-  font-size: 1.02rem;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-
-.ask-answer-amount {
-  margin-top: 4px;
-  font-size: 2.1rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.ask-answer-detail {
+/* An answer (ask-answer-card.jsx): the shared LeadCard
+   (ui/lead-support-detail.css); what the total counts stays a quiet line. */
+.ask-answer .lsd-subtitle {
   color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.ask-answer-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ask-answer-chip {
-  padding: 3px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--pastel-neutral);
-  color: var(--text);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* The entry card: the shared LeadCard (ui/lead-support-detail.css) plus
