@@ -975,6 +975,8 @@ Canonical terms:
   composer's `Add to Splits` step
 - `saved card`: the card after Save, with `Undo` (the existing delete
   routes)
+- `client id`: the card's stable id, sent as the entry's external
+  reference (`ask:<id>`), so saving the same card twice makes one entry
 
 Rules:
 - A transfer card posts one transfer entry (its From side, or its To side
@@ -982,6 +984,9 @@ Rules:
   match, not posted.
 - Nothing about the conversation, sentence, photo, voice clip or spoken
   words is stored.
+- A card saved again with the same client id (after a reload during its
+  save) resolves to the entry already made; a new card, and the card Undo
+  gives back, get a new id.
 
 ### Money Tone
 

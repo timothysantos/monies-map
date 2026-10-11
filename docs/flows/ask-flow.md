@@ -108,7 +108,9 @@ person left still lands in it.
   cleared. Never localStorage, never the server.
 - Never stored: photos (and any blob: or data: value), audio, and status
   lines. A receipt's read fields stay in the card; its thumbnail leaves the
-  conversation with the page. A card that was saving comes back as a draft.
+  conversation with the page. A card that was saving comes back as a draft
+  with its client id (see "Data Flow"), so saving it again resolves to the
+  entry already made, if that save had reached the server, and shows Saved.
 - `New chat` (chat mode, once there is something to start over from)
   clears that conversation. A saved card in add mode ends that visit: the
   next + starts a new card. Undo and Save work as before.
@@ -248,7 +250,18 @@ Writes, all existing routes:
 
 - Save: `POST /api/entries/create`, then `POST /api/splits/expenses/from-entry`
   when the Splits switch is on (`createEntryFromDraft` in
-  `entry-create-request.js`, the Entries composer's path).
+  `entry-create-request.js`, the Entries composer's path). The body carries
+  the card's stable client id as `externalReference: "ask:<id>"` (made with
+  the card, kept with it in the conversation store, new for every card and
+  after Undo). A repeat create with the same reference returns the entry
+  already made (`created: false`, with `linkedSplitExpenseId` and
+  `linkedSplitExpenseMonth`) and writes nothing; the split step then uses
+  that split instead of adding one, or adds it once if the first save
+  stopped before it. A repeat with other details (the card was changed
+  after the reload) is refused: "This entry was already saved with
+  different details. Check Entries before saving it again." The route
+  refuses any other reference shape (the Shortcut's `shortcut:` references
+  stay with its own route).
 - Undo: `POST /api/splits/expenses/delete` for a split the save created, then
   `POST /api/entries/delete`.
 - The Shortcut card's follow-ups: `POST /api/entries/update-category`,
@@ -305,7 +318,8 @@ Ask does not own:
 ## Persisted / Query Contract
 
 - No new write route and no new table. A saved entry is an ordinary manual
-  entry. The one new route, `/api/ai-assist/transcribe`, only writes the
+  entry, with `external_reference` = `ask:<client id>` (the existing unique
+  index per household makes a repeat create return the same entry). The one new route, `/api/ai-assist/transcribe`, only writes the
   shared AI allowance counter.
 - A transfer card posts one row: the From wallet's side (or the To wallet's
   when turned round); the other wallet is shown but not posted, for the
@@ -319,6 +333,7 @@ Ask does not own:
 
 Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,
+`tests/ask-entry-dedupe.test.mjs`,
 `tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
 `tests/shortcut-gateway.test.mjs`, `tests/ask-filter-reader.test.mjs`,
 `tests/ask-filter-answer.test.mjs`, `tests/ask-conversation-store.test.mjs`,
@@ -333,8 +348,11 @@ also in WebKit on an iPhone 13 profile) and runtime behaviour on a phone.
 - The filter reader has no AI gap-filler: a request it cannot read gets the
   "not answered yet" note. A later optional AI reader would be an explicit
   action with a strict schema (AGENTS.md "Optional AI Assistance").
-- A reload while a save is in flight brings the card back as a draft; if
-  that save had reached the server, saving again would add it twice.
+- A reload while a save is in flight brings the card back as a draft;
+  saving it unchanged resolves to the entry already made. If the person
+  changes the card before saving again and the first save had landed, the
+  route refuses it (no second entry) and the card says to check Entries,
+  where that entry is changed.
 - The two reader endpoints are stubbed in the browser tests; the unit test
   `tests/ask-api-server-contract.test.mjs` runs `ask-api.js` against the
   real routes so their shapes cannot drift. `ask-api.js` still also accepts

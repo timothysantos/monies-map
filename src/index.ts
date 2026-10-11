@@ -80,6 +80,7 @@ import {
 import {
   createEntryRecord,
   deleteEntryRecord,
+  isAskEntryReference,
   linkTransferPair,
   settleTransferPair,
   updateEntryCategoryRecord,
@@ -1010,6 +1011,7 @@ export default {
         offsetsCategory?: boolean;
         note?: string;
         splitBasisPoints?: number;
+        externalReference?: unknown;
       }>();
 
       if (
@@ -1022,6 +1024,12 @@ export default {
         || !body.ownershipType
       ) {
         return json({ ok: false, error: "Missing entry create fields" }, 400);
+      }
+      // An Ask card's stable client id: a repeat create with it returns the
+      // entry it already made (a reload during a save). The Shortcut's
+      // references stay with its own route.
+      if (body.externalReference !== undefined && !isAskEntryReference(body.externalReference)) {
+        return json({ ok: false, error: "Invalid entry reference" }, 400);
       }
 
       try {
@@ -1041,7 +1049,8 @@ export default {
             ownerName: body.ownerName,
             offsetsCategory: body.offsetsCategory,
             note: body.note,
-            splitBasisPoints: body.splitBasisPoints
+            splitBasisPoints: body.splitBasisPoints,
+            externalReference: body.externalReference
           }))
         });
       } catch (error) {

@@ -545,8 +545,12 @@ function AskConversation({
     if (!card || !cardActive || !validation?.canSave || working) {
       return;
     }
-    const createDraft = buildCardCreateDraft(card, context, { splitGroups });
-    setCard(markCardSaving(card));
+    // The draft carries the card's client id (given here to a card kept
+    // from before ids), so a save repeated after a reload cannot add the
+    // entry twice.
+    const sending = markCardSaving(card);
+    const createDraft = buildCardCreateDraft(sending, context, { splitGroups });
+    setCard(sending);
     setWorking("save");
     try {
       const result = await saveCardEntry(createDraft);

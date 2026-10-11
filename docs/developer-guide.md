@@ -1876,7 +1876,11 @@ The card is a pure state machine (`ask-card-model.js`) with unit tests for
 every state. Saving goes through the Entries composer's create path
 (`entry-create-request.js`: `/api/entries/create`, then
 `/api/splits/expenses/from-entry` when Splits is on); Undo uses the existing
-delete routes. There is no new write route.
+delete routes. There is no new write route. Each card sends its stable
+client id as `externalReference: "ask:<id>"` (the route accepts only that
+shape); a repeat create with the same reference returns the entry already
+made (`created: false`, with `linkedSplitExpenseId`), so a save repeated
+after a reload never adds a second entry or split.
 
 A sentence or a receipt photo fills the card through the two reader routes
 in `ask-api.js`, the one module to adjust when they land:

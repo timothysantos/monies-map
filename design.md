@@ -297,7 +297,11 @@ Mirror: sessionStorage `monies.askConversation.v1` (versioned, at most
 60,000 characters with the oldest messages dropped first, unreadable data
 dropped and cleared; text, the card's fields and filters only, never a
 blob: or data: value, photo, audio or status line). Never localStorage or
-the server.
+the server. The card keeps its `clientId` there, so a card that was saving
+when the tab reloaded (it comes back as a draft) sends the same
+`externalReference` when saved again and resolves to the entry already
+made (`createEntryRecord` returns it, `created: false`, with its linked
+split).
 
 ## From Ask Chip
 

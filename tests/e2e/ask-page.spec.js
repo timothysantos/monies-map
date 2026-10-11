@@ -107,6 +107,49 @@ test.describe("the Ask page on a phone", () => {
     await expect(page.locator(".entry-row").filter({ hasText: description })).toBeVisible();
   });
 
+  test("a reload while Save is on its way brings the card back, and saving again shows the one entry already made", async ({ page }) => {
+    const description = `Ask reload ${Date.now()}`;
+    await openAskAdd(page);
+    await page.getByRole("textbox", { name: "Amount" }).fill("7.80");
+    await page.getByRole("textbox", { name: "What it was" }).fill(description);
+    await page.getByLabel("Date", { exact: true }).fill("2026-04-21");
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await expect(save).toBeEnabled();
+
+    // The create request reaches the server, but its answer never gets back:
+    // the page reloads first.
+    let landed;
+    const firstCreate = new Promise((resolve) => { landed = resolve; });
+    await page.route("**/api/entries/create", async (route) => {
+      const response = await route.fetch();
+      landed({ body: await response.json(), sent: route.request().postDataJSON() });
+    });
+    await save.click();
+    const first = await firstCreate;
+    expect(first.body.created).toBe(true);
+    expect(first.sent.externalReference).toMatch(/^ask:[A-Za-z0-9-]{8,64}$/);
+    await page.reload();
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+
+    // The card is back as a draft with what was typed.
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue(description);
+    const again = page.waitForResponse((response) => response.url().includes("/api/entries/create") && response.request().method() === "POST");
+    await save.click();
+    const repeat = await again;
+    expect(repeat.request().postDataJSON().externalReference).toBe(first.sent.externalReference);
+    expect(await repeat.json()).toMatchObject({ ok: true, created: false, entryId: first.body.entryId });
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();
+    await expect(page.locator(".ask-card-tag")).toHaveText("Saved");
+
+    // One entry, not two; Undo removes it.
+    const data = await loadEntriesPage(page, { view: "person-tim", month: MONTH });
+    expect(data.monthPage.entries.filter((entry) => entry.description === description).map((entry) => entry.id)).toEqual([first.body.entryId]);
+    await page.getByRole("group", { name: "Suggestions" }).getByRole("button", { name: "Undo" }).click();
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
+    expect(await findEntry(page, description)).toBeNull();
+  });
+
   test("a typed sentence fills the card from the entry reader and the card saves what it shows", async ({ page }) => {
     const { accounts } = await loadReferenceData(page);
     const citi = accounts.find((account) => account.name === "Citi Rewards");

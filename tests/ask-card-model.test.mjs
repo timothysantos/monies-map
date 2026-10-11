@@ -314,7 +314,9 @@ test("the create draft is the composer's: direct owner, the share switch as Add 
     note: "flat whites",
     splits: [],
     addToSplits: true,
-    splitGroupId: "group-dinners"
+    splitGroupId: "group-dinners",
+    // The card's stable client id, so a repeat save makes one entry.
+    externalReference: `ask:${card.clientId}`
   });
 });
 

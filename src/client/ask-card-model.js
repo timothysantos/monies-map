@@ -7,6 +7,12 @@
 //   applyReceiptRead / answerCardQuestion -> validateCard ->
 //   markCardSaving -> markCardSaved (or markCardSaveFailed) -> markCardUndone
 //
+// Each card has a stable client id (`clientId`), kept with it in the Ask
+// conversation store and sent as the create route's externalReference, so
+// saving a card again after a reload during its save returns the entry
+// already made instead of adding a second one. A new card, and the card
+// Undo gives back, get a new id.
+//
 // A card is a "draft" until it is saved. `filled` records which fields a
 // typed sentence or a receipt supplied (the page marks those rows with a
 // dot), `questions` the follow-ups those readers asked, and `saved` the
@@ -74,11 +80,18 @@ function isDefaultCategory(name) {
   return !name || name === DEFAULT_EXPENSE_CATEGORY || INCOME_CATEGORY_PREFERENCE.includes(name) || name === TRANSFER_CATEGORY;
 }
 
+// A random id; the create route accepts 8-64 letters, digits and dashes.
+function newCardClientId() {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return uuid ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 // mode "expense" (from the Splits receipt button) starts with the Splits
 // switch on for that group; "add" (from the Entries + button or Ask) off.
 export function createAskCard(context, { mode = "add", splitGroupId = "" } = {}) {
   const account = pickDefaultAccount(context);
   return {
+    clientId: newCardClientId(),
     status: "draft",
     variant: "expense",
     fields: {
@@ -496,12 +509,14 @@ export function buildCardCreateDraft(card, context, { splitGroups = [] } = {}) {
     note: fields.note ?? "",
     splits,
     addToSplits: card.variant === "expense" && card.share.on && Boolean(splitGroupId || !splitGroups.length),
-    splitGroupId
+    splitGroupId,
+    externalReference: card.clientId ? `ask:${card.clientId}` : undefined
   };
 }
 
+// A card kept from before client ids gets one here, before it is sent.
 export function markCardSaving(card) {
-  return card.status === "draft" ? { ...card, status: "saving", saveError: "" } : card;
+  return card.status === "draft" ? { ...card, clientId: card.clientId || newCardClientId(), status: "saving", saveError: "" } : card;
 }
 
 export function markCardSaveFailed(card, error) {
@@ -525,9 +540,9 @@ export function markCardSaved(card, result) {
 }
 
 // Undo removed the entry: the card is a draft again with the same values,
-// so the person can change it and save once more.
+// so the person can change it and save once more, as a new entry (a new id).
 export function markCardUndone(card) {
-  return { ...card, status: "draft", saved: null, saveError: "" };
+  return { ...card, clientId: newCardClientId(), status: "draft", saved: null, saveError: "" };
 }
 
 // A saved entry (the Apple Pay Shortcut opens Ask on one) as a card that is

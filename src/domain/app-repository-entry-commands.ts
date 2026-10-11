@@ -665,6 +665,20 @@ export async function updateEntryClassificationRecord(
   return { entryId: input.entryId, updated: true };
 }
 
+// An Ask entry card's stable client id, sent to /api/entries/create as
+// the entry's external reference ("ask:" and a UUID). The Apple Pay
+// Shortcut's references ("shortcut:<request id>") are written only by its
+// own route.
+const ASK_ENTRY_REFERENCE = /^ask:[A-Za-z0-9-]{8,64}$/;
+
+export function isAskEntryReference(value: unknown): value is string {
+  return typeof value === "string" && ASK_ENTRY_REFERENCE.test(value);
+}
+
+// A repeat create whose reference matches an entry with other details.
+const SHORTCUT_REFERENCE_REUSED = "Shortcut request ID was already used for a different entry.";
+const ASK_REFERENCE_REUSED = "This entry was already saved with different details. Check Entries before saving it again.";
+
 export async function createEntryRecord(
   db: D1Database,
   input: {
@@ -717,6 +731,8 @@ export async function createEntryRecord(
   const transferDirection = input.entryType === "transfer" ? (input.transferDirection ?? "out") : null;
   const externalReference = input.externalReference?.trim() || null;
 
+  const reusedMessage = externalReference?.startsWith("shortcut:") ? SHORTCUT_REFERENCE_REUSED : ASK_REFERENCE_REUSED;
+
   if (externalReference) {
     const existing = await loadEntryByExternalReference(db, externalReference);
     if (existing) {
@@ -733,16 +749,10 @@ export async function createEntryRecord(
         ownerPersonId,
         offsetsCategory: input.offsetsCategory ? 1 : 0,
         note: input.note ?? null
-      });
+      }, reusedMessage);
       // A replay writes nothing, so it recalculates the months directly.
       await recalculateEntryMonths(db, input.date, input.postDate);
-      return {
-        entryId: existing.id,
-        created: false,
-        accountId,
-        accountName,
-        currency
-      };
+      return replayedEntry(existing, { accountId, accountName, currency });
     }
   }
   const entryId = `txn-${crypto.randomUUID()}`;
@@ -827,20 +837,30 @@ export async function createEntryRecord(
       ownerPersonId,
       offsetsCategory: input.offsetsCategory ? 1 : 0,
       note: input.note ?? null
-    });
+    }, reusedMessage);
     await recalculateEntryMonths(db, input.date, input.postDate);
-    return {
-      entryId: existing.id,
-      created: false,
-      accountId,
-      accountName,
-      currency
-    };
+    return replayedEntry(existing, { accountId, accountName, currency });
   }
 
   await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
   return { entryId, created: true, accountId, accountName, currency };
+}
+
+// A repeat create returns the entry it already made, with the split
+// expense linked to it (if any), so a client that lost the first answer can
+// show, and undo, exactly what was saved.
+function replayedEntry(
+  existing: IdempotentEntryRow,
+  saved: { accountId: string; accountName: string; currency: string }
+) {
+  return {
+    entryId: existing.id,
+    created: false,
+    ...saved,
+    linkedSplitExpenseId: existing.linked_split_expense_id ?? null,
+    linkedSplitExpenseMonth: existing.linked_split_expense_date ? existing.linked_split_expense_date.slice(0, 7) : null
+  };
 }
 
 async function recalculateEntryMonths(db: D1Database, date: string, postDate?: string | null) {
@@ -863,6 +883,8 @@ interface IdempotentEntryRow {
   owner_person_id: string | null;
   offsets_category: number;
   note: string | null;
+  linked_split_expense_id: string | null;
+  linked_split_expense_date: string | null;
 }
 
 interface IdempotentEntryExpected {
@@ -896,7 +918,17 @@ async function loadEntryByExternalReference(db: D1Database, externalReference: s
         category_id,
         owner_person_id,
         offsets_category,
-        note
+        note,
+        (
+          SELECT split_expenses.id FROM split_expenses
+          WHERE split_expenses.linked_transaction_id = transactions.id AND split_expenses.deleted_at IS NULL
+          LIMIT 1
+        ) AS linked_split_expense_id,
+        (
+          SELECT split_expenses.expense_date FROM split_expenses
+          WHERE split_expenses.linked_transaction_id = transactions.id AND split_expenses.deleted_at IS NULL
+          LIMIT 1
+        ) AS linked_split_expense_date
       FROM transactions
       WHERE household_id = ? AND external_reference = ?
       LIMIT 1
@@ -907,7 +939,8 @@ async function loadEntryByExternalReference(db: D1Database, externalReference: s
 
 function assertIdempotentEntryMatches(
   existing: IdempotentEntryRow,
-  expected: IdempotentEntryExpected
+  expected: IdempotentEntryExpected,
+  reusedMessage: string
 ) {
   const matches = existing.account_id === expected.accountId
     && existing.transaction_date === expected.date
@@ -922,7 +955,7 @@ function assertIdempotentEntryMatches(
     && Number(existing.offsets_category) === expected.offsetsCategory
     && existing.note === expected.note;
   if (!matches) {
-    throw new Error("Shortcut request ID was already used for a different entry.");
+    throw new Error(reusedMessage);
   }
 }
 

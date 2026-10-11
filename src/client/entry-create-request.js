@@ -12,6 +12,11 @@ import { getTotalAmountMinor } from "./entry-helpers";
 // layered on top of entry creation: the row itself is valid even if the
 // split-expense creation fails, so that failure comes back as splitAddError
 // beside a created entry.
+//
+// A draft with an externalReference (the Ask card's stable client id) can
+// be sent again safely: the route returns the entry it already made
+// (created: false) with the split linked to it, so a repeat never adds a
+// second entry or a second split.
 export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {}) {
   const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits?.[0] : undefined;
   const response = await fetchImpl("/api/entries/create", {
@@ -30,7 +35,10 @@ export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {
   let splitAddError = "";
   let splitExpenseId = null;
   let splitExpenseMonth = null;
-  if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
+  if (data.created === false && data.linkedSplitExpenseId) {
+    splitExpenseId = data.linkedSplitExpenseId;
+    splitExpenseMonth = data.linkedSplitExpenseMonth ?? null;
+  } else if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
     const splitResponse = await fetchImpl("/api/splits/expenses/from-entry", {
       method: "POST",
       headers: {
@@ -71,6 +79,7 @@ export function buildPersistedEntryPayload(entry, primarySplit) {
     ownershipType: entry.ownershipType,
     ownerName: entry.ownerName,
     note: entry.note ?? "",
-    splitBasisPoints: primarySplit?.ratioBasisPoints
+    splitBasisPoints: primarySplit?.ratioBasisPoints,
+    externalReference: entry.externalReference || undefined
   };
 }
