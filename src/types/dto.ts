@@ -1184,3 +1184,56 @@ export interface EntriesShellDto {
   importsPage: ImportsPageDto;
   settingsPage: SettingsPageDto;
 }
+
+// What one receipt says, read either by the optional AI provider from an
+// image the user explicitly supplied, or by in-browser OCR when AI is off.
+// It is a draft only: nothing is saved until the user taps save in the
+// normal entry editor. Every value is validated by the app
+// (src/domain/receipt-read.ts); the model never supplies wording.
+export type ReceiptFieldConfidence = "high" | "medium" | "low";
+
+export type ReceiptQuestionField = "merchant" | "date" | "total" | "currency";
+
+// Why the app wants the user to check a field. The client words the
+// question; the reason and candidates come from validation, never from a
+// model's prose.
+export type ReceiptQuestionReason =
+  | "missing"
+  | "unclear"
+  | "ambiguous"
+  | "future_date"
+  | "old_date"
+  | "invalid_amount"
+  | "unsupported_currency";
+
+export interface ReceiptQuestionDto {
+  field: ReceiptQuestionField;
+  reason: ReceiptQuestionReason;
+  // Validated alternatives the user can pick from (ISO dates for an
+  // ambiguous date such as 03/04), at most three.
+  candidates?: string[];
+}
+
+export interface ReceiptLineItemDto {
+  description: string;
+  // Signed: a discount line is negative.
+  amountMinor: number | null;
+  quantity: number | null;
+}
+
+export interface ReceiptReadDto {
+  source: "ai" | "ocr";
+  merchant: { value: string | null; confidence: ReceiptFieldConfidence };
+  // ISO YYYY-MM-DD.
+  date: { value: string | null; confidence: ReceiptFieldConfidence };
+  total: {
+    amountMinor: number | null;
+    // ISO 4217 code from the app's allowlist.
+    currency: string | null;
+    confidence: ReceiptFieldConfidence;
+  };
+  // Only ever the last four digits of a printed card number.
+  cardLast4: string | null;
+  lineItems: ReceiptLineItemDto[];
+  questions: ReceiptQuestionDto[];
+}

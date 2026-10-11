@@ -1376,6 +1376,36 @@ Important distinctions:
 - No rate, no entry: when no usable rate exists the Shortcut is told to run
   again and nothing is saved.
 
+### Receipt Read
+
+The validated draft of what one shop receipt says: merchant, purchase date,
+total and currency, the printed card's last four digits, bounded line items,
+a confidence per field, and questions for the fields the user should check.
+It is read either by the optional AI provider from an image the user
+explicitly pasted, dropped, scanned or shared, or by in-browser OCR when AI
+is off. It is never saved: it only pre-fills the normal entry editor.
+
+Canonical term:
+- `receipt read`
+
+Code:
+- `src/domain/receipt-read.ts` (validation, `receiptReadToDraftFields`)
+- `src/domain/receipt-ocr-text.ts` (the no-AI reader of OCR text)
+- `ReceiptReadDto` in `src/types/dto.ts`
+- `POST /api/ai-assist/receipt-read` (`src/server/receipt-read-route.ts`)
+
+Important distinctions:
+- The app, never the model, decides what is a valid date (not more than a
+  day in the future), a positive total, an allowed currency code and a card
+  ending (only ever four digits). A question carries a reason and validated
+  candidates; the model writes no wording.
+- The image is discarded after reading: not stored, logged or cached
+  anywhere, and the AI provider is called with gateway logging and caching
+  off.
+- A card ending pre-selects an account only when exactly one active account
+  has that `last4`; otherwise Default account priority applies. A total in
+  another currency than that account's is a currency hint, not an amount.
+
 ### No Longer Listed Entry
 
 An entry an earlier activity export created that a later export of the same
