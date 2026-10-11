@@ -124,7 +124,7 @@ import { getAuthenticatedEmail } from "./server/access-identity";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
-  buildShortcutAppUrl,
+  buildShortcutEntryOpenUrl,
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
@@ -2367,31 +2367,6 @@ function parseShortcutTransferDirection(value?: string | null): "in" | "out" | u
 
 function parseShortcutOwnershipType(value?: string | null): "direct" | "shared" | undefined {
   return value === "direct" || value === "shared" ? value : undefined;
-}
-
-function buildShortcutEntryOpenUrl(
-  request: Request,
-  input: {
-    entryId: string;
-    date?: string;
-    viewId?: string;
-    accountId?: string;
-    accountName?: string;
-  },
-  appOrigin?: string
-) {
-  const url = buildShortcutAppUrl("/entries", request.url, appOrigin);
-  url.searchParams.set("editing_entry", input.entryId);
-  if (input.date?.slice(0, 7)) {
-    url.searchParams.set("month", input.date.slice(0, 7));
-  }
-  url.searchParams.set("view", input.viewId || "household");
-  if (input.accountId) {
-    url.searchParams.set("entry_wallet", input.accountId);
-  } else if (input.accountName) {
-    url.searchParams.set("entry_wallet", input.accountName);
-  }
-  return url.toString();
 }
 
 type RequestTiming = { requestStartedAt: number; initMs: number; initCold: boolean };

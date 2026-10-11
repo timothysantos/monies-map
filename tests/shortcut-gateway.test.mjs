@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   buildShortcutAppUrl,
+  buildShortcutEntryOpenUrl,
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "../src/server/shortcut-gateway.ts";
@@ -46,6 +47,29 @@ test("shortcut gateway response links resolve against the protected app origin",
     "https://monies-map.example"
   );
   assert.equal(url.toString(), "https://monies-map.example/entries");
+});
+
+test("the Shortcut opens its saved entry on the Ask page, in the entry's month and view", () => {
+  const request = new Request("https://monies-map-shortcuts.example/api/shortcuts/entries/create", { method: "POST" });
+  const openUrl = new URL(buildShortcutEntryOpenUrl(request, {
+    entryId: "txn-apple-1",
+    date: "2026-09-27",
+    viewId: "person-tim",
+    accountId: "acct-citi"
+  }, "https://monies-map.example"));
+  assert.equal(openUrl.origin, "https://monies-map.example");
+  assert.equal(openUrl.pathname, "/ask");
+  assert.deepEqual(Object.fromEntries(openUrl.searchParams), {
+    saved_entry: "txn-apple-1",
+    month: "2026-09",
+    view: "person-tim",
+    from: "shortcut"
+  });
+  // Without a view the household's.
+  const household = new URL(buildShortcutEntryOpenUrl(request, { entryId: "txn-2", date: "2026-10-01" }));
+  assert.equal(household.searchParams.get("view"), "household");
+  assert.equal(household.origin, "https://monies-map-shortcuts.example");
+  assert.equal(household.searchParams.get("editing_entry"), null);
 });
 
 test("legacy shortcut worker remains deployed while the main-path Access migration is staged", async () => {

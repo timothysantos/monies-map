@@ -458,10 +458,14 @@ returns:
 - `accountId`, `accountName`, and `accountResolution`
 - `openUrl`
 
-`openUrl` deep-links back into Entries with the created row already opened in
-the editor. It now opens `/entries` directly with the created row plus the
-month, view, and wallet context already in the URL, so the shortcut avoids a
-separate lookup redirect before the normal Entries page can render.
+`openUrl` opens the Ask page on the saved entry's card:
+`/ask?saved_entry=<id>&month=<YYYY-MM>&view=<view>&from=shortcut` (built by
+`buildShortcutEntryOpenUrl` in `src/server/shortcut-gateway.ts`). The card
+offers Open this entry, a category question when it landed in `Other`, and
+Splits. Shortcuts installed earlier keep working: they open whatever
+`openUrl` the response carries, and the Entries link earlier responses
+carried (`/entries?editing_entry=<id>&month=...`) still opens the row in the
+Entries editor.
 
 ### Security model for the shortcut endpoint
 
@@ -728,7 +732,7 @@ old shortcut target so one Wallet tap cannot create two ledger entries.
 The shortcut sends Wallet amount, merchant, card `name`, ISO date, a client
 version, and a per-run request ID directly to Monies Map. On success it shows
 `Saved <merchant> • <amount> • <account>`, reads `openUrl` from the response,
-and opens the saved entry for optional edits. The request ID makes an HTTP retry
+and opens the saved entry's card on the Ask page for optional follow-ups. The request ID makes an HTTP retry
 idempotent. The private connection URL is the POST destination stored during
 setup; it is not included in the JSON body.
 
@@ -827,7 +831,7 @@ Expected response shape:
   "accountId": "acct-uob-one",
   "accountName": "UOB One",
   "accountResolution": "wallet_name",
-  "openUrl": "https://monies-map.timsantos-accts.workers.dev/entries?editing_entry=txn-...&month=2026-04&view=household"
+  "openUrl": "https://monies-map.timsantos-accts.workers.dev/ask?saved_entry=txn-...&month=2026-04&view=household&from=shortcut"
 }
 ```
 
@@ -1823,6 +1827,32 @@ The app keeps only daily AI usage counters so it can stay within its configured
 allowance. It does not save prompts, model answers, receipt images, original
 PDFs, credentials, Shortcut tokens, or full card/account numbers as an AI
 history.
+
+## How does the Ask page work?
+
+`/ask` is a lazy route (`src/client/ask-panel.jsx`); the full contract is in
+`docs/flows/ask-flow.md` and the look in `design.md` ("Ask page"). It has
+three ways in: the Ask tab (chat mode, with a "since you last looked" card
+built from the Summary data already cached, never a fetch or AI call), the
+Entries + and Splits receipt buttons (`?mode=add` / `?mode=expense`, the new
+entry card), and the Apple Pay Shortcut's `openUrl` (`?saved_entry=<id>`).
+
+The card is a pure state machine (`ask-card-model.js`) with unit tests for
+every state. Saving goes through the Entries composer's create path
+(`entry-create-request.js`: `/api/entries/create`, then
+`/api/splits/expenses/from-entry` when Splits is on); Undo uses the existing
+delete routes. There is no new write route.
+
+A sentence or a receipt photo fills the card through the two reader routes
+in `ask-api.js`, the one module to adjust when they land:
+`/api/ai-assist/entry-draft` (branch `ai-entry-draft`) and
+`/api/ai-assist/receipt-read` (branch `ai-provider-receipts`). Both are
+explicit actions and both fail soft: the card stays manual with a calm note.
+A receipt photo is downscaled to 1600 px and re-encoded as JPEG in the
+browser before it is sent (no EXIF or location), kept in memory only for
+its thumbnail, and read on the device by the app's own Tesseract worker
+when the reader is unavailable. The browser tests stub both readers
+(`tests/e2e/ask-page.spec.js`).
 
 ## How do Money insights work?
 

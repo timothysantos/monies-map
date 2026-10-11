@@ -167,6 +167,16 @@ Budget rules:
   every `styles.css` rule, so move one only when no later rule of the same
   specificity sets the same property on the same element, and compare
   computed styles before and after
+- a lazy route that imports a module from the Summary route's static graph
+  on its own (not through the shared chunk that already holds it, such as
+  `ui-components.jsx` or `financial-insight.jsx`) splits that module into one
+  more first-screen file, and importing `query-leases.js` beside React hooks
+  in a lazy route splits React and the runtime out of the entry chunk. The
+  Ask page therefore reaches the check-in through `financial-insight.jsx`
+  exports, gets the Entries page read from App (`fetchEntriesPage` prop over
+  `fetchRoutePageResponse`), and loads the OCR worker (`ocr-worker.js`) with
+  a dynamic import from both callers. Check the file count with
+  `npm run check:bundle` after adding a route import
 - no `:has()` that searches all descendants (`body:has(.x)`): on a large
   month each restyle of an element such a rule styles walks the whole page.
   A portalled layer uses `body:has(> .x)`; an element inside the page holds
@@ -294,6 +304,15 @@ nothing but the allowance counter (and, when Claude is configured, the
 aggregate AI provider status row) and logs nothing
 (`tests/receipt-read-route.test.mjs`, `tests/ai-provider.test.mjs`).
 
+The Ask page's readers (`ask-api.js`) are explicit actions: the entry-draft
+route only for a sentence the person sends, the receipt-read route only for
+a photo they pick, paste or drop (downscaled and re-encoded in the browser
+first, never stored). Each fails soft to a manual card with a calm note;
+`tests/ask-api.test.mjs`, `tests/ask-api-server-contract.test.mjs` (the
+client adapter against the real routes) and the unavailable case in
+`tests/e2e/ask-page.spec.js` are their no-AI and failure tests. Opening Ask
+makes no AI request.
+
 An AI response is a bounded draft, explanation, or ranking over deterministic
 evidence already selected by the app. The existing editor or review action is
 the only way to persist a change. Keep request payloads redacted and bounded;
@@ -411,6 +430,12 @@ Each slice must not own:
 - global refresh side effects that ignore workflow locks
 
 ## Invalidation Contract
+
+The Ask page saves, undoes and follows up through the existing routes and
+then calls the shell's `broadcastEntryMutation` (and
+`broadcastSplitMutation` when a split was made or removed) for the entry's
+month, and refreshes that month's Entries page DTO with
+`runBackgroundRefresh` so Back to Entries shows the row.
 
 Use this shape for each mutation:
 

@@ -865,6 +865,48 @@ Definitions:
   Spending Mix's "Range overall" chip). The old `summary focus`
   (`summary_focus`) is retired.
 
+### Ask Page
+
+The one page where a person adds an entry by hand, from a typed sentence or
+from a receipt photo, and sees what changed since they last looked
+(`/ask`; flow in `docs/flows/ask-flow.md`). Reached from the `Ask` tab (chat
+mode), the Entries + button and the Splits receipt button (add mode) and the
+Apple Pay Shortcut's link (a saved entry's card).
+
+Canonical terms:
+- `Ask page` (user-facing tab: `Ask`)
+- `chat mode`: opened from the tab, with the `since you last looked` card
+- `add mode`: opened to add one entry, with an `entry card` from the start
+- `since you last looked`: the Summary check-in's headline for the view,
+  read from data already loaded; never a fetch or AI call on open
+- `chip row`: the one row of suggestion buttons above the composer
+- `composer`: the message field with its photo and send (or Save) buttons
+
+### Entry Card
+
+One new ledger entry being put together on the Ask page before it is saved
+(`src/client/ask-card-model.js`). It is not a ledger entry until the person
+taps Save, which posts it through the same create path as the Entries
+composer; an `entry draft` read from a sentence and a `receipt read` from a
+photo only fill it in.
+
+Canonical terms:
+- `entry card`, with a `variant`: `expense`, `income` or `transfer`
+- `filled in`: a field the sentence, a category rule, AI or the receipt
+  supplied (marked with a dot until edited by hand)
+- `question`: a structured follow-up a reader asked (which card, which day,
+  how much in the card's currency); the client words it as chips
+- `Splits switch`: share an expense with the other person on Splits, the
+  composer's `Add to Splits` step
+- `saved card`: the card after Save, with `Undo` (the existing delete
+  routes)
+
+Rules:
+- A transfer card posts one transfer entry (its From side, or its To side
+  when turned round); the other wallet is shown for the later transfer
+  match, not posted.
+- Nothing about the conversation, sentence or photo is stored.
+
 ### Money Tone
 
 How a displayed amount reads by its direction or outcome, decided in
@@ -1762,6 +1804,10 @@ These boundaries are important enough to preserve explicitly:
   an `entry draft` is a transient reading of a typed sentence with a source
   per field. It is never stored, and only the user's confirmation, through
   `/api/entries/create`, makes it a `ledger entry`.
+- Entry card vs ledger entry:
+  an `entry card` (Ask page) is a draft on screen. It becomes a ledger entry
+  only when the person saves it through the normal create route; a typed
+  sentence, a receipt or AI only fill it in.
 - Financial insight vs monthly note:
   a `Financial insight` is a transient explanation of the already-visible
   Summary, Month, Entries, or Splits figures. It updates with that view's

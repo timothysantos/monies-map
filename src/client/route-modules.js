@@ -8,6 +8,7 @@ import { loadSummaryInsights } from "./money-insights-loader";
 // starts beside the route's own, and the route never waits for it
 // (money-insights-loader.js).
 const loaders = {
+  ask: () => import("./ask-panel.jsx"),
   entries: () => import("./entries-panel.jsx"),
   faq: () => import("./faq-panel.jsx"),
   imports: () => import("./imports-panel.jsx"),

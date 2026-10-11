@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
 import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "./entry-state";
+import { buildPersistedEntryPayload, createEntryFromDraft } from "./entry-create-request";
 import { buildRequestErrorMessage } from "./request-errors";
 import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 
@@ -322,53 +323,19 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
 
     setEntrySubmitError("");
-    const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits[0] : undefined;
     setIsSavingEntryDraft(true);
     try {
-      const response = await fetch("/api/entries/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(buildPersistedEntryPayload(entryDraft, primarySplit))
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        setEntrySubmitError(data.error ?? "Failed to create entry.");
+      const created = await createEntryFromDraft(entryDraft);
+      if (!created.ok) {
+        setEntrySubmitError(created.error);
         return false;
       }
 
-      let splitAddError = "";
-      let createdSplitExpenseId = null;
-      // "Add to splits" is a second workflow layered on top of entry creation.
-      // The row itself is valid even if the split-expense creation fails.
-      if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
-        const splitResponse = await fetch("/api/splits/expenses/from-entry", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            entryId: data.entryId,
-            splitGroupId: entryDraft.splitGroupId === "split-group-none"
-              ? null
-              : (entryDraft.splitGroupId || null)
-          })
-        });
-
-        if (!splitResponse.ok) {
-          const splitData = await splitResponse.json().catch(() => ({}));
-          splitAddError = splitData.error ?? "Entry was created, but adding it to splits failed.";
-        } else {
-          const splitData = await splitResponse.json().catch(() => ({}));
-          createdSplitExpenseId = splitData.splitExpenseId ?? null;
-        }
-      }
+      const { splitAddError, splitExpenseId: createdSplitExpenseId } = created;
 
       const optimisticEntry = entryService.normalize({
         ...entryDraft,
-        id: data.entryId,
+        id: created.entryId,
         linkedTransfer: undefined,
         linkedSplitExpenseId: createdSplitExpenseId,
         isPendingDerived: true
@@ -839,26 +806,6 @@ function withLinkedEntryTotal(entry, patch) {
   return entry.linkedSplitExpenseId && Object.prototype.hasOwnProperty.call(patch, "amountMinor")
     ? { ...patch, totalAmountMinor: patch.amountMinor }
     : patch;
-}
-
-function buildPersistedEntryPayload(entry, primarySplit) {
-  return {
-    date: entry.date,
-    postDate: entry.postDate ?? null,
-    description: entry.description,
-    accountId: entry.accountId,
-    accountName: entry.accountName,
-    categoryName: entry.categoryName,
-    amountMinor: entry.ownershipType === "shared" || entry.linkedSplitExpenseId
-      ? entryService.getTotalAmountMinor(entry)
-      : entry.amountMinor,
-    entryType: entry.entryType,
-    transferDirection: entry.transferDirection,
-    ownershipType: entry.ownershipType,
-    ownerName: entry.ownerName,
-    note: entry.note ?? "",
-    splitBasisPoints: primarySplit?.ratioBasisPoints
-  };
 }
 
 function mergeEntryDraftPatch(baseDraft, patch) {

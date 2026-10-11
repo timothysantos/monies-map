@@ -152,6 +152,7 @@ export function SplitsMainSection({
             isSubmitting={isSubmitting}
             hasInlineSplitChanges={hasInlineSplitChanges}
             onAddExpense={onAddExpense}
+            activeGroupId={activeGroup?.id ?? ""}
             onOpenArchive={onOpenArchive}
             onEditExpense={onEditExpense}
             onEditSettlement={onEditSettlement}

@@ -90,27 +90,10 @@ export async function extractPdfText(file) {
 export async function openOcrSession(file, onProgress) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-  const tesseractModule = await importRuntimeModule("/vendor/tesseract/tesseract.esm.min.js");
-  const createWorker = resolveTesseractCreateWorker(tesseractModule);
-  if (typeof createWorker !== "function") {
-    throw new Error("Local OCR engine did not load. Try refreshing the app and uploading the PDF again.");
-  }
+  const { createOcrWorker } = await import("./ocr-worker");
+  const worker = await createOcrWorker(onProgress, "Local OCR engine did not load. Try refreshing the app and uploading the PDF again.");
   const data = new Uint8Array(await file.arrayBuffer());
   const document = await pdfjs.getDocument({ data }).promise;
-  const worker = await createWorker("eng", 1, {
-    workerPath: "/vendor/tesseract/worker.min.js",
-    corePath: "/vendor/tesseract",
-    langPath: "/vendor/tesseract",
-    gzip: false,
-    logger: (message) => {
-      if (message?.status) {
-        onProgress?.({
-          status: message.status,
-          progress: typeof message.progress === "number" ? message.progress : undefined
-        });
-      }
-    }
-  });
   return { document, worker };
 }
 
@@ -225,18 +208,6 @@ function withOcrPageNumber(line, pageNumber) {
     columns[1] = String(pageNumber);
   }
   return columns.join("\t");
-}
-
-function importRuntimeModule(path) {
-  return new Function("path", "return import(path)")(path);
-}
-
-function resolveTesseractCreateWorker(tesseractModule) {
-  return (
-    tesseractModule?.createWorker ??
-    tesseractModule?.default?.createWorker ??
-    globalThis.Tesseract?.createWorker
-  );
 }
 
 export function selectParsedStatementForCompare(parsed, target) {

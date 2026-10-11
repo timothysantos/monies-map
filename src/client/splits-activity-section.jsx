@@ -18,6 +18,7 @@ export function SplitsActivitySection({
   isSubmitting,
   hasInlineSplitChanges,
   onAddExpense,
+  activeGroupId = "",
   onOpenArchive,
   onEditExpense,
   onEditSettlement,
@@ -37,6 +38,7 @@ export function SplitsActivitySection({
         <button
           type="button"
           data-splits-fab-trigger="true"
+          data-split-group={activeGroupId}
           className="entries-fab-trigger"
           onClick={onAddExpense}
           aria-hidden="true"

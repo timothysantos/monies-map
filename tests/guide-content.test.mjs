@@ -21,7 +21,7 @@ const guides = {
   developers: parseGuideMarkdown(readFileSync("docs/developer-guide.md", "utf8"))
 };
 const anchors = Object.fromEntries(Object.entries(guides).map(([tab, doc]) => [tab, collectGuideAnchors(doc)]));
-const APP_ROUTES = new Set(["/summary", "/month", "/entries", "/splits", "/imports", "/settings", "/faq"]);
+const APP_ROUTES = new Set(["/summary", "/month", "/entries", "/splits", "/ask", "/imports", "/settings", "/faq"]);
 
 function brokenLinks(doc, tab, anchorSets = anchors) {
   return collectGuideLinks(doc).flatMap((link) => {
@@ -58,7 +58,7 @@ test("both guides parse into titled parts with a table of contents", () => {
 
 test("the user guide covers every screen in navigation order", () => {
   const screens = guides.user.toc.find((part) => part.title === "The screens").sections.map((section) => section.title);
-  assert.deepEqual(screens, ["Summary", "Month", "Entries", "Splits", "Imports", "Settings", "Help (FAQ)"]);
+  assert.deepEqual(screens, ["Summary", "Month", "Entries", "Splits", "Ask", "Imports", "Settings", "Help (FAQ)"]);
 });
 
 test("every internal link and anchor in both guides resolves", () => {

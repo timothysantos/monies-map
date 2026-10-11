@@ -1,5 +1,5 @@
 import * as Popover from "@radix-ui/react-popover";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -15,6 +15,8 @@ export function isRouteTabActive(tab, selectedTabId) {
 // intent handlers; this component only lays them out. On a phone the
 // primary tabs fill the bottom bar, one grid column each, then the •••
 // menu (`--primary-tab-count`), so adding a primary tab is one registry line.
+// A primary tab marked `phoneOnly` (Ask) shows in the phone's bar only; the
+// wide header hides it.
 export function ShellRouteTabs({
   primaryTabs,
   secondaryTabs,
@@ -30,6 +32,7 @@ export function ShellRouteTabs({
   );
   const renderTabLabel = (tab) => (
     <span className="tab-label-with-badge">
+      {tab.icon === "ask" ? <Sparkles size={15} aria-hidden="true" className="tab-icon" /> : null}
       <span>{tab.label}</span>
       {tab.id === "settings" && pendingCategorySuggestionCount ? (
         <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
@@ -60,7 +63,7 @@ export function ShellRouteTabs({
       aria-label={messages.tabs.ariaLabel}
       style={/** @type {import("react").CSSProperties} */ ({ "--primary-tab-count": primaryTabs.length })}
     >
-      {primaryTabs.map((tab) => renderTabLink(tab, "tab"))}
+      {primaryTabs.map((tab) => renderTabLink(tab, tab.phoneOnly ? "tab tab-phone-only" : "tab"))}
       {secondaryTabs.map((tab) => renderTabLink(tab, "tab tab-secondary"))}
       <Popover.Root>
         <Popover.Trigger asChild>

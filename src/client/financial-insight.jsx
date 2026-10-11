@@ -3,7 +3,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/checkin";
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
-import { readVisitMemory, writeVisitMemory } from "./checkin-visit-memory";
+import { checkInMemoryKey, readVisitMemory, useCheckInClock, writeVisitMemory } from "./checkin-visit-memory";
 import { useMoneyPrivacy } from "./money-privacy";
 // The check-in's own styles ship with the route that shows it, not with
 // the first-screen stylesheet.
@@ -207,6 +207,28 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   );
 }
 
-function CheckInChip({ kind }) {
+// The check-in's headline alone, composed exactly as the insights compose
+// it (the same signals, visit memory, rotation and calm lines) but without
+// recording a visit: the Ask page's "since you last looked" card shows it
+// and leaves the visit to the page that owns the insights.
+export function composeCheckInHeadline(checkIn) {
+  const { memoryKey, contextKey, signals, period, triviaRotation, calmLines, clock, ready = true } = checkIn;
+  return composeCheckIn({
+    signals,
+    memory: readVisitMemory(memoryKey),
+    nowMs: clock.nowMs,
+    today: clock.today,
+    seed: `${memoryKey}|${contextKey}`,
+    contextKey,
+    period,
+    triviaRotation,
+    calmLines,
+    ready
+  }).headline;
+}
+
+export { checkInMemoryKey, useCheckInClock };
+
+export function CheckInChip({ kind }) {
   return <span className={`checkin-chip is-${kind.replace(/_/g, "-")}`}>{SIGNAL_KIND_LABELS[kind]}</span>;
 }

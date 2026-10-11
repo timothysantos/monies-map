@@ -66,6 +66,7 @@ export const messages = {
     month: "Month",
     entries: "Entries",
     splits: "Splits",
+    ask: "Ask",
     imports: "Imports",
     settings: "Settings",
     faq: "FAQ",

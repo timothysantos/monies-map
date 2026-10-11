@@ -28,6 +28,7 @@ import {
   writePersistedAppShell
 } from "./app-shell-query";
 import {
+  buildAskLocation,
   buildEntriesPageParams,
   buildPageViewFromRouteData,
   buildRoutePageRequest,
@@ -107,6 +108,7 @@ import {
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 
+const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
@@ -121,12 +123,15 @@ const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
 // Canonical route registry for the top navigation and route-based prefetching.
 // One Summary tab stands for two routes: /summary (All months) and /month (one
 // month of the range picked); see summary-month-choice.js. Primary tabs fill
-// the phone's bottom bar, the rest sit behind its ••• menu; a new primary tab
-// (the Ask tab) is one more `primary: true` line here.
+// the phone's bottom bar, the rest sit behind its ••• menu. Ask is a primary
+// tab on a phone only: a wide screen gets its own way in later (a docked
+// field), so there the tab is hidden for now (phoneOnly) and /ask opens from
+// the + and receipt buttons. The phone bar reads Summary, Entries, Splits, Ask.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary, routeIds: ["summary", "month"], primary: true },
   { id: "entries", path: "/entries", label: messages.tabs.entries, primary: true },
   { id: "splits", path: "/splits", label: messages.tabs.splits, primary: true },
+  { id: "ask", path: "/ask", label: messages.tabs.ask, icon: "ask", phoneOnly: true, primary: true },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
   { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
@@ -806,6 +811,14 @@ export function App() {
     });
     return data;
   }, [queryClient, updateLoadingStatus]);
+
+  // The Ask page borrows the Entries page DTO (its split groups, and the
+  // Apple Pay Shortcut's saved entry) through the same required read, so a
+  // later visit to Entries joins it.
+  const fetchAskEntriesPage = useCallback(
+    (params, options = {}) => fetchRoutePageResponse({ path: "/api/entries-page", params }, options),
+    [fetchRoutePageResponse]
+  );
 
   // Month's Accounts section and check-in read wallet balances and statement
   // health from the view's account pills, the query Summary's "Wallets in
@@ -1811,7 +1824,7 @@ export function App() {
   // the active request; a previous page kept on screen never does.
   const routeDataReady = selectedTabId === "summary"
     ? Boolean(summaryPageData && summaryAccountPillsData) && summaryPageDataRequestKey === summaryPageParams.toString()
-    : selectedTabId === "faq" || Boolean(currentRoutePageData);
+    : selectedTabId === "faq" || selectedTabId === "ask" || Boolean(currentRoutePageData);
   const routeWorkSnapshot = useRouteWorkSnapshot(routeWorkRegistry, activeRouteKey);
   const requiredWorkCount = useRequiredWorkCount(requiredWork);
   const loginRegistrationBlocking = Boolean(loginRegistrationDraft) || isRegisteringLogin || isUnregisteringLogin;
@@ -1915,7 +1928,7 @@ export function App() {
   const isSplitsTab = renderedTabId === "splits";
   // Imports, Settings and FAQ do not depend on a period, so the header keeps
   // the period control in place but greyed out and disabled there.
-  const routeUsesPeriod = !["imports", "settings", "faq"].includes(renderedTabId);
+  const routeUsesPeriod = !["imports", "settings", "faq", "ask"].includes(renderedTabId);
   const isPeriodPassive = isSplitsTab || !routeUsesPeriod;
   // A page load error names the page the person asked for.
   const selectedPageLabel = routePageLabels[selectedTabId] ?? "";
@@ -2125,14 +2138,35 @@ export function App() {
       return <FaqPanel viewLabel={pageView.label} categories={categories} />;
     }
 
+    if (renderedTabId === "ask") {
+      return (
+        <AskPanel
+          view={pageView}
+          selectedMonth={selectedMonth}
+          selectedScope={selectedScope}
+          accounts={accounts}
+          categories={categories}
+          people={appShell.household.people}
+          shortcutSettings={appShell.settingsPage?.shortcutSettings}
+          fetchEntriesPage={fetchAskEntriesPage}
+          onEntryMutation={broadcastEntryMutation}
+          onSplitMutation={broadcastSplitMutation}
+          runBackgroundRefresh={runBackgroundRefresh}
+        />
+      );
+    }
+
     return null;
   }, [
     appEnvironment,
     accounts,
     appShell?.household?.people,
+    appShell?.settingsPage?.shortcutSettings,
     appShell?.viewerIdentity,
+    broadcastEntryMutation,
     broadcastSplitMutation,
     categories,
+    fetchAskEntriesPage,
     closeMobileContext,
     entriesExternalRefreshToken,
     handleCategoryAppearanceChange,
@@ -2155,6 +2189,7 @@ export function App() {
     runBackgroundRefresh,
     saveSummaryMonthNote,
     selectedMonth,
+    selectedScope,
     syncAppShellAfterMutation
   ]);
   // The previous page stays on screen while the next one loads, so a crashed
@@ -2289,7 +2324,9 @@ export function App() {
 
   // Normalize summary range parameters so the picker and the URL stay in sync.
   useEffect(() => {
-    if (!appShell || !availableMonths.length) {
+    // Ask has no period: its month is the context it was opened with (an
+    // Apple Pay entry's own month), so it is never moved to a tracked one.
+    if (!appShell || !availableMonths.length || selectedTabId === "ask") {
       return;
     }
 
@@ -2316,7 +2353,7 @@ export function App() {
     const next = new URLSearchParams(location.search);
     next.set("month", availableMonths[availableMonths.length - 1]);
     navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
-  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
+  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, selectedTabId, setSearchParams]);
 
   // Repair an explicit Summary range the data does not have (both tabs of the
   // Summary tab carry it), so the pickers and the URL agree.
@@ -3175,10 +3212,10 @@ export function App() {
       {renderedTabId === "entries" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab" onClick={() => {
-              const trigger = document.querySelector("[data-entries-fab-trigger='true']");
-              if (trigger instanceof HTMLButtonElement) {
-                trigger.click();
-              }
+              // The + button opens the Ask page's new entry card; the
+              // Entries composer stays on "+ Add entry" and the card's
+              // "Edit in form".
+              navigate(buildAskLocation(searchParams, { mode: "add", from: "entries" }));
             }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
               <Plus size={24} />
             </button>,
@@ -3200,10 +3237,15 @@ export function App() {
       {renderedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab splits-fab" onClick={() => {
+              // The receipt button opens the Ask page's card with the
+              // Splits switch on for the open group; the Splits expense
+              // dialog stays on "+ Add expense" and the card's "Edit in form".
+              // The open group: the URL's, else the one Splits chose itself
+              // (it marks its hidden add trigger with it).
               const trigger = document.querySelector("[data-splits-fab-trigger='true']");
-              if (trigger instanceof HTMLButtonElement) {
-                trigger.click();
-              }
+              const splitGroup = searchParams.get("split_group")
+                ?? (trigger instanceof HTMLElement ? trigger.dataset.splitGroup ?? "" : "");
+              navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }));
             }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
               <Receipt size={24} />
             </button>,

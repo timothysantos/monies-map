@@ -133,6 +133,14 @@ splits page; restoring reactivates the original record and relationships rather
 than creating a replacement. Settlement checkpoint membership is not rewritten
 by either operation.
 
+The Ask page (`/ask`, `docs/flows/ask-flow.md`) is a lazy route, not a
+slice of its own data: it adds entries through the entries slice's create
+path (`entry-create-request.js`) and the existing split link, borrows the
+Entries and Summary DTOs from the query cache (the Entries one through the
+shell's required read when it must load it), and holds only its
+conversation and one entry card. The Entries + and Splits receipt buttons
+open it; their old forms stay reachable.
+
 Rules:
 
 - each slice should expose a small public surface
@@ -366,7 +374,12 @@ then the configured active priority is the fallback. Named Wallet currency must
 match the selected account currency. The response returns normalized transaction
 facts, account identity and resolution, creation status, and `openUrl`. The
 shortcut opens `openUrl` only when present and shows merchant, amount, and
-resolved account in its success notification.
+resolved account in its success notification. `openUrl` opens the Ask page
+on the saved entry's card (`/ask?saved_entry=<id>`, built by
+`buildShortcutEntryOpenUrl` in `src/server/shortcut-gateway.ts`), which
+offers a category when it landed in Other and Splits; the Entries link
+earlier responses carried (`/entries?editing_entry=<id>`) still opens the
+entry in Entries.
 
 The repository owns the durable shortcut source under
 `shortcuts/apple-pay-api/`. It stores a reviewable secret-free plist, the exact
@@ -620,8 +633,7 @@ below): the headline is the bold fact and its think line as written. There
 is no AI rewording; the optional `/api/ai-assist/financial-insight` route was
 removed after it produced broken grammar in production.
 
-Entry drafts (backend groundwork for the future "Add or ask" card; no client
-calls it yet): `POST /api/ai-assist/entry-draft` takes `{ text, viewId? }`
+Entry drafts: `POST /api/ai-assist/entry-draft` takes `{ text, viewId? }`
 and returns `{ ok, draft: EntryDraftDto, ai }`. The deterministic parser
 (`src/domain/entry-draft.ts`) always answers, from read-only reference data
 (`entry-draft-context.ts`: accounts without balances, people, category names,
@@ -633,6 +645,15 @@ alone (300 characters, 80 tokens). The answer fills only those gaps, marked
 `ai.available: false` and the reason. The route writes nothing but the
 shared allowance counter: the user saves a confirmed draft through
 `/api/entries/create`, whose body the draft's `createBody` already matches.
+
+The Ask page is the client of both readers: a typed sentence goes to
+`/api/ai-assist/entry-draft` only when the person sends it, and a receipt
+photo to `/api/ai-assist/receipt-read` only when they pick, paste or drop
+one; both answer with drafts the entry card shows for the person to save
+through the normal create route, and both failing leaves the card manual
+(a receipt is then read on the device). The photo is downscaled and
+re-encoded in the browser (no EXIF or location) and never stored
+(`ask-api.js`, `ask-receipt-image.js`).
 
 Apart from a receipt image the user explicitly supplies, the Worker receives
 bounded, redacted text only. Statement fallback begins with

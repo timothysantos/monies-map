@@ -170,24 +170,22 @@ test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
     expect(await firstRowButtons.count()).toBeGreaterThan(0);
   });
 
+  // On a phone the + button opens the Ask page's entry card; its Edit in
+  // form opens this sheet on Entries, with nothing on the page as opener.
   test("the Entries add entry sheet follows the same dialog pattern", async ({ page }) => {
     await page.setViewportSize(iPhone);
-    await gotoPageAfterApi(
-      page,
-      "/entries?view=person-tim&month=2026-04",
-      "/api/entries-page",
-      () => page.getByRole("button", { name: "+ Add entry" }).first()
-    );
-    const opener = page.getByRole("button", { name: "+ Add entry" }).first();
+    await page.goto("/ask?view=person-tim&month=2026-04&mode=add&from=entries");
+    await expect(page.getByRole("button", { name: "Edit in form" })).toBeVisible({ timeout: 60_000 });
+    await page.getByRole("textbox", { name: "What it was" }).fill("Kopi");
+    await page.getByRole("button", { name: "Edit in form" }).click();
     const sheet = page.locator('.entry-mobile-sheet[aria-label="Add entry"]');
-
-    await opener.click();
     await expect(sheet).toBeVisible();
     await expect.poll(() => focusIsInside(sheet)).toBe(true);
+    await expect(sheet.getByLabel("Description")).toHaveValue("Kopi");
 
     await page.keyboard.press("Escape");
     await expect(sheet).toHaveCount(0);
-    await expect(opener).toBeFocused();
+    await expect(page.locator("main.shell")).toBeFocused();
   });
 });
 
@@ -231,24 +229,15 @@ test.describe("mobile sheet focus after a tap", { tag: "@webkit" }, () => {
     await expect(addOpener).not.toBeFocused();
   });
 
-  test("Entries sheets return focus to the tapped add button or entry row", async ({ page }) => {
+  // The floating + button opens the Ask page now (ask-page.spec.js), so the
+  // tapped opener here is an entry row.
+  test("Entries sheets return focus to the tapped entry row", async ({ page }) => {
     await gotoPageAfterApi(
       page,
       "/entries?view=person-tim&month=2026-04",
       "/api/entries-page",
       () => page.locator(".entry-row").first()
     );
-    // The floating add button clicks a hidden trigger for the panel; the
-    // button the person tapped is the opener, not that trigger.
-    const addOpener = page.getByRole("button", { name: "+ Add entry" }).first();
-    const addSheet = page.locator('.entry-mobile-sheet[aria-label="Add entry"]');
-    await addOpener.tap();
-    await expect(addSheet).toBeVisible();
-    await expect.poll(() => focusIsInside(addSheet)).toBe(true);
-    await addSheet.getByRole("button", { name: "Close add entry" }).tap();
-    await expect(addSheet).toHaveCount(0);
-    await expect(addOpener).toBeFocused();
-
     const rowOpener = page.locator(".entry-row").nth(2).locator(".entry-row-main");
     const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
     // Tap the row's description, away from its category and owner controls.

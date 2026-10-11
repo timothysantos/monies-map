@@ -24,7 +24,7 @@ function recordPanelRequests(page) {
 
 async function injectWarmupCosts(page, entriesBytes = 1_000) {
   await page.addInitScript((bytes) => {
-    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "imports", "settings", "faq"].map((id) => [id, {
+    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq"].map((id) => [id, {
       entry: `${id}-panel.jsx`,
       estimatedGzipBytes: id === "entries" ? bytes : 1_000,
       chunks: [{ file: `assets/${id}-panel.js`, estimatedGzipBytes: id === "entries" ? bytes : 1_000 }]

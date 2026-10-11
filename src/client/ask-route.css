@@ -1,0 +1,785 @@
+/* The Ask page (ask-panel.jsx, design.md "Ask page"). Imported by the route,
+   so none of it is in the first-screen stylesheet. Colours are the app's
+   tokens: pastel tags and chips with their -ink, the person colour from
+   person-colour.js, the category colour from the category palette, money
+   tones from money-tone.ts; raw colours are neutrals only. */
+
+.ask-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: min(720px, calc(100vh - 180px));
+  padding: 20px 20px 0;
+}
+
+.ask-head {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.ask-head h2 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.ask-head.is-inline {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ask-head.is-inline h2 {
+  font-size: 1.7rem;
+}
+
+.ask-context {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ask-thread {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 2px 0 12px;
+}
+
+.ask-thread > * {
+  flex: 0 0 auto;
+}
+
+.ask-k {
+  margin: 4px 0 -2px;
+  color: var(--muted);
+  font: 500 0.7rem/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ask-brief {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(27, 24, 21, 0.08);
+}
+
+.ask-brief .checkin-chip {
+  font-size: 0.78rem;
+  padding: 2px 10px;
+}
+
+.ask-brief-fact {
+  font-size: 1.02rem;
+  line-height: 1.35;
+}
+
+.ask-brief-action {
+  justify-self: start;
+  margin-top: 0;
+}
+
+.ask-brief-hidden {
+  margin: 0;
+  color: var(--muted);
+}
+
+.ask-brief-month {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.ask-brief-month-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-brief-month-row > span:first-child {
+  color: var(--muted);
+}
+
+.ask-brief-bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pastel-sky) 85%, white);
+}
+
+.ask-brief-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 55%, white);
+}
+
+.ask-brief-bar.is-over i {
+  background: var(--pastel-rose-ink);
+}
+
+.ask-me {
+  align-self: flex-end;
+  max-width: 85%;
+  margin: 0;
+  padding: 9px 14px;
+  border-radius: 16px 16px 4px 16px;
+  background: rgba(177, 94, 47, 0.12);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ask-note {
+  align-self: flex-start;
+  max-width: 94%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.ask-note.ask-question {
+  color: var(--text);
+}
+
+.ask-note.is-error {
+  color: var(--pastel-rose-ink);
+}
+
+.ask-receipt-thumb {
+  align-self: flex-end;
+  margin: 0;
+}
+
+.ask-receipt-thumb img {
+  display: block;
+  width: 72px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  transform: rotate(-2deg);
+}
+
+/* The entry card. */
+.ask-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
+}
+
+.ask-card-tag {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ask-card-tag.is-filled {
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.ask-card-tag.is-saved {
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+}
+
+.ask-card-hero {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.ask-card-bubble {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid color-mix(in srgb, var(--cat) 35%, white);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cat) 20%, white);
+  color: color-mix(in srgb, var(--cat) 70%, var(--text));
+}
+
+.ask-card-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ask-card-merchant {
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ask-card-merchant-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  resize: none;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.ask-card-merchant-input::placeholder {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.ask-card-category {
+  color: color-mix(in srgb, var(--cat) 62%, var(--text));
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.ask-card-amount {
+  justify-self: end;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ask-card-amount-field {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 0 2px;
+  border-bottom: 2px solid transparent;
+  cursor: text;
+}
+
+.ask-card-amount-field.is-empty {
+  border-bottom-color: var(--accent-strong);
+  color: var(--muted);
+}
+
+.ask-card-amount-input {
+  min-width: 3ch;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.ask-card-amount-input::placeholder {
+  color: var(--muted);
+}
+
+.ask-card-merchant-input:focus-visible,
+.ask-card-amount-input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.ask-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ask-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ask-meta-chip svg {
+  color: var(--muted);
+}
+
+.ask-meta-person {
+  border-color: var(--person-chip-border);
+  background: var(--person-chip-bg);
+  color: var(--person-ink);
+}
+
+.ask-meta-person::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--person-colour);
+}
+
+.ask-card-coax {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.ask-card-coax strong {
+  color: var(--text);
+}
+
+.ask-card-saved-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* Quiet detail rows. */
+.ask-rows-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.ask-rows {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.ask-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.94rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ask-rows > .ask-row:last-child {
+  border-bottom: 0;
+}
+
+.ask-row:focus-visible,
+.ask-row:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.ask-row-label {
+  color: var(--muted);
+}
+
+.ask-row-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.ask-row-value svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.ask-row-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ask-row-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pastel-butter-ink);
+}
+
+.ask-row-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  font-size: 16px;
+}
+
+.ask-row-more .ask-row-label {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.ask-row-hint {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.ask-row-more svg.is-open {
+  transform: rotate(90deg);
+}
+
+.ask-row-note {
+  cursor: text;
+}
+
+.ask-row-note-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+  resize: none;
+}
+
+.ask-row-note-input:focus {
+  outline: none;
+}
+
+.ask-share {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 26%, white);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent-strong) 8%, white);
+}
+
+.ask-share-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ask-share-copy label {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.ask-share-copy small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.ask-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 18%, white);
+  cursor: pointer;
+}
+
+.ask-switch::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.ask-switch[aria-checked="true"] {
+  background: var(--accent-strong);
+}
+
+.ask-switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+}
+
+.ask-switch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* The bottom stack: one row of chips, then the composer. */
+.ask-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 10px 20px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.ask-chips {
+  display: flex;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 2px 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.ask-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.ask-chip {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 8px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ask-chip.is-primary {
+  border-color: transparent;
+  background: var(--accent-strong);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ask-chip.is-back {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.ask-chip:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.ask-chip:focus-visible,
+.ask-icon-button:focus-visible,
+.ask-send:focus-visible,
+.ask-save:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.ask-composer {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.ask-input {
+  min-height: 44px;
+  max-height: 128px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.35;
+  resize: none;
+  field-sizing: content;
+}
+
+.ask-input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 45%, transparent);
+  outline-offset: 0;
+}
+
+.ask-icon-button,
+.ask-send {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.ask-icon-button {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--accent-strong);
+}
+
+.ask-send {
+  border: 0;
+  background: var(--accent-strong);
+  color: #fff;
+}
+
+.ask-save {
+  height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent-strong);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ask-save:disabled {
+  background: color-mix(in srgb, var(--accent-strong) 28%, white);
+  cursor: default;
+}
+
+.ask-icon-button:disabled,
+.ask-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ask-file-input {
+  display: none;
+}
+
+.ask-saved-picker {
+  position: sticky;
+  bottom: 140px;
+  justify-self: center;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(27, 24, 21, 0.14);
+}
+
+.ask-saved-picker label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.ask-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ask-switch,
+  .ask-switch::after {
+    transition: transform 160ms ease, background-color 160ms ease;
+  }
+
+  .ask-thread > .ask-me,
+  .ask-thread > .ask-note,
+  .ask-thread > .ask-card {
+    animation: ask-arrive 180ms ease-out;
+  }
+}
+
+@keyframes ask-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* A phone: Ask is a full page above the tab bar, with no header bar. The
+   conversation scrolls; the chips and composer stay above the tabs. */
+@media (max-width: 760px) {
+  .ask-page {
+    position: fixed;
+    inset: 0 0 calc(78px + env(safe-area-inset-bottom, 0px)) 0;
+    z-index: 45;
+    min-height: 0;
+    padding: 18px 16px 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg);
+    box-shadow: none;
+  }
+
+  .ask-thread {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0 -16px;
+    padding: 2px 16px 12px;
+  }
+
+  .ask-bottom {
+    position: static;
+    margin: 0 -16px;
+    padding: 8px 16px 10px;
+  }
+
+  .ask-chips {
+    margin: 0 -16px;
+    padding: 2px 16px;
+  }
+
+  .ask-head h2 {
+    font-size: 2.3rem;
+  }
+
+  .ask-head.is-inline h2 {
+    font-size: 1.85rem;
+  }
+}

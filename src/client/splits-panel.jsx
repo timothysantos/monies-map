@@ -304,6 +304,22 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     splitsPage.activity
   ]);
 
+  // The Ask page's "Edit in form" (?split_action=add-expense) opens the
+  // usual new expense dialog for the open group, once.
+  useEffect(() => {
+    if (searchParams.get("split_action") !== "add-expense") {
+      return;
+    }
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("split_action");
+      return next;
+    }, { replace: true });
+    if (!isHouseholdView) {
+      openNewExpenseDialog({ activeGroup, view });
+    }
+  }, [activeGroup, isHouseholdView, openNewExpenseDialog, searchParams, setSearchParams, view]);
+
   function scrollBackToSplitCard(splitExpenseId) {
     if (!splitExpenseId || typeof window === "undefined") {
       return;

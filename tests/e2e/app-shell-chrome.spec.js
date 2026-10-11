@@ -95,7 +95,8 @@ test.describe("route tabs and the More pages menu", () => {
     await page.keyboard.press("Enter");
     const menu = page.locator(".tab-overflow-popover");
     await expect(menu).toBeVisible();
-    await expect(menu.getByRole("link")).toHaveText(["Imports", "Settings", "FAQ"]);
+    // Month sits here on a phone, whose tab bar is Summary, Entries, Splits, Ask.
+    await expect(menu.getByRole("link")).toHaveText(["Month", "Imports", "Settings", "FAQ"]);
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(trigger).toBeFocused();

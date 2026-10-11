@@ -446,13 +446,25 @@ const SHOTS = [
     run: (page) => open(page, `/entries?view=person-ethan&month=${MONTH}`)
   },
   {
+    // The round + button opens the Ask page's new entry card.
     name: "phone-entries-add", device: "phone",
     run: async (page) => {
       await open(page, `/entries?view=person-ethan&month=${MONTH}`);
-      await page.getByRole("button", { name: /Add entry/ }).last().click();
-      await page.getByRole("dialog").first().waitFor();
+      await page.locator(".entries-fab:not(.splits-fab)").click();
+      await page.locator('[data-ask-card="draft"]').waitFor();
       await page.waitForTimeout(600);
       await hideCaret(page);
+    }
+  },
+  {
+    // The Ask tab, opened after Summary so "Since you last looked" has
+    // the insights Summary loaded.
+    name: "phone-ask", device: "phone",
+    run: async (page) => {
+      await open(page, `/summary?view=person-ethan&month=${MONTH}`);
+      await page.locator("nav.tab-strip").getByRole("link", { name: "Ask" }).click();
+      await page.getByRole("heading", { name: "Ask", exact: true }).waitFor();
+      await waitUsable(page);
     }
   },
   {
@@ -591,6 +603,21 @@ const SHOTS = [
       await add.click();
       await page.locator(".month-inline-action-row").first().waitFor();
       await page.waitForTimeout(400);
+      await hideCaret(page);
+    }
+  },
+  {
+    // A card filled in by hand and saved, with its follow-up chips. Last,
+    // because it adds an entry.
+    name: "phone-ask-saved", device: "phone", reseed: true,
+    run: async (page) => {
+      await open(page, `/ask?view=person-ethan&month=${MONTH}&mode=add&from=entries`);
+      await page.getByRole("textbox", { name: "What it was" }).fill("Koufu lunch");
+      await page.getByRole("textbox", { name: "Amount" }).fill("12.50");
+      await page.getByLabel("Date", { exact: true }).fill(`${MONTH}-28`);
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.locator('[data-ask-card="saved"]').waitFor();
+      await page.waitForTimeout(600);
       await hideCaret(page);
     }
   }
