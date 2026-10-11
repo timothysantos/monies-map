@@ -40,7 +40,9 @@ export function SpendingMixSection({
     [donutData, hiddenCategoryIds]
   );
   const visibleTotalMinor = sumDonutValueMinor(visibleDonutData);
-  const hiddenCount = hiddenCategoryIds.size;
+  // Hidden categories stay hidden across months and ranges; the reset counts
+  // only the ones this data has, so a month without them shows no reset.
+  const hiddenCount = donutData.filter((item) => hiddenCategoryIds.has(getDonutItemId(item))).length;
 
   function toggleCategoryVisibility(item) {
     setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));
