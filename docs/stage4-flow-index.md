@@ -13,7 +13,8 @@ auditing. This is a navigation index, not a mega-doc.
 ## Page Flows
 
 - [`docs/flows/summary-flow.md`](./flows/summary-flow.md)
-- [`docs/flows/month-flow.md`](./flows/month-flow.md)
+- [`docs/flows/month-flow.md`](./flows/month-flow.md) (Summary and Month are
+  one Summary tab, All months and a picked month, on two routes)
 - [`docs/flows/entries-flow.md`](./flows/entries-flow.md)
 - [`docs/flows/imports-flow.md`](./flows/imports-flow.md)
 - [`docs/flows/splits-flow.md`](./flows/splits-flow.md)

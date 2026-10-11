@@ -784,6 +784,28 @@ Person-view rule:
   weighted visible amount in parentheses, but the definition of each metric
   stays the same.
 
+### Summary Range And Month Choice
+
+What the `Summary` tab shows. It is one tab for two pages: the Summary page
+and the Month page.
+
+Canonical terms:
+- `summary range`
+- `month choice`
+- `All months`
+
+Definitions:
+- `summary range` means the run of months the header picks (route params
+  `summary_start` and `summary_end`, DTO `rangeMonths`). Without both
+  bounds the Worker ends it at the route's `month`.
+- `month choice` means either `All months` or one month of the summary
+  range. `All months` is the Summary page (`/summary`); one month is the
+  Month page for that month (`/month?month=YYYY-MM`). A month choice pins
+  the summary range into the URL so it stays fixed while months change.
+- `All months` is the UI label for the whole summary range (it replaced
+  Spending Mix's "Range overall" chip). The old `summary focus`
+  (`summary_focus`) is retired.
+
 ### Money Tone
 
 How a displayed amount reads by its direction or outcome, decided in

@@ -15,6 +15,18 @@ Route entry:
 The route state carries the selected view, month, and scope. The browser URL
 remains the source of truth.
 
+Month has no tab of its own: it is the `Summary` tab with one month of the
+header's range picked (`summary-flow.md`). `/month?month=YYYY-MM` deep links
+(bookmarks, the Shortcut, guide links) open the Summary tab, marked active,
+with that month picked. The header keeps the range (start and end pickers,
+arrows that move the range); a range change moves a month the new range no
+longer has to the nearest month it has. The month is changed in the phone's
+floating island (`‹ Sep 2026 ›`: the arrows step through the range's months
+and stop at its ends; the middle opens the "Pick a month" sheet, whose All
+months card returns to `/summary`) or in the desktop month row. Every month
+choice keeps the range pinned in the URL (`summary_start`, `summary_end`).
+The Summary tab link opens All months.
+
 ## State Flow
 
 Month state is split between:
@@ -98,6 +110,14 @@ Month data comes from:
   Accounts section's balances and statement health and the money check-in's
   statement-gap Quick fix (a statement that does not match). The query and
   its cache are shared with Summary's "Wallets in view".
+- `GET /api/summary-page` for the range, through the Summary owner
+  (`loadSummaryRangeContext` in `App.jsx`): the header's range, the month
+  arrows and the month sheet's figures. Coming from All months it is
+  already cached under the pinned range, so no request is made; a `/month`
+  deep link fetches it once. It is optional for this page: its failure
+  never shows the Month error screen, and until it lands the header shows
+  the URL's range and the month controls wait. After a Month save clears
+  the Summary cache, opening the month sheet reads it again.
 
 Month mutations may also cause targeted refreshes in:
 

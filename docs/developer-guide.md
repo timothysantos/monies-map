@@ -1500,11 +1500,33 @@ feel like changing a filter, not like reloading the whole page.
 On a phone, Summary, Month and Entries have one floating View and scope bar
 above the bottom navigation. It names the view and the whole scope on one
 line, such as `Tim · Direct + Shared`, with `View and scope` under it, and
-never cuts either short (a long name wraps instead). Month and Entries add
-previous and next month buttons beside it; Summary moves its range from the
-header. Tapping the bar opens a bottom sheet where you can switch the
-household/person view first and then the scope, when that view has more than
-one; on Summary a line under the scope says what it counts.
+never cuts either short (a long name wraps instead). Entries adds previous
+and next month buttons beside it. Summary and Month are one Summary tab
+(below), so there the bar holds the month control instead and drops the
+`View and scope` line to stay one row. Tapping the bar opens a bottom sheet
+where you can switch the household/person view first and then the scope,
+when that view has more than one; on Summary a line under the scope says
+what it counts.
+
+## How do Summary and Month share one tab?
+
+`/summary` is the Summary tab's "All months" and `/month?month=YYYY-MM` one
+month of the header's range; both routes and their page APIs are unchanged,
+and the route registry in `App.jsx` gives the Summary tab both route ids.
+Month choice rules live in `src/client/summary-month-choice.js`: a month
+choice pins the range into the URL (`summary_start`, `summary_end`), a header
+range change clamps a picked month into the new range, and the sheet's
+figures come from the Summary page months. `buildSummaryPageParams` sends the
+range end as `month` when both bounds are set, so every month of a range
+shares one Summary cache entry, and `seedPinnedSummaryPage` reuses the page
+already loaded when the range is first pinned. On `/month` the range's
+Summary page loads beside the Month page through the Summary owner; from All
+months it is a cache hit. The phone island control and desktop month row
+(`summary-month-picker.jsx`) ship with the shell; the "Pick a month" sheet
+(`summary-month-sheet.jsx`) is a lazy chunk. Browser proof:
+`tests/e2e/summary-month-choice.spec.js`. Adding a primary tab to the phone
+bar is one `primary: true` line in the registry; the bar's grid takes its
+column count from `--primary-tab-count`.
 
 Within one browser session, returning to a tab should reuse cached page data
 when no import, edit, rollback, or manual refresh has invalidated it. This keeps
