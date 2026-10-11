@@ -534,6 +534,10 @@ posted date, the owner and a note. Tap any of them to change it.
 - **Edit in form**: open the same entry in the usual form instead.
 - **Save**: appears beside the message box when the card is ready. It stays
   greyed out until the card has an amount and what it was.
+- **Back to the unsaved entry**: if you ask for entries while a card is
+  still unsaved, the suggestions and the send button follow the answer. The
+  card stays where it was; tap this to bring it back to the bottom with its
+  own suggestions and **Save**.
 
 Anything filled in for you is marked **Filled in from your message** or
 **Read from your receipt**, with a dot on each row it filled. Check them

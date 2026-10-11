@@ -241,7 +241,16 @@ the newest thing in the conversation.
 
 ### Bottom chips
 
-`ask-chips.js` derives the row from the mode and the card:
+The row and the composer's primary button belong to the newest thing in
+the conversation (`findActiveItem`): an open follow-up or view change, an
+answer below the card, or the card while nothing has been said since it.
+`buildChipRow` then picks the row; the card's chips (`buildAskChips`) show
+only while the card is active. An unsaved card further up is never lost:
+the row offers "Back to the unsaved entry", which moves the card below
+what was said since, so its chips and Save come back. Save shows only
+while the card is active.
+
+`buildAskChips` derives the card's row from the mode and the card:
 
 - chat, no card: Scan receipt, Paste, Add entry, Add expense;
 - add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first; then a pending
@@ -255,11 +264,12 @@ the newest thing in the conversation.
   Splits when shared, Undo; the Apple Pay Shortcut's saved card offers Open
   this entry (filled), category chips and Choose category when it landed in
   Other, and Splits;
-- after an answer (`buildFilterChips`): Open in Entries (filled), then the
-  chips above; a follow-up question: only its options (one per wallet,
+- after an answer (`buildFilterChips`): Open in Entries (filled), then
+  "Back to the unsaved entry" when an unsaved card is further up, else the
+  chat chips; a follow-up question: only its options (one per wallet,
   category, month or person, then "All of them"), with the question as the
   line above the row; a view change: "Switch to Serene · Shared" (filled),
-  then the chips above, under "Change the view?".
+  then the same as after an answer, under "Change the view?".
 
 ### Ask conversation store
 

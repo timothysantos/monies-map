@@ -37,7 +37,7 @@ import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
 import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
-import { buildAskChips, buildFilterChips } from "./ask-chips";
+import { buildChipRow, findActiveItem } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
 import { createPressGesture, createVoiceController, joinSpokenText } from "./ask-voice";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
@@ -540,7 +540,9 @@ function AskConversation({
   }
 
   async function saveCard() {
-    if (!card || !validation?.canSave || working) {
+    // Save belongs to the card only while it is the newest thing in the
+    // conversation (findActiveItem).
+    if (!card || !cardActive || !validation?.canSave || working) {
       return;
     }
     const createDraft = buildCardCreateDraft(card, context, { splitGroups });
@@ -762,22 +764,26 @@ function AskConversation({
     chooseFilterOption,
     switchView,
     openInEntries: () => {
-      if (focus?.kind === "answer" && isTrackedMonth(focus.filter.month)) {
-        navigate({ pathname: "/entries", search: `?${buildEntriesFilterSearch(focus.filter).toString()}` });
+      if (active?.kind === "answer" && isTrackedMonth(active.filter.month)) {
+        navigate({ pathname: "/entries", search: `?${buildEntriesFilterSearch(active.filter).toString()}` });
       }
+    },
+    // The unsaved card further up becomes the newest item again: it moves
+    // below what was said since, and its chips and Save come back.
+    backToCard: () => {
+      const current = store.read(conversationKey) ?? conversation;
+      setCardSlot(current.thread.filter((item) => item.kind !== "status").length);
+      window.requestAnimationFrame(() => threadEndRef.current?.scrollIntoView?.({ block: "end", behavior: prefersReducedMotion() ? "auto" : "smooth" }));
     }
   };
 
-  // The newest thing in the conversation decides the chips: an open
-  // follow-up or view change, an answer below the card, or the card.
-  const settledItems = thread.filter((item) => item.kind !== "status");
-  const lastItem = settledItems.at(-1);
-  const focus = pending
-    ? pending
-    : lastItem?.kind === "answer" && (!card || cardSlot < settledItems.length)
-      ? { kind: "answer", filter: lastItem.filter }
-      : null;
-  const baseChips = buildAskChips({
+  // The newest thing in the conversation owns the chips and the composer's
+  // primary button: an open follow-up or view change, an answer, or the
+  // card (findActiveItem in ask-chips.js).
+  const active = findActiveItem({ thread, card, cardSlot, pending });
+  const cardActive = active?.kind === "card";
+  const chips = buildChipRow({
+    active,
     intent,
     card,
     context,
@@ -785,15 +791,14 @@ function AskConversation({
     entries: entriesPage.page?.monthPage?.entries ?? [],
     today,
     partner: card ? partnerName(context, card.fields.ownerName) : "",
+    viewLabel: active?.kind === "view" ? viewLabel(active.viewId, active.scope) : "",
+    // A month with no entries at all has no Entries page to open (Entries
+    // would show the nearest month instead).
+    canOpenAnswer: active?.kind !== "answer" || isTrackedMonth(active.filter.month),
     actions
   });
-  // A month with no entries at all has no Entries page to open (Entries
-  // would show the nearest month instead).
-  const chips = focus && !(focus.kind === "answer" && !isTrackedMonth(focus.filter.month))
-    ? buildFilterChips({ focus, base: baseChips, viewLabel: focus.kind === "view" ? viewLabel(focus.viewId, focus.scope) : "", actions })
-    : baseChips;
 
-  const showSave = Boolean(card && card.status !== "saved" && !composerText.trim());
+  const showSave = Boolean(cardActive && card.status !== "saved" && !composerText.trim());
   const canSave = Boolean(validation?.canSave) && !working;
   const title = !isAddMode
     ? askCopy.title
@@ -812,7 +817,7 @@ function AskConversation({
   const placeholder = voiceState.status === "listening"
     ? askCopy.voice.listening
     : voiceState.status === "transcribing" ? askCopy.voice.transcribing : cardPlaceholder;
-  const pendingQuestion = !focus && card?.status === "draft" ? card.questions[0] ?? null : null;
+  const pendingQuestion = cardActive && card.status === "draft" ? card.questions[0] ?? null : null;
   const chipSignature = chips.items.map((chip) => chip.key).join("|");
   const settledThread = thread.filter((item) => item.kind !== "status");
   const statusItems = thread.filter((item) => item.kind === "status");

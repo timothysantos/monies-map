@@ -149,3 +149,83 @@ test("sanitizeTabParams drops the Ask answer's Entries params from other tabs", 
   sanitizeTabParams(params, "summary");
   assert.equal(params.toString(), "view=person-tim&month=2026-05");
 });
+
+// The chip row and the composer's Save follow the newest thing in the
+// thread (docs/flows/ask-flow.md "State Flow"): an answer below an unsaved
+// card owns the row, and the card keeps only a way back to it.
+test("the newest thread item owns the chips: an answer below an unsaved card never mixes in the card's chips", async () => {
+  const { buildChipRow, findActiveItem } = await import("../src/client/ask-chips.js");
+  const card = setCardField(createAskCard(context), { amountInput: "12.50", description: "Koufu" }, context);
+  const thread = [
+    { id: "m1", kind: "me", text: "Koufu 12.50" },
+    { id: "m2", kind: "me", text: "how much on bills?" },
+    { id: "a1", kind: "answer", filter: { month: "2026-09", categories: ["Bills"] } }
+  ];
+
+  // The card sits after the first message; a later question and its answer
+  // make the answer the active item.
+  const active = findActiveItem({ thread, card, cardSlot: 1, pending: null });
+  assert.deepEqual(active, { kind: "answer", filter: thread[2].filter });
+  const row = buildChipRow({ active, intent: chat, card, context, partner: "Joyce", actions });
+  assert.deepEqual(labels(row), ["Open in Entries", "Back to the unsaved entry"]);
+  assert.equal(row.items[0].primary, true);
+  assert.equal(row.items[1].primary, false);
+  assert.equal(row.prompt, "");
+  assert.equal(row.items[1].onClick(), "backToCard");
+  // None of the card's own chips leak into the answer's row.
+  for (const label of ["Split with Joyce", "Add a note", "Different card", "Edit in form"]) {
+    assert.ok(!labels(row).includes(label), label);
+  }
+
+  // A status line ("Reading…") below the answer changes nothing.
+  assert.equal(findActiveItem({ thread: [...thread, { id: "s1", kind: "status", text: "…" }], card, cardSlot: 1, pending: null }).kind, "answer");
+
+  // Back to the card: once it sits below the answer it is active again, with
+  // its own chips and its question line.
+  const back = findActiveItem({ thread, card, cardSlot: 3, pending: null });
+  assert.deepEqual(back, { kind: "card" });
+  assert.deepEqual(labels(buildChipRow({ active: back, intent: chat, card, context, partner: "Joyce", actions })), ["Split with Joyce", "Add a note", "Different card"]);
+});
+
+test("the card is active until the person says something else; a note after it (Saved, Removed) keeps it active", async () => {
+  const { buildChipRow, findActiveItem } = await import("../src/client/ask-chips.js");
+  const ready = setCardField(createAskCard(context), { amountInput: "5", description: "Kopi" }, context);
+  const saved = markCardSaved(ready, { entryId: "txn-1" });
+  const savedThread = [{ id: "m1", kind: "me", text: "kopi 5" }, { id: "n1", kind: "note", text: "Saved to Entries." }];
+  assert.deepEqual(findActiveItem({ thread: savedThread, card: saved, cardSlot: 1, pending: null }), { kind: "card" });
+  // Add mode with nothing said yet: the card.
+  assert.deepEqual(findActiveItem({ thread: [], card: ready, cardSlot: 0, pending: null }), { kind: "card" });
+  // No card and no answer: nothing is active.
+  assert.equal(findActiveItem({ thread: [{ id: "m1", kind: "me", text: "Am I on track?" }, { id: "n1", kind: "note", text: "…" }], card: null, cardSlot: 0, pending: null }), null);
+
+  // A question asked after a saved card: the note answering it is newest,
+  // so the saved card's chips (Undo, Open this entry) give way to the usual ones.
+  const asked = [...savedThread, { id: "m2", kind: "me", text: "Am I on track?" }, { id: "n2", kind: "note", text: "…" }];
+  const none = findActiveItem({ thread: asked, card: saved, cardSlot: 1, pending: null });
+  assert.equal(none, null);
+  assert.deepEqual(labels(buildChipRow({ active: none, intent: chat, card: saved, context, actions })), ["Scan receipt", "Paste", "Add entry", "Add expense"]);
+
+  // The same with an unsaved card: only the way back to it.
+  const unsaved = findActiveItem({ thread: asked, card: ready, cardSlot: 1, pending: null });
+  assert.equal(unsaved, null);
+  assert.deepEqual(labels(buildChipRow({ active: unsaved, intent: chat, card: ready, context, actions })), ["Back to the unsaved entry"]);
+});
+
+test("an open follow-up or view change outranks the card; an answer for a month with no entries offers no Open in Entries", async () => {
+  const { buildChipRow, findActiveItem } = await import("../src/client/ask-chips.js");
+  const card = setCardField(createAskCard(context), { amountInput: "12.50", description: "Koufu" }, context);
+  const thread = [{ id: "m1", kind: "me", text: "Koufu 12.50" }, { id: "m2", kind: "me", text: "switch to Joyce" }];
+
+  const view = { kind: "view", viewId: "person-joyce", scope: "shared" };
+  assert.equal(findActiveItem({ thread, card, cardSlot: 1, pending: view }), view);
+  const viewRow = buildChipRow({ active: view, intent: add, card, context, viewLabel: "Joyce · Shared", actions });
+  assert.deepEqual(labels(viewRow), ["Switch to Joyce · Shared", "Back to the unsaved entry"]);
+
+  const option = { key: "acct-uob", label: "UOB One", patch: { wallets: ["acct-uob"] } };
+  const question = { kind: "question", filter: {}, questions: [{ field: "wallet", options: [option] }] };
+  assert.deepEqual(labels(buildChipRow({ active: question, intent: chat, card, context, actions })), ["UOB One"]);
+
+  const answer = { kind: "answer", filter: { month: "2031-01" } };
+  assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card, context, canOpenAnswer: false, actions })), ["Back to the unsaved entry"]);
+  assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card: null, context, canOpenAnswer: false, actions })), ["Scan receipt", "Paste", "Add entry", "Add expense"]);
+});

@@ -147,6 +147,59 @@ test.describe("search and filter from Ask on a phone", { tag: "@webkit" }, () =>
     await expect(page.locator(".tab-dot")).toHaveCount(0);
   });
 
+  test("an answer below an unsaved card owns the chips and the send button; Back to the unsaved entry brings the card's back", async ({ page }) => {
+    const month = await trackedMonth(page);
+    await stubEntryDraft(page, month);
+    await openAsk(page, month);
+    const save = page.getByRole("button", { name: "Save", exact: true });
+
+    await send(page, "Koufu lunch $12.50");
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
+    await expect(suggestions(page).getByRole("button")).toHaveText(["Split with Joyce", "Add a note", "Different card"]);
+    await expect(save).toBeEnabled();
+
+    // A search question: its answer is now the newest item. Its chips only,
+    // and Send (not Save) in the composer; the card stays as it was.
+    await send(page, "how much on bills?");
+    await expect(answerCard(page)).toHaveAttribute("data-ask-answer", /^\d+$/);
+    await expect(suggestions(page).getByRole("button")).toHaveText(["Open in Entries", "Back to the unsaved entry"]);
+    await expect(save).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue("Koufu lunch");
+    // Enter on an empty message box saves nothing while the answer is active.
+    let creates = 0;
+    page.on("request", (request) => {
+      if (request.url().includes("/api/entries/create")) creates += 1;
+    });
+    await page.getByRole("textbox", { name: "Message" }).press("Enter");
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
+
+    // The way back stays within thumb reach in the chip row above the composer.
+    const backChip = suggestions(page).getByRole("button", { name: "Back to the unsaved entry" });
+    const chipBox = await backChip.boundingBox();
+    const composerBox = await page.locator(".ask-composer").boundingBox();
+    expect(chipBox.y).toBeLessThan(composerBox.y);
+    expect(chipBox.y).toBeGreaterThan(iPhone.height / 2);
+
+    // Back: the card moves below the answer, its chips and Save return.
+    await backChip.click();
+    await expect(suggestions(page).getByRole("button")).toHaveText(["Split with Joyce", "Add a note", "Different card"]);
+    await expect(save).toBeEnabled();
+    const order = await page.locator(".ask-thread").evaluate((thread) => {
+      const answer = thread.querySelector(".ask-answer");
+      const card = thread.querySelector("[data-ask-card]");
+      return Boolean(answer.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(order).toBe(true);
+    await expect(page.locator("[data-ask-card]")).toBeInViewport();
+
+    // A reload keeps the card where it now is, still active.
+    await page.reload();
+    await expect(suggestions(page).getByRole("button")).toHaveText(["Split with Joyce", "Add a note", "Different card"]);
+    await expect(save).toBeEnabled();
+    expect(creates).toBe(0);
+  });
+
   test("✕ on the From Ask chip clears the filters and keeps the view, month and scope", async ({ page }) => {
     const month = await trackedMonth(page);
     await openAsk(page, month);

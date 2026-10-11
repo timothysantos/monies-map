@@ -13,6 +13,10 @@
 //   Open this entry, Open on Splits when it was shared, Undo. A card the
 //   Apple Pay Shortcut saved offers Open this entry, then a category
 //   question when it landed in Other, and Splits.
+//
+// These are the card's chips, shown only while the card is the newest
+// thing in the conversation; findActiveItem and buildChipRow (below) pick
+// the row for whatever is newest.
 
 import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
@@ -225,4 +229,46 @@ export function buildFilterChips({ focus, base, viewLabel = "", actions }) {
     prompt: base.prompt,
     items: /** @type {AskChip[]} */ ([{ key: "open-in-entries", label: askCopy.chips.openInEntries, primary: true, onClick: actions.openInEntries }, ...rest])
   };
+}
+
+// Which thread item owns the chip row and the composer's primary button
+// (docs/flows/ask-flow.md "State Flow"): always the newest one.
+// - an open follow-up question or view change;
+// - else an answer that is the newest settled item and sits below the card;
+// - else the card, while the person has said nothing since it (a message
+//   that changes the card moves it below that message; notes such as
+//   "Saved to Entries." do not count);
+// - else nothing: the usual chips.
+// Status lines ("Reading your message…") never count.
+export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending = null }) {
+  if (pending) {
+    return pending;
+  }
+  const settled = thread.filter((item) => item.kind !== "status");
+  const last = settled.at(-1);
+  if (last?.kind === "answer" && (!card || cardSlot < settled.length)) {
+    return { kind: "answer", filter: last.filter };
+  }
+  if (card && !settled.slice(cardSlot).some((item) => item.kind === "me")) {
+    return { kind: "card" };
+  }
+  return null;
+}
+
+// The chip row for the active item. The card's chips show only while it
+// is active; an unsaved card further up is never lost: the row then offers
+// "Back to the unsaved entry", which makes it the newest item again. An
+// answer for a month with no entries (canOpenAnswer false) has no Entries
+// page to open.
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", viewLabel = "", canOpenAnswer = true, actions }) {
+  if (active?.kind === "card") {
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, actions });
+  }
+  const rest = card && card.status !== "saved"
+    ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }
+    : buildAskChips({ intent, card: null, context, today, actions });
+  if (!active || (active.kind === "answer" && !canOpenAnswer)) {
+    return rest;
+  }
+  return buildFilterChips({ focus: active, base: rest, viewLabel, actions });
 }

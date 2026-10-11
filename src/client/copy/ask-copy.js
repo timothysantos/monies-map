@@ -86,6 +86,8 @@ export const askCopy = {
     addToGroup: (name) => `Add to ${name}`,
     chooseCategory: "Choose category",
     openInEntries: "Open in Entries",
+    // An unsaved card further up the thread, once something newer owns the chips.
+    backToCard: "Back to the unsaved entry",
     newEntry: "Add another"
   },
   backLabels: {

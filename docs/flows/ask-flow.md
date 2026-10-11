@@ -69,10 +69,19 @@ Ask state is split between:
   or a receipt supplied); `questions`; the `share` switch; `saved` (entry,
   split expense and group ids).
 
-The chip row is derived from the mode, the card and the newest thing in the
-conversation (`ask-chips.js`: `buildAskChips`, then `buildFilterChips` for
-an answer, a follow-up question or a view change); nothing else in Ask holds
-chip state. A card being edited, read or saved, or the mic
+The chip row and the composer's primary button belong to the newest thing
+in the conversation (`ask-chips.js` `findActiveItem`): an open follow-up
+question or view change; else an answer that is the newest item and sits
+below the card; else the card, while the person has said nothing since it
+(a message that changes the card moves it below that message; notes such
+as "Saved to Entries." do not count); else nothing. `buildChipRow` builds
+the row for it: the card's chips (`buildAskChips`) only while the card is
+active, `buildFilterChips` for an answer, a follow-up or a view change.
+Save shows, and Enter on an empty message box saves, only while the card
+is active. An unsaved card further up is kept: the row then offers "Back
+to the unsaved entry", which moves the card below what was said since
+(its `cardSlot`), so its chips and Save come back. Nothing else in Ask
+holds chip state. A card being edited, read or saved, or the mic
 listening, reports the route busy, so no optional warmup runs under it.
 
 Voice input has its own small state machine (`ask-voice.js`,
