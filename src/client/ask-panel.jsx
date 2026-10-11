@@ -40,6 +40,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
+import "./ui/lead-support-detail.css";
 import "./ask-route.css";
 
 // The Ask page (design.md "Ask page"; docs/flows/ask-flow.md). One page,
