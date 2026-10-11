@@ -210,33 +210,52 @@ Details and the reasons are in `docs/code-spec.md` and
 
 ## Optional AI Assistance
 
-- Treat Workers AI as a separate, optional assistance layer, never as part of
-  the finance engine or a required dependency for any core workflow.
+- Treat AI as a separate, optional assistance layer, never as part of the
+  finance engine or a required dependency for any core workflow. New AI
+  calls go through the provider layer (`src/domain/ai-provider.ts`): Claude
+  Haiku through Cloudflare AI Gateway when the owner has configured it,
+  Workers AI (Gemma 4) directly otherwise and as its fallback. Claude is
+  optional: with no gateway or key, Workers AI is used with no failed call
+  and no log line.
 - Core page loads, import parsing and preview, import commit, ledger writes,
   reconciliation, transfer matching, category application, freshness planning,
-  and account prioritization must work identically when the AI binding is
-  missing, disabled, rate-limited, malformed, or unavailable.
+  and account prioritization must work identically when the AI binding or
+  the gateway config is missing, disabled, rate-limited, over its spend
+  limit, malformed, or unavailable.
 - Default to explicit user actions for AI. Do not add scheduled, hidden or
-  automatic inference.
+  automatic inference. Within a conversation the user started, the chat may
+  ask the user follow-up questions; it never starts a conversation itself.
+- Claude traffic goes only through AI Gateway with logging and caching off
+  (`cf-aig-collect-log: false`, `cf-aig-skip-cache: true` on every request)
+  and a hard monthly gateway spend limit (about US$10); the app's own daily
+  allowance applies on top.
 - Money insights headlines use computed wording only: the bold fact and its
   think line exactly as written, with no AI rewording and no wording request
   from any page. The old `/api/ai-assist/financial-insight` route is removed
   (it produced broken grammar in production); do not bring it back.
 - Keep deterministic data and existing review controls authoritative. AI may
   phrase, rank, or propose a draft, but must not certify, import, categorize,
-  skip, merge, delete, or link finance records by itself.
+  skip, merge, delete, or link finance records by itself. AI only drafts and
+  never writes: nothing is saved without the user's tap, and the numbers
+  shown come from the app's own validation, not from model prose.
 - Money insights are a deterministic, read-only projection. They may show
   recorded cash flow, plan variance, a same-season comparison that is
   already loaded, and explicit bank-proof gaps. They must never present a
   forecast, safe-to-spend promise, or savings target as an AI conclusion.
-- Never send credentials, Shortcut tokens, original bank files, raw PDF/image
-  binaries, full account/card numbers, or unbounded notes to AI. For a
+- Never send credentials, Shortcut tokens, original bank files, raw statement
+  PDF binaries, full account/card numbers, or unbounded notes to AI. For a
   statement fallback, require explicit consent and send only bounded,
   redacted browser-extracted text after local parsers and in-browser OCR fail.
+- The one image exception: a receipt image, or one rendered page of a PDF
+  receipt, that the user explicitly pastes, drops, scans or shares may be
+  sent to the AI provider. The browser downscales it (at most 1.5 MiB) and
+  strips EXIF and location first; the Worker accepts only JPEG, PNG or
+  WebP. The image is discarded after reading: never stored, logged or
+  cached. When AI is unavailable, read it with in-browser OCR instead.
 - Constrain and validate every AI input and output. Persist only the minimum
   aggregate allowance state needed for cost control, never prompts, responses,
-  files, or embeddings unless a separately reviewed design explicitly changes
-  that rule.
+  images, files, or embeddings unless a separately reviewed design explicitly
+  changes that rule.
 - Keep the configured AI allowance conservative enough for the intended free
   tier. Each AI slice must include no-AI/failure coverage proving the normal
   workflow remains usable, plus an audit note of its privacy, cost, and write
