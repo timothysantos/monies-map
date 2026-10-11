@@ -94,14 +94,36 @@ export const askCopy = {
   composer: {
     label: "Message",
     chatPlaceholder: "Ask, or paste a receipt",
-    addPlaceholder: "Or say it: “Koufu lunch $12.50”",
+    addPlaceholder: "Type or say it…",
     changePlaceholder: "Anything to change?",
-    savedPlaceholder: "Ask, or add something else",
-    attach: "Add a receipt photo",
+    savedPlaceholder: "Ask, or add another",
+    // The + inside the message field and its little menu.
+    add: "Add a photo or paste",
+    menu: {
+      takePhoto: "Take a photo",
+      choosePhoto: "Choose a photo",
+      paste: "Paste"
+    },
     send: "Send",
     save: "Save",
     saving: "Saving…",
     saveHint: "Add the missing details to save."
+  },
+  // The composer's mic (ask-voice.js). Notes are calm and never block typing.
+  voice: {
+    start: "Start voice input",
+    stop: "Stop voice input",
+    listening: "Listening…",
+    transcribing: "Writing down what you said…",
+    done: "Check the message, then send.",
+    notes: {
+      denied: "The microphone isn't allowed here. You can allow it in your browser settings, or type instead.",
+      noSpeech: "I didn't catch that. Hold the mic and try again.",
+      failed: "Voice input didn't work this time. You can type instead.",
+      unavailable: "Voice input isn't available in this browser. You can type instead.",
+      allowance: "Voice input is used up for today. You can type instead.",
+      tooLong: "That was too long. Keep it under 30 seconds."
+    }
   },
   card: {
     label: "New entry",

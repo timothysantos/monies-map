@@ -5,7 +5,8 @@ export type AiAssistCapability =
   | "statement_text_fallback"
   | "match_ranking"
   | "entry_draft"
-  | "receipt_read";
+  | "receipt_read"
+  | "speech_transcribe";
 
 export interface AiAssistEnv {
   AI?: Ai;

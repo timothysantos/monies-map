@@ -37,6 +37,7 @@ import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../ty
 import { json } from "./json";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleReceiptRead } from "./receipt-read-route";
+import { handleTranscribe } from "./transcribe-route";
 
 export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database };
 
@@ -97,6 +98,10 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
     if (statusResponse) {
       return statusResponse;
     }
+  }
+
+  if (url.pathname === "/api/ai-assist/transcribe" && (request.method === "POST" || request.method === "GET")) {
+    return handleTranscribe(request, env);
   }
 
   if (url.pathname === "/api/ai-assist/monthly-narrative" && request.method === "POST") {

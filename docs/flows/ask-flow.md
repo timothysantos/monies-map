@@ -7,8 +7,8 @@ This doc describes the Ask page flow in three parts:
 - data flow
 
 The Ask page is one full page (not a sheet) where a person adds an entry by
-hand, from a typed sentence or from a receipt photo, and sees what changed
-since they last looked. Its visual design is in `design.md` ("Ask page").
+hand, from a typed or spoken sentence or from a receipt photo, and sees what
+changed since they last looked. Its visual design is in `design.md` ("Ask page").
 
 ## Route Flow
 
@@ -62,8 +62,14 @@ Ask state is split between:
   split expense and group ids).
 
 The chip row is derived from the mode and the card (`ask-chips.js`); nothing
-else in Ask holds chip state. A card being edited, read or saved reports the
-route busy, so no optional warmup runs under it.
+else in Ask holds chip state. A card being edited, read or saved, or the mic
+listening, reports the route busy, so no optional warmup runs under it.
+
+Voice input has its own small state machine (`ask-voice.js`,
+`createVoiceController`): `idle` → `starting` → `listening` →
+(`transcribing` →) `idle`, or `hidden` when neither voice path is available.
+Its words only ever change the message box (`composerText`); see "Voice
+input" below.
 
 ## Data Flow
 
@@ -95,6 +101,43 @@ Readers (`ask-api.js`, the one module to adjust when their branches land):
   `parseReceiptText` picks out the shop, total, date and card ending.
 
 Both fail soft: any error leaves the card manual with a calm note.
+
+### Voice input
+
+The composer's mic fills the message box with spoken words; the person
+checks them and taps Send, which then goes through the entry-draft reader
+like any typed sentence. Voice never sends anything by itself, and Send
+ends any listening first.
+
+- Place: the mic glyph sits at the right inside the message field (the +
+  at its left opens Take a photo, Choose a photo and Paste; design.md
+  "Composer").
+- Gesture: hold the mic to talk and let go to stop, or tap to start and tap
+  again to stop; Enter or Space on the focused mic toggles it
+  (`createPressGesture`). A press still waiting for microphone permission
+  becomes a tap, so the permission sheet never stops it.
+- Primary path: the browser's own speech recognition (`SpeechRecognition` /
+  `webkitSpeechRecognition`, which iPhone Safari has), `en-SG`, retried once
+  in `en-US` when the language is not supported, with interim words shown
+  in the box as they arrive. The words join anything already typed
+  (`joinSpokenText`). Nothing goes to the Worker.
+- Fallback, only when the browser has no speech recognition (or refuses its
+  speech service, `service-not-allowed`, and can record): on the first
+  press `GET /api/ai-assist/transcribe` says whether the fallback is on
+  (no AI, no allowance). When it is, the microphone is asked for and a clip
+  of at most 30 s is recorded (`MediaRecorder`, 32 kbit/s; MP4 on iPhone,
+  WebM or Ogg Opus elsewhere) and sent as multipart (`audio`, `durationMs`)
+  to `POST /api/ai-assist/transcribe`: Workers AI Whisper
+  (`@cf/openai/whisper-large-v3-turbo`), 1 unit of the shared daily
+  allowance, answer `{ ok, available, text }`. Type (declared and sniffed),
+  size (1 MiB) and duration (declared, and an MP4's own header) are checked
+  before any AI call or allowance use (400 / 413 / 415). When it is off,
+  the mic hides after one calm note and the microphone is never asked for.
+- Notes (calm, in the conversation, never a system alert): microphone not
+  allowed, nothing heard, too long, allowance used, failed, not available.
+- Screen readers: the button reads "Start voice input" / "Stop voice input";
+  a polite live region says "Listening…", "Writing down what you said…" and
+  then "Check the message, then send."
 
 Writes, all existing routes:
 
@@ -139,22 +182,31 @@ Ask does not own:
 - Filled fields carry the butter tag on the card and a dot on their row; a
   hand edit removes the dot.
 - After a save the card shows Saved and the chips offer the way back first.
+- Spoken words land in the message box and are sent only when the person
+  taps Send; the mic is hidden when neither voice path is available.
+- The + inside the field opens an in-app menu (Take a photo, Choose a
+  photo, Paste); each glyph keeps a 44 × 44 px hit area and every
+  placeholder fits one line at 375 px.
 - No system alert, confirm or prompt anywhere.
 
 ## Persisted / Query Contract
 
-- No new route and no new table. A saved entry is an ordinary manual entry.
+- No new write route and no new table. A saved entry is an ordinary manual
+  entry. The one new route, `/api/ai-assist/transcribe`, only writes the
+  shared AI allowance counter.
 - A transfer card posts one row: the From wallet's side (or the To wallet's
   when turned round); the other wallet is shown but not posted, for the
   later transfer match, as the entry draft defines.
-- Nothing about the conversation, sentences or photos is stored.
+- Nothing about the conversation, sentences, photos, voice clips or spoken
+  words is stored or logged.
 
 ## Audit Status
 
 Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,
-`tests/shortcut-gateway.test.mjs`, `tests/e2e/ask-page.spec.js`) and
-runtime behaviour on a phone.
+`tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
+`tests/shortcut-gateway.test.mjs`, `tests/e2e/ask-page.spec.js`,
+`tests/e2e/ask-voice.spec.js`, `tests/e2e/ask-composer.spec.js`) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
 
@@ -164,3 +216,9 @@ runtime behaviour on a phone.
   `tests/ask-api-server-contract.test.mjs` runs `ask-api.js` against the
   real routes so their shapes cannot drift. `ask-api.js` still also accepts
   the brief's flat shape.
+- Voice input is proved in the browser with a stand-in `SpeechRecognition`;
+  on a real iPhone, check that holding the mic starts listening (WebKit may
+  want the tap: a refused start is retried on the click that follows) and
+  that Safari's continuous results do not repeat words. The Whisper call is
+  proved with a stubbed AI binding; a real WebM/MP4 clip through Workers AI
+  is still to be checked on the deployed Worker.
