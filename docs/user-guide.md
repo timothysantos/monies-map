@@ -1538,8 +1538,19 @@ A small label says what kind of line it is:
   from a week before its due date while no payment to the card is recorded
   ("Your OCBC 365 Credit Card bill of $33.15 is due in 3 days"), and for a
   month after it while less than the minimum is paid. A payment from a bank
-  account you haven't imported yet only shows once you import it. These come
-  first, because every other number depends on them. On Month, a month's
+  account you haven't imported yet only shows once you import it. Your bank
+  accounts get a few more:
+  - your salary started going into another account, while regular payments
+    (like an investment GIRO) still come out of the old one;
+  - a regular payment didn't go through and the bank charged for trying;
+  - a regular payment coming up within a month won't fit in the account,
+    going by its latest statement;
+  - money you moved between your own accounts is counted as income;
+  - purchases from a trip abroad are still under "Other";
+  - on Splits, a payment between the two of you matches a settlement that's
+    waiting to be matched.
+
+  These come first, because every other number depends on them. On Month, a month's
   **Something to think about** comes before a card's statement difference,
   which then appears under **Also this month**.
 - **Something to think about**: a pattern worth an honest decision, such as
@@ -1548,8 +1559,10 @@ A small label says what kind of line it is:
 - **Worth knowing**: something that may well be fine but is easy to miss:
   subscriptions adding up, a category slowly going up, a possible double
   charge, a late charge, interest or annual fee from the last two months
-  that the bank hasn't refunded, or a card whose latest statement shows a
-  penalty interest rate while money is owed on it.
+  that the bank hasn't refunded, a card whose latest statement shows a
+  penalty interest rate while money is owed on it, or a bank account's own
+  charges (a charge for a failed payment, or a monthly fee that has come
+  three months in a row).
 - **Going well**: money left in the plan, months under plan, savings on
   track.
 - **Fun fact**: a light line from your own spending, such as your regular
@@ -1565,8 +1578,9 @@ back a shared balance ("settling up").
 
 1. Read the bold line and the line under it.
 2. If a link sits under them (**Compare with the statement**, **Show these
-   purchases**, **Settle group** or **Review matches**), select it to open
-   exactly those records. On Entries the link goes once the list already
+   purchases**, **Show these entries**, **Show the payment**, **Settle
+   group** or **Review matches**), select it to open exactly those records,
+   in the month they're in. On Entries the link goes once the list already
    shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
@@ -1591,8 +1605,12 @@ browser; nothing about your visits is saved anywhere else.
 
 Money insights use the app's own figures and wording, and never change the
 figures. They never
-predict the future or tell you what is safe to spend; money left after
-spending still has to cover bills, transfers and savings.
+guess what you'll spend or tell you what is safe to spend; money left after
+spending still has to cover bills, transfers and savings. The one time they
+look ahead is for a regular payment coming up from a bank account: they
+compare it with the account's latest statement, say which statement they
+used, and only ever speak up when it won't fit. They are only as up to date
+as your last import.
 
 ## Manage people
 
