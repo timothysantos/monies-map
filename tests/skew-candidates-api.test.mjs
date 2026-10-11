@@ -251,6 +251,44 @@ test("a cent off, outside the window, or between different people's accounts is 
   assert.deepEqual(payload.candidates.filter((candidate) => candidate.entryIds.some((id) => ids.includes(id))), []);
 });
 
+test("an open group balance paid by PayNow is a settlement candidate with the balance's direction", async (t) => {
+  const { api, fetch } = await openSeededDatabase(t, template);
+  await setUpHousehold(api);
+  // Serene pays an $84 Bali villa deposit, shared 50/50: Ethan owes her $42.
+  const group = await api("/api/splits/groups/create", { name: "Bali trip", currency: "SGD" });
+  assert.equal(group.status, 200, JSON.stringify(group.payload));
+  const expense = await api("/api/splits/expenses/create", {
+    groupId: group.payload.groupId,
+    date: "2026-05-08",
+    description: "Villa deposit",
+    categoryName: "Travel",
+    payerPersonName: "Serene",
+    amountMinor: 8400,
+    splitAmountMinor: 4200,
+    currency: "SGD",
+    paymentMethod: "cash",
+    paymentStatus: "recorded"
+  });
+  assert.equal(expense.status, 200, JSON.stringify(expense.payload));
+  const outflowId = await createEntry(api, {
+    date: "2026-05-12", description: "PAYNOW SERENE BALI", accountName: "OCBC 360 Account", categoryName: "Other",
+    amountMinor: 4200, entryType: "expense", ownerName: "Ethan"
+  });
+
+  const { payload } = await getCandidates(fetch, { view: "household", month: MONTH });
+  const candidate = payload.candidates.find((item) => item.entryIds.includes(outflowId));
+  assert.deepEqual(candidate.settlement, { source: "group_balance", groupId: group.payload.groupId, groupName: "Bali trip", anchorDate: "2026-05-08" });
+  assert.deepEqual([candidate.fromPerson.name, candidate.toPerson.name], ["Ethan", "Serene"]);
+  assert.equal(candidate.bothSidesFound, false);
+  assert.equal(candidate.confidence, "high");
+  assert.deepEqual(candidate.skew, { spendingMinor: 4200, incomeMinor: 0 });
+  assert.deepEqual(candidate.suggestedActions.map((step) => step.action), ["reclassify_as_transfer", "record_group_settle_up"]);
+  assert.deepEqual(candidate.suggestedActions[1].body, {
+    groupId: group.payload.groupId, date: "2026-05-12", fromPersonName: "Ethan", toPersonName: "Serene",
+    amountMinor: 4200, currency: "SGD", paymentMethod: "bank", paymentStatus: "recorded"
+  });
+});
+
 test("the route only answers GET", async (t) => {
   const { fetch } = await openSeededDatabase(t, template);
   const response = await fetch("/api/skew-candidates?view=household&month=2026-05", { method: "POST" });
