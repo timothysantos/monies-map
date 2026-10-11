@@ -262,6 +262,18 @@ export const messages = {
     saveCategoryNow: "Save category",
     addToSplits: "Add to splits",
     // The entry edit card (entry-edit-card.jsx, design.md "Lead · Support · Detail").
+    // Added by (DOMAIN.md): the bank state chip names the tool that saved a
+    // provisional entry, More details says who added it, and a list row
+    // carries a small glyph beside its amount.
+    source: {
+      applePayProvisional: "Apple Pay · provisional",
+      askProvisional: "Ask · provisional",
+      addedBy: "Added by",
+      applePayShortcut: "Apple Pay shortcut",
+      ask: "Ask",
+      addedWithApplePay: "Added with Apple Pay",
+      addedInAsk: "Added in Ask"
+    },
     editCard: {
       sheetContext: (ownerLabel, monthLabel) => [ownerLabel, monthLabel].filter(Boolean).join(" · "),
       detailsLabel: "Entry details",

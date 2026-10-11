@@ -462,7 +462,8 @@
   border-bottom: 0;
 }
 
-.lsd-row.is-locked {
+.lsd-row.is-locked,
+.lsd-row.is-readonly {
   cursor: default;
 }
 

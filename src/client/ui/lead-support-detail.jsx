@@ -284,7 +284,9 @@ export function DetailRows({ label = undefined, children = null, className = "" 
  *   with `lsd-row-native`): a <label> around it, so the control keeps the
  *   row's name and Tab order stays the field order;
  * - otherwise a button (an action row such as "See the 10 entries");
- * - locked: a plain line with a lock, never clickable.
+ * - locked: a plain line with a lock, never clickable;
+ * - read-only (`readOnly`): a plain line with no icon, for a fact nobody
+ *   changes here (who added an entry).
  * States: `state` "empty" | "action" | "locked", or the `action` and
  * `locked` flags; an empty `value` shows `emptyLabel` muted. `disabled`
  * mutes a button row and drops its `›`. `labelId` names the label so a
@@ -293,7 +295,7 @@ export function DetailRows({ label = undefined, children = null, className = "" 
  * before the `›`.
  * @param {{
  *   label: any, value?: any, emptyLabel?: any, state?: "empty" | "action" | "locked",
- *   action?: boolean, locked?: boolean, disabled?: boolean, hint?: any, labelId?: string,
+ *   action?: boolean, locked?: boolean, readOnly?: boolean, disabled?: boolean, hint?: any, labelId?: string,
  *   onClick?: (event: any) => void, children?: any, className?: string, [key: string]: any
  * }} props
  */
@@ -304,6 +306,7 @@ export function DetailRow({
   state = undefined,
   action = false,
   locked = false,
+  readOnly = false,
   disabled = false,
   hint = null,
   labelId = undefined,
@@ -313,6 +316,16 @@ export function DetailRow({
   ...rest
 }) {
   const isLocked = locked || state === "locked";
+  if (readOnly && !isLocked && !children) {
+    return (
+      <div className={joinClasses("lsd-row is-readonly", className)} {...rest}>
+        <span id={labelId} className="lsd-row-label">{label}</span>
+        {!isBlank(value) ? (
+          <span className="lsd-row-value">{typeof value === "string" ? <span className="lsd-row-text">{value}</span> : value}</span>
+        ) : null}
+      </div>
+    );
+  }
   const hasValue = !isBlank(value);
   const isEmpty = state === "empty" || (!hasValue && !isBlank(emptyLabel));
   const isAction = !isLocked && (action || state === "action");

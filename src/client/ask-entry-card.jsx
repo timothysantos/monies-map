@@ -1,9 +1,10 @@
-import { ArrowLeftRight, CalendarDays, Check, CreditCard, Sparkles } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Sparkles } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { entryAmountTone } from "../domain/money-tone";
+import { bankStateChipLabel } from "./entry-source";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
@@ -47,6 +48,29 @@ function partnerName(context, ownerName) {
   return other?.name ?? "";
 }
 
+const SAVED_STATE_TONES = { statement_certified: "mint", import_provisional: "sky", manual_provisional: "butter" };
+const SAVED_STATE_LABELS = { statement_certified: "Statement certified", import_provisional: "Import provisional", manual_provisional: "Manual provisional" };
+
+// A saved card's bank state chip, as on the Edit entry card: the tool that
+// saved a provisional entry ("Ask · provisional", "Apple Pay · provisional"),
+// else its bank state. A card Ask saved before the chip existed is Ask's.
+export function savedCardState(card) {
+  if (card?.status !== "saved") {
+    return null;
+  }
+  const saved = card.saved ?? {};
+  const status = saved.bankCertificationStatus ?? (card.origin === "saved" ? null : "manual_provisional");
+  if (!status) {
+    return null;
+  }
+  const addedBy = saved.addedBy ?? (card.origin === "saved" ? undefined : "ask");
+  return {
+    label: bankStateChipLabel({ addedBy, bankCertificationStatus: status }, saved.bankCertificationLabel || SAVED_STATE_LABELS[status] || ""),
+    tone: SAVED_STATE_TONES[status],
+    locked: status === "statement_certified"
+  };
+}
+
 export function AskEntryCard({
   settled = false,
   card,
@@ -79,6 +103,7 @@ export function AskEntryCard({
         ? { className: "is-filled", icon: <Sparkles size={13} aria-hidden="true" />, label: askCopy.card.readFromReceipt }
         : null;
   const ownerKey = card.fields.ownerName === SHARED_OWNER ? "shared" : card.fields.ownerName;
+  const savedState = savedCardState(card);
 
   const title = isTransfer ? (
     <strong className="lsd-title ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
@@ -172,6 +197,9 @@ export function AskEntryCard({
             >
               {card.fields.ownerName}
             </MetaChip>
+          ) : null}
+          {savedState ? (
+            <MetaChip data-chip="state" icon={savedState.locked ? Lock : null} tone={savedState.tone}>{savedState.label}</MetaChip>
           ) : null}
         </>
       )}

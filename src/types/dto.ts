@@ -226,6 +226,10 @@ export interface LinkedTransferDto {
   transactionDate: string;
 }
 
+// Which in-app tool created an entry (DOMAIN.md "Added by"), derived from
+// its external reference on the server; absent when not known.
+export type EntryAddedBy = "apple_pay_shortcut" | "ask";
+
 export interface EntryDto {
   id: string;
   date: string;
@@ -249,6 +253,7 @@ export interface EntryDto {
   importedSourceType?: "csv" | "pdf" | "manual";
   importedSourceLabel?: string;
   statementCertifiedAt?: string;
+  addedBy?: EntryAddedBy;
   linkedTransfer?: LinkedTransferDto;
   linkedSplitExpenseId?: string;
   linkedSplitGroupName?: string;

@@ -10,6 +10,7 @@ import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTy
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
+import { addedByLabel, bankStateChipLabel } from "./entry-source";
 import { CategoryGlyph } from "./ui-components";
 import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
@@ -34,7 +35,8 @@ const BANK_STATE_TONES = {
 // - Support: date, wallet, owner and bank state chips. The date, wallet and
 //   owner chips open the same picker as their Detail row (the wallet's
 //   unfolds More details first); a field the statement certified shows a
-//   lock instead, and the bank state chip is never an editor.
+//   lock instead, and the bank state chip is never an editor (it names the
+//   tool that saved a provisional entry: "Apple Pay · provisional").
 // - Detail: Category, Owner, Splits (or the transfer match), Note, then
 //   Date, Wallet, Posted date and Type. On a phone those last ones fold into
 //   More details and each row opens the app's own picker; on a wide screen
@@ -283,7 +285,11 @@ export function EntryEditCard({
       ],
       onValueChange: (transferDirection) => onChange({ transferDirection }),
       locked: bankFactsLocked
-    }) : null
+    }) : null,
+    // Who added it (an in-app tool), shown only when known; nobody changes it.
+    addedByLabel(entry.addedBy)
+      ? <DetailRow key="addedBy" label={copy.source.addedBy} value={addedByLabel(entry.addedBy)} readOnly data-row="addedBy" />
+      : null
   ].filter(Boolean);
 
   return (
@@ -364,7 +370,7 @@ export function EntryEditCard({
             </MetaChip>,
             bankState ? (
               <MetaChip key="state" data-chip="state" icon={bankFactsLocked ? Lock : null} tone={BANK_STATE_TONES[bankState.className]}>
-                {bankState.label}
+                {bankStateChipLabel(entry, bankState.label)}
               </MetaChip>
             ) : null
           ].filter(Boolean)}
