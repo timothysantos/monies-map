@@ -2034,6 +2034,10 @@ export function App() {
     selectedViewId,
     summaryPage
   ]);
+  // Ask and Settings read the Claude credit status once they are usable
+  // (claude-credit-status.js). Only those two routes see the flag, so it
+  // never re-renders another route as optional work starts and stops.
+  const creditStatusRouteUsable = (renderedTabId === "ask" || renderedTabId === "settings") && routeWork.usable;
   const renderedRouteElement = useMemo(() => {
     if (!appShell || !pageView || !referenceData) {
       return null;
@@ -2135,6 +2139,7 @@ export function App() {
           onUnregisterLogin={handleUnregisterLogin}
           onLogout={handleLogout}
           onRefresh={(options) => refreshCurrentSettingsPage(options)}
+          routeUsable={creditStatusRouteUsable}
         />
       );
     }
@@ -2158,6 +2163,7 @@ export function App() {
           onEntryMutation={broadcastEntryMutation}
           onSplitMutation={broadcastSplitMutation}
           runBackgroundRefresh={runBackgroundRefresh}
+          routeUsable={creditStatusRouteUsable}
         />
       );
     }
@@ -2173,6 +2179,7 @@ export function App() {
     broadcastEntryMutation,
     broadcastSplitMutation,
     categories,
+    creditStatusRouteUsable,
     fetchAskEntriesPage,
     closeMobileContext,
     entriesExternalRefreshToken,

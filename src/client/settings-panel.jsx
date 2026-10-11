@@ -3,6 +3,7 @@ import "./settings-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -37,12 +38,14 @@ import {
   updateSettingsPerson
 } from "./settings-api";
 import { AccountDialog } from "./account-dialog";
+import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import { EntryTransferTools } from "./entry-editor";
 import {
   SettingsActivitySection,
+  SettingsAskAiSection,
   SettingsCategoriesSection,
   SettingsCategoryMatchRulesSection,
   SettingsDemoSection,
@@ -127,8 +130,17 @@ export function SettingsPanel({
   isUnregisteringLogin,
   onUnregisterLogin,
   onLogout,
-  onRefresh
+  onRefresh,
+  routeUsable = false
 }) {
+  const queryClient = useQueryClient();
+  // The Claude credit status for the Ask and AI section: read once Settings
+  // is first usable (claude-credit-status.js), never while it loads.
+  const [creditStatusEnabled, setCreditStatusEnabled] = useState(routeUsable);
+  if (routeUsable && !creditStatusEnabled) {
+    setCreditStatusEnabled(true);
+  }
+  const claudeCredit = useClaudeCreditStatus({ queryClient, enabled: creditStatusEnabled });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
   const [emptyStateDialogOpen, setEmptyStateDialogOpen] = useState(false);
@@ -142,6 +154,7 @@ export function SettingsPanel({
     people: false,
     accounts: false,
     shortcutApi: false,
+    askAi: false,
     paymentWays: false,
     categories: false,
     categoryRules: false,
@@ -1315,6 +1328,14 @@ export function SettingsPanel({
         onForeignCurrencyAccountChange={handleForeignCurrencyAccountChange}
         onToggle={() => toggleSettingsSection("shortcutApi")}
         onSave={handleSaveShortcutSettings}
+      />
+
+      <SettingsAskAiSection
+        status={claudeCredit.status}
+        checkedAt={claudeCredit.checkedAt}
+        isOpen={settingsSectionsOpen.askAi}
+        onToggle={() => toggleSettingsSection("askAi")}
+        onMarkToppedUp={claudeCredit.markToppedUp}
       />
 
       <SettingsPaymentWaysSection
