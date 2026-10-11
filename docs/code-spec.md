@@ -251,6 +251,32 @@ true`; only a 400/401/403/404 is logged, as the status code alone. The
 existing text capabilities still use `runAiJson` on Workers AI until a
 reviewed change moves them.
 
+After every Claude attempt the provider records the aggregate AI provider
+status (`src/domain/ai-provider-status.ts`, DOMAIN.md "AI Provider
+Status"): a 2xx is a success, adding `usage` tokens (input plus cache
+tokens at `AI_CLAUDE_PRICE_IN_PER_MTOK`, output at
+`AI_CLAUDE_PRICE_OUT_PER_MTOK`, defaults 0.10 and 0.50 US$ per million,
+Claude Haiku 5.5's short-prompt list price; check them against Anthropic's
+pricing page whenever the model changes) to the estimated spend and
+clearing an older failure; a non-2xx is categorized from its status and
+error body (`credit_exhausted`: 400 "credit balance is too low" or 402
+`billing_error`; `spend_capped`: a 429 that is not Anthropic's
+`rate_limit_error`, i.e. the gateway's spend limit; `auth`: 401/403;
+`other`: anything else, including network errors and timeouts, which never
+replaces an uncleared specific failure). Each write is one upsert
+statement, awaited for at most 500 ms with errors swallowed, so it can
+never fail or hold an AI answer; nothing is recorded when Claude is not
+configured, and the error body is read only to categorize it, never stored
+or logged. `GET /api/ai-assist/provider-status` returns
+`AiProviderStatusResponseDto` (`state`: `exhausted`, `capped`, then `low`
+at `AI_CLAUDE_WARN_AT_USD`, default 15, capped at the credit, of the
+credit `AI_CLAUDE_CREDIT_USD`, default 20, or the last top-up mark's
+amount, then `unknown` without a success or after a key failure, else
+`ok`) only to a Cloudflare Access email in `AI_ALERT_EMAILS`; anyone else
+gets `{ ok: true, visible: false }` with no database read. `POST
+.../topped-up { creditUsd }` (owner only, 403 otherwise; a number above 0
+and at most 10,000, 400 otherwise) restarts the estimate at the new credit.
+
 Receipt reading (`POST /api/ai-assist/receipt-read`,
 `src/server/receipt-read-route.ts`) checks availability before reading the
 body, refuses anything but a JPEG, PNG or WebP whose bytes match its type
@@ -264,8 +290,9 @@ model wording reaches the user. `readReceiptOcrText`
 (`src/domain/receipt-ocr-text.ts`) produces the same DTO from in-browser OCR
 text when AI is unavailable, and `receiptReadToDraftFields` maps either to
 the `/api/entries/create` field names. Tests must prove the route writes
-nothing but the allowance counter and logs nothing
-(`tests/receipt-read-route.test.mjs`).
+nothing but the allowance counter (and, when Claude is configured, the
+aggregate AI provider status row) and logs nothing
+(`tests/receipt-read-route.test.mjs`, `tests/ai-provider.test.mjs`).
 
 An AI response is a bounded draft, explanation, or ranking over deterministic
 evidence already selected by the app. The existing editor or review action is
@@ -466,6 +493,11 @@ A persistence command is all-or-nothing:
   `refreshMonthlySnapshotsAfterWrite`; one month's scopes and the marker clear
   commit together, and a refresh failure is logged, not returned as a write
   failure, because the markers let the next Summary or Month read repair it
+- the optional AI cost-control aggregates (the daily allowance counter in
+  `src/domain/ai-assistance.ts` and the AI provider status row in
+  `src/domain/ai-provider-status.ts`) are not household data and have no
+  audit event; each of their writes is a single upsert statement, so they
+  need no batch or `failingStatement` test
 - the import commit adds its approved statement fixes
   (`src/domain/import-statement-fixes.ts`) to its own batch before the rows'
   certifications, after re-checking them on rows read before the batch; a

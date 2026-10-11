@@ -576,6 +576,14 @@ cap, failure, timeout or unusable answer. With no gateway config, Workers AI
 is used directly. Neither provider is required: the route answers
 unavailable and the client uses its deterministic fallback.
 
+The app cannot buy Claude credits. After each Claude attempt the provider
+writes one aggregate row (`ai_provider_status`: last failure kind and time,
+last success time, estimated spend since the owner's last top-up mark) so
+`GET /api/ai-assist/provider-status` can tell an owner listed in
+`AI_ALERT_EMAILS` that credits are low, used up or capped by the gateway,
+with a link to the Claude Console billing page; everyone else sees nothing.
+The write never fails or holds an AI answer.
+
 ```text
 receipt image (user pasted, dropped, scanned or shared; browser downscales,
 strips EXIF/location)

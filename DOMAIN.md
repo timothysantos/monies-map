@@ -1534,6 +1534,41 @@ Important distinctions:
   has that `last4`; otherwise Default account priority applies. A total in
   another currency than that account's is a currency hint, not an amount.
 
+### AI Provider Status
+
+One aggregate row about the optional Claude provider, kept so the app can
+tell the owner when Claude credits are running low or used up and ask them
+to top up in the Claude Console. The app cannot buy credits.
+
+Canonical term:
+- `AI provider status` (the row); `credit state` (its derived `ok`, `low`,
+  `exhausted`, `capped` or `unknown`)
+
+Code and storage:
+- `src/domain/ai-provider-status.ts` (failure categories, spend estimate,
+  state, owner check, the three single-statement writes)
+- `ai_provider_status` (one row, `provider = 'claude'`): last failure
+  category (`credit_exhausted`, `spend_capped`, `auth`, `other`) and time,
+  last success time, `estimated_spend_micro_usd` since the last top-up mark,
+  and that mark's time and credit (`topped_up_credit_micro_usd`)
+- `GET /api/ai-assist/provider-status`,
+  `POST /api/ai-assist/provider-status/topped-up`
+  (`src/server/ai-provider-status-route.ts`); `AiProviderStatusResponseDto`
+
+Important distinctions:
+- Estimated spend is token counts from Claude's responses times configured
+  prices (`AI_CLAUDE_PRICE_IN_PER_MTOK`, `AI_CLAUDE_PRICE_OUT_PER_MTOK`), not
+  the Console balance. `low` means the estimate reached the warn amount;
+  `exhausted` and `capped` come only from Claude's or the gateway's actual
+  refusal (`credit balance is too low` / 402, or the gateway's 429), and a
+  later Claude success returns the state to `ok`.
+- A top-up mark is the owner saying how much credit they bought; it restarts
+  the estimate and clears a `credit_exhausted` failure, not a gateway spend
+  cap.
+- Only owners listed in `AI_ALERT_EMAILS` (Cloudflare Access emails) see it.
+  It is not household data: no prompt, image, response, error text or
+  request id is stored, and it is not part of any page DTO.
+
 ### No Longer Listed Entry
 
 An entry an earlier activity export created that a later export of the same

@@ -354,13 +354,71 @@ To add Claude later:
    403 or 404), `npx wrangler tail` shows `AI provider config rejected` with
    the status code only; receipts keep working through Workers AI.
 
+### Claude credit warnings
+
+The app cannot buy Claude credits, so it keeps one aggregate row
+(`ai_provider_status`) and can tell the owner when credits are running low
+or used up, with a link to the Claude Console billing page
+(`https://platform.claude.com/settings/billing`). After every Claude call it
+records the success time and an estimated cost (the response's token counts
+times the prices below), or the failure's kind: credit used up (Anthropic's
+"credit balance is too low" 400, or a 402), the gateway's spend limit (its
+429), a rejected key (401/403) or anything else. No prompt, image, answer
+or error text is stored. The visible notice comes later; today the routes
+are:
+
+- `GET /api/ai-assist/provider-status` returns `{ ok, visible: true,
+  claudeConfigured, state, estimatedSpendUsd, creditUsd, warnAtUsd,
+  lastFailureAt?, lastFailureReason?, lastSuccessAt?, consoleBillingUrl }`,
+  where `state` is `exhausted`, `capped`, `low` (estimated spend at or over
+  the warn amount), `unknown` (no Claude config, no success yet, or a
+  rejected key) or `ok`. A later Claude success turns `exhausted` or
+  `capped` back to `ok`.
+- `POST /api/ai-assist/provider-status/topped-up` with `{ "creditUsd": 25 }`
+  after buying credit in the Console: restarts the estimate at zero against
+  that amount (a number above 0 and at most 10,000).
+
+Both answer only an owner whose Cloudflare Access login email is in
+`AI_ALERT_EMAILS` (comma-separated, case does not matter). Everyone else
+gets `{ "ok": true, "visible": false }` from the GET and a 403 from the
+POST. `wrangler.jsonc` ships `AI_ALERT_EMAILS` empty: put the owner's
+Access login email there before deploying, or nobody sees the warning.
+
+Optional vars (defaults in brackets):
+
+- `AI_CLAUDE_PRICE_IN_PER_MTOK` [0.10] and `AI_CLAUDE_PRICE_OUT_PER_MTOK`
+  [0.50]: US$ per million input and output tokens. The defaults are Claude
+  Haiku 5.5's list price for prompts up to 100K tokens; check them against
+  Anthropic's pricing page and update them whenever `AI_CLAUDE_MODEL` or the
+  price changes.
+- `AI_CLAUDE_CREDIT_USD` [20]: the credit to measure against until the
+  first top-up mark; after a mark, the marked amount is used.
+- `AI_CLAUDE_WARN_AT_USD` [15]: the estimated spend that turns the state
+  to `low` (never more than the credit).
+
+The estimate is only an estimate: it does not see credit spent by other
+apps on the same Anthropic account, or a balance the owner topped up without
+marking it. The Console balance is authoritative.
+
+Local dev has no Cloudflare Access in front, so there is no viewer email,
+the same as the rest of the app (the app shell shows no login identity).
+To try the routes locally, set `AI_ALERT_EMAILS` in `.dev.vars` and send the
+header yourself, as the browser tests do:
+
+```sh
+curl -H "Cf-Access-Authenticated-User-Email: owner@example.com" \
+  http://127.0.0.1:8787/api/ai-assist/provider-status
+```
+
 To remove Claude again, delete the secrets and vars; the app goes back to
 Workers AI directly.
 
 To test locally, use the unit tests: `tests/ai-provider.test.mjs` mocks the
 gateway with a stubbed `fetch` (success, 429, timeout, malformed JSON, both
-providers down, no Anthropic config) and `tests/receipt-read-route.test.mjs`
-drives the route with a stub `AI` binding. `wrangler.test.jsonc` has no AI
+providers down, no Anthropic config, and what each records in the status
+row), `tests/ai-provider-status.test.mjs` covers the credit status on a real
+local D1, and `tests/receipt-read-route.test.mjs` drives the route with a
+stub `AI` binding. `wrangler.test.jsonc` has no AI
 binding, so the browser tests prove the no-AI path. For a manual check
 against the real gateway, put the secrets in `.dev.vars` (ignored by git)
 and the vars in a local, uncommitted copy of the config; note that the

@@ -343,3 +343,46 @@ gateway.
   the provider-native endpoint, Gemma 4's actual image accuracy, and Llama 4
   Scout's image input shape (the provider sends OpenAI-style `image_url`
   parts, as Gemma 4's published schema documents).
+
+### Update, 11 October 2026: Claude credit status for the owner
+
+The owner approved telling them when Claude credits are running low or used
+up, and asking them to top up in the Claude Console; the app cannot buy
+credits. Server side only (branch `ai-chat-integration`); the visible
+notice in the Ask tab and Settings is a later step.
+
+- Writes: one new aggregate row, `ai_provider_status` (`provider =
+  'claude'`): last failure category (`credit_exhausted`, `spend_capped`,
+  `auth`, `other`) and time, last success time, estimated spend in
+  micro-USD since the last top-up mark, and the mark's time and credit.
+  Nothing else: no prompt, image, response, error body or request id
+  (`tests/ai-provider.test.mjs` fails if any statement other than the
+  allowance counter and this row is written, or if a prompt, image or
+  answer appears in their arguments). Each write is one upsert statement.
+  The owner's top-up mark (`POST /api/ai-assist/provider-status/topped-up`)
+  is the only user-initiated write.
+- Privacy: the Claude error body is read (at most 4 KB) only to recognise
+  Anthropic's "credit balance is too low" message or error type, then
+  dropped; the log line stays the status code alone. The status is shown
+  only to Cloudflare Access emails in `AI_ALERT_EMAILS` (empty in
+  `wrangler.jsonc` until the owner supplies the login email); others get
+  `{ visible: false }` with no figures and no database read.
+- Cost: no extra request. The estimate is computed from the `usage` block
+  Claude already returns, at `AI_CLAUDE_PRICE_IN_PER_MTOK` (0.10) and
+  `AI_CLAUDE_PRICE_OUT_PER_MTOK` (0.50) US$ per million tokens, Claude Haiku
+  5.5's short-prompt list price on 11 October 2026; the owner must re-check
+  these against Anthropic's pricing page when the model or price changes.
+  `low` is at `AI_CLAUDE_WARN_AT_USD` (15) of `AI_CLAUDE_CREDIT_USD` (20)
+  or the last marked credit. Nothing is recorded when Claude is not
+  configured.
+- No-AI and failure paths: the status write is awaited for at most 500 ms
+  and any error is swallowed, so a missing table, a D1 failure or a hung
+  write never changes or delays the AI answer, and Workers AI fallback is
+  unchanged (`tests/ai-provider.test.mjs`). A transient failure never hides
+  an uncleared credit or spend-cap failure, a failure older than the last
+  success changes nothing, and a later Claude success returns the state to
+  `ok` (`tests/ai-provider-status.test.mjs`, real local D1).
+- Not verified here: the exact body of AI Gateway's spend-limit 429
+  (Cloudflare documents only the status), so any 429 that is not
+  Anthropic's own `rate_limit_error` counts as the spend cap; a gateway
+  rate-limit rule, if one is ever added, would also read as `capped`.
