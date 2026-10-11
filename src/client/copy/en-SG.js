@@ -80,7 +80,24 @@ export const messages = {
   },
   summary: {
     spendingMix: "Spending Mix",
-    rangeOverall: "Range overall",
+    // The Summary tab's month choice: the phone island control, its "Pick a
+    // month" sheet and the desktop month row (summary-month-picker.jsx).
+    monthChoice: {
+      label: "Month",
+      allMonths: "All months",
+      allMonthsDetail: "The whole range on one page",
+      sheetTitle: "Pick a month",
+      changeRange: "Change range",
+      // "of $37,807.52 plan": the amount sits between, masked with money.
+      planPrefix: "of",
+      planSuffix: "plan",
+      over: "over",
+      legendSpent: "Spent of plan",
+      legendOver: "Over plan",
+      previousMonth: "Previous month",
+      nextMonth: "Next month",
+      done: "Done"
+    },
     fromMonth: "From",
     toMonth: "To",
     focusMonth: "Focus",

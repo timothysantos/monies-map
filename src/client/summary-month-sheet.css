@@ -1,0 +1,199 @@
+/* The phone's "Pick a month" sheet (summary-month-sheet.jsx). It loads with
+   the sheet, not with the first screen. Colours are tokens only: the plan
+   track is sky, the spend fill a neutral grey, over plan the rose money tone
+   (design.md, "Summary tab month choice"). */
+
+.summary-month-sheet {
+  padding-bottom: 0;
+}
+
+.summary-month-sheet-range {
+  color: var(--muted);
+}
+
+.summary-month-sheet-change-range {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.summary-month-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -16px;
+  padding: 2px 16px calc(26px + env(safe-area-inset-bottom, 0px));
+}
+
+.summary-month-all {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(27, 24, 21, 0.07);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-month-all-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.summary-month-all-copy,
+.summary-month-all-amount {
+  display: grid;
+  gap: 2px;
+}
+
+.summary-month-all-copy strong {
+  font-size: 1.05rem;
+}
+
+.summary-month-all-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-month-all-amount strong {
+  font-size: 1.1rem;
+}
+
+.summary-month-all small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.summary-month-all small.money-plan {
+  color: var(--money-ink, var(--muted));
+}
+
+.summary-month-bar {
+  display: block;
+  height: 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pastel-sky) 85%, white);
+  overflow: hidden;
+}
+
+.summary-month-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--money-ink, color-mix(in srgb, var(--text) 55%, white));
+}
+
+.summary-month-year-label {
+  margin: 6px 0 8px;
+  color: var(--muted);
+  font: 500 0.68rem/1 ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0.14em;
+}
+
+.summary-month-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-month-tile {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 11px 11px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-month-tile strong {
+  font-size: 0.98rem;
+}
+
+.summary-month-tile-amount {
+  color: var(--money-ink, var(--muted));
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Bold only while money shows: hidden money gives no hint of its sign. */
+html:not([data-money-privacy="hidden"]) .summary-month-tile-amount.money-short {
+  font-weight: 600;
+}
+
+/* The tile's year is for screen readers; the year heading shows it. */
+.summary-month-tile-year {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.summary-month-tile.is-selected,
+.summary-month-all.is-selected {
+  border: 2px solid var(--accent-strong);
+  background: rgba(177, 94, 47, 0.08);
+}
+
+.summary-month-tile.is-selected {
+  padding: 9px 10px 10px;
+}
+
+.summary-month-all.is-selected {
+  padding: 15px;
+}
+
+.summary-month-tile-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  color: #ffffff;
+}
+
+.summary-month-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.summary-month-legend i {
+  display: inline-block;
+  width: 14px;
+  height: 5px;
+  margin-right: 5px;
+  border-radius: 4px;
+  vertical-align: 1px;
+  background: var(--money-ink, color-mix(in srgb, var(--text) 55%, white));
+}

@@ -8,6 +8,7 @@
 // Pure helpers only, shared by the phone island, the month sheet and the
 // desktop month selector (summary-month-picker.jsx, summary-month-sheet.jsx).
 import { spendTone } from "../domain/money-tone";
+import { moneyToneClass } from "./money-tone-class";
 
 const RANGE_PARAMS = ["summary_start", "summary_end"];
 
@@ -65,14 +66,17 @@ export function clampMonthToRange(month, rangeMonths) {
 
 // Spend against plan for one month or the whole range: actual spend, planned
 // spend, how full the bar is (capped at 100) and the money tone (rose only
-// over plan, src/domain/money-tone.ts).
+// over plan, src/domain/money-tone.ts) with its text class.
 function spendAgainstPlan(actualMinor, plannedMinor) {
   const barPercent = plannedMinor > 0
     ? Math.min(100, Math.round((actualMinor / plannedMinor) * 100))
     : actualMinor > 0 ? 100 : 0;
   const tone = spendTone(actualMinor, plannedMinor);
-  return { actualMinor, plannedMinor, barPercent, tone, isOver: tone === "short" };
+  return { actualMinor, plannedMinor, barPercent, tone, toneClass: moneyToneClass(tone), isOver: tone === "short" };
 }
+
+// Planned spend reads sky, like every plan figure.
+export const PLAN_TONE_CLASS = moneyToneClass("plan");
 
 // The "Pick a month" sheet's figures from the Summary page DTO months (one per
 // range month): the All months card, then the months grouped by year, newest

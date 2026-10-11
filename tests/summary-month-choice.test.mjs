@@ -90,6 +90,7 @@ test("the month sheet shows spend against plan, newest first, rose only over pla
     plannedMinor: 601_792,
     barPercent: 100,
     tone: "short",
+    toneClass: "money-short",
     isOver: true
   });
   assert.deepEqual(model.years.map((year) => year.year), ["2026", "2025"]);
@@ -97,18 +98,18 @@ test("the month sheet shows spend against plan, newest first, rose only over pla
   assert.deepEqual(model.years[1].months.map((month) => month.month), ["2025-12", "2025-11"]);
   const [february, january] = model.years[0].months;
   const [december, november] = model.years[1].months;
-  assert.deepEqual(november, { month: "2025-11", actualMinor: 121_826, plannedMinor: 300_896, barPercent: 40, tone: "neutral", isOver: false });
-  assert.deepEqual(january, { month: "2026-01", actualMinor: 442_849, plannedMinor: 300_896, barPercent: 100, tone: "short", isOver: true });
+  assert.deepEqual(november, { month: "2025-11", actualMinor: 121_826, plannedMinor: 300_896, barPercent: 40, tone: "neutral", toneClass: "money-neutral", isOver: false });
+  assert.deepEqual(january, { month: "2026-01", actualMinor: 442_849, plannedMinor: 300_896, barPercent: 100, tone: "short", toneClass: "money-short", isOver: true });
   // Spending with no plan is over plan, as the Summary month cards show it.
   assert.equal(december.isOver, true);
   assert.equal(december.barPercent, 100);
   // Nothing spent and nothing planned is an empty, neutral bar.
-  assert.deepEqual(february, { month: "2026-02", actualMinor: 0, plannedMinor: 0, barPercent: 0, tone: "neutral", isOver: false });
+  assert.deepEqual(february, { month: "2026-02", actualMinor: 0, plannedMinor: 0, barPercent: 0, tone: "neutral", toneClass: "money-neutral", isOver: false });
 });
 
 test("an empty range gives an empty sheet, not an error", () => {
   assert.deepEqual(buildMonthSheetModel([]), {
-    total: { actualMinor: 0, plannedMinor: 0, barPercent: 0, tone: "neutral", isOver: false },
+    total: { actualMinor: 0, plannedMinor: 0, barPercent: 0, tone: "neutral", toneClass: "money-neutral", isOver: false },
     years: []
   });
 });
