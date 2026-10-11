@@ -55,7 +55,8 @@ test("Summary and Month reuse the optional import-banner warmup instead of refet
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
   await importsPageReady;
 
-  await page.getByRole("link", { name: "Month", exact: true }).click();
+  // A month picked in the Summary tab's month row is the Month page.
+  await page.getByRole("group", { name: "Month" }).getByRole("button").nth(1).click();
   await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
   await page.waitForTimeout(1_500);
 
