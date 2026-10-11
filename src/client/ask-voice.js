@@ -91,6 +91,18 @@ function pickRecordType(MediaRecorder) {
   return RECORD_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
 }
 
+/**
+ * @param {{
+ *   win?: any,
+ *   fetchImpl?: (url: string, init?: RequestInit) => Promise<any>,
+ *   onChange?: (state: { status: string, path: string, note: string }) => void,
+ *   onTranscript?: (text: string, meta: { final: boolean }) => void,
+ *   onNote?: (key: string) => void,
+ *   now?: () => number,
+ *   setTimer?: (fn: () => void, ms: number) => any,
+ *   clearTimer?: (id: any) => void
+ * }} [options]
+ */
 export function createVoiceController({
   win = typeof window === "undefined" ? undefined : window,
   fetchImpl = (...args) => fetch(...args),

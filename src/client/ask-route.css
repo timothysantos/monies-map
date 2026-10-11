@@ -621,6 +621,11 @@
   gap: 8px;
 }
 
+/* With the mic (when the browser can take voice): camera, mic, field, send. */
+.ask-composer.has-mic {
+  grid-template-columns: 44px 44px minmax(0, 1fr) auto;
+}
+
 .ask-input {
   min-height: 44px;
   max-height: 128px;
@@ -692,6 +697,23 @@
   display: none;
 }
 
+/* Hold to talk: no text selection, callout or scrolling under the finger. */
+.ask-mic {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Listening: the accent fill of the send button with an accent ring, which
+   pulses only when motion is allowed. */
+.ask-mic.is-listening {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-strong) 28%, transparent);
+}
+
 .ask-saved-picker {
   position: sticky;
   bottom: 140px;
@@ -732,6 +754,21 @@
   .ask-thread > .ask-note,
   .ask-thread > .ask-card {
     animation: ask-arrive 180ms ease-out;
+  }
+
+  .ask-mic.is-listening {
+    animation: ask-mic-pulse 1.4s ease-out infinite;
+  }
+}
+
+@keyframes ask-mic-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-strong) 45%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent-strong) 0%, transparent);
   }
 }
 

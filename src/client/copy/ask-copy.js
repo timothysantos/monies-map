@@ -103,6 +103,22 @@ export const askCopy = {
     saving: "Saving…",
     saveHint: "Add the missing details to save."
   },
+  // The composer's mic (ask-voice.js). Notes are calm and never block typing.
+  voice: {
+    start: "Start voice input",
+    stop: "Stop voice input",
+    listening: "Listening…",
+    transcribing: "Writing down what you said…",
+    done: "Check the message, then send.",
+    notes: {
+      denied: "The microphone isn't allowed here. You can allow it in your browser settings, or type instead.",
+      noSpeech: "I didn't catch that. Hold the mic and try again.",
+      failed: "Voice input didn't work this time. You can type instead.",
+      unavailable: "Voice input isn't available in this browser. You can type instead.",
+      allowance: "Voice input is used up for today. You can type instead.",
+      tooLong: "That was too long. Keep it under 30 seconds."
+    }
+  },
   card: {
     label: "New entry",
     whatWasIt: "What was it?",

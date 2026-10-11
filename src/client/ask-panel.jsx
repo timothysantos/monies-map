@@ -1,4 +1,4 @@
-import { ArrowUp, Camera } from "lucide-react";
+import { ArrowUp, Camera, Mic } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -33,6 +33,7 @@ import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
 import { buildAskChips } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
+import { createPressGesture, createVoiceController, joinSpokenText } from "./ask-voice";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
@@ -50,7 +51,8 @@ import "./ask-route.css";
 //   button (?mode=expense&from=splits): a new entry card (add mode);
 // - the Apple Pay Shortcut (?saved_entry=<id>): that saved entry's card.
 // A typed sentence or a receipt photo fills the card through the optional
-// readers in ask-api.js; the card always works by hand. Saving goes through
+// readers in ask-api.js; the card always works by hand. The composer's mic
+// (ask-voice.js) only fills the message box: the person checks and sends. Saving goes through
 // the Entries composer's create path.
 export function AskPanel(props) {
   const [searchParams] = useSearchParams();
@@ -136,6 +138,23 @@ function AskConversation({
   const cameraInputRef = useRef(null);
   const attachInputRef = useRef(null);
 
+  // Voice input: the controller is created once and reports through refs,
+  // so its callbacks always reach this render's handlers.
+  /** @type {import("react").MutableRefObject<{ onChange?: (state: any) => void, onTranscript?: (text: string, meta: { final: boolean }) => void, onNote?: (key: string) => void }>} */
+  const voiceHandlersRef = useRef({});
+  const voiceBaseRef = useRef("");
+  const micPointerRef = useRef(false);
+  const micRetryRef = useRef(false);
+  const [voice] = useState(() => createVoiceController({
+    onChange: (next) => voiceHandlersRef.current.onChange?.(next),
+    onTranscript: (text, meta) => voiceHandlersRef.current.onTranscript?.(text, meta),
+    onNote: (key) => voiceHandlersRef.current.onNote?.(key)
+  }));
+  const [micGesture] = useState(() => createPressGesture());
+  const [voiceState, setVoiceState] = useState(() => voice.getState());
+  const [voiceAnnouncement, setVoiceAnnouncement] = useState("");
+  const voiceActive = ["starting", "listening", "transcribing"].includes(voiceState.status);
+
   // The month the card's entry lands in: the Entries page DTO of that month
   // holds the split groups and, after a save, the saved row.
   const cardMonth = (card?.fields.date || today).slice(0, 7);
@@ -152,7 +171,7 @@ function AskConversation({
 
   useRouteWorkReport({
     ready: true,
-    busy: Boolean(working) || card?.status === "saving" || Boolean(card?.touched && card.status === "draft")
+    busy: Boolean(working) || voiceActive || card?.status === "saving" || Boolean(card?.touched && card.status === "draft")
   });
 
   // Photos live in memory only while the page shows them.
@@ -217,6 +236,29 @@ function AskConversation({
   }, []);
   const appendThread = useCallback((...items) => commitThread([...threadRef.current.filter((item) => item.kind !== "status"), ...items]), [commitThread]);
   const setStatus = useCallback((text) => commitThread([...threadRef.current.filter((item) => item.kind !== "status"), ...(text ? [threadItem("status", { text })] : [])]), [commitThread]);
+
+  useEffect(() => {
+    voiceHandlersRef.current = {
+      onChange: (next) => {
+        setVoiceState(next);
+        setVoiceAnnouncement((current) => {
+          if (next.status === "listening") return askCopy.voice.listening;
+          if (next.status === "transcribing") return askCopy.voice.transcribing;
+          return current === askCopy.voice.done ? current : "";
+        });
+      },
+      // The words go in the message box after what was typed; never sent.
+      onTranscript: (text, { final }) => {
+        setComposerText(joinSpokenText(voiceBaseRef.current, text));
+        if (final) {
+          setVoiceAnnouncement(askCopy.voice.done);
+        }
+      },
+      onNote: (key) => appendThread(threadItem("note", { text: askCopy.voice.notes[key] ?? askCopy.voice.notes.failed, tone: "calm" }))
+    };
+  }, [appendThread]);
+  // Leaving the page stops listening and drops a clip in progress.
+  useEffect(() => () => voice.dispose(), [voice]);
 
   const updateCard = useCallback((patch) => setCard((current) => (current ? setCardField(current, patch, context) : current)), [context]);
   const changeVariant = useCallback((variant) => setCard((current) => (current ? setCardVariant(current, variant, context) : current)), [context]);
@@ -542,13 +584,16 @@ function AskConversation({
       : askCopy.newTitle[card?.variant ?? "expense"];
   const scopeLabel = view.id !== "household" && !isAddMode ? messages.views.scopeShortLabel[selectedScope] ?? "" : "";
   const contextLine = askCopy.contextLine([view.label, scopeLabel, formatShortMonth(isShortcut ? shortcutMonth : selectedMonth)]);
-  const placeholder = !card
+  const cardPlaceholder = !card
     ? askCopy.composer.chatPlaceholder
     : card.status === "saved"
       ? askCopy.composer.savedPlaceholder
       : card.origin || card.touched
         ? askCopy.composer.changePlaceholder
         : askCopy.composer.addPlaceholder;
+  const placeholder = voiceState.status === "listening"
+    ? askCopy.voice.listening
+    : voiceState.status === "transcribing" ? askCopy.voice.transcribing : cardPlaceholder;
   const pendingQuestion = card?.status === "draft" ? card.questions[0] ?? null : null;
   const chipSignature = chips.items.map((chip) => chip.key).join("|");
   const settledThread = thread.filter((item) => item.kind !== "status");
@@ -562,8 +607,62 @@ function AskConversation({
     }
   }, [chipSignature]);
 
+  function startVoice() {
+    voiceBaseRef.current = composerText;
+    setVoiceAnnouncement("");
+    return voice.start();
+  }
+
+  // Hold to talk, or tap to start and tap to stop (createPressGesture).
+  function handleMicPointerDown(event) {
+    if (event.button !== 0) {
+      return;
+    }
+    // Keeps focus (and the phone's keyboard) where it is, and stops a long
+    // press from selecting text.
+    event.preventDefault();
+    micPointerRef.current = true;
+    if (micGesture.down(voice.getState().status !== "idle") === "start") {
+      micRetryRef.current = !startVoice();
+    }
+  }
+
+  function handleMicPointerUp() {
+    if (micGesture.up(voice.getState().status === "listening") === "stop") {
+      voice.stop();
+    }
+  }
+
+  function handleMicPointerCancel() {
+    if (micGesture.cancel(voice.getState().status === "listening") === "stop") {
+      voice.stop();
+    }
+  }
+
+  function handleMicClick() {
+    if (micPointerRef.current) {
+      micPointerRef.current = false;
+      // A browser that wanted a tap before listening gets it now.
+      if (micRetryRef.current) {
+        micRetryRef.current = false;
+        startVoice();
+      }
+      return;
+    }
+    // A keyboard or screen reader press: a plain toggle.
+    if (voice.getState().status === "idle") {
+      startVoice();
+    } else {
+      voice.stop();
+    }
+  }
+
   function submitComposer(event) {
     event.preventDefault();
+    // Sending is always the person's tap; it ends any listening first.
+    if (voiceActive) {
+      voice.cancel();
+    }
     const text = composerText.trim();
     if (!text) {
       void saveCard();
@@ -647,10 +746,27 @@ function AskConversation({
             ))}
           </div>
         ) : null}
-        <form className="ask-composer" onSubmit={submitComposer}>
+        <form className={`ask-composer${voiceState.status === "hidden" ? "" : " has-mic"}`} onSubmit={submitComposer}>
           <button type="button" className="ask-icon-button" aria-label={askCopy.composer.attach} title={askCopy.composer.attach} disabled={Boolean(working)} onClick={() => attachInputRef.current?.click()}>
             <Camera size={20} aria-hidden="true" />
           </button>
+          {voiceState.status === "hidden" ? null : (
+            <button
+              type="button"
+              className={`ask-icon-button ask-mic${voiceState.status === "listening" ? " is-listening" : ""}`}
+              aria-label={voiceActive ? askCopy.voice.stop : askCopy.voice.start}
+              title={voiceActive ? askCopy.voice.stop : askCopy.voice.start}
+              disabled={Boolean(working) || voiceState.status === "transcribing"}
+              onPointerDown={handleMicPointerDown}
+              onPointerUp={handleMicPointerUp}
+              onPointerCancel={handleMicPointerCancel}
+              onClick={handleMicClick}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              <Mic size={20} aria-hidden="true" />
+            </button>
+          )}
+          <span className="ask-sr-only" role="status" aria-live="polite">{voiceAnnouncement}</span>
           <input ref={cameraInputRef} className="ask-file-input" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
           <input ref={attachInputRef} className="ask-file-input" type="file" accept="image/*" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
           <textarea
@@ -660,6 +776,7 @@ function AskConversation({
             aria-label={askCopy.composer.label}
             placeholder={placeholder}
             value={composerText}
+            readOnly={voiceState.status === "listening" || voiceState.status === "transcribing"}
             enterKeyHint="send"
             onChange={(event) => setComposerText(event.target.value)}
             onPaste={handleComposerPaste}
