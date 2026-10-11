@@ -160,6 +160,19 @@ test("the credit and warn amounts come from vars, or from the last top-up mark",
 
 // ------------------------------------------------------------ owner gating
 
+test("AI_ALERT_EMAILS \"*\" makes everyone an alert viewer, signed in or not", () => {
+  for (const value of ["*", " * ", "owner@example.com, *"]) {
+    const env = { AI_ALERT_EMAILS: value };
+    assert.equal(isAiAlertViewer(env, "owner@example.com"), true, value);
+    assert.equal(isAiAlertViewer(env, "someone@example.com"), true, value);
+    assert.equal(isAiAlertViewer(env, undefined), true, value);
+    assert.equal(isAiAlertViewer(env, ""), true, value);
+  }
+  // A star inside an address is not a wildcard.
+  assert.equal(isAiAlertViewer({ AI_ALERT_EMAILS: "*@example.com" }, "someone@example.com"), false);
+  assert.equal(isAiAlertViewer({ AI_ALERT_EMAILS: "**" }, "someone@example.com"), false);
+});
+
 test("only an Access email listed in AI_ALERT_EMAILS is an alert viewer", () => {
   const env = { AI_ALERT_EMAILS: " owner@example.com , second@example.com ,," };
   assert.equal(isAiAlertViewer(env, "owner@example.com"), true);
@@ -322,6 +335,38 @@ test("the owner sees the figures; anyone else, or nobody signed in, sees nothing
   // With no alert emails configured, not even a signed-in owner sees it.
   const unlisted = await worker.fetch(statusRequest(OWNER), { ...env, AI_ALERT_EMAILS: "" });
   assert.deepEqual(await unlisted.json(), { ok: true, visible: false });
+});
+
+test("with AI_ALERT_EMAILS \"*\" everyone sees the figures and may mark a top-up", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const env = { ...template.config.vars, ...CLAUDE_ENV, DB: db, AI_ALERT_EMAILS: "*" };
+  await recordClaudeSuccess(db, 16_000_000, "2026-10-10T01:00:00.000Z");
+
+  for (const email of [OWNER, "someone@example.com", undefined]) {
+    const response = await worker.fetch(statusRequest(email), env);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.visible, true, String(email));
+    assert.equal(body.state, "low");
+    assert.equal(body.estimatedSpendUsd, 16);
+  }
+
+  // Anyone may mark the top-up; the amount is still checked.
+  const refused = await worker.fetch(topUpRequest("someone@example.com", { creditUsd: -1 }), env);
+  assert.equal(refused.status, 400);
+  const marked = await worker.fetch(topUpRequest("someone@example.com", { creditUsd: 25 }), env);
+  assert.equal(marked.status, 200);
+  const after = await marked.json();
+  assert.equal(after.visible, true);
+  assert.equal(after.creditUsd, 25);
+  assert.equal(after.estimatedSpendUsd, 0);
+  assert.equal(after.state, "ok");
+});
+
+test("wrangler.jsonc shows the Claude credit status to everyone", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const config = await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+  assert.match(config, /"AI_ALERT_EMAILS": "\*"/);
 });
 
 test("the owner marks a top-up; validation and non-owners are refused without a write", async (t) => {

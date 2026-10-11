@@ -149,15 +149,21 @@ export async function loadAiProviderStatusRow(db: D1Database) {
   `).bind(PROVIDER_KEY).first<AiProviderStatusRow>();
 }
 
+// Who sees the Claude credit status and may mark a top-up. AI_ALERT_EMAILS
+// is a comma-separated list of Cloudflare Access emails (case does not
+// matter), or "*" for everyone (the owner's choice in wrangler.jsonc): with
+// "*" every viewer qualifies, signed in or not, since Access already guards
+// the whole app in production. An empty value shows it to nobody.
 export function isAiAlertViewer(env: Pick<AiProviderStatusEnv, "AI_ALERT_EMAILS">, email: string | null | undefined) {
+  const entries = (env.AI_ALERT_EMAILS ?? "").split(",").map((entry) => entry.trim().toLowerCase());
+  if (entries.includes("*")) {
+    return true;
+  }
   const viewer = email?.trim().toLowerCase();
   if (!viewer) {
     return false;
   }
-  return (env.AI_ALERT_EMAILS ?? "")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .some((entry) => entry !== "" && entry === viewer);
+  return entries.some((entry) => entry !== "" && entry === viewer);
 }
 
 // The amount the owner says they bought: a real positive number of US$ up

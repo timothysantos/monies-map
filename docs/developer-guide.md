@@ -378,11 +378,15 @@ are:
   after buying credit in the Console: restarts the estimate at zero against
   that amount (a number above 0 and at most 10,000).
 
-Both answer only an owner whose Cloudflare Access login email is in
-`AI_ALERT_EMAILS` (comma-separated, case does not matter). Everyone else
-gets `{ "ok": true, "visible": false }` from the GET and a 403 from the
-POST. `wrangler.jsonc` ships `AI_ALERT_EMAILS` empty: put the owner's
-Access login email there before deploying, or nobody sees the warning.
+Who they answer is set by `AI_ALERT_EMAILS`:
+
+- `"*"` (what `wrangler.jsonc` ships, the owner's choice): everyone sees
+  the status and may mark a top-up, signed in or not (Cloudflare Access
+  already guards the whole app in production).
+- A comma-separated list of Cloudflare Access login emails (case does not
+  matter): only those people. Everyone else gets
+  `{ "ok": true, "visible": false }` from the GET and a 403 from the POST.
+- Empty: nobody sees it.
 
 Optional vars (defaults in brackets):
 
@@ -402,8 +406,9 @@ marking it. The Console balance is authoritative.
 
 Local dev has no Cloudflare Access in front, so there is no viewer email,
 the same as the rest of the app (the app shell shows no login identity).
-To try the routes locally, set `AI_ALERT_EMAILS` in `.dev.vars` and send the
-header yourself, as the browser tests do:
+With `AI_ALERT_EMAILS` at `"*"` the routes answer locally as they are. To
+try the email list, set `AI_ALERT_EMAILS` in `.dev.vars` and send the header
+yourself, as the browser tests do:
 
 ```sh
 curl -H "Cf-Access-Authenticated-User-Email: owner@example.com" \

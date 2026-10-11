@@ -1303,8 +1303,9 @@ export interface EntryDraftResponseDto {
 }
 
 // AI provider status (DOMAIN.md "AI Provider Status"): served only by
-// GET /api/ai-assist/provider-status and POST .../topped-up, and only to an
-// owner listed in AI_ALERT_EMAILS; everyone else gets { visible: false }.
+// GET /api/ai-assist/provider-status and POST .../topped-up, and only to a
+// viewer listed in AI_ALERT_EMAILS (everyone when it is "*"); anyone else
+// gets { visible: false }.
 export type ClaudeFailureCategory = "credit_exhausted" | "spend_capped" | "auth" | "other";
 export type ClaudeCreditState = "ok" | "low" | "exhausted" | "capped" | "unknown";
 

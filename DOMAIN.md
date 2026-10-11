@@ -1677,8 +1677,10 @@ Important distinctions:
 ### AI Provider Status
 
 One aggregate row about the optional Claude provider, kept so the app can
-tell the owner when Claude credits are running low or used up and ask them
-to top up in the Claude Console. The app cannot buy credits.
+tell the household when Claude credits are running low or used up and ask
+for a top-up in the Claude Console. The app cannot buy credits. Who sees it
+is `AI_ALERT_EMAILS`: a list of Access emails, or `"*"` for everyone (what
+`wrangler.jsonc` ships).
 
 Canonical term:
 - `AI provider status` (the row); `credit state` (its derived `ok`, `low`,
@@ -1686,7 +1688,7 @@ Canonical term:
 
 Code and storage:
 - `src/domain/ai-provider-status.ts` (failure categories, spend estimate,
-  state, owner check, the three single-statement writes)
+  state, viewer check, the three single-statement writes)
 - `ai_provider_status` (one row, `provider = 'claude'`): last failure
   category (`credit_exhausted`, `spend_capped`, `auth`, `other`) and time,
   last success time, `estimated_spend_micro_usd` since the last top-up mark,

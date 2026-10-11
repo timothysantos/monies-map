@@ -4,10 +4,12 @@
 // - POST /api/ai-assist/provider-status/topped-up { creditUsd }
 //
 // Only a viewer whose Cloudflare Access email is in AI_ALERT_EMAILS gets the
-// figures; everyone else gets { ok: true, visible: false } from the GET (no
-// database read) and a 403 from the POST (no write). Without Access in
-// front (local dev, tests) there is no viewer email unless the request sends
-// the Cf-Access-Authenticated-User-Email header itself.
+// figures, or everyone when it is "*" (wrangler.jsonc ships "*": the owner
+// chose to show the status to the whole household); everyone else gets
+// { ok: true, visible: false } from the GET (no database read) and a 403
+// from the POST (no write). Without Access in front (local dev, tests) there
+// is no viewer email unless the request sends the
+// Cf-Access-Authenticated-User-Email header itself.
 //
 // The app cannot buy credit: the owner tops up in the Claude Console
 // (consoleBillingUrl) and then marks it here, which restarts the spend

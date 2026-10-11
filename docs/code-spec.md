@@ -282,10 +282,12 @@ or logged. `GET /api/ai-assist/provider-status` returns
 at `AI_CLAUDE_WARN_AT_USD`, default 15, capped at the credit, of the
 credit `AI_CLAUDE_CREDIT_USD`, default 20, or the last top-up mark's
 amount, then `unknown` without a success or after a key failure, else
-`ok`) only to a Cloudflare Access email in `AI_ALERT_EMAILS`; anyone else
-gets `{ ok: true, visible: false }` with no database read. `POST
-.../topped-up { creditUsd }` (owner only, 403 otherwise; a number above 0
-and at most 10,000, 400 otherwise) restarts the estimate at the new credit.
+`ok`) only to a Cloudflare Access email in `AI_ALERT_EMAILS`, or to
+everyone when it is `"*"` (`isAiAlertViewer`; `wrangler.jsonc` ships `"*"`);
+anyone else gets `{ ok: true, visible: false }` with no database read.
+`POST .../topped-up { creditUsd }` (the same viewers, 403 otherwise; a
+number above 0 and at most 10,000, 400 otherwise) restarts the estimate at
+the new credit.
 
 Receipt reading (`POST /api/ai-assist/receipt-read`,
 `src/server/receipt-read-route.ts`) checks availability before reading the

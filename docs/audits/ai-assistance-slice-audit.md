@@ -364,9 +364,9 @@ notice in the Ask tab and Settings is a later step.
 - Privacy: the Claude error body is read (at most 4 KB) only to recognise
   Anthropic's "credit balance is too low" message or error type, then
   dropped; the log line stays the status code alone. The status is shown
-  only to Cloudflare Access emails in `AI_ALERT_EMAILS` (empty in
-  `wrangler.jsonc` until the owner supplies the login email); others get
-  `{ visible: false }` with no figures and no database read.
+  only to Cloudflare Access emails in `AI_ALERT_EMAILS`; others get
+  `{ visible: false }` with no figures and no database read. (Changed
+  12 October 2026, below: `"*"` shows it to everyone.)
 - Cost: no extra request. The estimate is computed from the `usage` block
   Claude already returns, at `AI_CLAUDE_PRICE_IN_PER_MTOK` (0.10) and
   `AI_CLAUDE_PRICE_OUT_PER_MTOK` (0.50) US$ per million tokens, Claude Haiku
@@ -428,3 +428,26 @@ AI boundary:
   note. Typing, the card and every other workflow are unchanged.
   `tests/transcribe-route.test.mjs`, `tests/ask-voice.test.mjs` and
   `tests/e2e/ask-voice.spec.js` prove each of these.
+
+### Update, 12 October 2026: Claude credit status for everyone
+
+The owner decided the Claude credit status is shown to everyone, not only
+to them. `AI_ALERT_EMAILS="*"` now means every viewer (signed in or not;
+Cloudflare Access guards the whole app in production), and
+`wrangler.jsonc` ships `"*"`. Any other value keeps the email-list
+behaviour, and empty still shows it to nobody. Under `"*"` anyone may also
+mark a top-up (`POST /api/ai-assist/provider-status/topped-up`).
+
+- Privacy: the status carries aggregate figures only (state, estimated
+  spend, credit, last success time and the Console billing link); no
+  prompt, image, response or per-person data, so showing it to the
+  household exposes nothing personal.
+- Writes: unchanged in kind. The top-up mark is still one upsert of the
+  aggregate row and still validated (a number above 0 and at most 10,000);
+  under `"*"` any household member can make it, which can restart the
+  estimate early but never changes ledger data or spends anything.
+- Cost: none; no new request or inference.
+- Tests: `tests/ai-provider-status.test.mjs` covers `"*"` (everyone,
+  signed in or not, sees the figures and may mark a top-up; a `*` inside an
+  address is not a wildcard), the email list (unchanged) and the shipped
+  `wrangler.jsonc` value.

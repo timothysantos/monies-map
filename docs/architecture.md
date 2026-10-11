@@ -608,9 +608,10 @@ unavailable and the client uses its deterministic fallback.
 The app cannot buy Claude credits. After each Claude attempt the provider
 writes one aggregate row (`ai_provider_status`: last failure kind and time,
 last success time, estimated spend since the owner's last top-up mark) so
-`GET /api/ai-assist/provider-status` can tell an owner listed in
-`AI_ALERT_EMAILS` that credits are low, used up or capped by the gateway,
-with a link to the Claude Console billing page; everyone else sees nothing.
+`GET /api/ai-assist/provider-status` can tell the viewers in
+`AI_ALERT_EMAILS` (everyone when it is `"*"`, as `wrangler.jsonc` ships)
+that credits are low, used up or capped by the gateway, with a link to the
+Claude Console billing page; anyone not listed sees nothing.
 The write never fails or holds an AI answer.
 
 ```text
