@@ -7,6 +7,12 @@
   padding-bottom: 0;
 }
 
+/* The sheet takes focus on open so Tab starts inside it; the sheet itself is
+   not a control, so it shows no ring (its buttons do). */
+.summary-month-sheet:focus {
+  outline: none;
+}
+
 .summary-month-sheet-range {
   color: var(--muted);
 }
