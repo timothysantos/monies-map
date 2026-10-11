@@ -122,13 +122,16 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     const { monthPage } = await loadMonthPage(page, { view: "person-tim", month: later });
     expect(monthPage.categoryShareChart).toEqual(monthShare(summary, later));
 
-    // Step back to the earlier month: the donut follows.
+    // Step back to the earlier month with the arrow, one month at a time
+    // (each step waits for its URL): the donut follows.
     const control = island.getByRole("group", { name: "Month" });
-    while (!(await control.textContent()).includes(monthLabel(earlier))) {
+    const steps = summary.rangeMonths.slice(summary.rangeMonths.indexOf(earlier), summary.rangeMonths.indexOf(later)).reverse();
+    for (const month of steps) {
       await control.getByRole("button", { name: "Previous month" }).click();
-      await waitUsable(page);
+      await expect(page).toHaveURL(new RegExp(`month=${month}(&|$)`));
+      await expect(control).toContainText(monthLabel(month));
     }
-    await expect(page).toHaveURL(new RegExp(`month=${earlier}(&|$)`));
+    await waitUsable(page);
     await expectMix(page, monthShare(summary, earlier));
 
     // All months: the whole range again.
