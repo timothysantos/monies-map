@@ -388,6 +388,12 @@ const SHOTS = [
       await openSettingsSection(page, "Apple Pay shortcut");
     }
   },
+  {
+    name: "settings-payment-ways", device: "desktop",
+    run: async (page) => {
+      await openSettingsSection(page, "Payment ways");
+    }
+  },
   // Help
   {
     name: "faq-tabs", device: "desktop",
