@@ -61,15 +61,18 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
     ? amountInput
     : formatCurrencyMinor(Number(dialog?.amountMinor ?? 0), currency).replace(/^[^\d]+/, "");
 
+  // Focus the total once when the card opens (and again for another draft).
+  const hasDialog = Boolean(dialog);
+  const dialogId = dialog?.id;
   useEffect(() => {
-    if (!autoFocusAmount || !dialog) {
+    if (!autoFocusAmount || !hasDialog) {
       return undefined;
     }
     const timeout = window.setTimeout(() => {
       focusFieldUnlessEditing(amountInputRef.current, { select: true });
     }, 80);
     return () => window.clearTimeout(timeout);
-  }, [autoFocusAmount, dialog?.id]);
+  }, [autoFocusAmount, hasDialog, dialogId]);
 
   const update = (patch) => onChange((current) => current ? { ...current, ...patch } : current);
   const pickerProps = (key) => ({
