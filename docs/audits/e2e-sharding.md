@@ -63,6 +63,12 @@ and parallel sessions kept colliding on those ports.
   which reads static FAQ content and passes on a fresh, empty schema.
 - `localStorage`, `BroadcastChannel` and cross-tab tests stay inside one
   browser context per test. Nothing is shared between Playwright processes.
+- A shard's first test meets a fresh, unseeded D1. Its `page.goto("/")`
+  starts the cold-start seed (`ensureAppData`) and its `reseedDemo` call
+  used to clear and refill the same tables beside it, so the first spec
+  (often `app-dates.spec.js`) sometimes found the cold start's seed or a
+  half-cleared household. Fixed on 2026-10-12: a demo reset waits for a
+  seed in flight (`resetAppData`, `tests/app-data-reset.test.mjs`).
 - Found by running under load, not by order:
   - `splits-viewer-amounts.spec.js:22` clicked Save and read
     `/api/splits-page` straight away. In one loaded run the read answered
