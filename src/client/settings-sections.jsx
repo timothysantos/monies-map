@@ -6,7 +6,7 @@ import { messages } from "./copy/en-SG";
 import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
-import { findDuplicateCategoryMatchRules } from "./settings-workflow";
+import { buildPaymentWayAccountOptions, findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 
@@ -302,6 +302,86 @@ export function SettingsShortcutApiSection({
               </select>
             </label>
           </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+// Settings -> Payment ways (DOMAIN.md "Payment Way"): per person, the account
+// a typed "paynow" or "cash" means. Each select saves straight away.
+export function SettingsPaymentWaysSection({
+  accounts,
+  draft,
+  error,
+  isOpen,
+  isSubmitting,
+  status,
+  onChange,
+  onToggle
+}) {
+  return (
+    <section className="chart-card settings-card">
+      <SettingsSectionToggle
+        title={messages.settings.paymentWaysTitle}
+        detail={messages.settings.paymentWaysDetail}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen ? (
+        <div className="settings-payment-ways">
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          {status ? <p className="settings-shortcut-status" role="status" aria-live="polite">{status}</p> : null}
+          {draft.map((way) => {
+            const options = buildPaymentWayAccountOptions(accounts, way.personId);
+            const bankId = `payment-way-bank-${way.personId}`;
+            const cashId = `payment-way-cash-${way.personId}`;
+            return (
+              <fieldset key={way.personId} className="settings-account-row settings-payment-way-person">
+                <legend>{way.personName}</legend>
+                <div className="settings-payment-way-fields">
+                  <div className="table-edit-field">
+                    <label htmlFor={bankId}>{messages.settings.paymentWaysBankLabel}</label>
+                    <select
+                      id={bankId}
+                      className="table-edit-input"
+                      value={way.bankTransferAccountId}
+                      disabled={isSubmitting}
+                      onChange={(event) => void onChange(way.personId, { bankTransferAccountId: event.target.value })}
+                    >
+                      <option value="">{messages.settings.paymentWaysNone}</option>
+                      {options.bankTransfer.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {messages.settings.paymentWaysAccountOption(account.name, account.ownerLabel)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="table-edit-field">
+                    <label htmlFor={cashId}>{messages.settings.paymentWaysCashLabel}</label>
+                    <select
+                      id={cashId}
+                      className="table-edit-input"
+                      value={way.cashAccountId}
+                      disabled={isSubmitting || options.cash.length === 0}
+                      aria-describedby={options.cash.length === 0 ? `${cashId}-help` : undefined}
+                      onChange={(event) => void onChange(way.personId, { cashAccountId: event.target.value })}
+                    >
+                      <option value="">{messages.settings.paymentWaysNone}</option>
+                      {options.cash.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {messages.settings.paymentWaysAccountOption(account.name, account.ownerLabel)}
+                        </option>
+                      ))}
+                    </select>
+                    {options.cash.length === 0 ? (
+                      <small id={`${cashId}-help`} className="field-help">{messages.settings.paymentWaysNoCashAccounts}</small>
+                    ) : null}
+                  </div>
+                </div>
+              </fieldset>
+            );
+          })}
         </div>
       ) : null}
     </section>

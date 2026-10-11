@@ -168,3 +168,12 @@ export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds, defaul
     "Failed to save shortcut settings."
   );
 }
+
+// Settings -> Payment ways: one person's two choices ("" = none).
+export function savePaymentWay({ personId, bankTransferAccountId, cashAccountId }) {
+  return postJson(
+    "/api/settings/payment-ways/save",
+    { personId, bankTransferAccountId, cashAccountId },
+    "Failed to save payment ways"
+  );
+}
