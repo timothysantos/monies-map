@@ -114,15 +114,18 @@ const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ d
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
 // Canonical route registry for the top navigation and route-based prefetching.
-// Ask (the Ask page) is a primary tab. Until the Month tab is retired
-// (branch merge-summary-month), a phone shows Month under "More pages"
-// (phoneOverflow) so its tab bar reads Summary, Entries, Splits, Ask.
+// Ask (the Ask page) is a primary tab on a phone; a wide screen gets its
+// own way in later (a docked panel), so there the tab is hidden for now
+// (phoneOnly) and /ask opens from the + and receipt buttons. Until the
+// Month tab is retired (branch merge-summary-month), a phone shows Month
+// under "More pages" (phoneOverflow) so its tab bar reads Summary,
+// Entries, Splits, Ask.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
   { id: "month", path: "/month", label: messages.tabs.month, phoneOverflow: true },
   { id: "entries", path: "/entries", label: messages.tabs.entries },
   { id: "splits", path: "/splits", label: messages.tabs.splits },
-  { id: "ask", path: "/ask", label: messages.tabs.ask, icon: "ask" },
+  { id: "ask", path: "/ask", label: messages.tabs.ask, icon: "ask", phoneOnly: true },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
   { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
@@ -2266,7 +2269,9 @@ export function App() {
 
   // Normalize summary range parameters so the picker and the URL stay in sync.
   useEffect(() => {
-    if (!appShell || !availableMonths.length) {
+    // Ask has no period: its month is the context it was opened with (an
+    // Apple Pay entry's own month), so it is never moved to a tracked one.
+    if (!appShell || !availableMonths.length || selectedTabId === "ask") {
       return;
     }
 
@@ -2293,7 +2298,7 @@ export function App() {
     const next = new URLSearchParams(location.search);
     next.set("month", availableMonths[availableMonths.length - 1]);
     navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
-  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
+  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, selectedTabId, setSearchParams]);
 
   // Initialize the summary range picker year buckets from the active summary
   // window.

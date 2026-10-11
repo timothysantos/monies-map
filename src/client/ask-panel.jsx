@@ -1,5 +1,5 @@
 import { ArrowUp, Camera } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -115,6 +115,11 @@ function AskConversation({
   const isAddMode = intent.mode !== "chat";
   const [card, setCard] = useState(() => (isAddMode ? createAskCard(context, { mode: intent.mode, splitGroupId: intent.splitGroupId }) : null));
   const [thread, setThread] = useState(() => (isShortcut ? [threadItem("status", { text: askCopy.notes.shortcutLoading })] : []));
+  // The conversation as of now, for handlers that append to it.
+  const threadRef = useRef(thread);
+  // Where the card sits in the conversation: after the messages that made
+  // it, before what happened to it since (saved, undone).
+  const [cardSlot, setCardSlot] = useState(0);
   const [composerText, setComposerText] = useState("");
   const [working, setWorking] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
@@ -122,6 +127,7 @@ function AskConversation({
   const [savedPicker, setSavedPicker] = useState(false);
   const [splitGroupsFromCache, setSplitGroupsFromCache] = useState(() => readCachedSplitGroups(queryClient, view.id));
   const objectUrlsRef = useRef([]);
+  const chipsRef = useRef(null);
   const threadEndRef = useRef(null);
   const descriptionRef = useRef(null);
   const amountRef = useRef(null);
@@ -133,7 +139,9 @@ function AskConversation({
   // The month the card's entry lands in: the Entries page DTO of that month
   // holds the split groups and, after a save, the saved row.
   const cardMonth = (card?.fields.date || today).slice(0, 7);
-  const shortcutMonth = searchParams.get("month") ?? selectedMonth;
+  // The Shortcut's entry month as the link gave it: the shell may later
+  // move the URL to a month it tracks, but the entry stays in its own.
+  const [shortcutMonth] = useState(() => searchParams.get("month") ?? selectedMonth);
   const entriesMonth = isShortcut ? shortcutMonth : cardMonth;
   const needsEntriesPage = isShortcut || (card?.variant === "expense" && card.status === "draft" && !splitGroupsFromCache);
   const entriesPage = useAskEntriesPage({ queryClient, fetchEntriesPage, viewId: view.id, month: entriesMonth, enabled: needsEntriesPage });
@@ -167,10 +175,10 @@ function AskConversation({
     }
     shortcutHandledRef.current = true;
     const entry = entriesPage.page?.monthPage?.entries?.find((item) => item.id === intent.savedEntryId);
-    setThread((current) => [
-      ...current.filter((item) => item.kind !== "status"),
-      threadItem("note", { text: entry ? askCopy.notes.shortcutSaved : askCopy.notes.shortcutMissing })
-    ]);
+    const next = [threadItem("note", { text: entry ? askCopy.notes.shortcutSaved : askCopy.notes.shortcutMissing })];
+    threadRef.current = next;
+    setThread(next);
+    setCardSlot(1);
     if (entry) {
       const savedCard = cardFromSavedEntry(entry, context);
       const groupName = entry.linkedSplitGroupName ?? "";
@@ -178,21 +186,47 @@ function AskConversation({
     }
   }, [context, entriesPage.page, entriesPage.status, intent.savedEntryId, isShortcut]);
 
-  // New messages scroll into view; motion only when the person allows it.
+  // The page opens at the top. Later, the person's newest message scrolls
+  // to the top of the conversation (so the card it filled sits under it),
+  // and any other news to the bottom; motion only when the person allows it.
+  // A status line ("Reading your receipt…") coming or going moves nothing.
+  const settledLength = thread.filter((item) => item.kind !== "status").length;
+  const scrolledThreadRef = useRef({ length: settledLength, status: card?.status ?? "" });
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView?.({ block: "end", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }, [thread.length, card?.status, card?.origin]);
+    const previous = scrolledThreadRef.current;
+    const settled = thread.filter((item) => item.kind !== "status");
+    scrolledThreadRef.current = { length: settled.length, status: card?.status ?? "" };
+    const justSaved = card?.status === "saved" && previous.status !== "saved";
+    if (settled.length <= previous.length && !justSaved) {
+      return;
+    }
+    const behavior = prefersReducedMotion() ? "auto" : "smooth";
+    const newItems = settled.slice(previous.length);
+    const lastMine = [...newItems].reverse().find((item) => item.kind === "me");
+    if (lastMine) {
+      document.getElementById(lastMine.id)?.scrollIntoView?.({ block: "start", behavior });
+      return;
+    }
+    threadEndRef.current?.scrollIntoView?.({ block: "end", behavior });
+  }, [card?.status, thread]);
 
   const validation = useMemo(() => (card ? validateCard(card, { splitGroups }) : null), [card, splitGroups]);
-  const appendThread = useCallback((...items) => setThread((current) => [...current.filter((item) => item.kind !== "status"), ...items]), []);
-  const setStatus = useCallback((text) => setThread((current) => [...current.filter((item) => item.kind !== "status"), ...(text ? [threadItem("status", { text })] : [])]), []);
+  const commitThread = useCallback((next) => {
+    threadRef.current = next;
+    setThread(next);
+  }, []);
+  const appendThread = useCallback((...items) => commitThread([...threadRef.current.filter((item) => item.kind !== "status"), ...items]), [commitThread]);
+  const setStatus = useCallback((text) => commitThread([...threadRef.current.filter((item) => item.kind !== "status"), ...(text ? [threadItem("status", { text })] : [])]), [commitThread]);
 
   const updateCard = useCallback((patch) => setCard((current) => (current ? setCardField(current, patch, context) : current)), [context]);
   const changeVariant = useCallback((variant) => setCard((current) => (current ? setCardVariant(current, variant, context) : current)), [context]);
   const changeShare = useCallback((share) => setCard((current) => (current ? setShare(current, share) : current)), []);
 
   // A new card for a new message once the last one is saved.
+  // The card a message or receipt fills (a new one once the last is saved).
+  // It moves below the message that filled it, as the newest thing said.
   function workingCard() {
+    setCardSlot(threadRef.current.filter((item) => item.kind !== "status").length);
     if (!card || card.status === "saved") {
       return createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId });
     }
@@ -211,13 +245,14 @@ function AskConversation({
       const result = await requestEntryDraft({ text, viewId: view.id });
       const base = workingCard();
       if (result.ok) {
+        // The card's "Filled in from your message" tag says what happened.
         setCard(applyEntryDraft(base, result.draft, context));
-        appendThread(threadItem("note", { text: askCopy.notes.sentenceFilled }));
       } else {
         setCard(base);
         appendThread(threadItem("note", { text: askCopy.notes.sentenceUnavailable, tone: "calm" }));
       }
     } finally {
+      setStatus("");
       setWorking("");
     }
   }
@@ -241,7 +276,8 @@ function AskConversation({
     try {
       const result = await requestReceiptRead({ image: prepared.blob });
       let receipt = result.ok ? result.receipt : null;
-      let note = result.ok ? askCopy.notes.receiptFilled : "";
+      // A receipt the reader read needs no note: the card's tag says so.
+      let note = "";
       if (!receipt) {
         receipt = await readReceiptOnDevice(prepared.blob, { today }).catch(() => null);
         const readSomething = Boolean(receipt && (receipt.merchant.value || receipt.total.amountMinor || receipt.date.value));
@@ -252,11 +288,14 @@ function AskConversation({
       }
       const base = workingCard();
       setCard(receipt ? applyReceiptRead(base, receipt, context) : base);
-      appendThread(threadItem("note", { text: note }));
+      if (note) {
+        appendThread(threadItem("note", { text: note }));
+      }
     } finally {
       // The photo itself is not kept: only the thumbnail URL above, which
       // is revoked when the page goes.
       prepared = null;
+      setStatus("");
       setWorking("");
     }
   }
@@ -511,7 +550,17 @@ function AskConversation({
         ? askCopy.composer.changePlaceholder
         : askCopy.composer.addPlaceholder;
   const pendingQuestion = card?.status === "draft" ? card.questions[0] ?? null : null;
+  const chipSignature = chips.items.map((chip) => chip.key).join("|");
+  const settledThread = thread.filter((item) => item.kind !== "status");
+  const statusItems = thread.filter((item) => item.kind === "status");
   const questionPrompt = chips.prompt;
+
+  // A new set of chips starts scrolled to its first chip (focus stays put).
+  useLayoutEffect(() => {
+    if (chipsRef.current) {
+      chipsRef.current.scrollLeft = 0;
+    }
+  }, [chipSignature]);
 
   function submitComposer(event) {
     event.preventDefault();
@@ -548,7 +597,7 @@ function AskConversation({
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
         ) : null}
         {!isAddMode && !isShortcut && !card && !thread.length ? <p className="ask-note">{askCopy.greeting}</p> : null}
-        {thread.map((item) => <ThreadItem key={item.id} item={item} />)}
+        {settledThread.slice(0, card ? cardSlot : settledThread.length).map((item) => <ThreadItem key={item.id} item={item} />)}
         {card ? (
           <AskEntryCard
             card={card}
@@ -575,6 +624,8 @@ function AskConversation({
             onShareChange={changeShare}
           />
         ) : null}
+        {card ? settledThread.slice(cardSlot).map((item) => <ThreadItem key={item.id} item={item} />) : null}
+        {statusItems.map((item) => <ThreadItem key={item.id} item={item} />)}
         {card?.saveError ? <p className="ask-note is-error" role="alert">{card.saveError}</p> : null}
         {questionPrompt ? <p className="ask-note ask-question" data-question-field={pendingQuestion?.field ?? ""}>{questionPrompt}</p> : null}
         <div ref={threadEndRef} />
@@ -582,7 +633,7 @@ function AskConversation({
 
       <div className="ask-bottom">
         {chips.items.length ? (
-          <div className="ask-chips" role="group" aria-label={askCopy.chipsLabel}>
+          <div ref={chipsRef} className="ask-chips" role="group" aria-label={askCopy.chipsLabel}>
             {chips.items.map((chip) => (
               <button
                 key={chip.key}
@@ -675,7 +726,7 @@ function SavedCategoryPicker({ isMobile, open, onOpenChange, value, categories, 
 
 function ThreadItem({ item }) {
   if (item.kind === "me") {
-    return <p className="ask-me">{item.text}</p>;
+    return <p className="ask-me" id={item.id}>{item.text}</p>;
   }
   if (item.kind === "photo") {
     return (

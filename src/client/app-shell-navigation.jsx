@@ -8,7 +8,7 @@ import { messages } from "./copy/en-SG";
 // the tab list, each link's target (URL normalization) and the warmup
 // intent handlers; this component only lays them out. A primary tab marked
 // `phoneOverflow` stays in the strip on a wide screen but moves into "More
-// pages" on a phone.
+// pages" on a phone; one marked `phoneOnly` shows on a phone only.
 export function ShellRouteTabs({
   primaryTabs,
   secondaryTabs,
@@ -41,7 +41,7 @@ export function ShellRouteTabs({
         <NavLink
           key={tab.id}
           {...getNavIntentProps(tab.id)}
-          className={({ isActive }) => `tab ${tab.phoneOverflow ? "tab-phone-overflow" : ""} ${isActive ? "is-active" : ""}`}
+          className={({ isActive }) => `tab ${tab.phoneOverflow ? "tab-phone-overflow" : ""} ${tab.phoneOnly ? "tab-phone-only" : ""} ${isActive ? "is-active" : ""}`}
           to={buildTabTarget(tab)}
           title={titleFor(tab)}
         >

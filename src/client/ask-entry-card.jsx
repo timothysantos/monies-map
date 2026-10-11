@@ -1,5 +1,5 @@
 import { ArrowLeftRight, CalendarDays, Check, ChevronRight, CreditCard, Sparkles } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
@@ -89,15 +89,13 @@ export function AskEntryCard({
           {isTransfer ? (
             <strong className="ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
           ) : isEditable ? (
-            <input
-              ref={descriptionRef}
+            <GrowingTextField
+              inputRef={descriptionRef}
               className="ask-card-merchant ask-card-merchant-input"
               aria-label={askCopy.card.descriptionLabel}
               placeholder={askCopy.card.whatWasIt}
               value={card.fields.description}
-              enterKeyHint="next"
-              autoComplete="off"
-              onChange={(event) => onChange({ description: event.target.value })}
+              onChange={(value) => onChange({ description: value })}
             />
           ) : (
             <strong className="ask-card-merchant">{card.fields.description}</strong>
@@ -118,7 +116,7 @@ export function AskEntryCard({
                 inputMode="decimal"
                 placeholder="0.00"
                 autoComplete="off"
-                size={Math.max(4, (card.fields.amountInput || "0.00").length)}
+                style={{ width: `${Math.max(3, (amountFocused ? card.fields.amountInput : formatAmountForDisplay(card.fields.amountInput) || "0.00").length) + 0.4}ch` }}
                 value={amountFocused ? card.fields.amountInput : formatAmountForDisplay(card.fields.amountInput)}
                 onFocus={() => setAmountFocused(true)}
                 onBlur={() => setAmountFocused(false)}
@@ -163,6 +161,44 @@ export function AskEntryCard({
   );
 }
 
+// What it was, in the card's own type: a one-line field that wraps onto
+// a second line for a long shop name instead of cutting it off.
+function GrowingTextField({ inputRef, value, onChange, className, placeholder, ...rest }) {
+  const ownRef = useRef(null);
+  useLayoutEffect(() => {
+    const field = ownRef.current;
+    if (field) {
+      field.style.height = "auto";
+      field.style.height = `${field.scrollHeight}px`;
+    }
+  }, [value]);
+  return (
+    <textarea
+      {...rest}
+      ref={(node) => {
+        ownRef.current = node;
+        if (inputRef) {
+          inputRef.current = node;
+        }
+      }}
+      className={className}
+      rows={1}
+      placeholder={placeholder}
+      value={value}
+      autoComplete="off"
+      enterKeyHint="done"
+      onKeyDown={(event) => {
+        // One line of meaning: Enter finishes it rather than adding a break.
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.currentTarget.blur();
+        }
+      }}
+      onChange={(event) => onChange(event.target.value.replace(/\s*\n+\s*/g, " "))}
+    />
+  );
+}
+
 // "12.5" shows as "12.50" once the field is left; typing keeps what was typed.
 function formatAmountForDisplay(value) {
   const text = String(value ?? "").replace(/,/g, "");
@@ -170,7 +206,9 @@ function formatAmountForDisplay(value) {
     return "";
   }
   const number = Number(text);
-  return Number.isFinite(number) ? number.toFixed(2) : value;
+  return Number.isFinite(number)
+    ? number.toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : value;
 }
 
 function FilledDot({ filled }) {

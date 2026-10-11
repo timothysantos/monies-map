@@ -357,6 +357,13 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   flex: 0 0 auto;
 }
 
+/* A tab for the phone's tab bar only (Ask): hidden in the wide header. */
+@media (min-width: 761px) {
+  .tab.tab-phone-only {
+    display: none;
+  }
+}
+
 .tab-badge {
   display: inline-grid;
   place-items: center;

@@ -158,8 +158,6 @@ export const askCopy = {
     readingSentence: "Reading your message…",
     readingReceipt: "Reading your receipt…",
     sentenceUnavailable: "I couldn't read that, so nothing was filled in. You can still fill in the card.",
-    sentenceFilled: "Filled in from your message. Check it, then save.",
-    receiptFilled: "Read from your receipt. Check it, then save.",
     receiptOnDevice: "Read on this device. Check the total and the date, then save.",
     receiptUnavailable: "The receipt couldn't be read. You can still fill in the card.",
     photoFailed: "That photo couldn't be opened. Try another one.",
