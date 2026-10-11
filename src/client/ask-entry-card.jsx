@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarDays, Check, ChevronRight, CreditCard, Sparkles } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, Check, CreditCard, Sparkles } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
@@ -7,15 +7,16 @@ import { entryAmountTone } from "../domain/money-tone";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
-import { getPersonColourVars } from "./person-colour";
 import { ResponsiveSelect } from "./responsive-select";
 import { getIconComponent } from "./ui-components";
+import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
 
 // The Ask page's entry card (design.md "Ask page"): the hero card with the
 // category bubble, what it was, the amount and its date, wallet and person
 // chips, then the quiet detail rows, each opening the app's existing picker,
 // and the Splits switch. A saved card keeps the hero only, marked Saved.
+// Built on the shared Lead · Support · Detail blocks (ui/lead-support-detail).
 
 const SIGNS = { expense: "−", income: "+", transfer: "" };
 const TRANSFER_BUBBLE_COLOUR = "#7C8791";
@@ -58,7 +59,9 @@ export function AskEntryCard({
   const category = categoryOf(context, card.fields.categoryName);
   const isTransfer = card.variant === "transfer";
   const bubbleColour = isTransfer ? TRANSFER_BUBBLE_COLOUR : category?.colorHex ?? TRANSFER_BUBBLE_COLOUR;
-  const BubbleIcon = isTransfer ? ArrowLeftRight : category ? getIconComponent(category.iconKey) : CreditCard;
+  const bubble = isTransfer
+    ? { colorHex: TRANSFER_BUBBLE_COLOUR, icon: ArrowLeftRight }
+    : category ? { colorHex: category.colorHex, icon: getIconComponent(category.iconKey) } : { colorHex: TRANSFER_BUBBLE_COLOUR, icon: CreditCard };
   const currency = currencyOf(context, card.fields.accountId);
   const { from, to } = getTransferEnds(card);
   const toneClass = cardAmountToneClass(card);
@@ -72,82 +75,76 @@ export function AskEntryCard({
       : card.origin === "receipt"
         ? { className: "is-filled", icon: <Sparkles size={13} aria-hidden="true" />, label: askCopy.card.readFromReceipt }
         : null;
-  const ownerVars = getPersonColourVars(card.fields.ownerName === SHARED_OWNER ? "shared" : card.fields.ownerName);
+  const ownerKey = card.fields.ownerName === SHARED_OWNER ? "shared" : card.fields.ownerName;
+
+  const title = isTransfer ? (
+    <strong className="lsd-title ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
+  ) : isEditable ? (
+    <GrowingTextField
+      inputRef={descriptionRef}
+      className="lsd-title ask-card-merchant ask-card-merchant-input"
+      aria-label={askCopy.card.descriptionLabel}
+      placeholder={askCopy.card.whatWasIt}
+      value={card.fields.description}
+      onChange={(value) => onChange({ description: value })}
+    />
+  ) : (
+    <strong className="lsd-title ask-card-merchant">{card.fields.description}</strong>
+  );
+
+  const amount = (
+    <div className={`ask-card-amount ${toneClass}`}>
+      {isEditable ? (
+        <label htmlFor={amountId} className={`ask-card-amount-field${card.fields.amountMinor > 0 ? "" : " is-empty"}`}>
+          <span className="ask-sr-only">{askCopy.card.amountLabel}</span>
+          <span className="ask-card-amount-prefix" aria-hidden="true">{sign}{currency === "SGD" ? "$" : `${currency} `}</span>
+          <input
+            id={amountId}
+            ref={amountRef}
+            className="ask-card-amount-input"
+            inputMode="decimal"
+            placeholder="0.00"
+            autoComplete="off"
+            style={{ width: `${Math.max(3, (amountFocused ? card.fields.amountInput : formatAmountForDisplay(card.fields.amountInput) || "0.00").length) + 0.4}ch` }}
+            value={amountFocused ? card.fields.amountInput : formatAmountForDisplay(card.fields.amountInput)}
+            onFocus={() => setAmountFocused(true)}
+            onBlur={() => setAmountFocused(false)}
+            onChange={(event) => onChange({ amountInput: event.target.value.replace(/[^0-9.,]/g, "") })}
+          />
+        </label>
+      ) : (
+        <strong>
+          <PrivateMoney>{`${sign}${moneyWithCurrency(card.fields.amountMinor, currency)}`}</PrivateMoney>
+        </strong>
+      )}
+    </div>
+  );
 
   return (
-    <section className={`ask-card${isSaved ? " is-saved" : ""}${settled ? " is-settled" : ""}`} aria-label={isSaved ? askCopy.card.savedTo : askCopy.card.label} data-ask-card={card.status}>
-      {tag ? (
+    <LeadCard
+      className={`ask-card${isSaved ? " is-saved" : ""}${settled ? " is-settled" : ""}`}
+      aria-label={isSaved ? askCopy.card.savedTo : askCopy.card.label}
+      data-ask-card={card.status}
+      category={bubble}
+      title={title}
+      subtitle={<span className="ask-card-category" style={{ "--cat": bubbleColour }}>{isTransfer ? askCopy.card.transfer : card.fields.categoryName}</span>}
+      amount={amount}
+      tag={tag ? (
         <span className={`ask-card-tag ${tag.className}`}>
           {tag.icon}
           {tag.label}
         </span>
       ) : null}
-      <div className="ask-card-hero">
-        <span className="ask-card-bubble" style={{ "--cat": bubbleColour }} aria-hidden="true">
-          <BubbleIcon size={26} strokeWidth={2} />
-        </span>
-        <div className="ask-card-title">
-          {isTransfer ? (
-            <strong className="ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
-          ) : isEditable ? (
-            <GrowingTextField
-              inputRef={descriptionRef}
-              className="ask-card-merchant ask-card-merchant-input"
-              aria-label={askCopy.card.descriptionLabel}
-              placeholder={askCopy.card.whatWasIt}
-              value={card.fields.description}
-              onChange={(value) => onChange({ description: value })}
-            />
-          ) : (
-            <strong className="ask-card-merchant">{card.fields.description}</strong>
-          )}
-          <span className="ask-card-category" style={{ "--cat": bubbleColour }}>
-            {isTransfer ? askCopy.card.transfer : card.fields.categoryName}
-          </span>
-        </div>
-        <div className={`ask-card-amount ${toneClass}`}>
-          {isEditable ? (
-            <label htmlFor={amountId} className={`ask-card-amount-field${card.fields.amountMinor > 0 ? "" : " is-empty"}`}>
-              <span className="ask-sr-only">{askCopy.card.amountLabel}</span>
-              <span className="ask-card-amount-prefix" aria-hidden="true">{sign}{currency === "SGD" ? "$" : `${currency} `}</span>
-              <input
-                id={amountId}
-                ref={amountRef}
-                className="ask-card-amount-input"
-                inputMode="decimal"
-                placeholder="0.00"
-                autoComplete="off"
-                style={{ width: `${Math.max(3, (amountFocused ? card.fields.amountInput : formatAmountForDisplay(card.fields.amountInput) || "0.00").length) + 0.4}ch` }}
-                value={amountFocused ? card.fields.amountInput : formatAmountForDisplay(card.fields.amountInput)}
-                onFocus={() => setAmountFocused(true)}
-                onBlur={() => setAmountFocused(false)}
-                onChange={(event) => onChange({ amountInput: event.target.value.replace(/[^0-9.,]/g, "") })}
-              />
-            </label>
-          ) : (
-            <strong>
-              <PrivateMoney>{`${sign}${moneyWithCurrency(card.fields.amountMinor, currency)}`}</PrivateMoney>
-            </strong>
-          )}
-        </div>
-      </div>
-      <div className="ask-card-meta">
-        <span className="ask-meta-chip">
-          <CalendarDays size={14} aria-hidden="true" />
-          {formatCardDate(card.fields.date, today)}
-        </span>
-        {!isTransfer && card.fields.accountName ? (
-          <span className="ask-meta-chip">
-            <CreditCard size={14} aria-hidden="true" />
-            {card.fields.accountName}
-          </span>
-        ) : null}
-        {card.fields.ownerName ? (
-          <span className="ask-meta-chip ask-meta-person" style={ownerVars}>
-            {card.fields.ownerName}
-          </span>
-        ) : null}
-      </div>
+      chips={(
+        <>
+          <MetaChip icon={CalendarDays}>{formatCardDate(card.fields.date, today)}</MetaChip>
+          {!isTransfer && card.fields.accountName ? (
+            <MetaChip icon={CreditCard}>{card.fields.accountName}</MetaChip>
+          ) : null}
+          {card.fields.ownerName ? <MetaChip person={ownerKey}>{card.fields.ownerName}</MetaChip> : null}
+        </>
+      )}
+    >
       {isSaved && card.saved?.splitExpenseId ? (
         <p className="ask-card-saved-line">{askCopy.card.savedOnSplits(card.saved.splitGroupName ?? "")}</p>
       ) : null}
@@ -158,7 +155,7 @@ export function AskEntryCard({
           {askCopy.card.coaxAfter}
         </p>
       ) : null}
-    </section>
+    </LeadCard>
   );
 }
 
@@ -220,26 +217,23 @@ function FilledDot({ filled }) {
   ) : null;
 }
 
+function rowValue(valueLabel, filled) {
+  return (
+    <>
+      <FilledDot filled={filled} />
+      <span className="lsd-row-text">{valueLabel}</span>
+    </>
+  );
+}
+
 // One quiet detail row that opens the app's own picker: the mobile picker
 // sheet on a phone, a native select over the row on a desktop.
 function PickerRow({ label, valueLabel, filled, title, value, options, onValueChange, open, onOpenChange, rowKey }) {
   const isMobile = useIsMobileLayout();
-  const content = (
-    <>
-      <span className="ask-row-label">{label}</span>
-      <span className="ask-row-value">
-        <FilledDot filled={filled} />
-        <span className="ask-row-text">{valueLabel}</span>
-        <ChevronRight size={16} aria-hidden="true" />
-      </span>
-    </>
-  );
   if (isMobile) {
     return (
       <>
-        <button type="button" className="ask-row" data-ask-row={rowKey} aria-haspopup="dialog" onClick={() => onOpenChange(true)}>
-          {content}
-        </button>
+        <DetailRow label={label} value={rowValue(valueLabel, filled)} data-ask-row={rowKey} aria-haspopup="dialog" onClick={() => onOpenChange(true)} />
         <ResponsiveSelect
           hideMobileTrigger
           title={title}
@@ -256,28 +250,21 @@ function PickerRow({ label, valueLabel, filled, title, value, options, onValueCh
     );
   }
   return (
-    <label className="ask-row" data-ask-row={rowKey}>
-      {content}
-      <select className="ask-row-native" aria-label={label} value={value} onChange={(event) => onValueChange(event.target.value)}>
+    <DetailRow label={label} value={rowValue(valueLabel, filled)} data-ask-row={rowKey}>
+      <select className="lsd-row-native" aria-label={label} value={value} onChange={(event) => onValueChange(event.target.value)}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
-    </label>
+    </DetailRow>
   );
 }
 
 function DateRow({ label, value, valueLabel, filled, onChange, rowKey }) {
   return (
-    <label className="ask-row" data-ask-row={rowKey}>
-      <span className="ask-row-label">{label}</span>
-      <span className="ask-row-value">
-        <FilledDot filled={filled} />
-        <span className="ask-row-text">{valueLabel}</span>
-        <ChevronRight size={16} aria-hidden="true" />
-      </span>
+    <DetailRow label={label} value={rowValue(valueLabel, filled)} data-ask-row={rowKey}>
       <input
-        className="ask-row-native"
+        className="lsd-row-native"
         type="date"
         aria-label={label}
         value={value}
@@ -290,7 +277,7 @@ function DateRow({ label, value, valueLabel, filled, onChange, rowKey }) {
         }}
         onChange={(event) => onChange(event.target.value)}
       />
-    </label>
+    </DetailRow>
   );
 }
 
@@ -355,7 +342,7 @@ export function AskCardRows({
 
   return (
     <div className="ask-rows-wrap">
-      <div className="ask-rows" role="group" aria-label={askCopy.card.moreDetails}>
+      <DetailRows label={askCopy.card.moreDetails}>
         {isTransfer ? (
           <>
             <PickerRow
@@ -415,59 +402,55 @@ export function AskCardRows({
           options={typeOptions}
           onValueChange={onVariantChange}
         />
-        <button type="button" className="ask-row ask-row-more" aria-expanded={moreOpen} onClick={onToggleMore}>
-          <span className="ask-row-label">{moreOpen ? askCopy.card.fewerDetails : askCopy.card.moreDetails}</span>
-          <span className="ask-row-value">
-            {moreOpen ? null : <span className="ask-row-hint">{askCopy.card.moreDetailsHint}</span>}
-            <ChevronRight size={16} aria-hidden="true" className={moreOpen ? "is-open" : ""} />
-          </span>
-        </button>
-        {moreOpen ? (
-          <>
-            <DateRow
-              rowKey="postDate"
-              label={askCopy.card.rows.postDate}
-              value={card.fields.postDate}
-              valueLabel={card.fields.postDate ? formatCardDate(card.fields.postDate, today, { withYear: true }) : askCopy.card.notSet}
-              filled={false}
-              onChange={(postDate) => onChange({ postDate })}
-            />
+        <MoreDetails
+          open={moreOpen}
+          onOpenChange={() => onToggleMore()}
+          label={askCopy.card.moreDetails}
+          openLabel={askCopy.card.fewerDetails}
+          summary={askCopy.card.moreDetailsHint}
+        >
+          <DateRow
+            rowKey="postDate"
+            label={askCopy.card.rows.postDate}
+            value={card.fields.postDate}
+            valueLabel={card.fields.postDate ? formatCardDate(card.fields.postDate, today, { withYear: true }) : askCopy.card.notSet}
+            filled={false}
+            onChange={(postDate) => onChange({ postDate })}
+          />
+          <PickerRow
+            {...pickerProps("owner")}
+            label={askCopy.card.rows.owner}
+            title={askCopy.card.rows.owner}
+            valueLabel={card.fields.ownerName || askCopy.card.notSet}
+            filled={Boolean(filled.ownerName)}
+            value={card.fields.ownerName}
+            options={ownerOptions}
+            onValueChange={(ownerName) => onChange({ ownerName })}
+          />
+          {card.fields.ownerName === SHARED_OWNER ? (
             <PickerRow
-              {...pickerProps("owner")}
-              label={askCopy.card.rows.owner}
-              title={askCopy.card.rows.owner}
-              valueLabel={card.fields.ownerName || askCopy.card.notSet}
-              filled={Boolean(filled.ownerName)}
-              value={card.fields.ownerName}
-              options={ownerOptions}
-              onValueChange={(ownerName) => onChange({ ownerName })}
+              {...pickerProps("share")}
+              label={askCopy.card.rows.share}
+              title={askCopy.card.rows.share}
+              valueLabel={askCopy.shareOption(context.people?.[0]?.name ?? "", card.fields.splitBasisPoints / 100)}
+              filled={Boolean(filled.splitBasisPoints)}
+              value={String(card.fields.splitBasisPoints / 100)}
+              options={SPLIT_SHARE_OPTIONS.map((percent) => ({ value: String(percent), label: askCopy.shareOption(context.people?.[0]?.name ?? "", percent) }))}
+              onValueChange={(percent) => onChange({ splitBasisPoints: Number(percent) * 100 })}
             />
-            {card.fields.ownerName === SHARED_OWNER ? (
-              <PickerRow
-                {...pickerProps("share")}
-                label={askCopy.card.rows.share}
-                title={askCopy.card.rows.share}
-                valueLabel={askCopy.shareOption(context.people?.[0]?.name ?? "", card.fields.splitBasisPoints / 100)}
-                filled={Boolean(filled.splitBasisPoints)}
-                value={String(card.fields.splitBasisPoints / 100)}
-                options={SPLIT_SHARE_OPTIONS.map((percent) => ({ value: String(percent), label: askCopy.shareOption(context.people?.[0]?.name ?? "", percent) }))}
-                onValueChange={(percent) => onChange({ splitBasisPoints: Number(percent) * 100 })}
-              />
-            ) : null}
-            <label className="ask-row ask-row-note">
-              <span className="ask-row-label">{askCopy.card.rows.note}</span>
-              <textarea
-                ref={noteRef}
-                className="ask-row-note-input"
-                rows={1}
-                placeholder={askCopy.card.notePlaceholder}
-                value={card.fields.note}
-                onChange={(event) => onChange({ note: event.target.value })}
-              />
-            </label>
-          </>
-        ) : null}
-      </div>
+          ) : null}
+          <DetailRow label={askCopy.card.rows.note} className="lsd-row-note">
+            <textarea
+              ref={noteRef}
+              className="lsd-row-input"
+              rows={1}
+              placeholder={askCopy.card.notePlaceholder}
+              value={card.fields.note}
+              onChange={(event) => onChange({ note: event.target.value })}
+            />
+          </DetailRow>
+        </MoreDetails>
+      </DetailRows>
       {showShare ? (
         <div className="ask-share">
           <div className="ask-share-copy">
@@ -487,7 +470,7 @@ export function AskCardRows({
         </div>
       ) : null}
       {showShare && card.share.on && shareGroups.length > 1 ? (
-        <div className="ask-rows ask-rows-share">
+        <DetailRows className="ask-rows-share">
           <PickerRow
             {...pickerProps("splitGroup")}
             label={askCopy.card.rows.splitGroup}
@@ -498,7 +481,7 @@ export function AskCardRows({
             options={[{ value: "", label: askCopy.card.chooseGroup }, ...shareGroups.map((group) => ({ value: group.id, label: group.name }))]}
             onValueChange={(splitGroupId) => onShareChange({ on: true, splitGroupId })}
           />
-        </div>
+        </DetailRows>
       ) : null}
     </div>
   );

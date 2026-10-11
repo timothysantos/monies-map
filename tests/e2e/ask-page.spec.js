@@ -250,7 +250,9 @@ test.describe("the Ask page on a phone", () => {
     await expect(page).toHaveURL(new RegExp(`/entries\\?.*month=2026-04`));
     const sheet = page.locator(".entry-mobile-sheet");
     await expect(sheet).toBeVisible();
-    await expect(sheet.locator('input[type="date"]').first()).toHaveValue("2026-04-19");
+    // The edit sheet folds the date under More details.
+    await sheet.getByRole("button", { name: /More details/ }).click();
+    await expect(sheet.locator('[data-row="date"] input[type="date"]')).toHaveValue("2026-04-19");
     expect(saved.id).toBeTruthy();
   });
 

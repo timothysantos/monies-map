@@ -13,13 +13,14 @@ import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../src/domain/catego
 // Any other raw green, red, blue, amber or purple fails here: use a token.
 
 const root = path.resolve(import.meta.dirname, "..");
-// src/client and its shared building blocks in src/client/ui.
-const clientFiles = ["src/client", "src/client/ui"].flatMap((dir) => readdirSync(path.join(root, dir)).map((name) => `${dir}/${name}`));
+const clientDir = path.join(root, "src/client");
+// Every client file, including folders such as src/client/ui/.
+const clientFiles = readdirSync(clientDir, { recursive: true }).map((name) => String(name));
 const stylesheets = [
   "public/styles.css",
-  ...clientFiles.filter((name) => name.endsWith(".css"))
+  ...clientFiles.filter((name) => name.endsWith(".css")).map((name) => `src/client/${name}`)
 ];
-const scripts = clientFiles.filter((name) => /\.(jsx|js)$/.test(name));
+const scripts = clientFiles.filter((name) => /\.(jsx|js)$/.test(name)).map((name) => `src/client/${name}`);
 const PALETTE = new Set([...CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR].map((colour) => colour.toLowerCase()));
 
 function channels(literal) {
@@ -67,6 +68,11 @@ test("components take colours from the category palette", () => {
     .filter(({ literal }) => !PALETTE.has(literal.toLowerCase()) && !isAllowedRawColour(literal))
     .map(({ file, line, literal }) => `${file}:${line} ${literal}`);
   assert.deepEqual(offenders, []);
+});
+
+test("the guard reads the shared blocks in src/client/ui", () => {
+  assert.ok(stylesheets.includes("src/client/ui/lead-support-detail.css"));
+  assert.ok(scripts.includes("src/client/ui/lead-support-detail.jsx"));
 });
 
 test("the guard is not blind", () => {

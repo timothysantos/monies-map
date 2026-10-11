@@ -418,10 +418,10 @@ for (const tablet of PORTRAIT_TABLETS) {
       await expect(page.locator(".entries-filter-stack")).toBeVisible();
 
       await entryRows.first().click();
-      await expect(page.locator(".entry-edit-grid").first()).toBeVisible();
+      await expect(page.locator(".entry-edit-card").first()).toBeVisible();
       await expect(page.locator(".entry-mobile-sheet")).toHaveCount(0);
       await page.getByRole("button", { name: "Cancel editing entry" }).click();
-      await expect(page.locator(".entry-edit-grid")).toHaveCount(0);
+      await expect(page.locator(".entry-edit-card")).toHaveCount(0);
 
       await page.getByRole("button", { name: "+ Add entry" }).first().click();
       await expect(page.locator(".entry-row.entry-composer")).toBeVisible();

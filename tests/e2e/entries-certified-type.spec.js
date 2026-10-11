@@ -92,9 +92,11 @@ test("a certified credit switches from Income to Transfer in, and its other bank
   await expect(editor.getByRole("textbox", { name: "Description" })).toHaveAttribute("readonly", "");
 
   await type.selectOption("transfer");
-  const direction = editorSelect(editor, "Transfer direction");
-  await expect(direction).toHaveValue("in");
-  await expect(direction).toBeDisabled();
+  // The direction the statement certified is a locked row, not a choice.
+  const direction = editor.locator("[data-row='transferDirection']");
+  await expect(direction).toHaveClass(/is-locked/);
+  await expect(direction).toContainText("Transfer in");
+  await expect(direction.locator("select")).toHaveCount(0);
 
   const update = page.waitForResponse((response) => response.url().includes("/api/entries/update"));
   await editor.getByRole("button", { name: "Done editing entry" }).click();
@@ -120,5 +122,6 @@ test("a certified purchase offers only Expense and Transfer", async ({ page }) =
   const type = editorSelect(editor, "Type");
   await expect(type.locator("option")).toHaveText(["Expense", "Transfer"]);
   await type.selectOption("transfer");
-  await expect(editorSelect(editor, "Transfer direction")).toHaveValue("out");
+  await expect(editor.locator("[data-row='transferDirection']")).toContainText("Transfer out");
+  await expect(editor.locator("[data-row='transferDirection']")).toHaveClass(/is-locked/);
 });

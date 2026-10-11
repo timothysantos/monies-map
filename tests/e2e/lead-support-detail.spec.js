@@ -71,32 +71,32 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
 
     // Lead: the planned amount as a decimal-keypad input in the plan tone,
     // labelled "planned", under the row's name and kind.
-    const lead = sheet.locator(".lead-card");
+    const lead = sheet.locator(".lsd-card");
     const planned = sheet.getByRole("textbox", { name: "Planned" });
     await expect(planned).toHaveValue("1800.00");
     await expect(planned).toHaveAttribute("inputmode", "decimal");
-    expect(await planned.evaluate((input) => Boolean(input.closest(".lead-card-amount.is-editable")))).toBe(true);
+    expect(await planned.evaluate((input) => Boolean(input.closest(".lsd-amount.is-editable")))).toBe(true);
     expect(await planned.evaluate((input) => getComputedStyle(input).color)).toBe(INK.plan);
-    await expect(lead.locator(".lead-card-title")).toHaveText("Savings");
-    await expect(lead.locator(".lead-card-subtitle")).toHaveText("Planned item");
-    await expect(lead.locator(".lead-card-amount-caption")).toHaveText("planned");
+    await expect(lead.locator(".lsd-title")).toHaveText("Savings");
+    await expect(lead.locator(".lsd-subtitle")).toHaveText("Planned item");
+    await expect(lead.locator(".lsd-amount-caption")).toHaveText("planned");
     // Support: month and owner chips; the owner chip is Tim's colour.
-    await expect(lead.locator(".meta-chip").first()).toHaveText("May 2026");
-    const owner = lead.locator(".meta-chip-person");
+    await expect(lead.locator(".lsd-chip").first()).toHaveText("May 2026");
+    const owner = lead.locator(".lsd-chip.is-person");
     await expect(owner).toHaveText("Tim");
     expect(await owner.evaluate((chip) => chip.style.getPropertyValue("--person-colour"))).toBe("#33A471");
     await expect(sheet.locator(".entry-composer-copy p")).toHaveText("Tim · May 2026");
 
     // Detail rows hold every field the sheet had: actual, item, category,
     // date, account and note.
-    const rows = sheet.locator(".detail-row .detail-row-label");
+    const rows = sheet.locator(".lsd-row .lsd-row-label");
     await expect(rows).toHaveText(["Actual", "Item name", "Category", "Date", "Account", "Note"]);
 
     await planned.fill("1825.50");
     await sheet.locator("label").filter({ hasText: "Item name" }).locator("input").fill("Savings plan");
     await sheet.locator("label").filter({ hasText: "Note" }).locator("textarea").fill("Topped up in May");
     const saved = page.waitForResponse((response) => response.url().includes("/api/month-plan/save") && response.ok());
-    await sheet.locator(".bottom-actions").getByRole("button", { name: "Done" }).click();
+    await sheet.locator(".lsd-bottom").getByRole("button", { name: "Done" }).click();
     const request = (await saved).request().postDataJSON();
     await expect(sheet).toHaveCount(0);
     expect(request).toMatchObject({ rowId: savings.id, month: MONTH, sectionKey: "planned_items", label: "Savings plan", plannedMinor: 182_550, note: "Topped up in May" });
@@ -110,23 +110,23 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     const bucket = await bucketWithEntries(page);
     await openMonth(page);
     const sheet = await openRowSheet(page, bucket.label, "Edit budget bucket");
-    const lead = sheet.locator(".lead-card");
+    const lead = sheet.locator(".lsd-card");
 
     const headroom = bucket.plannedMinor - bucket.actualMinor;
-    await expect(lead.locator(".lead-card-progress-line")).toHaveText(
+    await expect(lead.locator(".lsd-progress-line")).toHaveText(
       `${money(bucket.actualMinor)} spent${money(Math.abs(headroom))} ${headroom >= 0 ? "left" : "over"}`
     );
-    const end = lead.locator(".lead-card-progress-line > span").nth(1).locator("span");
+    const end = lead.locator(".lsd-progress-line > span").nth(1).locator("span");
     expect(await end.evaluate((element) => getComputedStyle(element).color)).toBe(headroom >= 0 ? INK.in : INK.short);
-    const fill = lead.locator(".lead-card-bar-fill");
+    const fill = lead.locator(".lsd-bar-fill");
     const expectedPercent = Math.min(100, Math.round((bucket.actualMinor / bucket.plannedMinor) * 100));
     expect(await fill.evaluate((element) => element.style.width)).toBe(`${expectedPercent}%`);
     await expect(fill).toHaveClass(headroom >= 0 ? /money-neutral/ : /money-short/);
-    await expect(lead.locator(".meta-chip")).toHaveText(["May 2026", ownerText(bucket), entryCountText(bucket.actualEntryIds.length)]);
+    await expect(lead.locator(".lsd-chip")).toHaveText(["May 2026", ownerText(bucket), entryCountText(bucket.actualEntryIds.length)]);
 
     // Typing a new plan moves the bar and the headroom with it.
     await sheet.getByRole("textbox", { name: "Planned" }).fill(((bucket.actualMinor - 1_000) / 100).toFixed(2));
-    await expect(lead.locator(".lead-card-progress-line")).toContainText(`${money(1_000)} over`);
+    await expect(lead.locator(".lsd-progress-line")).toContainText(`${money(1_000)} over`);
     await expect(fill).toHaveClass(/money-short/);
 
     const actual = sheet.locator(".month-actual-drilldown-mobile");
@@ -143,9 +143,9 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     page.on("request", (request) => { if (request.url().includes("/api/month-plan/save")) saves += 1; });
     const sheet = await openRowSheet(page, "Savings", "Edit planned item");
     const viewport = page.viewportSize();
-    const bar = await box(sheet.locator(".bottom-actions"));
-    const cancel = sheet.locator(".bottom-actions").getByRole("button", { name: "Cancel" });
-    const done = sheet.locator(".bottom-actions").getByRole("button", { name: "Done" });
+    const bar = await box(sheet.locator(".lsd-bottom"));
+    const cancel = sheet.locator(".lsd-bottom").getByRole("button", { name: "Cancel" });
+    const done = sheet.locator(".lsd-bottom").getByRole("button", { name: "Done" });
     const cancelBox = await box(cancel);
     const doneBox = await box(done);
 
@@ -163,7 +163,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
       planned: sheet.getByRole("textbox", { name: "Planned" }),
       ...Object.fromEntries(["Actual", "Item name", "Category", "Date", "Account", "Note"].map((label) => [
         label,
-        sheet.locator(".detail-row").filter({ has: page.locator(".detail-row-label", { hasText: new RegExp(`^${label}$`) }) })
+        sheet.locator(".lsd-row").filter({ has: page.locator(".lsd-row-label", { hasText: new RegExp(`^${label}$`) }) })
       ]))
     };
     const sizes = {};
@@ -196,7 +196,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
       body: JSON.stringify({ error: "Month plan save failed." })
     }));
     await sheet.getByRole("textbox", { name: "Planned" }).fill("1810.00");
-    const done = sheet.locator(".bottom-actions").getByRole("button", { name: "Done" });
+    const done = sheet.locator(".lsd-bottom").getByRole("button", { name: "Done" });
     await done.click();
 
     await expect(sheet.getByRole("alert")).toHaveText("Month plan save failed.");
@@ -216,18 +216,18 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     await openMonth(page);
     await expect(page.getByRole("button", { name: "Show money totals" }).first()).toBeAttached();
     const sheet = await openRowSheet(page, bucket.label, "Edit budget bucket");
-    const lead = sheet.locator(".lead-card");
+    const lead = sheet.locator(".lsd-card");
     const planned = sheet.getByRole("textbox", { name: "Planned" });
 
     const look = await planned.evaluate((input) => ({ color: getComputedStyle(input).color, security: getComputedStyle(input).webkitTextSecurity }));
     expect(look.color).toBe(INK.text);
     expect(look.security).toBe("disc");
     await expect(sheet.locator(".month-plan-lead-currency")).toBeHidden();
-    await expect(lead.locator(".lead-card-bar")).toBeVisible();
-    await expect(lead.locator(".lead-card-bar-fill")).toHaveCount(0);
-    await expect(lead.locator(".lead-card-progress-line")).toHaveText("Spent ••••");
+    await expect(lead.locator(".lsd-bar")).toBeVisible();
+    await expect(lead.locator(".lsd-bar-fill")).toHaveCount(0);
+    await expect(lead.locator(".lsd-progress-line")).toHaveText("Spent ••••");
     expect(await sheet.innerText()).not.toMatch(/\b(left|over|to come)\b/);
-    await expect(lead.locator(".meta-chip")).toHaveText(["May 2026", ownerText(bucket), entryCountText(bucket.actualEntryIds.length)]);
+    await expect(lead.locator(".lsd-chip")).toHaveText(["May 2026", ownerText(bucket), entryCountText(bucket.actualEntryIds.length)]);
   });
 });
 
@@ -241,7 +241,7 @@ test("desktop keeps inline editing for plan rows: no sheet opens", async ({ page
   await row.getByRole("button", { name: "Edit Savings row" }).click();
   await expect(page.locator("tr.is-editing .table-edit-input-money")).toHaveValue("1800.00");
   await expect(page.locator(".entry-mobile-sheet")).toHaveCount(0);
-  await expect(page.locator(".lead-card")).toHaveCount(0);
+  await expect(page.locator(".month-plan-lead")).toHaveCount(0);
   await page.getByTestId("month-inline-cancel-button").click();
 });
 
@@ -259,11 +259,11 @@ test.describe("Summary lead", () => {
 
     const actual = card("Actual spend");
     const planned = card("Planned spend");
-    await expect(page.locator(".summary-lead .lead-card-eyebrow")).toHaveText("Spent · Jun 2025 – May 2026");
+    await expect(page.locator(".summary-lead .lsd-eyebrow")).toHaveText("Spent · Jun 2025 – May 2026");
     await expect(page.locator(".summary-lead-spent")).toHaveText(money(actual));
     await expect(page.locator(".summary-lead-plan")).toHaveText(`of ${money(planned)} plan`);
     const headroom = planned - actual;
-    await expect(page.locator(".summary-lead .lead-card-progress-line")).toHaveText(
+    await expect(page.locator(".summary-lead .lsd-progress-line")).toHaveText(
       `${Math.round((actual / planned) * 100)}% of plan${money(Math.abs(headroom))} ${headroom >= 0 ? "under plan" : "over plan"}`
     );
     const income = page.locator('.summary-support-pill[data-metric="income"]');

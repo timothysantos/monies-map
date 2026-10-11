@@ -1,4 +1,6 @@
-// First, so these rules load before the stylesheets the modules below import.
+// The Lead · Support · Detail styles come with the blocks
+// (ui/lead-support-detail.jsx, in the shared ui-components chunk), so they
+// load before this route's overrides.
 import "./splits-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";

@@ -8261,11 +8261,11 @@ th {
 
   .note-dialog-content.split-dialog-content {
     top: auto;
-    bottom: 0;
+    bottom: var(--keyboard-inset, 0px);
     left: 0;
     right: 0;
     width: 100%;
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - var(--keyboard-inset, 0px));
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
@@ -8319,13 +8319,14 @@ th {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Lifted above the phone keyboard (use-keyboard-inset.js). */
+  bottom: var(--keyboard-inset, 0px);
   z-index: 81;
   display: flex;
   flex-direction: column;
   width: 100%;
   min-height: 0;
-  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - var(--keyboard-inset, 0px));
   margin: 0;
   padding: 18px 16px 0;
   border: 1px solid rgba(177, 94, 47, 0.14);
@@ -8361,6 +8362,13 @@ th {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.entry-composer-head-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .entry-composer-copy strong,

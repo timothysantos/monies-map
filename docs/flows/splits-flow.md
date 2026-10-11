@@ -92,6 +92,17 @@ Watch area:
   cash-only travel group and restoring from Activity history lives in
   `splits-add-expense-dialog.spec.js`, `splits-travel-group.spec.js` and
   `splits-history-restore.spec.js`
+- a new expense opens as the create expense card (`split-expense-card.jsx`,
+  design.md "Lead · Support · Detail") in the phone sheet and the wide
+  dialog; editing or viewing a saved split keeps the form. The card edits the
+  same draft with the same calls (`updateSplitExpenseDraft` for the total,
+  share percent and share amount), so the request is unchanged; each
+  person's share row comes from `split-share-rows.js`, which only reads the
+  draft (`split-share-rows.test.mjs` proves 50/50, uneven, odd-cent and
+  over-total shares add up to the total).
+  `lead-support-detail-sheets.spec.js` proves the saved totals and shares
+  for an even and an uneven split, the existing refusals, tap targets and
+  hidden money on a phone
 
 ## Known Exceptions / Watch Areas
 

@@ -1,4 +1,6 @@
-// First, so these rules load before the stylesheets the modules below import.
+// The Lead · Support · Detail styles come with the blocks
+// (ui/lead-support-detail.jsx, in the shared ui-components chunk), so they
+// load before this route's overrides.
 import "./entries-route.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -15,14 +17,18 @@ import {
   EntryComposerMobileSection,
   useEntryComposerSplitOptions
 } from "./entry-composer-section";
-import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
+import { EntryTransferTools } from "./entry-editor";
+import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
+import { BottomActions } from "./ui/lead-support-detail";
+import { TotalsVisibilityToggle } from "./money-privacy";
+import { formatShortMonth } from "./copy/ask-copy";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams } from "./entry-filter-params";
 import { EntriesAskChip } from "./entries-ask-chip";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
-import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
+import { EntryMobileSheet, EntrySplitGroupPickerFooter } from "./entry-mobile-sheet";
 import { applyCheckInAction, isCheckInActionApplied } from "./check-in-action";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
@@ -1239,7 +1245,12 @@ export function EntriesPanel({
       {activeEditingEntry && canPortalEntryComposer && useMobileEntrySheet ? createPortal(
         <EntryMobileSheet
           title="Edit entry"
-          description="Update the row in a bottom sheet instead of editing inline."
+          description={messages.entries.editCard.sheetContext(
+            activeEditingEntry.ownershipType === "shared" ? messages.entries.shared : activeEditingEntry.ownerName,
+            formatShortMonth(activeEditingEntry.date?.slice(0, 7))
+          )}
+          className="is-lead-sheet"
+          headerAction={<TotalsVisibilityToggle className="totals-visibility-toggle--form" />}
           errorMessage={entrySubmitError || createdSplitActionError}
           errorContent={activeEntrySettlementLock
             ? <SettlementLockNotice lock={activeEntrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={() => void undoEntrySettlementLock()} />
@@ -1248,65 +1259,13 @@ export function EntriesPanel({
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
           isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
-          secondaryAction={activeEditingEntry.entryType !== "expense"
+          footerContent={mobileEditExpenseFooterMode === "picker" && activeEditingEntry.entryType === "expense"
             ? (
-                <button
-                  type="button"
-                  className="subtle-action entry-mobile-sheet-secondary"
-                  disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
-                  onClick={() => requestDeleteEntry(activeEditingEntry)}
-                >
-                  {deletingEntryId === activeEditingEntry.id ? messages.common.working : "Delete entry"}
-                </button>
-              )
-            : null}
-          footerContent={activeEditingEntry.entryType === "expense"
-            ? (
-                <EntryMobileEditExpenseFooter
-                  mode={mobileEditExpenseFooterMode}
-                  addToSplitsLabel={messages.entries.addToSplits}
-                  deleteEntryLabel={deletingEntryId === activeEditingEntry.id ? messages.common.working : "Delete entry"}
-                  deleteLabel={deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : "Delete split"}
-                  saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
-                  cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
-                  isWorking={
-                    addingToSplitsEntryId === activeEditingEntry.id
-                    || deletingCreatedSplitId === activeLinkedSplitExpenseId
-                    || deletingEntryId === activeEditingEntry.id
-                    || savingEntryId === activeEditingEntry.id
-                  }
-                  isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+                <EntrySplitGroupPickerFooter
                   splitGroupId={mobileSplitGroupId}
                   splitGroupOptions={splitGroupOptions}
+                  isWorking={addingToSplitsEntryId === activeEditingEntry.id}
                   isSplitSelectorOpen={isMobileSplitSelectorOpen}
-                  onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                  onDeleteSplit={() => requestDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                  onDeleteEntry={() => requestDeleteEntry(activeEditingEntry)}
-                  onCancel={closeEntryEditSheet}
-                  onSave={requestFinishEntryEdit}
-                  onOpenAddToSplits={() => {
-                    void (async () => {
-                      const latestSplitGroups = await refreshLatestSplitGroups();
-                      const latestOptions = latestSplitGroups.map((group) => ({
-                        value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
-                        label: group.name
-                      }));
-                      const latestSingleSplitGroupValue = latestOptions.length === 1
-                        ? latestOptions[0].value
-                        : null;
-
-                      if (latestSingleSplitGroupValue) {
-                        await handleAddEntryToSplits(
-                          activeEditingEntry,
-                          latestSingleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : latestSingleSplitGroupValue
-                        );
-                        return;
-                      }
-
-                      setIsMobileSplitPickerOpen(true);
-                      setIsMobileSplitSelectorOpen(true);
-                    })();
-                  }}
                   onSplitSelectorOpenChange={(open) => {
                     setIsMobileSplitSelectorOpen(open);
                     if (!open && !addingToSplitsEntryId) {
@@ -1319,21 +1278,62 @@ export function EntriesPanel({
                   onCancelSplitPicker={resetMobileSplitPickerState}
                 />
               )
-            : null}
+            : (
+                <div className="entry-edit-sheet-actions">
+                  <BottomActions
+                    destructive={(
+                      <>
+                        <button
+                          type="button"
+                          className="lsd-quiet is-danger"
+                          disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
+                          onClick={() => requestDeleteEntry(activeEditingEntry)}
+                        >
+                          {deletingEntryId === activeEditingEntry.id ? messages.common.working : messages.entries.editCard.deleteEntry}
+                        </button>
+                        {activeLinkedSplitExpenseId && activeEditingEntry.entryType === "expense" ? (
+                          <button
+                            type="button"
+                            className="lsd-quiet is-danger"
+                            disabled={deletingCreatedSplitId === activeLinkedSplitExpenseId}
+                            onClick={() => requestDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                          >
+                            {deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : messages.entries.editCard.deleteSplit}
+                          </button>
+                        ) : null}
+                      </>
+                    )}
+                    secondary={(
+                      <button type="button" className="lsd-quiet" onClick={closeEntryEditSheet}>
+                        {hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
+                      </button>
+                    )}
+                    primary={(
+                      <button
+                        type="submit"
+                        className="lsd-primary"
+                        disabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+                      >
+                        {savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
+                      </button>
+                    )}
+                  />
+                </div>
+              )}
           onClose={closeEntryEditSheet}
           onSave={requestFinishEntryEdit}
         >
-          <EntryEditorFields
+          <EntryEditCard
+            layout="sheet"
             entry={activeEditingEntry}
             categories={categories}
             categoryOptions={categoryOptions}
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
-            splitPercentValue={null}
             amountMinorValue={entryService.getTotalAmountMinor(activeEditingEntry)}
             amountInputValue={activeEditingEntry.amountInput}
-            lockTransferCategory
             bankFactsLocked={activeEditingEntry.bankCertificationStatus === "statement_certified"}
+            bankState={activeEditingEntryBankState}
             onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
             onAmountChange={(patch) => updateEntryAmount(activeEditingEntry.id, patch)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -1345,7 +1345,36 @@ export function EntriesPanel({
 
               updateEntry(activeEditingEntry.id, { ownershipType: "direct", ownerName: nextValue });
             }}
-            onSplitPercentChange={(percentage) => updateEntrySplit(activeEditingEntry.id, percentage)}
+            splitsRow={activeEditingEntry.entryType === "expense" ? (
+              <EntrySplitsRow
+                isLinked={Boolean(activeLinkedSplitExpenseId)}
+                isWorking={addingToSplitsEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
+                onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                onAddToSplits={() => {
+                  void (async () => {
+                    const latestSplitGroups = await refreshLatestSplitGroups();
+                    const latestOptions = latestSplitGroups.map((group) => ({
+                      value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
+                      label: group.name
+                    }));
+                    const latestSingleSplitGroupValue = latestOptions.length === 1
+                      ? latestOptions[0].value
+                      : null;
+
+                    if (latestSingleSplitGroupValue) {
+                      await handleAddEntryToSplits(
+                        activeEditingEntry,
+                        latestSingleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : latestSingleSplitGroupValue
+                      );
+                      return;
+                    }
+
+                    setIsMobileSplitPickerOpen(true);
+                    setIsMobileSplitSelectorOpen(true);
+                  })();
+                }}
+              />
+            ) : null}
             transferTools={(
               <EntryTransferTools
                 entry={activeEditingEntry}
@@ -1363,22 +1392,11 @@ export function EntriesPanel({
                 onRefreshCandidates={refreshTransferCandidates}
                 onLinkCandidate={linkTransferCandidate}
                 onSettleTransfer={settleTransfer}
+                showLabel={false}
+                trigger={<EntryTransferMatchRow />}
               />
             )}
           />
-          {activeEditingEntryBankState ? (
-            <div className="entry-inline-status-legend" aria-label="Entry status legend">
-              <span className="entry-inline-status-item">
-                <span className="entry-inline-status-label">Status:</span>
-                <span
-                  className={`entry-chip entry-chip-bank-state ${activeEditingEntryBankState.className} entry-status-dot`}
-                  aria-hidden="true"
-                />
-                <span className="entry-inline-status-separator">-</span>
-                <span>{activeEditingEntryBankState.label}</span>
-              </span>
-            </div>
-          ) : null}
         </EntryMobileSheet>,
         document.body
       ) : null}

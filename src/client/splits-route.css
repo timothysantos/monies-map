@@ -673,3 +673,127 @@ button.split-activity-card:hover {
     font-size: 0.82rem;
   }
 }
+
+/* The create split expense card (split-expense-card.jsx, design.md "Lead ·
+   Support · Detail"): the lead card, then the share rows, the share editor
+   and the other Detail rows. A phone sheet stacks them; the wide dialog
+   puts the card left of the rows. The blocks are in
+   ui/lead-support-detail.css. */
+.split-expense-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding-bottom: 4px;
+}
+
+.split-expense-card .lsd-row-group {
+  display: contents;
+}
+
+.split-expense-card.is-dialog {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.split-expense-card .lsd-row-note {
+  align-items: flex-start;
+  cursor: text;
+}
+
+.split-expense-card .lsd-row-note .lsd-row-input {
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.split-expense-card .split-card-currency {
+  flex: 0 0 5ch;
+  text-transform: uppercase;
+}
+
+/* The share editor opens under the share rows: the share person's percent
+   and amount, linked, and the odd cent choice. */
+.split-share-editor {
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 248, 241, 0.7);
+}
+
+.split-share-editor .split-share-field {
+  padding-left: 24px;
+}
+
+.split-expense-rows .split-odd-cent-control {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.split-expense-rows .split-odd-cent-actions button {
+  min-height: 44px;
+}
+
+.split-expense-card.is-dialog .split-expense-source-note {
+  grid-column: 2;
+}
+
+/* The head: title, context line and a round close button. */
+.split-expense-create-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.split-expense-create-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.split-expense-create-head .totals-visibility-toggle--form {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.split-expense-create-close {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(38, 35, 31, 0.06);
+  color: var(--text);
+}
+
+/* The bottom bar: Cancel, then Save expense under the thumb. */
+.split-dialog-content > form > .split-expense-create-actions {
+  display: block;
+}
+
+.split-dialog-content .split-expense-create-actions .lsd-quiet,
+.split-dialog-content .split-expense-create-actions .lsd-primary {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.split-dialog-content .split-expense-create-actions .lsd-primary {
+  flex: 0 1 200px;
+}
+
+@media (max-width: 760px) {
+  .split-expense-create .split-dialog-scroll {
+    padding-right: 0;
+    scrollbar-gutter: auto;
+  }
+
+  .split-expense-create-head h2 {
+    font-size: 1.45rem;
+    line-height: 1.1;
+  }
+}

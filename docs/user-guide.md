@@ -386,12 +386,15 @@ owner's name.
 
 ### What each control does
 
-- **Select a row** to edit it: Category, Date, Posted date, Wallet, Owner,
-  Amount, Type (expense, income or transfer), Description and Note. The
-  **Status** line says how well the bank has confirmed it
-  ([Glossary](#words-used-in-the-app)).
-  ![Selecting an entry opens its editor with Add to splits, Delete entry, Save and Cancel](/faq/guide/desktop/thumbs/entries-edit.webp)
-- **Add to splits**: share this entry ([Split an expense](#split-an-expense)).
+- **Select a row** to edit it. The editor shows the entry as a card: what
+  it was and the amount (type over either to change it), its category,
+  and small labels for the date, wallet, owner and how well the bank has
+  confirmed it ([Glossary](#words-used-in-the-app)). Beside the card are
+  rows for **Category**, **Owner**, **Splits**, **Note**, **Date**,
+  **Wallet**, **Posted date** and **Type** (expense, income or transfer).
+  ![Selecting an entry opens it as a card with rows for each field, and Delete entry, Cancel and Save under them](/faq/guide/desktop/thumbs/entries-edit.webp)
+- **Splits** row: **Add to splits** shares this entry ([Split an expense](#split-an-expense));
+  once it is shared, **View split** opens it on Splits.
 - **Delete entry**: asks you to confirm first. An entry a bank statement
   confirmed can't be deleted on its own; roll back that statement import
   instead.
@@ -415,8 +418,12 @@ person's view.
 ### On a phone
 
 The round **+** button opens a new entry card on [Ask](#ask); its **Edit in
-form** button opens the usual entry form in a sheet instead. Rows open their
-editor in a sheet. The **View and scope** bar and month buttons float above the
+form** button opens the usual entry form in a sheet instead. A row opens in
+a sheet with the same card: tap a row such as **Category** or **Owner** to
+pick a new value, and **More details** for the date, wallet, posted date and
+type. **Save** is at the bottom, with **Cancel** (or **Close**) beside it and
+**Delete entry** apart on the left. The eye at the top shows or hides the
+amounts. The **View and scope** bar and month buttons float above the
 navigation.
 
 ![Entries on a phone](/faq/guide/phone/thumbs/phone-entries.webp)
@@ -470,7 +477,8 @@ open.
 The view switch stays at the top, groups scroll sideways, and the round
 receipt button opens a new entry card on [Ask](#ask), already set to share
 with the other person in the group you are looking at. **+ Add expense**
-still opens the expense form.
+(and **Edit in form** on Ask) opens the new expense as a card in a sheet,
+with **Save expense** at the bottom.
 
 ![Splits on a phone](/faq/guide/phone/thumbs/phone-splits.webp)
 
@@ -779,8 +787,12 @@ them ([Record entries before the bank file arrives](#record-entries-before-the-b
 ## Edit or delete an entry
 
 1. Open **Entries** and find the entry ([Find an entry](#find-an-entry-filters-search-and-months)).
-2. Select the row. Its editor opens in place (a sheet on a phone).
-3. Change any field and select **Save**, or **Cancel** to leave it as it was.
+2. Select the row. It opens as a card with rows for each field, in place
+   (a sheet on a phone).
+3. Type over what it was or the amount on the card, or change a row such as
+   **Category**, **Owner** or **Note** (on a phone the date, wallet, posted
+   date and type are under **More details**). Select **Save**, or **Cancel**
+   to leave it as it was.
 4. To remove it, select **Delete entry**, then confirm.
 
 Good to know:
@@ -1262,15 +1274,19 @@ There are two ways, depending on where the expense is.
 ### From Splits (no bank row yet, or cash)
 
 1. Open **Splits** and select the group.
-2. Select **+ Add expense**.
-3. Fill in **Date**, **Description**, **Category**, **Paid by** and
-   **Expense total**.
-4. Set the shares with the share percentage or an exact share amount. The
-   preview shows each person's share. When a total does not divide evenly,
-   choose who gets the odd cent.
-5. Select **Save expense**.
+2. Select **+ Add expense**. The new expense opens as a card: the group, the
+   date, who paid, the shares (50 / 50 to start) and how it was paid.
+3. Type what it was and the total on the card. The total is in the group's
+   currency.
+4. Each person's share is a row. Select one to set the share as a
+   percentage or an exact amount; the other person gets the rest. When a
+   total does not divide evenly, choose who gets the odd cent.
+5. Check **Category** and **Group**. The date, who paid, how it was paid,
+   the currency, the evidence and a note are in the rows below them (under
+   **More details** on a phone).
+6. Select **Save expense**.
 
-![Create split expense: date, payer, category, total and shares](/faq/guide/desktop/thumbs/splits-add-expense.webp)
+![Create split expense: the card with the total, then a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-add-expense.webp)
 
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).

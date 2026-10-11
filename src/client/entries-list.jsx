@@ -1,14 +1,16 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, RefreshCw, X } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
-import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
+import { EntryTransferTools } from "./entry-editor";
+import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
+import { BottomActions } from "./ui/lead-support-detail";
 import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { moniesClient } from "./monies-client-service";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
-import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
+import { PrivateMoney, TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useStableHandler } from "./use-stable-handler";
 import { isMobileLayout } from "./use-viewport";
@@ -571,7 +573,6 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
     hasEditingChanges,
     onUpdateEntry,
     onUpdateEntryAmount,
-    onUpdateEntrySplit,
     onEnsureTransferSettlementDraft,
     onTransferDialogEntryChange,
     onUpdateTransferSettlementDraft,
@@ -586,20 +587,30 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
     onCancelEntryEdit
   } = editor;
   const editableAmountMinor = entryService.getTotalAmountMinor(entry);
+  const deleteEntryButton = (
+    <button
+      type="button"
+      className="lsd-quiet is-danger"
+      disabled={isDeletingEntry}
+      onClick={() => void onDeleteEntry?.(entry)}
+    >
+      {isDeletingEntry ? messages.common.working : messages.entries.editCard.deleteEntry}
+    </button>
+  );
 
   return (
     <>
-      <EntryEditorFields
+      <EntryEditCard
+        layout="inline"
         entry={entry}
         categories={categories}
         categoryOptions={categoryOptions}
         accountOptions={accountOptions}
         ownerOptions={ownerOptions}
-        splitPercentValue={null}
         amountMinorValue={editableAmountMinor}
         amountInputValue={entry.amountInput}
-        lockTransferCategory
         bankFactsLocked={entry.bankCertificationStatus === "statement_certified"}
+        bankState={bankState}
         onChange={(patch) => onUpdateEntry(entry.id, patch)}
         onAmountChange={(patch) => onUpdateEntryAmount(entry.id, patch)}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -612,7 +623,15 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
             onUpdateEntry(entry.id, { ownershipType: "direct", ownerName: nextValue });
           }
         }}
-        onSplitPercentChange={(percentage) => onUpdateEntrySplit(entry.id, percentage)}
+        amountAction={<TotalsVisibilityToggle className="totals-visibility-toggle--form" />}
+        splitsRow={linkedSplitExpenseId || entry.entryType === "expense" ? (
+          <EntrySplitsRow
+            isLinked={Boolean(linkedSplitExpenseId)}
+            isWorking={!linkedSplitExpenseId && (isAddingToSplits || isSavingEntry)}
+            onViewSplit={() => onViewCreatedSplit?.(entry.id, linkedSplitExpenseId)}
+            onAddToSplits={() => void onOpenSplitPicker(entry)}
+          />
+        ) : null}
         transferTools={(
           <EntryTransferTools
             entry={entry}
@@ -630,99 +649,55 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
             onRefreshCandidates={onRefreshTransferCandidates}
             onLinkCandidate={onLinkTransferCandidate}
             onSettleTransfer={onSettleTransfer}
+            showLabel={false}
+            trigger={<EntryTransferMatchRow />}
           />
         )}
       />
       {entrySettlementLock
         ? <SettlementLockNotice lock={entrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={onUndoEntrySettlementLock} />
         : entrySubmitError ? <p className="form-error" role="alert">{entrySubmitError}</p> : null}
-      <div className="entry-inline-status-legend" aria-label="Entry status legend">
-        <span className="entry-inline-status-item">
-          <span className="entry-inline-status-label">Status:</span>
-          <span className={`entry-chip entry-chip-bank-state ${bankState.className} entry-status-dot`} aria-hidden="true" />
-          <span className="entry-inline-status-separator">-</span>
-          <span>{bankState.label}</span>
-        </span>
-      </div>
-      <div className="entry-inline-actions">
-        {linkedSplitExpenseId ? (
+      <BottomActions
+        className="entry-inline-actions entry-edit-inline-actions"
+        destructive={(
           <>
-            <button
-              type="button"
-              className="subtle-action"
-              onClick={() => onViewCreatedSplit?.(entry.id, linkedSplitExpenseId)}
-            >
-              View split
-            </button>
-            <button
-              type="button"
-              className="subtle-action"
-              disabled={deletingCreatedSplitId === linkedSplitExpenseId}
-              onClick={() => void onDeleteCreatedSplit?.(entry.id, linkedSplitExpenseId)}
-            >
-              {deletingCreatedSplitId === linkedSplitExpenseId ? messages.common.working : "Delete split"}
-            </button>
-            <button
-              type="button"
-              className="subtle-action"
-              disabled={isDeletingEntry}
-              onClick={() => void onDeleteEntry?.(entry)}
-            >
-              {isDeletingEntry ? messages.common.working : "Delete entry"}
-            </button>
-            <span className="entry-inline-actions-divider" aria-hidden="true">|</span>
+            {deleteEntryButton}
+            {linkedSplitExpenseId ? (
+              <button
+                type="button"
+                className="lsd-quiet is-danger"
+                disabled={deletingCreatedSplitId === linkedSplitExpenseId}
+                onClick={() => void onDeleteCreatedSplit?.(entry.id, linkedSplitExpenseId)}
+              >
+                {deletingCreatedSplitId === linkedSplitExpenseId ? messages.common.working : messages.entries.editCard.deleteSplit}
+              </button>
+            ) : null}
           </>
-        ) : entry.entryType === "expense" ? (
-          <>
-            <button
-              type="button"
-              className="subtle-action"
-              disabled={isAddingToSplits || isSavingEntry || isDeletingEntry}
-              onClick={() => void onOpenSplitPicker(entry)}
-            >
-              {isAddingToSplits || isSavingEntry ? messages.common.working : messages.entries.addToSplits}
-            </button>
-            <button
-              type="button"
-              className="subtle-action"
-              disabled={isDeletingEntry}
-              onClick={() => void onDeleteEntry?.(entry)}
-            >
-              {isDeletingEntry ? messages.common.working : "Delete entry"}
-            </button>
-          </>
-        ) : null}
-        {!linkedSplitExpenseId && entry.entryType !== "expense" ? (
+        )}
+        secondary={(
           <button
             type="button"
-            className="subtle-action"
-            disabled={isDeletingEntry}
-            onClick={() => void onDeleteEntry?.(entry)}
+            className="lsd-quiet inline-cancel-action"
+            aria-label="Cancel editing entry"
+            disabled={isSavingEntry || isDeletingEntry || isAddingToSplits}
+            onClick={onCancelEntryEdit}
           >
-            {isDeletingEntry ? messages.common.working : "Delete entry"}
+            {messages.entries.cancelEdit}
           </button>
-        ) : null}
-        <button
-          type="button"
-          className="inline-action-button inline-save-action"
-          aria-label="Done editing entry"
-          disabled={!hasEditingChanges || isSavingEntry || isDeletingEntry}
-          onClick={onFinishEntryEdit}
-        >
-          {isSavingEntry ? <span className="app-spinner" aria-hidden="true" /> : <Check size={16} />}
-          <span className="desktop-action-label">{isSavingEntry ? messages.common.saving : "Save"}</span>
-        </button>
-        <button
-          type="button"
-          className="inline-action-button inline-cancel-action"
-          aria-label="Cancel editing entry"
-          disabled={isSavingEntry || isDeletingEntry || isAddingToSplits}
-          onClick={onCancelEntryEdit}
-        >
-          <X size={16} />
-          <span className="desktop-action-label">Cancel</span>
-        </button>
-      </div>
+        )}
+        primary={(
+          <button
+            type="button"
+            className="lsd-primary inline-save-action"
+            aria-label="Done editing entry"
+            disabled={!hasEditingChanges || isSavingEntry || isDeletingEntry}
+            onClick={onFinishEntryEdit}
+          >
+            {isSavingEntry ? <span className="app-spinner" aria-hidden="true" /> : null}
+            {isSavingEntry ? messages.common.saving : "Save"}
+          </button>
+        )}
+      />
     </>
   );
 }

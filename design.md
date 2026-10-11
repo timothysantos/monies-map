@@ -186,8 +186,9 @@ a docked panel will be the wide-screen way in.
 
 ### Entry card
 
-`ask-entry-card.jsx` renders the card; `ask-card-model.js` is its pure state
-machine (`draft` → `saving` → `saved`, back to `draft` on failure or Undo).
+`ask-entry-card.jsx` renders the card on the shared blocks ("Lead ·
+Support · Detail" below); `ask-card-model.js` is its pure state machine
+(`draft` → `saving` → `saved`, back to `draft` on failure or Undo).
 
 - Hero card: a 56 px category bubble (the category's palette colour at 20%
   over white, glyph at 70% with the ink, the app's category icon; a neutral
@@ -301,6 +302,171 @@ while the list scrolls, so the person can always see the list is narrowed
 and undo it with one tap; the list gets 56 px more bottom padding, and the
 chip hides under a sheet or dialog as the bar does. On a wide screen it sits
 at the top of the list, under the page title.
+
+## Lead · Support · Detail
+
+The owner-approved design language for sheets, dialogs and screen tops
+(not lists: Entries rows, Splits activity and Imports tables stay flat).
+Each has **one thing you look at first** (Lead), **a few facts that explain
+it** (Support) and **quiet rows you tap to change things** (Detail), with
+the main action at the bottom where the thumb is.
+
+Blocks: one implementation, `src/client/ui/lead-support-detail.jsx`, and
+one stylesheet, `lead-support-detail.css`, which the module imports itself
+(class prefix `lsd-`). Small props; callers pass copy, controls and
+handlers. `ui-components.jsx` re-exports the blocks so they share its
+chunk: the Summary lead is on the first screen, and on their own the blocks
+were two more first-screen files for `check:bundle` (which counts JS files
+and measures `public/styles.css`; the blocks' CSS rides with that chunk, so
+it never grows `styles.css`). Two branches first built these blocks
+separately (the Month and Summary slice and the Entries and Splits slice);
+the props below are their union, so both sets of call sites use the same
+components.
+
+- `LeadCard`: the one white card with the strong shadow (`0 14px 32px`,
+  radius 22px). With a `title` it is a head line: the 56 px bubble (a
+  `bubble` node such as the category editor button, else one built from
+  `category` `{colorHex, iconKey, icon, bubble}`: the colour at 20% over
+  white, the glyph at 70% with the ink; a neutral grey without either), the
+  title (a string is the strong title; a node, such as an inline field, is
+  used as given), a `subtitle` in the category colour (`accentColor`
+  overrides it) mixed 62% with the ink, and the `amount` on the right,
+  optionally with an `amountCaption` under it ("planned"). Without a title
+  the `eyebrow` and the amount stack, with `amountAside` after it (the
+  Summary lead). A string `amount` goes through `PrivateMoney`; `tone` is a
+  money tone rendered with `moneyToneClass` (text only). `editable` marks an
+  amount the person types: a thin terracotta underline (on the caller's
+  `.lsd-amount-field`, or on the amount itself around a plain input), and
+  with a caption the amount column is a `<label>`. `progress`
+  (`{ valueMinor, planMinor, overIsShort }`) draws the actual-vs-plan bar:
+  sky track, grey fill, rose past the plan (`leadProgress`, the `spendTone`
+  rule, so spending with no plan is over); `progressStart` and
+  `progressEnd` are the line under it, `hiddenProgressStart` its
+  hidden-money form. `tag` sits above the head line (the Ask tag); then the
+  bar, the `chips` row (an array or a fragment), then `children`.
+- `MetaChip {icon, person, tone, className}`: a Support pill (neutral fill,
+  optional 14 px icon). `person` gives that person's chip from
+  `getPersonColourVars` (tint, border, `--person-ink`, a dot); `tone` a
+  status in its pastel pair at the soft strength (`mint`, `rose`, `sky`,
+  `butter`, `lavender`; an unknown tone is ignored), such as the mint
+  "Statement certified" chip with a lock. At most four per card; chips are
+  read-only: a value you change has its own Detail row.
+- `DetailRows {label}` and `DetailRow {label, value, emptyLabel, state,
+  action, locked, disabled, hint, labelId, onClick, children}`: rows of
+  48 px or more in one rounded group, label left (muted), value right (600)
+  and a `›`. Without `children` a row is a button; with `children` (the
+  field's own control: an inline input, a `ResponsiveSelect`, a date input,
+  a one-line textarea, or a native select or date field laid over the row
+  with `lsd-row-native`) it is a `<label>` around it, so the control keeps
+  the row's name, edits in place and Tab order stays the field order. A
+  control that is itself a button (the phone `ResponsiveSelect` trigger)
+  takes the row's `labelId`, so it is named by the label and its value
+  ("Category Savings"). States: `state` `empty` (muted, or an empty `value`
+  with its `emptyLabel`, "Add a note"), `action` (terracotta, "Add to
+  splits", "See the 10 entries"; also the `action` flag) and `locked`
+  (muted with a lock instead of the `›`, never clickable; also the `locked`
+  flag). `disabled` mutes a button row and drops its `›`.
+- `MoreDetails {summary, open, onOpenChange, defaultOpen, forceOpen, label,
+  openLabel}`: the folding row inside the group; it lists what it holds
+  while closed, and its rows follow it in the same group when open.
+  Controlled (`open`, `onOpenChange`) or on its own (`defaultOpen`).
+  `forceOpen` keeps it open: required fields and anything with an error
+  never fold. A field folds when most people never change it on that
+  screen; on a wide screen nothing folds.
+- `BottomActions`: the action bar. A destructive or quiet action sits on
+  its own at the start; the secondary action and the primary action are at
+  the end, primary last, under the right thumb. Pass ready buttons
+  (`destructive`, `secondary`, `primary`, with the `lsd-quiet`,
+  `lsd-quiet is-danger` and `lsd-primary` classes; a destructive action
+  asks in the app before it acts) or let the bar build them from
+  `primaryLabel` (submits the form unless `onPrimary`), `primaryDisabled`,
+  and `quietLabel` with `onQuiet` (`quietTone="danger"` for Delete).
+  `className="is-sheet-bar"` makes it a sheet's own sticky footer, 50 px
+  buttons inside the safe-area insets; a sheet with side padding sets
+  `--bottom-actions-bleed` (the mobile sheet does) so the bar spans it.
+
+`src/client/detail-field-rows.jsx` adds the field rows the edit sheets
+share: `PickerRow` (the phone picker sheet, `ResponsiveSelect`, in a sheet; a
+native select laid over the row on a wide screen), `DateRow` (a date field
+over the row in a sheet; a visible inline date field on a wide screen) and
+`GrowingTextarea` (what it was, a note).
+
+Rules:
+
+- Exactly one lead per sheet, card or screen top. Money in it uses the
+  money tones only: a plan sky, an expense rose, income mint, over plan
+  rose, transfers and totals plain; text only, never a fill. Summary's
+  Support figures are soft-tint pills (mint when good), their plan a quiet
+  line in the pill's ink.
+- Hidden money: the lead amount is dots in plain ink with no sign (an
+  editable amount masks its digits), the bar keeps only its empty track,
+  side-of-zero words go ("left", "over", "to come", "under plan", "% of
+  plan"), pills lose their tint, share rows show `••••` for the amount but
+  keep the percent, and chips without money stay.
+- Thumb zone (phone): the primary action (Done, Save) is in a bottom bar
+  that stays at the bottom of the sheet, with Cancel or Close beside it or
+  at the start and a destructive action apart on the left; the top ✕ (a
+  44 px round target) is never the only way out. Every tappable is
+  44 × 44 px or more with at least 8 px to its neighbours (Detail rows are
+  one list, stacked 48 px rows; `tests/e2e/lead-support-detail.spec.js` and
+  `tests/e2e/lead-support-detail-sheets.spec.js` measure the boxes, the
+  latter in WebKit on an iPhone 13 and in Chromium). Money fields use
+  `inputMode="decimal"`. Nothing depends on hover.
+- Keyboard: every bottom sheet with a bottom bar lifts itself above the
+  phone keyboard (`use-keyboard-inset.js` sets `--keyboard-inset`; see
+  "Mobile Sheet"), so the bar and the focused field stay in sight, and the
+  bar keeps the safe-area inset. Swipe down to dismiss is not supported:
+  neither the mobile sheet nor the Radix dialog has it, and adding it would
+  be a new gesture that discards a draft.
+- No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
+
+Where it is used:
+
+- Summary top (`summary-lead.jsx`, `summary-lead-model.js`): "Spent ·
+  range", the range's actual spend "of" its planned spend, the bar, the
+  percent of plan and how far under (mint) or over (rose) plan; Income and
+  Saved pills with planned income and the savings target. Every figure and
+  tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
+  stacks the pills under the lead; desktop and tablet put them in a column
+  on its right. The CSS is `summary-lead.css` in the Summary route chunk
+  (it sits in `.panel-head`, whose `span` rule mutes spans, so its money
+  spans take their tone back at a higher specificity).
+- Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
+  add and edit for income, planned items and budget buckets): the planned
+  amount is the editable lead under the row's name, kind and category
+  bubble (the existing `CategoryAppearancePopover`); actual against it is
+  the bar, with "$x spent" and "$y left" or "$y over" (income: "received"
+  and "to come"); a new row has no bar. Chips: month, owner (person colour;
+  "Shared" for a shared row) and entry count. Rows: Actual (See the N
+  entries, the existing drilldown), Item name, Category, Date and Account
+  (planned items) and Note. The sheet's sub-line is "Person · Month", and
+  Done and Cancel are its `is-sheet-bar`. MonthPanel keeps the draft and
+  every handler; desktop inline editing is unchanged.
+- The Ask entry card (`ask-entry-card.jsx`).
+- The Entries edit sheet and inline editor (`entry-edit-card.jsx`). Lead:
+  the category bubble (opens the category editor), what it was and the
+  amount, typed in place unless a statement certified them (then read-only,
+  with the existing lock line under the card). Support: date, wallet,
+  owner, bank state. Detail: Category, Owner, Splits ("Add to splits" or
+  "View split"), the transfer match for a transfer, Note, then Date, Wallet,
+  Posted date, Type (and Transfer direction); on a phone those last ones fold
+  into More details, and a certified entry lists only Posted date (locked)
+  and Type. On a wide screen the card sits left of the rows and each row
+  keeps an inline field, so Tab walks description, amount, the eye, then the
+  rows in order. Delete entry (and Delete split once it is on Splits),
+  Cancel and Save are in the bottom bar.
+- Create split expense (`split-expense-card.jsx`, from the Splits dialog in
+  both layouts; editing and viewing a saved split keep the form for now).
+  Lead: the group bubble (terracotta; a plane for a foreign currency
+  group), what it was, the group, and the total in the group currency
+  (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
+  (`50 / 50`) and how it was paid. Detail: one row per person's share
+  (`split-share-rows.js` reads them from the draft), Category, Group, then
+  Date, Paid by, Paid using, Currency, Evidence and Note (folded on a phone).
+  A share row opens the share editor: the share person's percent and amount,
+  linked through the existing `updateSplitExpenseDraft`, so what the card
+  shows and saves is what the form saved. The odd cent choice shows under
+  the share rows whenever it applies.
 
 ## Apple Shortcut Install Boundary
 
@@ -806,103 +972,6 @@ picking the range on both routes; the months offered are the range's months
   (about 0.8 kB gzip); the sheet is not. The sheet draws its tick itself and
   takes tone classes from the rules module, so it adds no first-screen file.
 
-## Lead · Support · Detail
-
-The owner-approved design language for sheets, dialogs and screen tops
-(not lists: Entries rows, Splits activity and Imports tables stay flat).
-Each has **one thing you look at first** (Lead), **a few facts that explain
-it** (Support) and **quiet rows you tap to change things** (Detail), with
-the main action at the bottom where the thumb is. It is built on the Month
-plan-row sheet and the Summary top; the Entries edit sheet and the Splits
-expense dialog are to follow with the same blocks.
-
-Blocks (`src/client/ui/lead-support-detail.jsx` and its CSS; small props,
-callers pass copy, controls and handlers). `ui-components.jsx` re-exports
-them so they share its chunk: on their own they were two more first-screen
-files for `check:bundle`.
-
-- `LeadCard`: the one white card with the strong shadow
-  (`0 14px 32px`, radius 20px). With a `title` it is a head line: an
-  optional `bubble` (the category icon at 54px, its colour at 20% tint),
-  title, a `subtitle` in `accentColor` mixed 62% with the ink, and the
-  `amount` on the right with an `amountCaption`. Without a title the
-  `eyebrow` and the amount stack, with `amountAside` after it (the Summary
-  lead). `editable` marks an amount the person types: a thin terracotta
-  underline, and the amount column is a `<label>`. `progress`
-  (`{ valueMinor, planMinor, overIsShort }`) draws the actual-vs-plan bar:
-  sky track, grey fill, rose past the plan (`leadProgress`, the
-  `spendTone` rule, so spending with no plan is over); `progressStart` and
-  `progressEnd` are the line under it. `chips` holds the Support chips.
-- `MetaChip`: a Support pill (0.8rem/600, neutral fill, optional 14px
-  icon). `person` gives that person's chip from `getPersonColourVars`
-  (tint, border, `--person-ink`, a dot); `tone` a status in its pastel
-  pair (mint, rose, sky, butter, lavender). At most four per card; chips are
-  not tappable.
-- `DetailRows` / `DetailRow`: one rounded group of rows, label left (muted),
-  value right (600) and a `›`, 48px tall. With a control as children the row
-  is a `<label>` and the control edits in place (an input, a
-  `ResponsiveSelect`, a date input, a one-line textarea), so it keeps its
-  name and no extra tap is added; with `onClick` it is a button. A control
-  that is itself a button (the phone `ResponsiveSelect` trigger) takes the
-  row's `labelId`, so it is named by the label and its value ("Category
-  Savings") instead of the label alone. `action`
-  is terracotta ("See the 10 entries"), an empty value shows `emptyLabel`
-  muted (or a placeholder, "Add a note"), and `locked` is muted with a lock
-  instead of the `›`, never clickable.
-- `MoreDetails`: the fold for fields most people never change on that
-  screen; its toggle row lists what is inside. `forceOpen` keeps it open:
-  required fields and anything with an error never fold.
-- `BottomActions`: the bottom bar, one quiet text action on the left
-  (Cancel, or `quietTone="danger"` for Delete) and the terracotta primary on
-  the right (`dialog-primary`, submits the form unless `onPrimary`), both
-  50px tall, inside the safe-area insets. A sheet with side padding sets
-  `--bottom-actions-bleed` (the mobile sheet does) so the bar spans it.
-
-Rules:
-
-- Exactly one lead per sheet, card or screen top. Money in it uses the
-  money tones only: a plan sky, an expense rose, income mint, over plan
-  rose, transfers and totals plain; text only, never a fill. Summary's
-  Support figures are soft-tint pills (mint when good), their plan a quiet
-  line in the pill's ink.
-- Hidden money: the lead amount is dots in plain ink (an editable amount
-  masks its digits), the bar keeps only its empty track, side-of-zero words
-  go ("left", "over", "to come", "under plan", "% of plan") and pills lose
-  their tint. Chips without money stay.
-- Thumb zone: the primary action (Done, Save) and Cancel are in the bottom
-  bar of every sheet in this language; the top ✕ (a 44px round target) is
-  never the only way out. Every tappable is at least 44×44px; separate
-  targets keep 8px or more between them (Detail rows are one list, stacked
-  48px rows). Number fields use `inputMode="decimal"`. Nothing depends on
-  hover. The sheet has no swipe-down gesture (`EntryMobileSheet` has none;
-  Escape, the backdrop, ✕ and Cancel close it) and no visualViewport
-  handling of its own: on an iPhone the keyboard can cover the bottom bar
-  while a field is focused (see `docs/flows/month-flow.md`).
-- No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
-
-Where it is used:
-
-- Summary top (`summary-lead.jsx`, `summary-lead-model.js`): "Spent ·
-  range", the range's actual spend "of" its planned spend, the bar, the
-  percent of plan and how far under (mint) or over (rose) plan; Income and
-  Saved pills with planned income and the savings target. Every figure and
-  tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
-  stacks the pills under the lead; desktop and tablet put them in a column
-  on its right. The CSS is `summary-lead.css` in the Summary route chunk
-  (it sits in `.panel-head`, whose `span` rule mutes spans, so its money
-  spans take their tone back at a higher specificity).
-- Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
-  add and edit for income, planned items and budget buckets): the planned
-  amount is the editable lead under the row's name, kind and category
-  bubble (the existing `CategoryAppearancePopover`); actual against it is
-  the bar, with "$x spent" and "$y left" or "$y over" (income: "received"
-  and "to come"); a new row has no bar. Chips: month, owner (person colour;
-  "Shared" for a shared row) and entry count. Rows: Actual (See the N
-  entries, the existing drilldown), Item name, Category, Date and Account
-  (planned items) and Note. The sheet's sub-line is "Person · Month".
-  MonthPanel keeps the draft and every handler; desktop inline editing is
-  unchanged.
-
 ## Money Privacy Display Preference
 
 Money privacy is a display layer, not a financial-state change. A new browser
@@ -1238,6 +1307,15 @@ modal desktop dialogs:
   inherited style (see "Mobile sheet: a lighter modal" in
   `docs/audits/macro-loading-baseline.md`). Keep it that way: a new modal
   behaviour for the sheet must not restyle `<body>` or the app root.
+- It lifts itself above the phone keyboard. iPhone Safari keeps the layout
+  viewport when the keyboard opens and only shrinks the visual viewport, so
+  `use-keyboard-inset.js` sets `--keyboard-inset` on the sheet (the height
+  the keyboard covers; toolbar wobbles under 120 px and pinch zoom are
+  ignored), the sheet's `bottom` and `max-height` use it, and the focused
+  field scrolls back into view inside the sheet. The phone Splits dialog
+  does the same.
+- `headerAction` adds a control before the close button (the Entries edit
+  sheet's money eye) and `className` a variant (`is-lead-sheet`).
 - The opener is found by `sheet-focus-return.js`, not from
   `document.activeElement` alone: iPhone and iPad Safari (WebKit) do not
   focus a tapped or clicked button, so after a tap `activeElement` is

@@ -70,6 +70,7 @@ export function MonthPlanSheet({
       onSave={onSave}
       footerContent={(
         <BottomActions
+          className="is-sheet-bar"
           primaryLabel={saveLabel}
           primaryDisabled={isSaving}
           quietLabel={messages.month.cancelEdit}

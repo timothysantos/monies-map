@@ -49,7 +49,7 @@
 }
 
 /* The figure starts right after its "$"; the input is sized to it. */
-.lead-card-amount > .month-plan-lead-input {
+.lsd-amount > .month-plan-lead-input {
   text-align: left;
 }
 

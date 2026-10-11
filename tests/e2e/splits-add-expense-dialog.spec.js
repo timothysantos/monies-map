@@ -35,9 +35,9 @@ test("a split expense added through the dialog is listed with its shares and per
   await dialog.getByLabel("Description").fill(description);
   await dialog.getByLabel("Note").fill("Shelf brackets for the study");
 
-  const preview = dialog.getByLabel("Split share amounts");
-  await expect(preview).toContainText("Tim share$21.60");
-  await expect(preview).toContainText("Joyce share$64.80");
+  // Each person's share is a row in the lead sheet's Detail rows.
+  const preview = dialog.getByRole("group", { name: "Split share amounts" });
+  await expect(preview.locator(".lsd-row")).toHaveText(["Tim’s share25% · $21.60", "Joyce’s share75% · $64.80"]);
   await expect(dialog.getByLabel("Tim share amount")).toHaveValue("21.60");
 
   const createRequest = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/create"));

@@ -1084,7 +1084,7 @@ test.describe("import flow", () => {
     const entryRow = page.locator(".entry-row").filter({ hasText: "Playwright groceries import" }).first();
     await expect(entryRow.locator(".entry-row-description strong").filter({ hasText: "Playwright groceries import" })).toBeVisible();
     await entryRow.getByText("Playwright groceries import", { exact: true }).click();
-    const entryEditor = page.locator(".entry-edit-grid").first();
+    const entryEditor = page.locator(".entry-edit-card").first();
     await expect(entryEditor).toBeVisible();
     await entryEditor.locator("select").first().selectOption("Food & Drinks");
     await page.getByRole("button", { name: "Done editing entry" }).click();

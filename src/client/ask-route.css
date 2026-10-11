@@ -284,17 +284,8 @@
   font-weight: 600;
 }
 
-/* The entry card. */
-.ask-card {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
-}
-
+/* The entry card: the shared LeadCard (ui/lead-support-detail.css) plus
+   the Ask tag, the typed title and amount, the coax and saved lines. */
 .ask-card-tag {
   justify-self: start;
   display: inline-flex;
@@ -316,38 +307,6 @@
   color: var(--pastel-mint-ink);
 }
 
-.ask-card-hero {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-}
-
-.ask-card-bubble {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border: 1px solid color-mix(in srgb, var(--cat) 35%, white);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--cat) 20%, white);
-  color: color-mix(in srgb, var(--cat) 70%, var(--text));
-}
-
-.ask-card-title {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.ask-card-merchant {
-  font-size: 1.08rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-
 .ask-card-merchant-input {
   display: block;
   width: 100%;
@@ -365,22 +324,6 @@
 .ask-card-merchant-input::placeholder {
   color: var(--muted);
   font-weight: 700;
-}
-
-.ask-card-category {
-  color: color-mix(in srgb, var(--cat) 62%, var(--text));
-  font-size: 0.86rem;
-  font-weight: 600;
-}
-
-.ask-card-amount {
-  justify-self: end;
-  font-size: 1.65rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
 }
 
 .ask-card-amount-field {
@@ -417,42 +360,6 @@
   outline-offset: 2px;
 }
 
-.ask-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ask-meta-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--pastel-neutral);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.ask-meta-chip svg {
-  color: var(--muted);
-}
-
-.ask-meta-person {
-  border-color: var(--person-chip-border);
-  background: var(--person-chip-bg);
-  color: var(--person-ink);
-}
-
-.ask-meta-person::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--person-colour);
-}
-
 .ask-card-coax {
   margin: 0;
   padding-top: 12px;
@@ -472,69 +379,11 @@
   font-size: 0.88rem;
 }
 
-/* Quiet detail rows. */
+/* Quiet detail rows: the shared DetailRows, plus the filled dot and the
+   Splits switch. */
 .ask-rows-wrap {
   display: grid;
   gap: 8px;
-}
-
-.ask-rows {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.ask-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  min-height: 46px;
-  padding: 11px 14px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 0.94rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ask-rows > .ask-row:last-child {
-  border-bottom: 0;
-}
-
-.ask-row:focus-visible,
-.ask-row:focus-within {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
-  outline-offset: -2px;
-}
-
-.ask-row-label {
-  color: var(--muted);
-}
-
-.ask-row-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-weight: 600;
-}
-
-.ask-row-value svg {
-  flex: 0 0 auto;
-  color: var(--muted);
-}
-
-.ask-row-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .ask-row-dot {
@@ -543,55 +392,6 @@
   height: 6px;
   border-radius: 50%;
   background: var(--pastel-butter-ink);
-}
-
-.ask-row-native {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-  appearance: none;
-  font-size: 16px;
-}
-
-.ask-row-more .ask-row-label {
-  color: var(--accent-strong);
-  font-weight: 600;
-}
-
-.ask-row-hint {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.ask-row-more svg.is-open {
-  transform: rotate(90deg);
-}
-
-.ask-row-note {
-  cursor: text;
-}
-
-.ask-row-note-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 16px;
-  font-weight: 600;
-  text-align: right;
-  resize: none;
-}
-
-.ask-row-note-input:focus {
-  outline: none;
 }
 
 .ask-share {

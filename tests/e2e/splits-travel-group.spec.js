@@ -39,8 +39,8 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
 
   await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
   const expenseDialog = page.getByRole("dialog", { name: "Create split expense" });
-  // "Group" alone would also match the cash-only help text under "Paid using".
-  const groupSelect = expenseDialog.locator("label.split-dialog-field", { has: page.getByText("Group", { exact: true }) }).locator("select");
+  // The Group row keeps its own select over the row on a wide screen.
+  const groupSelect = expenseDialog.locator("[data-row='group'] select");
   await expect(groupSelect).toHaveValue(groupId);
   await expect(expenseDialog.getByLabel("Currency")).toHaveValue("JPY");
   // A cash-only group offers no card or bank payment.
@@ -58,8 +58,8 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   // The share preview is in the group currency with yen's whole-unit digits.
   await expenseDialog.getByLabel("Expense total").fill("12000");
   await expect(oddCentChoice).toHaveCount(0);
-  const sharePreview = expenseDialog.getByLabel("Split share amounts");
-  await expect(sharePreview.locator("strong")).toHaveText(["JP¥6,000", "JP¥6,000"]);
+  const sharePreview = expenseDialog.getByRole("group", { name: "Split share amounts" });
+  await expect(sharePreview.locator(".lsd-row-text")).toHaveText(["50% · JP¥6,000", "50% · JP¥6,000"]);
   await expenseDialog.getByLabel("Description").fill(description);
 
   const createRequest = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/create"));

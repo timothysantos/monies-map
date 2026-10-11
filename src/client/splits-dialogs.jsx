@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronDown } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { ChevronDown, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { focusFieldUnlessEditing } from "./deferred-focus";
@@ -12,6 +12,10 @@ import { updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
+import { OddCentChooser, SplitExpenseCard, splitSharePreview } from "./split-expense-card";
+import { BottomActions } from "./ui/lead-support-detail";
+import { useKeyboardInset } from "./use-keyboard-inset";
+import { useIsMobileLayout } from "./use-viewport";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -85,80 +89,6 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  );
-}
-
-function getSplitCounterparty(people, primaryName) {
-  return people.find((person) => person.name !== primaryName) ?? null;
-}
-
-function splitSharePreview(dialog, people) {
-  const totalAmountMinor = Math.max(0, Number(dialog?.amountMinor ?? 0));
-  const primaryName = dialog?.sharePersonName ?? people[0]?.name ?? "First person";
-  const counterparty = getSplitCounterparty(people, primaryName);
-  const primaryAmountMinor = Math.max(0, Math.min(totalAmountMinor, Number(dialog?.splitAmountMinor ?? 0)));
-  const secondaryAmountMinor = Math.max(0, totalAmountMinor - primaryAmountMinor);
-
-  return {
-    totalAmountMinor,
-    primaryName,
-    secondaryName: counterparty?.name ?? "Second person",
-    primaryAmountMinor,
-    secondaryAmountMinor
-  };
-}
-
-function applyPrimarySplitAmount(current, primaryAmountMinor) {
-  const amountMinor = Math.max(0, Math.min(Number(current?.amountMinor ?? 0), Number(primaryAmountMinor ?? 0)));
-  return updateSplitExpenseDraft(current, {
-    splitAmountMinor: amountMinor,
-    splitAmountInput: formatService.minorToDecimalString(amountMinor)
-  }, "amount", { commit: true });
-}
-
-function OddCentChooser({ dialog, people, onChange }) {
-  const preview = splitSharePreview(dialog, people);
-  const hasOddCent = preview.totalAmountMinor % 2 === 1;
-  const hasTwoSidedShare = preview.primaryAmountMinor > 0 && preview.secondaryAmountMinor > 0;
-  const canShow = hasOddCent && hasTwoSidedShare && people.length >= 2 && preview.totalAmountMinor > 0;
-
-  if (!canShow) {
-    return null;
-  }
-
-  const lowerHalf = Math.floor(preview.totalAmountMinor / 2);
-  const higherHalf = preview.totalAmountMinor - lowerHalf;
-  const extraCentName = preview.primaryAmountMinor > preview.secondaryAmountMinor
-    ? preview.primaryName
-    : preview.secondaryName;
-  const extraStep = formatService.moneyStep(dialog?.currency ?? "SGD");
-
-  return (
-    <div className="split-odd-cent-control">
-      <div>
-        <strong>Odd cent</strong>
-        <p>
-          This amount cannot split into two equal cents. Pick who carries the extra cent so this record can match
-          another split app exactly.
-        </p>
-      </div>
-      <div className="split-odd-cent-actions" role="group" aria-label="Choose odd cent recipient">
-        <button
-          type="button"
-          className={extraCentName === preview.primaryName ? "is-selected" : ""}
-          onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, higherHalf) : current)}
-        >
-          {preview.primaryName} gets +{extraStep}
-        </button>
-        <button
-          type="button"
-          className={extraCentName === preview.secondaryName ? "is-selected" : ""}
-          onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, lowerHalf) : current)}
-        >
-          {preview.secondaryName} gets +{extraStep}
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -376,11 +306,23 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
 }
 
 export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+  const isMobileLayout = useIsMobileLayout();
+  const [content, setContent] = useState(null);
+  // A new expense uses the lead card (design.md, "Lead · Support · Detail");
+  // editing and viewing a saved one keep the form for now.
+  const isCreate = Boolean(dialog) && !dialog?.id && !readOnly;
+  useKeyboardInset(isMobileLayout ? content : null);
+  const groupName = groupOptions.find((group) => group.id === dialog?.groupId)?.name ?? "";
+
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-dialog-content" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <Dialog.Content
+          ref={setContent}
+          className={`note-dialog-content split-dialog-content${isCreate ? " split-expense-create" : ""}`}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -390,48 +332,97 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               void onSave();
             }}
           >
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense)}</Dialog.Title>
-              <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Create or edit a split expense without touching the bank import workflow."}</Dialog.Description>
-            </div>
+            {isCreate ? (
+              <div className="note-dialog-head split-dialog-head split-expense-create-head">
+                <div>
+                  <Dialog.Title>{messages.splits.createExpense}</Dialog.Title>
+                  <Dialog.Description>{messages.splits.expenseCard.sheetContext(groupName, people.map((person) => person.name))}</Dialog.Description>
+                </div>
+                <div className="split-expense-create-head-actions">
+                  <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
+                  <button
+                    type="button"
+                    className="icon-action subtle-cancel split-expense-create-close"
+                    aria-label={messages.splits.expenseCard.close}
+                    disabled={isSubmitting}
+                    onClick={onClose}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="note-dialog-head split-dialog-head">
+                <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense)}</Dialog.Title>
+                <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Create or edit a split expense without touching the bank import workflow."}</Dialog.Description>
+              </div>
+            )}
             <div className="split-dialog-scroll">
-              <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
-              <fieldset disabled={readOnly} className="split-dialog-fieldset">
-                <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
-              </fieldset>
+              {isCreate ? (
+                <SplitExpenseCard
+                  dialog={dialog}
+                  groupOptions={groupOptions}
+                  people={people}
+                  categoryOptions={categoryOptions}
+                  categories={categories}
+                  onChange={onChange}
+                  layout={isMobileLayout ? "sheet" : "dialog"}
+                  autoFocusAmount
+                />
+              ) : (
+                <>
+                  <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
+                  <fieldset disabled={readOnly} className="split-dialog-fieldset">
+                    <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
+                  </fieldset>
+                </>
+              )}
               {settlementLock
                 ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
                 : <InlineError message={formError} />}
             </div>
-            <div className="dialog-actions">
-              {!readOnly && dialog?.id ? (
-                <button
-                  type="button"
-                  className="dialog-danger split-dialog-delete-action"
-                  disabled={isSubmitting}
-                  onClick={() => onRequestDelete?.(dialog)}
-                >
-                  Delete
-                </button>
-              ) : null}
-              {dialog?.linkedTransactionId ? (
-                <>
+            {isCreate ? (
+              <div className="dialog-actions split-expense-create-actions">
+                <BottomActions
+                  secondary={<button type="button" className="lsd-quiet" disabled={isSubmitting} onClick={onClose}>Cancel</button>}
+                  primary={(
+                    <button type="submit" className="lsd-primary" disabled={isSubmitting || isSaveDisabled}>
+                      {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+                    </button>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="dialog-actions">
+                {!readOnly && dialog?.id ? (
                   <button
                     type="button"
-                    className="subtle-action"
+                    className="dialog-danger split-dialog-delete-action"
                     disabled={isSubmitting}
-                    onClick={() => onViewLinkedEntry?.(dialog)}
+                    onClick={() => onRequestDelete?.(dialog)}
                   >
-                    {messages.splits.viewLinkedEntry}
+                    Delete
                   </button>
-                  <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
-                </>
-              ) : null}
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
-              {!readOnly ? <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
-                {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
-              </button> : null}
-            </div>
+                ) : null}
+                {dialog?.linkedTransactionId ? (
+                  <>
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      disabled={isSubmitting}
+                      onClick={() => onViewLinkedEntry?.(dialog)}
+                    >
+                      {messages.splits.viewLinkedEntry}
+                    </button>
+                    <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
+                  </>
+                ) : null}
+                <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
+                {!readOnly ? <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
+                  {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+                </button> : null}
+              </div>
+            )}
           </form>
         </Dialog.Content>
       </Dialog.Portal>

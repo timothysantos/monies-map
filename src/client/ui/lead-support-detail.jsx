@@ -1,18 +1,42 @@
 import "./lead-support-detail.css";
-import { ChevronDown, ChevronRight, Lock } from "lucide-react";
-import { useId, useState } from "react";
+import { ChevronRight, Lock, Receipt } from "lucide-react";
+import { useState } from "react";
 
 import { spendTone } from "../../domain/money-tone";
-import { useMoneyPrivacy } from "../money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { moneyToneClass } from "../money-tone-class";
 import { getPersonColourVars } from "../person-colour";
+import { ICON_REGISTRY } from "../ui-options";
 
 // Lead · Support · Detail (design.md): each sheet or screen top has one thing
 // you look at first (the Lead card), a few facts that explain it (Support
 // chips inside the card) and quiet rows you tap to change things (Detail
 // rows), with the main action in a bar at the bottom where the thumb is.
+// - LeadCard: a head line (category bubble, title, sub-label, the amount on
+//   the right) or, without a title, an eyebrow over a big figure (the
+//   Summary lead); optionally the actual-vs-plan bar and the Support chips.
+// - MetaChip: one Support pill (a date, a wallet, a person in their colour,
+//   a state in its pastel pair).
+// - DetailRows / DetailRow: the quiet rows you tap to change a field.
+// - MoreDetails: the folding row that names what it holds.
+// - BottomActions: the action bar, primary action last (under the thumb).
 // These blocks hold only layout and the money-privacy rules for the lead;
 // callers pass the copy, the controls and every handler.
+//
+// Bundle: ui-components.jsx re-exports the blocks so they share its chunk
+// (the Summary lead is on the first screen, and check:bundle counts files),
+// and this module imports its own stylesheet so every caller gets it.
+
+const NEUTRAL_BUBBLE = "#7C8791";
+const STATE_TONES = new Set(["mint", "rose", "sky", "butter", "lavender"]);
+
+function joinClasses(...names) {
+  return names.filter(Boolean).join(" ");
+}
+
+function isBlank(value) {
+  return value === null || value === undefined || value === "" || value === false;
+}
 
 // How full the actual-vs-plan bar is (capped at 100) and whether it shows
 // over plan: rose only past the plan (spendTone), so spending with no plan is
@@ -24,23 +48,43 @@ export function leadProgress(valueMinor, planMinor, { overIsShort = true } = {})
   return { percent, isOver: overIsShort && spendTone(valueMinor, planMinor) === "short" };
 }
 
-// The one white card with the strong shadow. With a `title` it reads as a
-// head line (bubble, title and sub-label, the amount on the right); without
-// one the `eyebrow` and the amount stack (the Summary lead). `editable`
-// marks an amount the person types (a plan): a thin terracotta underline,
-// and the column is a <label>. `progress`
-// ({ valueMinor, planMinor, overIsShort }) draws the actual-vs-plan bar.
-// Hidden money keeps only the bar's empty track, because its length would
-// say over or under plan, and swaps the line under it for
-// `hiddenProgressStart` (the side-of-zero words go).
+/**
+ * The one white card with the strong shadow.
+ * - With a `title` it reads as a head line: the bubble (`bubble`, or one
+ *   built from `category`: its colour and icon, else a neutral one), the
+ *   title (a string becomes the strong title; a node, such as an inline
+ *   field, is used as given), `subtitle` in the category colour, and the
+ *   amount on the right with an optional `amountCaption` under it.
+ * - Without one, `eyebrow` stacks over the amount and its `amountAside`.
+ * A string `amount` goes through money privacy; `tone` gives the amount its
+ * money tone; `editable` marks an amount the person types (a thin
+ * terracotta underline; with a caption the column is a <label>, so a tap on
+ * either opens the keypad). `progress` ({ valueMinor, planMinor,
+ * overIsShort }) draws the actual-vs-plan bar; hidden money keeps only its
+ * empty track (its length would say over or under plan) and swaps the line
+ * under it for `hiddenProgressStart`. `tag` sits above the head line, then
+ * the chips, then `children`.
+ * @param {{
+ *   className?: string, tag?: any, eyebrow?: any,
+ *   category?: { colorHex?: string, iconKey?: string, icon?: any, bubble?: any } | null,
+ *   bubble?: any, accentColor?: string, title?: any, subtitle?: any,
+ *   amount?: any, tone?: string, amountAside?: any, amountCaption?: any, editable?: boolean,
+ *   progress?: { valueMinor: number, planMinor: number, overIsShort?: boolean } | null,
+ *   progressStart?: any, progressEnd?: any, hiddenProgressStart?: any,
+ *   chips?: any, children?: any, [key: string]: any
+ * }} props
+ */
 export function LeadCard({
   className = "",
+  tag = null,
   eyebrow = null,
+  category = null,
   bubble = null,
+  accentColor = undefined,
   title = null,
   subtitle = null,
-  accentColor = undefined,
   amount = null,
+  tone = undefined,
   amountAside = null,
   amountCaption = null,
   editable = false,
@@ -53,176 +97,261 @@ export function LeadCard({
   ...rest
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
-  const style = accentColor ? { "--lead-accent": accentColor } : undefined;
-  const amountNode = amount === null ? null : (
-    <span className={editable ? "lead-card-amount is-editable" : "lead-card-amount"}>{amount}</span>
-  );
-  const AmountColumn = editable ? "label" : "span";
+  const colour = accentColor ?? category?.colorHex ?? NEUTRAL_BUBBLE;
+  const hasChips = Array.isArray(chips) ? chips.some(Boolean) : Boolean(chips);
   const bar = progress ? leadProgress(progress.valueMinor, progress.planMinor, progress) : null;
   const lineStart = areTotalsVisible ? progressStart : hiddenProgressStart;
   const lineEnd = areTotalsVisible ? progressEnd : null;
 
+  const amountNode = isBlank(amount) ? null : (
+    <span className={joinClasses("lsd-amount", tone ? moneyToneClass(tone) : "", editable ? "is-editable" : "")}>
+      {typeof amount === "string" ? <PrivateMoney>{amount}</PrivateMoney> : amount}
+    </span>
+  );
+  const AmountColumn = editable ? "label" : "span";
+
   return (
-    <section className={`lead-card ${className}`.trim()} style={style} {...rest}>
-      {eyebrow ? <span className="lead-card-eyebrow">{eyebrow}</span> : null}
+    <section className={joinClasses("lsd-card", className)} {...rest}>
+      {tag}
+      {eyebrow ? <span className="lsd-eyebrow">{eyebrow}</span> : null}
       {title ? (
-        <div className="lead-card-head">
-          {bubble ? <span className="lead-card-bubble">{bubble}</span> : null}
-          <span className="lead-card-heading">
-            <strong className="lead-card-title">{title}</strong>
-            {subtitle ? <span className="lead-card-subtitle">{subtitle}</span> : null}
-          </span>
-          {amountNode ? (
-            // An editable amount is labelled by its caption ("planned"), so
-            // a tap on either opens the number keypad.
-            <AmountColumn className="lead-card-amount-column">
+        <div className="lsd-hero">
+          <LeadBubble bubble={bubble ?? category?.bubble ?? null} category={category} colour={colour} />
+          <div className="lsd-heading">
+            {typeof title === "string" ? <strong className="lsd-title">{title}</strong> : title}
+            {subtitle ? <span className="lsd-subtitle" style={{ "--cat": colour }}>{subtitle}</span> : null}
+          </div>
+          {amountNode && amountCaption ? (
+            <AmountColumn className="lsd-amount-column">
               {amountNode}
-              {amountCaption ? <small className="lead-card-amount-caption">{amountCaption}</small> : null}
+              <small className="lsd-amount-caption">{amountCaption}</small>
             </AmountColumn>
-          ) : null}
+          ) : amountNode}
         </div>
       ) : amountNode ? (
-        <div className="lead-card-figure">
+        <div className="lsd-figure">
           {amountNode}
-          {amountAside ? <span className="lead-card-amount-aside">{amountAside}</span> : null}
+          {amountAside ? <span className="lsd-amount-aside">{amountAside}</span> : null}
         </div>
       ) : null}
       {bar ? (
-        <div className="lead-card-progress">
-          <span className="lead-card-bar" aria-hidden="true">
+        <div className="lsd-progress">
+          <span className="lsd-bar" aria-hidden="true">
             {areTotalsVisible ? (
               <span
-                className={`lead-card-bar-fill ${moneyToneClass(bar.isOver ? "short" : "neutral")}`}
+                className={`lsd-bar-fill ${moneyToneClass(bar.isOver ? "short" : "neutral")}`}
                 style={{ width: `${bar.percent}%` }}
               />
             ) : null}
           </span>
           {lineStart || lineEnd ? (
-            <div className="lead-card-progress-line">
+            <div className="lsd-progress-line">
               {lineStart ? <span>{lineStart}</span> : null}
               {lineEnd ? <span>{lineEnd}</span> : null}
             </div>
           ) : null}
         </div>
       ) : null}
-      {chips ? <div className="lead-card-chips">{chips}</div> : null}
+      {hasChips ? <div className="lsd-chips">{chips}</div> : null}
       {children}
     </section>
   );
 }
 
-const STATE_CHIP_TONES = new Set(["mint", "rose", "sky", "butter", "lavender"]);
-
-// A Support chip: context you read but rarely change. `person` gives the
-// person's chip in their colour (person-colour.js, never a new hue); `tone`
-// a status in its pastel pair; `icon` a 14px lucide icon.
-export function MetaChip({ icon: Icon = null, person = undefined, tone = undefined, children }) {
-  const kind = person !== undefined ? " meta-chip-person" : STATE_CHIP_TONES.has(tone) ? ` meta-chip-${tone}` : "";
+// The lead's bubble: a caller's own (a category appearance popover) in a
+// slot, else the category's colour and icon, else a neutral one.
+function LeadBubble({ bubble, category, colour }) {
+  if (bubble) {
+    return <span className="lsd-bubble-slot">{bubble}</span>;
+  }
+  const Icon = category?.icon ?? (category?.iconKey ? ICON_REGISTRY[category.iconKey] ?? Receipt : null);
   return (
-    <span className={`meta-chip${kind}`} style={person !== undefined ? getPersonColourVars(person) : undefined}>
-      {person !== undefined ? <span className="meta-chip-dot" aria-hidden="true" /> : null}
+    <span className="lsd-bubble" style={{ "--cat": colour }} aria-hidden="true">
+      {Icon ? <Icon size={26} strokeWidth={2} /> : null}
+    </span>
+  );
+}
+
+/**
+ * A Support chip: context you read but rarely change. `person` gives the
+ * person's chip in their colour (person-colour.js, never a new hue); `tone`
+ * a status in its pastel pair (an unknown tone is ignored); `icon` a 14px
+ * lucide icon.
+ * @param {{ icon?: any, person?: string | null, tone?: string, children?: any, className?: string }} props
+ */
+export function MetaChip({ icon: Icon = null, person = undefined, tone = undefined, children = null, className = "" }) {
+  const toneClass = tone && STATE_TONES.has(tone) ? `is-${tone}` : "";
+  return (
+    <span
+      className={joinClasses("lsd-chip", person ? "is-person" : "", toneClass, className)}
+      style={person ? getPersonColourVars(person) : undefined}
+    >
       {Icon ? <Icon size={14} aria-hidden="true" /> : null}
       {children}
     </span>
   );
 }
 
-// One rounded group of Detail rows.
-export function DetailRows({ label = undefined, className = "", children }) {
+/**
+ * One rounded group of Detail rows, named for assistive tech.
+ * @param {{ label?: string, children?: any, className?: string }} props
+ */
+export function DetailRows({ label = undefined, children = null, className = "" }) {
   return (
-    <div className={`detail-rows ${className}`.trim()} role="group" aria-label={label}>
+    <div className={joinClasses("lsd-rows", className)} role="group" aria-label={label}>
       {children}
     </div>
   );
 }
 
-// One Detail row: a muted label on the left, the value on the right and a
-// `›`. Three shapes:
-// - with children (a control): a <label> around it, so the control keeps its
-//   name and opens in place (an input, a ResponsiveSelect, a date input);
-// - with onClick: a button (an action row such as "See the 10 entries");
-// - otherwise a plain row.
-// `action` is terracotta, an empty `value` shows `emptyLabel` muted, and
-// `locked` is muted with a lock instead of the `›` and never clickable.
-// `labelId` names the label so a control that is itself a button (a
-// ResponsiveSelect trigger, which takes `labelId`) can say both the label
-// and its value.
+/**
+ * One Detail row: a muted label on the left, the value on the right with a
+ * `›` (or a lock). Three shapes:
+ * - with `children` (the field's own control: an inline input, a
+ *   ResponsiveSelect, or a native select or date field laid over the row
+ *   with `lsd-row-native`): a <label> around it, so the control keeps the
+ *   row's name and Tab order stays the field order;
+ * - otherwise a button (an action row such as "See the 10 entries");
+ * - locked: a plain line with a lock, never clickable.
+ * States: `state` "empty" | "action" | "locked", or the `action` and
+ * `locked` flags; an empty `value` shows `emptyLabel` muted. `disabled`
+ * mutes a button row and drops its `›`. `labelId` names the label so a
+ * control that is itself a button (a ResponsiveSelect trigger, which takes
+ * `labelId`) can say both the label and its value. `hint` is a muted aside
+ * before the `›`.
+ * @param {{
+ *   label: any, value?: any, emptyLabel?: any, state?: "empty" | "action" | "locked",
+ *   action?: boolean, locked?: boolean, disabled?: boolean, hint?: any, labelId?: string,
+ *   onClick?: (event: any) => void, children?: any, className?: string, [key: string]: any
+ * }} props
+ */
 export function DetailRow({
   label,
   value = null,
   emptyLabel = null,
+  state = undefined,
   action = false,
   locked = false,
   disabled = false,
-  onClick = undefined,
+  hint = null,
   labelId = undefined,
+  onClick = undefined,
+  children = null,
   className = "",
+  ...rest
+}) {
+  const isLocked = locked || state === "locked";
+  const hasValue = !isBlank(value);
+  const isEmpty = state === "empty" || (!hasValue && !isBlank(emptyLabel));
+  const isAction = !isLocked && (action || state === "action");
+  const shown = hasValue ? value : emptyLabel;
+  const Icon = isLocked ? Lock : ChevronRight;
+  const valueContent = !isBlank(shown) ? (
+    <span className={joinClasses("lsd-row-value", isAction ? "is-action" : "", isEmpty && !isAction ? "is-empty" : "", isLocked ? "is-locked" : "")}>
+      {typeof shown === "string" ? <span className="lsd-row-text">{shown}</span> : shown}
+      {hint ? <span className="lsd-row-hint">{hint}</span> : null}
+      <Icon size={isLocked ? 15 : 16} aria-hidden="true" className={isLocked ? "lsd-row-lock" : "lsd-row-chevron"} />
+    </span>
+  ) : isLocked ? (
+    <span className="lsd-row-value is-locked"><Lock size={15} aria-hidden="true" className="lsd-row-lock" /></span>
+  ) : null;
+  const content = (
+    <>
+      <span id={labelId} className="lsd-row-label">{label}</span>
+      {valueContent}
+    </>
+  );
+  const states = [isAction ? "is-action" : "", isEmpty && !isAction ? "is-empty" : "", isLocked ? "is-locked" : ""];
+
+  if (children) {
+    return (
+      <label className={joinClasses("lsd-row has-control", ...states, className)} {...rest}>
+        {content}
+        {children}
+      </label>
+    );
+  }
+  if (isLocked) {
+    return <div className={joinClasses("lsd-row", ...states, className)} {...rest}>{content}</div>;
+  }
+  return (
+    <button type="button" className={joinClasses("lsd-row", ...states, className)} disabled={disabled || undefined} onClick={onClick} {...rest}>
+      {content}
+    </button>
+  );
+}
+
+/**
+ * The folding row for fields most people never change on that screen. It
+ * lists what it holds while closed (`summary`), so nothing is hidden without
+ * a hint; its rows render under it, inside the same group, only while open.
+ * Controlled with `open` and `onOpenChange`, or on its own from
+ * `defaultOpen`. `forceOpen` keeps it open: required fields and anything
+ * with an error never fold.
+ * @param {{
+ *   summary?: any, open?: boolean, onOpenChange?: (open: boolean) => void, defaultOpen?: boolean,
+ *   forceOpen?: boolean, label?: string, openLabel?: string, children?: any, [key: string]: any
+ * }} props
+ */
+export function MoreDetails({
+  summary = null,
+  open = undefined,
+  onOpenChange = undefined,
+  defaultOpen = false,
+  forceOpen = false,
+  label = "More details",
+  openLabel = "Fewer details",
   children = null,
   ...rest
 }) {
-  const isEmpty = !children && (value === null || value === "" || value === undefined);
-  const states = [
-    action && !locked ? "is-action" : "",
-    isEmpty && !action ? "is-empty" : "",
-    locked ? "is-locked" : "",
-    className
-  ].filter(Boolean).join(" ");
-  const content = (
-    <>
-      <span id={labelId} className="detail-row-label">{label}</span>
-      <span className="detail-row-value">{children ?? (isEmpty ? emptyLabel : value)}</span>
-      {locked
-        ? <Lock className="detail-row-lock" size={14} aria-hidden="true" />
-        : <ChevronRight className="detail-row-chevron" size={16} aria-hidden="true" />}
-    </>
-  );
-
-  if (children && !locked) {
-    return <label className={`detail-row is-field ${states}`.trim()} {...rest}>{content}</label>;
-  }
-  if (onClick && !locked) {
-    return (
-      <button type="button" className={`detail-row is-button ${states}`.trim()} disabled={disabled} onClick={onClick} {...rest}>
-        {content}
-      </button>
-    );
-  }
-  return <div className={`detail-row ${states}`.trim()} {...rest}>{content}</div>;
-}
-
-// The fold for fields most people never change on that screen. The toggle
-// row lists what is inside (`summary`), so nothing hides without a hint.
-// `forceOpen` keeps it open: required fields and anything with an error
-// never fold.
-export function MoreDetails({ label = "More details", summary = null, defaultOpen = false, forceOpen = false, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const contentId = useId();
-  const isOpen = forceOpen || open;
+  const [ownOpen, setOwnOpen] = useState(defaultOpen);
+  const isOpen = forceOpen || (open ?? ownOpen);
+  const toggle = () => {
+    if (open === undefined) setOwnOpen(!isOpen);
+    onOpenChange?.(!isOpen);
+  };
   return (
-    <div className={isOpen ? "more-details is-open" : "more-details"}>
+    <>
       <button
         type="button"
-        className="more-details-toggle"
+        className={joinClasses("lsd-row lsd-row-more", isOpen ? "is-open" : "")}
         aria-expanded={isOpen}
-        aria-controls={contentId}
-        disabled={forceOpen}
-        onClick={() => setOpen((current) => !current)}
+        disabled={forceOpen || undefined}
+        onClick={toggle}
+        {...rest}
       >
-        <span className="more-details-label">{label}</span>
-        {summary ? <span className="more-details-summary">{summary}</span> : null}
-        <ChevronDown className="more-details-chevron" size={16} aria-hidden="true" />
+        <span className="lsd-row-label">{isOpen && !forceOpen ? openLabel : label}</span>
+        <span className="lsd-row-value">
+          {isOpen || !summary ? null : <span className="lsd-row-hint">{summary}</span>}
+          <ChevronRight size={16} aria-hidden="true" className={isOpen ? "is-open" : undefined} />
+        </span>
       </button>
-      {isOpen ? <div id={contentId} className="more-details-content">{children}</div> : null}
-    </div>
+      {isOpen ? children : null}
+    </>
   );
 }
 
-// The bottom action bar: one quiet text action on the left (Cancel, or a
-// danger action such as Delete) and the primary on the right, both 50px
-// tall, inside the safe area. The primary submits the surrounding form
-// unless `onPrimary` is given.
+/**
+ * The bottom bar: a quiet or destructive action on its own at the start,
+ * then the secondary action and the primary action at the end, where the
+ * thumb is. Pass ready buttons (`destructive`, `secondary`, `primary`; use
+ * the `lsd-quiet`, `lsd-quiet is-danger` and `lsd-primary` classes) or let
+ * the bar build them: `primaryLabel` (submits the surrounding form unless
+ * `onPrimary` is given) and `quietLabel` with `onQuiet` (`quietTone:
+ * "danger"` for Delete). `className="is-sheet-bar"` makes it a sheet's
+ * sticky footer inside the safe area.
+ * @param {{
+ *   primary?: any, secondary?: any, destructive?: any,
+ *   primaryLabel?: any, onPrimary?: () => void, primaryDisabled?: boolean,
+ *   quietLabel?: any, quietTone?: "danger", quietDisabled?: boolean, onQuiet?: () => void,
+ *   className?: string
+ * }} props
+ */
 export function BottomActions({
-  primaryLabel,
+  primary = null,
+  secondary = null,
+  destructive = null,
+  primaryLabel = null,
   onPrimary = undefined,
   primaryDisabled = false,
   quietLabel = null,
@@ -231,26 +360,34 @@ export function BottomActions({
   onQuiet = undefined,
   className = ""
 }) {
+  const builtQuiet = quietLabel && onQuiet ? (
+    <button
+      type="button"
+      className={quietTone === "danger" ? "lsd-quiet is-danger" : "lsd-quiet"}
+      disabled={quietDisabled}
+      onClick={onQuiet}
+    >
+      {quietLabel}
+    </button>
+  ) : null;
+  const builtPrimary = primaryLabel ? (
+    <button
+      type={onPrimary ? "button" : "submit"}
+      className="lsd-primary"
+      disabled={primaryDisabled}
+      onClick={onPrimary}
+    >
+      {primaryLabel}
+    </button>
+  ) : null;
+  const start = destructive || builtQuiet ? <>{destructive}{builtQuiet}</> : null;
   return (
-    <div className={`bottom-actions ${className}`.trim()}>
-      {quietLabel && onQuiet ? (
-        <button
-          type="button"
-          className={quietTone === "danger" ? "bottom-actions-quiet is-danger" : "bottom-actions-quiet"}
-          disabled={quietDisabled}
-          onClick={onQuiet}
-        >
-          {quietLabel}
-        </button>
-      ) : null}
-      <button
-        type={onPrimary ? "button" : "submit"}
-        className="dialog-primary bottom-actions-primary"
-        disabled={primaryDisabled}
-        onClick={onPrimary}
-      >
-        {primaryLabel}
-      </button>
+    <div className={joinClasses("lsd-bottom", className)}>
+      {start ? <div className="lsd-bottom-start">{start}</div> : null}
+      <div className="lsd-bottom-end">
+        {secondary}
+        {primary ?? builtPrimary}
+      </div>
     </div>
   );
 }

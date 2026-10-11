@@ -65,6 +65,20 @@ and edit sheets are modal dialogs. Escape closes them, except while a save
 or delete is in flight, and focus returns to the opener. Sheet errors are
 announced as alerts.
 
+The edit sheet (phone) and the inline editor (wide screen) both render
+`EntryEditCard` (`entry-edit-card.jsx`, design.md "Lead · Support ·
+Detail"): a lead card with what it was and the amount, Support chips, and
+Detail rows. It patches the same draft through the same `updateEntry`,
+`updateEntryAmount` and owner handlers the grid editor used, so the saved
+payload is unchanged; the Splits row runs the same Add to splits / View
+split actions, Delete entry goes through the in-app confirmation, and a
+statement-certified entry keeps its bank facts read-only (description,
+amount, date, wallet, posted date; type within its direction). The phone
+sheet's bottom bar holds Delete entry (and Delete split once linked),
+Cancel or Close, and Save; while Add to splits asks for a group, the bar
+becomes the group question (`EntrySplitGroupPickerFooter`). The add sheet
+(composer) still uses the grid form (`EntryEditorFields`).
+
 ## Data Flow
 
 Entries data comes from:
@@ -127,3 +141,9 @@ Watch area:
 - The category dialog opened from a sheet, the composer or a row stops its
   submit, click and key events, so saving it never saves or opens the
   surrounding entry.
+- `lead-support-detail-sheets.spec.js` proves the edit card in WebKit on an
+  iPhone 13 and in Chromium: the saved fields, the certified lock, the
+  in-app delete confirmation, tap targets of 44 px or more with 8 px apart,
+  hidden money, and Tab order in the wide-screen editor.
+- Known gap (unchanged by the card): an amount that is not a number reads as
+  zero, as in the grid form, and the update endpoint accepts a zero amount.
