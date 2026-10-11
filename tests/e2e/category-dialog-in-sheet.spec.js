@@ -82,7 +82,7 @@ test("mobile: saving the category from the add planned item sheet saves only the
   await page.getByRole("button", { name: "+ Add planned item" }).click();
   const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
   await expect(sheet).toBeVisible();
-  const label = sheet.getByLabel("Item", { exact: true });
+  const label = sheet.getByLabel("Item name", { exact: true });
   const draft = `Unsaved plan draft ${Date.now()}`;
   await label.fill(draft);
 
