@@ -555,3 +555,175 @@ test("AI suggestion validation: amounts and words must come from the sentence", 
     assert.equal(parseEntryDraftAiSuggestion(value, "kopi twelve"), null, JSON.stringify(value));
   }
 });
+
+// ---------------------------------------------------------------------------
+// Payment ways (DOMAIN.md "Payment Way"): a payment word ("paynow", "NETS",
+// "cash") with no account named picks the owner's account from Settings ->
+// Payment ways, marked "rule". With no setting for that person and that way,
+// the draft keeps today's Default account priority; it never borrows another
+// person's payment way.
+
+const CASH_WALLET = account("acct-ethan-cash", "Cash", "Ethan's Wallet", "cash", "Ethan");
+const PAYMENT_WAYS = [
+  { personId: "person-ethan", bankTransferAccountId: "acct-ocbc-360", cashAccountId: "acct-ethan-cash" },
+  { personId: "person-serene", bankTransferAccountId: "acct-uob-one", cashAccountId: "" }
+];
+const PAY_CONTEXT = { ...CONTEXT, accounts: [...ACCOUNTS, CASH_WALLET], paymentWays: PAYMENT_WAYS, viewerName: "Ethan" };
+
+test("lunch at nasi lemak bmv 7.20, paynow, mine: the viewer's PayNow account by rule, the payment word left out", () => {
+  const draft = parseEntrySentence("lunch at nasi lemak bmv 7.20, paynow, mine", PAY_CONTEXT);
+  assert.deepEqual(draft.fields, {
+    date: d(TODAY),
+    description: s("lunch at nasi lemak bmv"),
+    accountId: r("acct-ocbc-360"),
+    accountName: r("OCBC 360 Account"),
+    categoryName: r("Food & Drinks"),
+    amountMinor: s(720),
+    entryType: d("expense"),
+    ownershipType: d("direct"),
+    ownerName: s("Ethan")
+  });
+  assert.deepEqual(draft.missing, []);
+  assert.deepEqual(draft.questions, []);
+  assert.deepEqual(draft.flags, []);
+  assert.deepEqual(draft.createBody, {
+    date: TODAY,
+    description: "lunch at nasi lemak bmv",
+    accountId: "acct-ocbc-360",
+    accountName: "OCBC 360 Account",
+    categoryName: "Food & Drinks",
+    amountMinor: 720,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Ethan"
+  });
+
+  // The same sentence in Serene's view is Serene's PayNow account.
+  const serene = parseEntrySentence("lunch at nasi lemak bmv 7.20, paynow, mine", { ...PAY_CONTEXT, viewerName: "Serene" });
+  assert.deepEqual(serene.fields.accountId, r("acct-uob-one"));
+  assert.deepEqual(serene.fields.ownerName, s("Serene"));
+});
+
+test("PayNow spellings and bank words all mean the PayNow and bank transfers account", () => {
+  for (const text of [
+    "kopi 2.40 PayNow",
+    "kopi 2.40 pay now",
+    "kopi 2.40 paid by paynow",
+    "kopi 2.40 via FAST",
+    "kopi 2.40 bank transfer",
+    "kopi 2.40 GIRO",
+    "kopi 2.40 NETS",
+    "kopi 2.40 paid with nets"
+  ]) {
+    const draft = parseEntrySentence(text, PAY_CONTEXT);
+    assert.deepEqual(draft.fields.accountId, r("acct-ocbc-360"), text);
+    assert.deepEqual(draft.fields.description, s("kopi"), text);
+    assert.deepEqual(draft.fields.entryType, d("expense"), `${text}: a bank transfer word is how it was paid, not a transfer`);
+    assert.deepEqual(draft.fields.ownerName, d("Ethan"), text);
+  }
+});
+
+test("taxi 15 cash: the cash wallet when one is set, else Default account priority, and cash leaves the description", () => {
+  const withWallet = parseEntrySentence("taxi 15 cash", PAY_CONTEXT);
+  assert.deepEqual(withWallet.fields, {
+    date: d(TODAY),
+    description: s("taxi"),
+    accountId: r("acct-ethan-cash"),
+    accountName: r("Ethan's Wallet"),
+    categoryName: d("Other"),
+    amountMinor: s(1500),
+    entryType: d("expense"),
+    ownershipType: d("direct"),
+    ownerName: d("Ethan")
+  });
+  assert.equal(withWallet.createBody.accountId, "acct-ethan-cash");
+
+  const withoutWallet = parseEntrySentence("taxi 15 cash", { ...PAY_CONTEXT, viewerName: "Serene" });
+  assert.deepEqual(withoutWallet.fields.accountId, d("acct-citi-cash-back"));
+  assert.deepEqual(withoutWallet.fields.description, s("taxi"));
+  assert.deepEqual(withoutWallet.fields.amountMinor, s(1500));
+
+  const paidInCash = parseEntrySentence("paid in cash for taxi $15", PAY_CONTEXT);
+  assert.deepEqual(paidInCash.fields.accountId, r("acct-ethan-cash"));
+  assert.deepEqual(paidInCash.fields.description, s("taxi"));
+});
+
+test("Serene paid by paynow: Serene's PayNow account, for a direct and a shared entry", () => {
+  const direct = parseEntrySentence("chicken rice 6.50 Serene paid by paynow", PAY_CONTEXT);
+  assert.deepEqual(direct.fields.accountId, r("acct-uob-one"));
+  assert.deepEqual(direct.fields.accountName, r("UOB One Account"));
+  assert.deepEqual(direct.fields.ownerName, s("Serene"));
+  assert.deepEqual(direct.fields.description, s("chicken rice"));
+  assert.deepEqual(direct.fields.ownershipType, d("direct"));
+
+  const shared = parseEntrySentence("Dinner $120 at Burnt Ends with Serene, she paid by paynow", PAY_CONTEXT);
+  assert.deepEqual(shared.fields.accountId, r("acct-uob-one"));
+  assert.deepEqual(shared.fields.ownerName, s("Serene"));
+  assert.deepEqual(shared.fields.ownershipType, s("shared"));
+  assert.deepEqual(shared.fields.splitBasisPoints, d(5000));
+  assert.deepEqual(shared.fields.description, s("Dinner at Burnt Ends"));
+  assert.deepEqual(shared.missing, []);
+});
+
+test("with no viewer the owner of the default account is whose payment way applies", () => {
+  const draft = parseEntrySentence("kopi 2.40 paynow", { ...PAY_CONTEXT, viewerName: undefined });
+  // Default account priority starts on Ethan's Citi card, so it is Ethan's PayNow.
+  assert.deepEqual(draft.fields.accountId, r("acct-ocbc-360"));
+  assert.deepEqual(draft.fields.ownerName, d("Ethan"));
+});
+
+test("negative: an empty payment way falls back to Default account priority and never borrows another person's", () => {
+  const emptyWay = parseEntrySentence("lunch 7.20 paynow mine", {
+    ...PAY_CONTEXT,
+    paymentWays: [{ personId: "person-ethan", bankTransferAccountId: "", cashAccountId: "" }, PAYMENT_WAYS[1]]
+  });
+  assert.deepEqual(emptyWay.fields.accountId, d("acct-citi-cash-back"));
+  assert.deepEqual(emptyWay.fields.description, s("lunch"));
+  assert.deepEqual(emptyWay.fields.ownerName, s("Ethan"));
+
+  const noSetting = parseEntrySentence("lunch 7.20 paynow mine", { ...CONTEXT, viewerName: "Ethan" });
+  assert.deepEqual(noSetting.fields.accountId, d("acct-citi-cash-back"));
+  assert.deepEqual(noSetting.fields.description, s("lunch"));
+
+  // Only Ethan has a payment way: Serene's PayNow is not guessed as his.
+  const onlyEthan = parseEntrySentence("chicken rice 6.50 Serene paid by paynow", { ...PAY_CONTEXT, paymentWays: [PAYMENT_WAYS[0]] });
+  assert.notEqual(onlyEthan.fields.accountId.value, "acct-ocbc-360");
+  assert.deepEqual(onlyEthan.fields.accountId, d("acct-citi-cash-back"));
+  assert.deepEqual(onlyEthan.fields.ownerName, s("Serene"));
+});
+
+test("negative: a named account wins over the payment way, and two payment ways are not guessed", () => {
+  const named = parseEntrySentence("kopi 2.40 paynow from POSB joint", PAY_CONTEXT);
+  assert.deepEqual(named.fields.accountId, s("acct-posb-joint"));
+  assert.deepEqual(named.fields.description, s("kopi"));
+
+  const both = parseEntrySentence("kopi 2.40 paid in cash and by paynow", PAY_CONTEXT);
+  assert.deepEqual(both.fields.description, s("kopi"));
+  assert.deepEqual(both.fields.accountId, d("acct-citi-cash-back"));
+
+  const transfer = parseEntrySentence("Moved $500 from OCBC 360 to POSB joint via FAST", PAY_CONTEXT);
+  assert.deepEqual(transfer.fields.entryType, s("transfer"));
+  assert.deepEqual(transfer.fields.accountId, s("acct-ocbc-360"));
+  assert.deepEqual(transfer.fields.description, d("Transfer to POSB Joint Account"));
+});
+
+test("negative: ordinary words that look like payment words stay in the description", () => {
+  const fastFood = parseEntrySentence("fast food 8", PAY_CONTEXT);
+  assert.deepEqual(fastFood.fields.description, s("fast food"));
+  assert.deepEqual(fastFood.fields.accountId, d("acct-citi-cash-back"));
+
+  const nets = parseEntrySentence("badminton nets $20", PAY_CONTEXT);
+  assert.deepEqual(nets.fields.description, s("badminton nets"));
+  assert.deepEqual(nets.fields.accountId, d("acct-citi-cash-back"));
+
+  const cashBack = parseEntrySentence("lunch 12 citi cash back", PAY_CONTEXT);
+  assert.deepEqual(cashBack.fields.accountId, s("acct-citi-cash-back"));
+  assert.deepEqual(cashBack.fields.description, s("lunch"));
+
+  // A wallet whose name does not say "cash", so only the payment word could
+  // take the word: mid-sentence it does not.
+  const purse = { ...CASH_WALLET, institution: "Pocket", name: "Ethan's Purse" };
+  const withdrawal = parseEntrySentence("cash withdrawal 100", { ...PAY_CONTEXT, accounts: [...ACCOUNTS, purse] });
+  assert.deepEqual(withdrawal.fields.description, s("cash withdrawal"));
+  assert.deepEqual(withdrawal.fields.accountId, d("acct-citi-cash-back"));
+});
