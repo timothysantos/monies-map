@@ -3123,7 +3123,12 @@ export function App() {
               // The receipt button opens the Ask page's card with the
               // Splits switch on for the open group; the Splits expense
               // dialog stays on "+ Add expense" and the card's "Edit in form".
-              navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup: searchParams.get("split_group") ?? "" }));
+              // The open group: the URL's, else the one Splits chose itself
+              // (it marks its hidden add trigger with it).
+              const trigger = document.querySelector("[data-splits-fab-trigger='true']");
+              const splitGroup = searchParams.get("split_group")
+                ?? (trigger instanceof HTMLElement ? trigger.dataset.splitGroup ?? "" : "");
+              navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }));
             }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
               <Receipt size={24} />
             </button>,
