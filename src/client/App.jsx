@@ -100,6 +100,7 @@ import {
 import { buildSummaryMutationRefreshPlan } from "./summary-workflow";
 import { getCurrentMonthKey } from "../lib/month";
 
+const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
@@ -112,18 +113,22 @@ const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ d
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
 // Canonical route registry for the top navigation and route-based prefetching.
+// Ask (the Ask page) is a primary tab. Until the Month tab is retired
+// (branch merge-summary-month), a phone shows Month under "More pages"
+// (phoneOverflow) so its tab bar reads Summary, Entries, Splits, Ask.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
-  { id: "month", path: "/month", label: messages.tabs.month },
+  { id: "month", path: "/month", label: messages.tabs.month, phoneOverflow: true },
   { id: "entries", path: "/entries", label: messages.tabs.entries },
   { id: "splits", path: "/splits", label: messages.tabs.splits },
+  { id: "ask", path: "/ask", label: messages.tabs.ask, icon: "ask" },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
   { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
 ];
 // Split the tabs so the primary shell keeps the highest-frequency routes in view.
-const primaryRouteTabs = routeTabs.slice(0, 4);
-const secondaryRouteTabs = routeTabs.slice(4);
+const primaryRouteTabs = routeTabs.slice(0, 5);
+const secondaryRouteTabs = routeTabs.slice(5);
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
 function createLoadingStatus(overrides = {}) {
@@ -790,6 +795,14 @@ export function App() {
     });
     return data;
   }, [queryClient, updateLoadingStatus]);
+
+  // The Ask page borrows the Entries page DTO (its split groups, and the
+  // Apple Pay Shortcut's saved entry) through the same required read, so a
+  // later visit to Entries joins it.
+  const fetchAskEntriesPage = useCallback(
+    (params, options = {}) => fetchRoutePageResponse({ path: "/api/entries-page", params }, options),
+    [fetchRoutePageResponse]
+  );
 
   // Month's Accounts section and check-in read wallet balances and statement
   // health from the view's account pills, the query Summary's "Wallets in
@@ -1779,7 +1792,7 @@ export function App() {
   // the active request; a previous page kept on screen never does.
   const routeDataReady = selectedTabId === "summary"
     ? Boolean(summaryPageData && summaryAccountPillsData) && summaryPageDataRequestKey === summaryPageParams.toString()
-    : selectedTabId === "faq" || Boolean(currentRoutePageData);
+    : selectedTabId === "faq" || selectedTabId === "ask" || Boolean(currentRoutePageData);
   const routeWorkSnapshot = useRouteWorkSnapshot(routeWorkRegistry, activeRouteKey);
   const requiredWorkCount = useRequiredWorkCount(requiredWork);
   const loginRegistrationBlocking = Boolean(loginRegistrationDraft) || isRegisteringLogin || isUnregisteringLogin;
@@ -1863,7 +1876,7 @@ export function App() {
   const isSplitsTab = renderedTabId === "splits";
   // Imports, Settings and FAQ do not depend on a period, so the header keeps
   // the period control in place but greyed out and disabled there.
-  const routeUsesPeriod = !["imports", "settings", "faq"].includes(renderedTabId);
+  const routeUsesPeriod = !["imports", "settings", "faq", "ask"].includes(renderedTabId);
   const isPeriodPassive = isSplitsTab || !routeUsesPeriod;
   // A page load error names the page the person asked for.
   const selectedPageLabel = routeTabs.find((tab) => tab.id === selectedTabId)?.label ?? "";
@@ -2067,14 +2080,35 @@ export function App() {
       return <FaqPanel viewLabel={pageView.label} categories={categories} />;
     }
 
+    if (renderedTabId === "ask") {
+      return (
+        <AskPanel
+          view={pageView}
+          selectedMonth={selectedMonth}
+          selectedScope={selectedScope}
+          accounts={accounts}
+          categories={categories}
+          people={appShell.household.people}
+          shortcutSettings={appShell.settingsPage?.shortcutSettings}
+          fetchEntriesPage={fetchAskEntriesPage}
+          onEntryMutation={broadcastEntryMutation}
+          onSplitMutation={broadcastSplitMutation}
+          runBackgroundRefresh={runBackgroundRefresh}
+        />
+      );
+    }
+
     return null;
   }, [
     appEnvironment,
     accounts,
     appShell?.household?.people,
+    appShell?.settingsPage?.shortcutSettings,
     appShell?.viewerIdentity,
+    broadcastEntryMutation,
     broadcastSplitMutation,
     categories,
+    fetchAskEntriesPage,
     closeMobileContext,
     entriesExternalRefreshToken,
     handleCategoryAppearanceChange,
@@ -2096,6 +2130,7 @@ export function App() {
     runBackgroundRefresh,
     saveSummaryMonthNote,
     selectedMonth,
+    selectedScope,
     syncAppShellAfterMutation
   ]);
   // The previous page stays on screen while the next one loads, so a crashed

@@ -1,12 +1,14 @@
 import * as Popover from "@radix-ui/react-popover";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Sparkles } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 
 // Route tabs plus the "More pages" menu for the secondary routes. App owns
 // the tab list, each link's target (URL normalization) and the warmup
-// intent handlers; this component only lays them out.
+// intent handlers; this component only lays them out. A primary tab marked
+// `phoneOverflow` stays in the strip on a wide screen but moves into "More
+// pages" on a phone.
 export function ShellRouteTabs({
   primaryTabs,
   secondaryTabs,
@@ -15,6 +17,7 @@ export function ShellRouteTabs({
   getNavIntentProps,
   pendingCategorySuggestionCount
 }) {
+  const overflowTabs = [...primaryTabs.filter((tab) => tab.phoneOverflow), ...secondaryTabs];
   const titleFor = (tab) => (
     tab.id === "settings" && pendingCategorySuggestionCount
       ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)
@@ -22,6 +25,7 @@ export function ShellRouteTabs({
   );
   const renderTabLabel = (tab) => (
     <span className="tab-label-with-badge">
+      {tab.icon === "ask" ? <Sparkles size={15} aria-hidden="true" className="tab-icon" /> : null}
       <span>{tab.label}</span>
       {tab.id === "settings" && pendingCategorySuggestionCount ? (
         <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
@@ -37,7 +41,7 @@ export function ShellRouteTabs({
         <NavLink
           key={tab.id}
           {...getNavIntentProps(tab.id)}
-          className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
+          className={({ isActive }) => `tab ${tab.phoneOverflow ? "tab-phone-overflow" : ""} ${isActive ? "is-active" : ""}`}
           to={buildTabTarget(tab)}
           title={titleFor(tab)}
         >
@@ -57,14 +61,14 @@ export function ShellRouteTabs({
       ))}
       <Popover.Root>
         <Popover.Trigger asChild>
-          <button type="button" className={`tab tab-overflow-trigger ${secondaryTabs.some((tab) => tab.id === selectedTabId) ? "is-active" : ""}`} aria-label="More pages">
+          <button type="button" className={`tab tab-overflow-trigger ${overflowTabs.some((tab) => tab.id === selectedTabId) ? "is-active" : ""}`} aria-label="More pages">
             <Ellipsis size={18} />
           </button>
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content className="tab-overflow-popover" sideOffset={10} align="end">
             <div className="tab-overflow-list">
-              {secondaryTabs.map((tab) => (
+              {overflowTabs.map((tab) => (
                 <NavLink
                   key={tab.id}
                   {...getNavIntentProps(tab.id)}

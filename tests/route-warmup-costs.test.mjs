@@ -18,7 +18,8 @@ const costs = {
     splits: { entry: "sp", estimatedGzipBytes: 5, chunks: [{ file: "assets/splits.js", estimatedGzipBytes: 5 }] },
     imports: { entry: "i", estimatedGzipBytes: 5, chunks: [{ file: "assets/imports.js", estimatedGzipBytes: 5 }] },
     settings: { entry: "se", estimatedGzipBytes: 5, chunks: [{ file: "assets/settings.js", estimatedGzipBytes: 5 }] },
-    faq: { entry: "f", estimatedGzipBytes: 5, chunks: [{ file: "assets/faq.js", estimatedGzipBytes: 5 }] }
+    faq: { entry: "f", estimatedGzipBytes: 5, chunks: [{ file: "assets/faq.js", estimatedGzipBytes: 5 }] },
+    ask: { entry: "a", estimatedGzipBytes: 5, chunks: [{ file: "assets/ask.js", estimatedGzipBytes: 5 }] }
   }
 };
 

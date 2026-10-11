@@ -32,9 +32,31 @@ export function sanitizeTabParams(params, tabId) {
     [
       "split_group",
       "split_mode",
+      "split_action",
       "editing_split_expense"
     ].forEach((key) => params.delete(key));
   }
+
+  if (tabId !== "ask") {
+    ["mode", "from", "saved_entry"].forEach((key) => params.delete(key));
+  }
+}
+
+// The Ask page's way in from another page: the new entry card from the
+// Entries + button (mode "add") or the Splits receipt button (mode
+// "expense", with the open split group). The view, month and scope stay.
+export function buildAskLocation(currentParams, { mode = "", from = "", splitGroup = "" } = {}) {
+  const params = new URLSearchParams();
+  for (const key of ["view", "month", "scope"]) {
+    const value = currentParams.get(key);
+    if (value) {
+      params.set(key, value);
+    }
+  }
+  if (mode) params.set("mode", mode);
+  if (from) params.set("from", from);
+  if (splitGroup) params.set("split_group", splitGroup);
+  return { pathname: "/ask", search: `?${params.toString()}` };
 }
 
 export function getSelectedTabId(pathname) {
@@ -61,6 +83,10 @@ export function getSelectedTabId(pathname) {
 
   if (pathname === "/faq") {
     return "faq";
+  }
+
+  if (pathname === "/ask") {
+    return "ask";
   }
 
   return "summary";
@@ -122,7 +148,8 @@ export function buildEntriesPageParams({ viewId, month }) {
 
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
   // Shape the route-page response into the minimal view object the UI needs.
-  if (tabId === "faq") {
+  // FAQ and Ask have no page request: their view is the shell's person.
+  if (tabId === "faq" || tabId === "ask") {
     const fallbackLabel = selectedViewId === "household"
       ? "Household"
       : appShell?.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";

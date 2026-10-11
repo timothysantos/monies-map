@@ -353,6 +353,10 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   gap: 6px;
 }
 
+.tab-icon {
+  flex: 0 0 auto;
+}
+
 .tab-badge {
   display: inline-grid;
   place-items: center;
@@ -8755,7 +8759,8 @@ th {
     text-decoration: none;
   }
 
-  .tab-secondary {
+  .tab-secondary,
+  .tab-phone-overflow {
     display: none;
   }
 

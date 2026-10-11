@@ -11,7 +11,8 @@ const ROUTE_ENTRIES = {
   splits: "splits-panel.jsx",
   imports: "imports-panel.jsx",
   settings: "settings-panel.jsx",
-  faq: "faq-panel.jsx"
+  faq: "faq-panel.jsx",
+  ask: "ask-panel.jsx"
 };
 
 // The build-only JSON block in dist/index.html. Group 1 is the JSON body.
