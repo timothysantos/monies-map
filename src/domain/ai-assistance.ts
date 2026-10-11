@@ -3,7 +3,8 @@ export type AiAssistCapability =
   | "import_explanation"
   | "category_rules"
   | "statement_text_fallback"
-  | "match_ranking";
+  | "match_ranking"
+  | "entry_draft";
 
 export interface AiAssistEnv {
   AI?: Ai;

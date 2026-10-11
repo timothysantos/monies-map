@@ -217,7 +217,9 @@ export function selectShortcutAccount(
   };
 }
 
-async function loadShortcutAccountReferences(db: D1Database): Promise<AccountDto[]> {
+// The household's accounts without balances or checkpoints: what account
+// selection needs (the Shortcut, and the entry draft's wallet matching).
+export async function loadShortcutAccountReferences(db: D1Database): Promise<AccountDto[]> {
   const result = await db
     .prepare(`
       SELECT
