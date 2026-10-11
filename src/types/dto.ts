@@ -1184,3 +1184,108 @@ export interface EntriesShellDto {
   importsPage: ImportsPageDto;
   settingsPage: SettingsPageDto;
 }
+
+// Entry draft (DOMAIN.md "Entry Draft"): a typed sentence read into the
+// fields /api/entries/create takes, for the user to confirm. Never a ledger
+// entry until the user saves it through the normal create route.
+export type EntryDraftFieldSource = "sentence" | "rule" | "default" | "ai";
+
+export interface EntryDraftFieldDto<T> {
+  value: T;
+  source: EntryDraftFieldSource;
+}
+
+// The create fields a draft can lack. Each one blocks createBody.
+export type EntryDraftField = "date" | "description" | "accountId" | "amountMinor" | "ownerName" | "splitBasisPoints";
+
+export type EntryDraftQuestionReason =
+  | "missing"
+  | "ambiguous"
+  | "transfer_from"
+  | "conflicting"
+  | "invalid"
+  | "future"
+  | "unknown_currency"
+  | "foreign_currency"
+  | "unclear_payer"
+  | "uneven_split";
+
+export type EntryDraftFlag =
+  | "empty_text"
+  | "truncated"
+  | "conflicting_amounts"
+  | "unknown_currency"
+  | "foreign_currency"
+  | "future_date"
+  | "invalid_date"
+  | "ambiguous_account";
+
+// One choice for a follow-up question. Only the keys the question needs are
+// set: a date, an account, an amount (with its currency when one was named),
+// a person, or a person with the splitBasisPoints that choice would post.
+export interface EntryDraftQuestionOptionDto {
+  date?: string;
+  accountId?: string;
+  accountName?: string;
+  amountMinor?: number;
+  currency?: string;
+  personName?: string;
+  splitBasisPoints?: number;
+}
+
+// Structured, not prose: the client words the question.
+export interface EntryDraftQuestionDto {
+  field: EntryDraftField;
+  reason: EntryDraftQuestionReason;
+  options: EntryDraftQuestionOptionDto[];
+}
+
+// Exactly the /api/entries/create body, set only when nothing is missing.
+export interface EntryDraftCreateBodyDto {
+  date: string;
+  description: string;
+  accountId: string;
+  accountName: string;
+  categoryName: string;
+  amountMinor: number;
+  entryType: EntryType;
+  transferDirection?: TransferDirection;
+  ownershipType: "direct" | "shared";
+  ownerName?: string;
+  splitBasisPoints?: number;
+}
+
+export interface EntryDraftDto {
+  fields: {
+    date?: EntryDraftFieldDto<string>;
+    description?: EntryDraftFieldDto<string>;
+    accountId?: EntryDraftFieldDto<string>;
+    accountName?: EntryDraftFieldDto<string>;
+    categoryName: EntryDraftFieldDto<string>;
+    amountMinor?: EntryDraftFieldDto<number>;
+    entryType: EntryDraftFieldDto<EntryType>;
+    transferDirection?: EntryDraftFieldDto<TransferDirection>;
+    ownershipType: EntryDraftFieldDto<"direct" | "shared">;
+    ownerName?: EntryDraftFieldDto<string>;
+    splitBasisPoints?: EntryDraftFieldDto<number>;
+  };
+  // An amount in another currency than the account's (IDR 159,000 on an SGD
+  // card): kept as typed; amountMinor stays missing until the user confirms
+  // the account-currency amount.
+  foreignAmount?: { amountMinor: number; currency: string; source: EntryDraftFieldSource };
+  // The other side of a transfer, for the later transfer match. Not posted.
+  transferAccount?: EntryDraftFieldDto<{ accountId: string; accountName: string }>;
+  missing: EntryDraftField[];
+  questions: EntryDraftQuestionDto[];
+  flags: EntryDraftFlag[];
+  createBody?: EntryDraftCreateBodyDto;
+}
+
+export interface EntryDraftResponseDto {
+  ok: true;
+  draft: EntryDraftDto;
+  // requested: the sentence left the amount or description missing, so the
+  // optional AI gap-filler was asked. available: it answered with something
+  // that passed validation and was merged (fields marked "ai").
+  ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
+}
