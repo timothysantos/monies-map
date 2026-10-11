@@ -54,8 +54,11 @@ Summary data comes from:
 
 The page uses the summary page DTO for range metrics, category share, and
 month cards. It uses the account-pill DTO for account health and drilldown.
-Spending Mix shows the whole range (`categoryShareChart`); it has no month
-chips of its own. The month sheet and the desktop month row read the same
+Spending Mix follows the tab's month choice and has no month chips of its
+own: on All months it shows the whole range (`categoryShareChart`); with a
+month picked the Month page shows that month's (`month-flow.md`). The
+section is shared (`spending-mix-section.jsx`) and shows the Entries empty
+state ("No spend rows in this view.") when there is no spending. The month sheet and the desktop month row read the same
 DTO's `rangeMonths` and `months` (`realExpensesMinor` against
 `estimatedExpensesMinor`); they add no request.
 

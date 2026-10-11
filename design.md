@@ -679,8 +679,16 @@ picking the range on both routes; the months offered are the range's months
   header, `All months` then the range's months newest first, in the pill
   style the Spending Mix month chips used (`.summary-focus-button`), with
   `aria-pressed`. Hidden on a phone.
-- Spending Mix has no month chips of its own: Summary is All months, so it
-  shows the whole range (`categoryShareChart`). `summary_focus` is ignored.
+- Spending Mix has no month chips of its own; the month choice drives it.
+  All months shows the whole range (`categoryShareChart`). A picked month
+  shows that month in the Month content, full width after the money
+  insights and before the plan tables (the read-out before the editing
+  work, as on All months it sits beside Intent vs Outcome), from the Month
+  page DTO's `categoryShareChart` (no request). One component for both
+  (`SpendingMixSection`, `spending-mix-section.jsx`): same card, donut and
+  category cards; no spending shows the Entries empty state instead of an
+  empty donut. Its only Month rule (spacing) is in `month-route.css`.
+  `summary_focus` is ignored.
 - Bundle: the island control, the row and the rules are in the entry chunk
   (about 0.8 kB gzip); the sheet is not. The sheet draws its tick itself and
   takes tone classes from the rules module, so it adds no first-screen file.

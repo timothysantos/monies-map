@@ -238,7 +238,8 @@ a pinned Summary request is keyed by its range, so moving between months and
 All months reuses one Summary page instead of fetching it again. The phone
 bar holds Summary, Entries and Splits plus the ••• menu (one grid column per
 primary tab). Spending Mix follows the tab's month choice and has no month
-chips. Decision: `docs/refactor-decisions.md` §8; design:
+chips: the whole range on All months, the picked month on Month (from the
+Month page DTO, no request). Decision: `docs/refactor-decisions.md` §8; design:
 design.md, "Summary Tab Month Choice".
 
 ### Client state strategy
