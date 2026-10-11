@@ -17,48 +17,63 @@ export function keyboardInsetFor({ layoutHeight, viewportHeight, viewportOffsetT
   return covered >= MIN_KEYBOARD_HEIGHT ? covered : 0;
 }
 
-/** Keeps `--keyboard-inset` on the sheet in step with the phone keyboard. */
-export function useKeyboardInset(element) {
-  useEffect(() => {
-    const viewport = typeof window === "undefined" ? null : window.visualViewport;
-    if (!element || !viewport) {
-      return undefined;
+/**
+ * Keeps `--keyboard-inset` on `element` in step with the phone keyboard
+ * until the returned function detaches it. `win` is the window (a stand-in
+ * in tests). Without an element or a visual viewport it does nothing.
+ * @param {HTMLElement | null} element
+ * @param {any} [win]
+ * @returns {() => void}
+ */
+export function attachKeyboardInset(element, win = typeof window === "undefined" ? null : window) {
+  const viewport = win?.visualViewport ?? null;
+  if (!element || !viewport) {
+    return () => {};
+  }
+  let lastInset = -1;
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    const inset = keyboardInsetFor({
+      layoutHeight: win.innerHeight,
+      viewportHeight: viewport.height,
+      viewportOffsetTop: viewport.offsetTop,
+      scale: viewport.scale ?? 1
+    });
+    if (inset === lastInset) {
+      return;
     }
-    let lastInset = -1;
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const inset = keyboardInsetFor({
-        layoutHeight: window.innerHeight,
-        viewportHeight: viewport.height,
-        viewportOffsetTop: viewport.offsetTop,
-        scale: viewport.scale ?? 1
-      });
-      if (inset === lastInset) {
-        return;
-      }
-      lastInset = inset;
-      element.style.setProperty("--keyboard-inset", `${inset}px`);
-      const focused = document.activeElement;
-      if (inset > 0 && focused instanceof HTMLElement && element.contains(focused)) {
-        focused.scrollIntoView({ block: "nearest" });
-      }
-    };
-    const schedule = () => {
-      if (!frame) {
-        frame = window.requestAnimationFrame(update);
-      }
-    };
-    update();
-    viewport.addEventListener("resize", schedule);
-    viewport.addEventListener("scroll", schedule);
-    return () => {
-      viewport.removeEventListener("resize", schedule);
-      viewport.removeEventListener("scroll", schedule);
-      if (frame) {
-        window.cancelAnimationFrame(frame);
-      }
-      element.style.removeProperty("--keyboard-inset");
-    };
-  }, [element]);
+    lastInset = inset;
+    element.style.setProperty("--keyboard-inset", `${inset}px`);
+    const focused = win.document.activeElement;
+    if (inset > 0 && focused instanceof win.HTMLElement && element.contains(focused)) {
+      focused.scrollIntoView({ block: "nearest" });
+    }
+  };
+  const schedule = () => {
+    if (!frame) {
+      frame = win.requestAnimationFrame(update);
+    }
+  };
+  update();
+  viewport.addEventListener("resize", schedule);
+  viewport.addEventListener("scroll", schedule);
+  return () => {
+    viewport.removeEventListener("resize", schedule);
+    viewport.removeEventListener("scroll", schedule);
+    if (frame) {
+      win.cancelAnimationFrame(frame);
+    }
+    element.style.removeProperty("--keyboard-inset");
+  };
+}
+
+/**
+ * The hook every bottom sheet with a bottom bar uses (EntryMobileSheet, the
+ * Splits expense dialog on a phone), so the bar and the focused field stay
+ * above the keyboard.
+ * @param {HTMLElement | null} element
+ */
+export function useKeyboardInset(element) {
+  useEffect(() => attachKeyboardInset(element), [element]);
 }

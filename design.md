@@ -1315,7 +1315,12 @@ modal desktop dialogs:
   the keyboard covers; toolbar wobbles under 120 px and pinch zoom are
   ignored), the sheet's `bottom` and `max-height` use it, and the focused
   field scrolls back into view inside the sheet. The phone Splits dialog
-  does the same.
+  does the same. Every bottom sheet with a `BottomActions` bar is one of
+  these two (the Entries edit sheet, the Month plan-row sheet, Create split
+  expense); `tests/keyboard-inset.test.mjs` fails if a new one is not, and
+  tests `attachKeyboardInset` (the hook's body) with a stand-in visual
+  viewport. Browser tests cannot open an iPhone keyboard, so this is checked
+  by unit test and on a real phone only.
 - `headerAction` adds a control before the close button (the Entries edit
   sheet's money eye) and `className` a variant (`is-lead-sheet`).
 - The opener is found by `sheet-focus-return.js`, not from

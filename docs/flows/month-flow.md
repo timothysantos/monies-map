@@ -58,8 +58,12 @@ had; `tests/e2e/lead-support-detail.spec.js` checks the save, Cancel, the
 tap targets (44px or more), hidden money and a failed save on an iPhone 13
 profile (tagged `@webkit`). There is no client check of the planned amount:
 text that is not a number saves as its digits, or $0.00, as before. The
-sheet has no swipe-down gesture and does not lift its bottom bar above the
-iPhone keyboard, so the keyboard can cover Done while a field is focused.
+sheet has no swipe-down gesture. Like every bottom sheet with a bottom bar
+it lifts itself above the iPhone keyboard (`EntryMobileSheet` uses
+`use-keyboard-inset.js`), so Done and the focused field stay in sight;
+`tests/keyboard-inset.test.mjs` pins the wiring and the hook's behaviour
+with a stand-in visual viewport, because a browser test cannot open the
+iPhone keyboard.
 
 The mobile edit, add and match sheets are modal dialogs (`EntryMobileSheet`).
 Focus moves into the sheet on open and stays inside it. Escape or a backdrop
