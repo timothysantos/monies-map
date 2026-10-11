@@ -90,9 +90,27 @@ export async function loadTransferMatchCandidates(
   return { entry, candidates };
 }
 
+// Ids of the entries in [rangeStart, rangeEndExclusive) that belong to a
+// transfer group. An entry's `linkedTransfer` is only filled when its
+// counterpart is in the same loaded range; this names every linked entry.
+export async function loadTransferGroupedEntryIds(db: D1Database, rangeStart: string, rangeEndExclusive: string): Promise<string[]> {
+  const result = await db
+    .prepare(`
+      SELECT id
+      FROM transactions
+      WHERE household_id = ?
+        AND transfer_group_id IS NOT NULL
+        AND transaction_date >= ?
+        AND transaction_date < ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, rangeStart, rangeEndExclusive)
+    .all<{ id: string }>();
+  return result.results.map((row) => row.id);
+}
+
 // The ledger stays event-first. We still project post_date so the UI can show
 // when the bank cleared a row without moving it out of its planning month.
-async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {
+export async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {
   const entries = await db
     .prepare(`
       SELECT

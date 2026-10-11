@@ -1289,3 +1289,98 @@ export interface EntryDraftResponseDto {
   // that passed validation and was merged (fields marked "ai").
   ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
 }
+
+// Skew candidates (DOMAIN.md "Skew Candidate"): read-only flags for ledger
+// entries that are most likely a split settlement between household members
+// or a move between one person's own accounts, yet still counted as spending
+// or income. Served only by GET /api/skew-candidates, never in a page DTO.
+export type SkewCandidateKind = "settlement" | "own_transfer";
+
+export interface SkewCandidateEntryDto {
+  id: string;
+  date: string;
+  description: string;
+  accountId: string;
+  accountName: string;
+  // The account owner (a joint account never takes part).
+  ownerPersonId: string;
+  entryType: EntryType;
+  transferDirection?: TransferDirection;
+  categoryName: string;
+  amountMinor: number;
+  // Dated in the requested month; only such entries count towards `skew`.
+  inMonth: boolean;
+}
+
+export type SkewCandidateReasonDto =
+  | { code: "same_amount"; amountMinor: number }
+  | { code: "days_from_settlement"; entryId: string; days: number }
+  | { code: "days_apart"; days: number }
+  | { code: "payer_account" | "payee_account"; entryId: string; personId: string; personName: string; accountName: string }
+  | { code: "same_owner"; personId: string; personName: string; fromAccountName: string; toAccountName: string }
+  | { code: "counterparty_named"; entryId: string; personName: string }
+  | { code: "counted_as_spending" | "counted_as_income" | "counted_as_payback"; entryId: string; categoryName: string };
+
+// An existing write route that resolves the candidate, in order. The finder
+// never calls them; a person (or a reviewed chat proposal) does.
+export type SkewCandidateActionDto =
+  | { action: "link_transfer"; method: "POST"; path: "/api/transfers/link"; body: { fromEntryId: string; toEntryId: string } }
+  | {
+    action: "reclassify_as_transfer";
+    method: "POST";
+    path: "/api/entries/update-classification";
+    body: { entryId: string; entryType: "transfer"; transferDirection: TransferDirection; categoryName: "Transfer" };
+  }
+  | { action: "match_settlement_checkpoint"; method: "POST"; path: "/api/splits/checkpoints/match"; body: { checkpointId: string; transactionId: string } }
+  | {
+    action: "record_group_settle_up";
+    method: "POST";
+    path: "/api/splits/settlements/create";
+    body: {
+      groupId: string | null;
+      date: string;
+      fromPersonName: string;
+      toPersonName: string;
+      amountMinor: number;
+      currency: string;
+      paymentMethod: "bank";
+      paymentStatus: "recorded";
+    };
+    // Link the new settle-up to this (transfer) entry afterwards with
+    // /api/splits/matches/link-settlement and the returned settlementId.
+    linkTransactionId: string;
+  };
+
+export interface SkewCandidateDto {
+  id: string;
+  kind: SkewCandidateKind;
+  // high: both sides found, or the one side names the other person.
+  confidence: "high" | "medium";
+  amountMinor: number;
+  currency: string;
+  // Payer and payee; the same person for an own transfer.
+  fromPerson: PersonDto;
+  toPerson: PersonDto;
+  settlement?:
+    | { source: "settlement_checkpoint"; checkpointId: string; anchorDate: string }
+    | { source: "group_balance"; groupId: string; groupName: string; anchorDate: string };
+  bothSidesFound: boolean;
+  entryIds: string[];
+  outflowEntry?: SkewCandidateEntryDto;
+  inflowEntry?: SkewCandidateEntryDto;
+  reasons: SkewCandidateReasonDto[];
+  // What the candidate's in-month entries add to the view's spending and
+  // income now; linking them as a transfer would remove exactly this.
+  skew: { spendingMinor: number; incomeMinor: number };
+  suggestedActions: SkewCandidateActionDto[];
+}
+
+export interface SkewCandidatesDto {
+  viewId: string;
+  label: string;
+  month: string;
+  scope: PersonScope;
+  candidates: SkewCandidateDto[];
+  totals: { spendingMinor: number; incomeMinor: number };
+  omittedCandidateCount: number;
+}

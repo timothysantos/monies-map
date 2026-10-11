@@ -282,6 +282,33 @@ makes every visible change in one final batch and discards the staged rows if
 anything fails. Rolling back an already rolled-back import is rejected (409).
 Evidence: `docs/audits/atomic-writes.md`.
 
+### Skew candidates (current, 2026-10)
+
+Money that moves inside the household can be imported as spending and
+income: a split settlement paid by PayNow, or a move between one person's
+own accounts filed as Salary on the receiving side. Until the pair is
+linked as a transfer (and a settlement matched to its checkpoint) the
+month's figures are wrong by that amount. `skew candidates` (DOMAIN.md,
+"Skew Candidate") flag these deterministically so anything that explains a
+month, such as the planned chat, can check them before answering:
+
+```text
+GET /api/skew-candidates?view=&month=&scope=
+  pages/skew-candidates.ts      reads: entries for the month +-14 days,
+                                transfer-grouped ids, account owners, open
+                                settlement checkpoints, split groups,
+                                expenses and settle-ups
+  splits-projection.ts          group balances, as the Splits page shows them
+  skew-candidates.ts (pure)     settlement + own_transfer candidates, skew per
+                                view and month, reasons, suggested actions
+```
+
+The route is read-only (no writes, no month refresh), is not a page DTO and
+is not carried by any first-screen or page payload. It names the existing
+write routes that resolve each candidate (`/api/transfers/link`,
+`/api/entries/update-classification`, `/api/splits/checkpoints/match`,
+`/api/splits/settlements/create`); it never calls them. No AI is involved.
+
 ### Shortcut integration boundary
 
 The Apple Pay integration uses a dedicated direct-create route rather than the
@@ -567,7 +594,10 @@ suggestions, review-only statement rows, an entry draft's missing amount or
 description, or semantic scores for candidates that
 the deterministic matchers already selected. The ledger, D1 data, category
 rules, checkpoints, reconciliation calculations, and import inbox stay
-authoritative.
+authoritative. Before any AI explanation of a month's spending or income,
+the deterministic `skew candidates` (see "Skew candidates" above) are the
+evidence of likely unlinked settlements and own-account moves; AI may phrase
+them but never decides or links them.
 
 The Money consequence map that used to sit under "See all insights" was
 retired in September 2026: it repeated what the signals say, and its

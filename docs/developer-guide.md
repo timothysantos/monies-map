@@ -1975,6 +1975,28 @@ amount, split the same way as the JPY split: a JPY 10,000 dinner split 50/50
 and matched to an SGD 93.01 card row shows Tim's share as $46.50 and Joyce's
 as $46.51. The yen amounts stay in Splits.
 
+## How are likely unlinked settlements and own-account moves found?
+
+Money that moves inside the household can arrive as spending and income. A
+simplified settlement says Ethan pays Serene $182.45; the PayNow is imported
+as an expense in Other on Ethan's account and as income in Other - Income on
+Serene's, so the month's spending and income are both $182.45 too high until
+the pair is linked as a transfer and matched to the settlement. A move from
+Ethan's OCBC 360 Account to his UOB One Account filed as Salary inflates
+income the same way.
+
+`GET /api/skew-candidates?view=&month=&scope=` flags these as skew
+candidates (DOMAIN.md, "Skew Candidate"). It is read-only, uses no AI, and
+nothing on screen calls it yet. The rules live in the pure
+`src/domain/skew-candidates.ts`: exact amount, a settlement within 5 days of
+an open settlement's date (or within 14 days after a split group's last
+open activity, for a group balance), an own-account move within 3 days,
+accounts owned by one person, and never an entry that is already linked.
+Each candidate carries its reasons, how much it skews the view's spending
+and income for the month, and the existing routes that fix it (link as a
+transfer, then match the settlement). `tests/skew-candidates.test.mjs` and
+`tests/skew-candidates-api.test.mjs` hold the rules and their refusals.
+
 ## Why do notes matter so much?
 
 The app should not treat notes as decoration. Notes explain why a month is

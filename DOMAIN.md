@@ -64,6 +64,10 @@ copy, or docs:
 - Use `split activity history` for the household-scoped, chronological record of
   reversible split changes. Deleted split records are archived rather than
   destroyed so users can restore the original record and relationships.
+- Use `skew candidate` for a read-only flag on unlinked entries that are most
+  likely money moving inside the household (a split settlement or a move
+  between one person's own accounts) yet still counted as spending or income.
+  It is never a link itself; linking stays an explicit existing action.
 
 ## Core Entities
 
@@ -1118,6 +1122,71 @@ Rules:
 - a record archived before its batch was settled was not paid by that
   settle-up: restoring it brings it back into the group's open batch
 
+### Skew Candidate
+
+A read-only flag on ledger entries that are most likely money moving inside
+the household, yet are still counted as spending or income, so a month's
+figures are off by that amount until someone links them. Example: a
+simplified settlement says Ethan pays Serene $182.45; days later that PayNow
+is imported as an expense in `Other` on Ethan's account and as income in
+`Other - Income` on Serene's, and the month's spending and income are both
+$182.45 too high until the pair is linked as a transfer and matched to the
+checkpoint.
+
+Skew candidates are found deterministically (`src/domain/skew-candidates.ts`),
+never by AI, and nothing is written: resolving one is always an existing,
+explicit action. Anything that explains a month's figures (such as a future
+chat) should check them first, so it does not explain skewed data.
+
+Canonical term:
+- `skew candidate`
+
+Kinds:
+- `settlement`: an unlinked outflow from the payer's own account and/or an
+  unlinked inflow into the payee's own account for exactly the remaining
+  amount of an open `settlement checkpoint` (status open or partially
+  matched), dated within 5 days of its settlement date; or for exactly an
+  open split group balance, dated on or after the group's last open activity
+  and within 14 days of it. Payer and payee come from the checkpoint or the
+  balance (as the Splits page computes it). Checkpoints are tried before
+  group balances. One side alone is still a candidate (the other person's
+  account may not be tracked or imported yet)
+- `own_transfer`: an unlinked outflow and an unlinked inflow of the same
+  amount between two different accounts owned by the same person, at most
+  3 days apart
+
+Rules:
+- exact amount and the same account currency, with no minimum amount (the
+  same as linking a transfer pair and matching a checkpoint)
+- only accounts owned by one person take part; a joint account never does
+- an entry in a `transfer group`, linked to a split expense or a split
+  settlement, or matched to a settlement checkpoint is never a candidate
+- each entry is in at most one candidate, paired by nearest date then id, so
+  the same data always gives the same candidates
+- the candidate's `skew` is what its entries dated in the month add to the
+  view's spending and income now, by the category offset rules (a person
+  view counts that person's entries in the scope, as Summary does). A
+  candidate that skews nothing in that view and month is left out: two
+  unlinked transfer entries count nowhere and stay with the Settings
+  transfer review, and a settlement filed under the same spending category
+  on both sides nets to zero for the household while still skewing each
+  person's view
+- `confidence` is `high` when both sides are found or the one side's
+  description names the other person, otherwise `medium`; an own transfer
+  with two equally close receiving entries is `medium`
+- each candidate lists its reasons (same amount, days from the settlement or
+  apart, whose accounts, names in the description, how each entry is
+  counted) and the existing routes that resolve it, in order: link as a
+  transfer (`/api/transfers/link`) or refile a single side as a transfer
+  (`/api/entries/update-classification`), then match the checkpoint
+  (`/api/splits/checkpoints/match`) or record the group settle-up
+  (`/api/splits/settlements/create`, then link it with
+  `/api/splits/matches/link-settlement`)
+
+Storage:
+- none: a projection served by `GET /api/skew-candidates?view=&month=&scope=`
+  (`SkewCandidatesDto`), never part of a page DTO
+
 ### Monthly Note
 
 A note attached either to a summary scope or a specific month. Notes preserve
@@ -1578,6 +1647,9 @@ These boundaries are important enough to preserve explicitly:
   `shared ownership` != a third `person`
 - Transfer linkage vs transfer facts:
   `transfer group` links transfer entries but does not replace them
+- Skew candidate vs transfer group:
+  a `skew candidate` only flags entries that look like an unlinked transfer
+  or settlement; it never links, refiles or matches anything itself
 - Planning vs actuals:
   `month plan row` != `ledger entry`
 - Proof vs balance anchor:
