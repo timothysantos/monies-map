@@ -265,6 +265,10 @@ test.describe("search and filter from Ask on a phone", { tag: "@webkit" }, () =>
     // Back from another tab: the card is there, the photo is not kept.
     await page.locator("nav.tab-strip").getByRole("link", { name: "Entries" }).click();
     await expect(page).toHaveURL(/\/entries\?/);
+    // The shell keeps Ask on screen until Entries has loaded, so the page
+    // has only left once Entries shows; tapping Ask before that never left.
+    await expect(page.locator(".entry-row").first()).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Message" })).toHaveCount(0);
     await page.locator("nav.tab-strip").getByRole("link", { name: "Ask, conversation in progress" }).click();
     await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue("FairPrice");
     await expect(page.locator(".ask-me")).toHaveText(["Sent a receipt photo"]);
