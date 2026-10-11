@@ -46,7 +46,7 @@ async function openUsable(page, path, recorder) {
 
 async function injectWarmupCosts(page) {
   await page.addInitScript(() => {
-    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "imports", "settings", "faq"].map((id) => [id, {
+    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq"].map((id) => [id, {
       entry: `${id}-panel.jsx`, estimatedGzipBytes: 1_000, chunks: [{ file: `assets/${id}-panel.js`, estimatedGzipBytes: 1_000 }]
     }]));
     document.addEventListener("DOMContentLoaded", () => {

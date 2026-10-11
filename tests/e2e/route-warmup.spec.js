@@ -24,7 +24,7 @@ function recordPanelRequests(page) {
 
 async function injectWarmupCosts(page, entriesBytes = 1_000) {
   await page.addInitScript((bytes) => {
-    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "imports", "settings", "faq"].map((id) => [id, {
+    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq"].map((id) => [id, {
       entry: `${id}-panel.jsx`,
       estimatedGzipBytes: id === "entries" ? bytes : 1_000,
       chunks: [{ file: `assets/${id}-panel.js`, estimatedGzipBytes: id === "entries" ? bytes : 1_000 }]
@@ -112,13 +112,14 @@ test.describe("route warmup on mobile", () => {
     await waitUsable(page);
     await page.waitForTimeout(3_000);
     expect(requests).toEqual(["summary"], "intent-only: no automatic warmup");
-    await page.getByRole("link", { name: "Month", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
-    await expect.poll(() => requests).toEqual(["summary", "month"]);
+    // A tab on the phone's bar (Month sits under More pages there).
+    await page.getByRole("link", { name: "Splits", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+    await expect.poll(() => requests).toEqual(["summary", "splits"]);
     await expect(page).toHaveURL(/\/summary\?/);
-    await page.getByRole("link", { name: "Month", exact: true }).click();
-    await expect(page).toHaveURL(/\/month\?/);
+    await page.getByRole("link", { name: "Splits", exact: true }).click();
+    await expect(page).toHaveURL(/\/splits\?/);
     await waitUsable(page);
-    expect(requests.filter((id) => id === "month")).toHaveLength(1);
+    expect(requests.filter((id) => id === "splits")).toHaveLength(1);
     await context.close();
   });
 
@@ -134,7 +135,7 @@ test.describe("route warmup on mobile", () => {
     const requests = recordPanelRequests(page);
     await page.goto("/summary?view=household&month=2026-05");
     await waitUsable(page);
-    await page.getByRole("link", { name: "Month", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+    await page.getByRole("link", { name: "Splits", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
     await page.waitForTimeout(5_000);
     expect(requests).toEqual(["summary"]);
     await page.getByRole("link", { name: "Entries", exact: true }).click();

@@ -360,9 +360,9 @@ person's view.
 
 ### On a phone
 
-The round **+** button opens a new entry card on [Ask](#ask); **+ Add entry**
-still opens the entry form in a sheet. Rows open their editor in a sheet
-too. The **View and scope** bar and month buttons float above the
+The round **+** button opens a new entry card on [Ask](#ask); its **Edit in
+form** button opens the usual entry form in a sheet instead. Rows open their
+editor in a sheet. The **View and scope** bar and month buttons float above the
 navigation, and you can swipe between months.
 
 ![Entries on a phone](/faq/guide/phone/thumbs/phone-entries.webp)

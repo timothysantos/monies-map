@@ -292,6 +292,15 @@ test.describe("the Ask page on a phone", () => {
     await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
   });
 
+  test("with no group in the URL, the receipt button carries the group Splits opened on", async ({ page }) => {
+    await gotoPageAfterApi(page, "/splits?view=person-tim&month=2025-10", "/api/splits-page", () => page.locator(".splits-fab"));
+    const chosen = await page.locator("[data-splits-fab-trigger='true']").getAttribute("data-split-group");
+    expect(chosen).toBeTruthy();
+    await page.locator(".splits-fab").click();
+    await expect(page).toHaveURL(new RegExp(`/ask\\?.*mode=expense.*split_group=${chosen}`));
+    await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+  });
+
   test("the Apple Pay Shortcut's link opens the saved entry's card and asks about Other", async ({ page }) => {
     const description = `STARBUCKS ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {

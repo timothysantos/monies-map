@@ -277,9 +277,10 @@ test.describe("settings reference data", () => {
     const created = await response.json();
     expect(created.ok).toBe(true);
     expect(created.entryId).toBeTruthy();
-    expect(created.openUrl).toContain(`/entries`);
+    // The saved entry opens on the Ask page, in its own month.
+    expect(created.openUrl).toContain(`/ask?saved_entry=${created.entryId}`);
     expect(created.openUrl).toContain("month=2026-08");
-    expect(created.openUrl).toContain(`entry_wallet=${encodeURIComponent(targetAccount.id)}`);
+    expect(created.openUrl).toContain("from=shortcut");
     expect(created).toMatchObject({
       created: true,
       amountMinor: 1234,
