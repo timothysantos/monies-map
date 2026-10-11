@@ -1290,6 +1290,30 @@ export interface EntryDraftResponseDto {
   ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
 }
 
+// AI provider status (DOMAIN.md "AI Provider Status"): served only by
+// GET /api/ai-assist/provider-status and POST .../topped-up, and only to an
+// owner listed in AI_ALERT_EMAILS; everyone else gets { visible: false }.
+export type ClaudeFailureCategory = "credit_exhausted" | "spend_capped" | "auth" | "other";
+export type ClaudeCreditState = "ok" | "low" | "exhausted" | "capped" | "unknown";
+
+export type AiProviderStatusResponseDto =
+  | { ok: true; visible: false }
+  | {
+    ok: true;
+    visible: true;
+    claudeConfigured: boolean;
+    state: ClaudeCreditState;
+    // An estimate from response token counts and configured prices since
+    // the last top-up mark; the Claude Console balance is authoritative.
+    estimatedSpendUsd: number;
+    creditUsd: number;
+    warnAtUsd: number;
+    lastFailureAt?: string;
+    lastFailureReason?: ClaudeFailureCategory;
+    lastSuccessAt?: string;
+    consoleBillingUrl: string;
+  };
+
 // Skew candidates (DOMAIN.md "Skew Candidate"): read-only flags for ledger
 // entries that are most likely a split settlement between household members
 // or a move between one person's own accounts, yet still counted as spending

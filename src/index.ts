@@ -120,6 +120,7 @@ import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
 import { SplitSettlementLockedError } from "./domain/split-settlement-lock";
+import { getAuthenticatedEmail } from "./server/access-identity";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
@@ -162,9 +163,17 @@ export interface Env {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
   AI_GATEWAY_TOKEN?: string;
+  AI_GATEWAY_BYOK_ALIAS?: string;
   ANTHROPIC_API_KEY?: string;
   AI_CLAUDE_MODEL?: string;
   AI_FALLBACK_MODEL?: string;
+  // Claude credit status (src/domain/ai-provider-status.ts): who sees it,
+  // the estimate's prices and the credit and warn amounts.
+  AI_ALERT_EMAILS?: string;
+  AI_CLAUDE_PRICE_IN_PER_MTOK?: string;
+  AI_CLAUDE_PRICE_OUT_PER_MTOK?: string;
+  AI_CLAUDE_CREDIT_USD?: string;
+  AI_CLAUDE_WARN_AT_USD?: string;
 }
 
 const API_PAGE_SLOW_MS = 750;
@@ -2170,12 +2179,6 @@ export default {
 
 function describeError(error: unknown) {
   return error instanceof Error && error.message ? error.message : "Unknown server error";
-}
-
-function getAuthenticatedEmail(request: Request) {
-  return request.headers.get("CF-Access-Authenticated-User-Email")?.trim().toLowerCase()
-    || request.headers.get("Cf-Access-Authenticated-User-Email")?.trim().toLowerCase()
-    || undefined;
 }
 
 async function authenticateShortcutRequest(

@@ -35,6 +35,7 @@ import { todayInAppTimeZone } from "../lib/app-calendar";
 import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
+import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleReceiptRead } from "./receipt-read-route";
 
 export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database };
@@ -89,6 +90,13 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
 
   if (url.pathname === "/api/ai-assist/receipt-read" && request.method === "POST") {
     return handleReceiptRead(request, env);
+  }
+
+  if (url.pathname.startsWith("/api/ai-assist/provider-status")) {
+    const statusResponse = await handleAiProviderStatusRoute(request, url, env);
+    if (statusResponse) {
+      return statusResponse;
+    }
   }
 
   if (url.pathname === "/api/ai-assist/monthly-narrative" && request.method === "POST") {

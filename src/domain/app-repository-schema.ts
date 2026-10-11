@@ -163,6 +163,18 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   `).run();
 
   await db.prepare(`
+    CREATE TABLE IF NOT EXISTS ai_provider_status (
+      provider TEXT PRIMARY KEY CHECK (provider = 'claude'),
+      last_failure_category TEXT CHECK (last_failure_category IN ('credit_exhausted', 'spend_capped', 'auth', 'other')),
+      last_failure_at TEXT,
+      last_success_at TEXT,
+      estimated_spend_micro_usd INTEGER NOT NULL DEFAULT 0,
+      topped_up_at TEXT,
+      topped_up_credit_micro_usd INTEGER
+    )
+  `).run();
+
+  await db.prepare(`
     CREATE TABLE IF NOT EXISTS category_match_rule_issue_ignores (
       id TEXT PRIMARY KEY,
       household_id TEXT NOT NULL,
