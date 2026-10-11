@@ -26,7 +26,10 @@ export function shardStack(index, { logDir = "test-results/e2e-sharded/logs", po
     baseURL: `http://127.0.0.1:${uiPort}`,
     apiOrigin: `http://127.0.0.1:${apiPort}`,
     persistTo: `.wrangler/state-shard-${index}`,
-    viteCacheDir: `node_modules/.vite-shard-${index}`,
+    // Keyed by the UI port, so it follows E2E_PORT_OFFSET: worktrees that
+    // share node_modules never share (or, on stop, delete) a running
+    // stack's Vite cache.
+    viteCacheDir: `node_modules/.vite-shard-${uiPort}`,
     serverLog: path.join(logDir, `shard-${index}-servers.log`)
   };
 }

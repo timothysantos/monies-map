@@ -16,7 +16,11 @@ and parallel sessions kept colliding on those ports.
 - `scripts/e2e-stack.mjs`: one isolated stack per shard. Vite runs on
   `5500+N`, Wrangler on `8900+N`, the inspector on `9500+N`, with D1 in
   `.wrangler/state-shard-N` (emptied, then migrated from `schema.sql`) and the
-  Vite cache in `node_modules/.vite-shard-N`. Vite starts through
+  Vite cache in `node_modules/.vite-shard-<UI port>` (so it follows
+  `E2E_PORT_OFFSET`: worktrees that share `node_modules` through a symlink
+  never share, or delete on stop, a running stack's cache; it was
+  `.vite-shard-N` until 12 October 2026, when an offset run in one worktree
+  could remove another session's cache). Vite starts through
   `scripts/e2e-vite-server.mjs` because the Vite CLI has no cache-dir flag,
   and two servers that share `node_modules/.vite` race each other's
   dependency optimisation. Busy ports fail the run at once instead of reusing

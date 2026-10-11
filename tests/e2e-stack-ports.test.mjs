@@ -16,6 +16,18 @@ test("shard stacks get distinct ports, and an offset moves all of them together"
   assert.equal(ports(plain).filter((port) => ports(offset).includes(port)).length, 0);
 });
 
+// Worktrees often share one node_modules (a symlink), and a stack removes
+// its Vite cache when it stops. The cache follows the stack's UI port, so a
+// run with another offset never shares, or deletes, a running stack's cache.
+test("each stack's Vite cache follows its port, so offset runs never share one", () => {
+  assert.equal(shardStack(1, { portOffset: 0 }).viteCacheDir, "node_modules/.vite-shard-5501");
+  assert.equal(shardStack(1, { portOffset: 700 }).viteCacheDir, "node_modules/.vite-shard-6201");
+  const dirs = [0, 20, 700].flatMap((portOffset) => [1, 2, 3].map((index) => shardStack(index, { portOffset }).viteCacheDir));
+  assert.equal(new Set(dirs).size, dirs.length);
+  // D1 state stays per checkout (.wrangler is not shared) and per shard.
+  assert.equal(shardStack(1, { portOffset: 700 }).persistTo, ".wrangler/state-shard-1");
+});
+
 // The guide screenshot stack runs the showcase demo data by passing Worker
 // vars over wrangler.test.jsonc; browser test stacks keep the test config's
 // default demo seed.
