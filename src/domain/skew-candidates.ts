@@ -42,6 +42,10 @@ export const SETTLEMENT_WINDOW_DAYS = 5;
 // after the group's last open activity and within this many days of it.
 export const GROUP_BALANCE_WINDOW_DAYS = 14;
 export const OWN_TRANSFER_WINDOW_DAYS = 3;
+// How far outside the month the loader reads entries so a counterpart dated
+// just before or after the month is still seen (two sides of a checkpoint
+// can be twice its window apart).
+export const SKEW_ENTRY_PADDING_DAYS = Math.max(2 * SETTLEMENT_WINDOW_DAYS, GROUP_BALANCE_WINDOW_DAYS, OWN_TRANSFER_WINDOW_DAYS);
 // Bounds the response; totals still cover every candidate.
 export const MAX_SKEW_CANDIDATES = 50;
 

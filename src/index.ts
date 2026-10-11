@@ -12,6 +12,7 @@ import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
+import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
 import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
 import { buildSummaryPageDto } from "./domain/pages/summary-page";
@@ -266,6 +267,23 @@ export default {
         ok: true,
         ...(await loadTransferMatchCandidates(env.DB, entryId))
       });
+    }
+
+    // Read-only skew candidates for a view and month (DOMAIN.md "Skew
+    // Candidate"); not part of any page or first-screen payload.
+    if (url.pathname === "/api/skew-candidates") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "Skew candidates only answer GET." }, 405, { Allow: "GET" });
+      }
+      return apiPageResponse("Skew candidates", request, url, () =>
+        buildSkewCandidatesDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household",
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
+          url.searchParams.get("scope")
+        ),
+        timing
+      );
     }
 
     if (url.pathname === "/api/summary-page") {
