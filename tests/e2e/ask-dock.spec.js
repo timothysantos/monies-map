@@ -282,7 +282,11 @@ test.describe("desktop Ask", () => {
       })
     }));
     await openUsable(page, `/summary?view=household`);
-    await page.locator(".ask-dock-file").setInputFiles(RECEIPT_FIXTURE);
+    // No file input waits on the page; the paperclip opens the photo picker.
+    expect(await page.locator('input[type="file"]').count()).toBe(0);
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Add a receipt photo" }).click();
+    await (await chooser).setFiles(RECEIPT_FIXTURE);
     await expect(panel(page)).toBeVisible();
     await expect(page.locator(".ask-dock .ask-me")).toHaveText(["Sent a receipt photo"]);
     await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue("TIONG BAHRU BAKERY");

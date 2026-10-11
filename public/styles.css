@@ -2752,10 +2752,6 @@ body[data-split-inline-editor] .ask-dock-field {
   cursor: pointer;
 }
 
-.ask-dock-file {
-  display: none;
-}
-
 .ask-dock {
   --ask-dock-gutter: 16px;
   position: fixed;

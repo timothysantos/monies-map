@@ -36,7 +36,6 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
   const open = state.open && layout !== "hidden";
   const docked = open && layout === "docked";
   const fieldRef = useRef(/** @type {HTMLInputElement | null} */ (null));
-  const fileRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   // Focus given back after Close must not reopen Ask.
   const quietFocusRef = useRef(false);
 
@@ -157,22 +156,26 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
             }}
             onPaste={(event) => takePhoto(event, event.clipboardData?.files)}
           />
-          <button type="button" className="ask-dock-field-attach" aria-label={messages.askDock.attach} title={messages.askDock.attach} onClick={() => fileRef.current?.click()}>
+          {/* The photo picker's input is made on the click, so no file
+              input sits on every page. */}
+          <button
+            type="button"
+            className="ask-dock-field-attach"
+            aria-label={messages.askDock.attach}
+            title={messages.askDock.attach}
+            onClick={() => {
+              const picker = document.createElement("input");
+              picker.type = "file";
+              picker.accept = "image/*";
+              picker.addEventListener("change", () => {
+                const file = picker.files?.[0];
+                if (file) openAsk(file);
+              });
+              picker.click();
+            }}
+          >
             <Paperclip size={18} aria-hidden="true" />
           </button>
-          <input
-            ref={fileRef}
-            className="ask-dock-file"
-            type="file"
-            accept="image/*"
-            tabIndex={-1}
-            aria-hidden="true"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) openAsk(file);
-            }}
-          />
         </div>
       )}
       {open ? (
