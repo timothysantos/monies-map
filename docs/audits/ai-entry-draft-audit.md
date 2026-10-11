@@ -73,14 +73,17 @@ not a split write.
 
 ## Evidence
 
-- `tests/entry-draft.test.mjs`: 30 scenarios with exact outputs, including
+- `tests/entry-draft.test.mjs`: 34 scenarios with exact outputs, including
   "Koufu lunch $12.50 yesterday, Citi", "Dinner $120 at Burnt Ends with
   Serene, she paid", "Moved $1,500 from OCBC 360 to POSB joint", "Freelance
   payment $650 came into OCBC 360 today", "Warung babi guling IDR 159,000",
   "grab 14.20 mon", and the negative cases (no amount, two amounts,
   ambiguous wallet, inactive account, unknown currency, empty text, very
   long text, impossible and conflicting dates, uneven split, unclear payer,
-  "Sun Plaza" not read as Sunday), plus AI validation and merge rules.
+  "Sun Plaza" not read as Sunday), an inactive card that must not fall
+  through to another account of its bank, number words removed from the
+  description only when they spell the AI amount, plus AI validation and
+  merge rules.
 - `tests/ai-entry-draft-route.test.mjs`: 10 tests. AI off, binding missing,
   throwing, malformed, wrong shape, inventing values and over the allowance
   each return the same deterministic draft with no data write and no batch;
