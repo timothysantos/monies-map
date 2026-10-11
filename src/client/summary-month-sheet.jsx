@@ -70,7 +70,14 @@ export default function SummaryMonthSheet({
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content
           className="note-dialog-content split-dialog-content mobile-context-dialog summary-month-sheet"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          // Focus the sheet itself rather than its first button, so Tab and
+          // a screen reader start inside it without a focus ring on Done.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            if (event.currentTarget instanceof HTMLElement) {
+              event.currentTarget.focus({ preventScroll: true });
+            }
+          }}
         >
           <div className="note-dialog-head mobile-context-dialog-head">
             <div>
