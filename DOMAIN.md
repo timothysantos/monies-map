@@ -666,8 +666,15 @@ Rules:
   account priority gives. An unclear payer ("she paid", no one named) uses
   none.
 - A named account always wins. A payment way never applies to a transfer.
-  When that person's payment way for that kind is empty, the draft keeps
-  Default account priority; another person's payment way is never used.
+  Another person's payment way is never used.
+- Nothing chosen for that person and that kind (or an unclear payer):
+  cash is never recorded on a card or another default account; the account
+  is left out and asked (`accountId`, reason `missing`), offering that
+  person's active accounts with cash accounts first. PayNow, FAST, GIRO,
+  NETS and a bank transfer keep the Default account priority fallback,
+  unless it is a credit card: PayNow never comes from a card, so that is
+  asked too, offering that person's active accounts that are not cards,
+  bank accounts first. (Owner-approved, 2026-10-11.)
 - PayNow and bank transfers may be any active bank account, a joint one or
   another person's included (people do pay from a shared or a partner's
   account). Cash must be an active `cash` account. A save naming anything

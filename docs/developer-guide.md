@@ -1776,8 +1776,10 @@ a bad date and an amount in another currency are asked. A payment word
 ("paynow", "FAST", "GIRO", "NETS", "bank transfer", "cash") with no account
 named uses that person's payment way from Settings -> Payment ways (stored
 in `app_settings` under `payment_ways`, saved through
-`POST /api/settings/payment-ways/save`, `src/domain/payment-ways.ts`); an
-empty one keeps Default account priority. AI is asked only when the sentence
+`POST /api/settings/payment-ways/save`, `src/domain/payment-ways.ts`). With
+none chosen, cash is asked (`accountId` question, reason `missing`) and a
+bank word keeps Default account priority unless that is a card, which is
+asked too. AI is asked only when the sentence
 named no amount or left no description: one allowance unit, the redacted
 sentence alone, 80 tokens. Its answer fills only those gaps after
 validation (the amount must be stated in the sentence, the description must
