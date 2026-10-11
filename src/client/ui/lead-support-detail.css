@@ -100,6 +100,7 @@
 
 .lsd-amount-input {
   min-width: 3ch;
+  min-height: 44px;
   padding: 0;
   border: 0;
   border-radius: 4px;

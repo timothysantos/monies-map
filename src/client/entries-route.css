@@ -442,11 +442,6 @@
   display: contents;
 }
 
-/* Hidden money hides the amount's sign with it. */
-html[data-money-privacy="hidden"] .lsd-amount-sign {
-  display: none;
-}
-
 /* Phone: the edit sheet. Its top row keeps the eye and a round close
    button; its bottom bar stays at the bottom of the sheet with the primary
    action under the thumb. */

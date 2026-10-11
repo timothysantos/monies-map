@@ -8,7 +8,7 @@ import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { moniesClient } from "./monies-client-service";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { CategoryGlyph } from "./ui-components";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
@@ -344,7 +344,9 @@ function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, locked, on
   const resolvedAmountInput = amountInputValue ?? entry.amountInput ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
   const inputId = useId();
-  const sign = SIGNS[entry.entryType] ?? "";
+  // Hidden money hides the sign with the amount (design.md, "Money Colour").
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const sign = areTotalsVisible ? SIGNS[entry.entryType] ?? "" : "";
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
