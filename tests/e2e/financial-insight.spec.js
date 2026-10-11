@@ -294,6 +294,13 @@ test.describe("financial insights", () => {
     await expect(insight.locator(".checkin-fact")).toContainText(/five/i);
     await insight.getByRole("button", { name: "Show those five" }).click();
     await expect(page).toHaveURL(/entry_id=.*entry_id=.*entry_id=.*entry_id=.*entry_id=/);
+    // The list now shows exactly those five, so the link would change
+    // nothing: it goes, and the fact stays.
+    await expect(insight.locator(".checkin-fact")).toContainText(/five/i);
+    await expect(insight.getByRole("button", { name: "Show those five" })).toHaveCount(0);
+    // Widening the list again brings the link back.
+    await page.goBack();
+    await expect(insight.getByRole("button", { name: "Show those five" })).toBeVisible();
   });
 
   // A person's Splits check-in speaks from their side of the group, in the

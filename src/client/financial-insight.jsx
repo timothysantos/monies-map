@@ -31,6 +31,10 @@ import "./money-checkin.css";
 //
 // `audienceName` is the person a person view's insights address ("Tim's
 // money insights"); it is empty for the household.
+//
+// `isCheckInActionShown(action)` lets a page hide the headline's link when
+// pressing it would change nothing (Entries, already filtered to those
+// records).
 export function FinancialInsight(props) {
   return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
 }
@@ -55,7 +59,7 @@ function FinancialInsightFrame({ audienceName = "", className = "" }) {
   );
 }
 
-function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onCheckInAction, className = "" }) {
+function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onCheckInAction, isCheckInActionShown, className = "" }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const { memoryKey, contextKey, signals, page, period, triviaRotation, calmLines, clock, alsoLabel = "Also worth knowing", ready = true } = checkIn;
   const seed = `${memoryKey}|${contextKey}`;
@@ -139,7 +143,7 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
           <strong className="checkin-fact">{headline.fact}</strong>
           {headline.think ? <span className="checkin-think"> {headline.think}</span> : null}
         </p>
-        {headline.action && onCheckInAction ? (
+        {headline.action && onCheckInAction && (!isCheckInActionShown || isCheckInActionShown(headline.action)) ? (
           <button type="button" className="checkin-action" onClick={() => onCheckInAction(headline.action)}>
             {headline.action.label}
           </button>

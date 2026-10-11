@@ -1303,7 +1303,8 @@ back a shared balance ("settling up").
 1. Read the bold line and the line under it.
 2. If a link sits under them (**Compare with the statement**, **Show these
    purchases**, **Settle group** or **Review matches**), select it to open
-   exactly those records.
+   exactly those records. On Entries the link goes once the list already
+   shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
 

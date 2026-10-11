@@ -21,6 +21,7 @@ import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
+import { applyCheckInAction, isCheckInActionApplied } from "./check-in-action";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { projectEntriesForView } from "./entry-row-projection";
@@ -519,20 +520,13 @@ export function EntriesPanel({
     clock: checkInClock
   }), [checkInClock, checkInEntries, entryView.id, entryView.monthPage.month, selectedScope]);
   const handleCheckInAction = useCallback((action) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete("entry_id");
-      next.delete("entry_category");
-      next.delete("entry_search");
-      next.delete("entry_type");
-      if (action.id === "show-entries") {
-        (action.entryIds ?? []).forEach((entryId) => next.append("entry_id", entryId));
-      } else if (action.id === "open-category" && action.categoryName) {
-        next.set("entry_category", action.categoryName);
-      }
-      return next;
-    });
+    setSearchParams((current) => applyCheckInAction(current, action));
   }, [setSearchParams]);
+  // A link that would show what the list already shows is hidden.
+  const isCheckInActionShown = useCallback(
+    (action) => !isCheckInActionApplied(searchParams, action),
+    [searchParams]
+  );
   const entriesEmptyStateSuggestion = useMemo(
     () => getEntriesEmptyStateSuggestion({
       accounts,
@@ -1131,6 +1125,7 @@ export function EntriesPanel({
             audienceName={entryView.id === "household" ? "" : entryView.label}
             checkIn={checkIn}
             onCheckInAction={handleCheckInAction}
+            isCheckInActionShown={isCheckInActionShown}
             className="financial-insight-entries"
           />
         </>
