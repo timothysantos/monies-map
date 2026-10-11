@@ -173,14 +173,14 @@ async function runJson<T>(
 
   const timeoutMs = Math.max(1, Math.round(input.timeoutMs ?? DEFAULT_TIMEOUT_MS));
   if (claude) {
-    const value = input.parse(await callClaude(claude, input, request.images, timeoutMs));
-    if (value !== null && value !== undefined) {
+    const value = parseAnswer(input.parse, await callClaude(claude, input, request.images, timeoutMs));
+    if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "claude" };
     }
   }
   if (env.AI) {
-    const value = input.parse(await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images, timeoutMs));
-    if (value !== null && value !== undefined) {
+    const value = parseAnswer(input.parse, await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images, timeoutMs));
+    if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "workers-ai" };
     }
   }
@@ -297,6 +297,19 @@ function readWorkersAiJson(output: unknown) {
     return parseJsonText(content);
   }
   return content && typeof content === "object" ? content : null;
+}
+
+// A caller's parser sees only a JSON object, and a parser that throws
+// counts as a rejection, so it can never break the request.
+function parseAnswer<T>(parse: (response: unknown) => T | null, raw: unknown): T | null {
+  if (raw === null) {
+    return null;
+  }
+  try {
+    return parse(raw) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function parseJsonText(text: string) {

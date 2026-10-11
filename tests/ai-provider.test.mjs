@@ -188,6 +188,23 @@ for (const [label, respond] of [
   });
 }
 
+test("a caller parser that throws on Claude's answer counts as a rejection and falls back", async (t) => {
+  mockFetch(t, () => claudeResponse({ total: "1.00" }));
+  const ai = stubWorkersAi({ response: "{\"total\":\"2.00\"}" });
+  let calls = 0;
+  const result = await runVisionJson(createFakeDb(), { ...GATEWAY_BYOK, AI: ai }, visionInput({
+    parse: (value) => {
+      calls += 1;
+      if (calls === 1) {
+        throw new Error("parser bug");
+      }
+      return value;
+    }
+  }));
+  assert.deepEqual(result.value, { total: "2.00" });
+  assert.equal(result.provider, "workers-ai");
+});
+
 test("a Claude call slower than the timeout is aborted and Workers AI answers", async (t) => {
   mockFetch(t, (url, init) => new Promise((resolve, reject) => {
     init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
