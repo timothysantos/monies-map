@@ -21,7 +21,7 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import { formatForeignAmount } from "./foreign-currency";
-import { findNoLongerListedEntries } from "./import-no-longer-listed-entries";
+import { findNoLongerListedEntries, loadUnlistedEstimates } from "./import-no-longer-listed-entries";
 import {
   diagnoseStatementMismatches,
   getFixKey,
@@ -54,6 +54,7 @@ import type {
   StatementDiagnosisDto,
   StatementFixDto
 } from "../types/dto";
+import { cleanStatementNotices } from "./statement-notices";
 
 export async function buildImportPreview(
   db: D1Database,
@@ -379,7 +380,10 @@ export async function buildImportPreview(
     exceptionSummary,
     ...(statementDiagnosis ? { statementDiagnosis } : {}),
     ...(statementAccountMatches.length ? { statementAccountMatches } : {}),
-    ...(input.sourceType !== "pdf" ? { noLongerListedEntries: findNoLongerListedEntries({ sourceType: input.sourceType, previewRows, ledgerRows }) } : {})
+    ...(input.sourceType !== "pdf" ? {
+      noLongerListedEntries: findNoLongerListedEntries({ sourceType: input.sourceType, previewRows, ledgerRows }),
+      unlistedEstimates: await loadUnlistedEstimates(db, { sourceType: input.sourceType, previewRows, ledgerRows })
+    } : {})
   };
 }
 
@@ -2164,7 +2168,14 @@ function buildImportPreviewStatementReconciliations(input: {
       deltaMinor,
       supersededLedgerRows
     });
-    const accountLast4 = checkpoint.accountLast4 ? { accountLast4: checkpoint.accountLast4 } : {};
+    // What the statement says about the card itself: its number, what to
+    // pay by when, and the bank's notices.
+    const statementCardFacts = {
+      ...(checkpoint.accountLast4 ? { accountLast4: checkpoint.accountLast4 } : {}),
+      ...(normalizeStatementDate(checkpoint.paymentDueDate) ? { paymentDueDate: normalizeStatementDate(checkpoint.paymentDueDate)! } : {}),
+      ...(Number(checkpoint.minimumPaymentMinor) > 0 ? { minimumPaymentMinor: Math.round(Number(checkpoint.minimumPaymentMinor)) } : {}),
+      ...(cleanStatementNotices(checkpoint.notices).length ? { notices: cleanStatementNotices(checkpoint.notices) } : {})
+    };
     const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
       breakItem.account_id === account.id
       && breakItem.missing_checkpoint_month < checkpoint.checkpointMonth
@@ -2174,7 +2185,7 @@ function buildImportPreviewStatementReconciliations(input: {
         accountName: account.name,
         accountId: account.id,
         accountKind: account.kind,
-        ...accountLast4,
+        ...statementCardFacts,
         checkpointMonth: checkpoint.checkpointMonth,
         statementStartDate,
         statementEndDate,
@@ -2195,7 +2206,7 @@ function buildImportPreviewStatementReconciliations(input: {
       accountName: account.name,
       accountId: account.id,
       accountKind: account.kind,
-      ...accountLast4,
+      ...statementCardFacts,
       checkpointMonth: checkpoint.checkpointMonth,
       statementStartDate,
       statementEndDate,
@@ -2607,3 +2618,4 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
 
   return Array.from(importsById.values());
 }
+

@@ -29,7 +29,7 @@ import {
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
-import { buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, hasLaterNoLongerListedRemoval } from "./import-no-longer-listed-entries";
+import { buildEstimateReopen, buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, findLaterNoLongerListedChange } from "./import-no-longer-listed-entries";
 import {
   assertStatementFixesMatchCertification,
   buildStatementFixCleanupStatement,
@@ -46,6 +46,8 @@ import type {
   StatementFixDto
 } from "../types/dto";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { classifyBankCharge } from "./bank-charges";
+import { statementNoticesToJson } from "./statement-notices";
 
 // D1 applies its per-query limits (100 bound parameters, 100 KB of SQL,
 // 30 s) to each statement in a batch and documents no statement-count limit,
@@ -429,6 +431,9 @@ export async function commitImportBatch(
     // Activity exports: the entries the bank no longer lists that the user
     // did not keep (preview's noLongerListedEntries).
     noLongerListedEntries?: Array<{ transactionId: string; importId: string }>;
+    // Activity exports: the estimates whose row the bank no longer lists that
+    // the user did not link to a row (preview's unlistedEstimates).
+    reopenedEstimates?: Array<{ transactionId: string; importId: string }>;
     note?: string;
   }
 ) {
@@ -562,6 +567,14 @@ export async function commitImportBatch(
     const removal = await buildNoLongerListedEntryRemoval(db, importId, input.noLongerListedEntries);
     removal.statements.forEach(write);
     removal.months.forEach((month) => monthsToRecalculate.add(month));
+  }
+  if (!isOfficialStatementImport && input.reopenedEstimates?.length) {
+    const reopen = await buildEstimateReopen(db, importId, {
+      estimates: input.reopenedEstimates,
+      linkedTransactionIds: new Set(input.rows.flatMap((row) => row.reconciliationTargetTransactionId ? [row.reconciliationTargetTransactionId] : []))
+    });
+    reopen.statements.forEach(write);
+    reopen.months.forEach((month) => monthsToRecalculate.add(month));
   }
 
   // Before the rows: a moved entry must be on its statement card when its
@@ -815,7 +828,7 @@ export async function commitImportBatch(
           description, amount_minor, currency, entry_type, transfer_direction,
           category_id, owner_person_id, offsets_category, note,
           bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         transactionId,
@@ -831,6 +844,7 @@ export async function commitImportBatch(
         row.transferDirection ?? null,
         categoryId,
         directOwnerId ?? null,
+        offsetsFeesCategory(row) ? 1 : 0,
         row.note ?? null,
         isOfficialStatementImport ? "statement_certified" : "provisional",
         isOfficialStatementImport ? importId : null,
@@ -862,12 +876,16 @@ export async function commitImportBatch(
     write(db
       .prepare(`
         INSERT INTO account_balance_checkpoints (
-          id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor,
+          payment_due_date, minimum_payment_minor, statement_notices_json, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
           statement_start_date = excluded.statement_start_date,
           statement_end_date = excluded.statement_end_date,
           statement_balance_minor = excluded.statement_balance_minor,
+          payment_due_date = excluded.payment_due_date,
+          minimum_payment_minor = excluded.minimum_payment_minor,
+          statement_notices_json = excluded.statement_notices_json,
           note = excluded.note,
           updated_at = CURRENT_TIMESTAMP
       `)
@@ -882,6 +900,9 @@ export async function commitImportBatch(
           Math.round(checkpoint.statementBalanceMinor),
           account.account_kind
         ),
+        normalizeStatementDate(checkpoint.paymentDueDate),
+        normalizeMinimumPaymentMinor(checkpoint.minimumPaymentMinor),
+        statementNoticesToJson(checkpoint.notices),
         checkpoint.note ?? null
       ));
 
@@ -1351,8 +1372,11 @@ export async function rollbackImportBatch(
   if (laterHolder) {
     throw new Error("This import cannot be rolled back yet: a later import updated one of its entries. Roll back the later import first.");
   }
-  if (await hasLaterNoLongerListedRemoval(db, input.importId)) {
-    throw new Error("This import cannot be rolled back yet: a later import removed one of its entries. Roll back the later import first.");
+  const laterChange = await findLaterNoLongerListedChange(db, input.importId);
+  if (laterChange) {
+    throw new Error(laterChange === "removed"
+      ? "This import cannot be rolled back yet: a later import removed one of its entries. Roll back the later import first."
+      : "This import cannot be rolled back yet: a later import updated one of its entries. Roll back the later import first.");
   }
   // A second copy was removed because this import's entry covers it; rolling
   // back would remove both copies.
@@ -2677,4 +2701,19 @@ async function buildStatementImportMetadataCleanupStatements(db: D1Database, imp
     .prepare("DELETE FROM statement_reconciliation_certificates WHERE household_id = ? AND import_id = ?")
     .bind(DEFAULT_HOUSEHOLD_ID, importId));
   return statements;
+}
+
+// A bank's reversal of its own charge ("CR LATE CHARGE") kept in Fees takes
+// the charge back out of Fees, the way a refund offsets its category.
+function offsetsFeesCategory(row: { entryType: string; categoryName?: string | null; description: string }) {
+  return row.entryType === "income"
+    && row.categoryName === "Fees"
+    && Boolean(classifyBankCharge(row.description)?.isReversal);
+}
+
+// A statement's minimum payment in cents, or nothing when it is missing or
+// not a positive whole amount.
+function normalizeMinimumPaymentMinor(value: unknown) {
+  const amount = Math.round(Number(value));
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
 }

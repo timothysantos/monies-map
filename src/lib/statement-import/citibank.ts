@@ -65,6 +65,7 @@ export function parseCitibankCreditCardStatement(lines: string[], fileName?: str
     statementEndDate: statementDate ?? section.maxDate ?? getMonthEndDateFromMonth(checkpointMonth),
     statementBalanceMinor: section.totalBalanceMinor,
     previousBalanceMinor: section.previousBalanceMinor,
+    ...(dueDate ? { paymentDueDate: dueDate } : {}),
     note: "Imported from Citibank credit card statement"
   }));
 

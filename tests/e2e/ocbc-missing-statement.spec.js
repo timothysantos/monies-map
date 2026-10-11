@@ -72,6 +72,14 @@ test("a statement after months that were never imported names them, and the card
   await expect(card.locator(".pill").first()).toHaveText("Earlier statement missing");
   await expect(card).toContainText("Statement: $240.56 owed • Ledger after import: $138.70 owed • difference $101.86");
   await expect(page.locator(".import-blockers").getByRole("button", { name: "OCBC 365 Credit Card: import Jul 2026 and Aug 2026 first" })).toBeVisible();
+
+  // The statement's own charges and notice, and what it asks for: OCBC
+  // printed "IMMEDIATE", so the whole balance is due now.
+  const charges = card.locator(".statement-bank-charges");
+  await expect(charges).toContainText("Bank charges on this statement: Late charge $91.00 · Interest $3.98");
+  await expect(charges).toContainText("The statement says this card is past due.");
+  await expect(card.locator(".statement-card-payment-due")).toHaveText("Pay $240.56 now");
+  await card.screenshot({ path: testInfo.outputPath("ocbc-sept-card.png") });
 });
 
 test("a statement right after the last saved one keeps the general opening-balance wording", async ({ page }, testInfo) => {

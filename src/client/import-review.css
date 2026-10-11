@@ -914,3 +914,28 @@
   width: 18px;
   height: 18px;
 }
+
+/* The bank's charges and notices on a statement card: an attention banner,
+   so full pastel rose with its ink (design.md, "Money Colour"). */
+.statement-bank-charges {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--pastel-rose-line);
+  border-radius: 10px;
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+}
+
+.statement-bank-charges p,
+.statement-bank-charges strong {
+  margin: 0;
+  color: inherit;
+}
+
+/* The choices for an estimate whose bank row the file no longer lists. */
+.import-estimate-choices {
+  display: grid;
+  gap: 2px;
+}

@@ -626,7 +626,9 @@ Three strengths, never two on one element:
   pills) stay plain text with no chip: the owner found tinted chips too much
   there.
 - **Emphasis** (rare, one per area): the full fill for a banner that needs
-  attention: the import statement result and the overlap mismatch hint.
+  attention: the import statement result, the overlap mismatch hint, and a
+  statement card's bank charges and notices (`.statement-bank-charges`, full
+  rose with its ink).
 
 Intent vs Outcome bars take the tone's ink as their fill: the plan a light
 sky, actual spend the muted grey, or rose when over plan.

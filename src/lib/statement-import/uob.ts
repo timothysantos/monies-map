@@ -69,6 +69,10 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
   }
 
   const rows = sections.flatMap((section) => section.rows).sort(compareImportRowsByDate);
+  // One due date covers every card on the statement; the printed minimum is
+  // their total, so it only belongs to a card when the statement has one.
+  const paymentDueDate = findDateAfter(lines, "Payment Due Date");
+  const minimumPaymentMinor = sections.length === 1 ? findUobMinimumPayment(lines) : undefined;
   const checkpoints = sections.map((section) => ({
     accountName: section.accountName,
     checkpointMonth: statementDate.slice(0, 7),
@@ -77,6 +81,8 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
     statementBalanceMinor: section.totalBalanceMinor,
     previousBalanceMinor: section.previousBalanceMinor,
     ...(section.accountLast4 ? { accountLast4: section.accountLast4 } : {}),
+    ...(paymentDueDate ? { paymentDueDate } : {}),
+    ...(minimumPaymentMinor ? { minimumPaymentMinor } : {}),
     note: "Imported from UOB credit card statement"
   }));
 
@@ -87,6 +93,12 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
     checkpoints,
     warnings: []
   };
+}
+
+// "Total Minimum Payment Due" with its amount on the next line.
+function findUobMinimumPayment(lines: string[]) {
+  const index = lines.findIndex((line) => line === "Total Minimum Payment Due");
+  return index >= 0 ? parseMoneyLineToMinor(lines[index + 1]) : undefined;
 }
 
 export function parseUobSavingsStatement(text: string, fileName?: string): ParsedStatementImport {

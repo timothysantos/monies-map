@@ -1033,6 +1033,15 @@ back. `tests/no-longer-listed-entries-api.test.mjs` replays a real released
 Grab hold; `tests/atomic-writes-no-longer-listed.test.mjs` covers the batch
 failures.
 
+An estimate is never removed that way. When the row that last updated a
+foreign currency estimate is gone, `loadUnlistedEstimates` returns it as
+`unlistedEstimates` with up to three rows that may be its final charge. The
+client links one by setting that row's `reconciliationTargetTransactionId`
+(the usual estimate update and its rollback); the others go back with the
+commit as `reopenedEstimates`, and `buildEstimateReopen` restores the bank
+facts from the earlier export row's promotion snapshot
+(`tests/foreign-estimate-released-hold-api.test.mjs`).
+
 Status guards only apply in that second lane. `statement_certified` ledger rows
 cannot be chosen as reconciliation targets, and non-PDF mid-cycle imports
 cannot reconcile against existing imported provisional rows. Exact duplicate
@@ -1241,7 +1250,9 @@ comparison use `post_date`.
 - CSV can use one signed `amount` column or separate `expense` and `income`
   columns.
 - UOB credit-card PDFs use post date as the ledger date and keep transaction
-  date in the row note.
+  date in the row note. Every card on the statement gets its "Payment Due
+  Date"; "Total Minimum Payment Due" is the cards' total, so it is kept only
+  when the statement has one card.
 - UOB One savings PDFs use the statement period and running balances to validate
   withdrawal/deposit direction.
 - UOB current-transaction `.xls` files are old Excel binary workbooks. The
@@ -1249,7 +1260,17 @@ comparison use `post_date`.
   UOB header row is present.
 - Citibank card PDFs use layout-aware parsing for compact card-section rows.
   Citi card PDFs currently expose one row date, so statement certification uses
-  that date for both the ledger event date and posted date.
+  that date for both the ledger event date and posted date. Each card gets the
+  printed "Payment Due Date".
+- Every parser names categories through `inferCategory`, which files bank
+  charges and their reversals (`src/domain/bank-charges.ts`) under Fees. The
+  import commit saves a Fees reversal with `offsets_category = 1`. A
+  statement checkpoint's `paymentDueDate` and `minimumPaymentMinor` are saved
+  on `account_balance_checkpoints` (`payment_due_date`,
+  `minimum_payment_minor`); `/api/summary-account-pills` turns the latest
+  one into `cardBill`, its saved notices (`statement_notices_json`) into
+  `cardNotices`, and lists `unreversedCharges` for the check-in
+  (`src/domain/card-bill-projection.ts`).
 - Citibank current-activity CSV files are headerless. In the single-file flow,
   the app applies the Citi activity parser when the selected default account is
   a Citibank credit card and known Citi export clues are present, so a pasted
@@ -1268,7 +1289,10 @@ comparison use `post_date`.
   last-month balance, subtotal, and total amount due. Every credit that starts
   with `PAYMENT` (`PAYMENT BY INTERNET`, `PAYMENT - VISA DIRECT` when another
   bank pays the card) is a transfer; other credits such as cash rebates and
-  refunds are income. The cycle opens the day after the previous statement
+  refunds are income. The header's values line gives the payment due date
+  ("IMMEDIATE" means the statement date) and the minimum, and the notice
+  beside the card's name gives `past_due` or `penalty_interest` (with the
+  rate). The cycle opens the day after the previous statement
   date (OCBC prints no cycle start), and the card number on the cardholder
   line above `LAST MONTH'S BALANCE` gives the checkpoint its `accountLast4`. If you create the card account from the import
   page, the opening balance is pre-filled from the printed last-month balance.

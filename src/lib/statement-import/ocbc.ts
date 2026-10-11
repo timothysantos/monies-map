@@ -4,6 +4,8 @@ import {
   dateFromNumericStatementDate,
   estimateMonthlyStatementCycleStartDate,
   findOcbc360Period,
+  findOcbcCardNotices,
+  findOcbcPaymentTerms,
   findOcbcStatementDate,
   formatDate,
   inferCategory,
@@ -39,6 +41,7 @@ export function parseOcbcCreditCardStatement(lines: string[], fileName?: string)
 
   const section = parseOcbcCreditCardSection(lines, statementDate, accountName);
   const checkpointMonth = statementDate.slice(0, 7);
+  const notices = findOcbcCardNotices(lines);
   return {
     parserKey: accountName === "OCBC 365 Credit Card"
       ? "ocbc_365_credit_card_pdf"
@@ -55,6 +58,8 @@ export function parseOcbcCreditCardStatement(lines: string[], fileName?: string)
       statementBalanceMinor: section.totalBalanceMinor,
       previousBalanceMinor: section.previousBalanceMinor,
       ...(section.accountLast4 ? { accountLast4: section.accountLast4 } : {}),
+      ...findOcbcPaymentTerms(lines, statementDate),
+      ...(notices.length ? { notices } : {}),
       note: "Imported from OCBC credit card statement"
     }],
     warnings: []

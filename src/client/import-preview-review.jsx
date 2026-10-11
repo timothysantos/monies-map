@@ -15,6 +15,8 @@ import { entryAmountTone } from "../domain/money-tone";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
 import { getMissingStatementMonths, isLedgerMatchedPreviewRow } from "./import-preview-model";
 import { getPersonColourVars } from "./person-colour";
+import { StatementBankCharges } from "./statement-bank-charges";
+import { describePaymentDue, summarizeStatementCharges } from "./statement-charges-model";
 import "./import-review.css";
 
 const {
@@ -77,7 +79,8 @@ export function ImportPreviewReview({
   autoAppliedStatementFixCount = 0,
   onAutomaticStatementFixesChange,
   keepsNoLongerListedEntries = false,
-  onKeepsNoLongerListedEntriesChange
+  onKeepsNoLongerListedEntriesChange,
+  onLinkUnlistedEstimate
 }) {
   if (!preview) {
     return null;
@@ -222,6 +225,17 @@ export function ImportPreviewReview({
           onKeptChange={onKeepsNoLongerListedEntriesChange}
         />
       ) : null}
+
+      {/* Estimates whose bank row this file no longer lists: link the final charge or put them back. */}
+      {(preview.unlistedEstimates ?? []).map((estimate) => (
+        <UnlistedEstimate
+          key={estimate.transactionId}
+          estimate={estimate}
+          linkedRowId={previewRows.find((row) => row.reconciliationTargetTransactionId === estimate.transactionId)?.rowId ?? null}
+          isSubmitting={isSubmitting}
+          onLink={(rowId) => onLinkUnlistedEstimate?.(estimate, rowId)}
+        />
+      ))}
 
       {/* Overlap imports explain why some rows may already be covered by previous work. */}
       {visibleOverlapImports.length ? (
@@ -406,6 +420,35 @@ function NoLongerListedEntries({ entries, isKept, isSubmitting, onKeptChange }) 
         />
         <span>{messages.imports.noLongerListedKeep(entries.length)}</span>
       </label>
+    </div>
+  );
+}
+
+// A foreign currency estimate an earlier export matched to a row this file
+// no longer lists (usually a hold). Its final charge prints another foreign
+// amount, so it never pairs by itself: the user picks it, or the estimate
+// goes back to its own saved amount (the default).
+function UnlistedEstimate({ estimate, linkedRowId, isSubmitting, onLink }) {
+  const restoredAmount = formatService.money(estimate.restoredAmountMinor);
+  const name = `unlisted-estimate-${estimate.transactionId}`;
+  return (
+    <div className="import-warning">
+      <strong>{messages.imports.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}</strong>
+      <p className="lede compact">{messages.imports.unlistedEstimateDetail(restoredAmount, estimate.candidates.length > 0)}</p>
+      {estimate.candidates.length ? (
+        <div className="import-estimate-choices" role="radiogroup" aria-label={messages.imports.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}>
+          {estimate.candidates.map((candidate) => (
+            <label key={candidate.rowId} className="import-keep-entries">
+              <input type="radio" name={name} checked={linkedRowId === candidate.rowId} disabled={isSubmitting} onChange={() => onLink(candidate.rowId)} />
+              <span>{messages.imports.unlistedEstimateSamePurchase(formatService.formatDateOnly(candidate.date), candidate.description, formatService.money(candidate.amountMinor))}</span>
+            </label>
+          ))}
+          <label className="import-keep-entries">
+            <input type="radio" name={name} checked={!linkedRowId} disabled={isSubmitting} onChange={() => onLink(null)} />
+            <span>{messages.imports.unlistedEstimateNotInFile(restoredAmount)}</span>
+          </label>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1794,7 +1837,10 @@ function StatementCardSection({
   // opens too: that amount needs checking against the PDF.
   const inferredAmountKeys = useInferredAmountKeys();
   const hasInferredAmount = rows.some((row) => isInferredAmountRow(row, inferredAmountKeys));
-  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes || hasInferredAmount);
+  // A card whose statement has bank charges or notices opens too, so a late
+  // charge on a statement that balances is still seen.
+  const hasBankCharges = summarizeStatementCharges(rows, reconciliation.notices).hasAnything;
+  const isOpen = manualOpen ?? (status.key !== "resolved" || hasCardFixes || hasInferredAmount || hasBankCharges);
   const deltaMinor = reconciliation.deltaMinor ?? 0;
   const projectedDeltaMinor = card?.projectedDeltaMinor ?? deltaMinor;
   const addedCount = rows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review" && !row.reconciliationTargetTransactionId).length;
@@ -1804,6 +1850,7 @@ function StatementCardSection({
   const previousImport = reconciliation.previousStatementImport;
   // Whose account the statement goes to, in that person's colour, so a
   // card with the same name for two people can't be mixed up.
+  const paymentDue = describePaymentDue(reconciliation);
   const owner = reconciliation.accountId
     ? accounts.find((account) => account.id === reconciliation.accountId)?.ownerLabel
     : undefined;
@@ -1839,6 +1886,17 @@ function StatementCardSection({
                 : ""}
             </span>
             <span className="import-history-inline">{messages.imports.statementCardCounts(addedCount, confirmedCount)}</span>
+            {paymentDue ? (
+              <span className="import-history-inline statement-card-payment-due">
+                {paymentDue.isDueNow
+                  ? messages.imports.statementPaymentDueNow(formatService.money(paymentDue.owedMinor))
+                  : messages.imports.statementPaymentDue(
+                    formatService.money(paymentDue.owedMinor),
+                    formatService.formatDateOnly(paymentDue.dueDate),
+                    paymentDue.minimumMinor ? formatService.money(paymentDue.minimumMinor) : ""
+                  )}
+              </span>
+            ) : null}
             {previousImport ? (
               <span className="import-history-inline statement-card-previous-import">
                 {messages.imports.statementAlreadyImported(formatService.formatDateOnly(previousImport.importedAt), previousImport.sourceLabel)}
@@ -1852,6 +1910,7 @@ function StatementCardSection({
       </div>
       {isOpen ? (
         <div className="statement-card-body">
+          <StatementBankCharges rows={rows} notices={reconciliation.notices} />
           {reconciliation.accountId ? (
             <StatementFixSuggestions
               accountId={reconciliation.accountId}

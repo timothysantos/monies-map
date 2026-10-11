@@ -29,7 +29,7 @@ import {
 import { incomeMinor } from "../category-offset";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
-import { statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
+import { bankChargesSignal, cardBillSignal, penaltyInterestSignal, statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
 const UNSPENT_PLAN_THINKS = ["Unspent plan isn't spent money yet.", "A small decision now keeps it yours.", "Leftover plan is room, not a rule."];
@@ -985,8 +985,12 @@ export function buildMonthSignals(input: MonthSignalInput): MoneySignal[] {
   // The month's own bigger question leads ahead of a wallet's statement
   // gap, which is about the account rather than this month.
   const statementGap = statementGapSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, formatMoney: input.formatMoney });
+  const accountSignalInput = { accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, today: input.today, formatMoney: input.formatMoney };
   return [
     statementGap ? { ...statementGap, yieldsToBiggerQuestion: true } : null,
+    cardBillSignal(accountSignalInput),
+    bankChargesSignal(accountSignalInput),
+    penaltyInterestSignal(accountSignalInput),
     unlinkedBillsSignal(input),
     oneOffOverPlanSignal(input),
     categoryOverPlanSignal(input),

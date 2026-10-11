@@ -144,6 +144,104 @@ Said once when it clears (Going well): Sorted: {whose} {account} now matches its
 
 Action: Review statement
 
+### cardBillDue (Quick fix)
+
+A card's latest statement is due within 7 days and no payment to the card has been recorded since it closed. Summary and Month.
+
+Phrasings:
+
+- {whose} {account} bill of {amount} is due {when}, and no payment to it is in the app yet.
+- {amount} on {whose} {account} is due {when}.
+- {whose} {account} statement asks for {amount}, due {when}.
+- Coming up: {whose} {account} bill of {amount}, due {when}.
+
+Way to think about it, in turn:
+
+- If it's already paid, the payment shows here once that bank account's activity is imported.
+- Paying the statement in full by the due date keeps interest off the card.
+- Paying at least the minimum by the due date avoids a late charge.
+
+Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
+
+### cardBillPart (Quick fix)
+
+As above, with part of the bill paid since the statement closed: the rest still to pay. Summary and Month.
+
+Phrasings:
+
+- {amount} of {whose} {account} bill is still to pay, due {when}.
+- {whose} {account} has {amount} left to pay on its statement, due {when}.
+- Part of {whose} {account} bill is paid; {amount} is left, due {when}.
+- {whose} {account} statement still has {amount} to pay, due {when}.
+
+Way to think about it, in turn:
+
+- {paid} is paid so far. Paying the rest by the due date keeps interest off the card.
+- If the rest is already paid, it shows here once that bank account's activity is imported.
+- {paid} is in the app as paid since the statement closed.
+
+Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
+
+### cardBillOverdue (Quick fix)
+
+A card's latest statement was due up to 30 days ago and less than its minimum (or the whole bill) has been paid since it closed. Shown ahead of bills only due. Summary and Month.
+
+Phrasings:
+
+- {whose} {account} bill of {amount} was due on {date}, and no payment to it is in the app yet.
+- No payment to {whose} {account} is in the app since its {amount} bill fell due on {date}.
+- {whose} {account} statement asked for {amount} by {date}; no payment is in the app yet.
+- The {amount} bill on {whose} {account} was due {date}, and the app hasn't seen a payment.
+
+Way to think about it, in turn:
+
+- If it's paid, the payment shows once that bank account's activity is imported. If not, the bank adds a late charge and interest until it is.
+- Card statements add a late charge when the minimum isn't paid by the due date.
+- If the payment came from an account the app doesn't track, this clears once the next statement is imported.
+
+Said once when it clears (Going well): Paid: {whose} {account} bill. / The payment is in the app.
+
+### penaltyInterest (Worth a look)
+
+A card's latest statement (closed in the last 62 days) prints a penalty interest rate and owes money (the card with the most owed). Summary and Month.
+
+Phrasings:
+
+- {whose} {account} is charged penalty interest of {rate}% a year, says its {month} statement, with {amount} owed.
+- {whose} {account} {month} statement owes {amount} at a penalty interest rate of {rate}% a year.
+- The bank moved {whose} {account} to penalty interest of {rate}% a year; its {month} statement owes {amount}.
+- {amount} owed on {whose} {account}, at penalty interest of {rate}% a year, per its {month} statement.
+
+Way to think about it, in turn:
+
+- Banks raise a card's rate after a missed minimum payment. Paying each statement in full by its due date keeps interest off the card.
+- The rate only costs money on a balance carried past the due date, so paying the {amount} in full by then means no interest at all.
+- Each statement says whether the penalty rate still applies; this line goes once a statement no longer does.
+
+### bankCharges (Worth a look)
+
+A card was charged a late charge, interest, an annual fee or another bank fee in the last 60 days and no reversal of the same kind and amount is in the ledger (the card with the most). Summary and Month.
+
+Phrasings:
+
+- {whose} {account} was charged {charges} since {date}, and no reversal of them is in the app yet.
+- {total} in bank charges on {whose} {account} hasn't been reversed in the app: {charges}.
+- The bank charged {whose} {account} {charges} since {date}; no reversal is in the app.
+- No reversal yet for {total} in bank charges on {whose} {account}: {charges}.
+
+When the count is 1:
+
+- {whose} {account} was charged {charges} on {date}, and no reversal of it is in the app yet.
+- {charges} on {whose} {account} from {date} hasn't been reversed in the app.
+- The bank charged {whose} {account} {charges} on {date}; no reversal is in the app.
+- No reversal yet for {charges} on {whose} {account} from {date}.
+
+Way to think about it, in turn:
+
+- Banks sometimes reverse these when asked. A reversal shows on the next statement.
+- If the bank has agreed to reverse it, the reversal shows on the next statement.
+- These are the bank's own charges, filed under Fees, not spending on anything.
+
 ## Summary
 
 Just for fun follows the range's last month. Month number, then the type tried first and its reserves:

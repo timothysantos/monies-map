@@ -386,6 +386,9 @@ async function ensureDemoSchemaOnce(db: D1Database) {
         statement_start_date TEXT,
         statement_end_date TEXT,
         statement_balance_minor INTEGER NOT NULL,
+        payment_due_date TEXT,
+        minimum_payment_minor INTEGER,
+        statement_notices_json TEXT,
         note TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -460,12 +463,19 @@ async function ensureDemoSchemaOnce(db: D1Database) {
           -- later export removed one of its entries.
           entry_import_id TEXT NOT NULL,
           entry_snapshot_json TEXT NOT NULL,
+          -- 'removed': the entry was deleted; 'estimate_reopened': a foreign
+          -- currency estimate went back to its own saved amount.
+          kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened')),
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (household_id) REFERENCES households(id),
           FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
         )
     `)
     .run();
+  const noLongerListedColumns = await db.prepare("PRAGMA table_info(import_no_longer_listed_entries)").all<{ name: string }>();
+  if (!noLongerListedColumns.results.some((column) => column.name === "kind")) {
+    await db.prepare("ALTER TABLE import_no_longer_listed_entries ADD COLUMN kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened'))").run();
+  }
 
   // Corrections applied from a Settings statement comparison after the
   // statement was saved, for their undo. A removed entry keeps its row here.
@@ -552,6 +562,21 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   const hasStatementEndDate = checkpointColumns.results.some((column) => column.name === "statement_end_date");
   if (!hasStatementEndDate && checkpointColumns.results.length > 0) {
     await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN statement_end_date TEXT").run();
+  }
+
+  const hasPaymentDueDate = checkpointColumns.results.some((column) => column.name === "payment_due_date");
+  if (!hasPaymentDueDate && checkpointColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN payment_due_date TEXT").run();
+  }
+
+  const hasMinimumPayment = checkpointColumns.results.some((column) => column.name === "minimum_payment_minor");
+  if (!hasMinimumPayment && checkpointColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN minimum_payment_minor INTEGER").run();
+  }
+
+  const hasStatementNotices = checkpointColumns.results.some((column) => column.name === "statement_notices_json");
+  if (!hasStatementNotices && checkpointColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN statement_notices_json TEXT").run();
   }
 
   const statementCertificateColumns = await db

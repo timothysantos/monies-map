@@ -806,10 +806,25 @@ the bank renames the card.
 Under its name a card shows the statement's balance and your ledger's
 balance once this import is saved, for example "Statement: $33.15 owed •
 Ledger after import: $119.26 in credit • difference $152.41". Under that it
-counts its rows, for example "34 new rows · none already in your ledger". New rows become new entries. Rows already in your
-ledger are entries you added before, from an activity export or by hand,
-that this statement confirms, or rows an earlier import of this statement
-saved. They are not added twice.
+counts its rows, for example "34 new rows · none already in your ledger".
+New rows become new entries. Rows already in your ledger are entries you
+added before, from an activity export or by hand, that this statement
+confirms, or rows an earlier import of this statement saved. They are not
+added twice.
+
+A card statement that asks for money also says what to pay, for example
+"Pay $33.15 by 23 Oct 2026 · minimum $33.15", or "Pay $264.34 now" when the
+bank printed IMMEDIATE because the card is past due. The due date and
+minimum are saved with the statement for **Money insights**.
+
+When the statement has the bank's own charges, a rose box above the checks
+lists them, for example "Bank charges on this statement: Late charge $100.00
+· Interest $4.37". It also says when the bank reversed one ("Reversed by
+the bank: Annual fee $196.20") and repeats the bank's notices, such as "The
+statement says this card is past due" or the penalty interest rate. A card
+with charges opens even when it balances. Late charges, interest, annual
+fees and currency fees are filed under **Fees**; a reversal is filed under
+Fees too and takes the charge back out of it.
 
 Each card lists its rows read-only (**Rows on this card's statement**) and,
 when it does not balance, **How the difference adds up**. **Edit rows** opens
@@ -1220,6 +1235,11 @@ Your card's own amount may differ a little. When you import the card's
 activity export, each of these purchases is matched to the card's row and
 takes its current amount; a later export updates it again if the amount
 changed, and the statement sets the final amount. It is never added twice.
+If Apple Pay saved a hold's amount (a hotel deposit, or a ride held before
+a discount) and a later export no longer lists that hold, the preview asks
+which row is the final charge: pick **Same purchase** to move your purchase
+onto it, or leave **Not in this file** and it goes back to the amount you
+saved.
 Before you import, the matched row says what will change, for example
 "Updates your estimate for IDR 159,000 from SGD 11.34 to the card's SGD
 11.66". After the import, the Done card counts any entries the bank no
@@ -1250,7 +1270,12 @@ A small label says what kind of line it is:
 - **Quick fix**: something small that makes the numbers trustworthy or
   settles something, such as a statement that is $42.80 away from the app,
   a planned bill with no entry, money owed on a split or entries still in
-  Other. These come first, because every other number depends on them. On
+  Other. A card bill is one too: from a week before its statement's due
+  date, while no payment to the card is in the app ("Your OCBC 365 Credit
+  Card bill of $33.15 is due in 3 days"), and for a month after it, while
+  less than the minimum is. A payment from a bank account you haven't
+  imported yet isn't seen until you do. These come first, because every
+  other number depends on them. On
   Month, a month's Bigger question comes before a card's statement gap,
   which then appears under **Also this month**.
 - **Bigger question**: a pattern worth an honest decision, such as one
@@ -1258,7 +1283,11 @@ A small label says what kind of line it is:
   one at a time.
 - **Worth a look**: something that may well be fine but is easy to miss:
   subscriptions adding up, a category creeping up, a possible double
-  charge.
+  charge, a late charge, interest or annual fee from the last two months
+  that the bank hasn't reversed, or a card whose latest statement says it is
+  charged penalty interest while it owes money ("Joyce's OCBC 365 Credit
+  Card is charged penalty interest of 30.78% a year, says its October
+  statement, with $33.15 owed").
 - **Going well**: plan left over, months under plan, savings on track.
 - **Just for fun**: a light line from your own spending, such as your
   regular spot or the priciest thing on a trip. It never sits next to a

@@ -452,7 +452,7 @@ export const messages = {
     reconciliationCandidates: (count) => `${countOf(count, "entry reconciliation match", "entry reconciliation matches")} ${count === 1 ? "needs" : "need"} a decision`,
     reconciledExistingRows: (count, sourceType) => sourceType === "pdf"
       ? `${count} provisional row${count === 1 ? "" : "s"} will be certified by the statement`
-      : `${count} manual row${count === 1 ? "" : "s"} will be promoted in place by this import`,
+      : `${countOf(count, "existing entry", "existing entries")} will be updated by this import`,
     overlappingImports: (count) => `${count} prior import${count === 1 ? "" : "s"} in this account period`,
     exceptionRegisterTitle: "Exceptions to resolve",
     exceptionRegisterDetail: "The app will handle matched statement rows automatically. These are the remaining controls that need attention before the period can close.",
@@ -478,6 +478,14 @@ export const messages = {
       : "This file covers their dates but doesn't include them. You chose to keep them, so importing leaves them as they are."),
     noLongerListedListLabel: "Entries the bank no longer lists",
     noLongerListedKeep: (count) => (count === 1 ? "Keep this entry" : "Keep these entries"),
+    unlistedEstimateTitle: (originalAmount, walletDescription, accountName) => `Your estimate for ${originalAmount} (${walletDescription}) matched a charge ${accountName} no longer lists`,
+    unlistedEstimateDetail: (restoredAmount, hasCandidates) => hasCandidates
+      ? `The card's row it was matched to isn't in this file, usually a hold the bank released. Pick the card's final charge for this purchase, or leave it and the estimate goes back to ${restoredAmount}.`
+      : `The card's row it was matched to isn't in this file, usually a hold the bank released. Importing puts the estimate back to ${restoredAmount}.`,
+    unlistedEstimateSamePurchase: (date, description, amount) => `Same purchase: ${date} · ${description} · ${amount}`,
+    unlistedEstimateNotInFile: (restoredAmount) => `Not in this file: put the estimate back to ${restoredAmount}`,
+    unlistedEstimateLinkedReason: (originalAmount, fromAmount, toAmount) => `Updates your estimate for ${originalAmount} from ${fromAmount} to the card's ${toAmount}.`,
+    willReopenEstimates: (count) => `${countOf(count, "estimate")} will go back to ${count === 1 ? "its" : "their"} saved amount`,
     previewOverlapTitle: "Prior import context",
     previewOverlapScopeAriaLabel: "How overlap checks work",
     previewOverlapScopeTitle: "Scope",
@@ -722,6 +730,22 @@ export const messages = {
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementCardEnding: (last4) => `ending ${last4}`,
+    // The payment a card statement asks for.
+    statementPaymentDue: (amount, dateLabel, minimum) => `Pay ${amount} by ${dateLabel}${minimum ? ` · minimum ${minimum}` : ""}`,
+    statementPaymentDueNow: (amount) => `Pay ${amount} now`,
+    // The bank's own charges on a statement card, and its notices.
+    statementChargesTitle: "Bank charges on this statement",
+    statementChargeKinds: {
+      late_fee: "Late charge",
+      interest: "Interest",
+      annual_fee: "Annual fee",
+      other_fee: "Other bank fees"
+    },
+    statementChargesReversed: (list) => `Reversed by the bank: ${list}`,
+    statementNotices: {
+      past_due: "The statement says this card is past due.",
+      penalty_interest: (rate) => `The statement says this card is charged penalty interest of ${rate}% a year.`
+    },
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationBreakdownTitle: "Why this does not close",
     statementReconciliationMatchedBreakdownTitle: "Why this closes",
@@ -858,7 +882,7 @@ export const messages = {
     willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
     willReconcileExistingRows: (count, sourceType) => sourceType === "pdf"
       ? `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`
-      : `${count} existing row${count === 1 ? "" : "s"} will be promoted in place`,
+      : `${countOf(count, "existing entry", "existing entries")} will be updated`,
     willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will refresh`,
     willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
     willRemoveEntries: (count) => `${countOf(count, "entry", "entries")} will be removed`,

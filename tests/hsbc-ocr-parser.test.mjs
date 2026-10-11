@@ -47,8 +47,8 @@ const AUG_TO_OCT_2026 = [
       ["2026-09-19", "FAMILY-COM ELECTRONICS SINGAPORE SG", "98.00", "", "Other", "txn date: 2026-09-17", "expense"],
       ["2026-09-26", "I CREATIVE SALON LLP SINGAPORE SG", "37.00", "", "Beauty", "txn date: 2026-09-25", "expense"],
       ["2026-10-02", "Buyandship Limited Hong Kong HK", "18.00", "", "Other", "txn date: 2026-09-30", "expense"],
-      ["2026-10-02", "DCC FEE", "0.18", "", "Other", "txn date: 2026-10-02", "expense"],
-      ["2026-10-03", "DCC FEE", "0.30", "", "Other", "txn date: 2026-10-03", "expense"],
+      ["2026-10-02", "DCC FEE", "0.18", "", "Fees", "txn date: 2026-10-02", "expense"],
+      ["2026-10-03", "DCC FEE", "0.30", "", "Fees", "txn date: 2026-10-03", "expense"],
       ["2026-10-03", "Etsy WWW.ETSY.COM IE", "29.92", "", "Other", "txn date: 2026-10-01", "expense"]
     ]
   }

@@ -7,7 +7,7 @@ import {
   invalidateAppDataCache,
   primeAppDataCache
 } from "./domain/app-shell";
-import type { StatementFixDto } from "./types/dto";
+import type { StatementFixDto, StatementNoticeDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
@@ -1916,6 +1916,9 @@ export default {
           statementBalanceMinor: number;
           previousBalanceMinor?: number;
           accountLast4?: string;
+          paymentDueDate?: string;
+          minimumPaymentMinor?: number;
+          notices?: StatementNoticeDto[];
           note?: string;
         }[];
         statementFixes?: StatementFixDto[];
@@ -1959,6 +1962,9 @@ export default {
           statementBalanceMinor: number;
           previousBalanceMinor?: number;
           accountLast4?: string;
+          paymentDueDate?: string;
+          minimumPaymentMinor?: number;
+          notices?: StatementNoticeDto[];
           note?: string;
         }[];
         statementControlRows?: {
@@ -2043,6 +2049,7 @@ export default {
         }[];
         statementFixes?: StatementFixDto[];
         noLongerListedEntries?: { transactionId: string; importId: string }[];
+        reopenedEstimates?: { transactionId: string; importId: string }[];
       }>();
 
       if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length)) {
@@ -2063,6 +2070,9 @@ export default {
             statementFixes: Array.isArray(body.statementFixes) ? body.statementFixes : [],
             noLongerListedEntries: Array.isArray(body.noLongerListedEntries)
               ? body.noLongerListedEntries.filter((entry) => typeof entry?.transactionId === "string" && typeof entry?.importId === "string")
+              : [],
+            reopenedEstimates: Array.isArray(body.reopenedEstimates)
+              ? body.reopenedEstimates.filter((entry) => typeof entry?.transactionId === "string" && typeof entry?.importId === "string")
               : [],
             rows: body.rows ?? []
           }))

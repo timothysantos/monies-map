@@ -54,6 +54,11 @@ CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
   statement_start_date TEXT,
   statement_end_date TEXT,
   statement_balance_minor INTEGER NOT NULL,
+  -- What the statement asked for: pay by this date, at least this much.
+  payment_due_date TEXT,
+  minimum_payment_minor INTEGER,
+  -- The bank's notices on the statement (past due, penalty interest), JSON.
+  statement_notices_json TEXT,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -119,6 +124,9 @@ CREATE TABLE IF NOT EXISTS import_no_longer_listed_entries (
   -- later export removed one of its entries.
   entry_import_id TEXT NOT NULL,
   entry_snapshot_json TEXT NOT NULL,
+  -- 'removed': the entry was deleted; 'estimate_reopened': a foreign
+  -- currency estimate went back to its own saved amount.
+  kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id),
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE

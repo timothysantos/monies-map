@@ -1,3 +1,4 @@
+import { classifyBankCharge } from "../../domain/bank-charges";
 export const IMPORT_HEADERS = ["date", "description", "expense", "income", "account", "category", "note", "type"];
 
 export const MONTHS: Record<string, number> = {
@@ -26,8 +27,19 @@ export interface StatementCheckpointDraft {
   // statement section, so a section can be matched to its account even when
   // the bank's product name differs from the account name.
   accountLast4?: string;
+  // What the statement asks for: pay by this date (the statement date when
+  // the bank prints "IMMEDIATE"), and the minimum that avoids a late charge.
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
+  // The bank's own notices about the card ("past due", a penalty interest
+  // rate), shown with the statement's review.
+  notices?: StatementNotice[];
   note?: string;
 }
+
+export type StatementNotice =
+  | { code: "past_due" }
+  | { code: "penalty_interest"; annualRatePercent: number };
 
 export interface ParsedStatementImport {
   parserKey: string;
@@ -342,6 +354,41 @@ export function findOcbcStatementDate(lines: string[]) {
   return match ? formatDate(Number(match[3]), Number(match[2]), Number(match[1])) : undefined;
 }
 
+// The values line under OCBC's "STATEMENT DATE PAYMENT DUE DATE ... TOTAL
+// MINIMUM DUE" header: "01 - 10 - 2026 23 - 10 - 2026 S $ 5 , 000 S $ 4 ,
+// 966 . 85 S $ 33 . 15". The due date may read "IMMEDIATE" (the account is
+// past due) or "N . A" (nothing to pay).
+export function findOcbcPaymentTerms(lines: string[], statementDate: string) {
+  const index = lines.findIndex((line) => /^STATEMENT DATE\s+PAYMENT DUE DATE\b/i.test(line));
+  const values = index >= 0 ? lines[index + 1] ?? "" : "";
+  const dates = Array.from(values.matchAll(/(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})/g));
+  const isImmediate = /^\d{2}\s*-\s*\d{2}\s*-\s*\d{4}\s+IMMEDIATE\b/i.test(values);
+  const paymentDueDate = dates[1]
+    ? formatDate(Number(dates[1][3]), Number(dates[1][2]), Number(dates[1][1]))
+    : isImmediate ? statementDate : undefined;
+  const minimumPaymentMinor = values ? parseOcbcLastMoney(values) : undefined;
+  return {
+    ...(paymentDueDate ? { paymentDueDate } : {}),
+    ...(minimumPaymentMinor ? { minimumPaymentMinor } : {})
+  };
+}
+
+// The notice OCBC prints beside the card's name: "Just a reminder that your
+// account is past due" or "You are currently being charged a penalty
+// interest rate of 30 . 78 % per annum".
+export function findOcbcCardNotices(lines: string[]): StatementNotice[] {
+  const notices: StatementNotice[] = [];
+  const text = lines.join(" ");
+  if (/account is past due/i.test(text)) {
+    notices.push({ code: "past_due" });
+  }
+  const penalty = text.match(/penalty interest rate of\s+(\d{1,2})\s*\.\s*(\d{1,2})\s*%/i);
+  if (penalty) {
+    notices.push({ code: "penalty_interest", annualRatePercent: Number(`${penalty[1]}.${penalty[2]}`) });
+  }
+  return notices;
+}
+
 export function findOcbc360Period(lines: string[]) {
   for (const line of lines) {
     const match = line.match(/^360 ACCOUNT\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+TO\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{4})$/i);
@@ -381,6 +428,12 @@ export function isTransferDescription(description: string) {
 
 export function inferCategory(description: string, isIncome: boolean) {
   const normalized = description.toUpperCase();
+  // A bank's own charge, or its reversal, is a fee. Money in that is not a
+  // reversal ("INTEREST CREDIT" on savings) is income, not a fee.
+  const bankCharge = classifyBankCharge(description);
+  if (bankCharge && (!isIncome || bankCharge.isReversal)) {
+    return "Fees";
+  }
   if (/PAYNOW-FAST.*WISE ASIA-PACIFIC/.test(normalized)) {
     return "Family & Personal";
   }

@@ -113,6 +113,8 @@ TOTAL AMOUNT DUE 2 , 127 . 41
     statementBalanceMinor: 212741,
     previousBalanceMinor: 134933,
     accountLast4: "2572",
+    paymentDueDate: "2026-06-19",
+    minimumPaymentMinor: 6400,
     note: "Imported from OCBC credit card statement"
   });
   assert.deepEqual(parsed.rows.map((row) => ({
@@ -174,6 +176,8 @@ TOTAL AMOUNT DUE 1 , 349 . 33
     statementBalanceMinor: 134933,
     previousBalanceMinor: 0,
     accountLast4: "2572",
+    paymentDueDate: "2026-05-19",
+    minimumPaymentMinor: 4000,
     note: "Imported from OCBC credit card statement"
   });
   assert.deepEqual(parsed.rows.map((row) => ({

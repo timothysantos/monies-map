@@ -63,6 +63,10 @@ export interface AccountCheckpointDto {
   statementStartDate?: string;
   statementEndDate?: string;
   statementBalanceMinor: number;
+  // What the statement asked for (card statements that print it).
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
+  notices?: StatementNoticeDto[];
   computedBalanceMinor: number;
   deltaMinor: number;
   note?: string;
@@ -77,6 +81,37 @@ export interface SummaryAccountPillDto {
   latestCheckpointMonth?: string;
   latestCheckpointDeltaMinor?: number;
   reconciliationStatus?: ReconciliationStatus;
+  // Card accounts only: the latest statement's bill, and bank charges no
+  // reversal cancelled (card-bill-projection.ts).
+  cardBill?: CardBillDto;
+  unreversedCharges?: UnreversedChargeDto[];
+  // The bank's notices on the card's latest statement, while it is recent.
+  cardNotices?: CardNoticesDto;
+}
+
+export interface CardNoticesDto {
+  statementMonth: string;
+  // What that statement says the card owes (positive), 0 when nothing.
+  owedMinor: number;
+  notices: StatementNoticeDto[];
+}
+
+// What a card's latest statement asks for, and what has been paid to the
+// card since it closed. Amounts are positive.
+export interface CardBillDto {
+  statementMonth: string;
+  statementEndDate: string;
+  paymentDueDate: string;
+  owedMinor: number;
+  minimumMinor?: number;
+  paidSinceMinor: number;
+}
+
+// A late charge, interest, annual fee or other bank fee with no reversal.
+export interface UnreversedChargeDto {
+  date: string;
+  kind: "late_fee" | "interest" | "annual_fee" | "other_fee";
+  amountMinor: number;
 }
 
 export interface CategoryDto {
@@ -570,6 +605,25 @@ export interface ImportNoLongerListedEntryDto {
   entryType: EntryType;
 }
 
+// A foreign currency estimate an earlier activity export updated from a row
+// this one, covering its date, no longer lists (usually a hold the bank
+// released). Its final charge may be a row of this file at another foreign
+// amount, which never pairs by itself: the user links it, or the commit puts
+// the estimate back to its own saved amount.
+export interface ImportUnlistedEstimateDto {
+  transactionId: string;
+  importId: string;
+  accountId: string;
+  accountName: string;
+  date: string;
+  walletDescription: string;
+  originalAmount: string;
+  currency: string;
+  amountMinor: number;
+  restoredAmountMinor: number;
+  candidates: { rowId: string; date: string; description: string; amountMinor: number }[];
+}
+
 export interface ImportPreviewDto {
   sourceLabel: string;
   parserKey: string;
@@ -593,6 +647,7 @@ export interface ImportPreviewDto {
   // because their printed name matches no account.
   // Activity exports only: entries the bank no longer lists.
   noLongerListedEntries?: ImportNoLongerListedEntryDto[];
+  unlistedEstimates?: ImportUnlistedEstimateDto[];
   statementAccountMatches?: {
     detectedAccountName: string;
     accountId: string;
@@ -765,8 +820,16 @@ export interface StatementCheckpointDraftDto {
   statementBalanceMinor: number;
   previousBalanceMinor?: number;
   accountLast4?: string;
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
+  notices?: StatementNoticeDto[];
   note?: string;
 }
+
+// The bank's own notice about a card, printed on its statement.
+export type StatementNoticeDto =
+  | { code: "past_due" }
+  | { code: "penalty_interest"; annualRatePercent: number };
 
 export interface ImportPreviewStatementReconciliationDto {
   accountName: string;
@@ -774,6 +837,10 @@ export interface ImportPreviewStatementReconciliationDto {
   accountId?: string;
   // The card or account number's last four digits printed on the statement.
   accountLast4?: string;
+  // What the statement asks for, and the bank's notices about the card.
+  paymentDueDate?: string;
+  minimumPaymentMinor?: number;
+  notices?: StatementNoticeDto[];
   checkpointMonth: string;
   statementStartDate?: string;
   statementEndDate?: string;
