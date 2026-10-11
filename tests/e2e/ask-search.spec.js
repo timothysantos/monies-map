@@ -244,7 +244,7 @@ test.describe("search and filter from Ask on a phone", { tag: "@webkit" }, () =>
 
     // A question it cannot read still gets the plain note.
     await send(page, "Am I on track?");
-    await expect(page.locator(".ask-note").last()).toContainText("aren't answered yet");
+    await expect(page.locator(".ask-note").last()).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
   });
 
   test("a receipt photo never reaches sessionStorage", async ({ page }) => {

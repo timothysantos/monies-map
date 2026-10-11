@@ -229,3 +229,8 @@ test("an open follow-up or view change outranks the card; an answer for a month 
   assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card, context, canOpenAnswer: false, actions })), ["Back to the unsaved entry"]);
   assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card: null, context, canOpenAnswer: false, actions })), ["Scan receipt", "Paste", "Add entry", "Add expense"]);
 });
+
+test("the note for a question Ask cannot answer says it finds and adds entries", async () => {
+  const { askCopy } = await import("../src/client/copy/ask-copy.js");
+  assert.equal(askCopy.notes.askNotReady, "I can find entries and add new ones. Other questions aren't answered yet.");
+});

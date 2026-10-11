@@ -198,7 +198,7 @@ export const askCopy = {
     shortcutLoading: "Opening the saved entry…",
     categoryChanged: (name) => `Moved to ${name}.`,
     addedToSplits: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
-    askNotReady: "I can add entries here for now. Questions about your money aren't answered yet."
+    askNotReady: "I can find entries and add new ones. Other questions aren't answered yet."
   },
   questions: {
     description: "What was it for?",

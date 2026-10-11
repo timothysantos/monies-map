@@ -68,7 +68,7 @@ test.describe("the Ask page on a phone", () => {
     });
     await page.getByRole("textbox", { name: "Message" }).fill("Am I on track?");
     await page.getByRole("button", { name: "Send" }).click();
-    await expect(page.locator(".ask-note").filter({ hasText: "aren't answered yet" })).toBeVisible();
+    await expect(page.locator(".ask-note").filter({ hasText: "answered yet" })).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
     await expect(page.locator(".ask-card")).toHaveCount(0);
     expect(draftRequests).toBe(0);
   });
