@@ -77,6 +77,8 @@ a doc here in the same change.
 - [`flows/imports-flow.md`](flows/imports-flow.md): Imports page.
 - [`flows/splits-flow.md`](flows/splits-flow.md): Splits page.
 - [`flows/settings-flow.md`](flows/settings-flow.md): Settings page.
+- [`flows/ask-flow.md`](flows/ask-flow.md): Ask page (the entry card, its
+  readers and the Apple Pay Shortcut's link).
 
 ## Audits and evidence
 

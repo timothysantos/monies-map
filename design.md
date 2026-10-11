@@ -113,6 +113,87 @@ light proof card. Controls on that card must use an explicit light-card theme:
 readable dark secondary actions, a distinct caution treatment for `Undo paid`,
 and a high-contrast primary treatment for the later bank-transfer match.
 
+## Ask Page
+
+The Ask page (`/ask`, `src/client/ask-panel.jsx`, lazy) is one full page,
+never a sheet: the tab bar stays visible and there is no close button. Flow
+and data contract: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md).
+
+Layout, top to bottom:
+
+- Header: "Ask" (chat mode) or "New entry" / "New income" / "New transfer" /
+  "Saved" (add mode) with a context line: person · scope · month in chat,
+  person · month beside the title in add mode.
+- Conversation (`role="log"`, polite live region), which scrolls: in chat
+  mode first a "since you last looked" card (`ask-brief-card.jsx`: the
+  Summary check-in's headline and kind chip, its action when it is
+  Imports or a category, and the month's spend against its plan with a sky
+  plan and a bar that turns rose only over plan), then the person's messages
+  (right, accent tint), receipt thumbnails, the page's notes (muted, left),
+  and the entry card. The card sits under the message that filled it and
+  above what happened to it since.
+- Bottom stack above the tab bar: one horizontally scrolling row of chips
+  (buttons; the main way on first and filled; a back chip in accent text),
+  then the composer: a camera button (pick or take a receipt photo), the
+  message field, and the send arrow. When a card is open and nothing is
+  typed the arrow becomes Save, disabled until the card is valid.
+
+On a phone the page is `position: fixed` above the tab bar (`ask-route.css`)
+with its own scrolling conversation; the shell's header bar is underneath
+it. On a wide screen it renders in the main area like any panel, with the
+bottom stack sticky; its tab is hidden there for now (`phoneOnly`), because
+a docked panel will be the wide-screen way in.
+
+### Entry card
+
+`ask-entry-card.jsx` renders the card; `ask-card-model.js` is its pure state
+machine (`draft` → `saving` → `saved`, back to `draft` on failure or Undo).
+
+- Hero card: a 56 px category bubble (the category's palette colour at 20%
+  over white, glyph at 70% with the ink, the app's category icon; a neutral
+  bubble with the transfer arrows for a transfer), what it was (an inline
+  field that wraps; for a transfer the From → To wallets), the category name
+  in the category ink, and the amount, the largest text: rose with a minus
+  for an expense, mint with a plus for income, plain ink for a transfer
+  (`entryAmountTone` through `moneyToneClass`; `money-out` is rose text).
+  An empty amount is muted with an accent underline. Meta chips: date,
+  wallet (not for a transfer) and the person in their colour
+  (`getPersonColourVars`).
+- Tag above the hero: butter "Filled in from your message" or "Read from
+  your receipt"; mint "Saved" once saved.
+- Coax line under a dashed rule while the card is empty.
+- Quiet detail rows: Date, Category, Wallet, Type (transfer: From, To, Date,
+  Type), then "More details" folding Posted date, Owner (a split share when
+  Shared) and Note. Each row opens the app's own picker: the mobile picker
+  sheet (`ResponsiveSelect`) on a phone, a native select or date field over
+  the row on a wide screen. A field a sentence or receipt filled carries a
+  butter dot until it is edited by hand.
+- Splits switch (expense, two people): "Share with <partner> on Splits"
+  (`role="switch"`) with the group name; a Split group row appears when more
+  than one group can take it.
+- A saved card keeps the hero only, plus "Also on Splits: <group>".
+
+Hidden money masks the typed amount (`-webkit-text-security`), shows the
+saved amount as `••••` and drops every tone. Arrival motion and the switch
+slide run only under `prefers-reduced-motion: no-preference`.
+
+### Bottom chips
+
+`ask-chips.js` derives the row from the mode and the card:
+
+- chat, no card: Scan receipt, Paste, Add entry, Add expense;
+- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first; then a pending
+  question's answers (the readers send structured questions; the client
+  words them and shows the question as a line above the row), or Scan
+  receipt, Paste, Transfer, Income on an empty expense; Split with
+  <partner> (or Not shared), Add a note, Different card once it has content;
+  Swap direction and Add a note for a transfer; Add a note and Different
+  wallet for income; Edit in form last;
+- saved: Back to Entries (or Splits, filled), Open this entry, Open on
+  Splits when shared, Undo; the Apple Pay Shortcut's saved card offers Open
+  this entry (filled), category chips and Choose category when it landed in
+  Other, and Splits.
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display
@@ -138,8 +219,10 @@ The artifact input is the device-local Transaction automation's Dictionary with
 `value`, `merchant`, and `name` keys. The automation calls the shared shortcut
 directly; a legacy helper shortcut is not part of the supported chain. After a
 successful POST, the shortcut reads `openUrl` and `accountName` from the
-response, opens the saved entry, and confirms the merchant, amount, and account
-in a notification. It sends a per-run request ID so the server can return the
+response, opens the saved entry (the Ask page's saved card, with a category
+question when it landed in Other and Splits; the Entries link older
+Shortcuts were given still opens the entry in Entries), and confirms the
+merchant, amount, and account in a notification. It sends a per-run request ID so the server can return the
 existing row after an HTTP retry.
 The production gateway exposes only that direct-create path, shares D1 with the
 protected app, and builds response deep links against the protected app origin.
@@ -449,6 +532,16 @@ view); model output never supplies the target. No AI result bypasses the
 existing editor, preview, or review controls. The Money consequence map that
 used to sit under "See all insights" is retired (DOMAIN.md): plan variance,
 the same-season comparison and bank-proof gaps are check-in signals only.
+
+The Ask page's two readers (`ask-api.js`) are explicit actions too: a typed
+sentence goes to the entry-draft route only when the person sends it, and a
+receipt photo to the receipt-read route only when they pick, paste or drop
+one. The photo is downscaled and re-encoded in the browser first (no EXIF,
+no location) and dropped from memory when the page goes. Either reader
+failing leaves the card manual with a calm note; a receipt falls back to
+the app's own on-device OCR. Neither ever saves: the person does, through
+the normal create route. Opening Ask asks no AI: its "since you last
+looked" card is the computed check-in.
 
 A check-in's signals count what the figures beside it count. Summary builds
 them from its page DTO, which the Worker already filtered to the view and

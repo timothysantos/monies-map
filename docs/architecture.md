@@ -133,6 +133,14 @@ splits page; restoring reactivates the original record and relationships rather
 than creating a replacement. Settlement checkpoint membership is not rewritten
 by either operation.
 
+The Ask page (`/ask`, `docs/flows/ask-flow.md`) is a lazy route, not a
+slice of its own data: it adds entries through the entries slice's create
+path (`entry-create-request.js`) and the existing split link, borrows the
+Entries and Summary DTOs from the query cache (the Entries one through the
+shell's required read when it must load it), and holds only its
+conversation and one entry card. The Entries + and Splits receipt buttons
+open it; their old forms stay reachable.
+
 Rules:
 
 - each slice should expose a small public surface
@@ -324,7 +332,12 @@ then the configured active priority is the fallback. Named Wallet currency must
 match the selected account currency. The response returns normalized transaction
 facts, account identity and resolution, creation status, and `openUrl`. The
 shortcut opens `openUrl` only when present and shows merchant, amount, and
-resolved account in its success notification.
+resolved account in its success notification. `openUrl` opens the Ask page
+on the saved entry's card (`/ask?saved_entry=<id>`, built by
+`buildShortcutEntryOpenUrl` in `src/server/shortcut-gateway.ts`), which
+offers a category when it landed in Other and Splits; the Entries link
+earlier responses carried (`/entries?editing_entry=<id>`) still opens the
+entry in Entries.
 
 The repository owns the durable shortcut source under
 `shortcuts/apple-pay-api/`. It stores a reviewable secret-free plist, the exact
@@ -544,6 +557,16 @@ already-loaded figures with computed wording only (see "Money insights"
 below): the headline is the bold fact and its think line as written. There
 is no AI rewording; the optional `/api/ai-assist/financial-insight` route was
 removed after it produced broken grammar in production.
+
+The Ask page's readers follow the same rule: a typed sentence goes to
+`/api/ai-assist/entry-draft` only when the person sends it, and a receipt
+photo to `/api/ai-assist/receipt-read` only when they pick, paste or drop
+one; both answer with drafts the entry card shows for the person to save
+through the normal create route, and both failing leaves the card manual.
+The photo is downscaled and re-encoded in the browser (no EXIF or location)
+and never stored. Sending an image to a model is new for this boundary and
+belongs to the receipt-read branch's review; the Ask page only prepares and
+sends it (`ask-api.js`, `ask-receipt-image.js`).
 
 The Worker receives bounded, redacted text only. Statement fallback begins with
 browser-local PDF extraction and OCR; it sends extracted text after explicit

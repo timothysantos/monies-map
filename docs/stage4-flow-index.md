@@ -18,6 +18,7 @@ auditing. This is a navigation index, not a mega-doc.
 - [`docs/flows/imports-flow.md`](./flows/imports-flow.md)
 - [`docs/flows/splits-flow.md`](./flows/splits-flow.md)
 - [`docs/flows/settings-flow.md`](./flows/settings-flow.md)
+- [`docs/flows/ask-flow.md`](./flows/ask-flow.md)
 
 ## Audit Rule
 
