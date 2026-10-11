@@ -14,11 +14,13 @@ import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../src/domain/catego
 
 const root = path.resolve(import.meta.dirname, "..");
 const clientDir = path.join(root, "src/client");
+// Every client file, including folders such as src/client/ui/.
+const clientFiles = readdirSync(clientDir, { recursive: true }).map((name) => String(name));
 const stylesheets = [
   "public/styles.css",
-  ...readdirSync(clientDir).filter((name) => name.endsWith(".css")).map((name) => `src/client/${name}`)
+  ...clientFiles.filter((name) => name.endsWith(".css")).map((name) => `src/client/${name}`)
 ];
-const scripts = readdirSync(clientDir).filter((name) => /\.(jsx|js)$/.test(name)).map((name) => `src/client/${name}`);
+const scripts = clientFiles.filter((name) => /\.(jsx|js)$/.test(name)).map((name) => `src/client/${name}`);
 const PALETTE = new Set([...CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR].map((colour) => colour.toLowerCase()));
 
 function channels(literal) {
@@ -66,6 +68,11 @@ test("components take colours from the category palette", () => {
     .filter(({ literal }) => !PALETTE.has(literal.toLowerCase()) && !isAllowedRawColour(literal))
     .map(({ file, line, literal }) => `${file}:${line} ${literal}`);
   assert.deepEqual(offenders, []);
+});
+
+test("the guard reads the shared blocks in src/client/ui", () => {
+  assert.ok(stylesheets.includes("src/client/ui/lead-support-detail.css"));
+  assert.ok(scripts.includes("src/client/ui/lead-support-detail.jsx"));
 });
 
 test("the guard is not blind", () => {

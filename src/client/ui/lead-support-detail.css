@@ -1,0 +1,445 @@
+/* The Lead · Support · Detail blocks (lead-support-detail.jsx, design.md
+   "Lead · Support · Detail"). Imported by the routes that use them (Ask,
+   Entries, Splits), so none of it is in the first-screen stylesheet.
+   Colours are tokens only: the category colour (--cat) from the category
+   palette, the person colour from person-colour.js, the pastel pairs, the
+   money tones and the terracotta accent; raw colours are neutrals. */
+
+/* Lead: the one card with the strong shadow. */
+.lsd-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
+}
+
+.lsd-hero {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.lsd-bubble,
+.lsd-bubble-slot > .category-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+.lsd-bubble {
+  border: 1px solid color-mix(in srgb, var(--cat) 35%, white);
+  background: color-mix(in srgb, var(--cat) 20%, white);
+  color: color-mix(in srgb, var(--cat) 70%, var(--text));
+}
+
+.lsd-bubble-slot {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+}
+
+.lsd-bubble-slot > .category-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.lsd-heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lsd-title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.lsd-subtitle {
+  color: color-mix(in srgb, var(--cat) 62%, var(--text));
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.lsd-amount {
+  justify-self: end;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* An amount you can type in: a thin accent underline, the number keypad. */
+.lsd-amount.is-editable .lsd-amount-field {
+  border-bottom-color: color-mix(in srgb, var(--accent-strong) 70%, transparent);
+}
+
+.lsd-amount-field {
+  display: inline-flex;
+  align-items: baseline;
+  min-height: 44px;
+  padding: 0 2px;
+  border-bottom: 2px solid transparent;
+  cursor: text;
+}
+
+.lsd-amount-field.is-empty {
+  color: var(--muted);
+}
+
+.lsd-amount-input {
+  min-width: 3ch;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.lsd-amount-input::placeholder {
+  color: var(--muted);
+}
+
+/* What it was, typed in the card's own type; it wraps instead of cutting
+   a long shop name off. */
+.lsd-title-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  overflow: hidden;
+  resize: none;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: max(16px, 1.08rem);
+}
+
+.lsd-title-input:read-only {
+  cursor: default;
+}
+
+.lsd-title-input::placeholder {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.lsd-title-input:focus-visible,
+.lsd-amount-input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Support: pills under the lead line. */
+.lsd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lsd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.lsd-chip svg {
+  color: var(--muted);
+}
+
+.lsd-chip.is-person {
+  border-color: var(--person-chip-border);
+  background: var(--person-chip-bg);
+  color: var(--person-ink);
+}
+
+.lsd-chip.is-person::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--person-colour);
+}
+
+.lsd-chip.is-mint { border-color: var(--pastel-mint-line); background: var(--pastel-mint); color: var(--pastel-mint-ink); }
+.lsd-chip.is-rose { border-color: var(--pastel-rose-line); background: var(--pastel-rose); color: var(--pastel-rose-ink); }
+.lsd-chip.is-sky { border-color: var(--pastel-sky-line); background: var(--pastel-sky); color: var(--pastel-sky-ink); }
+.lsd-chip.is-butter { border-color: var(--pastel-butter-line); background: var(--pastel-butter); color: var(--pastel-butter-ink); }
+.lsd-chip.is-lavender { background: var(--pastel-lavender); color: var(--pastel-lavender-ink); }
+
+.lsd-chip:is(.is-mint, .is-rose, .is-sky, .is-butter, .is-lavender) svg {
+  color: inherit;
+}
+
+/* One short muted line under the lead (a lock, a reason). */
+.lsd-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.lsd-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+/* Detail: quiet rows, each at least 44px tall. */
+.lsd-rows {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.lsd-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.94rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lsd-rows > .lsd-row:last-child,
+.lsd-rows > :last-child > .lsd-row:last-child {
+  border-bottom: 0;
+}
+
+.lsd-row.is-locked {
+  cursor: default;
+}
+
+.lsd-row:focus-visible,
+.lsd-row:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.lsd-row:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.lsd-row-label {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.lsd-row-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.lsd-row-value svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.lsd-row-value.is-empty,
+.lsd-row-value.is-locked {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.lsd-row-value.is-action {
+  color: var(--accent-strong);
+}
+
+.lsd-row-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lsd-row-hint {
+  overflow: hidden;
+  color: var(--muted);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A native select or date field laid over the whole row: the row shows the
+   value, the field takes the tap or the keyboard. */
+.lsd-row-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  font-size: 16px;
+}
+
+.lsd-row-native:disabled {
+  cursor: default;
+}
+
+/* An inline text field inside a row (a note, a description). */
+.lsd-row-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+  resize: none;
+}
+
+.lsd-row-input::placeholder {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.lsd-row-input:focus {
+  outline: none;
+}
+
+.lsd-row-more .lsd-row-label {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.lsd-row-more svg.is-open {
+  transform: rotate(90deg);
+}
+
+/* Bottom actions: the primary action last, under the thumb. */
+.lsd-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lsd-bottom-start,
+.lsd-bottom-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lsd-bottom-end {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.lsd-bottom-start {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+}
+
+.lsd-quiet,
+.lsd-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lsd-quiet {
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.lsd-quiet.is-danger {
+  color: var(--pastel-rose-ink);
+}
+
+.lsd-primary {
+  min-width: 132px;
+  padding: 0 22px;
+  border: 0;
+  background: var(--accent-strong);
+  color: #fff;
+  font-weight: 700;
+}
+
+.lsd-primary:disabled {
+  background: color-mix(in srgb, var(--accent-strong) 28%, white);
+  cursor: default;
+}
+
+.lsd-quiet:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.lsd-quiet:focus-visible,
+.lsd-primary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Hidden money: the lead shows •••• in plain ink (the money tones turn
+   neutral in public/styles.css) and an amount field masks what is typed. */
+html[data-money-privacy="hidden"] .lsd-amount-field {
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lsd-row-more svg {
+    transition: transform 160ms ease;
+  }
+}
