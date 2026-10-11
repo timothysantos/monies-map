@@ -841,6 +841,8 @@ Good to know:
   ([I can't change a statement-confirmed entry](#i-cant-change-a-statement-confirmed-entry)).
 - If the entry is part of a settled split, some changes are refused until you
   undo the settle-up ([I can't change a split](#i-cant-change-a-split)).
+- Save needs an amount above zero. If the amount is empty or isn't a number,
+  the entry stays open with your changes so you can fix it.
 
 ## Plan a month
 
