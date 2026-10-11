@@ -630,6 +630,8 @@ Important distinctions:
   when the user saves.
 - A transfer draft records the outgoing side on the account money left; the
   other account is `transferAccount`, for the normal transfer match later.
+  With no description typed it is "Transfer to <account>" (owner-approved
+  copy, 2026-10-11).
 
 ### Transaction Date & Reconciliation
 The system uses an event-first date model so planning and split workflows do

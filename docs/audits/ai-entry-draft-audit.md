@@ -104,8 +104,9 @@ not a split write.
    `originalAmountMinor`/`originalCurrency`.
 2. Income with no rule match is categorised `Other - Income` (the household's
    uncategorised income), not `Other`.
-3. A transfer with no description defaults to "Transfer to <account>"; this
-   text would be shown and saved, so it needs copy approval with the card.
+3. Resolved (owner, 2026-10-11): a transfer with no description defaults
+   to "Transfer to <account>" ("Transfer" when the destination is unknown);
+   this is approved copy, shown and saved as written.
 4. Resolved (owner, 2026-10-11): when AI fills the amount from number
    words ("Koufu lunch twelve fifty"), the words that spell that amount
    leave the description ("Koufu lunch"); other words stay
