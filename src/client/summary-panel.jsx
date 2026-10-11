@@ -7,18 +7,9 @@ import {
   useSearchParams
 } from "react-router-dom";
 
-import {
-  CategoryAppearancePopover,
-  SpendingMixChart
-} from "./category-visuals";
 import { messages } from "./copy/en-SG";
-import {
-  getDonutItemId,
-  getVisibleDonutData,
-  sumDonutValueMinor,
-  toggleHiddenDonutItemIds
-} from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
+import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesLocation } from "./summary-workflow";
 import {
   BarLine,
@@ -34,7 +25,6 @@ import { flowTone, headroomTone, reconciliationTone, signTone, spendTone } from 
 import { moneyToneClass } from "./money-tone-class";
 const {
   accounts: accountService,
-  categories: categoryService,
   format: formatService
 } = moniesClient;
 
@@ -179,7 +169,8 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       />
 
       <div className="summary-top-grid">
-        <SummarySpendingMixSection
+        {/* All months: the whole range's spending by category. */}
+        <SpendingMixSection
           donutData={safeSummaryPage.categoryShareChart}
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -250,88 +241,6 @@ function SummaryScopeSwitch({ view, onScopeChange }) {
         ))}
       </div>
     </div>
-  );
-}
-
-// The range's spending by category. It follows the Summary tab's month
-// choice: Summary is All months, so it shows the whole range.
-function SummarySpendingMixSection({
-  donutData,
-  categories,
-  onCategoryAppearanceChange,
-  onOpenEntriesForCategory
-}) {
-  const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
-  const visibleDonutData = useMemo(
-    () => getVisibleDonutData(donutData, hiddenCategoryIds),
-    [donutData, hiddenCategoryIds]
-  );
-  const visibleTotalMinor = sumDonutValueMinor(visibleDonutData);
-  const hiddenCount = hiddenCategoryIds.size;
-
-  function toggleCategoryVisibility(item) {
-    setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));
-  }
-
-  return (
-    <section className="chart-card">
-      <div className="chart-head">
-        <h3>{messages.summary.spendingMix}</h3>
-      </div>
-      <div className="summary-mix">
-        <div className="summary-mix-main">
-          <SpendingMixChart
-            data={visibleDonutData}
-            categories={categories}
-            totalMinor={visibleTotalMinor}
-          />
-          {hiddenCount ? (
-            <button type="button" className="subtle-action donut-reset-action" onClick={() => setHiddenCategoryIds(new Set())}>
-              {messages.common.resetHiddenCategories(hiddenCount)}
-            </button>
-          ) : null}
-
-          <div className="share-list">
-            {donutData.map((item) => {
-              const category = categoryService.get(categories, item);
-              const categoryName = category?.name ?? item.label;
-              const isHidden = hiddenCategoryIds.has(getDonutItemId(item));
-              return (
-                <div key={item.key} className={`share-row chart-toggle-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
-                  <div className="category-key">
-                    <CategoryAppearancePopover
-                      category={category}
-                      onChange={onCategoryAppearanceChange}
-                    />
-                    <button
-                      type="button"
-                      className="share-row-button"
-                      aria-pressed={!isHidden}
-                      onClick={() => toggleCategoryVisibility(item)}
-                    >
-                      <strong>{categoryName}</strong>
-                      <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney></p>
-                      <span className="share-row-meta">
-                        {messages.common.triplet(formatTransactionCount(item.entryCount), isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart)}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-action share-row-secondary-action"
-                      aria-label={messages.common.viewEntriesFor(categoryName)}
-                      title={messages.common.viewEntries}
-                      onClick={() => onOpenEntriesForCategory(categoryName)}
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -563,8 +472,4 @@ function buildMonthPlanReview(month) {
     savingsVarianceTone: headroomTone(savingsVarianceMinor),
     maxExpenseBarMinor: Math.max(month.realExpensesMinor, month.estimatedExpensesMinor)
   };
-}
-
-function formatTransactionCount(entryCount) {
-  return entryCount === 1 ? "1 transaction" : `${entryCount ?? 0} transactions`;
 }
