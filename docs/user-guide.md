@@ -486,7 +486,8 @@ with **Save expense** at the bottom.
 
 Ask is on the phone's bottom navigation. It is a page for adding an entry
 quickly, by typing or saying it, from a receipt photo, or by filling in a
-card, and for finding entries by asking, such as "grab rides in september".
+card, for finding entries by asking, such as "grab rides in september", and
+for questions about your money, such as "why was August so expensive?".
 On a computer it opens from the **+** button on Entries.
 
 ![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
@@ -582,8 +583,51 @@ never guesses. Asking to "switch to Serene" or for "shared only" gives you a
 answers out on your phone from the entries it already has; nothing you type
 is sent anywhere for this.
 
-Other questions about your money, such as "am I on track?", aren't answered
-yet; use Summary, Month and Entries for those.
+### Ask about your money
+
+Ask also answers questions about your money in plain words:
+
+- "Why was August so expensive?" or "Where did September go?": what was
+  spent, against the plan and the month before, where most of it went and
+  the biggest single costs.
+- "How am I doing against the plan?" or "Am I on track?": the month's
+  spending against its plan, and what went furthest over.
+- "Compare August with July": both months side by side and what changed
+  most.
+- "What's my biggest expense this month?": the largest expenses.
+- "How much income came in in August?": the income against its plan, and
+  where it came from.
+- "What do I owe Serene?" or "Who owes who?": what is still open between
+  you on Splits.
+
+The answer is a card with the figure you asked about (and the plan bar when
+there is a plan), a few short facts, a sentence or two, and the rows behind
+it. The figures are the same ones Month, Entries and Splits show. The
+buttons under it open the right page: **Open in Entries** (the entries it
+counted), **Open Month** or **Open Splits**. With money totals hidden, the
+amounts are hidden and the sentences wait until you show them.
+
+![A money question answered on Ask: July's spending against its plan, with Open in Entries and Open Month](/faq/guide/phone/thumbs/phone-ask-money-answer.webp)
+
+If a payment in that month looks like a settle-up between the two of you,
+or money moved between your own accounts, and it is still counted as
+spending or income, Ask shows it first under **Check this first**, so the
+answer isn't thrown off by it:
+
+- **Mark as settlement** (or **Link as transfer**): link it the way Splits
+  and Settings would, so it no longer counts as spending or income. Ask
+  then answers with that fixed.
+- **It's real spending**: leave it as it is. Ask answers with it counted
+  and doesn't ask about it again for that question.
+
+![Check this first on Ask: a PayNow from Serene to Ethan that looks like a settle-up, with Mark as settlement and It's real spending](/faq/guide/phone/thumbs/phone-ask-money-check.webp)
+
+When Claude is set up, it may put the answer into its own words, using only
+those figures; if its words don't match the figures exactly, you see Ask's
+own sentence instead. Nothing you ask is kept once you close the tab.
+
+Other questions, such as "should I buy a car?", aren't answered; Ask says
+so.
 
 ### When Claude credits run low
 

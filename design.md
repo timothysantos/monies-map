@@ -241,6 +241,35 @@ While it adds up it says "Adding it up…"; a month with no entries says so.
 "Open in Entries" is the first chip of the row (filled) while the answer is
 the newest thing in the conversation.
 
+### Money answer
+
+`ask-money-answer-card.jsx`, the same `LeadCard` for an answer to a money
+question (docs/flows/ask-flow.md "Money questions"):
+
+- Head: a neutral bubble with the intent's glyph (a pie for spending, a
+  target for the plan, scales for a comparison, a receipt for the biggest
+  expenses, people for Splits, a banknote for income), the title ("August
+  spending", "August against plan", "July and June", "Biggest in August",
+  "Splits with Serene", "August income") and, muted under it, what the
+  figure counts ("Spent · 51 expenses", "Came in · 2 entries", "Balance").
+- Lead: the figure on the right. Spending is rose only over plan, income
+  mint, a Splits balance mint when owed to you and rose when you owe;
+  the actual-vs-plan bar with "of $7,263.09 plan" in sky when there is a
+  plan.
+- Support: the plan, the other month, the largest shares ("Home 54%") or
+  the Splits groups, as `MetaChip`s with masked amounts when money is
+  hidden (labels never say over, under or who owes).
+- Detail: the answer in one to three sentences, then quiet rows (label and
+  a short detail on the left; the amount on the right in its tone, with the
+  plan or the other month small under it). Hidden money replaces the words
+  and rows with "Reveal money totals to read these insights."
+
+The check before an answer is the same card with the butter "Check this
+first" tag over the head ("Serene → Ethan" or the two accounts, the bank
+description muted, the amount in plain ink) and one plain paragraph; its
+chips are Mark as settlement or Link as transfer (filled) and It's real
+spending. Once answered it stays in the thread, faded.
+
 ### Bottom chips
 
 The row and the composer's primary button belong to the newest thing in
@@ -271,7 +300,11 @@ while the card is active.
   chat chips; a follow-up question: only its options (one per wallet,
   category, month or person, then "All of them"), with the question as the
   line above the row; a view change: "Switch to Serene · Shared" (filled),
-  then the same as after an answer, under "Change the view?".
+  then the same as after an answer, under "Change the view?";
+- after a money answer (`buildMoneyChips`): its links (Open in Entries,
+  Open Month or Open Splits, the first filled), then the same as after an
+  answer; an open check before an answer: only Mark as settlement (or Link
+  as transfer, filled) and It's real spending.
 
 ### Ask conversation store
 

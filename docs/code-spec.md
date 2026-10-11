@@ -372,6 +372,28 @@ never-guess cases) and `tests/ai-entry-draft-route.test.mjs` (AI off,
 missing, throwing, malformed, inventing and over its allowance each return
 the deterministic draft with no data write).
 
+Ask's money answers (`POST /api/ai-assist/answer`,
+`src/server/ask-answer-route.ts`; DOMAIN.md "Money Question") are the
+pattern for AI that only phrases a computed answer. Rules read the question
+(`readAnswerIntent`, shared with the Ask page so a money question reaches
+the route before the filter reader); the skew candidates for the answer's
+month(s) are checked first and a high-confidence one that would change the
+facts returns `{ needsConfirmation, candidates }` with no answer; the facts
+are pure reads of the Month and Splits page DTOs (`ask-answer-facts.ts`),
+so every figure equals the screen it links to; the card and the computed
+wording come from them (`ask-answer-wording.ts`). Only then, with AI on,
+`runTextJson` (capability `ask_answer`, 1 unit, 220 tokens, 8 s, schema
+`{ text }`) may phrase the wording from at most 16 bounded fact lines and
+the redacted question, and `validateAiWording` is its parser: every number
+must be a number in the facts, no name the facts do not hold, at most three
+sentences and 360 characters, no advice, forecast or jargon. Any failure
+shows the computed wording. The route writes nothing but the allowance
+counter; resolving a check goes through the candidate's suggested routes
+from the client, in order, against an allowlist (`resolveSkewCandidate`).
+Proof: `tests/ask-answer-*.test.mjs`, `tests/ask-money-answer.test.mjs`,
+`tests/e2e/ask-money-answers.spec.js`; audit
+`docs/audits/ask-answers-audit.md`.
+
 Money insights (check-in) signals live in `src/domain/money-signals/`, one small pure
 function per signal returning `{ key, kind, weight, numbers, phrasings,
 action? }` or `null`, with its copy in the page's catalogue beside it. They

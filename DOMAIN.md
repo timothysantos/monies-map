@@ -956,6 +956,54 @@ Canonical terms:
   `Open in Entries` shows the same rows and total
 - `From Ask chip`: the chip on Entries naming the filters an answer set; it
   goes back to the conversation, and its ✕ clears those filters
+- `money question`, `money answer` and `check before an answer`: see
+  "Money Question"
+
+### Money Question
+
+A free-form question about the household's money that is not a filter
+request, answered on the Ask page from the figures the screens already
+show (`POST /api/ai-assist/answer`; `docs/flows/ask-flow.md` "Money
+questions"). Example: "why was August so expensive?" answers with
+August's Actual spend against its plan, the change from July, the largest
+categories and the biggest single costs, and chips to Entries and Month.
+
+Canonical terms:
+- `money question`: read by rules (`src/domain/ask-answer-intent.ts`) into
+  one of six `answer intents`: `spending` (why, or where the money went),
+  `plan` (how the month stands against its plan), `compare` (two months),
+  `biggest` (the largest expenses), `income`, `owed` (who owes whom on
+  Splits). Anything else is unsupported and gets the "not answered" note;
+  a question with an amount, or a biggest or income question naming a
+  category or wallet, stays a filter request
+- `money answer`: the answer card. Lead (the figure asked about, with the
+  plan bar when there is a plan), Support chips (the plan, the other month,
+  the largest shares), the `wording` (one to three sentences) and Detail
+  lines, plus `links` to Entries (an Entries filter), Month or Splits
+- `facts`: the figures behind an answer, pure reads of the Month page DTO
+  (Actual spend and Planned spend cards, the summary month's income, the
+  Spending Mix donut, the view's entries and plan rows) and the Splits page
+  DTO seen by one person (open group balances and open settlement
+  checkpoints)
+- `check before an answer`: a high-confidence `skew candidate` that would
+  change the facts, shown first with `Mark as settlement` (a settlement) or
+  `Link as transfer` (an own-account move), and `It's real spending` (or
+  income); the answer follows the person's choice
+- `computed wording` and `AI wording`: the computed wording is always built;
+  AI may phrase it from the facts only, and its text is shown only when
+  every number and name in it is in the facts
+
+Rules:
+- the figures always come from the facts, never from AI
+- skew first: spending, plan, compare and biggest answers check spending
+  skew, income answers income skew, and who owes whom any settlement
+  candidate, for every month the answer covers
+- a month with no entries is answered as such, never with another month
+- resolving a check runs the candidate's suggested routes in order, from the
+  person's tap; It's real spending writes nothing and is kept only in the
+  conversation
+- nothing about a question, its facts or its answer is stored on the server
+
 
 ### Entry Card
 
@@ -1891,6 +1939,11 @@ These boundaries are important enough to preserve explicitly:
   an `entry draft` is a transient reading of a typed sentence with a source
   per field. It is never stored, and only the user's confirmation, through
   `/api/entries/create`, makes it a `ledger entry`.
+- Money answer vs financial fact:
+  a `money answer` restates figures the screens already show; its wording
+  may be AI-phrased, but it never computes, certifies or changes a figure,
+  and a `check before an answer` changes nothing until the person taps
+  Mark as settlement or Link as transfer.
 - Entry card vs ledger entry:
   an `entry card` (Ask page) is a draft on screen. It becomes a ledger entry
   only when the person saves it through the normal create route; a typed
