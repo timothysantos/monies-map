@@ -1635,6 +1635,14 @@ locally extracted text is sent after you opt in; the original PDF is neither
 uploaded as a file nor stored. Fallback rows always start as **Needs review**
 and do not create a statement balance checkpoint automatically.
 
+The Ask page's mic uses the browser's own speech recognition first, which
+sends nothing to the app. Only a browser without one records a clip of at
+most 30 seconds, when you hold or tap the mic, for
+`POST /api/ai-assist/transcribe` (Workers AI Whisper, 1 unit of the daily
+allowance). The clip and the words are neither stored nor logged, and the
+words only fill the message box: nothing is sent until you tap Send. With AI
+turned off, the mic is hidden in such a browser.
+
 The app keeps only daily AI usage counters so it can stay within its configured
 allowance. It does not save prompts, model answers, original PDFs, credentials,
 Shortcut tokens, or full card/account numbers as an AI history.
@@ -1664,6 +1672,22 @@ browser before it is sent (no EXIF or location), kept in memory only for
 its thumbnail, and read on the device by the app's own Tesseract worker
 when the reader is unavailable. The browser tests stub both readers
 (`tests/e2e/ask-page.spec.js`).
+
+The composer's mic (`src/client/ask-voice.js`) is a small state machine
+(`createVoiceController`: idle, starting, listening, transcribing, hidden)
+with a hold-or-tap gesture (`createPressGesture`), unit tested in
+`tests/ask-voice.test.mjs`. It uses `SpeechRecognition` /
+`webkitSpeechRecognition` (en-SG, then en-US) with interim results, and only
+fills the message box. A browser without speech recognition records a clip
+with `MediaRecorder` for `/api/ai-assist/transcribe`
+(`src/server/transcribe-route.ts`, `tests/transcribe-route.test.mjs`): a
+`GET` on the first press says whether it is on, the `POST` checks type,
+size (1 MiB) and duration (30 s) before reserving 1 allowance unit and
+calling `@cf/openai/whisper-large-v3-turbo`. The test Worker has AI off, so
+`tests/e2e/ask-voice.spec.js` stubs `SpeechRecognition` in the page with
+`addInitScript` for the main path and uses the real route for the hidden
+fallback. To try voice by hand in desktop Chrome, use `localhost` (the
+microphone needs a secure origin) and allow the microphone.
 
 ## How do Money insights work?
 

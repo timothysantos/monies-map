@@ -418,7 +418,8 @@ still opens the expense form.
 ## Ask
 
 Ask is on the phone's bottom navigation. It is a page for adding an entry
-quickly, by typing it, from a receipt photo, or by filling in a card. On a
+quickly, by typing or saying it, from a receipt photo, or by filling in a
+card. On a
 computer it opens from the **+** button on Entries.
 
 ![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
@@ -431,7 +432,7 @@ computer it opens from the **+** button on Entries.
 - **Suggestions**: a row of buttons above the message box. Swipe it sideways
   for more.
 - **The message box**: type a sentence such as "Koufu lunch $12.50, Citi",
-  or use the camera button for a receipt photo.
+  say it with the mic button, or use the camera button for a receipt photo.
 
 When you are adding an entry, a **card** shows it as it will be saved: the
 category, what it was, the amount (red for spending, green for money in,
@@ -445,6 +446,12 @@ posted date, the owner and a note. Tap any of them to change it.
   The app reads the shop, the total and the date into the card. The photo is
   made smaller on your phone first and is not kept.
 - **Paste**: paste a copied receipt photo or sentence.
+- **The mic button**: tap and hold the mic and say what you bought, then
+  let go. Or tap it once to start and tap again to stop. While it listens
+  it turns orange. Your words appear in the message box; check them, change
+  anything that's wrong, then tap the send arrow. Nothing is sent until you
+  do. The first time, your phone asks to use the microphone. If the mic
+  isn't there, your browser can't take voice input; type instead.
 - **Add entry** and **Add expense**: open a new card (Add expense starts
   shared on Splits).
 - **Transfer** and **Income**: switch the card to a transfer between two of

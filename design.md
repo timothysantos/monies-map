@@ -135,8 +135,23 @@ Layout, top to bottom:
 - Bottom stack above the tab bar: one horizontally scrolling row of chips
   (buttons; the main way on first and filled; a back chip in accent text),
   then the composer: a camera button (pick or take a receipt photo), the
-  message field, and the send arrow. When a card is open and nothing is
+  mic, the message field, and the send arrow. When a card is open and nothing is
   typed the arrow becomes Save, disabled until the card is valid.
+
+### Composer mic
+
+The mic (`ask-voice.js`, flow in `docs/flows/ask-flow.md` "Voice input")
+sits between the camera and the message field, a 44 px icon button like the
+camera, always in the same place (not swapped in on focus, so it can be
+held without first opening the phone's keyboard). Hold to talk, or tap to
+start and tap to stop; the words fill the message field, which is read-only
+while listening, and the person sends. Listening: the button takes the send
+button's accent fill with an accent ring, which pulses only under
+`prefers-reduced-motion: no-preference`; the field's placeholder reads
+"Listening…". The label switches between "Start voice input" and "Stop
+voice input", and a polite live region announces the change. The mic is
+hidden when the browser has neither speech recognition nor the recorded
+fallback; failures are calm notes in the conversation.
 
 On a phone the page is `position: fixed` above the tab bar (`ask-route.css`)
 with its own scrolling conversation; the shell's header bar is underneath
@@ -536,7 +551,10 @@ the same-season comparison and bank-proof gaps are check-in signals only.
 The Ask page's two readers (`ask-api.js`) are explicit actions too: a typed
 sentence goes to the entry-draft route only when the person sends it, and a
 receipt photo to the receipt-read route only when they pick, paste or drop
-one. The photo is downscaled and re-encoded in the browser first (no EXIF,
+one. The composer's mic uses the browser's own speech recognition; only a
+browser without one records a clip (at most 30 s), and only on a hold or
+tap, for the transcribe route (Workers AI Whisper, 1 allowance unit). The
+words fill the message box and are never sent without the person's tap. The photo is downscaled and re-encoded in the browser first (no EXIF,
 no location) and dropped from memory when the page goes. Either reader
 failing leaves the card manual with a calm note; a receipt falls back to
 the app's own on-device OCR. Neither ever saves: the person does, through

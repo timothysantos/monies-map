@@ -260,3 +260,45 @@ it, and the daily usage counter row is unchanged). For the AI boundary:
   fails if any page requests the removed route or the headline changes after
   the page is usable, and `tests/ai-assistance-routes.test.mjs` proves the
   Worker answers the old route with 404 without calling AI.
+
+### Update, 11 October 2026: Ask voice input (transcribe route)
+
+The Ask composer gained a mic (owner-approved): hold to talk or tap, the
+words fill the message box, and the person checks and sends. The browser's
+own speech recognition (`SpeechRecognition` / `webkitSpeechRecognition`,
+which iPhone Safari has) is the primary path and sends nothing to the
+Worker. Only a browser without one (or one that refuses its speech service
+and can record) uses the new fallback route `/api/ai-assist/transcribe`
+(`src/server/transcribe-route.ts`, capability `speech_transcribe`). For the
+AI boundary:
+
+- Trigger: explicit only. A clip is recorded and sent only on a hold or tap
+  of the mic; the route's `GET` availability check runs on the first press,
+  never on page open, and calls no AI.
+- Privacy: one clip of at most 30 s (MediaRecorder, 32 kbit/s), sent once as
+  multipart and discarded after the Whisper call. Neither the audio nor the
+  words are stored, logged or cached (the route test fails on any console
+  output). The words come back only to the browser that sent the clip; they
+  enter the ledger only if the person sends them through the entry-draft
+  reader and then saves the card.
+- Validation before any AI call or allowance use: multipart only, an
+  `audio` part of a known audio type whose bytes match it (WebM, Ogg, MP4,
+  WAV sniffed), at most 1 MiB, a declared duration of at most 31 s, and an
+  MP4's own `mvhd` duration under the same cap (400 / 413 / 415).
+- Cost: 1 unit of the shared daily allowance per clip, reserved before
+  inference (`reserveDailyAiBudget`, now exported for this route). Whisper
+  large v3 turbo is priced per audio minute (about USD 0.0005), so a 30 s
+  clip is far below a text prompt's cost; the unit cap keeps the deployment
+  inside the same conservative allowance.
+- Writes: only the existing allowance counter row (`ai_assist_daily_usage`).
+  No table, no ledger write, no auto-send.
+- Output: the `text` field only, whitespace collapsed and capped at 500
+  characters; anything else (empty, malformed, a thrown error) is an
+  ordinary `{ available: false, code: "failed" }`.
+- No-AI path: with AI disabled or unconfigured the `GET` answers
+  `{ available: false }` and the client hides the mic after one calm note
+  without asking for the microphone; a `POST` answers `code: "off"`. Over
+  the allowance it answers `code: "allowance"` and the mic stays with a calm
+  note. Typing, the card and every other workflow are unchanged.
+  `tests/transcribe-route.test.mjs`, `tests/ask-voice.test.mjs` and
+  `tests/e2e/ask-voice.spec.js` prove each of these.

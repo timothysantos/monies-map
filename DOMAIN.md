@@ -799,7 +799,12 @@ Canonical terms:
 - `since you last looked`: the Summary check-in's headline for the view,
   read from data already loaded; never a fetch or AI call on open
 - `chip row`: the one row of suggestion buttons above the composer
-- `composer`: the message field with its photo and send (or Save) buttons
+- `composer`: the message field with its photo, mic and send (or Save)
+  buttons
+- `voice input`: words spoken through the composer's mic, put in the
+  message field for the person to check and send; never sent by itself.
+  The browser's own speech recognition first; a `voice clip` (at most 30 s,
+  written down by the transcribe route) only in a browser without one
 
 ### Entry Card
 
@@ -824,7 +829,8 @@ Rules:
 - A transfer card posts one transfer entry (its From side, or its To side
   when turned round); the other wallet is shown for the later transfer
   match, not posted.
-- Nothing about the conversation, sentence or photo is stored.
+- Nothing about the conversation, sentence, photo, voice clip or spoken
+  words is stored.
 
 ### Money Tone
 

@@ -239,6 +239,20 @@ first, never stored). Each fails soft to a manual card with a calm note;
 `tests/e2e/ask-page.spec.js` are their no-AI and failure tests. Opening Ask
 makes no AI request.
 
+The composer's mic (`ask-voice.js`) is an explicit action too: hold or tap.
+It uses the browser's own speech recognition first and sends nothing.
+Only a browser without one records a clip (MediaRecorder, at most 30 s,
+32 kbit/s) for `POST /api/ai-assist/transcribe`
+(`src/server/transcribe-route.ts`): Workers AI Whisper, 1 unit of the
+shared allowance reserved before inference, with type, size and duration
+checked before that. Its `GET` (no AI, no allowance) runs only on the first
+press, so opening Ask still asks nothing. Clips and words are never stored,
+logged or cached. Spoken words only fill the message box; sending stays the
+person's tap. `tests/transcribe-route.test.mjs` (disabled, allowance,
+caps, success, nothing written but the counter, nothing logged) and
+`tests/ask-voice.test.mjs` / `tests/e2e/ask-voice.spec.js` (fallback off
+hides the mic, denied is a calm note) are its no-AI and failure tests.
+
 An AI response is a bounded draft, explanation, or ranking over deterministic
 evidence already selected by the app. The existing editor or review action is
 the only way to persist a change. Keep request payloads redacted and bounded;
