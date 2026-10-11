@@ -40,8 +40,11 @@ newest one in progress (an add-mode card carries its `mode`, `from` and
 
 On a phone the tab bar reads Summary, Entries, Splits, Ask, ··· (one grid
 column per primary tab; Month is not a tab, it is the Summary tab's month
-choice). On a wide screen the Ask tab is hidden for now (a
-docked panel comes later) and `/ask` renders in the main area.
+choice). On a wide screen (761 px and up) the Ask tab is hidden: the Ask
+field at the bottom right of every page opens the same conversation beside
+the page (see "Desktop" below). `/ask` itself still renders in the main
+area there (the Entries + and Splits receipt buttons, the Shortcut's link,
+the From Ask chip's way back), and shows no field or panel.
 
 Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`, and an
 answer's `Open in Entries`, see "Search and filter"), the entry's
@@ -50,6 +53,70 @@ Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
 `/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
 Entries composer through `?action=add-expense` with the card's values, or the
 Splits expense dialog through `?split_action=add-expense`).
+
+## Desktop
+
+On a wide screen Ask has no tab. A one-line field, "Ask, or drop a
+receipt…", is fixed at the bottom right of every page but `/ask`, beside
+the Entries + or the Splits receipt button where there is one
+(`ask-dock.jsx`, in the first screen). Focusing, clicking or typing in it,
+Enter, `/` (when the person is not typing in a field and no dialog is
+open; `isAskShortcutKey`), its paperclip (the photo picker), or a photo
+dropped or pasted on it opens Ask. Words typed before the conversation has
+loaded follow into its message box; a photo goes through the same receipt
+reader as the composer's.
+
+Where it opens (`ask-dock-layout.js`, pure, unit tested):
+
+- 760 px and narrower: nothing (the phone's Ask tab).
+- 761 to 1,279 px: a popup over the page, anchored bottom right, 410 × 560
+  px (smaller on a short window). The page keeps its width.
+- 1,280 px and wider: docked, a full-height panel at the right (`clamp(360px,
+  27vw, 400px)`) that pushes the page narrower (`body[data-ask-dock]`
+  pads the body; the + and receipt buttons move beside it). The page keeps
+  at least 880 px, where the header still fits one row (design.md "Layout
+  Breakpoint Boundary").
+- The mode is chosen when Ask opens. A docked panel on a window narrowed
+  below 1,280 px shows as the popup (there is no room to push the page)
+  and docks again when it widens. A popup kept open while the window
+  widens stays a popup and shows the expand control ("Dock Ask beside the
+  page"), which docks it.
+
+The panel is the Ask page itself (`AskPanel` with `placement` "docked" or
+"popup", the same lazy chunk `/ask` loads) on the shared conversation
+store, so the phone's Ask tab and the panel are one conversation. Its way
+in is the dock's, not the URL's (`ask-dock-state.js`): opening from the
+field resumes a new entry still being filled (the presence's
+`resumeIntent`, as the phone's Ask tab does), else the chat. A chip that
+would open `/ask` (Add entry, Add expense, `‹ Ask`) changes the dock's
+conversation instead, and Switch to … changes the view of the page beside
+it. Every link out of an answer or a card (Open in Entries, Open this
+entry, Back to Entries, the "since you last looked" actions) navigates the
+page beside the panel; the panel stays.
+
+Dock state (`ask-dock-state.js`, sessionStorage `monies.askDock.v1`,
+versioned): open or closed, the mode and the way in, so the panel stays
+open across route changes and a reload until closed. The field's words,
+a dropped photo and the panel's readiness are memory only.
+
+Loading: the field and the panel's frame are in the first screen (a few
+kB, inside `npm run check:bundle`). The conversation's code loads when the
+person opens Ask, or, for a panel left open before a reload, once the page
+beside it is usable (the frame shows "Loading..." and keeps its space
+meanwhile, so the page does not shift). Hovering or keyboard-focusing the
+field offers the Ask chunk to the warmup scheduler as link intent. The
+panel reports busy work (a card being filled or saved, the mic) under no
+route key, so optional work waits for it, but it never makes a route
+ready.
+
+Focus and keys: the panel is a complementary landmark named by its heading
+("Ask", "New entry", …). A person's open puts focus in the message box; a
+panel restored after a reload does not take focus. `/` while it is open
+returns focus to the message box. Close ("Close Ask") and Escape close it,
+and focus goes back to the field without reopening it. Escape closes the
+popup unless a menu or picker inside handled it or the person is typing in
+a field on the page; the docked panel, a fixture beside the page, closes
+only when focus is inside it.
 
 ## State Flow
 
@@ -365,6 +432,11 @@ Ask does not own:
   the conversation with the Claude Console link and I've topped up; the ✕
   hides it for the session until the state gets worse; hidden money shows
   no dollar figure in it.
+- On a wide screen the Ask field is at the bottom right of every page but
+  `/ask`; it opens docked from 1,280 px (the page narrows, nothing sits
+  under the panel, the header stays one row) and as a popup below that;
+  the panel stays open across pages and a reload until Close or Escape,
+  and an answer's links open the page beside it.
 - No system alert, confirm or prompt anywhere.
 
 ## Persisted / Query Contract
@@ -385,7 +457,10 @@ Ask does not own:
 
 ## Audit Status
 
-Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
+Current status: aligned with tests (`tests/ask-dock-layout.test.mjs`,
+`tests/ask-dock-state.test.mjs`, `tests/e2e/ask-dock.spec.js` (desktop:
+1,024, 1,280 and 1,440 px), the docked header case in
+`tests/e2e/header-tab-fit.spec.js`, `tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,
 `tests/ask-entry-dedupe.test.mjs`,
 `tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
@@ -398,6 +473,14 @@ Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 iPhone 13 profile) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
+
+- On a wide screen the Entries + and Splits receipt buttons still open
+  `/ask` in the main area, where the panel hides (one Ask on screen at a
+  time); it comes back on the next page. Whether they should open the
+  panel's new entry instead is an open decision.
+- Only the header and Month follow the page's width when the panel narrows
+  it; other pages keep their window-width rules (Splits' toolbar is tight
+  at 1,280 px with the panel docked, as it is in a 960 px window).
 
 - The Claude credit figures are the server's estimate from token counts
   since the last "I've topped up"; the Claude Console balance is the real
