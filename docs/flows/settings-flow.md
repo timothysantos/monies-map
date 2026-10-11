@@ -25,6 +25,7 @@ Settings state is split between:
   actions
 - workflow state for Apple Pay shortcut installation, private key edits,
   default shortcut params, and default-account priority order
+- workflow state for each person's payment ways (DOMAIN.md, "Payment Way")
 - transient UI state for dialogs and section disclosure
 
 Settings should stay lightweight. It should not become a hidden app-shell
@@ -42,6 +43,16 @@ They use the shared `EmptyState`. Form errors are `InlineError` alerts.
 Settings data comes from:
 
 - `GET /api/settings-page`
+
+`settingsPage.paymentWays` lists one effective payment way per person
+(defaults applied). Payment ways sit in their own section after the Apple
+Pay shortcut: per person a "PayNow and bank transfers" select (active bank
+accounts, the person's own first, then shared, then other people's) and a
+"Cash" select (active cash accounts; disabled with a hint when there are
+none). Each change posts that person's two values to
+`POST /api/settings/payment-ways/save` straight away, like Default account
+priority, and refreshes with the `payment_way_saved` plan (Settings only).
+A refusal shows its reason above the people and puts the select back.
 
 Reference-data settings changes may also refresh:
 
@@ -77,6 +88,8 @@ Settings owns:
 - unresolved transfer review
 - Apple Pay shortcut install state, private key, default shortcut params, and
   default account fallback order
+- payment ways: each person's PayNow and bank transfers account and cash
+  wallet, read by the entry draft
 
 The Apple Pay shortcut install flow is ordered deliberately:
 

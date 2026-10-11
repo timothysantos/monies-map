@@ -1772,7 +1772,12 @@ draft (`EntryDraftDto`) gives each create field with its source
 `28/9`, `29/09/26`), account names, people, split words and transfer or
 income phrases. It never guesses: two amounts, an account name that matches
 several accounts, an inactive account, an uneven split, an unclear payer,
-a bad date and an amount in another currency are asked. AI is asked only when the sentence
+a bad date and an amount in another currency are asked. A payment word
+("paynow", "FAST", "GIRO", "NETS", "bank transfer", "cash") with no account
+named uses that person's payment way from Settings -> Payment ways (stored
+in `app_settings` under `payment_ways`, saved through
+`POST /api/settings/payment-ways/save`, `src/domain/payment-ways.ts`); an
+empty one keeps Default account priority. AI is asked only when the sentence
 named no amount or left no description: one allowance unit, the redacted
 sentence alone, 80 tokens. Its answer fills only those gaps after
 validation (the amount must be stated in the sentence, the description must
