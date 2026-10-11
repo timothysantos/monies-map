@@ -722,15 +722,19 @@ button.split-activity-card:hover {
   padding-left: 24px;
 }
 
-.split-share-editor .split-odd-cent-control {
+.split-expense-rows .split-odd-cent-control {
   margin: 0;
   border: 0;
+  border-bottom: 1px solid var(--line);
   border-radius: 0;
-  border-top: 1px solid var(--line);
 }
 
-.split-share-editor .split-odd-cent-actions button {
+.split-expense-rows .split-odd-cent-actions button {
   min-height: 44px;
+}
+
+.split-expense-card.is-dialog .split-expense-source-note {
+  grid-column: 2;
 }
 
 /* The head: title, context line and a round close button. */

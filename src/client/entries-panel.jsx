@@ -1247,7 +1247,7 @@ export function EntriesPanel({
                 />
               )
             : (
-                <div className="entry-mobile-sheet-actions entry-edit-sheet-actions">
+                <div className="entry-edit-sheet-actions">
                   <BottomActions
                     destructive={(
                       <>

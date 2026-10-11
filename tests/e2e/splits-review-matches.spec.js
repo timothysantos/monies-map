@@ -201,19 +201,20 @@ test("mobile view entry from a split scrolls the background entries row into pla
   await expect(page).toHaveURL(new RegExp(`editing_entry=${targetEntry.entryId}`));
   const entryDialog = page.getByRole("dialog", { name: "Edit entry" });
   await expect(entryDialog).toBeVisible();
-  await expect(entryDialog.locator(".entry-mobile-sheet-actions .subtle-cancel")).toHaveText("Close");
+  // The sheet's bottom bar (design.md, "Lead · Support · Detail").
+  const entryActions = entryDialog.locator(".entry-edit-sheet-actions");
+  await expect(entryActions.getByRole("button", { name: "Close", exact: true })).toBeVisible();
   await expect(entryDialog.getByRole("button", { name: "Save" })).toBeDisabled();
-  const entryActions = entryDialog.locator(".entry-mobile-sheet-actions");
   const entryActionBox = await entryActions.boundingBox();
   expect(entryActionBox).toMatchObject({ x: 0, width: 390 });
   await expect.poll(async () => entryActions.evaluate((actions) => {
     const rect = actions.getBoundingClientRect();
     const sampleY = Math.min(window.innerHeight - 1, Math.floor(rect.top + 8));
     return [1, window.innerWidth - 2].every((sampleX) => (
-      document.elementFromPoint(sampleX, sampleY)?.closest(".entry-mobile-sheet-actions") === actions
+      document.elementFromPoint(sampleX, sampleY)?.closest(".entry-edit-sheet-actions") === actions
     ));
   })).toBe(true);
-  const finalActionRow = entryActions.locator(".entry-mobile-sheet-primary-row");
+  const finalActionRow = entryActions.locator(".lsd-bottom-end");
   const finalActionRowBox = await finalActionRow.boundingBox();
   expect(entryActionBox.y + entryActionBox.height - (finalActionRowBox.y + finalActionRowBox.height)).toBeGreaterThanOrEqual(18);
 
@@ -228,7 +229,7 @@ test("mobile view entry from a split scrolls the background entries row into pla
   })).toBe(true);
 
   await entryDialog.getByLabel("Note").fill("Reviewed from split sheet");
-  await expect(entryDialog.locator(".entry-mobile-sheet-actions .subtle-cancel")).toHaveText("Cancel");
+  await expect(entryActions.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
   await expect(entryDialog.getByRole("button", { name: "Save" })).toBeEnabled();
 });
 

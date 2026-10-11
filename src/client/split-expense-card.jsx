@@ -240,7 +240,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
       </div>
       <DetailRows label={cardCopy.detailsLabel} className="split-expense-rows">
         {shareRows.length ? (
-          <span className="lsd-row-group" role="group" aria-label={cardCopy.sharesLabel}>
+          <div className="split-share-rows" role="group" aria-label={cardCopy.sharesLabel}>
             {shareRows.map((row) => (
               <DetailRow
                 key={row.personName}
@@ -252,13 +252,14 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
                 onClick={() => setShareEditorOpen((open) => !open)}
               />
             ))}
-          </span>
+          </div>
         ) : null}
         {shareRows.length && shareEditorOpen ? (
           <div id={shareEditorId} className="split-share-editor">
-            <SplitShareEditor dialog={dialog} people={people} sharePersonName={sharePersonName} onChange={onChange} />
+            <SplitShareEditor dialog={dialog} sharePersonName={sharePersonName} onChange={onChange} />
           </div>
         ) : null}
+        <OddCentChooser dialog={dialog} people={people} onChange={onChange} />
         {categoryRow}
         {groupRow}
         {isSheet ? (
@@ -273,14 +274,22 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
           </MoreDetails>
         ) : otherRows}
       </DetailRows>
+      {selectedGroup?.expenseSource === "cash" || selectedGroup?.expenseSource === "ledger" ? (
+        <p className="lsd-note split-expense-source-note">
+          {selectedGroup.expenseSource === "cash"
+            ? "Cash-only group: no bank or card match is expected."
+            : "Bank/card group: cash purchases belong in a separate cash group."}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 // The share editor: the share person's percent and amount, linked as the
 // old form linked them (updateSplitExpenseDraft keeps the other in step
-// while typing and settles both on leaving the field), plus the odd cent.
-function SplitShareEditor({ dialog, people, sharePersonName, onChange }) {
+// while typing and settles both on leaving the field). The odd cent choice
+// shows under the share rows whenever it applies, editor open or not.
+function SplitShareEditor({ dialog, sharePersonName, onChange }) {
   return (
     <>
       <DetailRow label={copy.expenseSplit(sharePersonName)} className="split-share-field" data-row="share-percent">
@@ -321,7 +330,6 @@ function SplitShareEditor({ dialog, people, sharePersonName, onChange }) {
           }, "amount", { commit: true }) : current)}
         />
       </DetailRow>
-      <OddCentChooser dialog={dialog} people={people} onChange={onChange} />
     </>
   );
 }
