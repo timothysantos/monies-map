@@ -112,6 +112,11 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
   const isInMonth = (date: string) => date >= monthStart && date < nextMonth;
   const personById = new Map(input.people.map((person) => [person.id, person]));
   const sides = collectSides(input);
+  // Amounts must match exactly, so each lookup only scans one amount's sides.
+  const sidesByAmount = new Map<number, Side[]>();
+  for (const side of sides) {
+    sidesByAmount.set(side.entry.amountMinor, [...(sidesByAmount.get(side.entry.amountMinor) ?? []), side]);
+  }
   const used = new Set<string>();
   const found: SkewCandidateDto[] = [];
 
@@ -121,14 +126,14 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
     if (!fromPerson || !toPerson) {
       continue;
     }
+    const sameAmount = sidesByAmount.get(source.amountMinor) ?? [];
     const matches = (side: Side, direction: Side["direction"], ownerPersonId: string) => side.direction === direction
       && side.ownerPersonId === ownerPersonId
       && side.currency === source.currency
-      && side.entry.amountMinor === source.amountMinor
       && !used.has(side.entry.id)
       && source.inWindow(side.entry.date);
-    const outflow = closestTo(source.anchorDate, sides.filter((side) => matches(side, "out", fromPerson.id)));
-    const inflow = closestTo(source.anchorDate, sides.filter((side) => matches(side, "in", toPerson.id)));
+    const outflow = closestTo(source.anchorDate, sameAmount.filter((side) => matches(side, "out", fromPerson.id)));
+    const inflow = closestTo(source.anchorDate, sameAmount.filter((side) => matches(side, "in", toPerson.id)));
     if (!outflow && !inflow) {
       continue;
     }
@@ -142,12 +147,11 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
     if (used.has(outflow.entry.id)) {
       continue;
     }
-    const inflows = sides.filter((side) => side.direction === "in"
+    const inflows = (sidesByAmount.get(outflow.entry.amountMinor) ?? []).filter((side) => side.direction === "in"
       && !used.has(side.entry.id)
       && side.ownerPersonId === outflow.ownerPersonId
       && side.entry.accountId !== outflow.entry.accountId
       && side.currency === outflow.currency
-      && side.entry.amountMinor === outflow.entry.amountMinor
       && diffDays(side.entry.date, outflow.entry.date) <= OWN_TRANSFER_WINDOW_DAYS);
     const inflow = closestTo(outflow.entry.date, inflows);
     const owner = personById.get(outflow.ownerPersonId);
@@ -165,8 +169,9 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
   // every entry in full, a person view only that person's entries in scope
   // (the same rule as Summary and Month). A candidate that skews nothing in
   // this view and month is left out.
+  const entryById = new Map(input.entries.map((entry) => [entry.id, entry]));
   const visible = found
-    .map((candidate) => ({ ...candidate, skew: skewForView(candidate, input) }))
+    .map((candidate) => ({ ...candidate, skew: skewForView(candidate, entryById, input) }))
     .filter((candidate) => candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0)
     .sort(compareCandidates);
 
@@ -420,8 +425,7 @@ function countedReasons(side: Side): SkewCandidateReasonDto[] {
   return [];
 }
 
-function skewForView(candidate: SkewCandidateDto, input: SkewCandidateInput) {
-  const entryById = new Map(input.entries.map((entry) => [entry.id, entry]));
+function skewForView(candidate: SkewCandidateDto, entryById: Map<string, EntryDto>, input: SkewCandidateInput) {
   let spending = 0;
   let income = 0;
   for (const side of [candidate.outflowEntry, candidate.inflowEntry]) {
