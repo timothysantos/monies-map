@@ -292,11 +292,14 @@ const SHOTS = [
     run: async (page) => {
       await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
       await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
-      const dialog = page.getByRole("dialog", { name: "Create split expense" });
+      const dialog = page.getByRole("dialog", { name: "New split expense" });
       await dialog.getByLabel("Description").fill("Dinner at Din Tai Fung");
       await dialog.getByLabel("Category").selectOption("Food & Drinks");
       await dialog.getByLabel("Expense total").fill("86.40");
       await dialog.getByLabel("Note").fill("Birthday dinner");
+      // Back to the top, so the shot leads with the card and its total.
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+      await dialog.locator(".split-dialog-scroll").evaluate((element) => { element.scrollTop = 0; });
       await page.waitForTimeout(400);
       await hideCaret(page);
     }

@@ -38,7 +38,7 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   const groupId = new URL(page.url()).searchParams.get("split_group");
 
   await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
-  const expenseDialog = page.getByRole("dialog", { name: "Create split expense" });
+  const expenseDialog = page.getByRole("dialog", { name: "New split expense" });
   // The Group row keeps its own select over the row on a wide screen.
   const groupSelect = expenseDialog.locator("[data-row='group'] select");
   await expect(groupSelect).toHaveValue(groupId);

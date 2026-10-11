@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
-// The Entries edit sheet and Create split expense in the Lead · Support ·
+// The Entries edit sheet and New split expense in the Lead · Support ·
 // Detail style (design.md): one lead card, Support chips, quiet Detail rows
 // and a bottom bar with the primary action under the thumb. These prove the
 // sheets save what the forms saved, keep the statement lock and the in-app
@@ -98,7 +98,7 @@ async function openEditSheet(page, entryId) {
 
 async function openCreateExpense(page) {
   await page.goto(`/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense`);
-  const dialog = page.getByRole("dialog", { name: "Create split expense" });
+  const dialog = page.getByRole("dialog", { name: "New split expense" });
   await expect(dialog).toBeVisible({ timeout: 60_000 });
   return dialog;
 }
@@ -388,7 +388,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     await expect(sheet.locator(".lsd-card .lsd-amount-sign")).toBeHidden();
   });
 
-  test("Create split expense saves an even split's total and shares as the form did", async ({ page }) => {
+  test("New split expense saves an even split's total and shares as the form did", async ({ page }) => {
     await phone(page);
     const description = `Lead split even ${Date.now()}`;
     const dialog = await openCreateExpense(page);
@@ -493,7 +493,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     expect(creates).toBe(0);
   });
 
-  test("every tap target in Create split expense is 44 px or more with room around it", async ({ page }) => {
+  test("every tap target in New split expense is 44 px or more with room around it", async ({ page }) => {
     await phone(page);
     const dialog = await openCreateExpense(page);
     await dialog.locator(".lsd-card").getByRole("textbox", { name: "Expense total" }).fill("10.01");

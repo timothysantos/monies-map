@@ -317,7 +317,7 @@ export const messages = {
     createGroup: "Create group",
     groupName: "Group name",
     saveGroup: "Save group",
-    createExpense: "Create split expense",
+    createExpense: "New split expense",
     expenseDate: "Date",
     expenseDescription: "Description",
     expenseCategory: "Category",
