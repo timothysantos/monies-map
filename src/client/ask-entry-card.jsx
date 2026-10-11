@@ -8,6 +8,7 @@ import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { ResponsiveSelect } from "./responsive-select";
+import { getIconComponent } from "./ui-components";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
 
@@ -59,7 +60,7 @@ export function AskEntryCard({
   const bubbleColour = isTransfer ? TRANSFER_BUBBLE_COLOUR : category?.colorHex ?? TRANSFER_BUBBLE_COLOUR;
   const bubble = isTransfer
     ? { colorHex: TRANSFER_BUBBLE_COLOUR, icon: ArrowLeftRight }
-    : category ? { colorHex: category.colorHex, iconKey: category.iconKey } : { colorHex: TRANSFER_BUBBLE_COLOUR, icon: CreditCard };
+    : category ? { colorHex: category.colorHex, icon: getIconComponent(category.iconKey) } : { colorHex: TRANSFER_BUBBLE_COLOUR, icon: CreditCard };
   const currency = currencyOf(context, card.fields.accountId);
   const { from, to } = getTransferEnds(card);
   const toneClass = cardAmountToneClass(card);
