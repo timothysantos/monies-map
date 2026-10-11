@@ -50,6 +50,9 @@ appear in this order:
    ![Settings groups everything into sections you open one at a time](/faq/guide/desktop/thumbs/settings-overview.webp)
 7. **FAQ**: this guide.
 
+On a phone there is one more: **Ask**, where you add an entry by typing it,
+from a receipt photo, or by filling in a card ([Ask](#ask)).
+
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move between months or ranges and hide or show
 money totals. Imports, Settings and FAQ do not depend on a month, so they show
@@ -162,9 +165,9 @@ These buttons are not shown on the real (private) app.
 
 The app is designed for phones as well as desktops. The differences:
 
-- **Bottom navigation.** Summary, Month, Entries and Splits sit at the bottom.
-  The **•••** button opens Imports, Settings and FAQ.
-  ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
+- **Bottom navigation.** Summary, Entries, Splits and Ask sit at the bottom.
+  The **•••** button opens Month, Imports, Settings and FAQ.
+  ![On a phone, the ••• button opens Month, Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
   `Ethan · Direct + Shared`). Month and Entries add previous and next month
@@ -176,9 +179,9 @@ The app is designed for phones as well as desktops. The differences:
   ![Editing a plan row on a phone opens a sheet](/faq/guide/phone/thumbs/phone-month-sheet.webp)
 - **Swipe months.** On Month and Entries, swipe left or right to move to the
   next or previous month.
-- **Floating buttons.** The round **+** button adds an entry on Entries; on
-  Splits, the receipt button adds a shared expense. The eye button hides or
-  shows totals.
+- **Floating buttons.** The round **+** button on Entries opens a new entry
+  card on Ask; on Splits, the receipt button opens one that is already
+  shared on Splits. The eye button hides or shows totals.
 
 ![Summary on a phone](/faq/guide/phone/thumbs/phone-summary.webp)
 
@@ -357,8 +360,9 @@ person's view.
 
 ### On a phone
 
-The round **+** button adds an entry in a sheet. Rows open their editor in a
-sheet too. The **View and scope** bar and month buttons float above the
+The round **+** button opens a new entry card on [Ask](#ask); **+ Add entry**
+still opens the entry form in a sheet. Rows open their editor in a sheet
+too. The **View and scope** bar and month buttons float above the
 navigation, and you can swipe between months.
 
 ![Entries on a phone](/faq/guide/phone/thumbs/phone-entries.webp)
@@ -405,9 +409,71 @@ open.
 ### On a phone
 
 The view switch stays at the top, groups scroll sideways, and the round
-receipt button adds a shared expense.
+receipt button opens a new entry card on [Ask](#ask), already set to share
+with the other person in the group you are looking at. **+ Add expense**
+still opens the expense form.
 
 ![Splits on a phone](/faq/guide/phone/thumbs/phone-splits.webp)
+
+## Ask
+
+Ask is on the phone's bottom navigation. It is a page for adding an entry
+quickly, by typing it, from a receipt photo, or by filling in a card. On a
+computer it opens from the **+** button on Entries.
+
+![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
+
+### What you see
+
+- **Since you last looked**: the most useful line from Summary's money
+  insights for the person you are viewing, and this month's spending against
+  its plan. It shows once Summary has loaded in this visit.
+- **Suggestions**: a row of buttons above the message box. Swipe it sideways
+  for more.
+- **The message box**: type a sentence such as "Koufu lunch $12.50, Citi",
+  or use the camera button for a receipt photo.
+
+When you are adding an entry, a **card** shows it as it will be saved: the
+category, what it was, the amount (red for spending, green for money in,
+plain for a transfer), the date, the wallet and whose it is. Under it are
+**Date**, **Category**, **Wallet** and **Type**; **More details** adds the
+posted date, the owner and a note. Tap any of them to change it.
+
+### What each control does
+
+- **Scan receipt** or the camera button: take or pick a photo of a receipt.
+  The app reads the shop, the total and the date into the card. The photo is
+  made smaller on your phone first and is not kept.
+- **Paste**: paste a copied receipt photo or sentence.
+- **Add entry** and **Add expense**: open a new card (Add expense starts
+  shared on Splits).
+- **Transfer** and **Income**: switch the card to a transfer between two of
+  your wallets (From and To) or to money coming in.
+- **Share with … on Splits**: the switch on the card shares the expense with
+  the other person, as **Add to Splits** does on Entries.
+- **Edit in form**: open the same entry in the usual form instead.
+- **Save**: appears beside the message box when the card is ready. It stays
+  greyed out until the card has an amount and what it was.
+
+Anything filled in for you is marked **Filled in from your message** or
+**Read from your receipt**, with a dot on each row it filled. Check them
+before you save. If the app can't read a sentence or a receipt, it says so
+and you fill in the card yourself.
+
+### After you save
+
+The card is marked **Saved** and the suggestions change:
+
+- **Back to Entries** (or **Back to Splits**): go back where you came from.
+- **Open this entry**: open it in Entries to edit it fully.
+- **Open on Splits**: when it was shared.
+- **Undo**: remove the entry (and its split) again. The card comes back so
+  you can change it and save once more.
+
+![A saved entry on Ask, with Back to Entries, Open this entry and Undo](/faq/guide/phone/thumbs/phone-ask-saved.webp)
+
+Ask doesn't answer questions about your money yet; use Summary, Month and
+Entries for that.
 
 ## Imports
 
@@ -580,7 +646,10 @@ Step-by-step recipes. Each assumes you start from the screen named in step 1.
 ## Add an expense
 
 1. Open **Entries** and choose the month at the top right.
-2. Select **+ Add entry** (on a phone, the round **+** button).
+2. Select **+ Add entry**. On a phone, the round **+** button opens a new
+   entry card on [Ask](#ask) instead: type the amount and what it was (or
+   say it in the message box, or use a receipt photo), check the rows under
+   the card and select **Save**.
 3. Choose the **Category**, **Date**, **Wallet** (the account or card you
    paid with), **Owner** (who paid) and **Type** (Expense).
 4. Type the **Amount** and a **Description**. Use the merchant name, such as
@@ -592,7 +661,7 @@ Step-by-step recipes. Each assumes you start from the screen named in step 1.
 
 ![Adding an entry on Entries](/faq/guide/desktop/thumbs/entries-add.webp)
 
-![Adding an entry on a phone opens a sheet](/faq/guide/phone/thumbs/phone-entries-add.webp)
+![On a phone, the + button opens a new entry card on Ask](/faq/guide/phone/thumbs/phone-entries-add.webp)
 
 Manual entries are marked **Manual provisional** until a bank file confirms
 them ([Record entries before the bank file arrives](#record-entries-before-the-bank-file-arrives)).
@@ -1228,7 +1297,10 @@ open it for you to check.
 ![The Apple Pay shortcut section in Settings](/faq/guide/desktop/thumbs/settings-shortcut.webp)
 
 After a purchase, a notification shows the merchant, amount and account, and
-the new entry opens so you can adjust it.
+the new entry opens on [Ask](#ask) as a saved card. If it landed in
+**Other**, Ask suggests a few categories to tap; it also offers to share it
+on Splits, and **Open this entry** opens it in Entries to change anything
+else.
 
 Paying abroad in another currency (for example with an Amaze card in Bali)
 also works: the purchase is saved in the card's currency at the day's
