@@ -5,7 +5,7 @@
 // components (claude-credit-notice.jsx) use these; tests import them
 // directly.
 
-import { claudeCreditCopy as copy } from "./copy/claude-credit-copy.js";
+import { claudeCreditCopy as copy } from "./copy/claude-credit-copy";
 
 const STATES = new Set(["ok", "low", "exhausted", "capped", "unknown"]);
 // Only these three show a notice on Ask. The rank is how bad it is: a

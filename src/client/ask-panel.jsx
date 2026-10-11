@@ -144,6 +144,7 @@ function AskConversation({
   onEntryMutation,
   onSplitMutation,
   runBackgroundRefresh,
+  fetchRequiredQuery,
   routeUsable = false
 }) {
   const queryClient = useQueryClient();
@@ -937,7 +938,7 @@ function AskConversation({
       </header>
 
       <div ref={threadBoxRef} className="ask-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>
-        <AskClaudeCreditNotice queryClient={queryClient} enabled={creditStatusEnabled} />
+        <AskClaudeCreditNotice queryClient={queryClient} enabled={creditStatusEnabled} fetchRequiredQuery={fetchRequiredQuery} />
         {!isAddMode && !isShortcut ? (
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
         ) : null}

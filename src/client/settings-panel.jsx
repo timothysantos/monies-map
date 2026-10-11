@@ -131,6 +131,7 @@ export function SettingsPanel({
   onUnregisterLogin,
   onLogout,
   onRefresh,
+  fetchRequiredQuery,
   routeUsable = false
 }) {
   const queryClient = useQueryClient();
@@ -140,7 +141,7 @@ export function SettingsPanel({
   if (routeUsable && !creditStatusEnabled) {
     setCreditStatusEnabled(true);
   }
-  const claudeCredit = useClaudeCreditStatus({ queryClient, enabled: creditStatusEnabled });
+  const claudeCredit = useClaudeCreditStatus({ queryClient, enabled: creditStatusEnabled, fetchRequiredQuery });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
   const [emptyStateDialogOpen, setEmptyStateDialogOpen] = useState(false);

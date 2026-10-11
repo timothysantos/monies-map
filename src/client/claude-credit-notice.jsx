@@ -14,7 +14,7 @@ import { useClaudeCreditStatus } from "./claude-credit-status";
 import { claudeCreditCopy as copy } from "./copy/claude-credit-copy";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { useMoneyPrivacy } from "./money-privacy";
-import { BottomActions } from "./ui/lead-support-detail";
+import { BottomActions } from "./ui-components";
 import { InlineError } from "./ui-states";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
@@ -200,9 +200,9 @@ export function ClaudeTopUpForm({ onClose, onSave }) {
 // The notice at the top of the Ask conversation. `enabled` turns true once
 // the Ask screen is usable: only then is the status read (lazily, through
 // the query cache), so it never delays Ask or the first screen.
-export function AskClaudeCreditNotice({ queryClient, enabled }) {
+export function AskClaudeCreditNotice({ queryClient, enabled, fetchRequiredQuery }) {
   const { areTotalsVisible } = useMoneyPrivacy();
-  const { status, markToppedUp } = useClaudeCreditStatus({ queryClient, enabled });
+  const { status, markToppedUp } = useClaudeCreditStatus({ queryClient, enabled, fetchRequiredQuery });
   const [dismissed, dismiss] = useCreditNoticeDismissal(status);
   const [formOpen, setFormOpen] = useState(false);
   const notice = buildClaudeCreditNotice(status, { areTotalsVisible });

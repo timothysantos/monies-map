@@ -4,9 +4,12 @@
 // read the same entry, and a top-up writes its answer there.
 //
 // - Read lazily: only once the screen showing it (Ask, Settings) is usable,
-//   through fetchQueryWithLease, so a second screen joins the same request
-//   or reuses the kept answer for five minutes. Never on the first screen,
-//   never blocking: a failure leaves no status and nothing on screen.
+//   through the shell's required read (`fetchRequiredQuery`, App.jsx:
+//   fetchQueryWithLease), so a second screen joins the same request or
+//   reuses the kept answer for five minutes. Never on the first screen,
+//   never blocking: a failure leaves no status and nothing on screen. The
+//   read is passed in rather than imported: query-leases.js in a route
+//   chunk makes the bundler split the entry (one more first-screen file).
 // - POST /api/ai-assist/provider-status/topped-up { creditUsd } answers with
 //   the fresh status, which replaces the kept one; a read still in flight is
 //   cancelled first, so an older answer can never overwrite it.
@@ -14,10 +17,9 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { hashKey } from "@tanstack/react-query";
 
-import { readClaudeCreditStatus, shouldFetchClaudeCreditStatus } from "./claude-credit-model.js";
-import { claudeCreditCopy } from "./copy/claude-credit-copy.js";
-import { fetchQueryWithLease } from "./query-leases.js";
-import { queryKeys } from "./query-keys.js";
+import { readClaudeCreditStatus, shouldFetchClaudeCreditStatus } from "./claude-credit-model";
+import { claudeCreditCopy } from "./copy/claude-credit-copy";
+import { queryKeys } from "./query-keys";
 
 export const CLAUDE_CREDIT_ENDPOINTS = Object.freeze({
   status: "/api/ai-assist/provider-status",
@@ -57,9 +59,9 @@ export async function postClaudeToppedUp({ creditUsd, fetchImpl = fetch }) {
 
 /**
  * The kept status and when it was read, read lazily once `enabled`.
- * @param {{ queryClient: any, enabled: boolean, fetchImpl?: typeof fetch }} options
+ * @param {{ queryClient: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, fetchImpl?: typeof fetch }} options
  */
-export function useClaudeCreditStatus({ queryClient, enabled, fetchImpl = undefined }) {
+export function useClaudeCreditStatus({ queryClient, enabled, fetchRequiredQuery, fetchImpl = undefined }) {
   const queryKey = useMemo(() => queryKeys.claudeCreditStatus(), []);
   const hash = hashKey(queryKey);
   const subscribe = useCallback((listener) => queryClient.getQueryCache().subscribe((event) => {
@@ -77,7 +79,7 @@ export function useClaudeCreditStatus({ queryClient, enabled, fetchImpl = undefi
       return undefined;
     }
     const controller = new AbortController();
-    fetchQueryWithLease(queryClient, {
+    fetchRequiredQuery({
       queryKey,
       bypassCache: Boolean(status),
       signal: controller.signal,
@@ -88,7 +90,7 @@ export function useClaudeCreditStatus({ queryClient, enabled, fetchImpl = undefi
     });
     return () => controller.abort();
     // A failed read changes neither value, so it is not retried in a loop.
-  }, [enabled, fetchImpl, queryClient, queryKey, status, updatedAt]);
+  }, [enabled, fetchImpl, fetchRequiredQuery, queryKey, status, updatedAt]);
 
   const markToppedUp = useCallback(async (creditUsd) => {
     const result = await postClaudeToppedUp({ creditUsd, ...(fetchImpl ? { fetchImpl } : {}) });

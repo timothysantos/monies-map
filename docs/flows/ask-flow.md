@@ -188,8 +188,9 @@ The Claude credit status (`GET /api/ai-assist/provider-status`, DOMAIN.md
 holds, for the notice described under "Claude credits" below. It is read
 lazily: only once the Ask route is first usable (App passes
 `routeWork.usable` to Ask and Settings alone), never on the first screen and
-never blocking. It goes through `fetchQueryWithLease` under
-`queryKeys.claudeCreditStatus()` (`claude-credit-status.js`), so Settings
+never blocking. It goes through `fetchQueryWithLease` (the shell's
+`fetchRequiredQuery` prop) under `queryKeys.claudeCreditStatus()`
+(`claude-credit-status.js`), so Settings
 reuses the same answer, and is read again only when the kept one is over
 five minutes old. A failed read shows nothing.
 

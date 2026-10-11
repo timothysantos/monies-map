@@ -817,6 +817,11 @@ export function App() {
     return data;
   }, [queryClient, updateLoadingStatus]);
 
+  // A required read for the small optional reads a route makes itself (the
+  // Claude credit status on Ask and Settings), so they share the shell's
+  // leases and timing without importing query-leases into a route chunk.
+  const fetchRequiredQuery = useCallback((options) => fetchQueryWithLease(queryClient, options), [queryClient]);
+
   // The Ask page borrows the Entries page DTO (its split groups, and the
   // Apple Pay Shortcut's saved entry) through the same required read, so a
   // later visit to Entries joins it.
@@ -2139,6 +2144,7 @@ export function App() {
           onUnregisterLogin={handleUnregisterLogin}
           onLogout={handleLogout}
           onRefresh={(options) => refreshCurrentSettingsPage(options)}
+          fetchRequiredQuery={fetchRequiredQuery}
           routeUsable={creditStatusRouteUsable}
         />
       );
@@ -2163,6 +2169,7 @@ export function App() {
           onEntryMutation={broadcastEntryMutation}
           onSplitMutation={broadcastSplitMutation}
           runBackgroundRefresh={runBackgroundRefresh}
+          fetchRequiredQuery={fetchRequiredQuery}
           routeUsable={creditStatusRouteUsable}
         />
       );
@@ -2181,6 +2188,7 @@ export function App() {
     categories,
     creditStatusRouteUsable,
     fetchAskEntriesPage,
+    fetchRequiredQuery,
     closeMobileContext,
     entriesExternalRefreshToken,
     handleCategoryAppearanceChange,
