@@ -153,6 +153,23 @@ test("a configured gateway sends the image to Claude Haiku with logging and cach
   assert.equal(reservations[0].args[2], 2);
 });
 
+test("a gateway-stored key under a named alias is selected with cf-aig-byok-alias", async (t) => {
+  const calls = mockFetch(t, () => claudeResponse({ total: "1.00" }));
+  const result = await runVisionJson(createFakeDb(), {
+    ...GATEWAY_BYOK,
+    AI_GATEWAY_BYOK_ALIAS: "monies-map-claude-api-key"
+  }, visionInput());
+  assert.equal(result.provider, "claude");
+  assert.equal(calls[0].init.headers["cf-aig-byok-alias"], "monies-map-claude-api-key");
+  assert.equal(calls[0].init.headers["cf-aig-authorization"], "Bearer cf-gateway-token");
+});
+
+test("no alias header is sent when the gateway key uses the default alias", async (t) => {
+  const calls = mockFetch(t, () => claudeResponse({ total: "1.00" }));
+  await runVisionJson(createFakeDb(), { ...GATEWAY_BYOK, AI_GATEWAY_BYOK_ALIAS: "  " }, visionInput());
+  assert.equal("cf-aig-byok-alias" in calls[0].init.headers, false);
+});
+
 test("a Worker-secret Anthropic key from any account is sent as x-api-key", async (t) => {
   const calls = mockFetch(t, () => claudeResponse({ total: "1.00" }));
   const result = await runVisionJson(createFakeDb(), {

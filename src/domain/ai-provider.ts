@@ -34,6 +34,9 @@ export interface AiProviderEnv extends AiAssistEnv {
   // for an authenticated gateway. With a provider key stored in the
   // gateway (BYOK), this is the only credential the Worker holds.
   AI_GATEWAY_TOKEN?: string;
+  // The gateway's stored-key alias when it is not "default" (sent as
+  // cf-aig-byok-alias so the gateway picks that key).
+  AI_GATEWAY_BYOK_ALIAS?: string;
   // Secret, optional. An Anthropic API key from any account, used only when
   // the key is not stored in the gateway.
   ANTHROPIC_API_KEY?: string;
@@ -125,6 +128,10 @@ export function resolveClaudeGateway(env: AiProviderEnv): ClaudeGateway | null {
   }
   if (token) {
     headers["cf-aig-authorization"] = `Bearer ${token}`;
+  }
+  const alias = env.AI_GATEWAY_BYOK_ALIAS?.trim();
+  if (alias) {
+    headers["cf-aig-byok-alias"] = alias;
   }
   return {
     url: `${base.replace(/\/+$/, "").replace(/\/anthropic$/, "")}/anthropic/v1/messages`,

@@ -334,9 +334,11 @@ To add Claude later:
 5. Create an Anthropic API key in the Anthropic Console, then store it in
    one of two places:
    - **Preferred: in the gateway.** Open the gateway's **Provider Keys**, add
-     the key for Anthropic under the `default` alias, then give the Worker
-     only the gateway token: `npx wrangler secret put AI_GATEWAY_TOKEN`. The
-     Worker never holds the Anthropic key.
+     the key for Anthropic under the `default` alias (or any alias, named in
+     `AI_GATEWAY_BYOK_ALIAS`; production uses `monies-map-claude-api-key`),
+     then give the Worker only the gateway token:
+     `npx wrangler secret put AI_GATEWAY_TOKEN`. The Worker never holds the
+     Anthropic key.
    - **Or as a Worker secret:** `npx wrangler secret put ANTHROPIC_API_KEY`
      (also put `AI_GATEWAY_TOKEN` if the gateway is authenticated).
 6. Add the gateway's location to `vars` in `wrangler.jsonc`: either
