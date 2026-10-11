@@ -79,7 +79,7 @@ for (const layout of layouts) {
       await expect(editor.getByRole("alert")).toHaveText("Amount must be greater than zero");
       // Still open with the person's changes; the amount field reads as 0.
       await expect(editor).toHaveCount(1);
-      await expect(amount).toHaveValue("0");
+      await expect(amount).toHaveValue("0.00");
       await expect(descriptionField).toHaveValue(`${description} renamed`);
     }
 
