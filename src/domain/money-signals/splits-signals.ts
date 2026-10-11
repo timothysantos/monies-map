@@ -63,13 +63,13 @@ export const SPLITS_COPY = {
   },
   settlementPayment: {
     phrasings: [
-      "{from}'s {amount} payment to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.",
+      "{fromWhose} {amount} payment to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.",
       "The {amount} {from} paid {to} on {date} is the settlement from {settled}, waiting to be matched.",
       "{from} paid {to} {amount} on {date}, the same as the {settled} settlement.",
       "The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}."
     ],
     think: [
-      "Until it's matched, the payment counts as {from}'s spending and {to}'s income.",
+      "Until it's matched, the payment counts as {fromWhose} spending and {toWhose} income.",
       "Linking the two payments as a transfer, then matching it under the settlement, marks it paid.",
       "Once matched, the settlement shows as paid and the payment stops counting as spending."
     ],
@@ -81,7 +81,7 @@ export const SPLITS_COPY = {
   },
   settlementPaymentLinked: {
     phrasings: [
-      "{from}'s {amount} transfer to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.",
+      "{fromWhose} {amount} transfer to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.",
       "The {amount} {from} sent {to} on {date} is the settlement from {settled}, waiting to be matched.",
       "{from} sent {to} {amount} on {date}, the same as the {settled} settlement.",
       "The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}."
@@ -403,9 +403,16 @@ export function settlementPaymentSignal(input: SplitsSignalInput): MoneySignal |
   if (!checkpoint || !candidate) {
     return null;
   }
+  // A person view talks to that person: "Your $7,082.17 payment to Tim",
+  // "Joyce paid you".
+  const isViewer = (name?: string) => input.audience === "person" && Boolean(name) && name === input.viewLabel;
+  const fromName = checkpoint.fromPersonName ?? "";
+  const toName = checkpoint.toPersonName ?? "";
   const values = {
-    from: checkpoint.fromPersonName ?? "",
-    to: checkpoint.toPersonName ?? "",
+    from: isViewer(fromName) ? "you" : fromName,
+    fromWhose: isViewer(fromName) ? "your" : `${fromName}'s`,
+    to: isViewer(toName) ? "you" : toName,
+    toWhose: isViewer(toName) ? "your" : `${toName}'s`,
     amount: input.formatMoney(candidate.amountMinor),
     date: shortDay(candidate.date),
     settled: shortDay(checkpoint.settlementDate)

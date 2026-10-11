@@ -170,7 +170,8 @@ export function incomeMovedSignal(input: AccountSignalInput): MoneySignal | null
     date: shortDay(moved.movedSince),
     account: pill.accountName,
     payments: paymentsPhrase(moved.payments, input.formatMoney),
-    leave: moved.payments.length === 1 ? "leaves" : "leave",
+    // "$1,500 a month to Ifast Financial still leaves"; a list of payees reads plural.
+    leave: new Set(moved.payments.map((item) => item.payee)).size === 1 ? "leaves" : "leave",
     held
   };
   return {

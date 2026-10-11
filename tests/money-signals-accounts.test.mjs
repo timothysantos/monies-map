@@ -12,7 +12,8 @@ import {
   ownTransferIncomeSignal,
   upcomingShortfallSignal
 } from "../src/domain/money-signals/account-signals.ts";
-import { uncategorizedSignal } from "../src/domain/money-signals/entries-signals.ts";
+import { rankSignals } from "../src/domain/money-signals/checkin.ts";
+import { buildEntriesSignals, uncategorizedSignal } from "../src/domain/money-signals/entries-signals.ts";
 import { settlementPaymentSignal } from "../src/domain/money-signals/splits-signals.ts";
 import { findAppJargon, findToneProblems } from "../src/domain/money-signals/tone.ts";
 import { tripInOtherSignal } from "../src/domain/money-signals/trip-signal.ts";
@@ -42,6 +43,10 @@ test("salary moved, payments didn't: a To do naming both accounts, the payments 
   assert.equal(signal.key, "income-moved:acct-ocbc-360:2026-07-23");
   assert.equal(signal.phrasings[0].fact, "Joyce's salary has gone into UOB One since Thu 23 Jul, but OCBC 360 still pays $1,500.00 a month to Ifast Financial. It had $2,227.49 on Fri 31 Jul.");
   assert.equal(signal.phrasings[0].think, "When a payment's account runs low, the bank can't make it and charges for trying. Moving the payment, or topping the account up, clears it.");
+  // One payee's monthly total is one amount: it "leaves", never "leave".
+  assert.equal(signal.phrasings[1].fact, "Since Thu 23 Jul, Joyce's salary lands in UOB One, while $1,500.00 a month to Ifast Financial still leaves OCBC 360. It had $2,227.49 on Fri 31 Jul.");
+  const twoPayees = incomeMovedSignal(household([ocbc({ incomeMoved: { ...movedOn23Aug, payments: [giros[0], { payee: "HDB", amountMinor: 84700 }] } })], "2026-08-23"));
+  assert.match(twoPayees.phrasings[1].fact, /\$1,000\.00 to Ifast Financial and \$847\.00 to HDB a month still leave OCBC 360/);
   assertTone(signal);
   // Joyce's own view says "your"; income from someone else is named.
   assert.match(incomeMovedSignal(joyceView([ocbc({ incomeMoved: movedOn23Aug })], "2026-08-23")).phrasings[0].fact, /^Your salary has gone into UOB One/);
@@ -167,6 +172,15 @@ test("a trip still in Other: counts the purchases abroad, names the place and li
   const rest = uncategorizedSignal({ audience: "household", month: "2026-09", today: "2026-10-11", entries, formatMoney });
   assert.equal(rest.numbers.count, 1);
   assert.equal(rest.numbers.primaryMinor, 104095);
+  // The trip leads Entries even when what's left in Other is more money; the
+  // plain line waits under Also.
+  const signals = buildEntriesSignals({ audience: "household", month: "2026-09", today: "2026-10-11", entries, formatMoney });
+  const [lead] = rankSignals(signals, { signals: {} }, Date.parse("2026-10-11T04:00:00Z"), "2026-09");
+  assert.equal(lead.key, "trip-in-other:2026-09-02:2026-09-07");
+  assert.equal(signals.find((signal) => signal.key === "uncategorized").steady, true);
+  // With no trip, the plain line is a normal To do again.
+  const noTrip = buildEntriesSignals({ audience: "household", month: "2026-09", today: "2026-10-11", entries: entries.filter((entry) => !entry.id.startsWith("trip")), formatMoney });
+  assert.equal(noTrip.find((signal) => signal.key === "uncategorized").steady, undefined);
 });
 
 test("a settlement payment waiting to be matched, and nothing once it's matched", () => {
@@ -184,6 +198,13 @@ test("a settlement payment waiting to be matched, and nothing once it's matched"
   assert.equal(signal.phrasings[0].think, "Until it's matched, the payment counts as Joyce's spending and Tim's income.");
   assert.deepEqual(signal.action, { id: "show-entries", label: "Show the payment", entryIds: ["txn-joyce", "txn-tim"], month: "2026-08" });
   assertTone(signal);
+  // Each person's own view talks to them.
+  const tims = settlementPaymentSignal({ ...input([checkpoint]), audience: "person", viewLabel: "Tim" });
+  assert.equal(tims.phrasings[1].fact, "The $7,082.17 Joyce paid you on Mon 31 Aug is the settlement from Thu 27 Aug, waiting to be matched.");
+  assert.equal(tims.phrasings[0].think, "Until it's matched, the payment counts as Joyce's spending and your income.");
+  const joyces = settlementPaymentSignal({ ...input([checkpoint]), audience: "person", viewLabel: "Joyce" });
+  assert.equal(joyces.phrasings[0].fact, "Your $7,082.17 payment to Tim on Mon 31 Aug matches the Thu 27 Aug settlement. Matching it marks the settlement paid.");
+  assertTone(tims);
   const linked = settlementPaymentSignal(input([{ ...checkpoint, paymentCandidate: { ...checkpoint.paymentCandidate, countedAsSpending: false } }]));
   assert.match(linked.phrasings[0].fact, /^Joyce's \$7,082\.17 transfer to Tim/);
   assert.equal(linked.phrasings[0].think, "Matching it under the settlement marks it paid.");

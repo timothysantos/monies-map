@@ -557,9 +557,13 @@ export function incomeEntriesTrivia(input: EntriesSignalInput): MoneySignal | nu
 }
 
 export function buildEntriesSignals(input: EntriesSignalInput): MoneySignal[] {
+  // A trip still in Other is the quicker, more specific fix, so it leads and
+  // the plain "entries in Other" line waits under Also.
+  const trip = tripInOtherSignal({ entries: input.entries, formatMoney: input.formatMoney });
+  const uncategorized = uncategorizedSignal(input);
   return [
-    tripInOtherSignal({ entries: input.entries, formatMoney: input.formatMoney }),
-    uncategorizedSignal(input),
+    trip,
+    uncategorized && trip ? { ...uncategorized, steady: true } : uncategorized,
     possibleDuplicateSignal(input),
     topFiveSignal(input),
     smallestEntryTrivia(input),

@@ -1622,14 +1622,14 @@ An open settlement still needs an amount, and a payment of exactly that amount b
 
 Phrasings:
 
-- {from}'s {amount} payment to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.
+- {fromWhose} {amount} payment to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.
 - The {amount} {from} paid {to} on {date} is the settlement from {settled}, waiting to be matched.
 - {from} paid {to} {amount} on {date}, the same as the {settled} settlement.
 - The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}.
 
 Way to think about it, in turn:
 
-- Until it's matched, the payment counts as {from}'s spending and {to}'s income.
+- Until it's matched, the payment counts as {fromWhose} spending and {toWhose} income.
 - Linking the two payments as a transfer, then matching it under the settlement, marks it paid.
 - Once matched, the settlement shows as paid and the payment stops counting as spending.
 
@@ -1643,7 +1643,7 @@ As above, when the payment is already a transfer and only the match is missing.
 
 Phrasings:
 
-- {from}'s {amount} transfer to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.
+- {fromWhose} {amount} transfer to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.
 - The {amount} {from} sent {to} on {date} is the settlement from {settled}, waiting to be matched.
 - {from} sent {to} {amount} on {date}, the same as the {settled} settlement.
 - The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}.
