@@ -117,6 +117,10 @@ export function EntryEditCard({
     });
   }
 
+  /**
+   * @param {{ key: string, label: string, valueLabel: string, value: string,
+   *   options: { value: string, label: string }[], onValueChange: (value: string) => void, locked?: boolean }} props
+   */
   function pickerRow({ key, ...props }) {
     return (
       <PickerRow
@@ -130,6 +134,10 @@ export function EntryEditCard({
     );
   }
 
+  /**
+   * @param {{ key: string, label: string, value: string | undefined,
+   *   onValueChange: (value: string) => void, locked?: boolean }} props
+   */
   function dateRow({ key, value, ...props }) {
     return (
       <DateRow
