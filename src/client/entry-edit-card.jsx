@@ -1,6 +1,6 @@
 import * as Popover from "@radix-ui/react-popover";
 import { CalendarDays, CreditCard, Lock } from "lucide-react";
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { formatCardDate } from "./copy/ask-copy";
@@ -9,7 +9,7 @@ import { selectAllOnFocus } from "./focus-utils";
 import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney } from "./money-privacy";
-import { ResponsiveSelect } from "./responsive-select";
+import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { CategoryGlyph } from "./ui-components";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
@@ -117,78 +117,34 @@ export function EntryEditCard({
     });
   }
 
-  // A row with a choice: the phone picker sheet on a phone, a native select
-  // over the row on a wide screen.
-  function pickerRow({ key, label, valueLabel, value, options, onValueChange, locked = false }) {
-    if (locked) {
-      return <DetailRow key={key} label={label} value={valueLabel} state="locked" data-entry-row={key} />;
-    }
-    if (isSheet) {
-      return (
-        <span key={key} className="lsd-row-group">
-          <DetailRow label={label} value={valueLabel} data-entry-row={key} aria-haspopup="dialog" onClick={() => setOpenPicker(key)} />
-          <ResponsiveSelect
-            hideMobileTrigger
-            title={label}
-            value={value}
-            options={options}
-            open={openPicker === key}
-            onOpenChange={(open) => setOpenPicker(open ? key : "")}
-            onValueChange={(next) => {
-              onValueChange(next);
-              setOpenPicker("");
-            }}
-          />
-        </span>
-      );
-    }
+  function pickerRow({ key, ...props }) {
     return (
-      <DetailRow key={key} label={label} value={valueLabel} data-entry-row={key}>
-        <select className="lsd-row-native" aria-label={label} value={value} onChange={(event) => onValueChange(event.target.value)}>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </DetailRow>
+      <PickerRow
+        key={key}
+        rowKey={key}
+        isSheet={isSheet}
+        open={openPicker === key}
+        onOpenChange={(open) => setOpenPicker(open ? key : "")}
+        {...props}
+      />
     );
   }
 
-  // A date: a native date field over the row on a phone (a tap opens the
-  // date picker), a visible inline field on a wide screen.
-  function dateRow({ key, label, value, onValueChange, locked = false }) {
-    const valueLabel = value ? formatCardDate(value, today, { withYear: true }) : copy.editCard.notSet;
-    if (locked) {
-      return <DetailRow key={key} label={label} value={valueLabel} state="locked" data-entry-row={key} />;
-    }
-    if (isSheet) {
-      return (
-        <DetailRow key={key} label={label} value={valueLabel} state={value ? undefined : "empty"} data-entry-row={key}>
-          <input
-            className="lsd-row-native"
-            type="date"
-            aria-label={label}
-            value={value ?? ""}
-            onChange={(event) => onValueChange(event.target.value)}
-          />
-        </DetailRow>
-      );
-    }
+  function dateRow({ key, value, ...props }) {
     return (
-      <DetailRow key={key} label={label} data-entry-row={key}>
-        <input
-          className="lsd-row-input lsd-row-date"
-          type="date"
-          aria-label={label}
-          value={value ?? ""}
-          enterKeyHint="next"
-          onChange={(event) => onValueChange(event.target.value)}
-        />
-      </DetailRow>
+      <DateRow
+        key={key}
+        rowKey={key}
+        isSheet={isSheet}
+        value={value}
+        valueLabel={value ? formatCardDate(value, today, { withYear: true }) : copy.editCard.notSet}
+        {...props}
+      />
     );
   }
 
   const categoryRow = isTransfer
-    ? <DetailRow key="category" label={copy.editCategory} value={displayCategoryName} state="locked" data-entry-row="category" />
+    ? <DetailRow key="category" label={copy.editCategory} value={displayCategoryName} state="locked" data-row="category" />
     : pickerRow({
         key: "category",
         label: copy.editCategory,
@@ -246,7 +202,7 @@ export function EntryEditCard({
   });
 
   const noteRow = (
-    <DetailRow key="note" label={copy.editNote} className="lsd-row-note" data-entry-row="note">
+    <DetailRow key="note" label={copy.editNote} className="lsd-row-note" data-row="note">
       <GrowingTextarea
         className="lsd-row-input"
         aria-label={copy.editNote}
@@ -447,37 +403,6 @@ function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, locked, on
   );
 }
 
-// A text field that grows with what is typed. `singleLine` (what it was)
-// turns Enter into "done" and line breaks into spaces.
-function GrowingTextarea({ value, onChange, singleLine = false, className, ...rest }) {
-  const ref = useRef(null);
-  useLayoutEffect(() => {
-    const field = ref.current;
-    if (field) {
-      field.style.height = "auto";
-      field.style.height = `${field.scrollHeight}px`;
-    }
-  }, [value]);
-  return (
-    <textarea
-      {...rest}
-      ref={ref}
-      className={className}
-      rows={1}
-      value={value}
-      autoComplete="off"
-      enterKeyHint={singleLine ? "done" : "enter"}
-      onKeyDown={singleLine ? (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-      } : undefined}
-      onChange={(event) => onChange(singleLine ? event.target.value.replace(/\s*\n+\s*/g, " ") : event.target.value)}
-    />
-  );
-}
-
 // The Splits row of an expense: "Add to splits", or "View split" once it is
 // on Splits. Removing it from Splits (Delete split) sits with the other
 // destructive actions in the bottom bar.
@@ -488,7 +413,7 @@ export function EntrySplitsRow({ isLinked, isWorking = false, onAddToSplits, onV
       value={isWorking ? messages.common.working : isLinked ? copy.editCard.viewSplit : copy.addToSplits}
       state="action"
       disabled={isWorking}
-      data-entry-row="splits"
+      data-row="splits"
       onClick={isLinked ? onViewSplit : onAddToSplits}
     />
   );
@@ -496,5 +421,5 @@ export function EntrySplitsRow({ isLinked, isWorking = false, onAddToSplits, onV
 
 // The transfer match row: the existing transfer dialog opens from it.
 export function EntryTransferMatchRow(props) {
-  return <DetailRow label={copy.editCard.transferMatch} value={copy.editCard.manageTransfer} state="action" data-entry-row="transfer" {...props} />;
+  return <DetailRow label={copy.editCard.transferMatch} value={copy.editCard.manageTransfer} state="action" data-row="transfer" {...props} />;
 }
