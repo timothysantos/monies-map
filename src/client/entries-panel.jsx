@@ -21,6 +21,7 @@ import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
+import { applyCheckInAction, isCheckInActionApplied } from "./check-in-action";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { projectEntriesForView } from "./entry-row-projection";
@@ -49,7 +50,6 @@ import {
 } from "./quick-entry-url";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
-import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { buildEntriesSignals, ENTRIES_CALM_LINES, ENTRIES_TRIVIA_ROTATION } from "../domain/money-signals/entries-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
@@ -92,8 +92,7 @@ export function EntriesPanel({
   onInvalidateEntryMutation,
   onBroadcastSplitMutation,
   runBackgroundRefresh = runQuietly,
-  onRetryPageLoad,
-  canRequestWording = false
+  onRetryPageLoad
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -479,7 +478,6 @@ export function EntriesPanel({
     [entryFilters]
   );
   const {
-    aggregateEntries,
     filteredEntries,
     groupedEntries,
     entryTotals,
@@ -497,18 +495,6 @@ export function EntriesPanel({
     }),
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
   );
-  const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
-    contextLabel: activeEntryFilterCount
-      ? `Selected entries in ${formatService.formatMonthLabel(entryView.monthPage.month)}`
-      : formatService.formatMonthLabel(entryView.monthPage.month),
-    audienceKind: entryView.id === "household" ? "household" : "person",
-    audienceName: entryView.id === "household" ? "" : entryView.label,
-    records: aggregateEntries.map((entry) => ({
-      ...entry,
-      amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
-    })),
-    formatMoney: formatService.unmaskedMoney
-  }), [activeEntryFilterCount, aggregateEntries, entryView.id, entryView.label, entryView.monthPage.month]);
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
   const checkInEntries = useMemo(
@@ -534,20 +520,13 @@ export function EntriesPanel({
     clock: checkInClock
   }), [checkInClock, checkInEntries, entryView.id, entryView.monthPage.month, selectedScope]);
   const handleCheckInAction = useCallback((action) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete("entry_id");
-      next.delete("entry_category");
-      next.delete("entry_search");
-      next.delete("entry_type");
-      if (action.id === "show-entries") {
-        (action.entryIds ?? []).forEach((entryId) => next.append("entry_id", entryId));
-      } else if (action.id === "open-category" && action.categoryName) {
-        next.set("entry_category", action.categoryName);
-      }
-      return next;
-    });
+    setSearchParams((current) => applyCheckInAction(current, action));
   }, [setSearchParams]);
+  // A link that would show what the list already shows is hidden.
+  const isCheckInActionShown = useCallback(
+    (action) => !isCheckInActionApplied(searchParams, action),
+    [searchParams]
+  );
   const entriesEmptyStateSuggestion = useMemo(
     () => getEntriesEmptyStateSuggestion({
       accounts,
@@ -1143,11 +1122,11 @@ export function EntriesPanel({
           />
 
           <FinancialInsight
-            facts={financialInsightFacts}
+            audienceName={entryView.id === "household" ? "" : entryView.label}
             checkIn={checkIn}
             onCheckInAction={handleCheckInAction}
+            isCheckInActionShown={isCheckInActionShown}
             className="financial-insight-entries"
-            canRequestWording={canRequestWording}
           />
         </>
       )}

@@ -10,20 +10,23 @@ import { handleAiAssistRoute } from "../src/server/ai-assistance-routes.ts";
 // valid responses and the shortcut-only gateway, so moving the routes out of
 // src/index.ts can be proven identical.
 
-const FACTS = {
-  contextLabel: "August 2026 entries",
-  entryCount: 2,
-  spend: "$20.00",
-  income: "$100.00",
-  net: "$80.00",
-  topCategoryName: "Food & Drinks",
-  topCategoryAmount: "$20.00",
-  topMerchantName: "Cold Storage",
-  topMerchantAmount: "$20.00",
-  headlineKind: "going_well",
-  fact: "$1,080.59 of this month's plan is still unspent.",
-  think: "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to."
+// One statement that is out, as the import preview reports it. The
+// explanation's facts are computed from it on the Worker.
+const PREVIEW = {
+  statementReconciliations: [{
+    status: "mismatch",
+    accountName: "UOB One",
+    checkpointMonth: "2026-08",
+    deltaMinor: -4_280,
+    reconciliationBreakdown: {
+      suspectedCauses: ["a card payment recorded twice"],
+      periodExistingLedgerRowCount: 3,
+      skippedStatementRowCount: 1,
+      matchedStatementRowCount: 4
+    }
+  }]
 };
+const COMPUTED_EXPLANATION = "UOB One is out by $42.80 for August 2026. Start with the 3 ledger rows already inside the statement period, then compare the 5 imported statement rows; the likely cause is a card payment recorded twice.";
 
 // Every statement succeeds. `quotaChanges` is what the daily-usage upsert
 // reports (0 = allowance used up); `usedUnits` is read back afterwards.
@@ -79,118 +82,61 @@ async function post(env, path, body) {
 }
 
 test("a GET on an AI route is not handled by it and ends in a 404", async () => {
-  const response = await worker.fetch(new Request("http://127.0.0.1/api/ai-assist/financial-insight"), { DB: createFakeDb() });
+  const response = await worker.fetch(new Request("http://127.0.0.1/api/ai-assist/monthly-narrative"), { DB: createFakeDb() });
   assert.equal(response.status, 404);
 });
 
-test("the insight route rejects facts it cannot trust, without calling AI", async () => {
-  const ai = stubAi({ response: "{}" });
-  // A bad count, a missing fact or think line, or an unknown headline kind
-  // (a long view or trivia line is never reworded).
-  for (const facts of [
-    { ...FACTS, entryCount: -1 },
-    { ...FACTS, fact: "" },
-    { ...FACTS, think: undefined },
-    { ...FACTS, headlineKind: "long_view" },
-    { ...FACTS, headlineKind: undefined }
-  ]) {
-    const response = await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { ok: true, available: false, reason: "There is not enough computed information for an insight." });
-  }
+// Money insights headlines use computed wording only. The route that asked
+// AI to reword them is gone: a tab still open from before the change gets a
+// 404 and keeps its computed headline, and AI is never called.
+test("the removed Money insights wording route ends in a 404 without calling AI", async () => {
+  const ai = stubAi({ response: JSON.stringify({ template: "A quiet win this month: {{fact}} {{think}}" }) });
+  const response = await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", {
+    facts: { headlineKind: "going_well", fact: "Savings are on plan this month.", think: "Nothing to change." }
+  });
+  assert.equal(response.status, 404);
   assert.equal(ai.calls.length, 0);
 });
 
-test("with AI turned off or the binding missing, the insight falls back to computed wording", async () => {
-  for (const [env, reason] of [
-    [{ DB: createFakeDb() }, "AI assistance is turned off."],
-    [{ DB: createFakeDb(), AI_ASSIST_ENABLED: "true" }, "AI assistance is not configured for this environment."]
-  ]) {
-    const payload = await (await post(env, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
-    assert.equal(payload.ok, true);
-    assert.equal(payload.available, false);
-    assert.equal(payload.source, "deterministic");
-    assert.equal(payload.reason, reason);
-    // With AI off the check-in reads the same: the fact, then the think line.
-    assert.equal(payload.narrative, `${FACTS.fact} ${FACTS.think}`);
+test("with AI turned off or the binding missing, an import explanation falls back to computed wording", async () => {
+  for (const env of [{ DB: createFakeDb() }, { DB: createFakeDb(), AI_ASSIST_ENABLED: "true" }]) {
+    const payload = await (await post(env, "/api/ai-assist/import-explanation", { preview: PREVIEW })).json();
+    assert.deepEqual(payload, {
+      ok: true,
+      available: false,
+      explanations: [{ accountName: "UOB One", message: COMPUTED_EXPLANATION, source: "deterministic" }]
+    });
   }
 });
 
 test("a used-up daily allowance falls back without calling AI", async () => {
   const ai = stubAi({ response: "{}" });
   const db = createFakeDb({ quotaChanges: 0 });
-  const payload = await (await post({ DB: db, AI: ai, AI_ASSIST_ENABLED: "true", AI_ASSIST_DAILY_LIMIT: "4" }, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
+  const payload = await (await post({ DB: db, AI: ai, AI_ASSIST_ENABLED: "true", AI_ASSIST_DAILY_LIMIT: "4" }, "/api/ai-assist/import-explanation", { preview: PREVIEW })).json();
   assert.equal(payload.available, false);
-  assert.equal(payload.source, "deterministic");
-  assert.equal(payload.reason, "Today's optional AI allowance has been used. The normal workflow is still available.");
-  assert.equal(payload.remaining, 0);
+  assert.deepEqual(payload.explanations, [{ accountName: "UOB One", message: COMPUTED_EXPLANATION, source: "deterministic" }]);
   assert.equal(ai.calls.length, 0);
 });
 
-test("a valid AI template is rendered from computed facts only, and the remaining allowance is reported", async () => {
-  const ai = stubAi({ response: JSON.stringify({ template: "A quiet win this month: {{fact}} {{think}}" }) });
+test("a valid AI template is rendered from computed facts only", async () => {
+  const ai = stubAi({ response: JSON.stringify({ template: "{{accountName}} is out by {{difference}} for {{statementMonth}}; check {{cause}} first." }) });
   const db = createFakeDb({ usedUnits: 3 });
-  const payload = await (await post({ DB: db, AI: ai, AI_ASSIST_ENABLED: "true", AI_ASSIST_DAILY_LIMIT: "12" }, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
+  const payload = await (await post({ DB: db, AI: ai, AI_ASSIST_ENABLED: "true", AI_ASSIST_DAILY_LIMIT: "12" }, "/api/ai-assist/import-explanation", { preview: PREVIEW })).json();
   assert.deepEqual(payload, {
     ok: true,
     available: true,
-    narrative: `A quiet win this month: ${FACTS.fact} ${FACTS.think}`,
-    source: "ai",
-    remaining: 9
+    explanations: [{ accountName: "UOB One", message: "UOB One is out by $42.80 for August 2026; check a card payment recorded twice first.", source: "ai" }]
   });
   assert.equal(ai.calls[0].model, "@cf/meta/llama-3.2-3b-instruct");
-  assert.equal(ai.calls[0].input.max_tokens, 180);
-  // The prompt asks only for words around the fact and the think line.
-  const prompt = JSON.stringify(ai.calls[0].input);
-  assert.match(prompt, /\{\{fact\}\}/);
-  assert.match(prompt, /\{\{think\}\}/);
-  assert.doesNotMatch(prompt, /notableFact|cashFlowPrinciple|nextSpendConsideration|accountingAdvice/);
-});
-
-// The Money consequence map is retired: the facts carry no map, and a page
-// still open from before the change, whose facts carry one, gets the same
-// answer with none of the map in the prompt.
-test("insight facts need no consequence map, and an old map is ignored rather than sent to AI", async () => {
-  const ai = stubAi({ response: JSON.stringify({ template: "A quiet win this month: {{fact}} {{think}}" }) });
-  const oldMap = {
-    enabled: true,
-    needsReview: true,
-    lanes: [{ id: "repeat", label: "One-repeat scenario", value: "$80.00 after one repeat", detail: "This is not a forecast.", tone: "caution" }]
-  };
-  for (const facts of [FACTS, { ...FACTS, decisionMap: oldMap }]) {
-    const payload = await (await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts })).json();
-    assert.equal(payload.source, "ai");
-    assert.equal(payload.narrative, `A quiet win this month: ${FACTS.fact} ${FACTS.think}`);
-  }
-  assert.equal(ai.calls.length, 2);
-  for (const call of ai.calls) {
-    assert.doesNotMatch(JSON.stringify(call.input), /repeat|forecast|decisionMap|lanes/i);
-  }
+  assert.equal(ai.calls[0].input.max_tokens, 140);
 });
 
 test("an AI template with its own figures is refused and the computed wording is used", async () => {
-  const ai = stubAi({ response: JSON.stringify({ template: "{{contextLabel}} spending rose 34%." }) });
-  const payload = await (await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
+  const ai = stubAi({ response: JSON.stringify({ template: "{{accountName}} is out by 34%." }) });
+  const payload = await (await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/import-explanation", { preview: PREVIEW })).json();
   assert.equal(payload.available, false);
-  assert.equal(payload.source, "deterministic");
-  assert.equal(payload.reason, "AI returned an unusable suggestion.");
-  assert.equal(payload.narrative, `${FACTS.fact} ${FACTS.think}`);
-});
-
-test("an AI template that drops the fact or the think line, or breaks the tone rules, is refused", async () => {
-  for (const template of [
-    "{{think}}",
-    "{{fact}} Worth a thought.",
-    "{{fact}} {{think}} {{fact}}",
-    "Heads up: you should look at this. {{fact}} {{think}}",
-    "Great news! {{fact}} {{think}}",
-    "{{fact}} {{think}} {{notableFact}}"
-  ]) {
-    const ai = stubAi({ response: JSON.stringify({ template }) });
-    const payload = await (await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
-    assert.equal(payload.source, "deterministic", template);
-    assert.equal(payload.narrative, `${FACTS.fact} ${FACTS.think}`, template);
-  }
+  assert.deepEqual(payload.explanations, [{ accountName: "UOB One", message: COMPUTED_EXPLANATION, source: "deterministic" }]);
+  assert.equal(ai.calls.length, 1);
 });
 
 test("statement fallback: empty text is refused; valid rows are bounded review rows; account numbers are redacted", async () => {
@@ -294,8 +240,8 @@ test("import explanation without a mismatch explains nothing", async () => {
 
 test("the shortcut-only gateway hides every AI route before any statement runs", async () => {
   const db = createFakeDb();
-  for (const path of ["/api/ai-assist/financial-insight", "/api/ai-assist/statement-text-fallback", "/api/ai-assist/category-rule-suggestions"]) {
-    const response = await post({ DB: db, SHORTCUT_API_ONLY: "true", AI: stubAi({}), AI_ASSIST_ENABLED: "true" }, path, { facts: FACTS });
+  for (const path of ["/api/ai-assist/monthly-narrative", "/api/ai-assist/import-explanation", "/api/ai-assist/statement-text-fallback", "/api/ai-assist/category-rule-suggestions"]) {
+    const response = await post({ DB: db, SHORTCUT_API_ONLY: "true", AI: stubAi({}), AI_ASSIST_ENABLED: "true" }, path, { preview: PREVIEW });
     assert.equal(response.status, 404, path);
   }
   assert.deepEqual(db.sql, []);
@@ -305,7 +251,8 @@ test("the AI route handler answers null for anything that is not a POST to one o
   const db = createFakeDb();
   const env = { DB: db, AI: stubAi({}), AI_ASSIST_ENABLED: "true" };
   const call = (method, path) => handleAiAssistRoute(new Request(`http://127.0.0.1${path}`, { method }), new URL(`http://127.0.0.1${path}`), env);
-  assert.equal(await call("GET", "/api/ai-assist/financial-insight"), null);
+  assert.equal(await call("GET", "/api/ai-assist/monthly-narrative"), null);
+  assert.equal(await call("POST", "/api/ai-assist/financial-insight"), null);
   assert.equal(await call("POST", "/api/ai-assist/unknown"), null);
   assert.equal(await call("POST", "/api/imports-page"), null);
   assert.deepEqual(db.sql, []);

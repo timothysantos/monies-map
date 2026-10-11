@@ -1543,7 +1543,8 @@ These boundaries are important enough to preserve explicitly:
 - Financial insight vs monthly note:
   a `Financial insight` is a transient explanation of the already-visible
   Summary, Month, Entries, or Splits figures. It updates with that view's
-  filters and may use optional AI wording, but it is not saved as a Monthly
+  filters and uses computed wording only (no AI rewording: the headline is
+  the bold fact and its think line as written). It is not saved as a Monthly
   Note, does not recalculate totals, and never changes the ledger or plan. A
   financial insight speaks only of what its page counts: full cash flow on
   Summary and Month, the month's whole list on Entries (whatever filter is
@@ -1556,14 +1557,17 @@ These boundaries are important enough to preserve explicitly:
   `Money insights` show one `check-in signal` as its headline: a small,
   deterministic rule over data the page already loaded that either fires
   with its numbers or stays silent (`src/domain/money-signals/`). Each
-  signal has a `signal kind`, shown as a chip: `Quick fix` (makes the
-  numbers trustworthy or settles an obligation: a statement gap, a card
-  bill due within a week or overdue with no payment yet, an unlinked planned
-  bill, a split balance, entries in Other), `Bigger question` (a pattern
-  worth a decision; at most one at a time), `Worth a look` (may be fine but
-  easy to miss, such as a bank charge with no reversal), `Going well`, `Just for fun`
-  (trivia from the user's own data, shown only when the headline is not a
-  bigger question) and `Long view` (a quieter zoomed-out line: keep rate,
+  signal has a `signal kind` (code name in brackets), shown as a chip in
+  plain words: `To do` (`quick_fix`: makes the numbers right or settles an
+  obligation: a statement gap, a card bill due within a week or overdue
+  with no payment yet, a planned bill with no payment linked, a split
+  balance, entries in Other), `Something to think about`
+  (`bigger_question`: a pattern worth a decision; at most one at a time),
+  `Worth knowing` (`worth_a_look`: may be fine but easy to miss, such as a
+  bank charge with no reversal), `Going well` (`going_well`), `Fun fact`
+  (`just_for_fun`: trivia from the user's own data, shown only when the
+  headline is not a `bigger_question`) and `Big picture` (`long_view`: a
+  quieter zoomed-out line: keep rate,
   cushion, fixed costs, same season, share of costs). A signal carries 3 to
   5 approved phrasings with the same numbers and one or more `ways to think
   about it` (think lines); each phrasing with each think line it may pair

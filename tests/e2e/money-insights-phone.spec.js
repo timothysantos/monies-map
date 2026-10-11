@@ -87,7 +87,6 @@ async function expectLineClearOfButton(page, pick, label) {
 test.describe("money insights on a phone", { tag: "@webkit" }, () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
-    await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }));
     await page.setViewportSize(IPHONE_13);
     await reseedDemo(page);
   });

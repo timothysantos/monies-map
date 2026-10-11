@@ -18,7 +18,7 @@ import { QUOTES, quoteCitation } from "../src/domain/money-signals/quotes.ts";
 import { QUOTE_PAGE_OFFSETS, YEAR_MONTHS } from "../src/domain/money-signals/rotation.ts";
 import { SHARED_COPY } from "../src/domain/money-signals/shared-signals.ts";
 import { SPLITS_CALM_LINE, SPLITS_COPY, SPLITS_TRIVIA_ROTATION } from "../src/domain/money-signals/splits-signals.ts";
-import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
+import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_CALM_PLACE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
 import { AVOID_WORDS } from "../src/domain/money-signals/tone.ts";
 import { SIGNAL_KIND_LABELS } from "../src/domain/money-signals/types.ts";
 
@@ -186,14 +186,14 @@ export const CATALOGUES = [
 ];
 
 const ALSO_LABELS = [
-  ["Summary", "Also in this range"],
+  ["Summary", "Also in this period"],
   ["Month", "Also this month"],
   ["Entries", "Also this month"],
   ["Splits", "Also in this group"]
 ];
 
 const CALM_PLACES = [
-  ["Summary", "this range", SUMMARY_CALM_LINE],
+  ["Summary", SUMMARY_CALM_PLACE, SUMMARY_CALM_LINE],
   ["Month", "{month}", monthCalmLine("2026-08").replace("August", "{month}")],
   ["Entries", "this list", ENTRIES_CALM_LINE],
   ["Splits", "this group", SPLITS_CALM_LINE]
@@ -250,7 +250,7 @@ function renderEntry(name, entry, [kind, when, triviaType]) {
 }
 
 function renderRotation(catalogue) {
-  const lines = [`Just for fun follows ${catalogue.period}. Month number, then the type tried first and its reserves:`, ""];
+  const lines = [`Fun fact follows ${catalogue.period}. Month number, then the type tried first and its reserves:`, ""];
   catalogue.rotation.columns.forEach((column, index) => {
     lines.push(`- ${MONTH_LABELS[index]}: ${column.map((type) => `\`${type}\``).join(", then ")}`);
   });
@@ -279,21 +279,30 @@ export function renderCheckInCopyMarkdown() {
     "stays kind; perspective, not advice. No exclamation marks, no emoji, and",
     "no percentage without the money amount beside it.",
     "",
+    "Plain words (owner, 2026-10-11): say what happened to the reader's money",
+    "in everyday words, then the number. The fact says what happened; the",
+    "think line says why it matters and what the link under it does. Never",
+    "describe the app's own state (\"in the app\", \"unlinked\", \"every",
+    "chart\"). An app term a line needs (Other, linking, settle up, plan)",
+    "is explained once in the same line, in quotes. Short sentences, read",
+    "aloud like a calm friend. The headline is shown exactly as written here:",
+    "there is no AI rewording.",
+    "",
     `Words the tone lint rejects: ${AVOID_WORDS.join(", ")}.`,
     "",
     "## Kinds and order",
     "",
-    "The headline is the first of: Quick fix, Bigger question (at most one),",
-    "a moment (payday, a bonus, bills coming up, pace), Worth a look, Going",
+    "The headline is the first of: To do, Something to think about (at most one),",
+    "a moment (payday, a bonus, bills coming up, pace), Worth knowing, Going",
     "well; ties go to the larger amount, then to what was not seen recently.",
-    "On Month, a statement gap (a Quick fix about a wallet, not the month)",
-    "goes right after the month's own Bigger question, so the Bigger question",
-    "leads and the gap is listed under \"Also this month\"; other Month quick",
-    "fixes (planned bills with no entry) keep their place, and Summary still",
+    "On Month, a statement gap (a To do about a wallet, not the month)",
+    "goes right after the month's own Something to think about, so that line",
+    "leads and the gap is listed under \"Also this month\"; other Month To do",
+    "lines (planned bills with no payment linked) keep their place, and Summary still",
     "leads with a statement gap.",
-    "Long view is a separate quieter line; Just for fun is one line shown only",
-    "when the headline is not a Bigger question. \"See all insights\" adds up",
-    "to three more signals and one quote (never beside a Bigger question);",
+    "Big picture is a separate quieter line; Fun fact is one line shown only",
+    "when the headline is not a Something to think about. \"See all insights\" adds up",
+    "to three more signals and one quote (never beside a Something to think about);",
     "Splits also keeps its link to review bank matches there.",
     "",
     "## Notability",
@@ -312,10 +321,10 @@ export function renderCheckInCopyMarkdown() {
     `- Month, category over plan: notable when ${Math.round(CATEGORY_OVER_RATIO * 100)}% and $${CATEGORY_OVER_MINOR / 100} over its plan. Smaller overs: no turn.`,
     "- Month, plan left (in progress or finished): turn 1. Savings on plan: turn 2.",
     "",
-    "Long view lines (keep rate, cushion, fixed costs, same season, share of",
-    "costs) and Just for fun lines (such as the average entry or a category's",
+    "Big picture lines (keep rate, cushion, fixed costs, same season, share of",
+    "costs) and Fun fact lines (such as the average entry or a category's",
     "share) never lead: they have their own line and their own year rotation.",
-    "Quick fixes, Bigger questions and moments are notable whenever they fire.",
+    "To do and Something to think about lines and moments are notable whenever they fire.",
     "",
     "## The year rule",
     "",
@@ -325,7 +334,7 @@ export function renderCheckInCopyMarkdown() {
     "one page and view, nothing shown for a period comes back in the eleven",
     "periods before or after it:",
     "",
-    "- Just for fun: each trivia type sits in one of twelve columns, one per",
+    "- Fun fact: each trivia type sits in one of twelve columns, one per",
     "  month number; a period tries its column's types in turn (the first one",
     "  changes each year) and shows none rather than borrow from another",
     "  column. Moments (a year recap, an anniversary) go first and fire in at",
@@ -334,7 +343,7 @@ export function renderCheckInCopyMarkdown() {
     "- A signal's wording: every phrasing with every think line it may pair",
     "  with, taken in turn by month (12 or more pairs per signal), all with the",
     "  same numbers. The \"also\" list uses each signal's first phrasing.",
-    "- Long view: a seasonal moment leads; otherwise the long views that fire",
+    "- Big picture: a seasonal moment leads; otherwise the long views that fire",
     "  take turns by month, each in its own wording turn.",
     `- Quote: the library is in ${YEAR_MONTHS} columns (a quote's place in the list, mod ${YEAR_MONTHS}); each page reads a`,
     `  different column in the same month (Summary +${QUOTE_PAGE_OFFSETS.summary}, Month +${QUOTE_PAGE_OFFSETS.month}, Entries +${QUOTE_PAGE_OFFSETS.entries}, Splits +${QUOTE_PAGE_OFFSETS.splits}) and`,
@@ -378,7 +387,7 @@ export function renderCheckInCopyMarkdown() {
       lines.push(...renderEntry(name, entry, catalogue.entries[name]));
     }
   }
-  lines.push("## Quotes", "", `Public domain; wording copied exactly from the source named. Shown only in the expanded view, at most one, never beside a Bigger question. Column is the quote's place in the list, mod ${YEAR_MONTHS}.`, "");
+  lines.push("## Quotes", "", `Public domain; wording copied exactly from the source named. Shown only in the expanded view, at most one, never beside a Something to think about. Column is the quote's place in the list, mod ${YEAR_MONTHS}.`, "");
   QUOTES.forEach((quote, index) => {
     lines.push(`- Column ${(index % YEAR_MONTHS) + 1}: “${quote.text}” ${quoteCitation(quote)} (${quote.year}). Source: ${quote.source}. Fits: ${quote.topics.join(", ")}.`);
   });

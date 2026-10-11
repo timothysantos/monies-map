@@ -375,7 +375,7 @@ test("revisiting the same month keeps the same-visit rules: rest, quiet, sorted"
   const afterRested = recordVisit(afterQuiet, rested, [...signals, extra], { nowMs: NOW + 86_400_000, today, contextKey: period });
   const sorted = compose(afterRested, NOW + 2 * 86_400_000, signals.filter((signal) => !signal.key.startsWith("statement-gap")));
   assert.equal(sorted.mode, "sorted");
-  assert.match(sorted.headline.fact, /^Sorted: Serene's OCBC 365 Card now matches its statement\.$/);
+  assert.match(sorted.headline.fact, /^Sorted: Serene's OCBC 365 Card now matches its bank statement\.$/);
 });
 
 test("periods are running month numbers", () => {

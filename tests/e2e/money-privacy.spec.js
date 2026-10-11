@@ -99,11 +99,6 @@ test("money values start hidden, reveal together, and cover individual activity"
 // check-in after totals were revealed, until a reload. Revealing shows the
 // real sentence at once; hiding masks it again.
 test("revealing totals after a hidden load shows the real money check-in on every page", async ({ page }) => {
-  await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({
-    status: 503,
-    contentType: "application/json",
-    body: JSON.stringify({ ok: false })
-  }));
   await reseedDemo(page);
   // A subscription in April makes May's subscriptions differ, so Summary
   // leads with a signal that carries money (a calm range carries none).

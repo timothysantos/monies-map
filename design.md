@@ -88,13 +88,15 @@ at most one action that reuses a navigation the page already has, then a
 Just for fun line (never beside a bigger question) and the Long view line.
 `See all insights` reveals up to three more signals and at most one quote
 (never beside a bigger question); on Splits also the bank-match review link,
-which its Quick fix owns. Expanding is local presentation state and must not trigger
-an additional AI request; it loads the quote library chunk on demand.
+which its Quick fix owns. Expanding is local presentation state; it loads the
+quote library chunk on demand. The headline is always the computed fact
+(bold) and its think line as written: Money insights use no AI rewording and
+send no wording request.
 Summary's signals and copy pools are a chunk of their own
 (`money-insights-loader.js`, started by the Summary route loader): until
 it arrives `checkIn` is null and the component renders its frame (the
 label and one empty line, `data-checkin-mode="loading"`, `aria-busy`), with
-no words of its own and no wording request. The
+no words of its own. The
 component (`financial-insight.jsx`) composes the check-in with
 `composeCheckIn` from the page's signals, the page and period (what rotates
 follows the period: `money-signals/rotation.ts`), the page's trivia schedule
@@ -433,15 +435,14 @@ The optional Workers AI surface is a small client-to-Worker boundary. It is
 never loaded as part of route bootstrap, import preview, import commit,
 reconciliation refresh, or freshness calculation. The client exposes explicit
 actions for narrative drafting, category-rule proposals, candidate ranking,
-and a per-file statement-text fallback. Summary, Month, Entries, and Splits
-also render a deterministic Financial insight immediately and may make one
-debounced, cache-missed wording request after the view is stable. That cache is
-memory-only and short-lived. The Worker validates every response against
-existing DTO data and returns an unavailable result when the binding, quota, or
-model is unavailable. Each page's insight speaks only of what that page
-counts (full cash flow on Summary and Month, the month's whole list on
-Entries, settlement obligations on Splits); AI wording may only choose words
-around the computed fact and think line. When deterministic evidence warrants
+and a per-file statement-text fallback. The Worker validates every response
+against existing DTO data and returns an unavailable result when the binding,
+quota, or model is unavailable. Summary, Month, Entries, and Splits render
+their Money insights from computed wording only, with no AI request (the
+optional rewording route was removed after it produced broken grammar). Each
+page's insight speaks only of what that page counts (full cash flow on
+Summary and Month, the month's whole list on Entries, settlement obligations
+on Splits). When deterministic evidence warrants
 it, a signal carries one action that opens an existing surface (the filtered
 Entries list, Imports for a statement gap, the split-match or settle-up
 view); model output never supplies the target. No AI result bypasses the
@@ -449,15 +450,16 @@ existing editor, preview, or review controls. The Money consequence map that
 used to sit under "See all insights" is retired (DOMAIN.md): plan variance,
 the same-season comparison and bank-proof gaps are check-in signals only.
 
-A check-in's facts count what the figures beside it count. Summary builds
+A check-in's signals count what the figures beside it count. Summary builds
 them from its page DTO, which the Worker already filtered to the view and
 scope. The Month DTO's `entries` holds every household entry (plan linking
-needs them all), so `month-insight-facts.js` first keeps the entries the
-`Actual spend` card counts with the Worker's own `filterEntriesForView` and
-`effectiveScopeForView` (`src/domain/person-view-scope.ts`, over
-`person-entry-amount.ts`): every entry for the household, and a person's own
-entries in the scope at their own amounts. A scope change therefore changes
-the facts and the wording cache key. Month's statement-gap Quick fix reads
+needs them all), so `selectMonthInsightEntries` (`month-insight-facts.js`)
+first keeps the entries the `Actual spend` card counts with the Worker's own
+`filterEntriesForView` and `effectiveScopeForView`
+(`src/domain/person-view-scope.ts`, over `person-entry-amount.ts`): every
+entry for the household, and a person's own entries in the scope at their
+own amounts. A scope change therefore changes what the signals count.
+Month's statement-gap Quick fix reads
 the same wallet health as Summary's: the view's account pills
 (`/api/summary-account-pills`), which the Month route load fetches beside
 the month page (`fetchRoutePageData` in `App.jsx`) and hands to the panel
@@ -465,20 +467,14 @@ as `view.accountPills`. The reference account list has no checkpoint
 status, so the check-in never reads it; until the pills load, nothing may
 be called sorted (`ready`). The Month Accounts section shows the pills'
 balances and health too
-(`withMonthAccountHealth`). The Splits check-in follows the view
-too: `buildSplitInsightRecords` (`split-helpers.js`, exposed on the Splits
-model as `insightRecords`) gives a person view that person's split share of
-each expense of the active group, read from the activity's existing
-`shares` rows and in the group currency (a JPY trip reads JP¥), and leaves
-out an expense they have no share in; settlements carry no spend. The
-check-in then addresses the person ("Tim's money insights", "Joyce owes you
-JP¥9,000"). The household view counts the group totals, the same figure as the
-Splits `Total spend`, with household wording. The Splits route pins a
-person view whenever the household has people, so in practice the Splits
-check-in is always a person's; the household branch is covered by
-`tests/splits-insight-records.test.mjs`. The wording request still sends
-only the computed facts with the name replaced, and its cache key changes
-with the view.
+(`withMonthAccountHealth`). The Splits check-in follows the view too: its
+signals read the active group's open activity from the person's side and in
+the group currency (a JPY trip reads JP¥), and the check-in addresses the
+person ("Tim's money insights", "Joyce owes you JP¥9,000"). Each page passes
+the person's name to `FinancialInsight` as `audienceName` for that label
+(empty for the household, which reads "Household money insights"). The
+Splits route pins a person view whenever the household has people, so in
+practice the Splits check-in is always a person's.
 
 ## Scope Controls
 
@@ -1060,7 +1056,7 @@ widths.
 
 ## Route Warmup Boundary
 
-Optional work (route code, speculative page data, AI wording) starts only
+Optional work (route code and speculative page data) starts only
 when the active route is usable, and it never delays a navigation or a
 required read.
 
@@ -1087,8 +1083,6 @@ required read.
   page (gzip bytes and handler p95 on the 10k fixture). Mobile preloads data
   only on a 4g connection without data saver; a browser that reports no
   connection (iPhone Safari) stays code-only.
-- Financial Insight asks for AI wording only while the route is usable
-  (`canRequestWording`), and keeps a response only if it is still current.
 
 ## In-App Guide Boundary
 

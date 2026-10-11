@@ -110,9 +110,9 @@ export interface CheckInView {
 // Approved quiet-visit lines. {when} is "earlier today", "yesterday", a
 // weekday, or "your last visit".
 export const QUIET_LINES = [
-  "Nothing new since {when}. The numbers here match your last visit.",
+  "Nothing new since {when}. Your numbers haven't changed.",
   "All quiet since {when}. Nothing here has moved.",
-  "Same picture as {when}. Nothing new needs a look."
+  "Same picture as {when}. Nothing new to look at."
 ];
 
 export function emptyVisitMemory(): VisitMemory {

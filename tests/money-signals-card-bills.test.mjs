@@ -32,7 +32,7 @@ test("a card bill due within a week with no payment yet is a quick fix naming th
   assert.equal(signal.kind, "quick_fix");
   assert.equal(signal.key, "card-bill:ocbc:2026-10");
   assert.equal(signal.primaryText, "$33.15");
-  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card bill of $33.15 is due in 3 days (Fri 23 Oct), and no payment to it is in the app yet.");
+  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card bill of $33.15 is due in 3 days (Fri 23 Oct), with no payment to it recorded here yet.");
   assertTone(signal);
   // The person's own view says "your".
   assert.match(bill([ocbcBill()], "2026-10-23", "person", "Joyce").phrasings[0].fact, /^Your OCBC 365 Credit Card bill of \$33\.15 is due today/);
@@ -51,7 +51,7 @@ test("a part payment leaves the rest to pay; a full payment, or a bill more than
 test("an overdue bill with less than the minimum paid says so; one with the minimum paid does not", () => {
   const overdue = bill([ocbcBill()], "2026-10-26");
   assert.equal(overdue.kind, "quick_fix");
-  assert.equal(overdue.phrasings[0].fact, "Joyce's OCBC 365 Credit Card bill of $33.15 was due on Fri 23 Oct, and no payment to it is in the app yet.");
+  assert.equal(overdue.phrasings[0].fact, "Joyce's OCBC 365 Credit Card bill was due on Fri 23 Oct, and $33.15 still shows as unpaid here.");
   assertTone(overdue);
   assert.equal(bill([ocbcBill({ owedMinor: 26434, minimumMinor: 5000, paidSinceMinor: 5000 })], "2026-10-26"), null);
   // An overdue bill comes before one that is only due.
@@ -81,7 +81,7 @@ test("bank charges with no reversal in the last two months are worth a look, lis
   assert.equal(signal.kind, "worth_a_look");
   // The largest total leads: the UOB annual fee.
   assert.equal(signal.key, "bank-charges:uob:2026-08-31");
-  assert.equal(signal.phrasings[0].fact, "Joyce's UOB One Card was charged a $196.20 annual fee on Mon 31 Aug, and no reversal of it is in the app yet.");
+  assert.equal(signal.phrasings[0].fact, "Joyce's UOB One Card was charged a $196.20 annual fee on Mon 31 Aug, and no refund of it shows here yet.");
   assertTone(signal);
 });
 
@@ -92,7 +92,7 @@ test("several charges on one card are named together; charges older than two mon
   ] }];
   const signal = bankChargesSignal({ accountPills: pills, audience: "household", viewLabel: "Household", today: "2026-10-12", formatMoney });
   assert.equal(signal.primaryText, "$104.37");
-  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card was charged a $100.00 late charge and $4.37 interest since Mon 24 Aug, and no reversal of them is in the app yet.");
+  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card has been charged a $100.00 late charge and $4.37 interest since Mon 24 Aug, and no refund shows here yet.");
   assert.equal(bankChargesSignal({ accountPills: pills, audience: "household", viewLabel: "Household", today: "2026-11-05", formatMoney }), null);
 });
 
@@ -108,7 +108,7 @@ test("a card on penalty interest with money owed is worth a look, naming the rat
   const signal = penaltyInterestSignal({ accountPills: [pill(3315)], audience: "household", viewLabel: "Household", formatMoney });
   assert.equal(signal.kind, "worth_a_look");
   assert.equal(signal.key, "penalty-interest:ocbc:2026-10");
-  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card is charged penalty interest of 30.78% a year, says its October statement, with $33.15 owed.");
+  assert.equal(signal.phrasings[0].fact, "Joyce's OCBC 365 Credit Card October bill shows $33.15 owed at a penalty interest rate of 30.78% a year.");
   assertTone(signal);
   for (const phrasing of signal.phrasings) {
     assert.deepEqual(findPercentWithoutMoney(phrasing.fact), [], phrasing.fact);

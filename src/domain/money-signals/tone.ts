@@ -1,5 +1,5 @@
 // The check-in's tone rules as code (docs/money-insights-copy.md, "Tone"). Every
-// approved line, and every optional AI wording around them, must pass:
+// approved line must pass:
 // no shame or alarm words, no exclamation marks, no emoji, and no
 // percentage without the money amount beside it.
 
@@ -60,4 +60,27 @@ export function findPercentWithoutMoney(text: string): string[] {
   return text
     .split(/(?<=[.?])\s+/)
     .filter((sentence) => sentence.includes("%") && !MONEY_TEXT.test(sentence) && !MONEY_TOKEN.test(sentence));
+}
+
+// App-centred phrases the plain-words rule retires (docs/money-insights-copy.md,
+// "Tone"): a line says what happened to the reader's money, never what the
+// app holds or what its charts show.
+export const APP_JARGON = [
+  "the app",
+  "chart",
+  "charts",
+  "unlinked",
+  "ledger",
+  "trustworthy",
+  "whole story",
+  "same story",
+  "checkpoint"
+];
+
+const APP_JARGON_PATTERN = new RegExp(`\\b(?:${APP_JARGON.join("|")})\\b`, "i");
+
+// Returns the app-centred phrase a line uses, if any.
+export function findAppJargon(text: string): string[] {
+  const match = text.match(APP_JARGON_PATTERN);
+  return match ? [`uses "${match[0]}"`] : [];
 }

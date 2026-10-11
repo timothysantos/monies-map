@@ -1,10 +1,6 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
-import {
-  buildDeterministicFinancialInsight,
-  buildFinancialInsightCacheKey
-} from "../domain/ai-assistance-insights";
 import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/checkin";
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { readVisitMemory, writeVisitMemory } from "./checkin-visit-memory";
@@ -12,13 +8,6 @@ import { useMoneyPrivacy } from "./money-privacy";
 // The check-in's own styles ship with the route that shows it, not with
 // the first-screen stylesheet.
 import "./money-checkin.css";
-
-const INSIGHT_DEBOUNCE_MS = 700;
-const INSIGHT_CACHE_TTL_MS = 15 * 60 * 1000;
-const UNAVAILABLE_CACHE_TTL_MS = 5 * 60 * 1000;
-const MAX_INSIGHT_CACHE_ENTRIES = 48;
-const AI_PERSON_PLACEHOLDER = "[selected person]";
-const insightCache = new Map();
 
 // Money insights (the money check-in in code): one computed signal worth
 // knowing (with its kind chip, a way to think about it and at most one
@@ -35,31 +24,32 @@ const insightCache = new Map();
 //
 // `checkIn` is null while a page's insights module is still loading
 // (Summary's loads beside the first screen: money-insights-loader.js); the
-// insights then show their frame only, one line high, and no AI request.
+// insights then show their frame only, one line high.
 //
-// Optional AI wording is in-memory only: it avoids repeat requests while
-// the app is open without retaining financial wording in storage.
-// canRequestWording is the route's "usable" state (loaded, no editor or
-// save in progress): AI wording never competes with protected work, and the
-// computed wording is shown until a valid response arrives. The AI may only
-// choose words around the fact and the think line, which stay verbatim.
+// The headline is always the computed fact (bold) and its think line as
+// written: no AI rewording.
+//
+// `audienceName` is the person a person view's insights address ("Tim's
+// money insights"); it is empty for the household.
+//
+// `isCheckInActionShown(action)` lets a page hide the headline's link when
+// pressing it would change nothing (Entries, already filtered to those
+// records).
 export function FinancialInsight(props) {
   return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
 }
 
-function insightLabelFor(facts) {
-  return facts.audienceKind === "person" && facts.audienceName
-    ? `${facts.audienceName}'s money insights`
-    : "Household money insights";
+function insightLabelFor(audienceName) {
+  return audienceName ? `${audienceName}'s money insights` : "Household money insights";
 }
 
 // The insights' frame while their module loads: the label and one empty
 // line, with the same box as the insights, so nothing new is said.
-function FinancialInsightFrame({ facts, className = "" }) {
+function FinancialInsightFrame({ audienceName = "", className = "" }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   return (
     <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" aria-busy={areTotalsVisible ? "true" : undefined} data-checkin-mode={areTotalsVisible ? "loading" : undefined}>
-      <span className="financial-insight-label">{insightLabelFor(facts)}</span>
+      <span className="financial-insight-label">{insightLabelFor(audienceName)}</span>
       <div className="financial-insight-content">
         {areTotalsVisible
           ? <p className="financial-insight-narrative" aria-hidden="true">{"\u00a0"}</p>
@@ -69,7 +59,7 @@ function FinancialInsightFrame({ facts, className = "" }) {
   );
 }
 
-function FinancialInsightCheckIn({ facts, checkIn, actions = [], onCheckInAction, className = "", canRequestWording = false }) {
+function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onCheckInAction, isCheckInActionShown, className = "" }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const { memoryKey, contextKey, signals, page, period, triviaRotation, calmLines, clock, alsoLabel = "Also worth knowing", ready = true } = checkIn;
   const seed = `${memoryKey}|${contextKey}`;
@@ -89,37 +79,16 @@ function FinancialInsightCheckIn({ facts, checkIn, actions = [], onCheckInAction
     ready
   }), [calmLines, clock.nowMs, clock.today, contextKey, memorySnapshot, period, ready, seed, signals, triviaRotation]);
   const { headline } = view;
-  const headlineFacts = useMemo(() => (
-    headline.kind && headline.kind !== "long_view" && headline.kind !== "just_for_fun" && headline.think
-      ? { headlineKind: headline.kind, fact: headline.fact, think: headline.think }
-      : null
-  ), [headline.fact, headline.kind, headline.think]);
-  const cacheKey = useMemo(() => (headlineFacts ? buildFinancialInsightCacheKey(facts, headlineFacts) : ""), [facts, headlineFacts]);
-  const aiFacts = useMemo(() => (headlineFacts
-    ? {
-      ...facts,
-      ...(facts.audienceKind === "person" ? { audienceName: AI_PERSON_PLACEHOLDER } : {}),
-      ...headlineFacts
-    }
-    : null), [facts, headlineFacts]);
-  const deterministicNarrative = headlineFacts ? buildDeterministicFinancialInsight(headlineFacts) : "";
-  const insightLabel = insightLabelFor(facts);
-  const [response, setResponse] = useState(null);
+  const insightLabel = insightLabelFor(audienceName);
   const [isExpanded, setIsExpanded] = useState(false);
   const [quote, setQuote] = useState(null);
   const alsoId = useId();
   const detailsId = useId();
-  const aiNarrative = cacheKey && response?.key === cacheKey && response.narrative !== deterministicNarrative
-    ? response.narrative
-    : null;
-  // Latest values for the request, read when it starts, so a new facts object
-  // with the same content never restarts the debounce.
-  const latestRef = useRef({ facts, aiFacts, deterministicNarrative, cacheKey });
-  latestRef.current = { facts, aiFacts, deterministicNarrative, cacheKey };
 
+  // A new headline or context closes "See all insights".
   useEffect(() => {
     setIsExpanded(false);
-  }, [cacheKey, contextKey]);
+  }, [contextKey, headline.fact, headline.kind, headline.think]);
 
   // Remember this visit (only while the numbers are visible and the page's
   // data is complete). Merged into the latest stored memory.
@@ -154,78 +123,6 @@ function FinancialInsightCheckIn({ facts, checkIn, actions = [], onCheckInAction
     };
   }, [areTotalsVisible, isExpanded, page, period, view.quoteTopic]);
 
-  useEffect(() => {
-    if (!areTotalsVisible || !cacheKey) {
-      setResponse(null);
-      return undefined;
-    }
-    const cached = insightCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      setResponse({ key: cacheKey, narrative: cached.narrative });
-      return undefined;
-    }
-    setResponse(null);
-    if (!canRequestWording) {
-      return undefined;
-    }
-
-    const requestKey = cacheKey;
-    const { facts: requestFacts, aiFacts: requestAiFacts, deterministicNarrative: fallbackNarrative } = latestRef.current;
-    let cancelled = false;
-    const controller = new AbortController();
-    // Only a response for these exact facts, from a request that was not
-    // cancelled by an edit, a privacy change or new facts, is kept.
-    const isCurrent = () => !cancelled && latestRef.current.cacheKey === requestKey;
-    const timer = window.setTimeout(async () => {
-      try {
-        const fetchResponse = await fetch("/api/ai-assist/financial-insight", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ facts: requestAiFacts }),
-          signal: controller.signal
-        });
-        let payload = null;
-        if (fetchResponse.ok) {
-          try {
-            payload = await fetchResponse.json();
-          } catch {
-            payload = null;
-          }
-        }
-        if (!isCurrent()) {
-          return;
-        }
-        const candidate = typeof payload?.narrative === "string" && payload.narrative.trim()
-          ? localizeFinancialInsightNarrative(payload.narrative.trim(), requestFacts)
-          : null;
-        // Wording is kept only when it still carries the fact and the think
-        // line word for word; anything else falls back to computed wording.
-        const aiWording = candidate && requestAiFacts && candidate.includes(requestAiFacts.fact) && candidate.includes(requestAiFacts.think)
-          ? candidate
-          : null;
-        const narrative = aiWording ?? fallbackNarrative;
-        setInsightCache(requestKey, {
-          narrative,
-          expiresAt: Date.now() + (aiWording && payload?.available ? INSIGHT_CACHE_TTL_MS : UNAVAILABLE_CACHE_TTL_MS)
-        });
-        setResponse({ key: requestKey, narrative });
-      } catch {
-        if (isCurrent() && !controller.signal.aborted) {
-          setInsightCache(requestKey, {
-            narrative: fallbackNarrative,
-            expiresAt: Date.now() + UNAVAILABLE_CACHE_TTL_MS
-          });
-        }
-      }
-    }, INSIGHT_DEBOUNCE_MS);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [areTotalsVisible, cacheKey, canRequestWording]);
-
   if (!areTotalsVisible) {
     return (
       <section className={`financial-insight ${className}`.trim()} aria-label="Money insights">
@@ -243,16 +140,10 @@ function FinancialInsightCheckIn({ facts, checkIn, actions = [], onCheckInAction
       <div className="financial-insight-content">
         {headline.kind ? <CheckInChip kind={headline.kind} /> : null}
         <p className="financial-insight-narrative" aria-live="polite">
-          {aiNarrative ? (
-            <NarrativeWithFact narrative={aiNarrative} fact={headline.fact} />
-          ) : (
-            <>
-              <strong className="checkin-fact">{headline.fact}</strong>
-              {headline.think ? <span className="checkin-think"> {headline.think}</span> : null}
-            </>
-          )}
+          <strong className="checkin-fact">{headline.fact}</strong>
+          {headline.think ? <span className="checkin-think"> {headline.think}</span> : null}
         </p>
-        {headline.action && onCheckInAction ? (
+        {headline.action && onCheckInAction && (!isCheckInActionShown || isCheckInActionShown(headline.action)) ? (
           <button type="button" className="checkin-action" onClick={() => onCheckInAction(headline.action)}>
             {headline.action.label}
           </button>
@@ -318,42 +209,4 @@ function FinancialInsightCheckIn({ facts, checkIn, actions = [], onCheckInAction
 
 function CheckInChip({ kind }) {
   return <span className={`checkin-chip is-${kind.replace(/_/g, "-")}`}>{SIGNAL_KIND_LABELS[kind]}</span>;
-}
-
-// AI wording keeps the computed fact verbatim, so it is found and kept bold.
-function NarrativeWithFact({ narrative, fact }) {
-  const index = fact ? narrative.indexOf(fact) : -1;
-  if (index < 0) {
-    return narrative;
-  }
-  return (
-    <>
-      {narrative.slice(0, index)}
-      <strong className="checkin-fact is-inline">{fact}</strong>
-      {narrative.slice(index + fact.length)}
-    </>
-  );
-}
-
-function localizeFinancialInsightNarrative(narrative, facts) {
-  if (facts.audienceKind !== "person" || !facts.audienceName) {
-    return narrative;
-  }
-  return narrative.split(AI_PERSON_PLACEHOLDER).join(facts.audienceName);
-}
-
-function setInsightCache(key, value) {
-  const now = Date.now();
-  for (const [cachedKey, cachedValue] of insightCache) {
-    if (cachedValue.expiresAt <= now) {
-      insightCache.delete(cachedKey);
-    }
-  }
-  if (insightCache.size >= MAX_INSIGHT_CACHE_ENTRIES) {
-    const oldestKey = insightCache.keys().next().value;
-    if (oldestKey) {
-      insightCache.delete(oldestKey);
-    }
-  }
-  insightCache.set(key, value);
 }

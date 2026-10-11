@@ -10,7 +10,7 @@ import { buildDerivedSummaryMonth } from "../src/domain/summary-projection.ts";
 import { buildDonutChart } from "../src/domain/donut-chart-projection.ts";
 import { sumVisibleExpenseMinor } from "../src/domain/app-repository-helpers.ts";
 import { deriveIncomeRowActuals, derivePlanRowActuals } from "../src/domain/month-projection.ts";
-import { buildFinancialInsightFacts, buildMonthlyNarrativeFacts } from "../src/domain/ai-assistance-insights.ts";
+import { buildMonthlyNarrativeFacts } from "../src/domain/ai-assistance-insights.ts";
 import { getEntryTotals, getExpenseBreakdown } from "../src/client/entry-totals.js";
 
 const split = (personId, personName, amountMinor, ratioBasisPoints = 10_000) => ({ personId, personName, amountMinor, ratioBasisPoints });
@@ -100,9 +100,7 @@ test("Entries page totals and breakdown agree with Summary", () => {
   ]);
 });
 
-test("insight facts count a payback as less spending", () => {
-  const facts = buildFinancialInsightFacts({ contextLabel: "May", records: ENTRIES, formatMoney: (minor) => String(minor) });
-  assert.deepEqual([facts.spend, facts.income, facts.net, facts.topCategoryName, facts.topCategoryAmount, facts.topMerchantName], ["9000", "500000", "491000", "Food & Drinks", "6000", "dinner"]);
+test("monthly narrative facts count a payback as less spending", () => {
   const narrative = buildMonthlyNarrativeFacts("2026-05", undefined, ENTRIES, (minor) => String(minor));
   assert.equal(narrative.spend, "9000");
   assert.equal(narrative.topCategoryName, "Food & Drinks");

@@ -26,35 +26,35 @@ import type { Audience, MoneySignal } from "./types";
 export const SUMMARY_COPY = {
   spendingAboveIncome: {
     phrasings: [
-      "Spending has been above income for {count} months running.",
-      "For {count} months running, more went out than came in: {gap} in all.",
-      "The last {count} months each spent more than came in, {gap} altogether."
+      "Spending has been higher than income for {count} months in a row.",
+      "For {count} months in a row, more went out than came in: {gap} more in all.",
+      "In each of the last {count} months, spending was higher than income. Together that's {gap} more out than in."
     ],
     think: [
       "Changing one category is easier than changing everything. Which one matters least to you?",
-      "Streaks like this often come from one or two big items. Knowing which ones makes the next step clearer.",
-      "A few months like this can happen for good reasons. Worth a calm look at whether it was planned.",
-      "One category usually carries most of a streak like this. Starting there keeps it simple."
+      "Runs like this often come from one or two big costs. Finding them makes the next step clearer.",
+      "A few months like this can happen for good reasons, like a holiday or a big repair. It's worth checking whether this was planned.",
+      "The extra money came from savings or went onto a card. Usually one category explains most of it, so that's a simple place to start."
     ]
   },
   categoryCreep: {
     phrasings: [
-      "{category} has risen {count} months in a row and is {above} above its {window}-month average.",
-      "{category} is {above} above its usual month, after {count} rises in a row.",
-      "{count} months ago {category} was {then}; now it's {now}."
+      "{category} spending has gone up {count} months in a row. The latest month was {above} more than its average over the {window} months before.",
+      "{category} spending was {above} more than in a typical month, after going up {count} months in a row.",
+      "{count} months ago, {category} spending was {then} for the month. It has gone up every month since, to {now}."
     ],
     think: [
-      "Rises like this usually happen without anyone deciding. If it's spending you enjoy, keep it; just make it a choice.",
-      "Gradual rises are easy to miss month to month. Seeing the trend is the useful part.",
-      "Some rises simply follow a change in life. Worth asking whether this one does.",
-      "A rising category is worth one question: is this still the amount you'd choose?"
+      "Rises like this often happen without anyone choosing them. If it's spending you enjoy, it can stay. It just helps to choose it.",
+      "Slow rises are easy to miss from one month to the next. Seeing them side by side is the useful part.",
+      "Some rises simply follow a change in life, like a new job or a new baby. It's worth asking whether this one does.",
+      "A rise like this is worth one question: is this still the amount you'd choose?"
     ]
   },
   subscriptions: {
     phrasings: [
-      "Subscriptions came to {amount} in {month}, about {yearly} a year.",
+      "Subscriptions came to {amount} in {month}. That's about {yearly} a year.",
       {
-        fact: "{yearly} a year goes to subscriptions. Still using all of them?",
+        fact: "About {yearly} a year goes on subscriptions. Are you still using all of them?",
         think: [
           "Automatic payments are easy to stop noticing.",
           "The ones used every week are easy to keep.",
@@ -65,78 +65,78 @@ export const SUMMARY_COPY = {
       "Your subscriptions cost about {daily} a day."
     ],
     think: [
-      "Automatic payments are easy to stop noticing. Judge each one by its yearly cost.",
-      "A subscription that still earns its place is money well spent. The yearly cost makes that easy to judge.",
+      "Automatic payments are easy to stop noticing. Looking at each one's yearly cost makes it easier to judge.",
+      "A subscription you still use is money well spent. The yearly cost makes that easy to judge.",
       "Once a year is a good rhythm for checking which ones you still use.",
-      "Small monthly amounts look different at their yearly cost. That view makes each one easier to judge."
+      "Small monthly amounts look different at their yearly cost. That makes each one easier to judge."
     ]
   },
   monthsUnderPlan: {
     phrasings: [
-      "{under} of the last {total} months came in under plan.",
-      "Under plan in {under} of the last {total} months, {saved} below plan in all.",
-      "{saved} stayed inside the plan across {under} of the last {total} months."
+      "In {under} of the last {total} months, spending stayed at or below what you planned.",
+      "Spending stayed within what you planned in {under} of the last {total} months, {saved} under in all.",
+      "Across {under} of the last {total} months, spending came to {saved} less than planned."
     ],
     think: [
-      "Consistency matters more than any single month. This is what a working plan looks like.",
-      "Months like these are the plan doing its job. That's worth noticing.",
+      "Keeping to the plan most months matters more than any single month. It means your plans fit how you really spend.",
+      "Months like these mean your plans are realistic. That's worth noticing.",
       "A plan that holds most months is a plan that fits your life.",
-      "Staying under plan this often leaves room for the things you care about."
+      "Spending less than planned this often leaves room for the things you care about."
     ]
   },
   keepRate: {
     phrasings: [
-      "Over the last {count} months {subject} kept {rate}% of what came in ({kept}).",
-      "For every {ten} that came in over the last {count} months, about {stayed} stayed.",
+      "Over the last {count} months, {subject} kept {rate}% of what came in: {kept} that wasn't spent.",
+      "Of every {ten} that came in over the last {count} months, about {stayed} was kept (not spent).",
       {
-        fact: "{kept} kept over the last {count} months. One heavy month barely moves that.",
+        fact: "{kept} of what came in over the last {count} months wasn't spent. One expensive month barely changes that.",
         think: [
-          "The year is the fairer scorecard.",
-          "That's the steady part that builds up.",
-          "Month to month it moves; the year shows the pattern.",
-          "Over time, that's what gives plans room."
+          "Looking across many months gives the fairer picture.",
+          "That's the steady part that builds up over time.",
+          "Single months go up and down. Many months together show the pattern.",
+          "Over time, money left over is what makes room for bigger plans."
         ]
       },
-      "Kept over the last {count} months: {kept}, about {rate}% of what came in."
+      "Left over after spending in the last {count} months: {kept}, about {rate}% of what came in."
     ],
     think: [
-      "One heavy month barely moves a year; the year is the fairer scorecard.",
-      "What stays over a year is the number that builds up over time.",
-      "Month to month it moves around; over a year the pattern shows.",
-      "Keeping some of each month's income is what gives future plans room."
+      "One expensive month barely changes a figure like this. That makes it a fair measure of how things are going.",
+      "What's left over each month is what builds up into savings over time.",
+      "Single months go up and down. Looked at together, the pattern shows.",
+      "Keeping part of what comes in is what makes room for future plans."
     ]
   },
   cushion: {
     phrasings: [
-      "Bank balances would cover about {months} of your usual spending.",
-      "At your usual spending of about {usual} a month, bank balances would last about {months}.",
-      "{balance} in bank accounts is about {months} of your usual spending."
+      "Bank balances would cover about {months} of your usual spending, which averages about {usual} a month.",
+      "At your average spending of about {usual} a month, the money in your bank accounts would last about {months}.",
+      "{balance} in your bank accounts is about {months} of spending, at your average of {usual} a month."
     ],
     think: [
-      "A cushion turns surprises into inconveniences. How big feels right is your call.",
-      "A cushion gives room to handle the unexpected calmly. How much is enough is yours to decide.",
-      "Months of cover is a simple way to see how much room you have.",
-      "Knowing the number is the useful part; the right size depends on your life."
+      "Money you can reach quickly (a \"cushion\") turns surprises into inconveniences. How big feels right is your call.",
+      "Money set aside like this lets you handle the unexpected calmly. How much is enough is yours to decide.",
+      "Counting it in months of spending is a simple way to see how much room you have.",
+      "Knowing the number is the useful part. The right amount depends on your life."
     ]
   },
   sameSeason: {
     phrasings: [
-      "{month} spending was about {diff} {direction} than {month} last year.",
-      "Compared with {month} last year, spending was about {diff} {direction}.",
-      "{month} last year: {then}. This {month}: {now}."
+      "Spending in {monthNow} was about {diff} {direction} than in {monthThen}.",
+      "Compared with the same month a year earlier, {monthNow} spending was about {diff} {direction}.",
+      "Spending in {monthThen}: {then}. A year later, in {monthNow}: {now}."
     ],
     think: [
-      "The same month last year is the fair comparison: holidays, bonuses and school terms line up.",
-      "Comparing like with like takes the seasons out of the picture.",
+      "The same month a year earlier is the fair comparison, because holidays, bonuses and school terms line up.",
+      "Comparing the same month takes seasonal costs out of the picture.",
       "A year apart, the same month shows what really changed.",
       "Seasonal costs repeat. Last year's month is a gentle guide to this one."
     ]
   },
   chineseNewYear: {
     phrasings: [
-      "Chinese New Year falls in {cnyMonth}. Last year's Chinese New Year month, {lastMonth}, came to {amount} of spending.",
-      "Last Chinese New Year month, {lastMonth}, spending came to {amount}. This year's falls in {cnyMonth}.",
-      "{amount}: what {lastMonth}, last year's Chinese New Year month, came to."
+      "Chinese New Year falls in {cnyMonth}. Last year it fell in {lastMonth}, when spending came to {amount}.",
+      "In {lastMonth}, last year's Chinese New Year month, spending came to {amount}. This year it falls in {cnyMonth}.",
+      "Last Chinese New Year, in {lastMonth}, spending came to {amount} for the month."
     ],
     think: [
       "Festive months have their own shape. Knowing last year's helps this one feel planned rather than surprising.",
@@ -146,97 +146,100 @@ export const SUMMARY_COPY = {
     ]
   },
   categoryFraction: {
-    phrasings: ["About one in every {fraction} dollars in {month} went to {category}."],
+    phrasings: ["About one in every {fraction} dollars spent in {month} went on {category}."],
     think: ""
   },
   halfOfSpending: {
-    phrasings: ["{count} categories made up half of {month}'s spending."],
+    phrasings: ["Half of {month}'s spending went on just {count} categories."],
     think: ""
   },
   lastYearTop: {
-    phrasings: ["A year ago, {category} was your biggest category."],
+    phrasings: ["A year ago, in {month}, you spent more on {category} than on any other category."],
     think: ""
   },
   everyMonthCategory: {
-    phrasings: ["{category} showed up in all {count} months of this range, about {amount} a month on average."],
+    phrasings: ["{category} came up in all {count} months from {span}, about {amount} a month on average."],
     think: ""
   },
   mostEntriesMonth: {
-    phrasings: ["The month with the most entries in this range: {month}, with {count}."],
+    phrasings: ["Of the months from {span}, {month} had the most separate costs: {count}."],
     think: ""
   },
   quietestMonth: {
-    phrasings: ["The quietest month for spending in this range: {month}, at {amount}."],
+    phrasings: ["Of the months from {span}, {month} had the least spending: {amount}."],
     think: ""
   },
   biggestMonth: {
-    phrasings: ["The biggest month for spending in this range: {month}, at {amount}."],
+    phrasings: ["Of the months from {span}, {month} had the most spending: {amount}."],
     think: ""
   },
   averageMonth: {
-    phrasings: ["An average month in this range came to about {amount} of spending."],
+    phrasings: ["From {span}, spending averaged about {amount} a month."],
     think: ""
   },
   weeklyCategory: {
-    phrasings: ["{category} came to about {amount} a week across this range."],
+    phrasings: ["{category} came to about {amount} a week from {span}."],
     think: ""
   },
   categoriesCount: {
-    phrasings: ["{count} different categories show up across this range."],
+    phrasings: ["Your spending from {span} fell into {count} different categories."],
     think: ""
   },
   topCategoryMonths: {
-    phrasings: ["{category} was the biggest category in {count} of the {total} months here."],
+    phrasings: ["{category} was your biggest spending category in {count} of the {total} months from {span}."],
     think: ""
   },
   topCategoryEntries: {
-    phrasings: ["{category} had the most entries in {month}: {count}."],
+    phrasings: ["{category} came up most often in {month}: {count} times."],
     think: ""
   },
   entriesTotal: {
-    phrasings: ["This range in numbers: {count} entries across {months} months."],
+    phrasings: ["From {span}, {count} separate costs were recorded over {months} months."],
     think: ""
   },
   mostIncomeMonth: {
-    phrasings: ["The most money came in during {month}: {amount}."],
+    phrasings: ["Of the months from {span}, the most money came in during {month}: {amount}."],
     think: ""
   },
   categoryPeak: {
-    phrasings: ["The biggest single category month in this range: {category} in {month}, at {amount}."],
+    phrasings: ["From {span}, the most spent on one category in one month was {amount}, on {category} in {month}."],
     think: ""
   },
   dailyAverage: {
-    phrasings: ["Across this range, spending averaged about {amount} a day."],
+    phrasings: ["From {span}, spending averaged about {amount} a day."],
     think: ""
   },
   rangeTotal: {
-    phrasings: ["Spending across this range came to about {amount} over {months} months."],
+    phrasings: ["Over {months} months, from {span}, spending came to about {amount} in all."],
     think: ""
   },
   rangeShare: {
-    phrasings: ["{category} took about one in every {fraction} dollars across this range."],
+    phrasings: ["From {span}, about one in every {fraction} dollars you spent went on {category}."],
     think: ""
   },
   secondCategory: {
-    phrasings: ["{category} came second across this range, after {top}."],
+    phrasings: ["From {span}, {category} was your second-biggest spending category, after {top}."],
     think: ""
   },
   incomeMonths: {
-    phrasings: ["Income came in during {count} of the {total} months here."],
+    phrasings: ["Money came in during {count} of the {total} months from {span}."],
     think: ""
   },
   yearRecap: {
-    phrasings: ["{year} in numbers: {entries} entries, and {category} was the biggest category."],
+    phrasings: ["{year} in numbers: {entries} costs recorded, and more went on {category} than on anything else."],
     think: ""
   },
   anniversary: {
-    phrasings: ["{years} of Monie's Map: your first month here was {firstMonth}."],
+    phrasings: ["{years} of Monie's Map: your records here begin in {firstMonth}."],
     think: ""
   }
 } satisfies CopyCatalogue;
 
-export const SUMMARY_CALM_LINE = "Nothing in this range needs a look right now.";
-export const SUMMARY_CALM_LINES = calmLinesFor("this range", SUMMARY_CALM_LINE);
+// The months Summary shows, in words for the calm lines (the calm templates
+// need a singular place).
+export const SUMMARY_CALM_PLACE = "this period";
+export const SUMMARY_CALM_LINE = "Nothing in this period needs a look right now.";
+export const SUMMARY_CALM_LINES = calmLinesFor(SUMMARY_CALM_PLACE, SUMMARY_CALM_LINE);
 
 // Summary's year of Just for fun, by the range's last month: twelve
 // columns, one per month number, each a type and (for some) a reserve. A
@@ -313,6 +316,18 @@ function targetMonth(input: SummarySignalInput) {
     return input.focusMonth;
   }
   return completeMonths(input).at(-1)?.month ?? [...input.months].sort((left, right) => left.month.localeCompare(right.month)).at(-1)?.month ?? "";
+}
+
+// The months a range line covers, in words: "March to August 2026", or
+// "September 2025 to August 2026" across a new year.
+function spanOf(months: Array<{ month: string }>) {
+  const sorted = months.map((item) => item.month).sort();
+  const first = sorted[0] ?? "";
+  const last = sorted.at(-1) ?? "";
+  if (first === last) {
+    return monthYear(last);
+  }
+  return `${first.slice(0, 4) === last.slice(0, 4) ? monthName(first) : monthYear(first)} to ${monthYear(last)}`;
 }
 
 function spendOf(month: SummarySignalMonth | undefined) {
@@ -487,7 +502,8 @@ export function keepRateSignal(input: SummarySignalInput): MoneySignal | null {
     return null;
   }
   const rate = Math.round((keptMinor / incomeMinor) * 100);
-  const stayed = Math.round(rate / 10);
+  // Of every $10 that came in, the kept part to 10 cents: 18% is $1.80.
+  const stayedMinor = rate * 10;
   const kept = input.formatMoney(keptMinor);
   const phrasings = phrase(SUMMARY_COPY.keepRate, {
     count: months.length,
@@ -495,7 +511,7 @@ export function keepRateSignal(input: SummarySignalInput): MoneySignal | null {
     rate,
     kept,
     ten: compactMoney(input.formatMoney, 1_000),
-    stayed: compactMoney(input.formatMoney, stayed * 100)
+    stayed: compactMoney(input.formatMoney, stayedMinor)
   });
   return {
     key: "keep-rate",
@@ -503,8 +519,8 @@ export function keepRateSignal(input: SummarySignalInput): MoneySignal | null {
     weight: keptMinor,
     numbers: { primaryMinor: keptMinor, rate },
     primaryText: kept,
-    // "about $0 stayed" says nothing, so that phrasing waits for $1 in $10.
-    phrasings: stayed >= 1 ? phrasings : phrasings.filter((_phrasing, index) => index !== 1),
+    // "about $0 was kept" says nothing, so that phrasing waits for 10 cents in $10.
+    phrasings: stayedMinor >= 10 ? phrasings : phrasings.filter((_phrasing, index) => index !== 1),
     topic: "keep"
   };
 }
@@ -562,7 +578,8 @@ export function sameSeasonSignal(input: SummarySignalInput): MoneySignal | null 
     weight: Math.abs(diffMinor),
     numbers: { primaryMinor: diffMinor },
     phrasings: phrase(SUMMARY_COPY.sameSeason, {
-      month: monthName(month),
+      monthNow: monthYear(month),
+      monthThen: monthYear(addMonths(month, -12)),
       diff: approxMoney(input.formatMoney, Math.abs(diffMinor)),
       direction: diffMinor < 0 ? "lower" : "higher",
       then: input.formatMoney(spendOf(lastYear)),
@@ -679,7 +696,7 @@ export function lastYearTopTrivia(input: SummarySignalInput): MoneySignal | null
   if (!top) {
     return null;
   }
-  return triviaSignal("last-year-top", month, SUMMARY_COPY.lastYearTop, { category: top.label }, { weight: top.valueMinor });
+  return triviaSignal("last-year-top", month, SUMMARY_COPY.lastYearTop, { category: top.label, month: monthYear(addMonths(month, -12)) }, { weight: top.valueMinor });
 }
 
 // Just for fun: of the categories in every complete month, the steadiest
@@ -705,6 +722,7 @@ export function everyMonthCategoryTrivia(input: SummarySignalInput): MoneySignal
   return triviaSignal("every-month-category", steadiest.label, SUMMARY_COPY.everyMonthCategory, {
     category: steadiest.label,
     count: months.length,
+    span: spanOf(months),
     amount: approxMoney(input.formatMoney, steadiest.averageMinor)
   });
 }
@@ -717,21 +735,21 @@ function monthEntryCount(input: SummarySignalInput, month: string) {
 export function mostEntriesMonthTrivia(input: SummarySignalInput): MoneySignal | null {
   const months = completeMonths(input).map((month) => ({ month: month.month, count: monthEntryCount(input, month.month) })).filter((item) => item.count > 0);
   const top = months.length >= MIN_STREAK ? uniqueMax(months, (item) => item.count) : null;
-  return top ? triviaSignal("most-entries-month", top.month, SUMMARY_COPY.mostEntriesMonth, { month: monthYear(top.month), count: top.count }) : null;
+  return top ? triviaSignal("most-entries-month", top.month, SUMMARY_COPY.mostEntriesMonth, { month: monthYear(top.month), count: top.count, span: spanOf(months) }) : null;
 }
 
 // Just for fun: the complete month with the least spending.
 export function quietestMonthTrivia(input: SummarySignalInput): MoneySignal | null {
   const months = completeMonths(input).filter((month) => spendOf(month) > 0);
   const quietest = months.length >= MIN_STREAK ? uniqueMin(months, spendOf) : null;
-  return quietest ? triviaSignal("quietest-month", quietest.month, SUMMARY_COPY.quietestMonth, { month: monthYear(quietest.month), amount: input.formatMoney(spendOf(quietest)) }) : null;
+  return quietest ? triviaSignal("quietest-month", quietest.month, SUMMARY_COPY.quietestMonth, { month: monthYear(quietest.month), amount: input.formatMoney(spendOf(quietest)), span: spanOf(months) }) : null;
 }
 
 // Just for fun: the complete month with the most spending.
 export function biggestMonthTrivia(input: SummarySignalInput): MoneySignal | null {
   const months = completeMonths(input).filter((month) => spendOf(month) > 0);
   const biggest = months.length >= MIN_STREAK ? uniqueMax(months, spendOf) : null;
-  return biggest ? triviaSignal("biggest-month", biggest.month, SUMMARY_COPY.biggestMonth, { month: monthYear(biggest.month), amount: input.formatMoney(spendOf(biggest)) }) : null;
+  return biggest ? triviaSignal("biggest-month", biggest.month, SUMMARY_COPY.biggestMonth, { month: monthYear(biggest.month), amount: input.formatMoney(spendOf(biggest)), span: spanOf(months) }) : null;
 }
 
 // Just for fun: an average complete month's spending.
@@ -740,7 +758,7 @@ export function averageMonthTrivia(input: SummarySignalInput): MoneySignal | nul
   if (months.length < MIN_STREAK) {
     return null;
   }
-  return triviaSignal("average-month", rangeEnd(input), SUMMARY_COPY.averageMonth, { amount: approxMoney(input.formatMoney, sum(months.map(spendOf)) / months.length) });
+  return triviaSignal("average-month", rangeEnd(input), SUMMARY_COPY.averageMonth, { amount: approxMoney(input.formatMoney, sum(months.map(spendOf)) / months.length), span: spanOf(months) });
 }
 
 // Just for fun: the range's biggest everyday category, per week.
@@ -751,13 +769,13 @@ export function weeklyCategoryTrivia(input: SummarySignalInput): MoneySignal | n
     return null;
   }
   const days = sum(months.map((month) => daysInMonth(month.month)));
-  return triviaSignal("weekly-category", top[0], SUMMARY_COPY.weeklyCategory, { category: top[0], amount: approxMoney(input.formatMoney, (top[1].valueMinor / days) * 7) });
+  return triviaSignal("weekly-category", top[0], SUMMARY_COPY.weeklyCategory, { category: top[0], amount: approxMoney(input.formatMoney, (top[1].valueMinor / days) * 7), span: spanOf(months) });
 }
 
 // Just for fun: how many categories the range's complete months used.
 export function categoriesCountTrivia(input: SummarySignalInput): MoneySignal | null {
   const count = rangeCategoryTotals(input).filter(([label]) => !isOther(label)).length;
-  return completeMonths(input).length >= 2 && count >= MIN_STREAK ? triviaSignal("categories-count", rangeEnd(input), SUMMARY_COPY.categoriesCount, { count }) : null;
+  return completeMonths(input).length >= 2 && count >= MIN_STREAK ? triviaSignal("categories-count", rangeEnd(input), SUMMARY_COPY.categoriesCount, { count, span: spanOf(completeMonths(input)) }) : null;
 }
 
 // Just for fun: the category that was biggest in the most months.
@@ -774,7 +792,7 @@ export function topCategoryMonthsTrivia(input: SummarySignalInput): MoneySignal 
   if (!top || top[1] < 2 || months.length < MIN_STREAK) {
     return null;
   }
-  return triviaSignal("top-category-months", top[0], SUMMARY_COPY.topCategoryMonths, { category: top[0], count: top[1], total: months.length });
+  return triviaSignal("top-category-months", top[0], SUMMARY_COPY.topCategoryMonths, { category: top[0], count: top[1], total: months.length, span: spanOf(months) });
 }
 
 // Just for fun: the category with the most entries in the month.
@@ -789,7 +807,7 @@ export function entriesTotalTrivia(input: SummarySignalInput): MoneySignal | nul
   const months = completeMonths(input);
   const count = sum(months.map((month) => monthEntryCount(input, month.month)));
   return months.length >= 2 && count > 0
-    ? triviaSignal("entries-total", rangeEnd(input), SUMMARY_COPY.entriesTotal, { count: count.toLocaleString("en-SG"), months: months.length })
+    ? triviaSignal("entries-total", rangeEnd(input), SUMMARY_COPY.entriesTotal, { count: count.toLocaleString("en-SG"), months: months.length, span: spanOf(months) })
     : null;
 }
 
@@ -797,7 +815,7 @@ export function entriesTotalTrivia(input: SummarySignalInput): MoneySignal | nul
 export function mostIncomeMonthTrivia(input: SummarySignalInput): MoneySignal | null {
   const months = completeMonths(input).filter((month) => (month.actualIncomeMinor ?? 0) > 0);
   const top = months.length >= MIN_STREAK ? uniqueMax(months, (month) => month.actualIncomeMinor ?? 0) : null;
-  return top ? triviaSignal("most-income-month", top.month, SUMMARY_COPY.mostIncomeMonth, { month: monthYear(top.month), amount: input.formatMoney(top.actualIncomeMinor ?? 0) }) : null;
+  return top ? triviaSignal("most-income-month", top.month, SUMMARY_COPY.mostIncomeMonth, { month: monthYear(top.month), amount: input.formatMoney(top.actualIncomeMinor ?? 0), span: spanOf(completeMonths(input)) }) : null;
 }
 
 // Just for fun: the largest single category-month of the range (an
@@ -808,7 +826,7 @@ export function categoryPeakTrivia(input: SummarySignalInput): MoneySignal | nul
     .map((item) => ({ month: month.month, label: item.label, valueMinor: item.valueMinor })));
   const peak = completeMonths(input).length >= MIN_STREAK ? uniqueMax(peaks, (item) => item.valueMinor) : null;
   return peak
-    ? triviaSignal("category-peak", `${peak.month}:${peak.label}`, SUMMARY_COPY.categoryPeak, { category: peak.label, month: monthYear(peak.month), amount: input.formatMoney(peak.valueMinor) })
+    ? triviaSignal("category-peak", `${peak.month}:${peak.label}`, SUMMARY_COPY.categoryPeak, { category: peak.label, month: monthYear(peak.month), amount: input.formatMoney(peak.valueMinor), span: spanOf(completeMonths(input)) })
     : null;
 }
 
@@ -823,7 +841,7 @@ export function dailyAverageTrivia(input: SummarySignalInput): MoneySignal | nul
     return null;
   }
   const days = sum(months.map((month) => daysInMonth(month.month)));
-  return triviaSignal("daily-average", rangeEnd(input), SUMMARY_COPY.dailyAverage, { amount: approxMoney(input.formatMoney, sum(months.map(spendOf)) / days) });
+  return triviaSignal("daily-average", rangeEnd(input), SUMMARY_COPY.dailyAverage, { amount: approxMoney(input.formatMoney, sum(months.map(spendOf)) / days), span: spanOf(months) });
 }
 
 // Just for fun: the range's spending in all.
@@ -832,7 +850,7 @@ export function rangeTotalTrivia(input: SummarySignalInput): MoneySignal | null 
   if (months.length < 2) {
     return null;
   }
-  return triviaSignal("range-total", rangeEnd(input), SUMMARY_COPY.rangeTotal, { amount: approxMoney(input.formatMoney, sum(months.map(spendOf))), months: months.length });
+  return triviaSignal("range-total", rangeEnd(input), SUMMARY_COPY.rangeTotal, { amount: approxMoney(input.formatMoney, sum(months.map(spendOf))), months: months.length, span: spanOf(months) });
 }
 
 // Just for fun: the range's biggest everyday category as "one in every N
@@ -845,7 +863,7 @@ export function rangeShareTrivia(input: SummarySignalInput): MoneySignal | null 
   if (!top || completeMonths(input).length < 2 || fraction < 2 || fraction > 12) {
     return null;
   }
-  return triviaSignal("range-share", top[0], SUMMARY_COPY.rangeShare, { category: top[0], fraction: numberWord(fraction) });
+  return triviaSignal("range-share", top[0], SUMMARY_COPY.rangeShare, { category: lowerLabel(top[0]), fraction: numberWord(fraction), span: spanOf(completeMonths(input)) });
 }
 
 // Just for fun: the everyday category in second place across the range.
@@ -854,14 +872,14 @@ export function secondCategoryTrivia(input: SummarySignalInput): MoneySignal | n
   if (!top || !second || top[1].valueMinor === second[1].valueMinor || completeMonths(input).length < 2) {
     return null;
   }
-  return triviaSignal("second-category", second[0], SUMMARY_COPY.secondCategory, { category: second[0], top: lowerLabel(top[0]) });
+  return triviaSignal("second-category", second[0], SUMMARY_COPY.secondCategory, { category: second[0], top: lowerLabel(top[0]), span: spanOf(completeMonths(input)) });
 }
 
 // Just for fun: how many complete months had income come in.
 export function incomeMonthsTrivia(input: SummarySignalInput): MoneySignal | null {
   const months = completeMonths(input);
   const count = months.filter((month) => (month.actualIncomeMinor ?? 0) > 0).length;
-  return count >= 1 && months.length >= 2 ? triviaSignal("income-months", rangeEnd(input), SUMMARY_COPY.incomeMonths, { count, total: months.length }) : null;
+  return count >= 1 && months.length >= 2 ? triviaSignal("income-months", rangeEnd(input), SUMMARY_COPY.incomeMonths, { count, total: months.length, span: spanOf(months) }) : null;
 }
 
 // Just for fun, a moment: a range ending in December recaps that year from

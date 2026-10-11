@@ -1,6 +1,5 @@
 import { redactAiText } from "./ai-assistance";
-import { incomeMinor, spendingMinor } from "./category-offset";
-import { findToneProblems } from "./money-signals/tone";
+import { spendingMinor } from "./category-offset";
 import type { EntryDto, ImportPreviewDto, ImportPreviewStatementReconciliationDto, SummaryMonthDto } from "../types/dto";
 
 const MAX_TEMPLATE_LENGTH = 520;
@@ -22,44 +21,6 @@ export interface ImportExplanationFacts {
   cause: string;
   ledgerRows: number;
   statementRows: number;
-}
-
-export interface FinancialInsightFacts {
-  contextLabel: string;
-  audienceKind?: "person" | "household";
-  audienceName?: string;
-  entryCount: number;
-  spend: string;
-  income: string;
-  net: string;
-  topCategoryName: string;
-  topCategoryAmount: string;
-  topMerchantName: string;
-  topMerchantAmount: string;
-}
-
-// The check-in's headline as the optional AI may see it: the fact and the
-// way to think about it, which any AI wording must keep word for word.
-export interface CheckInHeadlineFacts {
-  headlineKind: "quick_fix" | "bigger_question" | "worth_a_look" | "going_well";
-  fact: string;
-  think: string;
-}
-
-export type FinancialInsightWordingFacts = FinancialInsightFacts & CheckInHeadlineFacts;
-
-export interface FinancialInsightRecord {
-  amountMinor: number;
-  entryType: "expense" | "income" | "transfer";
-  categoryName?: string;
-  description?: string;
-  date?: string;
-  // Present on entries adjusted for a person view: a shared or split-linked
-  // entry carries the person's part in amountMinor and the whole entry in
-  // totalAmountMinor.
-  ownershipType?: string;
-  linkedSplitExpenseId?: string | null;
-  totalAmountMinor?: number | null;
 }
 
 export function buildMonthlyNarrativeFacts(
@@ -104,75 +65,6 @@ export function buildDeterministicMonthlyNarrative(facts: MonthlyNarrativeFacts)
   return `${facts.monthName} recorded ${facts.spend} of spending and ${facts.income} of income. ${facts.topCategoryName} was the largest spending category at ${facts.topCategoryAmount}; the largest recorded expense was ${facts.topMerchantName} at ${facts.topMerchantAmount}.`;
 }
 
-export function buildFinancialInsightFacts(input: {
-  contextLabel: string;
-  records: FinancialInsightRecord[];
-  formatMoney: (amountMinor: number) => string;
-  audienceKind?: "person" | "household";
-  audienceName?: string;
-  entryCount?: number;
-}) : FinancialInsightFacts {
-  const expenses = input.records.filter((record) => record.entryType === "expense");
-  // A payback counts as less spending in its category, not income.
-  const incomeTotalMinor = input.records.reduce((total, record) => total + incomeMinor(record, Math.abs(record.amountMinor)), 0);
-  const spendMinor = input.records.reduce((total, record) => total + spendingMinor(record, Math.abs(record.amountMinor)), 0);
-  const categoryTotals = new Map<string, number>();
-  for (const record of input.records) {
-    const amountMinor = spendingMinor(record, Math.abs(record.amountMinor));
-    if (!amountMinor) {
-      continue;
-    }
-    const categoryName = redactAiText(record.categoryName, 80) || "Uncategorized spending";
-    categoryTotals.set(categoryName, (categoryTotals.get(categoryName) ?? 0) + amountMinor);
-  }
-  const [topCategoryName, topCategoryMinor] = [...categoryTotals.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? ["No spending category", 0];
-  const topMerchant = [...expenses]
-    .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor) || String(left.description ?? "").localeCompare(String(right.description ?? "")))[0];
-
-  const topMerchantName = redactAiText(topMerchant?.description, 100) || "No expense recorded";
-  const topMerchantMinor = Math.abs(topMerchant?.amountMinor ?? 0);
-  const contextLabel = redactAiText(input.contextLabel, 120) || "Current view";
-  const audienceName = redactAiText(input.audienceName, 80);
-  const audienceKind = input.audienceKind === "person" && audienceName ? "person" : "household";
-
-  return {
-    contextLabel,
-    audienceKind,
-    audienceName,
-    entryCount: Math.max(0, Math.round(input.entryCount ?? input.records.length)),
-    spend: input.formatMoney(spendMinor),
-    income: input.formatMoney(incomeTotalMinor),
-    net: input.formatMoney(incomeTotalMinor - spendMinor),
-    topCategoryName,
-    topCategoryAmount: input.formatMoney(topCategoryMinor),
-    topMerchantName,
-    topMerchantAmount: input.formatMoney(topMerchantMinor)
-  };
-}
-
-// The wording shown when AI is off: the fact, then the way to think about it.
-export function buildDeterministicFinancialInsight(facts: CheckInHeadlineFacts) {
-  return [facts.fact, facts.think].filter(Boolean).join(" ");
-}
-
-// Changes whenever anything the check-in says changes, so wording is asked
-// for again only for new facts.
-export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts, headline: CheckInHeadlineFacts) {
-  return JSON.stringify([
-    facts.contextLabel,
-    facts.audienceKind,
-    facts.audienceName,
-    facts.entryCount,
-    facts.spend,
-    facts.income,
-    facts.net,
-    headline.headlineKind,
-    headline.fact,
-    headline.think
-  ]);
-}
-
 export function buildDeterministicImportExplanation(facts: ImportExplanationFacts) {
   return `${facts.accountName} is out by ${facts.difference} for ${facts.statementMonth}. Start with the ${facts.ledgerRows} ledger row${facts.ledgerRows === 1 ? "" : "s"} already inside the statement period, then compare the ${facts.statementRows} imported statement row${facts.statementRows === 1 ? "" : "s"}; the likely cause is ${facts.cause}.`;
 }
@@ -198,40 +90,6 @@ export function parseNarrativeTemplate(value: unknown, facts: MonthlyNarrativeFa
     return null;
   }
   return replaceTokens(template, replacements);
-}
-
-// The AI may only choose words around the check-in's fact and think line:
-// both must appear exactly once and are inserted from computed facts, the
-// wording may not add figures, and it must pass the check-in's tone rules.
-export function parseFinancialInsightTemplate(value: unknown, facts: FinancialInsightWordingFacts) {
-  if (!value || typeof value !== "object" || typeof (value as { template?: unknown }).template !== "string") {
-    return null;
-  }
-  const template = (value as { template: string }).template.trim();
-  if (!template || template.length > MAX_TEMPLATE_LENGTH || /[$\d]/.test(template)) {
-    return null;
-  }
-  const replacements: Record<string, string> = {
-    contextLabel: facts.contextLabel,
-    audienceName: facts.audienceName ?? "",
-    fact: facts.fact,
-    think: facts.think
-  };
-  const ownWords = template.replace(/{{\s*[^}]+\s*}}/g, " ");
-  if (
-    !hasOnlyKnownTokens(template, replacements)
-    || countToken(template, "fact") !== 1
-    || countToken(template, "think") !== 1
-    || (facts.audienceKind === "person" && countToken(template, "audienceName") !== 1)
-    || findToneProblems(ownWords).length > 0
-  ) {
-    return null;
-  }
-  return replaceTokens(template, replacements);
-}
-
-function countToken(template: string, token: string) {
-  return (template.match(new RegExp(`{{\\s*${token}\\s*}}`, "g")) ?? []).length;
 }
 
 export function parseImportExplanationTemplate(value: unknown, facts: ImportExplanationFacts) {

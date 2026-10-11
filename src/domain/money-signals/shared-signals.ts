@@ -20,103 +20,103 @@ export function triviaSignal(type: string, detail: string, copy: CopyEntry, valu
 export const SHARED_COPY = {
   statementGap: {
     phrasings: [
-      "{whose} {account} statement is off by {amount}.",
-      "{whose} {account} {month} statement is {amount} away from the app.",
-      "One statement doesn't match yet: {whose} {account}, off by {amount}.",
-      "{amount} separates {whose} {account} statement from the app."
+      "{whose} {account} statement differs from what's recorded here by {amount}.",
+      "The {month} statement for {whose} {account} is {amount} different from what's recorded here.",
+      "{whose} {account} doesn't match its bank statement yet: the two are {amount} apart.",
+      "There's a {amount} difference between {whose} {account} statement and what's recorded here."
     ],
     think: [
-      "Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.",
-      "A gap this size usually comes down to one entry. Finding it keeps the totals here honest.",
-      "The statement is the checkpoint for everything else here. One quick comparison usually closes it."
+      "The statement is the bank's own monthly list of payments. A gap like this is usually one payment missing here or recorded twice.",
+      "Usually a single payment explains it, missing here or recorded twice. Comparing the bank's list with this one finds it.",
+      "Until the two match, totals here for that account may be off. Comparing them line by line usually turns up the one payment that differs."
     ],
     sorted: {
-      fact: "Sorted: {whose} {account} now matches its statement.",
-      think: "That's the part that makes every other number here trustworthy."
+      fact: "Sorted: {whose} {account} now matches its bank statement.",
+      think: "The totals here for that account now agree with the bank."
     },
-    action: "Review statement"
+    action: "Compare with the statement"
   },
   cardBillDue: {
     phrasings: [
-      "{whose} {account} bill of {amount} is due {when}, and no payment to it is in the app yet.",
+      "{whose} {account} bill of {amount} is due {when}, with no payment to it recorded here yet.",
       "{amount} on {whose} {account} is due {when}.",
-      "{whose} {account} statement asks for {amount}, due {when}.",
+      "{whose} {account} bill asks for {amount}, due {when}.",
       "Coming up: {whose} {account} bill of {amount}, due {when}."
     ],
     think: [
-      "If it's already paid, the payment shows here once that bank account's activity is imported.",
-      "Paying the statement in full by the due date keeps interest off the card.",
+      "If you've already paid it, the payment will show once the paying account's activity is added here.",
+      "Paying the full bill by the due date means no interest on the card.",
       "Paying at least the minimum by the due date avoids a late charge."
     ],
     sorted: {
       fact: "Paid: {whose} {account} bill.",
-      think: "The payment is in the app."
+      think: "Its payment now shows in your records."
     }
   },
   cardBillPart: {
     phrasings: [
       "{amount} of {whose} {account} bill is still to pay, due {when}.",
-      "{whose} {account} has {amount} left to pay on its statement, due {when}.",
-      "Part of {whose} {account} bill is paid; {amount} is left, due {when}.",
-      "{whose} {account} statement still has {amount} to pay, due {when}."
+      "{whose} {account} still has {amount} left to pay on this bill, due {when}.",
+      "Part of {whose} {account} bill is paid, with {amount} still due {when}.",
+      "{whose} {account} bill still needs {amount}, due {when}."
     ],
     think: [
-      "{paid} is paid so far. Paying the rest by the due date keeps interest off the card.",
-      "If the rest is already paid, it shows here once that bank account's activity is imported.",
-      "{paid} is in the app as paid since the statement closed."
+      "{paid} is paid so far. Paying the rest by the due date means no interest on the card.",
+      "If you've paid the rest already, it will show once the paying account's activity is added here.",
+      "Your records here show {paid} paid since the bill came out."
     ],
     sorted: {
       fact: "Paid: {whose} {account} bill.",
-      think: "The payment is in the app."
+      think: "Its payment now shows in your records."
     }
   },
   cardBillOverdue: {
     phrasings: [
-      "{whose} {account} bill of {amount} was due on {date}, and no payment to it is in the app yet.",
-      "No payment to {whose} {account} is in the app since its {amount} bill fell due on {date}.",
-      "{whose} {account} statement asked for {amount} by {date}; no payment is in the app yet.",
-      "The {amount} bill on {whose} {account} was due {date}, and the app hasn't seen a payment."
+      "{whose} {account} bill was due on {date}, and {amount} still shows as unpaid here.",
+      "{amount} on {whose} {account} was due on {date}, and no payment for it is recorded here yet.",
+      "{whose} {account} needed {amount} paid by {date}, and no payment for it shows here yet.",
+      "The {amount} owed on {whose} {account} was due {date}, and your records here don't show it paid."
     ],
     think: [
-      "If it's paid, the payment shows once that bank account's activity is imported. If not, the bank adds a late charge and interest until it is.",
-      "Card statements add a late charge when the minimum isn't paid by the due date.",
-      "If the payment came from an account the app doesn't track, this clears once the next statement is imported."
+      "If you've paid it, the payment will show once the paying account's activity is added here. If not, the bank adds a late charge and interest until it's paid.",
+      "Banks add a late charge when a card's minimum isn't paid by the due date. Paying soon keeps the interest small.",
+      "If you paid from an account that isn't recorded here, this clears once the card's next statement is added."
     ],
     sorted: {
       fact: "Paid: {whose} {account} bill.",
-      think: "The payment is in the app."
+      think: "Its payment now shows in your records."
     }
   },
   penaltyInterest: {
     phrasings: [
-      "{whose} {account} is charged penalty interest of {rate}% a year, says its {month} statement, with {amount} owed.",
-      "{whose} {account} {month} statement owes {amount} at a penalty interest rate of {rate}% a year.",
-      "The bank moved {whose} {account} to penalty interest of {rate}% a year; its {month} statement owes {amount}.",
-      "{amount} owed on {whose} {account}, at penalty interest of {rate}% a year, per its {month} statement."
+      "{whose} {account} {month} bill shows {amount} owed at a penalty interest rate of {rate}% a year.",
+      "{amount} is owed on {whose} {account}, and its {month} statement shows a penalty rate of {rate}% a year.",
+      "The bank moved {whose} {account} to a higher penalty interest rate of {rate}% a year, with {amount} owed on the {month} bill.",
+      "{amount} owed on {whose} {account} now costs penalty interest of {rate}% a year, says its {month} statement."
     ],
     think: [
-      "Banks raise a card's rate after a missed minimum payment. Paying each statement in full by its due date keeps interest off the card.",
-      "The rate only costs money on a balance carried past the due date, so paying the {amount} in full by then means no interest at all.",
-      "Each statement says whether the penalty rate still applies; this line goes once a statement no longer does."
+      "Banks raise a card's rate after a missed minimum payment. Paying each bill in full by its due date means no interest at all.",
+      "The rate only costs money on what's still owed after the due date. Paying the {amount} in full by then means no interest at all.",
+      "Each monthly statement says whether the penalty rate still applies. This note goes away once one no longer shows it."
     ]
   },
   bankCharges: {
     phrasingsOne: [
-      "{whose} {account} was charged {charges} on {date}, and no reversal of it is in the app yet.",
-      "{charges} on {whose} {account} from {date} hasn't been reversed in the app.",
-      "The bank charged {whose} {account} {charges} on {date}; no reversal is in the app.",
-      "No reversal yet for {charges} on {whose} {account} from {date}."
+      "{whose} {account} was charged {charges} on {date}, and no refund of it shows here yet.",
+      "{charges} on {whose} {account} from {date} hasn't been refunded, going by your records.",
+      "The bank charged {whose} {account} {charges} on {date}. No refund of it is recorded yet.",
+      "No refund yet for {charges} on {whose} {account} from {date}."
     ],
     phrasings: [
-      "{whose} {account} was charged {charges} since {date}, and no reversal of them is in the app yet.",
-      "{total} in bank charges on {whose} {account} hasn't been reversed in the app: {charges}.",
-      "The bank charged {whose} {account} {charges} since {date}; no reversal is in the app.",
-      "No reversal yet for {total} in bank charges on {whose} {account}: {charges}."
+      "{whose} {account} has been charged {charges} since {date}, and no refund shows here yet.",
+      "{total} in bank charges on {whose} {account} hasn't been refunded yet: {charges}.",
+      "The bank has charged {whose} {account} {charges} since {date}. None of it is refunded yet.",
+      "No refund yet for {total} in bank charges on {whose} {account}: {charges}."
     ],
     think: [
-      "Banks sometimes reverse these when asked. A reversal shows on the next statement.",
-      "If the bank has agreed to reverse it, the reversal shows on the next statement.",
-      "These are the bank's own charges, filed under Fees, not spending on anything."
+      "Banks sometimes refund a charge like this when asked, which they call a \"reversal\". The refund shows on the next statement.",
+      "If the bank has agreed to take the charge back, the refund shows on the card's next statement.",
+      "Bank charges aren't purchases, so they're kept in their own category, \"Fees\"."
     ]
   }
 } satisfies CopyCatalogue;

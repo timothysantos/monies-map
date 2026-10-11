@@ -8,12 +8,8 @@ import {
   runAiJson
 } from "../src/domain/ai-assistance.ts";
 import {
-  buildDeterministicFinancialInsight,
-  buildFinancialInsightFacts,
   buildDeterministicImportExplanation,
-  buildFinancialInsightCacheKey,
   buildDeterministicMonthlyNarrative,
-  parseFinancialInsightTemplate,
   parseImportExplanationTemplate,
   parseNarrativeTemplate
 } from "../src/domain/ai-assistance-insights.ts";
@@ -52,122 +48,24 @@ test("monthly AI prose can only render server-provided financial placeholders", 
   assert.equal(buildDeterministicMonthlyNarrative(facts).includes("$120.00"), true);
 });
 
-const HEADLINE = {
-  headlineKind: "worth_a_look",
-  fact: "Subscriptions came to $76.09 in August, about $913 a year.",
-  think: "Automatic payments are easy to stop noticing. Judge each one by its yearly cost."
-};
-
-test("view insights substitute computed facts and reject model-supplied figures", () => {
-  const facts = {
-    contextLabel: "August 2026 entries",
-    entryCount: 7,
-    spend: "$120.00",
-    income: "$2,000.00",
-    net: "$1,880.00",
-    topCategoryName: "Food & Drinks",
-    topCategoryAmount: "$50.00",
-    topMerchantName: "Cold Storage",
-    topMerchantAmount: "$20.00",
-    ...HEADLINE
-  };
-  const insight = parseFinancialInsightTemplate({ template: "In {{contextLabel}}: {{fact}} {{think}}" }, facts);
-
-  assert.equal(insight, "In August 2026 entries: Subscriptions came to $76.09 in August, about $913 a year. Automatic payments are easy to stop noticing. Judge each one by its yearly cost.");
-  // Figures of its own, a missing or repeated fact or think line, and
-  // placeholders that no longer exist are all refused.
-  for (const template of [
-    "{{contextLabel}} is up 34%. {{fact}} {{think}}",
-    "{{think}}",
-    "{{fact}}",
-    "{{fact}} {{fact}} {{think}}",
-    "{{notableFact}} {{fact}} {{think}}",
-    "{{fact}} {{cashFlowPrinciple}} {{think}}",
-    "{{spend}} {{fact}} {{think}}"
-  ]) {
-    assert.equal(parseFinancialInsightTemplate({ template }, facts), null, template);
-  }
-  assert.equal(buildDeterministicFinancialInsight(HEADLINE), `${HEADLINE.fact} ${HEADLINE.think}`);
-  assert.notEqual(buildFinancialInsightCacheKey(facts, HEADLINE), buildFinancialInsightCacheKey({ ...facts, contextLabel: "Filtered entries" }, HEADLINE));
-  assert.notEqual(buildFinancialInsightCacheKey(facts, HEADLINE), buildFinancialInsightCacheKey(facts, { ...HEADLINE, fact: "$913 a year goes to subscriptions. Still using all of them?" }));
-});
-
-test("AI wording around the fact must pass the check-in's tone rules", () => {
-  const facts = { contextLabel: "August 2026", audienceKind: "household", audienceName: "", ...HEADLINE };
-  assert.match(parseFinancialInsightTemplate({ template: "Something small to notice: {{fact}} {{think}}" }, facts), /^Something small to notice: Subscriptions/);
-  for (const template of [
-    "You should look again. {{fact}} {{think}}",
-    "Warning: {{fact}} {{think}}",
-    "Nice work! {{fact}} {{think}}",
-    "{{fact}} Time to cut back. {{think}}",
-    "A problem: {{fact}} {{think}}"
-  ]) {
-    assert.equal(parseFinancialInsightTemplate({ template }, facts), null, template);
-  }
-});
-
-test("financial insight facts hold the computed totals, with no generic advice lines", () => {
-  const facts = buildFinancialInsightFacts({
-    contextLabel: "August 2026 entries",
-    records: [
-      { entryType: "expense", amountMinor: 6_000, categoryName: "Food & Drinks", description: "Restaurant A" },
-      { entryType: "expense", amountMinor: 2_000, categoryName: "Food & Drinks", description: "Restaurant B" },
-      { entryType: "expense", amountMinor: 1_000, categoryName: "Transport", description: "Taxi" },
-      { entryType: "income", amountMinor: 20_000, description: "Salary" }
-    ],
-    formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`
-  });
-
-  assert.deepEqual(
-    [facts.spend, facts.income, facts.net, facts.topCategoryName, facts.topCategoryAmount, facts.topMerchantName, facts.topMerchantAmount],
-    ["$90.00", "$200.00", "$110.00", "Food & Drinks", "$80.00", "Restaurant A", "$60.00"]
-  );
-  // The old trivia pool and "Before buying something non-essential" lines are gone.
-  for (const removed of ["notableFact", "cashFlowPrinciple", "nextSpendConsideration", "accountingAdvice"]) {
-    assert.equal(Object.hasOwn(facts, removed), false, removed);
-  }
-  assert.doesNotMatch(JSON.stringify(facts), /non-essential|Before buying/);
-});
-
-test("a person's AI wording names the person once through a placeholder, never in the facts", () => {
-  const facts = buildFinancialInsightFacts({
-    contextLabel: "August 2026",
-    audienceKind: "person",
-    audienceName: "Tim",
-    records: [{ entryType: "expense", amountMinor: 1_200, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-03" }],
-    formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`
-  });
-  assert.equal(facts.audienceKind, "person");
-  assert.equal(facts.audienceName, "Tim");
-  const workerSafeFacts = { ...facts, ...HEADLINE, audienceName: "[selected person]" };
-  const template = "{{audienceName}}, {{fact}} {{think}}";
-  assert.match(parseFinancialInsightTemplate({ template }, workerSafeFacts), /^\[selected person\], Subscriptions/);
-  assert.equal(parseFinancialInsightTemplate({ template: "{{fact}} {{think}}" }, workerSafeFacts), null);
-  assert.equal(parseFinancialInsightTemplate({ template: "{{audienceName}} and {{audienceName}}: {{fact}} {{think}}" }, workerSafeFacts), null);
-});
-
-// The Money consequence map is retired: the facts carry the totals the AI
-// wording and the check-in read, and nothing that projects, scores or
-// forecasts (no lanes, no one-repeat scenario, no bank-confidence verdict).
-test("financial insight facts carry no consequence map, scenario or forecast in any view", () => {
-  const records = [
-    { entryType: "income", amountMinor: 100_000, description: "Salary" },
-    { entryType: "expense", amountMinor: 125_000, categoryName: "Food & Drinks", description: "Dining" }
-  ];
-  const expected = ["contextLabel", "audienceKind", "audienceName", "entryCount", "spend", "income", "net", "topCategoryName", "topCategoryAmount", "topMerchantName", "topMerchantAmount"];
-  // Old callers' map inputs (a perspective, a plan, wallet confidence) are
-  // ignored rather than turned into lanes.
-  for (const extra of [{}, { recordKind: "category_totals" }, { perspective: "split_obligation", decisionMapContext: { plannedSpendMinor: 50_000, confidence: { evaluated: true, reconciliationMismatchCount: 1 } } }]) {
-    const facts = buildFinancialInsightFacts({ contextLabel: "August 2026 month", records, formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`, ...extra });
-    assert.deepEqual(Object.keys(facts), expected);
-    assert.equal(facts.net, "$-250.00");
-    assert.doesNotMatch(JSON.stringify(facts), /deficit|repeat|forecast|safe-to-spend|lanes|Needs review|proof gap/i);
-  }
-});
-
 test("the insights module no longer exports a map builder", async () => {
   const insights = await import("../src/domain/ai-assistance-insights.ts");
   assert.deepEqual(Object.keys(insights).filter((name) => /map|lane|decision/i.test(name)), []);
+});
+
+// Money insights headlines use computed wording only: the module that
+// builds AI prompts and templates has nothing for them any more.
+test("the insights module has no Money insights wording builders", async () => {
+  const insights = await import("../src/domain/ai-assistance-insights.ts");
+  assert.deepEqual(Object.keys(insights).filter((name) => /FinancialInsight|CheckInHeadline/i.test(name)), []);
+  assert.deepEqual(Object.keys(insights).sort(), [
+    "buildDeterministicImportExplanation",
+    "buildDeterministicMonthlyNarrative",
+    "buildImportExplanationFacts",
+    "buildMonthlyNarrativeFacts",
+    "parseImportExplanationTemplate",
+    "parseNarrativeTemplate"
+  ]);
 });
 
 test("import explanation refuses model-supplied numeric claims and keeps deterministic evidence", () => {

@@ -22,7 +22,7 @@ test("the smallest entry never prints a reference number or a PayNow", () => {
     row("2026-08-04", "NTUC FP-TAMPINES #01-23 SINGAPORE SG", 5_000, "Groceries")
   ];
   const line = fact(entries.smallestEntryTrivia({ audience: "household", month: "2026-08", today: "2026-09-27", entries: list, formatMoney: sgd }));
-  assert.equal(line, "Smallest entry in August: $1.28 at Bus/MRT.");
+  assert.equal(line, "Smallest purchase in August: $1.28 at Bus/MRT.");
   assert.doesNotMatch(line, /\d{4}|Singapore|Sg\b|PayNow/i);
 });
 
@@ -30,31 +30,31 @@ const entriesInput = (list = ENTRIES_AUGUST) => ({ audience: "household", month:
 
 test("Entries: every trivia type's exact line for a hand-made August", () => {
   assert.deepEqual(trivia(entries.buildEntriesSignals(entriesInput())), {
-    smallest: "Smallest entry in August: $1.28 at Bus/MRT.",
-    largest: "Largest entry in August: $98.00 at Din Tai Fung.",
-    places: "Entries in August came from 6 different places.",
-    "one-off-places": "4 places show up just once in August.",
-    "top-place": "Most spent at one place in August: NTUC FP-Tampines, $105.60 over 2 entries.",
-    "top-account": "Most-used account or card in August: OCBC 365 Card, with 5 entries.",
-    "accounts-count": "Entries in August used 3 different accounts and cards.",
-    average: "The average entry in August came to $29.42, across 10 expenses.",
+    smallest: "Smallest purchase in August: $1.28 at Bus/MRT.",
+    largest: "Largest purchase in August: $98.00 at Din Tai Fung.",
+    places: "Purchases in August were spread across 6 different places.",
+    "one-off-places": "4 places had just one purchase each in August.",
+    "top-place": "Most spent at one place in August: NTUC FP-Tampines, $105.60 over 2 purchases.",
+    "top-account": "Most-used account or card in August: OCBC 365 Card, used 5 times.",
+    "accounts-count": "Money moved through 3 different accounts and cards in August.",
+    average: "Across 10 payments in August, the average came to $29.42.",
     median: "Half of the purchases in August came to $6.50 or less.",
     "first-day": "First day with spending in August: Sat 1 Aug, led by NTUC FP-Tampines at $42.50.",
-    span: "Entries in August run from Sat 1 Aug to Fri 28 Aug, across 8 different days.",
-    "repeated-amount": "The most repeated amount in August: $6.50, twice.",
-    "category-count": "Dining had the most entries in August: 4 of them.",
-    "busiest-date": "Busiest day in August: Wed 5 Aug, with 3 entries.",
-    "weekend-entries": "3 of the 11 entries in August fell on a weekend.",
-    "round-amounts": "3 entries in August were round amounts, with no cents.",
-    shared: "3 of the 11 entries in August were shared costs.",
-    income: "Income in August: $6,500.00 across 1 entry."
+    span: "Money moved on 8 different days in August, from Sat 1 Aug to Fri 28 Aug.",
+    "repeated-amount": "The amount paid most often in August: $6.50, twice.",
+    "category-count": "Dining had the most payments in August: 4 of them.",
+    "busiest-date": "Busiest day in August: Wed 5 Aug, with 3 transactions.",
+    "weekend-entries": "3 of the 11 transactions in August fell on a weekend.",
+    "round-amounts": "3 payments in August were round amounts, with no cents.",
+    shared: "3 of the 11 transactions in August were shared costs.",
+    income: "Income in August came to $6,500.00, across 1 payment."
   });
   // One entry on the first day names it; the month in progress says "this month".
   const single = [row("2026-09-02", "TOAST BOX", 580, "Dining"), row("2026-09-03", "KOPITIAM", 650, "Dining"), row("2026-09-04", "SHOPEE SG", 2_000, "Shopping")];
-  assert.equal(fact(entries.firstDayTrivia({ ...entriesInput(single), month: "2026-09" })), "First entry this month: Toast Box, $5.80, on Wed 2 Sep.");
+  assert.equal(fact(entries.firstDayTrivia({ ...entriesInput(single), month: "2026-09" })), "First purchase this month: Toast Box, $5.80, on Wed 2 Sep.");
   // Nothing readable on the first day: the day and a count, never a code.
   const unnamedFirst = [row("2026-08-01", "PAYNOW TO 91234567", 500, "Gifts"), row("2026-08-01", "GIRO - IRAS", 30_000, "Tax"), ...ENTRIES_AUGUST.slice(2)];
-  assert.equal(fact(entries.firstDayTrivia(entriesInput(unnamedFirst))), "First day with spending in August: Sat 1 Aug, with 2 entries.");
+  assert.equal(fact(entries.firstDayTrivia(entriesInput(unnamedFirst))), "First day with spending in August: Sat 1 Aug, with 2 payments.");
 });
 
 test("Entries: each trivia type stays silent when its data is missing", () => {
@@ -103,21 +103,21 @@ test("Month: every trivia type's exact line for a hand-made August", () => {
   assert.deepEqual(trivia(month.buildMonthSignals(monthInput())), {
     "regular-spot": "Your regular spot: Kopitiam, 3 visits in August.",
     "quiet-weekday": "Thursday was the quietest day of the week in August.",
-    "busiest-weekday": "Saturday was the busiest day of the week in August, with 4 entries.",
+    "busiest-weekday": "Saturday was the busiest day of the week in August, with spending recorded 4 times.",
     "no-spend-days": "21 days in August with nothing spent.",
     "longest-run": "Longest stretch without spending in August: 6 days, Sun 23 Aug to Fri 28 Aug.",
-    "biggest-day": "Your biggest day was Tue 11 Aug: Courts Megastore Tampines.",
-    "busiest-week": "The biggest week in August began Mon 10 Aug, with $788 spent.",
-    halfway: "Half of the spending in August had happened by Tue 11 Aug.",
+    "biggest-day": "Your biggest spending day was Tue 11 Aug, led by Courts Megastore Tampines.",
+    "busiest-week": "The week starting Mon 10 Aug was the biggest in August, with $788 spent.",
+    halfway: "Half of all spending in August was done by Tue 11 Aug.",
     "day-average": "Spending in August averaged about $34 a day.",
     "weekend-share": "Weekends in August came to $144.90, about one in every seven dollars spent.",
     "category-share": "Home took about one in every two dollars spent in August.",
-    "top-two-categories": "Home and food & drinks were the two biggest categories in August.",
+    "top-two-categories": "Home and food & drinks were the two biggest spending categories in August.",
     "categories-count": "Spending in August spread across 6 categories.",
-    "category-days": "Food & Drinks showed up on 5 different days in August.",
-    "category-largest": "Largest home entry in August: Courts Megastore Tampines, $649.00.",
-    "plan-count": "The plan for August holds 3 planned bills and 2 category budgets.",
-    "biggest-bill": "The biggest planned bill in August: AIA insurance, $250.00."
+    "category-days": "You spent on Food & Drinks on 5 different days in August.",
+    "category-largest": "The biggest single amount spent on home in August: Courts Megastore Tampines, $649.00.",
+    "plan-count": "Your plan for August has 3 planned bills and 2 category budgets.",
+    "biggest-bill": "The biggest bill in your plan in August: AIA insurance, $250.00."
   });
   // Dining out mostly on Fridays: the reserve for the category share.
   const fridays = ["2026-08-07", "2026-08-14", "2026-08-21", "2026-08-05"].map((date) => row(date, "KOPITIAM", 700, "Food & Drinks"));
@@ -171,15 +171,15 @@ test("Splits: every trivia type's exact line for a finished Japan trip", () => {
     "average-cost": "The average shared cost on the Japan trip: about JP¥32,493.",
     "smallest-cost": "The smallest shared cost on the Japan trip: Onsen towels, JP¥1,200.",
     "first-cost": "Shared costs on the Japan trip began on Sat 4 Apr, with 2 that day.",
-    "priciest-day": "The priciest day on the Japan trip: Sat 4 Apr, with JP¥174,120 of shared costs.",
+    "priciest-day": "The priciest day for shared costs on the Japan trip: Sat 4 Apr, JP¥174,120 in all.",
     "latest-cost": "The latest shared cost on the Japan trip: Duty free, JP¥23,800, on Sat 11 Apr.",
     "repeated-cost": "The most repeated shared cost on the Japan trip: Ramen, twice.",
     span: "Shared costs on the Japan trip span 8 days, from Sat 4 Apr to Sat 11 Apr.",
-    "top-category": "Travel was the biggest category on the Japan trip, at JP¥244,000.",
+    "top-category": "Travel was the biggest kind of shared cost on the Japan trip, at JP¥244,000.",
     categories: "Shared costs on the Japan trip spread across 4 categories.",
-    "payment-mix": "Shared costs on the Japan trip: 6 by card and 5 in cash.",
-    "largest-settlement": "The largest settle-up on the Japan trip: JP¥10,000 on Mon 20 Apr.",
-    "settle-count": "2 settle-ups so far on the Japan trip."
+    "payment-mix": "How shared costs on the Japan trip were paid: 6 by card and 5 in cash.",
+    "largest-settlement": "The biggest repayment for shared costs on the Japan trip: JP¥10,000 on Mon 20 Apr.",
+    "settle-count": "2 repayments so far for shared costs on the Japan trip."
   });
   // A second currency: named, and never added into the yen totals.
   const mixed = splitsInput("2026-09-27", { activity: withYen });
@@ -188,8 +188,12 @@ test("Splits: every trivia type's exact line for a finished Japan trip", () => {
   // A home group reads "in the Home group"; one cost on the first date is named.
   const home = splitsInput("2026-09-27", { group: { id: "home", name: "Home", balanceMinor: 0 }, activity: JAPAN_ACTIVITY.slice(1) });
   assert.equal(fact(splits.firstCostTrivia(home)), "The first shared cost in the Home group: Tokyo hotel on Sat 4 Apr.");
+  // Costs outside any group read "outside a group", never "in Non-group expenses".
+  const nonGroup = splitsInput("2026-09-27", { group: { id: "split-group-none", name: "Non-group expenses", balanceMinor: 0 } });
+  assert.equal(fact(splits.sharedTotalTrivia(nonGroup)), "Shared costs outside a group add up to JP¥357,420.");
+  assert.equal(fact(splits.settleCountTrivia(nonGroup)), "2 repayments so far for shared costs outside a group.");
   const oneBusyDay = JAPAN_ACTIVITY.filter((item) => !["trip-1", "trip-7"].includes(item.id));
-  assert.equal(fact(splits.busiestDayTrivia(splitsInput("2026-09-27", { activity: oneBusyDay }))), "Busiest day on the Japan trip: Mon 6 Apr, with 2 shared costs.");
+  assert.equal(fact(splits.busiestDayTrivia(splitsInput("2026-09-27", { activity: oneBusyDay }))), "The busiest day for shared costs on the Japan trip: Mon 6 Apr, with 2 of them.");
 });
 
 test("Splits: each trivia type stays silent when its data is missing, and the household view never compares partners", () => {
@@ -235,32 +239,32 @@ test("Splits: each trivia type stays silent when its data is missing, and the ho
 
 test("Summary: every trivia type's exact line for a year ending August 2026", () => {
   assert.deepEqual(trivia(summary.buildSummarySignals(summaryInput("2026-08"))), {
-    "category-fraction": "About one in every two dollars in August went to groceries.",
-    "half-of-spending": "Two categories made up half of August's spending.",
-    "every-month-category": "Groceries showed up in all 12 months of this range, about $711 a month on average.",
-    "quietest-month": "The quietest month for spending in this range: November 2025, at $1,389.52.",
-    "biggest-month": "The biggest month for spending in this range: August 2026, at $2,135.79.",
-    "average-month": "An average month in this range came to about $1,679 of spending.",
-    "weekly-category": "Groceries came to about $164 a week across this range.",
-    "categories-count": "10 different categories show up across this range.",
-    "top-category-months": "Groceries was the biggest category in 11 of the 12 months here.",
-    "top-category-entries": "Dining had the most entries in August: 15.",
-    "entries-total": "This range in numbers: 518 entries across 12 months.",
-    "category-peak": "The biggest single category month in this range: Groceries in March 2026, at $1,130.01.",
-    "daily-average": "Across this range, spending averaged about $55 a day.",
-    "range-total": "Spending across this range came to about $20,151 over 12 months.",
-    "range-share": "Groceries took about one in every two dollars across this range.",
-    "second-category": "Dining came second across this range, after groceries.",
-    "income-months": "Income came in during 12 of the 12 months here."
+    "category-fraction": "About one in every two dollars spent in August went on groceries.",
+    "half-of-spending": "Half of August's spending went on just two categories.",
+    "every-month-category": "Groceries came up in all 12 months from September 2025 to August 2026, about $711 a month on average.",
+    "quietest-month": "Of the months from September 2025 to August 2026, November 2025 had the least spending: $1,389.52.",
+    "biggest-month": "Of the months from September 2025 to August 2026, August 2026 had the most spending: $2,135.79.",
+    "average-month": "From September 2025 to August 2026, spending averaged about $1,679 a month.",
+    "weekly-category": "Groceries came to about $164 a week from September 2025 to August 2026.",
+    "categories-count": "Your spending from September 2025 to August 2026 fell into 10 different categories.",
+    "top-category-months": "Groceries was your biggest spending category in 11 of the 12 months from September 2025 to August 2026.",
+    "top-category-entries": "Dining came up most often in August: 15 times.",
+    "entries-total": "From September 2025 to August 2026, 518 separate costs were recorded over 12 months.",
+    "category-peak": "From September 2025 to August 2026, the most spent on one category in one month was $1,130.01, on Groceries in March 2026.",
+    "daily-average": "From September 2025 to August 2026, spending averaged about $55 a day.",
+    "range-total": "Over 12 months, from September 2025 to August 2026, spending came to about $20,151 in all.",
+    "range-share": "From September 2025 to August 2026, about one in every two dollars you spent went on groceries.",
+    "second-category": "From September 2025 to August 2026, Dining was your second-biggest spending category, after groceries.",
+    "income-months": "Money came in during 12 of the 12 months from September 2025 to August 2026."
   });
   // A 13-month range reaches last year's month, and ties give no winner.
   const long = summaryInput("2026-08");
   const withLastYear = { ...long, categoryShareByMonth: [{ month: "2025-08", data: [{ label: "Travel", valueMinor: 300_000, entryCount: 4 }] }, ...long.categoryShareByMonth], months: [{ month: "2025-08", realExpensesMinor: 300_000, actualIncomeMinor: 650_000 }, ...long.months] };
-  assert.equal(fact(summary.lastYearTopTrivia(withLastYear)), "A year ago, Travel was your biggest category.");
+  assert.equal(fact(summary.lastYearTopTrivia(withLastYear)), "A year ago, in August 2025, you spent more on Travel than on any other category.");
   // One month with more entries than any other.
   const busier = { ...long, categoryShareByMonth: long.categoryShareByMonth.map((item) => (item.month === "2026-03" ? { ...item, data: [...item.data, { label: "Gifts", valueMinor: 1_000, entryCount: 30 }] } : item)) };
   const count = busier.categoryShareByMonth.find((item) => item.month === "2026-03").data.reduce((total, datum) => total + datum.entryCount, 0);
-  assert.equal(fact(summary.mostEntriesMonthTrivia(busier)), `The month with the most entries in this range: March 2026, with ${count}.`);
+  assert.equal(fact(summary.mostEntriesMonthTrivia(busier)), `Of the months from September 2025 to August 2026, March 2026 had the most separate costs: ${count}.`);
 });
 
 test("Summary: each trivia type stays silent when its data is missing", () => {

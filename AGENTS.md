@@ -158,8 +158,8 @@ These keep the measured loading, payload and reliability gains from drifting.
 Details and the reasons are in `docs/code-spec.md` and
 `docs/audits/macro-loading-baseline.md`.
 
-- Load the active screen first. Optional work (route code warmup, speculative
-  data, AI wording) starts only when `routeWork.usable` is true and goes
+- Load the active screen first. Optional work (route code warmup and
+  speculative data) starts only when `routeWork.usable` is true and goes
   through the warmup scheduler (`src/client/use-route-warmup.js`). Never add
   idle prefetch effects or eager imports of other routes to `App.jsx`.
 - Keep the first screen within budget. `npm run check:bundle` (part of
@@ -216,14 +216,12 @@ Details and the reasons are in `docs/code-spec.md` and
   reconciliation, transfer matching, category application, freshness planning,
   and account prioritization must work identically when the AI binding is
   missing, disabled, rate-limited, malformed, or unavailable.
-- Default to explicit user actions for AI. A financial-insight surface may make
-  one debounced, non-blocking wording request after a stable page or filter
-  change, only while the route is usable (no editor or save open), when the
-  same computed-facts key is not in its short-lived in-memory cache. Keep a
-  response only if it is OK, valid and still matches the facts on screen. It must render deterministic wording immediately, must not persist
-  its cache, and must never run during initial data loading, a mutation,
-  preview, commit, or reconciliation refresh. Do not add scheduled or hidden
-  inference.
+- Default to explicit user actions for AI. Do not add scheduled, hidden or
+  automatic inference.
+- Money insights headlines use computed wording only: the bold fact and its
+  think line exactly as written, with no AI rewording and no wording request
+  from any page. The old `/api/ai-assist/financial-insight` route is removed
+  (it produced broken grammar in production); do not bring it back.
 - Keep deterministic data and existing review controls authoritative. AI may
   phrase, rank, or propose a draft, but must not certify, import, categorize,
   skip, merge, delete, or link finance records by itself.
@@ -270,6 +268,12 @@ Details and the reasons are in `docs/code-spec.md` and
   the owner to decide instead of shipping it silently. Check the existing
   pattern first (for example the mobile floating "View and scope" bar) before
   proposing a new control.
+- Write user-facing copy in plain words. Say what happened to the
+  person's money, then the number; never describe the app's own state
+  ("in the app", "unlinked", "every chart"). An app term a line needs
+  (Other, linking, settle up) is explained once in the same sentence.
+  Money insights copy is linted for this (`findAppJargon`,
+  `docs/money-insights-copy.md`, "Tone").
 - Colour is pastel: state and category surfaces use the pastel tokens in
   `:root` of `public/styles.css`; text on a pastel surface uses that hue's
   `-ink` token and meets WCAG AA. Category colours come from

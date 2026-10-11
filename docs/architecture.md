@@ -211,8 +211,6 @@ evidence in `docs/audits/macro-loading-baseline.md`) left this shape:
   and the app shell each have one owner that keeps the last good snapshot on
   screen and ignores superseded responses, so a slow or cancelled request
   cannot overwrite newer data, blank the shell or raise an error screen.
-- **Optional AI wording** is requested only while the route is usable and
-  only kept if it still matches the facts on screen.
 - **Payloads.** APIs serve compact JSON. The Month page sends its entries
   once; Splits carries only the month's transfers. Every page API reports
   `Server-Timing: app, init, total`.
@@ -536,22 +534,18 @@ Exit criteria:
 
 Workers AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
-path. Summary, Month, Entries, and Splits render a deterministic Money
-check-in from their already-loaded figures immediately (see "Money insights"
-below), then may request a wording variation around its fact and think line
-only after a stable page/filter state, while the route is
-usable (no editor or save open), and on an in-memory cache miss. A response
-is kept only if it is OK, valid and still matches the facts on screen. Each request is capped by a shared D1 daily usage counter and returns an
-ordinary unavailable response when the binding is disabled, the allowance is
-exhausted, or a model response fails validation.
+path. Every AI action is an explicit user action. Each request is capped by a
+shared D1 daily usage counter and returns an ordinary unavailable response
+when the binding is disabled, the allowance is exhausted, or a model response
+fails validation.
 
-The Worker receives bounded, redacted text only. Money-check-in wording asks
-the model for a template with placeholders only: `{{fact}}` and `{{think}}`
-must each appear once and are filled with the computed sentences word for
-word, the selected person is a placeholder, and the template's own words may
-hold no figures and must pass the check-in's tone rules; the browser keeps
-AI wording only when it still carries the fact and think line.
-Statement fallback begins with
+Summary, Month, Entries, and Splits render their Money insights from
+already-loaded figures with computed wording only (see "Money insights"
+below): the headline is the bold fact and its think line as written. There
+is no AI rewording; the optional `/api/ai-assist/financial-insight` route was
+removed after it produced broken grammar in production.
+
+The Worker receives bounded, redacted text only. Statement fallback begins with
 browser-local PDF extraction and OCR; it sends extracted text after explicit
 consent and never uploads or stores the original binary. Model output is
 validated into drafts only: monthly note wording, pending category-rule
@@ -564,8 +558,8 @@ The Money consequence map that used to sit under "See all insights" was
 retired in September 2026: it repeated what the signals say, and its
 one-repeat scenario bordered on a forecast. Plan variance, the already-loaded
 same-season comparison and bank-proof gaps are now check-in signals only (a
-plan Worth a look or Bigger question, the same-season Long view and the
-statement-gap Quick fix with "Review statement"), and the AI facts carry no
+plan Worth knowing or Something to think about, the same-season Big picture and the
+statement-gap To do with "Compare with the statement"), and the AI facts carry no
 map. Nothing in Money insights creates a forecast or a safe-to-spend
 guarantee.
 
@@ -588,7 +582,7 @@ seed and the visit memory, which the client keeps only in localStorage
 `steady` unless its numbers are unusual: it never leads except in its
 quarter turn, so no always-true line leads month after month; a month with
 nothing notable leads with a Going well or the calm line. What rotates (the wording, the long view's
-lead, the Just for fun line, the quote, the calm line) follows the period
+lead, the Fun fact line, the quote, the calm line) follows the period
 being viewed (`rotation.ts`): for one page and view nothing repeats within
 twelve consecutive periods, whatever the browser remembers or forgets. The
 quote library is a separate chunk loaded when "See all insights" opens.

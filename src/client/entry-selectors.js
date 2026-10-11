@@ -89,7 +89,6 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
 
   return {
     filteredEntries,
-    aggregateEntries,
     groupedEntries,
     entryTotals,
     // "Outflow" includes transfers out, while "net" ignores transfer pairs and

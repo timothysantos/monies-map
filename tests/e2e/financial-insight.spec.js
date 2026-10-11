@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadMonthPage, loadSummaryAccountPills, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadSummaryAccountPills, postJson, reseedDemo } from "./helpers";
 import { MONTH_COPY } from "../../src/domain/money-signals/month-signals.ts";
 import { SHARED_COPY } from "../../src/domain/money-signals/shared-signals.ts";
 import { SPLITS_COPY } from "../../src/domain/money-signals/splits-signals.ts";
@@ -12,8 +12,6 @@ const thinksOf = (entry, { one = false } = {}) => [
   entry.think, one ? entry.thinkOne : undefined,
   ...entry.phrasings.map((phrasing) => (typeof phrasing === "string" ? undefined : phrasing.think))
 ].flat().filter(Boolean);
-
-const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 
 // The seed's subscriptions are the same every month it has them, so on
 // Summary they are steady: they lead only in the last month of each
@@ -33,20 +31,37 @@ async function addAprilSubscription(page, ownerName = "Tim") {
   });
 }
 
+// Money insights headlines use computed wording only. The AI rewording
+// route is gone, so no page may ask for it: every test here records any
+// request to its old path and expects none.
+const REMOVED_WORDING_PATH = "/api/ai-assist/financial-insight";
+
+function recordWordingRequests(page) {
+  const requests = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === REMOVED_WORDING_PATH) requests.push(request.url());
+  });
+  return requests;
+}
+
+async function waitUsable(page) {
+  await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 30_000 }).toBe(true);
+}
+
 test.describe("financial insights", () => {
+  let wordingRequests = [];
+
   test.beforeEach(async ({ page }) => {
+    wordingRequests = recordWordingRequests(page);
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await reseedDemo(page);
-    await page.route("**/api/ai-assist/financial-insight", async (route) => {
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ ok: false })
-      });
-    });
   });
 
-  test("summary and month render computed check-ins without waiting for AI", async ({ page }) => {
+  test.afterEach(() => {
+    expect(wordingRequests).toEqual([]);
+  });
+
+  test("summary and month render computed check-ins", async ({ page }) => {
     await gotoPageAfterApi(
       page,
       "/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05",
@@ -75,7 +90,7 @@ test.describe("financial insights", () => {
       "/api/summary-page",
       () => page.getByRole("heading", { name: "Summary", exact: true })
     );
-    await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
+    await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth knowing");
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/[Ss]ubscriptions/);
     await expect(summaryInsight.locator(".checkin-fact")).toContainText(/\$28\.70|\$344|\$0\.94/);
     expect(thinksOf(SUMMARY_COPY.subscriptions)).toContain((await summaryInsight.locator(".checkin-think").innerText()).trim());
@@ -103,7 +118,7 @@ test.describe("financial insights", () => {
     await expect(summaryInsight.getByRole("button", { name: "See all insights" })).toHaveAttribute("aria-expanded", "false");
     await page.setViewportSize({ width: 1280, height: 720 });
 
-    // Month: May 2026's planned bills without a linked entry are a Quick fix.
+    // Month: May 2026's planned bills with no payment matched yet are a To do.
     await gotoPageAfterApi(
       page,
       "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
@@ -112,14 +127,14 @@ test.describe("financial insights", () => {
     );
     const monthInsight = page.locator(".financial-insight-month");
     await expect(monthInsight).toContainText("Tim's money insights");
-    await expect(monthInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
-    await expect(monthInsight.locator(".checkin-fact")).toContainText(/planned bills/);
+    await expect(monthInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("To do");
+    await expect(monthInsight.locator(".checkin-fact")).toContainText(/\bbills? (?:you )?planned\b|\bplanned at\b/);
     expect(thinksOf(MONTH_COPY.unlinkedBills)).toContain((await monthInsight.locator(".checkin-think").innerText()).trim());
     await monthInsight.getByRole("button", { name: "See all insights" }).click();
     const also = monthInsight.locator(".checkin-also");
     await expect(also).toContainText("Also this month");
     await expect(also.locator("li")).toHaveCount(2);
-    await expect(also).toContainText("Food went $63.19 over its $650 plan.");
+    await expect(also).toContainText("Food came to $713.19, $63.19 more than the $650 you planned.");
     // No map, and none of the links that sat under it: the Quick fix and the
     // Worth a look carry their own actions.
     await expect(monthInsight.getByLabel("Money consequence map")).toHaveCount(0);
@@ -130,29 +145,22 @@ test.describe("financial insights", () => {
   // Summary's insights (its signals and every copy pool) load beside the
   // first screen, never inside it, and Summary never waits for them. Held
   // back, the page is usable and the insights show only their frame: the
-  // label, no words of their own and no wording request. They fill in when
-  // the module arrives.
+  // label and no words of their own. They fill in when the module arrives.
   test("Summary is usable before its insights module arrives, and the insights fill in after", async ({ page }) => {
     const held = [];
     await page.route("**/src/domain/money-signals/summary-signals.ts*", async (route) => {
       await new Promise((resolve) => held.push(resolve));
       await route.continue();
     });
-    const wordingRequests = [];
-    page.on("request", (request) => {
-      if (new URL(request.url()).pathname === "/api/ai-assist/financial-insight") wordingRequests.push(request.url());
-    });
     await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared");
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 30_000 }).toBe(true);
+    await waitUsable(page);
     await expect.poll(() => held.length).toBeGreaterThan(0);
     const insight = page.locator(".financial-insight-summary");
     await expect(insight).toHaveAttribute("data-checkin-mode", "loading");
     await expect(insight).toHaveAttribute("aria-busy", "true");
     expect((await insight.innerText()).trim()).toBe("HOUSEHOLD MONEY INSIGHTS");
     await expect(page.getByText("Intent vs Outcome", { exact: true })).toBeVisible();
-    await page.waitForTimeout(1_000);
-    expect(wordingRequests).toEqual([]);
 
     held.splice(0).forEach((release) => release());
     await expect(insight).not.toHaveAttribute("data-checkin-mode", "loading");
@@ -177,16 +185,16 @@ test.describe("financial insights", () => {
     await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
     const insight = page.locator(".financial-insight-month");
     await insight.getByRole("button", { name: "See all insights" }).click();
-    const bigger = insight.locator(".checkin-also li").filter({ hasText: "Bigger question" });
+    const bigger = insight.locator(".checkin-also li").filter({ hasText: "Something to think about" });
     await expect(bigger).toContainText(/Courts Megastore Tampines/);
-    await expect(bigger).toContainText("$1,181.79 over plan");
+    await expect(bigger).toContainText("$1,181.79");
     await page.waitForTimeout(600);
     await expect(insight.locator(".checkin-quote")).toHaveCount(0);
   });
 
   // Month's check-in reads the view's wallet health from the same account
   // pills as the Month Accounts section: a statement that does not match is
-  // the check-in's Quick fix, with "Review statement". A missing checkpoint
+  // the check-in's Quick fix, with "Compare with the statement". A missing checkpoint
   // is shown by the Accounts section only; the check-in claims nothing about
   // it (the Money consequence map and its "Needs review" lane are retired).
   test("the month check-in's statement Quick fix follows the view's statement checkpoints", async ({ page }) => {
@@ -218,98 +226,23 @@ test.describe("financial insights", () => {
 
     // One statement $42.80 away from the ledger: a Quick fix names it. The
     // month's unlinked bills led the two earlier visits and now rest, so the
-    // statement gap leads, and its Review statement opens Imports.
+    // statement gap leads, and its "Compare with the statement" opens Imports.
     const lady = checked.find((account) => account.accountName === "UOB Lady's");
     await postJson(page, "/api/accounts/reconcile", { accountId: lady.accountId, checkpointMonth: "2026-05", statementBalanceMinor: lady.balanceMinor - 4_280 });
     insight = await openMonth();
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("May 2026 statement is off by $42.80");
     await expect(insight.getByText(/UOB Lady's.*\$42\.80|\$42\.80.*UOB Lady's/).first()).toBeVisible();
     await expect(insight.getByRole("button", { name: "Review bank-record gaps" })).toHaveCount(0);
-    await expect(insight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
+    await expect(insight.locator(".financial-insight-content > .checkin-chip")).toHaveText("To do");
     await expect(insight.locator(".checkin-fact")).toContainText("$42.80");
-    await expect(insight.locator(".checkin-also li").filter({ hasText: "Quick fix" }).filter({ hasText: /planned bills?/ })).toHaveCount(1);
-    await insight.getByRole("button", { name: "Review statement" }).click();
+    await expect(insight.locator(".checkin-also li").filter({ hasText: "To do" }).filter({ hasText: /bills? (?:you )?planned|planned at/ })).toHaveCount(1);
+    await insight.getByRole("button", { name: "Compare with the statement" }).click();
     await expect(page).toHaveURL(/\/imports/);
-  });
-
-  // The Month check-in counts what the Actual spend card counts: every entry
-  // for the household; a person's own entries in the scope for a person view.
-  // The wording request carries that spend, so it must equal the card in
-  // every view and scope.
-  test("the month check-in spends what the Actual spend card shows in every view and scope", async ({ page }) => {
-    const bodies = [];
-    await page.route("**/api/ai-assist/financial-insight", async (route) => {
-      bodies.push(route.request().postDataJSON());
-      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
-    });
-    const views = [
-      ["household", "Household", ["direct_plus_shared"]],
-      ["person-joyce", "Joyce", ["direct", "shared", "direct_plus_shared"]],
-      ["person-tim", "Tim", ["direct", "shared", "direct_plus_shared"]]
-    ];
-    const spendByView = {};
-    for (const [viewId, label, scopes] of views) {
-      for (const scope of scopes) {
-        const data = await loadMonthPage(page, { view: viewId, month: "2026-05", scope });
-        const card = data.monthPage.metricCards.find((item) => item.label === "Actual spend").amountMinor;
-        const before = bodies.length;
-        await gotoPageAfterApi(page, `/month?view=${viewId}&month=2026-05&scope=${scope}`, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
-        await expect(page.locator(".month-label-view")).toHaveText(label);
-        const insight = page.locator(".financial-insight-month");
-        await expect(insight).toContainText(viewId === "household" ? "Household money insights" : `${label}'s money insights`);
-        await expect.poll(() => bodies.length, { message: `${viewId} ${scope} wording request`, timeout: 15_000 }).toBeGreaterThan(before);
-        expect(bodies.at(-1).facts.spend, `${viewId} ${scope}`).toBe(money(card));
-        spendByView[`${viewId}:${scope}`] = bodies.at(-1).facts.spend;
-      }
-    }
-    // A person's figures are theirs, not the household's, and scopes differ.
-    expect(spendByView["person-joyce:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
-    expect(spendByView["person-tim:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
-    expect(spendByView["person-joyce:direct"]).not.toBe(spendByView["person-joyce:shared"]);
-  });
-
-  test("the month wording request sends the person's scoped facts and headline, and asks again when the scope changes", async ({ page }) => {
-    const bodies = [];
-    await page.route("**/api/ai-assist/financial-insight", async (route) => {
-      bodies.push(route.request().postDataJSON());
-      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
-    });
-    const actualSpendCard = page.locator(".metric-row-month .metric").filter({ hasText: "Actual spend" }).locator("strong");
-    await gotoPageAfterApi(
-      page,
-      "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
-      "/api/month-page",
-      () => page.getByRole("heading", { name: "Month", exact: true })
-    );
-    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(1);
-    const combinedSpend = (await actualSpendCard.innerText()).trim();
-    // Only computed facts go out, with the person's name held back: the
-    // headline's fact and think line, which the AI must keep word for word.
-    expect(Object.keys(bodies[0])).toEqual(["facts"]);
-    expect(bodies[0].facts.spend).toBe(combinedSpend);
-    expect(bodies[0].facts.audienceKind).toBe("person");
-    expect(bodies[0].facts.headlineKind).toBe("quick_fix");
-    const insight = page.locator(".financial-insight-month");
-    expect(bodies[0].facts.fact).toBe((await insight.locator(".checkin-fact").innerText()).trim());
-    expect(bodies[0].facts.think).toBe((await insight.locator(".checkin-think").innerText()).trim());
-    expect([...thinksOf(MONTH_COPY.unlinkedBills), ...thinksOf(MONTH_COPY.unlinkedBills, { one: true })]).toContain(bodies[0].facts.think);
-    expect(JSON.stringify(bodies[0])).not.toContain("Tim");
-    for (const removed of ["notableFact", "cashFlowPrinciple", "nextSpendConsideration", "accountingAdvice"]) {
-      expect(Object.hasOwn(bodies[0].facts, removed)).toBe(false);
-    }
-
-    await page.locator(".desktop-scope-toggle").getByRole("button", { name: "Shared", exact: true }).click();
-    await expect(page).toHaveURL(/scope=shared/);
-    await expect(actualSpendCard).not.toHaveText(combinedSpend);
-    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(2);
-    const sharedSpend = (await actualSpendCard.innerText()).trim();
-    expect(bodies[1].facts.spend).toBe(sharedSpend);
-    expect(bodies[1].facts.spend).not.toBe(bodies[0].facts.spend);
   });
 
   // The links that sat under the retired map are gone: "See income entries"
   // and "Review largest expense" belonged to no signal (the five largest
-  // line carries its own "Show those entries"). Splits keeps its bank-match
+  // line carries its own "Show those five"). Splits keeps its bank-match
   // link, which its Quick fix owns.
   test("entries and splits check-ins show no map and no orphan links", async ({ page }) => {
     await postJson(page, "/api/entries/create", {
@@ -357,21 +290,23 @@ test.describe("financial insights", () => {
   test("the entries check-in's action filters the list to the entries it names", async ({ page }) => {
     await gotoPageAfterApi(page, "/entries?view=household&month=2026-05&scope=direct_plus_shared", "/api/entries-page", () => page.getByRole("heading", { name: "Entries", exact: true }));
     const insight = page.locator(".financial-insight-entries");
-    await expect(insight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
+    await expect(insight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth knowing");
     await expect(insight.locator(".checkin-fact")).toContainText(/five/i);
-    await insight.getByRole("button", { name: "Show those entries" }).click();
+    await insight.getByRole("button", { name: "Show those five" }).click();
     await expect(page).toHaveURL(/entry_id=.*entry_id=.*entry_id=.*entry_id=.*entry_id=/);
+    // The list now shows exactly those five, so the link would change
+    // nothing: it goes, and the fact stays.
+    await expect(insight.locator(".checkin-fact")).toContainText(/five/i);
+    await expect(insight.getByRole("button", { name: "Show those five" })).toHaveCount(0);
+    // Widening the list again brings the link back.
+    await page.goBack();
+    await expect(insight.getByRole("button", { name: "Show those five" })).toBeVisible();
   });
 
   // A person's Splits check-in speaks from their side of the group, in the
   // group currency. Tim paid ¥12,000 for a JPY trip hotel split 25% Tim /
   // 75% Joyce: Joyce owes Tim ¥9,000, and Tim's own share is ¥3,000.
   test("the splits check-in follows the person view and says who owes whom", async ({ page }) => {
-    const bodies = [];
-    await page.route("**/api/ai-assist/financial-insight", async (route) => {
-      bodies.push(route.request().postDataJSON());
-      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
-    });
     const { groupId } = await postJson(page, "/api/splits/groups/create", { name: "Tokyo trip", currency: "JPY", expenseSource: "cash" });
     await postJson(page, "/api/splits/expenses/create", {
       groupId,
@@ -396,27 +331,17 @@ test.describe("financial insights", () => {
     await expect(hotel).toContainText("You paid JP¥12,000");
     const splitsInsight = page.locator(".financial-insight-splits");
     await expect(splitsInsight).toContainText("Tim's money insights");
-    await expect(splitsInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
+    await expect(splitsInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("To do");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText("Joyce owes you JP¥9,000");
     // A trip's own think lines, not the ones for a group that is not a trip.
     expect(thinksOf(SPLITS_COPY.owedToYou)).toContain((await splitsInsight.locator(".checkin-think").innerText()).trim());
     await expect(splitsInsight.getByRole("button", { name: "Settle group" })).toBeVisible();
 
-    // Only computed facts go out, with the person's name held back; the
-    // facts count Tim's own share.
-    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(1);
-    expect(Object.keys(bodies[0])).toEqual(["facts"]);
-    expect(bodies[0].facts).toMatchObject({ audienceKind: "person", spend: "JP¥3,000", entryCount: 1, headlineKind: "quick_fix" });
-    expect(JSON.stringify(bodies[0])).not.toContain("Tim");
-
-    // Joyce's view speaks from her side and asks for wording again.
+    // Joyce's view speaks from her side.
     await page.locator(".context-block .pill[title='Joyce']").click();
     await expect(page).toHaveURL(/view=person-joyce/);
     await expect(splitsInsight).toContainText("Joyce's money insights");
     await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Tim JP¥9,000/i);
-    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(2);
-    expect(bodies[1].facts).toMatchObject({ audienceKind: "person", spend: "JP¥9,000" });
-    expect(JSON.stringify(bodies[1])).not.toContain("Joyce");
 
     // Settle group opens the page's own settlement dialog.
     await splitsInsight.getByRole("button", { name: "Settle group" }).click();
@@ -428,8 +353,8 @@ test.describe("financial insights", () => {
 // dates and the real localStorage. Each visit says something different
 // because the data, or the last visit, changed.
 test("four visits in one week: a first look, a new quick fix, sorted once, then a quiet visit", async ({ page }) => {
+  const wordingRequests = recordWordingRequests(page);
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
-  await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }));
   await reseedDemo(page);
   // Something notable all week (May's subscriptions differ from April's), so
   // the first look leads with a signal and a quiet visit has one to hold.
@@ -456,13 +381,13 @@ test("four visits in one week: a first look, a new quick fix, sorted once, then 
   // Wed 13 May: a statement arrives $42.80 away from the app: it leads.
   await postJson(page, "/api/accounts/reconcile", { accountId: card.accountId, checkpointMonth: "2026-05", statementBalanceMinor: card.balanceMinor - 4_280 });
   const wednesday = await visit("2026-05-13T20:00:00+08:00");
-  expect(wednesday.chip).toBe("Quick fix");
+  expect(wednesday.chip).toBe("To do");
   expect(wednesday.text).toContain("$42.80");
   expect(thinksOf(SHARED_COPY.statementGap).some((line) => wednesday.text.includes(line))).toBe(true);
   // The Quick fix's own link replaced the retired map's "Review bank-record
   // gaps": it opens Imports.
   await expect(insight.getByRole("button", { name: "Review bank-record gaps" })).toHaveCount(0);
-  await insight.getByRole("button", { name: "Review statement" }).click();
+  await insight.getByRole("button", { name: "Compare with the statement" }).click();
   await expect(page).toHaveURL(/\/imports\?/);
 
   // Fri 15 May: fixed. The check-in says so once.
@@ -470,8 +395,8 @@ test("four visits in one week: a first look, a new quick fix, sorted once, then 
   const friday = await visit("2026-05-15T19:00:00+08:00");
   expect(friday.mode).toBe("sorted");
   expect(friday.chip).toBe("Going well");
-  expect(friday.text).toMatch(/^Sorted: .* now matches its statement\./);
-  expect(friday.text).toContain("That's the part that makes every other number here trustworthy.");
+  expect(friday.text).toMatch(/^Sorted: .* now matches its bank statement\./);
+  expect(friday.text).toContain("The totals here for that account now agree with the bank.");
 
   // Sun 17 May: nothing new since Friday: one quiet line.
   const sunday = await visit("2026-05-17T10:00:00+08:00");
@@ -484,227 +409,39 @@ test("four visits in one week: a first look, a new quick fix, sorted once, then 
   // The memory is this browser's only.
   const stored = await page.evaluate(() => Object.keys(window.localStorage).filter((key) => key.startsWith("monies-map:checkin:")));
   expect(stored).toEqual(["monies-map:checkin:v1:summary:person-tim"]);
+  expect(wordingRequests).toEqual([]);
 });
 
-// H08: optional AI wording waits for a usable route (loaded, no editor or
-// save in progress) and a quiet 700 ms. Requests are counted and held with
-// page.route; deterministic wording is always on screen meanwhile.
-test.describe("financial insight wording readiness", () => {
-  const SUMMARY_URL = "/summary?view=household&month=2026-05&scope=direct_plus_shared";
-  // The stub rewords around the fact and think line it was sent, as the
-  // Worker's template does: the client keeps only wording that carries both.
-  const AI_WORDING = "Playwright AI wording:";
-
-  function controlInsightRequests(page, { respond = "ai" } = {}) {
-    const state = { requests: [], held: [], failed: [], hold: false };
-    page.on("requestfailed", (request) => {
-      if (new URL(request.url()).pathname === "/api/ai-assist/financial-insight") state.failed.push(Date.now());
-    });
-    const aiNarrative = (route) => {
-      const facts = route.request().postDataJSON()?.facts ?? {};
-      return `${AI_WORDING} ${facts.fact} ${facts.think}`;
-    };
-    const fulfill = async (route) => {
-      if (respond === "malformed") {
-        await route.fulfill({ status: 200, contentType: "application/json", body: "{not json" }).catch(() => {});
-        return;
-      }
-      if (respond === "error-with-wording") {
-        await route.fulfill({
-          status: 500,
-          contentType: "application/json",
-          body: JSON.stringify({ available: true, source: "ai", narrative: aiNarrative(route) })
-        }).catch(() => {});
-        return;
-      }
-      if (respond === "drops-the-fact") {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ available: true, source: "ai", narrative: `${AI_WORDING} something else entirely.` })
-        }).catch(() => {});
-        return;
-      }
-      if (respond === "unavailable") {
-        await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }).catch(() => {});
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ available: true, source: "ai", narrative: aiNarrative(route) })
-      }).catch(() => {});
-    };
-    return page.route("**/api/ai-assist/financial-insight", async (route) => {
-      state.requests.push(Date.now());
-      if (state.hold) {
-        await new Promise((resolve) => state.held.push(resolve));
-      }
-      await fulfill(route);
-    }).then(() => ({
-      state,
-      releaseAll: () => state.held.splice(0).forEach((resolve) => resolve())
-    }));
-  }
-
-  async function waitUsable(page) {
-    await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 30_000 }).toBe(true);
-  }
-
-  async function openSummary(page, { moneyVisible = true } = {}) {
-    await page.addInitScript((visible) => window.localStorage.setItem("monies-map:money-totals-visible", String(visible)), moneyVisible);
-    await reseedDemo(page);
-    // A notable headline to reword: a calm range has nothing to ask for.
-    await addAprilSubscription(page);
-    await page.goto(SUMMARY_URL);
-    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+// Money insights headlines use computed wording only (no AI rewording):
+// once each page is usable, and for longer than the old 700 ms wording
+// debounce, the headline stays the bold computed fact and its think line as
+// written, and no page asks the removed wording route.
+test("every page's headline is the computed fact and think line, and no page asks for AI wording", async ({ page }) => {
+  const wordingRequests = recordWordingRequests(page);
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+  await reseedDemo(page);
+  // A notable Summary headline (May's subscriptions differ from April's).
+  await addAprilSubscription(page);
+  for (const [path, heading, className, thinks] of [
+    ["/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-04&summary_end=2026-05", "Summary", ".financial-insight-summary", thinksOf(SUMMARY_COPY.subscriptions)],
+    ["/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "Month", ".financial-insight-month", [...thinksOf(MONTH_COPY.unlinkedBills), ...thinksOf(MONTH_COPY.unlinkedBills, { one: true })]],
+    ["/entries?view=household&month=2026-05&scope=direct_plus_shared", "Entries", ".financial-insight-entries", null],
+    ["/splits?view=person-tim&month=2026-06&split_group=split-group-none", "Splits", ".financial-insight-splits", null]
+  ]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await waitUsable(page);
-  }
-
-  test("an editor open blocks the request; closing it starts one request after a full quiet period", async ({ page }) => {
-    const control = await controlInsightRequests(page);
-    await openSummary(page, { moneyVisible: false });
-    await page.getByRole("button", { name: "Edit Bills" }).first().click();
-    await expect(page.getByText("Edit category")).toBeVisible();
-    // Reveal money behind the open dialog: facts are ready but the route is busy.
-    // The dialog hides the page from the accessibility tree, so use the class.
-    await page.locator(".totals-visibility-toggle").first().dispatchEvent("click");
-    await expect(page.locator("html")).toHaveAttribute("data-money-privacy", "visible");
-    await page.waitForTimeout(2_000);
-    expect(control.state.requests).toEqual([]);
-
-    // The quiet period starts when the editor closes in the page, not when
-    // toBeHidden next polls (that can be 100 ms+ later under load), so the
-    // page records the moment the editor leaves.
-    await page.getByText("Edit category").evaluate((title) => {
-      const observer = new MutationObserver(() => {
-        if (!title.isConnected || !title.checkVisibility()) {
-          observer.disconnect();
-          window.__insightTestEditorClosedAt = Date.now();
-        }
-      });
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
-    });
-    await page.keyboard.press("Escape");
-    await expect(page.getByText("Edit category")).toBeHidden();
-    const closedAt = await page.evaluate(() => window.__insightTestEditorClosedAt);
-    expect(closedAt).toEqual(expect.any(Number));
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
-    expect(control.state.requests[0] - closedAt).toBeGreaterThanOrEqual(650);
-    await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
-    // The AI's words sit around the computed fact, which stays bold.
-    await expect(page.locator(".financial-insight-summary .checkin-fact.is-inline")).not.toBeEmpty();
-    await page.waitForTimeout(2_000);
-    expect(control.state.requests).toHaveLength(1);
-  });
-
-  test("opening an editor during an in-flight request aborts it and nothing is cached", async ({ page }) => {
-    const control = await controlInsightRequests(page);
-    control.state.hold = true;
-    await openSummary(page);
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
-    await page.getByRole("button", { name: "Edit Bills" }).first().click();
-    await expect(page.getByText("Edit category")).toBeVisible();
-    await expect.poll(() => control.state.failed.length).toBe(1);
-    control.state.hold = false;
-    control.releaseAll();
-    await page.waitForTimeout(1_000);
-    await expect(page.locator(".financial-insight-summary")).not.toContainText(AI_WORDING);
-    expect(control.state.requests).toHaveLength(1);
-
-    // The aborted response was not cached, so the next usable state asks again.
-    await page.keyboard.press("Escape");
-    await expect(page.getByText("Edit category")).toBeHidden();
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(2);
-    await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
-  });
-
-  test("a facts change ignores the old response and asks for the new facts", async ({ page }) => {
-    const control = await controlInsightRequests(page);
-    control.state.hold = true;
-    await openSummary(page);
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
-    const insight = page.locator(".financial-insight-summary");
-    const before = await insight.locator(".financial-insight-narrative").textContent();
-    await page.locator(".summary-focus-button").filter({ hasText: "Range overall" }).click();
-    await expect(page).toHaveURL(/summary_focus=/);
-    await expect.poll(() => control.state.failed.length).toBe(1);
-    control.state.hold = false;
-    control.releaseAll();
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(2);
-    await expect(insight).toContainText(AI_WORDING);
-
-    // The cancelled request cached nothing for the first facts, so going back
-    // asks again instead of pinning the computed wording for five minutes.
-    await page.locator(".summary-focus-button").filter({ hasText: "May 2026" }).click();
-    await expect(insight.locator(".financial-insight-narrative")).toHaveText(before ?? "");
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(3);
-    await expect(insight).toContainText(AI_WORDING);
-  });
-
-  test("hiding money aborts the request and makes no new one", async ({ page }) => {
-    const control = await controlInsightRequests(page);
-    control.state.hold = true;
-    await openSummary(page);
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
-    await page.getByRole("button", { name: "Hide money totals" }).first().click();
-    await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read these insights.");
-    await expect.poll(() => control.state.failed.length).toBe(1);
-    control.releaseAll();
-    await page.waitForTimeout(2_000);
-    expect(control.state.requests).toHaveLength(1);
-  });
-
-  for (const respond of ["unavailable", "malformed", "error-with-wording", "drops-the-fact"]) {
-    test(`a response that is ${respond} keeps the computed wording and is not retried on return`, async ({ page }) => {
-      const control = await controlInsightRequests(page, { respond });
-      await openSummary(page);
-      const insight = page.locator(".financial-insight-summary");
-      const narrative = insight.locator(".financial-insight-narrative");
-      await expect(insight.locator(".checkin-fact")).not.toBeEmpty();
-      const computed = await narrative.textContent();
-      await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
-      await page.waitForTimeout(500);
-      await expect(narrative).toHaveText(computed ?? "");
-      await expect(narrative).not.toContainText(AI_WORDING);
-
-      // Readiness drops and returns; the 5-minute fallback cache answers.
-      await page.getByRole("button", { name: "Edit Bills" }).first().click();
-      await expect(page.getByText("Edit category")).toBeVisible();
-      await page.keyboard.press("Escape");
-      await expect(page.getByText("Edit category")).toBeHidden();
-      await page.waitForTimeout(1_500);
-      await expect(narrative).toHaveText(computed ?? "");
-      expect(control.state.requests).toHaveLength(1);
-    });
-  }
-
-  test("month, entries and splits each receive wording once their page is usable", async ({ page }) => {
-    await controlInsightRequests(page);
-    await openSummary(page);
-    await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
-    for (const [path, heading, className] of [
-      ["/month?view=household&month=2026-05&scope=direct_plus_shared", "Month", ".financial-insight-month"],
-      ["/entries?view=household&month=2026-05&scope=direct_plus_shared", "Entries", ".financial-insight-entries"],
-      ["/splits?view=household&month=2026-05", "Splits", ".financial-insight-splits"]
-    ]) {
-      await page.goto(path);
-      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-      await expect(page.locator(className)).toContainText(AI_WORDING);
+    const narrative = page.locator(`${className} .financial-insight-narrative`);
+    const fact = narrative.locator(":scope > strong.checkin-fact");
+    await expect(fact, heading).not.toBeEmpty();
+    if (thinks) {
+      const think = (await narrative.locator(":scope > .checkin-think").innerText()).trim();
+      expect(thinks, heading).toContain(think);
     }
-  });
-
-  test("rerenders without a facts change make one request in total", async ({ page }) => {
-    const control = await controlInsightRequests(page);
-    await openSummary(page);
-    const insight = page.locator(".financial-insight-summary");
-    // Interactions that rerender the page but leave the facts alone.
-    await page.mouse.move(200, 200);
-    await insight.getByRole("button", { name: "See all insights" }).click();
-    await insight.getByRole("button", { name: "Show less" }).click();
-    await page.mouse.move(400, 300);
-    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
-    await page.waitForTimeout(2_500);
-    expect(control.state.requests).toHaveLength(1);
-  });
+    const computed = await narrative.innerText();
+    await page.waitForTimeout(1_500);
+    await expect(narrative, heading).toHaveText(computed);
+    await expect(narrative.locator(".checkin-fact.is-inline"), heading).toHaveCount(0);
+  }
+  expect(wordingRequests).toEqual([]);
 });

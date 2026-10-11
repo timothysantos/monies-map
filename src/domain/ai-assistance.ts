@@ -1,6 +1,5 @@
 export type AiAssistCapability =
   | "monthly_narrative"
-  | "financial_insight"
   | "import_explanation"
   | "category_rules"
   | "statement_text_fallback"

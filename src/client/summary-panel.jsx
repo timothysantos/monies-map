@@ -34,7 +34,6 @@ import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
-import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { flowTone, headroomTone, reconciliationTone, signTone, spendTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
 const {
@@ -48,7 +47,7 @@ const {
 // 1. Range-level metrics and spending mix.
 // 2. Month-by-month "intent vs outcome" plan review.
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
+export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,15 +69,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   }), [view.summaryPage]);
 
   const summaryFocusParam = searchParams.get("summary_focus");
-  // Memoized so the insight facts, and their cache key, stay stable across
-  // unrelated rerenders.
+  // Memoized so the check-in's signals stay stable across unrelated
+  // rerenders.
   const focusState = useMemo(
     () => buildSummaryFocusState(safeSummaryPage, summaryFocusParam),
     [safeSummaryPage, summaryFocusParam]
-  );
-  const financialInsightFacts = useMemo(
-    () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam, view),
-    [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
   );
   const checkInClock = useCheckInClock();
   const summaryInsights = useSummaryInsights();
@@ -103,7 +98,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     period: safeSummaryPage.rangeMonths.at(-1) ?? checkInClock.today.slice(0, 7),
     triviaRotation: summaryInsights.SUMMARY_TRIVIA_ROTATION,
     calmLines: summaryInsights.SUMMARY_CALM_LINES,
-    alsoLabel: "Also in this range",
+    alsoLabel: "Also in this period",
     clock: checkInClock
   } : null), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
@@ -197,11 +192,10 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       </div>
 
       <FinancialInsight
-        facts={financialInsightFacts}
+        audienceName={view.id === "household" ? "" : view.label}
         checkIn={checkIn}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-summary"
-        canRequestWording={canRequestWording}
       />
 
       <div className="summary-top-grid">
@@ -280,42 +274,6 @@ function SummaryScopeSwitch({ view, onScopeChange }) {
       </div>
     </div>
   );
-}
-
-function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocusParam, view) {
-  const isRangeOverall = summaryFocusParam === SUMMARY_FOCUS_OVERALL;
-  const months = isRangeOverall
-    ? summaryPage.months
-    : summaryPage.months.filter((month) => month.month === focusState.selectedFocusMonth);
-  const startMonth = summaryPage.rangeMonths[0];
-  const endMonth = summaryPage.rangeMonths.at(-1);
-  const contextLabel = isRangeOverall
-    ? startMonth && endMonth
-      ? `Summary from ${formatService.formatMonthLabel(startMonth)} to ${formatService.formatMonthLabel(endMonth)}`
-      : "Summary for the selected range"
-    : `${formatService.formatMonthLabel(focusState.selectedFocusMonth)} summary`;
-  return buildFinancialInsightFacts({
-    contextLabel,
-    audienceKind: view.id === "household" ? "household" : "person",
-    audienceName: view.id === "household" ? "" : view.label,
-    records: [
-      ...focusState.donutData.map((item) => ({
-        amountMinor: item.valueMinor ?? 0,
-        entryType: "expense",
-        categoryName: item.label,
-        description: item.label
-      })),
-      ...months
-        .filter((month) => (month.actualIncomeMinor ?? 0) > 0)
-        .map((month) => ({
-          amountMinor: month.actualIncomeMinor ?? 0,
-          entryType: "income",
-          description: "Recorded income"
-        }))
-    ],
-    entryCount: focusState.donutData.reduce((total, item) => total + Number(item.entryCount ?? 0), 0),
-    formatMoney: formatService.unmaskedMoney
-  });
 }
 
 function SummarySpendingMixSection({
