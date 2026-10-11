@@ -450,6 +450,17 @@ existing editor, preview, or review controls. The Money consequence map that
 used to sit under "See all insights" is retired (DOMAIN.md): plan variance,
 the same-season comparison and bank-proof gaps are check-in signals only.
 
+Receipt reading has a Worker side only so far (`POST
+/api/ai-assist/receipt-read`, DOMAIN.md "Receipt Read"). When a client
+surface is approved it must: send one image only after the user pastes,
+drops, scans or shares it; downscale it (at most 1.5 MiB, JPEG, PNG or WebP)
+and strip EXIF and location in the browser first (re-encoding through a
+canvas does both); keep the image in transient page state only; on
+`available: false` run the existing Tesseract helpers
+(`import-helpers.js`, loaded by dynamic import) and `readReceiptOcrText`
+for the same `ReceiptReadDto`; and pre-fill the normal entry editor with
+`receiptReadToDraftFields`, saving nothing until the user taps save.
+
 A check-in's signals count what the figures beside it count. Summary builds
 them from its page DTO, which the Worker already filtered to the view and
 scope. The Month DTO's `entries` holds every household entry (plan linking

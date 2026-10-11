@@ -221,23 +221,55 @@ rendering"):
 
 ## Optional AI Contract
 
-Workers AI belongs outside the normal query and mutation graph. Most actions
-are explicit. A Financial insight may make one debounced, non-blocking wording
-request after a stable page/filter state, only while the route is usable (no
-editor or save open), when the computed-facts key is absent from a
-short-lived in-memory cache; an aborted, non-OK or stale response is neither
-shown nor cached. It must render deterministic wording first,
-must not persist that cache, and must return an ordinary unavailable result
-when disabled, unconfigured, quota-limited, or invalid. No visible page query,
-import preview or commit, accounting calculation, reconciliation, category
+AI belongs outside the normal query and mutation graph, and every AI action
+is explicit (no page sends a background wording request). It must return an
+ordinary unavailable result when disabled, unconfigured, quota-limited,
+over the gateway spend limit, or invalid. No visible page query, import
+preview or commit, accounting calculation, reconciliation, category
 application, duplicate decision, transfer decision, or Import Inbox plan may
 await it.
+
+New AI calls use the provider layer, `src/domain/ai-provider.ts`:
+`runVisionJson(db, env, { capability, images, prompt, schema, maxTokens,
+parse, timeoutMs? })` and `runTextJson(db, env, { capability, units, prompt,
+schema, maxTokens, parse, timeoutMs? })`, both returning `{ available, value?,
+reason?, remaining?, provider? }` and never throwing. The order is fixed:
+check `AI_ASSIST_ENABLED` and that some provider is configured
+(`getAiProviderUnavailableReason`, cheap enough to run before reading a
+request body), validate the input, reserve the shared daily allowance once
+(`reserveDailyAiBudget`; an image costs `AI_ASSIST_VISION_UNITS`, default
+2), then try Claude through AI Gateway (`resolveClaudeGateway`: only when a
+gateway location and a credential, `AI_GATEWAY_TOKEN` or
+`ANTHROPIC_API_KEY`, are both set) and fall back to Workers AI
+(`AI_FALLBACK_MODEL`, default `@cf/google/gemma-4-26b-a4b-it`) on any
+non-2xx (429 includes the spend cap), network error, timeout (15 s each by
+default), refusal, cut-off or answer the caller's `parse` rejects. Gateway
+requests always carry `cf-aig-collect-log: false` and `cf-aig-skip-cache:
+true`; only a 400/401/403/404 is logged, as the status code alone. The
+existing text capabilities still use `runAiJson` on Workers AI until a
+reviewed change moves them.
+
+Receipt reading (`POST /api/ai-assist/receipt-read`,
+`src/server/receipt-read-route.ts`) checks availability before reading the
+body, refuses anything but a JPEG, PNG or WebP whose bytes match its type
+(415) or over 1.5 MiB (413), and returns a `ReceiptReadDto` built by
+`finalizeReceiptRead` (`src/domain/receipt-read.ts`). The model returns raw
+fields only; the app validates the date (ISO, at most a day ahead), the
+total (positive, bounded, converted to minor units by the app), the
+currency (allowlist) and the card ending (last four digits only), and turns
+unclear fields into `questions` with a reason and validated candidates; no
+model wording reaches the user. `readReceiptOcrText`
+(`src/domain/receipt-ocr-text.ts`) produces the same DTO from in-browser OCR
+text when AI is unavailable, and `receiptReadToDraftFields` maps either to
+the `/api/entries/create` field names. Tests must prove the route writes
+nothing but the allowance counter and logs nothing
+(`tests/receipt-read-route.test.mjs`).
 
 An AI response is a bounded draft, explanation, or ranking over deterministic
 evidence already selected by the app. The existing editor or review action is
 the only way to persist a change. Keep request payloads redacted and bounded;
-do not persist prompts, model responses, original bank files, raw OCR images,
-or embeddings. Each AI change needs a no-AI test and a failure-path test in
+do not persist prompts, model responses, original bank files, receipt or
+raw OCR images, or embeddings. Each AI change needs a no-AI test and a failure-path test in
 addition to the normal behavior test. Money insights use computed wording
 only: the headline is the signal's bold fact and its think line exactly as
 written, and no page sends a wording request (the

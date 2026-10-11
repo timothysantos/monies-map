@@ -154,6 +154,17 @@ export interface Env {
   FX_RATES_OFFLINE?: string;
   AI_ASSIST_ENABLED?: string;
   AI_ASSIST_DAILY_LIMIT?: string;
+  // Optional Claude via Cloudflare AI Gateway (src/domain/ai-provider.ts,
+  // docs/developer-guide.md "Optional AI provider"). All absent: Workers AI
+  // is used directly.
+  AI_ASSIST_VISION_UNITS?: string;
+  AI_GATEWAY_URL?: string;
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_ID?: string;
+  AI_GATEWAY_TOKEN?: string;
+  ANTHROPIC_API_KEY?: string;
+  AI_CLAUDE_MODEL?: string;
+  AI_FALLBACK_MODEL?: string;
 }
 
 const API_PAGE_SLOW_MS = 750;

@@ -1,0 +1,20 @@
+   Kopi & Crumb Cafe
+  000 Sample Road
+  Singapore 000000
+Tel: 6000 0000
+
+Table 12      Pax 2
+11 Oct 2026  09:15
+
+1  Flat White           6.50
+1  Iced Long Black      6.00
+1  Kaya Toast Set       5.80
+   Add egg              1.20
+
+Sub Total              19.50
+Svc Chg 10%             1.95
+GST 9%                  1.93
+T0TAL                  23.38
+
+MASTERCARD XXXX XXXX XXXX 3141
+APPROVED   AUTH 000000

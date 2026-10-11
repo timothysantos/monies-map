@@ -1,0 +1,16 @@
+MAPLE & PINE DINER
+00 Example St
+Springfield, ZZ 00000
+
+Server: Sam    Check #0042
+03/04/2026 7:51 PM
+
+Pancake Stack          $12.00
+Coffee                  $3.50
+Side Bacon              $4.25
+
+Subtotal               $19.75
+Tax                     $1.63
+Amount Due         $21.38
+
+THANK YOU

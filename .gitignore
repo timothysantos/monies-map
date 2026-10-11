@@ -8,5 +8,6 @@ coverage
 *.sqlite3
 *.db
 dev.vars
+.dev.vars
 playwright-report
 test-results

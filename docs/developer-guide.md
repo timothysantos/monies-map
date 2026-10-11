@@ -298,6 +298,73 @@ it with a shorter session.
 Use a week only on a personal, locked device. Shorten the Access session again
 for shared devices or if the sign-in context should expire sooner.
 
+## How do I set up the optional AI provider?
+
+Nothing is needed today. With no gateway settings, the optional AI layer
+(`src/domain/ai-provider.ts`) uses Workers AI directly through the existing
+`AI` binding: Gemma 4 (`@cf/google/gemma-4-26b-a4b-it`) for receipt images
+and other JSON answers. There is no failed gateway call, no extra wait and no
+log line.
+
+Claude Haiku (`claude-haiku-5-5`) through Cloudflare AI Gateway can be added
+later with an Anthropic API key from any Anthropic account, including a
+personal one. When it is configured, Claude is tried first and Workers AI is
+the fallback when Claude is rate-limited, over the gateway's spend limit,
+failing, slower than 15 seconds or returns unusable JSON. If both fail, the
+route says AI is unavailable and the browser falls back to in-browser OCR.
+
+To add Claude later:
+
+1. In the Cloudflare dashboard, open **AI > AI Gateway** and create a gateway
+   (for example `monies-map`). Note the account ID and the gateway ID.
+2. In the gateway's **Settings**, turn **Logs** off and leave **Caching** off
+   (it is off by default). The Worker also sends `cf-aig-collect-log: false`
+   and `cf-aig-skip-cache: true` on every request, so nothing is logged or
+   cached even if a setting is changed later.
+3. Turn on **Authenticated Gateway** and create a gateway token (a Cloudflare
+   API token with AI Gateway Run permission).
+4. Under **Settings > Spend limits**, add a rule: provider Anthropic, about
+   US$10, a fixed monthly window. Over the limit the gateway answers 429 and
+   the app falls back to Workers AI. Spend limits are in beta and settle
+   after each request, so a burst can slightly overshoot; also set a monthly
+   spend limit in the Anthropic Console as a second backstop. Cloudflare's
+   docs do not say outright that limits cover the provider-native
+   `/anthropic/v1/messages` endpoint the app uses, so check the gateway's
+   spend figure after the first real receipt.
+5. Create an Anthropic API key in the Anthropic Console, then store it in
+   one of two places:
+   - **Preferred: in the gateway.** Open the gateway's **Provider Keys**, add
+     the key for Anthropic under the `default` alias, then give the Worker
+     only the gateway token: `npx wrangler secret put AI_GATEWAY_TOKEN`. The
+     Worker never holds the Anthropic key.
+   - **Or as a Worker secret:** `npx wrangler secret put ANTHROPIC_API_KEY`
+     (also put `AI_GATEWAY_TOKEN` if the gateway is authenticated).
+6. Add the gateway's location to `vars` in `wrangler.jsonc`: either
+   `AI_GATEWAY_ACCOUNT_ID` and `AI_GATEWAY_ID`, or one `AI_GATEWAY_URL`
+   (`https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id>`).
+   Optional: `AI_CLAUDE_MODEL` (default `claude-haiku-5-5`),
+   `AI_FALLBACK_MODEL` (default Gemma 4; use
+   `@cf/meta/llama-4-scout-17b-16e-instruct` if Gemma 4 is withdrawn),
+   `AI_ASSIST_VISION_UNITS` (allowance units per receipt image, default 2,
+   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, default 12,
+   4 to 60).
+7. Deploy as usual. If Claude rejects the key, model or gateway (400, 401,
+   403 or 404), `npx wrangler tail` shows `AI provider config rejected` with
+   the status code only; receipts keep working through Workers AI.
+
+To remove Claude again, delete the secrets and vars; the app goes back to
+Workers AI directly.
+
+To test locally, use the unit tests: `tests/ai-provider.test.mjs` mocks the
+gateway with a stubbed `fetch` (success, 429, timeout, malformed JSON, both
+providers down, no Anthropic config) and `tests/receipt-read-route.test.mjs`
+drives the route with a stub `AI` binding. `wrangler.test.jsonc` has no AI
+binding, so the browser tests prove the no-AI path. For a manual check
+against the real gateway, put the secrets in `.dev.vars` (ignored by git)
+and the vars in a local, uncommitted copy of the config; note that the
+Workers AI binding always runs remotely and is billed even under
+`wrangler dev`.
+
 # Apple Pay Shortcut internals
 
 The user-facing install steps are in the User guide
@@ -1654,9 +1721,26 @@ unusable, the deterministic draft comes back with `ai.available: false`
 and the reason. The route saves nothing; the user saves a confirmed draft
 through the normal create route.
 
+Receipt reading (`POST /api/ai-assist/receipt-read`, server only for now)
+is the one path that sends an image. It runs only for a receipt image or a
+rendered PDF page that you explicitly paste, drop, scan or share. The
+browser must shrink it (at most 1.5 MiB) and strip EXIF and location data
+first; the Worker accepts only JPEG, PNG or WebP whose bytes match the
+declared type. The image goes to the provider once (Claude through AI
+Gateway with logs and caching off, or Workers AI) and is then discarded:
+it is not stored, logged or cached by the app. The answer is a draft
+(merchant, date, total, currency, the card's last four digits, line items
+and questions for unclear fields), validated by the app; nothing is saved
+until you tap save in the normal entry editor. When AI is off, missing,
+over its allowance or failing, the route answers at once and the browser
+reads the same image with in-browser OCR (`readReceiptOcrText`). See
+[How do I set up the optional AI provider?](#how-do-i-set-up-the-optional-ai-provider)
+for the provider settings.
+
 The app keeps only daily AI usage counters so it can stay within its configured
-allowance. It does not save prompts, model answers, original PDFs, credentials,
-Shortcut tokens, or full card/account numbers as an AI history.
+allowance. It does not save prompts, model answers, receipt images, original
+PDFs, credentials, Shortcut tokens, or full card/account numbers as an AI
+history.
 
 ## How do Money insights work?
 

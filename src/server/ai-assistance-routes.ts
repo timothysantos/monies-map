@@ -10,9 +10,9 @@ import {
   redactAiStatementText,
   redactAiText,
   runAiEmbeddings,
-  runAiJson,
-  type AiAssistEnv
+  runAiJson
 } from "../domain/ai-assistance";
+import type { AiProviderEnv } from "../domain/ai-provider";
 import {
   buildDeterministicImportExplanation,
   buildDeterministicMonthlyNarrative,
@@ -35,8 +35,9 @@ import { todayInAppTimeZone } from "../lib/app-calendar";
 import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
+import { handleReceiptRead } from "./receipt-read-route";
 
-export type AiAssistRouteEnv = AiAssistEnv & { DB: D1Database };
+export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database };
 
 export async function handleAiAssistRoute(request: Request, url: URL, env: AiAssistRouteEnv): Promise<Response | null> {
   // Entry draft: the deterministic parser always answers. AI is asked (one
@@ -84,6 +85,10 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
       draft: parseEntrySentence(body?.text, context, result.value),
       ai: { requested: true, available: true, remaining: result.remaining }
     } satisfies EntryDraftResponseDto);
+  }
+
+  if (url.pathname === "/api/ai-assist/receipt-read" && request.method === "POST") {
+    return handleReceiptRead(request, env);
   }
 
   if (url.pathname === "/api/ai-assist/monthly-narrative" && request.method === "POST") {
