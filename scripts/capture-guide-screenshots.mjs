@@ -137,12 +137,6 @@ async function sampleCardExport() {
   return target;
 }
 
-// "2026-08" -> "Aug 2026", as the Spending Mix month chips say it.
-function monthChipLabel(month) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"][monthNumber - 1]} ${year}`;
-}
-
 const splitsUrl = (view = "person-ethan", extra = "") => `/splits?view=${view}&month=${MONTH}${extra}`;
 
 // ---------------------------------------------------------------------------
@@ -168,9 +162,8 @@ const SHOTS = [
     run: async (page) => {
       // From the oldest month, the range holds last month's same month a year
       // earlier, so the Long view can compare them (docs/demo-tour.md, step 2).
+      // Its month-level lines talk about the range's latest month (MONTH).
       await open(page, `/summary?view=household&month=${MONTH}&summary_start=${OLDEST_MONTH}&summary_end=${MONTH}`);
-      await page.locator(".summary-mix-months").getByRole("button", { name: monthChipLabel(MONTH), exact: true }).click();
-      await waitUsable(page);
       await page.getByRole("button", { name: "See all insights" }).first().click();
       await scrollToLocator(page, page.locator(".financial-insight"), 20);
     }
@@ -423,6 +416,17 @@ const SHOTS = [
       await page.locator(".mobile-context-trigger").first().click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(500);
+    }
+  },
+  {
+    // The Summary tab's "Pick a month" sheet, opened from the month in the
+    // floating bar with a month picked.
+    name: "phone-month-picker", device: "phone",
+    run: async (page) => {
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      await page.locator(".mobile-month-choice-open").click();
+      await page.getByRole("dialog", { name: "Pick a month" }).waitFor();
+      await page.waitForTimeout(600);
     }
   },
   {

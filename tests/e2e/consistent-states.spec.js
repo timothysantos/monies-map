@@ -36,7 +36,8 @@ test("a page that fails after navigating shows the page error in place of the pr
     monthRequests += 1;
     return fail ? failWith500(route) : route.continue();
   });
-  await page.getByRole("link", { name: "Month", exact: true }).first().click();
+  // Pick a month in the Summary tab's month row (desktop).
+  await page.getByRole("group", { name: "Month" }).getByRole("button").nth(1).click();
 
   const alert = page.getByRole("alert").filter({ hasText: "The Month page could not load." });
   await expect(alert).toBeVisible();

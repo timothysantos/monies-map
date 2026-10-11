@@ -12,7 +12,19 @@ Route entry:
 
 - `/summary`
 
-The route may include view, scope, focus, and range parameters. `App.jsx` reads
+Summary is the "All months" choice of the one `Summary` tab, which also
+covers the Month page (`/month`, one month of the range picked; see
+`month-flow.md`). The tab's month control picks between them: on a phone
+the floating island beside the View and scope trigger (`All months ▾`,
+opening the "Pick a month" sheet), on desktop and tablet the month row
+under the header. Picking a month goes to `/month?month=YYYY-MM` and pins
+the range on screen into the URL (`summary_start`, `summary_end`), reusing
+the Summary page already loaded under the pinned key
+(`seedPinnedSummaryPage`), so no request repeats. The Summary tab link
+always opens `/summary`. Design: design.md, "Summary Tab Month Choice".
+
+The route may include view, scope and range parameters (`summary_focus`, the
+old Spending Mix month chip, is ignored). `App.jsx` reads
 the URL and keeps the selected Summary view in sync with browser location. In a
 person view the scope control sets `scope`: on desktop and tablet the compact
 `Direct` / `Shared` / `Both` switch under the `Summary` title (what each counts
@@ -42,6 +54,15 @@ Summary data comes from:
 
 The page uses the summary page DTO for range metrics, category share, and
 month cards. It uses the account-pill DTO for account health and drilldown.
+Spending Mix shows the whole range (`categoryShareChart`); it has no month
+chips of its own. The month sheet and the desktop month row read the same
+DTO's `rangeMonths` and `months` (`realExpensesMinor` against
+`estimatedExpensesMinor`); they add no request.
+
+A request with both range bounds sends the range end as its `month`
+(`buildSummaryPageParams`), because the Worker anchors only an implicit
+range on `month`: every month of a pinned range shares one cache entry, the
+key the mutation invalidations already used.
 
 ## Ownership Notes
 
@@ -50,7 +71,11 @@ Summary owns:
 - summary metrics
 - summary account pills
 - summary note edits
-- category-card and month-card drilldowns
+- category-card and month-card drilldowns (a month card picks that month,
+  like the month control)
+
+`tests/e2e/summary-month-choice.spec.js` proves the month choice on a phone
+and a desktop.
 
 ## Audit Status
 

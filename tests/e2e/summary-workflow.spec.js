@@ -27,7 +27,8 @@ test.describe("summary workflow", () => {
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Intent vs Outcome" })).toBeVisible();
-    await expect(page.getByText("Range overall")).toBeVisible();
+    // The month is picked in the floating bar (All months is Summary).
+    await expect(page.locator(".mobile-context-sticky-wrap").getByRole("button", { name: /All months/ })).toBeVisible();
     await expect(page.getByText("Total spend")).toBeVisible();
   });
 

@@ -1109,8 +1109,12 @@ test.describe("import flow", () => {
     await page.goto("/summary?view=person-tim&month=2025-10");
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
     await page.getByRole("button", { name: "Show money totals" }).click();
-    await expect(page.getByRole("button", { name: "Oct 2025" }).first()).toBeVisible();
-    await expect(page.getByText(formatMoney(afterFoodDonut)).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("group", { name: "Month" }).getByRole("button", { name: "Oct 2025" })).toBeVisible();
+    // Summary is All months: Spending Mix shows the range, with the import in it.
+    const pageRange = await (await page.request.get("/api/summary-page?view=person-tim&month=2025-10&scope=direct_plus_shared")).json();
+    const rangeFood = pageRange.summaryPage.categoryShareChart.find((item) => item.label === "Food & Drinks")?.valueMinor ?? 0;
+    expect(rangeFood).toBeGreaterThanOrEqual(afterFoodDonut);
+    await expect(page.locator(".share-row").filter({ hasText: "Food & Drinks" }).first()).toContainText(formatMoney(rangeFood), { timeout: 30_000 });
   });
 
   test("final import shows recent-import loading and completion inline", async ({ page }) => {

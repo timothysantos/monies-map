@@ -23,7 +23,8 @@ test("speculative keys equal the keys the required readers use", () => {
   const range = identity("summary", { summaryStart: "2025-07", summaryEnd: "2025-09" });
   const summary = buildSpeculativeRequest({ purpose: "summary-page", identity: range });
   assert.deepEqual(summary.queryKey, summaryPageKeyFromParams(buildSummaryPageParams({ viewId: "person-tim", month: "2026-05", scope: "direct_plus_shared", summaryStart: "2025-07", summaryEnd: "2025-09" })));
-  assert.equal(summary.url, "/api/summary-page?view=person-tim&month=2026-05&scope=direct_plus_shared&summary_start=2025-07&summary_end=2025-09");
+  // A pinned range names its end month (buildSummaryPageParams).
+  assert.equal(summary.url, "/api/summary-page?view=person-tim&month=2025-09&scope=direct_plus_shared&summary_start=2025-07&summary_end=2025-09");
 
   const imports = buildSpeculativeRequest({ purpose: "imports-page", identity: identity("imports") });
   assert.deepEqual(imports.queryKey, queryKeys.importsPage());

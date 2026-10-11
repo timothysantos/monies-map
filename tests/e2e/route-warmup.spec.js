@@ -112,10 +112,31 @@ test.describe("route warmup on mobile", () => {
     await waitUsable(page);
     await page.waitForTimeout(3_000);
     expect(requests).toEqual(["summary"], "intent-only: no automatic warmup");
-    await page.getByRole("link", { name: "Month", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
-    await expect.poll(() => requests).toEqual(["summary", "month"]);
+    await page.getByRole("link", { name: "Splits", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+    await expect.poll(() => requests).toEqual(["summary", "splits"]);
     await expect(page).toHaveURL(/\/summary\?/);
-    await page.getByRole("link", { name: "Month", exact: true }).click();
+    await page.getByRole("link", { name: "Splits", exact: true }).click();
+    await expect(page).toHaveURL(/\/splits\?/);
+    await waitUsable(page);
+    expect(requests.filter((id) => id === "splits")).toHaveLength(1);
+    await context.close();
+  });
+
+  // The Summary tab's month control is the way to a month now: touching it
+  // starts the Month code while the person picks in the sheet.
+  test("touch pointer-down on the month control loads the Month code before a month is picked", async ({ browser }) => {
+    const { context, page } = await newPage(browser, MOBILE);
+    await setWarmupMode(page, "intent-only");
+    const requests = recordPanelRequests(page);
+    await page.goto("/summary?view=household&month=2025-10&summary_start=2025-06&summary_end=2025-10");
+    await waitUsable(page);
+    await page.waitForTimeout(2_000);
+    expect(requests).toEqual(["summary"]);
+    const control = page.locator(".mobile-context-sticky-wrap").getByRole("button", { name: /All months/ });
+    await control.dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+    await expect.poll(() => requests).toEqual(["summary", "month"]);
+    await control.click();
+    await page.getByRole("dialog", { name: "Pick a month" }).locator(".summary-month-tile").first().click();
     await expect(page).toHaveURL(/\/month\?/);
     await waitUsable(page);
     expect(requests.filter((id) => id === "month")).toHaveLength(1);
@@ -134,7 +155,7 @@ test.describe("route warmup on mobile", () => {
     const requests = recordPanelRequests(page);
     await page.goto("/summary?view=household&month=2026-05");
     await waitUsable(page);
-    await page.getByRole("link", { name: "Month", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+    await page.getByRole("link", { name: "Splits", exact: true }).dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
     await page.waitForTimeout(5_000);
     expect(requests).toEqual(["summary"]);
     await page.getByRole("link", { name: "Entries", exact: true }).click();
@@ -166,15 +187,15 @@ test.describe("route warmup on desktop", () => {
     await page.getByRole("link", { name: "Splits", exact: true }).hover();
     await expect.poll(() => requests).toEqual(["summary", "splits"]);
 
-    const monthLink = page.getByRole("link", { name: "Month", exact: true });
+    const entriesLink = page.getByRole("link", { name: "Entries", exact: true });
     for (let press = 0; press < 40; press += 1) {
-      if (await monthLink.evaluate((link) => link === document.activeElement)) break;
+      if (await entriesLink.evaluate((link) => link === document.activeElement)) break;
       await page.keyboard.press("Tab");
     }
-    await expect(monthLink).toBeFocused();
-    await expect.poll(() => requests).toEqual(["summary", "splits", "month"]);
+    await expect(entriesLink).toBeFocused();
+    await expect.poll(() => requests).toEqual(["summary", "splits", "entries"]);
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/month\?/);
+    await expect(page).toHaveURL(/\/entries\?/);
     await context.close();
   });
 
@@ -192,7 +213,7 @@ test.describe("route warmup on desktop", () => {
       await new Promise((resolve) => setTimeout(resolve, stayMs));
       link.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: document.body }));
     }, { name, stayMs });
-    for (const name of ["Month", "Entries", "Splits"]) {
+    for (const name of ["Entries", "Imports", "Splits"]) {
       await hover(name, 50);
     }
     await page.waitForTimeout(1_500);

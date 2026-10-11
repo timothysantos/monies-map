@@ -25,41 +25,42 @@ proves the numbers are right.
 
 ## Take the 3-minute tour
 
-The navigation at the top (on a phone, at the bottom) has seven screens. They
+The navigation at the top (on a phone, at the bottom) has six screens. They
 appear in this order:
 
 1. **Summary**: the big picture for a range of months: planned versus actual
    income, spending and savings, where the money went, and your wallet
-   balances.
+   balances. This is **All months**.
    ![Summary shows planned and actual totals, money insights, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
-2. **Month**: the plan for one month (income, budget buckets and planned
-   items) next to what was actually spent.
+   Pick one month of the range to see its plan (the **Month** page): income,
+   budget buckets and planned items next to what was actually spent
+   ([Pick a month](#pick-a-month)).
    ![Month shows each plan row with planned, actual and variance](/faq/guide/desktop/thumbs/month-person.webp)
-3. **Entries**: every transaction for the month, grouped by day, with search
+2. **Entries**: every transaction for the month, grouped by day, with search
    and filters. This is where you add, fix and categorise spending.
    ![Entries lists transactions by day with totals and filters](/faq/guide/desktop/thumbs/entries-person.webp)
-4. **Splits**: shared expenses between the two of you: who paid, who owes
+3. **Splits**: shared expenses between the two of you: who paid, who owes
    whom, and settling up. It has a dark orange look so you always know you are
    in Splits.
    ![Splits uses a dark orange theme and shows groups, balances and shared expenses](/faq/guide/desktop/thumbs/splits-person.webp)
-5. **Imports**: bring in bank files. Drop them at the top; the Import inbox
+4. **Imports**: bring in bank files. Drop them at the top; the Import inbox
    tells you which files to download from which bank.
    ![Imports starts with the Import inbox, which plans your bank downloads](/faq/guide/desktop/thumbs/imports-inbox.webp)
-6. **Settings**: people, accounts, categories, category rules, Apple Pay and
+5. **Settings**: people, accounts, categories, category rules, Apple Pay and
    the tools that keep balances trustworthy.
    ![Settings groups everything into sections you open one at a time](/faq/guide/desktop/thumbs/settings-overview.webp)
-7. **FAQ**: this guide.
+6. **FAQ**: this guide.
 
 At the top left you choose whose money you are looking at (Household, or one
-person). At the top right you move between months or ranges and hide or show
-money totals. Imports, Settings and FAQ do not depend on a month, so they show
-no month or range controls there.
+person). At the top right you move the range of months (on Entries, the
+month) and hide or show money totals. Imports, Settings and FAQ do not
+depend on a month, so they show no month or range controls there.
 
 ## The core idea: plan, record, import, reconcile, split
 
 Monie's Map works best as a monthly loop:
 
-1. **Plan**: on Month, set what you expect to earn, your fixed commitments
+1. **Plan**: on Month (pick the month on Summary), set what you expect to earn, your fixed commitments
    (planned items) and flexible budgets (budget buckets).
 2. **Record**: as you spend, add entries on Entries, or let Apple Pay create
    them for you.
@@ -162,20 +163,22 @@ These buttons are not shown on the real (private) app.
 
 The app is designed for phones as well as desktops. The differences:
 
-- **Bottom navigation.** Summary, Month, Entries and Splits sit at the bottom.
+- **Bottom navigation.** Summary, Entries and Splits sit at the bottom.
   The **•••** button opens Imports, Settings and FAQ.
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
-  `Ethan · Direct + Shared`). Month and Entries add previous and next month
-  buttons beside it. Tap it to change the view first, then the scope.
+  `Ethan · Direct + Shared`). Tap it to change the view first, then the
+  scope. Entries adds previous and next month buttons beside it.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
+- **Month button.** On Summary, the button beside the bar says **All
+  months**. Tap it to pick one month of the range
+  ([Pick a month](#pick-a-month)). With a month picked it shows that month,
+  with **‹** and **›** to step to the month before or after.
 - **Edit sheets.** Adding or editing a row opens a sheet from the bottom of
   the screen instead of editing inside the table. **Done** or **Save** saves;
   **Cancel**, the ✕ or tapping outside closes it without saving.
   ![Editing a plan row on a phone opens a sheet](/faq/guide/phone/thumbs/phone-month-sheet.webp)
-- **Swipe months.** On Month and Entries, swipe left or right to move to the
-  next or previous month.
 - **Floating buttons.** The round **+** button adds an entry on Entries; on
   Splits, the receipt button adds a shared expense. The eye button hides or
   shows totals.
@@ -223,8 +226,8 @@ plan.
   Savings target and Realized savings, added up over the selected range.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
-- **Spending Mix**: a donut of spending by category, with a list of
-  categories below it.
+- **Spending Mix**: a donut of spending by category over the whole range,
+  with a list of categories below it.
 - **Intent vs Outcome**: one card per month comparing planned and actual
   income, spending and savings.
 - **Wallets in view**: the current balance of each account and whether a
@@ -240,12 +243,16 @@ plan.
 - **Scope** (person views only): the small **Direct / Shared / Both** switch
   under the Summary title. Hover an option to see what it counts; one click
   switches ([Scopes](#scopes-direct-shared-direct-shared)).
-- **Month chips** above the donut: **Range overall**, or one month.
+- **Month** (on a computer, the row of months under the top bar; on a
+  phone, the button beside the View and scope bar): **All months** is this
+  page. Pick a month to open that month's plan
+  ([Pick a month](#pick-a-month)).
 - **A category in the list**: select it to hide or show it in the donut (it
   says Shown or Hidden). The **›** beside it opens that category's entries.
   The coloured icon changes the category's icon and colour.
 - **A month card** in Intent vs Outcome: expand it for the planned, actual and
-  variance table. The pencil edits that month's note.
+  variance table. The pencil edits that month's note. The month's name opens
+  that month.
 
 ![Wallets in view shows current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
 
@@ -254,16 +261,44 @@ plan.
 1. To see one person: select their name at the top left.
 2. To check last year: select **‹** next to the range until the months you
    want are shown.
-3. To find what drove spending: pick a month chip, then select **›** next to
-   the biggest category to open those entries.
+3. To find what drove spending: select **›** next to the biggest category in
+   Spending Mix to open those entries, or pick a month to see its plan.
+
+### Pick a month
+
+Summary and Month share one place in the navigation. **All months** shows
+Summary for the whole range; one month shows that month's plan (Month). The
+months you can pick are the months in the range at the top; change the range
+there to reach other months.
+
+- On a computer, select a month in the row under the top bar, or **All
+  months** to come back.
+- On a phone, tap **All months** (or the month's name) beside the View and
+  scope bar. **Pick a month** opens: **All months** with what was spent
+  against the plan for the whole range, then each month with what was spent
+  and a bar against its plan. A month that went over its plan shows its
+  amount in red with "over". The month you are on has an orange border and a
+  tick. **Change range** takes you to the range at the top.
+  ![Pick a month on a phone: All months, then each month with what was spent against its plan](/faq/guide/phone/thumbs/phone-month-picker.webp)
+- With a month picked, **‹** and **›** beside its name step to the month
+  before or after, within the range.
+- The **Summary** button in the navigation always goes back to All months.
+
+With totals hidden, the amounts show as dots and nothing turns red or says
+"over".
 
 ### On a phone
 
 The cards scroll sideways. The range sits at the top. The person and scope
 live in the floating **View and scope** bar above the navigation; tap it to
-change either.
+change either. The month button beside it picks a month
+([Pick a month](#pick-a-month)).
 
 ## Month
+
+Month is the plan for one month. Open it from Summary by picking a month
+([Pick a month](#pick-a-month)); the **Summary** button in the navigation
+stays highlighted, and the range at the top stays as it was.
 
 ### What you see
 
@@ -282,6 +317,9 @@ change either.
 
 ### What each control does
 
+- **Month**: the row of months under the top bar (on a phone, **‹**, the
+  month's name and **›** beside the View and scope bar) moves to another
+  month of the range, or **All months** back to Summary.
 - **Select a row** (anywhere outside its buttons) to edit it in place:
   category, item name, planned amount and note. **Save** keeps it, **Cancel**
   discards, **Delete** removes the row.
@@ -306,8 +344,8 @@ fixing an actual means fixing the entry.
 ### On a phone
 
 Rows open in an edit sheet. The view and scope live in the floating **View
-and scope** bar, next to the previous and next month buttons. Swipe sideways
-to change month.
+and scope** bar. Beside it, **‹** and **›** step through the range's months,
+and the month's name opens **Pick a month**.
 
 ![Month on a phone, with the View and scope bar above the navigation](/faq/guide/phone/thumbs/phone-month.webp)
 
@@ -620,8 +658,8 @@ Good to know:
 
 ## Plan a month
 
-1. Open **Month**, select your name at the top left (Household is read-only)
-   and choose the month.
+1. Open **Summary**, select your name at the top left (Household is
+   read-only) and pick the month ([Pick a month](#pick-a-month)).
 2. Under **Income**, select **+ Add income source** and enter each expected
    income.
 3. Under **Planned Items**, select **+ Add planned item** for each fixed
@@ -645,7 +683,7 @@ A budget bucket's actual comes from every entry in its category. A planned
 item's actual comes only from the entries you link, because several planned
 items can share a category (for example Bills).
 
-1. Open **Month** in your person view.
+1. On **Summary**, pick the month in your person view.
 2. In **Planned Items**, select **Link entries** under the item's actual.
 3. The list starts narrowed to likely matches. Use the chips **Linked**,
    **Same category**, **Same account** and **This month only**, or type in
@@ -660,7 +698,7 @@ next month. It never links them without you.
 
 ## Duplicate, reset or delete a month
 
-Open **Month**, choose the month, then select **Actions**.
+On **Summary**, pick the month, then select **Actions**.
 
 ![The Actions menu on Month](/faq/guide/desktop/thumbs/month-actions.webp)
 

@@ -511,12 +511,14 @@ scope control:
   View and scope bar from `App.jsx` (`stickyScopeConfig`), and Summary does
   not render its switch at all. The bar's dialog holds the view pills and
   the scope pills; on Summary the scope section also carries the line saying
-  what the scope counts. Month and Entries add month arrows beside the bar;
-  Summary has no arrows because its range moves from the header.
+  what the scope counts. Entries adds month arrows beside the bar; the
+  Summary tab (Summary or Month) adds its month control instead ("Summary
+  Tab Month Choice" below), because its range moves from the header.
 
 The bar's label is two lines: the person and a short scope name
 (`messages.views.scopeShortLabel`: `Direct`, `Shared`, `Direct + Shared`),
-then `View and scope`. The label is wrapping text whose scope part
+then `View and scope`. Beside the Summary tab's month control the second
+line is dropped, so the bar stays one 46 px row. The label is wrapping text whose scope part
 (`· Direct + Shared`) is `nowrap`, so a long name wraps before the scope
 instead of either being cut short; there is no ellipsis. The trigger is at
 least 46 px tall, and on Month and Summary the floating money toggle sits
@@ -532,6 +534,64 @@ figures while the next scope loads. An option sets the route's `scope`, and
 the route reloads Summary; no extra request and no DTO field. The scope rules are
 imported by `summary-query.js` in the entry chunk, so the Summary and Month
 route chunks share them without a new first-screen file.
+
+## Summary Tab Month Choice
+
+Summary and Month are one tab, `Summary`. Its month choice is "All months"
+(the Summary page for the header's range, `/summary`) or one month of that
+range (the Month page, `/month?month=YYYY-MM`). The URL stays the source of
+truth: `getSelectedTabId` still returns `summary` or `month`, the route
+registry in `App.jsx` gives the Summary tab `routeIds: ["summary", "month"]`
+so it is active on both (`isRouteTabActive` in `app-shell-navigation.jsx`
+sets `is-active` and `aria-current`), and old `/month` links, the Shortcut
+and guide links open the tab with that month picked. Tapping the Summary tab
+opens All months, from a picked month too. The header period control keeps
+picking the range on both routes; the months offered are the range's months
+(`rangeMonths` of the Summary page DTO).
+
+- Rules: `summary-month-choice.js` (pure). A month choice pins the range on
+  screen into the URL (`summary_start`, `summary_end`), because a Summary
+  request without both bounds anchors its range on `month`; with both,
+  `buildSummaryPageParams` names the range end as the month, so every month
+  of a range shares one Summary cache entry, and `seedPinnedSummaryPage`
+  stores the page already loaded under the pinned key instead of fetching it
+  again. A header range change keeps a picked month inside the new range
+  (`clampMonthToRange`). With a month picked, App loads the range's Summary
+  page beside the Month page through the Summary owner
+  (`loadSummaryRangeContext`): from All months it is a cache hit; a `/month`
+  deep link fetches it. It never blocks the Month page or shows its error
+  screen; until it lands the header shows the URL's range and the month
+  controls wait.
+- Phone island (`SummaryMonthIslandControl` in `summary-month-picker.jsx`,
+  entry chunk): beside the View and scope trigger, `All months ▾` with the
+  hint `Month`; with a month picked `‹ Sep 2026 ›`, where the arrows step
+  through the range's months (disabled at its ends) and the middle opens the
+  sheet. Same height, border, radius and shadow as the trigger
+  (`.mobile-month-choice`).
+- "Pick a month" sheet (`summary-month-sheet.jsx` and its CSS, a lazy chunk
+  loaded on first open): a modal Radix dialog with the View and scope
+  sheet's classes (bottom sheet, focus trapped, Escape and backdrop close,
+  focus starts on the sheet itself). Its head shows the range and a `Change
+  range` link that closes the sheet and opens the header's start picker. An
+  All months card shows the range's actual spend against planned spend with
+  a bar; then one tile per range month, grouped by year, newest first, with
+  the month, actual spend in whole dollars and a bar against that month's
+  plan. Figures are the Summary page months already loaded
+  (`realExpensesMinor`, `estimatedExpensesMinor`); no request. The bar track
+  is sky (the plan), the fill a neutral grey; over plan the amount and fill
+  take the rose money tone (`spendTone`, so spending with no plan is over)
+  and the amount adds `· over`. The current choice has the terracotta border
+  and, on a tile, a tick. Hidden money shows dots, no tone, no bold and no
+  `over`.
+- Desktop and tablet (`SummaryMonthSelector`): one compact row under the
+  header, `All months` then the range's months newest first, in the pill
+  style the Spending Mix month chips used (`.summary-focus-button`), with
+  `aria-pressed`. Hidden on a phone.
+- Spending Mix has no month chips of its own: Summary is All months, so it
+  shows the whole range (`categoryShareChart`). `summary_focus` is ignored.
+- Bundle: the island control, the row and the rules are in the entry chunk
+  (about 0.8 kB gzip); the sheet is not. The sheet draws its tick itself and
+  takes tone classes from the rules module, so it adds no first-screen file.
 
 ## Money Privacy Display Preference
 

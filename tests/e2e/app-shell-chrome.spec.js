@@ -68,11 +68,20 @@ test.describe("route tabs and the More pages menu", () => {
     await page.goto("/summary?view=person-tim&month=2026-05");
     await waitUsable(page);
     const tabs = page.getByRole("navigation", { name: /./ }).first();
-    await tabs.getByRole("link", { name: "Month", exact: true }).click();
-    await expect(page).toHaveURL(/\/month\?.*view=person-tim/);
+    // Month is no tab of its own; the Summary tab covers it.
+    await expect(tabs.getByRole("link", { name: "Month", exact: true })).toHaveCount(0);
+    await tabs.getByRole("link", { name: "Entries", exact: true }).click();
+    await expect(page).toHaveURL(/\/entries\?.*view=person-tim/);
     await expect(page).toHaveURL(/month=2026-05/);
-    await expect(tabs.getByRole("link", { name: "Month", exact: true })).toHaveClass(/is-active/);
+    await expect(tabs.getByRole("link", { name: "Entries", exact: true })).toHaveClass(/is-active/);
+    await expect(tabs.getByRole("link", { name: "Entries", exact: true })).toHaveAttribute("aria-current", "page");
     await expect(tabs.getByRole("link", { name: "Summary", exact: true })).not.toHaveClass(/is-active/);
+
+    // A picked month (/month) marks the Summary tab.
+    await page.goto("/month?view=person-tim&month=2026-05");
+    await waitUsable(page);
+    await expect(tabs.getByRole("link", { name: "Summary", exact: true })).toHaveClass(/is-active/);
+    await expect(tabs.getByRole("link", { name: "Entries", exact: true })).not.toHaveClass(/is-active/);
   });
 
   test("the More pages menu opens by keyboard, lists the secondary pages and navigates", async ({ page }) => {
@@ -104,8 +113,10 @@ test.describe("month and range pickers", () => {
     await reseedDemo(page);
   });
 
+  // Entries keeps the header's single-month picker (the Summary tab picks
+  // its month under the header instead).
   test("the month picker switches years, picks a month by keyboard, closes and returns focus", async ({ page }) => {
-    await page.goto("/month?view=household&month=2026-05&scope=direct_plus_shared");
+    await page.goto("/entries?view=household&month=2026-05");
     await waitUsable(page);
     const trigger = page.locator(".period-range-segment");
     await expect(trigger).toHaveText("May 2026");
@@ -200,17 +211,20 @@ test.describe("month and range pickers", () => {
     });
   }
 
-  test("Summary and Month keep their period arrows", async ({ page }) => {
+  test("Summary and a picked month keep the range arrows", async ({ page }) => {
     await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared");
     await waitUsable(page);
     await expect(page.locator(".period-nav-cluster")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Previous period" }).first()).toBeVisible();
-    await page.goto("/month?view=household&month=2026-05&scope=direct_plus_shared");
+    // With a month picked the header still moves the range, and the month
+    // stays while the range still has it.
+    await page.goto("/month?view=household&month=2025-08&scope=direct_plus_shared&summary_start=2025-07&summary_end=2025-09");
     await waitUsable(page);
+    await expect(page.locator(".control-bar .period-mode")).toHaveText("Range");
     await expect(page.getByRole("button", { name: "Previous period" }).first()).toBeEnabled();
     await page.getByRole("button", { name: "Previous period" }).first().click();
-    // The seeded household steps back to its previous month with data.
-    await expect(page).toHaveURL(/month=2025-10/);
+    await expect(page).toHaveURL(/summary_start=2025-06&summary_end=2025-08/);
+    await expect(page).toHaveURL(/month=2025-08(&|$)/);
   });
 });
 

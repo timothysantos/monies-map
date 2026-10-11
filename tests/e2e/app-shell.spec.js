@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { reseedDemo } from "./helpers";
 
+// Month is no tab of its own: the Summary tab picks a month
+// (summary-month-choice.spec.js).
 const tabExpectations = [
   { name: "Summary", heading: "Summary", exact: true },
-  { name: "Month", heading: "Month", exact: true },
   { name: "Entries", heading: "Entries", exact: true },
   { name: "Splits", heading: "Splits", exact: true },
   { name: "Imports", heading: "Imports", exact: true },
@@ -103,7 +104,8 @@ test("summary month round trip stays hydrated after month navigation", async ({ 
   await page.goto("/summary?view=person-tim&month=2026-04&summary_start=2025-06&summary_end=2026-04");
   await expect(page).toHaveURL(/\/summary\?/);
 
-  await page.getByRole("link", { name: "Month", exact: true }).click();
+  // The desktop month row under the header picks a month of the range.
+  await page.getByRole("group", { name: "Month" }).getByRole("button").nth(1).click();
   await expect(page).toHaveURL(/\/month\?/);
 
   await page.getByRole("link", { name: "Summary", exact: true }).click();
@@ -138,7 +140,7 @@ test("every top-level tab renders without crashing", async ({ page }) => {
     let nextTransition = randomizedTransitions[0];
 
     if (tabExpectations[currentIndex].name === "Entries") {
-      nextTransition = availableTransitions.find(({ tab }) => tab.name === "Month") ?? nextTransition;
+      nextTransition = availableTransitions.find(({ tab }) => tab.name === "Summary") ?? nextTransition;
     }
 
     if (!nextTransition) {

@@ -186,7 +186,38 @@ Exit signal:
 - `refreshShell: true` appears only in the named import account-creation refresh
   plan, not in general import commit / rollback flow.
 
-## 8. What This Means For The First Slice
+## 8. Navigation: One Summary Tab For Summary And Month
+
+Decision (owner-approved, 2026-10-11):
+
+- Summary and Month are one `Summary` tab. Its month choice is "All months"
+  (the Summary page) or one month of the header's range (the Month page).
+- The two routes stay: `/summary` is All months and `/month?month=YYYY-MM`
+  a picked month, so bookmarks, the Shortcut and guide links keep working
+  and the URL stays the source of truth. The route registry maps one tab to
+  both route ids (`routeIds`); no route was renamed and no page DTO changed.
+- The header keeps the range on both routes. The month is picked in the
+  phone's floating island (with a "Pick a month" sheet) or the desktop month
+  row under the header. A month choice pins the range into the URL.
+- The phone's bottom bar holds the primary tabs (Summary, Entries, Splits)
+  plus the ••• menu; its grid has one column per primary tab, so the Ask
+  tab another branch adds is one `primary: true` registry line.
+- Spending Mix lost its own month chips: the tab's month choice drives it.
+- With a month picked, the range's Summary page loads beside the Month page
+  through the Summary owner; it is optional for the Month page (never its
+  error screen), and from All months it is already cached.
+
+Rejected:
+
+- a Range / Month segmented switch on the page (the first prototype): it
+  added a control above every Summary and Month page for what the island
+  already holds.
+- renaming `/month`: it would break saved links and the Shortcut.
+
+Details: design.md, "Summary Tab Month Choice"; `docs/flows/summary-flow.md`
+and `docs/flows/month-flow.md`.
+
+## 9. What This Means For The First Slice
 
 For the first slice refactor:
 
@@ -196,7 +227,7 @@ For the first slice refactor:
   shared helper with explicit tests
 - remove hidden broad invalidation as soon as the slice owns its query contract
 
-## 9. Stop Condition
+## 10. Stop Condition
 
 If the code proves one of these decisions wrong, update this document before
 continuing the refactor.

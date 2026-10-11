@@ -17,9 +17,13 @@ export function buildSummaryPageParams({
   summaryStart,
   summaryEnd
 }) {
+  // With both bounds the range no longer depends on `month` (the Worker only
+  // anchors an implicit range on it), so the request names the range end:
+  // one cache entry per range, whichever month of it the Summary tab has
+  // picked. The mutation invalidations already key a range this way.
   const params = new URLSearchParams({
     view: viewId,
-    month,
+    month: summaryStart && summaryEnd ? summaryEnd : month,
     scope
   });
 
@@ -70,6 +74,23 @@ export async function fetchSummaryPageQuery(queryClient, params, options = {}) {
     path: "/api/summary-page",
     queryKey: summaryPageKeyFromParams(params)
   });
+}
+
+// Picking a month pins the range on screen into the URL. That pinned request
+// answers exactly what the implicit one did (same range, same figures), so the
+// loaded page is stored under the pinned key too instead of downloading it
+// again. Returns true when it stored the page.
+export function seedPinnedSummaryPage(queryClient, loadedParams, pinnedParams) {
+  const pinnedKey = summaryPageKeyFromParams(pinnedParams);
+  if (queryClient.getQueryData(pinnedKey)) {
+    return false;
+  }
+  const loaded = queryClient.getQueryData(summaryPageKeyFromParams(loadedParams));
+  if (!loaded) {
+    return false;
+  }
+  queryClient.setQueryData(pinnedKey, loaded);
+  return true;
 }
 
 export async function fetchSummaryAccountPillsQuery(queryClient, params, options = {}) {

@@ -218,6 +218,21 @@ evidence in `docs/audits/macro-loading-baseline.md`) left this shape:
   recalculation and page projections live in focused modules; persistence
   refactors are proven with `scripts/persisted-state-snapshot.mjs`.
 
+### Navigation: one Summary tab (current, 2026-10)
+
+Summary and Month are one `Summary` tab. "All months" is the Summary page
+(`/summary`), a picked month of the header's range is the Month page
+(`/month?month=YYYY-MM`); both URLs stay, so saved links and the Shortcut
+keep working. The header picks the range on both; the month is picked in
+the phone's floating island and its "Pick a month" sheet, or the desktop
+month row under the header. A month choice pins the range into the URL, and
+a pinned Summary request is keyed by its range, so moving between months and
+All months reuses one Summary page instead of fetching it again. The phone
+bar holds Summary, Entries and Splits plus the ••• menu (one grid column per
+primary tab). Spending Mix follows the tab's month choice and has no month
+chips. Decision: `docs/refactor-decisions.md` §8; design:
+design.md, "Summary Tab Month Choice".
+
 ### Client state strategy
 
 - route state should select the active screen and screen parameters

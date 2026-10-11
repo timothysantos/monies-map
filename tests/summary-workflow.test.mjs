@@ -3,9 +3,7 @@ import test from "node:test";
 
 import {
   buildSummaryEntriesLocation,
-  buildSummaryMonthLocation,
-  buildSummaryMutationRefreshPlan,
-  SUMMARY_FOCUS_OVERALL
+  buildSummaryMutationRefreshPlan
 } from "../src/client/summary-workflow.js";
 
 test("summary drilldown to entries keeps range context and replaces stale entry filters", () => {
@@ -23,21 +21,8 @@ test("summary drilldown to entries keeps range context and replaces stale entry 
   });
 });
 
-test("summary drilldown to month keeps the surrounding summary route context", () => {
-  const location = buildSummaryMonthLocation(
-    "?view=household&month=2026-05&summary_start=2025-06&summary_end=2026-05&summary_focus=2025-10",
-    "2025-10"
-  );
-
-  assert.deepEqual(location, {
-    pathname: "/month",
-    search: "?view=household&month=2025-10&summary_start=2025-06&summary_end=2026-05&summary_focus=2025-10"
-  });
-});
-
-test("summary overall focus token stays explicit and shared", () => {
-  assert.equal(SUMMARY_FOCUS_OVERALL, "overall");
-});
+// Opening a month from Summary is the Summary tab's month choice:
+// tests/summary-month-choice.test.mjs.
 
 test("summary mutation refresh plans keep note saves and drilldown returns narrow", () => {
   assert.deepEqual(buildSummaryMutationRefreshPlan({ kind: "note-save" }), {

@@ -19,11 +19,7 @@ import {
   toggleHiddenDonutItemIds
 } from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
-import {
-  buildSummaryEntriesLocation,
-  buildSummaryMonthLocation,
-  SUMMARY_FOCUS_OVERALL
-} from "./summary-workflow";
+import { buildSummaryEntriesLocation } from "./summary-workflow";
 import {
   BarLine,
   MetricCard
@@ -47,8 +43,8 @@ const {
 // 1. Range-level metrics and spending mix.
 // 2. Month-by-month "intent vs outcome" plan review.
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh }) {
-  const [searchParams, setSearchParams] = useSearchParams();
+export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth }) {
+  const [, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobileLayout = useIsMobileLayout();
@@ -68,24 +64,23 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     ...view.summaryPage
   }), [view.summaryPage]);
 
-  const summaryFocusParam = searchParams.get("summary_focus");
-  // Memoized so the check-in's signals stay stable across unrelated
-  // rerenders.
-  const focusState = useMemo(
-    () => buildSummaryFocusState(safeSummaryPage, summaryFocusParam),
-    [safeSummaryPage, summaryFocusParam]
-  );
+  // Summary is the Summary tab's "All months": its Spending Mix covers the
+  // whole range. One month of it is the Month page, picked with the tab's
+  // month control (summary-month-choice.js), which replaced Spending Mix's
+  // own month chips. The money check-in keeps the focus it had by default
+  // before: its month-level lines talk about the range's latest month.
+  const checkInFocusMonth = safeSummaryPage.rangeMonths.at(-1) ?? "";
   const checkInClock = useCheckInClock();
   const summaryInsights = useSummaryInsights();
   // Null until the insights module arrives: the insights show their frame.
   const checkIn = useMemo(() => (summaryInsights ? {
     memoryKey: checkInMemoryKey("summary", view.id),
-    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "overall" : focusState.selectedFocusMonth, view.selectedScope].join("|"),
+    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), checkInFocusMonth, view.selectedScope].join("|"),
     signals: summaryInsights.buildSummarySignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       today: checkInClock.today,
-      focusMonth: summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "" : focusState.selectedFocusMonth,
+      focusMonth: checkInFocusMonth,
       months: safeSummaryPage.months,
       categoryShareByMonth: safeSummaryPage.categoryShareByMonth,
       accountPills: safeSummaryPage.accountPills,
@@ -100,7 +95,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     calmLines: summaryInsights.SUMMARY_CALM_LINES,
     alsoLabel: "Also in this period",
     clock: checkInClock
-  } : null), [accounts, checkInClock, focusState.selectedFocusMonth, safeSummaryPage, summaryFocusParam, summaryInsights, view.id, view.label, view.selectedScope]);
+  } : null), [accounts, checkInClock, checkInFocusMonth, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
     if (action.id === "review-statement") {
       handleOpenImports();
@@ -113,14 +108,6 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     navigate(buildSummaryEntriesLocation(location.search, nextFilters));
   }
 
-  function handleFocusChange(nextMonth) {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("summary_focus", nextMonth || SUMMARY_FOCUS_OVERALL);
-      return next;
-    });
-  }
-
   // Scope is a route parameter, as on Month: the route reloads Summary for it.
   function handleScopeChange(scopeKey) {
     setSearchParams((current) => {
@@ -131,16 +118,13 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   }
 
   function handleOpenEntriesForCategory(categoryName) {
-    navigateToEntries({
-      entry_category: categoryName,
-      month: focusState.selectedFocusMonth
-    });
+    navigateToEntries({ entry_category: categoryName });
   }
 
   function handleOpenEntriesForAccount(accountId) {
     navigateToEntries({
       entry_wallet: accountId,
-      month: focusState.selectedFocusMonth || selectedMonth
+      month: selectedMonth
     });
   }
 
@@ -149,10 +133,6 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       pathname: "/imports",
       search: location.search
     });
-  }
-
-  function handleOpenMonth(month) {
-    navigate(buildSummaryMonthLocation(location.search, month));
   }
 
   async function saveSummaryMonthNote() {
@@ -200,18 +180,15 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
 
       <div className="summary-top-grid">
         <SummarySpendingMixSection
-          rangeMonths={safeSummaryPage.rangeMonths}
-          focusState={focusState}
+          donutData={safeSummaryPage.categoryShareChart}
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
-          onFocusChange={handleFocusChange}
           onOpenEntriesForCategory={handleOpenEntriesForCategory}
-          summaryFocusParam={summaryFocusParam}
         />
 
         <SummaryIntentVsOutcomeSection
           months={safeSummaryPage.months}
-          onOpenMonth={handleOpenMonth}
+          onOpenMonth={onOpenMonth}
           onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
         />
       </div>
@@ -276,19 +253,18 @@ function SummaryScopeSwitch({ view, onScopeChange }) {
   );
 }
 
+// The range's spending by category. It follows the Summary tab's month
+// choice: Summary is All months, so it shows the whole range.
 function SummarySpendingMixSection({
-  rangeMonths,
-  focusState,
+  donutData,
   categories,
   onCategoryAppearanceChange,
-  onFocusChange,
-  onOpenEntriesForCategory,
-  summaryFocusParam
+  onOpenEntriesForCategory
 }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
   const visibleDonutData = useMemo(
-    () => getVisibleDonutData(focusState.donutData, hiddenCategoryIds),
-    [focusState.donutData, hiddenCategoryIds]
+    () => getVisibleDonutData(donutData, hiddenCategoryIds),
+    [donutData, hiddenCategoryIds]
   );
   const visibleTotalMinor = sumDonutValueMinor(visibleDonutData);
   const hiddenCount = hiddenCategoryIds.size;
@@ -304,26 +280,6 @@ function SummarySpendingMixSection({
       </div>
       <div className="summary-mix">
         <div className="summary-mix-main">
-          <div className="summary-mix-months">
-            <button
-              type="button"
-              className={`summary-focus-button ${summaryFocusParam === SUMMARY_FOCUS_OVERALL ? "is-active" : ""}`}
-              onClick={() => onFocusChange("")}
-            >
-              {messages.summary.rangeOverall}
-            </button>
-            {rangeMonths.slice().reverse().map((month) => (
-              <button
-                key={month}
-                type="button"
-                className={`summary-focus-button ${focusState.selectedFocusMonth === month ? "is-active" : ""}`}
-                onClick={() => onFocusChange(month)}
-              >
-                {formatService.formatMonthLabel(month)}
-              </button>
-            ))}
-          </div>
-
           <SpendingMixChart
             data={visibleDonutData}
             categories={categories}
@@ -336,7 +292,7 @@ function SummarySpendingMixSection({
           ) : null}
 
           <div className="share-list">
-            {focusState.donutData.map((item) => {
+            {donutData.map((item) => {
               const category = categoryService.get(categories, item);
               const categoryName = category?.name ?? item.label;
               const isHidden = hiddenCategoryIds.has(getDonutItemId(item));
@@ -589,38 +545,6 @@ function SummaryMonthNoteDialog({ monthNoteDialog, isSaving = false, errorMessag
       </Dialog.Portal>
     </Dialog.Root>
   );
-}
-
-function buildSummaryFocusState(summaryPage, summaryFocusParam) {
-  // Summary can hydrate before the full range slice lands, so default to
-  // empty collections instead of assuming every summary field is present.
-  const safeSummaryPage = summaryPage ?? {
-    rangeMonths: [],
-    categoryShareByMonth: [],
-    categoryShareChart: [],
-    months: []
-  };
-  const rangeMonths = safeSummaryPage.rangeMonths ?? [];
-  const categoryShareByMonth = safeSummaryPage.categoryShareByMonth ?? [];
-  const categoryShareChart = safeSummaryPage.categoryShareChart ?? [];
-  const months = safeSummaryPage.months ?? [];
-  const latestRangeMonth = rangeMonths.at(-1) ?? "";
-  const selectedFocusMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
-    ? ""
-    : (summaryFocusParam && rangeMonths.includes(summaryFocusParam)
-      ? summaryFocusParam
-      : latestRangeMonth);
-  const selectedDonutMonth = categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
-  const donutData = selectedDonutMonth?.data ?? categoryShareChart;
-  const totalSpendMinor = selectedDonutMonth
-    ? months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
-    : months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
-
-  return {
-    selectedFocusMonth,
-    donutData,
-    totalSpendMinor
-  };
 }
 
 function buildMonthPlanReview(month) {
