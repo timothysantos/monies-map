@@ -64,21 +64,23 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     ...view.summaryPage
   }), [view.summaryPage]);
 
-  // Summary is the Summary tab's "All months": its Spending Mix and money
-  // check-in cover the whole range. One month of it is the Month page, picked
-  // with the tab's month control (summary-month-choice.js), which replaced
-  // Spending Mix's own month chips.
+  // Summary is the Summary tab's "All months": its Spending Mix covers the
+  // whole range. One month of it is the Month page, picked with the tab's
+  // month control (summary-month-choice.js), which replaced Spending Mix's
+  // own month chips. The money check-in keeps the focus it had by default
+  // before: its month-level lines talk about the range's latest month.
+  const checkInFocusMonth = safeSummaryPage.rangeMonths.at(-1) ?? "";
   const checkInClock = useCheckInClock();
   const summaryInsights = useSummaryInsights();
   // Null until the insights module arrives: the insights show their frame.
   const checkIn = useMemo(() => (summaryInsights ? {
     memoryKey: checkInMemoryKey("summary", view.id),
-    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), "overall", view.selectedScope].join("|"),
+    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), checkInFocusMonth, view.selectedScope].join("|"),
     signals: summaryInsights.buildSummarySignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       today: checkInClock.today,
-      focusMonth: "",
+      focusMonth: checkInFocusMonth,
       months: safeSummaryPage.months,
       categoryShareByMonth: safeSummaryPage.categoryShareByMonth,
       accountPills: safeSummaryPage.accountPills,
@@ -93,7 +95,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     calmLines: summaryInsights.SUMMARY_CALM_LINES,
     alsoLabel: "Also in this period",
     clock: checkInClock
-  } : null), [accounts, checkInClock, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
+  } : null), [accounts, checkInClock, checkInFocusMonth, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
     if (action.id === "review-statement") {
       handleOpenImports();

@@ -8989,6 +8989,16 @@ th {
     line-height: 1.25;
   }
 
+  /* Beside the Summary tab's month control: heard, not shown. */
+  .mobile-context-trigger-hint.is-screen-reader-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .mobile-context-trigger-caret {
     color: var(--accent-strong);
     font-size: 0.92rem;

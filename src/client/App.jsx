@@ -2976,15 +2976,11 @@ export function App() {
                         <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
                       ) : null}
                     </span>
-                    {/* Beside the month control the hint goes, so the bar stays one 46px row. */}
-                    {showMobileMonthChoice ? null : (
-                      <>
-                        {" "}
-                        <span className="mobile-context-trigger-hint">
-                          {showMobileContextScopeSection ? "View and scope" : "View"}
-                        </span>
-                      </>
-                    )}
+                    {/* Beside the month control the hint is for screen readers only, so the bar stays one 46px row. */}
+                    {" "}
+                    <span className={`mobile-context-trigger-hint ${showMobileMonthChoice ? "is-screen-reader-only" : ""}`}>
+                      {showMobileContextScopeSection ? "View and scope" : "View"}
+                    </span>
                   </span>
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
