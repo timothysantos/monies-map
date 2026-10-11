@@ -44,7 +44,7 @@ test("salary moved, payments didn't: a To do naming both accounts, the payments 
   assert.equal(signal.phrasings[0].fact, "Joyce's salary has gone into UOB One since Thu 23 Jul, but OCBC 360 still pays $1,500.00 a month to Ifast Financial. It had $2,227.49 on Fri 31 Jul.");
   assert.equal(signal.phrasings[0].think, "When a payment's account runs low, the bank can't make it and charges for trying. Moving the payment, or topping the account up, clears it.");
   // One payee's monthly total is one amount: it "leaves", never "leave".
-  assert.equal(signal.phrasings[1].fact, "Since Thu 23 Jul, Joyce's salary lands in UOB One, while $1,500.00 a month to Ifast Financial still leaves OCBC 360. It had $2,227.49 on Fri 31 Jul.");
+  assert.equal(signal.phrasings[1].fact, "Since Thu 23 Jul, Joyce's salary goes into UOB One, while $1,500.00 a month to Ifast Financial still leaves OCBC 360. It had $2,227.49 on Fri 31 Jul.");
   const twoPayees = incomeMovedSignal(household([ocbc({ incomeMoved: { ...movedOn23Aug, payments: [giros[0], { payee: "HDB", amountMinor: 84700 }] } })], "2026-08-23"));
   assert.match(twoPayees.phrasings[1].fact, /\$1,000\.00 to Ifast Financial and \$847\.00 to HDB a month still leave OCBC 360/);
   assertTone(signal);

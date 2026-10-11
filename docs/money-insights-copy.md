@@ -260,8 +260,8 @@ Income from one payer that came into a bank account 3 months in a row now arrive
 Phrasings:
 
 - {whose} {income} has gone into {to} since {date}, but {account} still pays {payments}.{held}
-- Since {date}, {whose} {income} lands in {to}, while {payments} still {leave} {account}.{held}
-- {account} no longer gets {whose} {income}, which goes to {to} since {date}, but it still pays {payments}.{held}
+- Since {date}, {whose} {income} goes into {to}, while {payments} still {leave} {account}.{held}
+- {account} no longer gets {whose} {income}, which has gone to {to} since {date}, but it still pays {payments}.{held}
 - {whose} {income} moved to {to} on {date}. {account} still pays {payments}.{held}
 
 Way to think about it, in turn:
@@ -281,14 +281,14 @@ Phrasings:
 - {whose} {payee} payments ({amounts}) didn't go through on {date}. {account} charged {charge} for each instead.
 - The bank couldn't make {whose} {payee} payments of {amounts} on {date}, and charged {charge} for each.
 - {amounts} to {payee} didn't leave {whose} {account} on {date}; the bank charged {charges} instead.
-- On {date}, {whose} {account} couldn't pay {payee} {amounts} and was charged {charge} for each.
+- On {date}, {whose} {account} couldn't pay {payee} ({amounts}), and was charged {charge} for each.
 
 When the count is 1:
 
 - {whose} {amounts} payment to {payee} didn't go through on {date}. {account} charged {charge} instead.
 - The bank couldn't make {whose} {amounts} payment to {payee} on {date}, and charged {charge} for trying.
 - {amounts} to {payee} didn't leave {whose} {account} on {date}; the bank charged {charge} instead.
-- On {date}, {whose} {account} couldn't pay {payee} {amounts} and was charged {charge}.
+- On {date}, {whose} {account} couldn't pay {payee} {amounts}, and was charged {charge}.
 
 Way to think about it, in turn:
 
