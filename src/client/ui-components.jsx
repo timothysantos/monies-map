@@ -4,15 +4,10 @@ import { Check, ChevronDown, Receipt, X } from "lucide-react";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
-import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
-import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
-import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
 import { useIsMobileLayout } from "./use-viewport";
 import { InlineError } from "./ui-states";
-
-const { format: formatService } = moniesClient;
 
 export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
   const normalizedOptions = [
@@ -280,36 +275,6 @@ export function DeleteRowButton({
   );
 }
 
-export function MetricCard({ card }) {
-  const { areTotalsVisible } = useMoneyPrivacy();
-  const value = card.amountMinor == null ? card.value : formatService.money(card.amountMinor);
-  // A detail that names the figure's sign ("Overplanned") hides with it.
-  const detail = !areTotalsVisible && card.detailFollowsAmount ? null : card.detail;
-  return (
-    <div className={`metric ${metricCardToneClass(card.tone)}`}>
-      <span>{card.label}</span>
-      <strong>{card.amountMinor == null ? value : <PrivateMoney>{value}</PrivateMoney>}</strong>
-      {detail ? (
-        card.detailPopover ? (
-          <Popover.Root>
-            <Popover.Trigger asChild>
-              <button type="button" className="metric-detail-trigger">
-                {detail}
-              </button>
-            </Popover.Trigger>
-            <Popover.Portal>
-              <Popover.Content className="metric-detail-popover" sideOffset={8} align="start">
-                <p>{card.detailPopover}</p>
-                <Popover.Arrow className="category-popover-arrow" />
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
-        ) : <p>{detail}</p>
-      ) : null}
-    </div>
-  );
-}
-
 export function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
   const isActive = sort?.key === columnKey;
   const marker = !isActive ? "" : sort.direction === "asc" ? " ↑" : " ↓";
@@ -324,19 +289,6 @@ export function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
         {label}{marker}
       </button>
     </th>
-  );
-}
-
-export function BarLine({ label, valueMinor, maxMinor, tone }) {
-  const percent = Math.max((valueMinor / Math.max(maxMinor, 1)) * 100, 6);
-  return (
-    <div className="plan-bar-line">
-      <span>{label}</span>
-      <div className="plan-bar-track">
-        <span className={`plan-bar-fill ${moneyToneClass(tone)}`} style={{ width: `${percent}%` }} />
-      </div>
-      <strong><PrivateMoney>{formatService.money(valueMinor)}</PrivateMoney></strong>
-    </div>
   );
 }
 

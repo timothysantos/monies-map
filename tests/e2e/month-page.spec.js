@@ -137,10 +137,11 @@ test.describe("month page", () => {
   });
 
   test("switching the Month view to a person loads that person's page instead of the cached household page", async ({ page }) => {
-    const metricValue = (label) => page.locator(".metric").filter({ hasText: label }).first();
+    // The Month lead: actual spend, and "of $planned plan" beside it.
+    const metricValue = (label) => page.locator(label === "Planned spend" ? ".month-lead .summary-lead-plan" : ".month-lead .summary-lead-spent");
     const readMetrics = async () => ({
-      plannedSpend: (await metricValue("Planned spend").innerText()).replace(/^PLANNED SPEND\s*/i, "").trim(),
-      actualSpend: (await metricValue("Actual spend").innerText()).replace(/^ACTUAL SPEND\s*/i, "").trim()
+      plannedSpend: (await metricValue("Planned spend").innerText()).replace(/^of\s*|\s*plan$/g, "").trim(),
+      actualSpend: (await metricValue("Actual spend").innerText()).trim()
     });
 
     // Tim's figures as a direct load shows them, before any household cache exists.

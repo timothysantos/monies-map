@@ -14,7 +14,7 @@ import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
-import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
+import { MonthLead, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
   buildMobileMonthPlanDialog,
@@ -1478,7 +1478,12 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         isDemoEnvironment={isDemoEnvironment}
       />
 
-      <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
+      <MonthLead
+        cards={monthMetricCards}
+        monthSummary={selectedMonthSummary}
+        month={view.monthPage.month}
+        isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
+      />
 
       <FinancialInsight
         audienceName={view.id === "household" ? "" : view.label}

@@ -11,8 +11,46 @@
   gap: 10px;
 }
 
-.metric-row-month {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+/* The Month top: the spend lead with Income, Saved and Remaining budget
+   pills (month-overview.jsx MonthLead; the layout is summary-lead.css). */
+.month-lead-group {
+  margin-bottom: 20px;
+}
+
+/* Remaining budget is a button: the whole pill opens its explanation. */
+button.summary-support-pill {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.summary-support-pill:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.month-lead-detail {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.16em;
+}
+
+.metric-detail-popover {
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 36px rgba(24, 18, 12, 0.12);
+  border: 1px solid rgba(191, 103, 45, 0.14);
+  z-index: 91;
+}
+
+.metric-detail-popover p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  white-space: normal;
 }
 
 .month-actual-drilldown:disabled {
@@ -214,12 +252,6 @@
   line-height: 1;
 }
 
-@media (max-width: 960px) {
-  .metric-row-month {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 760px) {
   .month-add-dialog-grid {
     grid-template-columns: 1fr;
@@ -254,7 +286,7 @@
     line-height: 1.1;
   }
 
-  .month-panel .metric-row-month {
+  .month-lead-group {
     margin-bottom: 12px;
   }
 

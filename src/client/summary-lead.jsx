@@ -4,7 +4,6 @@ import { PrivateMoney } from "./money-privacy";
 import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
 import { moniesClient } from "./monies-client-service";
 import { buildSummaryLeadModel, formatSummaryLeadRange } from "./summary-lead-model";
-import { MetricCard } from "./ui-components";
 import { LeadCard } from "./ui/lead-support-detail";
 
 const { format: formatService } = moniesClient;
@@ -17,23 +16,32 @@ const planWords = messages.summary.monthChoice;
 // column to the right of the lead. Hidden money: the amounts are dots in
 // plain ink, the bar keeps only its track, the percent and "under/over plan"
 // go, and the pills lose their tint (the money-tone rule in styles.css).
+// Until the cards arrive nothing shows (the old tile row scrolled sideways
+// on a phone).
 export function SummaryLead({ metricCards, rangeStartMonth, rangeEndMonth }) {
   const model = buildSummaryLeadModel(metricCards);
   if (!model) {
-    // Still loading: the cards as they come, in the old row.
-    return (
-      <div className="metric-row metric-row-summary summary-lead-fallback">
-        {metricCards.map((card) => <MetricCard key={card.label} card={card} />)}
-      </div>
-    );
+    return null;
   }
+  return (
+    <SpendLeadGroup
+      model={model}
+      leadClassName="summary-lead"
+      eyebrow={copy.spent(formatSummaryLeadRange(rangeStartMonth, rangeEndMonth))}
+    />
+  );
+}
 
+// The spend lead and its Income and Saved pills, shared by the Summary top
+// and the Month top (month-overview.jsx, which adds Remaining budget as
+// `children`). `model` is buildSummaryLeadModel's shape.
+export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName = "", children = null }) {
   const { headroom } = model;
   return (
-    <div className="summary-lead-group">
+    <div className={`summary-lead-group ${className}`}>
       <LeadCard
-        className="summary-lead"
-        eyebrow={copy.spent(formatSummaryLeadRange(rangeStartMonth, rangeEndMonth))}
+        className={leadClassName}
+        eyebrow={eyebrow}
         amount={(
           <span className={`summary-lead-spent ${moneyToneClass(model.spent.tone)}`}>
             <PrivateMoney>{formatService.money(model.spent.amountMinor)}</PrivateMoney>
@@ -69,6 +77,7 @@ export function SummaryLead({ metricCards, rangeStartMonth, rangeEndMonth }) {
           planLabel={copy.savedTarget}
           planMinor={model.saved.planMinor}
         />
+        {children}
       </div>
     </div>
   );

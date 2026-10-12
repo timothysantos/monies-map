@@ -5,12 +5,13 @@ import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { MetricCard } from "./ui-components";
+import { SpendLeadGroup } from "./summary-lead";
+import { buildMonthLeadModel } from "./month-lead-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
 import { reconciliationTone } from "../domain/money-tone";
-import { moneyToneClass } from "./money-tone-class";
+import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -227,14 +228,52 @@ export function MonthPanelHeader({
   );
 }
 
-export function MonthMetricRow({ cards, isRefreshing = false }) {
+// The Month top (design.md, "Lead · Support · Detail"): the Summary spend
+// lead for this month (actual spend against planned spend, the bar, the
+// percent of plan and the spend gap as "under/over plan"), with Income,
+// Saved and Remaining budget as Support pills. It replaced six tiles that
+// scrolled sideways on a phone; every figure they showed is here.
+export function MonthLead({ cards, monthSummary, month, isRefreshing = false }) {
+  const model = buildMonthLeadModel(cards, monthSummary);
   return (
     <>
       {isRefreshing ? <p className="month-refresh-hint">Updating totals and actuals...</p> : null}
-      <div className="metric-row metric-row-month">
-        {cards.map((card) => <MetricCard key={card.label} card={card} />)}
-      </div>
+      {model ? (
+        <SpendLeadGroup
+          model={model}
+          className="month-lead-group"
+          leadClassName="month-lead"
+          eyebrow={messages.summary.lead.spent(formatService.formatMonthLabel(month))}
+        >
+          <RemainingBudgetPill remaining={model.remaining} />
+        </SpendLeadGroup>
+      ) : null}
     </>
+  );
+}
+
+// Remaining budget (planned income minus planned spend): a soft pill whose
+// "To allocate" or "Overplanned" line explains itself. The whole pill opens
+// the explanation, so the tap target is the pill. The line names the side of
+// zero, so it hides with the money.
+function RemainingBudgetPill({ remaining }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button type="button" className={`summary-support-pill ${metricCardToneClass(remaining.tone)}`} data-metric="remaining">
+          <span className="summary-support-pill-label">{remaining.label}</span>
+          <strong><PrivateMoney>{formatService.money(remaining.amountMinor)}</PrivateMoney></strong>
+          {areTotalsVisible ? <small className="month-lead-detail">{remaining.detail}</small> : null}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="metric-detail-popover" sideOffset={8} align="end">
+          <p>{remaining.detailPopover}</p>
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 

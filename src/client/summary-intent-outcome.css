@@ -1,0 +1,117 @@
+/* Summary's Intent vs Outcome as compact Lead · Support · Detail cards
+   (summary-intent-outcome.jsx, design.md). It ships with the Summary route
+   chunk, never in public/styles.css. Each card is a LeadCard made compact: a
+   lighter shadow and a smaller figure, since a list of them stacks. Nothing
+   inside is wider than the card, so a phone never scrolls sideways. */
+.summary-intent-months {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.summary-intent-month.lsd-card {
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-radius: 18px;
+  box-shadow: 0 6px 16px rgba(27, 24, 21, 0.06);
+}
+
+/* The month name opens the month: a 44px target, drawn as a bold line. */
+.summary-month-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 4px;
+  min-height: 44px;
+  margin: -8px 0 -10px -4px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.summary-month-link svg {
+  color: var(--muted);
+}
+
+.summary-month-link:hover,
+.summary-month-link:focus-visible {
+  color: var(--accent-strong);
+}
+
+.summary-intent-month .lsd-figure .lsd-amount {
+  font-size: 1.4rem;
+}
+
+.summary-intent-month .lsd-chips {
+  gap: 6px;
+}
+
+.summary-intent-month .lsd-chip {
+  font-size: 0.78rem;
+}
+
+/* A metric row: the name, then planned, actual and variance in three
+   columns, each with its caption. */
+.summary-intent-metric.lsd-row {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.summary-intent-metric .lsd-row-label {
+  flex: 1 1 100%;
+  max-width: none;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.summary-intent-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 100%;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.summary-intent-figures > div {
+  min-width: 0;
+}
+
+.summary-intent-figures dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.summary-intent-figures dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-intent-figures dd:is(.money-in, .money-short) {
+  font-weight: 700;
+}
+
+/* Hidden money: the plan line is muted like the Summary lead's. */
+html[data-money-privacy="hidden"] .summary-intent-plan.money-plan {
+  color: var(--muted);
+}
+
+/* Wide screens: the name and its three figures on one line. */
+@media (min-width: 761px) {
+  .summary-intent-metric.lsd-row {
+    flex-wrap: nowrap;
+  }
+
+  .summary-intent-metric .lsd-row-label {
+    flex: 0 0 34%;
+  }
+}
