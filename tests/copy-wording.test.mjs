@@ -6,18 +6,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { messages } from "../src/client/copy/en-SG.js";
+import { importMessages } from "../src/client/copy/en-SG-imports.js";
+import { settingsMessages } from "../src/client/copy/en-SG-settings.js";
 
 test("count strings use the singular for one and the plural otherwise", () => {
   const cases = [
-    [messages.settings.unresolvedTransfersDetailWithCount, "1 transfer row is not fully paired yet", "2 transfer rows are not fully paired yet"],
-    [messages.imports.transactionCount, "1 transaction", "2 transactions"],
-    [messages.imports.inboxMetricCleanupValue, "1 split link", "2 split links"],
-    [messages.imports.intakeParsing, "Reading 1 file in this browser.", "Reading 2 files in this browser."],
-    [messages.imports.reconciliationCandidates, "1 entry reconciliation match needs a decision", "2 entry reconciliation matches need a decision"],
-    [messages.imports.needsReviewRows, "1 row needs review", "2 rows need review"],
-    [messages.imports.deleteDiagnosticEntriesLabel, "Delete 1 ledger row", "Delete 2 ledger rows"],
-    [messages.imports.deleteDiagnosticEntriesProgress, "Deleting 1 ledger row and refreshing", "Deleting 2 ledger rows and refreshing"],
-    [messages.imports.deleteDiagnosticEntriesSuccess, "1 ledger row deleted.", "2 ledger rows deleted."]
+    [settingsMessages.unresolvedTransfersDetailWithCount, "1 transfer row is not fully paired yet", "2 transfer rows are not fully paired yet"],
+    [importMessages.transactionCount, "1 transaction", "2 transactions"],
+    [importMessages.inboxMetricCleanupValue, "1 split link", "2 split links"],
+    [importMessages.intakeParsing, "Reading 1 file in this browser.", "Reading 2 files in this browser."],
+    [importMessages.reconciliationCandidates, "1 entry reconciliation match needs a decision", "2 entry reconciliation matches need a decision"],
+    [importMessages.needsReviewRows, "1 row needs review", "2 rows need review"],
+    [importMessages.deleteDiagnosticEntriesLabel, "Delete 1 ledger row", "Delete 2 ledger rows"],
+    [importMessages.deleteDiagnosticEntriesProgress, "Deleting 1 ledger row and refreshing", "Deleting 2 ledger rows and refreshing"],
+    [importMessages.deleteDiagnosticEntriesSuccess, "1 ledger row deleted.", "2 ledger rows deleted."]
   ];
   for (const [format, one, two] of cases) {
     assert.ok(format(1).startsWith(one), `${format(1)} should start with ${one}`);
@@ -25,27 +27,27 @@ test("count strings use the singular for one and the plural otherwise", () => {
   }
 
   assert.equal(
-    messages.imports.intakeRowDetail({ sourceKind: "UOB card statement", month: "May 2026", cardCount: 2, rowCount: 10 }),
+    importMessages.intakeRowDetail({ sourceKind: "UOB card statement", month: "May 2026", cardCount: 2, rowCount: 10 }),
     "UOB card statement · May 2026 · 2 cards · 10 rows"
   );
   assert.equal(
-    messages.imports.intakeRowDetail({ sourceKind: "CSV file", month: "", cardCount: 0, rowCount: 1 }),
+    importMessages.intakeRowDetail({ sourceKind: "CSV file", month: "", cardCount: 0, rowCount: 1 }),
     "CSV file · 1 row"
   );
   assert.equal(
-    messages.imports.intakeSummary({ total: 2, ready: 1, ambiguous: 0, unexpected: 1, duplicate: 0 }),
+    importMessages.intakeSummary({ total: 2, ready: 1, ambiguous: 0, unexpected: 1, duplicate: 0 }),
     "2 files · 1 matches a file you need · 1 not on your checklist"
   );
-  assert.equal(messages.imports.recentPageSummary(1, 1, 1), "Showing 1-1 of 1 import");
-  assert.equal(messages.imports.recentPageSummary(1, 10, 12), "Showing 1-10 of 12 imports");
-  assert.equal(messages.settings.transferPage(1, 1, 1), "Page 1 of 1 (1 transfer)");
-  assert.equal(messages.settings.transferPage(1, 2, 12), "Page 1 of 2 (12 transfers)");
+  assert.equal(importMessages.recentPageSummary(1, 1, 1), "Showing 1-1 of 1 import");
+  assert.equal(importMessages.recentPageSummary(1, 10, 12), "Showing 1-10 of 12 imports");
+  assert.equal(settingsMessages.transferPage(1, 1, 1), "Page 1 of 1 (1 transfer)");
+  assert.equal(settingsMessages.transferPage(1, 2, 12), "Page 1 of 2 (12 transfers)");
   assert.equal(
-    messages.settings.statementCompareSummary({ accountName: "UOB One", checkpointMonth: "2026-05", matchedRowCount: 0, statementRowCount: 1 }),
+    settingsMessages.statementCompareSummary({ accountName: "UOB One", checkpointMonth: "2026-05", matchedRowCount: 0, statementRowCount: 1 }),
     "UOB One 2026-05: 0 of 1 statement row matched"
   );
   assert.equal(
-    messages.settings.statementCompareSummary({ accountName: "UOB One", checkpointMonth: "2026-05", matchedRowCount: 3, statementRowCount: 4 }),
+    settingsMessages.statementCompareSummary({ accountName: "UOB One", checkpointMonth: "2026-05", matchedRowCount: 3, statementRowCount: 4 }),
     "UOB One 2026-05: 3 of 4 statement rows matched"
   );
   assert.equal(messages.splits.includedSplitRecords(1), "1 included split record");
@@ -53,9 +55,9 @@ test("count strings use the singular for one and the plural otherwise", () => {
   assert.equal(messages.splits.entryCount(1), "1 entry");
   assert.equal(messages.splits.entryCount(4), "4 entries");
 
-  const oneRowConfirm = messages.imports.deleteDiagnosticEntriesConfirm({ count: 1, amount: "$5.00" });
+  const oneRowConfirm = importMessages.deleteDiagnosticEntriesConfirm({ count: 1, amount: "$5.00" });
   assert.match(oneRowConfirm, /^Delete the 1 unresolved ledger row shown here now\? It nets to \$5\.00\./);
-  assert.match(messages.imports.deleteDiagnosticEntriesConfirm({ count: 2, amount: "$5.00" }), /^Delete all 2 unresolved ledger rows shown here now\? Together these rows net to \$5\.00\./);
+  assert.match(importMessages.deleteDiagnosticEntriesConfirm({ count: 2, amount: "$5.00" }), /^Delete all 2 unresolved ledger rows shown here now\? Together these rows net to \$5\.00\./);
 });
 
 test("the Delete month warning mentions the demo only on the demo site", () => {
@@ -77,29 +79,29 @@ test("a page that could not load is named in plain words", () => {
 });
 
 test("the Apple Pay section uses plain words", () => {
-  assert.equal(messages.settings.shortcutAdvancedTitle, "More shortcut settings");
+  assert.equal(settingsMessages.shortcutAdvancedTitle, "More shortcut settings");
   assert.equal(
-    messages.settings.shortcutDefaultAccountsDetail,
+    settingsMessages.shortcutDefaultAccountsDetail,
     "If the shortcut doesn't name an account, entries go to the first account in this list."
   );
-  for (const text of [messages.settings.shortcutAdvancedTitle, messages.settings.shortcutDefaultAccountsDetail]) {
+  for (const text of [settingsMessages.shortcutAdvancedTitle, settingsMessages.shortcutDefaultAccountsDetail]) {
     assert.doesNotMatch(text, /API|accountId|accountName|account_id/);
   }
 });
 
 test("a statement card counts the rows the ledger already has in plain words", () => {
-  assert.equal(messages.imports.statementCardCounts(34, 0), "34 new rows · none already in your ledger");
-  assert.equal(messages.imports.statementCardCounts(1, 26), "1 new row · 26 already in your ledger");
-  assert.doesNotMatch(messages.imports.statementCardCounts(34, 0), /confirm entries you have/);
+  assert.equal(importMessages.statementCardCounts(34, 0), "34 new rows · none already in your ledger");
+  assert.equal(importMessages.statementCardCounts(1, 26), "1 new row · 26 already in your ledger");
+  assert.doesNotMatch(importMessages.statementCardCounts(34, 0), /confirm entries you have/);
 });
 
 test("the commit notice names the file it imported", () => {
   assert.equal(
-    messages.imports.recentCommitSuccess("One Account_Sep 2026.pdf"),
+    importMessages.recentCommitSuccess("One Account_Sep 2026.pdf"),
     "File imported: One Account_Sep 2026.pdf. Recent imports have been updated."
   );
   assert.equal(
-    messages.imports.recentCommitSuccess("PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf", ["UOB One Card - Tim", "UOB Privi Miles - Tim"]),
+    importMessages.recentCommitSuccess("PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf", ["UOB One Card - Tim", "UOB Privi Miles - Tim"]),
     "File imported: PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf into UOB One Card - Tim and UOB Privi Miles - Tim. Recent imports have been updated."
   );
 });

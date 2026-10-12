@@ -1,6 +1,6 @@
 import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { getAccountSelectOptions } from "./account-display";
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { formatDateOnly } from "./formatters";
 
 const EARLIER_IMPORT_LIMIT = 5;
@@ -74,12 +74,12 @@ export function buildEarlierImportLines(recentImports, committedImportId, limit 
     .slice(0, limit)
     .map((item) => ({
       id: item.id,
-      text: messages.imports.recentEarlierItem({
+      text: importMessages.recentEarlierItem({
         accountNames: item.accountNames ?? [],
         period: item.startDate && item.endDate
           ? item.startDate === item.endDate
             ? formatDateOnly(item.startDate)
-            : messages.imports.donePeriod(formatDateOnly(item.startDate), formatDateOnly(item.endDate))
+            : importMessages.donePeriod(formatDateOnly(item.startDate), formatDateOnly(item.endDate))
           : "",
         sourceLabel: item.sourceLabel
       })

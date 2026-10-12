@@ -97,3 +97,74 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
     font-size: 1.02rem;
   }
 }
+
+/* The Month top's support row (ui/spend-lead-group.jsx, `inline`): Income,
+   Saved and Remaining budget as three equal columns under the bar, split by
+   a hairline, in text colour only. */
+.summary-lead-group.is-inline {
+  display: block;
+}
+
+.lead-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.lead-column {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.lead-column:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.lead-column.is-button {
+  cursor: pointer;
+}
+
+.lead-column.is-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.lead-column-label {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-column strong {
+  overflow: hidden;
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-column small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

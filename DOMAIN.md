@@ -1581,7 +1581,7 @@ Person month total and person views:
   share`). An entry that is someone else's direct expense never counts
 - a person view counts entries by the same rule
   (`personEntryAmountMinor`, `person-entry-amount.ts`) in Summary months,
-  metric cards and category charts, in the Month `Actual spend` card,
+  metric cards and category charts, in the Month lead's spent figure,
   plan actuals and category chart, and in the Summary and Month Money
   check-ins (`filterEntriesForView`, `person-view-scope.ts`). The view's
   scope narrows it:

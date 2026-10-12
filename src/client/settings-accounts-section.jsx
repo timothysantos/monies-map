@@ -1,6 +1,7 @@
 import { ChevronRight, SquarePen } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
 import { DeleteRowButton } from "./ui-components";
@@ -47,8 +48,8 @@ export function SettingsAccountsSection({
       >
         <div className="settings-section-toggle-copy">
           <div className="chart-head">
-            <h3>{messages.settings.accountsTitle}</h3>
-            <p>{messages.settings.accountsDetail}</p>
+            <h3>{settingsMessages.accountsTitle}</h3>
+            <p>{settingsMessages.accountsDetail}</p>
           </div>
         </div>
         <span className={`settings-section-toggle-icon ${isOpen ? "is-open" : ""}`}>
@@ -59,10 +60,10 @@ export function SettingsAccountsSection({
         <>
           <div className="settings-actions">
             <button type="button" className="subtle-action" onClick={onCreateAccount}>
-              {messages.settings.addAccount}
+              {settingsMessages.addAccount}
             </button>
           </div>
-          <p className="lede compact">{messages.settings.accountBalanceHint}</p>
+          <p className="lede compact">{settingsMessages.accountBalanceHint}</p>
           <div className="settings-accounts-grid">
             {accounts.map((account) => {
               const latestCheckpoint = account.latestCheckpointMonth
@@ -81,31 +82,31 @@ export function SettingsAccountsSection({
                     ) : null}
                     <p className="settings-account-meta">
                       {account.latestImportAt
-                        ? messages.settings.accountHealthLastImport(formatService.formatDate(account.latestImportAt))
-                        : messages.settings.accountHealthNoImports}
-                      {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
+                        ? settingsMessages.accountHealthLastImport(formatService.formatDate(account.latestImportAt))
+                        : settingsMessages.accountHealthNoImports}
+                      {account.unresolvedTransferCount ? ` • ${settingsMessages.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
                     </p>
                   </div>
                   <div className="settings-account-actions">
-                    {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
+                    {!account.isActive ? <span className="account-badge">{settingsMessages.archived}</span> : null}
                     <button type="button" className="subtle-action" onClick={() => onReconcileAccount(account)}>
-                      {messages.settings.reconcileAccount}
+                      {settingsMessages.reconcileAccount}
                     </button>
                     {latestCheckpoint && account.latestCheckpointDeltaMinor != null && account.latestCheckpointDeltaMinor !== 0 ? (
                       <button type="button" className="settings-text-link" onClick={() => onOpenStatementCompare(account, latestCheckpoint)}>
-                        {messages.settings.statementCompareOpen}
+                        {settingsMessages.statementCompareOpen}
                       </button>
                     ) : null}
-                    <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => onEditAccount(account)}>
+                    <button type="button" className="icon-action" aria-label={settingsMessages.editAccount} onClick={() => onEditAccount(account)}>
                       <SquarePen size={16} />
                     </button>
                     {account.isActive ? (
                       <DeleteRowButton
                         label={account.name}
-                        triggerLabel={messages.settings.archiveAccount}
-                        confirmLabel={messages.settings.archiveAccount}
+                        triggerLabel={settingsMessages.archiveAccount}
+                        confirmLabel={settingsMessages.archiveAccount}
                         destructive={false}
-                        prompt={messages.settings.archiveAccountDetail(account.name)}
+                        prompt={settingsMessages.archiveAccountDetail(account.name)}
                         onConfirm={() => onArchiveAccount(account.id)}
                       />
                     ) : null}
@@ -118,16 +119,16 @@ export function SettingsAccountsSection({
             <div className="settings-statement-compare-inline">
               <div className="settings-statement-compare-head">
                 <div>
-                  <strong>{messages.settings.statementComparePanelTitle(
+                  <strong>{settingsMessages.statementComparePanelTitle(
                     statementComparePanel.accountName,
                     formatService.formatMonthLabel(statementComparePanel.checkpointMonth)
                   )}</strong>
-                  <p>{messages.settings.statementComparePanelDetail}</p>
+                  <p>{settingsMessages.statementComparePanelDetail}</p>
                   {statementComparePanel.deltaMinor != null ? (
-                    <p className="settings-account-health money-short">{messages.settings.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
+                    <p className="settings-account-health money-short">{settingsMessages.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
                   ) : null}
                   {statementComparePanel.statementStartDate && statementComparePanel.statementEndDate ? (
-                    <p>{messages.settings.statementCompareCheckpointPeriod(
+                    <p>{settingsMessages.statementCompareCheckpointPeriod(
                       formatService.formatDateOnly(statementComparePanel.statementStartDate),
                       formatService.formatDateOnly(statementComparePanel.statementEndDate)
                     )}</p>
@@ -150,11 +151,11 @@ export function SettingsAccountsSection({
                 disabled={isSubmitting}
                 onClick={() => document.getElementById("statement-compare-account-upload")?.click()}
               >
-                {messages.settings.statementCompareUpload}
+                {settingsMessages.statementCompareUpload}
               </button>
               {statementCompareStatus ? (
                 <section className={`settings-statement-compare is-${statementCompareStatus.tone}`}>
-                  <strong>{messages.settings.statementCompareTitle}</strong>
+                  <strong>{settingsMessages.statementCompareTitle}</strong>
                   <p>{statementCompareStatus.message}</p>
                 </section>
               ) : null}

@@ -5,7 +5,8 @@ import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { MetricCard } from "./ui-components";
+import { SpendLeadGroup } from "./ui-components";
+import { buildMonthLeadModel } from "./month-lead-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
@@ -227,14 +228,52 @@ export function MonthPanelHeader({
   );
 }
 
-export function MonthMetricRow({ cards, isRefreshing = false }) {
+// The Month top (design.md, "Lead · Support · Detail"): the Summary spend
+// lead for this month (actual spend against planned spend, the bar, the
+// percent of plan and the spend gap as "under/over plan"), with Income,
+// Saved and Remaining budget as Support pills. It replaced six tiles that
+// scrolled sideways on a phone; every figure they showed is here.
+export function MonthLead({ cards, monthSummary, month, isRefreshing = false }) {
+  const model = buildMonthLeadModel(cards, monthSummary);
   return (
     <>
       {isRefreshing ? <p className="month-refresh-hint">Updating totals and actuals...</p> : null}
-      <div className="metric-row metric-row-month">
-        {cards.map((card) => <MetricCard key={card.label} card={card} />)}
-      </div>
+      {model ? (
+        <SpendLeadGroup
+          model={model}
+          className="month-lead-group"
+          leadClassName="month-lead"
+          inline
+          eyebrow={messages.summary.lead.spent(formatService.formatMonthLabel(month))}
+        >
+          <RemainingColumn remaining={model.remaining} />
+        </SpendLeadGroup>
+      ) : null}
     </>
+  );
+}
+
+// Remaining budget (planned income minus planned spend), the third column of
+// the lead's support row. Its label says which side of zero it is ("To
+// allocate" or "Overplanned"), so with hidden money it falls back to the
+// plain name. The whole column opens the explanation (a 44px target).
+function RemainingColumn({ remaining }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button type="button" className="lead-column is-button" data-metric="remaining">
+          <span className="lead-column-label">{areTotalsVisible ? remaining.detail : remaining.label}</span>
+          <strong className={moneyToneClass(remaining.tone)}><PrivateMoney>{formatService.money(remaining.amountMinor)}</PrivateMoney></strong>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="metric-detail-popover" sideOffset={8} align="end">
+          <p>{remaining.detailPopover}</p>
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
