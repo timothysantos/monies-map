@@ -301,8 +301,10 @@ Readers (`ask-api.js`, the one module to adjust when their branches land):
   (`ask-receipt-image.js`), so no EXIF or location data is sent →
   `{ ok, receipt: ReceiptReadDto, ai }`. Built on branch
   `ai-provider-receipts`. When it is unavailable the app's own Tesseract
-  worker (`ocr-worker.js`) reads the photo on the device and
-  `parseReceiptText` picks out the shop, total, date and card ending.
+  worker (`ocr-worker.js`) reads the photo on the device and the shared
+  no-AI reader (`readReceiptOcrText`, `src/domain/receipt-ocr-text.ts`)
+  turns the text into the same `ReceiptReadDto`, reading a receipt with no
+  printed currency as SGD.
 
 - `POST /api/ai-assist/answer` `{ text, viewId, scope, month,
   keepCandidateIds }` → `AskAnswerResponseDto` (`{ ok, supported, intent,

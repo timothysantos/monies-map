@@ -954,9 +954,10 @@ strip EXIF and location in the browser first (re-encoding through a canvas
 does both, `ask-receipt-image.js`); keep the image in transient page state
 only, dropped when the page goes; on `available: false` (or any failure)
 read the same image on the device with the app's Tesseract worker into the
-same `ReceiptReadDto` (the domain's `readReceiptOcrText`; Ask still uses its
-own smaller `parseReceiptText` in `ask-receipt-image.js`, to be replaced by
-the domain parser); and fill the entry card
+same `ReceiptReadDto` (the domain's `readReceiptOcrText`, which Ask calls
+through `readReceiptTextOnDevice` in `ask-receipt-image.js` with the
+household currency, SGD, as the default so a receipt that prints no
+currency raises no currency question); and fill the entry card
 or editor from it (`applyReceiptRead` on Ask, `receiptReadToDraftFields`
 for the `/api/entries/create` field names), saving nothing until the user
 taps Save, through the normal create route. The
