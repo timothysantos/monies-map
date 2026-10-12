@@ -2830,6 +2830,17 @@ export function App() {
   }
   selectSummaryMonthRef.current = selectSummaryMonth;
 
+  // On a phone the + and receipt buttons open Ask as a new history entry.
+  // The page's place (URL and scroll; the page adds an open sheet through
+  // the event) is kept first on its own entry and handed to Ask, so Ask's
+  // back link and the back gesture both return to it (ask-origin.js).
+  function openAskFromPage(target, from) {
+    const origin = { id: `${Date.now()}`, from, path: location.pathname + location.search, scrollY: window.scrollY, sheet: null };
+    window.dispatchEvent(new CustomEvent("monies:ask-origin", { detail: origin }));
+    navigate(origin.path, { replace: true, state: { askReturn: origin } });
+    navigate(target, { state: { askOrigin: origin } });
+  }
+
   // Opening the month sheet re-reads the range's Summary page when a save
   // since cleared it (the sheet shows the figures it has meanwhile).
   function openMonthSheet() {
@@ -3310,7 +3321,7 @@ export function App() {
               // which stays. The Entries composer stays on "+ Add entry"
               // and the card's "Edit in form".
               if (isMobileLayout()) {
-                navigate(buildAskLocation(searchParams, { mode: "add", from: "entries" }));
+                openAskFromPage(buildAskLocation(searchParams, { mode: "add", from: "entries" }), "entries");
               } else {
                 openAskDock({ intent: { mode: "add", from: "entries" } });
               }
@@ -3345,7 +3356,7 @@ export function App() {
               const splitGroup = searchParams.get("split_group")
                 ?? (trigger instanceof HTMLElement ? trigger.dataset.splitGroup ?? "" : "");
               if (isMobileLayout()) {
-                navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }));
+                openAskFromPage(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }), "splits");
               } else {
                 openAskDock({ intent: { mode: "expense", from: "splits", splitGroupId: splitGroup } });
               }
