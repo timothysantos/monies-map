@@ -313,3 +313,17 @@
 .linked-note-sync-dialog .linked-note-sync-grid {
   margin: 0;
 }
+
+/* Statement checkpoint: its history list is part of the dialog, so its
+   buttons are tap targets too. */
+.statement-checkpoint-dialog .settings-account-history {
+  margin-top: 4px;
+}
+
+.statement-checkpoint-dialog .settings-checkpoint-export,
+.statement-checkpoint-dialog .settings-account-actions .icon-action,
+.statement-checkpoint-dialog .settings-account-actions .subtle-remove,
+.statement-checkpoint-dialog .summary-focus-button {
+  min-width: 44px;
+  min-height: 44px;
+}
