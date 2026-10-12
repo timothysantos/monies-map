@@ -1707,9 +1707,10 @@ back a shared balance ("settling up").
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
 
-Money insights can be folded. Under the title, a small card shows the
-first thing worth knowing (a **To do** comes first), with "+2 more" when there
-are others and an arrow. Select the card to open all of it, and select the
+Money insights can be folded. Under the title, a card shows the
+first thing worth knowing (a **To do** comes first): its label, its headline
+and the start of the line beneath it, with "+2 more" and an arrow when there
+are others. Select the card to open all of it, and select the
 title row to fold it again. On a phone it starts folded; on a computer it
 starts open. With money totals hidden, the card just says how many insights
 there are. Each choice is remembered in this browser, separately for phone and

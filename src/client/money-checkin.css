@@ -190,8 +190,9 @@
 .financial-insight-fold[aria-expanded="false"] {
   --fold-fill: var(--pastel-neutral);
   --fold-ink: var(--text);
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  min-height: 56px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  row-gap: 3px;
+  min-height: 0;
   margin: 4px 0 12px;
   padding: 8px 12px;
   border: 1px solid color-mix(in srgb, var(--fold-ink) 18%, transparent);
@@ -226,22 +227,46 @@
     0 9px 0 -4px color-mix(in srgb, var(--fold-ink) 9%, var(--fold-fill));
 }
 
-.financial-insight-teaser {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 0;
+/* Folded card rows: kind chip, "+N more" and the chevron on top; the
+   bold headline and the start of its think line, one line each. */
+.financial-insight-fold[aria-expanded="false"] {
   font-size: 0.9rem;
   line-height: 1.3;
 }
 
-.financial-insight-teaser > strong {
-  display: -webkit-box;
+.financial-insight-fold[aria-expanded="false"] > .checkin-chip {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.financial-insight-fold[aria-expanded="false"] > svg {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.financial-insight-fold > strong,
+.financial-insight-think {
+  grid-column: 1 / -1;
+  min-width: 0;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.financial-insight-fold > strong {
+  grid-row: 2;
+  font-weight: 700;
+}
+
+.financial-insight-think {
+  grid-row: 3;
+  color: color-mix(in srgb, var(--fold-ink) 85%, var(--fold-fill));
+  font-size: 0.84rem;
+}
+
+.financial-insight-count {
+  grid-column: 1 / 3;
+  grid-row: 1;
   font-weight: 700;
 }
 
@@ -250,6 +275,8 @@
 }
 
 .financial-insight-more {
+  grid-column: 3;
+  grid-row: 1;
   padding: 1px 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--fold-ink) 12%, transparent);
@@ -265,10 +292,5 @@
 @media (max-width: 760px) {
   .financial-insight-fold[aria-expanded="true"] {
     width: calc(100% - 56px);
-  }
-
-  .financial-insight-fold[aria-expanded="false"] {
-    width: calc(100% - 56px);
-    max-width: calc(100% - 56px);
   }
 }

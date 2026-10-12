@@ -120,12 +120,12 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
       {isOpenNow ? null : label}
       <button type="button" className="financial-insight-fold" data-kind={headline.kind} data-more={moreCount} aria-expanded={isOpenNow} aria-controls={contentId} onClick={toggleOpen}>
         {isOpenNow ? label : <>
-          <span className="financial-insight-teaser">
-            {areTotalsVisible
-              ? <>{headline.kind && <CheckInChip kind={headline.kind} />}<strong>{headline.fact}</strong></>
-              : `${moreCount + 1} insight${moreCount ? "s" : ""} · tap to see`}
-          </span>
-          {areTotalsVisible && moreCount > 0 && <span className="financial-insight-more">+{moreCount} more</span>}
+          {areTotalsVisible ? <>
+            {headline.kind && <CheckInChip kind={headline.kind} />}
+            <strong>{headline.fact}</strong>
+            {headline.think && <span className="financial-insight-think">{headline.think}</span>}
+            {moreCount > 0 && <span className="financial-insight-more">+{moreCount} more</span>}
+          </> : <span className="financial-insight-count">{`${moreCount + 1} insight${moreCount ? "s" : ""} · tap to see`}</span>}
         </>}
         <ChevronDown />
       </button>

@@ -36,7 +36,7 @@ test.describe("money insights fold on a phone", () => {
     await reseedDemo(page);
   });
 
-  // The teaser card: at most ~80px with the eyebrow above it; a "+N more"
+  // The teaser card: at most ~96px with the eyebrow above it; a "+N more"
   // pill and the stacked edges exist only when more insights wait behind it.
   async function expectDeckHint(page, row) {
     const more = Number((await row.getAttribute("data-more")) ?? 0);
@@ -51,6 +51,27 @@ test.describe("money insights fold on a phone", () => {
     return more;
   }
 
+  // Card rows: the headline and the start of its think line are one line each
+  // with an ellipsis rule, and the card is as wide as the content column.
+  async function expectSingleLines(row) {
+    const lines = await row.evaluate((card) => [...card.querySelectorAll(":scope > strong, :scope > .financial-insight-think")].map((element) => {
+      const style = getComputedStyle(element);
+      const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.3;
+      return { cls: element.className || element.tagName, ellipsis: style.textOverflow, wrap: style.whiteSpace, tall: element.getBoundingClientRect().height > lineHeight * 1.5 };
+    }));
+    expect(lines.map((line) => line.ellipsis)).toEqual(lines.map(() => "ellipsis"));
+    expect(lines.map((line) => line.wrap)).toEqual(lines.map(() => "nowrap"));
+    expect(lines.filter((line) => line.tall)).toEqual([]);
+    return lines.length;
+  }
+
+  async function expectFullWidth(page, row) {
+    const card = await row.boundingBox();
+    const column = await page.locator(".financial-insight").boundingBox();
+    expect(Math.abs(card.width - column.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(card.x - column.x)).toBeLessThanOrEqual(2);
+  }
+
   test("Summary folds to a teaser card of its top insight and opens to the full block", async ({ page }) => {
     await page.setViewportSize(PHONE);
     await open(page, SUMMARY);
@@ -60,9 +81,9 @@ test.describe("money insights fold on a phone", () => {
     await expect(section.locator(".financial-insight-label")).toHaveText("Household money insights");
     // The card shows the real headline (also in the block's own text).
     const headline = (await section.locator(".checkin-fact").evaluate((element) => element.textContent)).trim();
-    await expect(row.locator(".financial-insight-teaser strong")).toHaveText(headline);
+    await expect(row.locator("strong")).toHaveText(headline);
     await expect(row).toBeVisible();
-    expect((await row.boundingBox()).height).toBeLessThanOrEqual(80);
+    expect((await row.boundingBox()).height).toBeLessThanOrEqual(96);
     expect((await row.boundingBox()).height).toBeGreaterThanOrEqual(44);
     await expect(section.locator(".checkin-fact")).toBeHidden();
     const more = await expectDeckHint(page, row);
@@ -70,7 +91,7 @@ test.describe("money insights fold on a phone", () => {
     await row.click();
     await expect(row).toHaveAttribute("aria-expanded", "true");
     await expect(section.locator(".checkin-fact")).toBeVisible();
-    await expect(row.locator(".financial-insight-teaser")).toHaveCount(0);
+    await expect(row.locator("strong")).toHaveCount(0);
     await expect.poll(async () => (await section.boundingBox()).height).toBeGreaterThan(120);
     // "+N more" counts the insights "See all insights" lists.
     if (more > 0) {
@@ -80,7 +101,7 @@ test.describe("money insights fold on a phone", () => {
 
     await row.click();
     await expect(row).toHaveAttribute("aria-expanded", "false");
-    expect((await row.boundingBox()).height).toBeLessThanOrEqual(80);
+    expect((await row.boundingBox()).height).toBeLessThanOrEqual(96);
   });
 
   test("Splits teaser keeps the To do chip and headline, at most two lines, on the orange", async ({ page }) => {
@@ -89,10 +110,12 @@ test.describe("money insights fold on a phone", () => {
     const row = foldRow(page);
     await expect(row).toHaveAttribute("aria-expanded", "false");
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
-    await expect(row.locator(".financial-insight-teaser strong")).toContainText("Joyce owes you JP¥9,000");
-    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
-    expect((await row.locator(".financial-insight-teaser strong").boundingBox()).height).toBeLessThan(2.2 * 22);
+    await expect(row.locator("strong")).toContainText("Joyce owes you JP¥9,000");
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(96);
+    await expectSingleLines(row);
     await expectDeckHint(page, row);
+    await expect(row.locator(".financial-insight-think")).toBeVisible();
+    await expectFullWidth(page, row);
     await row.click();
     await expect(page.locator(".financial-insight-content .checkin-fact")).toContainText("Joyce owes you JP¥9,000");
   });
@@ -102,9 +125,14 @@ test.describe("money insights fold on a phone", () => {
     await open(page, MONTH);
     const row = foldRow(page);
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
-    await expect(row.locator(".financial-insight-teaser strong")).toContainText(/\bbills? (?:you )?planned\b|\bplanned at\b/);
+    await expect(row.locator("strong")).toContainText(/\bbills? (?:you )?planned\b|\bplanned at\b/);
     expect(await expectDeckHint(page, row)).toBeGreaterThan(0);
-    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
+    // Rows: headline, then the start of the think line, single-line each.
+    expect(await expectSingleLines(row)).toBe(2);
+    const think = (await page.locator(".financial-insight-content .checkin-think").evaluate((element) => element.textContent)).trim();
+    await expect(row.locator(".financial-insight-think")).toHaveText(think);
+    await expectFullWidth(page, row);
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(96);
     await row.click();
     await expect(row).toHaveAttribute("aria-expanded", "true");
     expect(await page.evaluate((key) => window.localStorage.getItem(key), OPEN_KEY)).toBe("true");
@@ -128,10 +156,12 @@ test.describe("money insights fold on a phone", () => {
     await expect(row).toBeVisible();
     await expect(row.locator(".checkin-chip")).toHaveCount(0);
     await expect(row.locator(".financial-insight-more")).toHaveCount(0);
+    await expect(row.locator(".financial-insight-think")).toHaveCount(0);
+    await expect(row.locator("strong")).toHaveCount(0);
     const text = (await row.innerText()).replace(/\s+/g, " ").trim();
     expect(text).toMatch(/^\d+ insights? · tap to see$/);
     expect(text).not.toMatch(/\$|\d{2,}|owe|short|over|under|plan/i);
-    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(96);
   });
 
   test("desktop starts expanded on a first visit, can fold, and remembers it apart from the phone", async ({ page }) => {
@@ -146,7 +176,7 @@ test.describe("money insights fold on a phone", () => {
     await expect(row).toHaveAttribute("aria-expanded", "false");
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
     await expect(page.locator(".financial-insight .checkin-fact")).toBeHidden();
-    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(96);
     // The desktop choice is its own key; the phone's key is untouched.
     expect(await page.evaluate(() => [localStorage.getItem("monies-map:money-insights-desktop"), localStorage.getItem("monies-map:money-insights-phone")])).toEqual(["false", null]);
 
@@ -181,7 +211,7 @@ test.describe("money insights fold on a phone", () => {
     await expect(row).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".financial-insight .checkin-fact")).toContainText("Joyce owes you JP¥9,000");
     await row.click();
-    await expect(row.locator(".financial-insight-teaser strong")).toContainText("Joyce owes you JP¥9,000");
+    await expect(row.locator("strong")).toContainText("Joyce owes you JP¥9,000");
     await expect(page.locator(".financial-insight .checkin-fact")).toBeHidden();
   });
 

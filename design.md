@@ -109,10 +109,13 @@ the insights reserve the right-hand column the floating money-privacy
 button covers (`tests/e2e/money-insights-phone.spec.js`).
 
 Money insights fold (`tests/e2e/money-insights-fold.spec.js`). Folded, a
-block is its eyebrow over a teaser card that is one button
-(`aria-expanded`, `aria-controls`, at most about 80px): the top insight's own
-chip and bold headline (two lines at most), a "+N more" pill when more wait
-behind it, and a chevron. The card takes the pastel surface of the headline's
+block is its eyebrow over a teaser card that is one button, the full width
+of the block (`aria-expanded`, `aria-controls`, at most about 96px). Row 1: the
+top insight's own kind chip, then "+N more" (when more wait behind it) and the
+chevron. Row 2: its bold headline, one line. Row 3: the start of its think line
+in muted ink, one line. Both lines end in an ellipsis when cut. On a phone the
+card spans under the floating eye button's column, which can cover the pill and
+chevron while scrolling. The card takes the pastel surface of the headline's
 kind (butter To do, lavender Something to think about, sky Worth knowing, mint
 Going well, neutral otherwise; ink text), and two thin offset edges under it
 (`data-more`) read as a deck when more than one insight exists. On Splits the
