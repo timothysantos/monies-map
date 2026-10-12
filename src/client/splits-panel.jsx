@@ -222,7 +222,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   // refresh, and isRefreshingDerived already covers the in-flight window.
   // Back from Ask after the receipt button opened it: the scroll comes back
   // (the group is in the URL; docs/flows/ask-flow.md "Back to where you were").
-  useAskReturn({ ready: Boolean(view.splitsPage) });
+  useAskReturn({ from: "splits", ready: Boolean(view.splitsPage) });
   useRouteWorkReport({
     busy: Boolean(archiveDialog)
       || showHistory

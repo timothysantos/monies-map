@@ -194,12 +194,8 @@ test.describe("leaving Ask back to where the person was, on a phone", { tag: "@w
   });
 
   test("with no page to go back to (an /ask link opened directly), the back link opens Entries for the same view and month", async ({ page }) => {
-    await gotoPageAfterApi(
-      page,
-      `/ask?view=household&month=${MONTH}&scope=direct_plus_shared&mode=add&from=entries`,
-      "/api/app-shell",
-      () => page.locator('[data-ask-card="draft"]')
-    );
+    await page.goto(`/ask?view=household&month=${MONTH}&scope=direct_plus_shared&mode=add&from=entries`);
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible({ timeout: 30_000 });
     await headerBack(page, "Entries").click();
     await expect(page).toHaveURL(/\/entries\?/);
     const url = new URL(page.url());

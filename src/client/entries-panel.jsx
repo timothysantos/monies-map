@@ -261,6 +261,7 @@ export function EntriesPanel({
     return showEntryComposer ? { kind: "add", draft: entryDraft } : null;
   });
   useAskReturn({
+    from: "entries",
     ready: !isEntriesPageLoading && entriesPage.monthPage.month === selectedMonth,
     onSheet: (sheet) => (sheet.kind === "edit" ? resumeEntryEdit(sheet.entry) : openEntryComposer(sheet.draft))
   });

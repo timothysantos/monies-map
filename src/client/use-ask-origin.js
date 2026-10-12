@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import { ASK_ORIGIN_EVENT, forgetAskOrigin, readAskOrigin } from "./ask-origin";
+import { ASK_ORIGIN_EVENT, forgetAskOrigin, readAskOrigin, rememberAskOrigin } from "./ask-origin";
 
 // The Entries and Splits side of Ask's way back (ask-origin.js,
 // docs/flows/ask-flow.md "Back to where you were"). Ships with those
@@ -42,25 +42,44 @@ const restoredOriginIds = new Set();
 // the sheet first (`onSheet`), then the window's scroll. Only a page that
 // came back to the history entry the + kept (or that Ask opened with the
 // kept place) has `state.askReturn`; read when the page mounts.
-export function useAskReturn({ ready, onSheet = undefined }) {
+//
+// Leaving the page by any other way (the Ask tab, say) keeps its URL and
+// scroll as the way in's place (`from`), so the back link of a card the Ask
+// tab reopened returns here too. The + keeps its own place, with the sheet,
+// over this one when Ask mounts.
+export function useAskReturn({ from, ready, onSheet = undefined }) {
   const location = useLocation();
   const [origin] = useState(() => readAskOrigin(location.state?.askReturn));
+  const pathRef = useRef("");
+  useEffect(() => {
+    pathRef.current = location.pathname + location.search;
+  }, [location.pathname, location.search]);
+  // A layout cleanup runs before the page's rows leave, while the window
+  // still has its scroll.
+  useLayoutEffect(() => () => {
+    rememberAskOrigin(sessionStore(), { id: `left-${Date.now()}`, from, path: pathRef.current, scrollY: window.scrollY, sheet: null });
+  }, [from]);
   const onSheetRef = useRef(onSheet);
-  const stopScrollRef = useRef(() => {});
   useEffect(() => {
     onSheetRef.current = onSheet;
   });
-  useEffect(() => () => stopScrollRef.current(), []);
   useEffect(() => {
     if (!origin || !ready || restoredOriginIds.has(origin.id)) {
-      return;
+      return undefined;
     }
-    restoredOriginIds.add(origin.id);
     forgetAskOrigin(sessionStore(), origin);
     if (origin.sheet) {
       onSheetRef.current?.(origin.sheet);
     }
-    stopScrollRef.current = restoreWindowScroll(origin.scrollY);
+    const stopScroll = restoreWindowScroll(origin.scrollY);
+    // Marked done a frame later, after the page's own mount effects (the
+    // Entries editor resets when its view settles) have all run: a cleanup
+    // before then (React's development double run) puts it back again.
+    const frame = window.requestAnimationFrame(() => restoredOriginIds.add(origin.id));
+    return () => {
+      window.cancelAnimationFrame(frame);
+      stopScroll();
+    };
   }, [origin, ready]);
 }
 
