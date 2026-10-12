@@ -650,12 +650,15 @@ Where it is used:
   is actual spend against planned spend with the bar, "x% of plan" and "$y
   under plan" (mint) or "$y over plan" (rose, the old Spend gap); Income
   (received, with "plan $x"), Saved (realized, with "target $x") and
-  Remaining budget are Support pills. Income and Saved are the month's own
+  Remaining budget are one row of three equal columns inside the lead
+  card under the bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
+  colour only, 52 px tall, at most 190 px for the whole card on an iPhone 13,
+  the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
   spend, plan, savings target and remaining budget are the Month metric
   cards' own figures, so nothing is recomputed. Remaining budget is a
-  button: the whole pill opens its explanation popover, and its "To
-  allocate" / "Overplanned" line hides with the money. The six sideways
+  button: the whole column opens its explanation popover; its label is "To
+  allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
   tiles are gone; nothing scrolls sideways at 390 px.
 - Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
   Month route chunk): Income, Budget Buckets and Planned Items keep their
@@ -669,7 +672,9 @@ Where it is used:
   the category bubble, the item and its category on the left, the actual
   with "of $planned" on the right, the bar, then the note and "Variance
   $x"; the date and account are on the plan card sheet a tap opens, the
-  column names are a strip of sort buttons, the total is one line, and
+  column names are a strip of small chips (the active sort shows its arrow),
+  the category line is dropped when it equals the item's name, an empty note
+  shows nothing, the total is one line, and
   nothing scrolls sideways (`tests/e2e/summary-month-lsd.spec.js`).
 - Summary Intent vs Outcome (`summary-intent-outcome.jsx`,
   `summary-intent-outcome-model.js`, `summary-intent-outcome.css` in the
@@ -680,7 +685,8 @@ Where it is used:
   Detail: a `MoreDetails` row named "Details" holds the old table's three
   rows (Income, Expected spend, Savings goal: planned, actual, variance) and
   the month note row, which edits the note. The latest month starts open,
-  the others fold. Hidden money: dots in plain ink, the bar's track only, no
+  the others fold. From 1,024 px the cards are a grid, 2 across (3 from 1,440
+  px), latest first, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
   percent and no under/over words, the variance dots too.
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for

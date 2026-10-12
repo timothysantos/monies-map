@@ -328,10 +328,10 @@ stays highlighted, and the range at the top stays as it was.
 - **Header**: the month, the person, the scope buttons and **Actions**.
 - **The top card**: what you have spent this month against what you
   planned, with a bar, the percent of plan, and how much you are under or
-  over plan. Beside it (under it on a phone) are **Income** (received, with
-  the plan), **Saved** (with the savings target) and **Remaining budget**
+  over plan. Under the bar, in the same card, are **Income** (received, with
+  the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
-  Select Remaining budget to see what it means.
+  Select it to see what it means.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
   list as on Summary. Select a category to hide or show it in the donut; its
@@ -972,8 +972,8 @@ Good to know:
 4. Under **Budget Buckets**, select **+ Add budget bucket** for flexible
    spending such as Food, Groceries, Transport and Shopping.
 5. Select **Save** on each row.
-6. Check the top of the page: **Remaining budget** should not say Overplanned, and
-   the **Saved** pill's target should be what you want to put aside.
+6. Check the top of the page: it should say **To allocate**, not Overplanned,
+   and the **Saved** target should be what you want to put aside.
 
 > Tip: keep budget buckets broad. One Food bucket works better than a row for
 > every restaurant. Plan only what is stable as planned items.

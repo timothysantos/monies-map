@@ -41,11 +41,14 @@ The page must preserve active edits while background freshness catches up.
 The top of the page is one lead card (`MonthLead` in `month-overview.jsx`,
 design.md "Lead · Support · Detail"): "Spent · May 2026", the month's actual
 spend "of" its planned spend, the bar, the percent of plan and how far under
-or over plan. Income (received, with the plan), Saved (with the savings
-target) and Remaining budget are pills beside it (under it on a phone). The
+or over plan. Income (received, with "plan $x"), Saved (with "target $x") and
+Remaining budget are one row of three equal columns inside the card, under
+the bar, split by hairlines, in text colour only (no tinted boxes); the card
+is at most 190 px tall on an iPhone 13 so Money insights start above the
+fold. The
 figures are the month page DTO's metric cards plus the month's Summary row
 (`buildMonthLeadModel`), so they equal what the six tiles showed; the
-Remaining budget pill opens its explanation. Nothing scrolls sideways at
+Remaining budget column (labelled "To allocate" or "Overplanned", "Remaining budget" when money is hidden) opens its explanation. Nothing scrolls sideways at
 390 px (`tests/e2e/summary-month-lsd.spec.js`).
 
 The plan tables (Income, Budget Buckets, Planned Items) keep their table
