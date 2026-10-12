@@ -12,14 +12,10 @@ import {
   sumDonutValueMinor,
   toggleHiddenDonutItemIds
 } from "./donut-visibility";
-import { moniesClient } from "./monies-client-service";
+import { getCategory } from "./category-utils";
+import { money } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { EmptyState } from "./ui-states";
-
-const {
-  categories: categoryService,
-  format: formatService
-} = moniesClient;
 
 // Spending Mix: spending by category as a donut and one card per category.
 // It follows the Summary tab's month choice: Summary (All months) passes the
@@ -69,7 +65,7 @@ export function SpendingMixSection({
 
             <div className="share-list">
               {donutData.map((item) => {
-                const category = categoryService.get(categories, item);
+                const category = getCategory(categories, item);
                 const categoryName = category?.name ?? item.label;
                 const isHidden = hiddenCategoryIds.has(getDonutItemId(item));
                 return (
@@ -86,7 +82,7 @@ export function SpendingMixSection({
                         onClick={() => toggleCategoryVisibility(item)}
                       >
                         <strong>{categoryName}</strong>
-                        <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney></p>
+                        <p><PrivateMoney>{money(item.valueMinor)}</PrivateMoney></p>
                         <span className="share-row-meta">
                           {messages.common.triplet(formatTransactionCount(item.entryCount), isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart)}
                         </span>

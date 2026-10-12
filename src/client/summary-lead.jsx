@@ -2,12 +2,11 @@ import "./summary-lead.css";
 import { messages } from "./copy/en-SG";
 import { PrivateMoney } from "./money-privacy";
 import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
-import { moniesClient } from "./monies-client-service";
+import { money } from "./formatters";
 import { buildSummaryLeadModel, formatSummaryLeadRange } from "./summary-lead-model";
 import { MetricCard } from "./ui-components";
 import { LeadCard } from "./ui/lead-support-detail";
 
-const { format: formatService } = moniesClient;
 const copy = messages.summary.lead;
 const planWords = messages.summary.monthChoice;
 
@@ -36,19 +35,19 @@ export function SummaryLead({ metricCards, rangeStartMonth, rangeEndMonth }) {
         eyebrow={copy.spent(formatSummaryLeadRange(rangeStartMonth, rangeEndMonth))}
         amount={(
           <span className={`summary-lead-spent ${moneyToneClass(model.spent.tone)}`}>
-            <PrivateMoney>{formatService.money(model.spent.amountMinor)}</PrivateMoney>
+            <PrivateMoney>{money(model.spent.amountMinor)}</PrivateMoney>
           </span>
         )}
         amountAside={(
           <span className={`summary-lead-plan ${moneyToneClass("plan")}`}>
-            {planWords.planPrefix} <PrivateMoney>{formatService.money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
+            {planWords.planPrefix} <PrivateMoney>{money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
           </span>
         )}
         progress={model.progress}
         progressStart={model.percentOfPlan === null ? null : copy.percentOfPlan(model.percentOfPlan)}
         progressEnd={headroom ? (
           <span className={`summary-lead-headroom ${moneyToneClass(headroom.tone)}`}>
-            {formatService.money(headroom.amountMinor)} {headroom.isOver ? copy.overPlan : copy.underPlan}
+            {money(headroom.amountMinor)} {headroom.isOver ? copy.overPlan : copy.underPlan}
           </span>
         ) : null}
       />
@@ -80,8 +79,8 @@ function SummarySupportPill({ metric, label, amountMinor, tone, planLabel, planM
   return (
     <div className={`summary-support-pill ${metricCardToneClass(tone)}`} data-metric={metric}>
       <span className="summary-support-pill-label">{label}</span>
-      <strong><PrivateMoney>{formatService.money(amountMinor)}</PrivateMoney></strong>
-      <small>{planLabel} <PrivateMoney>{formatService.money(planMinor)}</PrivateMoney></small>
+      <strong><PrivateMoney>{money(amountMinor)}</PrivateMoney></strong>
+      <small>{planLabel} <PrivateMoney>{money(planMinor)}</PrivateMoney></small>
     </div>
   );
 }

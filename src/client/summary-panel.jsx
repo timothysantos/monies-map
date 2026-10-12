@@ -8,7 +8,8 @@ import {
 } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { moniesClient } from "./monies-client-service";
+import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
+import { formatMonthLabel, money, unmaskedMoney } from "./formatters";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { BarLine } from "./ui-components";
@@ -21,11 +22,6 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { flowTone, headroomTone, reconciliationTone, signTone, spendTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-const {
-  accounts: accountService,
-  format: formatService
-} = moniesClient;
-
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -74,7 +70,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountPills: safeSummaryPage.accountPills,
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
-      formatMoney: formatService.unmaskedMoney
+      formatMoney: unmaskedMoney
     }),
     page: "summary",
     // The range's last month is the period Summary rotates by.
@@ -291,13 +287,13 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
                   onOpenMonth(month.month);
                 }}
               >
-                {formatService.formatMonthLabel(month.month)}
+                {formatMonthLabel(month.month)}
               </button>
-              <p>Planned income <PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney> • Actual income <PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></p>
+              <p>Planned income <PrivateMoney>{money(month.plannedIncomeMinor)}</PrivateMoney> • Actual income <PrivateMoney>{money(month.actualIncomeMinor)}</PrivateMoney></p>
             </div>
           </div>
           <span className={moneyToneClass(monthPlanReview.spendVarianceTone)}>
-            <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
+            <PrivateMoney>{money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
           </span>
         </div>
       </summary>
@@ -329,28 +325,28 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
             <tbody>
               <tr>
                 <td>{messages.summary.table.income}</td>
-                <td><PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.actualIncomeTone)}><PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></td>
+                <td><PrivateMoney>{money(month.plannedIncomeMinor)}</PrivateMoney></td>
+                <td className={moneyToneClass(monthPlanReview.actualIncomeTone)}><PrivateMoney>{money(month.actualIncomeMinor)}</PrivateMoney></td>
                 <td className={moneyToneClass(monthPlanReview.incomeVarianceTone)}>
-                  <PrivateMoney>{formatService.money(monthPlanReview.incomeVarianceMinor)}</PrivateMoney>
+                  <PrivateMoney>{money(monthPlanReview.incomeVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedExpenses}</td>
-                <td><PrivateMoney>{formatService.money(month.estimatedExpensesMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.actualSpendTone)}><PrivateMoney>{formatService.money(month.realExpensesMinor)}</PrivateMoney></td>
+                <td><PrivateMoney>{money(month.estimatedExpensesMinor)}</PrivateMoney></td>
+                <td className={moneyToneClass(monthPlanReview.actualSpendTone)}><PrivateMoney>{money(month.realExpensesMinor)}</PrivateMoney></td>
                 <td className={moneyToneClass(monthPlanReview.spendVarianceTone)}>
-                  <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
+                  <PrivateMoney>{money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedSavings}</td>
-                <td><PrivateMoney>{formatService.money(month.savingsGoalMinor)}</PrivateMoney></td>
+                <td><PrivateMoney>{money(month.savingsGoalMinor)}</PrivateMoney></td>
                 <td className={moneyToneClass(monthPlanReview.realizedSavingsTone)}>
-                  <PrivateMoney>{formatService.money(month.realizedSavingsMinor)}</PrivateMoney>
+                  <PrivateMoney>{money(month.realizedSavingsMinor)}</PrivateMoney>
                 </td>
                 <td className={moneyToneClass(monthPlanReview.savingsVarianceTone)}>
-                  <PrivateMoney>{formatService.money(monthPlanReview.savingsVarianceMinor)}</PrivateMoney>
+                  <PrivateMoney>{money(monthPlanReview.savingsVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr className="summary-context-row">
@@ -393,9 +389,9 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
             className={`summary-account-pill ${moneyToneClass(reconciliationTone(account.reconciliationStatus), "soft")}`}
             onClick={() => onOpenEntriesForAccount(account.accountId)}
           >
-            <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
-            <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor)}</PrivateMoney></span>
-            {areTotalsVisible ? <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span> : null}
+            <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
+            <span className="summary-account-pill-amount"><PrivateMoney>{money(account.balanceMinor)}</PrivateMoney></span>
+            {areTotalsVisible ? <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span> : null}
           </button>
         ))}
       </div>
