@@ -2,7 +2,7 @@
 // conversation is open beside the page, docked or as a popup, and which way
 // in it shows. The conversation itself stays in the Ask conversation store
 // (ask-conversation-store.js), shared with the phone's Ask page; this is
-// only the dock around it, so it ships in the first screen and stays tiny.
+// only the dock around it, so it loads with the dock panel, not in the first screen.
 //
 // Kept for this browser tab's session (sessionStorage `monies.askDock.v1`):
 // open or closed, the mode and the way in, so the panel stays open across
@@ -10,7 +10,9 @@
 // has loaded and a photo dropped on it are handed to the conversation once,
 // in memory, and never stored.
 
-export const ASK_DOCK_STORAGE_KEY = "monies.askDock.v1";
+import { ASK_DOCK_STORAGE_KEY } from "./ask-dock-entry";
+
+export { ASK_DOCK_STORAGE_KEY };
 const VERSION = 1;
 
 /** @typedef {{ mode: string, from: string, savedEntryId: string, splitGroupId: string }} AskIntent */

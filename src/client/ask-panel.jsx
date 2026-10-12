@@ -56,6 +56,9 @@ import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
+// The desktop dock around this conversation loads in this chunk (ask-dock.jsx).
+export { default as AskDockPanel } from "./ask-dock-panel";
+
 // The Ask page (design.md "Ask page"; docs/flows/ask-flow.md). One page,
 // three ways in:
 // - the Ask tab: a "since you last looked" card from the Money insights

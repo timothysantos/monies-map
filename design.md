@@ -359,9 +359,12 @@ at the top of the list, under the page title.
 ## Desktop Ask
 
 Owner-approved desktop design. Flow: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md)
-"Desktop". Code: `ask-dock.jsx` (field and frame, first screen),
-`ask-dock-layout.js` (pure layout rules), `ask-dock-state.js` (session
-state), and the Ask page itself inside (`AskPanel` with `placement`).
+"Desktop". Code: `ask-dock.jsx` (field, `/` key and loading frame: the only part in
+the first screen, with `ask-dock-field.jsx` and `ask-dock-entry.js`),
+`ask-dock-panel.jsx` (the panel, loaded with the Ask page's chunk on the
+first way in), `ask-dock-layout.js` (pure layout rules), `ask-dock-state.js`
+(session state), and the Ask page itself inside (`AskPanel` with
+`placement`).
 
 - The field: one white pill, 340 × 48 px, 24 px radius, the inset hairline
   and a soft shadow, fixed 22 px from the right and 29 px from the bottom

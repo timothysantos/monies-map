@@ -66,7 +66,10 @@ Splits expense dialog through `?split_action=add-expense`).
 On a wide screen Ask has no tab. A one-line field, "Ask, or drop a
 receipt…", is fixed at the bottom right of every page but `/ask`, beside
 the Entries + or the Splits receipt button where there is one
-(`ask-dock.jsx`, in the first screen). Focusing, clicking or typing in it,
+(`ask-dock.jsx`, the only part in the first screen: the field, `/` and the
+panel's loading frame; the dock's store, layout rules and panel load in the Ask
+page's chunk on the first way in, or once the page is usable when a panel was
+left open in this tab; `ask-dock-entry.js` keeps what was done meanwhile). Focusing, clicking or typing in it,
 Enter, `/` (when the person is not typing in a field and no dialog is
 open; `isAskShortcutKey`), its paperclip (the photo picker), or a photo
 dropped or pasted on it opens Ask. Words typed before the conversation has
@@ -589,7 +592,8 @@ Ask does not own:
 ## Audit Status
 
 Current status: aligned with tests (`tests/ask-dock-layout.test.mjs`,
-`tests/ask-dock-state.test.mjs`, `tests/e2e/ask-dock.spec.js` (desktop:
+`tests/ask-dock-state.test.mjs`, `tests/ask-dock-entry.test.mjs`,
+`tests/e2e/ask-dock.spec.js` (desktop:
 1,024, 1,280 and 1,440 px), the docked header case in
 `tests/e2e/header-tab-fit.spec.js`, `tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,

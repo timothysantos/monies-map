@@ -1,6 +1,6 @@
 // Desktop Ask layout (design.md "Desktop Ask"): pure rules for where the Ask
-// conversation opens beside the page. In the first-screen bundle, so it stays
-// tiny and imports only the phone breakpoint.
+// conversation opens beside the page. Loads with the dock panel
+// (ask-dock-panel.jsx), not in the first screen.
 //
 // - A phone (760 px and narrower) has no field or panel: Ask is its tab.
 // - From 761 px to 1,279 px the conversation is a popup over the page,
@@ -11,9 +11,10 @@
 // the popup while the window is too narrow to push the page; a popup kept
 // open while the window widens stays put and offers the expand control.
 
+import { isAskShortcutKey } from "./ask-dock-entry";
 import { ASK_DOCK_MIN_WIDTH, ASK_DOCK_WIDE_QUERY, MOBILE_LAYOUT_MAX_WIDTH } from "./use-viewport";
 
-export { ASK_DOCK_MIN_WIDTH, ASK_DOCK_WIDE_QUERY };
+export { ASK_DOCK_MIN_WIDTH, ASK_DOCK_WIDE_QUERY, isAskShortcutKey };
 
 // The browser answers the two media queries (use-viewport.js is the only
 // module that asks); this turns them into a width inside the right band.
@@ -39,30 +40,4 @@ export function selectAskDockLayout({ width, mode }) {
     return { layout: "popup", canExpand: false };
   }
   return mode === "popup" ? { layout: "popup", canExpand: true } : { layout: "docked", canExpand: false };
-}
-
-const TYPING_INPUT_TYPES = new Set(["", "text", "search", "email", "number", "password", "tel", "url", "date", "month", "time", "datetime-local", "week"]);
-
-// "/" moves focus to the Ask field, unless the person is typing somewhere,
-// used a modifier, or something else already handled the key. Inside an
-// open dialog the page behind is not the place to ask.
-export function isAskShortcutKey(event) {
-  if (!event || event.key !== "/" || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) {
-    return false;
-  }
-  const target = event.target;
-  if (!target) {
-    return true;
-  }
-  if (target.isContentEditable) {
-    return false;
-  }
-  const tag = String(target.tagName ?? "").toUpperCase();
-  if (tag === "TEXTAREA" || tag === "SELECT") {
-    return false;
-  }
-  if (tag === "INPUT" && TYPING_INPUT_TYPES.has(String(target.type ?? "").toLowerCase())) {
-    return false;
-  }
-  return !target.closest?.('[role="dialog"], [aria-modal="true"]');
 }
