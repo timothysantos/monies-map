@@ -387,6 +387,34 @@ notice in the Ask tab and Settings is a later step.
   Anthropic's own `rate_limit_error` counts as the spend cap; a gateway
   rate-limit rule, if one is ever added, would also read as `capped`.
 
+### Update, 12 October 2026: auto-balance between Claude and the basic model
+
+Owner-approved. A monthly Claude budget target (`AI_CLAUDE_MONTHLY_TARGET_USD`,
+default 8) paces which provider is asked first when both are available
+(`src/domain/ai-provider-status.ts`, code-spec "Optional AI Contract").
+
+- Writes: the existing `ai_provider_status` row gains `spend_month` and
+  `month_spend_micro_usd` (two additive columns), written in the same single
+  upsert as the success time and credit estimate; a new month replaces the
+  figure. Still aggregates only: no prompt, image, response, error text or
+  request id. No new table, no new write path.
+- Privacy: unchanged. The same redacted, bounded inputs reach whichever
+  provider goes first; the order never widens what is sent. The entry draft
+  (the redacted sentence only, 300 characters) can now reach Claude through
+  the gateway with logging and caching off, like the other text features.
+- Cost: the deterministic pace reads one row (a SELECT) per request when both
+  providers are configured; no extra model call. Over the pace line, background
+  features go to Workers AI first; at 90% of the target everything does, so
+  Claude spend stops growing except for fallbacks. The daily allowance rises to
+  100 units (`wrangler.jsonc`, owner-approved; clamp 4 to 100).
+- No-AI and failure paths: an unreadable status row means Claude first, so
+  behaviour is as before; either provider remains the other's fallback; with
+  AI off or one provider configured nothing is read.
+  `tests/ai-provider.test.mjs`, `tests/ai-provider-status.test.mjs`.
+- The mode is shown, not decided by AI: `GET .../provider-status` adds
+  `monthSpendUsd`, `monthTargetUsd` and `mode`, and Settings has one line
+  (hidden money hides the dollar figures).
+
 ### Update, 11 October 2026: Ask voice input (transcribe route)
 
 The Ask composer gained a mic (owner-approved): hold to talk or tap, the

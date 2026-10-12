@@ -306,8 +306,8 @@ Nothing is needed today. With no gateway settings, the optional AI layer
 and other JSON answers (Ask's answer wording, the Monthly Note draft, the
 statement-mismatch explanation, category-rule suggestions and the statement
 text fallback). There is no failed gateway call, no extra wait and no log
-line. The entry draft still uses Llama 3.2 3B on Workers AI (`runAiJson`),
-and duplicate and transfer ranking use Workers AI embeddings; neither goes
+line. The entry draft uses the provider layer too, and
+duplicate and transfer ranking use Workers AI embeddings; neither goes
 through the gateway.
 
 Claude Haiku (`claude-haiku-5-5`) through Cloudflare AI Gateway can be added
@@ -352,8 +352,8 @@ To add Claude later:
    `AI_FALLBACK_MODEL` (default Gemma 4; use
    `@cf/meta/llama-4-scout-17b-16e-instruct` if Gemma 4 is withdrawn),
    `AI_ASSIST_VISION_UNITS` (allowance units per receipt image, default 2,
-   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, 4 to 60;
-   `wrangler.jsonc` sets 40, and a Worker without it uses 12).
+   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, 4 to 100;
+   `wrangler.jsonc` sets 100, and a Worker without it uses 12).
 7. Deploy as usual. If Claude rejects the key, model or gateway (400, 401,
    403 or 404), `npx wrangler tail` shows `AI provider config rejected` with
    the status code only; receipts keep working through Workers AI.
@@ -374,7 +374,7 @@ The routes:
 
 - `GET /api/ai-assist/provider-status` returns `{ ok, visible: true,
   claudeConfigured, state, estimatedSpendUsd, creditUsd, warnAtUsd,
-  lastFailureAt?, lastFailureReason?, lastSuccessAt?, consoleBillingUrl }`,
+  monthSpendUsd, monthTargetUsd, mode, lastFailureAt?, lastFailureReason?, lastSuccessAt?, consoleBillingUrl }`,
   where `state` is `exhausted`, `capped`, `low` (estimated spend at or over
   the warn amount), `unknown` (no Claude config, no success yet, or a
   rejected key) or `ok`. A later Claude success turns `exhausted` or
@@ -404,6 +404,15 @@ Optional vars (defaults in brackets):
   first top-up mark; after a mark, the marked amount is used.
 - `AI_CLAUDE_WARN_AT_USD` [15]: the estimated spend that turns the state
   to `low` (never more than the credit).
+- `AI_CLAUDE_MONTHLY_TARGET_USD` [8]: the monthly Claude budget for
+  auto-balance. `mode` is `claude_all` while the month's estimated spend is
+  at or under target x day / days in the month (Asia/Singapore),
+  `ask_only` when it is over that pace (background help asks the basic model
+  first; receipts, entry drafts and Ask wording still ask Claude first) and
+  `basic_first` from 90% of the target (everything asks the basic model
+  first). Claude or the basic model is always the other's fallback, and the
+  month's figure restarts at zero each month. Settings shows it as one line
+  under the credit line.
 
 The estimate is only an estimate: it does not see credit spent by other
 apps on the same Anthropic account, or a balance the owner topped up without

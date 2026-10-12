@@ -636,8 +636,9 @@ so.
 
 ### When Claude credits run low
 
-Reading your sentences and receipts can use Claude, a paid helper, when it
-is set up. When its credits run low, Ask shows a small note at the top of
+Ask uses Claude. Other AI help uses Claude while the month's budget allows,
+otherwise the basic model. Claude is a paid helper, and it is only used when
+it is set up. When its credits run low, Ask shows a small note at the top of
 the conversation:
 
 - **Claude credits are running low**: with how much of the credit is used
@@ -658,6 +659,13 @@ On the note:
   sooner only if things get worse, for example from running low to used up.
 
 The same line, with both buttons, is in **Settings** under **Ask and AI**.
+Under it, one more line says how much Claude has been used this month and
+who is helping: "background help is using Claude" while the month is on
+budget, "background help is using the basic model to save budget" when
+Claude is running ahead of the month's pace, and "everything is using the
+basic model to save budget" once nearly all of the month's budget is used.
+The dollar figures are hidden while money totals are hidden. It resets at
+the start of each month.
 
 ### Your conversation is kept
 

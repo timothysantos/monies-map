@@ -1815,6 +1815,10 @@ is `AI_ALERT_EMAILS`: a list of Access emails, or `"*"` for everyone (what
 Canonical term:
 - `AI provider status` (the row); `credit state` (its derived `ok`, `low`,
   `exhausted`, `capped` or `unknown`)
+- `auto-balance` (the monthly pacing that orders the providers); `spend mode`
+  (`claude_all`, `ask_only` or `basic_first`); `ask tier` (receipt read,
+  entry draft, Ask answer wording) and `background tier` (monthly note, import
+  explanation, category rules, statement fallback)
 
 Code and storage:
 - `src/domain/ai-provider-status.ts` (failure categories, spend estimate,
@@ -1822,7 +1826,10 @@ Code and storage:
 - `ai_provider_status` (one row, `provider = 'claude'`): last failure
   category (`credit_exhausted`, `spend_capped`, `auth`, `other`) and time,
   last success time, `estimated_spend_micro_usd` since the last top-up mark,
-  and that mark's time and credit (`topped_up_credit_micro_usd`)
+  and that mark's time and credit (`topped_up_credit_micro_usd`), plus
+  `spend_month` (`YYYY-MM`, Asia/Singapore) and `month_spend_micro_usd`, the
+  estimated Claude spend in that month, replaced by the next success of a
+  new month (aggregates only)
 - `GET /api/ai-assist/provider-status`,
   `POST /api/ai-assist/provider-status/topped-up`
   (`src/server/ai-provider-status-route.ts`); `AiProviderStatusResponseDto`
@@ -1837,6 +1844,15 @@ Important distinctions:
 - A top-up mark is the owner saying how much credit they bought; it restarts
   the estimate and clears a `credit_exhausted` failure, not a gateway spend
   cap.
+- Auto-balance is deterministic and uses no AI. The month's spend is
+  compared with a pace line (`AI_CLAUDE_MONTHLY_TARGET_USD`, default 8,
+  times day over days in the month): at or under it `claude_all` asks Claude
+  first for everything; over it `ask_only` asks the basic model (Workers AI)
+  first for background features and still Claude first for ask features; at
+  90% of the target `basic_first` asks the basic model first for everything.
+  The other provider is always the fallback, so a mode only changes the
+  order. It also shows as `monthSpendUsd`, `monthTargetUsd` and `mode` on the
+  status route and as one Settings line.
 - Only owners listed in `AI_ALERT_EMAILS` (Cloudflare Access emails) see it.
   It is not household data: no prompt, image, response, error text or
   request id is stored, and it is not part of any page DTO.
