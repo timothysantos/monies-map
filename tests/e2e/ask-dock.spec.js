@@ -264,11 +264,14 @@ test.describe("desktop Ask", () => {
     await field(page).click();
     await expect(panel(page)).toBeVisible();
     await expect(panel(page).getByRole("status")).toHaveText("Loading...");
-    await page.keyboard.type("grab rides");
-    await expect(field(page)).toHaveValue("grab rides");
+    // Mid-sentence, trailing space and all.
+    await page.keyboard.type("grab ");
+    await expect(field(page)).toHaveValue("grab ");
     release();
-    await expect(message(page)).toHaveValue("grab rides");
     await expect(message(page)).toBeFocused();
+    await expect(message(page)).toHaveValue("grab ");
+    await page.keyboard.type("rides");
+    await expect(message(page)).toHaveValue("grab rides");
     await expect(page.locator(".ask-dock-field")).toHaveCount(0);
   });
 

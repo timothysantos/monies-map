@@ -869,7 +869,9 @@ function AskConversation({
     dock.setReady(true);
     const handoff = dock.takeHandoff();
     if (handoff.text) {
-      setComposerText(joinSpokenText(store.read(conversationKey)?.composerText ?? "", handoff.text));
+      // As typed, trailing space included: the person may still be typing.
+      const before = store.read(conversationKey)?.composerText ?? "";
+      setComposerText(before && !/\s$/.test(before) ? `${before} ${handoff.text}` : `${before}${handoff.text}`);
     }
     if (handoff.file) {
       void readReceipt(handoff.file);
