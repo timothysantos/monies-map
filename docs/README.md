@@ -80,6 +80,12 @@ a doc here in the same change.
 - [`flows/ask-flow.md`](flows/ask-flow.md): Ask page (the entry card, its
   readers and the Apple Pay Shortcut's link).
 
+## Proposals (awaiting owner approval)
+
+- [`proposals/reminders/README.md`](proposals/reminders/README.md): in-app
+  reminders in Ask and the Ask dot; rules, snooze, privacy, and before/after
+  mockups. Not built.
+
 ## Audits and evidence
 
 - [`delete-confirmation-audit.md`](delete-confirmation-audit.md): delete
