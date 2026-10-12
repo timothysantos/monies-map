@@ -17,6 +17,7 @@ import { rebalanceSplitSharesForTotal, splitAmountMinorWithRoundedRemainder } fr
 import { calculateNetSettlement } from "./split-settlement-policy";
 import { calculateFxRateBasisPoints, convertMinorAmount, normalizeSplitCurrency } from "./split-currency";
 import { truncateReviewDescription } from "./review-description";
+import { moveSideOf, openCheckpointSource, settlementPaymentCandidate, SETTLEMENT_PAYMENT_DAYS_AFTER, SETTLEMENT_PAYMENT_DAYS_BEFORE } from "./internal-moves";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
   SplitExpenseDto,
@@ -391,39 +392,61 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
   }));
 }
 
-// A payment between the two people for exactly what an open settlement still
-// needs, within two weeks after it, that is not yet a matched transfer: the
-// settlement paid, waiting to be matched (the Splits check-in reads it).
+// The settlement's payment candidate (the Splits check-in's To do): the
+// unlinked payment between the two people's own accounts for exactly what
+// an open checkpoint still needs, picked by the internal-move rules
+// (internal-moves.ts) that Ask's skew check also reads. One small query per
+// open checkpoint reads the entries that could take part.
 async function findCheckpointPaymentCandidate(db: D1Database, checkpoint: SplitSettlementCheckpointDto) {
-  const remainingMinor = checkpoint.amountMinor - checkpoint.matchedAmountMinor;
-  if (!["open", "partially_matched"].includes(checkpoint.status) || remainingMinor <= 0 || !checkpoint.fromPersonId || !checkpoint.toPersonId) {
+  const source = openCheckpointSource(checkpoint);
+  if (!source) {
     return undefined;
   }
   const rows = await db.prepare(`
-    SELECT id, transaction_date, entry_type, transfer_direction, owner_person_id
+    SELECT transactions.id, transactions.account_id, transactions.transaction_date, transactions.amount_minor,
+      transactions.entry_type, transactions.transfer_direction,
+      accounts.owner_person_id, accounts.is_joint, accounts.currency
     FROM transactions
-    WHERE household_id = ?
-      AND ABS(amount_minor) = ?
-      AND transaction_date BETWEEN ? AND date(?, '+14 days')
-      AND transfer_group_id IS NULL
-      AND owner_person_id IN (?, ?)
-      AND id NOT IN (SELECT transaction_id FROM split_settlement_checkpoint_matches)
-    ORDER BY transaction_date, id
-    LIMIT 6
-  `).bind(DEFAULT_HOUSEHOLD_ID, remainingMinor, checkpoint.settlementDate, checkpoint.settlementDate, checkpoint.fromPersonId, checkpoint.toPersonId)
-    .all<{ id: string; transaction_date: string; entry_type: string; transfer_direction: string | null; owner_person_id: string }>();
-  const payer = rows.results.find((row) => row.owner_person_id === checkpoint.fromPersonId && (row.entry_type === "expense" || (row.entry_type === "transfer" && row.transfer_direction === "out")));
-  const payee = rows.results.find((row) => row.owner_person_id === checkpoint.toPersonId && (row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")));
-  const first = payer ?? payee;
-  if (!first) {
-    return undefined;
-  }
-  return {
-    date: first.transaction_date,
-    amountMinor: remainingMinor,
-    entryIds: [payer?.id, payee?.id].filter((id): id is string => Boolean(id)),
-    countedAsSpending: payer?.entry_type === "expense" || payee?.entry_type === "income"
-  };
+    INNER JOIN accounts ON accounts.id = transactions.account_id
+    WHERE transactions.household_id = ?
+      AND transactions.amount_minor = ?
+      AND transactions.transaction_date BETWEEN date(?, ?) AND date(?, ?)
+      AND transactions.transfer_group_id IS NULL
+      AND accounts.is_joint = 0
+      AND accounts.owner_person_id IN (?, ?)
+      AND transactions.id NOT IN (SELECT transaction_id FROM split_settlement_checkpoint_matches)
+      AND transactions.id NOT IN (
+        SELECT matched_transaction_id FROM split_settlement_checkpoints
+        WHERE household_id = ? AND matched_transaction_id IS NOT NULL
+      )
+      AND NOT EXISTS (SELECT 1 FROM split_expenses WHERE split_expenses.linked_transaction_id = transactions.id AND split_expenses.deleted_at IS NULL)
+      AND NOT EXISTS (SELECT 1 FROM split_settlements WHERE split_settlements.linked_transaction_id = transactions.id AND split_settlements.deleted_at IS NULL)
+    ORDER BY transactions.transaction_date, transactions.id
+    LIMIT 40
+  `).bind(
+    DEFAULT_HOUSEHOLD_ID,
+    source.amountMinor,
+    checkpoint.settlementDate,
+    `-${SETTLEMENT_PAYMENT_DAYS_BEFORE} days`,
+    checkpoint.settlementDate,
+    `+${SETTLEMENT_PAYMENT_DAYS_AFTER} days`,
+    source.fromPersonId,
+    source.toPersonId,
+    DEFAULT_HOUSEHOLD_ID
+  ).all<{ id: string; account_id: string; transaction_date: string; amount_minor: number; entry_type: string; transfer_direction: string | null; owner_person_id: string; is_joint: number; currency: string }>();
+  const sides = rows.results.flatMap((row) => {
+    const side = moveSideOf({
+      id: row.id,
+      accountId: row.account_id,
+      date: row.transaction_date,
+      amountMinor: row.amount_minor,
+      entryType: row.entry_type,
+      transferDirection: row.transfer_direction,
+      linked: false
+    }, { ownerPersonId: row.owner_person_id, isJoint: Boolean(row.is_joint), currency: row.currency });
+    return side ? [{ ...side, entryType: row.entry_type }] : [];
+  });
+  return settlementPaymentCandidate(checkpoint, sides);
 }
 
 async function loadCheckpointedRecordIds(db: D1Database) {

@@ -10,15 +10,30 @@
 // - own_transfer: an unlinked outflow and inflow of the same amount between
 //   two accounts of the same person, a few days apart
 //
-// The rules follow the existing matchers: amounts match exactly (as
-// linkTransferPair requires), there is no minimum amount (neither the transfer
-// candidates nor the checkpoint match has one), and an entry already linked
-// as a transfer, to a split, a settle-up or a checkpoint never takes part.
-// Each candidate names the existing write routes that resolve it; this module
-// only reads.
+// Which entries pair, the windows and the order are the internal-move rules
+// (internal-moves.ts), the same ones Money insights reads for a settlement's
+// payment candidate and for own-account transfers counted as income, so
+// Ask's check and Money insights name the same entries. Amounts match
+// exactly (as linkTransferPair requires), there is no minimum amount, and an
+// entry already linked as a transfer, to a split, a settle-up or a
+// checkpoint never takes part. Each candidate names the existing write
+// routes that resolve it; this module only reads.
 
 import { diffDays, getMonthBounds } from "./app-repository-helpers";
 import { incomeMinor, spendingMinor } from "./category-offset";
+import {
+  GROUP_BALANCE_PAYMENT_DAYS,
+  groupBalancePaymentWindow,
+  moveSideOf,
+  openCheckpointSource,
+  OWN_MOVE_WINDOW_DAYS,
+  pairOwnAccountMoves,
+  pickSettlementPayment,
+  SETTLEMENT_PAYMENT_DAYS_AFTER,
+  SETTLEMENT_PAYMENT_DAYS_BEFORE,
+  type MoveSide,
+  type SettlementPaymentSource
+} from "./internal-moves";
 import { personEntryAmountMinor } from "./person-entry-amount";
 import { truncateReviewDescription } from "./review-description";
 import { normalizeSplitCurrency } from "./split-currency";
@@ -34,24 +49,19 @@ import type {
   SplitSettlementCheckpointDto
 } from "../types/dto";
 
-// Days either side of a settlement checkpoint's date (the split settle-up
-// matcher allows 7 for a recorded settle-up; a simplified settlement is
-// usually paid within days of being worked out).
-export const SETTLEMENT_WINDOW_DAYS = 5;
-// A group balance has no settlement date, so the payment must come on or
-// after the group's last open activity and within this many days of it.
-export const GROUP_BALANCE_WINDOW_DAYS = 14;
-export const OWN_TRANSFER_WINDOW_DAYS = 3;
 // How far outside the month the loader reads entries so a counterpart dated
-// just before or after the month is still seen (two sides of a checkpoint
-// can be twice its window apart).
-export const SKEW_ENTRY_PADDING_DAYS = Math.max(2 * SETTLEMENT_WINDOW_DAYS, GROUP_BALANCE_WINDOW_DAYS, OWN_TRANSFER_WINDOW_DAYS);
+// just before or after the month is still seen (the two sides of a
+// checkpoint payment can be its whole window apart).
+export const SKEW_ENTRY_PADDING_DAYS = Math.max(
+  SETTLEMENT_PAYMENT_DAYS_BEFORE + SETTLEMENT_PAYMENT_DAYS_AFTER,
+  GROUP_BALANCE_PAYMENT_DAYS,
+  OWN_MOVE_WINDOW_DAYS
+);
 // Bounds the response; totals still cover every candidate.
 export const MAX_SKEW_CANDIDATES = 50;
 
 const DESCRIPTION_MAX_LENGTH = 240;
 const MIN_NAME_LENGTH = 3;
-const OPEN_CHECKPOINT_STATUSES = new Set<SplitSettlementCheckpointDto["status"]>(["open", "partially_matched"]);
 const NON_GROUP_ID = "split-group-none";
 
 export type SkewAccount = Pick<AccountDto, "id" | "name" | "ownerPersonId" | "isJoint" | "currency">;
@@ -94,21 +104,13 @@ export interface SkewCandidatesResult {
   omittedCandidateCount: number;
 }
 
-// One unlinked entry on a personally owned account.
-interface Side {
+// One unlinked entry on a personally owned account (internal-moves.ts),
+// with the entry it came from.
+interface Side extends MoveSide {
   entry: EntryDto;
-  ownerPersonId: string;
-  currency: string;
-  direction: "out" | "in";
 }
 
-interface SettlementSource {
-  amountMinor: number;
-  currency: string;
-  fromPersonId: string;
-  toPersonId: string;
-  anchorDate: string;
-  inWindow: (date: string) => boolean;
+interface SettlementSource extends SettlementPaymentSource {
   settlement: NonNullable<SkewCandidateDto["settlement"]>;
 }
 
@@ -117,11 +119,6 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
   const isInMonth = (date: string) => date >= monthStart && date < nextMonth;
   const personById = new Map(input.people.map((person) => [person.id, person]));
   const sides = collectSides(input);
-  // Amounts must match exactly, so each lookup only scans one amount's sides.
-  const sidesByAmount = new Map<number, Side[]>();
-  for (const side of sides) {
-    sidesByAmount.set(side.entry.amountMinor, [...(sidesByAmount.get(side.entry.amountMinor) ?? []), side]);
-  }
   const used = new Set<string>();
   const found: SkewCandidateDto[] = [];
 
@@ -131,43 +128,21 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
     if (!fromPerson || !toPerson) {
       continue;
     }
-    const sameAmount = sidesByAmount.get(source.amountMinor) ?? [];
-    const matches = (side: Side, direction: Side["direction"], ownerPersonId: string) => side.direction === direction
-      && side.ownerPersonId === ownerPersonId
-      && side.currency === source.currency
-      && !used.has(side.entry.id)
-      && source.inWindow(side.entry.date);
-    const outflow = closestTo(source.anchorDate, sameAmount.filter((side) => matches(side, "out", fromPerson.id)));
-    const inflow = closestTo(source.anchorDate, sameAmount.filter((side) => matches(side, "in", toPerson.id)));
+    const { outflow, inflow } = pickSettlementPayment(source, sides, used);
     if (!outflow && !inflow) {
       continue;
     }
     for (const side of [outflow, inflow]) {
-      if (side) used.add(side.entry.id);
+      if (side) used.add(side.id);
     }
     found.push(buildSettlementCandidate(source, fromPerson, toPerson, outflow, inflow, isInMonth));
   }
 
-  for (const outflow of sortSides(sides.filter((side) => side.direction === "out"))) {
-    if (used.has(outflow.entry.id)) {
-      continue;
+  for (const pair of pairOwnAccountMoves(sides, used)) {
+    const owner = personById.get(pair.outflow.ownerPersonId);
+    if (owner) {
+      found.push(buildOwnTransferCandidate(owner, pair.outflow, pair.inflow, pair.ambiguous, isInMonth));
     }
-    const inflows = (sidesByAmount.get(outflow.entry.amountMinor) ?? []).filter((side) => side.direction === "in"
-      && !used.has(side.entry.id)
-      && side.ownerPersonId === outflow.ownerPersonId
-      && side.entry.accountId !== outflow.entry.accountId
-      && side.currency === outflow.currency
-      && diffDays(side.entry.date, outflow.entry.date) <= OWN_TRANSFER_WINDOW_DAYS);
-    const inflow = closestTo(outflow.entry.date, inflows);
-    const owner = personById.get(outflow.ownerPersonId);
-    if (!inflow || !owner) {
-      continue;
-    }
-    const gap = diffDays(inflow.entry.date, outflow.entry.date);
-    const ambiguous = inflows.filter((side) => diffDays(side.entry.date, outflow.entry.date) === gap).length > 1;
-    used.add(outflow.entry.id);
-    used.add(inflow.entry.id);
-    found.push(buildOwnTransferCandidate(owner, outflow, inflow, ambiguous, isInMonth));
   }
 
   // The view decides how much each candidate skews: the household counts
@@ -194,8 +169,8 @@ export function findSkewCandidates(input: SkewCandidateInput): SkewCandidatesRes
   };
 }
 
-// A settlement candidate is medium only when one side was found and its
-// description names nobody.
+// A settlement candidate is medium only when one side of a group balance
+// was found and its description names nobody.
 function isHiddenByDefault(candidate: SkewCandidateDto) {
   return candidate.kind === "settlement" && candidate.confidence === "medium";
 }
@@ -244,48 +219,30 @@ function collectSides(input: SkewCandidateInput): Side[] {
   }
 
   return input.entries.flatMap((entry) => {
-    const account = entry.accountId ? accountById.get(entry.accountId) : undefined;
-    const direction = entryDirection(entry);
-    if (
-      !account
-      || account.isJoint
-      || !account.ownerPersonId
-      || !direction
-      || entry.amountMinor <= 0
-      || entry.linkedTransfer
-      || entry.linkedSplitExpenseId
-      || linked.has(entry.id)
-    ) {
-      return [];
-    }
-    return [{ entry, ownerPersonId: account.ownerPersonId, currency: normalizeSplitCurrency(account.currency), direction }];
+    const side = moveSideOf({
+      id: entry.id,
+      accountId: entry.accountId,
+      date: entry.date,
+      amountMinor: entry.amountMinor,
+      entryType: entry.entryType,
+      transferDirection: entry.transferDirection,
+      linked: Boolean(entry.linkedTransfer || entry.linkedSplitExpenseId || linked.has(entry.id))
+    }, entry.accountId ? accountById.get(entry.accountId) : undefined);
+    return side ? [{ ...side, entry }] : [];
   });
-}
-
-function entryDirection(entry: EntryDto): Side["direction"] | null {
-  if (entry.entryType === "expense") return "out";
-  if (entry.entryType === "income") return "in";
-  return entry.transferDirection ?? null;
 }
 
 // Checkpoints first (a simplified settlement is the more specific evidence),
 // then group balances, each in a stable order.
 function collectSettlementSources(input: SkewCandidateInput): SettlementSource[] {
-  const checkpoints = input.settlementCheckpoints
-    .filter((checkpoint) => OPEN_CHECKPOINT_STATUSES.has(checkpoint.status) && checkpoint.fromPersonId && checkpoint.toPersonId)
-    .map((checkpoint) => ({ checkpoint, remainingMinor: checkpoint.amountMinor - (checkpoint.matchedAmountMinor ?? 0) }))
-    .filter(({ remainingMinor }) => remainingMinor > 0)
-    .sort((left, right) => left.checkpoint.settlementDate.localeCompare(right.checkpoint.settlementDate)
-      || left.checkpoint.id.localeCompare(right.checkpoint.id))
-    .map(({ checkpoint, remainingMinor }): SettlementSource => ({
-      amountMinor: remainingMinor,
-      currency: normalizeSplitCurrency(checkpoint.currency),
-      fromPersonId: checkpoint.fromPersonId as string,
-      toPersonId: checkpoint.toPersonId as string,
-      anchorDate: checkpoint.settlementDate,
-      inWindow: (date) => diffDays(date, checkpoint.settlementDate) <= SETTLEMENT_WINDOW_DAYS,
-      settlement: { source: "settlement_checkpoint", checkpointId: checkpoint.id, anchorDate: checkpoint.settlementDate }
-    }));
+  const checkpoints = [...input.settlementCheckpoints]
+    .sort((left, right) => left.settlementDate.localeCompare(right.settlementDate) || left.id.localeCompare(right.id))
+    .flatMap((checkpoint): SettlementSource[] => {
+      const source = openCheckpointSource(checkpoint);
+      return source
+        ? [{ ...source, settlement: { source: "settlement_checkpoint", checkpointId: checkpoint.id, anchorDate: checkpoint.settlementDate } }]
+        : [];
+    });
 
   const groups = [...input.groupBalances]
     .filter((balance) => balance.amountMinor > 0)
@@ -296,7 +253,7 @@ function collectSettlementSources(input: SkewCandidateInput): SettlementSource[]
       fromPersonId: balance.fromPersonId,
       toPersonId: balance.toPersonId,
       anchorDate: balance.lastActivityDate,
-      inWindow: (date) => date >= balance.lastActivityDate && diffDays(date, balance.lastActivityDate) <= GROUP_BALANCE_WINDOW_DAYS,
+      inWindow: groupBalancePaymentWindow(balance.lastActivityDate),
       settlement: { source: "group_balance", groupId: balance.groupId, groupName: balance.groupName, anchorDate: balance.lastActivityDate }
     }));
 
@@ -375,7 +332,10 @@ function buildSettlementCandidate(
   return {
     id: `settlement:${sourceKey}:${outflow?.entry.id ?? "-"}:${inflow?.entry.id ?? "-"}`,
     kind: "settlement",
-    confidence: present.length === 2 || named.length > 0 ? "high" : "medium",
+    // A checkpoint's exact remaining amount in its window is what Money
+    // insights offers as the settlement's payment (internal-moves.ts), so it
+    // is always high; a group balance needs both sides or a name.
+    confidence: source.settlement.source === "settlement_checkpoint" || present.length === 2 || named.length > 0 ? "high" : "medium",
     amountMinor: source.amountMinor,
     currency: source.currency,
     fromPerson: { id: fromPerson.id, name: fromPerson.name },
@@ -468,15 +428,7 @@ function snapshot(side: Side, isInMonth: (date: string) => boolean): SkewCandida
   };
 }
 
-// The nearest by date, then by id, so the same data always pairs the same way.
-function closestTo(anchorDate: string, sides: Side[]) {
-  return [...sides].sort((left, right) => diffDays(left.entry.date, anchorDate) - diffDays(right.entry.date, anchorDate)
-    || left.entry.id.localeCompare(right.entry.id))[0];
-}
 
-function sortSides(sides: Side[]) {
-  return [...sides].sort((left, right) => left.entry.date.localeCompare(right.entry.date) || left.entry.id.localeCompare(right.entry.id));
-}
 
 // The other person's name as a whole word ("PAYNOW TO SERENE" names Serene).
 function descriptionNames(description: string, personName: string) {

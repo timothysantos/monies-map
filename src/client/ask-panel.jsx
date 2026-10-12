@@ -43,6 +43,7 @@ import { getAskConversationStore } from "./ask-conversation-store";
 import { getAskDockStore } from "./ask-dock-state";
 import { planAskBack, readAskOrigin, rememberAskOrigin } from "./ask-origin";
 import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
+import { requestAskFilter, shouldAskFilterAi } from "./ask-filter-request";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
 import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
@@ -551,6 +552,15 @@ function AskConversation({
       answerFilterRequest(reading);
       return;
     }
+    // Only now, when the rules read nothing, the optional AI may propose a
+    // filter; the page and the server both check it against the household's
+    // own names, and anything but a checked reading falls through to what
+    // happened before.
+    const aiReading = shouldAskFilterAi(text, { cardOpen }) ? await askAiFilter(text) : null;
+    if (aiReading) {
+      answerFilterRequest(aiReading);
+      return;
+    }
     if (!cardOpen && looksLikeQuestion(text)) {
       appendThread(threadItem("note", { text: askCopy.notes.askNotReady }));
       return;
@@ -567,6 +577,27 @@ function AskConversation({
         setCard(base);
         appendThread(threadItem("note", { text: askCopy.notes.sentenceUnavailable, tone: "calm" }));
       }
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+  }
+
+  // The optional AI reading of a filter request (ask-filter-request.js): a
+  // checked reading, or null (AI off, over its allowance, failing, or not a
+  // search), after which the page behaves as it always has.
+  async function askAiFilter(text) {
+    setWorking("answer");
+    setStatus(askCopy.money.reading);
+    try {
+      const result = await requestAskFilter({
+        text,
+        viewId: view.id,
+        scope: filterContext.scope,
+        month: selectedMonth,
+        context: { people, accounts, categories }
+      });
+      return result.ok ? result.reading : null;
     } finally {
       setStatus("");
       setWorking("");

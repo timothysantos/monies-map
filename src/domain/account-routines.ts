@@ -7,6 +7,7 @@
 // Nothing here guesses spending. The one look ahead is the scheduled check:
 // a recorded statement balance against payments that already repeat from
 // the same account at the same amount (DOMAIN.md "Scheduled check").
+import { moveSideOf, pairOwnAccountMoves } from "./internal-moves";
 import { addDays, addMonths, daysBetween, daysInMonth, monthsBetween } from "./money-signals/format";
 import type {
   AccountChargeDto,
@@ -43,6 +44,8 @@ export interface RoutineAccount {
   name: string;
   kind: string;
   ownerPersonId?: string;
+  isJoint?: boolean;
+  currency?: string;
   checkpointHistory?: AccountCheckpointDto[];
 }
 
@@ -438,9 +441,11 @@ function findMovedIncome(
 }
 
 // Income into one of a person's bank accounts while the same amount left
-// another of their bank accounts as a transfer within three days, with the
-// two not linked: money moving between their own accounts, counted as
-// income.
+// another of their bank accounts as an unlinked transfer within three days:
+// money moving between their own accounts, counted as income. The pairs
+// are the internal-move pairs (internal-moves.ts), the same ones Ask's skew
+// check reads, so an income that pairs with another outflow first, or a
+// pair that is a guess (two equally close incomes), is not named here.
 function findOwnTransfersAsIncome(
   banks: RoutineAccount[],
   perAccount: Map<string, { rows: RoutineEntryRow[] }>,
@@ -448,36 +453,45 @@ function findOwnTransfersAsIncome(
 ) {
   const result = new Map<string, OwnTransferIncomeDto[]>();
   const cutoff = addDays(today, -OWN_TRANSFER_FOLLOW_DAYS);
-  const used = new Set<string>();
-  for (const account of banks) {
-    if (!account.ownerPersonId) {
+  const accountById = new Map(banks.map((account) => [account.id, account]));
+  const rowById = new Map<string, RoutineEntryRow>();
+  const sides = banks.flatMap((account) => perAccount.get(account.id)!.rows.flatMap((row) => {
+    rowById.set(row.id, row);
+    const side = moveSideOf({
+      id: row.id,
+      accountId: row.account_id,
+      date: row.transaction_date,
+      amountMinor: Math.abs(row.amount_minor),
+      entryType: row.entry_type,
+      transferDirection: row.transfer_direction,
+      linked: Boolean(row.transfer_group_id)
+    }, account);
+    return side ? [side] : [];
+  }));
+  for (const pair of pairOwnAccountMoves(sides)) {
+    const income = rowById.get(pair.inflow.id)!;
+    const out = rowById.get(pair.outflow.id)!;
+    if (
+      pair.ambiguous
+      || income.entry_type !== "income"
+      || out.entry_type !== "transfer"
+      || income.transaction_date < cutoff
+      || pair.inflow.amountMinor < OWN_TRANSFER_MIN_MINOR
+    ) {
       continue;
     }
-    const siblings = banks.filter((other) => other.id !== account.id && other.ownerPersonId === account.ownerPersonId);
-    for (const row of perAccount.get(account.id)!.rows) {
-      if (row.entry_type !== "income" || row.transfer_group_id || row.transaction_date < cutoff || Math.abs(row.amount_minor) < OWN_TRANSFER_MIN_MINOR) {
-        continue;
-      }
-      for (const sibling of siblings) {
-        const out = perAccount.get(sibling.id)!.rows.find((candidate) => !used.has(candidate.id)
-          && candidate.entry_type === "transfer" && candidate.transfer_direction === "out" && !candidate.transfer_group_id
-          && Math.abs(candidate.amount_minor) === Math.abs(row.amount_minor)
-          && Math.abs(daysBetween(candidate.transaction_date, row.transaction_date)) <= 3);
-        if (out) {
-          used.add(out.id);
-          result.set(account.id, [...(result.get(account.id) ?? []), {
-            entryId: row.id,
-            fromEntryId: out.id,
-            date: row.transaction_date,
-            fromDate: out.transaction_date,
-            amountMinor: Math.abs(row.amount_minor),
-            categoryName: row.category_name ?? "",
-            fromAccountName: sibling.name
-          }]);
-          break;
-        }
-      }
-    }
+    result.set(income.account_id, [...(result.get(income.account_id) ?? []), {
+      entryId: income.id,
+      fromEntryId: out.id,
+      date: income.transaction_date,
+      fromDate: out.transaction_date,
+      amountMinor: pair.inflow.amountMinor,
+      categoryName: income.category_name ?? "",
+      fromAccountName: accountById.get(out.account_id)?.name ?? ""
+    }]);
+  }
+  for (const items of result.values()) {
+    items.sort((left, right) => left.date.localeCompare(right.date) || left.entryId.localeCompare(right.entryId));
   }
   return result;
 }
