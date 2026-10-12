@@ -204,6 +204,9 @@ test("a month with no entries says so instead of borrowing another month", async
   assert.deepEqual(payload.months, ["2024-11"]);
   assert.equal(payload.answer.lead.amountMinor, 0);
   assert.equal(payload.wording.text, "There are no entries for November 2024 yet.");
+  const compare = await ask(api, "compare March 2026 with March 2024");
+  assert.deepEqual(compare.months, ["2026-03", "2024-03"]);
+  assert.equal(compare.wording.text, "March came to $10,391.23. There are no entries for March 2024 to compare it with.");
 });
 
 test("an unsupported question, a bad body or a GET is refused plainly, and nothing is written", async (t) => {

@@ -343,6 +343,9 @@ export function buildTemplateWording(facts: AskAnswerFacts, context: WordingCont
     const { current, other } = facts;
     const label = monthLabel(current.month, today);
     const otherLabel = monthLabel(other.month, today);
+    if (other.entryCount === 0) {
+      return `${label} came to ${money(current.spentMinor)}. There are no entries for ${otherLabel} to compare it with.`;
+    }
     const gap = current.spentMinor - other.spentMinor;
     sentences.push(gap > 0
       ? `${label} came to ${money(current.spentMinor)}, ${money(gap)} more than ${otherLabel}'s ${money(other.spentMinor)}.`

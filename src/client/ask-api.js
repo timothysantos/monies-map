@@ -324,7 +324,7 @@ export async function resolveSkewCandidate(candidate, { fetchImpl = fetch } = {}
     return { ok: false, error: "This can't be sorted from here. Open Splits or Entries to fix it." };
   }
   for (const step of steps) {
-    const result = await postJson(step.path, step.body, "That didn't work. Nothing else was changed after it; try again.", fetchImpl);
+    const result = await postJson(step.path, step.body, "That couldn't be done. Try again in a moment.", fetchImpl);
     if (!result.ok) {
       return { ok: false, error: result.error };
     }
