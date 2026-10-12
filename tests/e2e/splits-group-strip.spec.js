@@ -154,6 +154,40 @@ test.describe("Splits group strip on a phone", { tag: "@webkit" }, () => {
     }
   });
 
+  test("a long open-group name stays on one line with an ellipsis and every tile is the same height", async ({ page }) => {
+    await seed(page);
+    const longName = "Weekend trip to Chiang Mai with the whole family";
+    await postJson(page, "/api/splits/groups/create", { name: longName, currency: "SGD", expenseSource: "mixed" });
+    const created = (await groupsFromApi(page)).find((group) => group.name === longName);
+    expect(created).toBeTruthy();
+    await openSplits(page, `${URL_NO_GROUP}&split_group=${created.id}`);
+
+    const tiles = page.locator(".splits-strip-tile");
+    await expect(tiles.first()).toBeVisible();
+    await expect(page.locator(".splits-strip-tile.is-active .splits-strip-tile-name")).toHaveText(longName);
+    expect(await tiles.count()).toBeGreaterThan(1);
+
+    const name = page.locator(".splits-strip-tile.is-active .splits-strip-tile-name");
+    const look = await name.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        overflow: style.textOverflow,
+        whiteSpace: style.whiteSpace,
+        lineHeight: Number.parseFloat(style.lineHeight),
+        height: element.getBoundingClientRect().height,
+        clipped: element.scrollWidth > element.clientWidth,
+      };
+    });
+    expect(look.overflow).toBe("ellipsis");
+    expect(look.whiteSpace).toBe("nowrap");
+    expect(look.height).toBeLessThanOrEqual(look.lineHeight + 1);
+    expect(look.clipped).toBe(true);
+
+    // The name never makes its tile taller than the others.
+    const heights = await tiles.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height)));
+    expect(new Set(heights).size, `tile heights ${heights}`).toBe(1);
+  });
+
   test("the open group leads as a white tile and is remembered across a reload", async ({ page }) => {
     await seed(page);
     await openSplits(page);

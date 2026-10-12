@@ -127,16 +127,16 @@
   outline-color: var(--accent-strong);
 }
 
-/* A long name wraps to two lines before it is cut. */
+/* A long name stays on one line and ends in an ellipsis, so every tile keeps
+   the same height whatever the group is called. */
 .splits-strip-tile-name {
-  display: -webkit-box;
+  display: block;
+  min-width: 0;
   overflow: hidden;
   font-size: 0.98rem;
   line-height: 1.2;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .splits-strip-tile-balance,
