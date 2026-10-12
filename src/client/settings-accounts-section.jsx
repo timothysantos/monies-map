@@ -2,6 +2,7 @@ import { ChevronRight, SquarePen } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { settingsMessages } from "./copy/en-SG-settings";
+import { accountKindLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
 import { DeleteRowButton } from "./ui-components";
@@ -73,7 +74,7 @@ export function SettingsAccountsSection({
                 <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
                   <div className="settings-account-main">
                     <strong>{account.name}</strong>
-                    <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
+                    <p>{messages.common.triplet(account.institution, accountKindLabel(account.kind), account.ownerLabel)}</p>
                     <p>{`Balance ${formatService.money(account.balanceMinor ?? 0)} • Opening ${formatService.money(account.openingBalanceMinor ?? 0)}`}</p>
                     {areTotalsVisible ? (
                       <p className={`settings-account-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>

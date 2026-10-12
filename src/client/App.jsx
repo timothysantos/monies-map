@@ -2307,15 +2307,14 @@ export function App() {
               className="route-page-error"
               title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
               detail={messages.common.loadFailedDetail}
+              technical={routePageError}
               actions={[{
                 label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
                 onClick: () => void retryRoutePageFromPanel(),
                 disabled: isRetryingRoutePage,
                 primary: true
               }]}
-            >
-              {routePageError ? <p className="app-loading-issue-inline">{routePageError}</p> : null}
-            </ErrorPanel>
+            />
           ) : null}
           <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
             <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>

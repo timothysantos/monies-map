@@ -7,6 +7,8 @@ import { ClaudeCreditActions, ClaudeTopUpForm } from "./claude-credit-notice";
 import { claudeCreditCopy } from "./copy/claude-credit-copy";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
+import { categoryRowDetail } from "./category-utils";
+import { accountKindLabel, humanizeEnum } from "./enum-labels";
 import { settingsMessages } from "./copy/en-SG-settings";
 import { useMoneyPrivacy } from "./money-privacy";
 import { EmptyState } from "./ui-states";
@@ -262,7 +264,7 @@ export function SettingsShortcutApiSection({
                   <GripVertical size={16} aria-hidden="true" />
                   <div className="settings-account-main">
                     <strong>{account.name}</strong>
-                    <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
+                    <p>{messages.common.triplet(account.institution, accountKindLabel(account.kind), account.ownerLabel)}</p>
                   </div>
                   <div className="settings-account-actions">
                     <button
@@ -428,7 +430,7 @@ export function SettingsCategoriesSection({
                 </span>
                 <div className="settings-account-main">
                   <strong>{category.name}</strong>
-                  <p>{messages.common.triplet(category.slug, category.iconKey, category.colorHex)}</p>
+                  {categoryRowDetail(category) ? <p>{categoryRowDetail(category)}</p> : null}
                 </div>
                 <div className="settings-account-actions">
                   <button type="button" className="icon-action" aria-label={settingsMessages.editCategory} onClick={() => onEditCategory(category)}>
@@ -906,7 +908,7 @@ export function SettingsTrustSection({
 
 function formatExceptionMeta(item) {
   return messages.common.triplet(
-    settingsMessages.exceptionKindLabels[item.kind] ?? item.kind,
+    settingsMessages.exceptionKindLabels[item.kind] ?? humanizeEnum(item.kind),
     item.accountName ?? settingsMessages.exceptionNoAccount,
     item.checkpointMonth ? formatService.formatMonthLabel(item.checkpointMonth) : formatService.formatDateOnly(item.createdAt)
   );
