@@ -276,9 +276,31 @@ gateway location and a credential, `AI_GATEWAY_TOKEN` or
 non-2xx (429 includes the spend cap), network error, timeout (15 s each by
 default), refusal, cut-off or answer the caller's `parse` rejects. Gateway
 requests always carry `cf-aig-collect-log: false` and `cf-aig-skip-cache:
-true`; only a 400/401/403/404 is logged, as the status code alone. The
-existing text capabilities still use `runAiJson` on Workers AI until a
-reviewed change moves them.
+true`; only a 400/401/403/404 is logged, as the status code alone. When a
+provider did answer but `parse` refused every answer, the result's reason
+is the caller's optional `unusableReason`; otherwise (and for any failure or
+timeout) it is "AI is temporarily unavailable.".
+
+The Monthly Note draft, statement-mismatch explanation, category-rule
+suggestions and statement text fallback (`src/server/ai-assistance-routes.ts`)
+use `runTextJson`, each with its own JSON schema (`TEMPLATE_SCHEMA` for the
+two wording routes, `buildCategoryRuleSchema`, whose `categoryName` enum is
+the evidence's category names, and `STATEMENT_ROWS_SCHEMA`) and
+`unusableReason: AI_UNUSABLE_SUGGESTION_REASON`, so a refused answer still
+reads "AI returned an unusable suggestion.". The schema only shapes the
+answer: each route's validator (`parseNarrativeTemplate`,
+`parseImportExplanationTemplate`, `parseAiCategoryRuleProposals`,
+`parseAiStatementRows`) is unchanged and still decides what is usable, and
+counts (5 proposals, 40 rows) are enforced there. Prompts, redaction
+(`redactAiText`, `redactAiStatementText`), units (1, 1 per mismatched
+statement, 2, 8) and answer caps (180, 140, 300, 700 tokens: Workers AI's
+`max_completion_tokens`, Claude's `max_tokens` less the provider's fixed
+1,024-token thinking headroom) are as before. The entry draft joined them
+on 12 October 2026 (`runTextJson`, 80 tokens), and `runAiJson` has no
+caller left in routes; match ranking stays on Workers AI embeddings (`runAiEmbeddings`, `@cf/baai/bge-small-en-v1.5`).
+Proof: `tests/ai-text-provider-routes.test.mjs` (per route: Claude first,
+Claude failing to Gemma, both down, refused answers, Workers AI alone, AI
+off, unconfigured or over its allowance, one allowance reservation).
 
 After every Claude attempt the provider records the aggregate AI provider
 status (`src/domain/ai-provider-status.ts`, DOMAIN.md "AI Provider
@@ -304,7 +326,8 @@ amount, then `unknown` without a success or after a key failure, else
 `ok`) only to a Cloudflare Access email in `AI_ALERT_EMAILS`, or to
 everyone when it is `"*"` (`isAiAlertViewer`; `wrangler.jsonc` ships `"*"`);
 anyone else gets `{ ok: true, visible: false }` with no database read.
-`POST .../topped-up { creditUsd }` (the same viewers, 403 otherwise; a
+The visible answer also carries `monthSpendUsd`, `monthTargetUsd` and
+`mode` (auto-balance, below). `POST .../topped-up { creditUsd }` (the same viewers, 403 otherwise; a
 number above 0 and at most 10,000, 400 otherwise) restarts the estimate at
 the new credit. On the client the status has one store, the query cache
 entry `queryKeys.claudeCreditStatus()` (`claude-credit-status.js`): Ask and
@@ -315,6 +338,30 @@ file), only once their route is usable (App passes `routeWork.usable` to
 those two routes alone), kept for five minutes; a top-up cancels any read in flight and then writes the
 POST's answer into that entry. A failed read leaves no status and shows
 nothing.
+
+Auto-balance (owner-approved 12 October 2026, `computeClaudePacing` and
+`claudeGoesFirst` in `src/domain/ai-provider-status.ts`): when both Claude
+and Workers AI are available, `runJson` reads the status row (one SELECT,
+errors mean Claude first) and orders the providers by the month's estimated
+Claude spend (`spend_month`, `month_spend_micro_usd`; a success in a new
+Asia/Singapore month replaces the figure, one in the same month adds to it,
+in the same single upsert as the credit estimate) against a pace line of
+`AI_CLAUDE_MONTHLY_TARGET_USD` (default 8) times day over days in the month:
+`claude_all` (at or under pace) Claude first for every capability;
+`ask_only` (over pace) the basic model first for the background tier
+(`monthly_narrative`, `import_explanation`, `category_rules`,
+`statement_text_fallback`) and Claude first for the ask tier (`receipt_read`,
+`entry_draft`, `ask_answer`); `basic_first` (spend at 90% of the target or
+more) the basic model first for both. The other provider is the fallback in
+every order, a Claude attempt records its spend wherever it comes in the
+order, and nothing is read when only one provider is configured. The entry
+draft now uses the provider layer (`runTextJson`, schema in
+`ai-assistance-routes.ts`) so it can ask Claude. `AI_ASSIST_DAILY_LIMIT` is
+clamped to 4 to 100 (production sets 100). Covered by
+`tests/ai-provider-status.test.mjs` (pacing at day 1, 15 and 30, under and
+over pace, 90%, month rollover at Singapore midnight, the route's shape) and
+`tests/ai-provider.test.mjs` (every capability in every mode, fallback
+order, unreadable status).
 
 Receipt reading (`POST /api/ai-assist/receipt-read`,
 `src/server/receipt-read-route.ts`) checks availability before reading the
@@ -377,7 +424,8 @@ for an AI gap-filler over a deterministic answer. The pure parser
 draft is always returned; `entryDraftWantsAi` allows AI only when the
 sentence named no amount at all or left no description (never for two
 amounts, an unknown currency or a foreign amount, which are the user's
-call). Then one allowance unit, 80 tokens, the redacted sentence only (no
+call). Then one allowance unit, 80 tokens through `runTextJson` (provider
+layer: Claude first or the basic model first by auto-balance), the redacted sentence only (no
 accounts, people, rules or settings), and the untrusted-data system prompt.
 `parseEntryDraftAiSuggestion` validates the answer like any input: an
 amount must be stated in the sentence (its digits, or number words), and

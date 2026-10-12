@@ -4,6 +4,7 @@ import { Check, X } from "lucide-react";
 import { EntryEditorFields } from "./entry-editor";
 import { ResponsiveSelect } from "./responsive-select";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+import { useDraftChanged } from "./use-draft-changed";
 
 export function useEntryComposerSplitOptions({
   showEntryComposer,
@@ -185,6 +186,9 @@ export function EntryComposerMobileSection({
   onClose,
   onSave
 }) {
+  // The sheet mounts with the fresh draft, so any later difference is a
+  // change the person made.
+  const isDirty = useDraftChanged(entry);
   return (
     <EntryMobileSheet
       title="Add entry"
@@ -193,6 +197,7 @@ export function EntryComposerMobileSection({
       saveLabel={saveLabel}
       isSaveDisabled={isSaveDisabled}
       isSubmitting={isSubmitting}
+      isDirty={isDirty}
       onClose={onClose}
       onSave={onSave}
     >

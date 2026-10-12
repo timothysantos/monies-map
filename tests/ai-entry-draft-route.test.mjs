@@ -237,8 +237,9 @@ test("a valid AI answer fills only the missing amount, marked ai, from a bounded
   assert.equal(payload.draft.createBody.amountMinor, 1250);
 
   assert.equal(ai.calls.length, 1);
-  assert.equal(ai.calls[0].model, "@cf/meta/llama-3.2-3b-instruct");
-  assert.equal(ai.calls[0].input.max_tokens, 80);
+  assert.equal(ai.calls[0].model, "@cf/google/gemma-4-26b-a4b-it");
+  assert.equal(ai.calls[0].input.max_completion_tokens, 80);
+  assert.equal(ai.calls[0].input.response_format.json_schema.schema.required.join(), "amount,description");
   const prompt = ai.calls[0].input.messages[1].content;
   assert.match(prompt, /Koufu lunch twelve fifty/);
   assert.doesNotMatch(prompt, /4111111111111111/, "card-like numbers are redacted");

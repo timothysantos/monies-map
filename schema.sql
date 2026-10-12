@@ -267,7 +267,9 @@ CREATE TABLE IF NOT EXISTS ai_provider_status (
   last_success_at TEXT,
   estimated_spend_micro_usd INTEGER NOT NULL DEFAULT 0,
   topped_up_at TEXT,
-  topped_up_credit_micro_usd INTEGER
+  topped_up_credit_micro_usd INTEGER,
+  spend_month TEXT,
+  month_spend_micro_usd INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS category_match_rule_issue_ignores (
