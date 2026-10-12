@@ -97,6 +97,13 @@ export interface SummaryAccountPillDto {
   unreversedCharges?: UnreversedChargeDto[];
   // The bank's notices on the card's latest statement, while it is recent.
   cardNotices?: CardNoticesDto;
+  // Bank accounts only: what changed in the account's monthly routine
+  // (account-routines.ts).
+  incomeMoved?: IncomeMovedDto;
+  missedPayments?: MissedPaymentDto[];
+  accountCharges?: AccountChargeDto[];
+  ownTransfersAsIncome?: OwnTransferIncomeDto[];
+  upcomingShortfall?: UpcomingShortfallDto;
 }
 
 export interface CardNoticesDto {
@@ -122,6 +129,61 @@ export interface UnreversedChargeDto {
   date: string;
   kind: "late_fee" | "interest" | "annual_fee" | "other_fee";
   amountMinor: number;
+}
+
+// A bank account's own charges (account-routines.ts): a charge for a
+// payment the bank could not make, or the account's monthly fee.
+export interface AccountChargeDto {
+  date: string;
+  kind: "failed_payment" | "account_fee";
+  amountMinor: number;
+  payee?: string;
+}
+
+// A payment that came every month and did not come, with the bank's charge
+// for trying.
+export interface MissedPaymentDto {
+  payee: string;
+  amountMinor: number;
+  dueDate: string;
+  chargeMinor: number;
+}
+
+// Regular income that now arrives in another of the owner's accounts while
+// payments are still scheduled on this one.
+export interface IncomeMovedDto {
+  payer: string;
+  isSalary: boolean;
+  toAccountId: string;
+  toAccountName: string;
+  movedSince: string;
+  payments: Array<{ payee: string; amountMinor: number }>;
+  statementEndDate?: string;
+  statementBalanceMinor?: number;
+}
+
+// Income into this account that left another of the owner's accounts as a
+// transfer: money moving between their own accounts.
+export interface OwnTransferIncomeDto {
+  entryId: string;
+  fromEntryId: string;
+  date: string;
+  fromDate: string;
+  amountMinor: number;
+  categoryName: string;
+  fromAccountName: string;
+}
+
+// The scheduled check: the latest statement balance (plus what is recorded
+// since) cannot cover the payments still scheduled on the account within
+// the next month.
+export interface UpcomingShortfallDto {
+  statementEndDate: string;
+  statementBalanceMinor: number;
+  balanceMinor: number;
+  payments: Array<{ payee: string; amountMinor: number; dueDate: string }>;
+  shortMinor: number;
+  firstShortDate: string;
 }
 
 export interface CategoryDto {
@@ -355,6 +417,18 @@ export interface SplitSettlementCheckpointDto {
   includedRecordCount: number;
   note?: string;
   includedRecordIds?: string[];
+  // An open settlement's likely bank payment: the same amount between the
+  // two people within two weeks, not yet matched.
+  paymentCandidate?: SplitSettlementPaymentCandidateDto;
+}
+
+export interface SplitSettlementPaymentCandidateDto {
+  date: string;
+  amountMinor: number;
+  // The payer's entry first, then the receiver's, when each is recorded.
+  entryIds: string[];
+  // True while either side still counts as spending or income.
+  countedAsSpending: boolean;
 }
 
 export interface SplitSettlementCheckpointTransferDto {

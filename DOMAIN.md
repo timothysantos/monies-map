@@ -258,6 +258,48 @@ Important distinctions:
 - A payment from a bank account not imported yet is not seen; the check-in
   says so instead of claiming the bill is unpaid.
 
+### Account Routine
+
+What a bank account does every month and what changed, read from its own
+entries and statements over about seven months
+(`src/domain/account-routines.ts`). The account pills carry it for the
+Summary and Month check-in.
+
+Canonical terms:
+- `regular payment`: money that leaves one bank account to the same payee
+  at the same amount in consecutive months (a GIRO, a standing PayNow). A
+  payee is named from the description without payment-rail words and codes
+  ("IBG GIRO COLL P0000192 IFAST FINANCIAL PL-" is "Ifast Financial").
+- `regular income`: income of at least $500 from the same payer into one
+  account in consecutive months, matched across banks by the payer's name.
+- `account charge`: a bank account's own charge, either for a payment the
+  bank could not make ("IBG SVC CHARGE ...") or the account's monthly fee
+  ("SERVICE CHARGE", "FALL BELOW FEE"). Card charges stay `bank charges`.
+- `missed payment`: a regular payment (3 months in a row) that did not leave
+  the next month, where the account was charged for a failed payment to the
+  same payee within 5 days of its usual day. A payment that just stops,
+  with no such charge, is never called missed.
+- `moved income`: regular income (3 months in a row into one account) that
+  now arrives in another of the owner's accounts, while regular payments
+  are still scheduled on the old one.
+- `own-account transfer counted as income`: income into one of a person's
+  bank accounts while the same amount left another of their bank accounts
+  as an unlinked transfer within 3 days.
+- `scheduled check`: the latest statement balance of a bank account (no
+  older than 40 days), plus what is recorded since, against the regular
+  payments still scheduled on it and the regular income still arriving in
+  it, due within the next 31 days. It speaks only when a payment cannot fit.
+
+Important distinctions:
+- A regular payment is still scheduled while it came in the latest month
+  the data covers for it, or the bank tried and failed to make it. One that
+  was due within the data and did not come has stopped, and is not counted.
+- The scheduled check is the only look ahead in Money insights. It never
+  guesses spending, never gives a month-end balance or a safe-to-spend
+  figure, and never says an account is fine.
+- Insights are only as fresh as imports: a statement imported late moves
+  the scheduled check and the missed payment late too.
+
 ### Category
 
 The spending or income taxonomy used to classify ledger entries, split
@@ -1259,6 +1301,11 @@ Storage:
 - `split_settlement_checkpoint_items`
 
 Rules:
+- a `settlement payment candidate` is the recorded payment between the two
+  people for exactly what an open checkpoint still needs, within 14 days
+  after it and not yet matched (the payer's entry, then the receiver's).
+  The Splits check-in offers it as a To do; matching it is still the user's
+  step (`paymentCandidate` on the checkpoint DTO)
 - a paid confirmation moves an unmatched checkpoint to follow-up, not to a
   bank-matched state
 - a later bank match remains required before the payment has ledger evidence
@@ -1956,8 +2003,10 @@ These boundaries are important enough to preserve explicitly:
   Note, does not recalculate totals, and never changes the ledger or plan. A
   financial insight speaks only of what its page counts: full cash flow on
   Summary and Month, the month's whole list on Entries (whatever filter is
-  on), and settlement obligations on Splits. It is never a forecast, a
-  safe-to-spend figure or a savings target. Its user-facing name
+  on), and settlement obligations on Splits. It never predicts spending and
+  is never a safe-to-spend figure, a month-end balance or a savings target;
+  its one look ahead is the `scheduled check` (see "Account Routine"). Its
+  user-facing name
   is `Money insights` ("Household money insights", "Ethan's money
   insights"); code calls it the check-in (`money-signals/checkin.ts`,
   `FinancialInsight`).
@@ -1969,10 +2018,13 @@ These boundaries are important enough to preserve explicitly:
   plain words: `To do` (`quick_fix`: makes the numbers right or settles an
   obligation: a statement gap, a card bill due within a week or overdue
   with no payment yet, a planned bill with no payment linked, a split
-  balance, entries in Other), `Something to think about`
+  balance, entries in Other, a trip still in Other, a settlement payment
+  waiting to be matched, and the account routine's moved income, missed
+  payment, own-account transfer counted as income and scheduled check),
+  `Something to think about`
   (`bigger_question`: a pattern worth a decision; at most one at a time),
   `Worth knowing` (`worth_a_look`: may be fine but easy to miss, such as a
-  bank charge with no reversal), `Going well` (`going_well`), `Fun fact`
+  card's bank charge with no reversal or a bank account's charges), `Going well` (`going_well`), `Fun fact`
   (`just_for_fun`: trivia from the user's own data, shown only when the
   headline is not a `bigger_question`) and `Big picture` (`long_view`: a
   quieter zoomed-out line: keep rate,

@@ -10,7 +10,7 @@ import {
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { SpendingMixSection } from "./spending-mix-section";
-import { buildSummaryEntriesLocation } from "./summary-workflow";
+import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { BarLine } from "./ui-components";
 import { SummaryLead } from "./summary-lead";
 import { FinancialInsight } from "./financial-insight";
@@ -89,6 +89,8 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       handleOpenImports();
     } else if (action.id === "open-category" && action.categoryName) {
       handleOpenEntriesForCategory(action.categoryName);
+    } else if (action.id === "show-entries" && action.entryIds?.length) {
+      navigate(buildSummaryEntriesForIdsLocation(location.search, action));
     }
   }
 
