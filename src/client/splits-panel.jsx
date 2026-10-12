@@ -48,6 +48,8 @@ import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
+import { SplitsGroupStrip } from "./splits-group-strip";
+import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 import { moniesClient } from "./monies-client-service";
@@ -60,6 +62,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskReturn } from "./use-ask-origin";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
+import { splitCardLock } from "./split-card-lock";
 import { entriesLocationForAction } from "./check-in-action";
 
 const { format: formatService } = moniesClient;
@@ -106,9 +109,14 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
+  // The split whose card just closed: its row takes focus back.
+  const closedSplitIdRef = useRef("");
   const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
-  const selectedGroupId = selectedGroupParam ?? defaultGroupId;
+  // With no group in the address, reopen the group this viewer used last.
+  const lastUsedGroupId = readLastGroupId(view.id);
+  const openingGroupId = splitsPage.groups.some((group) => group.id === lastUsedGroupId) ? lastUsedGroupId : defaultGroupId;
+  const selectedGroupId = selectedGroupParam ?? openingGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const splitSearchQuery = searchParams.get("split_search") ?? "";
   const isHouseholdView = view.id === "household";
@@ -218,6 +226,23 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     requestDeleteSplit,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
+  // A settled split expense opens its card read-only (the phone sheet, the
+  // wide dialog and the inline card alike) with the reason and Undo; once
+  // the undo succeeds it is editable in place (the optimistic "undone" lock
+  // stands in until the refreshed page drops the lock). A failed undo shows
+  // its own message in place of the reason.
+  function settledCardLock(draft, recordKey) {
+    if (isHouseholdView || draft?.kind !== "expense" || !draft.id) return null;
+    const state = settlementLock?.recordKey === recordKey ? settlementLock : null;
+    if (state?.undone) return null;
+    const item = displayView.splitsPage.activity.find((candidate) => candidate.kind === "expense" && candidate.id === draft.id);
+    const lock = splitCardLock(item, splitsPage.settlementCheckpoints ?? [], recordKey);
+    return lock && state ? { ...lock, message: state.message } : lock;
+  }
+  const expenseCardKey = `expense:${expenseDialog?.id}`;
+  const expenseCardLock = settledCardLock(expenseDialog, expenseCardKey);
+  const inlineCardKey = `inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`;
+  const inlineCardLock = settledCardLock(inlineSplitDraft, inlineCardKey);
   // The optimistic overlay alone is not counted: it can outlive a failed
   // refresh, and isRefreshingDerived already covers the in-flight window.
   // Back from Ask after the receipt button opened it: the scroll comes back
@@ -252,8 +277,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    updateSplitView({ groupId: defaultGroupId, mode: "entries" });
+    updateSplitView({ groupId: selectedGroupId, mode: "entries" });
   }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
+
+  // Remember the open group per viewer for the next visit.
+  useEffect(() => {
+    if (selectedMode !== "matches" && activeGroup?.id) {
+      writeLastGroupId(view.id, activeGroup.id);
+    }
+  }, [activeGroup?.id, selectedMode, view.id]);
 
   useEffect(() => {
     setDismissedMatchIds([]);
@@ -292,7 +324,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    if (expenseDialog?.id === targetSplitExpenseId) {
+    // A wide screen opens the card in the list (like an Entries link does);
+    // a phone, the household view and the archive open the sheet or dialog.
+    if ((expenseDialog?.id ?? inlineSplitDraft?.id) === targetSplitExpenseId) {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.delete("editing_split_expense");
@@ -301,10 +335,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    returnToSplitIdRef.current = targetSplitExpenseId;
-    openExpenseEditor(targetExpense);
+    if (isHouseholdView || useMobileSplitSheet) {
+      returnToSplitIdRef.current = targetSplitExpenseId;
+      openExpenseEditor(targetExpense);
+    } else {
+      openInlineExpenseEditor(targetExpense);
+    }
   }, [
     expenseDialog?.id,
+    inlineSplitDraft?.id,
     searchParams,
     selectedGroupId,
     selectedMode,
@@ -343,6 +382,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     });
   }
 
+  // A modal dialog without a trigger button drops focus on close. Give it
+  // back to the split's row, so keyboard focus continues from where the card
+  // was opened (a deleted split has no row left, and focus stays put).
+  function returnFocusToSplitRow(event) {
+    event.preventDefault();
+    const splitId = closedSplitIdRef.current;
+    closedSplitIdRef.current = "";
+    if (splitId) {
+      document.getElementById(splitActivityDomId("expense", splitId))?.focus({ preventScroll: true });
+    }
+  }
+
   function scrollToSettlementActivity(checkpoint = activeCheckpoint) {
     const targetId = checkpoint?.includedRecordIds?.find((recordId) => (
       document.getElementById(splitActivityDomId("expense", recordId)) ||
@@ -359,6 +410,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   function closeExpenseDialogAndReturn() {
     const returnToSplitId = returnToSplitIdRef.current || expenseDialog?.id || "";
+    closedSplitIdRef.current = returnToSplitId;
     closeExpenseDialog();
     returnToSplitIdRef.current = "";
     scrollBackToSplitCard(returnToSplitId);
@@ -654,6 +706,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
   }
 
+  // The inline editor on a wide screen: the split expense card, or the
+  // settlement form.
   async function saveInlineSplit({ syncLinkedNote = false, syncLinkedCategory = false } = {}) {
     if (!inlineSplitDraft) {
       return;
@@ -1017,6 +1071,13 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         setInlineSplitError("");
         setInlineSplitDraft(null);
       }
+      // Delete from the open card: the card closes with the split gone, not
+      // left open on a deleted row.
+      if (deleteTarget.kind === "expense" && expenseDialog?.id === deleteTarget.id) {
+        closeExpenseDialogAndReturn();
+      } else if (deleteTarget.kind === "settlement" && settlementDialog?.id === deleteTarget.id) {
+        closeSettlementDialog();
+      }
       refreshAfterSplitMutation({
         broadcast: true,
         invalidateEntries: Boolean(deleteTarget.linkedTransactionId),
@@ -1035,8 +1096,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   // offset) or the group settle-up that refused a save or delete. The form
   // stays open with the person's change, so saving again applies it to the
   // now open activity.
-  async function undoSettlementLock() {
-    const lock = settlementLock;
+  async function undoSettlementLock(cardLock = null) {
+    const lock = cardLock ?? settlementLock;
     if (!lock || isCheckpointing) return;
     setIsCheckpointing(true);
     try {
@@ -1214,6 +1275,19 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   return (
     <article ref={pageFlagRef(PAGE_FLAG.splitsPanel)} className="panel panel-accent panel-splits">
+      <SplitsGroupStrip
+        groups={groups}
+        activeGroup={activeGroup}
+        selectedMode={selectedMode}
+        isHousehold={isHouseholdView}
+        readOnly={isHouseholdView}
+        hideBar={Boolean(inlineSplitDraft)}
+        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
+        onCreateGroup={() => {
+          setFormError("");
+          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
+        }}
+      />
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.splits}</h2>
@@ -1237,7 +1311,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       />
 
       <SplitsMainSection
-        groups={groups}
         activeGroup={activeGroup}
         selectedMode={selectedMode}
         pendingMatchCount={pendingMatchCount}
@@ -1259,28 +1332,24 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}
         inlineSplitError={inlineSplitError}
-        inlineSettlementLock={settlementLockFor(`inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`, inlineSplitError)}
+        inlineSettlementLock={inlineCardLock ?? settlementLockFor(inlineCardKey, inlineSplitError)}
+        inlineReadOnly={Boolean(inlineCardLock)}
         isUndoingSettlementLock={isCheckpointing}
-        onUndoSettlementLock={() => void undoSettlementLock()}
+        onUndoSettlementLock={inlineCardLock && !inlineCardLock.canUndo ? undefined : () => void undoSettlementLock(inlineCardLock)}
         isSubmitting={isSubmitting}
-        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
         onOpenHistory={() => {
           setHistoryError("");
           setShowHistory(true);
         }}
         onBackToGroup={openActiveGroupView}
-        onCreateGroup={() => {
-          setFormError("");
-          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
-        }}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
         onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
         readOnly={isHouseholdView}
-        onEditExpense={isHouseholdView ? openExpenseEditor : (useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor)}
+        onEditExpense={isHouseholdView || useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor}
         onEditSettlement={isHouseholdView ? openSettlementEditor : (useMobileSplitSheet ? openSettlementEditor : openInlineSettlementEditor)}
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
@@ -1353,17 +1422,19 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         categoryOptions={categoryOptions}
         categories={categories}
         formError={formError}
-        settlementLock={settlementLockFor(`expense:${expenseDialog?.id}`, formError)}
+        settlementLock={expenseCardLock ?? settlementLockFor(expenseCardKey, formError)}
         isUndoingSettlementLock={isCheckpointing}
-        onUndoSettlementLock={() => void undoSettlementLock()}
+        onUndoSettlementLock={expenseCardLock && !expenseCardLock.canUndo ? undefined : () => void undoSettlementLock(expenseCardLock)}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
         onClose={closeExpenseDialogAndReturn}
+        onCloseAutoFocus={returnFocusToSplitRow}
         onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
         onRequestDelete={requestDeleteSplit}
-        readOnly={isHouseholdView}
+        readOnly={isHouseholdView || Boolean(expenseCardLock)}
+        lockedBySettlement={Boolean(expenseCardLock)}
       />
 
       <SplitSettlementDialog
