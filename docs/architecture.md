@@ -139,10 +139,13 @@ path (`entry-create-request.js`) and the existing split link, borrows the
 Entries and Summary DTOs from the query cache (the Entries one through the
 shell's required read when it must load it), and holds only its
 conversation and one entry card. The Entries + and Splits receipt buttons
-open it; their old forms stay reachable. Money questions ("why was August
-so expensive?", "what do I owe Serene?") go to `POST /api/ai-assist/answer`,
-which reads them by rules, checks the skew candidates first and answers
-from the Month and Splits page DTOs (DOMAIN.md "Money Question").
+open it; their old forms stay reachable. On a wide screen the same page
+also opens beside any other page, docked or as a popup, from the
+bottom-right Ask field (`ask-dock.jsx`, design.md "Desktop Ask"), on the
+same conversation store. Money questions ("why was August so expensive?",
+"what do I owe Serene?") go to `POST /api/ai-assist/answer`, which reads
+them by rules, checks the skew candidates first and answers from the Month
+and Splits page DTOs (DOMAIN.md "Money Question").
 
 Rules:
 
@@ -606,7 +609,14 @@ gateway logging and caching off on every request and a hard monthly gateway
 spend limit; Workers AI (Gemma 4) is the fallback for a rate limit, spend
 cap, failure, timeout or unusable answer. With no gateway config, Workers AI
 is used directly. Neither provider is required: the route answers
-unavailable and the client uses its deterministic fallback.
+unavailable and the client uses its deterministic fallback. Receipts, Ask's
+answer wording, the Monthly Note draft, statement-mismatch wording,
+category-rule suggestions, the statement text fallback and the entry draft
+all use it; match ranking uses Workers AI embeddings. A monthly Claude
+target (`AI_CLAUDE_MONTHLY_TARGET_USD`, default 8) paces who is asked first
+(auto-balance: Claude first under pace, the basic model first for background
+help over pace, for everything at 90% of the target), deterministically and
+without AI; Settings shows the month's line.
 
 The app cannot buy Claude credits. After each Claude attempt the provider
 writes one aggregate row (`ai_provider_status`: last failure kind and time,

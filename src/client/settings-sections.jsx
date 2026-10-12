@@ -1041,6 +1041,7 @@ export function SettingsAskAiSection({ status, checkedAt, isOpen, onToggle, onMa
       {isOpen ? (
         <div className="settings-claude-credit" data-credit-state={line.state}>
           <p className={`claude-credit-line is-${line.tone}`}>{line.text}</p>
+          {line.monthText ? <p className="claude-credit-month">{line.monthText}</p> : null}
           {line.actions.length ? <ClaudeCreditActions actions={line.actions} onToppedUp={() => setFormOpen(true)} /> : null}
           {checkedAt ? <p className="claude-credit-checked">{claudeCreditCopy.lastChecked(formatService.formatDate(checkedAt))}</p> : null}
         </div>

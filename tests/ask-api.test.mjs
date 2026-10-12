@@ -1,8 +1,9 @@
 // The Ask page's requests (src/client/ask-api.js) and its on-device
 // receipt reading (src/client/ask-receipt-image.js): the reader responses
 // it accepts, how it fails soft, that saving and undo use only existing
-// routes, and the receipt text parser behind the OCR fallback.
+// routes, and the shared receipt reader behind the OCR fallback.
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -16,7 +17,21 @@ import {
   undoSavedEntry,
   updateSavedEntryCategory
 } from "../src/client/ask-api.js";
-import { fitWithin, parseReceiptText } from "../src/client/ask-receipt-image.js";
+import { fitWithin, readReceiptTextOnDevice } from "../src/client/ask-receipt-image.js";
+import { applyReceiptRead, createAskCard } from "../src/client/ask-card-model.js";
+import { readReceiptOcrText } from "../src/domain/receipt-ocr-text.ts";
+
+const cardContext = {
+  today: "2026-10-11",
+  viewId: "person-ethan",
+  people: [{ id: "person-ethan", name: "Ethan" }, { id: "person-serene", name: "Serene" }],
+  accounts: [
+    { id: "acct-ocbc", name: "OCBC 360 Account", currency: "SGD", isActive: true },
+    { id: "acct-visa", name: "Sample Visa Card", last4: "2718", currency: "SGD", isActive: true }
+  ],
+  categories: [{ id: "cat-food", name: "Food & Drinks" }, { id: "cat-other", name: "Other" }],
+  defaultAccountPriorityIds: ["acct-ocbc"]
+};
 
 function fakeFetch(responses) {
   const calls = [];
@@ -194,35 +209,55 @@ test("a receipt photo is drawn no larger than 1600 px on its long edge, never en
   assert.deepEqual(fitWithin(800, 600), { width: 800, height: 600 });
 });
 
-test("the on-device reader finds the shop, the labelled total (not the subtotal), the date and card ending", () => {
-  const text = [
-    "KOUFU",
-    "Food Court",
-    "GST Reg No: 200012345K",
-    "Date: 28/09/26 12:41",
-    "Chicken rice      5.50",
-    "Teh peng          2.00",
-    "Laksa             5.00",
-    "Subtotal         12.50",
-    "TOTAL            $12.50",
-    "VISA ************4821",
-    "Thank you"
-  ].join("\n");
-  const receipt = parseReceiptText(text, { today: "2026-09-29" });
+// The on-device fallback reads Tesseract text with the shared no-AI reader
+// (src/domain/receipt-ocr-text.ts), assuming the household currency (SGD)
+// when none is printed, so a plain receipt raises no currency question.
+const RECEIPT_TODAY = "2026-10-11";
+
+async function readReceiptFixture(name) {
+  return readFile(new URL(`./fixtures/receipts/${name}`, import.meta.url), "utf8");
+}
+
+test("the on-device reader uses the shared receipt reader with the household currency", async () => {
+  const text = await readReceiptFixture("sg-cafe.txt");
+  const receipt = readReceiptTextOnDevice(text, { today: RECEIPT_TODAY });
+  assert.deepEqual(receipt, readReceiptOcrText(text, { today: RECEIPT_TODAY, defaultCurrency: "SGD" }));
   assert.equal(receipt.source, "ocr");
-  assert.equal(receipt.merchant.value, "KOUFU");
-  assert.equal(receipt.total.amountMinor, 1250);
-  assert.equal(receipt.date.value, "2026-09-28");
-  assert.equal(receipt.cardLast4, "4821");
-  assert.deepEqual(receipt.questions, []);
+  assert.equal(receipt.merchant.value, "Kopi & Crumb Cafe");
+  assert.deepEqual(receipt.total, { amountMinor: 2338, currency: "SGD", confidence: "medium" });
+  assert.equal(receipt.cardLast4, "3141");
+  assert.deepEqual(receipt.questions, [], "no printed currency is not a missing currency");
 });
 
-test("the on-device reader offers both readings of a day-month date and asks about what it missed", () => {
-  const receipt = parseReceiptText("TIONG BAHRU BAKERY\n03/04/2026\nFlat white 6.40\nKouign amann 6.20", { today: "2026-09-29" });
-  assert.equal(receipt.date.value, "2026-04-03");
-  assert.deepEqual(receipt.questions, [{ field: "date", reason: "ambiguous", candidates: ["2026-04-03", "2026-03-04"] }]);
-  assert.equal(receipt.total.amountMinor, 640, "with no labelled total the largest amount is the guess");
-  const blank = parseReceiptText("", { today: "2026-09-29" });
-  assert.deepEqual(blank.questions.map((question) => question.field), ["merchant", "total", "date"]);
-  assert.equal(blank.total.amountMinor, null);
+test("the on-device reader fills the Ask card from a supermarket receipt and leaves nothing to ask", async () => {
+  const receipt = readReceiptTextOnDevice(await readReceiptFixture("sg-supermarket.txt"), { today: RECEIPT_TODAY });
+  const card = applyReceiptRead(createAskCard(cardContext), receipt, cardContext);
+  assert.deepEqual(
+    { description: card.fields.description, date: card.fields.date, amountMinor: card.fields.amountMinor, accountId: card.fields.accountId },
+    { description: "LUMEN GROCER PTE LTD", date: "2026-10-09", amountMinor: 2195, accountId: "acct-visa" }
+  );
+  assert.deepEqual(card.filled, { description: "receipt", date: "receipt", accountId: "receipt", amount: "receipt" });
+  assert.deepEqual(card.questions, []);
+});
+
+test("a printed foreign currency still beats the household default and waits on the card", async () => {
+  const receipt = readReceiptTextOnDevice(await readReceiptFixture("bali-warung.txt"), { today: RECEIPT_TODAY });
+  assert.deepEqual(receipt.total, { amountMinor: 14_300_000, currency: "IDR", confidence: "medium" });
+  const card = applyReceiptRead(createAskCard(cardContext), receipt, cardContext);
+  assert.equal(card.fields.amountMinor, 0);
+  assert.deepEqual(card.questions.map((question) => [question.field, question.reason]), [["amountMinor", "foreign_currency"]]);
+});
+
+test("the on-device reader asks about an ambiguous date, a smudged one, and reads nothing from blank text", async () => {
+  const ambiguous = readReceiptTextOnDevice(await readReceiptFixture("us-diner-ambiguous-date.txt"), { today: RECEIPT_TODAY });
+  assert.deepEqual(ambiguous.questions, [{ field: "date", reason: "ambiguous", candidates: ["2026-04-03", "2026-03-04"] }]);
+  const ambiguousCard = applyReceiptRead(createAskCard(cardContext), ambiguous, cardContext);
+  assert.deepEqual(ambiguousCard.questions.map((question) => [question.field, question.reason, question.options.length]), [["date", "ambiguous", 2]]);
+
+  const smudged = readReceiptTextOnDevice(await readReceiptFixture("smudged-no-total.txt"), { today: RECEIPT_TODAY });
+  assert.deepEqual(smudged.questions, [{ field: "date", reason: "missing" }, { field: "total", reason: "unclear" }]);
+  assert.equal(smudged.questions.some((question) => question.field === "currency"), false);
+
+  assert.equal(readReceiptTextOnDevice("", { today: RECEIPT_TODAY }), null);
+  assert.equal(readReceiptTextOnDevice("~~~ ~~ ~~~", { today: RECEIPT_TODAY }), null);
 });

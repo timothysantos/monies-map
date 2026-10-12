@@ -91,6 +91,15 @@ export const messages = {
     mismatch: (month, delta) => `${month} statement is off by ${delta}`,
     needsCheckpoint: "No statement checkpoint yet"
   },
+  // The desktop Ask field and the panel or popup it opens (ask-dock.jsx).
+  askDock: {
+    fieldLabel: "Ask",
+    placeholder: "Ask, or drop a receipt…",
+    attach: "Add a receipt photo",
+    close: "Close",
+    closeLabel: "Close Ask",
+    expand: "Dock Ask beside the page"
+  },
   period: {
     month: "Month",
     year: "Range",
@@ -298,6 +307,9 @@ export const messages = {
       fewerDetails: "Fewer details",
       moreDetailsOpen: "Date, wallet, posted date, type",
       moreDetailsLocked: "Posted date, type",
+      // The same, when the entry has an Added by row.
+      moreDetailsOpenAddedBy: "Date, wallet, posted date, type, added by",
+      moreDetailsLockedAddedBy: "Posted date, type, added by",
       transferOut: "Transfer out",
       transferIn: "Transfer in",
       splits: "Splits",
@@ -347,7 +359,7 @@ export const messages = {
     createGroup: "Create group",
     groupName: "Group name",
     saveGroup: "Save group",
-    createExpense: "Create split expense",
+    createExpense: "New split expense",
     expenseDate: "Date",
     expenseDescription: "Description",
     expenseCategory: "Category",
@@ -361,6 +373,11 @@ export const messages = {
     expenseCard: {
       sheetContext: (groupName, personNames) => [groupName, personNames.join(" and ")].filter(Boolean).join(" · "),
       close: "Close create split expense",
+      closeEdit: "Close edit split",
+      closeView: "Close view split",
+      cancel: "Cancel",
+      // Asks first in the Delete split row dialog.
+      deleteSplit: "Delete",
       whatWasIt: "What was it?",
       detailsLabel: "Expense details",
       shareRow: (personName) => `${personName}’s share`,
@@ -395,6 +412,7 @@ export const messages = {
     imported: "Imported transaction",
     manual: "Manual split",
     editSplit: "Edit split",
+    viewSplit: "View split",
     viewLinkedEntry: "View entry",
     linkedEntry: "Linked entry",
     categoryBreakdown: "Category breakdown"

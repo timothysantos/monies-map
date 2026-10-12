@@ -1388,6 +1388,9 @@ export interface EntryDraftResponseDto {
 export type ClaudeFailureCategory = "credit_exhausted" | "spend_capped" | "auth" | "other";
 export type ClaudeCreditState = "ok" | "low" | "exhausted" | "capped" | "unknown";
 
+// Auto-balance (src/domain/ai-provider-status.ts): who is asked first.
+export type ClaudeSpendMode = "claude_all" | "ask_only" | "basic_first";
+
 export type AiProviderStatusResponseDto =
   | { ok: true; visible: false }
   | {
@@ -1400,6 +1403,11 @@ export type AiProviderStatusResponseDto =
     estimatedSpendUsd: number;
     creditUsd: number;
     warnAtUsd: number;
+    // Estimated Claude spend this calendar month (Asia/Singapore), the
+    // monthly target, and the resulting auto-balance mode.
+    monthSpendUsd: number;
+    monthTargetUsd: number;
+    mode: ClaudeSpendMode;
     lastFailureAt?: string;
     lastFailureReason?: ClaudeFailureCategory;
     lastSuccessAt?: string;
@@ -1636,4 +1644,24 @@ export interface ReceiptReadDto {
   cardLast4: string | null;
   lineItems: ReceiptLineItemDto[];
   questions: ReceiptQuestionDto[];
+}
+
+// A split suggestion (DOMAIN.md "Split Suggestion",
+// POST /api/splits/suggestion): the split group and share an expense's
+// payer usually puts entries like it on, from the household's own last
+// 12 months. Read-only and deterministic; nothing is written until the
+// person saves with Splits on.
+export interface SplitSuggestionDto {
+  // "split-group-none" for Non-group expenses.
+  groupId: string;
+  groupName: string;
+  // The payer's (the entry owner's) share; the other person has the rest.
+  basisPoints: number;
+  otherPersonId: string;
+  otherPersonName: string;
+  // How many matching entries went to this group with this share, out of
+  // matchedCount matching entries in the window.
+  evidenceCount: number;
+  matchedCount: number;
+  matchedBy: "description" | "category";
 }

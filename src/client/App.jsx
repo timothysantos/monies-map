@@ -48,6 +48,7 @@ import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ErrorPanel } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
+import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
@@ -108,6 +109,7 @@ import {
 } from "./summary-month-choice";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
+import { isMobileLayout } from "./use-viewport";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -125,9 +127,10 @@ const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
 // One Summary tab stands for two routes: /summary (All months) and /month (one
 // month of the range picked); see summary-month-choice.js. Primary tabs fill
 // the phone's bottom bar, the rest sit behind its ••• menu. Ask is a primary
-// tab on a phone only: a wide screen gets its own way in later (a docked
-// field), so there the tab is hidden for now (phoneOnly) and /ask opens from
-// the + and receipt buttons. The phone bar reads Summary, Entries, Splits, Ask.
+// tab on a phone only: a wide screen has its own way in, the Ask field at the
+// bottom right that opens the conversation beside the page (AskDock), so
+// there the tab is hidden (phoneOnly); /ask still opens from the + and
+// receipt buttons. The phone bar reads Summary, Entries, Splits, Ask.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary, routeIds: ["summary", "month"], primary: true },
   { id: "entries", path: "/entries", label: messages.tabs.entries, primary: true },
@@ -2214,6 +2217,65 @@ export function App() {
     selectedScope,
     syncAppShellAfterMutation
   ]);
+  // Desktop Ask (ask-dock.jsx): the Ask page beside the page on screen, in
+  // the dock's own conversation. It reports busy (a card being filled)
+  // under no route key, so optional work waits for it, but it never makes a
+  // route ready. Its view is the page's.
+  const askDockView = useMemo(
+    () => buildPageViewFromRouteData("ask", null, routeViewId, appShell),
+    [appShell, routeViewId]
+  );
+  // A save in the panel also brings the page beside it up to date, as a
+  // save from another browser tab does (the Entries list, Splits, Month or
+  // Summary of that month).
+  const onAskDockEntryMutation = useCallback((payload) => {
+    broadcastEntryMutation(payload);
+    void handleRemoteEntryMutation(payload);
+  }, [broadcastEntryMutation, handleRemoteEntryMutation]);
+  const onAskDockSplitMutation = useCallback((payload) => {
+    broadcastSplitMutation(payload);
+    void handleRemoteSplitMutation(payload);
+  }, [broadcastSplitMutation, handleRemoteSplitMutation]);
+  const renderAskDockConversation = useCallback(({ layout, canExpand, intent, visit }) => (
+    <RouteWorkProvider registry={routeWorkRegistry} routeKey={null}>
+      <AskPanel
+        key={visit}
+        placement={layout}
+        canExpand={canExpand}
+        intent={intent}
+        view={askDockView}
+        selectedMonth={selectedMonth}
+        selectedScope={selectedScope}
+        accounts={accounts}
+        categories={categories}
+        people={appShell?.household?.people ?? []}
+        trackedMonths={appShell?.trackedMonths}
+        shortcutSettings={appShell?.settingsPage?.shortcutSettings}
+        fetchEntriesPage={fetchAskEntriesPage}
+        onEntryMutation={onAskDockEntryMutation}
+        onSplitMutation={onAskDockSplitMutation}
+        runBackgroundRefresh={runBackgroundRefresh}
+        fetchRequiredQuery={fetchRequiredQuery}
+        routeUsable={routeWork.usable}
+      />
+    </RouteWorkProvider>
+  ), [
+    accounts,
+    appShell?.household?.people,
+    appShell?.settingsPage?.shortcutSettings,
+    appShell?.trackedMonths,
+    askDockView,
+    categories,
+    fetchAskEntriesPage,
+    fetchRequiredQuery,
+    onAskDockEntryMutation,
+    onAskDockSplitMutation,
+    routeWork.usable,
+    routeWorkRegistry,
+    runBackgroundRefresh,
+    selectedMonth,
+    selectedScope
+  ]);
   // The previous page stays on screen while the next one loads, so a crashed
   // screen retries both when a navigation starts and when its page settles.
   const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
@@ -2768,6 +2830,17 @@ export function App() {
   }
   selectSummaryMonthRef.current = selectSummaryMonth;
 
+  // On a phone the + and receipt buttons open Ask as a new history entry.
+  // The page's place (URL and scroll; the page adds an open sheet through
+  // the event) is kept first on its own entry and handed to Ask, so Ask's
+  // back link and the back gesture both return to it (ask-origin.js).
+  function openAskFromPage(target, from) {
+    const origin = { id: `${Date.now()}`, from, path: location.pathname + location.search, scrollY: window.scrollY, sheet: null };
+    window.dispatchEvent(new CustomEvent("monies:ask-origin", { detail: origin }));
+    navigate(origin.path, { replace: true, state: { askReturn: origin } });
+    navigate(target, { state: { askOrigin: origin } });
+  }
+
   // Opening the month sheet re-reads the range's Summary page when a save
   // since cleared it (the sheet shows the figures it has meanwhile).
   function openMonthSheet() {
@@ -3243,10 +3316,15 @@ export function App() {
       {renderedTabId === "entries" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab" onClick={() => {
-              // The + button opens the Ask page's new entry card; the
-              // Entries composer stays on "+ Add entry" and the card's
-              // "Edit in form".
-              navigate(buildAskLocation(searchParams, { mode: "add", from: "entries" }));
+              // The + button opens Ask's new entry card: on a phone the Ask
+              // page, on a wide screen in the Ask panel beside Entries,
+              // which stays. The Entries composer stays on "+ Add entry"
+              // and the card's "Edit in form".
+              if (isMobileLayout()) {
+                openAskFromPage(buildAskLocation(searchParams, { mode: "add", from: "entries" }), "entries");
+              } else {
+                openAskDock({ intent: { mode: "add", from: "entries" } });
+              }
             }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
               <Plus size={24} />
             </button>,
@@ -3268,21 +3346,38 @@ export function App() {
       {renderedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab splits-fab" onClick={() => {
-              // The receipt button opens the Ask page's card with the
-              // Splits switch on for the open group; the Splits expense
+              // The receipt button opens Ask's card with the Splits switch
+              // on for the open group (the Ask page on a phone, the Ask
+              // panel beside Splits on a wide screen); the Splits expense
               // dialog stays on "+ Add expense" and the card's "Edit in form".
               // The open group: the URL's, else the one Splits chose itself
               // (it marks its hidden add trigger with it).
               const trigger = document.querySelector("[data-splits-fab-trigger='true']");
               const splitGroup = searchParams.get("split_group")
                 ?? (trigger instanceof HTMLElement ? trigger.dataset.splitGroup ?? "" : "");
-              navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }));
+              if (isMobileLayout()) {
+                openAskFromPage(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }), "splits");
+              } else {
+                openAskDock({ intent: { mode: "expense", from: "splits", splitGroupId: splitGroup } });
+              }
             }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
               <Receipt size={24} />
             </button>,
             document.body
           )
         : null}
+
+      {/* Desktop Ask: the field at the bottom right, beside the + or receipt
+          button where there is one, and the panel or popup it opens. Not on
+          /ask itself, where the page is Ask, nor on a phone (its Ask tab). */}
+      {selectedTabId !== "ask" && pageView && referenceData ? (
+        <AskDock
+          besideFab={renderedTabId === "entries" || (renderedTabId === "splits" && pageView.id !== "household")}
+          intentProps={getNavIntentProps("ask")}
+          canLoad={routeWork.usable}
+          renderConversation={renderAskDockConversation}
+        />
+      ) : null}
     </main>
   );
 }

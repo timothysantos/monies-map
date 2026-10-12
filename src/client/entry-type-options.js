@@ -43,6 +43,11 @@ export function getTransferDirectionForTypeSwitch(entry, { bankFactsLocked = fal
   return entry.transferDirection ?? "out";
 }
 
+// The one line under the Edit entry card of a certified entry. The full rule
+// (which fields lock, and which types it can switch between) is
+// getBankFactsLockMessage, on the lock chip as its description.
+export const BANK_FACTS_LOCK_LINE = "Bank details are locked to the statement. Category, owner, note and splits stay editable.";
+
 /** @param {{ entryType: string, transferDirection?: string | null }} entry */
 export function getBankFactsLockMessage(entry) {
   const typeChoice = getEntryMoneyDirection(entry) === "in"

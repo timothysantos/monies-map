@@ -14,6 +14,12 @@ export const MOBILE_LAYOUT_QUERY = `(max-width: ${MOBILE_LAYOUT_MAX_WIDTH}px)`;
 // wider than the phone layout on purpose; do not fold it into it.
 export const MONTH_SHEET_LAYOUT_QUERY = `${MOBILE_LAYOUT_QUERY}, (max-width: 1024px) and (orientation: portrait)`;
 
+// From this width the desktop Ask conversation docks beside the page and
+// pushes it narrower; below it (down to the phone layout) it is a popup
+// (ask-dock-layout.js, design.md "Desktop Ask").
+export const ASK_DOCK_MIN_WIDTH = 1280;
+export const ASK_DOCK_WIDE_QUERY = `(min-width: ${ASK_DOCK_MIN_WIDTH}px)`;
+
 function currentWindow() {
   return typeof window !== "undefined" && typeof window.matchMedia === "function" ? window : null;
 }
@@ -30,6 +36,10 @@ export function isMobileLayout() {
 
 export function isMonthSheetLayout() {
   return matchesMediaQuery(MONTH_SHEET_LAYOUT_QUERY);
+}
+
+export function isAskDockWide() {
+  return matchesMediaQuery(ASK_DOCK_WIDE_QUERY);
 }
 
 // One MediaQueryList per query and window, shared by every subscribed
@@ -98,4 +108,8 @@ export function useIsMobileLayout() {
 
 export function useIsMonthSheetLayout() {
   return useMediaQuery(MONTH_SHEET_LAYOUT_QUERY);
+}
+
+export function useIsAskDockWide() {
+  return useMediaQuery(ASK_DOCK_WIDE_QUERY);
 }

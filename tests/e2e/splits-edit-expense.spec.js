@@ -94,13 +94,17 @@ test("linked split payment method is derived from the ledger account and locked"
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
   const editDialog = page.getByRole("dialog", { name: "Edit split" });
-  await expect(editDialog.getByText("Paid using (ledger)")).toBeVisible();
-  const paymentMethod = editDialog.getByRole("combobox", { name: "Paid using (ledger)" });
-  await expect(paymentMethod).toBeDisabled();
-  await expect(paymentMethod).toHaveValue("card");
+  // The split expense card: the Paid using row and chip are locked to Card,
+  // with no picker (design.md, "Tappable chips").
+  const paymentRow = editDialog.locator("[data-row='paymentMethod']");
+  await expect(paymentRow).toHaveClass(/is-locked/);
+  await expect(paymentRow).toContainText("Paid using (ledger)");
+  await expect(paymentRow).toContainText("Card");
+  await expect(paymentRow.locator("select")).toHaveCount(0);
+  await expect(editDialog.locator(".lsd-card .lsd-chip.is-locked")).toHaveText("Card, set by the linked entry");
 });
 
-test("mobile split drawer keeps actions visible and cues the scrollable fields", async ({ page }) => {
+test("mobile split sheet keeps its bottom bar in view and scrolls the card above it", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await reseedDemo(page);
@@ -108,20 +112,24 @@ test("mobile split drawer keeps actions visible and cues the scrollable fields",
 
   const dialog = page.getByRole("dialog", { name: "Edit split" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator(".split-dialog-scroll-cue")).toBeVisible();
+  // The split expense card scrolls; the old "More fields below" cue is gone.
+  await expect(dialog.locator(".split-dialog-scroll-cue")).toHaveCount(0);
   await expect(dialog.locator(".split-dialog-scroll")).toHaveCSS("overflow-y", "auto");
-  const actions = dialog.locator(".dialog-actions");
-  await expect(actions).toHaveCSS("position", "relative");
+  const actions = dialog.locator(".split-expense-card-actions");
   const actionBox = await actions.boundingBox();
   expect(actionBox).toMatchObject({ x: 0, width: 390 });
-  for (const button of await actions.getByRole("button").all()) {
+  const buttons = await actions.getByRole("button").all();
+  expect(buttons).toHaveLength(3);
+  for (const button of buttons) {
     const buttonBox = await button.boundingBox();
     expect(buttonBox).not.toBeNull();
     expect(buttonBox.x).toBeGreaterThanOrEqual(0);
     expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(390);
+    expect(buttonBox.height).toBeGreaterThanOrEqual(44);
     expect(actionBox.y + actionBox.height - (buttonBox.y + buttonBox.height)).toBeGreaterThanOrEqual(18);
   }
-  await expect(dialog.getByRole("button", { name: "Save expense" })).toBeVisible();
+  await expect(actions.getByRole("button")).toHaveText(["Delete", "Cancel", "Save expense"]);
+  await expect(dialog.getByRole("button", { name: "Save expense" })).toBeInViewport();
 });
 
 test("editing a linked split category can update the connected entry category", async ({ page }) => {
@@ -149,7 +157,7 @@ test("editing a linked split category can update the connected entry category", 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
   const editDialog = page.getByRole("dialog", { name: "Edit split" });
   await expect(editDialog).toBeVisible();
-  await editDialog.locator("select").nth(2).selectOption("Groceries");
+  await editDialog.getByLabel("Category").selectOption("Groceries");
   await editDialog.getByRole("button", { name: "Save expense" }).click();
 
   const syncDialog = page.getByRole("dialog", { name: "Update connected entry category?" });
