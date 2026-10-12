@@ -620,6 +620,32 @@ the same normalized ledger facts returns the existing entry; reusing it for
 different facts is a conflict. Bank imports continue to use import-row and
 reconciliation evidence rather than this API retry identity.
 
+### Added By
+
+Which in-app tool created a ledger entry, derived from its external request
+reference: `shortcut:<request id>` is the Apple Pay Shortcut and
+`ask:<card id>` is the Ask card. Anything else (a manual entry, an import)
+has no recorded source.
+
+Canonical term:
+- `added by`
+
+DTO field:
+- `addedBy`: `apple_pay_shortcut` | `ask`, left out when unknown
+
+UI labels:
+- `Added by` row: `Apple Pay shortcut`, `Ask`
+- bank state chip while provisional: `Apple Pay · provisional`,
+  `Ask · provisional`
+- Entries row glyph: `Added with Apple Pay`, `Added in Ask`
+
+Important distinctions:
+- It is derived on the server (`src/domain/entry-source.ts`); the reference
+  itself (a Shortcut request id, an Ask card id) never reaches a page.
+- It is provenance, not trust: a statement can still certify the entry, and
+  the bank state chip then says `Statement certified` while `Added by` stays.
+- It is not the `import batch` source: an imported row has none.
+
 ### Entry Draft
 
 One typed sentence ("Koufu lunch $12.50 yesterday, Citi") read into the
@@ -777,6 +803,10 @@ UI states:
 - `Manual provisional`
 - `Import provisional`
 - `Statement certified`
+
+A provisional entry the Apple Pay Shortcut or Ask saved names the tool in
+its bank state chip instead (`Apple Pay · provisional`, `Ask · provisional`;
+see `Added By`).
 
 Storage states:
 - `provisional`
@@ -998,6 +1028,54 @@ Canonical terms:
   `Open in Entries` shows the same rows and total
 - `From Ask chip`: the chip on Entries naming the filters an answer set; it
   goes back to the conversation, and its ✕ clears those filters
+- `money question`, `money answer` and `check before an answer`: see
+  "Money Question"
+
+### Money Question
+
+A free-form question about the household's money that is not a filter
+request, answered on the Ask page from the figures the screens already
+show (`POST /api/ai-assist/answer`; `docs/flows/ask-flow.md` "Money
+questions"). Example: "why was August so expensive?" answers with
+August's Actual spend against its plan, the change from July, the largest
+categories and the biggest single costs, and chips to Entries and Month.
+
+Canonical terms:
+- `money question`: read by rules (`src/domain/ask-answer-intent.ts`) into
+  one of six `answer intents`: `spending` (why, or where the money went),
+  `plan` (how the month stands against its plan), `compare` (two months),
+  `biggest` (the largest expenses), `income`, `owed` (who owes whom on
+  Splits). Anything else is unsupported and gets the "not answered" note;
+  a question with an amount, or a biggest or income question naming a
+  category or wallet, stays a filter request
+- `money answer`: the answer card. Lead (the figure asked about, with the
+  plan bar when there is a plan), Support chips (the plan, the other month,
+  the largest shares), the `wording` (one to three sentences) and Detail
+  lines, plus `links` to Entries (an Entries filter), Month or Splits
+- `facts`: the figures behind an answer, pure reads of the Month page DTO
+  (Actual spend and Planned spend cards, the summary month's income, the
+  Spending Mix donut, the view's entries and plan rows) and the Splits page
+  DTO seen by one person (open group balances and open settlement
+  checkpoints)
+- `check before an answer`: a high-confidence `skew candidate` that would
+  change the facts, shown first with `Mark as settlement` (a settlement) or
+  `Link as transfer` (an own-account move), and `It's real spending` (or
+  income); the answer follows the person's choice
+- `computed wording` and `AI wording`: the computed wording is always built;
+  AI may phrase it from the facts only, and its text is shown only when
+  every number and name in it is in the facts
+
+Rules:
+- the figures always come from the facts, never from AI
+- skew first: spending, plan, compare and biggest answers check spending
+  skew, income answers income skew, and who owes whom any settlement
+  candidate, for every month the answer covers
+- a month with no entries is answered as such, never with another month
+- resolving a check runs the candidate's suggested routes in order, from the
+  person's tap; It's real spending writes nothing and is kept only in the
+  conversation
+- nothing about a question, its facts or its answer is stored on the server
+
 
 ### Entry Card
 
@@ -1726,6 +1804,37 @@ Important distinctions:
   has that `last4`; otherwise Default account priority applies. A total in
   another currency than that account's is a currency hint, not an amount.
 
+### Split Suggestion
+
+The group and share Ask offers for a new expense that looks like the ones its
+payer usually puts on Splits, asked as "You usually split this with {name}.
+Add it to {group}?". Deterministic and read-only: a pure rule over the
+owner's own expenses of the last 12 months, no AI, and it never writes; the
+person answers it and the ordinary Splits switch (or Add to Splits on the
+Apple Pay card) does the writing.
+
+Canonical term:
+- `split suggestion`
+
+Code:
+- `src/domain/split-suggestion.ts` (the rule, `SPLIT_SUGGESTION_POLICY`)
+- `src/domain/pages/split-suggestion.ts` (loads the history)
+- `SplitSuggestionDto` in `src/types/dto.ts`
+- `POST /api/splits/suggestion` (src/index.ts)
+- `src/client/ask-split-suggestion.js` (the card's side)
+
+Important distinctions:
+- The shop's own history decides (same normalised description, at least 2
+  matching entries and 60% of them split in one group at one share). Only a
+  shop with fewer than 2 entries falls back to the same category (at least 4
+  entries, 75%), never Other or the income and transfer categories.
+- A habit counts only when the owner paid and the split was shared between
+  the owner and the other person only; mixed groups, tied habits, income,
+  transfers, an entry already on Splits and other people's purchases give no
+  suggestion.
+- Ask offers only an even share, since the Splits switch saves 50/50.
+- "Not this time" is kept on the card only; nothing is learned from it.
+
 ### AI Provider Status
 
 One aggregate row about the optional Claude provider, kept so the app can
@@ -1737,6 +1846,10 @@ is `AI_ALERT_EMAILS`: a list of Access emails, or `"*"` for everyone (what
 Canonical term:
 - `AI provider status` (the row); `credit state` (its derived `ok`, `low`,
   `exhausted`, `capped` or `unknown`)
+- `auto-balance` (the monthly pacing that orders the providers); `spend mode`
+  (`claude_all`, `ask_only` or `basic_first`); `ask tier` (receipt read,
+  entry draft, Ask answer wording) and `background tier` (monthly note, import
+  explanation, category rules, statement fallback)
 
 Code and storage:
 - `src/domain/ai-provider-status.ts` (failure categories, spend estimate,
@@ -1744,7 +1857,10 @@ Code and storage:
 - `ai_provider_status` (one row, `provider = 'claude'`): last failure
   category (`credit_exhausted`, `spend_capped`, `auth`, `other`) and time,
   last success time, `estimated_spend_micro_usd` since the last top-up mark,
-  and that mark's time and credit (`topped_up_credit_micro_usd`)
+  and that mark's time and credit (`topped_up_credit_micro_usd`), plus
+  `spend_month` (`YYYY-MM`, Asia/Singapore) and `month_spend_micro_usd`, the
+  estimated Claude spend in that month, replaced by the next success of a
+  new month (aggregates only)
 - `GET /api/ai-assist/provider-status`,
   `POST /api/ai-assist/provider-status/topped-up`
   (`src/server/ai-provider-status-route.ts`); `AiProviderStatusResponseDto`
@@ -1759,6 +1875,15 @@ Important distinctions:
 - A top-up mark is the owner saying how much credit they bought; it restarts
   the estimate and clears a `credit_exhausted` failure, not a gateway spend
   cap.
+- Auto-balance is deterministic and uses no AI. The month's spend is
+  compared with a pace line (`AI_CLAUDE_MONTHLY_TARGET_USD`, default 8,
+  times day over days in the month): at or under it `claude_all` asks Claude
+  first for everything; over it `ask_only` asks the basic model (Workers AI)
+  first for background features and still Claude first for ask features; at
+  90% of the target `basic_first` asks the basic model first for everything.
+  The other provider is always the fallback, so a mode only changes the
+  order. It also shows as `monthSpendUsd`, `monthTargetUsd` and `mode` on the
+  status route and as one Settings line.
 - Only owners listed in `AI_ALERT_EMAILS` (Cloudflare Access emails) see it.
   It is not household data: no prompt, image, response, error text or
   request id is stored, and it is not part of any page DTO.
@@ -1938,6 +2063,11 @@ These boundaries are important enough to preserve explicitly:
   an `entry draft` is a transient reading of a typed sentence with a source
   per field. It is never stored, and only the user's confirmation, through
   `/api/entries/create`, makes it a `ledger entry`.
+- Money answer vs financial fact:
+  a `money answer` restates figures the screens already show; its wording
+  may be AI-phrased, but it never computes, certifies or changes a figure,
+  and a `check before an answer` changes nothing until the person taps
+  Mark as settlement or Link as transfer.
 - Entry card vs ledger entry:
   an `entry card` (Ask page) is a draft on screen. It becomes a ledger entry
   only when the person saves it through the normal create route; a typed

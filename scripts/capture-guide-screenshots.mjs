@@ -479,6 +479,38 @@ const SHOTS = [
     }
   },
   {
+    // Desktop Ask: asked from the bottom-right field on Entries, docked
+    // beside the page, which narrows (1,280 px).
+    name: "desktop-ask-docked", device: "desktop",
+    run: async (page) => {
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      // The field goes once the conversation is in the panel.
+      await page.locator(".ask-dock-field").waitFor({ state: "detached" });
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill("How much on public transport?");
+      await message.press("Enter");
+      await page.locator(".ask-dock .ask-answer[data-ask-answer]:not([data-ask-answer=''])").waitFor();
+      await message.blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // A smaller window (1,024 px): the same conversation as a popup over
+    // the page.
+    name: "desktop-ask-popup", device: "desktop",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 768 });
+      await open(page, `/summary?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      await page.getByRole("textbox", { name: "Message" }).waitFor();
+      await page.getByRole("textbox", { name: "Message" }).blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
     // The Ask tab, opened after Summary so "Since you last looked" has
     // the insights Summary loaded.
     name: "phone-ask", device: "phone",
@@ -645,6 +677,47 @@ const SHOTS = [
       await add.click();
       await page.locator(".month-inline-action-row").first().waitFor();
       await page.waitForTimeout(400);
+      await hideCaret(page);
+    }
+  },
+  {
+    // A money question answered on Ask: July (the over-plan month) against
+    // its plan, the change from June, where it went and the biggest costs,
+    // with Open in Entries and Open Month first in the chips.
+    name: "phone-ask-money-answer", device: "phone",
+    run: async (page) => {
+      await open(page, `/ask?view=household&month=${MONTH}&scope=direct_plus_shared`);
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill(`Why was ${new Date(`${addMonths(SEED_MONTH, -2)}-01T00:00:00Z`).toLocaleString("en-SG", { month: "long", timeZone: "UTC" })} so expensive?`);
+      await message.press("Enter");
+      await page.locator("[data-ask-money-answer]").waitFor();
+      await message.blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // The check before an answer: the settle-up Serene still owes, paid by
+    // PayNow and filed as spending and income, is asked about first.
+    // Adds two entries, so it reseeds first and runs near the end.
+    name: "phone-ask-money-check", device: "phone", reseed: true,
+    run: async (page) => {
+      const splits = await (await page.request.get(`/api/splits-page?view=person-ethan&month=${MONTH}`)).json();
+      const checkpoint = splits.splitsPage.settlementCheckpoints.find((item) => item.status === "open");
+      const date = checkpoint.settlementDate.replace(/\d{2}$/, (day) => String(Math.min(28, Number(day) + 2)).padStart(2, "0"));
+      for (const entry of [
+        { description: "PAYNOW TRANSFER TO ETHAN", accountName: "UOB One Account", categoryName: "Other", entryType: "expense", ownerName: "Serene" },
+        { description: "PAYNOW FROM SERENE", accountName: "OCBC 360 Account", categoryName: "Other - Income", entryType: "income", ownerName: "Ethan" }
+      ]) {
+        await page.request.post("/api/entries/create", { data: { ...entry, date, amountMinor: checkpoint.amountMinor, ownershipType: "direct" } });
+      }
+      await open(page, `/ask?view=household&month=${date.slice(0, 7)}&scope=direct_plus_shared`);
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill("How am I doing against the plan?");
+      await message.press("Enter");
+      await page.locator('[data-skew-check="open"]').waitFor();
+      await message.blur();
+      await waitUsable(page);
       await hideCaret(page);
     }
   },

@@ -24,8 +24,18 @@ test("each stack's Vite cache follows its port, so offset runs never share one",
   assert.equal(shardStack(1, { portOffset: 700 }).viteCacheDir, "node_modules/.vite-shard-6201");
   const dirs = [0, 20, 700].flatMap((portOffset) => [1, 2, 3].map((index) => shardStack(index, { portOffset }).viteCacheDir));
   assert.equal(new Set(dirs).size, dirs.length);
-  // D1 state stays per checkout (.wrangler is not shared) and per shard.
-  assert.equal(shardStack(1, { portOffset: 700 }).persistTo, ".wrangler/state-shard-1");
+});
+
+// Two runs from the same checkout with different E2E_PORT_OFFSET values
+// used to share .wrangler/state-shard-N, so one run emptied or migrated the
+// other's D1 mid-test. The state folder follows the stack's Wrangler port.
+test("each stack's D1 state follows its Wrangler port, so offset runs in one checkout never share it", () => {
+  assert.equal(shardStack(1, { portOffset: 0 }).persistTo, ".wrangler/state-shard-8901");
+  assert.equal(shardStack(1, { portOffset: 700 }).persistTo, ".wrangler/state-shard-9601");
+  const dirs = [0, 20, 700].flatMap((portOffset) => [1, 2, 3].map((index) => shardStack(index, { portOffset }).persistTo));
+  assert.equal(new Set(dirs).size, dirs.length);
+  // Never the default dev state.
+  assert.equal(dirs.includes(".wrangler/state"), false);
 });
 
 // The guide screenshot stack runs the showcase demo data by passing Worker
@@ -37,7 +47,7 @@ test("a stack's Worker vars become wrangler --var pairs, and test stacks pass no
     "dev", "--config", "wrangler.test.jsonc",
     "--ip", "127.0.0.1", "--port", "8902",
     "--inspector-port", "9502",
-    "--persist-to", ".wrangler/state-shard-2"
+    "--persist-to", ".wrangler/state-shard-8902"
   ]);
   const guide = { ...stack, vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: "2026-09" } };
   assert.deepEqual(wranglerDevArgs(guide).slice(-4), ["--var", "DEMO_DATASET:showcase", "--var", "DEMO_SEED_MONTH:2026-09"]);

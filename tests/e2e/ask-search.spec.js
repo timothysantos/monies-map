@@ -243,7 +243,7 @@ test.describe("search and filter from Ask on a phone", { tag: "@webkit" }, () =>
     await expect(page.locator(".ask-answer").first().locator(".ask-answer-chip").nth(1)).toHaveText("Tim");
 
     // A question it cannot read still gets the plain note.
-    await send(page, "Am I on track?");
+    await send(page, "Should I buy a car?");
     await expect(page.locator(".ask-note").last()).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
   });
 

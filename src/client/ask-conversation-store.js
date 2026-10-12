@@ -13,9 +13,10 @@
 //
 // Mirror: sessionStorage only (this browser tab, gone when the tab closes),
 // never localStorage and never the server. Versioned key, size-capped, and
-// anything it cannot read is dropped. Only text, the card's fields and
-// filters are kept: photos (and any blob: or data: value), audio and
-// status lines never are.
+// anything it cannot read is dropped. Only text, the card's fields,
+// filters and money answers (the figures and words the server sent) are
+// kept: photos (and any blob: or data: value), audio and status lines
+// never are.
 //
 // One conversation per way in (chat, the Entries +, the Splits receipt
 // button, a Shortcut link), at most three, the oldest finished one going
@@ -27,7 +28,7 @@ const MAX_SLOTS = 3;
 const MAX_THREAD_ITEMS = 60;
 const MAX_TEXT = 1000;
 const DEFAULT_MAX_STORED_CHARS = 60_000;
-const STORED_KINDS = new Set(["me", "note", "answer"]);
+const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check"]);
 const DROPPED_KEYS = new Set(["url", "image", "photo", "blob", "file", "audio", "clip", "dataUrl", "receiptImage", "thumbUrl"]);
 
 function isObject(value) {
@@ -127,6 +128,10 @@ function serialize(slots, maxChars) {
 function readThreadItem(item) {
   if (!isObject(item) || typeof item.id !== "string" || !STORED_KINDS.has(item.kind)) return null;
   if (item.kind === "answer") return isObject(item.filter) ? item : null;
+  // A money answer keeps the card the server sent (its figures and words);
+  // the check before one keeps its candidate and the question to ask again.
+  if (item.kind === "money-answer") return isObject(item.answer) && isObject(item.answer.lead) && isObject(item.wording) ? item : null;
+  if (item.kind === "money-check") return isObject(item.candidate) && isObject(item.request) && typeof item.text === "string" ? item : null;
   return typeof item.text === "string" ? { ...item, text: clampText(item.text) } : null;
 }
 

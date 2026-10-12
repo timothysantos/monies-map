@@ -53,7 +53,9 @@ appear in this order:
 
 On a phone there is one more: **Ask**, where you add an entry by typing it,
 from a receipt photo, or by filling in a card, and find entries by asking
-for them ([Ask](#ask)).
+for them ([Ask](#ask)). On a computer, Ask is the box at the bottom right of
+every screen, **Ask, or drop a receipt…**: click it, or press **/**, and Ask
+opens beside the screen you are on ([Ask on a computer](#ask-on-a-computer)).
 
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move the range of months (on Entries, the
@@ -426,7 +428,10 @@ The round **+** button opens a new entry card on [Ask](#ask); its **Edit in
 form** button opens the usual entry form in a sheet instead. A row opens in
 a sheet with the same card: tap a row such as **Category** or **Owner** to
 pick a new value, and **More details** for the date, wallet, posted date and
-type. **Save** is at the bottom, with **Cancel** (or **Close**) beside it and
+type. The small labels on the card under what it was do the same: tap the
+date, the wallet or the person to change them (a small arrow marks the ones
+you can tap; a lock means the bank statement has fixed it). Long lists of
+wallets or categories scroll. **Save** is at the bottom, with **Cancel** (or **Close**) beside it and
 **Delete entry** apart on the left. The eye at the top shows or hides the
 amounts. The **View and scope** bar and month buttons float above the
 navigation.
@@ -491,8 +496,10 @@ with **Save expense** at the bottom.
 
 Ask is on the phone's bottom navigation. It is a page for adding an entry
 quickly, by typing or saying it, from a receipt photo, or by filling in a
-card, and for finding entries by asking, such as "grab rides in september".
-On a computer it opens from the **+** button on Entries.
+card, for finding entries by asking, such as "grab rides in september", and
+for questions about your money, such as "why was August so expensive?".
+On a computer it opens beside the screen you are on, from the box at the
+bottom right ([Ask on a computer](#ask-on-a-computer)).
 
 ![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
 
@@ -514,7 +521,8 @@ When you are adding an entry, a **card** shows it as it will be saved: the
 category, what it was, the amount (red for spending, green for money in,
 plain for a transfer), the date, the wallet and whose it is. Under it are
 **Date**, **Category**, **Wallet** and **Type**; **More details** adds the
-posted date, the owner and a note. Tap any of them to change it.
+posted date, the owner and a note. Tap any of them to change it, or tap the
+date, wallet or person label on the card itself.
 
 ### What each control does
 
@@ -537,6 +545,11 @@ posted date, the owner and a note. Tap any of them to change it.
 - **Share with … on Splits**: the switch on the card shares the expense with
   the other person, as **Add to Splits** does on Entries.
 - **Edit in form**: open the same entry in the usual form instead.
+- **‹ Entries** (or **‹ Splits**) at the top left: after the round **+**
+  or the receipt button opened Ask, go back to the page exactly as you
+  left it: the same month, filters and place in the list. Your phone's
+  back gesture does the same. A card you had started stays on Ask, with
+  the dot on the Ask button, and is there when you come back.
 - **Save**: appears beside the message box when the card is ready. It stays
   greyed out until the card has an amount and what it was.
 - **Back to the unsaved entry**: if you ask for entries while a card is
@@ -560,6 +573,13 @@ The card is marked **Saved** and the suggestions change:
   you can change it and save once more.
 
 ![A saved entry on Ask, with Back to Entries, Open this entry and Undo](/faq/guide/phone/thumbs/phone-ask-saved.webp)
+
+If you usually share a purchase with your partner (the same shop, split
+evenly in the same group, most of the times you bought there), Ask notices
+when you add it again and asks: "You usually split this with Joyce. Add it
+to Home?" **Split 50/50 in Home** turns Splits on for the new entry (it is
+saved when you tap **Save**); **Not this time** puts the question away. It
+only looks at your own past entries and never guesses from one purchase.
 
 ### Find entries by asking
 
@@ -587,13 +607,87 @@ never guesses. Asking to "switch to Serene" or for "shared only" gives you a
 answers out on your phone from the entries it already has; nothing you type
 is sent anywhere for this.
 
-Other questions about your money, such as "am I on track?", aren't answered
-yet; use Summary, Month and Entries for those.
+### Ask about your money
+
+Ask also answers questions about your money in plain words:
+
+- "Why was August so expensive?" or "Where did September go?": what was
+  spent, against the plan and the month before, where most of it went and
+  the biggest single costs.
+- "How am I doing against the plan?" or "Am I on track?": the month's
+  spending against its plan, and what went furthest over.
+- "Compare August with July": both months side by side and what changed
+  most.
+- "What's my biggest expense this month?": the largest expenses.
+- "How much income came in in August?": the income against its plan, and
+  where it came from.
+- "What do I owe Serene?" or "Who owes who?": what is still open between
+  you on Splits.
+
+The answer is a card with the figure you asked about (and the plan bar when
+there is a plan), a few short facts, a sentence or two, and the rows behind
+it. The figures are the same ones Month, Entries and Splits show. The
+buttons under it open the right page: **Open in Entries** (the entries it
+counted), **Open Month** or **Open Splits**. With money totals hidden, the
+amounts are hidden and the sentences wait until you show them.
+
+![A money question answered on Ask: July's spending against its plan, with Open in Entries and Open Month](/faq/guide/phone/thumbs/phone-ask-money-answer.webp)
+
+If a payment in that month looks like a settle-up between the two of you,
+or money moved between your own accounts, and it is still counted as
+spending or income, Ask shows it first under **Check this first**, so the
+answer isn't thrown off by it:
+
+- **Mark as settlement** (or **Link as transfer**): link it the way Splits
+  and Settings would, so it no longer counts as spending or income. Ask
+  then answers with that fixed.
+- **It's real spending**: leave it as it is. Ask answers with it counted
+  and doesn't ask about it again for that question.
+
+![Check this first on Ask: a PayNow from Serene to Ethan that looks like a settle-up, with Mark as settlement and It's real spending](/faq/guide/phone/thumbs/phone-ask-money-check.webp)
+
+When Claude is set up, it may put the answer into its own words, using only
+those figures, and the card is then marked **Worded by AI**; if its words
+don't match the figures exactly, you see Ask's own sentence instead, with no
+mark. Nothing you ask is kept once you close the tab.
+
+Other questions, such as "should I buy a car?", aren't answered; Ask says
+so.
+
+### Ask on a computer
+
+On a computer there is no Ask tab. Every screen has a box at the bottom
+right instead, **Ask, or drop a receipt…** (beside the round **+** on
+Entries and the receipt button on Splits). Click it and type, press **/**
+on your keyboard, click its paperclip to choose a receipt photo, or drag a
+photo onto it. Ask opens beside the screen, with what you typed already in
+its message box.
+
+![Ask open as a panel beside Entries on a computer, with an answer and Open in Entries](/faq/guide/desktop/thumbs/desktop-ask-docked.webp)
+
+- **On a wide window** Ask opens as a panel down the right side. The screen
+  beside it gets narrower, so nothing hides behind the panel; Imports,
+  Settings and FAQ move into the **···** menu at the top.
+- **On a smaller window** it opens as a box over the bottom right of the
+  screen. If you make the window wider while it is open, the expand button
+  beside **Close** moves it to the side.
+- **Open in Entries**, **Open this entry** and the other buttons in Ask open
+  that screen beside it. Ask stays open as you move between screens, and
+  after a reload, until you click **Close**. **Esc** closes the box on a
+  smaller window, and the side panel when you are typing in it.
+- The round **+** on Entries and the receipt button on Splits open a new
+  entry card here too, beside the screen, which stays where it was. Once
+  you save, the entry shows in the list beside it.
+- It is the same conversation Ask shows if you make the window as narrow as
+  a phone.
+
+![Ask as a box over Summary on a smaller window](/faq/guide/desktop/thumbs/desktop-ask-popup.webp)
 
 ### When Claude credits run low
 
-Reading your sentences and receipts can use Claude, a paid helper, when it
-is set up. When its credits run low, Ask shows a small note at the top of
+Ask uses Claude. Other AI help uses Claude while the month's budget allows,
+otherwise the basic model. Claude is a paid helper, and it is only used when
+it is set up. When its credits run low, Ask shows a small note at the top of
 the conversation:
 
 - **Claude credits are running low**: with how much of the credit is used
@@ -614,6 +708,13 @@ On the note:
   sooner only if things get worse, for example from running low to used up.
 
 The same line, with both buttons, is in **Settings** under **Ask and AI**.
+Under it, one more line says how much Claude has been used this month and
+who is helping: "background help is using Claude" while the month is on
+budget, "background help is using the basic model to save budget" when
+Claude is running ahead of the month's pace, and "everything is using the
+basic model to save budget" once nearly all of the month's budget is used.
+The dollar figures are hidden while money totals are hidden. It resets at
+the start of each month.
 
 ### Your conversation is kept
 
@@ -1333,8 +1434,11 @@ There are two ways, depending on where the expense is.
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 
-To change a split, select it in the activity list. The row turns into its
-form: change the fields and select **Save**. To remove it, select **Delete**,
+To change a split, select it in the activity list. On a phone it opens as the
+same card you used to add it: change the total, a share, the category or the
+group, open **More details** for the rest, and select **Save expense**.
+**Delete** is at the bottom left and asks before it removes anything.
+On a wide screen the row turns into its form: change the fields and select **Save**. To remove it, select **Delete**,
 then **Delete split row**. A deleted split can be restored
 ([Restore a deleted split](#restore-a-deleted-split)).
 
@@ -1465,7 +1569,8 @@ open it for you to check.
 ![The Apple Pay shortcut section in Settings](/faq/guide/desktop/thumbs/settings-shortcut.webp)
 
 After a purchase, a notification shows the merchant, amount and account, and
-the new entry opens on [Ask](#ask) as a saved card. If it landed in
+the new entry opens on [Ask](#ask) as a saved card, marked **Apple Pay ·
+provisional**. If it landed in
 **Other**, Ask suggests a few categories to tap; it also offers to share it
 on Splits, and **Open this entry** opens it in Entries to change anything
 else.
@@ -1867,7 +1972,9 @@ saves every row or none of them.
   one statement period.
 - **Reconcile**: prove your ledger matches the statement's closing balance.
 - **Manual provisional**: an entry you typed (or Apple Pay created) that no
-  bank file has confirmed yet.
+  bank file has confirmed yet. One that Apple Pay or Ask saved says so:
+  **Apple Pay · provisional** or **Ask · provisional**, with **Added by**
+  under **More details**, and a small mark beside its amount in the list.
 - **Import provisional**: an entry from an activity export, not yet confirmed
   by a statement.
 - **Statement certified**: an entry a bank statement has confirmed. Its bank

@@ -143,6 +143,15 @@
   gap: 2px;
 }
 
+/* Added by: a small muted glyph inside the amount's line (Apple Pay, Ask),
+   so the row keeps its height and the amount keeps its tone. */
+.entry-row-source {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: var(--muted);
+}
+
 .entry-chip-owner {
   background: rgba(38, 35, 31, 0.05);
   color: var(--text);

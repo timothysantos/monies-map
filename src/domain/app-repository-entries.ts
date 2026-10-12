@@ -1,5 +1,6 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { offsetsCategory } from "./category-offset";
+import { entryAddedByFromReference } from "./entry-source";
 import { getMonthBounds, groupSplits } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
 import { homeCurrencyShareAmounts } from "./split-allocation";
@@ -128,6 +129,7 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
         transactions.bank_certification_status,
         transactions.statement_certified_at,
         transactions.import_id,
+        transactions.external_reference,
         imports.source_type AS import_source_type,
         imports.source_label AS import_source_label,
         split_expenses.id AS linked_split_expense_id,
@@ -182,6 +184,7 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       bank_certification_status: "provisional" | "statement_certified";
       statement_certified_at: string | null;
       import_id: string | null;
+      external_reference: string | null;
       import_source_type: "csv" | "pdf" | "manual" | null;
       import_source_label: string | null;
       linked_split_expense_id: string | null;
@@ -284,6 +287,8 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       importedSourceType: row.import_source_type ?? undefined,
       importedSourceLabel: row.import_source_label ?? undefined,
       statementCertifiedAt: row.statement_certified_at ?? undefined,
+      // Only the derived source, never the reference; left out when unknown.
+      addedBy: entryAddedByFromReference(row.external_reference) ?? undefined,
       linkedTransfer,
       linkedSplitExpenseId: row.linked_split_expense_id ?? undefined,
       linkedSplitGroupName: row.linked_split_group_name ?? undefined,

@@ -125,7 +125,11 @@ Layout, top to bottom:
   "Saved" (add mode) with a context line: person · scope · month in chat,
   person · month beside the title in add mode. In chat mode, once there is
   something to start over from, a quiet "New chat" text button (accent
-  text with a pen glyph, 44 px tall) sits at the header's right.
+  text with a pen glyph, 44 px tall) sits at the header's right. On a
+  phone, after the Entries + or the Splits receipt button opened the card,
+  a "‹ Entries" / "‹ Splits" back link (accent text, bold, a 44 px target
+  in a short row) sits at the top left above the title, the standard Back
+  place, far from Save. Its way back is "Ask origin" below.
 - Conversation (`role="log"`, polite live region), which scrolls: first,
   only while Claude credits are low, used up or capped, the Claude credit
   notice (see "Claude credit notice"), in every mode; then in chat
@@ -182,9 +186,10 @@ Placeholders, each fitting one line at 375 px (`tests/e2e/ask-composer.spec.js`)
 
 On a phone the page is `position: fixed` above the tab bar (`ask-route.css`)
 with its own scrolling conversation; the shell's header bar is underneath
-it. On a wide screen it renders in the main area like any panel, with the
-bottom stack sticky; its tab is hidden there for now (`phoneOnly`), because
-a docked panel will be the wide-screen way in.
+it. On a wide screen `/ask` renders in the main area like any panel, with
+the bottom stack sticky; its tab is hidden there (`phoneOnly`), because the
+Ask field and the panel it opens are the wide-screen way in ("Desktop Ask"
+below).
 
 ### Entry card
 
@@ -241,6 +246,38 @@ While it adds up it says "Adding it up…"; a month with no entries says so.
 "Open in Entries" is the first chip of the row (filled) while the answer is
 the newest thing in the conversation.
 
+### Money answer
+
+`ask-money-answer-card.jsx`, the same `LeadCard` for an answer to a money
+question (docs/flows/ask-flow.md "Money questions"):
+
+- Head: a neutral bubble with the intent's glyph (a pie for spending, a
+  target for the plan, scales for a comparison, a receipt for the biggest
+  expenses, people for Splits, a banknote for income), the title ("August
+  spending", "August against plan", "July and June", "Biggest in August",
+  "Splits with Serene", "August income") and, muted under it, what the
+  figure counts ("Spent · 51 expenses", "Came in · 2 entries", "Balance").
+- Lead: the figure on the right. Spending is rose only over plan, income
+  mint, a Splits balance mint when owed to you and rose when you owe;
+  the actual-vs-plan bar with "of $7,263.09 plan" in sky when there is a
+  plan.
+- Support: the plan, the other month, the largest shares ("Home 54%") or
+  the Splits groups, as `MetaChip`s with masked amounts when money is
+  hidden (labels never say over, under or who owes).
+- Tag: words the optional AI phrased carry the entry card's butter tag
+  ("Worded by AI", with the sparkle) above the head line; the computed
+  wording has none, and hidden money hides it with the words.
+- Detail: the answer in one to three sentences, then quiet rows (label and
+  a short detail on the left; the amount on the right in its tone, with the
+  plan or the other month small under it). Hidden money replaces the words
+  and rows with "Reveal money totals to read these insights."
+
+The check before an answer is the same card with the butter "Check this
+first" tag over the head ("Serene → Ethan" or the two accounts, the bank
+description muted, the amount in plain ink) and one plain paragraph; its
+chips are Mark as settlement or Link as transfer (filled) and It's real
+spending. Once answered it stays in the thread, faded.
+
 ### Bottom chips
 
 The row and the composer's primary button belong to the newest thing in
@@ -255,7 +292,9 @@ while the card is active.
 `buildAskChips` derives the card's row from the mode and the card:
 
 - chat, no card: Scan receipt, Paste, Add entry, Add expense;
-- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first; then a pending
+- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first (with the header's
+  back link, the phone's Ask page after the + or the receipt button, only
+  while the card is untouched: `headerBack`); then a pending
   question's answers (the readers send structured questions; the client
   words them and shows the question as a line above the row), or Scan
   receipt, Paste, Transfer, Income on an empty expense; Split with
@@ -271,7 +310,34 @@ while the card is active.
   chat chips; a follow-up question: only its options (one per wallet,
   category, month or person, then "All of them"), with the question as the
   line above the row; a view change: "Switch to Serene · Shared" (filled),
-  then the same as after an answer, under "Change the view?".
+  then the same as after an answer, under "Change the view?";
+- after a money answer (`buildMoneyChips`): its links (Open in Entries,
+  Open Month or Open Splits, the first filled), then the same as after an
+  answer; an open check before an answer: only Mark as settlement (or Link
+  as transfer, filled) and It's real spending.
+
+### Ask origin
+
+Where Ask's back link goes on a phone (`ask-origin.js`, pure, unit tested;
+`use-ask-origin.js`, the Entries and Splits hooks; both ship with those
+routes, never the first screen). The shell's + and receipt handlers
+(`openAskFromPage` in App.jsx, a few lines inline to stay out of the
+module) build the origin (an id, the way in, the page's path with its
+query, the window's scroll), fire `monies:ask-origin` so the page can add
+an open sheet with its draft (`useAskOriginSheet`: Entries adds its edit
+sheet's edited entry, or its add sheet's draft), replace the page's own
+history entry with the origin as `state.askReturn`, then push `/ask` with
+it as `state.askOrigin`. The Ask page keeps it in sessionStorage
+(`monies.askOrigin.v1`, one per way in, versioned) and plans its way back
+with `planAskBack`: history.back while its history entry has the origin
+(so the link and the phone's back gesture are one way), else the kept
+place (opened with `state.askReturn`), else the plain page for the view
+and month. The page puts the place back once (`useAskReturn`): the sheet,
+then the scroll, set each frame until it holds (rows render over a few
+frames), never after the person scrolls; and it keeps its URL and scroll
+as the kept place whenever it is left another way, for a card the Ask tab
+reopens. Paths are checked against the way in's page, so a kept origin
+never leads outside the app.
 
 ### Ask conversation store
 
@@ -318,6 +384,49 @@ while the list scrolls, so the person can always see the list is narrowed
 and undo it with one tap; the list gets 56 px more bottom padding, and the
 chip hides under a sheet or dialog as the bar does. On a wide screen it sits
 at the top of the list, under the page title.
+
+## Desktop Ask
+
+Owner-approved desktop design. Flow: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md)
+"Desktop". Code: `ask-dock.jsx` (field, `/` key and loading frame: the only part in
+the first screen, with `ask-dock-field.jsx` and `ask-dock-entry.js`),
+`ask-dock-panel.jsx` (the panel, loaded with the Ask page's chunk on the
+first way in), `ask-dock-layout.js` (pure layout rules), `ask-dock-state.js`
+(session state), and the Ask page itself inside (`AskPanel` with
+`placement`).
+
+- The field: one white pill, 340 × 48 px, 24 px radius, the inset hairline
+  and a soft shadow, fixed 22 px from the right and 29 px from the bottom
+  (on the vertical centre of the 58 px + button, 12 px to its left on
+  Entries and Splits). An accent ✦ glyph, the placeholder "Ask, or drop a
+  receipt…" in muted ink, and a muted paperclip in a 44 px hit area ("Add
+  a receipt photo"). The accent focus ring shows on the pill while it has
+  focus. It hides under a dialog or an inline editor (as the + does), while
+  any menu or popover is open (one near the bottom right, such as Confirm
+  rollback, would otherwise sit under it), and once the panel's
+  conversation is showing. Page content gets 96 px of
+  bottom room on a wide screen so nothing ends under it.
+- Docked (1,280 px and wider): a full-height panel at the right,
+  `clamp(360px, 27vw, 400px)` wide, on the pastel neutral with a hairline
+  left edge. It pushes the page: the body gets the panel's width as right
+  padding, so the shell (still at most 1,200 px) centres in what is left,
+  and the + and receipt buttons, the loading badge and the environment
+  banner move beside it. Nothing is ever under it.
+- Popup (761 to 1,279 px): 410 × 560 px (less on a short window), 22 px
+  radius, a hairline border and a deep soft shadow, 22 px from the right
+  and 24 px from the bottom, over the page; on Entries and Splits it sits
+  94 px from the bottom, above the round + or receipt button, which open
+  their new entry card in it (and in the docked panel) on a wide screen.
+- Inside both: the Ask page with 16 px gutters. The header is the page's
+  ("Ask" at 1.7 rem with the person · scope · month line), with New chat,
+  the expand control (popup on a window wide enough to dock: an accent
+  ⤢ glyph, "Dock Ask beside the page") and "Close" (accent text, bold,
+  44 px tall, "Close Ask") at its right. The conversation scrolls inside
+  the panel; the chips and composer sit at its bottom, as on the phone.
+- The header and Month read the page's width, so the page narrowed by
+  the panel lays out like a window of that width ("Layout Breakpoint
+  Boundary"): at 1,280 px the page is 920 px and the header keeps one row
+  with Imports, Settings and FAQ behind More pages.
 
 ## Claude Credit Notice
 
@@ -401,8 +510,11 @@ components.
   `getPersonColourVars` (tint, border, `--person-ink`, a dot); `tone` a
   status in its pastel pair at the soft strength (`mint`, `rose`, `sky`,
   `butter`, `lavender`; an unknown tone is ignored), such as the mint
-  "Statement certified" chip with a lock. At most four per card; chips are
-  read-only: a value you change has its own Detail row.
+  "Statement certified" chip with a lock. At most four per card. A chip is
+  read-only unless it names a field you can change (see "Tappable chips"
+  below): `onClick` or a laid-over `control` (`ChipDateField`), with
+  `actionLabel`, makes it open that field's picker; `locked` (with
+  `lockedLabel`) shows a lock and opens nothing.
 - `DetailRows {label}` and `DetailRow {label, value, emptyLabel, state,
   action, locked, disabled, hint, labelId, onClick, children}`: rows of
   48 px or more in one rounded group, label left (muted), value right (600)
@@ -417,7 +529,9 @@ components.
   with its `emptyLabel`, "Add a note"), `action` (terracotta, "Add to
   splits", "See the 10 entries"; also the `action` flag) and `locked`
   (muted with a lock instead of the `›`, never clickable; also the `locked`
-  flag). `disabled` mutes a button row and drops its `›`.
+  flag). `disabled` mutes a button row and drops its `›`. `readOnly` is a
+  plain line with no icon, for a fact nobody changes on that screen (Added
+  by).
 - `MoreDetails {summary, open, onOpenChange, defaultOpen, forceOpen, label,
   openLabel}`: the folding row inside the group; it lists what it holds
   while closed, and its rows follow it in the same group when open.
@@ -442,6 +556,41 @@ share: `PickerRow` (the phone picker sheet, `ResponsiveSelect`, in a sheet; a
 native select laid over the row on a wide screen), `DateRow` (a date field
 over the row in a sheet; a visible inline date field on a wide screen) and
 `GrowingTextarea` (what it was, a note).
+
+Tappable chips: a Support chip that names a field you can change opens
+the same picker or editor as that field's Detail row, so the fact you look
+at is also the way to change it. Edit entry card: date (the date picker),
+wallet (the wallet picker, unfolding More details) and owner. Ask draft
+card: date, wallet and owner. New split expense card: date, paid by,
+shares (the share editor) and paid using. The Month plan card's chips are
+not fields there, and a saved Ask card's chips are not editors.
+
+- Calm, not loud: the pill keeps its size and colours and adds only a small
+  muted chevron and the rows' press state; no new colour.
+- 44 × 44 px: the pill sits inside a transparent button (or under a date
+  field laid over it) at least 44 px each way; the chips row pulls in 4 px
+  top and bottom so the taller targets add little height.
+- Named for what it does: "Change date, Yesterday", "Change wallet, UOB
+  One", "Change paid by, Tim", "Change shares, 50 / 50".
+- Locked: a field the statement certified (date, wallet), or a payment way
+  the linked entry set, shows a small lock and opens nothing; assistive
+  tech hears ", locked by the statement" (or ", set by the linked entry").
+- State chips (Manual provisional, Statement certified) are never editors.
+- On a wide screen a chip moves focus to its row's select (and opens it
+  where the browser allows).
+
+Source chip: the bank state chip names the tool that saved a provisional
+entry, "Apple Pay · provisional" (the Apple Pay Shortcut) or "Ask ·
+provisional", on the Edit entry card and Ask's saved card; a certified
+entry says "Statement certified" and other entries keep "Manual
+provisional" or "Import provisional". More details then has a read-only
+"Added by" row (Apple Pay shortcut, Ask), and its folded hint names it
+("Date, wallet, posted date, type, added by"; certified: "Posted date,
+type, added by"; `moreDetailsSummary`), and an Entries row shows a small
+muted glyph inside its amount's line (a contactless mark, "Added with Apple
+Pay"; a sparkle, "Added in Ask") that keeps the row's height and is the
+same with money hidden. The words come from `entry-source.js`, from the
+entry's `addedBy`.
 
 The phone picker sheet (`ResponsiveSelect`, and the Entries filter
 multi-select) keeps its title in place and scrolls its options list, so the
@@ -475,9 +624,10 @@ Rules:
 - Keyboard: every bottom sheet with a bottom bar lifts itself above the
   phone keyboard (`use-keyboard-inset.js` sets `--keyboard-inset`; see
   "Mobile Sheet"), so the bar and the focused field stay in sight, and the
-  bar keeps the safe-area inset. Swipe down to dismiss is not supported:
-  neither the mobile sheet nor the Radix dialog has it, and adding it would
-  be a new gesture that discards a draft.
+  bar keeps the safe-area inset. Swipe down to close is supported only
+  through `sheet-swipe.jsx`, which closes an unchanged sheet and asks
+  before discarding a changed one (see "Swipe down to close" under "Mobile
+  Sheet").
 - No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
 
 Where it is used:
@@ -522,8 +672,9 @@ Where it is used:
   keeps an inline field, so Tab walks description, amount, the eye, then the
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
-- New split expense (`split-expense-card.jsx`, from the Splits dialog in
-  both layouts; editing and viewing a saved split keep the form for now).
+- New, edit and view split expense (`split-expense-card.jsx`, from the Splits
+  dialog in both layouts: the phone sheet and the wide dialog; a row on a
+  wide screen still opens the inline form).
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
   (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
@@ -534,6 +685,14 @@ Where it is used:
   linked through the existing `updateSplitExpenseDraft`, so what the card
   shows and saves is what the form saved. The odd cent choice shows under
   the share rows whenever it applies.
+  Edit split is the same card on a saved split, titled "Edit split", with
+  Delete (quiet, rose, set apart; it asks in the app first), Cancel and
+  Save expense in the bottom bar; swiping the phone sheet down asks "Discard
+  changes?" when something changed. What a linked entry set (the paid-using
+  chip and row) is locked and reads ", set by the linked entry"; the linked
+  entry is a "View entry" row. View split (the read-only household view) shows
+  the same card with no controls and Close. The save request is the one the
+  form sent.
 
 ## Apple Shortcut Install Boundary
 
@@ -885,9 +1044,10 @@ strip EXIF and location in the browser first (re-encoding through a canvas
 does both, `ask-receipt-image.js`); keep the image in transient page state
 only, dropped when the page goes; on `available: false` (or any failure)
 read the same image on the device with the app's Tesseract worker into the
-same `ReceiptReadDto` (the domain's `readReceiptOcrText`; Ask still uses its
-own smaller `parseReceiptText` in `ask-receipt-image.js`, to be replaced by
-the domain parser); and fill the entry card
+same `ReceiptReadDto` (the domain's `readReceiptOcrText`, which Ask calls
+through `readReceiptTextOnDevice` in `ask-receipt-image.js` with the
+household currency, SGD, as the default so a receipt that prints no
+currency raises no currency question); and fill the entry card
 or editor from it (`applyReceiptRead` on Ask, `receiptReadToDraftFields`
 for the `/api/entries/create` field names), saving nothing until the user
 taps Save, through the normal create route. The
@@ -1541,7 +1701,8 @@ storage listeners; its parse and dispatch helpers are pure.
 
 `use-viewport.js` is the only client module that calls `matchMedia` for
 layout; nothing else reads `innerWidth` or repeats a query string. It has
-two queries:
+three queries (the third, `ASK_DOCK_WIDE_QUERY` `(min-width: 1280px)`,
+only says where desktop Ask docks: "Desktop Ask"):
 
 - `MOBILE_LAYOUT_QUERY`, `(max-width: 760px)`, is the phone layout and
   matches the `@media (max-width: 760px)` blocks in `public/styles.css` (a
@@ -1569,9 +1730,21 @@ Between the two layouts there is a CSS-only mid-width range, 761 to
 1,099 px (portrait and landscape tablets, small laptops), where the desktop
 layout must still fit the screen. It needs no JavaScript, so it has no
 query in `use-viewport.js`. Its blocks are
-`@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px)
-and never touch the phone or wide-desktop rules. A header block for 1,100
-to 1,199 px follows it (see below). The header rules are in
+`@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px;
+the header's and Month's are page-width container queries, below) and
+never touch the phone or wide-desktop rules. A header block for 1,100
+to 1,199 px follows it (see below).
+
+The header and the Month mid-width rules are container queries on the
+page itself: from 761 px `.shell` is `container: shell / inline-size`, and
+those blocks read `@container shell (...)`. Without the docked Ask panel the
+page is the window less 36 px (the shell's gutters), so a 1,100 to 1,199 px
+window is a 1,064 to 1,163 px page and nothing changes; with the panel
+docked, the narrower page lays out like a window of its width, so the
+header stays one row and the Month tables fit or scroll inside their
+section, never under the panel. Other pages keep their window-width rules
+(none of them spills past the panel at 1,280 or 1,440 px;
+`tests/e2e/header-tab-fit.spec.js` checks every page). The header rules are in
 `public/styles.css`, because every page shows the header. The Month rules
 are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
 so they ship with the lazy Month route and stay out of the first-screen
@@ -1586,7 +1759,8 @@ rules win over base rules of the same specificity.
   no second row, hidden tab or sideways scroll. At desktop spacing the row
   needs about 1,160 px and fits from 1,200 px (the shell's content width
   stops growing there). From 1,100 to 1,199 px
-  (`@media (min-width: 1100px) and (max-width: 1199px)`) the header
+  (`@container shell (min-width: 840px) and (max-width: 1163px)`, a 1,100
+  to 1,199 px window without the Ask panel) the header
   gap, view pill and tab padding, tab and period gaps and the period box
   (padding, gap, `min-width` 236 px, still wider than the Summary range)
   tighten by about 125 px, leaving about 30 px spare at 1,100 px; the text
@@ -1597,8 +1771,15 @@ rules win over base rules of the same specificity.
   and the 1,440 px header height; it also pins the 1,440 and 390 px header
   spacing. A two-row header here (period controls below the tabs) was
   tried and rejected because it pushed the page down.
-  From 761 to 1,099 px the wrap above still applies: there one row does not
-  fit at this spacing (at 761 to 960 px the view pills already sit on their
+  A page 840 to 1,063 px wide (an 876 to 1,099 px window, or the docked Ask
+  panel beside a 1,280 to 1,499 px one) keeps one row too: the same tighter
+  spacing, the period box sized to its words (`min-width: 0`), and Imports,
+  Settings and FAQ behind the existing "More pages" menu, as on a phone
+  (`@container shell (min-width: 840px) and (max-width: 1063px)`;
+  `header-tab-fit.spec.js` checks every page at 1,024 px and with the panel
+  docked at 1,280 and 1,440 px). Below
+  840 px (a 761 to 875 px window) the wrap above still applies: there one
+  row does not fit (at 761 to 960 px the view pills already sit on their
   own row).
 - The Month panel and plan sections may shrink below their tables'
   min-content width (a grid item's automatic minimum is its min-content,
