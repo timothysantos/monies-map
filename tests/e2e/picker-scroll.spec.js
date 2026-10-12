@@ -137,6 +137,11 @@ async function swipeToEnd(page, browserName, list) {
 async function expectLastOptionReachable(page, browserName, title, { minimumOptions = 15 } = {}) {
   const { dialog, list, options } = pickerParts(page, title);
   await expect(dialog).toBeVisible();
+  // The screen-reader description ("Choose a value for wallet.") is announced, never shown.
+  const description = dialog.getByText(/^Choose (a value|one or more values) for /);
+  await expect(description).toHaveCount(1);
+  const box = await description.boundingBox();
+  expect(box && box.width <= 1 && box.height <= 1).toBe(true);
   expect(await options.count()).toBeGreaterThanOrEqual(minimumOptions);
   const last = options.last();
   // The list is longer than the sheet: the last option starts out of sight.
