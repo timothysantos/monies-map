@@ -1,0 +1,80 @@
+/* Swipe down to close on phone bottom sheets (sheet-swipe.jsx). Ships with
+   the routes that open a sheet, not the first-screen stylesheet. */
+
+/* The grab bar sits in the sheet's top padding, so it moves nothing. */
+.sheet-drag-handle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 18px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.sheet-drag-handle-bar {
+  display: block;
+  width: 36px;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+}
+
+/* While the finger holds the sheet, a long press must not select text. */
+.is-sheet-dragging {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* "Discard changes?": the sheet dims above a bar at its bottom, where the
+   thumb is. */
+.sheet-discard-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  background: rgba(18, 24, 22, 0.22);
+}
+
+.sheet-discard-confirm {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  gap: 12px;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  border-top: 1px solid var(--line);
+  border-radius: 20px 20px 0 0;
+  background: rgba(255, 252, 249, 0.995);
+  box-shadow: 0 -12px 28px rgba(27, 24, 21, 0.14);
+}
+
+.sheet-discard-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sheet-discard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-discard-actions .lsd-quiet {
+  min-width: 88px;
+  min-height: 50px;
+}
+
+.sheet-discard-actions .lsd-primary {
+  flex: 1 1 auto;
+  max-width: 62%;
+  min-height: 50px;
+}

@@ -115,7 +115,18 @@ test("the Settings line covers every state, with the calm not-set-up line and no
 
   const off = buildClaudeCreditLine(status({ state: "unknown", claudeConfigured: false }), { areTotalsVisible: true });
   assert.deepEqual(off, { state: "unknown", tone: "neutral", text: "Claude isn't set up, so Ask uses the basic model.", monthText: null, actions: [] });
-  assert.equal(buildClaudeCreditLine(status({ state: "unknown" }), { areTotalsVisible: true }).text, "Claude isn't set up, so Ask uses the basic model.");
+  // Not set up wins over everything else Claude-related in the status.
+  assert.equal(buildClaudeCreditLine(status({ state: "unknown", claudeConfigured: false, lastFailureAt: "2026-10-11T02:00:00.000Z" }), { areTotalsVisible: true }).text, "Claude isn't set up, so Ask uses the basic model.");
+  assert.equal(buildClaudeCreditLine(readClaudeCreditStatus({ ok: true, visible: true, state: "unknown" }), { areTotalsVisible: true }).text, "Claude isn't set up, so Ask uses the basic model.");
+});
+
+test("set up but never answered, the Settings line says Claude hasn't been used yet", () => {
+  const fresh = buildClaudeCreditLine(status({ state: "unknown", lastSuccessAt: undefined }), { areTotalsVisible: true });
+  assert.deepEqual(fresh, { state: "unknown", tone: "neutral", text: "Claude hasn't been used yet.", monthText: null, actions: [] });
+  // A recorded failure (a bad key) is not "not used yet": it keeps the
+  // not-set-up line until a later answer.
+  const failed = buildClaudeCreditLine(status({ state: "unknown", lastSuccessAt: undefined, lastFailureAt: "2026-10-11T02:00:00.000Z" }), { areTotalsVisible: true });
+  assert.equal(failed.text, "Claude isn't set up, so Ask uses the basic model.");
   assert.equal(buildClaudeCreditLine(readClaudeCreditStatus({ ok: true, visible: false }), { areTotalsVisible: true }), null);
 });
 

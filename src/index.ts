@@ -13,6 +13,7 @@ import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
+import { buildSplitSuggestionDto, readSplitSuggestionRequest, SplitSuggestionEntryNotFound } from "./domain/pages/split-suggestion";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
 import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
 import { buildSummaryPageDto } from "./domain/pages/summary-page";
@@ -314,6 +315,38 @@ export default {
         ),
         timing
       );
+    }
+
+    // Read-only split suggestion for one entry (DOMAIN.md "Split
+    // Suggestion"): a saved entry by id, or a new Ask card's fields. POST so
+    // a typed shop name stays out of URLs and request logs; it writes
+    // nothing.
+    if (url.pathname === "/api/splits/suggestion") {
+      if (request.method !== "POST") {
+        return json({ ok: false, error: "Split suggestions only answer POST." }, 405, { Allow: "POST" });
+      }
+      const suggestionRequest = readSplitSuggestionRequest(await request.json().catch(() => null));
+      if (!suggestionRequest) {
+        return json({ ok: false, error: "Invalid split suggestion fields" }, 400);
+      }
+      const startedAt = Date.now();
+      try {
+        const suggestion = await buildSplitSuggestionDto(env.DB, suggestionRequest);
+        return json({ ok: true, suggestion }, 200, {
+          "server-timing": buildServerTimingHeader({
+            appMs: Date.now() - startedAt,
+            initMs: timing.initMs,
+            initCold: timing.initCold,
+            totalMs: Date.now() - timing.requestStartedAt
+          })
+        });
+      } catch (error) {
+        if (error instanceof SplitSuggestionEntryNotFound) {
+          return json({ ok: false, error: error.message }, 404);
+        }
+        console.error("Split suggestion failed", { path: url.pathname, error: describeError(error) });
+        return json({ ok: false, error: "Split suggestion failed" }, 500);
+      }
     }
 
     if (url.pathname === "/api/summary-page") {

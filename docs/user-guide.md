@@ -53,7 +53,9 @@ appear in this order:
 
 On a phone there is one more: **Ask**, where you add an entry by typing it,
 from a receipt photo, or by filling in a card, and find entries by asking
-for them ([Ask](#ask)).
+for them ([Ask](#ask)). On a computer, Ask is the box at the bottom right of
+every screen, **Ask, or drop a receipt…**: click it, or press **/**, and Ask
+opens beside the screen you are on ([Ask on a computer](#ask-on-a-computer)).
 
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move the range of months (on Entries, the
@@ -181,7 +183,12 @@ The app is designed for phones as well as desktops. The differences:
   with **‹** and **›** to step to the month before or after.
 - **Edit sheets.** Adding or editing a row opens a sheet from the bottom of
   the screen instead of editing inside the table. **Done** or **Save** saves;
-  **Cancel**, the ✕ or tapping outside closes it without saving. On Month the
+  **Cancel**, the ✕ or tapping outside closes it without saving. You can also
+  swipe the sheet down to close it (the small bar at the top shows where to
+  grab). If you have changed something, it springs back and asks
+  **Discard changes?**: **Keep editing** takes you back with your changes,
+  **Discard** closes it without saving. While a save is running, a swipe does
+  nothing. On Month the
   sheet starts with the planned amount: tap it to type a new one. Under it, a
   bar shows what has been spent against the plan and what is left (or how
   much it is over). The other fields are rows below it: tap a row to change
@@ -491,7 +498,8 @@ Ask is on the phone's bottom navigation. It is a page for adding an entry
 quickly, by typing or saying it, from a receipt photo, or by filling in a
 card, for finding entries by asking, such as "grab rides in september", and
 for questions about your money, such as "why was August so expensive?".
-On a computer it opens from the **+** button on Entries.
+On a computer it opens beside the screen you are on, from the box at the
+bottom right ([Ask on a computer](#ask-on-a-computer)).
 
 ![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
 
@@ -537,6 +545,11 @@ date, wallet or person label on the card itself.
 - **Share with … on Splits**: the switch on the card shares the expense with
   the other person, as **Add to Splits** does on Entries.
 - **Edit in form**: open the same entry in the usual form instead.
+- **‹ Entries** (or **‹ Splits**) at the top left: after the round **+**
+  or the receipt button opened Ask, go back to the page exactly as you
+  left it: the same month, filters and place in the list. Your phone's
+  back gesture does the same. A card you had started stays on Ask, with
+  the dot on the Ask button, and is there when you come back.
 - **Save**: appears beside the message box when the card is ready. It stays
   greyed out until the card has an amount and what it was.
 - **Back to the unsaved entry**: if you ask for entries while a card is
@@ -560,6 +573,13 @@ The card is marked **Saved** and the suggestions change:
   you can change it and save once more.
 
 ![A saved entry on Ask, with Back to Entries, Open this entry and Undo](/faq/guide/phone/thumbs/phone-ask-saved.webp)
+
+If you usually share a purchase with your partner (the same shop, split
+evenly in the same group, most of the times you bought there), Ask notices
+when you add it again and asks: "You usually split this with Joyce. Add it
+to Home?" **Split 50/50 in Home** turns Splits on for the new entry (it is
+saved when you tap **Save**); **Not this time** puts the question away. It
+only looks at your own past entries and never guesses from one purchase.
 
 ### Find entries by asking
 
@@ -633,6 +653,35 @@ mark. Nothing you ask is kept once you close the tab.
 
 Other questions, such as "should I buy a car?", aren't answered; Ask says
 so.
+
+### Ask on a computer
+
+On a computer there is no Ask tab. Every screen has a box at the bottom
+right instead, **Ask, or drop a receipt…** (beside the round **+** on
+Entries and the receipt button on Splits). Click it and type, press **/**
+on your keyboard, click its paperclip to choose a receipt photo, or drag a
+photo onto it. Ask opens beside the screen, with what you typed already in
+its message box.
+
+![Ask open as a panel beside Entries on a computer, with an answer and Open in Entries](/faq/guide/desktop/thumbs/desktop-ask-docked.webp)
+
+- **On a wide window** Ask opens as a panel down the right side. The screen
+  beside it gets narrower, so nothing hides behind the panel; Imports,
+  Settings and FAQ move into the **···** menu at the top.
+- **On a smaller window** it opens as a box over the bottom right of the
+  screen. If you make the window wider while it is open, the expand button
+  beside **Close** moves it to the side.
+- **Open in Entries**, **Open this entry** and the other buttons in Ask open
+  that screen beside it. Ask stays open as you move between screens, and
+  after a reload, until you click **Close**. **Esc** closes the box on a
+  smaller window, and the side panel when you are typing in it.
+- The round **+** on Entries and the receipt button on Splits open a new
+  entry card here too, beside the screen, which stays where it was. Once
+  you save, the entry shows in the list beside it.
+- It is the same conversation Ask shows if you make the window as narrow as
+  a phone.
+
+![Ask as a box over Summary on a smaller window](/faq/guide/desktop/thumbs/desktop-ask-popup.webp)
 
 ### When Claude credits run low
 
@@ -802,7 +851,9 @@ it.
 - **Ask and AI**: how much Claude credit Ask has left, with **Top up in the
   Claude Console** and **I've topped up**, and when it was last checked
   ([When Claude credits run low](#when-claude-credits-run-low)). If Claude
-  isn't set up, it says so: Ask then uses the basic model.
+  isn't set up, it says so: Ask then uses the basic model. If Claude is set
+  up but nobody has asked it anything yet, it says Claude hasn't been used
+  yet.
 - **Payment ways**: the account each person's PayNow, bank transfers and
   cash come from ([Choose your payment ways](#choose-your-payment-ways)).
 - **Categories**: the categories used everywhere, with their icon and colour.
@@ -1378,13 +1429,16 @@ There are two ways, depending on where the expense is.
    **More details** on a phone).
 6. Select **Save expense**.
 
-![Create split expense: the card with the total, then a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-add-expense.webp)
+![New split expense: the card with the total, then a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-add-expense.webp)
 
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 
-To change a split, select it in the activity list. The row turns into its
-form: change the fields and select **Save**. To remove it, select **Delete**,
+To change a split, select it in the activity list. On a phone it opens as the
+same card you used to add it: change the total, a share, the category or the
+group, open **More details** for the rest, and select **Save expense**.
+**Delete** is at the bottom left and asks before it removes anything.
+On a wide screen the row turns into its form: change the fields and select **Save**. To remove it, select **Delete**,
 then **Delete split row**. A deleted split can be restored
 ([Restore a deleted split](#restore-a-deleted-split)).
 
@@ -1818,7 +1872,10 @@ split is refused, with the same undo button.
 An entry marked **Statement certified** was confirmed by a bank statement, so
 its date, description, wallet and amount are locked, and so is whether the
 money came in or went out. You can still change the category, note, owner and
-splits.
+splits. The line under the entry card says so in short: "Bank details are
+locked to the statement. Category, owner, note and splits stay editable."
+Point at (or, with a screen reader, move to) the **Statement certified** chip
+for the full rule.
 
 The type can still change within the same direction. Money in can be
 **Income** or **Transfer** in, for example a credit from your own account

@@ -21,8 +21,8 @@ const cardCopy = messages.splits.expenseCard;
 const GROUP_BUBBLE_COLOUR = "#BF7D51";
 const PAYMENT_ICONS = { cash: Banknote, card: CreditCard, bank: Landmark, other: Wallet };
 
-// The create split expense card (design.md, "Lead · Support · Detail"), in
-// the phone sheet and the wide dialog:
+// The split expense card (design.md, "Lead · Support · Detail"): New split
+// expense, Edit split and View split, in the phone sheet and the wide dialog:
 // - Lead: the group bubble, what it was (typed in place), the group and the
 //   total in the group currency (typed in place, plain ink: a split total
 //   has no direction).
@@ -32,14 +32,18 @@ const PAYMENT_ICONS = { cash: Banknote, card: CreditCard, bank: Landmark, other:
 // - Detail: each person's share (a row opens the share editor, whose
 //   percent and amount stay linked through the existing share calculation),
 //   Category, Group, then Date, Paid by, Paid using, Currency, Evidence and
-//   Note, which fold into More details on a phone.
+//   Note, which fold into More details on a phone. A split linked to an
+//   entry adds a Linked entry row ("View entry").
+// `readOnly` (View split, the household view) shows the same card with
+// nothing to type in or tap but the linked entry: plain values, no share
+// editor and no odd cent choice.
 // SplitsPanel keeps the draft, the checks and the save, as with the form.
-export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, layout, autoFocusAmount = false }) {
+export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, layout, autoFocusAmount = false, readOnly = false, onViewLinkedEntry = undefined }) {
   const isSheet = layout === "sheet";
   const amountInputRef = useRef(null);
   const [openPicker, setOpenPicker] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
-  const [shareEditorOpen, setShareEditorOpen] = useState(!isSheet);
+  const [shareEditorOpen, setShareEditorOpen] = useState(!isSheet && !readOnly);
   const shareEditorId = useId();
   const cardRef = useRef(null);
   const today = todayInAppTimeZone();
@@ -78,6 +82,14 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
   }, [autoFocusAmount, hasDialog, dialogId]);
 
   const update = (patch) => onChange((current) => current ? { ...current, ...patch } : current);
+  const isLinked = Boolean(dialog?.linkedTransactionId);
+  const paymentLabel = cardCopy.paymentMethods[paymentMethod] ?? paymentMethod;
+  const evidenceLabel = cardCopy.evidenceOptions[dialog?.paymentStatus ?? "recorded"] ?? "";
+  const paidUsingLabel = isLinked ? cardCopy.paidUsingLedger : cardCopy.paidUsing;
+  // View split: the same row as a plain line (a locked field keeps its lock).
+  const shownRow = (key, label, value, editor, { locked = false } = {}) => (readOnly
+    ? <DetailRow key={key} label={label} value={value} readOnly locked={locked} data-row={key} />
+    : editor);
   const pickerProps = (key) => ({
     rowKey: key,
     isSheet,
@@ -111,7 +123,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
     });
   }
 
-  const groupRow = (
+  const groupRow = shownRow("group", cardCopy.group, selectedGroup?.name ?? "", (
     <PickerRow
       {...pickerProps("group")}
       label={cardCopy.group}
@@ -129,9 +141,9 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         return { ...current, groupId: nextValue, currency: nextGroup?.currency ?? current.currency, paymentMethod: nextPaymentMethod };
       })}
     />
-  );
+  ));
 
-  const categoryRow = (
+  const categoryRow = shownRow("category", copy.expenseCategory, dialog?.categoryName ?? "", (
     <PickerRow
       {...pickerProps("category")}
       label={copy.expenseCategory}
@@ -149,19 +161,22 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
       })}
       onValueChange={(categoryName) => update({ categoryName })}
     />
-  );
+  ));
 
+  const dateLabel = dialog?.date ? formatCardDate(dialog.date, today, { withYear: true }) : "";
   const otherRows = [
-    <DateRow
-      key="date"
-      rowKey="date"
-      isSheet={isSheet}
-      label={copy.expenseDate}
-      value={dialog?.date ?? ""}
-      valueLabel={dialog?.date ? formatCardDate(dialog.date, today, { withYear: true }) : ""}
-      onValueChange={(date) => update({ date })}
-    />,
-    <PickerRow
+    shownRow("date", copy.expenseDate, dateLabel, (
+      <DateRow
+        key="date"
+        rowKey="date"
+        isSheet={isSheet}
+        label={copy.expenseDate}
+        value={dialog?.date ?? ""}
+        valueLabel={dateLabel}
+        onValueChange={(date) => update({ date })}
+      />
+    )),
+    shownRow("payer", copy.expensePaidBy, dialog?.payerPersonName ?? "", <PickerRow
       key="payer"
       {...pickerProps("payer")}
       label={copy.expensePaidBy}
@@ -169,18 +184,18 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
       value={dialog?.payerPersonName ?? ""}
       options={people.map((person) => ({ value: person.name, label: person.name }))}
       onValueChange={(payerPersonName) => update({ payerPersonName })}
-    />,
-    <PickerRow
+    />),
+    shownRow("paymentMethod", paidUsingLabel, paymentLabel, <PickerRow
       key="paymentMethod"
       {...pickerProps("paymentMethod")}
-      label={dialog?.linkedTransactionId ? cardCopy.paidUsingLedger : cardCopy.paidUsing}
-      valueLabel={cardCopy.paymentMethods[paymentMethod] ?? paymentMethod}
+      label={paidUsingLabel}
+      valueLabel={paymentLabel}
       value={paymentMethod}
       options={allowedPaymentMethods.map((method) => ({ value: method, label: cardCopy.paymentMethods[method] }))}
-      locked={Boolean(dialog?.linkedTransactionId)}
+      locked={isLinked}
       onValueChange={(nextMethod) => update({ paymentMethod: nextMethod })}
-    />,
-    <DetailRow key="currency" label={cardCopy.currency} data-row="currency">
+    />, { locked: isLinked }),
+    shownRow("currency", cardCopy.currency, currency, <DetailRow key="currency" label={cardCopy.currency} data-row="currency">
       <input
         className="lsd-row-input split-card-currency"
         aria-label={cardCopy.currency}
@@ -190,17 +205,17 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         value={currency}
         onChange={(event) => update({ currency: event.target.value.toUpperCase() })}
       />
-    </DetailRow>,
-    <PickerRow
+    </DetailRow>),
+    shownRow("evidence", cardCopy.evidence, evidenceLabel, <PickerRow
       key="evidence"
       {...pickerProps("evidence")}
       label={cardCopy.evidence}
-      valueLabel={cardCopy.evidenceOptions[dialog?.paymentStatus ?? "recorded"] ?? ""}
+      valueLabel={evidenceLabel}
       value={dialog?.paymentStatus ?? "recorded"}
       options={Object.entries(cardCopy.evidenceOptions).map(([value, label]) => ({ value, label }))}
       onValueChange={(paymentStatus) => update({ paymentStatus })}
-    />,
-    <DetailRow key="note" label={copy.expenseNote} className="lsd-row-note" data-row="note">
+    />),
+    shownRow("note", copy.expenseNote, dialog?.note ?? "", <DetailRow key="note" label={copy.expenseNote} className="lsd-row-note" data-row="note">
       <GrowingTextarea
         className="lsd-row-input"
         aria-label={copy.expenseNote}
@@ -208,8 +223,18 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         value={dialog?.note ?? ""}
         onChange={(note) => update({ note })}
       />
-    </DetailRow>
+    </DetailRow>)
   ];
+
+  const linkedEntryRow = isLinked && onViewLinkedEntry ? (
+    <DetailRow
+      label={copy.linkedEntry}
+      value={copy.viewLinkedEntry}
+      state="action"
+      data-row="linkedEntry"
+      onClick={onViewLinkedEntry}
+    />
+  ) : null;
 
   return (
     <div ref={cardRef} className={`split-expense-card is-${layout}`}>
@@ -217,7 +242,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         <LeadCard
           className="split-expense-lead"
           category={{ colorHex: GROUP_BUBBLE_COLOUR, icon: currency === "SGD" ? Users : Plane }}
-          title={(
+          title={readOnly ? (dialog?.description || null) : (
             <GrowingTextarea
               className="lsd-title lsd-title-input"
               aria-label={copy.expenseDescription}
@@ -229,8 +254,8 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
           )}
           subtitle={selectedGroup?.name ?? ""}
           tone="neutral"
-          editable
-          amount={(
+          editable={!readOnly}
+          amount={readOnly ? formatCurrencyMinor(Number(dialog?.amountMinor ?? 0), currency) : (
             <label className={`lsd-amount-field${hasAmount ? "" : " is-empty"}`}>
               <span aria-hidden="true">{currencySymbol}</span>
               <input
@@ -267,7 +292,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
               key="date"
               data-chip="date"
               icon={CalendarDays}
-              control={(
+              control={readOnly ? null : (
                 <ChipDateField
                   value={dialog?.date ?? ""}
                   label={messages.common.changeChip(copy.expenseDate, formatCardDate(dialog?.date, today))}
@@ -283,7 +308,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
                 data-chip="payer"
                 person={dialog.payerPersonName}
                 actionLabel={messages.common.changeChip(copy.expensePaidBy, dialog.payerPersonName)}
-                onClick={() => openFieldFromChip("payer")}
+                onClick={readOnly ? undefined : () => openFieldFromChip("payer")}
               >
                 {cardCopy.paidBy(dialog.payerPersonName)}
               </MetaChip>
@@ -295,9 +320,9 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
                 icon={Users}
                 actionLabel={messages.common.changeChip(cardCopy.sharesChip, formatShareRatio(shareRows))}
                 aria-haspopup={undefined}
-                aria-expanded={shareEditorOpen}
+                aria-expanded={readOnly ? undefined : shareEditorOpen}
                 aria-controls={shareEditorOpen ? shareEditorId : undefined}
-                onClick={openShareEditorFromChip}
+                onClick={readOnly ? undefined : openShareEditorFromChip}
               >
                 {formatShareRatio(shareRows)}
               </MetaChip>
@@ -306,12 +331,12 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
               key="payment"
               data-chip="paymentMethod"
               icon={PaymentIcon}
-              locked={Boolean(dialog?.linkedTransactionId)}
+              locked={isLinked}
               lockedLabel={cardCopy.paymentLockedByLedger}
-              actionLabel={messages.common.changeChip(cardCopy.paidUsing, cardCopy.paymentMethods[paymentMethod] ?? paymentMethod)}
-              onClick={() => openFieldFromChip("paymentMethod")}
+              actionLabel={messages.common.changeChip(cardCopy.paidUsing, paymentLabel)}
+              onClick={readOnly ? undefined : () => openFieldFromChip("paymentMethod")}
             >
-              {cardCopy.paymentMethods[paymentMethod] ?? paymentMethod}
+              {paymentLabel}
             </MetaChip>
           ].filter(Boolean)}
         />
@@ -320,26 +345,37 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         {shareRows.length ? (
           <div className="split-share-rows" role="group" aria-label={cardCopy.sharesLabel}>
             {shareRows.map((row) => (
-              <DetailRow
-                key={row.personName}
-                label={cardCopy.shareRow(row.personName)}
-                value={cardCopy.shareValue(row.percentLabel, formatService.moneyWithCurrency(row.amountMinor, currency))}
-                aria-expanded={shareEditorOpen}
-                aria-controls={shareEditorId}
-                data-share-row={row.personName}
-                onClick={() => setShareEditorOpen((open) => !open)}
-              />
+              readOnly ? (
+                <DetailRow
+                  key={row.personName}
+                  label={cardCopy.shareRow(row.personName)}
+                  value={cardCopy.shareValue(row.percentLabel, formatService.moneyWithCurrency(row.amountMinor, currency))}
+                  readOnly
+                  data-share-row={row.personName}
+                />
+              ) : (
+                <DetailRow
+                  key={row.personName}
+                  label={cardCopy.shareRow(row.personName)}
+                  value={cardCopy.shareValue(row.percentLabel, formatService.moneyWithCurrency(row.amountMinor, currency))}
+                  aria-expanded={shareEditorOpen}
+                  aria-controls={shareEditorId}
+                  data-share-row={row.personName}
+                  onClick={() => setShareEditorOpen((open) => !open)}
+                />
+              )
             ))}
           </div>
         ) : null}
-        {shareRows.length && shareEditorOpen ? (
+        {shareRows.length && shareEditorOpen && !readOnly ? (
           <div id={shareEditorId} className="split-share-editor">
             <SplitShareEditor dialog={dialog} sharePersonName={sharePersonName} onChange={onChange} />
           </div>
         ) : null}
-        <OddCentChooser dialog={dialog} people={people} onChange={onChange} />
+        {readOnly ? null : <OddCentChooser dialog={dialog} people={people} onChange={onChange} />}
         {categoryRow}
         {groupRow}
+        {linkedEntryRow}
         {isSheet ? (
           <MoreDetails
             open={moreOpen}

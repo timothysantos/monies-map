@@ -1804,6 +1804,37 @@ Important distinctions:
   has that `last4`; otherwise Default account priority applies. A total in
   another currency than that account's is a currency hint, not an amount.
 
+### Split Suggestion
+
+The group and share Ask offers for a new expense that looks like the ones its
+payer usually puts on Splits, asked as "You usually split this with {name}.
+Add it to {group}?". Deterministic and read-only: a pure rule over the
+owner's own expenses of the last 12 months, no AI, and it never writes; the
+person answers it and the ordinary Splits switch (or Add to Splits on the
+Apple Pay card) does the writing.
+
+Canonical term:
+- `split suggestion`
+
+Code:
+- `src/domain/split-suggestion.ts` (the rule, `SPLIT_SUGGESTION_POLICY`)
+- `src/domain/pages/split-suggestion.ts` (loads the history)
+- `SplitSuggestionDto` in `src/types/dto.ts`
+- `POST /api/splits/suggestion` (src/index.ts)
+- `src/client/ask-split-suggestion.js` (the card's side)
+
+Important distinctions:
+- The shop's own history decides (same normalised description, at least 2
+  matching entries and 60% of them split in one group at one share). Only a
+  shop with fewer than 2 entries falls back to the same category (at least 4
+  entries, 75%), never Other or the income and transfer categories.
+- A habit counts only when the owner paid and the split was shared between
+  the owner and the other person only; mixed groups, tied habits, income,
+  transfers, an entry already on Splits and other people's purchases give no
+  suggestion.
+- Ask offers only an even share, since the Splits switch saves 50/50.
+- "Not this time" is kept on the card only; nothing is learned from it.
+
 ### AI Provider Status
 
 One aggregate row about the optional Claude provider, kept so the app can

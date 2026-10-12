@@ -139,10 +139,13 @@ path (`entry-create-request.js`) and the existing split link, borrows the
 Entries and Summary DTOs from the query cache (the Entries one through the
 shell's required read when it must load it), and holds only its
 conversation and one entry card. The Entries + and Splits receipt buttons
-open it; their old forms stay reachable. Money questions ("why was August
-so expensive?", "what do I owe Serene?") go to `POST /api/ai-assist/answer`,
-which reads them by rules, checks the skew candidates first and answers
-from the Month and Splits page DTOs (DOMAIN.md "Money Question").
+open it; their old forms stay reachable. On a wide screen the same page
+also opens beside any other page, docked or as a popup, from the
+bottom-right Ask field (`ask-dock.jsx`, design.md "Desktop Ask"), on the
+same conversation store. Money questions ("why was August so expensive?",
+"what do I owe Serene?") go to `POST /api/ai-assist/answer`, which reads
+them by rules, checks the skew candidates first and answers from the Month
+and Splits page DTOs (DOMAIN.md "Money Question").
 
 Rules:
 

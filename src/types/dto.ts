@@ -1645,3 +1645,23 @@ export interface ReceiptReadDto {
   lineItems: ReceiptLineItemDto[];
   questions: ReceiptQuestionDto[];
 }
+
+// A split suggestion (DOMAIN.md "Split Suggestion",
+// POST /api/splits/suggestion): the split group and share an expense's
+// payer usually puts entries like it on, from the household's own last
+// 12 months. Read-only and deterministic; nothing is written until the
+// person saves with Splits on.
+export interface SplitSuggestionDto {
+  // "split-group-none" for Non-group expenses.
+  groupId: string;
+  groupName: string;
+  // The payer's (the entry owner's) share; the other person has the rest.
+  basisPoints: number;
+  otherPersonId: string;
+  otherPersonName: string;
+  // How many matching entries went to this group with this share, out of
+  // matchedCount matching entries in the window.
+  evidenceCount: number;
+  matchedCount: number;
+  matchedBy: "description" | "category";
+}

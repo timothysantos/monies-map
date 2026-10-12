@@ -25,6 +25,7 @@ export const claudeCreditCopy = {
   // monthly target, and who the other help asks first.
   monthLine: (spent, target, mode) => `Claude this month: ${spent} of ${target} \u00b7 ${monthModeText(mode)}`,
   monthLineHidden: (mode) => `Claude this month \u00b7 ${monthModeText(mode)}`,
+  notUsedYet: "Claude hasn't been used yet.",
   topUp: "Top up in the Claude Console",
   toppedUp: "I've topped up",
   dismiss: "Hide this notice",

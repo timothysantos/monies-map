@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { messages } from "./copy/en-SG";
 import { formatMonthLabel, money } from "./formatters";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
+import { SheetSwipeDismiss } from "./sheet-swipe";
 import { buildMonthSheetModel, PLAN_TONE_CLASS } from "./summary-month-choice";
 import "./summary-month-sheet.css";
 
@@ -49,7 +50,10 @@ function CheckMark() {
 // per range month, grouped by year, newest first. Figures come from the
 // Summary page months already loaded (estimated and real spend). A modal
 // Radix dialog, like the View and scope sheet: focus stays inside, Escape or
-// a backdrop tap closes it, and focus returns to the island control.
+// a backdrop tap closes it, and focus returns to the island control. It
+// swipes down to close too (sheet-swipe.jsx; nothing to lose, so a swipe
+// always closes it). The tiles scroll in the body (`data-sheet-body`): a
+// drag there moves the sheet only while the tiles are scrolled to the top.
 export default function SummaryMonthSheet({
   open,
   onOpenChange,
@@ -79,6 +83,7 @@ export default function SummaryMonthSheet({
             }
           }}
         >
+          <SheetSwipeDismiss onClose={() => onOpenChange(false)} />
           <div className="note-dialog-head mobile-context-dialog-head">
             <div>
               <Dialog.Title>{copy.sheetTitle}</Dialog.Title>
@@ -97,7 +102,7 @@ export default function SummaryMonthSheet({
             </Dialog.Close>
           </div>
 
-          <div className="summary-month-sheet-body">
+          <div className="summary-month-sheet-body" data-sheet-body>
             <button
               type="button"
               className={`summary-month-all ${pickedMonth ? "" : "is-selected"}`}

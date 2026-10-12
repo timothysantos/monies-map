@@ -299,6 +299,21 @@ test.describe("the Claude credit notice and Settings on a wide screen", () => {
     await expect(hidden).toHaveText("Claude this month \u00b7 everything is using the basic model to save budget");
   });
 
+  test("Settings says Claude hasn't been used yet when it is set up but has not answered", async ({ page }) => {
+    await setMoneyVisible(page, true);
+    await page.route(`**${STATUS_PATH}`, (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(statusBody("unknown", { estimatedSpendUsd: 0, lastSuccessAt: undefined }))
+    }));
+    await gotoPageAfterApi(page, "/settings?view=household", "/api/settings-page", () => page.getByRole("heading", { name: "Settings", exact: true }));
+    await page.getByRole("button", { name: /Ask and AI/ }).click();
+    const section = page.locator("#settings-ask-ai");
+    await expect(section.locator(".claude-credit-line")).toHaveText("Claude hasn't been used yet.");
+    await expect(section.getByRole("link")).toHaveCount(0);
+    await expect(section.getByRole("button", { name: "I've topped up" })).toHaveCount(0);
+  });
+
   test("Settings says calmly when Claude isn't set up, with no actions; a hidden status hides the section", async ({ page }) => {
     await setMoneyVisible(page, true);
     const stub = await stubStatus(page, "off");

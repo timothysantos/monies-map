@@ -99,7 +99,8 @@ those ports outside CI).
 `npm run test:e2e:sharded` runs the same suite faster as parallel shards. It
 builds `dist/` once. Then each shard starts its own stack on its own ports
 (Vite `5501+`, Wrangler `8901+`, inspector `9501+`) with its own local D1 in
-`.wrangler/state-shard-N`, and runs its spec files with one worker. At the end
+`.wrangler/state-shard-<Wrangler port>` (so runs with different
+`E2E_PORT_OFFSET` values never share one), and runs its spec files with one worker. At the end
 it merges every shard into `playwright-report/` and
 `test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
 removes the shard servers and state. Shard logs are in
@@ -440,7 +441,9 @@ in-app form that posts the top-up route and keeps its answer as the new
 status) and a dismiss kept in sessionStorage
 (`monies.claudeCreditNotice.v1`) until the state gets worse. Settings →
 Ask and AI shows the same line, the two actions and when it was last
-checked, or "Claude isn't set up, so Ask uses the basic model." A viewer
+checked, or "Claude isn't set up, so Ask uses the basic model." (or
+"Claude hasn't been used yet." when Claude is set up, the state is unknown
+and no failure is recorded). A viewer
 the GET answers `{ visible: false }` sees neither. `wrangler.test.jsonc`
 sets no `AI_ALERT_EMAILS`, so the browser tests stub the route for each
 state (`tests/e2e/claude-credit-notice.spec.js`; the phone tests also run
@@ -1922,6 +1925,24 @@ three ways in: the Ask tab (chat mode, with a "since you last looked" card
 built from the Summary data already cached, never a fetch or AI call), the
 Entries + and Splits receipt buttons (`?mode=add` / `?mode=expense`, the new
 entry card), and the Apple Pay Shortcut's `openUrl` (`?saved_entry=<id>`).
+
+On a wide screen there is no Ask tab: `ask-dock.jsx` (the only dock
+code in the first screen, with `ask-dock-field.jsx` and `ask-dock-entry.js`;
+the panel, store and layout rules load in the Ask page's chunk on the first
+way in, so `npm run check:bundle` stays within budget) puts a one-line Ask field at the bottom right of every page but
+`/ask`, and opens the same `AskPanel` beside the page with a `placement`
+prop: docked from 1,280 px (the body gets the panel's width as right
+padding, so the page narrows), a popup from 761 px. `ask-dock-layout.js`
+holds the pure rules (`tests/ask-dock-layout.test.mjs`) and
+`ask-dock-state.js` the per-tab session state (`monies.askDock.v1`:
+open, mode, way in; `tests/ask-dock-state.test.mjs`; the first-screen hand-off
+is `tests/ask-dock-entry.test.mjs`). The conversation is
+the shared store's, so the panel and `/ask` are one conversation. The
+header and the Month mid-width rules are container queries on `.shell`,
+so the narrowed page lays out like a window of its width.
+`tests/e2e/ask-dock.spec.js` runs it at 1,024, 1,280 and 1,440 px, and
+`tests/e2e/header-tab-fit.spec.js` checks every page's header with the
+panel docked.
 
 The card is a pure state machine (`ask-card-model.js`) with unit tests for
 every state. Saving goes through the Entries composer's create path
