@@ -25,12 +25,29 @@ test("the Node minimum is the same in engines, script guards and .nvmrc", async 
   const floor = minimum.split(".").map(Number);
   assert.ok(pinned[0] === floor[0] && (pinned[1] > floor[1] || (pinned[1] === floor[1] && pinned[2] >= floor[2])), ".nvmrc meets the minimum");
   const workflow = await readFile(new URL("../.github/workflows/verify.yml", import.meta.url), "utf8");
-  // Every CI job that installs Node (verify, the full-e2e shards and their
-  // merge job) installs it from .nvmrc, never a pinned version of its own.
-  const setupNodeSteps = (workflow.match(/uses: actions\/setup-node@/g) ?? []).length;
-  assert.ok(setupNodeSteps >= 3, `expected verify, full-e2e-shard and full-e2e to set up Node, found ${setupNodeSteps}`);
-  assert.equal((workflow.match(/node-version-file: \.nvmrc/g) ?? []).length, setupNodeSteps);
-  assert.doesNotMatch(workflow, /node-version:/);
+  const setupAction = await readFile(new URL("../.github/actions/setup-deps/action.yml", import.meta.url), "utf8");
+  // Every CI job that installs Node (static, the unit shards, the full-e2e
+  // shards and their merge job) goes through the setup-deps action, which
+  // installs it from .nvmrc, never a pinned version of its own.
+  const setupDepsSteps = (workflow.match(/uses: \.\/\.github\/actions\/setup-deps/g) ?? []).length;
+  assert.ok(setupDepsSteps >= 4, `expected static, unit, full-e2e-shard and full-e2e to set up Node, found ${setupDepsSteps}`);
+  assert.doesNotMatch(workflow, /actions\/setup-node@|node-version/);
+  assert.equal((setupAction.match(/uses: actions\/setup-node@/g) ?? []).length, 1);
+  assert.match(setupAction, /node-version-file: \.nvmrc/);
+  assert.doesNotMatch(setupAction, /node-version:/);
+});
+
+// CI splits `npm run test:unit` across runners with its own tsx command, so
+// that command must name the same test files as the script.
+test("CI's unit shards run the files npm run test:unit runs", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const workflow = await readFile(new URL("../.github/workflows/verify.yml", import.meta.url), "utf8");
+  const scriptFiles = manifest.scripts["test:unit"].replace(/^tsx --test /, "");
+  // Options are `--name=value`, where a value may hold a `${{ expression }}`.
+  const shardRun = workflow.match(/run: npx tsx --test (?:--[\w-]+=(?:[^\s$]|\$\{\{[^}]*\}\})+ )+(.+)$/m);
+  assert.ok(shardRun, "the unit job runs npx tsx --test with its shard options");
+  assert.equal(shardRun[1].trim(), scriptFiles);
+  assert.match(workflow, /--test-shard=\$\{\{ matrix\.shard \}\}\//);
 });
 
 // The production AI allowance (owner-approved 2026-10-11): 40 shared units a

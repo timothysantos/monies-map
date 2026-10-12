@@ -1,25 +1,55 @@
 name: Verify
 
+# Runs on pull requests, on pushes to a `ci/**` branch, and by hand (Actions
+# tab > Verify > Run workflow, on any branch). It does not run on every push
+# to master: a full run costs about 75 runner minutes and the private-repo
+# free tier is 2,000 a month (docs/developer-guide.md, "How does CI run?").
+# To test a branch in CI without a pull request: `git push origin HEAD:ci/<name>`.
 on:
   pull_request:
   push:
     branches:
-      - master
+      - "ci/**"
+  workflow_dispatch:
 
+# A newer push to the same branch or pull request cancels the older run.
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The same checks as `npm run verify` and `npm run test:e2e:sharded`, split
+# into parallel jobs on two-vCPU runners. The smoke bundle is not run on its
+# own: every smoke spec file is part of the full browser suite below.
 jobs:
-  verify:
+  static:
+    name: audit, types, lint, build, bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run verify
+      - uses: ./.github/actions/setup-deps
+      - run: npm run audit
+      - run: npm run typecheck
+      - run: npm run typecheck:client
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run check:bundle
+
+  # `npm run test:unit` split by file across runners. Keep the file globs in
+  # step with the test:unit script in package.json. Each runner has two
+  # vCPUs, where node --test would run one file at a time by default.
+  unit:
+    name: unit ${{ matrix.shard }}/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-deps
+      - run: npx tsx --test --test-concurrency=2 --test-shard=${{ matrix.shard }}/3 tests/*.test.mjs tests/performance/*.test.mjs
 
   # The full browser suite runs as four shards on separate runners. Each shard
   # starts its own Vite + Wrangler + local D1 stack and runs its spec files
@@ -28,20 +58,15 @@ jobs:
   full-e2e-shard:
     name: full-e2e shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/setup-deps
+      - uses: ./.github/actions/setup-playwright
       - run: node scripts/run-e2e-sharded.mjs --shards 4 --shard ${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -59,14 +84,9 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/setup-deps
       - uses: actions/download-artifact@v4
         with:
           pattern: e2e-blob-report-*
@@ -83,3 +103,17 @@ jobs:
         run: |
           echo "A full-e2e shard job ended with '${{ needs.full-e2e-shard.result }}'."
           exit 1
+
+  # The one check to require: green only when every job above passed.
+  verify:
+    needs: [static, unit, full-e2e]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to succeed
+        run: |
+          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, full-e2e: ${{ needs.full-e2e.result }}"
+          test "${{ needs.static.result }}" = success
+          test "${{ needs.unit.result }}" = success
+          test "${{ needs.full-e2e.result }}" = success
