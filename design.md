@@ -108,6 +108,19 @@ which ships with the routes, not the first-screen stylesheet. On a phone
 the insights reserve the right-hand column the floating money-privacy
 button covers (`tests/e2e/money-insights-phone.spec.js`).
 
+Money insights fold (`tests/e2e/money-insights-fold.spec.js`). Every block
+starts with one fold row, a real button (`aria-expanded`, `aria-controls`,
+at least 48px tall) holding the eyebrow, a one-line peek and a chevron.
+Folded, the block is that row alone: the peek is the headline with its "To do"
+chip when the headline is a To do (never hidden), else "N insights"; with
+money hidden it is always the count, never the headline (it carries amounts).
+Open, the row stays at the top to fold it again. Phone (760px and below)
+starts folded, desktop starts open; the choice is kept per layout in
+localStorage (`monies-map:money-insights-phone`, `...-desktop`), every read
+and write guarded so the block renders without storage. The fold costs
+first-screen bytes (Summary ships it), so `initial-bundle-budget.json` stays
+as is and the code is kept small; its CSS is in `money-checkin.css`.
+
 The Splits workspace uses a dark surface but paid-settlement follow-ups use a
 light proof card. Controls on that card must use an explicit light-card theme:
 readable dark secondary actions, a distinct caution treatment for `Undo paid`,
