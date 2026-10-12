@@ -561,7 +561,7 @@ Tappable chips: a Support chip that names a field you can change opens
 the same picker or editor as that field's Detail row, so the fact you look
 at is also the way to change it. Edit entry card: date (the date picker),
 wallet (the wallet picker, unfolding More details) and owner. Ask draft
-card: date, wallet and owner. Create split expense card: date, paid by,
+card: date, wallet and owner. New split expense card: date, paid by,
 shares (the share editor) and paid using. The Month plan card's chips are
 not fields there, and a saved Ask card's chips are not editors.
 
@@ -624,9 +624,10 @@ Rules:
 - Keyboard: every bottom sheet with a bottom bar lifts itself above the
   phone keyboard (`use-keyboard-inset.js` sets `--keyboard-inset`; see
   "Mobile Sheet"), so the bar and the focused field stay in sight, and the
-  bar keeps the safe-area inset. Swipe down to dismiss is not supported:
-  neither the mobile sheet nor the Radix dialog has it, and adding it would
-  be a new gesture that discards a draft.
+  bar keeps the safe-area inset. Swipe down to close is supported only
+  through `sheet-swipe.jsx`, which closes an unchanged sheet and asks
+  before discarding a changed one (see "Swipe down to close" under "Mobile
+  Sheet").
 - No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
 
 Where it is used:
