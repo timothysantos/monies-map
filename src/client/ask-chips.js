@@ -314,7 +314,7 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // page to open.
 export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, actions }) {
   if (active?.kind === "card") {
-    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, headerBack, actions });
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, headerBack, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }
