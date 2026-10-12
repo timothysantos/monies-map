@@ -41,6 +41,15 @@ import { useKeyboardInset } from "./use-keyboard-inset";
 export function EntryMobileSheet({
   title,
   description,
+  // A dialog whose lead says what the sheet is about keeps the description
+  // for assistive tech only (a class from lead-support-detail.css).
+  descriptionClassName = "",
+  // The close button's name; defaults to "Close {title}".
+  closeLabel = undefined,
+  // Dialogs opened from a clickable row or a form keep React's submit, click
+  // and key events inside the sheet (see keepEventsInDialog in
+  // category-edit-dialog.jsx).
+  isolateEvents = false,
   className = "",
   headerAction = null,
   errorMessage = "",
@@ -71,6 +80,11 @@ export function EntryMobileSheet({
   usePageKeyboardScrollLock();
   useKeyboardInset(sheet);
   const swipe = useSheetSwipeDismiss({ sheet, isDirty, isSubmitting, onClose });
+  const eventGuards = isolateEvents ? {
+    onSubmit: (event) => event.stopPropagation(),
+    onClick: (event) => event.stopPropagation(),
+    onKeyDown: (event) => event.stopPropagation()
+  } : {};
 
   return (
     <Dialog.Root
@@ -84,7 +98,7 @@ export function EntryMobileSheet({
     >
       <Dialog.Portal>
         <RemoveScroll forwardProps removeScrollBar={false} allowPinchZoom shards={scrollShards}>
-          <div className="entry-composer-overlay" />
+          <div className="entry-composer-overlay" {...eventGuards} />
         </RemoveScroll>
         <FocusScope
           asChild
@@ -117,6 +131,7 @@ export function EntryMobileSheet({
             // dismissal (the desktop modal dialogs behave the same way).
             onFocusOutside={(event) => event.preventDefault()}
             {...swipe.contentProps}
+            {...eventGuards}
           >
             <SheetDragHandle />
             <form
@@ -133,14 +148,14 @@ export function EntryMobileSheet({
               <div className="note-dialog-head split-dialog-head entry-composer-head">
                 <div className="entry-composer-copy">
                   <Dialog.Title asChild><strong>{title}</strong></Dialog.Title>
-                  <Dialog.Description asChild><p>{description}</p></Dialog.Description>
+                  <Dialog.Description asChild><p className={descriptionClassName || undefined}>{description}</p></Dialog.Description>
                 </div>
                 <div className="entry-composer-head-actions">
                   {headerAction}
                   <button
                     type="button"
                     className="icon-action subtle-cancel entry-composer-close"
-                    aria-label={`Close ${title.toLowerCase()}`}
+                    aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
                     onClick={onClose}
                   >
                     <X size={16} />

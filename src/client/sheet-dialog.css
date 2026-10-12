@@ -1,0 +1,162 @@
+/* The shared frame for dialogs and small sheets (sheet-dialog.jsx). It ships
+   with the code that opens a dialog, never in the first-screen stylesheet. */
+
+/* Phone: the sheet's head keeps the title and a round 44 px close button; the
+   lead, rows and bar follow the same rhythm as the Edit entry sheet. */
+.entry-mobile-sheet.is-dialog-sheet .entry-composer-head {
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.entry-mobile-sheet.is-dialog-sheet .entry-composer-copy strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.entry-mobile-sheet.is-dialog-sheet .entry-composer-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(38, 35, 31, 0.06);
+  color: var(--text);
+}
+
+/* A dialog nested in a modal Radix dialog (an import review dialog) sits
+   under body { pointer-events: none }; the sheet and its backdrop opt back in. */
+.entry-mobile-sheet.is-dialog-sheet,
+.entry-composer-overlay {
+  pointer-events: auto;
+}
+
+.sheet-dialog-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sheet-dialog-body > .lsd-card {
+  box-shadow: 0 10px 24px rgba(27, 24, 21, 0.08);
+}
+
+/* Wide screen: a centred dialog with the same head, lead, rows and bar. */
+.note-dialog-content.sheet-dialog {
+  width: min(520px, calc(100vw - 40px));
+  padding: 22px;
+  border-radius: 22px;
+}
+
+.note-dialog-content.sheet-dialog.is-wide {
+  width: min(720px, calc(100vw - 40px));
+}
+
+.sheet-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sheet-dialog-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sheet-dialog-head [data-radix-dialog-title],
+.sheet-dialog-copy > h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.sheet-dialog-copy > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.sheet-dialog-head .icon-action {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.lsd-bottom.is-dialog-bar {
+  margin-top: 18px;
+  gap: 12px;
+}
+
+.lsd-bottom.is-dialog-bar .lsd-quiet {
+  min-width: 88px;
+  min-height: 48px;
+}
+
+/* Destructive: pastel rose with the rose ink, never a saturated red. The
+   Cancel button beside it stays the quiet terracotta text. */
+.lsd-primary.is-danger {
+  border: 1px solid var(--pastel-rose-line);
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+}
+
+.lsd-primary.is-danger:disabled {
+  background: color-mix(in srgb, var(--pastel-rose) 55%, white);
+  color: color-mix(in srgb, var(--pastel-rose-ink) 55%, white);
+}
+
+.sheet-dialog-lead.is-danger .lsd-bubble,
+.sheet-dialog-lead.is-danger .lsd-subtitle {
+  --cat: var(--pastel-rose-ink);
+}
+
+/* A short field under the lead (a typed confirmation, one text field). */
+.sheet-dialog-field {
+  display: grid;
+  gap: 6px;
+}
+
+.sheet-dialog-field > span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.sheet-dialog-field .table-edit-input,
+.sheet-dialog-field textarea {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.sheet-dialog-note {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.sheet-dialog-note:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 760px) {
+  .sheet-dialog-note {
+    min-height: 140px;
+    max-height: none;
+    height: auto;
+  }
+}

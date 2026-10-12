@@ -5,7 +5,7 @@ import "./entries-route.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import * as Dialog from "@radix-ui/react-dialog";
+import { Trash2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -41,6 +41,7 @@ import {
   syncLinkedEntryRequest
 } from "./linked-entry-request";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import {
   getActiveEntryFilterCount,
   getEntryDerivedData,
@@ -1502,54 +1503,38 @@ export function EntriesPanel({
 }
 
 function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, onCancel, onConfirm }) {
-  const isEntryDelete = confirmation?.kind === "entry";
-  const entry = confirmation?.entry;
+  if (!confirmation) {
+    return null;
+  }
+  const isEntryDelete = confirmation.kind === "entry";
+  const entry = confirmation.entry;
   const amountMinor = entry ? moniesClient.entries.getTotalAmountMinor(entry) : null;
-  const amountLabel = amountMinor == null ? "" : moniesClient.format.money(amountMinor);
+  const amountLabel = amountMinor == null ? null : moniesClient.format.money(amountMinor);
   const dateLabel = entry?.date ? moniesClient.format.formatDateOnly(entry.date) : "";
   const description = entry?.description || "this row";
-  const detailParts = [dateLabel, description, amountLabel].filter(Boolean);
+  const title = isEntryDelete ? "Delete entry?" : "Delete split?";
+  const consequence = isEntryDelete ? "This removes the ledger entry." : "The ledger entry stays in Entries.";
 
   return (
-    <Dialog.Root
-      open={Boolean(confirmation)}
-      onOpenChange={(open) => {
-        if (!open && !isSubmitting) {
-          onCancel();
-        }
-      }}
-    >
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content entry-delete-dialog">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!isSubmitting) {
-                onConfirm();
-              }
-            }}
-          >
-            <div className="note-dialog-head">
-              <Dialog.Title>{isEntryDelete ? "Delete entry?" : "Delete split?"}</Dialog.Title>
-              <Dialog.Description>
-                {isEntryDelete
-                  ? `Delete ${detailParts.join(" - ")}? This removes the ledger entry.`
-                  : `Delete the split record for ${description}? The ledger entry stays in Entries.`}
-              </Dialog.Description>
-            </div>
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onCancel}>
-                Cancel
-              </button>
-              <button type="submit" className="dialog-danger" disabled={isSubmitting}>
-                {isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      tone="danger"
+      className="entry-delete-dialog"
+      title={title}
+      description={isEntryDelete
+        ? `Delete ${[dateLabel, description].filter(Boolean).join(" - ")}? ${consequence}`
+        : `Delete the split record for ${description}? ${consequence}`}
+      descriptionHidden
+      lead={(
+        <ConfirmLead icon={Trash2} title={description} subtitle={dateLabel || null} amount={amountLabel}>
+          <p className="lsd-note">{consequence}</p>
+        </ConfirmLead>
+      )}
+      primaryLabel={isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
+      primaryDisabled={isSubmitting}
+      isSubmitting={isSubmitting}
+      onSubmit={onConfirm}
+      onClose={onCancel}
+    />
   );
 }
 
