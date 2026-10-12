@@ -682,8 +682,10 @@ one-repeat scenario bordered on a forecast. Plan variance, the already-loaded
 same-season comparison and bank-proof gaps are now check-in signals only (a
 plan Worth knowing or Something to think about, the same-season Big picture and the
 statement-gap To do with "Compare with the statement"), and the AI facts carry no
-map. Nothing in Money insights creates a forecast or a safe-to-spend
-guarantee.
+map. Nothing in Money insights predicts spending or gives a safe-to-spend
+figure. The one look ahead is the scheduled check (October 2026): a bank
+account's latest statement balance against payments that already repeat
+from it, due within a month, shown only as a To do when one cannot fit.
 
 ## Money insights (the check-in)
 
@@ -693,8 +695,14 @@ page already loads (Summary: month totals, category totals per month, the
 view's account pills joined to reference account kinds; Month: entries, plan
 rows, income rows, the month's totals and account pills; Entries: the
 month's list for the view and scope; Splits: the selected group's balance,
-open activity and match candidates). It adds no endpoint and no payload; the
+open activity, match candidates and settlements). It adds no endpoint; the
 same-season line shows only when last year's month is already in the range.
+Two small facts ride on payloads the pages already load: the account pills
+carry each bank account's routine (`account-routines.ts`: moved income,
+missed payments, account charges, own-account transfers counted as income
+and the scheduled check, from one read of the bank entries in the last 200
+days beside the card window), and an open settlement checkpoint carries its
+likely payment (`paymentCandidate`, one small query per open checkpoint).
 `checkin.ts` ranks the signals (quick fix, bigger question, a moment, worth
 a look, going well; then money, then not recently seen) and decides rests,
 "what changed", sorted and quiet visits from `nowMs`, `today`, a stable

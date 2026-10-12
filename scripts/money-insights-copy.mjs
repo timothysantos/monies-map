@@ -17,6 +17,8 @@ import { CATEGORY_OVER_MINOR, CATEGORY_OVER_RATIO, MONTH_COPY, MONTH_TRIVIA_ROTA
 import { QUOTES, quoteCitation } from "../src/domain/money-signals/quotes.ts";
 import { QUOTE_PAGE_OFFSETS, YEAR_MONTHS } from "../src/domain/money-signals/rotation.ts";
 import { SHARED_COPY } from "../src/domain/money-signals/shared-signals.ts";
+import { ACCOUNT_COPY } from "../src/domain/money-signals/account-signals.ts";
+import { TRIP_COPY } from "../src/domain/money-signals/trip-signal.ts";
 import { SPLITS_CALM_LINE, SPLITS_COPY, SPLITS_TRIVIA_ROTATION } from "../src/domain/money-signals/splits-signals.ts";
 import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_CALM_PLACE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
 import { AVOID_WORDS } from "../src/domain/money-signals/tone.ts";
@@ -38,6 +40,25 @@ export const CATALOGUES = [
       cardBillOverdue: ["quick_fix", "A card's latest statement was due up to 30 days ago and less than its minimum (or the whole bill) has been paid since it closed. Shown ahead of bills only due. Summary and Month."],
       penaltyInterest: ["worth_a_look", "A card's latest statement (closed in the last 62 days) prints a penalty interest rate and owes money (the card with the most owed). Summary and Month."],
       bankCharges: ["worth_a_look", "A card was charged a late charge, interest, an annual fee or another bank fee in the last 60 days and no reversal of the same kind and amount is in the ledger (the card with the most). Summary and Month."]
+    }
+  },
+  {
+    title: "Summary and Month (bank accounts)",
+    copy: ACCOUNT_COPY,
+    entries: {
+      incomeMoved: ["quick_fix", "Income from one payer that came into a bank account 3 months in a row now arrives in another of the owner's accounts (in the last 150 days), while payments that ran 2 or more months in a row are still scheduled on the old one. Summary and Month."],
+      missedPayments: ["quick_fix", "A payment that left a bank account 3 months in a row did not leave the next month, and the account was charged for a failed payment to the same payee within 5 days of its usual day (in the last 75 days). Summary and Month."],
+      accountCharges: ["worth_a_look", "A bank account's own charges in their latest month: any charge for a failed payment in the last 60 days, with that month's monthly fee. Summary and Month."],
+      accountFees: ["worth_a_look", "A bank account's monthly fee alone, once it has come 3 months in a row (and the latest within 60 days). Summary and Month."],
+      ownTransferIncome: ["quick_fix", "Income into a bank account while the same amount left another of the owner's bank accounts as a transfer within 3 days, not linked (in the last 120 days). Summary and Month."],
+      upcomingShortfall: ["quick_fix", "The scheduled check: a bank account's latest statement (no older than 40 days), plus what is recorded since, cannot cover the payments still scheduled on it (the same payee and amount 2 or more months in a row, or one the bank tried and failed to make) due within the next 31 days, after any regular income due before them. Summary and Month."]
+    }
+  },
+  {
+    title: "Month and Entries (trips)",
+    copy: TRIP_COPY,
+    entries: {
+      tripInOther: ["quick_fix", "5 or more purchases abroad (a foreign currency amount, a foreign city or a country code) over 2 or more days, no more than 2 days apart, still in Other this month. On Entries the plain \"entries in Other\" line then counts the rest."]
     }
   },
   {
@@ -158,6 +179,8 @@ export const CATALOGUES = [
       youOwe: ["quick_fix", "Person view: you owe the group's balance."],
       openBetweenYou: ["quick_fix", "Household view: the group's open balance, never naming who owes whom."],
       settleRegularly: ["quick_fix", "The think lines for a balance in a group that is not a trip."],
+      settlementPayment: ["quick_fix", "An open settlement still needs an amount, and a payment of exactly that amount between the two people is recorded within 14 days after it, not yet matched, while it still counts as spending or income."],
+      settlementPaymentLinked: ["quick_fix", "As above, when the payment is already a transfer and only the match is missing."],
       bankMatch: ["quick_fix", "Bank payments that may match a split entered by hand."],
       shareOfCosts: ["long_view", "Person views only: the share of the group's costs you paid (last 3 months, or the open batch)."],
       tripInNumbers: ["just_for_fun", "A trip group's costs and its priciest.", "in-numbers"],

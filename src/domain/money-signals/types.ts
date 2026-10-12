@@ -35,6 +35,8 @@ export interface CheckInAction {
   label: string;
   entryIds?: string[];
   categoryName?: string;
+  // The month the entries are in, when it isn't the page's own month.
+  month?: string;
 }
 
 // What a quote fits: matched to the headline (or the long view on a calm

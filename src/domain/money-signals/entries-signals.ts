@@ -24,6 +24,7 @@ import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { triviaSignal } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
+import { findTripInOther, tripInOtherSignal } from "./trip-signal";
 
 export const ENTRIES_COPY = {
   uncategorized: {
@@ -270,7 +271,10 @@ function when(input: EntriesSignalInput) {
 
 // Quick fix: expenses still in Other.
 export function uncategorizedSignal(input: EntriesSignalInput): MoneySignal | null {
-  const other = expenses(input).filter((entry) => UNCATEGORIZED.test(String(entry.categoryName ?? "").trim()));
+  // A trip still in Other is its own, more specific quick fix; this one
+  // counts the rest.
+  const tripIds = new Set(findTripInOther(input.entries)?.entries.map((entry) => entry.id) ?? []);
+  const other = expenses(input).filter((entry) => UNCATEGORIZED.test(String(entry.categoryName ?? "").trim()) && !tripIds.has(entry.id));
   if (!other.length) {
     return null;
   }
@@ -553,8 +557,13 @@ export function incomeEntriesTrivia(input: EntriesSignalInput): MoneySignal | nu
 }
 
 export function buildEntriesSignals(input: EntriesSignalInput): MoneySignal[] {
+  // A trip still in Other is the quicker, more specific fix, so it leads and
+  // the plain "entries in Other" line waits under Also.
+  const trip = tripInOtherSignal({ entries: input.entries, formatMoney: input.formatMoney });
+  const uncategorized = uncategorizedSignal(input);
   return [
-    uncategorizedSignal(input),
+    trip,
+    uncategorized && trip ? { ...uncategorized, steady: true } : uncategorized,
     possibleDuplicateSignal(input),
     topFiveSignal(input),
     smallestEntryTrivia(input),

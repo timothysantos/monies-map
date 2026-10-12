@@ -348,7 +348,9 @@ written, and no page sends a wording request (the
 `/api/ai-assist/financial-insight` route and its template parser are
 removed). Their copy must distinguish full cash flow from a filtered
 investigation view and from split-settlement obligations, and must not
-invent forecasts, savings targets, or comparisons.
+invent forecasts, savings targets, or comparisons. The only look ahead is
+the scheduled check (DOMAIN.md "Account Routine"), which compares a recent
+statement balance with payments that already repeat from the same account.
 
 The entry draft route (`POST /api/ai-assist/entry-draft`) is the pattern
 for an AI gap-filler over a deterministic answer. The pure parser
@@ -375,7 +377,9 @@ the deterministic draft with no data write).
 Money insights (check-in) signals live in `src/domain/money-signals/`, one small pure
 function per signal returning `{ key, kind, weight, numbers, phrasings,
 action? }` or `null`, with its copy in the page's catalogue beside it. They
-read only data the page already has (no new endpoint or payload), take
+read only data the page already has (no new endpoint; a fact a signal
+needs from the server rides on the page's own payload, as the account
+pills' routine facts and a settlement's `paymentCandidate` do), take
 `today` and the money formatter as inputs, and never call `Date.now` or
 `Math.random`; ranking in `checkin.ts` takes the clock, the visit memory and
 a stable seed, and everything that rotates is chosen from the period being

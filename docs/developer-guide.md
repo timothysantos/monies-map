@@ -1440,7 +1440,11 @@ comparison use `post_date`.
   `minimum_payment_minor`); `/api/summary-account-pills` turns the latest
   one into `cardBill`, its saved notices (`statement_notices_json`) into
   `cardNotices`, and lists `unreversedCharges` for the check-in
-  (`src/domain/card-bill-projection.ts`).
+  (`src/domain/card-bill-projection.ts`). For bank accounts the same route
+  adds the account routine (`src/domain/account-routines.ts`):
+  `incomeMoved`, `missedPayments`, `accountCharges`,
+  `ownTransfersAsIncome` and `upcomingShortfall` (the scheduled check),
+  from one read of the bank entries in the last 200 days.
 - Citibank current-activity CSV files are headerless. In the single-file flow,
   the app applies the Citi activity parser when the selected default account is
   a Citibank credit card and known Citi export clues are present, so a pasted
@@ -1788,9 +1792,13 @@ removed). In a person view, the Summary and Month insights count only that
 person's entries in the selected scope, the same entries as the `Actual
 spend` card beside them.
 
-Those insights are guidance, not a recalculation. They never forecast,
-promise what is safe to spend, or set a savings target, and they never
-replace the plan or the ledger.
+Those insights are guidance, not a recalculation. They never predict
+spending, promise what is safe to spend, give a month-end balance or set a
+savings target, and they never replace the plan or the ledger. The one look
+ahead is the scheduled check (`upcomingShortfallSignal`): a bank account's
+latest statement (no older than 40 days) against payments that already
+repeat from it, due within 31 days, shown only as a To do when one won't
+fit (AGENTS.md, DOMAIN.md "Account Routine").
 
 The **Money consequence map** that used to sit under `See all insights`
 (money left so far, plan position, same-season comparison, snapshot

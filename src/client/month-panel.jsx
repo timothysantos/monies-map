@@ -1039,16 +1039,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     if (action.id === "review-statement") {
       navigate("/imports");
     } else if (action.id === "show-entries") {
-      handleOpenEntriesForActual({ entryIds: action.entryIds ?? [] });
+      handleOpenEntriesForActual({ entryIds: action.entryIds ?? [], month: action.month });
     } else if (action.id === "open-category") {
       handleOpenEntriesForActual({ categoryName: action.categoryName });
     }
   }
 
-  function handleOpenEntriesForActual({ categoryName = undefined, entryIds = [], entryType = "" }) {
+  function handleOpenEntriesForActual({ categoryName = undefined, entryIds = [], entryType = "", month = undefined }) {
     const next = new URLSearchParams();
     next.set("view", view.id);
-    next.set("month", view.monthPage.month);
+    next.set("month", month ?? view.monthPage.month);
     next.set("scope", view.monthPage.selectedScope);
     next.set("entries_scope", view.monthPage.selectedScope);
 

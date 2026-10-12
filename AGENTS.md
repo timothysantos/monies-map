@@ -240,8 +240,16 @@ Details and the reasons are in `docs/code-spec.md` and
   shown come from the app's own validation, not from model prose.
 - Money insights are a deterministic, read-only projection. They may show
   recorded cash flow, plan variance, a same-season comparison that is
-  already loaded, and explicit bank-proof gaps. They must never present a
-  forecast, safe-to-spend promise, or savings target as an AI conclusion.
+  already loaded, and explicit bank-proof gaps. They never predict
+  spending, never give a safe-to-spend figure or a month-end balance, never
+  set a savings target, and never come from AI.
+- The one look ahead Money insights may make is the `scheduled check`
+  (DOMAIN.md): a bank account's latest recorded balance (a statement no
+  older than 40 days, plus what is recorded since) against payments that
+  have left that same account at the same amount for 2 or more months in a
+  row and are due within 31 days. It names the statement date and the
+  payments, stays silent when the balance is older or the pattern breaks,
+  and is only ever a To do that warns, never a line that reassures.
 - Never send credentials, Shortcut tokens, original bank files, raw statement
   PDF binaries, full account/card numbers, or unbounded notes to AI. For a
   statement fallback, require explicit consent and send only bounded,

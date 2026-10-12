@@ -251,6 +251,157 @@ Way to think about it, in turn:
 - If the bank has agreed to take the charge back, the refund shows on the card's next statement.
 - Bank charges aren't purchases, so they're kept in their own category, "Fees".
 
+## Summary and Month (bank accounts)
+
+### incomeMoved (To do)
+
+Income from one payer that came into a bank account 3 months in a row now arrives in another of the owner's accounts (in the last 150 days), while payments that ran 2 or more months in a row are still scheduled on the old one. Summary and Month.
+
+Phrasings:
+
+- {whose} {income} has gone into {to} since {date}, but {account} still pays {payments}.{held}
+- Since {date}, {whose} {income} goes into {to}, while {payments} still {leave} {account}.{held}
+- {account} no longer gets {whose} {income}, which has gone to {to} since {date}, but it still pays {payments}.{held}
+- {whose} {income} moved to {to} on {date}. {account} still pays {payments}.{held}
+
+Way to think about it, in turn:
+
+- When a payment's account runs low, the bank can't make it and charges for trying. Moving the payment, or topping the account up, clears it.
+- Payments set up on {account} don't follow the {income}. Each one moves on its own, with the bank or the company that collects it.
+- Some accounts pay bonus interest only while a salary arrives in them, so the move may change {account}'s interest too.
+
+Said once when it clears (Going well): Sorted: {whose} {account} no longer has payments waiting on {income} that moved. / The payments now come from where the money arrives.
+
+### missedPayments (To do)
+
+A payment that left a bank account 3 months in a row did not leave the next month, and the account was charged for a failed payment to the same payee within 5 days of its usual day (in the last 75 days). Summary and Month.
+
+Phrasings:
+
+- {whose} {payee} payments ({amounts}) didn't go through on {date}. {account} charged {charge} for each instead.
+- The bank couldn't make {whose} {payee} payments of {amounts} on {date}, and charged {charge} for each.
+- {amounts} to {payee} didn't leave {whose} {account} on {date}; the bank charged {charges} instead.
+- On {date}, {whose} {account} couldn't pay {payee} ({amounts}), and was charged {charge} for each.
+
+When the count is 1:
+
+- {whose} {amounts} payment to {payee} didn't go through on {date}. {account} charged {charge} instead.
+- The bank couldn't make {whose} {amounts} payment to {payee} on {date}, and charged {charge} for trying.
+- {amounts} to {payee} didn't leave {whose} {account} on {date}; the bank charged {charge} instead.
+- On {date}, {whose} {account} couldn't pay {payee} {amounts}, and was charged {charge}.
+
+Way to think about it, in turn:
+
+- {month}'s {total} to {payee} didn't go out. Paying it by hand catches up, if it's still wanted.
+- Banks try a GIRO once on its day. If the account is short then, that month's payment is skipped.
+- Keeping a little more than {total} in {account} before the payment's day means it goes through.
+
+Said once when it clears (Going well): Sorted: {whose} payment to {payee} went through. / The latest one left {account} as usual.
+
+### accountCharges (Worth knowing)
+
+A bank account's own charges in their latest month: any charge for a failed payment in the last 60 days, with that month's monthly fee. Summary and Month.
+
+Phrasings:
+
+- The bank charged {whose} {account} {total} in {month}: {charges}.
+- {whose} {account} paid {total} in bank charges in {month}: {charges}.
+- {total} of {whose} {account} went on bank charges in {month}: {charges}.
+- In {month} the bank took {total} from {whose} {account}: {charges}.
+
+Way to think about it, in turn:
+
+- Charges for failed payments stop once there's enough in the account on the payment's day.
+- {account}'s {fee} monthly fee has come every month since {since}. Banks usually waive it while the balance stays above a minimum.
+- Bank charges aren't purchases, so they're kept in their own category, "Fees".
+
+### accountFees (Worth knowing)
+
+A bank account's monthly fee alone, once it has come 3 months in a row (and the latest within 60 days). Summary and Month.
+
+Phrasings:
+
+- The bank has charged {whose} {account} a {fee} monthly fee every month since {since}.
+- {whose} {account} has paid a {fee} monthly fee to the bank every month since {since}.
+- Every month since {since}, {whose} {account} has been charged a {fee} fee.
+- A {fee} monthly fee has come out of {whose} {account} every month since {since}.
+
+Way to think about it, in turn:
+
+- Banks usually waive a fee like this while the balance stays above a minimum.
+- It's small, but it adds up to {yearly} a year.
+- Bank charges aren't purchases, so they're kept in their own category, "Fees".
+
+### ownTransferIncome (To do)
+
+Income into a bank account while the same amount left another of the owner's bank accounts as a transfer within 3 days, not linked (in the last 120 days). Summary and Month.
+
+Phrasings:
+
+- {count} payments into {whose} {account} ({total}) are counted as income, but each left {whose} {from} within a few days. They're money moving between {whose} own accounts.
+- {total} counted as income in {whose} {account} came from {whose} {from}, in {count} payments.
+- {count} payments ({total}) moved from {whose} {from} to {whose} {account}, and they're counted as income.
+- {whose} {account} has {count} payments ({total}) counted as income that came from {whose} {from}.
+
+When the count is 1:
+
+- {amount} into {whose} {account} on {date} is counted as {category}, but it left {whose} {from} {when}. It's money moving between {whose} own accounts.
+- The {amount} that reached {whose} {account} on {date} came from {whose} {from}, yet it's counted as {category}.
+- {whose} {account} got {amount} on {date}, counted as {category}, and the same amount left {whose} {from} {when}.
+- {amount} counted as {category} on {date} is money {whose} {from} sent to {whose} {account}.
+
+Way to think about it, in turn:
+
+- Counting it as income makes the month look richer than it was.
+- Linking the two as a transfer takes it out of income and spending.
+- A transfer between your own accounts is neither earned nor spent.
+
+Said once when it clears (Going well): Sorted: money moved between {whose} own accounts no longer counts as income. / Income now shows only what was earned.
+
+Action: Show these entries
+
+### upcomingShortfall (To do)
+
+The scheduled check: a bank account's latest statement (no older than 40 days), plus what is recorded since, cannot cover the payments still scheduled on it (the same payee and amount 2 or more months in a row, or one the bank tried and failed to make) due within the next 31 days, after any regular income due before them. Summary and Month.
+
+Phrasings:
+
+- {whose} {account} had {balance} on {date}. Its {payee} payments take {monthly} around the {day}, so {story}.
+- {whose} {account} won't cover {shortMonth}'s {payee} payments: it had {balance} on {date}, and {due} {is} due by {shortDate}.
+- {due} in {payee} payments {is} due from {whose} {account} by {shortDate}, and it had {balance} on {date}: {short} short.
+- Going by the {date} statement, {whose} {account} is {short} short for the {payee} payments due by {shortDate}.
+
+Way to think about it, in turn:
+
+- Based on the {date} statement and the payments that came from it each month before. A top-up, or moving the payments, clears it.
+- This only counts payments that already repeat from {account}, so it can't see new ones.
+- If money is already on its way in, this clears once it's recorded here.
+
+Said once when it clears (Going well): Sorted: {whose} {account} has enough for its next payments. / Going by its latest statement and what's recorded since.
+
+## Month and Entries (trips)
+
+### tripInOther (To do)
+
+5 or more purchases abroad (a foreign currency amount, a foreign city or a country code) over 2 or more days, no more than 2 days apart, still in Other this month. On Entries the plain "entries in Other" line then counts the rest.
+
+Phrasings:
+
+- {count} overseas purchases from {range} ({total}{place}) are in Other. Moving them to Travel shows what the trip cost.
+- {total} spent abroad from {range}{placeIn} is still in Other, across {count} purchases.
+- The trip from {range}{placeIn} left {count} purchases ({total}) in Other.
+- {count} purchases abroad from {range} ({total}) haven't got a category yet.
+
+Way to think about it, in turn:
+
+- Trips are easier to plan when last time's total is easy to find.
+- Food or shopping bought abroad can stay where it is; it's the rest that's easiest to file as Travel.
+- Once they're in Travel, the trip shows as one number beside the rest of the month.
+
+Said once when it clears (Going well): Sorted: the trip from {range} is filed. / Its cost now shows in one place.
+
+Action: Show these entries
+
 ## Summary
 
 Fun fact follows the range's last month. Month number, then the type tried first and its reserves:
@@ -1464,6 +1615,48 @@ Way to think about it, in turn:
 - Small balances are quick to clear.
 - Clearing it every so often keeps shared money simple between you.
 - Clearing it now gives the next round of shared costs a fresh start.
+
+### settlementPayment (To do)
+
+An open settlement still needs an amount, and a payment of exactly that amount between the two people is recorded within 14 days after it, not yet matched, while it still counts as spending or income.
+
+Phrasings:
+
+- {fromWhose} {amount} payment to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.
+- The {amount} {from} paid {to} on {date} is the settlement from {settled}, waiting to be matched.
+- {from} paid {to} {amount} on {date}, the same as the {settled} settlement.
+- The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}.
+
+Way to think about it, in turn:
+
+- Until it's matched, the payment counts as {fromWhose} spending and {toWhose} income.
+- Linking the two payments as a transfer, then matching it under the settlement, marks it paid.
+- Once matched, the settlement shows as paid and the payment stops counting as spending.
+
+Said once when it clears (Going well): Sorted: the {settled} settlement is matched to its payment. / It shows as paid.
+
+Action: Show the payment
+
+### settlementPaymentLinked (To do)
+
+As above, when the payment is already a transfer and only the match is missing.
+
+Phrasings:
+
+- {fromWhose} {amount} transfer to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.
+- The {amount} {from} sent {to} on {date} is the settlement from {settled}, waiting to be matched.
+- {from} sent {to} {amount} on {date}, the same as the {settled} settlement.
+- The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}.
+
+Way to think about it, in turn:
+
+- Matching it under the settlement marks it paid.
+- Once matched, the settlement shows as paid.
+- It's already a transfer, so only the match is left.
+
+Said once when it clears (Going well): Sorted: the {settled} settlement is matched to its payment. / It shows as paid.
+
+Action: Show the payment
 
 ### bankMatch (To do)
 
