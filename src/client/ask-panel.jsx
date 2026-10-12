@@ -759,7 +759,7 @@ function AskConversation({
     if (intent.from === "splits" && intent.splitGroupId) next.set("split_group", intent.splitGroupId);
     const fallback = { pathname: `/${intent.from}`, search: `?${next.toString()}` };
     return inDock
-      ? { kind: "navigate", to: fallback, state: undefined }
+      ? { kind: /** @type {const} */ ("navigate"), to: fallback, state: undefined }
       : planAskBack({ from: intent.from, state: location.state, storage: sessionStore(), fallback });
   }, [inDock, intent.from, intent.splitGroupId, location.state, params]);
   const backHref = backPlan?.kind === "navigate"
