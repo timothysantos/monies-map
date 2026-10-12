@@ -3,7 +3,7 @@ import { Check, ChevronDown, List, Plus } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { messages } from "./copy/en-SG";
+import { splitsStripCopy as copy } from "./copy/splits-strip-copy";
 import { useMoneyPrivacy } from "./money-privacy";
 import { SplitsGroupsSheet } from "./splits-groups-sheet";
 import {
@@ -118,28 +118,28 @@ export function SplitsGroupStrip({
 
   const showBar = isMobile && isScrolledPast && !hideBar && !inMatches && activeGroup && typeof document !== "undefined";
   const activeTile = tiles.find((tile) => tile.isActive);
-  const allLabel = hiddenCount > 0 ? messages.splits.allMore(hiddenCount) : messages.splits.allTile;
+  const allLabel = hiddenCount > 0 ? copy.allMore(hiddenCount) : copy.allTile;
   const closeSheet = () => setIsSheetOpen(false);
 
   return (
     <>
-      <section ref={setStrip} className="splits-strip" aria-label={messages.splits.allGroups}>
+      <section ref={setStrip} className="splits-strip" aria-label={copy.allGroups}>
         <div className={`splits-strip-control ${readOnly ? "is-single" : ""}`}>
           {!readOnly ? (
             <button
               type="button"
               className="splits-strip-half splits-strip-new"
-              aria-label={messages.splits.createGroup}
+              aria-label={copy.createGroup}
               onClick={onCreateGroup}
             >
               <Plus size={16} strokeWidth={2.2} aria-hidden="true" />
-              <span>{messages.splits.newTile}</span>
+              <span>{copy.newTile}</span>
             </button>
           ) : null}
           <button
             type="button"
             className="splits-strip-half splits-strip-all"
-            aria-label={messages.splits.allGroups}
+            aria-label={copy.allGroups}
             aria-haspopup="dialog"
             onClick={() => setIsSheetOpen(true)}
           >
@@ -158,7 +158,7 @@ export function SplitsGroupStrip({
             >
               <strong className="splits-strip-tile-name">{tile.name}</strong>
               <span className="splits-strip-tile-balance">{tile.balanceLine}</span>
-              {tile.isActive ? <span className="splits-strip-tile-count">{messages.splits.entryCount(tile.entryCount)}</span> : null}
+              {tile.isActive ? <span className="splits-strip-tile-count">{copy.entryCount(tile.entryCount)}</span> : null}
               {tile.isActive ? <span className="splits-strip-tile-tick" aria-hidden="true"><Check size={14} strokeWidth={3} /></span> : null}
             </button>
           ))}
@@ -169,7 +169,7 @@ export function SplitsGroupStrip({
         <button
           type="button"
           className="splits-group-bar"
-          aria-label={messages.splits.allGroups}
+          aria-label={copy.allGroups}
           aria-haspopup="dialog"
           onClick={() => setIsSheetOpen(true)}
         >

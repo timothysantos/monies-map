@@ -2,8 +2,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import { messages } from "./copy/en-SG";
+import { splitsStripCopy as copy } from "./copy/splits-strip-copy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
+import { useKeyboardInset } from "./use-keyboard-inset";
 import { BottomActions, getIconComponent } from "./ui-components";
 
 // The All groups sheet: one row per group with its balance in plain words, in
@@ -31,24 +32,28 @@ function GroupRow({ row, onChoose }) {
 
 export function SplitsGroupsSheet({ open, rows, readOnly = false, onChoose, onCreate, onClose }) {
   const [showSettled, setShowSettled] = useState(false);
+  // No text field here, but every sheet with a bottom bar follows the keyboard.
+  const [content, setContent] = useState(null);
+  useKeyboardInset(content);
   return (
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content
+          ref={setContent}
           className="note-dialog-content split-dialog-content splits-groups-sheet"
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <SheetSwipeDismiss onClose={onClose} />
           <div className="note-dialog-head splits-sheet-head">
-            <Dialog.Title>{messages.splits.allGroups}</Dialog.Title>
-            <Dialog.Description className="sr-only">Choose which split group to open.</Dialog.Description>
-            <button type="button" className="splits-sheet-close" aria-label={messages.common.close} onClick={onClose}>
+            <Dialog.Title>{copy.allGroups}</Dialog.Title>
+            <Dialog.Description className="sr-only">{copy.chooseGroupHint}</Dialog.Description>
+            <button type="button" className="splits-sheet-close" aria-label={copy.close} onClick={onClose}>
               <X size={18} aria-hidden="true" />
             </button>
           </div>
           <div className="splits-sheet-body" data-sheet-body>
-            <div className="splits-sheet-list" role="group" aria-label={messages.splits.allGroups}>
+            <div className="splits-sheet-list" role="group" aria-label={copy.allGroups}>
               {rows.open.map((row) => <GroupRow key={row.id} row={row} onChoose={onChoose} />)}
               {rows.settled.length ? (
                 <>
@@ -59,7 +64,7 @@ export function SplitsGroupsSheet({ open, rows, readOnly = false, onChoose, onCr
                     onClick={() => setShowSettled((current) => !current)}
                   >
                     <span className="splits-sheet-row-text">
-                      <strong>{messages.splits.settledGroups(rows.settled.length)}</strong>
+                      <strong>{copy.settledGroups(rows.settled.length)}</strong>
                     </span>
                     <ChevronDown size={16} aria-hidden="true" className="splits-sheet-row-chevron" />
                   </button>
@@ -70,13 +75,13 @@ export function SplitsGroupsSheet({ open, rows, readOnly = false, onChoose, onCr
             {!readOnly ? (
               <button type="button" className="splits-sheet-create" onClick={onCreate}>
                 <Plus size={16} aria-hidden="true" />
-                {messages.splits.createGroup}
+                {copy.createGroup}
               </button>
             ) : null}
           </div>
           <BottomActions
             className="is-sheet-bar splits-sheet-actions"
-            primaryLabel={messages.splits.done}
+            primaryLabel={copy.done}
             onPrimary={onClose}
           />
         </Dialog.Content>

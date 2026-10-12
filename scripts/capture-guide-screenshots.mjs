@@ -321,7 +321,7 @@ const SHOTS = [
     name: "splits-create-group", device: "desktop",
     run: async (page) => {
       await open(page, splitsUrl());
-      await page.locator(".splits-groups-row:not(.splits-groups-row-floating)").getByRole("button", { name: "Create group" }).click();
+      await page.locator(".splits-strip").getByRole("button", { name: "Create group" }).click();
       const dialog = page.getByRole("dialog", { name: "Create group" });
       await dialog.getByLabel("Group name").fill("Seoul trip");
       await dialog.getByLabel("Group currency").selectOption("KRW");

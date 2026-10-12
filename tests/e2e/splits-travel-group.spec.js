@@ -82,7 +82,7 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   await expect(card.locator(".split-activity-amount-line > span").first()).toHaveText("JP¥6,000");
   await expect(groupPill.locator(".splits-strip-tile-count")).toHaveText("1 entry");
 
-  // The pill balance and the totals strip use the group currency too.
+  // The tile balance and the totals strip use the group currency too.
   await expect(groupPill).toContainText("You owe Joyce JP¥6,000");
   const summaryMetrics = page.locator(".splits-summary-strip .entries-summary-metrics");
   await expect(summaryMetrics).toContainText("You owe JP¥6,000");

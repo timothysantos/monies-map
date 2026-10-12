@@ -3,7 +3,7 @@
 // group that is remembered per viewer. No React here so the rules can be
 // tested on their own.
 
-import { messages } from "./copy/en-SG";
+import { splitsStripCopy as copy } from "./copy/splits-strip-copy";
 
 export const NON_GROUP_ID = "split-group-none";
 const LAST_GROUP_KEY_PREFIX = "monies-map:splits-last-group:";
@@ -13,10 +13,10 @@ const LAST_GROUP_KEY_PREFIX = "monies-map:splits-last-group:";
 // never reveals a sign or an amount.
 export function balanceLineFor(group, { areTotalsVisible }) {
   if (!areTotalsVisible) {
-    return messages.splits.balanceHidden;
+    return copy.balanceHidden;
   }
   if (group.balanceMinor === 0) {
-    return group.id === NON_GROUP_ID ? messages.splits.noBalance : messages.splits.settled;
+    return group.id === NON_GROUP_ID ? copy.noBalance : copy.settled;
   }
   return group.summaryText;
 }
