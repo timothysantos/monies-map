@@ -280,7 +280,7 @@ export function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
   const marker = !isActive ? "" : sort.direction === "asc" ? " ↑" : " ↓";
 
   return (
-    <th>
+    <th data-column={columnKey}>
       <button
         type="button"
         className={`table-sort-button ${isActive ? "is-active" : ""}`}

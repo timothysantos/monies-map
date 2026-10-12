@@ -42,6 +42,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
 import "./month-mid-width.css";
+import "./month-plan-rows.css";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const {
