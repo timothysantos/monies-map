@@ -20,6 +20,7 @@ const BILLING = "https://platform.claude.com/settings/billing";
 const STATUS_PATH = "/api/ai-assist/provider-status";
 const TOPPED_UP_PATH = "/api/ai-assist/provider-status/topped-up";
 const ASK = "/ask?view=person-tim&month=2026-04";
+const SHOT_DIR = process.env.AUTO_BALANCE_SHOT_DIR;
 
 function statusBody(state, overrides = {}) {
   return {
@@ -30,6 +31,9 @@ function statusBody(state, overrides = {}) {
     estimatedSpendUsd: state === "low" ? 16.4 : state === "ok" ? 3.2 : 20,
     creditUsd: 20,
     warnAtUsd: 15,
+    monthSpendUsd: 3.2,
+    monthTargetUsd: 8,
+    mode: "claude_all",
     lastSuccessAt: "2026-10-11T02:00:00.000Z",
     consoleBillingUrl: BILLING,
     ...overrides
@@ -263,6 +267,51 @@ test.describe("the Claude credit notice and Settings on a wide screen", () => {
     await expect(dialog).toHaveCount(0);
     expect(stub.toppedUp).toEqual([{ creditUsd: 30 }]);
     await expect(section.locator(".claude-credit-line")).toHaveText("Claude credits are fine: about $0 of $30 used.");
+  });
+
+  test("Settings shows this month's Claude spend and who is asked first, in each mode, and hides the dollars with money hidden", async ({ page }) => {
+    await setMoneyVisible(page, true);
+    const modes = [
+      { mode: "claude_all", monthSpendUsd: 3.2, text: "Claude this month: $3.20 of $8 \u00b7 background help is using Claude" },
+      { mode: "ask_only", monthSpendUsd: 5.5, text: "Claude this month: $5.50 of $8 \u00b7 background help is using the basic model to save budget" },
+      { mode: "basic_first", monthSpendUsd: 7.5, text: "Claude this month: $7.50 of $8 \u00b7 everything is using the basic model to save budget" }
+    ];
+    for (const { mode, monthSpendUsd, text } of modes) {
+      await page.unroute(`**${STATUS_PATH}`);
+      await page.route(`**${STATUS_PATH}`, (route) => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(statusBody("ok", { mode, monthSpendUsd }))
+      }));
+      await gotoPageAfterApi(page, "/settings?view=household", "/api/settings-page", () => page.getByRole("heading", { name: "Settings", exact: true }));
+      await page.getByRole("button", { name: /Ask and AI/ }).click();
+      const section = page.locator("#settings-ask-ai");
+      await expect(section.locator(".claude-credit-month")).toHaveText(text);
+      await expect(section.locator(".claude-credit-line")).toHaveText("Claude credits are fine: about $3.20 of $20 used.");
+      if (SHOT_DIR) {
+        await section.screenshot({ path: `${SHOT_DIR}/settings-${mode}.png` });
+      }
+    }
+    await setMoneyVisible(page, false);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /Ask and AI/ }).click();
+    const hidden = page.locator("#settings-ask-ai .claude-credit-month");
+    await expect(hidden).toHaveText("Claude this month \u00b7 everything is using the basic model to save budget");
+  });
+
+  test("Settings says Claude hasn't been used yet when it is set up but has not answered", async ({ page }) => {
+    await setMoneyVisible(page, true);
+    await page.route(`**${STATUS_PATH}`, (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(statusBody("unknown", { estimatedSpendUsd: 0, lastSuccessAt: undefined }))
+    }));
+    await gotoPageAfterApi(page, "/settings?view=household", "/api/settings-page", () => page.getByRole("heading", { name: "Settings", exact: true }));
+    await page.getByRole("button", { name: /Ask and AI/ }).click();
+    const section = page.locator("#settings-ask-ai");
+    await expect(section.locator(".claude-credit-line")).toHaveText("Claude hasn't been used yet.");
+    await expect(section.getByRole("link")).toHaveCount(0);
+    await expect(section.getByRole("button", { name: "I've topped up" })).toHaveCount(0);
   });
 
   test("Settings says calmly when Claude isn't set up, with no actions; a hidden status hides the section", async ({ page }) => {

@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRightLeft } from "lucide-react";
 
 import { moniesClient } from "./monies-client-service";
+import { SheetSwipeDismiss } from "./sheet-swipe";
 import { SplitActivityGroups } from "./splits-activity";
 
 const { format: formatService, splits: splitService } = moniesClient;
@@ -29,6 +30,8 @@ export function SplitArchiveDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content split-archive-dialog">
+          {/* A phone sheet that swipes down to close (nothing to lose). */}
+          <SheetSwipeDismiss onClose={onClose} />
           <div className="note-dialog-head split-dialog-head">
             <Dialog.Title>{selectedArchivedBatch ? selectedArchivedBatch.label : "Archived batches"}</Dialog.Title>
             <Dialog.Description>

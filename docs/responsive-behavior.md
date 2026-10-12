@@ -58,6 +58,10 @@ implemented; P2m defines measurement and acceptance gates.
 
 ### Desktop patterns
 
+- Ask beside the page: a bottom-right Ask field opens the conversation as a
+  docked panel that pushes the page (1,280 px and wider) or a popup over it
+  (761 to 1,279 px); the phone has the Ask tab instead (design.md
+  "Desktop Ask")
 - inline table editing
 - side-by-side context and controls
 - hover-friendly or pointer-precise interactions
@@ -114,6 +118,12 @@ Desktop:
 
 - top-level navigation and context controls stay visible
 - person/scope switching is visible in the shell when relevant
+- the header is one row from an 876 px page width up, compacting with the
+  page's width (container queries on `.shell`), so a docked Ask panel that
+  narrows the page never wraps it; below a 1,064 px page Imports, Settings
+  and FAQ move behind "More pages"
+- the Ask field sits at the bottom right of every page but `/ask`; its
+  panel stays open across pages and a reload until closed
 
 Mobile:
 

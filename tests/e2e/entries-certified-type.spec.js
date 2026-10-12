@@ -84,6 +84,10 @@ test("a certified credit switches from Income to Transfer in, and its other bank
   const editor = await openEditor(page, creditId);
 
   await expect(editor.locator(".entry-edit-lock-message")).toHaveText(
+    "Bank details are locked to the statement. Category, owner, note and splits stay editable."
+  );
+  // The type rule lives on the lock chip's description.
+  await expect(editor.locator(".lsd-chip.is-mint")).toHaveAccessibleDescription(
     "This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Income and Transfer in, and you can change the note, category, owner or splits."
   );
   const type = editorSelect(editor, "Type");
@@ -118,7 +122,7 @@ test("a certified purchase offers only Expense and Transfer", async ({ page }) =
   const { purchaseId } = await certifiedSavings(page);
   const editor = await openEditor(page, purchaseId);
 
-  await expect(editor.locator(".entry-edit-lock-message")).toContainText("Type can switch between Expense and Transfer out,");
+  await expect(editor.locator(".lsd-chip.is-mint")).toHaveAccessibleDescription(/Type can switch between Expense and Transfer out,/);
   const type = editorSelect(editor, "Type");
   await expect(type.locator("option")).toHaveText(["Expense", "Transfer"]);
   await type.selectOption("transfer");

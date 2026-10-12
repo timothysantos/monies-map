@@ -327,7 +327,8 @@ an isolated stack with `E2E_BASE_URL` as for the other configs.
 `npm run test:e2e:sharded` runs the same suite faster as parallel shards. It
 builds `dist/` once. Then each shard starts its own stack on its own ports
 (Vite `5501+`, Wrangler `8901+`, inspector `9501+`) with its own local D1 in
-`.wrangler/state-shard-N`, and runs its spec files with one worker. At the end
+`.wrangler/state-shard-<Wrangler port>` (so runs with different
+`E2E_PORT_OFFSET` values never share one), and runs its spec files with one worker. At the end
 it merges every shard into `playwright-report/` and
 `test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
 removes the shard servers and state. Shard logs are in

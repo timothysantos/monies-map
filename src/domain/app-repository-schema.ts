@@ -170,9 +170,18 @@ async function ensureDemoSchemaOnce(db: D1Database) {
       last_success_at TEXT,
       estimated_spend_micro_usd INTEGER NOT NULL DEFAULT 0,
       topped_up_at TEXT,
-      topped_up_credit_micro_usd INTEGER
+      topped_up_credit_micro_usd INTEGER,
+      spend_month TEXT,
+      month_spend_micro_usd INTEGER NOT NULL DEFAULT 0
     )
   `).run();
+
+  // Auto-balance columns, added to a status table that predates them.
+  const providerStatusColumns = await db.prepare("PRAGMA table_info(ai_provider_status)").all<{ name: string }>();
+  if (!providerStatusColumns.results.some((column) => column.name === "spend_month")) {
+    await db.prepare("ALTER TABLE ai_provider_status ADD COLUMN spend_month TEXT").run();
+    await db.prepare("ALTER TABLE ai_provider_status ADD COLUMN month_spend_micro_usd INTEGER NOT NULL DEFAULT 0").run();
+  }
 
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS category_match_rule_issue_ignores (
