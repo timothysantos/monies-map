@@ -22,6 +22,11 @@
 //   or { needsConfirmation, candidates } (skew candidates with their
 //   suggested actions), or { answer, wording: { text, source } }.
 //
+// - POST /api/ai-assist/filter (src/server/ask-filter-route.ts): the optional
+//   AI reading of a filter request the rules could not read. Body { text,
+//   viewId, scope, month }. Response AskFilterResponseDto: { supported,
+//   reading, ai }. Read by ask-filter-request.js.
+//
 // - POST /api/splits/suggestion (src/domain/pages/split-suggestion.ts): the
 //   split group and share the payer usually uses for entries like this one
 //   (DOMAIN.md "Split Suggestion"). Body { entryId } for a saved entry, else
@@ -43,6 +48,7 @@ export const ASK_ENDPOINTS = Object.freeze({
   entryDraft: "/api/ai-assist/entry-draft",
   receiptRead: "/api/ai-assist/receipt-read",
   answer: "/api/ai-assist/answer",
+  filter: "/api/ai-assist/filter",
   splitSuggestion: "/api/splits/suggestion"
 });
 
