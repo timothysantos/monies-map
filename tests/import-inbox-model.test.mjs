@@ -220,16 +220,16 @@ test("a bank's lines group by owner first, each owner's accounts in download ord
 
 test("an owner group takes the person's colour from Entries, the same in every bank", async () => {
   const { getPersonColour, getPersonColourVars } = await import("../src/client/person-colour.js");
-  assert.equal(getPersonColour("Tim"), "#33A471");
-  assert.equal(getPersonColour("Joyce"), "#DE726D");
+  assert.equal(getPersonColour("Tim"), "#46788E");
+  assert.equal(getPersonColour("Joyce"), "#B97680");
   assert.equal(getPersonColour("Shared"), getPersonColour("shared"));
   assert.deepEqual(getPersonColourVars("Joyce"), {
-    "--person-colour": "#DE726D",
-    "--person-chip-bg": "color-mix(in srgb, #DE726D 16%, white)",
-    "--person-chip-border": "color-mix(in srgb, #DE726D 45%, white)",
-    "--person-ink": "color-mix(in srgb, #DE726D 55%, var(--text))",
-    "--person-band": "color-mix(in srgb, #DE726D 10%, white)",
-    "--person-wash": "color-mix(in srgb, #DE726D 6%, white)"
+    "--person-colour": "#B97680",
+    "--person-chip-bg": "color-mix(in srgb, #B97680 16%, white)",
+    "--person-chip-border": "color-mix(in srgb, #B97680 45%, white)",
+    "--person-ink": "color-mix(in srgb, #B97680 55%, var(--text))",
+    "--person-band": "color-mix(in srgb, #B97680 10%, white)",
+    "--person-wash": "color-mix(in srgb, #B97680 6%, white)"
   });
   assert.notEqual(getPersonColour("Tim"), getPersonColour("Joyce"));
 });

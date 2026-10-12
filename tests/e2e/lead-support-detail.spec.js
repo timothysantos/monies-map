@@ -11,7 +11,7 @@ const MONTH = "2026-05";
 const MONTH_URL = `/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`;
 const SUMMARY_RANGE = { view: "person-tim", month: MONTH, summaryStart: "2025-06", summaryEnd: MONTH };
 const SUMMARY_URL = `/summary?view=person-tim&month=${MONTH}&scope=direct_plus_shared&summary_start=2025-06&summary_end=${MONTH}`;
-const INK = { in: "rgb(23, 104, 74)", short: "rgb(163, 53, 42)", plan: "rgb(47, 91, 134)", text: "rgb(38, 35, 31)" };
+const INK = { in: "rgb(76, 94, 26)", short: "rgb(151, 50, 35)", plan: "rgb(44, 95, 95)", text: "rgb(59, 42, 31)" };
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 // The phone the owner tests on; the WebKit run (npm run test:e2e:webkit)
 // uses the same profile in WebKit.
@@ -84,7 +84,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     await expect(lead.locator(".lsd-chip").first()).toHaveText("May 2026");
     const owner = lead.locator(".lsd-chip.is-person");
     await expect(owner).toHaveText("Tim");
-    expect(await owner.evaluate((chip) => chip.style.getPropertyValue("--person-colour"))).toBe("#33A471");
+    expect(await owner.evaluate((chip) => chip.style.getPropertyValue("--person-colour"))).toBe("#46788E");
     await expect(sheet.locator(".entry-composer-copy p")).toHaveText("Tim · May 2026");
 
     // Detail rows hold every field the sheet had: actual, item, category,
