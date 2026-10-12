@@ -1,6 +1,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronDown, X } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { lazy, Suspense, useId, useMemo, useState } from "react";
+// The phone picker sheet loads when a picker opens: this module is first-screen code.
+const PickerSheet = lazy(() => import("./picker-sheet"));
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 
@@ -74,52 +76,22 @@ export function ResponsiveSelect({
         </button>
       ) : null}
       <Dialog.Root open={isOpen} onOpenChange={updateOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content mobile-select-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-            <div className="note-dialog-head mobile-select-head">
-              <Dialog.Title>{title}</Dialog.Title>
-              <Dialog.Description className="sr-only">
-                Choose a value for {title.toLowerCase()}.
-              </Dialog.Description>
-              <button
-                type="button"
-                className="icon-action subtle-cancel mobile-select-close"
-                aria-label={`Close ${title.toLowerCase()}`}
-                onClick={() => updateOpen(false)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="mobile-select-options">
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`mobile-select-option ${option.value === value ? "is-selected" : ""}`}
-                  onClick={() => {
-                    onValueChange(option.value);
-                    updateOpen(false);
-                  }}
-                >
-                  <span className="mobile-select-option-main">
-                    {option.iconKey ? (
-                      <span
-                        className="mobile-select-option-icon"
-                        style={{ "--category-color": option.colorHex ?? "rgba(177, 94, 47, 0.16)" }}
-                        aria-hidden="true"
-                      >
-                        {option.icon}
-                      </span>
-                    ) : null}
-                    <span>{option.label}</span>
-                  </span>
-                  {option.value === value ? <Check size={18} /> : null}
-                </button>
-              ))}
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
+        {isOpen ? (
+          <Suspense fallback={null}>
+            <PickerSheet
+              title={title}
+              description={`Choose a value for ${title.toLowerCase()}.`}
+              closeLabel={`Close ${title.toLowerCase()}`}
+              options={options}
+              selectedValues={[value]}
+              onChoose={(next) => {
+                onValueChange(next);
+                updateOpen(false);
+              }}
+              onClose={() => updateOpen(false)}
+            />
+          </Suspense>
+        ) : null}
       </Dialog.Root>
     </>
   );

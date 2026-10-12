@@ -1,11 +1,14 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, Receipt, X } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Receipt } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 import { useIsMobileLayout } from "./use-viewport";
+
+// The phone picker sheet loads when a picker opens (this is first-screen code).
+const PickerSheet = lazy(() => import("./picker-sheet"));
 
 export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
   const normalizedOptions = [
@@ -77,60 +80,21 @@ export function FilterMultiSelect({
           <ChevronDown size={18} />
         </button>
         <Dialog.Root open={open} onOpenChange={setOpen}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content mobile-select-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-              <div className="note-dialog-head mobile-select-head">
-                <Dialog.Title>{label}</Dialog.Title>
-                <Dialog.Description className="sr-only">
-                  Choose one or more values for {label.toLowerCase()}.
-                </Dialog.Description>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel mobile-select-close"
-                  aria-label={`Close ${label.toLowerCase()}`}
-                  onClick={() => setOpen(false)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="mobile-select-options">
-                {normalizedOptions.map((option) => {
-                  const checked = selectedValues.includes(option.value);
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`mobile-select-option ${checked ? "is-selected" : ""}`}
-                      aria-pressed={checked}
-                      onClick={() => toggleValue(option.value)}
-                    >
-                      <span className="mobile-select-option-main">
-                        <span>{option.label}</span>
-                      </span>
-                      {checked ? <Check size={18} /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="entries-filter-multiselect-actions mobile-select-actions">
-                <button
-                  type="button"
-                  className="subtle-action"
-                  onClick={() => onChange([])}
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  className="subtle-action"
-                  onClick={() => setOpen(false)}
-                >
-                  Done
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
+          {open ? (
+            <Suspense fallback={null}>
+              <PickerSheet
+                multiple
+                title={label}
+                description={`Choose one or more values for ${label.toLowerCase()}.`}
+                closeLabel={`Close ${label.toLowerCase()}`}
+                options={normalizedOptions}
+                selectedValues={selectedValues}
+                onChoose={toggleValue}
+                onClear={() => onChange([])}
+                onClose={() => setOpen(false)}
+              />
+            </Suspense>
+          ) : null}
         </Dialog.Root>
       </label>
     );
