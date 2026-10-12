@@ -10,7 +10,7 @@ test("a split in a simplified settlement locks with the settlement date and an U
   assert.deepEqual(lock, {
     checkpointId: "cp-1",
     batchId: null,
-    message: "This split expense is part of the simplified settlement of 2026-05-20. Undo the simplification before changing it, so the settled amount still matches its activity.",
+    message: "Simplified on 20 May 2026. Undo the simplification to change it.",
     recordKey: "expense:e1",
     undone: false,
     canUndo: true
@@ -22,7 +22,7 @@ test("a split in a closed group batch locks with the group and the day it was se
   assert.equal(lock.batchId, "batch-9");
   assert.equal(lock.checkpointId, null);
   assert.equal(lock.canUndo, true);
-  assert.equal(lock.message, "This split expense is part of the Trip settle-up of 2026-05-17. Undo the settle-up before changing it, so the settled amount still matches its activity.");
+  assert.equal(lock.message, "Settled on 17 May 2026. Undo the settle-up to change it.");
 });
 
 test("an older batch without a stored id has no Undo", () => {
@@ -34,4 +34,10 @@ test("an open split, a settlement row and a missing item are not locked", () => 
   assert.equal(splitCardLock({ kind: "expense", id: "e4", isArchived: false }, checkpoints), null);
   assert.equal(splitCardLock({ kind: "settlement", id: "s1", settlementCheckpointId: "cp-1" }, checkpoints), null);
   assert.equal(splitCardLock(undefined, checkpoints), null);
+});
+
+test("a September date reads Sep, and the record key follows the card that shows it", () => {
+  const lock = splitCardLock({ kind: "expense", id: "e5", isArchived: true, batchId: "b2", batchClosedAt: "2026-09-03" }, [], "inline:expense:e5");
+  assert.equal(lock.message, "Settled on 3 Sep 2026. Undo the settle-up to change it.");
+  assert.equal(lock.recordKey, "inline:expense:e5");
 });

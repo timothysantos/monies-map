@@ -1438,8 +1438,8 @@ A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 
 To change a split, select it in the activity list (or Tab to it and press
-Enter or Space). It opens as the same card you used to add it, on a phone and
-on a wide screen: change the total, a share, the category or the group, open
+Enter or Space). It opens as the same card you used to add it: on a phone as a
+sheet, on a wide screen in the list in place of the row. Change the total, a share, the category or the group, open
 **More details** on a phone for the rest, and select **Save expense**.
 **Delete** is at the bottom left and asks before it removes anything: select
 **Delete**, then **Delete split row**. Escape or **Cancel** closes the card
@@ -1447,9 +1447,10 @@ without saving, and the cursor goes back to the split you opened. A deleted
 split can be restored ([Restore a deleted split](#restore-a-deleted-split)).
 
 A split that has been settled up (or included in a simplified settlement)
-opens as **View split**: you can read it, but not change it. A line at the top
-says which settlement it belongs to, and the button under it (**Undo
-settle-up** or **Undo simplification**) opens that activity again. After the
+opens read-only: you can read it, but not change it. A line at the top says
+when it was settled ("Settled on 17 May 2026") or simplified, and the button
+under it (**Undo settle-up** or **Undo simplification**) opens that activity
+again. After the
 undo the same card turns editable and you can change and save it.
 
 ![Selecting a split opens it as a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
@@ -1531,9 +1532,8 @@ Expenses that are part of a settle-up or a simplified settlement are locked:
 their amount, currency, shares, payer, date and group cannot change, and they
 cannot be deleted. Otherwise the settled amount would silently stop matching.
 
-Select a settled expense and it opens as **View split**, with nothing to
-change. A line at the top names the settlement and the button under it undoes
-it:
+Select a settled expense and it opens with nothing to change. A line at the
+top says when it was settled or simplified and the button under it undoes it:
 
 1. Select **Undo settle-up** (for a settled group) or **Undo simplification**
    (for a simplified settlement). You can also open the batch in **Archived

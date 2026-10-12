@@ -10,10 +10,10 @@ test("editing an existing split expense keeps the row in place and persists the 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
 
   await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
-  // A saved split expense opens as the card (never the old inline form).
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  // On a wide screen a saved split expense opens as the card in the list, not a dialog.
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
-  await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await editDialog.getByRole("textbox", { name: "Note", exact: true }).fill(updatedNote);
   await editDialog.getByRole("button", { name: "Save expense" }).click();
   const syncDialog = page.getByRole("dialog", { name: "Update connected note?" });
@@ -54,7 +54,7 @@ test("editing a linked split note can update the connected entry note", async ({
   });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   await editDialog.getByRole("textbox", { name: "Note", exact: true }).fill(syncedNote);
   await editDialog.getByRole("button", { name: "Save expense" }).click();
@@ -96,7 +96,7 @@ test("linked split payment method is derived from the ledger account and locked"
   });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   // The split expense card: the Paid using row and chip are locked to Card,
   // with no picker (design.md, "Tappable chips").
   const paymentRow = editDialog.locator("[data-row='paymentMethod']");
@@ -158,7 +158,7 @@ test("editing a linked split category can update the connected entry category", 
   });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   await editDialog.getByLabel("Category").selectOption("Groceries");
   await editDialog.getByRole("button", { name: "Save expense" }).click();
@@ -240,7 +240,7 @@ test("a late amount autofocus never moves a note being typed in the split dialog
   const splitData = await createLinkedSplit(page, { month, note: "entry current note" });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   const amount = editDialog.getByRole("textbox", { name: /Expense total/ });
   const note = editDialog.getByRole("textbox", { name: "Note", exact: true });
@@ -274,7 +274,7 @@ test("the split dialog still focuses the amount when nothing else was focused", 
   const splitData = await createLinkedSplit(page, { month, note: "entry current note" });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   const amount = editDialog.getByRole("textbox", { name: /Expense total/ });
   await expect(amount).not.toBeFocused();
@@ -293,7 +293,7 @@ test("a late amount autofocus never moves a note being typed in the split card o
   const card = page.locator(".split-activity-card").filter({ hasText: "Family support" }).first();
   await expect(card).toBeVisible();
   await card.click();
-  const cardDialog = page.getByRole("dialog", { name: "Edit split" });
+  const cardDialog = page.locator(".split-inline-editor-card");
   await expect(cardDialog).toBeVisible();
   const note = cardDialog.getByRole("textbox", { name: "Note", exact: true });
   const amount = cardDialog.getByRole("textbox", { name: /Expense total/ });

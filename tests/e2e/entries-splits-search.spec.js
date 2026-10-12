@@ -186,7 +186,7 @@ test("manual split rows keep delete inside the editor", async ({ page }) => {
   await expect(row.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
   await row.click();
 
-  const editor = page.getByRole("dialog", { name: "Edit split" });
+  const editor = page.locator(".split-inline-editor-card");
   await expect(editor).toBeVisible();
   await expect(editor.getByRole("textbox", { name: "Description" })).toHaveValue(description);
   await editor.getByRole("button", { name: "Delete", exact: true }).click();

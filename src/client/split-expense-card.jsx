@@ -38,7 +38,8 @@ const PAYMENT_ICONS = { cash: Banknote, card: CreditCard, bank: Landmark, other:
 // nothing to type in or tap but the linked entry: plain values, no share
 // editor and no odd cent choice.
 // SplitsPanel keeps the draft, the checks and the save, as with the form.
-export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, layout, autoFocusAmount = false, readOnly = false, onViewLinkedEntry = undefined }) {
+export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, layout, autoFocusAmount = false, readOnly = false, onViewLinkedEntry = undefined, amountAction = null }) {
+  // "dialog" (the wide dialog) and "inline" (in the list on a wide screen) are the two-column card.
   const isSheet = layout === "sheet";
   const amountInputRef = useRef(null);
   const [openPicker, setOpenPicker] = useState("");
@@ -81,6 +82,9 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
     return () => window.clearTimeout(timeout);
   }, [autoFocusAmount, hasDialog, dialogId]);
 
+  // The inline card has no dialog head to hold the money visibility toggle,
+  // so it sits beside the total, as it does on the Entries inline editor.
+  const withAmountAction = (node) => (amountAction ? <span className="split-lead-amount">{node}{amountAction}</span> : node);
   const update = (patch) => onChange((current) => current ? { ...current, ...patch } : current);
   const isLinked = Boolean(dialog?.linkedTransactionId);
   const paymentLabel = cardCopy.paymentMethods[paymentMethod] ?? paymentMethod;
@@ -255,7 +259,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
           subtitle={selectedGroup?.name ?? ""}
           tone="neutral"
           editable={!readOnly}
-          amount={readOnly ? formatCurrencyMinor(Number(dialog?.amountMinor ?? 0), currency) : (
+          amount={readOnly ? withAmountAction(formatCurrencyMinor(Number(dialog?.amountMinor ?? 0), currency)) : withAmountAction(
             <label className={`lsd-amount-field${hasAmount ? "" : " is-empty"}`}>
               <span aria-hidden="true">{currencySymbol}</span>
               <input

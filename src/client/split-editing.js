@@ -60,6 +60,14 @@ export function useSplitEditState({ categoryOptions, people }) {
     setSettlementDialogSnapshot(draft);
   }, [people]);
 
+  const openInlineExpenseEditor = useCallback((item) => {
+    setFormError("");
+    setInlineSplitError("");
+    const draft = buildExpenseDraft(item, categoryOptions, people);
+    setInlineSplitDraft(draft);
+    setInlineSplitDraftSnapshot(draft);
+  }, [categoryOptions, people]);
+
   const openInlineSettlementEditor = useCallback((item) => {
     setFormError("");
     setInlineSplitError("");
@@ -129,6 +137,7 @@ export function useSplitEditState({ categoryOptions, people }) {
     setFormError,
     openExpenseEditor,
     openSettlementEditor,
+    openInlineExpenseEditor,
     openInlineSettlementEditor,
     openNewExpenseDialog,
     openNewSettlementDialog,

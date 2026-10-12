@@ -235,7 +235,7 @@ test.describe("money field editability", () => {
     await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
     // A split expense opens as the card; its total sits in the lead and the
     // share editor (percent, exact amount) is open on a wide screen.
-    const splitCard = page.getByRole("dialog", { name: "Edit split" });
+    const splitCard = page.locator(".split-inline-editor-card");
     await expect(splitCard).toBeVisible();
 
     const amountInput = splitCard.getByRole("textbox", { name: "Expense total" });

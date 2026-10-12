@@ -639,13 +639,13 @@ const SHOTS = [
       const card = page.locator(".split-activity-card").filter({ hasText: "Jumbo Seafood dinner" }).first();
       await scrollToLocator(page, card, 200);
       await card.click();
-      // An open expense is the same card as New split expense, in a dialog.
-      const editor = page.getByRole("dialog", { name: "Edit split" });
+      // An open expense is the same card as New split expense, in the list
+      // in place of its row.
+      const editor = page.locator(".split-inline-editor-card");
       await editor.waitFor();
       // Back to the top, so the shot leads with the card and its total.
       await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
-      await editor.locator(".split-dialog-scroll").evaluate((element) => { element.scrollTop = 0; });
-      await page.waitForTimeout(400);
+      await scrollToLocator(page, editor, 60);
       await hideCaret(page);
       await capture("splits-edit");
       await editor.getByRole("button", { name: "Delete", exact: true }).click();

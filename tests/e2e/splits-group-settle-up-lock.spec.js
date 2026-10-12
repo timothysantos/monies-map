@@ -97,8 +97,7 @@ test("an expense in a settled group batch opens read-only with the reason and Un
   const view = page.getByRole("dialog", { name: "View split" });
   await expect(view).toBeVisible();
   const lock = view.locator(".settlement-lock-error");
-  await expect(lock).toContainText(`This split expense is part of the ${settled.groupName} settle-up of ${month}-17`);
-  await expect(lock).toContainText("Undo the settle-up before changing it");
+  await expect(lock).toContainText("Settled on 17 May 2026. Undo the settle-up to change it.");
   await expect(lock).not.toContainText("$");
   await expect(lock.getByRole("button", { name: "Undo simplification" })).toHaveCount(0);
   await expect(view.getByRole("textbox")).toHaveCount(0);

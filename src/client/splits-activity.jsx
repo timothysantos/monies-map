@@ -5,13 +5,15 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { SplitSettlementFields } from "./splits-dialogs";
+import { SplitExpenseCard } from "./split-expense-card";
+import { BottomActions } from "./ui/lead-support-detail";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { isMobileLayout } from "./use-viewport";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
-import { useMoneyPrivacy } from "./money-privacy";
+import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -53,17 +55,20 @@ function formatExpensePaidLine(item, viewId) {
 }
 
 // Activity cards are shared by current split rows and archived batch history.
-// A split expense row opens the split expense card dialog (SplitsPanel); the
-// inline editor below edits a settlement row in place on a wide screen.
+// On a wide screen a split expense row turns into the split expense card in
+// place (like the Entries inline editor) and a settlement row into its form;
+// a phone opens the sheet instead (SplitsPanel).
 export function SplitActivityGroups({
   groups,
   categories,
   groupOptions = [],
   people = [],
+  categoryOptions = [],
   archived = false,
   editingDraft = null,
   inlineFormError = "",
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock = undefined,
   isSubmitting = false,
@@ -136,6 +141,26 @@ export function SplitActivityGroups({
     return () => window.cancelAnimationFrame(frame);
   }, [archived, editingDraftKey]);
 
+  // When an inline card closes (Escape, Cancel or Save), the row comes back
+  // and takes focus, so keyboard focus continues from where it was opened.
+  const editedKeyRef = useRef("");
+  useEffect(() => {
+    if (editingDraftKey) {
+      editedKeyRef.current = editingDraftKey;
+      return undefined;
+    }
+    const key = editedKeyRef.current;
+    editedKeyRef.current = "";
+    if (!key) {
+      return undefined;
+    }
+    const separator = key.indexOf(":");
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(splitActivityDomId(key.slice(0, separator), key.slice(separator + 1)))?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [editingDraftKey]);
+
   async function refreshDateGroup(date) {
     if (!onRefreshActivity || refreshingDate) {
       return;
@@ -189,6 +214,67 @@ export function SplitActivityGroups({
               item.kind === "expense" ? onEditExpense(item) : onEditSettlement(item);
             }
           };
+
+          if (isEditing && editingDraft.kind === "expense") {
+            // A settled split is read-only: the reason and Undo on top, the
+            // card, then Close. After the undo it is editable in place.
+            return (
+              <article
+                ref={pageFlagRef(PAGE_FLAG.splitInlineEditor, inlineEditorRef)}
+                id={splitActivityDomId(item)}
+                key={splitItemKey(item)}
+                className="split-inline-editor-card split-inline-expense-card"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && !event.defaultPrevented && !isSubmitting) {
+                    event.stopPropagation();
+                    onCancelEditing?.();
+                  }
+                }}
+              >
+                {inlineReadOnly
+                  ? <SettlementLockNotice lock={inlineSettlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                  : null}
+                <SplitExpenseCard
+                  key={inlineReadOnly ? "view" : "edit"}
+                  layout="inline"
+                  dialog={editingDraft}
+                  groupOptions={groupOptions}
+                  people={people}
+                  categoryOptions={categoryOptions}
+                  categories={categories}
+                  onChange={onChangeEditingDraft}
+                  autoFocusAmount={!inlineReadOnly}
+                  readOnly={inlineReadOnly}
+                  amountAction={<TotalsVisibilityToggle className="totals-visibility-toggle--form" />}
+                  onViewLinkedEntry={onViewLinkedEntry ? () => onViewLinkedEntry(editingDraft) : undefined}
+                />
+                {inlineReadOnly
+                  ? null
+                  : inlineSettlementLock
+                    ? <SettlementLockNotice lock={inlineSettlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                    : <InlineError message={inlineFormError} />}
+                <BottomActions
+                  className="split-inline-expense-actions"
+                  destructive={inlineReadOnly ? null : (
+                    <button type="button" className="lsd-quiet is-danger" disabled={isSubmitting} onClick={() => onRequestDelete?.(editingDraft)}>
+                      {messages.splits.expenseCard.deleteSplit}
+                    </button>
+                  )}
+                  secondary={(
+                    <button type="button" className="lsd-quiet" disabled={isSubmitting} onClick={onCancelEditing}>
+                      {inlineReadOnly ? messages.common.close : messages.splits.expenseCard.cancel}
+                    </button>
+                  )}
+                  primary={inlineReadOnly ? null : (
+                    <button type="button" className="lsd-primary" disabled={isSubmitting || !hasEditingChanges} onClick={() => void onSaveEditing?.()}>
+                      {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+                    </button>
+                  )}
+                />
+              </article>
+            );
+          }
 
           if (isEditing) {
             return (

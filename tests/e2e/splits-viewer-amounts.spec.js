@@ -54,10 +54,10 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   await expect(splitCard.locator(".split-share-breakdown")).toHaveCount(0);
 
   await splitCard.click();
-  // A split expense opens as the Lead · Support · Detail card in a dialog.
-  const editor = page.getByRole("dialog", { name: "Edit split" });
+  // A split expense opens as the Lead · Support · Detail card in the list.
+  const editor = page.locator(".split-inline-editor-card");
   await expect(editor).toBeVisible();
-  await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   const shareRows = editor.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row");
   await expect(shareRows).toHaveText(["Tim’s share49.99% · $20.32", "Joyce’s share50.01% · $20.33"]);
   await expect(editor.getByText("Tim owes")).toHaveCount(0);
@@ -100,7 +100,7 @@ test("split editor hides odd-cent choice when one share is zero percent", async 
   const splitCard = page.locator(".split-activity-card").filter({ hasText: description }).first();
   await splitCard.click();
 
-  const editor = page.getByRole("dialog", { name: "Edit split" });
+  const editor = page.locator(".split-inline-editor-card");
   await expect(editor.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row")).toHaveCount(2);
   await expect(editor.getByText("Odd cent", { exact: true })).toHaveCount(0);
 });
@@ -124,9 +124,9 @@ test("closing a split opened from an entries link returns to that split card", a
 
   const splitExpenseId = response.splitExpenseId;
   await page.goto(`/splits?view=person-tim&month=2025-10&split_group=split-group-none&editing_split_expense=${splitExpenseId}`);
-  await expect(page.getByRole("dialog", { name: "Edit split" })).toBeVisible();
-  await page.getByRole("dialog", { name: "Edit split" }).getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByRole("dialog", { name: "Edit split" })).toHaveCount(0);
+  await expect(page.locator(".split-inline-editor-card")).toBeVisible();
+  await page.locator(".split-inline-editor-card").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
 
   const splitCard = page.locator(`#split-activity-expense-${splitExpenseId}`);
   await expect(splitCard).toBeVisible();

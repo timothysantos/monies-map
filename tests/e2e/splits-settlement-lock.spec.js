@@ -75,12 +75,11 @@ test("a settled split opens read-only with the reason and Undo, and is editable 
   await expect(card).toContainText("Included in simplified settlement");
 
   await card.click();
-  const view = page.getByRole("dialog", { name: "View split" });
+  const view = page.locator(".split-inline-editor-card");
   await expect(view).toBeVisible();
   // The reason on top, the Undo button directly under it.
   const lock = view.locator(".settlement-lock-error");
-  await expect(lock).toContainText(`This split expense is part of the simplified settlement of ${month}-20`);
-  await expect(lock).toContainText("Undo the simplification before changing it");
+  await expect(lock).toContainText("Simplified on 20 May 2026. Undo the simplification to change it.");
   await expect(lock).not.toContainText("$");
   const undo = lock.getByRole("button", { name: "Undo simplification" });
   await expect(undo).toBeVisible();
@@ -99,7 +98,7 @@ test("a settled split opens read-only with the reason and Undo, and is editable 
   await expect.poll(async () => (await splitRow(page, settled.cashSplitId)).checkpoints.find((item) => item.id === settled.checkpointId)?.status).toBe("reopened");
 
   // The same card, now editable in place.
-  const editor = page.getByRole("dialog", { name: "Edit split" });
+  const editor = page.locator(".split-inline-editor-card");
   await expect(editor).toBeVisible();
   await expect(editor.locator(".settlement-lock-undone")).toContainText("Simplification undone");
   await editor.getByRole("textbox", { name: /Expense total/ }).fill("80");
@@ -124,7 +123,7 @@ test("a split that is not settled still opens editable, with no lock line", asyn
   expect((await splitRow(page, settled.cashSplitId)).row.settlementCheckpointId).toBe(settled.checkpointId);
   await page.goto(`/splits?view=person-tim&month=${month}&split_group=split-group-none`);
   await page.locator(".split-activity-card").filter({ hasText: lateDescription }).first().click();
-  const editor = page.getByRole("dialog", { name: "Edit split" });
+  const editor = page.locator(".split-inline-editor-card");
   await expect(editor).toBeVisible({ timeout: 60_000 });
   await expect(editor.locator(".settlement-lock-error")).toHaveCount(0);
   await expect(editor.getByRole("textbox", { name: /Expense total/ })).toBeEditable();
@@ -191,7 +190,7 @@ test("on a phone the split sheet shows the lock and offers the undo", async ({ p
   await expect(dialog).toBeVisible({ timeout: 60_000 });
 
   const lock = dialog.locator(".settlement-lock-error");
-  await expect(lock).toContainText("Undo the simplification before changing it");
+  await expect(lock).toContainText("Simplified on 20 May 2026. Undo the simplification to change it.");
   const undo = lock.getByRole("button", { name: "Undo simplification" });
   await expect(undo).toBeInViewport();
   await expect(dialog.getByRole("textbox")).toHaveCount(0);

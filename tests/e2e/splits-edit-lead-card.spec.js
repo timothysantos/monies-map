@@ -87,11 +87,23 @@ async function openSplitFromRow(page, splitExpenseId, { how = "click" } = {}) {
     await row.focus();
     await page.keyboard.press(how);
   }
-  const dialog = page.getByRole("dialog", { name: "Edit split" });
-  await expect(dialog).toBeVisible();
-  // The card replaced the old inline form for a split expense.
-  await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
-  return dialog;
+  // The card is in the list where the row was (the row's id moves to it),
+  // not in a dialog.
+  const editor = page.locator(".split-inline-editor-card");
+  await expect(editor).toBeVisible();
+  await expect(editor).toHaveAttribute("id", `split-activity-expense-${splitExpenseId}`);
+  await expect(editor.locator("xpath=ancestor::*[contains(@class,'split-date-items')]")).toHaveCount(1);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  return editor;
+}
+
+// The same card by the deep link on a wide screen: in the list, not a dialog.
+async function openSplitInline(page, splitExpenseId) {
+  await page.goto(`/splits?view=person-tim&month=${MONTH}&split_group=split-group-none&editing_split_expense=${splitExpenseId}`);
+  const editor = page.locator(".split-inline-editor-card");
+  await expect(editor).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  return editor;
 }
 
 async function savedSplit(page, splitExpenseId) {
@@ -379,11 +391,11 @@ test.describe("Edit split on a phone", { tag: "@webkit" }, () => {
 });
 
 test.describe("Edit split on a wide screen", () => {
-  test("the dialog puts the card left of the rows and saves an uneven split as the form did", async ({ page }) => {
+  test("the inline card puts the card left of the rows and saves an uneven split as the form did", async ({ page }) => {
     await setUp(page, { phone: false });
     const description = `Lead edit desktop ${Date.now()}`;
     const splitExpenseId = await createSplit(page, { description, amountMinor: 12000, splitBasisPoints: 2500, splitAmountMinor: 3000 });
-    const dialog = await openSplit(page, splitExpenseId);
+    const dialog = await openSplitInline(page, splitExpenseId);
     const [cardBox, rowsBox] = await Promise.all([box(dialog.locator(".lsd-card")), box(dialog.locator(".lsd-rows"))]);
     expect(rowsBox.x).toBeGreaterThan(cardBox.x + cardBox.width - 1);
     // Nothing folds on a wide screen, and the share editor is open.
@@ -418,7 +430,7 @@ test.describe("Edit split on a wide screen", () => {
   test("Delete asks in the app, and a linked split's payment row is locked", async ({ page }) => {
     await setUp(page, { phone: false });
     const { splitExpenseId } = await createLinkedSplit(page);
-    const dialog = await openSplit(page, splitExpenseId);
+    const dialog = await openSplitInline(page, splitExpenseId);
     const paymentRow = dialog.locator("[data-row='paymentMethod']");
     await expect(paymentRow).toHaveClass(/is-locked/);
     await expect(paymentRow.locator("select")).toHaveCount(0);

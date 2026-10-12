@@ -20,6 +20,7 @@ export function SplitsMainSection({
   categories,
   groupOptions,
   people,
+  categoryOptions,
   visibleMatches,
   groupedCurrentActivity,
   archivedBatches,
@@ -27,6 +28,7 @@ export function SplitsMainSection({
   inlineSplitDraft,
   inlineSplitError,
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock,
   isSubmitting,
@@ -142,9 +144,11 @@ export function SplitsMainSection({
             categories={categories}
             groupOptions={groupOptions}
             people={people}
+            categoryOptions={categoryOptions}
             inlineSplitDraft={inlineSplitDraft}
             inlineSplitError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
+            inlineReadOnly={inlineReadOnly}
             isUndoingSettlementLock={isUndoingSettlementLock}
             onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}

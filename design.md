@@ -673,13 +673,16 @@ Where it is used:
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
-  dialog in both layouts: the phone sheet and the wide dialog). Selecting a
-  split expense row opens this card on every screen, as does the
-  `editing_split_expense` link; the old inline row form for a split expense is
-  gone (a settlement row still edits in place on a wide screen). Enter and
-  Space on the focused row open it, Escape and Cancel close it, and focus
-  goes back to the row (`returnFocusToSplitRow`: a modal Dialog with no
-  trigger button would otherwise drop focus on the page).
+  dialog in the phone sheet and the wide dialog, and in the list). Selecting a
+  split expense row opens this card, as does the `editing_split_expense`
+  link: on a wide screen it opens inline in the list, in place of the row,
+  exactly as the Entries inline editor does (`layout="inline"`, the
+  `splitInlineEditor` page flag, the bottom bar at its end; no dialog); a
+  phone opens the sheet, and the household view and the archived batch open
+  the dialog (`returnFocusToSplitRow`: a modal Dialog with no trigger
+  button would otherwise drop focus on the page). A settlement row still
+  edits in its own form. Enter and Space on the focused row open the card,
+  Escape and Cancel close it, and the row takes focus back.
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
   (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
@@ -699,10 +702,11 @@ Where it is used:
   the same card with no controls and Close. The save request is the one the
   form sent. Deleting from the card closes it once the split is gone. A
   settled split (in a simplified settlement, `settlementCheckpointId`, or a
-  closed group batch, `isArchived`) opens the same card read-only, titled
-  "View split" (`split-card-lock.js`): the lock sentence (the server's own
-  wording for a refused change) on top, its Undo simplification or Undo
-  settle-up button directly under it, then the card with no fields, no Save
+  closed group batch, `isArchived`) opens the same card read-only
+  (the dialog is titled "View split"; `split-card-lock.js`): a short lock line
+  on top ("Settled on 17 May 2026. Undo the settle-up to change it." or
+  "Simplified on 20 May 2026. Undo the simplification to change it."), its
+  Undo button directly under it, then the card with no fields, no Save
   and no Delete, and Close. After the undo succeeds the card turns editable
   in place (the card is keyed by mode so its share editor opens fresh), and a
   failed undo shows its message in the same place. The household view is

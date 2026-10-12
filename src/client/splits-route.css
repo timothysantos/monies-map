@@ -680,7 +680,8 @@ button.split-activity-card:hover {
   display: contents;
 }
 
-.split-expense-card.is-dialog {
+.split-expense-card.is-dialog,
+.split-expense-card.is-inline {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: 20px;
@@ -723,7 +724,8 @@ button.split-activity-card:hover {
   min-height: 44px;
 }
 
-.split-expense-card.is-dialog .split-expense-source-note {
+.split-expense-card.is-dialog .split-expense-source-note,
+.split-expense-card.is-inline .split-expense-source-note {
   grid-column: 2;
 }
 
@@ -796,4 +798,43 @@ button.split-activity-card:hover {
 
 .split-expense-card-dialog .settlement-lock-error > span {
   flex: 1 1 100%;
+}
+
+/* The split expense card in the list on a wide screen (like the Entries
+   inline editor): the reason and Undo of a settled split on top, the card,
+   then the bottom bar at the end. */
+.split-inline-expense-card {
+  display: grid;
+  gap: 12px;
+}
+
+.split-inline-expense-card > .settlement-lock-error,
+.split-inline-expense-card > .settlement-lock-undone {
+  margin: 0;
+}
+
+.split-inline-expense-card .settlement-lock-error > span {
+  flex: 1 1 100%;
+}
+
+.split-inline-expense-actions.lsd-bottom {
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.split-inline-expense-actions .lsd-bottom-end {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .split-expense-card.is-inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The total with the money visibility toggle beside it (inline card). */
+.split-expense-card .split-lead-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

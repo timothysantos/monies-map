@@ -8,10 +8,12 @@ export function SplitsActivitySection({
   categories,
   groupOptions,
   people,
+  categoryOptions,
   searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock,
   isSubmitting,
@@ -52,9 +54,11 @@ export function SplitsActivitySection({
             categories={categories}
             groupOptions={groupOptions}
             people={people}
+            categoryOptions={categoryOptions}
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
+            inlineReadOnly={inlineReadOnly}
             isUndoingSettlementLock={isUndoingSettlementLock}
             onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}

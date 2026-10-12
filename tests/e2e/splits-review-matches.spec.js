@@ -78,7 +78,7 @@ test("review matches links a split expense into entries and hides already-linked
   await pantryCard.click();
 
   // A split expense opens as the card; its Linked entry row opens the entry.
-  const splitCardDialog = page.getByRole("dialog", { name: "Edit split" });
+  const splitCardDialog = page.locator(".split-inline-editor-card");
   const cardLinkedEntryRow = splitCardDialog.locator("[data-row='linkedEntry']");
   await expect(cardLinkedEntryRow).toHaveText(/Linked entry\s*View entry/);
   await cardLinkedEntryRow.click();
