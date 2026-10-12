@@ -48,7 +48,7 @@ function build({ phone }) {
       bubble: M.bubble(active.icon),
       title: active.name,
       subtitle: `${currency} · ${count}`,
-      amount: amount ? M.money(amount, owedToYou ? "in" : "short") : "Settled up",
+      amount: hidden ? M.money("", "neutral") : amount ? M.money(amount, owedToYou ? "in" : "short") : "Settled up",
       caption: hidden ? `Balance with ${other}` : words
     })}
     <div class="lsd-chips">

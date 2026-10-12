@@ -70,7 +70,15 @@
     const over = !hidden() && overPct;
     return `<div class="lsd-progress"><span class="lsd-bar"><span class="lsd-bar-fill${over ? " money-short" : ""}" style="width:${fill}%"></span></span>${start || end ? `<div class="lsd-progress-line"><span>${start ?? ""}</span><span>${end ?? ""}</span></div>` : ""}</div>`;
   }
+  // A figure-first LeadCard (no head line): eyebrow, amount with its aside, optional bar and chips.
+  function lead({ eyebrow, amount, aside, progressHtml, chips, children, cls = "" }) {
+    return `<section class="lsd-card ${cls}">${eyebrow ? `<span class="lsd-eyebrow">${eyebrow}</span>` : ""}<div class="lsd-figure"><span class="lsd-amount">${amount}</span>${aside ? `<span class="lsd-amount-aside">${aside}</span>` : ""}</div>${progressHtml ?? ""}${chips ? `<div class="lsd-chips">${chips}</div>` : ""}${children ?? ""}</section>`;
+  }
+  // A Support pill (summary-support-pill shape): soft tint only for good outcomes.
+  function pill(label, value, { soft, small } = {}) {
+    return `<div class="mk-pill ${soft && !hidden() ? "money-soft" : ""}"><span class="mk-pill-label">${label}</span><strong>${value}</strong>${small ? `<small>${small}</small>` : ""}</div>`;
+  }
   function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
   function hide(selector) { document.querySelectorAll(selector).forEach((n) => { n.style.setProperty("display", "none", "important"); }); }
-  window.M = { icon, personColour, personVars, money, chip, row, rows, bubble, hero, progress, el, hide, hidden };
+  window.M = { lead, pill, icon, personColour, personVars, money, chip, row, rows, bubble, hero, progress, el, hide, hidden };
 })();

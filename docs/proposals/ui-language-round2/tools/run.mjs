@@ -62,6 +62,24 @@ const helpers = {
   }
 };
 
+// The app's small round floating buttons (privacy eye, Add entry/expense, Ask
+// dock) sit over the right edge of whatever scrolls under them, so they hide
+// the first screen's rows in a still picture. They stay exactly as today in the
+// app; the pictures hide them so BEFORE and AFTER compare like for like.
+async function calmFloaters(page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("body *")) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== "fixed" || el.classList.contains("mk-float-bar") || el.classList.contains("mk-sticky-bar")) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.width <= 110 && r.height <= 110 && r.right > innerWidth - 40 && r.top > 120 && !el.closest("nav,.mk-sheet")) {
+        el.style.setProperty("display", "none", "important");
+      }
+    }
+  });
+  await page.waitForTimeout(150);
+}
+
 const failures = [];
 for (const scenario of scenarios) {
   if (filters.length && !filters.some((f) => scenario.name.includes(f))) continue;
@@ -69,6 +87,7 @@ for (const scenario of scenarios) {
   const page = await context.newPage();
   try {
     await scenario.run(page, helpers, async (suffix, opts = {}) => {
+      if (scenario.device === "phone" && !opts.keepFloaters) await calmFloaters(page);
       const file = path.join(OUT, `${scenario.name}-${suffix}.png`);
       await page.screenshot({ path: file, fullPage: Boolean(opts.fullPage) });
       console.log(file);
