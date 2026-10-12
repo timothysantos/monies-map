@@ -125,7 +125,11 @@ Layout, top to bottom:
   "Saved" (add mode) with a context line: person · scope · month in chat,
   person · month beside the title in add mode. In chat mode, once there is
   something to start over from, a quiet "New chat" text button (accent
-  text with a pen glyph, 44 px tall) sits at the header's right.
+  text with a pen glyph, 44 px tall) sits at the header's right. On a
+  phone, after the Entries + or the Splits receipt button opened the card,
+  a "‹ Entries" / "‹ Splits" back link (accent text, bold, a 44 px target
+  in a short row) sits at the top left above the title, the standard Back
+  place, far from Save. Its way back is "Ask origin" below.
 - Conversation (`role="log"`, polite live region), which scrolls: first,
   only while Claude credits are low, used up or capped, the Claude credit
   notice (see "Claude credit notice"), in every mode; then in chat
@@ -256,7 +260,9 @@ while the card is active.
 `buildAskChips` derives the card's row from the mode and the card:
 
 - chat, no card: Scan receipt, Paste, Add entry, Add expense;
-- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first; then a pending
+- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first (with the header's
+  back link, the phone's Ask page after the + or the receipt button, only
+  while the card is untouched: `headerBack`); then a pending
   question's answers (the readers send structured questions; the client
   words them and shows the question as a line above the row), or Scan
   receipt, Paste, Transfer, Income on an empty expense; Split with
@@ -273,6 +279,29 @@ while the card is active.
   category, month or person, then "All of them"), with the question as the
   line above the row; a view change: "Switch to Serene · Shared" (filled),
   then the same as after an answer, under "Change the view?".
+
+### Ask origin
+
+Where Ask's back link goes on a phone (`ask-origin.js`, pure, unit tested;
+`use-ask-origin.js`, the Entries and Splits hooks; both ship with those
+routes, never the first screen). The shell's + and receipt handlers
+(`openAskFromPage` in App.jsx, a few lines inline to stay out of the
+module) build the origin (an id, the way in, the page's path with its
+query, the window's scroll), fire `monies:ask-origin` so the page can add
+an open sheet with its draft (`useAskOriginSheet`: Entries adds its edit
+sheet's edited entry, or its add sheet's draft), replace the page's own
+history entry with the origin as `state.askReturn`, then push `/ask` with
+it as `state.askOrigin`. The Ask page keeps it in sessionStorage
+(`monies.askOrigin.v1`, one per way in, versioned) and plans its way back
+with `planAskBack`: history.back while its history entry has the origin
+(so the link and the phone's back gesture are one way), else the kept
+place (opened with `state.askReturn`), else the plain page for the view
+and month. The page puts the place back once (`useAskReturn`): the sheet,
+then the scroll, set each frame until it holds (rows render over a few
+frames), never after the person scrolls; and it keeps its URL and scroll
+as the kept place whenever it is left another way, for a card the Ask tab
+reopens. Paths are checked against the way in's page, so a kept origin
+never leads outside the app.
 
 ### Ask conversation store
 

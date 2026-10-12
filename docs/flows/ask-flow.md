@@ -51,12 +51,52 @@ the main area there (the Shortcut's link, the From Ask chip's way back, an
 old link), and shows no field or panel.
 
 Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`, and an
-answer's `Open in Entries`, see "Search and filter"), the entry's
+answer's `Open in Entries`, see "Search and filter"; the header's
+`‹ Entries` / `‹ Splits` link and the chip row's `‹ Entries` go back to
+the page exactly as it was, see "Back to where you were"), the entry's
 editor (`Open this entry`: `/entries?editing_entry=<id>` in the entry's month),
 Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
 `/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
 Entries composer through `?action=add-expense` with the card's values, or the
 Splits expense dialog through `?split_action=add-expense`).
+
+## Back to where you were
+
+On a phone the Entries + and the Splits receipt button open Ask as a new
+history entry, so going back returns to the page as it was, never out of
+the app (`ask-origin.js`, `use-ask-origin.js`; design.md "Ask origin"):
+
+- Before Ask opens, the page's place is kept on its own history entry
+  (`state.askReturn`) and handed to Ask (`state.askOrigin`): its URL (the
+  month, view, scope, the Entries filters, the split group), the window's
+  scroll, and an open Entries edit or add sheet with its draft. (On a
+  phone the + sits under a sheet's backdrop, so a sheet is part of the
+  place only if something else opens Ask while it is open.)
+- The ways back: the header's back link ("‹ Entries" / "‹ Splits", top
+  left above the title, far from Save; its screen reader name is "Back to
+  Entries"), the chip row's "‹ Entries" (only while the card is untouched:
+  nothing typed, picked, read or said), and the phone's back gesture. With
+  the page right behind Ask in the history the link is history.back, so
+  all three are one way.
+- The page puts the place back once its data is there: the sheet with its
+  draft (Close still discards it to the saved entry), then the scroll,
+  set again each frame until it holds (rows render over a few frames) and
+  never after the person scrolls. Forward and back again does not move the
+  person a second time.
+- Nothing is lost and nothing asks: an untouched card just returns; a
+  started card stays in the conversation store, the Ask tab shows its dot,
+  and the card is there when the Ask tab (or the + again) reopens it.
+- When Ask's history entry has lost the place (the Ask tab reopened the
+  card, or Ask changed its own URL), the back link opens the place kept
+  for the tab's session (sessionStorage `monies.askOrigin.v1`, one per way
+  in, versioned, checked so it can only lead to /entries or /splits): the
+  place the + kept until the page has put it back, then the page's own URL and
+  scroll from when it was last left. With nothing kept (an /ask link opened
+  directly) it opens the page for the same view and month.
+- After a save, "Back to Entries" still opens the saved entry's month so
+  the new row shows; the header's link goes back to the place.
+- On a wide screen the + and the receipt button open the card in the Ask
+  panel and the page never leaves, so there is no back link there.
 
 ## Desktop
 
@@ -443,6 +483,9 @@ Ask does not own:
   scope change waits for its chip.
 - Leaving Ask and coming back, or reloading the tab, keeps the
   conversation; the Ask tab shows a dot meanwhile.
+- On a phone, after the + or the receipt button, the header's "‹ Entries"
+  / "‹ Splits" link and the back gesture return to the page exactly as it
+  was (URL, scroll, an open sheet with its draft), with no confirm.
 - Low, used up or capped Claude credits show one calm notice at the top of
   the conversation with the Claude Console link and I've topped up; the ✕
   hides it for the session until the state gets worse; hidden money shows
@@ -472,7 +515,9 @@ Ask does not own:
 
 ## Audit Status
 
-Current status: aligned with tests (`tests/ask-dock-layout.test.mjs`,
+Current status: aligned with tests (`tests/ask-origin.test.mjs`,
+`tests/e2e/ask-back-nav.spec.js` (also in WebKit on an iPhone 13 profile),
+`tests/ask-dock-layout.test.mjs`,
 `tests/ask-dock-state.test.mjs`, `tests/e2e/ask-dock.spec.js` (desktop:
 1,024, 1,280 and 1,440 px), the docked header case in
 `tests/e2e/header-tab-fit.spec.js`, `tests/ask-card-model.test.mjs`,

@@ -535,6 +535,11 @@ posted date, the owner and a note. Tap any of them to change it.
 - **Share with … on Splits**: the switch on the card shares the expense with
   the other person, as **Add to Splits** does on Entries.
 - **Edit in form**: open the same entry in the usual form instead.
+- **‹ Entries** (or **‹ Splits**) at the top left: after the round **+**
+  or the receipt button opened Ask, go back to the page exactly as you
+  left it: the same month, filters and place in the list. Your phone's
+  back gesture does the same. A card you had started stays on Ask, with
+  the dot on the Ask button, and is there when you come back.
 - **Save**: appears beside the message box when the card is ready. It stays
   greyed out until the card has an amount and what it was.
 - **Back to the unsaved entry**: if you ask for entries while a card is
