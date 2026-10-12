@@ -22,6 +22,18 @@ export function isLedgerMatchedPreviewRow(row) {
     || (row.commitStatus === "skipped" && !row.commitStatusExplicit && !row.isCertifiedConflict);
 }
 
+// The rows a commit would add as new ledger entries: the visible rows still
+// included and not paired with an entry the ledger already has. The commit
+// bar says it in words and the file card shows it as its figure.
+export function countRowsToImport(previewRows) {
+  return previewRows.filter((row) => (
+    !row.isStatementMatchResolved
+    && !(row.isCertifiedConflict && row.commitStatus === "skipped")
+    && (row.commitStatus === "included" || !row.commitStatus)
+    && !row.reconciliationTargetTransactionId
+  )).length;
+}
+
 export function buildImportPreviewModel({
   accounts,
   preview,

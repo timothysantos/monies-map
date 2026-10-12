@@ -34,6 +34,14 @@ import { buildAccountSignals } from "./account-signals";
 import type { Audience, MoneySignal } from "./types";
 import { tripInOtherSignal } from "./trip-signal";
 
+// The plan-balance lines point at the plan itself: the two ways to even it.
+const PLAN_SHORTFALL_THINKS = [
+  "Raising the income you expect, or trimming a budget line, brings the plan back to even.",
+  "A plan that spends more than it brings in can't all happen. Raising the income you expect, or trimming a budget line, fixes that.",
+  "Changing the plan now is easier than finding the gap at the end of the month.",
+  "Either the income you expect is too low or a budget line is too high. If a bonus or extra pay is coming, adding it may close the gap."
+];
+
 const UNSPENT_PLAN_THINKS = ["Until it's spent, it can still go anywhere you choose.", "A small decision now keeps it from slipping away.", "You don't have to spend it just because you planned to."];
 
 export const MONTH_COPY = {
@@ -64,6 +72,28 @@ export const MONTH_COPY = {
       fact: "Sorted: every bill you planned so far is matched to its payment.",
       think: "Each one now shows what it really cost next to what you planned."
     }
+  },
+  planShortfall: {
+    phrasings: [
+      "In {month} you planned to spend {over} more than you expect to earn.",
+      "Your {month} plan spends {over} more than it expects to earn.",
+      "{month}'s plan spends {planned} but only expects {income} to come in, {over} less.",
+      "The {month} plan doesn't balance: {planned} planned to go out, {income} expected to come in."
+    ],
+    think: PLAN_SHORTFALL_THINKS,
+    sorted: {
+      fact: "Sorted: the plan now covers what you planned to spend.",
+      think: "The income you expect matches what you planned to spend."
+    }
+  },
+  planShortfallSavings: {
+    phrasings: [
+      "Your {month} plan spends {over} more than it expects to earn, so only {kept} of the {goal} savings goal fits.",
+      "In {month} you planned to spend {over} more than you expect to earn, which leaves room for only {kept} of the {goal} you planned to save.",
+      "{month}'s plan spends {planned} against {income} of expected income, so only {kept} of the {goal} savings goal fits.",
+      "The {month} plan is {over} short, so only {kept} of the {goal} you planned to save fits."
+    ],
+    think: PLAN_SHORTFALL_THINKS
   },
   oneOffOverPlan: {
     phrasings: [
@@ -366,6 +396,11 @@ const MIN_SPENDING = 3;
 // (shown under Also only).
 export const CATEGORY_OVER_RATIO = 0.1;
 export const CATEGORY_OVER_MINOR = 2_000;
+// A month's plan is out of balance when its planned spend (savings rows
+// included) is above its planned income by more than this share of that
+// income and this much money, whichever is larger.
+export const PLAN_SHORTFALL_RATIO = 0.02;
+export const PLAN_SHORTFALL_MINOR = 5_000;
 
 function expenses(input: MonthSignalInput) {
   return input.entries.filter((entry) => entry.entryType === "expense" && Math.abs(entry.amountMinor) > 0);
@@ -467,6 +502,45 @@ export function unlinkedBillsSignal(input: MonthSignalInput): MoneySignal | null
     phrasings: phrase(MONTH_COPY.unlinkedBills, { count: due.length, total, month: monthName(input.month), label: due[0].label || due[0].categoryName || "a planned bill" }, { one: due.length === 1 }),
     sorted: MONTH_COPY.unlinkedBills.sorted,
     topic: "later"
+  };
+}
+
+// Quick fix: the month's plan spends more than the income it expects. The
+// savings rows are part of the planned spend (the Month cards' "Remaining
+// budget" is planned income minus planned spend), so the goal is never
+// added a second time. Skipped for a finished month, whose plan is history,
+// and for a month with no income planned.
+export function planShortfallSignal(input: MonthSignalInput): MoneySignal | null {
+  if (phaseOf(input) === "past") {
+    return null;
+  }
+  const planRows = rows(input);
+  const plannedMinor = sum(planRows.map((row) => row.plannedMinor));
+  const incomeMinor = sum(input.incomeRows.map((row) => row.plannedMinor));
+  const shortMinor = plannedMinor - incomeMinor;
+  if (plannedMinor <= 0 || incomeMinor <= 0 || shortMinor <= Math.max(PLAN_SHORTFALL_MINOR, Math.round(incomeMinor * PLAN_SHORTFALL_RATIO))) {
+    return null;
+  }
+  const goalMinor = sum(planRows.filter((row) => row.label === "Savings").map((row) => row.plannedMinor));
+  // Part of the goal still fits only while the shortfall is smaller than it.
+  const copy = goalMinor > shortMinor ? MONTH_COPY.planShortfallSavings : MONTH_COPY.planShortfall;
+  const over = input.formatMoney(shortMinor);
+  return {
+    key: "plan-shortfall",
+    kind: "quick_fix",
+    weight: shortMinor,
+    numbers: { primaryMinor: shortMinor, plannedMinor, incomeMinor },
+    primaryText: over,
+    phrasings: phrase(copy, {
+      month: monthName(input.month),
+      over,
+      planned: input.formatMoney(plannedMinor),
+      income: input.formatMoney(incomeMinor),
+      kept: input.formatMoney(goalMinor - shortMinor),
+      goal: input.formatMoney(goalMinor)
+    }),
+    sorted: MONTH_COPY.planShortfall.sorted,
+    topic: "plan"
   };
 }
 
@@ -997,6 +1071,7 @@ export function buildMonthSignals(input: MonthSignalInput): MoneySignal[] {
     ...buildAccountSignals(accountSignalInput).map((signal) => ({ ...signal, yieldsToBiggerQuestion: true })),
     tripInOtherSignal({ entries: input.entries, formatMoney: input.formatMoney }),
     unlinkedBillsSignal(input),
+    planShortfallSignal(input),
     oneOffOverPlanSignal(input),
     categoryOverPlanSignal(input),
     incomeAbovePlanSignal(input),

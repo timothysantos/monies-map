@@ -42,7 +42,8 @@ test("a page that fails after navigating shows the page error in place of the pr
   const alert = page.getByRole("alert").filter({ hasText: "The Month page could not load." });
   await expect(alert).toBeVisible();
   await expect(alert).toContainText("Your saved data is not affected.");
-  await expect(alert).toContainText("Month exploded");
+  await expect(alert).toContainText("We couldn't reach your data just now.");
+  await expect(alert).not.toContainText("Month exploded");
   await expect(alert).not.toContainText("App shell");
   // The Summary figures must not stay on screen under the Month tab.
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toHaveCount(0);
@@ -81,8 +82,11 @@ test("a first-load page failure uses the shared error panel: an alert, plain wor
   const alert = page.getByRole("alert").filter({ hasText: "The Month page could not load." });
   await expect(alert).toBeVisible({ timeout: 30_000 });
   await expect(alert.locator(".app-loading-error-copy")).toHaveText("Your saved data is not affected. Try again in a moment.");
-  // The technical reason stays available, in the smaller issue line.
-  await expect(alert.locator(".app-loading-issue-inline")).toContainText("Month exploded");
+  // One plain line for the failure; the server's reason stays on the panel
+  // as data, off the screen.
+  await expect(alert.locator(".app-loading-issue-inline")).toHaveText("We couldn't reach your data just now.");
+  await expect(alert).not.toContainText("Month exploded");
+  await expect(alert).toHaveAttribute("data-technical-detail", /Month exploded/);
   await expect(alert.getByRole("button")).toHaveCount(1);
   await expect(alert.getByRole("button", { name: "Try loading again" })).toHaveClass(/dialog-primary/);
 });

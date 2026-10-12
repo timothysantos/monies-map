@@ -193,6 +193,7 @@ test("every sheet with a draft tells the swipe whether it changed; the phone Spl
     "entries-panel.jsx",
     "entry-composer-section.jsx",
     "import-batch-bar.jsx",
+    "import-preview-row-list.jsx",
     "month-plan-sheet.jsx",
     // The shared dialog frame: the topped-up form, the notes, the confirmations
     // and the Settings editors all render through it.

@@ -7,32 +7,34 @@
      sheets take --sheet-radius. */
   --chrome-edge: 12px;
   --chrome-radius: 22px;
-  --chrome-surface: rgba(255, 255, 255, 0.96);
-  --chrome-shadow: 0 12px 30px rgba(27, 24, 21, 0.14);
+  --chrome-surface: rgba(255, 253, 248, 0.96);
+  --chrome-shadow: 0 12px 30px rgba(59, 42, 31, 0.14);
   --sheet-radius: 24px;
-  --bg: #ebe8e1;
-  --panel: rgba(255, 255, 255, 0.92);
-  --panel-strong: #2f2c28;
-  --text: #26231f;
-  --muted: #736f69;
-  --line: rgba(38, 35, 31, 0.12);
+  --bg: #eee4cf;
+  --panel: rgba(255, 253, 248, 0.92);
+  --panel-strong: #33241a;
+  --text: #3b2a1f;
+  --muted: #6e5f54;
+  --line: rgba(110, 95, 84, 0.2);
   --positive: var(--pastel-mint-ink);
   --negative: var(--pastel-rose-ink);
   --accent: #934923;
   --accent-strong: #b15e2f;
-  --shadow: 0 10px 30px rgba(27, 24, 21, 0.06);
-  /* Pastel palette: design.md "Pastel palette". */
-  --pastel-mint: #e4f2ea;
-  --pastel-mint-ink: #17684a;
-  --pastel-rose: #f9e5e1;
-  --pastel-rose-ink: #a3352a;
-  --pastel-sky: #e3ecf6;
-  --pastel-sky-ink: #2f5b86;
-  --pastel-lavender: #ece8f5;
-  --pastel-lavender-ink: #5c4d8c;
-  --pastel-butter: #f8efd3;
-  --pastel-butter-ink: #735512;
-  --pastel-neutral: #f6f4ef;
+  --shadow: 0 10px 30px rgba(59, 42, 31, 0.06);
+  /* Pastel palette, 1970s warm direction: design.md "Pastel palette".
+     The names stay; mint is avocado, rose brick red, sky dusty teal,
+     lavender faded plum and butter harvest gold. */
+  --pastel-mint: #e8ebd0;
+  --pastel-mint-ink: #4c5e1a;
+  --pastel-rose: #f5ded4;
+  --pastel-rose-ink: #973223;
+  --pastel-sky: #d6e7e2;
+  --pastel-sky-ink: #2c5f5f;
+  --pastel-lavender: #eedce6;
+  --pastel-lavender-ink: #6b4360;
+  --pastel-butter: #f5e4b8;
+  --pastel-butter-ink: #664a0b;
+  --pastel-neutral: #faf4e6;
   --pastel-mint-line: color-mix(in srgb, var(--pastel-mint-ink) 22%, transparent);
   --pastel-rose-line: color-mix(in srgb, var(--pastel-rose-ink) 22%, transparent);
   --pastel-sky-line: color-mix(in srgb, var(--pastel-sky-ink) 22%, transparent);
@@ -54,7 +56,7 @@ body {
   background:
     radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 22%),
     radial-gradient(circle at left 20%, color-mix(in srgb, var(--pastel-mint) 60%, transparent), transparent 30%),
-    linear-gradient(180deg, #f6f4ef 0%, var(--bg) 100%);
+    linear-gradient(180deg, var(--pastel-neutral) 0%, var(--bg) 100%);
 }
 
 button {
@@ -8769,6 +8771,69 @@ th {
     display: table-cell;
     padding: 12px 10px;
     border-top: 1px solid var(--line);
+  }
+}
+
+/* Phone tap targets (design.md: every tappable is at least 44 x 44 px). A
+   control that is smaller keeps its look and gains a centred, invisible hit
+   area of at least 44 x 44 px (its own width when that is already wider).
+   :where() keeps these at zero specificity, so a control that is already
+   positioned (absolute, fixed, sticky) keeps its own position. Controls a
+   pseudo-element cannot reach (fields, clipped rows) grow instead, next to
+   their own rules. tests/e2e/phone-tap-targets.spec.js measures the result. */
+@media (max-width: 760px) {
+  :where(
+    .period-range-segment, .financial-insight-toggle, .icon-action, .month-actions-trigger,
+    .month-plan-summary-toggle, .table-sort-button, .note-trigger,
+    .entries-date-refresh-button, .entries-breakdown-toggle, .summary-chevron,
+    .split-matches-link, .checkin-action, .subtle-action, .ask-chip, details > summary
+  ) {
+    position: relative;
+  }
+
+  :where(
+    .period-range-segment, .financial-insight-toggle, .icon-action, .month-actions-trigger,
+    .month-plan-summary-toggle, .table-sort-button, .note-trigger,
+    .entries-date-refresh-button, .entries-breakdown-toggle, .summary-chevron,
+    .split-matches-link, .checkin-action, .subtle-action, .ask-chip, details > summary
+  )::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  /* A real button beats a neighbour's invisible hit area where they overlap. */
+  .planned-link-manage-trigger {
+    position: relative;
+    z-index: 1;
+  }
+
+  .dialog-primary,
+  .panel-splits .dialog-primary,
+  .panel-splits .split-match-card .dialog-primary,
+  select.table-edit-input {
+    min-height: 44px;
+  }
+
+  /* The person pills clip their text with an ellipsis, which would clip a
+     hit area too: the pill itself is 44 px, inside a row with no padding. */
+  .context-block .pill {
+    min-height: 44px;
+  }
+
+  .context-block .pill-row {
+    padding: 1px;
+  }
+
+  /* A transparent icon button (no fill) is simply 44 x 44. */
+  .share-row-secondary-action {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
   }
 }
 

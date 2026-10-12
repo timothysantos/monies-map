@@ -4,6 +4,7 @@ import "./import-review.css";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
 import { ImportAskFirst } from "./import-batch-bar";
+import { countRowsToImport } from "./import-preview-model";
 
 // The one commit control of an import preview. It stays in view at the
 // bottom of the review, says what the commit will do, and asks first when
@@ -36,9 +37,7 @@ export function ImportCommitBar({
   const visibleRows = previewRows.filter((row) => (
     !row.isStatementMatchResolved && !(row.isCertifiedConflict && row.commitStatus === "skipped")
   ));
-  const newImportCount = visibleRows.filter((row) => (
-    (row.commitStatus === "included" || !row.commitStatus) && !row.reconciliationTargetTransactionId
-  )).length;
+  const newImportCount = countRowsToImport(previewRows);
   const skippedCount = visibleRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
   const summaryItems = ledgerMatchedStatement ? [

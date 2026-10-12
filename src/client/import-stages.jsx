@@ -3,7 +3,7 @@ import { Check } from "lucide-react";
 import { importMessages } from "./copy/en-SG-imports";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
-import { DeleteRowButton } from "./delete-row-button";
+import { ImportRollbackConfirm } from "./import-rollback-confirm";
 import "./import-review.css";
 
 // The three steps of an import: bring files, review one, see what changed.
@@ -62,9 +62,8 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
   // Re-render when money is revealed or hidden.
   useMoneyPrivacy();
   const rollback = onRollback ? (
-    <DeleteRowButton
+    <ImportRollbackConfirm
       label={summary.sourceLabel}
-      destructive={false}
       buttonClassName="subtle-action import-done-rollback"
       triggerLabel={importMessages.doneRollback}
       confirmLabel={importMessages.rollbackConfirm}
@@ -72,7 +71,7 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
       onConfirm={onRollback}
     >
       {importMessages.doneRollback}
-    </DeleteRowButton>
+    </ImportRollbackConfirm>
   ) : null;
   if (compact) {
     return (

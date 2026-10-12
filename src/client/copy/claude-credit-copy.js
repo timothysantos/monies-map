@@ -32,6 +32,23 @@ export const claudeCreditCopy = {
   lastChecked: (when) => `Last checked ${when}`,
   settingsTitle: "Ask and AI",
   settingsDetail: "Claude credits for Ask",
+  // The lead at the top of the opened Ask and AI section.
+  settingsLead: {
+    title: "Ask",
+    usesClaude: "Uses Claude",
+    usesBasic: "Uses the basic model",
+    usesBasicForNow: "Uses the basic model for now",
+    modelLabel: "Model",
+    modelClaude: "Claude",
+    modelBasic: "Basic model",
+    chipNotSetUp: "Claude not set up",
+    chipNotUsedYet: "Not used yet",
+    chipOk: "Credits fine",
+    chipLow: "Credits running low",
+    chipExhausted: "Credits used up",
+    chipCapped: "Monthly limit reached"
+  },
+  lastCheckedLabel: "Last checked",
   form: {
     title: "I've topped up",
     description: "Enter the Claude credit you bought. Ask counts from this amount again.",

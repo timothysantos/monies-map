@@ -1,16 +1,18 @@
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { CalendarDays, Info } from "lucide-react";
-import { DuplicateMatchPopover } from "./import-preview-rows-table";
+import { DuplicateMatchPopover } from "./import-preview-row-helpers";
 import { RestorePreviewRowDialog } from "./import-restore-row-dialog";
 import { DateRow } from "./detail-field-rows";
 import { SheetDialog } from "./sheet-dialog";
-import { DetailRows, LeadCard } from "./ui/lead-support-detail";
+import { DetailRow, DetailRows, LeadCard } from "./ui-components";
+import { AddRow } from "./settings-add-row";
+import { DeleteRowButton } from "./delete-row-button";
 import { useIsMobileLayout } from "./use-viewport";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
+import { entryTypeLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton } from "./delete-row-button";
 import { StatementFixSuggestions } from "./statement-fix-suggestions";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
@@ -205,8 +207,10 @@ export function ImportPreviewReview({
         />
       ) : null}
 
-      {/* These pills give a fast count of what the larger preview table will contain. */}
+      {/* These pills give a fast count of what the larger preview table will contain.
+          The file card above them already gives the dates it covers. */}
       <PreviewGuardrailPills
+        showCoverage={false}
         preview={preview}
         previewReconciliationRowCount={previewReconciliationRowCount}
         skippedPreviewRowCount={skippedPreviewRowCount}
@@ -328,7 +332,7 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
                   <span className="import-history-inline">
                     {messages.common.triplet(
                       row.accountName ?? messages.common.emptyValue,
-                      row.entryType,
+                      entryTypeLabel(row.entryType),
                       formatService.formatMinorInput(row.amountMinor)
                     )}
                   </span>
@@ -497,31 +501,46 @@ function StatementAccountMapping({
     return accountMatches.length === 1 ? accountMatches[0].id : "";
   }
 
+  // Lead · Support · Detail: one Account row per detected account that opens
+  // its own picker (a native select laid over the row), and "Create account"
+  // as the row that ends the group. The title and its one-line reason stay,
+  // quietly, so the person knows why the row asks for a choice.
   return (
-    <div className="import-warning import-warning-action" data-import-target="account-mapping">
-      <strong>{unknownPreviewAccountNames.length ? importMessages.unknownAccounts : importMessages.accountMappingTitle}</strong>
-      <p className="lede compact">{importMessages.accountMappingDetail}</p>
+    <div className="import-account-map" data-import-target="account-mapping">
+      <div className="import-account-map-copy">
+        <strong className={unknownPreviewAccountNames.length ? "is-action" : undefined}>
+          {unknownPreviewAccountNames.length ? importMessages.unknownAccounts : importMessages.accountMappingTitle}
+        </strong>
+        <p>{importMessages.accountMappingDetail}</p>
+      </div>
       <div className="statement-account-map-grid">
-        {accountMappingAccountNames.map((accountName) => (
-          <div key={accountName} className="statement-account-map-row">
-            <label className="entries-filter">
-              <span className="entries-filter-label">{importMessages.detectedAccount(accountName)}</span>
-              <select
-                className="table-edit-input"
-                value={selectedAccountValue(accountName)}
-                onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
+        {accountMappingAccountNames.map((accountName) => {
+          const selectedValue = selectedAccountValue(accountName);
+          const selectedOption = accountOptions.find((account) => account.value === selectedValue);
+          return (
+            <DetailRows key={accountName} className="statement-account-map-row">
+              <DetailRow
+                label={importMessages.detectedAccount(accountName)}
+                value={selectedOption?.label}
+                emptyLabel={importMessages.chooseAccount}
+                state={selectedOption ? undefined : "action"}
               >
-                <option value="">{importMessages.chooseAccount}</option>
-                {accountOptions.map((account) => (
-                  <option key={account.id} value={account.value}>{account.label}</option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="subtle-action" onClick={() => onCreateStatementAccount(accountName)}>
-              {importMessages.createDetectedAccount}
-            </button>
-          </div>
-        ))}
+                <select
+                  className="lsd-row-native"
+                  aria-label={importMessages.detectedAccount(accountName)}
+                  value={selectedValue}
+                  onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
+                >
+                  <option value="">{importMessages.chooseAccount}</option>
+                  {accountOptions.map((account) => (
+                    <option key={account.id} value={account.value}>{account.label}</option>
+                  ))}
+                </select>
+              </DetailRow>
+              <AddRow onClick={() => onCreateStatementAccount(accountName)}>{importMessages.createDetectedAccount}</AddRow>
+            </DetailRows>
+          );
+        })}
       </div>
     </div>
   );
@@ -562,11 +581,17 @@ function PreviewGuardrailPills({
   statementImportSourceType,
   skippedPreviewRowCount,
   needsReviewPreviewRowCount,
-  visibleOverlapImports
+  visibleOverlapImports,
+  showCoverage = true
 }) {
+  const coverageShown = showCoverage && Boolean(preview.startDate && preview.endDate);
+  // Nothing to say (the file card already gives the dates): no empty strip.
+  if (!coverageShown && !previewReconciliationRowCount && !reconciledExistingRowCount && !skippedPreviewRowCount && !needsReviewPreviewRowCount && !visibleOverlapImports.length) {
+    return null;
+  }
   return (
     <div className="import-summary-strip" aria-label={importMessages.previewGuardrailsLabel}>
-      {preview.startDate && preview.endDate ? (
+      {coverageShown ? (
         <span className="import-summary-item">{importMessages.previewCoverage(
           formatService.formatDateOnly(preview.startDate),
           formatService.formatDateOnly(preview.endDate)

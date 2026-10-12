@@ -1,0 +1,9 @@
+/* The file card at the top of a preview (import-file-card.jsx). Rides with
+   the lazy Imports route. */
+.import-file-card .lsd-title {
+  overflow-wrap: anywhere;
+}
+
+.import-file-card .lsd-amount-column {
+  text-align: right;
+}

@@ -19,6 +19,7 @@ export const messages = {
     appShellResourceLimitDetail: "This is usually a Worker CPU or resource limit on the shared app-shell request, not proof that an import changed data. If this keeps happening, check Cloudflare Workers observability for /api/app-shell and reduce that endpoint's work or move the Worker to a plan with more headroom.",
     appShellDiagnosticsUnavailable: "Settings and Error diagnostics also need the app shell. If /api/app-shell is the failing request, the diagnostics page may not open until the endpoint succeeds again.",
     loadFailedDetail: "Your saved data is not affected. Try again in a moment.",
+    loadFailedUnreachable: "We couldn't reach your data just now.",
     pageLoadErrorTitleFor: (pageName) => pageName ? `The ${pageName} page could not load.` : "This page could not load.",
     retryPageLoad: "Try loading again",
     refreshFailedTitle: "This page could not refresh.",
@@ -138,7 +139,29 @@ export const messages = {
       income: "Income",
       incomePlan: "plan",
       saved: "Saved",
-      savedTarget: "target"
+      savedTarget: "target",
+      // The savings bar under the lead (ui/savings-bar.jsx, design.md): all
+      // the money earned in the period is the bar; spent and kept share it.
+      // Hidden money gets percentages and a share sentence, never an amount.
+      savingsBar: {
+        label: "Spent and kept, against what you earned",
+        spentName: "Spent",
+        keptName: "Kept",
+        savingsName: "Came out of savings",
+        incomeTick: "income",
+        planBarLabel: "Plan",
+        popover: (name, amount, percentOfIncome) => {
+          const share = percentOfIncome === null ? "" : ` · ${percentOfIncome}% of income`;
+          return amount === null ? `${name}${share}` : `${name} ${amount}${share}`;
+        },
+        kept: (kept, earned, percent) => `You kept ${kept} of the ${earned} you earned (${percent}%)`,
+        spentMore: (more) => `You spent ${more} more than you earned`,
+        hiddenSentence: "Spent and kept, as a share of what you earned",
+        plan: (spend, save) => {
+          if (spend && save) return `Plan: spend ${spend} and save ${save}.`;
+          return spend ? `Plan: spend ${spend}.` : `Plan: save ${save}.`;
+        }
+      }
     },
     fromMonth: "From",
     toMonth: "To",

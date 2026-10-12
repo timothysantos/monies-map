@@ -5,7 +5,8 @@ import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton } from "./delete-row-button";
+import { ImportRollbackConfirm } from "./import-rollback-confirm";
+import "./import-history.css";
 const { format: formatService } = moniesClient;
 
 // Recent history is read-only except rollback; pagination only changes which batches are visible.
@@ -133,9 +134,8 @@ export function ImportRecentHistorySection({
                         <ImportOverlapPopover item={item} />
                       ) : null}
                       {canRollbackImport(item) ? (
-                        <DeleteRowButton
+                        <ImportRollbackConfirm
                           label={item.sourceLabel}
-                          destructive={false}
                           triggerLabel={importMessages.rollback}
                           confirmLabel={importMessages.rollbackConfirm}
                           prompt={<>{importMessages.rollbackDetail(item.sourceLabel)}</>}

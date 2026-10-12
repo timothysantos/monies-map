@@ -68,7 +68,7 @@
   .month-plan-section .month-table-wrap thead tr {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 10px;
+    gap: 8px 10px;
     padding: 0 0 6px;
   }
 
@@ -185,7 +185,7 @@
   /* The column names as small tappable chips; the active sort shows its
      direction (an arrow after its name). */
   .month-plan-section .month-table-wrap thead .table-sort-button {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 12px;
     border: 1px solid var(--line);
     border-radius: 999px;

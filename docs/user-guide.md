@@ -140,7 +140,9 @@ masked too.
 The choice is remembered only in that browser. A different browser or a
 cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
-they appear with the real figures as soon as you reveal totals. Edit
+they appear with the real figures as soon as you reveal totals. The earned,
+spent and kept bar keeps its shape and shows only percentages (no amounts) while
+totals are hidden. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -231,9 +233,9 @@ Home Screen from Safari's Share menu to open it like an app.
 Each screen in the order it appears in the navigation: what you see, what
 each control does, the common tasks, and what changes on a phone.
 
-Money colours mean the same on every screen: green is money coming in or
-something going well, red is money going out, over plan, short or owed by
-you, blue is a plan, and transfers stay in plain text. In lists only the
+Money colours mean the same on every screen: olive green is money coming in
+or something going well, brick red is money going out, over plan, short or
+owed by you, teal is a plan, and transfers stay in plain text. In lists only the
 amount's text is coloured; Summary's spending turns red only when you are
 over plan.
 
@@ -242,8 +244,18 @@ over plan.
 ### What you see
 
 - **Spent**: what you spent over the selected range against what you planned
-  to spend, with a bar, the share of the plan used and how much you are under
+  to spend, with the share of the plan used and how much you are under
   (green) or over (red) plan.
+- **Earned, spent and kept**: under the Spent figure, one bar stands for all
+  the money you earned over the range. The red part is what you spent and the
+  green part is what you kept. If you spent more than you earned, the bar
+  runs to a small **income** mark and the striped part after it is the money
+  that came out of your savings. A thin blue bar under it shows your plan on
+  the same scale: what you planned to spend, then what you planned to save.
+  One line says it in words ("You kept $38,000 of the $247,000 you earned
+  (15%)"), with your plan in smaller print under it. Hover over a part of the
+  bar (on a phone, tap it) to see how much it is and what share of your
+  income that is.
 - **Income** and **Saved**: the income that came in, with the planned income
   under it, and what you kept, with your savings target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
@@ -309,8 +321,8 @@ there to reach other months.
   before or after, within the range.
 - The **Summary** button in the navigation always goes back to All months.
 
-With totals hidden, the amounts show as dots, the bar is empty, and nothing
-turns red or says "under" or "over".
+With totals hidden, the amounts show as dots, the bar turns grey and shows
+only percentages, and nothing turns red or says "under" or "over".
 
 ### On a phone
 
@@ -330,8 +342,9 @@ stays highlighted, and the range at the top stays as it was.
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
 - **The top card**: what you have spent this month against what you
-  planned, with a bar, the percent of plan, and how much you are under or
-  over plan. Under the bar, in the same card, are **Income** (received, with
+  planned, with the percent of plan and how much you are under or over plan.
+  Under that is the same earned, spent and kept bar as on
+  [Summary](#summary), for this month. Under it, in the same card, are **Income** (received, with
   the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
   Select it to see what it means.
@@ -811,9 +824,11 @@ leave Ask.
   dropped on the file you are reviewing is not added. A single file dropped
   while you review another opens straight away; the other waits in the
   queue again. **Review** asks first if you changed the file in review.
+- **How importing works**: a folded row under the drop zone with the notes
+  about PDF and XLS files, trustworthy statements and rollback.
 - **Paste rows or set defaults**: opens the fields below. It opens by
   itself when a plain CSV needs them. Once files are waiting it also holds
-  the notes about PDF and XLS files, trustworthy statements and rollback.
+  those notes.
   - **Source label** and **Batch note**: optional names so you recognise
     the import later. A plain CSV is named by its file unless you typed a
     source label.
@@ -847,7 +862,7 @@ leave Ask.
   the end of your files and opens the next one. Reopen it from its chip
   whenever you like; you don't need the file again. If you changed rows or
   approved fixes, the app asks first, because skipping drops those changes.
-- **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
+- **Rollback import** on a batch: undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
 
@@ -860,8 +875,9 @@ in one sheet; tap a thing to fix to go straight to it, or a file to open it.
 
 ## Settings
 
-Settings is a list of sections. Select a section's heading to open or close
-it.
+Settings is one list. Each row is a section with a short word on the right
+(the people's names, how many accounts or categories, **1 to check**, **Not
+set up**). Select a row to open it; it opens right under its row.
 
 - **People**: rename the two household members.
 - **Accounts**: add, edit, archive and reconcile accounts.
@@ -874,7 +890,8 @@ it.
   yet.
 - **Payment ways**: the account each person's PayNow, bank transfers and
   cash come from ([Choose your payment ways](#choose-your-payment-ways)).
-- **Categories**: the categories used everywhere, with their icon and colour.
+- **Categories**: the categories used everywhere. Select one to change its
+  name, icon or colour.
 - **Category matching**: rules that categorise imported rows, plus
   suggestions and overlapping rules to review.
 - **Balance trust rules**: what makes a balance trustworthy, and a list of
@@ -1058,7 +1075,7 @@ words.
    **Before you can commit:** at the top, or **Jump to next** beside the
    commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
-   batch appears under **Recent imports**. The **Done** step (a blue box)
+   batch appears under **Recent imports**. The **Done** step (a teal box)
    names the file, the accounts it went into and the statement period, and
    says **No further action needed** when every card balanced. It shows what
    changed on each card (rows added, entries confirmed or moved, entries left
@@ -1179,7 +1196,7 @@ A card statement that asks for money also says what to pay, for example
 bank printed IMMEDIATE because the card is past due. The due date and
 minimum are saved with the statement for **Money insights**.
 
-When the statement has the bank's own charges, a rose box above the checks
+When the statement has the bank's own charges, a brick-red box above the checks
 lists them, for example "Bank charges on this statement: Late charge $100.00
 · Interest $4.37". It also says when the bank reversed one ("Reversed by
 the bank: Annual fee $196.20") and repeats the bank's notices, such as "The
@@ -1307,9 +1324,9 @@ duplicates, or belong to another account.
 
 1. Open **Imports**, open **Recent imports** and find the batch (use **By
    account** to narrow the list).
-2. Select the **×** (Rollback import) at the end of the batch's row.
-3. Check the name in the message and select **Confirm rollback** (or
-   **Cancel**).
+2. Select **Rollback import** on the batch's row.
+3. Check the name in the sheet that opens (a dialog on a computer) and
+   select **Confirm rollback** (or **Cancel**).
 
 ![Rolling back an import asks you to confirm](/faq/guide/desktop/thumbs/imports-rollback.webp)
 
@@ -1586,9 +1603,10 @@ On an iPhone, a Shortcut can save each Apple Pay purchase as an entry and
 open it for you to check.
 
 1. Open **Settings → Apple Pay shortcut** on your iPhone.
-2. Under **Default account priority**, put the card you use most first. If
-   the shortcut doesn't name an account, entries go to the first account in
-   this list. Changes save straight away.
+2. Select **Default account** and put the card you use most first. If the
+   shortcut doesn't name an account, entries go to the first account in the
+   list. Changes save straight away. **How to set it up** lists the steps
+   below.
 3. Select **Install Apple Shortcut**. The app copies your private connection
    and opens the Shortcut.
 4. Select **Add Shortcut** (or **Replace** if you installed it before).
@@ -1628,8 +1646,8 @@ Before you import, the matched row says what will change, for example
 longer lists that were removed.
 
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
-to your first card in **Default account priority**. Under **Paying in another
-currency**, choose the card such purchases really land on, for example the
+to your first card in **Default account**. On the **Other currencies go to**
+row, choose the card such purchases really land on, for example the
 Citi card your Amaze card charges. It saves straight away; **Same as other
 purchases** turns it off. The category comes from your
 category rules (otherwise Other). Each iPhone installs its own copy.
@@ -1643,12 +1661,12 @@ remove it so one purchase cannot create two entries.
 
 When you describe an entry in words and say how you paid, for example
 "lunch at nasi lemak bmv 7.20, paynow, mine", the app needs to know which
-account that money came from. **Settings → Payment ways** has one card per
-person with two choices:
+account that money came from. **Settings → Payment ways** has a block per
+person with two rows:
 
 - **PayNow and bank transfers**: the bank account your PayNow, FAST, GIRO,
   NETS and bank transfers come from. It starts on your own first bank
-  account in **Default account priority**. You can pick any bank account,
+  account in **Default account**. You can pick any bank account,
   including a joint one.
 - **Cash**: your cash wallet. To choose one, first add an account of the
   type Cash under **Accounts**.
@@ -1663,7 +1681,7 @@ person is the one you name ("Serene paid by paynow"), or you when you say
 that account is used. If that person has no cash wallet chosen, the app
 asks which account the cash came from instead of putting it on a card. If
 no PayNow account is chosen, the entry goes to the first account in
-**Default account priority**, unless that is a credit card; then it asks
+**Default account**, unless that is a credit card; then it asks
 too. It never uses someone else's account. Words like "fast food", "badminton nets"
 or "cash withdrawal" are read as part of the description.
 
@@ -1680,7 +1698,9 @@ A small label says what kind of line it is:
 - **To do**: something small that keeps your numbers right or settles
   something. For example: a card statement that differs from what's
   recorded here by $42.80, a bill you planned that isn't matched to its
-  payment yet, money owed on a shared cost, or purchases with no category
+  payment yet, a month whose plan spends more than the income you expect
+  (the savings goal is already part of that spending), money owed on a
+  shared cost, or purchases with no category
   yet (they sit under "Other" until you pick one). A card bill is one too:
   from a week before its due date while no payment to the card is recorded
   ("Your OCBC 365 Credit Card bill of $33.15 is due in 3 days"), and for a
