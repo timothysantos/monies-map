@@ -58,7 +58,10 @@ had; `tests/e2e/lead-support-detail.spec.js` checks the save, Cancel, the
 tap targets (44px or more), hidden money and a failed save on an iPhone 13
 profile (tagged `@webkit`). There is no client check of the planned amount:
 text that is not a number saves as its digits, or $0.00, as before. The
-sheet has no swipe-down gesture. Like every bottom sheet with a bottom bar
+sheet swipes down to close (design.md "Mobile Sheet"): unchanged it closes,
+and with a changed planned amount, name, category, day, account or note it
+springs back and asks "Discard changes?"; the match sheet counts only the
+ticked entries as its draft, not the filters. Like every bottom sheet with a bottom bar
 it lifts itself above the iPhone keyboard (`EntryMobileSheet` uses
 `use-keyboard-inset.js`), so Done and the focused field stay in sight;
 `tests/keyboard-inset.test.mjs` pins the wiring and the hook's behaviour

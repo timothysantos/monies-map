@@ -97,6 +97,11 @@
   color: var(--pastel-rose-ink);
 }
 
+.claude-credit-month {
+  margin: 0;
+  line-height: 1.4;
+}
+
 .settings-claude-credit .claude-credit-action {
   border-color: var(--line);
   color: var(--text);

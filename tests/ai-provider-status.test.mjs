@@ -19,6 +19,9 @@ import {
   isAiAlertViewer,
   markClaudeToppedUp,
   parseTopUpCreditUsd,
+  claudeGoesFirst,
+  computeClaudePacing,
+  monthKeyInAppTimeZone,
   recordClaudeFailure,
   recordClaudeSuccess
 } from "../src/domain/ai-provider-status.ts";
@@ -125,6 +128,9 @@ test("the credit and warn amounts come from vars, or from the last top-up mark",
     estimatedSpendUsd: 1,
     creditUsd: 20,
     warnAtUsd: 15,
+    monthSpendUsd: 0,
+    monthTargetUsd: 8,
+    mode: "claude_all",
     lastSuccessAt: "2026-10-10T01:00:00.000Z",
     consoleBillingUrl: "https://platform.claude.com/settings/billing"
   });
@@ -221,10 +227,12 @@ test("each record is one upsert on one row that keeps only aggregate figures", a
     last_success_at: "2026-10-10T01:05:00.000Z",
     estimated_spend_micro_usd: 2_000,
     topped_up_at: null,
-    topped_up_credit_micro_usd: null
+    topped_up_credit_micro_usd: null,
+    spend_month: "2026-10",
+    month_spend_micro_usd: 2_000
   });
   const columns = (await rows(db, "SELECT name FROM pragma_table_info('ai_provider_status') ORDER BY cid")).map((row) => row.name);
-  assert.deepEqual(columns, ["provider", "last_failure_category", "last_failure_at", "last_success_at", "estimated_spend_micro_usd", "topped_up_at", "topped_up_credit_micro_usd"]);
+  assert.deepEqual(columns, ["provider", "last_failure_category", "last_failure_at", "last_success_at", "estimated_spend_micro_usd", "topped_up_at", "topped_up_credit_micro_usd", "spend_month", "month_spend_micro_usd"]);
 
   await recordClaudeFailure(db, "credit_exhausted", "2026-10-10T02:00:00.000Z");
   const failed = await statusRow(db);
@@ -279,7 +287,10 @@ test("marking a top-up resets the estimate, records the credit and clears a cred
     last_success_at: "2026-10-10T01:00:00.000Z",
     estimated_spend_micro_usd: 0,
     topped_up_at: "2026-10-10T03:00:00.000Z",
-    topped_up_credit_micro_usd: 30_000_000
+    topped_up_credit_micro_usd: 30_000_000,
+    // A top-up restarts the credit estimate, not the month's pacing.
+    spend_month: "2026-10",
+    month_spend_micro_usd: 19_000_000
   });
 
   await recordClaudeFailure(db, "spend_capped", "2026-10-10T04:00:00.000Z");
@@ -309,6 +320,7 @@ function topUpRequest(email, body) {
 }
 
 test("the owner sees the figures; anyone else, or nobody signed in, sees nothing", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-12T04:00:00.000Z") });
   const { db } = await openSeededDatabase(t, template);
   const env = { ...template.config.vars, ...CLAUDE_ENV, DB: db, AI_ALERT_EMAILS: "owner@example.com" };
   await recordClaudeSuccess(db, 16_000_000, "2026-10-10T01:00:00.000Z");
@@ -323,6 +335,10 @@ test("the owner sees the figures; anyone else, or nobody signed in, sees nothing
     estimatedSpendUsd: 16,
     creditUsd: 20,
     warnAtUsd: 15,
+    // US$16 of this month's US$8 target: past 90%, so everything is basic-first.
+    monthSpendUsd: 16,
+    monthTargetUsd: 8,
+    mode: "basic_first",
     lastSuccessAt: "2026-10-10T01:00:00.000Z",
     consoleBillingUrl: "https://platform.claude.com/settings/billing"
   });
@@ -403,4 +419,131 @@ test("the owner marks a top-up; validation and non-owners are refused without a 
 
   const get = await worker.fetch(new Request("http://127.0.0.1/api/ai-assist/provider-status/topped-up", { headers: { "Cf-Access-Authenticated-User-Email": OWNER } }), env);
   assert.equal(get.status, 404);
+});
+
+
+// -------------------------------------------------------------- auto-balance
+
+// Owner-approved 2026-10-12: a monthly Claude target (default US$8) and a
+// pace line (target x day / days in the month, Asia/Singapore) decide whether
+// background features ask Claude or the basic model first.
+const rowFor = (month, spendUsd) => ({ spend_month: month, month_spend_micro_usd: Math.round(spendUsd * 1_000_000) });
+// Noon in Singapore on the given day of October 2026 (31 days; target 8 -> pace 8/31 a day).
+const october = (day) => new Date(`2026-10-${String(day).padStart(2, "0")}T04:00:00.000Z`);
+
+test("the pace line is the target times the day over the days in the month, and the target defaults to US$8", () => {
+  const day1 = computeClaudePacing(null, {}, october(1));
+  assert.equal(day1.monthTargetMicroUsd, 8_000_000);
+  assert.equal(day1.paceMicroUsd, Math.round(8_000_000 / 31));
+  assert.equal(computeClaudePacing(null, {}, october(15)).paceMicroUsd, Math.round(8_000_000 * 15 / 31));
+  assert.equal(computeClaudePacing(null, {}, october(31)).paceMicroUsd, 8_000_000);
+  // February 2027 has 28 days; the 14th is exactly half way.
+  assert.equal(computeClaudePacing(null, {}, new Date("2027-02-14T04:00:00.000Z")).paceMicroUsd, 4_000_000);
+  // A configured target is used; a bad one falls back to 8.
+  assert.equal(computeClaudePacing(null, { AI_CLAUDE_MONTHLY_TARGET_USD: "12" }, october(31)).paceMicroUsd, 12_000_000);
+  assert.equal(computeClaudePacing(null, { AI_CLAUDE_MONTHLY_TARGET_USD: "lots" }, october(31)).monthTargetMicroUsd, 8_000_000);
+  assert.equal(computeClaudePacing(null, { AI_CLAUDE_MONTHLY_TARGET_USD: "-3" }, october(31)).monthTargetMicroUsd, 8_000_000);
+});
+
+test("under the pace line everything is Claude-first; over it background goes basic-first; at 90% of the target everything does", () => {
+  // Day 1: pace is about US$0.26.
+  assert.equal(computeClaudePacing(rowFor("2026-10", 0), {}, october(1)).mode, "claude_all");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 0.25), {}, october(1)).mode, "claude_all");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 0.3), {}, october(1)).mode, "ask_only");
+  // Day 15: pace is about US$3.87.
+  assert.equal(computeClaudePacing(rowFor("2026-10", 3.8), {}, october(15)).mode, "claude_all");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 3.9), {}, october(15)).mode, "ask_only");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 7.1), {}, october(15)).mode, "ask_only");
+  // 90% of US$8 is US$7.20, from any day.
+  assert.equal(computeClaudePacing(rowFor("2026-10", 7.2), {}, october(15)).mode, "basic_first");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 7.2), {}, october(1)).mode, "basic_first");
+  // Day 30 (pace about US$7.74): over pace but under 90% is impossible, so 7.19 is claude_all-or-ask_only by pace.
+  assert.equal(computeClaudePacing(rowFor("2026-10", 7.19), {}, october(30)).mode, "claude_all");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 7.3), {}, october(30)).mode, "basic_first");
+  assert.equal(computeClaudePacing(rowFor("2026-10", 100), {}, october(31)).mode, "basic_first");
+  // The figures the status reports.
+  const pacing = computeClaudePacing(rowFor("2026-10", 5), {}, october(15));
+  assert.equal(pacing.monthSpendMicroUsd, 5_000_000);
+  assert.equal(pacing.mode, "ask_only");
+});
+
+test("a new calendar month in Singapore starts at zero, including at the month boundary", () => {
+  assert.equal(computeClaudePacing(rowFor("2026-09", 7.9), {}, october(1)).mode, "claude_all");
+  assert.equal(computeClaudePacing(rowFor("2026-09", 7.9), {}, october(1)).monthSpendMicroUsd, 0);
+  // Singapore midnight (UTC+8) is 16:00Z: 15:59Z is still 30 September.
+  assert.equal(computeClaudePacing(rowFor("2026-09", 7.9), {}, new Date("2026-09-30T16:00:00.000Z")).mode, "claude_all");
+  assert.equal(computeClaudePacing(rowFor("2026-09", 7.9), {}, new Date("2026-09-30T15:59:00.000Z")).mode, "basic_first");
+  assert.equal(monthKeyInAppTimeZone(new Date("2026-09-30T16:00:00.000Z")), "2026-10");
+  // Rows from before auto-balance, and no row at all, read as no spend.
+  assert.equal(computeClaudePacing({}, {}, october(15)).monthSpendMicroUsd, 0);
+  assert.equal(computeClaudePacing(undefined, {}, october(15)).mode, "claude_all");
+});
+
+test("routing per tier: ask features keep Claude first until 90% of the target", () => {
+  const ask = ["receipt_read", "entry_draft", "ask_answer"];
+  const background = ["monthly_narrative", "import_explanation", "category_rules", "statement_text_fallback"];
+  for (const capability of ask) {
+    assert.deepEqual(["claude_all", "ask_only", "basic_first"].map((mode) => claudeGoesFirst(mode, capability)), [true, true, false], capability);
+  }
+  for (const capability of background) {
+    assert.deepEqual(["claude_all", "ask_only", "basic_first"].map((mode) => claudeGoesFirst(mode, capability)), [true, false, false], capability);
+  }
+});
+
+test("a success in a new month replaces the month's spend, and one in the same month adds to it, in one statement", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await recordClaudeSuccess(db, 3_000_000, "2026-09-30T10:00:00.000Z");
+  await recordClaudeSuccess(db, 500_000, "2026-09-30T11:00:00.000Z");
+  assert.deepEqual(pickMonth(await statusRow(db)), { spend_month: "2026-09", month_spend_micro_usd: 3_500_000, estimated_spend_micro_usd: 3_500_000 });
+  // 16:00Z on the 30th is midnight, 1 October, in Singapore: the month's figure restarts, the credit estimate keeps adding.
+  await recordClaudeSuccess(db, 200_000, "2026-09-30T16:00:00.000Z");
+  assert.deepEqual(pickMonth(await statusRow(db)), { spend_month: "2026-10", month_spend_micro_usd: 200_000, estimated_spend_micro_usd: 3_700_000 });
+  await recordClaudeSuccess(db, 100_000, "2026-10-02T01:00:00.000Z");
+  assert.equal((await statusRow(db)).month_spend_micro_usd, 300_000);
+});
+
+test("a status table from before auto-balance gains the two columns when the schema is initialised", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await db.prepare("DROP TABLE ai_provider_status").run();
+  await db.prepare(`CREATE TABLE ai_provider_status (
+    provider TEXT PRIMARY KEY CHECK (provider = 'claude'),
+    last_failure_category TEXT, last_failure_at TEXT, last_success_at TEXT,
+    estimated_spend_micro_usd INTEGER NOT NULL DEFAULT 0, topped_up_at TEXT, topped_up_credit_micro_usd INTEGER)`).run();
+  await db.prepare("INSERT INTO ai_provider_status (provider, estimated_spend_micro_usd) VALUES ('claude', 4000000)").run();
+  const { ensureDemoSchema } = await import("../src/domain/app-repository-schema.ts");
+  await ensureDemoSchema(db);
+  assert.deepEqual(pickMonth(await statusRow(db)), { spend_month: null, month_spend_micro_usd: 0, estimated_spend_micro_usd: 4_000_000 });
+  await recordClaudeSuccess(db, 1_000, "2026-10-10T01:00:00.000Z");
+  assert.equal((await statusRow(db)).month_spend_micro_usd, 1_000);
+});
+
+function pickMonth(row) {
+  return { spend_month: row.spend_month, month_spend_micro_usd: row.month_spend_micro_usd, estimated_spend_micro_usd: row.estimated_spend_micro_usd };
+}
+
+test("GET provider-status carries this month's spend, the target and the mode", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-15T04:00:00.000Z") });
+  const { db } = await openSeededDatabase(t, template);
+  const env = { ...template.config.vars, ...CLAUDE_ENV, DB: db, AI_ALERT_EMAILS: "*", AI_CLAUDE_MONTHLY_TARGET_USD: "8" };
+  const read = async (override = {}) => (await (await worker.fetch(statusRequest(OWNER), { ...env, ...override })).json());
+
+  const none = await read();
+  assert.equal(none.monthSpendUsd, 0);
+  assert.equal(none.monthTargetUsd, 8);
+  assert.equal(none.mode, "claude_all");
+
+  await recordClaudeSuccess(db, 5_250_000, "2026-10-14T01:00:00.000Z");
+  const over = await read();
+  assert.equal(over.monthSpendUsd, 5.25);
+  assert.equal(over.mode, "ask_only");
+  assert.equal((await read({ AI_CLAUDE_MONTHLY_TARGET_USD: "5" })).mode, "basic_first");
+  assert.equal((await read({ AI_CLAUDE_MONTHLY_TARGET_USD: "20" })).mode, "claude_all");
+  // A row from last month counts for nothing this month.
+  await db.prepare("UPDATE ai_provider_status SET spend_month = '2026-09'").run();
+  const rolled = await read();
+  assert.equal(rolled.monthSpendUsd, 0);
+  assert.equal(rolled.mode, "claude_all");
+  // The not-visible answer is unchanged and carries none of it.
+  const hidden = await (await worker.fetch(statusRequest("x@example.com"), { ...env, AI_ALERT_EMAILS: "owner@example.com" })).json();
+  assert.deepEqual(hidden, { ok: true, visible: false });
 });
