@@ -66,12 +66,14 @@ const helpers = {
 // dock) sit over the right edge of whatever scrolls under them, so they hide
 // the first screen's rows in a still picture. They stay exactly as today in the
 // app; the pictures hide them so BEFORE and AFTER compare like for like.
-async function calmFloaters(page) {
-  await page.evaluate(() => {
+async function calmFloaters(page, full) {
+  await page.evaluate((full) => {
     for (const el of document.querySelectorAll("body *")) {
       const cs = getComputedStyle(el);
       if (cs.position !== "fixed" || el.classList.contains("mk-float-bar") || el.classList.contains("mk-sticky-bar")) continue;
       const r = el.getBoundingClientRect();
+      // A full-page picture has no meaningful "bottom of the screen": drop every fixed bar.
+      if (full && !el.closest(".mk-sheet")) { el.style.setProperty("display", "none", "important"); continue; }
       if (r.width > 0 && r.width <= 110 && r.height <= 110 && r.right > innerWidth - 40 && r.top > 120 && !el.closest("nav,.mk-sheet")) {
         el.style.setProperty("display", "none", "important");
       }
