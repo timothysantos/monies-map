@@ -452,7 +452,7 @@ function getSplitCounterparty(people, primaryName) {
   return people.find((person) => person.name !== primaryName) ?? null;
 }
 
-export function splitSharePreview(dialog, people) {
+function splitSharePreview(dialog, people) {
   const totalAmountMinor = Math.max(0, Number(dialog?.amountMinor ?? 0));
   const primaryName = dialog?.sharePersonName ?? people[0]?.name ?? "First person";
   const counterparty = getSplitCounterparty(people, primaryName);
@@ -476,7 +476,7 @@ function applyPrimarySplitAmount(current, primaryAmountMinor) {
   }, "amount", { commit: true });
 }
 
-export function OddCentChooser({ dialog, people, onChange }) {
+function OddCentChooser({ dialog, people, onChange }) {
   const preview = splitSharePreview(dialog, people);
   const hasOddCent = preview.totalAmountMinor % 2 === 1;
   const hasTwoSidedShare = preview.primaryAmountMinor > 0 && preview.secondaryAmountMinor > 0;

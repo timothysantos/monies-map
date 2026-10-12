@@ -323,18 +323,9 @@ button.split-activity-card:hover {
     display: none;
   }
 
-  .split-dialog-inline .split-dialog-field-exact-amount {
-    grid-column: 2;
-  }
-
-  .split-share-preview,
   .split-odd-cent-actions {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .split-share-preview > span {
-    justify-content: space-between;
   }
 
   .split-odd-cent-control {
@@ -350,8 +341,7 @@ button.split-activity-card:hover {
     padding: 12px;
   }
 
-  .split-inline-editor-card .split-dialog-grid,
-  .split-inline-editor-card .entry-writing-grid {
+  .split-inline-editor-card .split-dialog-grid {
     grid-template-columns: 1fr;
   }
 

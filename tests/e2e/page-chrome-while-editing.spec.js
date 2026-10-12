@@ -222,17 +222,20 @@ test.describe("page chrome while an inline editor is open", () => {
     await expect(addButton).toBeVisible();
   });
 
-  test("the Splits inline editor hides the floating add button until it closes", async ({ page }) => {
+  // A split expense opens as a dialog card; a settlement row still edits in
+  // place, so this proves the inline editor with one.
+  test("the Splits settlement inline editor hides the floating add button until it closes", async ({ page }) => {
+    const settlementRow = () => page.locator(".split-activity-card").filter({ hasText: "Cash float settle-up waiting for the imported transfer row." }).first();
     await gotoPageAfterApi(
       page,
-      "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river",
+      "/splits?view=person-tim&month=2025-10&split_group=split-group-none",
       "/api/splits-page",
-      () => page.locator(".split-activity-card").filter({ hasText: "Family support" }).first()
+      settlementRow
     );
     const addButton = page.locator(".splits-fab");
     await expect(addButton).toBeVisible();
 
-    await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
+    await settlementRow().click();
     const editor = page.locator(".split-inline-editor-card");
     await expect(editor).toBeVisible();
     await expect(addButton).toBeHidden();

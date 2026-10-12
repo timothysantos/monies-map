@@ -4,7 +4,7 @@ import { Check, RefreshCw, X } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
-import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
+import { SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { isMobileLayout } from "./use-viewport";
@@ -53,12 +53,13 @@ function formatExpensePaidLine(item, viewId) {
 }
 
 // Activity cards are shared by current split rows and archived batch history.
+// A split expense row opens the split expense card dialog (SplitsPanel); the
+// inline editor below edits a settlement row in place on a wide screen.
 export function SplitActivityGroups({
   groups,
   categories,
   groupOptions = [],
   people = [],
-  categoryOptions = [],
   archived = false,
   editingDraft = null,
   inlineFormError = "",
@@ -198,24 +199,13 @@ export function SplitActivityGroups({
                 className="split-inline-editor-card"
                 onClick={(event) => event.stopPropagation()}
               >
-                {editingDraft.kind === "expense" ? (
-                  <SplitExpenseFields
-                    dialog={editingDraft}
-                    groupOptions={groupOptions}
-                    people={people}
-                    categoryOptions={categoryOptions}
-                    onChange={onChangeEditingDraft}
-                    autoFocusAmount
-                  />
-                ) : (
-                  <SplitSettlementFields
-                    dialog={editingDraft}
-                    groupOptions={groupOptions}
-                    people={people}
-                    onChange={onChangeEditingDraft}
-                    autoFocusAmount
-                  />
-                )}
+                <SplitSettlementFields
+                  dialog={editingDraft}
+                  groupOptions={groupOptions}
+                  people={people}
+                  onChange={onChangeEditingDraft}
+                  autoFocusAmount
+                />
                 {inlineSettlementLock
                   ? <SettlementLockNotice lock={inlineSettlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
                   : <InlineError message={inlineFormError} />}

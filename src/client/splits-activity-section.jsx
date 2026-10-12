@@ -8,7 +8,6 @@ export function SplitsActivitySection({
   categories,
   groupOptions,
   people,
-  categoryOptions,
   searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
@@ -53,7 +52,6 @@ export function SplitsActivitySection({
             categories={categories}
             groupOptions={groupOptions}
             people={people}
-            categoryOptions={categoryOptions}
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}

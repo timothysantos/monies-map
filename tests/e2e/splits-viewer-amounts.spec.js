@@ -54,11 +54,12 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   await expect(splitCard.locator(".split-share-breakdown")).toHaveCount(0);
 
   await splitCard.click();
-  const editor = page.locator(".split-inline-editor-card").filter({ hasText: description }).first();
-  await expect(editor.getByText("Tim share", { exact: true })).toBeVisible();
-  await expect(editor.getByText("$20.32")).toBeVisible();
-  await expect(editor.getByText("Joyce share", { exact: true })).toBeVisible();
-  await expect(editor.getByText("$20.33")).toBeVisible();
+  // A split expense opens as the Lead · Support · Detail card in a dialog.
+  const editor = page.getByRole("dialog", { name: "Edit split" });
+  await expect(editor).toBeVisible();
+  await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
+  const shareRows = editor.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row");
+  await expect(shareRows).toHaveText(["Tim’s share50% · $20.32", "Joyce’s share50% · $20.33"]);
   await expect(editor.getByText("Tim owes")).toHaveCount(0);
   await expect(editor.getByText("Joyce owes")).toHaveCount(0);
   await expect(editor.getByText("Odd cent")).toBeVisible();
@@ -66,7 +67,7 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   // Read the stored shares only after the save has answered; reading while it
   // is in flight can return the pre-save split.
   const saved = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/splits/expenses/update" && response.ok());
-  await editor.getByRole("button", { name: /Save|Done editing split/ }).click();
+  await editor.getByRole("button", { name: "Save expense" }).click();
   await saved;
 
   const updatedData = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
@@ -99,8 +100,8 @@ test("split editor hides odd-cent choice when one share is zero percent", async 
   const splitCard = page.locator(".split-activity-card").filter({ hasText: description }).first();
   await splitCard.click();
 
-  const editor = page.locator(".split-inline-editor-card").filter({ hasText: description }).first();
-  await expect(editor.getByText("Tim share", { exact: true })).toBeVisible();
+  const editor = page.getByRole("dialog", { name: "Edit split" });
+  await expect(editor.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row")).toHaveCount(2);
   await expect(editor.getByText("Odd cent", { exact: true })).toHaveCount(0);
 });
 

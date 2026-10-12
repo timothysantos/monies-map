@@ -72,10 +72,10 @@ test("a settled split edit is refused in place, and saves after Undo simplificat
   await expect(card).toContainText("Included in simplified settlement");
 
   await card.click();
-  const editor = page.locator(".split-inline-editor-card").first();
+  const editor = page.getByRole("dialog", { name: "Edit split" });
   await editor.getByRole("textbox", { name: /Expense total/ }).fill("80");
   const refused = page.waitForResponse((response) => isLockResponse(response, "/api/splits/expenses/update"));
-  await editor.getByRole("button", { name: "Done editing split" }).click();
+  await editor.getByRole("button", { name: "Save expense" }).click();
   const refusal = await (await refused).json();
   expect(refusal).toMatchObject({ ok: false, code: "split_settlement_locked", checkpointId: settled.checkpointId });
 
@@ -95,7 +95,7 @@ test("a settled split edit is refused in place, and saves after Undo simplificat
   await expect.poll(async () => (await splitRow(page, settled.cashSplitId)).checkpoints.find((item) => item.id === settled.checkpointId)?.status).toBe("reopened");
 
   const saved = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/update") && response.ok());
-  await editor.getByRole("button", { name: "Done editing split" }).click();
+  await editor.getByRole("button", { name: "Save expense" }).click();
   await saved;
   await expect.poll(async () => (await splitRow(page, settled.cashSplitId)).row.totalAmountMinor).toBe(8000);
   const reopenedCard = page.locator(".split-activity-card").filter({ hasText: settled.cashDescription }).first();
@@ -110,7 +110,7 @@ test("deleting a settled split is refused in the delete dialog", async ({ page }
   await expect(card).toBeVisible({ timeout: 60_000 });
 
   await card.click();
-  await page.locator(".split-inline-editor-card").first().getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("dialog", { name: "Edit split" }).getByRole("button", { name: "Delete", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Delete split row" });
   const refused = page.waitForResponse((response) => isLockResponse(response, "/api/splits/expenses/delete"));
   await dialog.getByRole("button", { name: "Delete split row" }).click();

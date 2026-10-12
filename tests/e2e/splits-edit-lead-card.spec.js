@@ -70,6 +70,30 @@ async function openSplit(page, splitExpenseId, { view = "person-tim", title = "E
   return dialog;
 }
 
+// A saved split opened the way a person opens it on a wide screen: by
+// selecting its row in the group's list (the phone and the deep link above
+// land on the same card).
+function splitRow(page, splitExpenseId) {
+  return page.locator(`#split-activity-expense-${splitExpenseId}`);
+}
+
+async function openSplitFromRow(page, splitExpenseId, { how = "click" } = {}) {
+  await page.goto(`/splits?view=person-tim&month=${MONTH}&split_group=split-group-none`);
+  const row = splitRow(page, splitExpenseId);
+  await expect(row).toBeVisible({ timeout: 60_000 });
+  if (how === "click") {
+    await row.click();
+  } else {
+    await row.focus();
+    await page.keyboard.press(how);
+  }
+  const dialog = page.getByRole("dialog", { name: "Edit split" });
+  await expect(dialog).toBeVisible();
+  // The card replaced the old inline form for a split expense.
+  await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
+  return dialog;
+}
+
 async function savedSplit(page, splitExpenseId) {
   const data = await loadSplitsPage(page, { view: "person-tim", month: MONTH });
   return data.splitsPage.activity.find((item) => item.id === splitExpenseId);
@@ -406,5 +430,156 @@ test.describe("Edit split on a wide screen", () => {
     await confirm.getByRole("button", { name: "Cancel" }).click();
     await expect(confirm).toHaveCount(0);
     expect(await savedSplit(page, splitExpenseId)).toBeTruthy();
+  });
+});
+
+test.describe("Selecting a split row on a wide screen", () => {
+  test("a 50/50 row opens the card and saves the request the inline form sent", async ({ page }) => {
+    await setUp(page, { phone: false });
+    const description = `Row even ${Date.now()}`;
+    const splitExpenseId = await createSplit(page, { description });
+    const dialog = await openSplitFromRow(page, splitExpenseId);
+    const lead = dialog.locator(".lsd-card");
+    await expect(lead.getByRole("textbox", { name: "Description" })).toHaveValue(description);
+    await expect(lead.getByRole("textbox", { name: "Expense total" })).toHaveValue("86.40");
+    await expect(lead.locator(".lsd-chip")).toHaveText(["Sun 10 May", "Paid by Tim", "50 / 50", "Cash"]);
+    await expect(dialog.getByRole("button", { name: "Save expense" })).toBeDisabled();
+
+    await lead.getByRole("textbox", { name: "Expense total" }).fill("100");
+    await dialog.getByRole("textbox", { name: "Note", exact: true }).fill("After");
+    const update = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/update"));
+    await dialog.getByRole("button", { name: "Save expense" }).click();
+    expect((await update).postDataJSON()).toEqual({
+      splitExpenseId,
+      groupId: null,
+      date: `${MONTH}-10`,
+      description,
+      categoryName: "Groceries",
+      payerPersonName: "Tim",
+      amountMinor: 10000,
+      note: "After",
+      splitBasisPoints: 4320,
+      splitAmountMinor: 4320,
+      currency: "SGD",
+      paymentMethod: "cash",
+      paymentStatus: "recorded"
+    });
+    await expect(dialog).toHaveCount(0);
+    await expect(splitRow(page, splitExpenseId)).toBeFocused();
+    await expect.poll(async () => {
+      const saved = await savedSplit(page, splitExpenseId);
+      return saved && { totalAmountMinor: saved.totalAmountMinor, note: saved.note };
+    }).toEqual({ totalAmountMinor: 10000, note: "After" });
+  });
+
+  test("an uneven row opens the card and saves the request the inline form sent", async ({ page }) => {
+    await setUp(page, { phone: false });
+    const description = `Row uneven ${Date.now()}`;
+    const splitExpenseId = await createSplit(page, { description, amountMinor: 12000, splitBasisPoints: 2500, splitAmountMinor: 3000 });
+    const dialog = await openSplitFromRow(page, splitExpenseId);
+    await expect(dialog.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row"))
+      .toHaveText(["Tim’s share25% · $30.00", "Joyce’s share75% · $90.00"]);
+
+    await dialog.getByLabel("Tim share %").fill("40");
+    await dialog.getByLabel("Tim share %").blur();
+    await expect(dialog.getByLabel("Tim share amount")).toHaveValue("48.00");
+    await dialog.getByLabel("Category").selectOption("Home");
+    const update = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/update"));
+    await dialog.getByRole("button", { name: "Save expense" }).click();
+    expect((await update).postDataJSON()).toEqual({
+      splitExpenseId,
+      groupId: null,
+      date: `${MONTH}-10`,
+      description,
+      categoryName: "Home",
+      payerPersonName: "Tim",
+      amountMinor: 12000,
+      note: "Before",
+      splitBasisPoints: 4000,
+      splitAmountMinor: 4800,
+      currency: "SGD",
+      paymentMethod: "cash",
+      paymentStatus: "recorded"
+    });
+    await expect(dialog).toHaveCount(0);
+    await expect.poll(async () => {
+      const saved = await savedSplit(page, splitExpenseId);
+      return saved?.shares?.map((share) => [share.personName, share.amountMinor]).sort();
+    }).toEqual([["Joyce", 7200], ["Tim", 4800]]);
+  });
+
+  test("Enter and Space open the card, and Escape, Cancel and Save give focus back to the row", async ({ page }) => {
+    await setUp(page, { phone: false });
+    const splitExpenseId = await createSplit(page, { description: `Row keys ${Date.now()}` });
+    let updates = 0;
+    page.on("request", (request) => {
+      if (request.url().includes("/api/splits/expenses/update")) updates += 1;
+    });
+    const row = splitRow(page, splitExpenseId);
+
+    const dialog = await openSplitFromRow(page, splitExpenseId, { how: "Enter" });
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(row).toBeFocused();
+
+    await row.press("Space");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(row).toBeFocused();
+
+    // A change that is cancelled or escaped is never saved.
+    await row.press("Enter");
+    await dialog.getByRole("textbox", { name: "Note", exact: true }).fill("Never saved");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(row).toBeFocused();
+    expect(updates).toBe(0);
+    expect((await savedSplit(page, splitExpenseId))?.note).toBe("Before");
+
+    await row.press("Enter");
+    await dialog.getByRole("textbox", { name: "Note", exact: true }).fill("Saved by keyboard");
+    await dialog.getByRole("button", { name: "Save expense" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(row).toBeFocused();
+    expect(updates).toBe(1);
+  });
+
+  test("Delete asks in the app, keeps the split on Cancel, and removes the row when confirmed", async ({ page }) => {
+    await setUp(page, { phone: false });
+    const description = `Row delete ${Date.now()}`;
+    const splitExpenseId = await createSplit(page, { description });
+    const browserDialogs = [];
+    page.on("dialog", (dialog) => {
+      browserDialogs.push(dialog.type());
+      void dialog.dismiss();
+    });
+    let deletes = 0;
+    page.on("request", (request) => {
+      if (request.url().includes("/api/splits/expenses/delete")) deletes += 1;
+    });
+
+    const dialog = await openSplitFromRow(page, splitExpenseId);
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+    const confirm = page.getByRole("dialog", { name: "Delete split row" });
+    await expect(confirm).toContainText(description);
+    await page.waitForTimeout(200);
+    expect(deletes).toBe(0);
+    await confirm.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirm).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    expect(await savedSplit(page, splitExpenseId)).toBeTruthy();
+
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+    const deleted = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/delete") && response.ok());
+    await confirm.getByRole("button", { name: "Delete split row" }).click();
+    await deleted;
+    expect(deletes).toBe(1);
+    expect(browserDialogs).toEqual([]);
+    // The card closes with the split gone, not left open on a deleted row.
+    await expect(confirm).toHaveCount(0);
+    await expect(dialog).toHaveCount(0);
+    await expect(splitRow(page, splitExpenseId)).toHaveCount(0);
+    await expect.poll(async () => Boolean(await savedSplit(page, splitExpenseId))).toBe(false);
   });
 });

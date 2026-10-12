@@ -8,18 +8,17 @@ import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
-import { buildComparableSplitDraft, updateSplitExpenseDraft } from "./split-editing";
-import { CategoryGlyph } from "./ui-components";
+import { buildComparableSplitDraft } from "./split-editing";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { SheetDiscardConfirm, SheetDragHandle, useSheetSwipeDismiss } from "./sheet-swipe";
-import { OddCentChooser, SplitExpenseCard, splitSharePreview } from "./split-expense-card";
+import { SplitExpenseCard } from "./split-expense-card";
 import { BottomActions } from "./ui/lead-support-detail";
 import { useDraftChanged } from "./use-draft-changed";
 import { useKeyboardInset } from "./use-keyboard-inset";
 import { useIsMobileLayout } from "./use-viewport";
 
-const { categories: categoryService, format: formatService } = moniesClient;
+const { format: formatService } = moniesClient;
 
 const SPLIT_CURRENCY_OPTIONS = [
   ["SGD", "Singapore dollar"],
@@ -114,224 +113,11 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
   );
 }
 
-function SplitSharePreview({ dialog, people }) {
-  const preview = splitSharePreview(dialog, people);
-  // Shares are in the expense's own currency (the group currency in a group).
-  const currency = dialog?.currency ?? "SGD";
-
-  if (preview.totalAmountMinor <= 0 || people.length < 2) {
-    return null;
-  }
-
-  return (
-    <div className="split-share-preview" aria-label="Split share amounts">
-      <span>
-        <span>{preview.primaryName} share</span>
-        <strong>{formatService.moneyWithCurrency(preview.primaryAmountMinor, currency)}</strong>
-      </span>
-      <span>
-        <span>{preview.secondaryName} share</span>
-        <strong>{formatService.moneyWithCurrency(preview.secondaryAmountMinor, currency)}</strong>
-      </span>
-    </div>
-  );
-}
-
-export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, autoFocusAmount = false }) {
-  const amountInputRef = useRef(null);
-  const selectedGroup = groupOptions.find((group) => group.id === dialog?.groupId);
-  const allowedPaymentMethods = selectedGroup?.expenseSource === "cash"
-    ? ["cash"]
-    : selectedGroup?.expenseSource === "ledger"
-      ? ["card", "bank"]
-      : ["cash", "card", "bank", "other"];
-
-  useEffect(() => {
-    if (!autoFocusAmount || !dialog) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      focusFieldUnlessEditing(amountInputRef.current, { select: true });
-    }, 80);
-
-    return () => window.clearTimeout(timeout);
-  }, [autoFocusAmount, dialog?.id]);
-
-  return (
-    <>
-      <div className="split-dialog-section">
-        <div className="entry-core-grid split-dialog-grid">
-          <label className="split-dialog-field">
-            <span>Group</span>
-            <ResponsiveSelect
-              className="table-edit-input"
-              title="Group"
-              value={dialog?.groupId ?? "split-group-none"}
-              options={groupOptions.map((option) => ({ value: option.id, label: option.name }))}
-              onValueChange={(nextValue) => onChange((current) => {
-                if (!current) return current;
-                const nextGroup = groupOptions.find((option) => option.id === nextValue);
-                const nextPaymentMethod = nextGroup?.expenseSource === "cash"
-                  ? "cash"
-                  : nextGroup?.expenseSource === "ledger" && !["card", "bank"].includes(current.paymentMethod)
-                    ? "card"
-                    : current.paymentMethod;
-                return { ...current, groupId: nextValue, currency: nextGroup?.currency ?? current.currency, paymentMethod: nextPaymentMethod };
-              })}
-            />
-          </label>
-          <label className="split-dialog-field">
-            <span>Currency</span>
-            <input className="table-edit-input" inputMode="text" maxLength={3} value={dialog?.currency ?? "SGD"} onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)} />
-          </label>
-          <label className="split-dialog-field">
-            <span>{messages.splits.expenseDate}</span>
-            <input className="table-edit-input" type="date" value={dialog?.date ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
-          </label>
-          <label className="split-dialog-field">
-            <span>{messages.splits.expensePaidBy}</span>
-            <ResponsiveSelect
-              className="table-edit-input"
-              title={messages.splits.expensePaidBy}
-              value={dialog?.payerPersonName ?? ""}
-              options={people.map((person) => ({ value: person.name, label: person.name }))}
-              onValueChange={(nextValue) => onChange((current) => current ? { ...current, payerPersonName: nextValue } : current)}
-            />
-          </label>
-          <label className="split-dialog-field">
-            <span>{messages.splits.expenseCategory}</span>
-            <ResponsiveSelect
-              className="table-edit-input"
-              title={messages.splits.expenseCategory}
-              value={dialog?.categoryName ?? ""}
-              options={categoryOptions.map((option) => {
-                const optionCategory = categoryService.get(categories, { categoryName: option });
-                return {
-                  value: option,
-                  label: option,
-                  iconKey: optionCategory?.iconKey,
-                  colorHex: optionCategory?.colorHex,
-                  icon: optionCategory ? <CategoryGlyph iconKey={optionCategory.iconKey} /> : null
-                };
-              })}
-              onValueChange={(nextValue) => onChange((current) => current ? { ...current, categoryName: nextValue } : current)}
-            />
-          </label>
-        </div>
-      </div>
-      <div className="split-dialog-section split-dialog-section-compact">
-        <div className="split-dialog-inline">
-          <label className="split-dialog-field">
-            <span>{messages.splits.expenseAmount}</span>
-            <div className="money-input-with-visibility">
-              <input
-                ref={amountInputRef}
-                className="table-edit-input table-edit-input-money"
-                type="text"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
-                enterKeyHint="next"
-                onMouseDown={selectAllOnFocus}
-                onFocus={selectAllOnFocus}
-                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
-                amountInput: event.target.value,
-                amountMinor: formatService.decimalStringToMinor(event.target.value)
-              }) : current)}
-              onBlur={() => onChange((current) => current ? {
-                ...current,
-                amountInput: formatService.minorToDecimalString(current.amountMinor ?? 0)
-              } : current)}
-            />
-              <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
-            </div>
-          </label>
-          <label className="split-dialog-field">
-            <span>{dialog?.linkedTransactionId ? "Paid using (ledger)" : "Paid using"}</span>
-            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} disabled={Boolean(dialog?.linkedTransactionId)} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
-              {allowedPaymentMethods.map((method) => <option key={method} value={method}>{method === "cash" ? "Cash" : method === "card" ? "Card" : method === "bank" ? "Bank" : "Other"}</option>)}
-            </select>
-            {selectedGroup?.expenseSource === "cash" ? <small className="split-dialog-help">Cash-only group: no bank or card match is expected.</small> : null}
-            {selectedGroup?.expenseSource === "ledger" ? <small className="split-dialog-help">Bank/card group: cash purchases belong in a separate cash group.</small> : null}
-          </label>
-          <label className="split-dialog-field">
-            <span>Evidence</span>
-            <select className="table-edit-input" value={dialog?.paymentStatus ?? "recorded"} onChange={(event) => onChange((current) => current ? { ...current, paymentStatus: event.target.value } : current)}>
-              <option value="recorded">Recorded</option><option value="awaiting_statement">Awaiting statement</option><option value="certified">Statement certified</option>
-            </select>
-          </label>
-          <label className="split-dialog-field split-dialog-field-percent">
-            <span>{messages.splits.expenseSplit(dialog?.sharePersonName ?? "First person")}</span>
-              <input
-                className="table-edit-input table-edit-input-money"
-                type="text"
-                inputMode="decimal"
-                min="0"
-                max="100"
-                value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
-                enterKeyHint="next"
-                onMouseDown={selectAllOnFocus}
-                onFocus={selectAllOnFocus}
-                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
-                splitPercentInput: event.target.value,
-                splitBasisPoints: Math.round(Number(event.target.value || 0) * 100)
-              }, "percent") : current)}
-              onBlur={() => onChange((current) => current ? updateSplitExpenseDraft(current, {
-                splitPercentInput: String(Number(current.splitBasisPoints ?? 5000) / 100)
-              }, "percent", { commit: true }) : current)}
-            />
-          </label>
-          <label className="split-dialog-field split-dialog-field-exact-amount">
-            <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
-            <div className="money-input-with-visibility">
-              <input
-                className="table-edit-input table-edit-input-money"
-                type="text"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={dialog?.splitAmountInput ?? formatService.minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
-                enterKeyHint="done"
-                onMouseDown={selectAllOnFocus}
-                onFocus={selectAllOnFocus}
-                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
-                splitAmountInput: event.target.value,
-                splitAmountMinor: formatService.decimalStringToMinor(event.target.value)
-              }, "amount") : current)}
-              onBlur={() => onChange((current) => current ? updateSplitExpenseDraft(current, {
-                splitAmountInput: formatService.minorToDecimalString(current.splitAmountMinor ?? 0)
-              }, "amount", { commit: true }) : current)}
-            />
-              <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
-            </div>
-          </label>
-        </div>
-        <SplitSharePreview dialog={dialog} people={people} />
-        <OddCentChooser dialog={dialog} people={people} onChange={onChange} />
-      </div>
-      <div className="split-dialog-section">
-        <div className="entry-writing-grid split-dialog-writing-grid">
-          <label className="split-dialog-field">
-            <span>{messages.splits.expenseDescription}</span>
-            <textarea className="table-edit-input table-edit-textarea" rows={3} value={dialog?.description ?? ""} onChange={(event) => onChange((current) => current ? { ...current, description: event.target.value } : current)} />
-          </label>
-          <label className="split-dialog-field">
-            <span>{messages.splits.expenseNote}</span>
-            <textarea className="table-edit-input table-edit-textarea" rows={3} value={dialog?.note ?? ""} onChange={(event) => onChange((current) => current ? { ...current, note: event.target.value } : current)} />
-          </label>
-        </div>
-      </div>
-    </>
-  );
-}
-
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onCloseAutoFocus = undefined, onSave, onViewLinkedEntry, onRequestDelete }) {
   const isMobileLayout = useIsMobileLayout();
   const [content, setContent] = useState(null);
   // New, edit and view all use the split expense card (design.md, "Lead ·
-  // Support · Detail"); the inline desktop editor keeps the form.
+  // Support · Detail"), on a phone and on a wide screen.
   const isEditing = Boolean(dialog?.id) && !readOnly;
   const title = readOnly ? messages.splits.viewSplit : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense);
   const closeLabel = readOnly
@@ -353,6 +139,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
           ref={setContent}
           className={`note-dialog-content split-dialog-content split-expense-card-dialog${dialog?.id ? "" : " split-expense-create"}`}
           onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={onCloseAutoFocus}
           {...swipe.contentProps}
         >
           {isMobileLayout ? <SheetDragHandle /> : null}

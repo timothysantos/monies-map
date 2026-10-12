@@ -106,6 +106,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
+  // The split whose card just closed: its row takes focus back.
+  const closedSplitIdRef = useRef("");
   const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
   const selectedGroupId = selectedGroupParam ?? defaultGroupId;
@@ -207,7 +209,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     setFormError,
     openExpenseEditor,
     openSettlementEditor,
-    openInlineExpenseEditor,
     openInlineSettlementEditor,
     openNewExpenseDialog,
     openNewSettlementDialog,
@@ -343,6 +344,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     });
   }
 
+  // A modal dialog without a trigger button drops focus on close. Give it
+  // back to the split's row, so keyboard focus continues from where the card
+  // was opened (a deleted split has no row left, and focus stays put).
+  function returnFocusToSplitRow(event) {
+    event.preventDefault();
+    const splitId = closedSplitIdRef.current;
+    closedSplitIdRef.current = "";
+    if (splitId) {
+      document.getElementById(splitActivityDomId("expense", splitId))?.focus({ preventScroll: true });
+    }
+  }
+
   function scrollToSettlementActivity(checkpoint = activeCheckpoint) {
     const targetId = checkpoint?.includedRecordIds?.find((recordId) => (
       document.getElementById(splitActivityDomId("expense", recordId)) ||
@@ -359,6 +372,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   function closeExpenseDialogAndReturn() {
     const returnToSplitId = returnToSplitIdRef.current || expenseDialog?.id || "";
+    closedSplitIdRef.current = returnToSplitId;
     closeExpenseDialog();
     returnToSplitIdRef.current = "";
     scrollBackToSplitCard(returnToSplitId);
@@ -654,15 +668,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
   }
 
-  async function saveInlineSplit({ syncLinkedNote = false, syncLinkedCategory = false } = {}) {
+  // The inline editor on a wide screen edits settlements only; a split
+  // expense opens as the card dialog on every screen (saveExpense).
+  async function saveInlineSplit({ syncLinkedNote = false } = {}) {
     if (!inlineSplitDraft) {
       return;
     }
 
     const draft = inlineSplitDraft;
-    const validationError = inlineSplitDraft.kind === "expense"
-      ? validateSplitExpenseDraft(inlineSplitDraft)
-      : validateSplitSettlementDraft(inlineSplitDraft);
+    const validationError = validateSplitSettlementDraft(inlineSplitDraft);
     if (validationError) {
       setInlineSplitError(validationError);
       return;
@@ -672,49 +686,25 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     setSettlementLock(null);
     setIsSubmitting(true);
     try {
-      if (draft.kind === "expense") {
-        const response = await saveSplitExpense(draft);
-        applyOptimisticSplitsPage((currentPage) => {
-          const existingItem = currentPage.activity.find((item) => item.kind === "expense" && item.id === (draft.id ?? response.splitExpenseId));
-          return {
-            ...currentPage,
-            activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticExpenseActivityItem({
-              draft,
-              splitExpenseId: response.splitExpenseId,
-              viewId: view.id,
-              people,
-              groupOptions,
-              existingItem
-            }))
-          };
-        });
-      } else {
-        const response = await saveSplitSettlement(draft);
-        applyOptimisticSplitsPage((currentPage) => {
-          const existingItem = currentPage.activity.find((item) => item.kind === "settlement" && item.id === (draft.id ?? response.settlementId));
-          return {
-            ...currentPage,
-            activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticSettlementActivityItem({
-              draft,
-              settlementId: response.settlementId,
-              viewId: view.id,
-              people,
-              groupOptions,
-              existingItem
-            }))
-          };
-        });
-      }
+      const response = await saveSplitSettlement(draft);
+      applyOptimisticSplitsPage((currentPage) => {
+        const existingItem = currentPage.activity.find((item) => item.kind === "settlement" && item.id === (draft.id ?? response.settlementId));
+        return {
+          ...currentPage,
+          activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticSettlementActivityItem({
+            draft,
+            settlementId: response.settlementId,
+            viewId: view.id,
+            people,
+            groupOptions,
+            existingItem
+          }))
+        };
+      });
       if (syncLinkedNote && draft.linkedTransactionId) {
         await updateLinkedEntryNote({
           entryId: draft.linkedTransactionId,
           note: draft.note ?? ""
-        });
-      }
-      if (syncLinkedCategory && draft.kind === "expense" && draft.linkedTransactionId) {
-        await updateLinkedEntryCategory({
-          entryId: draft.linkedTransactionId,
-          categoryName: draft.categoryName
         });
       }
       clearInlineSplitDraft();
@@ -754,10 +744,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   }
 
   function requestSaveInlineSplit() {
-    if (requestSplitCategorySync(inlineSplitDraft, inlineSplitDraftSnapshot, "inline-split")) {
-      return;
-    }
-
     if (requestSplitNoteSync(inlineSplitDraft, inlineSplitDraftSnapshot, "inline-split")) {
       return;
     }
@@ -804,9 +790,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     setIsSyncingSplitCategory(true);
     setSplitCategorySyncPrompt((current) => current ? { ...current, error: "" } : current);
     try {
-      const saved = prompt.saveKind === "expense-dialog"
-        ? await saveExpense({ syncLinkedCategory: updateLinked })
-        : await saveInlineSplit({ syncLinkedCategory: updateLinked });
+      // Only a split expense (always the card dialog) has a category.
+      const saved = await saveExpense({ syncLinkedCategory: updateLinked });
       if (!saved) {
         return;
       }
@@ -1016,6 +1001,13 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         clearInlineSplitSnapshot();
         setInlineSplitError("");
         setInlineSplitDraft(null);
+      }
+      // Delete from the open card: the card closes with the split gone, not
+      // left open on a deleted row.
+      if (deleteTarget.kind === "expense" && expenseDialog?.id === deleteTarget.id) {
+        closeExpenseDialogAndReturn();
+      } else if (deleteTarget.kind === "settlement" && settlementDialog?.id === deleteTarget.id) {
+        closeSettlementDialog();
       }
       refreshAfterSplitMutation({
         broadcast: true,
@@ -1250,7 +1242,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         categories={categories}
         groupOptions={groupOptions}
         people={people}
-        categoryOptions={categoryOptions}
         searchControl={splitSearchControl}
         summaryToolbar={splitSummaryToolbar}
         visibleMatches={visibleMatches}
@@ -1280,7 +1271,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
         readOnly={isHouseholdView}
-        onEditExpense={isHouseholdView ? openExpenseEditor : (useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor)}
+        onEditExpense={openExpenseEditor}
         onEditSettlement={isHouseholdView ? openSettlementEditor : (useMobileSplitSheet ? openSettlementEditor : openInlineSettlementEditor)}
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
@@ -1360,6 +1351,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
         onClose={closeExpenseDialogAndReturn}
+        onCloseAutoFocus={returnFocusToSplitRow}
         onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
         onRequestDelete={requestDeleteSplit}

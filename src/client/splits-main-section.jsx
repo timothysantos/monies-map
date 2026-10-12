@@ -20,7 +20,6 @@ export function SplitsMainSection({
   categories,
   groupOptions,
   people,
-  categoryOptions,
   visibleMatches,
   groupedCurrentActivity,
   archivedBatches,
@@ -143,7 +142,6 @@ export function SplitsMainSection({
             categories={categories}
             groupOptions={groupOptions}
             people={people}
-            categoryOptions={categoryOptions}
             inlineSplitDraft={inlineSplitDraft}
             inlineSplitError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
