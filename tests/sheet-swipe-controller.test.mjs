@@ -190,12 +190,13 @@ test("every sheet with a draft tells the swipe whether it changed; the phone Spl
   const files = readdirSync(clientDir, { recursive: true }).map(String).filter((name) => /\.jsx?$/.test(name));
   const sheets = files.filter((name) => /<EntryMobileSheet\b/.test(read(`src/client/${name}`)));
   assert.deepEqual(sheets.sort(), [
-    "claude-credit-notice.jsx",
     "entries-panel.jsx",
     "entry-composer-section.jsx",
     "import-batch-bar.jsx",
-    "month-panel.jsx",
-    "month-plan-sheet.jsx"
+    "month-plan-sheet.jsx",
+    // The shared dialog frame: the topped-up form, the notes, the confirmations
+    // and the Settings editors all render through it.
+    "sheet-dialog.jsx"
   ]);
   // The import progress sheet only shows the batch; it has no draft.
   const withoutDraft = new Set(["import-batch-bar.jsx"]);
