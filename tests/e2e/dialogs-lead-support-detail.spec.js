@@ -147,8 +147,20 @@ test.describe("@webkit phone: confirmations are bottom sheets with the destructi
     await expectSheetFrame(page, confirm, { primary: "Delete entry" });
     // Rose pastel with the rose ink, not a saturated red.
     const deleteButton = confirm.locator(".lsd-bottom").getByRole("button", { name: "Delete entry" });
-    await expect(deleteButton).toHaveCSS("color", "rgb(163, 53, 42)");
-    await expect(deleteButton).toHaveCSS("background-color", "rgb(249, 229, 225)");
+    // (The tokens, whatever the current palette makes of them.)
+    const tokens = await page.evaluate(() => {
+      const probe = document.createElement("span");
+      document.body.append(probe);
+      const read = (name, property) => {
+        probe.style.cssText = `${property}: var(${name})`;
+        return getComputedStyle(probe)[property];
+      };
+      const colours = { ink: read("--pastel-rose-ink", "color"), fill: read("--pastel-rose", "background-color") };
+      probe.remove();
+      return colours;
+    });
+    await expect(deleteButton).toHaveCSS("color", tokens.ink);
+    await expect(deleteButton).toHaveCSS("background-color", tokens.fill);
 
     let deleteRequests = 0;
     page.on("request", (request) => {
