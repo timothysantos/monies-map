@@ -322,6 +322,35 @@ test("text JSON uses the same Claude-then-Workers-AI path with the caller's unit
   assert.equal(db.statements[0].args[2], 1);
 });
 
+// The text features that moved off runAiJson keep its two reasons: a model
+// that answered with something the validator refused is "unusable"; a
+// provider that failed or timed out is "temporarily unavailable".
+test("an answer every provider gave but the parser refused reports the caller's unusable reason", async (t) => {
+  const textInput = (extra = {}) => ({
+    capability: "monthly_narrative", units: 1, prompt: "Hello", schema: SCHEMA, maxTokens: 100, parse: parseTotal, ...extra
+  });
+  const unusableReason = "AI returned an unusable suggestion.";
+  let claude = () => claudeResponse({ total: 3 });
+  mockFetch(t, () => claude());
+
+  // Claude answered (2xx, wrong shape) and Workers AI threw: an answer was refused.
+  const refused = await runTextJson(createFakeDb(), { ...GATEWAY_BYOK, AI: stubWorkersAi(() => { throw new Error("capacity"); }) }, textInput({ unusableReason }));
+  assert.deepEqual(refused, { available: false, reason: unusableReason, remaining: 10 });
+
+  // Workers AI alone, malformed text: refused as before.
+  const malformed = await runTextJson(createFakeDb(), { AI_ASSIST_ENABLED: "true", AI: stubWorkersAi({ response: "not json {" }) }, textInput({ unusableReason }));
+  assert.deepEqual(malformed, { available: false, reason: unusableReason, remaining: 10 });
+
+  // Without the option, callers such as receipts and Ask keep the generic reason.
+  const generic = await runTextJson(createFakeDb(), { ...GATEWAY_BYOK, AI: stubWorkersAi({ response: "{\"total\":4}" }) }, textInput());
+  assert.deepEqual(generic, { available: false, reason: "AI is temporarily unavailable.", remaining: 10 });
+
+  // Nobody answered (Claude 503, Workers AI too slow): never "unusable".
+  claude = () => new Response("{}", { status: 503 });
+  const down = await runTextJson(createFakeDb(), { ...GATEWAY_BYOK, AI: stubWorkersAi(() => new Promise(() => {})) }, textInput({ unusableReason, timeoutMs: 30 }));
+  assert.deepEqual(down, { available: false, reason: "AI is temporarily unavailable.", remaining: 10 });
+});
+
 test("a non-Gemma fallback model gets the older Workers AI JSON mode shape", async () => {
   const ai = stubWorkersAi({ response: "{\"total\":\"3.00\"}" });
   await runVisionJson(createFakeDb(), {

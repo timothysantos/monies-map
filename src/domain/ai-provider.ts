@@ -79,6 +79,12 @@ interface JsonRequest<T> {
   parse: (response: unknown) => T | null;
   // Per-provider wait in milliseconds; defaults suit a phone on 4G.
   timeoutMs?: number;
+  // The reason to report when a provider did answer but `parse` rejected
+  // every answer. Without it, a rejected answer reads like any other
+  // failure ("AI is temporarily unavailable."). The text features that moved
+  // here from runAiJson pass AI_UNUSABLE_SUGGESTION_REASON so their wording
+  // is unchanged.
+  unusableReason?: string;
 }
 
 interface ClaudeGateway {
@@ -200,6 +206,9 @@ async function runJson<T>(
   }
 
   const timeoutMs = Math.max(1, Math.round(input.timeoutMs ?? DEFAULT_TIMEOUT_MS));
+  // True once a provider has answered (Claude 2xx, Workers AI resolved in
+  // time) and the answer was refused, malformed or rejected by `parse`.
+  let answerRejected = false;
   if (claude) {
     const attempt = await callClaude(claude, input, request.images, timeoutMs);
     await recordClaudeOutcome(db, env, attempt.outcome);
@@ -207,14 +216,20 @@ async function runJson<T>(
     if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "claude" };
     }
+    answerRejected ||= attempt.outcome.kind === "success";
   }
   if (env.AI) {
-    const value = parseAnswer(input.parse, await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images, timeoutMs));
+    const attempt = await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images, timeoutMs);
+    const value = parseAnswer(input.parse, attempt.raw);
     if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "workers-ai" };
     }
+    answerRejected ||= attempt.answered;
   }
-  return unavailable("AI is temporarily unavailable.", budget.remaining);
+  return unavailable(
+    answerRejected && input.unusableReason ? input.unusableReason : "AI is temporarily unavailable.",
+    budget.remaining
+  );
 }
 
 // Returns the parsed JSON answer, or null for any failure (status, network,
@@ -314,7 +329,14 @@ async function recordClaudeOutcome(db: D1Database, env: AiProviderEnv, outcome: 
   }
 }
 
-async function callWorkersAi(ai: Ai, model: string, input: JsonRequest<unknown>, images: AiImage[], timeoutMs: number) {
+// `answered` is false only when the call threw or ran out of time.
+async function callWorkersAi(
+  ai: Ai,
+  model: string,
+  input: JsonRequest<unknown>,
+  images: AiImage[],
+  timeoutMs: number
+): Promise<{ raw: unknown; answered: boolean }> {
   // Gemma 4 uses the OpenAI-style chat shape; older Workers AI models take
   // the schema directly in JSON mode and `max_tokens`.
   const openAiStyle = model.includes("gemma-4");
@@ -337,15 +359,19 @@ async function callWorkersAi(ai: Ai, model: string, input: JsonRequest<unknown>,
       : { max_tokens: input.maxTokens })
   };
 
+  const timedOut = Symbol("timed out");
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const output = await Promise.race([
       (ai as unknown as { run: (model: string, inputs: unknown) => Promise<unknown> }).run(model, body),
-      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); })
+      new Promise<typeof timedOut>((resolve) => { timer = setTimeout(() => resolve(timedOut), timeoutMs); })
     ]);
-    return readWorkersAiJson(output);
+    if (output === timedOut) {
+      return { raw: null, answered: false };
+    }
+    return { raw: readWorkersAiJson(output), answered: true };
   } catch {
-    return null;
+    return { raw: null, answered: false };
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);
