@@ -10,7 +10,7 @@ const copy = messages.summary.monthChoice;
 
 // Phone: a chip in the floating Support bar beside the View and scope
 // trigger, on one line. "All months ▾" opens the sheet; with a month picked
-// it reads "‹ Sep 2026 ▾ ›", where the arrows step through the range's
+// it reads "‹ Sep 2026 ›", where the arrows step through the range's
 // months and the middle opens the sheet. "Pick a month" is heard, not shown.
 // Disabled until the range's months are known.
 export function SummaryMonthIslandControl({
@@ -26,23 +26,23 @@ export function SummaryMonthIslandControl({
     return (
       <button
         type="button"
-        className="mobile-month-choice mobile-month-chip mobile-month-choice-all"
+        className="mobile-month-choice mobile-month-choice-all"
         aria-haspopup="dialog"
         disabled={disabled}
         onClick={onOpen}
         {...intentProps}
       >
-        <span className="mobile-month-choice-copy">
+        <span className="mobile-month-chip">
           <strong>{copy.allMonths}</strong>
           <span className="sr-only">{copy.label}</span>
+          <span className="mobile-month-choice-caret" aria-hidden="true">▾</span>
         </span>
-        <span className="mobile-month-choice-caret" aria-hidden="true">▾</span>
       </button>
     );
   }
 
   return (
-    <div className="mobile-month-choice mobile-month-chip" role="group" aria-label={copy.label}>
+    <div className="mobile-month-choice" role="group" aria-label={copy.label}>
       <button
         type="button"
         className="mobile-month-choice-step"
@@ -59,9 +59,10 @@ export function SummaryMonthIslandControl({
         disabled={disabled}
         onClick={onOpen}
       >
-        <strong>{formatMonthLabel(pickedMonth)}</strong>
-        <span className="sr-only">{copy.label}</span>
-        <span aria-hidden="true">▾</span>
+        <span className="mobile-month-chip">
+          <strong>{formatMonthLabel(pickedMonth)}</strong>
+          <span className="sr-only">{copy.label}</span>
+        </span>
       </button>
       <button
         type="button"

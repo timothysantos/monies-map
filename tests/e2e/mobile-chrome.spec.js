@@ -152,8 +152,8 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
       if (month) {
         await expect(bar.locator(".mobile-month-chip"), url).toHaveText(month);
       } else {
-        await expect(bar.getByRole("button", { name: "Previous month" }), url).toBeVisible();
-        await expect(bar.getByRole("button", { name: "Next month" }), url).toBeVisible();
+        await expect(bar.getByRole("button", { name: "Previous period" }), url).toBeVisible();
+        await expect(bar.getByRole("button", { name: "Next period" }), url).toBeVisible();
       }
 
       // One bar: one surface with the chrome radius and shadow, nothing

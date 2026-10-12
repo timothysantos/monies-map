@@ -9215,7 +9215,7 @@ th {
     align-items: center;
     gap: 8px;
     min-height: 44px;
-    padding: 0 8px 0 10px;
+    padding: 0 6px 0 8px;
     border: 0;
     border-radius: 16px;
     background: transparent;
@@ -9229,7 +9229,7 @@ th {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
-    min-height: 28px;
+    height: 26px;
     padding: 0 11px;
     border: 1px solid var(--person-chip-border, var(--line));
     border-radius: 999px;
@@ -9237,6 +9237,7 @@ th {
     color: var(--person-ink, var(--text));
     font-size: 0.84rem;
     font-weight: 700;
+    line-height: 1.25;
     letter-spacing: -0.01em;
     white-space: nowrap;
   }
@@ -9273,8 +9274,9 @@ th {
     box-shadow: none;
   }
 
-  /* The Summary tab's month chip: "All months ▾", or "‹ Sep 2026 ▾ ›" with a
-     month picked (summary-month-picker.jsx). A pastel sky chip, one line. */
+  /* The Summary tab's month control: a 44px button around a quiet chip,
+     "All months ▾", or "‹ Sep 2026 ▾ ›" with a month picked
+     (summary-month-picker.jsx). */
   .mobile-month-choice {
     flex: 0 0 auto;
     display: flex;
@@ -9286,39 +9288,37 @@ th {
     color: var(--text);
   }
 
-  .mobile-month-choice-all {
-    gap: 6px;
-    padding: 0 10px;
-    cursor: pointer;
-  }
-
-  .mobile-month-choice-copy,
-  .mobile-month-choice-open {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .mobile-month-choice strong {
-    font-size: 0.84rem;
-    line-height: 1.25;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-  }
-
-  .mobile-month-choice-caret,
-  .mobile-month-choice-open > span[aria-hidden] {
-    color: var(--accent-strong);
-    font-size: 0.8rem;
-  }
-
+  .mobile-month-choice-all,
   .mobile-month-choice-open {
     min-height: 44px;
-    padding: 0 4px;
+    padding: 0 2px;
     border: 0;
     background: transparent;
     color: var(--text);
+    font: inherit;
     cursor: pointer;
+  }
+
+  .mobile-month-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 999px;
+    background: rgba(38, 35, 31, 0.06);
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .mobile-month-chip strong {
+    font-size: 0.84rem;
+    letter-spacing: -0.01em;
+  }
+
+  .mobile-month-choice-caret {
+    color: var(--accent-strong);
+    font-size: 0.8rem;
   }
 
   .mobile-month-choice-step {
