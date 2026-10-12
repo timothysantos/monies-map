@@ -212,8 +212,26 @@
 }
 
 .month-lead.lsd-card {
-  gap: 8px;
-  padding: 14px 16px 6px;
+  gap: 6px;
+  padding: 12px 16px 4px;
+}
+
+/* The savings bar adds two bars and two lines to this card, so the card's
+   other gaps are tight to keep it near 230px on a phone. */
+.month-lead .lsd-progress {
+  gap: 4px;
+}
+
+.month-lead .savings-bar {
+  gap: 3px;
+}
+
+.month-lead .savings-bar .savings-bar-sentence {
+  margin-top: 0;
+}
+
+.month-lead .lead-column {
+  padding-block: 2px;
 }
 
 .metric-detail-popover {

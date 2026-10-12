@@ -206,10 +206,10 @@ test.describe("phone", { tag: "@webkit" }, () => {
     const remaining = await box(page.locator('.month-lead-group [data-metric="remaining"]'));
     expect(lead.width).toBeGreaterThan(390 - 2 * 24);
     // One compact card: the Income, Saved and Remaining columns are inside
-    // it, on one row of equal widths, and it is at most 190px tall so the
-    // Money insights start above the fold.
+    // it, on one row of equal widths, and it is at most 230px tall (savings
+    // bar included) so the Money insights start above the fold.
     const saved = await box(page.locator('.month-lead-group [data-metric="saved"]'));
-    expect(lead.bottom - lead.y, "lead card height").toBeLessThanOrEqual(190);
+    expect(lead.bottom - lead.y, "lead card height").toBeLessThanOrEqual(230);
     for (const column of [income, saved, remaining]) {
       expect(column.y).toBeGreaterThanOrEqual(lead.y);
       expect(column.bottom).toBeLessThanOrEqual(lead.bottom);

@@ -4,6 +4,7 @@ import { PrivateMoney } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
 import { money } from "../formatters";
 import { LeadCard } from "./lead-support-detail";
+import { SavingsBar } from "./savings-bar";
 
 const copy = messages.summary.lead;
 const planWords = messages.summary.monthChoice;
@@ -11,6 +12,9 @@ const planWords = messages.summary.monthChoice;
 // The spend lead and its Income and Saved pills, shared by the Summary top
 // and the Month top (month-overview.jsx, which adds Remaining budget as
 // `children`). `model` is buildSummaryLeadModel's shape.
+//
+// Under the spend bar sits the savings bar (savings-bar.jsx), built from the
+// income, spend, planned spend and savings target this model already has.
 //
 // `inline` is the Month top: Income, Saved and `children` (Remaining budget)
 // fold into the lead card as one row of equal columns under the bar, in
@@ -40,6 +44,12 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
           </span>
         ) : null}
       >
+        <SavingsBar
+          income={model.income.amountMinor}
+          spent={model.spent.amountMinor}
+          plannedSpend={model.plannedSpendMinor}
+          savingsTarget={model.saved.planMinor}
+        />
         {inline ? (
           <div className="lead-columns">
             <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
