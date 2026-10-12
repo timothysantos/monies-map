@@ -3,6 +3,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { money, moneyWithCurrency } from "./formatters";
 import { getIconComponent } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
+import { paletteColour } from "./palette-colour";
 
 export default function SpendingMixRecharts({
   chartData,
@@ -33,7 +34,9 @@ export default function SpendingMixRecharts({
             label={(props) => renderPieCallout(props, total, { compact: isNarrowViewport })}
           >
             {chartData.map((entry) => (
-              <Cell key={entry.key} fill={entry.color} />
+              // The fill attribute keeps the plain colour; the style (which
+              // takes a var()) shows the colour preset's one.
+              <Cell key={entry.key} fill={entry.color} style={{ fill: paletteColour(entry.color) }} />
             ))}
           </Pie>
         </PieChart>
@@ -75,16 +78,17 @@ function renderPieCallout(props, total, options = {}) {
   const tx = bx + (isRight ? textOffset : -textOffset);
   const percentage = ((payload.valueMinor / total) * 100).toFixed(1);
   const Icon = getIconComponent(payload.iconKey);
+  const colour = paletteColour(payload.color);
 
   return (
     <g>
-      <path d={`M${sx},${sy} L${mx},${my} L${bx},${by}`} stroke={payload.color} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.82" />
+      <path d={`M${sx},${sy} L${mx},${my} L${bx},${by}`} style={{ stroke: colour }} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.82" />
       <foreignObject x={bx - (badgeSize / 2)} y={by - (badgeSize / 2)} width={badgeSize} height={badgeSize}>
-        <div className="donut-callout-badge" style={{ "--category-color": payload.color, "--callout-size": `${badgeSize}px` }}>
+        <div className="donut-callout-badge" style={{ "--category-color": colour, "--callout-size": `${badgeSize}px` }}>
           <Icon size={iconSize} strokeWidth={2.2} />
         </div>
       </foreignObject>
-      <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" style={{ fill: `color-mix(in srgb, ${payload.color} 62%, var(--text))` }} fontSize={fontSize} fontWeight="700">
+      <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" style={{ fill: `color-mix(in srgb, ${colour} 62%, var(--text))` }} fontSize={fontSize} fontWeight="700">
         {percentage}%
       </text>
     </g>

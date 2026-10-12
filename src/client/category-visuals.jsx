@@ -7,6 +7,7 @@ import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
+import { paletteColour } from "./palette-colour";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
 // The category edit dialog loads when it is first opened, so the first
@@ -117,7 +118,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
       <button
         type="button"
         className="category-icon category-icon-button"
-        style={{ "--category-color": category.colorHex }}
+        style={{ "--category-color": paletteColour(category.colorHex) }}
         aria-label={`Edit ${category.name}`}
         onClick={(event) => {
           event.preventDefault();

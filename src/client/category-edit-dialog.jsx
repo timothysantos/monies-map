@@ -6,6 +6,7 @@ import { messages } from "./copy/en-SG";
 import { settingsMessages } from "./copy/en-SG-settings";
 import { CategoryGlyph } from "./ui-components";
 import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS } from "./ui-options";
+import { paletteColour } from "./palette-colour";
 
 // The dialog is portalled out of the DOM, but React still bubbles its events
 // through the component tree into whatever opened it: the entry or plan-row
@@ -120,7 +121,7 @@ function CategoryIconSelector({ value, colorHex, onChange }) {
       <Popover.Trigger asChild>
         <button type="button" className="category-picker-trigger" aria-label={`Select icon. Current icon: ${selectedOption.label}`}>
           <span className="category-picker-value">
-            <span className="category-picker-icon-preview" style={{ "--category-color": colorHex }}>
+            <span className="category-picker-icon-preview" style={{ "--category-color": paletteColour(colorHex) }}>
               <CategoryGlyph iconKey={selectedOption.key} />
             </span>
           </span>
@@ -156,7 +157,7 @@ function CategoryColorSelector({ value, onChange }) {
       <Popover.Trigger asChild>
         <button type="button" className="category-picker-trigger" aria-label={`Select color. Current color: ${value}`}>
           <span className="category-picker-value">
-            <span className="category-picker-color-preview" style={{ "--swatch-color": value }} />
+            <span className="category-picker-color-preview" style={{ "--swatch-color": paletteColour(value) }} />
           </span>
           <ChevronDown size={18} strokeWidth={2.2} />
         </button>
@@ -170,7 +171,7 @@ function CategoryColorSelector({ value, onChange }) {
                 key={color}
                 type="button"
                 className={`color-choice ${value === color ? "is-active" : ""}`}
-                style={{ "--swatch-color": color }}
+                style={{ "--swatch-color": paletteColour(color) }}
                 onClick={() => onChange(color)}
                 aria-label={color}
                 title={color}

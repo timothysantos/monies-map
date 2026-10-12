@@ -27,7 +27,7 @@ test("legacy shared ledger rows do not use the Splits shared cue", () => {
   assert.equal(display.ownerTitle, "Tim");
   assert.equal(display.ownerChipClassName, "entry-chip-owner");
   assert.equal(display.splitPercent, 50);
-  assert.equal(ownerCue.style["--entry-owner-border-color"], "rgba(70, 120, 142, 1)");
+  assert.equal(ownerCue.style["--entry-owner-border-color"], "var(--cat-46788e, #46788E)");
 });
 
 test("linked split rows keep the Splits workspace label and cue", () => {
@@ -47,7 +47,7 @@ test("linked split rows keep the Splits workspace label and cue", () => {
   assert.equal(display.linkedSplitGroupName, "Okaeri");
   assert.equal(display.splitPercent, 50);
   assert.deepEqual(display.linkedSplitGroupStyle, getSplitGroupChipStyle("Okaeri"));
-  assert.equal(ownerCue.style["--entry-owner-border-color"], "rgba(191, 125, 81, 1)");
+  assert.equal(ownerCue.style["--entry-owner-border-color"], "var(--cat-bf7d51, #BF7D51)");
 });
 
 test("split group chip colors are stable per group name", () => {

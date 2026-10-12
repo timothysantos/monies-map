@@ -15,6 +15,7 @@ import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { entryTotalsTones } from "../domain/money-tone";
+import { paletteColour } from "./palette-colour";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -139,7 +140,7 @@ export function EntriesBreakdownPanel({
           return (
             <div key={item.key} className={`category-row category-toggle-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
               <div className="category-key">
-                <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
+                <span className="category-icon category-icon-static" style={{ "--category-color": paletteColour(theme.color) }}>
                   <CategoryGlyph iconKey={theme.iconKey} />
                 </span>
                 <div>
