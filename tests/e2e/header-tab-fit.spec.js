@@ -225,7 +225,7 @@ test.describe("header on a narrow desktop window", () => {
       displayPadding: "12px",
       displayGap: "10px"
     });
-    expect((await readHeader(page)).headerHeight).toBe(61);
+    expect((await readHeader(page)).headerHeight).toBe(57);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await openPage(page, "/month?view=person-tim&month=2026-05");

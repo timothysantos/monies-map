@@ -1383,7 +1383,8 @@ A person view's figures follow the route's `scope`. Each layout has one
 scope control:
 
 - Desktop and tablet (wider than the phone layout in `use-viewport.js`):
-  Month shows the scope pills in its header. Summary shows
+  Month shows the scope pills in its header, and Entries its scope switch; both
+  are a grey track with a raised white selection ("Desktop Chrome"). Summary shows
   `SummaryScopeSwitch`: a compact one-click `Direct` / `Shared` / `Both`
   switch (`messages.summary.scopeSwitchLabel`) in the empty space under the
   `Summary` title, with `aria-pressed` on the active option and what each
@@ -1473,9 +1474,10 @@ picking the range on both routes; the months offered are the range's months
   and, on a tile, a tick. Hidden money shows dots, no tone, no bold and no
   `over`.
 - Desktop and tablet (`SummaryMonthSelector`): one compact row under the
-  header, `All months` then the range's months newest first, in the pill
-  style the Spending Mix month chips used (`.summary-focus-button`), with
-  `aria-pressed`. Hidden on a phone.
+  header, `All months` then the range's months newest first, as grey track
+  chips with a raised white selected one (`.summary-focus-button`, "Desktop
+  Chrome"), with `aria-pressed`. The row wraps rather than clip at the page
+  edge. Hidden on a phone.
 - Spending Mix has no month chips of its own; the month choice drives it.
   All months shows the whole range (`categoryShareChart`). A picked month
   shows that month in the Month content, full width after the money
@@ -1815,6 +1817,54 @@ card change only after the save succeeds), and duplicate, reset and delete
 month (a failure keeps the Actions popover or confirmation dialog open).
 The reset and delete confirmation dialogs render beside the Actions popover,
 not inside it, because closing the popover unmounts its content.
+
+## Desktop Chrome
+
+The desktop (761 px and wider) header, scope switches and totals follow
+Lead · Support · Detail with one set of tokens in `:root` of
+`public/styles.css`, next to the phone's `--chrome-*` tokens: `--radius-control`
+(10 px: tabs, period buttons, period box, eye, pills inside a group),
+`--radius-group` (14 px: a segmented group, the Entries totals strip),
+`--track` (the grey a group sits on, the text ink at 6%), `--shadow-raised`
+(a selected segment), `--shadow-pop` (the period picker),
+`--type-title` (1.7 rem), `--type-control` (0.875 rem) and `--type-small`
+(0.78 rem). The block is "Desktop chrome" in `styles.css`, after
+`.pill-disabled`, so the page-width header tightening below it still wins.
+
+- Lead: the page title (`.panel-head h2`, and Month's month name, in ink) is
+  the same 1.7 rem on every page. The controls around it are Support and stay
+  quiet.
+- One control height: the view pills' group, the tabs, the period buttons, the
+  period box and the eye are all 36 px, so the header is 57 px tall and stays
+  one row at 1,440 px, at 1,280 px with the Ask panel docked (a page 920 px
+  wide) and at 1,024 px.
+- Segmented groups (view pills, Entries and Month scope, Summary's scope
+  switch) are a grey track; the selected segment is raised white at weight
+  600, never terracotta. The active person's pill takes that person's colour
+  (`getPersonColourVars`, set inline in `App.jsx`, read only while the pill is
+  active), the same colour as the Entries row edge. Household is raised
+  white. The Summary month row (`.summary-focus-button`) uses the same track
+  chips with a raised white selected one, and wraps to a second line instead
+  of clipping at the page edge.
+- A period that does not apply to the page (Splits, Settings, Imports, FAQ;
+  `.period-nav-cluster.is-passive`) reads as a plain label with dimmed,
+  inert arrows, not as a disabled box. A page that uses the period keeps the
+  bordered box and live arrows.
+- Totals: the Entries strip is a pastel-neutral box with the group radius and
+  Spend, its first figure, larger as the page's key figure (hidden money
+  keeps the dots and the plain ink). On a page narrower than 1,064 px
+  (`@container shell`) the strip wraps to a second line rather than clipping,
+  and the Entries search label sits above the field with the search column
+  wider than the three selects, so the field keeps about 200 px. Month's
+  totals are the Month lead card's (see "Lead · Support · Detail"); this
+  block does not restyle them.
+- Bundle: the Entries-only totals, date and empty-state base rules live in
+  `entries-route.css`, and rules for classes no component renders were
+  removed from `styles.css`, so the block adds no first-screen bytes.
+- Proof: `tests/e2e/visual-structure.spec.js` (computed heights, radii, person
+  colour, title size, quiet selected states, narrow-page clipping, passive
+  period and hidden money at 1,440, 1,280 docked and 1,024 px) and
+  `tests/e2e/header-tab-fit.spec.js`.
 
 ## Phone Chrome
 
