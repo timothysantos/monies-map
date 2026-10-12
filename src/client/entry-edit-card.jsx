@@ -10,8 +10,9 @@ import { BANK_FACTS_LOCK_LINE, getBankFactsLockMessage, getEntryTypeOptions, get
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
+import { addedByLabel, bankStateChipLabel } from "./entry-source";
 import { CategoryGlyph } from "./ui-components";
-import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { entryAmountTone } from "../domain/money-tone";
 import { todayInAppTimeZone } from "./app-dates";
@@ -31,7 +32,11 @@ const BANK_STATE_TONES = {
 // - Lead: the category bubble (which opens the category editor), what it
 //   was (an inline field, read-only when certified) and the amount in its
 //   money tone (an inline field unless certified).
-// - Support: date, wallet, owner and bank state chips.
+// - Support: date, wallet, owner and bank state chips. The date, wallet and
+//   owner chips open the same picker as their Detail row (the wallet's
+//   unfolds More details first); a field the statement certified shows a
+//   lock instead, and the bank state chip is never an editor (it names the
+//   tool that saved a provisional entry: "Apple Pay · provisional").
 // - Detail: Category, Owner, Splits (or the transfer match), Note, then
 //   Date, Wallet, Posted date and Type. On a phone those last ones fold into
 //   More details and each row opens the app's own picker; on a wide screen
@@ -70,6 +75,7 @@ export function EntryEditCard({
   const [moreOpen, setMoreOpen] = useState(false);
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
   useRouteWorkBusy(categoryQuickSaveOpen);
+  const cardRef = useRef(null);
   const quickSaveCategoryNameRef = useRef("");
   const lockDetailId = useId();
 
@@ -104,6 +110,28 @@ export function EntryEditCard({
       accountName: selectedAccount?.accountName ?? nextValue,
       accountOwnerLabel: selectedAccount?.ownerLabel
     });
+  }
+
+  // A Support chip opens its field's own picker: in a sheet the picker
+  // sheet (unfolding More details for a folded row), on a wide screen the
+  // row's own select.
+  function openFieldFromChip(key) {
+    if (isSheet) {
+      if (key === "wallet") {
+        setMoreOpen(true);
+      }
+      setOpenPicker(key);
+      return;
+    }
+    const select = cardRef.current?.querySelector(`[data-row="${key}"] select`);
+    if (select instanceof HTMLSelectElement) {
+      select.focus();
+      try {
+        select.showPicker?.();
+      } catch {
+        // Focus alone is enough where a select cannot open from script.
+      }
+    }
   }
 
   function changeType(nextEntryType) {
@@ -258,11 +286,15 @@ export function EntryEditCard({
       ],
       onValueChange: (transferDirection) => onChange({ transferDirection }),
       locked: bankFactsLocked
-    }) : null
+    }) : null,
+    // Who added it (an in-app tool), shown only when known; nobody changes it.
+    addedByLabel(entry.addedBy)
+      ? <DetailRow key="addedBy" label={copy.source.addedBy} value={addedByLabel(entry.addedBy)} readOnly data-row="addedBy" />
+      : null
   ].filter(Boolean);
 
   return (
-    <div className={`entry-edit-card is-${layout}`}>
+    <div ref={cardRef} className={`entry-edit-card is-${layout}`}>
       <div className="entry-edit-card-lead">
         <LeadCard
           className="entry-edit-lead"
@@ -299,12 +331,48 @@ export function EntryEditCard({
           tone={entryAmountTone(entry.entryType, entry.entryType === "income" ? 1 : -1)}
           editable={!bankFactsLocked}
           chips={[
-            <MetaChip key="date" icon={CalendarDays}>{formatCardDate(entry.date, today)}</MetaChip>,
-            entry.accountName ? <MetaChip key="wallet" icon={CreditCard}>{entry.accountName}</MetaChip> : null,
-            <MetaChip key="owner" person={entry.ownershipType === "shared" ? "shared" : entry.ownerName}>{ownerLabel}</MetaChip>,
+            <MetaChip
+              key="date"
+              data-chip="date"
+              icon={CalendarDays}
+              locked={bankFactsLocked}
+              lockedLabel={messages.common.chipLockedByStatement}
+              control={(
+                <ChipDateField
+                  value={entry.date}
+                  label={messages.common.changeChip(copy.editDate, formatCardDate(entry.date, today))}
+                  onValueChange={(date) => onChange({ date })}
+                />
+              )}
+            >
+              {formatCardDate(entry.date, today)}
+            </MetaChip>,
+            entry.accountName ? (
+              <MetaChip
+                key="wallet"
+                data-chip="wallet"
+                icon={CreditCard}
+                locked={bankFactsLocked}
+                lockedLabel={messages.common.chipLockedByStatement}
+                actionLabel={messages.common.changeChip(copy.editWallet, entry.accountName)}
+                onClick={() => openFieldFromChip("wallet")}
+              >
+                {entry.accountName}
+              </MetaChip>
+            ) : null,
+            <MetaChip
+              key="owner"
+              data-chip="owner"
+              person={entry.ownershipType === "shared" ? "shared" : entry.ownerName}
+              actionLabel={messages.common.changeChip(copy.editOwner, ownerLabel)}
+              onClick={() => openFieldFromChip("owner")}
+            >
+              {ownerLabel}
+            </MetaChip>,
             bankState ? (
               <MetaChip
                 key="state"
+                data-chip="state"
                 icon={bankFactsLocked ? Lock : null}
                 tone={BANK_STATE_TONES[bankState.className]}
                 // The full lock rule, kept for a hover and a screen reader;
@@ -312,7 +380,7 @@ export function EntryEditCard({
                 title={bankFactsLocked ? getBankFactsLockMessage(entry) : undefined}
                 aria-describedby={bankFactsLocked ? lockDetailId : undefined}
               >
-                {bankState.label}
+                {bankStateChipLabel(entry, bankState.label)}
               </MetaChip>
             ) : null
           ].filter(Boolean)}

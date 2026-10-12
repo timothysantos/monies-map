@@ -41,6 +41,32 @@
   font-size: 0.9rem;
 }
 
+/* The way back after the Entries + or the Splits receipt button opened Ask
+   on a phone: the standard Back place, top left above the title, far from
+   Save. A 44 px target that takes only a short row. */
+.ask-head.has-back > .ask-back {
+  grid-column: 1 / -1;
+}
+
+.ask-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -10px 0 -6px -8px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: var(--accent-strong);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ask-back:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
 /* New chat: a quiet text button at the header's right, 44 px tall. */
 .ask-head.has-new-chat {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -219,6 +245,74 @@
 .ask-answer .lsd-subtitle {
   color: var(--muted);
   font-weight: 500;
+}
+
+/* A money answer (ask-money-answer-card.jsx): the answer in words, then
+   quiet Detail rows with the amount on the right; the check before an
+   answer reuses the card with the butter "Check this first" tag. */
+.ask-money-wording {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.ask-money-lines {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.ask-money-lines li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.ask-money-lines li:last-child {
+  border-bottom: 0;
+}
+
+.ask-money-line-text,
+.ask-money-line-figures {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ask-money-line-label {
+  overflow-wrap: anywhere;
+}
+
+.ask-money-line-figures {
+  justify-items: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ask-money-lines small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.ask-money-lines small.money-plan {
+  color: var(--money-ink);
+}
+
+.ask-skew-tag,
+.ask-money-ai-tag {
+  justify-self: start;
+}
+
+.ask-skew-check[data-skew-check="resolved"],
+.ask-skew-check[data-skew-check="kept"] {
+  opacity: 0.72;
 }
 
 /* The entry card: the shared LeadCard (ui/lead-support-detail.css) plus
@@ -679,7 +773,8 @@
   .ask-thread > .ask-me,
   .ask-thread > .ask-note,
   .ask-thread > .ask-card,
-  .ask-thread > .ask-answer {
+  .ask-thread > .ask-answer,
+  .ask-thread > .ask-money-answer {
     animation: ask-arrive 180ms ease-out;
   }
 
@@ -709,6 +804,81 @@
     opacity: 0;
     transform: translateY(4px);
   }
+}
+
+/* Desktop Ask (ask-dock.jsx): the same page fills the docked panel or the
+   popup. The conversation scrolls inside it; the chips and composer stay
+   at its bottom; the header holds New chat, the expand control (popup) and
+   Close. */
+.ask-page.is-in-dock {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px var(--ask-dock-gutter) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.ask-page.is-in-dock .ask-thread {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 calc(-1 * var(--ask-dock-gutter));
+  padding: 2px var(--ask-dock-gutter) 12px;
+}
+
+.ask-page.is-in-dock .ask-bottom {
+  position: static;
+  background: transparent;
+  margin: 0 calc(-1 * var(--ask-dock-gutter));
+  padding: 8px var(--ask-dock-gutter) 12px;
+}
+
+.ask-page.is-in-dock .ask-chips {
+  margin: 0 calc(-1 * var(--ask-dock-gutter));
+  padding: 2px var(--ask-dock-gutter);
+}
+
+.ask-page.is-in-dock .ask-head h2 {
+  font-size: 1.7rem;
+}
+
+.ask-head.has-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+}
+
+.ask-head.has-actions > h2,
+.ask-head.has-actions > .ask-context {
+  grid-column: 1;
+}
+
+.ask-head-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  margin-top: -6px;
+  margin-right: -4px;
+}
+
+.ask-head-actions .ask-new-chat {
+  padding-right: 6px;
+}
+
+/* The popup's expand control: docks it beside the page. */
+.ask-dock-expand {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--accent-strong);
+  cursor: pointer;
 }
 
 /* A phone: Ask is a full page above the tab bar, with no header bar. The

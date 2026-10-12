@@ -285,7 +285,12 @@ test("save: saving -> saved keeps the entry ids; a failure goes back to a draft 
   assert.equal(failed.saveError, "Missing entry create fields");
   const saved = markCardSaved(saving, { entryId: "txn-1", splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners" });
   assert.equal(saved.status, "saved");
-  assert.deepEqual(saved.saved, { entryId: "txn-1", splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners", splitAddError: "" });
+  // Saved by Ask: provisional until a statement certifies it (the saved
+  // card's bank state chip reads "Ask · provisional").
+  assert.deepEqual(saved.saved, {
+    entryId: "txn-1", addedBy: "ask", bankCertificationStatus: "manual_provisional",
+    splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners", splitAddError: ""
+  });
   assert.equal(validateCard(saved).canSave, false);
   assert.equal(setCardField(saved, { amountInput: "99" }, context), saved, "a saved card does not change");
   const undone = markCardUndone(saved);
@@ -340,10 +345,16 @@ test("a saved entry from the Apple Pay Shortcut becomes a saved card", () => {
     ownershipType: "direct",
     ownerName: "Ethan",
     amountMinor: 690,
+    bankCertificationStatus: "manual_provisional",
+    bankCertificationLabel: "Manual provisional",
+    addedBy: "apple_pay_shortcut",
     splits: []
   }, context);
   assert.equal(card.status, "saved");
   assert.equal(card.saved.entryId, "txn-apple");
+  // The source and bank state come with it, for the saved card's chip.
+  assert.equal(card.saved.addedBy, "apple_pay_shortcut");
+  assert.equal(card.saved.bankCertificationStatus, "manual_provisional");
   assert.equal(card.saved.splitExpenseId, null);
   assert.equal(card.fields.amountMinor, 690);
   assert.equal(card.fields.categoryName, "Other");

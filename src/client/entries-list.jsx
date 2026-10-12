@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { RefreshCw, X } from "lucide-react";
+import { Nfc, RefreshCw, Sparkles, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -8,6 +8,7 @@ import { EntryTransferTools } from "./entry-editor";
 import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
 import { BottomActions } from "./ui/lead-support-detail";
 import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
+import { addedByGlyph } from "./entry-source";
 import { moniesClient } from "./monies-client-service";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { PrivateMoney, TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -480,6 +481,7 @@ function EntryRow({
               primarySignedAmountMinor={display.primarySignedAmountMinor}
               amountTone={display.amountTone}
               secondarySignedAmountMinor={display.secondarySignedAmountMinor}
+              addedBy={entry.addedBy}
             />
             <div className="entry-pills">
               {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
@@ -538,11 +540,26 @@ const MemoizedEntryRow = memo(EntryRow);
 // The shared money formatter reads the privacy setting while rendering, so
 // the amount subscribes to it. A privacy toggle then redraws only amounts,
 // not whole memoized rows.
-function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor, amountTone }) {
+// An entry an in-app tool saved carries a small muted glyph before its
+// amount (Apple Pay's contactless mark, Ask's sparkle), in the amount's
+// line so the row keeps its height; it says nothing about the money, so
+// hidden money leaves it as it is.
+const SOURCE_GLYPH_ICONS = { "apple-pay": Nfc, ask: Sparkles };
+
+function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor, amountTone, addedBy = undefined }) {
   useMoneyPrivacy();
+  const glyph = addedByGlyph(addedBy);
+  const GlyphIcon = glyph ? SOURCE_GLYPH_ICONS[glyph.kind] : null;
   return (
     <div className="entry-row-amount">
-      <strong className={moneyToneClass(amountTone)}>{formatService.money(primarySignedAmountMinor)}</strong>
+      <strong className={moneyToneClass(amountTone)}>
+        {GlyphIcon ? (
+          <span className={`entry-row-source is-${glyph.kind}`} role="img" aria-label={glyph.label} title={glyph.label}>
+            <GlyphIcon size={12} strokeWidth={2.2} aria-hidden="true" />
+          </span>
+        ) : null}
+        {formatService.money(primarySignedAmountMinor)}
+      </strong>
       {secondarySignedAmountMinor != null ? <p>({formatService.money(secondarySignedAmountMinor)})</p> : null}
     </div>
   );

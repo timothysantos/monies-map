@@ -33,6 +33,21 @@ test("add mode: back to Entries first, then the empty card's chips, Edit in form
   assert.deepEqual(labels(buildAskChips({ intent: { ...add, from: "splits", mode: "expense" }, card: createAskCard(context), context, actions }))[0], "‹ Splits");
 });
 
+test("with the header's back link (the phone's Ask page), the chip row keeps ‹ Entries only while the card is untouched", () => {
+  const untouched = createAskCard(context);
+  assert.deepEqual(labels(buildAskChips({ intent: add, card: untouched, context, headerBack: true, actions }))[0], "‹ Entries");
+  const started = setCardField(untouched, { amountInput: "4.20" }, context);
+  const startedLabels = labels(buildAskChips({ intent: add, card: started, context, headerBack: true, partner: "Joyce", actions }));
+  assert.deepEqual(startedLabels, ["Split with Joyce", "Add a note", "Different card", "Edit in form"]);
+  // A card filled by a message or a receipt counts as started too.
+  const filled = { ...untouched, origin: "message" };
+  assert.ok(!labels(buildAskChips({ intent: { ...add, from: "splits", mode: "expense" }, card: filled, context, headerBack: true, actions })).includes("‹ Splits"));
+  // Without the header link (the desktop panel, Add entry from the chat),
+  // the chip stays the only way back.
+  assert.equal(labels(buildAskChips({ intent: add, card: started, context, actions }))[0], "‹ Entries");
+  assert.equal(labels(buildAskChips({ intent: { ...add, from: "ask" }, card: started, context, headerBack: false, actions }))[0], "‹ Ask");
+});
+
 test("a card with content offers Split with the partner, Add a note, Different card", () => {
   const card = setCardField(createAskCard(context), { amountInput: "12.50", description: "Koufu" }, context);
   assert.deepEqual(labels(buildAskChips({ intent: add, card, context, partner: "Joyce", actions })), ["‹ Entries", "Split with Joyce", "Add a note", "Different card", "Edit in form"]);

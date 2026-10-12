@@ -12,6 +12,10 @@ export const messages = {
     close: "Close",
     saving: "Saving...",
     working: "Working...",
+    // A tappable Support chip's name for assistive tech, and what a locked
+    // chip adds after its text (design.md, "Tappable chips").
+    changeChip: (field, value) => `Change ${field.toLowerCase()}, ${value}`,
+    chipLockedByStatement: "locked by the statement",
     appShellErrorTitle: "Dashboard data could not load.",
     appShellRetry: "Try loading dashboard again",
     appShellResourceLimitTitle: "Cloudflare stopped the request before the app could return data.",
@@ -72,6 +76,15 @@ export const messages = {
     settings: "Settings",
     faq: "FAQ",
     ariaLabel: "Dashboard sections"
+  },
+  // The desktop Ask field and the panel or popup it opens (ask-dock.jsx).
+  askDock: {
+    fieldLabel: "Ask",
+    placeholder: "Ask, or drop a receipt…",
+    attach: "Add a receipt photo",
+    close: "Close",
+    closeLabel: "Close Ask",
+    expand: "Dock Ask beside the page"
   },
   period: {
     month: "Month",
@@ -258,6 +271,18 @@ export const messages = {
     saveCategoryNow: "Save category",
     addToSplits: "Add to splits",
     // The entry edit card (entry-edit-card.jsx, design.md "Lead · Support · Detail").
+    // Added by (DOMAIN.md): the bank state chip names the tool that saved a
+    // provisional entry, More details says who added it, and a list row
+    // carries a small glyph beside its amount.
+    source: {
+      applePayProvisional: "Apple Pay · provisional",
+      askProvisional: "Ask · provisional",
+      addedBy: "Added by",
+      applePayShortcut: "Apple Pay shortcut",
+      ask: "Ask",
+      addedWithApplePay: "Added with Apple Pay",
+      addedInAsk: "Added in Ask"
+    },
     editCard: {
       sheetContext: (ownerLabel, monthLabel) => [ownerLabel, monthLabel].filter(Boolean).join(" · "),
       detailsLabel: "Entry details",
@@ -341,6 +366,8 @@ export const messages = {
       currency: "Currency",
       paidUsing: "Paid using",
       paidUsingLedger: "Paid using (ledger)",
+      sharesChip: "Shares",
+      paymentLockedByLedger: "set by the linked entry",
       evidence: "Evidence",
       moreDetails: "More details",
       fewerDetails: "Fewer details",

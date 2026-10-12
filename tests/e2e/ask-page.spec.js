@@ -58,15 +58,16 @@ test.describe("the Ask page on a phone", () => {
     // The tab bar stays; Ask is a page, not a sheet.
     await expect(page.locator("nav.tab-strip")).toBeVisible();
 
-    // A question that is not a search or a filter is not something to add
-    // either: no card appears, and nothing is sent to the entry reader.
-    // (Search and filter questions: ask-search.spec.js.)
+    // A question that is not a search, a filter or a money question Ask
+    // answers is not something to add either: no card appears, and nothing
+    // is sent to the entry reader. (Search and filter questions:
+    // ask-search.spec.js; money questions: ask-money-answers.spec.js.)
     let draftRequests = 0;
     await page.route("**/api/ai-assist/entry-draft", (route) => {
       draftRequests += 1;
       return route.fulfill({ status: 404, body: "{}" });
     });
-    await page.getByRole("textbox", { name: "Message" }).fill("Am I on track?");
+    await page.getByRole("textbox", { name: "Message" }).fill("Should I buy a car?");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.locator(".ask-note").filter({ hasText: "answered yet" })).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
     await expect(page.locator(".ask-card")).toHaveCount(0);

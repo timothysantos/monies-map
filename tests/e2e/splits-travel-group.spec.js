@@ -44,11 +44,11 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   await expect(groupSelect).toHaveValue(groupId);
   await expect(expenseDialog.getByLabel("Currency")).toHaveValue("JPY");
   // A cash-only group offers no card or bank payment.
-  await expect(expenseDialog.getByLabel("Paid using").locator("option")).toHaveText(["Cash"]);
+  await expect(expenseDialog.getByLabel("Paid using", { exact: true }).locator("option")).toHaveText(["Cash"]);
   await expect(expenseDialog.getByText("Cash-only group: no bank or card match is expected.")).toBeVisible();
 
-  await expenseDialog.getByLabel("Date").fill("2025-10-14");
-  await expenseDialog.getByLabel("Paid by").selectOption("Joyce");
+  await expenseDialog.getByLabel("Date", { exact: true }).fill("2025-10-14");
+  await expenseDialog.getByLabel("Paid by", { exact: true }).selectOption("Joyce");
   await expenseDialog.getByLabel("Category").selectOption("Food & Drinks");
   // An amount with an odd stored hundredth offers the extra step in yen.
   await expenseDialog.getByLabel("Expense total").fill("12000.01");

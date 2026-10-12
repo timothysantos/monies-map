@@ -1,5 +1,5 @@
 import "./lead-support-detail.css";
-import { ChevronRight, Lock, Receipt } from "lucide-react";
+import { ChevronDown, ChevronRight, Lock, Receipt } from "lucide-react";
 import { useState } from "react";
 
 import { spendTone } from "../../domain/money-tone";
@@ -16,7 +16,8 @@ import { ICON_REGISTRY } from "../ui-options";
 //   the right) or, without a title, an eyebrow over a big figure (the
 //   Summary lead); optionally the actual-vs-plan bar and the Support chips.
 // - MetaChip: one Support pill (a date, a wallet, a person in their colour,
-//   a state in its pastel pair).
+//   a state in its pastel pair). A chip for a field you can change opens
+//   that field's own picker, the one its Detail row opens.
 // - DetailRows / DetailRow: the quiet rows you tap to change a field.
 // - MoreDetails: the folding row that names what it holds.
 // - BottomActions: the action bar, primary action last (under the thumb).
@@ -177,19 +178,89 @@ function LeadBubble({ bubble, category, colour }) {
  * person's chip in their colour (person-colour.js, never a new hue); `tone`
  * a status in its pastel pair (an unknown tone is ignored); `icon` a 14px
  * lucide icon.
- * @param {{ icon?: any, person?: string | null, tone?: string, children?: any, className?: string, [key: string]: any }} props
+ *
+ * A chip for a field you can change is tappable (design.md, "Tappable
+ * chips"): `onClick` makes it a button that opens the field's own picker
+ * (the one its Detail row opens), or `control` lays the field itself over
+ * the chip (a date field, so a tap opens the phone's date picker). Either
+ * way `actionLabel` names it for assistive tech ("Change date, Yesterday"),
+ * a small muted chevron marks it, and its hit area is at least 44 x 44 px
+ * around the smaller pill. `locked` (a field the statement certified)
+ * shows a lock instead and is never tappable; `lockedLabel` is read after
+ * the chip's text. A state chip (provisional, certified) is never an editor.
+ * Other props (`data-chip`) go on the tappable element, else on the pill.
+ * @param {{
+ *   icon?: any, person?: string | null, tone?: string, children?: any, className?: string,
+ *   onClick?: (event: any) => void, control?: any, actionLabel?: string, locked?: boolean,
+ *   lockedLabel?: string, [key: string]: any
+ * }} props
  */
-export function MetaChip({ icon: Icon = null, person = undefined, tone = undefined, children = null, className = "", ...rest }) {
+export function MetaChip({
+  icon: Icon = null,
+  person = undefined,
+  tone = undefined,
+  children = null,
+  className = "",
+  onClick = undefined,
+  control = null,
+  actionLabel = undefined,
+  locked = false,
+  lockedLabel = undefined,
+  ...rest
+}) {
   const toneClass = tone && STATE_TONES.has(tone) ? `is-${tone}` : "";
-  return (
+  const isTappable = !locked && Boolean(onClick || control);
+  const pill = (
     <span
-      className={joinClasses("lsd-chip", person ? "is-person" : "", toneClass, className)}
+      className={joinClasses("lsd-chip", person ? "is-person" : "", toneClass, isTappable ? "is-tappable" : "", locked ? "is-locked" : "", className)}
       style={person ? getPersonColourVars(person) : undefined}
-      {...rest}
+      {...(isTappable ? {} : rest)}
     >
       {Icon ? <Icon size={14} aria-hidden="true" /> : null}
       {children}
+      {locked ? <Lock size={12} aria-hidden="true" className="lsd-chip-lock" /> : null}
+      {locked && lockedLabel ? <span className="lsd-sr-only">{`, ${lockedLabel}`}</span> : null}
+      {isTappable ? <ChevronDown size={13} aria-hidden="true" className="lsd-chip-chevron" /> : null}
     </span>
+  );
+  if (!isTappable) {
+    return pill;
+  }
+  if (control) {
+    return <span className="lsd-chip-hit has-control" {...rest}>{pill}{control}</span>;
+  }
+  return (
+    <button type="button" className="lsd-chip-hit" aria-label={actionLabel} aria-haspopup="dialog" onClick={onClick} {...rest}>
+      {pill}
+    </button>
+  );
+}
+
+/**
+ * The date field a tappable date chip lays over itself: a tap opens the
+ * phone's date picker (and the browser's on a wide screen).
+ * @param {{ value?: string, label: string, onValueChange: (value: string) => void }} props
+ */
+export function ChipDateField({ value = "", label, onValueChange }) {
+  return (
+    <input
+      className="lsd-chip-native"
+      type="date"
+      aria-label={label}
+      value={value ?? ""}
+      onClick={(event) => {
+        try {
+          event.currentTarget.showPicker?.();
+        } catch {
+          // Some browsers only open the picker from the field itself.
+        }
+      }}
+      onChange={(event) => {
+        if (event.target.value) {
+          onValueChange(event.target.value);
+        }
+      }}
+    />
   );
 }
 
@@ -213,7 +284,9 @@ export function DetailRows({ label = undefined, children = null, className = "" 
  *   with `lsd-row-native`): a <label> around it, so the control keeps the
  *   row's name and Tab order stays the field order;
  * - otherwise a button (an action row such as "See the 10 entries");
- * - locked: a plain line with a lock, never clickable.
+ * - locked: a plain line with a lock, never clickable;
+ * - read-only (`readOnly`): a plain line with no icon, for a fact nobody
+ *   changes here (who added an entry).
  * States: `state` "empty" | "action" | "locked", or the `action` and
  * `locked` flags; an empty `value` shows `emptyLabel` muted. `disabled`
  * mutes a button row and drops its `›`. `labelId` names the label so a
@@ -222,7 +295,7 @@ export function DetailRows({ label = undefined, children = null, className = "" 
  * before the `›`.
  * @param {{
  *   label: any, value?: any, emptyLabel?: any, state?: "empty" | "action" | "locked",
- *   action?: boolean, locked?: boolean, disabled?: boolean, hint?: any, labelId?: string,
+ *   action?: boolean, locked?: boolean, readOnly?: boolean, disabled?: boolean, hint?: any, labelId?: string,
  *   onClick?: (event: any) => void, children?: any, className?: string, [key: string]: any
  * }} props
  */
@@ -233,6 +306,7 @@ export function DetailRow({
   state = undefined,
   action = false,
   locked = false,
+  readOnly = false,
   disabled = false,
   hint = null,
   labelId = undefined,
@@ -242,6 +316,16 @@ export function DetailRow({
   ...rest
 }) {
   const isLocked = locked || state === "locked";
+  if (readOnly && !isLocked && !children) {
+    return (
+      <div className={joinClasses("lsd-row is-readonly", className)} {...rest}>
+        <span id={labelId} className="lsd-row-label">{label}</span>
+        {!isBlank(value) ? (
+          <span className="lsd-row-value">{typeof value === "string" ? <span className="lsd-row-text">{value}</span> : value}</span>
+        ) : null}
+      </div>
+    );
+  }
   const hasValue = !isBlank(value);
   const isEmpty = state === "empty" || (!hasValue && !isBlank(emptyLabel));
   const isAction = !isLocked && (action || state === "action");

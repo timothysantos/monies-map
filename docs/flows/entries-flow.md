@@ -88,6 +88,20 @@ Cancel or Close, and Save; while Add to splits asks for a group, the bar
 becomes the group question (`EntrySplitGroupPickerFooter`). The add sheet
 (composer) still uses the grid form (`EntryEditorFields`).
 
+The card's date, wallet and owner chips open the same picker as their
+Detail row (the wallet's unfolds More details; on a wide screen a chip
+focuses its row's select); a certified entry's date and wallet chips show a
+lock and open nothing, and the bank state chip is never an editor
+(design.md "Tappable chips"). The bank state chip names the tool that saved
+a provisional entry ("Apple Pay · provisional", "Ask · provisional"), More
+details adds a read-only "Added by" row when the entry's `addedBy` is known,
+and a list row shows a small muted glyph inside its amount's line ("Added
+with Apple Pay", "Added in Ask"). `addedBy` is derived on the server from
+the entry's external reference, which never reaches the page (DOMAIN.md
+"Added By"). Every phone picker scrolls its own options list, so a long
+Wallet or Category list reaches its last option by touch
+(`tests/e2e/picker-scroll.spec.js`).
+
 ## Data Flow
 
 Entries data comes from:
