@@ -2926,41 +2926,6 @@ body[data-ask-dock="docked"] .environment-banner {
   opacity: 0.7;
 }
 
-.summary-chevron.is-open svg {
-  transform: rotate(90deg);
-}
-
-.entries-summary-metrics {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 16px 24px;
-  color: var(--muted);
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.entries-summary-metrics::-webkit-scrollbar {
-  display: none;
-}
-
-.entries-summary-metrics > span {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.entries-summary-metrics strong {
-  color: var(--text);
-}
-
-.splits-summary-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
-  flex: 0 0 auto;
-}
-
 .split-breakdown-panel {
   margin-bottom: 0;
 }
@@ -3092,37 +3057,6 @@ body[data-ask-dock="docked"] .environment-banner {
   color: var(--accent-strong);
 }
 
-.split-inline-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  min-width: 0;
-  flex-wrap: nowrap;
-}
-
-.split-inline-actions .inline-action-button {
-  flex: 0 0 auto;
-}
-
-.panel-splits .split-inline-actions .subtle-action {
-  flex: 0 1 auto;
-  min-height: 32px;
-  min-width: 0;
-  padding: 0 12px;
-  border-color: rgba(191, 103, 45, 0.18);
-  background: rgba(255, 250, 246, 0.96);
-  color: var(--accent-strong);
-  box-shadow: 0 1px 0 rgba(191, 103, 45, 0.04);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.panel-splits .split-inline-actions .subtle-action:hover {
-  background: rgba(247, 236, 227, 0.98);
-}
-
 .split-activity-date {
   color: var(--muted);
   font-size: 0.8rem;
@@ -3155,25 +3089,7 @@ body[data-ask-dock="docked"] .environment-banner {
   min-width: 0;
 }
 
-.split-match-side {
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(233, 204, 187, 0.72);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.56);
-}
 
-.split-match-side span {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.split-match-side strong,
-.split-match-side p,
 .split-match-deltas {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -3194,14 +3110,12 @@ body[data-ask-dock="docked"] .environment-banner {
 .panel-splits .split-activity-date,
 .panel-splits .share-row-meta,
 .panel-splits .lede.compact,
-.panel-splits .empty-state,
-.panel-splits .entries-summary-metrics {
+.panel-splits .empty-state {
   color: rgba(255, 255, 255, 0.78);
 }
 
 .panel-splits .panel-head h2,
 .panel-splits .panel-subhead h2,
-.panel-splits .entries-summary-metrics strong,
 .panel-splits .split-activity-copy strong,
 .panel-splits .split-match-card strong,
 .panel-splits .split-activity-trailing span,
@@ -3210,12 +3124,6 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 
-.panel-splits .splits-summary-strip,
-.panel-splits .split-match-card {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-}
 
 .panel-splits .split-date-group.is-archived {
   background: rgba(248, 236, 228, 0.58);
@@ -3285,12 +3193,6 @@ body[data-ask-dock="docked"] .environment-banner {
   color: var(--text);
 }
 
-
-.panel-splits .summary-chevron {
-  background: rgba(255, 255, 255, 0.14);
-  color: white;
-}
-
 .panel-splits .split-date-group .split-date-header,
 .panel-splits .split-date-group .split-activity-copy p,
 .panel-splits .split-date-group .split-activity-date,
@@ -3345,53 +3247,6 @@ body[data-ask-dock="docked"] .environment-banner {
   color: white;
 }
 
-.panel-splits .splits-summary-actions .subtle-action,
-.panel-splits .splits-summary-actions .dialog-primary {
-  background: rgba(255, 248, 243, 0.98);
-  color: var(--accent-strong);
-  border-color: rgba(255, 248, 243, 0.98);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
-}
-
-.split-summary-search {
-  grid-template-columns: auto minmax(180px, 320px);
-  align-items: center;
-  flex: 0 1 380px;
-  gap: 10px;
-  min-width: 240px;
-  margin-left: 2px;
-}
-
-.panel-splits .split-summary-search .entries-filter-label {
-  color: rgba(255, 248, 243, 0.9);
-  font-weight: 700;
-}
-
-.panel-splits .split-summary-search .search-filter-control {
-  border: 1px solid rgba(255, 248, 243, 0.68);
-  border-radius: 999px;
-  background: rgba(255, 248, 243, 0.96);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.panel-splits .split-summary-search .search-filter-control > svg,
-.panel-splits .split-summary-search .search-filter-clear {
-  color: var(--accent-strong);
-}
-
-.panel-splits .split-summary-search .search-filter-input {
-  min-height: 38px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  box-shadow: none;
-}
-
-.panel-splits .split-summary-search .search-filter-clear:hover {
-  background: rgba(177, 94, 47, 0.12);
-  color: var(--accent-strong);
-}
-
 .panel-splits .split-card-actions .subtle-action {
   min-height: 32px;
   padding: 0 12px;
@@ -3405,24 +3260,8 @@ body[data-ask-dock="docked"] .environment-banner {
   background: rgba(247, 236, 227, 0.98);
 }
 
-.panel-splits .split-card-actions .split-delete-action,
-.panel-splits .split-inline-actions .split-delete-action {
+.panel-splits .split-card-actions .split-delete-action {
   color: var(--negative);
-}
-
-.panel-splits .split-inline-actions .subtle-cancel {
-  color: var(--muted);
-}
-
-.panel-splits .split-inline-actions .dialog-primary {
-  border-color: var(--accent-strong);
-  background: var(--accent-strong);
-  color: white;
-}
-
-.panel-splits .split-inline-actions .dialog-primary:hover {
-  border-color: var(--accent-strong);
-  background: color-mix(in srgb, var(--accent-strong) 88%, black);
 }
 
 .panel-splits .split-match-card strong {
@@ -3431,35 +3270,6 @@ body[data-ask-dock="docked"] .environment-banner {
 
 .panel-splits .split-match-card p {
   color: var(--muted);
-}
-
-.panel-splits .split-match-card .subtle-action,
-.panel-splits .split-match-card .dialog-primary {
-  min-height: 38px;
-  border-radius: 999px;
-  box-shadow: 0 1px 0 rgba(90, 47, 25, 0.04);
-}
-
-.panel-splits .split-match-card .subtle-action {
-  border-color: rgba(177, 94, 47, 0.2);
-  background: rgba(255, 250, 246, 0.98);
-  color: var(--accent-strong);
-}
-
-.panel-splits .split-match-card .subtle-action:hover {
-  background: rgba(247, 236, 227, 0.98);
-  border-color: rgba(177, 94, 47, 0.32);
-}
-
-.panel-splits .split-match-card .dialog-primary {
-  border-color: var(--accent-strong);
-  background: var(--accent-strong);
-  color: white;
-}
-
-.panel-splits .split-match-card .dialog-primary:hover {
-  background: color-mix(in srgb, var(--accent-strong) 88%, black);
-  border-color: var(--accent-strong);
 }
 
 /* Settlement navigation stays in the splits palette and is discoverable
@@ -3603,9 +3413,6 @@ body[data-ask-dock="docked"] .environment-banner {
   background: rgba(101, 57, 31, 0.2);
   color: rgba(255, 248, 243, 0.72);
 }
-.split-history-row div { min-width: 0; display: grid; gap: 4px; }
-.split-history-row strong { overflow: hidden; text-overflow: ellipsis; }
-.split-history-row small { color: var(--muted); }
 
 @media (max-width: 760px) {
   .panel-splits .split-checkpoint-panel {
@@ -3618,10 +3425,6 @@ body[data-ask-dock="docked"] .environment-banner {
 
   .split-checkpoint-completion-actions {
     align-items: stretch;
-  }
-
-  .split-checkpoint-completion-actions .split-checkpoint-view-action {
-    width: 100%;
   }
 
   .split-settlement-follow-up-trigger {
@@ -3637,11 +3440,6 @@ body[data-ask-dock="docked"] .environment-banner {
   .split-match-card,
   .split-match-inbox-callout {
     grid-template-columns: 1fr;
-  }
-
-  
-  .splits-summary-actions {
-    margin-left: 0;
   }
 }
 
@@ -7987,11 +7785,6 @@ th {
     min-width: 0;
   }
 
-  .split-inline-actions .split-delete-action,
-  .split-inline-actions .inline-action-button {
-    min-width: 0;
-  }
-
   .inline-action-button svg {
     display: none;
   }
@@ -8115,7 +7908,6 @@ th {
   .split-list-section,
   .entries-breakdown-panel,
   .split-breakdown-panel,
-  .splits-summary-strip,
   .chart-head,
   .summary-mix,
   .summary-mix-main {
@@ -8393,8 +8185,7 @@ th {
   }
 
   .summary-mix-months::-webkit-scrollbar,
-  .share-list::-webkit-scrollbar,
-  .entries-summary-metrics::-webkit-scrollbar {
+  .share-list::-webkit-scrollbar {
     display: none;
   }
 
@@ -8799,5 +8590,3 @@ html[data-money-privacy="hidden"] :is(.money-in, .money-short, .money-out, .mone
 td:is(.money-in, .money-short, .money-out) {
   font-weight: 700;
 }
-
-/* Not .panel-head span: that left every Summary value grey. */

@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import "./splits-panel.css";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
@@ -48,9 +48,12 @@ import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
+import { SplitsCheckpointPanel } from "./splits-checkpoint-panel";
 import { SplitsGroupStrip } from "./splits-group-strip";
 import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { SplitsMainSection } from "./splits-main-section";
+import { buildSplitsLead } from "./splits-lead-model";
+import { splitsLeadCopy } from "./copy/splits-lead-copy";
 import { buildSplitsPanelModel } from "./splits-selectors";
 import { moniesClient } from "./monies-client-service";
 import {
@@ -145,7 +148,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groupBalanceMinor,
     groups,
     groupOptions,
-    groupSummaryLabel,
     openGroupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
@@ -153,6 +155,13 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const lead = useMemo(
+    () => (activeGroup
+      ? buildSplitsLead({ group: activeGroup, viewId: view.id, people, areTotalsVisible, spendMinor: totalExpenseMinor })
+      : null),
+    [activeGroup, areTotalsVisible, people, totalExpenseMinor, view.id]
+  );
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("splits", view.id, activeGroup?.id ?? "split-group-none"),
@@ -1123,6 +1132,10 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     return settlementLock.undone || error === settlementLock.message ? settlementLock : null;
   }
 
+  // The page head's links (a wide screen): the bank-match review and Simplify
+  // settlement. Settle group, History and + Add expense are on the lead card;
+  // on a phone the head is hidden and Simplify settlement joins the lead's
+  // actions instead.
   function renderSplitActions(className) {
     return (
       <div className={className}>
@@ -1134,18 +1147,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
           {selectedMode === "matches" ? messages.splits.backToGroup : messages.splits.reviewMatches}
           {selectedMode !== "matches" && pendingMatchCount ? ` (${pendingMatchCount})` : ""}
         </button>
-        {!isHouseholdView && selectedMode !== "matches" ? (
-          <button
-            type="button"
-            className="subtle-action split-settle-header"
-            onClick={() => {
-              openNewSettlementDialog({ activeGroup, groupBalanceMinor });
-            }}
-            disabled={!activeGroup || groupBalanceMinor === 0}
-          >
-            {messages.splits.settleUp}
-          </button>
-        ) : null}
         {!isHouseholdView && selectedMode !== "matches" && !activeCheckpoint ? (
           <button type="button" className="subtle-action split-simplify-action" onClick={() => void simplifySettlement()} disabled={isCheckpointing}>
             {isCheckpointing ? "Simplifying..." : "Simplify settlement"}
@@ -1157,16 +1158,23 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   const splitSearchControl = (
     <SearchFilterInput
-      className="split-summary-search"
+      className="splits-search"
       label={messages.common.search}
       value={splitSearchQuery}
-      placeholder={messages.splits.searchPlaceholder}
+      placeholder={activeGroup ? splitsLeadCopy.searchGroup(activeGroup.name) : messages.splits.searchPlaceholder}
       suggestions={searchSuggestions}
       listId="splits-search-suggestions"
       onChange={updateSplitSearch}
     />
   );
-  const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
+  const leadControls = {
+    canSettle: Boolean(activeGroup) && groupBalanceMinor !== 0,
+    showSimplify: useMobileSplitSheet && !isHouseholdView && !activeCheckpoint,
+    showAddExpense: !useMobileSplitSheet,
+    isCheckpointing,
+    onSettle: () => openNewSettlementDialog({ activeGroup, groupBalanceMinor }),
+    onSimplify: () => void simplifySettlement()
+  };
   const formatCheckpointMoney = (amountMinor, currency) => formatService.moneyWithCurrency(amountMinor, currency ?? "SGD");
   const selectedCheckpointForMatching = settlementCheckpoints.find((checkpoint) => checkpoint.id === checkpointMatchTargetId);
   const renderCheckpointTransfers = (checkpoint) => checkpoint.matchedTransfers?.length ? (
@@ -1211,35 +1219,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     );
   };
   const splitSettlementStatus = activeCheckpoint ? (
-    <section className={`split-checkpoint-panel is-${activeCheckpoint.status}`} aria-live="polite">
-      <div className="split-checkpoint-summary">
-        <div className="split-checkpoint-heading">
-          <span className="split-checkpoint-kicker">Settlement status</span>
-          <strong>{activeCheckpoint.status === "internally_offset" ? "Groups internally offset" : "Simplified settlement"}</strong>
-        </div>
-        <p>
-          {checkpointHasOverpayment
-            ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
-            : activeCheckpoint.amountMinor === 0
-            ? "The included groups now net to zero. No bank transfer is needed."
-            : <>{activeCheckpoint.fromPersonName} pays {activeCheckpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}</PrivateMoney>.</>}
-        </p>
-        <small>{activeCheckpoint.currency ?? "SGD"} · {messages.splits.includedSplitRecords(activeCheckpoint.includedRecordCount)} · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
-      </div>
-      <div className="split-checkpoint-navigation">
-        <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
-          View included activity
-        </button>
-        <span className="split-checkpoint-navigation-hint">Included rows are marked in the timeline below.</span>
-      </div>
-      {renderCheckpointTransfers(activeCheckpoint)}
-      {activeCheckpoint.amountMinor !== 0 ? renderCheckpointMatchControls(activeCheckpoint) : null}
-      <div className="split-checkpoint-completion-actions">
-        <button type="button" className="split-checkpoint-view-action" onClick={() => void markCheckpointPaid(activeCheckpoint)} disabled={isCheckpointing}>Mark paid</button>
-        <small>Moves this repayment out of the active view. It remains awaiting a bank transfer match.</small>
-        <button type="button" className="subtle-action split-checkpoint-reopen" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Undo simplification</button>
-      </div>
-    </section>
+    <SplitsCheckpointPanel
+      checkpoint={activeCheckpoint}
+      hasOverpayment={checkpointHasOverpayment}
+      formattedAmount={formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}
+      matchedLabel={activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}
+      transfers={renderCheckpointTransfers(activeCheckpoint)}
+      matchControls={renderCheckpointMatchControls(activeCheckpoint)}
+      isBusy={isCheckpointing}
+      onViewActivity={() => scrollToSettlementActivity(activeCheckpoint)}
+      onMarkPaid={() => void markCheckpointPaid(activeCheckpoint)}
+      onReopen={() => void reopenSettlement()}
+    />
   ) : null;
   const settlementFollowUps = paidCheckpointsAwaitingBankMatch.length ? (
     <section className="split-settlement-follow-ups" aria-live="polite">
@@ -1299,7 +1290,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
             </div>
           ) : null}
         </div>
-        {renderSplitActions("split-head-actions split-header-toolbar")}
+        {useMobileSplitSheet ? null : renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
       <FinancialInsight
@@ -1315,9 +1306,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         selectedMode={selectedMode}
         pendingMatchCount={pendingMatchCount}
         showBreakdown={showBreakdown}
-        totalExpenseMinor={totalExpenseMinor}
-        groupBalanceMinor={groupBalanceMinor}
-        groupSummaryLabel={groupSummaryLabel}
+        // The bank-match review has its own lead, so the group card waits behind it.
+        lead={selectedMode === "matches" ? null : lead}
         donutRows={donutRows}
         donutChart={donutChart}
         categories={categories}
@@ -1325,7 +1315,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         people={people}
         categoryOptions={categoryOptions}
         searchControl={splitSearchControl}
-        summaryToolbar={splitSummaryToolbar}
+        leadControls={leadControls}
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
         archivedBatches={archivedBatches}

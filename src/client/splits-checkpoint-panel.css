@@ -1,0 +1,156 @@
+/* The open simplified settlement on the Splits orange (design.md, "Lead ·
+   Support · Detail"): a white lead, a rounded group of Detail rows (view the
+   included activity, the matched transfers, the transfer to match) and a
+   white bottom bar with Mark paid. Imported by splits-checkpoint-panel.jsx,
+   so it ships with the lazy Splits route. These rules replace the old
+   cream panel's (public/styles.css) and load after them. */
+.panel-splits .split-checkpoint-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-lead {
+  color: var(--text);
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-lead .lsd-title {
+  color: var(--text);
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-lead .lsd-subtitle {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-kicker {
+  color: var(--muted);
+  font: 500 0.68rem/1.2 ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0.12em;
+  opacity: 1;
+  text-transform: uppercase;
+}
+
+/* The state line under the lead ("JPY · 10 included split records · open"). */
+.panel-splits .split-checkpoint-panel .split-checkpoint-lead small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  opacity: 1;
+  text-transform: none;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-rows {
+  background: #fff;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-transfers {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-transfer {
+  min-height: 52px;
+  padding: 6px 8px 6px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.94rem;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-actions select,
+.panel-splits .split-checkpoint-panel .split-checkpoint-actions input {
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: none;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-actions input {
+  flex: 0 1 120px;
+  padding: 0 10px;
+}
+
+.panel-splits .split-checkpoint-panel .subtle-action {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.panel-splits .split-checkpoint-panel .subtle-action:hover:not(:disabled) {
+  background: rgba(177, 94, 47, 0.08);
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-match-hint {
+  flex-basis: 100%;
+  color: var(--muted);
+  opacity: 1;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-navigation-hint {
+  max-width: none;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.8rem;
+  opacity: 1;
+  text-align: left;
+}
+
+/* Mark paid, the one primary, in a white bar; Undo simplification beside it. */
+.panel-splits .split-checkpoint-panel .split-checkpoint-completion-actions {
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px 12px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.panel-splits .split-checkpoint-panel .split-checkpoint-completion-actions small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  opacity: 1;
+}
+
+.panel-splits .split-checkpoint-panel .lsd-bottom {
+  justify-content: space-between;
+}
+
+.panel-splits .split-checkpoint-panel .lsd-bottom .lsd-primary {
+  min-height: 46px;
+}
+
+@media (max-width: 760px) {
+  .panel-splits .split-checkpoint-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 0;
+    border-radius: 0;
+  }
+}

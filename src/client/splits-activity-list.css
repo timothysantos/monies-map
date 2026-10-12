@@ -1,0 +1,139 @@
+/* The activity list on the Splits page (design.md, "Splits activity list"):
+   flat rows, not cards. Each date is a quiet divider in white on the orange
+   (the count and refresh at its right), and that day's rows sit in one
+   rounded white group with hairlines between them; the viewer's balance
+   words are aligned at the right in their money tone (text only). The
+   header stays sticky and takes a faint orange band so rows never read
+   under it. Imported by splits-activity-section.jsx, so it ships with the
+   lazy Splits route. Scoped to .split-list-section: the archive dialog
+   keeps its own look (splits-dialogs.css). */
+.panel-splits .split-list-section .split-date-group {
+  display: block;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel-splits .split-list-section .split-date-header {
+  gap: 10px;
+  margin: 0;
+  padding: 14px 2px 8px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(167, 88, 45, 0.96);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.8rem;
+}
+
+.panel-splits .split-list-section .split-date-header > strong {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  font: 500 0.7rem/1.2 ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.panel-splits .split-list-section .split-date-header > strong::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.panel-splits .split-list-section .split-date-actions,
+.panel-splits .split-list-section .split-date-actions > span {
+  color: inherit;
+  font-size: 0.8rem;
+}
+
+.panel-splits .split-list-section .split-date-refresh-button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.panel-splits .split-list-section .split-date-items {
+  display: block;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.panel-splits .split-list-section .split-activity-card {
+  min-height: 64px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.panel-splits .split-list-section .split-activity-card + .split-activity-card {
+  border-top: 1px solid var(--line);
+}
+
+.panel-splits .split-list-section .split-activity-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.panel-splits .split-list-section .split-activity-copy strong {
+  margin: 0;
+}
+
+.panel-splits .split-list-section .split-activity-trailing {
+  justify-items: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An open inline card (wide screens) is the row opened up: it fills the
+   group, with hairlines where it meets its neighbours. */
+.panel-splits .split-list-section .split-date-items > .split-inline-editor-card {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.panel-splits .split-list-section .split-date-items > .split-inline-editor-card + .split-activity-card,
+.panel-splits .split-list-section .split-date-items > .split-activity-card + .split-inline-editor-card {
+  border-top: 1px solid var(--line);
+}
+
+/* Archived batches: a dashed outline row, not a filled bar. */
+.panel-splits .split-archive-trigger {
+  border: 1px dashed rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.panel-splits .split-archive-trigger:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 760px) {
+  .panel-splits .split-list-section {
+    gap: 0;
+  }
+
+  .panel-splits .split-list-section .split-date-header {
+    margin-inline: 0;
+    padding: 14px 2px 8px;
+  }
+
+  .panel-splits .split-list-section .split-activity-card {
+    padding: 10px 12px;
+  }
+}

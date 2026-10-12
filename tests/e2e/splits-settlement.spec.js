@@ -14,7 +14,7 @@ test("recording a settlement closes the open batch and archives it", async ({ pa
   await expect(page.getByRole("button", { name: "Settle group" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Simplify settlement" })).toBeVisible();
 
-  await page.locator("article.panel-splits .panel-head .split-settle-header").click();
+  await page.locator(".splits-lead").getByRole("button", { name: "Settle group" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("Record payment for this group only");
   await expect(dialog).toContainText("Simplify settlement remains optional");
