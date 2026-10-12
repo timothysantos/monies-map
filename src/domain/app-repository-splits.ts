@@ -367,7 +367,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     }
     matchMap.set(match.checkpoint_id, transfers);
   }
-  return rows.results.map((row) => ({
+  const checkpoints: SplitSettlementCheckpointDto[] = rows.results.map((row) => ({
     id: row.id,
     fromPersonId: row.from_person_id ?? undefined,
     fromPersonName: row.from_person_name ?? undefined,
@@ -385,6 +385,45 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     includedRecordIds: itemMap.get(row.id) ?? [],
     note: row.note ?? undefined
   }));
+  return Promise.all(checkpoints.map(async (checkpoint) => {
+    const paymentCandidate = await findCheckpointPaymentCandidate(db, checkpoint);
+    return paymentCandidate ? { ...checkpoint, paymentCandidate } : checkpoint;
+  }));
+}
+
+// A payment between the two people for exactly what an open settlement still
+// needs, within two weeks after it, that is not yet a matched transfer: the
+// settlement paid, waiting to be matched (the Splits check-in reads it).
+async function findCheckpointPaymentCandidate(db: D1Database, checkpoint: SplitSettlementCheckpointDto) {
+  const remainingMinor = checkpoint.amountMinor - checkpoint.matchedAmountMinor;
+  if (!["open", "partially_matched"].includes(checkpoint.status) || remainingMinor <= 0 || !checkpoint.fromPersonId || !checkpoint.toPersonId) {
+    return undefined;
+  }
+  const rows = await db.prepare(`
+    SELECT id, transaction_date, entry_type, transfer_direction, owner_person_id
+    FROM transactions
+    WHERE household_id = ?
+      AND ABS(amount_minor) = ?
+      AND transaction_date BETWEEN ? AND date(?, '+14 days')
+      AND transfer_group_id IS NULL
+      AND owner_person_id IN (?, ?)
+      AND id NOT IN (SELECT transaction_id FROM split_settlement_checkpoint_matches)
+    ORDER BY transaction_date, id
+    LIMIT 6
+  `).bind(DEFAULT_HOUSEHOLD_ID, remainingMinor, checkpoint.settlementDate, checkpoint.settlementDate, checkpoint.fromPersonId, checkpoint.toPersonId)
+    .all<{ id: string; transaction_date: string; entry_type: string; transfer_direction: string | null; owner_person_id: string }>();
+  const payer = rows.results.find((row) => row.owner_person_id === checkpoint.fromPersonId && (row.entry_type === "expense" || (row.entry_type === "transfer" && row.transfer_direction === "out")));
+  const payee = rows.results.find((row) => row.owner_person_id === checkpoint.toPersonId && (row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")));
+  const first = payer ?? payee;
+  if (!first) {
+    return undefined;
+  }
+  return {
+    date: first.transaction_date,
+    amountMinor: remainingMinor,
+    entryIds: [payer?.id, payee?.id].filter((id): id is string => Boolean(id)),
+    countedAsSpending: payer?.entry_type === "expense" || payee?.entry_type === "income"
+  };
 }
 
 async function loadCheckpointedRecordIds(db: D1Database) {

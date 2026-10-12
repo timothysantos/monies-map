@@ -127,6 +127,13 @@ Watch area:
   settlement and invalidates Splits, and the draft is kept for a second save.
   A linked split in a closed group batch is refused the same way, naming the
   `batchId`, with `Undo settle-up` (`POST /api/splits/batches/reopen`)
+- the editor reads a cleared or unreadable amount as 0. `POST
+  /api/entries/update` refuses an `amountMinor` it is sent that is not
+  greater than zero (400 "Amount must be greater than zero", the create
+  rule) before any read or write, so the editor and phone sheet keep the
+  draft and show the reason. An update that leaves `amountMinor` out
+  keeps the stored amount (`tests/entry-update-amount.test.mjs`,
+  `tests/e2e/entries-zero-amount.spec.js`)
 - When the route-level page load fails, the shell shows the page error panel.
   When only the Entries owner (`entries-data-owner.js`) learns that the
   month failed, the panel shows the same `ErrorPanel` with "Try loading
@@ -145,5 +152,6 @@ Watch area:
   iPhone 13 and in Chromium: the saved fields, the certified lock, the
   in-app delete confirmation, tap targets of 44 px or more with 8 px apart,
   hidden money, and Tab order in the wide-screen editor.
-- Known gap (unchanged by the card): an amount that is not a number reads as
-  zero, as in the grid form, and the update endpoint accepts a zero amount.
+- An amount that is not a number still reads as zero in the card, as in
+  the grid form; the update endpoint refuses it (see the zero-amount entry
+  above), so the card keeps the draft and shows the reason.

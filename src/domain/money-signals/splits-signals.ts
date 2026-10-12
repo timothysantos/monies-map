@@ -61,6 +61,42 @@ export const SPLITS_COPY = {
       "Clearing it now gives the next round of shared costs a fresh start."
     ]
   },
+  settlementPayment: {
+    phrasings: [
+      "{fromWhose} {amount} payment to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.",
+      "The {amount} {from} paid {to} on {date} is the settlement from {settled}, waiting to be matched.",
+      "{from} paid {to} {amount} on {date}, the same as the {settled} settlement.",
+      "The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}."
+    ],
+    think: [
+      "Until it's matched, the payment counts as {fromWhose} spending and {toWhose} income.",
+      "Linking the two payments as a transfer, then matching it under the settlement, marks it paid.",
+      "Once matched, the settlement shows as paid and the payment stops counting as spending."
+    ],
+    sorted: {
+      fact: "Sorted: the {settled} settlement is matched to its payment.",
+      think: "It shows as paid."
+    },
+    action: "Show the payment"
+  },
+  settlementPaymentLinked: {
+    phrasings: [
+      "{fromWhose} {amount} transfer to {to} on {date} matches the {settled} settlement. Matching it marks the settlement paid.",
+      "The {amount} {from} sent {to} on {date} is the settlement from {settled}, waiting to be matched.",
+      "{from} sent {to} {amount} on {date}, the same as the {settled} settlement.",
+      "The {settled} settlement ({amount}) looks paid: {from} sent {to} that amount on {date}."
+    ],
+    think: [
+      "Matching it under the settlement marks it paid.",
+      "Once matched, the settlement shows as paid.",
+      "It's already a transfer, so only the match is left."
+    ],
+    sorted: {
+      fact: "Sorted: the {settled} settlement is matched to its payment.",
+      think: "It shows as paid."
+    },
+    action: "Show the payment"
+  },
   bankMatch: {
     phrasings: [
       "{count} bank payments look like shared costs you already added by hand.",
@@ -232,6 +268,14 @@ export interface SplitsSignalInput {
   // The group's current (not archived) activity.
   activity: SplitsSignalActivity[];
   pendingMatchCount: number;
+  // The household's settlements, for one waiting on its bank payment.
+  settlementCheckpoints?: Array<{
+    id: string;
+    fromPersonName?: string;
+    toPersonName?: string;
+    settlementDate: string;
+    paymentCandidate?: { date: string; amountMinor: number; entryIds: string[]; countedAsSpending: boolean };
+  }>;
   today: string;
   // Bound to the group's currency.
   formatMoney: FormatMoney;
@@ -347,6 +391,42 @@ export function bankMatchSignal(input: SplitsSignalInput): MoneySignal | null {
     phrasings: phrase(copy, { count }, { one: count === 1 }),
     sorted: copy.sorted,
     action: { id: "review-matches", label: copy.action },
+    topic: "settle"
+  };
+}
+
+// To do: a payment between the two people for exactly what an open
+// settlement still needs (the server finds it, app-repository-splits.ts).
+export function settlementPaymentSignal(input: SplitsSignalInput): MoneySignal | null {
+  const checkpoint = (input.settlementCheckpoints ?? []).find((item) => item.paymentCandidate?.entryIds.length);
+  const candidate = checkpoint?.paymentCandidate;
+  if (!checkpoint || !candidate) {
+    return null;
+  }
+  // A person view talks to that person: "Your $7,082.17 payment to Tim",
+  // "Joyce paid you".
+  const isViewer = (name?: string) => input.audience === "person" && Boolean(name) && name === input.viewLabel;
+  const fromName = checkpoint.fromPersonName ?? "";
+  const toName = checkpoint.toPersonName ?? "";
+  const values = {
+    from: isViewer(fromName) ? "you" : fromName,
+    fromWhose: isViewer(fromName) ? "your" : `${fromName}'s`,
+    to: isViewer(toName) ? "you" : toName,
+    toWhose: isViewer(toName) ? "your" : `${toName}'s`,
+    amount: input.formatMoney(candidate.amountMinor),
+    date: shortDay(candidate.date),
+    settled: shortDay(checkpoint.settlementDate)
+  };
+  const copy = candidate.countedAsSpending ? SPLITS_COPY.settlementPayment : SPLITS_COPY.settlementPaymentLinked;
+  return {
+    key: `settlement-payment:${checkpoint.id}`,
+    kind: "quick_fix",
+    weight: candidate.amountMinor,
+    numbers: { primaryMinor: candidate.amountMinor },
+    primaryText: values.amount,
+    phrasings: phrase(copy, values),
+    sorted: sortedLine(copy.sorted, values),
+    action: { id: "show-entries", label: copy.action, entryIds: candidate.entryIds, month: candidate.date.slice(0, 7) },
     topic: "settle"
   };
 }
@@ -607,6 +687,7 @@ export function settleCountTrivia(input: SplitsSignalInput): MoneySignal | null 
 export function buildSplitsSignals(input: SplitsSignalInput): MoneySignal[] {
   return [
     splitBalanceSignal(input),
+    settlementPaymentSignal(input),
     bankMatchSignal(input),
     shareOfCostsSignal(input),
     groupInNumbersTrivia(input),

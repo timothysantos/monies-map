@@ -2,6 +2,7 @@
 // view's wallet health (the account pills Summary and Month already load).
 import { addDays, daysBetween, joinWithAnd, phrase, monthName, shortDay, sortedLine, type CopyCatalogue, type CopyEntry, type FormatMoney } from "./format";
 import type { Audience, MoneySignal } from "./types";
+import type { AccountChargeDto, IncomeMovedDto, MissedPaymentDto, OwnTransferIncomeDto, UpcomingShortfallDto } from "../../types/dto";
 
 // A Just for fun line of one trivia type: one computed sentence, no think
 // line. `detail` makes the key unique to what it says.
@@ -143,11 +144,17 @@ export interface WalletHealthPill {
     owedMinor: number;
     notices: Array<{ code: string; annualRatePercent?: number }>;
   };
+  // Bank accounts: what changed in the monthly routine (account-signals.ts).
+  incomeMoved?: IncomeMovedDto;
+  missedPayments?: MissedPaymentDto[];
+  accountCharges?: AccountChargeDto[];
+  ownTransfersAsIncome?: OwnTransferIncomeDto[];
+  upcomingShortfall?: UpcomingShortfallDto;
 }
 
 // "Serene's" for the household, "your" for the person's own account, and
 // "the" for a joint one.
-function whoseAccount(pill: WalletHealthPill, audience: Audience, viewLabel: string) {
+export function whoseAccount(pill: WalletHealthPill, audience: Audience, viewLabel: string) {
   const owner = String(pill.ownerLabel ?? "").trim();
   if (audience === "person" && owner === viewLabel) {
     return "your";

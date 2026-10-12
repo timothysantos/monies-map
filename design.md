@@ -482,6 +482,14 @@ native select laid over the row on a wide screen), `DateRow` (a date field
 over the row in a sheet; a visible inline date field on a wide screen) and
 `GrowingTextarea` (what it was, a note).
 
+The phone picker sheet (`ResponsiveSelect`, and the Entries filter
+multi-select) keeps its title in place and scrolls its options list, so the
+last of many wallets or categories is a swipe away; a centred phone dialog
+taller than the screen (Transfer details) scrolls inside itself. An open
+picker or dialog locks the page's scroll and cancels any swipe that has
+nothing inside it to scroll, so every list that can outgrow the screen must
+be a scroll container of its own (`tests/e2e/picker-scroll.spec.js`).
+
 Rules:
 
 - Exactly one lead per sheet, card or screen top. Money in it uses the

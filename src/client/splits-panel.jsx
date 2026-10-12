@@ -59,6 +59,7 @@ import { buildSplitsSignals, SPLITS_CALM_LINES, SPLITS_TRIVIA_ROTATION } from ".
 import { useRouteWorkReport } from "./use-route-work-status";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
+import { entriesLocationForAction } from "./check-in-action";
 
 const { format: formatService } = moniesClient;
 
@@ -155,6 +156,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       group: activeGroup ? { id: activeGroup.id, name: activeGroup.name, balanceMinor: groupBalanceMinor, currency: activeGroup.currency } : null,
       activity: openGroupActivity,
       pendingMatchCount,
+      settlementCheckpoints: splitsPage.settlementCheckpoints ?? [],
       today: checkInClock.today,
       // Balances stay in the group's own currency, never converted.
       formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD")
@@ -166,7 +168,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     calmLines: SPLITS_CALM_LINES,
     alsoLabel: "Also in this group",
     clock: checkInClock
-  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, openGroupActivity, pendingMatchCount, people, view.id, view.label]);
+  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, openGroupActivity, pendingMatchCount, people, splitsPage.settlementCheckpoints, view.id, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()
@@ -836,6 +838,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       openNewSettlementDialog({ activeGroup, groupBalanceMinor });
     } else if (action.id === "review-matches") {
       openMatchesView();
+    } else if (action.id === "show-entries" && action.entryIds?.length) {
+      navigate(entriesLocationForAction(`?${new URLSearchParams({ view: view.id, entries_scope: searchParams.get("scope") ?? "direct_plus_shared" })}`, action));
     }
   }
 

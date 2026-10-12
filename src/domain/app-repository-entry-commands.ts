@@ -132,6 +132,14 @@ export async function updateEntryRecord(
     postDate?: string | null;
   }
 ) {
+  // An update may leave the amount out to keep the stored one, but an amount
+  // it sends must be a real one: the editor reads a cleared or unreadable
+  // field as 0, and keeping the stored amount then would lose the edit
+  // without a word.
+  if (input.amountMinor !== undefined) {
+    assertPositiveAmount(input.amountMinor);
+  }
+
   type EntryAccount = { id: string; account_name: string; owner_person_id: string | null; account_kind: LinkedAccountKind };
   const account = input.accountId
     ? await db
@@ -212,9 +220,7 @@ export async function updateEntryRecord(
     throw new Error(`Unknown entry: ${input.entryId}`);
   }
 
-  const resolvedAmountMinor = typeof input.amountMinor === "number" && input.amountMinor > 0
-    ? input.amountMinor
-    : Number(transaction.amount_minor);
+  const resolvedAmountMinor = input.amountMinor ?? Number(transaction.amount_minor);
   const resolvedEntryType = input.entryType ?? transaction.entry_type;
   const resolvedTransferDirection = resolvedEntryType === "transfer"
     ? (input.transferDirection ?? transaction.transfer_direction ?? "out")
@@ -378,6 +384,12 @@ export async function updateEntryRecord(
   }
 
   return { entryId: input.entryId, updated: true };
+}
+
+function assertPositiveAmount(amountMinor: unknown): asserts amountMinor is number {
+  if (typeof amountMinor !== "number" || !(amountMinor > 0)) {
+    throw new Error("Amount must be greater than zero");
+  }
 }
 
 type LinkedAccountKind = "bank" | "credit_card" | "loan" | "cash" | "investment";
@@ -702,9 +714,7 @@ export async function createEntryRecord(
     originalCurrency?: string;
   }
 ) {
-  if (typeof input.amountMinor !== "number" || input.amountMinor <= 0) {
-    throw new Error("Amount must be greater than zero");
-  }
+  assertPositiveAmount(input.amountMinor);
 
   const accountId = input.accountId ?? await resolveAccountId(db, input.accountName);
   if (!accountId) {
