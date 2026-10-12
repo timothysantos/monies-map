@@ -4,7 +4,7 @@ import { messages } from "./copy/en-SG";
 import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
 import { moneyToneClass } from "./money-tone-class";
 import { useMoneyPrivacy } from "./money-privacy";
 import { reconciliationTone } from "../domain/money-tone";

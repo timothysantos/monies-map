@@ -6,7 +6,7 @@ import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
 import { StatementFixSuggestions } from "./statement-fix-suggestions";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";

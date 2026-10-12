@@ -13,7 +13,8 @@ import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
 import { buildPaymentWayAccountOptions, findDuplicateCategoryMatchRules } from "./settings-workflow";
-import { CategoryGlyph, DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
+import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 
 const { accounts: accountService, format: formatService } = moniesClient;

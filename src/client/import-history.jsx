@@ -5,7 +5,7 @@ import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
 const { format: formatService } = moniesClient;
 
 // Recent history is read-only except rollback; pagination only changes which batches are visible.

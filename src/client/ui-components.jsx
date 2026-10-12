@@ -3,11 +3,9 @@ import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, Receipt, X } from "lucide-react";
 import { useState } from "react";
 
-import { messages } from "./copy/en-SG";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 import { useIsMobileLayout } from "./use-viewport";
-import { InlineError } from "./ui-states";
 
 export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
   const normalizedOptions = [
@@ -189,89 +187,6 @@ export function FilterMultiSelect({
         </Popover.Portal>
       </Popover.Root>
     </label>
-  );
-}
-
-export function DeleteRowButton({
-  label,
-  onConfirm,
-  triggerLabel,
-  confirmLabel = "Confirm",
-  destructive = true,
-  prompt = undefined,
-  buttonClassName = "",
-  children = null
-}) {
-  const [open, setOpen] = useState(false);
-  const [isWorking, setIsWorking] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleConfirm() {
-    setIsWorking(true);
-    setError("");
-    try {
-      await onConfirm?.();
-      setOpen(false);
-    } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "The action could not finish.");
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  return (
-    <Popover.Root
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (isWorking) {
-          return;
-        }
-        setOpen(nextOpen);
-        if (!nextOpen) {
-          setError("");
-        }
-      }}
-    >
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={destructive ? `subtle-remove ${buttonClassName}`.trim() : `icon-action ${buttonClassName}`.trim()}
-          aria-label={triggerLabel ?? `Delete ${label}`}
-          disabled={isWorking}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {children ?? (destructive ? <span aria-hidden="true">&times;</span> : <X size={16} />)}
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className="delete-popover"
-          sideOffset={8}
-          align="end"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <p>
-            {prompt ?? <>You are deleting <strong>{label}</strong>. Confirm?</>}
-          </p>
-          <InlineError message={error} />
-          <div className="delete-popover-actions">
-            <Popover.Close asChild>
-              <button type="button" className="subtle-action" disabled={isWorking}>
-                Cancel
-              </button>
-            </Popover.Close>
-            <button
-              type="button"
-              className={`subtle-action ${destructive ? "subtle-danger" : ""}`}
-              disabled={isWorking}
-              onClick={() => void handleConfirm()}
-            >
-              {isWorking ? messages.common.working : confirmLabel}
-            </button>
-          </div>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
   );
 }
 

@@ -57,7 +57,7 @@ import {
   SettingsTransfersSection,
   SettingsTrustSection
 } from "./settings-sections";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
 import { FALLBACK_THEME } from "./ui-options";
 import { buildSettingsRefreshPlan } from "./settings-refresh-plan";
 import {

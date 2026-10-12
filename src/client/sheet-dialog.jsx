@@ -55,14 +55,14 @@ function focusFirstField(event) {
 
 /**
  * The danger-toned lead: a rose bubble, what is about to go, and what it was.
- * @param {{ icon?: any, title: any, subtitle?: any, amount?: any, tone?: string, chips?: any, children?: any }} props
+ * @param {{ icon?: any, title: any, subtitle?: any, amount?: any, tone?: string, chips?: any, neutral?: boolean, children?: any }} props
  */
-export function ConfirmLead({ icon, title, subtitle = null, amount = null, tone = undefined, chips = null, children = null }) {
+export function ConfirmLead({ icon, title, subtitle = null, amount = null, tone = undefined, chips = null, neutral = false, children = null }) {
   return (
     <LeadCard
-      className="sheet-dialog-lead is-danger"
+      className={neutral ? "sheet-dialog-lead" : "sheet-dialog-lead is-danger"}
       category={{ icon }}
-      accentColor="var(--pastel-rose-ink)"
+      accentColor={neutral ? undefined : "var(--pastel-rose-ink)"}
       title={title}
       subtitle={subtitle}
       amount={amount}

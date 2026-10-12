@@ -3,7 +3,7 @@ import { Check } from "lucide-react";
 import { importMessages } from "./copy/en-SG-imports";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
 import "./import-review.css";
 
 // The three steps of an import: bring files, review one, see what changed.
