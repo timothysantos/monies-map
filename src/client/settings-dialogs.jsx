@@ -117,7 +117,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
       onSubmit={onSave}
       onClose={onClose}
     >
-      <DetailRows label={settingsMessages.categoryRuleCategory}>
+      <DetailRows label={isCreate ? settingsMessages.createCategoryRule : settingsMessages.editCategoryRule}>
         <PickerRow
           isSheet={isSheet}
           rowKey="category"

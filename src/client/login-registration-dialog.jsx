@@ -42,7 +42,7 @@ export function LoginRegistrationDialog({ draft, people, error, isSubmitting, on
       onSubmit={() => onSubmit({ preventDefault() {} })}
       onClose={() => {}}
     >
-      <DetailRows label="Household profile">
+      <DetailRows label="Login details">
         <PickerRow
           isSheet={isSheet}
           rowKey="profile"

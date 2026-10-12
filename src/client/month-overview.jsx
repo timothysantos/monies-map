@@ -1,10 +1,12 @@
 import * as Popover from "@radix-ui/react-popover";
-import { RotateCcw, SquarePen, Trash2 } from "lucide-react";
+import { CalendarDays, RotateCcw, SquarePen, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { ConfirmLead, SheetDialog } from "./sheet-dialog";
+import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
+import { useIsMobileLayout } from "./use-viewport";
 import { SpendLeadGroup } from "./ui-components";
 import { buildMonthLeadModel } from "./month-lead-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
@@ -40,6 +42,32 @@ export function MonthPanelHeader({
   const [deleteError, setDeleteError] = useState("");
   useRouteWorkBusy(resetDialogOpen || deleteDialogOpen);
   const monthLabel = `${formatService.formatMonthLabel(view.monthPage.month)} · ${view.label}`;
+  const isSheet = useIsMobileLayout();
+
+  // The Actions list is a popover on a wide screen and a bottom sheet on a
+  // phone; both run the same three actions.
+  function closeActions() {
+    setDuplicateError("");
+    onActionsOpenChange(false);
+  }
+
+  async function duplicateMonth() {
+    if (await runAction(onDuplicateMonth, setDuplicateError, messages.month.duplicateMonthFailed)) {
+      onActionsOpenChange(false);
+    }
+  }
+
+  function openResetDialog() {
+    setResetError("");
+    setResetDialogOpen(true);
+    onActionsOpenChange(false);
+  }
+
+  function openDeleteDialog() {
+    setDeleteError("");
+    setDeleteDialogOpen(true);
+    onActionsOpenChange(false);
+  }
 
   async function runAction(action, setError, fallback) {
     setError("");
@@ -78,6 +106,50 @@ export function MonthPanelHeader({
             ))}
           </div>
         ) : null}
+        {isSheet ? (
+          <>
+            <button
+              type="button"
+              className="month-actions-trigger"
+              aria-haspopup="dialog"
+              aria-expanded={actionsOpen}
+              onClick={() => onActionsOpenChange(true)}
+            >
+              {messages.month.actions}
+            </button>
+            {actionsOpen ? (
+              <SheetDialog
+                className="month-actions-sheet"
+                title={messages.month.actions}
+                description={monthLabel}
+                descriptionHidden
+                lead={(
+                  <LeadCard className="sheet-dialog-lead" category={{ icon: CalendarDays }} title={monthLabel} subtitle={messages.month.actions} />
+                )}
+                errorMessage={duplicateError}
+                quietLabel={null}
+                primaryLabel="Done"
+                onSubmit={closeActions}
+                onClose={closeActions}
+              >
+                <DetailRows label={messages.month.actions}>
+                  <DetailRow
+                    label={isDuplicating ? messages.common.working : messages.month.duplicateMonth}
+                    disabled={isDuplicating}
+                    onClick={duplicateMonth}
+                  />
+                  <DetailRow label={messages.month.resetMonth} disabled={isResettingMonth} onClick={openResetDialog} />
+                  <DetailRow
+                    className="is-danger"
+                    label={messages.month.deleteMonth}
+                    disabled={isDeletingMonth}
+                    onClick={openDeleteDialog}
+                  />
+                </DetailRows>
+              </SheetDialog>
+            ) : null}
+          </>
+        ) : (
         <Popover.Root
           open={actionsOpen}
           onOpenChange={(open) => {
@@ -97,11 +169,7 @@ export function MonthPanelHeader({
               <button
                 type="button"
                 className="month-actions-item"
-                onClick={async () => {
-                  if (await runAction(onDuplicateMonth, setDuplicateError, messages.month.duplicateMonthFailed)) {
-                    onActionsOpenChange(false);
-                  }
-                }}
+                onClick={duplicateMonth}
                 disabled={isDuplicating}
               >
                 {isDuplicating ? messages.common.working : messages.month.duplicateMonth}
@@ -109,11 +177,7 @@ export function MonthPanelHeader({
               <InlineError message={duplicateError} />
               <button
                 type="button"
-                onClick={() => {
-                  setResetError("");
-                  setResetDialogOpen(true);
-                  onActionsOpenChange(false);
-                }}
+                onClick={openResetDialog}
                 className="month-actions-item"
                 disabled={isResettingMonth}
               >
@@ -121,11 +185,7 @@ export function MonthPanelHeader({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setDeleteError("");
-                  setDeleteDialogOpen(true);
-                  onActionsOpenChange(false);
-                }}
+                onClick={openDeleteDialog}
                 className="month-actions-item month-actions-item-danger"
                 disabled={isDeletingMonth}
               >
@@ -134,6 +194,7 @@ export function MonthPanelHeader({
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
+        )}
         {/* The confirmation dialogs live outside the Actions popover: opening one
             closes the popover, which would otherwise unmount the dialog with it. */}
         {resetDialogOpen ? (

@@ -327,3 +327,8 @@
   min-width: 44px;
   min-height: 44px;
 }
+
+/* The Month Actions sheet: Delete month reads in the rose ink. */
+.lsd-row.is-danger .lsd-row-label {
+  color: var(--pastel-rose-ink);
+}
