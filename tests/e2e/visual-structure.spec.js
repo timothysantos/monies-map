@@ -131,8 +131,7 @@ test.describe("desktop chrome tokens", () => {
         await expect(title, `${path} at ${layout.name}`).toBeVisible();
         await expect(title, `${path} at ${layout.name}`).toHaveCSS("font-size", "27.2px");
       }
-      await openPage(page, "/summary?view=person-tim&month=2026-05", layout);
-      await page.getByRole("button", { name: /^May 2026$/ }).first().click();
+      await openPage(page, "/month?view=person-tim&month=2026-05", layout);
       const monthName = page.locator(".panel-head .month-label-period").first();
       await expect(monthName, layout.name).toBeVisible();
       await expect(monthName, layout.name).toHaveCSS("font-size", "27.2px");
