@@ -260,7 +260,7 @@ const SHOTS = [
       await page.getByRole("textbox", { name: "Amount" }).fill("6.80");
       await page.getByRole("button", { name: "Edit in form" }).click();
       // The Ask panel stays beside the page; the picture is of the form.
-      await page.getByRole("button", { name: "Close", exact: true }).click({ timeout: 3000 }).catch(() => {});
+      await page.getByRole("button", { name: "Close Ask" }).click({ timeout: 3000 }).catch(() => {});
       const composer = page.locator(".entry-composer").first();
       await composer.getByLabel("Description").fill("Kopi and kaya toast");
       await composer.getByLabel("Amount").fill("6.80");

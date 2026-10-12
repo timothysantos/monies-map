@@ -44,6 +44,14 @@ function looks(locator) {
   });
 }
 
+// Red, green and blue (0 to 255) of a computed colour, in either of the
+// forms Chromium reports: rgb(...) or color(srgb 0.9 0.9 0.9 / 0.6).
+function toRgb(value) {
+  const srgb = value.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/);
+  if (srgb) return [srgb[1], srgb[2], srgb[3]].map((channel) => Number(channel) * 255);
+  return value.match(/[\d.]+/g).slice(0, 3).map(Number);
+}
+
 function box(locator) {
   return locator.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -132,16 +140,16 @@ test.describe("Entries totals: the lead and four pills", () => {
     await expect(totals.locator(".entries-totals-pill strong")).toHaveText(["••••", "••••", "••••", "••••"]);
     expect(await totals.innerText()).not.toMatch(/[-−]\s?••••|\$\d/);
     for (const pill of await totals.locator(".entries-totals-pill").all()) {
-      const surface = (await looks(pill)).background.match(/[\d.]+/g).slice(0, 3).map(Number);
-      // No mint or rose tint: the palette's cream neutral, or nothing.
-      const neutral = (await page.evaluate(() => {
+      // No mint or rose tint: the palette's cream neutral.
+      const surface = toRgb((await looks(pill)).background);
+      const neutral = toRgb(await page.evaluate(() => {
         const probe = document.createElement("span");
         probe.style.color = "var(--pastel-neutral)";
         document.body.append(probe);
         const colour = getComputedStyle(probe).color;
         probe.remove();
         return colour;
-      })).match(/[\d.]+/g).slice(0, 3).map(Number);
+      }));
       surface.forEach((channel, index) => expect(Math.abs(channel - neutral[index])).toBeLessThan(3));
       expect((await looks(pill.locator("strong"))).color).toBe(INK.text);
     }
