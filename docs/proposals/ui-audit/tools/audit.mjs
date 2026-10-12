@@ -155,7 +155,7 @@ const SHOTS = [
   } },
   { name: "month-note-dialog", d: D, run: async (p) => {
     await open(p, `/month?view=person-ethan&month=${MONTH}`);
-    const btn = p.getByRole("button", { name: /note/i }).first();
+    const btn = p.locator("tr").filter({ hasText: "Bills" }).first().locator("button").last();
     await scrollTo(p, btn, 200); await btn.click(); await waitDialog(p);
   } },
 
@@ -198,8 +198,8 @@ const SHOTS = [
   } },
   { name: "state-refresh-failure", d: D, reseedAfter: true, run: async (p) => {
     await open(p, `/month?view=person-ethan&month=${MONTH}`);
-    const row = p.locator("tr").filter({ hasText: "Entertainment" }).first();
-    await scrollTo(p, row, 260); await row.getByText("Entertainment").first().click();
+    const row = p.locator("tr").filter({ hasText: "Food & Drinks" }).first();
+    await scrollTo(p, row, 260); await row.getByText("Food & Drinks").first().click();
     await row.locator(".table-edit-input-money").fill("123.45");
     await p.route("**/api/month-page**", (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{\"error\":\"x\"}" }));
     await p.route("**/api/summary-page**", (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{\"error\":\"x\"}" }));
@@ -221,8 +221,16 @@ const SHOTS = [
     await p.locator(".refresh-failure-notice").first().waitFor({ timeout: 20_000 });
     await p.waitForTimeout(400);
   } },
-  { name: "state-empty-entries", d: PD, run: (p) => open(p, `/entries?view=person-ethan&month=${EMPTY_MONTH}`) },
-  { name: "state-empty-month", d: PD, run: (p) => open(p, `/month?view=person-ethan&month=${EMPTY_MONTH}`) },
+  // Every tracked month in the showcase data has entries, so the empty states are the real
+  // responses with the lists blanked out (the DTO shape is unchanged).
+  { name: "state-empty-entries", d: PD, run: async (p) => {
+    await p.route("**/api/entries-page**", async (route) => { const r = await route.fetch(); const j = await r.json(); j.monthPage.entries = []; await route.fulfill({ response: r, json: j }); });
+    await open(p, `/entries?view=person-ethan&month=${MONTH}`);
+  } },
+  { name: "state-empty-month", d: PD, run: async (p) => {
+    await p.route("**/api/month-page**", async (route) => { const r = await route.fetch(); const j = await r.json(); Object.assign(j.monthPage, { incomeRows: [], planSections: [], categoryShareChart: [], entries: [] }); await route.fulfill({ response: r, json: j }); });
+    await open(p, `/month?view=person-ethan&month=${MONTH}`);
+  } },
   { name: "state-no-filter-match", d: P, run: (p) => open(p, `/entries?view=person-ethan&month=${MONTH}&entry_search=zzzzqq`) },
 
   // ---------------- Entries
@@ -289,8 +297,8 @@ const SHOTS = [
   { name: "entries-add-to-splits", d: PD, run: async (p) => {
     const e = await findEntry(p, "person-ethan", MONTH, (x) => /GOLDEN VILLAGE/.test(x.description)) ?? await findEntry(p, "person-ethan", MONTH, (x) => x.entryType === "expense" && !x.linkedSplitExpenseId);
     await openEntryEditor(p, e);
-    await p.getByRole("button", { name: "Add to splits" }).first().click();
-    await p.getByRole("dialog", { name: "Add to splits" }).waitFor(); await p.waitForTimeout(500);
+    await p.getByRole("button", { name: /Add to splits/ }).first().click();
+    await p.waitForTimeout(900);
   } },
   { name: "entries-from-ask-chip", d: P, run: async (p) => {
     await askQuestion(p, `/ask?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`, "How much on public transport?", ".ask-answer[data-ask-answer]:not([data-ask-answer=''])");
@@ -307,12 +315,12 @@ const SHOTS = [
     await open(p, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
     if (isPhone(p)) await p.locator(".splits-fab").click();
     else await p.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
-    await p.getByRole("dialog", { name: "Create split expense" }).waitFor(); await p.waitForTimeout(500); await hideCaret(p);
+    await p.getByRole("dialog", { name: "New split expense" }).waitFor(); await p.waitForTimeout(500); await hideCaret(p);
   } },
   { name: "splits-add-expense-bottom", d: P, run: async (p) => {
     await open(p, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
     await p.locator(".splits-fab").click();
-    const dlg = p.getByRole("dialog", { name: "Create split expense" }); await dlg.waitFor(); await p.waitForTimeout(500);
+    const dlg = p.getByRole("dialog", { name: "New split expense" }); await dlg.waitFor(); await p.waitForTimeout(500);
     await dlg.evaluate((el) => { [el, ...el.querySelectorAll("*")].filter((n) => n.scrollHeight > n.clientHeight + 10 && /auto|scroll/.test(getComputedStyle(n).overflowY)).forEach((n) => { n.scrollTop = n.scrollHeight; }); });
     await p.waitForTimeout(300);
   } },
@@ -403,7 +411,7 @@ const SHOTS = [
   ...[
     ["people", "People"], ["accounts", "Accounts"], ["shortcut", "Apple Pay shortcut"], ["ask-ai", "Ask and AI"],
     ["payment-ways", "Payment ways"], ["categories", "Categories"], ["category-rules", "Category matching"],
-    ["trust", "Balance trust rules"], ["transfers", "Transfers"], ["activity", "Activity"]
+    ["trust", "Balance trust rules"], ["transfers", "Unresolved transfers"], ["activity", "Recent balance activity"], ["diagnostics", "Error diagnostics"]
   ].map(([slug, heading]) => ({ name: `settings-${slug}`, d: PD, run: (p) => openSettingsSection(p, heading) })),
   { name: "settings-add-account", d: PD, run: async (p) => { await openSettingsSection(p, "Accounts"); await p.getByRole("button", { name: "+ Add account" }).first().click(); await waitDialog(p); await hideCaret(p); } },
   { name: "settings-reconcile", d: PD, run: async (p) => { await openSettingsSection(p, "Accounts"); await p.getByRole("button", { name: "Reconcile" }).first().click(); await waitDialog(p); await hideCaret(p); } },
@@ -416,12 +424,26 @@ const SHOTS = [
 
   // ---------------- FAQ
   { name: "faq-user-guide", d: ALL, run: async (p) => { await open(p, "/faq?view=household"); await p.getByRole("navigation", { name: "Contents" }).waitFor().catch(() => {}); } },
-  { name: "faq-developer-guide", d: PD, run: async (p) => { await open(p, "/faq?view=household"); await p.getByRole("tab", { name: /Developer/ }).first().click().catch(async () => p.getByRole("button", { name: /Developer/ }).first().click()); await p.waitForTimeout(600); } },
+  { name: "faq-developer-guide", d: PD, run: async (p) => { await open(p, "/faq?view=household"); await p.getByRole("tab", { name: /developers/i }).first().click(); await p.waitForTimeout(600); } },
   { name: "faq-scrolled", d: P, run: async (p) => { await open(p, "/faq?view=household"); await p.evaluate(() => window.scrollTo(0, 2400)); await p.waitForTimeout(500); } },
 
   // ---------------- Ask
   { name: "ask-chat-empty", d: P, run: async (p) => { await open(p, `/summary?view=person-ethan&month=${MONTH}`); await p.locator("nav.tab-strip").getByRole("link", { name: "Ask" }).click(); await p.getByRole("heading", { name: "Ask", exact: true }).waitFor(); await waitUsable(p); } },
   { name: "ask-desktop", d: D, run: (p) => open(p, `/ask?view=person-ethan&month=${MONTH}`) },
+  { name: "ask-dock-docked-answer", d: D, run: async (p) => {
+    await open(p, `/entries?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
+    await p.getByRole("textbox", { name: /Ask|Message/ }).first().fill("How much on public transport?");
+    await p.keyboard.press("Enter");
+    await p.locator(".ask-answer[data-ask-answer]:not([data-ask-answer=''])").first().waitFor({ timeout: 30_000 });
+    await waitUsable(p); await hideCaret(p);
+  } },
+  { name: "ask-dock-popup-answer", d: ["d1024"], run: async (p) => {
+    await open(p, `/entries?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
+    await p.getByRole("textbox", { name: /Ask|Message/ }).first().fill("How much on public transport?");
+    await p.keyboard.press("Enter");
+    await p.locator(".ask-answer[data-ask-answer]:not([data-ask-answer=''])").first().waitFor({ timeout: 30_000 });
+    await waitUsable(p); await hideCaret(p);
+  } },
   { name: "ask-plus-popover", d: P, run: async (p) => { await open(p, `/ask?view=person-ethan&month=${MONTH}`); await p.getByRole("button", { name: /Add a photo|Attach|More ways|^\+$|Add/ }).first().click().catch(() => {}); await p.waitForTimeout(500); } },
   { name: "ask-answer", d: P, run: (p) => askQuestion(p, `/ask?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`, "How much on public transport?", ".ask-answer[data-ask-answer]:not([data-ask-answer=''])") },
   { name: "ask-money-answer", d: P, run: (p) => askQuestion(p, `/ask?view=household&month=${MONTH}&scope=direct_plus_shared`, "Why was August so expensive?", "[data-ask-money-answer]") },
