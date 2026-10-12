@@ -4,16 +4,21 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 
 import { sheetSwipeCopy as copy } from "./copy/sheet-swipe-copy";
 import { createSheetSwipeController } from "./sheet-swipe-controller";
+import { useIsMobileLayout } from "./use-viewport";
 
-// Swipe down to close a phone bottom sheet (design.md, "Mobile Sheet"). The
-// shared sheet (EntryMobileSheet) and the phone Splits expense dialog use it
-// the same way:
+// Swipe down to close a phone bottom sheet (design.md, "Mobile Sheet"). A
+// sheet with a draft (EntryMobileSheet, the phone Splits expense, settlement
+// and group dialogs) uses the hook:
 //
 //   const swipe = useSheetSwipeDismiss({ sheet, isDirty, isSubmitting, onClose });
 //   <Content ref={setSheet} {...swipe.contentProps}>
 //     <SheetDragHandle />
 //     <form inert={swipe.isConfirmOpen}>...</form>
 //     <SheetDiscardConfirm open={swipe.isConfirmOpen} ... />
+//
+// A sheet with nothing to lose (Pick a month, View and scope, the Splits
+// activity history and archive) puts <SheetSwipeDismiss onClose={...} />
+// first inside its content instead: a swipe always closes it.
 //
 // The sheet follows the finger and the gesture rules live in
 // sheet-swipe-controller.js. A drag starts from the grab bar and header, or
@@ -280,13 +285,31 @@ export function useSheetSwipeDismiss({ sheet, enabled = true, isDirty = false, i
  * The grab bar at the top of a phone sheet: a cue that the sheet swipes
  * down. It is drawn, not a control (hidden from screen readers and never a
  * tap target); the sheet's close button and Cancel are the other ways out.
+ * @param {{ ref?: import("react").Ref<HTMLDivElement> }} props
  */
-export function SheetDragHandle() {
+export function SheetDragHandle({ ref } = {}) {
   return (
-    <div className="sheet-drag-handle" aria-hidden="true">
+    <div ref={ref} className="sheet-drag-handle" aria-hidden="true">
       <span className="sheet-drag-handle-bar" />
     </div>
   );
+}
+
+/**
+ * Swipe down to close for a phone sheet with nothing to lose (a picker, a
+ * history list, View and scope): the grab bar plus the gesture, so a swipe
+ * always closes it. It goes first inside the sheet's Dialog.Content and
+ * attaches to that element (its parent), so the sheet needs no ref. On a
+ * desktop layout it renders nothing. App.jsx loads it with React.lazy, so
+ * the first screen never carries the gesture code.
+ * @param {{ enabled?: boolean, isSubmitting?: boolean, onClose: () => void }} props
+ */
+export function SheetSwipeDismiss({ enabled = true, isSubmitting = false, onClose }) {
+  const isMobileLayout = useIsMobileLayout();
+  const [handle, setHandle] = useState(/** @type {HTMLDivElement | null} */ (null));
+  const isActive = enabled && isMobileLayout;
+  useSheetSwipeDismiss({ sheet: handle?.parentElement ?? null, enabled: isActive, isSubmitting, onClose });
+  return isActive ? <SheetDragHandle ref={setHandle} /> : null;
 }
 
 /**

@@ -10,7 +10,7 @@ import { BANK_FACTS_LOCK_LINE, getBankFactsLockMessage, getEntryTypeOptions, get
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
-import { addedByLabel, bankStateChipLabel } from "./entry-source";
+import { addedByLabel, bankStateChipLabel, moreDetailsSummary } from "./entry-source";
 import { CategoryGlyph } from "./ui-components";
 import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
@@ -405,7 +405,7 @@ export function EntryEditCard({
             onOpenChange={setMoreOpen}
             label={copy.editCard.moreDetails}
             openLabel={copy.editCard.fewerDetails}
-            summary={bankFactsLocked ? copy.editCard.moreDetailsLocked : copy.editCard.moreDetailsOpen}
+            summary={moreDetailsSummary({ locked: bankFactsLocked, addedBy: entry.addedBy })}
           >
             {bankRows}
           </MoreDetails>

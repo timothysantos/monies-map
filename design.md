@@ -561,7 +561,7 @@ Tappable chips: a Support chip that names a field you can change opens
 the same picker or editor as that field's Detail row, so the fact you look
 at is also the way to change it. Edit entry card: date (the date picker),
 wallet (the wallet picker, unfolding More details) and owner. Ask draft
-card: date, wallet and owner. Create split expense card: date, paid by,
+card: date, wallet and owner. New split expense card: date, paid by,
 shares (the share editor) and paid using. The Month plan card's chips are
 not fields there, and a saved Ask card's chips are not editors.
 
@@ -584,7 +584,9 @@ entry, "Apple Pay · provisional" (the Apple Pay Shortcut) or "Ask ·
 provisional", on the Edit entry card and Ask's saved card; a certified
 entry says "Statement certified" and other entries keep "Manual
 provisional" or "Import provisional". More details then has a read-only
-"Added by" row (Apple Pay shortcut, Ask), and an Entries row shows a small
+"Added by" row (Apple Pay shortcut, Ask), and its folded hint names it
+("Date, wallet, posted date, type, added by"; certified: "Posted date,
+type, added by"; `moreDetailsSummary`), and an Entries row shows a small
 muted glyph inside its amount's line (a contactless mark, "Added with Apple
 Pay"; a sparkle, "Added in Ask") that keeps the row's height and is the
 same with money hidden. The words come from `entry-source.js`, from the
@@ -622,9 +624,10 @@ Rules:
 - Keyboard: every bottom sheet with a bottom bar lifts itself above the
   phone keyboard (`use-keyboard-inset.js` sets `--keyboard-inset`; see
   "Mobile Sheet"), so the bar and the focused field stay in sight, and the
-  bar keeps the safe-area inset. Swipe down to dismiss is not supported:
-  neither the mobile sheet nor the Radix dialog has it, and adding it would
-  be a new gesture that discards a draft.
+  bar keeps the safe-area inset. Swipe down to close is supported only
+  through `sheet-swipe.jsx`, which closes an unchanged sheet and asks
+  before discarding a changed one (see "Swipe down to close" under "Mobile
+  Sheet").
 - No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
 
 Where it is used:
@@ -1041,9 +1044,10 @@ strip EXIF and location in the browser first (re-encoding through a canvas
 does both, `ask-receipt-image.js`); keep the image in transient page state
 only, dropped when the page goes; on `available: false` (or any failure)
 read the same image on the device with the app's Tesseract worker into the
-same `ReceiptReadDto` (the domain's `readReceiptOcrText`; Ask still uses its
-own smaller `parseReceiptText` in `ask-receipt-image.js`, to be replaced by
-the domain parser); and fill the entry card
+same `ReceiptReadDto` (the domain's `readReceiptOcrText`, which Ask calls
+through `readReceiptTextOnDevice` in `ask-receipt-image.js` with the
+household currency, SGD, as the default so a receipt that prints no
+currency raises no currency question); and fill the entry card
 or editor from it (`applyReceiptRead` on Ask, `receiptReadToDraftFields`
 for the `/api/entries/create` field names), saving nothing until the user
 taps Save, through the normal create route. The
