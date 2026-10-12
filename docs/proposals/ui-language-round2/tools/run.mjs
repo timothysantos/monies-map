@@ -12,6 +12,8 @@ const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "out")
 const [scenarioFile, ...filters] = process.argv.slice(2);
 const { scenarios } = await import(path.resolve(scenarioFile));
 const lsdCss = await readFile(`${ROOT}/src/client/ui/lead-support-detail.css`, "utf8");
+// The Ask thread's own rules (bubbles, tags, composer), so a docked Ask panel can sit on any page.
+const askCss = await readFile(`${ROOT}/src/client/ask-route.css`, "utf8");
 const kitJs = await readFile(path.resolve(path.dirname(new URL(import.meta.url).pathname), "kit.js"), "utf8");
 const mockCss = await readFile(path.resolve(path.dirname(new URL(import.meta.url).pathname), "mock.css"), "utf8");
 await mkdir(OUT, { recursive: true });
@@ -54,6 +56,7 @@ const helpers = {
   // The lsd- blocks' stylesheet, verbatim from the app, plus mock CSS.
   async inject(page, css, build) {
     await page.addStyleTag({ content: lsdCss });
+    if (!/\/ask/.test(page.url())) await page.addStyleTag({ content: askCss });
     await page.addStyleTag({ content: mockCss });
     await page.addScriptTag({ content: kitJs });
     if (css) await page.addStyleTag({ content: css });
