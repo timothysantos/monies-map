@@ -44,7 +44,9 @@ newest one in progress (an add-mode card carries its `mode`, `from` and
 
 A lead's "Ask about this" (the savings bar and money jobs on Summary and
 Month, `ui/money-actions.jsx`, design.md "Money jobs") opens the chat with a
-question in the message box for the person to send. On a phone it is
+question in the message box for the person to send. The menu sends a
+`monies:money-action` window event and the shell (App.jsx) opens Ask. On a
+phone it is
 `/ask?view&month&scope&ask_text=<question>`: the chat reads `ask_text` once
 into the message box (after any words already there) and drops it from the
 URL with a replace, so a reload or Back does not add it again; it never

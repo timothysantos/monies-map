@@ -808,8 +808,13 @@ Where it is used:
   `summary-lead.css`; inside `SpendLeadGroup` under the savings bar, DOMAIN.md
   "Money job"): a `<details>` Detail whose summary is one muted line, "3 of
   4 money jobs done" ("… so far" while the period's last month is the
-  current month), folded on a phone (it fits in the old plan line's height,
-  so the Month card stays at most 205 px) and open from 761 px. Open, it
+  current month), folded on a phone (it takes the old plan line's place and
+  height, 3 px under the sentence, so the Month card stays at most 205 px;
+  only the longer "kept and invested" sentence may wrap to a second line,
+  about 223 px) and open from 761 px. The line's tap target is 40 px: its
+  padding reaches into the gaps above and below and a negative margin gives
+  the space back; the bar's segments sit above it where the two reach
+  overlap (a pseudo-element target covered the bar in Chrome). Open, it
   lists one quiet row per job, in the owner's order: "Spend within $x",
   "Save $x", "Invest $x", "Income $x", each with "✓ done" in mint or "short
   by $n" / "over by $n" in rose, text only ("✓ so far" and "… so far" for a
@@ -836,7 +841,12 @@ Where it is used:
   (`openAskDock({ text })`, which the open conversation takes too). The
   question never holds an amount, and with hidden money never says which
   side of the plan the money fell ("How did my spending compare with the
-  plan in …?"). Nothing is sent by itself.
+  plan in …?"). Nothing is sent by itself. The menu does not navigate
+  itself: it sends one window event, `monies:money-action` (`{ entries }` or
+  `{ askText }`), and the shell (App.jsx) opens Entries or Ask. Importing the
+  router or the Ask dock's launcher into the lead's chunk split Vite's
+  preload helper into a ninth first-screen file (`check:bundle` counts
+  files). The menu closes as it goes, so Back finds the lead as it was.
 - Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
   Month route chunk): Income, Budget Buckets and Planned Items keep their
   `<table>` markup (inline editing, sorting, row opening and the tests'
