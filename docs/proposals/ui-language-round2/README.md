@@ -102,8 +102,33 @@ phone, and it is a second card above the one that matters (breaks "one lead
 per screen top" unless the card stays quiet). Effort M, risk low.
 Images: `splits-groups-C-phone-card`, `-C-desktop-card`, and the `-hidden` ones.
 
+**D: keep the sideways strip as a deliberate exception, restyled.** The strip
+sits in the page flow under the person switcher (it no longer floats over rows).
+The open group is a white Lead tile, about 60% wide, with a terracotta outline
+and a tick, its balance in words and its entry count; it is scrolled into view
+on load and after a refresh (the last-used group persists). The other groups
+are translucent Support tiles, about 40% wide so the next one peeks to show it
+scrolls (scroll-snap, 64 px tall), name and one balance line, settled groups
+last and muted ("Settled"). The end holds "All groups" (opens A's vertical list
+as a sheet, the non-scroll path) and "+ Create group". Scrolling down, the strip
+leaves the page and the existing floating bar shows the open group; scrolling
+back up restores it. With money hidden the tiles say "Balance hidden" and are
+not ordered by who owes whom. On desktop the tiles wrap into a row and nothing
+scrolls.
+Pros: keeps the quick per-group summaries the owner values, the closest to
+today's habit, always opens on the group's activity. Cons: it is the one
+sideways scroller left in the app (a deliberate exception to "no sideways
+scroll"), it adds about 150 px above the heading on phone, and a group past the
+second tile is out of sight until you scroll or open All groups. Effort M
+(the strip, its collapse into the floating bar and persisting the last group),
+risk medium (scroll-driven collapse on iOS, 44 px targets, e2e).
+Images: `splits-groups-D-phone-strip`, `-D-phone-hidden-strip`,
+`-D-phone-scrolled` (collapsed bar), `-D-phone-hidden-scrolled`,
+`-D-phone-all-sheet`, `-D-desktop-strip`, `-D-desktop-hidden-strip`.
+
 Recommendation: A, with "open the last used group" so the list is one tap
-back rather than a toll.
+back rather than a toll; D if the per-group summaries on the first screen
+matter more than keeping the app free of sideways scrolling.
 
 ## 2. Entries totals and filters
 

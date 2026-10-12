@@ -34,6 +34,22 @@ const CSS = `
 .mk-groups-card .lsd-rows { box-shadow: none; }
 .mk-groups-card .mk-show-all { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 14px; color: var(--accent-strong); font-weight: 700; }
 .mk-float-bar { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); right: 76px; }
+/* D: the sideways strip kept as a deliberate exception, in the page flow. */
+.mk-strip { display: flex; gap: 10px; margin: 0 -2px 14px; padding: 2px 2px 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.mk-strip::-webkit-scrollbar { display: none; }
+.mk-tile { flex: 0 0 40%; scroll-snap-align: start; display: grid; align-content: center; gap: 2px; min-height: 64px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.34); border-radius: 16px; background: rgba(255,255,255,0.14); color: #fff; font: inherit; text-align: left; }
+.mk-tile strong { font-size: 0.95rem; line-height: 1.2; }
+.mk-tile small { color: rgba(255,255,255,0.92); font-size: 0.8rem; line-height: 1.25; }
+.mk-tile.is-lead { flex-basis: 60%; position: relative; background: #fff; color: var(--text); border: 2px solid var(--accent-strong); box-shadow: 0 10px 24px rgba(27,24,21,0.18); }
+.mk-tile.is-lead small { color: var(--muted); }
+.mk-tile.is-lead .mk-tick { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-strong); color: #fff; }
+.mk-tile.is-settled { opacity: 0.72; background: rgba(255,255,255,0.08); }
+.mk-tile.is-end { flex-basis: 34%; place-items: center; text-align: center; background: rgba(255,255,255,0.08); border-style: dashed; font-weight: 700; }
+@media (min-width: 761px) {
+  .mk-strip { flex-wrap: wrap; overflow: visible; }
+  .mk-tile, .mk-tile.is-lead, .mk-tile.is-end { flex: 0 1 220px; }
+  .mk-tile.is-lead { flex-basis: 280px; }
+}
 @media (min-width: 761px) {
   .mk-groups-wrap { max-width: 640px; }
   .mk-float-bar { left: 24px; right: auto; width: 420px; bottom: 28px; }
@@ -49,7 +65,7 @@ function read() {
     const m = balance.match(/(JP¥|\$)([\d,.]+)$/);
     const amount = m ? Number(m[2].replace(/,/g, "")) : 0;
     const dir = /owes you/.test(balance) ? 1 : /You owe/.test(balance) ? -1 : 0;
-    return { name: t.querySelector("strong")?.textContent.trim(), lines, balance, icon: t.querySelector(".split-group-pill-icon")?.innerHTML ?? "", active: t.classList.contains("is-active"), cur: m?.[1], amount, dir, settled: dir === 0 && !/owe/.test(balance) };
+    return { name: t.querySelector("strong")?.textContent.trim(), lines, balance, icon: t.querySelector(".split-group-pill-icon")?.innerHTML ?? "", active: t.classList.contains("is-active"), cur: m?.[1], amount, dir, settled: /^Settled/.test(balance) };
   });
   // owed to you first, then what you owe, settled last
   const rank = (g) => (g.dir === 1 ? 0 : g.dir === -1 ? 1 : 2);
@@ -112,6 +128,18 @@ function mount({ variant, screen, phone }) {
   };
   window.__sheet = sheet;
 
+  if (variant === "D") {
+    const order = [active, ...sorted.filter((g) => g !== active && !g.settled), ...sorted.filter((g) => g !== active && g.settled)];
+    const tile = (g) => g === active
+      ? `<button class="mk-tile is-lead" type="button" aria-current="true"><span class="mk-tick">${M.icon("check", 14)}</span><strong>${g.name}</strong><small>${g.balance}</small><small>${g.lines[1]}</small></button>`
+      : `<button class="mk-tile ${g.settled ? "is-settled" : ""}" type="button"><strong>${g.name}</strong><small>${g.settled && !hidden ? "Settled" : g.balance}</small></button>`;
+    const strip = M.el(`<div class="mk-strip" role="list" aria-label="Groups">${order.map(tile).join("")}<button class="mk-tile is-end" type="button">All groups</button><button class="mk-tile is-end" type="button">+ Create group</button></div>`);
+    const head = document.querySelector(".panel-splits .panel-head");
+    head.parentNode.insertBefore(strip, head);
+    anchor.parentNode.insertBefore(M.el(`<div class="mk-groups-wrap">${leadHtml(phone, false)}</div>`), anchor);
+    window.__bar = () => document.body.appendChild(M.el(`<div class="mk-float-bar" role="button" aria-label="Choose a group">${M.bubble(active.icon)}<span class="mk-float-copy"><strong>${active.name}</strong><small>${hidden ? `${groups.length} groups` : active.balance}</small></span>${M.icon("chevronDown", 20)}</div>`));
+    return;
+  }
   if (variant === "A" && screen === "list") {
     hideRest();
     document.querySelector(".panel-splits .financial-insight")?.style.setProperty("display", "none", "important");
@@ -147,9 +175,35 @@ const runOne = (variant, device, screen, name, { sheet = false } = {}) => async 
   }
 };
 
+const runD = (device, name, { scrolled = false, sheet = false } = {}) => async (page, h, shot) => {
+  const phone = device === "phone";
+  await h.open(page, URL_);
+  await h.inject(page, CSS);
+  await page.evaluate(`window.read = ${read.toString()}; window.rowHtml = ${rowHtml.toString()}; window.listHtml = ${listHtml.toString()}; window.leadHtml = ${leadHtml.toString()};`);
+  const fn = mount.toString().replace("read();", "window.read();").replace(/\browHtml\(/g, "window.rowHtml(").replace(/\blistHtml\(/g, "window.listHtml(").replace(/\bleadHtml\(/g, "window.leadHtml(");
+  await page.evaluate(`(${fn})(${JSON.stringify({ variant: "D", screen: "strip", phone })})`);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.waitForTimeout(400);
+  await shot(name, { keepFloaters: true });
+  if (scrolled) {
+    // Scrolled down: the strip leaves the page and the existing floating bar shows the active group.
+    await page.evaluate(() => { window.scrollTo({ top: 760, behavior: "instant" }); window.__bar(); });
+    await page.waitForTimeout(400);
+    await shot("scrolled", { keepFloaters: true });
+  }
+  if (sheet) {
+    await page.evaluate(`window.read = ${read.toString()}; window.__g && (document.body.appendChild(window.M.el('<div class="mk-scrim"></div>')), document.body.appendChild(window.M.el('<section class="mk-sheet" role="dialog" aria-label="All groups"><span class="mk-sheet-grab"></span><div class="mk-sheet-head"><h3>All groups</h3><span class="mk-close">×</span></div>' + window.listHtml(true) + '<div class="lsd-bottom is-sheet-bar"><div class="lsd-bottom-end"><button class="lsd-primary" type="button">Done</button></div></div></section>')));`);
+    await page.waitForTimeout(300);
+    await shot("all-sheet", { keepFloaters: true });
+  }
+};
+const SD = (device, name, opts, hidden) => ({ name: `splits-groups-D-${device}${hidden ? "-hidden" : ""}`, device, hidden, run: runD(device, name, opts) });
+
 const S = (variant, device, screen, name, opts, hidden) => ({ name: `splits-groups-${variant}-${device}${hidden ? "-hidden" : ""}`, device, hidden, run: runOne(variant, device, screen, name, opts) });
 
 export const scenarios = [
+  SD("phone", "strip", { scrolled: true, sheet: true }), SD("phone", "strip", { scrolled: true }, true), SD("desktop", "strip"), SD("desktop", "strip", {}, true),
+  
   S("A", "phone", "list", "list"), S("A", "phone", "group", "group", { sheet: true }),
   S("A", "phone", "list", "list", {}, true), S("A", "phone", "group", "group", { sheet: true }, true),
   S("B", "phone", "group", "bar", { sheet: true }), S("B", "phone", "group", "bar", { sheet: true }, true),
