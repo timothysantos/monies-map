@@ -125,7 +125,11 @@ Layout, top to bottom:
   "Saved" (add mode) with a context line: person · scope · month in chat,
   person · month beside the title in add mode. In chat mode, once there is
   something to start over from, a quiet "New chat" text button (accent
-  text with a pen glyph, 44 px tall) sits at the header's right.
+  text with a pen glyph, 44 px tall) sits at the header's right. On a
+  phone, after the Entries + or the Splits receipt button opened the card,
+  a "‹ Entries" / "‹ Splits" back link (accent text, bold, a 44 px target
+  in a short row) sits at the top left above the title, the standard Back
+  place, far from Save. Its way back is "Ask origin" below.
 - Conversation (`role="log"`, polite live region), which scrolls: first,
   only while Claude credits are low, used up or capped, the Claude credit
   notice (see "Claude credit notice"), in every mode; then in chat
@@ -182,9 +186,10 @@ Placeholders, each fitting one line at 375 px (`tests/e2e/ask-composer.spec.js`)
 
 On a phone the page is `position: fixed` above the tab bar (`ask-route.css`)
 with its own scrolling conversation; the shell's header bar is underneath
-it. On a wide screen it renders in the main area like any panel, with the
-bottom stack sticky; its tab is hidden there for now (`phoneOnly`), because
-a docked panel will be the wide-screen way in.
+it. On a wide screen `/ask` renders in the main area like any panel, with
+the bottom stack sticky; its tab is hidden there (`phoneOnly`), because the
+Ask field and the panel it opens are the wide-screen way in ("Desktop Ask"
+below).
 
 ### Entry card
 
@@ -287,7 +292,9 @@ while the card is active.
 `buildAskChips` derives the card's row from the mode and the card:
 
 - chat, no card: Scan receipt, Paste, Add entry, Add expense;
-- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first; then a pending
+- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first (with the header's
+  back link, the phone's Ask page after the + or the receipt button, only
+  while the card is untouched: `headerBack`); then a pending
   question's answers (the readers send structured questions; the client
   words them and shows the question as a line above the row), or Scan
   receipt, Paste, Transfer, Income on an empty expense; Split with
@@ -308,6 +315,29 @@ while the card is active.
   Open Month or Open Splits, the first filled), then the same as after an
   answer; an open check before an answer: only Mark as settlement (or Link
   as transfer, filled) and It's real spending.
+
+### Ask origin
+
+Where Ask's back link goes on a phone (`ask-origin.js`, pure, unit tested;
+`use-ask-origin.js`, the Entries and Splits hooks; both ship with those
+routes, never the first screen). The shell's + and receipt handlers
+(`openAskFromPage` in App.jsx, a few lines inline to stay out of the
+module) build the origin (an id, the way in, the page's path with its
+query, the window's scroll), fire `monies:ask-origin` so the page can add
+an open sheet with its draft (`useAskOriginSheet`: Entries adds its edit
+sheet's edited entry, or its add sheet's draft), replace the page's own
+history entry with the origin as `state.askReturn`, then push `/ask` with
+it as `state.askOrigin`. The Ask page keeps it in sessionStorage
+(`monies.askOrigin.v1`, one per way in, versioned) and plans its way back
+with `planAskBack`: history.back while its history entry has the origin
+(so the link and the phone's back gesture are one way), else the kept
+place (opened with `state.askReturn`), else the plain page for the view
+and month. The page puts the place back once (`useAskReturn`): the sheet,
+then the scroll, set each frame until it holds (rows render over a few
+frames), never after the person scrolls; and it keeps its URL and scroll
+as the kept place whenever it is left another way, for a card the Ask tab
+reopens. Paths are checked against the way in's page, so a kept origin
+never leads outside the app.
 
 ### Ask conversation store
 
@@ -354,6 +384,49 @@ while the list scrolls, so the person can always see the list is narrowed
 and undo it with one tap; the list gets 56 px more bottom padding, and the
 chip hides under a sheet or dialog as the bar does. On a wide screen it sits
 at the top of the list, under the page title.
+
+## Desktop Ask
+
+Owner-approved desktop design. Flow: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md)
+"Desktop". Code: `ask-dock.jsx` (field, `/` key and loading frame: the only part in
+the first screen, with `ask-dock-field.jsx` and `ask-dock-entry.js`),
+`ask-dock-panel.jsx` (the panel, loaded with the Ask page's chunk on the
+first way in), `ask-dock-layout.js` (pure layout rules), `ask-dock-state.js`
+(session state), and the Ask page itself inside (`AskPanel` with
+`placement`).
+
+- The field: one white pill, 340 × 48 px, 24 px radius, the inset hairline
+  and a soft shadow, fixed 22 px from the right and 29 px from the bottom
+  (on the vertical centre of the 58 px + button, 12 px to its left on
+  Entries and Splits). An accent ✦ glyph, the placeholder "Ask, or drop a
+  receipt…" in muted ink, and a muted paperclip in a 44 px hit area ("Add
+  a receipt photo"). The accent focus ring shows on the pill while it has
+  focus. It hides under a dialog or an inline editor (as the + does), while
+  any menu or popover is open (one near the bottom right, such as Confirm
+  rollback, would otherwise sit under it), and once the panel's
+  conversation is showing. Page content gets 96 px of
+  bottom room on a wide screen so nothing ends under it.
+- Docked (1,280 px and wider): a full-height panel at the right,
+  `clamp(360px, 27vw, 400px)` wide, on the pastel neutral with a hairline
+  left edge. It pushes the page: the body gets the panel's width as right
+  padding, so the shell (still at most 1,200 px) centres in what is left,
+  and the + and receipt buttons, the loading badge and the environment
+  banner move beside it. Nothing is ever under it.
+- Popup (761 to 1,279 px): 410 × 560 px (less on a short window), 22 px
+  radius, a hairline border and a deep soft shadow, 22 px from the right
+  and 24 px from the bottom, over the page; on Entries and Splits it sits
+  94 px from the bottom, above the round + or receipt button, which open
+  their new entry card in it (and in the docked panel) on a wide screen.
+- Inside both: the Ask page with 16 px gutters. The header is the page's
+  ("Ask" at 1.7 rem with the person · scope · month line), with New chat,
+  the expand control (popup on a window wide enough to dock: an accent
+  ⤢ glyph, "Dock Ask beside the page") and "Close" (accent text, bold,
+  44 px tall, "Close Ask") at its right. The conversation scrolls inside
+  the panel; the chips and composer sit at its bottom, as on the phone.
+- The header and Month read the page's width, so the page narrowed by
+  the panel lays out like a window of that width ("Layout Breakpoint
+  Boundary"): at 1,280 px the page is 920 px and the header keeps one row
+  with Imports, Settings and FAQ behind More pages.
 
 ## Claude Credit Notice
 
@@ -1615,7 +1688,8 @@ storage listeners; its parse and dispatch helpers are pure.
 
 `use-viewport.js` is the only client module that calls `matchMedia` for
 layout; nothing else reads `innerWidth` or repeats a query string. It has
-two queries:
+three queries (the third, `ASK_DOCK_WIDE_QUERY` `(min-width: 1280px)`,
+only says where desktop Ask docks: "Desktop Ask"):
 
 - `MOBILE_LAYOUT_QUERY`, `(max-width: 760px)`, is the phone layout and
   matches the `@media (max-width: 760px)` blocks in `public/styles.css` (a
@@ -1643,9 +1717,21 @@ Between the two layouts there is a CSS-only mid-width range, 761 to
 1,099 px (portrait and landscape tablets, small laptops), where the desktop
 layout must still fit the screen. It needs no JavaScript, so it has no
 query in `use-viewport.js`. Its blocks are
-`@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px)
-and never touch the phone or wide-desktop rules. A header block for 1,100
-to 1,199 px follows it (see below). The header rules are in
+`@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px;
+the header's and Month's are page-width container queries, below) and
+never touch the phone or wide-desktop rules. A header block for 1,100
+to 1,199 px follows it (see below).
+
+The header and the Month mid-width rules are container queries on the
+page itself: from 761 px `.shell` is `container: shell / inline-size`, and
+those blocks read `@container shell (...)`. Without the docked Ask panel the
+page is the window less 36 px (the shell's gutters), so a 1,100 to 1,199 px
+window is a 1,064 to 1,163 px page and nothing changes; with the panel
+docked, the narrower page lays out like a window of its width, so the
+header stays one row and the Month tables fit or scroll inside their
+section, never under the panel. Other pages keep their window-width rules
+(none of them spills past the panel at 1,280 or 1,440 px;
+`tests/e2e/header-tab-fit.spec.js` checks every page). The header rules are in
 `public/styles.css`, because every page shows the header. The Month rules
 are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
 so they ship with the lazy Month route and stay out of the first-screen
@@ -1660,7 +1746,8 @@ rules win over base rules of the same specificity.
   no second row, hidden tab or sideways scroll. At desktop spacing the row
   needs about 1,160 px and fits from 1,200 px (the shell's content width
   stops growing there). From 1,100 to 1,199 px
-  (`@media (min-width: 1100px) and (max-width: 1199px)`) the header
+  (`@container shell (min-width: 840px) and (max-width: 1163px)`, a 1,100
+  to 1,199 px window without the Ask panel) the header
   gap, view pill and tab padding, tab and period gaps and the period box
   (padding, gap, `min-width` 236 px, still wider than the Summary range)
   tighten by about 125 px, leaving about 30 px spare at 1,100 px; the text
@@ -1671,8 +1758,15 @@ rules win over base rules of the same specificity.
   and the 1,440 px header height; it also pins the 1,440 and 390 px header
   spacing. A two-row header here (period controls below the tabs) was
   tried and rejected because it pushed the page down.
-  From 761 to 1,099 px the wrap above still applies: there one row does not
-  fit at this spacing (at 761 to 960 px the view pills already sit on their
+  A page 840 to 1,063 px wide (an 876 to 1,099 px window, or the docked Ask
+  panel beside a 1,280 to 1,499 px one) keeps one row too: the same tighter
+  spacing, the period box sized to its words (`min-width: 0`), and Imports,
+  Settings and FAQ behind the existing "More pages" menu, as on a phone
+  (`@container shell (min-width: 840px) and (max-width: 1063px)`;
+  `header-tab-fit.spec.js` checks every page at 1,024 px and with the panel
+  docked at 1,280 and 1,440 px). Below
+  840 px (a 761 to 875 px window) the wrap above still applies: there one
+  row does not fit (at 761 to 960 px the view pills already sit on their
   own row).
 - The Month panel and plan sections may shrink below their tables'
   min-content width (a grid item's automatic minimum is its min-content,

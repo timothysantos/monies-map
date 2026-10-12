@@ -479,6 +479,38 @@ const SHOTS = [
     }
   },
   {
+    // Desktop Ask: asked from the bottom-right field on Entries, docked
+    // beside the page, which narrows (1,280 px).
+    name: "desktop-ask-docked", device: "desktop",
+    run: async (page) => {
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      // The field goes once the conversation is in the panel.
+      await page.locator(".ask-dock-field").waitFor({ state: "detached" });
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill("How much on public transport?");
+      await message.press("Enter");
+      await page.locator(".ask-dock .ask-answer[data-ask-answer]:not([data-ask-answer=''])").waitFor();
+      await message.blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // A smaller window (1,024 px): the same conversation as a popup over
+    // the page.
+    name: "desktop-ask-popup", device: "desktop",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 768 });
+      await open(page, `/summary?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      await page.getByRole("textbox", { name: "Message" }).waitFor();
+      await page.getByRole("textbox", { name: "Message" }).blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
     // The Ask tab, opened after Summary so "Since you last looked" has
     // the insights Summary loaded.
     name: "phone-ask", device: "phone",

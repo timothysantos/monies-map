@@ -17,9 +17,12 @@ they last looked. Its visual design is in `design.md` ("Ask page").
 Route entry:
 
 - `/ask`: chat mode, from the Ask tab.
-- `/ask?mode=add&from=entries`: add mode, from the Entries + button.
+- `/ask?mode=add&from=entries`: add mode, from the Entries + button on a
+  phone (on a wide screen the + opens the same card in the Ask panel, see
+  "Desktop").
 - `/ask?mode=expense&from=splits&split_group=<id>`: add mode with the Splits
-  switch on for that group, from the Splits receipt button.
+  switch on for that group, from the Splits receipt button on a phone (on a
+  wide screen, in the Ask panel).
 - `/ask?mode=add&from=ask` and `/ask?mode=expense&from=ask`: add mode from the
   chat mode's Add entry and Add expense chips.
 - `/ask?saved_entry=<id>&month=<YYYY-MM>&view=<view>&from=shortcut`: the
@@ -41,18 +44,140 @@ newest one in progress (an add-mode card carries its `mode`, `from` and
 
 On a phone the tab bar reads Summary, Entries, Splits, Ask, ··· (one grid
 column per primary tab; Month is not a tab, it is the Summary tab's month
-choice). On a wide screen the Ask tab is hidden for now (a
-docked panel comes later) and `/ask` renders in the main area.
+choice). On a wide screen (761 px and up) the Ask tab is hidden: the Ask
+field at the bottom right of every page opens the same conversation beside
+the page (see "Desktop" below), and the Entries + and Splits receipt
+buttons open their new entry card there too. `/ask` itself still renders in
+the main area there (the Shortcut's link, the From Ask chip's way back, an
+old link), and shows no field or panel.
 
 Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`, and an
 answer's `Open in Entries`, see "Search and filter" and "Money
 questions"), Month and Splits (a money answer's `Open Month` and `Open
-Splits`), the entry's
+Splits`; the header's
+`‹ Entries` / `‹ Splits` link and the chip row's `‹ Entries` go back to
+the page exactly as it was, see "Back to where you were"), the entry's
 editor (`Open this entry`: `/entries?editing_entry=<id>` in the entry's month),
 Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
 `/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
 Entries composer through `?action=add-expense` with the card's values, or the
 Splits expense dialog through `?split_action=add-expense`).
+
+## Back to where you were
+
+On a phone the Entries + and the Splits receipt button open Ask as a new
+history entry, so going back returns to the page as it was, never out of
+the app (`ask-origin.js`, `use-ask-origin.js`; design.md "Ask origin"):
+
+- Before Ask opens, the page's place is kept on its own history entry
+  (`state.askReturn`) and handed to Ask (`state.askOrigin`): its URL (the
+  month, view, scope, the Entries filters, the split group), the window's
+  scroll, and an open Entries edit or add sheet with its draft. (On a
+  phone the + sits under a sheet's backdrop, so a sheet is part of the
+  place only if something else opens Ask while it is open.)
+- The ways back: the header's back link ("‹ Entries" / "‹ Splits", top
+  left above the title, far from Save; its screen reader name is "Back to
+  Entries"), the chip row's "‹ Entries" (only while the card is untouched:
+  nothing typed, picked, read or said), and the phone's back gesture. With
+  the page right behind Ask in the history the link is history.back, so
+  all three are one way.
+- The page puts the place back once its data is there: the sheet with its
+  draft (Close still discards it to the saved entry), then the scroll,
+  set again each frame until it holds (rows render over a few frames) and
+  never after the person scrolls. Forward and back again does not move the
+  person a second time.
+- Nothing is lost and nothing asks: an untouched card just returns; a
+  started card stays in the conversation store, the Ask tab shows its dot,
+  and the card is there when the Ask tab (or the + again) reopens it.
+- When Ask's history entry has lost the place (the Ask tab reopened the
+  card, or Ask changed its own URL), the back link opens the place kept
+  for the tab's session (sessionStorage `monies.askOrigin.v1`, one per way
+  in, versioned, checked so it can only lead to /entries or /splits): the
+  place the + kept until the page has put it back, then the page's own URL and
+  scroll from when it was last left. With nothing kept (an /ask link opened
+  directly) it opens the page for the same view and month.
+- After a save, "Back to Entries" still opens the saved entry's month so
+  the new row shows; the header's link goes back to the place.
+- On a wide screen the + and the receipt button open the card in the Ask
+  panel and the page never leaves, so there is no back link there.
+
+## Desktop
+
+On a wide screen Ask has no tab. A one-line field, "Ask, or drop a
+receipt…", is fixed at the bottom right of every page but `/ask`, beside
+the Entries + or the Splits receipt button where there is one
+(`ask-dock.jsx`, the only part in the first screen: the field, `/` and the
+panel's loading frame; the dock's store, layout rules and panel load in the Ask
+page's chunk on the first way in, or once the page is usable when a panel was
+left open in this tab; `ask-dock-entry.js` keeps what was done meanwhile). Focusing, clicking or typing in it,
+Enter, `/` (when the person is not typing in a field and no dialog is
+open; `isAskShortcutKey`), its paperclip (the photo picker), or a photo
+dropped or pasted on it opens Ask. Words typed before the conversation has
+loaded follow into its message box; a photo goes through the same receipt
+reader as the composer's.
+
+Where it opens (`ask-dock-layout.js`, pure, unit tested):
+
+- 760 px and narrower: nothing (the phone's Ask tab).
+- 761 to 1,279 px: a popup over the page, anchored bottom right, 410 × 560
+  px (smaller on a short window). The page keeps its width.
+- 1,280 px and wider: docked, a full-height panel at the right (`clamp(360px,
+  27vw, 400px)`) that pushes the page narrower (`body[data-ask-dock]`
+  pads the body; the + and receipt buttons move beside it). The page keeps
+  at least 880 px, where the header still fits one row (design.md "Layout
+  Breakpoint Boundary").
+- The mode is chosen when Ask opens. A docked panel on a window narrowed
+  below 1,280 px shows as the popup (there is no room to push the page)
+  and docks again when it widens. A popup kept open while the window
+  widens stays a popup and shows the expand control ("Dock Ask beside the
+  page"), which docks it.
+
+The Entries + and the Splits receipt button open their new entry card in
+the dock (`openAskDock` with the way in `add`/`entries`, or
+`expense`/`splits` with the open split group), docked or as a popup by the
+same rule; the page stays where it was. Each press is a new visit (the
+dock's `visit` remounts the conversation), so a saved card gives way to a
+new one, as on the phone. On Entries and Splits the popup sits above the
+round button (94 px from the bottom) so it stays in reach. A save in the
+panel refreshes the page beside it the way a save from another browser tab
+does (`handleRemoteEntryMutation` / `handleRemoteSplitMutation`), so the new
+row shows in the Entries list beside it.
+
+The panel is the Ask page itself (`AskPanel` with `placement` "docked" or
+"popup", the same lazy chunk `/ask` loads) on the shared conversation
+store, so the phone's Ask tab and the panel are one conversation. Its way
+in is the dock's, not the URL's (`ask-dock-state.js`): opening from the
+field resumes a new entry still being filled (the presence's
+`resumeIntent`, as the phone's Ask tab does), else the chat. A chip that
+would open `/ask` (Add entry, Add expense, `‹ Ask`) changes the dock's
+conversation instead, and Switch to … changes the view of the page beside
+it. Every link out of an answer or a card (Open in Entries, Open this
+entry, Back to Entries, the "since you last looked" actions) navigates the
+page beside the panel; the panel stays.
+
+Dock state (`ask-dock-state.js`, sessionStorage `monies.askDock.v1`,
+versioned): open or closed, the mode and the way in, so the panel stays
+open across route changes and a reload until closed. The field's words,
+a dropped photo and the panel's readiness are memory only.
+
+Loading: the field and the panel's frame are in the first screen (a few
+kB, inside `npm run check:bundle`). The conversation's code loads when the
+person opens Ask, or, for a panel left open before a reload, once the page
+beside it is usable (the frame shows "Loading..." and keeps its space
+meanwhile, so the page does not shift). Hovering or keyboard-focusing the
+field offers the Ask chunk to the warmup scheduler as link intent. The
+panel reports busy work (a card being filled or saved, the mic) under no
+route key, so optional work waits for it, but it never makes a route
+ready.
+
+Focus and keys: the panel is a complementary landmark named by its heading
+("Ask", "New entry", …). A person's open puts focus in the message box; a
+panel restored after a reload does not take focus. `/` while it is open
+returns focus to the message box. Close ("Close Ask") and Escape close it,
+and focus goes back to the field without reopening it. Escape closes the
+popup unless a menu or picker inside handled it or the person is typing in
+a field on the page; the docked panel, a fixture beside the page, closes
+only when focus is inside it.
 
 ## State Flow
 
@@ -474,10 +599,18 @@ Ask does not own:
   as transfer is tapped.
 - Leaving Ask and coming back, or reloading the tab, keeps the
   conversation; the Ask tab shows a dot meanwhile.
+- On a phone, after the + or the receipt button, the header's "‹ Entries"
+  / "‹ Splits" link and the back gesture return to the page exactly as it
+  was (URL, scroll, an open sheet with its draft), with no confirm.
 - Low, used up or capped Claude credits show one calm notice at the top of
   the conversation with the Claude Console link and I've topped up; the ✕
   hides it for the session until the state gets worse; hidden money shows
   no dollar figure in it.
+- On a wide screen the Ask field is at the bottom right of every page but
+  `/ask`; it opens docked from 1,280 px (the page narrows, nothing sits
+  under the panel, the header stays one row) and as a popup below that;
+  the panel stays open across pages and a reload until Close or Escape,
+  and an answer's links open the page beside it.
 - No system alert, confirm or prompt anywhere.
 
 ## Persisted / Query Contract
@@ -501,7 +634,13 @@ Ask does not own:
 
 ## Audit Status
 
-Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
+Current status: aligned with tests (`tests/ask-origin.test.mjs`,
+`tests/e2e/ask-back-nav.spec.js` (also in WebKit on an iPhone 13 profile),
+`tests/ask-dock-layout.test.mjs`,
+`tests/ask-dock-state.test.mjs`, `tests/ask-dock-entry.test.mjs`,
+`tests/e2e/ask-dock.spec.js` (desktop:
+1,024, 1,280 and 1,440 px), the docked header case in
+`tests/e2e/header-tab-fit.spec.js`, `tests/ask-card-model.test.mjs`,
 `tests/ask-api.test.mjs`, `tests/ask-chips.test.mjs`,
 `tests/ask-entry-dedupe.test.mjs`,
 `tests/ask-voice.test.mjs`, `tests/transcribe-route.test.mjs`,
@@ -518,6 +657,10 @@ Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 iPhone 13 profile) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
+
+- Only the header and Month follow the page's width when the panel narrows
+  it; other pages keep their window-width rules (Splits' toolbar is tight
+  at 1,280 px with the panel docked, as it is in a 960 px window).
 
 - The Claude credit figures are the server's estimate from token counts
   since the last "I've topped up"; the Claude Console balance is the real
