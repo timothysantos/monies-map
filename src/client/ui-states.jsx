@@ -1,22 +1,62 @@
+import "./ui/states.css";
+import { CircleAlert } from "lucide-react";
+
+import { BottomActions } from "./ui/lead-support-detail";
+
 // Shared presentation for "nothing here", "this failed" and "this screen
 // failed" states, so every page words, structures and retries them the same
 // way. Presentation only: callers own the copy (from copy/en-SG.js) and every
-// retry handler.
+// retry handler. Structure is Lead · Support · Detail (design.md "States"):
+// the title is the Lead, one quiet detail line is the Support, the technical
+// line is the Detail, and one primary action closes the card.
 
-// Nothing to show yet. A single line by default; with a title or actions it
-// becomes a small block that explains the state and offers the next step.
-export function EmptyState({ title = null, children = null, actions = null, className = "" }) {
-  const classes = ["empty-state", title || actions ? "is-detailed" : "", className].filter(Boolean).join(" ");
-  if (!title && !actions) {
-    return <p className={classes}>{children}</p>;
-  }
+// The action bar: the `primary` action last (under the thumb), any others
+// quiet beside it. `actions` are `{ label, onClick, disabled, primary }`.
+function StateActions({ actions }) {
+  const primary = actions.find((action) => action.primary);
   return (
-    <section className={classes}>
-      {title ? <strong>{title}</strong> : null}
-      {children ? <p>{children}</p> : null}
-      {actions ? <div className="empty-state-actions">{actions}</div> : null}
+    <BottomActions
+      primaryLabel={primary?.label}
+      onPrimary={primary?.onClick}
+      primaryDisabled={primary?.disabled}
+      secondary={actions.filter((action) => action !== primary).map((action, index) => (
+        <button key={index} type="button" className="lsd-quiet" disabled={action.disabled} onClick={action.onClick}>
+          {action.label}
+        </button>
+      ))}
+    />
+  );
+}
+
+// The Lead card behind every titled state: an optional icon bubble, the
+// title, one support line, extra detail lines and the action bar.
+function StateCard({ state, tone, icon = null, title, detail = null, detailClassName = "", className = "", role = undefined, children = null, actions = null }) {
+  return (
+    <section className={["state-card", icon ? "has-icon" : "", className].filter(Boolean).join(" ")} data-state={state} data-tone={tone} role={role}>
+      <div className="state-head">
+        {icon ? <span className="state-bubble" aria-hidden="true">{icon}</span> : null}
+        <div className="state-text">
+          <strong className="state-title">{title}</strong>
+          {detail ? <p className={["state-detail", detailClassName].filter(Boolean).join(" ")}>{detail}</p> : null}
+          {children}
+        </div>
+      </div>
+      {actions}
     </section>
   );
+}
+
+// Nothing to show yet. A single muted line by default; with a title or an
+// action it becomes a Lead card that says what is missing (the title), why
+// or what next (the children, one quiet line) and the one next step
+// (`action`, the primary; `secondary`, quiet beside it). `actions` still
+// takes ready-made controls.
+export function EmptyState({ title = null, children = null, actions = null, action = null, secondary = null, icon = null, className = "" }) {
+  if (!title && !actions && !action) {
+    return <p className={["empty-state", className].filter(Boolean).join(" ")}>{children}</p>;
+  }
+  const bar = action ? <StateActions actions={[{ ...action, primary: true }, ...(secondary ? [secondary] : [])]} /> : actions;
+  return <StateCard state="empty" icon={icon} title={title} detail={children} className={className} actions={bar} />;
 }
 
 // A failure inside a section that the person can read in place, optionally
@@ -39,31 +79,40 @@ export function InlineError({ message, retryLabel = "", retryingLabel = "", isRe
   );
 }
 
-// A whole screen (or the whole app) could not be shown. `actions` lists the
-// buttons in order; the first `primary` one is the main way forward.
+// A whole screen (or the whole app) could not be shown: a rose Lead card
+// centred in the viewport. `actions` lists the buttons in order; the first
+// `primary` one is the main way forward and the rest sit quietly beside it.
+// `children` is the technical Detail (the loading issue, a diagnosis).
 export function ErrorPanel({ title, detail, children = null, actions = [], className = "" }) {
   return (
-    <section className={["panel app-loading-panel app-loading-panel-error", className].filter(Boolean).join(" ")} role="alert">
-      <div>
-        <p>{title}</p>
-        {detail ? <p className="app-loading-error-copy">{detail}</p> : null}
-        {children}
+    <StateCard
+      state="error"
+      tone="rose"
+      icon={<CircleAlert />}
+      title={title}
+      detail={detail}
+      detailClassName="app-loading-error-copy"
+      className={["is-screen app-loading-panel app-loading-panel-error", className].filter(Boolean).join(" ")}
+      role="alert"
+      actions={actions.length ? <StateActions actions={actions} /> : null}
+    >
+      {children}
+    </StateCard>
+  );
+}
+
+// A notice above a page, in a pastel tone: the title leads, one quiet line
+// supports it, and one primary action (plus an optional quiet one) closes it.
+// `tone` is a pastel name: `butter` for something that needs a look, `sky`
+// for information.
+export function StateBanner({ tone, title, detail = null, actions = [], className = "", role = "status" }) {
+  return (
+    <section className={["state-banner", className].filter(Boolean).join(" ")} data-tone={tone} role={role}>
+      <div className="state-text">
+        <strong className="state-title">{title}</strong>
+        {detail ? <span className="state-detail">{detail}</span> : null}
       </div>
-      {actions.length ? (
-        <div className="screen-error-actions">
-          {actions.map((action, index) => (
-            <button
-              key={index}
-              type="button"
-              className={action.primary ? "dialog-primary" : "subtle-action"}
-              onClick={action.onClick}
-              disabled={action.disabled}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <StateActions actions={actions} />
     </section>
   );
 }

@@ -23,11 +23,6 @@
   flex-wrap: wrap;
 }
 
-.entries-page-loading {
-  top: max(14px, env(safe-area-inset-top));
-  right: max(14px, env(safe-area-inset-right));
-}
-
 .entries-totals-strip::-webkit-scrollbar {
   display: none;
 }

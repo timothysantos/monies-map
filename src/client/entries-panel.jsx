@@ -9,6 +9,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { AppLoadingOverlay } from "./app-shell-status";
 import { EmptyState, ErrorPanel } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { useEntryActions } from "./entry-actions";
@@ -1206,10 +1207,7 @@ export function EntriesPanel({
       {!useMobileEntrySheet && !entriesLoadError ? <EntriesFilterStack {...filterStackProps} /> : null}
 
       {isEntriesPageLoading ? (
-        <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">
-          <span className="app-spinner" aria-hidden="true" />
-          <span>{messages.common.loadingLatest}</span>
-        </div>
+        <AppLoadingOverlay className="entries-page-loading" />
       ) : null}
 
       {showEntryComposer && !useMobileEntrySheet ? (

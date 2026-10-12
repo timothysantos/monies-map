@@ -51,68 +51,51 @@ export function ShellErrorScreen({ environment, title, detail = messages.common.
   );
 }
 
-// The shell while either the shell or the active page is still resolving.
-export function ShellLoadingScreen({ environment, status, elapsedSeconds }) {
+// What each first screen is made of, top to bottom, so the placeholder has
+// the same blocks and about the same height as the page that replaces it
+// and nothing jumps when the data lands. Summary: the month chips, the lead
+// figures, the insight lines and a chart card. Entries: the totals strip,
+// the insight lines, the filter bar and a day of rows. Splits: the group
+// row, the lead summary and activity rows.
+const SKELETON_SHAPES = {
+  summary: "chips lead lines card",
+  entries: "totals lines filter day row row row",
+  splits: "nav lead day row row row"
+};
+const PAGE_SHAPES = "lead row row row";
+
+// The shell while the first page is still resolving: the header, then the
+// page's own Lead · Support · Detail layout as quiet placeholders, with one
+// support line saying what is happening. No buttons, no figures.
+export function ShellLoadingScreen({ environment, tabId, status, elapsedSeconds }) {
+  const detail = ellipsizeText(status?.detail ?? "");
+  const support = [messages.common.loading, detail, elapsedSeconds >= 5 ? `${elapsedSeconds}s` : ""].filter(Boolean).join(" · ");
   return (
     <main className="shell">
       <EnvironmentBanner environment={environment} />
-      <AppLoadingPanel status={status} elapsedSeconds={elapsedSeconds} />
+      <section className="state-skeleton app-loading-panel" data-state="loading" data-skeleton={SKELETON_SHAPES[tabId] ? tabId : "page"} role="status" aria-live="polite" aria-busy="true">
+        <div className="sk sk-bar" />
+        <div className="sk-panel">
+          <div className="sk sk-title" />
+          <p className="state-detail">{support}</p>
+          {(SKELETON_SHAPES[tabId] ?? PAGE_SHAPES).split(" ").map((shape, index) => <div key={index} className={`sk sk-${shape}`} />)}
+          {status?.issue ? <p className="app-loading-issue-inline">{ellipsizeText(status.issue, 84)}</p> : null}
+        </div>
+      </section>
     </main>
   );
 }
 
-// Compact the loading copy and status line so the startup panel stays readable
-// while the shell is still assembling.
-function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
-  const percentText = typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : null;
-  const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
-  const detailText = ellipsizeText(status?.detail ?? "");
-  const meta = [percentText, detailText, elapsedText].filter(Boolean).join(" · ");
-
+// A route is fetching the latest data while the previous page stays on
+// screen: one quiet pill, clear of the period picker. The figures behind it
+// (percent, detail, elapsed) are the tooltip; only a problem is spelled out.
+export function AppLoadingOverlay({ status, elapsedSeconds, className = "" }) {
+  const progress = [typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : "", ellipsizeText(status?.detail ?? ""), elapsedSeconds > 0 ? `${elapsedSeconds}s` : ""].filter(Boolean).join(" · ");
   return (
-    <div className={`app-loading-status ${compact ? "is-compact" : ""}`}>
-      <small title={status?.detail ?? ""}>{meta}</small>
-      {status?.issue ? <small className="is-error" title={status.issue}>{ellipsizeText(status.issue, compact ? 64 : 84)}</small> : null}
+    <div className={["state-pill app-loading-overlay", className].filter(Boolean).join(" ")} role="status" aria-live="polite" title={progress}>
+      <span className="app-spinner" aria-hidden="true" />
+      <span>{messages.common.loadingLatest}</span>
+      {status?.issue ? <small>{ellipsizeText(status.issue, 64)}</small> : null}
     </div>
-  );
-}
-
-// Full-screen startup state used before the shell or route payload is ready.
-function AppLoadingPanel({ status, elapsedSeconds }) {
-  return (
-    <section className="panel app-loading-panel" role="status" aria-live="polite">
-      <div className="app-loading-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loading}</p>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} />
-    </section>
-  );
-}
-
-// Overlay status used while a route fetch is still hydrating the current
-// screen.
-export function AppLoadingOverlay({ status, elapsedSeconds }) {
-  return (
-    <div className="app-loading-overlay" role="status" aria-live="polite">
-      <div className="app-loading-overlay-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <span>{messages.common.loadingLatest}</span>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
-    </div>
-  );
-}
-
-// In-panel fallback for route hydration, separate from the full startup state.
-export function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
-  return (
-    <section className="route-loading-panel" role="status" aria-live="polite">
-      <div className="app-loading-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loadingLatest}</p>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
-    </section>
   );
 }
