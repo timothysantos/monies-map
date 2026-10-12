@@ -65,8 +65,10 @@ out. Opened, the section shows the same status line as the Ask notice
 (`buildClaudeCreditLine`; "Claude credits are fine: about $X of $Y used."
 when fine, figures dropped with money hidden), the "Top up in the Claude
 Console" link and "I've topped up", and "Last checked" with the time the
-status was read. When Claude is not set up (or the state is unknown) it
-shows only "Claude isn't set up, so Ask uses the basic model." I've topped
+status was read. When Claude is not set up (or the state is unknown after a
+failure) it shows only "Claude isn't set up, so Ask uses the basic model.";
+set up but not answered yet (state unknown, no failure recorded) it shows
+only "Claude hasn't been used yet." I've topped
 up opens the same form as on Ask and posts
 `POST /api/ai-assist/provider-status/topped-up { creditUsd }`; its answer
 replaces the kept status. Nothing else on Settings refreshes. Design and

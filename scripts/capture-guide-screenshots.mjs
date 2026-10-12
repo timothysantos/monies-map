@@ -21,7 +21,7 @@
 // `npx playwright install webkit` once).
 // Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone,iphone}/
 // (the "On your iPhone" gallery is shot on the phone profile at the iphone size).
-/* global window -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
+/* global window, document, HTMLElement -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
 import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -292,11 +292,14 @@ const SHOTS = [
     run: async (page) => {
       await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
       await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
-      const dialog = page.getByRole("dialog", { name: "Create split expense" });
+      const dialog = page.getByRole("dialog", { name: "New split expense" });
       await dialog.getByLabel("Description").fill("Dinner at Din Tai Fung");
       await dialog.getByLabel("Category").selectOption("Food & Drinks");
       await dialog.getByLabel("Expense total").fill("86.40");
       await dialog.getByLabel("Note").fill("Birthday dinner");
+      // Back to the top, so the shot leads with the card and its total.
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+      await dialog.locator(".split-dialog-scroll").evaluate((element) => { element.scrollTop = 0; });
       await page.waitForTimeout(400);
       await hideCaret(page);
     }
@@ -472,6 +475,38 @@ const SHOTS = [
       await page.locator(".entries-fab:not(.splits-fab)").click();
       await page.locator('[data-ask-card="draft"]').waitFor();
       await page.waitForTimeout(600);
+      await hideCaret(page);
+    }
+  },
+  {
+    // Desktop Ask: asked from the bottom-right field on Entries, docked
+    // beside the page, which narrows (1,280 px).
+    name: "desktop-ask-docked", device: "desktop",
+    run: async (page) => {
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      // The field goes once the conversation is in the panel.
+      await page.locator(".ask-dock-field").waitFor({ state: "detached" });
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill("How much on public transport?");
+      await message.press("Enter");
+      await page.locator(".ask-dock .ask-answer[data-ask-answer]:not([data-ask-answer=''])").waitFor();
+      await message.blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // A smaller window (1,024 px): the same conversation as a popup over
+    // the page.
+    name: "desktop-ask-popup", device: "desktop",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 768 });
+      await open(page, `/summary?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      await page.getByRole("textbox", { name: "Message" }).waitFor();
+      await page.getByRole("textbox", { name: "Message" }).blur();
+      await waitUsable(page);
       await hideCaret(page);
     }
   },

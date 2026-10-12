@@ -1,6 +1,6 @@
 // The Lead · Support · Detail blocks (design.md, "Lead · Support · Detail"):
 // one implementation shared by the Summary lead, the Month plan-row sheet,
-// the Entries edit sheet and inline editor, Create split expense and the Ask
+// the Entries edit sheet and inline editor, New split expense and the Ask
 // card. One lead card (a head line or an eyebrow over a figure, the amount
 // in its money tone, the actual-vs-plan bar), Support chips, quiet Detail
 // rows with empty, action and locked states, the More details fold that

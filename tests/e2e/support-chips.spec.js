@@ -201,9 +201,9 @@ test.describe("tappable Support chips on a phone", { tag: "@webkit" }, () => {
     await expect(page.locator('[data-ask-row="owner"]')).toContainText("Joyce");
   });
 
-  test("Create split expense: date, paid by, shares and paid using chips open their editors", async ({ page }) => {
+  test("New split expense: date, paid by, shares and paid using chips open their editors", async ({ page }) => {
     await page.goto(`/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense`);
-    const dialog = page.getByRole("dialog", { name: "Create split expense" });
+    const dialog = page.getByRole("dialog", { name: "New split expense" });
     await expect(dialog).toBeVisible({ timeout: 60_000 });
     const lead = dialog.locator(".lsd-card");
 

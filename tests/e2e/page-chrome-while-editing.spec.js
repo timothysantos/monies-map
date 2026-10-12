@@ -171,10 +171,10 @@ test.describe("the Splits receipt button and its Add expense dialog", () => {
       page,
       "/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense",
       "/api/splits-page",
-      () => page.getByRole("dialog", { name: "Create split expense" })
+      () => page.getByRole("dialog", { name: "New split expense" })
     );
     const receiptButton = page.locator(".splits-fab");
-    const dialog = page.getByRole("dialog", { name: "Create split expense" });
+    const dialog = page.getByRole("dialog", { name: "New split expense" });
     await expect(dialog).toBeVisible();
     await expect(receiptButton).toHaveCount(1);
     await expect(receiptButton).toBeHidden();
