@@ -53,7 +53,9 @@ appear in this order:
 
 On a phone there is one more: **Ask**, where you add an entry by typing it,
 from a receipt photo, or by filling in a card, and find entries by asking
-for them ([Ask](#ask)).
+for them ([Ask](#ask)). On a computer, Ask is the box at the bottom right of
+every screen, **Ask, or drop a receipt…**: click it, or press **/**, and Ask
+opens beside the screen you are on ([Ask on a computer](#ask-on-a-computer)).
 
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move the range of months (on Entries, the
@@ -491,7 +493,8 @@ Ask is on the phone's bottom navigation. It is a page for adding an entry
 quickly, by typing or saying it, from a receipt photo, or by filling in a
 card, for finding entries by asking, such as "grab rides in september", and
 for questions about your money, such as "why was August so expensive?".
-On a computer it opens from the **+** button on Entries.
+On a computer it opens beside the screen you are on, from the box at the
+bottom right ([Ask on a computer](#ask-on-a-computer)).
 
 ![Ask on a phone: what changed since you last looked, suggestions and the message box](/faq/guide/phone/thumbs/phone-ask.webp)
 
@@ -633,6 +636,35 @@ mark. Nothing you ask is kept once you close the tab.
 
 Other questions, such as "should I buy a car?", aren't answered; Ask says
 so.
+
+### Ask on a computer
+
+On a computer there is no Ask tab. Every screen has a box at the bottom
+right instead, **Ask, or drop a receipt…** (beside the round **+** on
+Entries and the receipt button on Splits). Click it and type, press **/**
+on your keyboard, click its paperclip to choose a receipt photo, or drag a
+photo onto it. Ask opens beside the screen, with what you typed already in
+its message box.
+
+![Ask open as a panel beside Entries on a computer, with an answer and Open in Entries](/faq/guide/desktop/thumbs/desktop-ask-docked.webp)
+
+- **On a wide window** Ask opens as a panel down the right side. The screen
+  beside it gets narrower, so nothing hides behind the panel; Imports,
+  Settings and FAQ move into the **···** menu at the top.
+- **On a smaller window** it opens as a box over the bottom right of the
+  screen. If you make the window wider while it is open, the expand button
+  beside **Close** moves it to the side.
+- **Open in Entries**, **Open this entry** and the other buttons in Ask open
+  that screen beside it. Ask stays open as you move between screens, and
+  after a reload, until you click **Close**. **Esc** closes the box on a
+  smaller window, and the side panel when you are typing in it.
+- The round **+** on Entries and the receipt button on Splits open a new
+  entry card here too, beside the screen, which stays where it was. Once
+  you save, the entry shows in the list beside it.
+- It is the same conversation Ask shows if you make the window as narrow as
+  a phone.
+
+![Ask as a box over Summary on a smaller window](/faq/guide/desktop/thumbs/desktop-ask-popup.webp)
 
 ### When Claude credits run low
 
