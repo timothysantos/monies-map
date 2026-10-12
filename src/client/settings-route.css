@@ -52,9 +52,9 @@
   width: 100%;
   margin-top: 12px;
   padding: 14px 16px;
-  border: 1px solid rgba(91, 107, 125, 0.22);
+  border: 1px solid rgb(var(--muted-rgb, 91 107 125) / 0.22);
   border-radius: 8px;
-  background: rgba(244, 246, 248, 0.88);
+  background: rgb(var(--cream-rgb, 244 246 248) / 0.88);
 }
 
 .settings-statement-compare-inline::before {
@@ -446,7 +446,7 @@
   border: 1px solid var(--line);
   border-width: 0 1px 1px;
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgb(var(--paper-rgb) / 0.6);
   color: var(--text);
   font: inherit;
   text-align: left;
@@ -467,7 +467,7 @@
 }
 
 .settings-list > .settings-section.is-open > .settings-section-toggle {
-  background: color-mix(in srgb, var(--accent-strong) 7%, white);
+  background: color-mix(in srgb, var(--accent-strong) 7%, var(--paper));
 }
 
 .settings-section-toggle:focus-visible {
@@ -510,7 +510,7 @@
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgb(var(--paper-rgb) / 0.55);
 }
 
 @media (min-width: 761px) {
@@ -545,7 +545,7 @@
   gap: 10px;
   padding: 10px 14px 14px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.4);
+  background: rgb(var(--paper-rgb) / 0.4);
 }
 
 .lsd-rows > .settings-detail-block:last-child {
@@ -702,7 +702,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--paper);
   color: var(--text);
 }
 
@@ -729,7 +729,7 @@
   padding: 12px;
   border: 1px solid var(--pastel-rose-line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--paper);
   color: var(--text);
 }
 
@@ -747,7 +747,7 @@
   display: block;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgb(var(--paper-rgb) / 0.6);
   overflow: hidden;
 }
 
@@ -783,7 +783,7 @@
   height: auto;
   padding: 14px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--paper);
 }
 
 .settings-account-top {
@@ -843,7 +843,7 @@
   height: auto;
   padding: 6px 6px 6px 12px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--paper);
 }
 
 .settings-shortcut-install-button {
@@ -937,7 +937,7 @@
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #fff;
+  background: var(--paper);
 }
 
 /* Unresolved transfers and recent balance activity: flat rows in one group. */
@@ -1006,4 +1006,57 @@
 
 .settings-section-body .settings-diagnostic-row summary {
   min-height: 56px;
+}
+
+/* Settings > Colours (design.md, "Colour presets"): a chip per preset,
+   its four colour dots and its name; the chosen one takes the accent ring. */
+.settings-colour-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.settings-colour-preset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-colour-preset.is-selected {
+  border-color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 7%, var(--paper));
+}
+
+.settings-colour-preset:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.settings-colour-preset-dots {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.settings-colour-preset-dots span {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--paper);
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.settings-colour-preset-dots span + span {
+  margin-left: -5px;
 }

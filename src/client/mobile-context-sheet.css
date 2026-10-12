@@ -74,7 +74,7 @@
     padding: 4px;
     border: 1px solid var(--line);
     border-radius: 16px;
-    background: rgba(38, 35, 31, 0.04);
+    background: rgb(var(--ink-rgb, 38 35 31) / 0.04);
   }
 
   .mobile-context-segment {
@@ -93,7 +93,7 @@
   }
 
   .mobile-context-segment[aria-pressed="true"] {
-    background: #ffffff;
+    background: var(--paper);
     color: var(--accent-strong);
     box-shadow: 0 1px 3px rgba(27, 24, 21, 0.14);
     font-weight: 700;

@@ -74,9 +74,9 @@ test("a lead card shows one bubble, the title, the category line and the amount 
 
   assert.match(html, /^<section class="lsd-card"/);
   assert.equal(count(html, /class="lsd-bubble"/g), 1);
-  assert.match(html, /style="--cat:#519ABD"/);
+  assert.match(html, /style="--cat:var\(--cat-519abd, #519ABD\)"/);
   assert.match(html, /<strong class="lsd-title">BUS\/MRT SIMPLYGO<\/strong>/);
-  assert.match(html, /<span class="lsd-subtitle" style="--cat:#519ABD">Public Transport<\/span>/);
+  assert.match(html, /<span class="lsd-subtitle" style="--cat:var\(--cat-519abd, #519ABD\)">Public Transport<\/span>/);
   assert.match(html, /<span class="lsd-amount money-out"><span>−\$27\.13<\/span><\/span>/);
   assert.match(html, /<div class="lsd-chips"><span class="lsd-chip">Mon 28 Sep<\/span><\/div>/);
   // No caption: the amount is not wrapped in a column; no bar without progress.
@@ -96,7 +96,7 @@ test("a lead without a tone or category keeps the plain ink and a neutral bubble
   const html = render(h(LeadCard, { title: "What was it?", amount: h("b", null, "0") }));
   assert.match(html, /class="lsd-amount"/);
   assert.doesNotMatch(html, /money-/);
-  assert.match(html, /class="lsd-bubble" style="--cat:#7C8791"/);
+  assert.match(html, /class="lsd-bubble" style="--cat:var\(--cat-7c8791, #7C8791\)"/);
 });
 
 test("a caller's bubble, accent colour, editable amount with caption, the bar and the chips (the Month plan sheet)", () => {
@@ -116,7 +116,7 @@ test("a caller's bubble, accent colour, editable amount with caption, the bar an
   assert.match(html, /<span class="lsd-bubble-slot"><span class="probe-bubble"><\/span><\/span>/);
   assert.doesNotMatch(html, /class="lsd-bubble"/);
   assert.match(html, /<strong class="lsd-title">Food &amp; Drinks<\/strong>/);
-  assert.match(html, /<span class="lsd-subtitle" style="--cat:#B88A3D">Budget bucket<\/span>/);
+  assert.match(html, /<span class="lsd-subtitle" style="--cat:var\(--cat-b88a3d, #B88A3D\)">Budget bucket<\/span>/);
   // The editable amount and its caption are one label.
   assert.match(html, /<label class="lsd-amount-column"><span class="lsd-amount is-editable"><input aria-label="Planned"/);
   assert.match(html, /<small class="lsd-amount-caption">planned<\/small><\/label>/);
@@ -167,9 +167,9 @@ test("a tag sits above the head line and children come after the chips", () => {
 test("a person chip takes the person's colour and a state chip its pastel pair", () => {
   const person = render(h(MetaChip, { person: "Tim" }, "Tim"));
   assert.match(person, /class="lsd-chip is-person"/);
-  assert.match(person, /--person-colour:#46788E/);
-  assert.match(person, /--person-ink:color-mix\(in srgb, #46788E 55%, var\(--text\)\)/);
-  assert.match(person, /--person-chip-bg:color-mix\(in srgb, #[0-9A-F]{6} 16%, white\)/);
+  assert.match(person, /--person-colour:var\(--cat-46788e, #46788E\)/);
+  assert.match(person, /--person-ink:color-mix\(in srgb, var\(--cat-46788e, #46788E\) 55%, var\(--text\)\)/);
+  assert.match(person, /--person-chip-bg:color-mix\(in srgb, var\(--cat-[0-9a-f]{6}, #[0-9A-F]{6}\) 16%, var\(--paper\)\)/);
 
   const state = render(h(MetaChip, { tone: "mint" }, "Statement certified"));
   assert.match(state, /^<span class="lsd-chip is-mint">/);

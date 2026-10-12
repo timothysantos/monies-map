@@ -1,9 +1,13 @@
+import { paletteColour } from "./palette-colour";
+
 // The one colour each person (or owner) has across the app: the Entries
 // row edge, the Import inbox owner groups and any later per-person cue.
 // Colours come from the 1970s category palette
 // (src/domain/category-palette.ts): Tim dusty teal, Joyce mauve, the Splits
 // terracotta for rows linked to Splits, and a stable palette pick (olive,
-// warm grey, teal, plum) for any other owner such as Shared.
+// warm grey, teal, plum) for any other owner such as Shared. These are the
+// 70s colours; getPersonColourVars hands them to the page as palette tokens,
+// so a colour preset re-colours each person (palette-colour.js).
 export function getPersonColour(ownerKey) {
   const normalized = String(ownerKey ?? "").trim().toLowerCase();
 
@@ -31,13 +35,13 @@ export function getPersonColour(ownerKey) {
 // with a darker ink, as the Splits group chips), a soft band and a faint
 // wash for alternate lines.
 export function getPersonColourVars(ownerKey) {
-  const colour = getPersonColour(ownerKey);
+  const colour = paletteColour(getPersonColour(ownerKey));
   return {
     "--person-colour": colour,
-    "--person-chip-bg": `color-mix(in srgb, ${colour} 16%, white)`,
-    "--person-chip-border": `color-mix(in srgb, ${colour} 45%, white)`,
+    "--person-chip-bg": `color-mix(in srgb, ${colour} 16%, var(--paper))`,
+    "--person-chip-border": `color-mix(in srgb, ${colour} 45%, var(--paper))`,
     "--person-ink": `color-mix(in srgb, ${colour} 55%, var(--text))`,
-    "--person-band": `color-mix(in srgb, ${colour} 10%, white)`,
-    "--person-wash": `color-mix(in srgb, ${colour} 6%, white)`
+    "--person-band": `color-mix(in srgb, ${colour} 10%, var(--paper))`,
+    "--person-wash": `color-mix(in srgb, ${colour} 6%, var(--paper))`
   };
 }

@@ -223,13 +223,16 @@ test("an owner group takes the person's colour from Entries, the same in every b
   assert.equal(getPersonColour("Tim"), "#46788E");
   assert.equal(getPersonColour("Joyce"), "#B97680");
   assert.equal(getPersonColour("Shared"), getPersonColour("shared"));
+  // The page gets the colour as a palette token, so a colour preset can
+  // re-colour the person; the 70s default falls back to the colour itself.
+  const joyce = "var(--cat-b97680, #B97680)";
   assert.deepEqual(getPersonColourVars("Joyce"), {
-    "--person-colour": "#B97680",
-    "--person-chip-bg": "color-mix(in srgb, #B97680 16%, white)",
-    "--person-chip-border": "color-mix(in srgb, #B97680 45%, white)",
-    "--person-ink": "color-mix(in srgb, #B97680 55%, var(--text))",
-    "--person-band": "color-mix(in srgb, #B97680 10%, white)",
-    "--person-wash": "color-mix(in srgb, #B97680 6%, white)"
+    "--person-colour": joyce,
+    "--person-chip-bg": `color-mix(in srgb, ${joyce} 16%, var(--paper))`,
+    "--person-chip-border": `color-mix(in srgb, ${joyce} 45%, var(--paper))`,
+    "--person-ink": `color-mix(in srgb, ${joyce} 55%, var(--text))`,
+    "--person-band": `color-mix(in srgb, ${joyce} 10%, var(--paper))`,
+    "--person-wash": `color-mix(in srgb, ${joyce} 6%, var(--paper))`
   });
   assert.notEqual(getPersonColour("Tim"), getPersonColour("Joyce"));
 });

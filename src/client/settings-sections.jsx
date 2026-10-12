@@ -20,6 +20,7 @@ import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from ".
 import { buildPaymentWayAccountOptions, findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { paletteColour } from "./palette-colour";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 const APPLE_PAY_SHORTCUT_URL = "/shortcuts/monies-map-apple-pay-api.shortcut";
@@ -439,7 +440,7 @@ export function SettingsCategoriesSection({
             >
               <span
                 className="category-icon category-icon-static settings-category-icon"
-                style={{ "--category-color": category.colorHex }}
+                style={{ "--category-color": paletteColour(category.colorHex) }}
               >
                 <CategoryGlyph iconKey={category.iconKey} />
               </span>
@@ -644,7 +645,7 @@ export function SettingsCategoryMatchRulesSection({
                 {group.category ? (
                   <span
                     className="category-icon category-icon-static settings-rule-category-icon"
-                    style={{ "--category-color": group.category.colorHex }}
+                    style={{ "--category-color": paletteColour(group.category.colorHex) }}
                   >
                     <CategoryGlyph iconKey={group.category.iconKey} />
                   </span>

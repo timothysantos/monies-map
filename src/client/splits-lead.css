@@ -131,7 +131,7 @@ html[data-money-privacy="hidden"] .panel-splits .splits-lead .lsd-amount {
   min-height: 48px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgb(var(--paper-rgb) / 0.92);
 }
 
 .panel-splits .splits-search .search-filter-control > svg,

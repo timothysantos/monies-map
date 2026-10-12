@@ -7,6 +7,7 @@ import { categories as defaultCategories } from "../domain/demo-data";
 import { GUIDE_TABS, classifyGuideHref, parseGuideMarkdown, tokenizeInline } from "./guide-markdown";
 import { useRouteWorkReport } from "./use-route-work-status";
 import "./faq-panel.css";
+import { paletteColour } from "./palette-colour";
 
 // Each guide is its own lazy chunk: the user guide loads with this page, the
 // developer guide only when its tab opens, so readers never download it.
@@ -265,7 +266,7 @@ function GuideBlocks({ blocks, entryKey, onLinkClick }) {
             <div key={category.id} className="faq-category-row">
               <span
                 className="category-icon category-icon-static faq-category-icon"
-                style={{ "--category-color": category.colorHex }}
+                style={{ "--category-color": paletteColour(category.colorHex) }}
               >
                 <CategoryGlyph iconKey={category.iconKey} />
               </span>

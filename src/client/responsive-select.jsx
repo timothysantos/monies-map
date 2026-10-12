@@ -3,6 +3,7 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
+import { paletteColour } from "./palette-colour";
 
 export function ResponsiveSelect({
   value,
@@ -106,7 +107,7 @@ export function ResponsiveSelect({
                     {option.iconKey ? (
                       <span
                         className="mobile-select-option-icon"
-                        style={{ "--category-color": option.colorHex ?? "rgba(177, 94, 47, 0.16)" }}
+                        style={{ "--category-color": paletteColour(option.colorHex) ?? "rgb(var(--accent-strong-rgb) / 0.16)" }}
                         aria-hidden="true"
                       >
                         {option.icon}

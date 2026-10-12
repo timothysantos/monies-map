@@ -47,7 +47,7 @@
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: 0 6px 18px rgba(27, 24, 21, 0.08);
   color: var(--text);
 }

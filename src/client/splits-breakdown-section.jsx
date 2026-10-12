@@ -13,6 +13,7 @@ import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { SplitsLeadCard } from "./splits-lead-card";
+import { paletteColour } from "./palette-colour";
 
 const { format: formatService } = moniesClient;
 
@@ -96,7 +97,7 @@ export function SplitsBreakdownSection({
                     onClick={() => toggleCategoryVisibility(item)}
                   >
                     <div className="category-key">
-                      <span className="category-icon category-icon-static" style={{ "--category-color": item.theme.color }}>
+                      <span className="category-icon category-icon-static" style={{ "--category-color": paletteColour(item.theme.color) }}>
                         <CategoryGlyph iconKey={item.theme.iconKey} />
                       </span>
                       <div>

@@ -21,6 +21,9 @@ const stylesheets = [
   ...clientFiles.filter((name) => name.endsWith(".css")).map((name) => `src/client/${name}`)
 ];
 const scripts = clientFiles.filter((name) => /\.(jsx|js)$/.test(name)).map((name) => `src/client/${name}`);
+// The colour preset list's swatch dots are the presets' own token values,
+// matched to their stylesheets by tests/colour-presets.test.mjs.
+const PRESET_LIST = "src/client/colour-presets.js";
 const PALETTE = new Set([...CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR].map((colour) => colour.toLowerCase()));
 
 function channels(literal) {
@@ -64,6 +67,7 @@ test("stylesheets use raw colours only for neutrals and the accent", () => {
 
 test("components take colours from the category palette", () => {
   const offenders = scripts
+    .filter((file) => file !== PRESET_LIST)
     .flatMap((file) => rawColours(file, { stripRoot: false }))
     .filter(({ literal }) => !PALETTE.has(literal.toLowerCase()) && !isAllowedRawColour(literal))
     .map(({ file, line, literal }) => `${file}:${line} ${literal}`);

@@ -15,6 +15,7 @@ import { useRouteWorkBusy } from "./use-route-work-status";
 import { moneyToneClass } from "./money-tone-class";
 import { entryAmountTone } from "../domain/money-tone";
 import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
+import { paletteColour } from "./palette-colour";
 
 const {
   categories: categoryService,
@@ -130,7 +131,7 @@ export function EntryEditorFields({
             ) : (
               <span
                 className="category-icon category-icon-static"
-                style={{ "--category-color": categoryTheme.color }}
+                style={{ "--category-color": paletteColour(categoryTheme.color) }}
               >
                 <CategoryGlyph iconKey={categoryTheme.iconKey} />
               </span>
