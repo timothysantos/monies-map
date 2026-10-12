@@ -2,7 +2,6 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
-import { BottomActions } from "./ui-components";
 import { InlineError } from "./ui-states";
 import "./import-rollback-confirm.css";
 
@@ -62,19 +61,14 @@ export function ImportRollbackConfirm({ triggerLabel, confirmLabel, prompt, onCo
             <Dialog.Description>{prompt}</Dialog.Description>
           </div>
           <InlineError message={error} />
-          <BottomActions
-            className="import-rollback-actions"
-            secondary={(
-              <button type="button" className="lsd-quiet" disabled={isWorking} onClick={() => setOpen(false)}>
-                Cancel
-              </button>
-            )}
-            primary={(
-              <button type="button" className="lsd-primary" disabled={isWorking} onClick={() => void handleConfirm()}>
-                {isWorking ? messages.common.working : confirmLabel}
-              </button>
-            )}
-          />
+          <div className="import-rollback-actions">
+            <button type="button" className="lsd-quiet" disabled={isWorking} onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="lsd-primary" disabled={isWorking} onClick={() => void handleConfirm()}>
+              {isWorking ? messages.common.working : confirmLabel}
+            </button>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

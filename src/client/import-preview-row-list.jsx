@@ -187,6 +187,9 @@ function PreviewRowSheet({
       title={importMessages.editRowTitle}
       description={row.description || messages.common.emptyValue}
       saveLabel={importMessages.editRowDone}
+      // Every change applies to the preview at once, as in the table, so there
+      // is no draft to lose: a swipe down simply closes the sheet.
+      isDirty={false}
       onClose={onClose}
       onSave={onClose}
       footerContent={(

@@ -821,6 +821,50 @@ Where it is used:
   or delete of a settled split (`split_settlement_locked`), so a stale page
   cannot change one. A settlement row is not a card: its dialog and inline
   editor keep the in-place refusal.
+- Settings (`settings-panel.jsx`, `settings-section.jsx`,
+  `settings-sections.jsx`, `settings-accounts-section.jsx`). The closed page
+  is one list: each section is a 52 px row (`SettingsSection`) with its title
+  (an `h3` inside the toggle, so specs and assistive tech name the section by
+  it) and a status word from `buildSettingsSummaries`
+  (`settings-summary-model.js`: people's names, counts, "Not set up" or "1 to
+  check" in butter, "All clear", "Basic model"; read-only, from data the
+  section already shows, and no money). A run of closed rows is one rounded
+  group; an open section keeps its row (tinted, chevron down) and its body
+  unfolds under it as a bordered block, which ends the run (sibling selectors
+  in `settings-route.css`, so a row never remounts and focus stays on the
+  toggle). The long descriptions are gone from the rows; a section keeps
+  what it needs as one muted hint or a folded `MoreDetails` row.
+  Apple Pay shortcut: a lead ("Apple Pay capture", set up or not), chips
+  (Apple-signed, opens the entry to edit), rows Default account (opens the
+  priority list, the same drag and up/down controls), Other currencies go to
+  (a native select over the row), How to set it up (4 steps, folded) and More
+  shortcut settings (folded), Install Apple Shortcut at the bottom. Ask and
+  AI: a lead (who answers Ask, one chip for the credit state), Model and
+  Last checked rows, then the existing credit line, month line and actions.
+  Payment ways: a person chip and two rows per person. Categories: a row per
+  category (bubble and name; no slug or colour code) that opens the editor,
+  a 44 px delete, "+ Add category" last. Category matching: attention panels
+  in pastel pairs, "How matching works" folded, rule groups folded until
+  opened. Balance trust rules: three folded rows, the exceptions as rows.
+  Unresolved transfers, Error diagnostics and Recent balance activity: flat
+  rows in one group. An account's kind is read in words
+  (`settings-account-line.js`), never as the stored value.
+- Imports review (`import-file-card.jsx`, `import-preview-row-list.jsx`).
+  Lead: the file card (the file's label, "N rows will import" from
+  `countRowsToImport`, the same count the commit bar says). Support: the
+  dates it covers, "Account mapped" or "Map N accounts", the owner. The
+  account is shown once: as the card's subtitle when nothing maps it, and as
+  the Account row (`StatementAccountMapping`, a native select laid over a
+  Detail row, then "Create account") when the person can map it. A statement
+  keeps its card-by-card review and has no file card. On a phone the preview
+  rows are flat 56 px rows (description, date and category, the amount in its
+  money tone) that open the Edit row sheet: a lead with the description and
+  amount typed in place, chips (type, date, owner, what needs a look), Detail
+  rows for Type, Category, Account, Owner and Note, and Exclude row (or
+  Include row) and Done in the bottom bar. It edits through the same
+  handlers as the table, which every wider screen keeps. The commit bar is one
+  line on a phone. There is no split nudge: nothing in the app suggests splits
+  before a commit, so none is drawn.
 
 ## Apple Shortcut Install Boundary
 
@@ -955,8 +999,16 @@ Rules:
   makes one box per account (or shared statement) listing its missing
   months
 - pasted rows and the import defaults sit behind "Paste rows or set
-  defaults", opened when a plain CSV needs mapping; upload status and the AI
-  consent stay beside the drop zone
+  defaults" (the defaults are Detail rows), opened when a plain CSV needs
+  mapping; upload status and the AI consent stay beside the drop zone, and
+  the explanations (what each file kind does, the trust and rollback notes)
+  are one folded "How importing works" row
+- Recent imports is one row that opens; the batches are flat rows in one group
+  under their day. "Rollback import" and "Roll back this import" ask in
+  `ImportRollbackConfirm`: a bottom sheet on a phone, a dialog on a wide
+  screen, Cancel and the confirming action in the bottom bar. A refused
+  rollback keeps it open and says why (it keeps the `delete-popover` class
+  for that reason)
 - with a file queued, or Bring files opened again over a file in review
   (`isDropZoneSlim`), `ImportSelectFileStage` renders `isSlim`: the card
   head goes, the drop zone is one line ("Drop more files, or" and Select

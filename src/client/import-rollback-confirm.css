@@ -42,7 +42,12 @@
   line-height: 1.45;
 }
 
+/* Cancel, then the confirming action last, under the thumb. */
 .import-rollback-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 4px;
 }
 

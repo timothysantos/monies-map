@@ -2414,7 +2414,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
                 ? importMessages.fileCardCovers(formatService.formatDateOnly(preview.startDate), formatService.formatDateOnly(preview.endDate))
                 : undefined}
               showAccountState={showStatementAccountMapping}
-              unknownAccountCount={unknownPreviewAccountNames.length}
+              // The same count the "Map N accounts" blocker on the import bar says.
+              unknownAccountCount={importPreviewModel.hasUnmappedAccounts ? Math.max(1, importPreviewModel.unmappedCommitAccountNames?.length ?? 1) : 0}
               ownerName={ownerName}
             />
           ) : null}
