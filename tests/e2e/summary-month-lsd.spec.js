@@ -74,6 +74,14 @@ async function expectedMonthFigures(page) {
   };
 }
 
+// The plan sections run edge to edge on a phone (the stack around them is
+// narrower by design), so each section is what must fit.
+async function expectPlanSectionsFit(page) {
+  for (const selector of [".month-plan-section-income", ".month-plan-section-budgets", ".month-plan-section-planned"]) {
+    await expectNoSidewaysScroll(page, selector);
+  }
+}
+
 async function openMonth(page) {
   await gotoPageAfterApi(page, MONTH_URL, "/api/month-page", () => page.locator(".month-lead"));
 }
@@ -218,6 +226,41 @@ test.describe("phone", { tag: "@webkit" }, () => {
     await expect(page.locator(".month-lead .lsd-eyebrow")).toHaveText(`Spent · ${monthLabel(target)}`);
   });
 
+  test("plan rows are compact cards: the DTO's figures, a bar each, nothing scrolls sideways, a tap opens the sheet", async ({ page }) => {
+    await revealMoney(page);
+    await openMonth(page);
+    const data = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    const budgets = data.monthPage.planSections.find((section) => section.key === "budget_buckets").rows;
+    expect(budgets.length, "the fixture month has budget buckets").toBeGreaterThan(0);
+    await expectPlanSectionsFit(page);
+    const rows = page.locator(".month-plan-section-budgets tbody tr:not(.month-inline-action-row)");
+    await expect(rows).toHaveCount(budgets.length);
+    const first = budgets[0];
+    const row = rows.filter({ hasText: first.label }).first();
+    await expect(row.locator(".month-actual-drilldown")).toHaveText(money(first.actualMinor));
+    await expect(row.locator(".month-cell-planned")).toHaveText(money(first.plannedMinor));
+    await expect(row.locator(".month-row-bar")).toBeVisible();
+    const widthPercent = await row.locator(".lsd-bar-fill").evaluate((fill) => Math.round((fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width) * 100));
+    expect(Math.abs(widthPercent - Math.min(100, Math.round((first.actualMinor / first.plannedMinor) * 100)))).toBeLessThanOrEqual(2);
+    const rowBox = await box(row);
+    expect(rowBox.right).toBeLessThanOrEqual(390);
+    expect(await row.locator(".month-cell-item").evaluate((cell) => cell.getBoundingClientRect().height)).toBeGreaterThan(0);
+    // The strip of column names still sorts.
+    await expect(page.locator(".month-plan-section-budgets thead th:visible")).toHaveCount(5);
+    // A tap on the row opens the plan card sheet.
+    await row.locator(".month-cell-item").click();
+    await expect(page.locator(".entry-mobile-sheet")).toBeVisible();
+  });
+
+  test("hidden money: plan rows keep only the bar's track", async ({ page }) => {
+    await openMonth(page);
+    const rows = page.locator(".month-plan-section-budgets tbody tr:not(.month-inline-action-row)");
+    await expect(rows.first().locator(".month-row-bar")).toBeVisible();
+    await expect(page.locator(".month-plan-section .lsd-bar-fill")).toHaveCount(0);
+    await expect(rows.first().locator(".month-actual-drilldown")).toHaveText("••••");
+    await expectPlanSectionsFit(page);
+  });
+
   test("hidden money: dots in plain ink, the bars' track only, no over or under words", async ({ page }) => {
     await openMonth(page);
     const lead = page.locator(".month-lead");
@@ -270,6 +313,22 @@ test.describe("desktop", () => {
     expect(await colour(page.locator(".month-lead .summary-lead-headroom"))).toBe(isOver ? INK.short : INK.in);
     expect(await page.locator(".month-lead .lsd-bar-fill").getAttribute("class")).toContain(isOver ? "money-short" : "money-neutral");
     await expectRemainingExplains(page, figures);
+  });
+
+  test("plan tables keep their columns and add a thin bar under each actual", async ({ page }) => {
+    await revealMoney(page);
+    await openMonth(page);
+    const data = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    const budgets = data.monthPage.planSections.find((section) => section.key === "budget_buckets").rows;
+    const rows = page.locator(".month-plan-section-budgets tbody tr:not(.month-inline-action-row)");
+    await expect(rows).toHaveCount(budgets.length);
+    await expect(page.locator(".month-plan-section-budgets thead th")).toHaveCount(6);
+    const row = rows.filter({ hasText: budgets[0].label }).first();
+    await expect(row.locator(".month-row-bar")).toBeVisible();
+    // Money columns are right-aligned; the item is the heaviest text.
+    expect(await row.locator(".month-cell-planned").evaluate((cell) => getComputedStyle(cell).textAlign)).toBe("right");
+    expect(Number(await row.locator(".month-cell-item").evaluate((cell) => getComputedStyle(cell).fontWeight))).toBeGreaterThanOrEqual(600);
+    await expect(row.locator(".month-actual-drilldown")).toHaveText(money(budgets[0].actualMinor));
   });
 
   test("Intent vs Outcome: the same cards, the note row edits the month note", async ({ page }) => {
