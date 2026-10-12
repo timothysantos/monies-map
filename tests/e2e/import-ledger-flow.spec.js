@@ -1086,7 +1086,7 @@ test.describe("import flow", () => {
     await entryRow.getByText("Playwright groceries import", { exact: true }).click();
     const entryEditor = page.locator(".entry-edit-card").first();
     await expect(entryEditor).toBeVisible();
-    await entryEditor.locator("select").first().selectOption("Food & Drinks");
+    await entryEditor.locator("[data-row='category'] select").selectOption("Food & Drinks");
     await page.getByRole("button", { name: "Done editing entry" }).click();
 
     await expect(page.locator(".entry-row").filter({ hasText: "Playwright groceries import" }).first()).toBeVisible({ timeout: 30_000 });

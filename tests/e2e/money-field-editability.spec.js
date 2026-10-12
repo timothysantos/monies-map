@@ -23,7 +23,7 @@ function formatMoney(minor) {
 async function openEntryEditor(page, description) {
   const entryRow = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(entryRow).toBeVisible();
-  await entryRow.click();
+  await entryRow.locator(".entry-row-main").click();
   const editor = page.locator(".entry-edit-card").first();
   await expect(editor).toBeVisible();
   return editor;

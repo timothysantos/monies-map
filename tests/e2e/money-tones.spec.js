@@ -214,16 +214,18 @@ test("Entries: expenses rose with their minus sign, income mint, transfers plain
     if (item.isTransfer) expect(item.color).toBe(INK.text);
   }
 
-  // The totals strip: income is a soft mint chip; spend is rose text with no
-  // chip; transfers plain.
-  const item = (label) => page.locator(".entries-totals-item").filter({ has: page.locator(".entries-totals-label", { hasText: new RegExp(`^${label}$`) }) });
+  // The Entries top: income is a soft mint pill; Spent (the lead) is plain
+  // ink, not rose (spending is not bad for being spending); transfers and
+  // outflow plain.
+  const item = (label) => page.locator(".entries-totals-pill").filter({ has: page.locator(".entries-totals-label", { hasText: new RegExp(`^${label}$`) }) });
   const incomeItem = await looks(item("Income"));
   expect(incomeItem.color).toBe(INK.in);
   expect(incomeItem.background).not.toBe(TRANSPARENT);
   expect((await looks(item("Income").locator("strong"))).color).toBe(INK.in);
-  expect((await looks(item("Spend").locator("strong"))).color).toBe(INK.short);
-  expect((await looks(item("Spend"))).background).toBe(TRANSPARENT);
+  expect((await looks(page.locator(".entries-totals .lsd-amount"))).color).toBe(INK.text);
+  expect((await looks(page.locator(".entries-totals .lsd-card"))).background).not.toBe(TRANSPARENT);
   expect((await looks(item("Transfers").locator("strong"))).color).toBe(INK.text);
+  expect((await looks(item("Outflow").locator("strong"))).color).toBe(INK.text);
 });
 
 test("Splits: the lead card carries the balance tone; tiles on the orange are plain text; activity is coloured text only", async ({ page }) => {
@@ -297,7 +299,7 @@ test("hidden money shows no tone", async ({ page }) => {
   }
 
   await gotoPageAfterApi(page, "/entries?view=person-tim&month=2026-04&scope=direct_plus_shared", "/api/entries-page", () => page.getByRole("heading", { name: "Entries", exact: true }));
-  const incomeValue = page.locator(".entries-totals-item").filter({ has: page.locator(".entries-totals-label", { hasText: /^Income$/ }) }).locator("strong");
+  const incomeValue = page.locator(".entries-totals-pill").filter({ has: page.locator(".entries-totals-label", { hasText: /^Income$/ }) }).locator("strong");
   await expect(incomeValue).toHaveText("••••");
   expect((await looks(incomeValue)).color).not.toBe(INK.in);
   const rowColours = await page.locator(".entry-row-amount > strong").evaluateAll((elements) => elements.map((element) => getComputedStyle(element).color));

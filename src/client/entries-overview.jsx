@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -11,74 +10,84 @@ import {
   toggleHiddenDonutItemIds
 } from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
-import { CategoryGlyph } from "./ui-components";
+import { CategoryGlyph, DetailRow, DetailRows, LeadCard } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
-import { entryTotalsTones } from "../domain/money-tone";
 import { paletteColour } from "./palette-colour";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
-// The strip shows the same filtered dataset in four different accounting views:
-// spend, income, net, and total outflow. An item with a direction (income, a
-// difference) is a soft money chip; plain outflows and transfers stay plain.
-export function EntriesTotalsStrip({
+// The Entries top (design.md, "Entries top"; Lead · Support · Detail): what
+// was spent this month as the lead in plain ink, then Income, Difference,
+// Transfers and Outflow as four pills (a tint only where the money has a
+// direction), and Detail rows for the category breakdown and, on a phone,
+// the filters (which live in the View and scope sheet). `model` is
+// buildEntriesTotalsModel's shape: the same filtered figures the old
+// sideways strip showed, which clipped at 390 and 1024 px.
+export function EntriesTotals({
+  model,
   showExpenseBreakdown,
-  entryTotals,
-  entryOutflowMinor,
-  entryGrossOutflowMinor,
-  entryNetMinor,
   onToggleExpenseBreakdown,
-  onAddEntry
+  filtersValue = "",
+  onOpenFilters = undefined
 }) {
-  const tones = entryTotalsTones({ incomeMinor: entryTotals.incomeMinor, netMinor: entryNetMinor });
+  const copy = messages.entries.totals;
+  const shareAside = model.spent.shareMinor === null ? null : (
+    <>{copy.shareAside(model.personLabel)} <PrivateMoney>{formatService.money(model.spent.shareMinor)}</PrivateMoney></>
+  );
   return (
-    <section className="entries-totals-strip" aria-label={messages.entries.totalsLabel}>
-      <button
-        type="button"
-        className={`entries-breakdown-toggle ${showExpenseBreakdown ? "is-open" : ""}`}
-        onClick={onToggleExpenseBreakdown}
-        aria-expanded={showExpenseBreakdown}
-        aria-label={showExpenseBreakdown ? "Hide expense breakdown" : "Show expense breakdown"}
-      >
-        {showExpenseBreakdown ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-      </button>
-      <span className={`entries-totals-item ${moneyToneClass(tones.spend, "soft")}`}>
-        <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-        <strong><PrivateMoney>{formatService.money(entryTotals.grossSpendMinor)}</PrivateMoney></strong>
-        {entryTotals.grossSpendMinor !== entryTotals.spendMinor ? (
-          <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryTotals.spendMinor)}</PrivateMoney>)</span>
-        ) : null}
-      </span>
-      <span className={`entries-totals-item ${moneyToneClass(tones.income, "soft")}`}>
-        <span className="entries-totals-label">{messages.entries.totalIncome}</span>
-        <strong><PrivateMoney>{formatService.money(entryTotals.incomeMinor)}</PrivateMoney></strong>
-      </span>
-      <span className={`entries-totals-item ${moneyToneClass(tones.difference, "soft")}`}>
-        <span className="entries-totals-label">{messages.entries.totalDifference}</span>
-        <strong><PrivateMoney>{formatService.money(entryNetMinor)}</PrivateMoney></strong>
-      </span>
-      <span className={`entries-totals-item ${moneyToneClass(tones.transfers, "soft")}`}>
-        <span className="entries-totals-label">{messages.entries.totalTransfersOut}</span>
-        <strong><PrivateMoney>{formatService.money(entryTotals.grossTransferOutMinor)}</PrivateMoney></strong>
-        {entryTotals.grossTransferOutMinor !== entryTotals.transferOutMinor ? (
-          <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryTotals.transferOutMinor)}</PrivateMoney>)</span>
-        ) : null}
-      </span>
-      <span className={`entries-totals-item ${moneyToneClass(tones.outflow, "soft")}`}>
-        <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
-        <strong><PrivateMoney>{formatService.money(entryGrossOutflowMinor)}</PrivateMoney></strong>
-        {entryGrossOutflowMinor !== entryOutflowMinor ? (
-          <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryOutflowMinor)}</PrivateMoney>)</span>
-        ) : null}
-      </span>
-      <div className="entries-totals-spacer" />
-      <button type="button" className="subtle-action is-primary entries-add-inline" onClick={onAddEntry}>
-        {messages.entries.addEntry}
-      </button>
+    <section className="entries-totals" aria-label={messages.entries.totalsLabel}>
+      <div className="entries-totals-main">
+        <LeadCard
+          className="entries-totals-lead"
+          eyebrow={copy.spentEyebrow(model.month)}
+          amount={formatService.money(model.spent.amountMinor)}
+          tone={model.spent.tone}
+          amountAside={shareAside}
+        />
+        <DetailRows label={messages.entries.totalsLabel} className="entries-totals-rows">
+          <DetailRow
+            label={copy.spendingByCategory}
+            // No value to show; the empty node keeps the row's chevron.
+            value={<span className="lsd-row-text" />}
+            data-row="breakdown"
+            aria-expanded={showExpenseBreakdown}
+            onClick={onToggleExpenseBreakdown}
+          />
+          {onOpenFilters ? (
+            <DetailRow
+              label={copy.filters}
+              value={filtersValue}
+              data-row="filters"
+              aria-haspopup="dialog"
+              onClick={onOpenFilters}
+            />
+          ) : null}
+        </DetailRows>
+      </div>
+      <div className="entries-totals-pills">
+        {model.pills.map((pill) => (
+          <div key={pill.key} className={`entries-totals-pill ${moneyToneClass(pill.tone, "soft")}`} data-pill={pill.key}>
+            <span className="entries-totals-label">{PILL_LABELS[pill.key]}</span>
+            <strong><PrivateMoney>{formatService.money(pill.amountMinor)}</PrivateMoney></strong>
+            {pill.shareMinor === null ? null : (
+              <small className="entries-totals-secondary">
+                {copy.pillShare(model.personLabel)} <PrivateMoney>{formatService.money(pill.shareMinor)}</PrivateMoney>
+              </small>
+            )}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
+
+const PILL_LABELS = {
+  income: messages.entries.totalIncome,
+  difference: messages.entries.totalDifference,
+  transfers: messages.entries.totalTransfersOut,
+  outflow: messages.entries.totalOutflow
+};
 
 export function EntriesBreakdownPanel({
   expenseBreakdown,

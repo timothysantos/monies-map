@@ -254,7 +254,13 @@ const SHOTS = [
     name: "entries-add", device: "desktop",
     run: async (page) => {
       await open(page, `/entries?view=person-ethan&month=${MONTH}`);
-      await page.getByRole("button", { name: "+ Add entry" }).first().click();
+      // The round + opens Ask's new entry card; Edit in form opens the form.
+      await page.locator(".entries-fab:not(.splits-fab)").click();
+      await page.getByRole("textbox", { name: "What it was" }).fill("Kopi and kaya toast");
+      await page.getByRole("textbox", { name: "Amount" }).fill("6.80");
+      await page.getByRole("button", { name: "Edit in form" }).click();
+      // The Ask panel stays beside the page; the picture is of the form.
+      await page.getByRole("button", { name: "Close Ask" }).click({ timeout: 3000 }).catch(() => {});
       const composer = page.locator(".entry-composer").first();
       await composer.getByLabel("Description").fill("Kopi and kaya toast");
       await composer.getByLabel("Amount").fill("6.80");

@@ -43,7 +43,7 @@ test("deleting a linked split from Entries shows the entry as unshared, and it c
   await expect(row.locator(".entry-chip-linked-split")).toContainText("On splits");
   await expect(row).toContainText("$30.00");
 
-  await row.click();
+  await row.locator(".entry-row-main").click();
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
   await editor.getByRole("button", { name: "Delete split" }).click();
@@ -108,11 +108,11 @@ test("editing a linked entry's description and date in Entries updates its split
   await expect(page).toHaveURL(/\/entries\?/);
   const row = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(row).toBeVisible({ timeout: 60_000 });
-  await row.click();
+  await row.locator(".entry-row-main").click();
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
   await editor.getByLabel("Description").fill(renamed);
-  await editor.getByLabel("Date", { exact: true }).fill(`${month}-24`);
+  await editor.getByLabel(/^Change date, /).fill(`${month}-24`);
   const entryUpdate = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
   await editor.getByRole("button", { name: "Done editing entry" }).click();
   await entryUpdate;
