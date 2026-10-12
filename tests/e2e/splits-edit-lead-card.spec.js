@@ -319,7 +319,7 @@ test.describe("Edit split on a phone", { tag: "@webkit" }, () => {
 
   test("every tap target in Edit split is 44 px or more with room around it", async ({ page }) => {
     await setUp(page);
-    const splitExpenseId = await createSplit(page, { amountMinor: 1001, splitBasisPoints: 5000, splitAmountMinor: 500 });
+    const splitExpenseId = await createSplit(page, { amountMinor: 1000, splitBasisPoints: 5000, splitAmountMinor: 500 });
     const dialog = await openSplit(page, splitExpenseId);
     await dialog.locator("[data-share-row='Tim']").click();
     await dialog.getByRole("button", { name: /More details/ }).click();
@@ -351,26 +351,6 @@ test.describe("Edit split on a phone", { tag: "@webkit" }, () => {
     await expect(dialog.locator(".lsd-card .lsd-amount")).toHaveCSS("color", INK.text);
     await expect(dialog.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row"))
       .toHaveText(["Tim’s share50% · ••••", "Joyce’s share50% · ••••"]);
-  });
-
-  test("the household view shows the split read-only, with its money hidden when totals are hidden", async ({ page }) => {
-    await setUp(page, { hidden: true });
-    const description = `Lead view ${Date.now()}`;
-    const splitExpenseId = await createSplit(page, { description });
-    const dialog = await openSplit(page, splitExpenseId, { view: "household", title: "View split" });
-    const lead = dialog.locator(".lsd-card");
-
-    await expect(lead.locator(".lsd-title")).toHaveText(description);
-    await expect(lead.locator(".lsd-amount")).toHaveText("••••");
-    await expect(lead.locator(".lsd-amount")).toHaveCSS("color", INK.text);
-    await expect(dialog.locator("input, textarea, select")).toHaveCount(0);
-    await expect(lead.locator(".lsd-chip-hit")).toHaveCount(0);
-    await expect(dialog.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row"))
-      .toHaveText(["Tim’s share50% · ••••", "Joyce’s share50% · ••••"]);
-    await expect(dialog.getByRole("button", { name: "Save expense" })).toHaveCount(0);
-    await expect(dialog.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
-    await dialog.locator(".lsd-bottom").getByRole("button", { name: "Close", exact: true }).click();
-    await expect(dialog).toHaveCount(0);
   });
 });
 

@@ -669,8 +669,9 @@ Where it is used:
   keeps an inline field, so Tab walks description, amount, the eye, then the
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
-- New split expense (`split-expense-card.jsx`, from the Splits dialog in
-  both layouts; editing and viewing a saved split keep the form for now).
+- New, edit and view split expense (`split-expense-card.jsx`, from the Splits
+  dialog in both layouts: the phone sheet and the wide dialog; a row on a
+  wide screen still opens the inline form).
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
   (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
@@ -681,6 +682,14 @@ Where it is used:
   linked through the existing `updateSplitExpenseDraft`, so what the card
   shows and saves is what the form saved. The odd cent choice shows under
   the share rows whenever it applies.
+  Edit split is the same card on a saved split, titled "Edit split", with
+  Delete (quiet, rose, set apart; it asks in the app first), Cancel and
+  Save expense in the bottom bar; swiping the phone sheet down asks "Discard
+  changes?" when something changed. What a linked entry set (the paid-using
+  chip and row) is locked and reads ", set by the linked entry"; the linked
+  entry is a "View entry" row. View split (the read-only household view) shows
+  the same card with no controls and Close. The save request is the one the
+  form sent.
 
 ## Apple Shortcut Install Boundary
 
