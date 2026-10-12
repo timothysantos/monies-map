@@ -57,6 +57,7 @@ import {
 } from "./splits-workflow";
 import { buildSplitsSignals, SPLITS_CALM_LINES, SPLITS_TRIVIA_ROTATION } from "../domain/money-signals/splits-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { useAskReturn } from "./use-ask-origin";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
 import { entriesLocationForAction } from "./check-in-action";
@@ -219,6 +220,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   } = useSplitEditState({ categoryOptions, people });
   // The optimistic overlay alone is not counted: it can outlive a failed
   // refresh, and isRefreshingDerived already covers the in-flight window.
+  // Back from Ask after the receipt button opened it: the scroll comes back
+  // (the group is in the URL; docs/flows/ask-flow.md "Back to where you were").
+  useAskReturn({ from: "splits", ready: Boolean(view.splitsPage) });
   useRouteWorkReport({
     busy: Boolean(archiveDialog)
       || showHistory

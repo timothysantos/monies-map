@@ -4,7 +4,8 @@
 //
 // - Chat mode, no card: Scan receipt, Paste, Add entry, Add expense.
 // - Add mode: "‹ Entries" (or Splits, Ask) first, back to where the person
-//   came from; then a pending question's answers, or what fits the card:
+//   came from (on the phone's Ask page, where the header has its own back
+//   link, only while the card is untouched); then a pending question's answers, or what fits the card:
 //   Scan receipt, Paste, Transfer, Income on an empty expense; Split with
 //   <partner>, Add a note, Different card once it has content; Swap
 //   direction for a transfer; Edit in form last, to the Entries composer or
@@ -176,7 +177,7 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   return { items, prompt };
 }
 
-export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, actions }) {
+export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, headerBack = false, actions }) {
   const isAddMode = intent.mode !== "chat";
   if (!card) {
     if (intent.savedEntryId) {
@@ -198,7 +199,9 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
 
   /** @type {AskChip[]} */
   const items = [];
-  if (isAddMode) {
+  // With the header's back link, the chip is a second way back only for a
+  // card nobody has started (docs/flows/ask-flow.md "Back to where you were").
+  if (isAddMode && !(headerBack && (card.touched || card.origin))) {
     items.push({ key: "back", label: askCopy.chips.back(backLabel(intent)), back: true, onClick: actions.back });
   }
   const question = card.questions?.[0] ?? null;
@@ -309,9 +312,9 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // "Back to the unsaved entry", which makes it the newest item again. An
 // answer for a month with no entries (canOpenAnswer false) has no Entries
 // page to open.
-export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", viewLabel = "", canOpenAnswer = true, moneyLabels = null, splitSuggestion = null, actions }) {
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, actions }) {
   if (active?.kind === "card") {
-    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, actions });
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, headerBack, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }

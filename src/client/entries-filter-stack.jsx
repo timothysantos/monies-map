@@ -1,4 +1,5 @@
 import { RefreshCw, Search, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { FilterMultiSelect, FilterSelect } from "./ui-components";
@@ -110,6 +111,33 @@ export function SearchFilterInput({
   className = "",
   onChange
 }) {
+  // The box shows what was typed at once. Its value is kept in the URL,
+  // which catches up a moment later (and trims spaces): binding the box to
+  // the URL alone dropped keys typed quickly and a space between words. A
+  // change that is the URL catching up to something typed is ignored; any
+  // other change (Reset filters, From Ask, back and forward) shows here.
+  const [draft, setDraft] = useState(value ?? "");
+  const sentRef = useRef(/** @type {string[]} */ ([]));
+  useLayoutEffect(() => {
+    const incoming = (value ?? "").trim();
+    const sentIndex = sentRef.current.indexOf(incoming);
+    if (sentIndex !== -1) {
+      sentRef.current = sentRef.current.slice(sentIndex + 1);
+      return;
+    }
+    sentRef.current = [];
+    setDraft((current) => (current.trim() === incoming ? current : value ?? ""));
+  }, [value]);
+  const change = (next) => {
+    setDraft(next);
+    // Only a change the URL will make is waited for: a trailing space
+    // leaves the URL as it was.
+    const words = next.trim();
+    if (words !== (sentRef.current.at(-1) ?? (value ?? "").trim())) {
+      sentRef.current.push(words);
+    }
+    onChange(next);
+  };
   return (
     <label className={`entries-filter search-filter ${className}`.trim()}>
       <span className="entries-filter-label">{label}</span>
@@ -117,19 +145,19 @@ export function SearchFilterInput({
         <Search size={16} aria-hidden="true" />
         <input
           className="table-edit-input search-filter-input"
-          value={value ?? ""}
+          value={draft}
           placeholder={placeholder}
           enterKeyHint="search"
           autoComplete="off"
           list={listId}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => change(event.target.value)}
         />
-        {value ? (
+        {draft ? (
           <button
             type="button"
             className="search-filter-clear"
             aria-label={`Clear ${label.toLowerCase()}`}
-            onClick={() => onChange("")}
+            onClick={() => change("")}
           >
             <X size={15} />
           </button>

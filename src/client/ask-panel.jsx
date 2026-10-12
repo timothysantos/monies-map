@@ -1,8 +1,8 @@
 import * as Popover from "@radix-ui/react-popover";
-import { ArrowUp, Camera, ClipboardPaste, Image, Mic, Plus, SquarePen } from "lucide-react";
+import { ArrowUp, Camera, ClipboardPaste, Image, Maximize2, Mic, Plus, SquarePen } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   addSavedEntryToSplits,
@@ -40,6 +40,8 @@ import { readAnswerIntent } from "../domain/ask-answer-intent";
 import { AskBriefCard } from "./ask-brief-card";
 import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
+import { getAskDockStore } from "./ask-dock-state";
+import { planAskBack, readAskOrigin, rememberAskOrigin } from "./ask-origin";
 import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
@@ -58,6 +60,9 @@ import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
+// The desktop dock around this conversation loads in this chunk (ask-dock.jsx).
+export { default as AskDockPanel } from "./ask-dock-panel";
+
 // The Ask page (design.md "Ask page"; docs/flows/ask-flow.md). One page,
 // three ways in:
 // - the Ask tab: a "since you last looked" card from the Money insights
@@ -69,9 +74,13 @@ import "./ask-route.css";
 // readers in ask-api.js; the card always works by hand. The composer's mic
 // (ask-voice.js) only fills the message box: the person checks and sends. Saving goes through
 // the Entries composer's create path.
+// On a desktop the same page also renders beside another page, in the Ask
+// dock (ask-dock.jsx): `placement` "docked" or "popup", with the way in
+// (`intent`) held by the dock instead of the URL, so a chip that would open
+// /ask changes the dock's conversation and the page beside it stays.
 export function AskPanel(props) {
   const [searchParams] = useSearchParams();
-  const intent = readAskIntent(searchParams);
+  const intent = props.intent ?? readAskIntent(searchParams);
   const conversationKey = askConversationKey(intent);
   // New chat remounts the conversation over a cleared store entry.
   const [chatRound, setChatRound] = useState(0);
@@ -132,6 +141,14 @@ function looksLikeQuestion(text) {
   return /\?\s*$/.test(text) || /^(how|what|when|where|why|which|who|did|do|does|is|are|can|show)\b/i.test(text.trim());
 }
 
+function sessionStore() {
+  try {
+    return typeof window === "undefined" ? null : window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
@@ -153,9 +170,14 @@ function AskConversation({
   onSplitMutation,
   runBackgroundRefresh,
   fetchRequiredQuery,
-  routeUsable = false
+  routeUsable = false,
+  placement = "page",
+  canExpand = false
 }) {
   const queryClient = useQueryClient();
+  // Beside another page (the desktop dock) rather than at /ask.
+  const inDock = placement !== "page";
+  const location = useLocation();
   // The Claude credit status is read once Ask is first usable, never while
   // it loads; later busy moments (a card being edited) do not hide it.
   const [creditStatusEnabled, setCreditStatusEnabled] = useState(routeUsable);
@@ -256,6 +278,15 @@ function AskConversation({
     ready: true,
     busy: Boolean(working) || voiceActive || card?.status === "saving" || Boolean(card?.touched && card.status === "draft")
   });
+
+  // The place the + kept rides on this history entry; it is also kept for
+  // the tab's session, for a way back after the entry has lost it (the Ask
+  // tab reopening the card).
+  useEffect(() => {
+    if (!inDock) {
+      rememberAskOrigin(sessionStore(), location.state?.askOrigin);
+    }
+  }, [inDock, location.state]);
 
   // Leaving the page keeps the conversation in the store, with how far up
   // the person had scrolled. Photos live in memory only while the page
@@ -496,7 +527,8 @@ function AskConversation({
     next.set("scope", pending.viewId === "household" ? "direct_plus_shared" : pending.scope);
     setPending(null);
     appendThread(threadItem("note", { text: askCopy.filter.nowShowing(viewLabel(pending.viewId, pending.scope)) }));
-    navigate({ pathname: "/ask", search: `?${next.toString()}` });
+    // In the dock, the page beside it changes view, as the header pills do.
+    navigate({ pathname: inDock ? location.pathname : "/ask", search: `?${next.toString()}` });
   }
 
   async function readSentence(text) {
@@ -843,18 +875,56 @@ function AskConversation({
     navigate({ pathname, search: `?${next.toString()}` });
   }
 
+  // Back to the page the + or the receipt button opened Ask from, exactly
+  // as it was (ask-origin.js): history.back when that page is right behind
+  // Ask, the same as the phone's back gesture; else the kept place; else the
+  // plain page for this view and month. A started card stays in the
+  // conversation store, so nothing is lost and nothing needs confirming.
+  // In the desktop panel the page beside it never left: the chip opens the
+  // plain page there, as before.
+  const backPlan = useMemo(() => {
+    if (intent.from !== "entries" && intent.from !== "splits") {
+      return null;
+    }
+    const next = new URLSearchParams(params);
+    if (intent.from === "splits" && intent.splitGroupId) next.set("split_group", intent.splitGroupId);
+    const fallback = { pathname: `/${intent.from}`, search: `?${next.toString()}` };
+    return inDock
+      ? { kind: /** @type {const} */ ("navigate"), to: fallback, state: undefined }
+      : planAskBack({ from: intent.from, state: location.state, storage: sessionStore(), fallback });
+  }, [inDock, intent.from, intent.splitGroupId, location.state, params]);
+  const backHref = backPlan?.kind === "navigate"
+    ? `${backPlan.to.pathname}${backPlan.to.search}`
+    : readAskOrigin(location.state?.askOrigin)?.path ?? "";
+
+  function goBackToOrigin() {
+    if (backPlan?.kind === "history") {
+      navigate(-1);
+    } else if (backPlan) {
+      navigate(backPlan.to, { state: backPlan.state });
+    }
+  }
+
+  // Another way into Ask: the /ask route, or in the dock the dock's own
+  // conversation (the page beside it stays).
+  function openAsk(extra = {}) {
+    if (!inDock) {
+      goTo("/ask", extra);
+      return;
+    }
+    getAskDockStore().setIntent(readAskIntent(new URLSearchParams(Object.entries(extra).filter(([, value]) => value))));
+  }
+
   const actions = {
     scanReceipt: () => cameraInputRef.current?.click(),
     paste: () => void pasteFromClipboard(),
-    addEntry: () => goTo("/ask", { mode: "add", from: "ask" }),
-    addExpense: () => goTo("/ask", { mode: "expense", from: "ask" }),
+    addEntry: () => openAsk({ mode: "add", from: "ask" }),
+    addExpense: () => openAsk({ mode: "expense", from: "ask" }),
     back: () => {
-      if (intent.from === "splits") {
-        goTo("/splits", { split_group: intent.splitGroupId });
-      } else if (intent.from === "entries") {
-        goTo("/entries");
+      if (backPlan) {
+        goBackToOrigin();
       } else {
-        goTo("/ask");
+        openAsk();
       }
     },
     variant: (variant) => changeVariant(variant),
@@ -938,6 +1008,9 @@ function AskConversation({
   // card (findActiveItem in ask-chips.js).
   const active = findActiveItem({ thread, card, cardSlot, pending });
   const cardActive = active?.kind === "card";
+  // The header's back link: the phone's Ask page after the + or the receipt
+  // button opened it (in the desktop panel the page beside it never left).
+  const showHeaderBack = !inDock && isAddMode && Boolean(backPlan);
   const chips = buildChipRow({
     active,
     intent,
@@ -953,6 +1026,7 @@ function AskConversation({
     canOpenAnswer: active?.kind !== "answer" || isTrackedMonth(active.filter.month),
     moneyLabels: active?.kind === "money-check" ? skewCheckLabels(active.candidate) : null,
     splitSuggestion,
+    headerBack: showHeaderBack,
     actions
   });
 
@@ -983,6 +1057,56 @@ function AskConversation({
   // New chat: in chat mode, once there is something to start over from.
   const showNewChat = !isAddMode && !isShortcut && Boolean(settledThread.length || card || composerText.trim() || pending);
   const answerProps = { queryClient, fetchEntriesPage, accounts, categories, people, trackedMonths, today };
+
+  // In the dock: the field hides once this conversation is here, the words
+  // typed into it (and a photo dropped on it) carry over once, and a
+  // person's open (or "/") puts focus in the message box.
+  useEffect(() => {
+    if (!inDock) return undefined;
+    const dock = getAskDockStore();
+    dock.setReady(true);
+    const handoff = dock.takeHandoff();
+    if (handoff.text) {
+      // As typed, trailing space included: the person may still be typing.
+      const before = store.read(conversationKey)?.composerText ?? "";
+      setComposerText(before && !/\s$/.test(before) ? `${before} ${handoff.text}` : `${before}${handoff.text}`);
+    }
+    if (handoff.file) {
+      void readReceipt(handoff.file);
+    }
+    const focusIfAsked = () => {
+      if (dock.takeFocusRequest()) composerRef.current?.focus();
+    };
+    focusIfAsked();
+    const unsubscribe = dock.subscribe(focusIfAsked);
+    return () => {
+      unsubscribe();
+      dock.setReady(false);
+    };
+    // Once per conversation shown in the dock.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inDock, conversationKey]);
+
+  // Escape closes the popup, unless something inside already handled it
+  // (a menu or picker) or the person is typing in a field on the page
+  // beside it; the docked panel, a fixture beside the page, closes only
+  // when focus is inside it. Focus then goes back to the Ask field.
+  const articleRef = useRef(/** @type {HTMLElement | null} */ (null));
+  useEffect(() => {
+    if (!inDock) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const active = document.activeElement;
+      const inside = Boolean(active && articleRef.current?.closest(".ask-dock")?.contains(active));
+      const typingOnPage = !inside && active instanceof HTMLElement && (active.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName));
+      if (inside || (placement === "popup" && !typingOnPage)) {
+        event.preventDefault();
+        getAskDockStore().close({ returnFocus: true });
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [inDock, placement]);
 
   // A new set of chips starts scrolled to its first chip (focus stays put).
   useLayoutEffect(() => {
@@ -1069,9 +1193,17 @@ function AskConversation({
     void readSentence(text);
   }
 
+  const newChatButton = showNewChat ? (
+    <button type="button" className="ask-new-chat" onClick={onNewChat} disabled={Boolean(working)}>
+      <SquarePen size={16} aria-hidden="true" />
+      {askCopy.newChat}
+    </button>
+  ) : null;
+
   return (
     <article
-      className={`panel ask-page${isAddMode ? " is-add-mode" : ""}`}
+      ref={articleRef}
+      className={`panel ask-page${isAddMode ? " is-add-mode" : ""}${inDock ? ` is-in-dock is-${placement}` : ""}`}
       aria-labelledby="ask-page-title"
       onDragOver={(event) => {
         if ([...(event.dataTransfer?.types ?? [])].includes("Files")) {
@@ -1080,15 +1212,38 @@ function AskConversation({
       }}
       onDrop={handleDrop}
     >
-      <header className={`ask-head${isAddMode ? " is-inline" : ""}${showNewChat ? " has-new-chat" : ""}`}>
+      <header className={`ask-head${isAddMode ? " is-inline" : ""}${showNewChat ? " has-new-chat" : ""}${inDock ? " has-actions" : ""}${showHeaderBack ? " has-back" : ""}`}>
+        {showHeaderBack ? (
+          <a
+            className="ask-back"
+            href={backHref}
+            aria-label={askCopy.chips.backTo(askCopy.backLabels[intent.from])}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+              }
+              event.preventDefault();
+              goBackToOrigin();
+            }}
+          >
+            {askCopy.chips.back(askCopy.backLabels[intent.from])}
+          </a>
+        ) : null}
         <h2 id="ask-page-title">{title}</h2>
         <span className="ask-context">{contextLine}</span>
-        {showNewChat ? (
-          <button type="button" className="ask-new-chat" onClick={onNewChat} disabled={Boolean(working)}>
-            <SquarePen size={16} aria-hidden="true" />
-            {askCopy.newChat}
-          </button>
-        ) : null}
+        {inDock ? (
+          <span className="ask-head-actions">
+            {newChatButton}
+            {canExpand ? (
+              <button type="button" className="ask-dock-expand" aria-label={messages.askDock.expand} title={messages.askDock.expand} onClick={() => getAskDockStore().expand()}>
+                <Maximize2 size={18} aria-hidden="true" />
+              </button>
+            ) : null}
+            <button type="button" className="ask-dock-close" aria-label={messages.askDock.closeLabel} onClick={() => getAskDockStore().close({ returnFocus: true })}>
+              {messages.askDock.close}
+            </button>
+          </span>
+        ) : newChatButton}
       </header>
 
       <div ref={threadBoxRef} className="ask-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>

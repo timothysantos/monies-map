@@ -12,6 +12,7 @@ export const claudeCreditCopy = {
   ok: (spent, credit) => `Claude credits are fine: about ${spent} of ${credit} used.`,
   okHidden: "Claude credits are fine.",
   notSetUp: "Claude isn't set up, so Ask uses the basic model.",
+  notUsedYet: "Claude hasn't been used yet.",
   topUp: "Top up in the Claude Console",
   toppedUp: "I've topped up",
   dismiss: "Hide this notice",
