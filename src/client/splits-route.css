@@ -787,3 +787,13 @@ button.split-activity-card:hover {
     line-height: 1.1;
   }
 }
+
+/* A settled split's card (read-only): the reason on top, the Undo button
+   directly under it, then the card. */
+.split-expense-card-dialog .split-dialog-scroll > .settlement-lock-error {
+  margin: 0 0 12px;
+}
+
+.split-expense-card-dialog .settlement-lock-error > span {
+  flex: 1 1 100%;
+}

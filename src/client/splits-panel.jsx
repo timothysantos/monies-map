@@ -60,6 +60,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskReturn } from "./use-ask-origin";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
+import { splitCardLock } from "./split-card-lock";
 import { entriesLocationForAction } from "./check-in-action";
 
 const { format: formatService } = moniesClient;
@@ -219,6 +220,19 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     requestDeleteSplit,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
+  const settlementCheckpointsForCard = splitsPage.settlementCheckpoints ?? [];
+  // A settled split expense opens its card read-only with the reason and
+  // Undo; once the undo succeeds it is editable in place (the optimistic
+  // "undone" lock stands in until the refreshed page drops the lock).
+  const expenseCardKey = `expense:${expenseDialog?.id}`;
+  const expenseCardUndone = settlementLock?.recordKey === expenseCardKey && settlementLock.undone;
+  const expenseCardLock = !isHouseholdView && expenseDialog?.id && !expenseCardUndone
+    ? splitCardLock(displayView.splitsPage.activity.find((item) => item.kind === "expense" && item.id === expenseDialog.id), settlementCheckpointsForCard)
+    : null;
+  // A failed undo shows its own message in place of the lock sentence.
+  const expenseCardShown = expenseCardLock && settlementLock?.recordKey === expenseCardKey && !settlementLock.undone
+    ? { ...expenseCardLock, message: settlementLock.message }
+    : expenseCardLock;
   // The optimistic overlay alone is not counted: it can outlive a failed
   // refresh, and isRefreshingDerived already covers the in-flight window.
   // Back from Ask after the receipt button opened it: the scroll comes back
@@ -1027,8 +1041,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   // offset) or the group settle-up that refused a save or delete. The form
   // stays open with the person's change, so saving again applies it to the
   // now open activity.
-  async function undoSettlementLock() {
-    const lock = settlementLock;
+  async function undoSettlementLock(cardLock = null) {
+    const lock = cardLock ?? settlementLock;
     if (!lock || isCheckpointing) return;
     setIsCheckpointing(true);
     try {
@@ -1344,9 +1358,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         categoryOptions={categoryOptions}
         categories={categories}
         formError={formError}
-        settlementLock={settlementLockFor(`expense:${expenseDialog?.id}`, formError)}
+        settlementLock={expenseCardShown ?? settlementLockFor(expenseCardKey, formError)}
         isUndoingSettlementLock={isCheckpointing}
-        onUndoSettlementLock={() => void undoSettlementLock()}
+        onUndoSettlementLock={expenseCardLock && !expenseCardLock.canUndo ? undefined : () => void undoSettlementLock(expenseCardLock)}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
@@ -1355,7 +1369,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
         onRequestDelete={requestDeleteSplit}
-        readOnly={isHouseholdView}
+        readOnly={isHouseholdView || Boolean(expenseCardLock)}
+        lockedBySettlement={Boolean(expenseCardLock)}
       />
 
       <SplitSettlementDialog

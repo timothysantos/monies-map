@@ -113,7 +113,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onCloseAutoFocus = undefined, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, lockedBySettlement = false, onChange, onClose, onCloseAutoFocus = undefined, onSave, onViewLinkedEntry, onRequestDelete }) {
   const isMobileLayout = useIsMobileLayout();
   const [content, setContent] = useState(null);
   // New, edit and view all use the split expense card (design.md, "Lead ·
@@ -172,7 +172,12 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               </div>
             </div>
             <div className="split-dialog-scroll" data-sheet-body>
+              {lockedBySettlement && settlementLock
+                ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                : null}
+              {/* Keyed by mode: after Undo the same card opens editable with a fresh share editor. */}
               <SplitExpenseCard
+                key={readOnly ? "view" : "edit"}
                 dialog={dialog}
                 groupOptions={groupOptions}
                 people={people}
@@ -184,9 +189,11 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
                 readOnly={readOnly}
                 onViewLinkedEntry={onViewLinkedEntry ? () => onViewLinkedEntry(dialog) : undefined}
               />
-              {settlementLock
-                ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
-                : <InlineError message={formError} />}
+              {lockedBySettlement
+                ? null
+                : settlementLock
+                  ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                  : <InlineError message={formError} />}
             </div>
             <div className="dialog-actions split-expense-card-actions">
               <BottomActions
