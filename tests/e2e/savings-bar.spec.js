@@ -183,7 +183,8 @@ test.describe("phone", () => {
     // One line of text each (the card is compact), the card ≤ 205px, and the
     // Money insights still start above the fold.
     expect((await box(bar.locator("[data-savings-sentence]"))).height, "sentence on one line").toBeLessThan(22);
-    expect((await box(lead.locator("[data-money-jobs-summary]"))).height, "money jobs line on one line").toBeLessThan(18);
+    expect((await box(lead.locator("[data-money-jobs]"))).height, "money jobs line on one line").toBeLessThan(18);
+    expect((await box(lead.locator("[data-money-jobs-summary]"))).height, "money jobs line tap target").toBeGreaterThanOrEqual(40);
     const card = await box(lead);
     expect(card.height, "Month lead card height").toBeLessThanOrEqual(205);
     expect((await box(page.locator(".financial-insight").first())).y, "Money insights above the fold").toBeLessThan(664);

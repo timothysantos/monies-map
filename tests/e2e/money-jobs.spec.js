@@ -105,17 +105,19 @@ test.describe("phone", () => {
   test.use(iPhone13);
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    // Seed before any page opens: a page opened first on a fresh, empty
+    // stack keeps a shell without the people, and a person link then falls
+    // back to Household.
     await reseedDemo(page);
     await seedInvesting(page);
   });
 
   test("Month lead: invested is its own part, the jobs fold to one line, and each row says done, short or over", async ({ page }) => {
     await revealMoney(page);
+    const lead = await openLead(page, MONTH_URL, ".month-lead");
     const figures = await monthFigures(page);
     expect(figures.invested, "the GIRO is invested").toBe(120_000);
     expect(figures.investPlan).toBe(150_000);
-    const lead = await openLead(page, MONTH_URL, ".month-lead");
     const bar = lead.locator("[data-savings-bar]");
 
     await expect(bar.locator("[data-segment]")).toHaveCount(3);
@@ -185,11 +187,11 @@ test.describe("phone", () => {
 
   test("Ask about this opens Ask with the question in the message box, for the person to send", async ({ page }) => {
     await revealMoney(page);
+    const lead = await openLead(page, MONTH_URL, ".month-lead");
     const figures = await monthFigures(page);
     const question = figures.spending > figures.spendPlan
       ? `Why did I spend more than planned in ${MONTH_WORDS}?`
       : `What did I spend the most on in ${MONTH_WORDS}?`;
-    const lead = await openLead(page, MONTH_URL, ".month-lead");
     await lead.locator('[data-segment="spent"]').tap();
     const ask = lead.locator('[data-money-actions="spent"] [data-action="ask"]');
     await expect(ask).toHaveAttribute("data-question", question);
@@ -205,8 +207,8 @@ test.describe("phone", () => {
   });
 
   test("hidden money: the jobs say ✓ or a percentage, the menu and question carry no amount", async ({ page }) => {
-    const figures = await monthFigures(page);
     const lead = await openLead(page, MONTH_URL, ".month-lead");
+    const figures = await monthFigures(page);
     await expect(lead.locator(".summary-lead-spent")).toHaveText("••••");
     const rows = jobRows(figures);
     const done = rows.filter(([, status]) => status === "✓ done").length;
@@ -233,7 +235,9 @@ test.describe("phone", () => {
 test.describe("desktop", () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/");
+    // Seed before any page opens: a page opened first on a fresh, empty
+    // stack keeps a shell without the people, and a person link then falls
+    // back to Household.
     await reseedDemo(page);
     await seedInvesting(page);
   });

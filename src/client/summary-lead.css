@@ -188,8 +188,10 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   height: 10px;
 }
 
+/* Above the money jobs line's reach (its tap target overlaps the bar's). */
 .savings-bar-segment {
   position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   height: 100%;
   min-width: 0;
@@ -263,6 +265,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   width: 2px;
   margin-left: -1px;
   border-radius: 1px;
+  z-index: 2;
   background: var(--text);
   pointer-events: none;
 }
@@ -360,11 +363,13 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="invested"] 
   min-width: 0;
 }
 
+/* A 40 px target without making the line taller: the padding reaches into
+   the gaps above and below, the negative margin gives the space back. */
 .money-jobs .money-jobs-summary {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: block;
+  margin: -13px 0;
+  padding: 13px 0;
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 600;
@@ -379,6 +384,8 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="invested"] 
 
 .money-jobs .money-jobs-summary::after {
   content: "›";
+  display: inline-block;
+  margin-left: 4px;
   font-size: 0.9rem;
   line-height: 1;
   transition: transform 0.15s ease;
@@ -388,12 +395,6 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="invested"] 
   transform: rotate(90deg);
 }
 
-/* A 44 px target without making the line taller. */
-.money-jobs .money-jobs-summary::before {
-  content: "";
-  position: absolute;
-  inset: -13px 0;
-}
 
 .money-jobs-list {
   display: grid;
