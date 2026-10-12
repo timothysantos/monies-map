@@ -321,7 +321,7 @@ const SHOTS = [
     name: "splits-create-group", device: "desktop",
     run: async (page) => {
       await open(page, splitsUrl());
-      await page.locator(".splits-groups-row:not(.splits-groups-row-floating)").getByRole("button", { name: "Create group" }).click();
+      await page.locator(".splits-strip").getByRole("button", { name: "Create group" }).click();
       const dialog = page.getByRole("dialog", { name: "Create group" });
       await dialog.getByLabel("Group name").fill("Seoul trip");
       await dialog.getByLabel("Group currency").selectOption("KRW");
@@ -639,9 +639,12 @@ const SHOTS = [
       const card = page.locator(".split-activity-card").filter({ hasText: "Jumbo Seafood dinner" }).first();
       await scrollToLocator(page, card, 200);
       await card.click();
-      // An open expense edits in place; its form replaces the row.
-      const editor = page.locator(".split-date-group").filter({ has: page.getByRole("button", { name: "Delete", exact: true }) }).first();
+      // An open expense is the same card as New split expense, in the list
+      // in place of its row.
+      const editor = page.locator(".split-inline-editor-card");
       await editor.waitFor();
+      // Back to the top, so the shot leads with the card and its total.
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
       await scrollToLocator(page, editor, 60);
       await hideCaret(page);
       await capture("splits-edit");

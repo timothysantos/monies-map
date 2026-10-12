@@ -244,7 +244,7 @@ test("Splits: balances on the orange are plain text; activity is coloured text o
     expect([INK.in, INK.short]).not.toContain(strip.color);
     expect([INK.in, INK.short]).not.toContain((await looks(balance.locator("strong"))).color);
 
-    const pillBalance = page.locator(".split-group-pill").filter({ hasText: group.name }).first().locator(".split-group-pill-balance");
+    const pillBalance = page.locator(".splits-strip-tile").filter({ hasText: group.name }).first().locator(".splits-strip-tile-balance");
     const pill = await looks(pillBalance);
     expect(pill.background).toBe(TRANSPARENT);
     expect([INK.in, INK.short]).not.toContain(pill.color);

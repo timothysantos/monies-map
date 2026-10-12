@@ -6,7 +6,8 @@ import { applyCheckInAction } from "./check-in-action";
 import { askCopy } from "./copy/ask-copy";
 import { useCachedSummary } from "./ask-data";
 // The check-in's own composer, kind chip and styles (money-checkin.css).
-import { CheckInChip, checkInMemoryKey, composeCheckInHeadline, useCheckInClock } from "./financial-insight";
+import { composeCheckInHeadline } from "./check-in-headline";
+import { CheckInChip, checkInMemoryKey, useCheckInClock } from "./financial-insight";
 import { money, unmaskedMoney } from "./formatters";
 import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";

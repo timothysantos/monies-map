@@ -599,15 +599,27 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   flex: 0 1 160px;
 }
 
-/* Wide screen: the card left, the rows right, the actions under them. */
+/* Wide screen: the lead card across the top, the rows in two balanced
+   columns under it, the actions under them (the Splits inline card does the
+   same). */
 .entry-edit-card.is-inline {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 24px;
+  gap: 16px;
 }
 
 .entry-edit-card.is-inline .lsd-rows {
   background: rgba(255, 255, 255, 0.9);
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--line);
+}
+
+.entry-edit-card.is-inline .lsd-rows .lsd-row {
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding-block: 8px;
+  break-inside: avoid;
 }
 
 .entry-edit-inline-actions.lsd-bottom {
@@ -619,9 +631,9 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   flex: 0 0 auto;
 }
 
-@media (max-width: 1100px) {
-  .entry-edit-card.is-inline {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 760px) {
+  .entry-edit-card.is-inline .lsd-rows {
+    column-count: 1;
   }
 }
 
