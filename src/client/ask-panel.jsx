@@ -15,12 +15,14 @@ import {
   updateSavedEntryCategory
 } from "./ask-api";
 import {
+  acceptSplitSuggestion,
   answerCardQuestion,
   applyEntryDraft,
   applyReceiptRead,
   buildCardCreateDraft,
   cardFromSavedEntry,
   createAskCard,
+  declineSplitSuggestion,
   markCardSaved,
   markCardSaveFailed,
   markCardSaving,
@@ -50,6 +52,7 @@ import { askCopy, formatShortMonth } from "./copy/ask-copy";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { useAskSplitSuggestion } from "./use-ask-split-suggestion";
 import { useIsMobileLayout } from "./use-viewport";
 import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
@@ -245,6 +248,9 @@ function AskConversation({
     () => entriesPage.page?.splitGroups?.map((group) => ({ id: group.id, name: group.name })) ?? splitGroupsFromCache ?? [],
     [entriesPage.page, splitGroupsFromCache]
   );
+  // "You usually split this with …": from the household's own split
+  // history, read-only (DOMAIN.md "Split Suggestion").
+  const splitSuggestion = useAskSplitSuggestion({ card, context, splitGroups });
 
   useRouteWorkReport({
     ready: true,
@@ -896,6 +902,18 @@ function AskConversation({
     category: (categoryName) => void changeSavedCategory(categoryName),
     chooseCategory: () => setSavedPicker(true),
     shareSaved: (splitGroupId) => void shareSavedEntry(splitGroupId),
+    // The split suggestion: on a draft it turns Splits on with the group
+    // (saved with the card); on the Apple Pay card it is Add to Splits.
+    acceptSplitSuggestion: () => {
+      if (!splitSuggestion) return;
+      if (card?.status === "saved") {
+        setCard((current) => ({ ...current, splitSuggestionAnswer: "accepted" }));
+        void shareSavedEntry(splitSuggestion.groupId);
+        return;
+      }
+      setCard((current) => acceptSplitSuggestion(current, splitSuggestion));
+    },
+    declineSplitSuggestion: () => setCard((current) => declineSplitSuggestion(current)),
     chooseFilterOption,
     switchView,
     resolveCheck: () => void resolveMoneyCheck(),
@@ -934,6 +952,7 @@ function AskConversation({
     // would show the nearest month instead).
     canOpenAnswer: active?.kind !== "answer" || isTrackedMonth(active.filter.month),
     moneyLabels: active?.kind === "money-check" ? skewCheckLabels(active.candidate) : null,
+    splitSuggestion,
     actions
   });
 
