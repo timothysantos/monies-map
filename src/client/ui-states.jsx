@@ -96,7 +96,7 @@ export function InlineError({ message, retryLabel = "", retryingLabel = "", isRe
 // for it (describeLoadFailure) as the Detail and keeps the reason itself on the
 // card as data-technical-detail, for inspection, never as screen text.
 // `children` is any further Detail (a diagnosis).
-export function ErrorPanel({ title, detail, technical = "", children = null, actions = [], className = "" }) {
+export function ErrorPanel({ title, detail = null, technical = "", children = null, actions = [], className = "" }) {
   const plainLine = describeLoadFailure(technical);
   return (
     <StateCard

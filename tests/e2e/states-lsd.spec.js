@@ -52,7 +52,10 @@ test.describe("errors", () => {
     // Lead, then Support, then the technical Detail line, in that order.
     await expect(card.locator(".state-title")).toHaveText("The Month page could not load.");
     await expect(card.locator(".state-detail")).toHaveText(/\S/);
-    await expect(card.locator(".app-loading-issue-inline")).toContainText("Month exploded");
+    // The technical reason is never screen text: one plain line shows, and the
+    // reason stays on the card for inspection.
+    await expect(card.locator(".app-loading-issue-inline")).toHaveText("We couldn't reach your data just now.");
+    await expect(card).toHaveAttribute("data-technical-detail", /Month exploded/);
     const order = await card.evaluate((element) => [".state-title", ".state-detail", ".app-loading-issue-inline"]
       .map((selector) => element.querySelector(selector).getBoundingClientRect().top));
     expect(order).toEqual([...order].sort((a, b) => a - b));
