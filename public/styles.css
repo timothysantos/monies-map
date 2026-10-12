@@ -5012,25 +5012,6 @@ body[data-ask-dock="docked"] .environment-banner {
   font-weight: 700;
 }
 
-.import-intake-empty {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 1px dashed var(--pastel-mint-line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.64);
-}
-
-.import-intake-empty strong {
-  color: var(--ink);
-}
-
-.import-intake-empty span {
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
 .import-intake-list {
   display: grid;
   gap: 8px;

@@ -51,6 +51,7 @@ import { buildChipRow, findActiveItem } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
 import { createPressGesture, createVoiceController, joinSpokenText } from "./ask-voice";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
+import { EmptyState } from "./ui-states";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
@@ -1251,7 +1252,7 @@ function AskConversation({
         {!isAddMode && !isShortcut ? (
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
         ) : null}
-        {!isAddMode && !isShortcut && !card && !thread.length ? <p className="ask-note">{askCopy.greeting}</p> : null}
+        {!isAddMode && !isShortcut && !card && !thread.length ? <EmptyState compact title={askCopy.greeting}>{askCopy.greetingHint}</EmptyState> : null}
         {settledThread.slice(0, card ? cardSlot : settledThread.length).map((item) => <ThreadItem key={item.id} item={item} settled={settledIds.has(item.id)} answerProps={answerProps} />)}
         {card ? (
           <AskEntryCard

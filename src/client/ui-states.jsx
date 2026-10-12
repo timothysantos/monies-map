@@ -50,8 +50,17 @@ function StateCard({ state, tone = undefined, icon = null, title, detail = null,
 // action it becomes a Lead card that says what is missing (the title), why
 // or what next (the children, one quiet line) and the one next step
 // (`action`, the primary; `secondary`, quiet beside it). `actions` still
-// takes ready-made controls.
-export function EmptyState({ title = null, children = null, actions = null, action = null, secondary = null, icon = null, className = "" }) {
+// takes ready-made controls. `compact` is the same two lines with no card,
+// for a section that already has its action nearby.
+export function EmptyState({ title = null, children = null, actions = null, action = null, secondary = null, icon = null, compact = false, className = "" }) {
+  if (compact && title) {
+    return (
+      <div className={["state-note", className].filter(Boolean).join(" ")} data-state="empty">
+        <strong className="state-title">{title}</strong>
+        {children ? <p className="state-detail">{children}</p> : null}
+      </div>
+    );
+  }
   if (!title && !actions && !action) {
     return <p className={["empty-state", className].filter(Boolean).join(" ")}>{children}</p>;
   }

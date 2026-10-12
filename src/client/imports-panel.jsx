@@ -2360,6 +2360,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onLoadItem={handleLoadIntakeItem}
             onRemoveItem={handleRemoveIntakeItem}
             onClear={handleClearIntakeQueue}
+            onChooseFiles={() => fileInputRef.current?.click()}
           />
           <ImportInboxSection
             inbox={safeImportsPage.importInbox}

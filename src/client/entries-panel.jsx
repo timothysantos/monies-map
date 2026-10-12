@@ -4,6 +4,7 @@
 import "./entries-route.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { Inbox, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -1468,7 +1469,10 @@ export function EntriesPanel({
       ) : (
         <EntriesEmptyState
           suggestion={entriesEmptyStateSuggestion}
+          hasFilters={activeEntryFilterCount > 0}
           onSwitchView={applySuggestedView}
+          onAddEntry={openEntryComposer}
+          onResetFilters={resetEntryFilters}
         />
       )}
       <LinkedNoteSyncDialog
@@ -1551,25 +1555,38 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, o
   );
 }
 
-function EntriesEmptyState({ suggestion, onSwitchView }) {
+// Nothing to list. With filters on, the way forward is to reset them; with
+// none, it is to add an entry (or import a file, which the line says).
+function EntriesEmptyState({ suggestion, hasFilters, onSwitchView, onAddEntry, onResetFilters }) {
   if (!suggestion) {
-    return <EmptyState>{messages.entries.noEntries}</EmptyState>;
+    return hasFilters ? (
+      <EmptyState
+        className="entries-empty-state"
+        icon={<SearchX />}
+        title={messages.entries.noEntries}
+        action={{ label: messages.entries.resetFilters, onClick: onResetFilters }}
+      >
+        {messages.entries.noEntriesFilteredDetail}
+      </EmptyState>
+    ) : (
+      <EmptyState
+        className="entries-empty-state"
+        icon={<Inbox />}
+        title={messages.entries.noEntriesYet}
+        action={{ label: messages.entries.addEntry, onClick: onAddEntry }}
+      >
+        {messages.entries.noEntriesYetDetail}
+      </EmptyState>
+    );
   }
 
   return (
     <EmptyState
-      className="entries-empty-state linked-entry-notice"
+      className="entries-empty-state"
+      icon={<Inbox />}
       title={messages.entries.walletViewMismatchTitle}
-      actions={(
-        <>
-          <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
-            {messages.entries.walletViewMismatchHouseholdAction}
-          </button>
-          <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
-            {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
-          </button>
-        </>
-      )}
+      action={{ label: messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel), onClick: () => onSwitchView(suggestion.ownerPersonId) }}
+      secondary={{ label: messages.entries.walletViewMismatchHouseholdAction, onClick: () => onSwitchView("household") }}
     >
       {messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
     </EmptyState>

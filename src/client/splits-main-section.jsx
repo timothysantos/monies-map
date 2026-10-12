@@ -1,4 +1,6 @@
+import { Users } from "lucide-react";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
 import { SplitMatchesList } from "./splits-matches";
@@ -35,6 +37,9 @@ export function SplitsMainSection({
   onBackToGroup,
   onToggleBreakdown,
   onAddExpense,
+  onClearSearch,
+  groupCount,
+  onCreateGroup,
   searchControl,
   summaryToolbar,
   onDismissMatch,
@@ -53,6 +58,19 @@ export function SplitsMainSection({
   readOnly = false,
   settlementStatus = null
 }) {
+  // Not even the shared group exists: one card says so and offers the way out.
+  if (groupCount === 0) {
+    return (
+      <EmptyState
+        icon={<Users />}
+        title={messages.splits.noGroups}
+        action={readOnly ? null : { label: messages.splits.createGroup, onClick: onCreateGroup }}
+      >
+        {messages.splits.noGroupsDetail}
+      </EmptyState>
+    );
+  }
+
   return (
     <>
       <SplitsBreakdownSection
@@ -114,6 +132,7 @@ export function SplitsMainSection({
             isSubmitting={isSubmitting}
             hasInlineSplitChanges={hasInlineSplitChanges}
             onAddExpense={onAddExpense}
+            onClearSearch={onClearSearch}
             activeGroupId={activeGroup?.id ?? ""}
             onOpenArchive={onOpenArchive}
             onEditExpense={onEditExpense}

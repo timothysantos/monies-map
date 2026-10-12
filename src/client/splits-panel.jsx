@@ -429,6 +429,11 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     });
   }
 
+  function openCreateGroupDialog() {
+    setFormError("");
+    setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
+  }
+
   function updateSplitSearch(value) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -1283,10 +1288,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         readOnly={isHouseholdView}
         hideBar={Boolean(inlineSplitDraft)}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
-        onCreateGroup={() => {
-          setFormError("");
-          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
-        }}
+        onCreateGroup={openCreateGroupDialog}
       />
       <div className="panel-head">
         <div>
@@ -1345,6 +1347,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         onBackToGroup={openActiveGroupView}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
         onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}
+        onClearSearch={() => updateSplitSearch("")}
+        groupCount={groups.length}
+        onCreateGroup={openCreateGroupDialog}
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}

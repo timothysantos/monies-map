@@ -183,7 +183,7 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     await waitUsable(page);
     const mix = spendingMix(page);
     await expect(mix).toHaveCount(1);
-    await expect(mix.locator(".empty-state")).toHaveText("No spend rows in this view.");
+    await expect(mix.locator(".state-note .state-title")).toHaveText("No spend rows in this view.");
     await expect(mix.locator(".spending-mix-chart-shell")).toHaveCount(0);
     await expect(mix.locator(".share-row")).toHaveCount(0);
   });
@@ -243,7 +243,7 @@ test.describe("Spending Mix for a picked month on a desktop", () => {
     await page.goto(`/month?view=${view}&month=${month}&scope=${scope}&${RANGE_QUERY}`);
     await waitUsable(page);
     const mix = spendingMix(page);
-    await expect(mix.locator(".empty-state")).toHaveText("No spend rows in this view.");
+    await expect(mix.locator(".state-note .state-title")).toHaveText("No spend rows in this view.");
     await expect(mix.locator(".spending-mix-chart-shell")).toHaveCount(0);
   });
 });
