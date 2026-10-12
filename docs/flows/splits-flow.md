@@ -39,8 +39,11 @@ screen (the phone sheet and the wide dialog), the same card as the
 it, Escape and Cancel close it and focus returns to the row. Deleting from
 the card asks in the app first and closes the card when the split is gone.
 Only a settlement row still edits inline on a wide screen. A settled split
-opens editable and is refused in place (see the lock bullet below); View
-split is the read-only household view.
+expense (`settlementCheckpointId` or `isArchived`) opens the same card
+read-only as View split: the lock sentence and its Undo simplification or
+Undo settle-up button on top, no Save or Delete; after the undo the card is
+editable in place. The server refusal below stays as the backstop (a stale
+page, an entry save, a settlement row).
 
 ## Data Flow
 
@@ -80,7 +83,8 @@ Watch area:
 - checkpoint membership is immutable until the user explicitly reopens it,
   and so are the settled facts of its records: a Splits edit or delete, or an
   Entries save that would move a linked split, is refused with
-  `split_settlement_locked` and the form offers `Undo simplification`
+  `split_settlement_locked` and the form (for a split expense, the read-only
+  card) offers `Undo simplification`
   (`settlement-lock-notice.jsx`); an edit never reopens a checkpoint by itself
 - a closed group batch (settled by a settle-up) locks its records the same
   way; the refusal names the `batchId` and offers `Undo settle-up`, which the

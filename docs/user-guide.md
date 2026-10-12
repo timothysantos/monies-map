@@ -1443,6 +1443,12 @@ on a wide screen: change the total, a share, the category or the group, open
 without saving, and the cursor goes back to the split you opened. A deleted
 split can be restored ([Restore a deleted split](#restore-a-deleted-split)).
 
+A split that has been settled up (or included in a simplified settlement)
+opens as **View split**: you can read it, but not change it. A line at the top
+says which settlement it belongs to, and the button under it (**Undo
+settle-up** or **Undo simplification**) opens that activity again. After the
+undo the same card turns editable and you can change and save it.
+
 ![Selecting a split opens it as a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
 
 ![Deleting a split asks you to confirm](/faq/guide/desktop/thumbs/splits-delete.webp)
@@ -1522,16 +1528,18 @@ Expenses that are part of a settle-up or a simplified settlement are locked:
 their amount, currency, shares, payer, date and group cannot change, and they
 cannot be deleted. Otherwise the settled amount would silently stop matching.
 
-If you try, the save is refused and nothing changes. The message names the
-settlement and offers a button:
+Select a settled expense and it opens as **View split**, with nothing to
+change. A line at the top names the settlement and the button under it undoes
+it:
 
 1. Select **Undo settle-up** (for a settled group) or **Undo simplification**
    (for a simplified settlement). You can also open the batch in **Archived
    batches** and undo it there.
-2. Your change is still in the form: select save again.
+2. The same card turns editable: make your change and select **Save expense**.
 3. Settle again for the new balance.
 
-Description, category, note and bank links stay editable without undoing.
+If a change reaches a settled split another way (for example an entry on
+Entries), it is refused with the same message and button, and nothing changes.
 
 ## Restore a deleted split
 

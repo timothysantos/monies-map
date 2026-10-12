@@ -698,10 +698,18 @@ Where it is used:
   entry is a "View entry" row. View split (the read-only household view) shows
   the same card with no controls and Close. The save request is the one the
   form sent. Deleting from the card closes it once the split is gone. A
-  settled split (in a simplified settlement or a closed group batch) still
-  opens editable on purpose: the save is refused in place with the lock
-  notice and its Undo button (`split_settlement_locked`), which a read-only
-  View split would take away. View split stays for the household view.
+  settled split (in a simplified settlement, `settlementCheckpointId`, or a
+  closed group batch, `isArchived`) opens the same card read-only, titled
+  "View split" (`split-card-lock.js`): the lock sentence (the server's own
+  wording for a refused change) on top, its Undo simplification or Undo
+  settle-up button directly under it, then the card with no fields, no Save
+  and no Delete, and Close. After the undo succeeds the card turns editable
+  in place (the card is keyed by mode so its share editor opens fresh), and a
+  failed undo shows its message in the same place. The household view is
+  always read-only without the lock line. The server still refuses a change
+  or delete of a settled split (`split_settlement_locked`), so a stale page
+  cannot change one. A settlement row is not a card: its dialog and inline
+  editor keep the in-place refusal.
 
 ## Apple Shortcut Install Boundary
 
