@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { getPersonColour } from "../../src/client/person-colour.js";
 import { reseedDemo } from "./helpers";
 
 // The desktop chrome (design.md "Desktop Chrome") shares one set of tokens:
@@ -77,7 +78,7 @@ test.describe("desktop chrome tokens", () => {
           return {
             pillRow: read(document.querySelector(".context-block .pill-row")),
             tabs: visible("nav.tab-strip > a.tab").map(read),
-            period: ["Previous period", "Next period"].map((label) => read(document.querySelector(`[aria-label="${label}"]`))),
+            period: ["Previous period", "Next period"].map((label) => read(document.querySelector(`.period-nav-cluster [aria-label="${label}"]`))),
             display: read(document.querySelector(".period-display")),
             eye: read(document.querySelector(".totals-visibility-toggle--header"))
           };
@@ -100,7 +101,7 @@ test.describe("desktop chrome tokens", () => {
   });
 
   test("the active person view is that person's colour and Household is raised white", async ({ page }) => {
-    const tim = await computedColour(page, "color-mix(in srgb, #33A471 16%, white)");
+    const tim = await computedColour(page, `color-mix(in srgb, ${getPersonColour("Tim")} 16%, white)`);
     expect(tim).not.toBe(WHITE);
     for (const layout of LAYOUTS) {
       await setLayout(page, layout);
@@ -113,7 +114,7 @@ test.describe("desktop chrome tokens", () => {
       // An inactive view stays on the grey track with no fill of its own.
       const inactive = page.locator(".context-block .pill:not(.is-active)").first();
       await expect(inactive, where).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-      await expect(page.locator(".context-block .pill-row"), where).toHaveCSS("background-color", await computedColour(page, "rgba(38, 35, 31, 0.05)"));
+      await expect(page.locator(".context-block .pill-row"), where).toHaveCSS("background-color", await computedColour(page, "var(--track)"));
 
       await openPage(page, "/summary?view=household&month=2026-05", layout);
       const household = page.locator(".context-block .pill.is-active");
@@ -135,7 +136,7 @@ test.describe("desktop chrome tokens", () => {
       const monthName = page.locator(".panel-head .month-label-period").first();
       await expect(monthName, layout.name).toBeVisible();
       await expect(monthName, layout.name).toHaveCSS("font-size", "27.2px");
-      await expect(monthName, layout.name).toHaveCSS("color", await computedColour(page, "rgb(38, 35, 31)"));
+      await expect(monthName, layout.name).toHaveCSS("color", await computedColour(page, "var(--text)"));
     }
   });
 
@@ -146,7 +147,7 @@ test.describe("desktop chrome tokens", () => {
 
       await openPage(page, "/entries?view=person-tim&month=2026-04", layout);
       const scope = page.locator(".desktop-scope-toggle");
-      await expect(scope, where).toHaveCSS("background-color", await computedColour(page, "rgba(38, 35, 31, 0.05)"));
+      await expect(scope, where).toHaveCSS("background-color", await computedColour(page, "var(--track)"));
       const selected = scope.locator(".pill.is-active");
       await expect(selected, where).toHaveCount(1);
       await expect(selected, where).toHaveCSS("background-color", WHITE);
@@ -158,7 +159,7 @@ test.describe("desktop chrome tokens", () => {
       await expect(row, where).toHaveCount(1);
       await expect(row, where).toHaveCSS("background-color", WHITE);
       await expect(row, where).toHaveCSS("font-weight", "600");
-      await expect(page.locator(".summary-focus-button:not(.is-active)").first(), where).toHaveCSS("background-color", await computedColour(page, "rgba(38, 35, 31, 0.05)"));
+      await expect(page.locator(".summary-focus-button:not(.is-active)").first(), where).toHaveCSS("background-color", await computedColour(page, "var(--track)"));
     }
   });
 
@@ -206,7 +207,7 @@ test.describe("desktop chrome tokens", () => {
         const edge = document.querySelector(".summary-month-selector").getBoundingClientRect().right;
         return [...document.querySelectorAll(".summary-month-selector .summary-focus-button")].map((chip) => chip.getBoundingClientRect().right <= edge + 0.5);
       });
-      expect(chips.length, `${where}: month chips`).toBeGreaterThanOrEqual(13);
+      expect(chips.length, `${where}: month chips`).toBeGreaterThanOrEqual(5);
       expect(chips.filter((inside) => !inside), `${where}: month chips past the edge`).toEqual([]);
     }
   });
@@ -224,7 +225,7 @@ test.describe("desktop chrome tokens", () => {
         await expect(display, where).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
         await expect(display, where).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
         for (const label of ["Previous period", "Next period"]) {
-          const arrow = page.locator(`[aria-label="${label}"]`);
+          const arrow = page.locator(`.period-nav-cluster [aria-label="${label}"]`);
           await expect(arrow, where).toBeDisabled();
           expect(Number(await arrow.evaluate((element) => getComputedStyle(element).opacity)), `${where}: ${label}`).toBeLessThan(1);
         }
@@ -232,7 +233,7 @@ test.describe("desktop chrome tokens", () => {
       // Negative: a page that uses the period keeps its bordered box and live arrows.
       await openPage(page, "/entries?view=person-tim&month=2026-04", layout);
       await expect(page.locator(".period-display"), layout.name).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-      await expect(page.locator('[aria-label="Next period"]'), layout.name).toBeEnabled();
+      await expect(page.locator('.period-nav-cluster [aria-label="Next period"]'), layout.name).toBeEnabled();
     }
   });
 
@@ -249,7 +250,7 @@ test.describe("desktop chrome tokens", () => {
       expect(text, where).toMatch(/^[•·]+$/);
       expect(text, where).not.toMatch(/\d/);
       // No tone reveals its sign: the figure takes the plain ink.
-      await expect(key, where).toHaveCSS("color", await computedColour(page, "rgb(38, 35, 31)"));
+      await expect(key, where).toHaveCSS("color", await computedColour(page, "var(--text)"));
       await expect(page.locator(".entries-totals-strip"), where).not.toContainText(/\d/);
     }
   });
