@@ -80,9 +80,9 @@ function buildList(page, open) {
         }).join("");
       }
       if (t.title === "Ask and AI") {
-        const lines = card.innerText.split("\n").map((x) => x.trim()).filter(Boolean);
-        const sentence = lines.find((l) => /set up|credit|model/i.test(l) && l.length > 25 && !l.startsWith("Claude credits for") && l !== "Ask and AI");
-        const checked = (lines.find((l) => l.startsWith("Last checked")) ?? "").replace("Last checked ", "").replace(" at ", ", ");
+        const text = card.textContent;
+        const sentence = (text.match(/Claude isn't set up[^.]*\./) ?? [""])[0];
+        const checked = (text.match(/Last checked (.*?(?:AM|PM))/) ?? ["", ""])[1].replace(" at ", ", ");
         return `<section class="lsd-card">${M.hero({ bubble: M.bubble(M.icon("sparkles", 26)), title: "Ask", subtitle: "Uses the basic model" })}
           <div class="lsd-chips">${M.chip("Claude not set up", { tone: "butter", icon: "alert" })}</div></section>
           ${M.rows(M.row("Model", "Basic model", { readOnly: true }) + M.row("Claude credits", "Not set up", { state: "action" }) + (checked ? M.row("Last checked", checked, { readOnly: true }) : ""), "Ask and AI")}
@@ -118,6 +118,7 @@ async function after(page, h, shot, open) {
     await page.waitForTimeout(400);
   }
   await shot(open ? "after" : "after-closed");
+  if (open) await shot("after-full", { fullPage: true });
 }
 
 export const scenarios = [

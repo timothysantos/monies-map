@@ -78,7 +78,7 @@ async function calmFloaters(page, full) {
         el.style.setProperty("display", "none", "important");
       }
     }
-  });
+  }, full);
   await page.waitForTimeout(150);
 }
 
@@ -89,7 +89,7 @@ for (const scenario of scenarios) {
   const page = await context.newPage();
   try {
     await scenario.run(page, helpers, async (suffix, opts = {}) => {
-      if (scenario.device === "phone" && !opts.keepFloaters) await calmFloaters(page);
+      if (scenario.device === "phone" && !opts.keepFloaters) await calmFloaters(page, Boolean(opts.fullPage));
       const file = path.join(OUT, `${scenario.name}-${suffix}.png`);
       await page.screenshot({ path: file, fullPage: Boolean(opts.fullPage) });
       console.log(file);
