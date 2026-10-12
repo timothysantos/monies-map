@@ -1629,6 +1629,20 @@ endpoint that is consistently too expensive. The durable fix is to keep broad
 reads split into route-specific payloads or move the Worker to a plan with more
 CPU/resource headroom if the production data size now requires it.
 
+## How do the colour presets load?
+
+The 70s default is the only scheme in the first-screen `styles.css`. Each
+other preset (Settings → Colours) is a small stylesheet in
+`public/palettes/<id>.css` that overrides the colour tokens under
+`:root[data-palette="<id>"]`; the build minifies it like `styles.css`. A
+short inline script in `index.html` reads the stored choice
+(`localStorage["monies-map:palette"]`) and writes that sheet's `<link>`
+into the head before the page paints, so a reload never flashes the
+default. To change a preset, edit its sheet and run
+`tests/colour-contrast.test.mjs` and `tests/colour-presets.test.mjs`: they
+fail on any unreadable pair or missing token. design.md, "Colour presets",
+has the token list.
+
 ## How should saves and refreshes behave?
 
 The app is moving toward a more precise save model for row-heavy screens such as

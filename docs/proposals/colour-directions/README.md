@@ -7,6 +7,13 @@ could replace the 70s values in `:root` of `public/styles.css`,
 `src/domain/category-palette.ts` and `src/client/person-colour.js` without
 any component change. Nothing here is wired into the app.
 
+Later (2026-10) the colours became a setting: **Settings → Colours** ships
+60s Mod, 80s Pop, Modern, Black & White and Code presets next to the 70s
+default (design.md, "Colour presets"; `public/palettes/*.css`). The shipped
+60s and 80s presets have their own accents and Splits panels, so their
+values differ from the comparison sets below, which stay as the record of
+the original choice.
+
 All three keep the terracotta accent (`--accent` #934923, `--accent-strong`
 #b15e2f) and the Splits orange panel. Every ink below meets WCAG AA (4.5:1)
 on the panel, its soft tint (60% over the panel), its full fill and the

@@ -1443,7 +1443,8 @@ faded plum and harvest gold, with the terracotta accent and the Splits
 orange panel kept as they were. The palette lives once, in `:root` of
 `public/styles.css`; a state or category surface uses a fill token, and text
 on it uses the same hue's `-ink` token, which meets WCAG AA on that fill.
-Do not add saturated fills or new hex colours outside these tokens.
+Do not add saturated fills or new hex colours outside these tokens: a colour
+preset (see "Colour presets") re-colours the app only through them.
 
 The token names stayed when the values moved from the pastel set to the 70s
 set, so code and older notes that say mint, rose, sky, lavender or butter
@@ -1483,6 +1484,74 @@ a soft fill (status pills, chips, Imports inbox and intake states), and the
 full fill for banners that need attention (the environment banners: demo
 sky, local mint; the tab badge; the danger button; statement results). `--muted` keeps 5.59 on the neutral fill; on any
 other tint, text uses that tint's ink instead.
+
+## Colour Presets
+
+The 70s Warm palette above is the default. **Settings → Colours** offers
+five more whole schemes, each with its own accent, Splits panel, money
+tones, surfaces, category and person colours; the meaning of every tone
+stays (mint money in, rose out and over plan, sky a plan, butter a To do,
+lavender "think about").
+
+| Preset | Id | Feel | Accent / Splits panel |
+| --- | --- | --- | --- |
+| 70s Warm | `70s` | cream paper, chocolate ink (the default) | terracotta #b15e2f / terracotta |
+| 60s Mod | `60s` | mid-century cream and charcoal: olive, coral, Eames blue, mustard, aubergine | teal #127a74 / teal |
+| 80s Pop | `80s` | Memphis lilac-grey and deep indigo: aqua mint, hot pink, electric teal, neon purple, sunny yellow | magenta #b0198a / magenta into purple |
+| Modern | `modern` | neutral greys and white, crisp fintech | indigo #4f46e5 / indigo |
+| Black & White | `mono` | monochrome, high contrast | near-black #1a1a1a / black |
+| Code | `code` | dark terminal (near-black, monospace headings) | cyan #56d4dd / amber #e3b341 |
+
+How it works:
+
+- **Tokens.** Every colour in the stylesheets is a token. Besides the
+  `:root` tokens above, `--paper-rgb` is every white surface,
+  `--on-strong-rgb` the text on a strong fill (accent buttons, the Splits
+  panel), `--splits-rgb` / `--splits-deep-rgb` the Splits panel and
+  `--accent-rgb` / `--accent-strong-rgb` the accent tints. A few hand-tuned
+  70s shades are written as `var(--cream-rgb, 255 250 246)` (also
+  `--blush-rgb`, `--on-strong-tint-rgb`, `--accent-deep-rgb`,
+  `--accent-ink-rgb`, `--ink-rgb`, `--muted-rgb`): only a preset sets them,
+  so the default keeps each shade exactly. Shadows and modal scrims stay
+  neutral dark in every preset. New CSS uses these tokens, never a raw
+  colour.
+- **Sheets.** A preset is one small stylesheet, `public/palettes/<id>.css`
+  (about 2 kB, minified by the build like `styles.css`), that overrides the
+  tokens under `:root[data-palette="<id>"]`. Only the default is in the
+  first-screen CSS. `src/client/colour-presets.js` lists the presets (name,
+  four swatch dots) and `applyColourPreset` loads the sheet, then sets the
+  attribute; a later choice wins over a sheet that arrives late.
+- **Before the first paint.** The inline script in `index.html` reads
+  `localStorage["monies-map:palette"]` and, for a known id, sets
+  `data-palette` and writes the sheet's `<link>` into the head, so the
+  sheet blocks the first paint and the default never flashes. Blocked or
+  empty storage means the default.
+- **Category, person and group colours.** They all come from the category
+  palette, so `src/client/palette-colour.js` (`paletteColour`) hands each to
+  the page as `var(--cat-<70s hex>, <70s hex>)` and a preset sets one
+  `--cat-*` token per palette colour. Stored colours never change. The
+  donut keeps the 70s colour in its `fill` attribute and draws the preset's
+  through `style`.
+- **Black & White** shows money direction in the type as well as the grey:
+  money in is bold, money out and over plan italic, a plan dotted and a To
+  do wavy underlined; hidden amounts keep none of it. Categories are greys
+  told apart by icon and name.
+- **Code** is dark: `color-scheme: dark`, dark fills with bright inks, and a
+  bright accent and Splits panel with near-black text on them.
+
+`tests/colour-contrast.test.mjs` runs every check of the 70s palette
+(money inks on the panel, soft tint, full fill and Splits wash; text and
+muted on every neutral surface; the accent; person and group chips) against
+every preset, plus text on a strong fill. `tests/colour-presets.test.mjs`
+checks that each preset sets every colour token, every preset-only token
+the stylesheets read and a `--cat-*` colour for every palette colour the
+client draws; that the category colours read (3:1 on the panel, glyph 3:1
+on its tint, label 4.5:1) and stay 8 apart in Lab (greys in Black &
+White); that the Settings swatches match the tokens; and that the
+`index.html` script knows exactly the preset ids.
+`tests/e2e/colour-presets.spec.js` chooses a preset, reloads with the sheet
+held back (the first frame already shows the preset), checks a donut
+segment draws the preset's colour, and blocks storage.
 
 ## Person Colour
 
