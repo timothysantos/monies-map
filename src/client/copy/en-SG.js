@@ -138,7 +138,29 @@ export const messages = {
       income: "Income",
       incomePlan: "plan",
       saved: "Saved",
-      savedTarget: "target"
+      savedTarget: "target",
+      // The savings bar under the lead (ui/savings-bar.jsx, design.md): all
+      // the money earned in the period is the bar; spent and kept share it.
+      // Hidden money gets percentages and a share sentence, never an amount.
+      savingsBar: {
+        label: "Spent and kept, against what you earned",
+        spentName: "Spent",
+        keptName: "Kept",
+        savingsName: "Came out of savings",
+        incomeTick: "income",
+        planBarLabel: "Plan",
+        popover: (name, amount, percentOfIncome) => {
+          const share = percentOfIncome === null ? "" : ` · ${percentOfIncome}% of income`;
+          return amount === null ? `${name}${share}` : `${name} ${amount}${share}`;
+        },
+        kept: (kept, earned, percent) => `You kept ${kept} of the ${earned} you earned (${percent}%)`,
+        spentMore: (more) => `You spent ${more} more than you earned`,
+        hiddenSentence: "Spent and kept, as a share of what you earned",
+        plan: (spend, save) => {
+          if (spend && save) return `Plan: spend ${spend} and save ${save}.`;
+          return spend ? `Plan: spend ${spend}.` : `Plan: save ${save}.`;
+        }
+      }
     },
     fromMonth: "From",
     toMonth: "To",

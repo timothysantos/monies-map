@@ -727,8 +727,9 @@ Rules:
 Where it is used:
 
 - Summary top (`summary-lead.jsx`, `summary-lead-model.js`): "Spent ·
-  range", the range's actual spend "of" its planned spend, the bar, the
-  percent of plan and how far under (mint) or over (rose) plan; Income and
+  range", the range's actual spend "of" its planned spend, then one text line
+  (no bar) with the percent of plan and how far under (mint) or over (rose)
+  plan, then the savings bar (below); Income and
   Saved pills with planned income and the savings target. Every figure and
   tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
   stacks the pills under the lead; desktop and tablet put them in a column
@@ -741,19 +742,52 @@ Where it is used:
   a phone).
 - Month top (`MonthLead` in `month-overview.jsx`, `month-lead-model.js`): the
   same `SpendLeadGroup` for one month, eyebrow "Spent · May 2026". The lead
-  is actual spend against planned spend with the bar, "x% of plan" and "$y
-  under plan" (mint) or "$y over plan" (rose, the old Spend gap); Income
+  is actual spend against planned spend with one text line (no bar), "x% of
+  plan" and "$y under plan" (mint) or "$y over plan" (rose, the old Spend
+  gap), then the savings bar (below); Income
   (received, with "plan $x"), Saved (realized, with "target $x") and
   Remaining budget are one row of three equal columns inside the lead
-  card under the bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
-  colour only, 52 px tall, at most 190 px for the whole card on an iPhone 13,
-  the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
+  card under the savings bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
+  colour only, 52 px tall, at most 205 px for the whole card on an iPhone 13
+  with the savings bar (about 203 px; the card's gaps and padding are tight
+  in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
   spend, plan, savings target and remaining budget are the Month metric
   cards' own figures, so nothing is recomputed. Remaining budget is a
   button: the whole column opens its explanation popover; its label is "To
   allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
   tiles are gone; nothing scrolls sideways at 390 px.
+- Savings bar (`ui/savings-bar.jsx`, `savings-bar-model.js`, CSS in
+  `summary-lead.css`; inside `SpendLeadGroup`, so on both the Summary top and
+  the Month top, under the spend line and above the Income / Saved pills or
+  columns). The old spend-against-plan bar was removed (three bars were too
+  many; its text line stays), so this is the lead's only bar: it says what the
+  period left you with. All money earned in the period
+  (income) is one 10 px bar, income = 100%: rose is spent, mint is kept
+  (income minus spent). If spent is more than income there is no mint: the bar
+  is as long as the spending, rose up to a small "income" tick, and the part
+  past the tick is rose stripes ("came out of savings"). No income but some
+  spending is all stripes with no tick; no income and no spending draws
+  nothing. A 3 px sky plan bar sits directly under it on the same scale
+  (planned spend, then the savings goal; a plan longer than the bar is cut at
+  its end, planned spend first). Under the bars: one plain line ("You kept
+  $38,000 of the $247,000 you earned (15%)" or "You spent $54,871 more than
+  you earned") and a smaller muted "Plan: spend $x and save $y." Amounts here
+  are whole dollars. Every figure is one the lead already has (income, spend,
+  planned spend, savings target); no API field was added. It never forecasts
+  and never says what to spend: only what happened and the household's own
+  plan. Each segment is a `button` (aria-label "Spent", "Kept" or "Came out of
+  savings") whose `aria-describedby` points at an always-rendered `role=tooltip`
+  line with the numbers ("Kept $38,000 · 15% of income"), so screen readers
+  have them without opening anything. Sighted users get the same line as a
+  popover: hover (mouse), tap (touch; a second tap or a tap elsewhere closes
+  it) or Enter, Escape closes; the bar is 10 px tall and its hit area reaches
+  17 px above and below, so a segment is a 44 px target. No chart library:
+  plain flex boxes with percentage widths. Hidden money: the shape and
+  percentages stay (the popover reads "Kept · 15% of income"), the colours go
+  neutral grey, the sentence is "Spent and kept, as a share of what you
+  earned", and the plan bar and plan line are not drawn. The bar's colours are
+  the money tones: rose spent, mint kept, sky plan.
 - Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
   Month route chunk): Income, Budget Buckets and Planned Items keep their
   `<table>` markup (inline editing, sorting, row opening and the tests'
