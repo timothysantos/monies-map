@@ -16,7 +16,7 @@ const copy = messages.summary.lead.moneyActions;
 // on a phone the Ask page, on a wider screen the Ask panel beside the page.
 // That keeps the router and the Ask dock's launcher out of this first-screen
 // chunk (scripts/check-initial-bundle.mjs counts its files).
-export function MoneyActions({ actionKey, name, figures, hidden, period }) {
+export function MoneyActions({ actionKey, name, figures, hidden, period, onDone }) {
   const target = moneyActionTarget(actionKey, { figures, hidden });
   if (!target) {
     return null;
@@ -25,7 +25,11 @@ export function MoneyActions({ actionKey, name, figures, hidden, period }) {
   const endLabel = formatMonthLabel(endMonth);
   const periodWords = startMonth === endMonth ? copy.inMonth(endLabel) : copy.inRange(formatMonthLabel(startMonth), endLabel);
   const question = copy.questions[target.question](periodWords);
-  const send = (detail) => window.dispatchEvent(new CustomEvent(MONEY_ACTION_EVENT, { detail }));
+  // The menu closes as it goes, so coming back finds the lead as it was.
+  const send = (detail) => {
+    onDone?.();
+    window.dispatchEvent(new CustomEvent(MONEY_ACTION_EVENT, { detail }));
+  };
 
   const viewEntries = () => {
     const current = new URLSearchParams(window.location.search);

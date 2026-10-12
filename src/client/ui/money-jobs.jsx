@@ -37,7 +37,7 @@ export function MoneyJobs({ figures, plannedIncomeMinor, hidden, period }) {
               <span className={`money-job-status ${moneyToneClass(job.tone)}`} data-job-status>{job.status}</span>
             </button>
             {openJob === job.key ? (
-              <MoneyActions actionKey={job.key} name={job.label} figures={figures} hidden={hidden} period={period} />
+              <MoneyActions actionKey={job.key} name={job.label} figures={figures} hidden={hidden} period={period} onDone={() => setOpenJob(null)} />
             ) : null}
           </li>
         ))}

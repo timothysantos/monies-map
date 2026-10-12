@@ -23,8 +23,13 @@ const dollars = (minor) => wholeFormat.format(minor / 100);
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 const message = (page) => page.getByRole("textbox", { name: "Message" });
 
-// May 2026 for Tim: a salary, an iFAST plan line and a GIRO under Investments.
+// May 2026 for Tim: a planned and a received salary, an iFAST plan line and
+// a GIRO under Investments.
 async function seedInvesting(page) {
+  await postJson(page, "/api/month-plan/save", {
+    rowId: "money-jobs-e2e-salary", month: MONTH, sectionKey: "income", categoryName: "Salary", label: "Salary",
+    planDate: null, accountName: "", plannedMinor: 7_000_000, note: "", ownershipType: "direct", ownerName: "Tim"
+  });
   await postJson(page, "/api/entries/create", {
     date: `${MONTH}-25`, description: "Money jobs salary", accountName: "UOB One", categoryName: "Salary",
     amountMinor: 6_500_000, entryType: "income", ownershipType: "direct", ownerName: "Tim"
@@ -130,7 +135,10 @@ test.describe("phone", () => {
     await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} money jobs done`);
     await expect(jobs).not.toHaveAttribute("open", "");
     await expect(jobs.locator("[data-job]").first()).toBeHidden();
-    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(205);
+    // The jobs line takes the old plan line's place; only the longer
+    // "kept and invested" sentence may take a second line on a phone.
+    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(225);
+    expect((await page.locator(".financial-insight").first().boundingBox()).y, "Money insights above the fold").toBeLessThan(664);
     await lead.locator("[data-money-jobs-summary]").tap();
     await expect(jobs.locator("[data-job]")).toHaveCount(rows.length);
     const shown = await jobs.locator("[data-job]").evaluateAll((items) => items.map((item) => [

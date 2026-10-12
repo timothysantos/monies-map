@@ -103,7 +103,7 @@ export function SavingsBar({ figures, hidden, period }) {
               {segment.popover}
             </span>
             {menuKey === segment.key ? (
-              <MoneyActions actionKey={segment.key} name={segment.name} figures={figures} hidden={hidden} period={period} />
+              <MoneyActions actionKey={segment.key} name={segment.name} figures={figures} hidden={hidden} period={period} onDone={() => { setOpenKey(null); setMenuKey(null); }} />
             ) : null}
           </span>
         ))}
