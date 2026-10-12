@@ -21,7 +21,7 @@
 // `npx playwright install webkit` once).
 // Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone,iphone}/
 // (the "On your iPhone" gallery is shot on the phone profile at the iphone size).
-/* global window -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
+/* global window, document, HTMLElement -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
 import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
