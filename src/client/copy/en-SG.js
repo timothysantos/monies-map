@@ -347,6 +347,11 @@ export const messages = {
     expenseCard: {
       sheetContext: (groupName, personNames) => [groupName, personNames.join(" and ")].filter(Boolean).join(" · "),
       close: "Close create split expense",
+      closeEdit: "Close edit split",
+      closeView: "Close view split",
+      cancel: "Cancel",
+      // Asks first in the Delete split row dialog.
+      deleteSplit: "Delete",
       whatWasIt: "What was it?",
       detailsLabel: "Expense details",
       shareRow: (personName) => `${personName}’s share`,
@@ -381,6 +386,7 @@ export const messages = {
     imported: "Imported transaction",
     manual: "Manual split",
     editSplit: "Edit split",
+    viewSplit: "View split",
     viewLinkedEntry: "View entry",
     linkedEntry: "Linked entry",
     categoryBreakdown: "Category breakdown"

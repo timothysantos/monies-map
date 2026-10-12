@@ -310,12 +310,17 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
 export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   const isMobileLayout = useIsMobileLayout();
   const [content, setContent] = useState(null);
-  // A new expense uses the lead card (design.md, "Lead · Support · Detail");
-  // editing and viewing a saved one keep the form for now.
-  const isCreate = Boolean(dialog) && !dialog?.id && !readOnly;
+  // New, edit and view all use the split expense card (design.md, "Lead ·
+  // Support · Detail"); the inline desktop editor keeps the form.
+  const isEditing = Boolean(dialog?.id) && !readOnly;
+  const title = readOnly ? messages.splits.viewSplit : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense);
+  const closeLabel = readOnly
+    ? messages.splits.expenseCard.closeView
+    : (dialog?.id ? messages.splits.expenseCard.closeEdit : messages.splits.expenseCard.close);
   useKeyboardInset(isMobileLayout ? content : null);
   // On a phone the dialog is a bottom sheet and swipes down to close, asking
-  // first when the draft changed since it opened.
+  // first when the draft changed since it opened (for a saved split: since
+  // it was loaded, the saved split).
   const isDirty = useDraftChanged(readOnly ? null : dialog, buildComparableSplitDraft);
   const swipe = useSheetSwipeDismiss({ sheet: content, enabled: isMobileLayout, isDirty, isSubmitting, onClose });
   const groupName = groupOptions.find((group) => group.id === dialog?.groupId)?.name ?? "";
@@ -326,7 +331,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content
           ref={setContent}
-          className={`note-dialog-content split-dialog-content${isCreate ? " split-expense-create" : ""}`}
+          className={`note-dialog-content split-dialog-content split-expense-card-dialog${dialog?.id ? "" : " split-expense-create"}`}
           onOpenAutoFocus={(event) => event.preventDefault()}
           {...swipe.contentProps}
         >
@@ -335,103 +340,67 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
             inert={swipe.isConfirmOpen}
             onSubmit={(event) => {
               event.preventDefault();
-              if (isSubmitting || isSaveDisabled) {
+              if (readOnly || isSubmitting || isSaveDisabled) {
                 return;
               }
               void onSave();
             }}
           >
-            {isCreate ? (
-              <div className="note-dialog-head split-dialog-head split-expense-create-head">
-                <div>
-                  <Dialog.Title>{messages.splits.createExpense}</Dialog.Title>
-                  <Dialog.Description>{messages.splits.expenseCard.sheetContext(groupName, people.map((person) => person.name))}</Dialog.Description>
-                </div>
-                <div className="split-expense-create-head-actions">
-                  <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
-                  <button
-                    type="button"
-                    className="icon-action subtle-cancel split-expense-create-close"
-                    aria-label={messages.splits.expenseCard.close}
-                    disabled={isSubmitting}
-                    onClick={onClose}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+            <div className="note-dialog-head split-dialog-head split-expense-card-head">
+              <div>
+                <Dialog.Title>{title}</Dialog.Title>
+                <Dialog.Description>{messages.splits.expenseCard.sheetContext(groupName, people.map((person) => person.name))}</Dialog.Description>
               </div>
-            ) : (
-              <div className="note-dialog-head split-dialog-head">
-                <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense)}</Dialog.Title>
-                <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Create or edit a split expense without touching the bank import workflow."}</Dialog.Description>
+              <div className="split-expense-card-head-actions">
+                <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
+                <button
+                  type="button"
+                  className="icon-action subtle-cancel split-expense-card-close"
+                  aria-label={closeLabel}
+                  disabled={isSubmitting}
+                  onClick={onClose}
+                >
+                  <X size={16} />
+                </button>
               </div>
-            )}
+            </div>
             <div className="split-dialog-scroll" data-sheet-body>
-              {isCreate ? (
-                <SplitExpenseCard
-                  dialog={dialog}
-                  groupOptions={groupOptions}
-                  people={people}
-                  categoryOptions={categoryOptions}
-                  categories={categories}
-                  onChange={onChange}
-                  layout={isMobileLayout ? "sheet" : "dialog"}
-                  autoFocusAmount
-                />
-              ) : (
-                <>
-                  <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
-                  <fieldset disabled={readOnly} className="split-dialog-fieldset">
-                    <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
-                  </fieldset>
-                </>
-              )}
+              <SplitExpenseCard
+                dialog={dialog}
+                groupOptions={groupOptions}
+                people={people}
+                categoryOptions={categoryOptions}
+                categories={categories}
+                onChange={onChange}
+                layout={isMobileLayout ? "sheet" : "dialog"}
+                autoFocusAmount={!readOnly}
+                readOnly={readOnly}
+                onViewLinkedEntry={onViewLinkedEntry ? () => onViewLinkedEntry(dialog) : undefined}
+              />
               {settlementLock
                 ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
                 : <InlineError message={formError} />}
             </div>
-            {isCreate ? (
-              <div className="dialog-actions split-expense-create-actions">
-                <BottomActions
-                  secondary={<button type="button" className="lsd-quiet" disabled={isSubmitting} onClick={onClose}>Cancel</button>}
-                  primary={(
-                    <button type="submit" className="lsd-primary" disabled={isSubmitting || isSaveDisabled}>
-                      {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
-                    </button>
-                  )}
-                />
-              </div>
-            ) : (
-              <div className="dialog-actions">
-                {!readOnly && dialog?.id ? (
-                  <button
-                    type="button"
-                    className="dialog-danger split-dialog-delete-action"
-                    disabled={isSubmitting}
-                    onClick={() => onRequestDelete?.(dialog)}
-                  >
-                    Delete
+            <div className="dialog-actions split-expense-card-actions">
+              <BottomActions
+                destructive={isEditing ? (
+                  // Asks in the app first (SplitDeleteDialog), as before.
+                  <button type="button" className="lsd-quiet is-danger" disabled={isSubmitting} onClick={() => onRequestDelete?.(dialog)}>
+                    {messages.splits.expenseCard.deleteSplit}
                   </button>
                 ) : null}
-                {dialog?.linkedTransactionId ? (
-                  <>
-                    <button
-                      type="button"
-                      className="subtle-action"
-                      disabled={isSubmitting}
-                      onClick={() => onViewLinkedEntry?.(dialog)}
-                    >
-                      {messages.splits.viewLinkedEntry}
-                    </button>
-                    <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
-                  </>
-                ) : null}
-                <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
-                {!readOnly ? <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
-                  {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
-                </button> : null}
-              </div>
-            )}
+                secondary={(
+                  <button type="button" className="lsd-quiet" disabled={isSubmitting} onClick={onClose}>
+                    {readOnly ? messages.common.close : messages.splits.expenseCard.cancel}
+                  </button>
+                )}
+                primary={readOnly ? null : (
+                  <button type="submit" className="lsd-primary" disabled={isSubmitting || isSaveDisabled}>
+                    {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+                  </button>
+                )}
+              />
+            </div>
           </form>
           <SheetDiscardConfirm open={swipe.isConfirmOpen} onKeepEditing={swipe.keepEditing} onDiscard={swipe.discard} />
         </Dialog.Content>

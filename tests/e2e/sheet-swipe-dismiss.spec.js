@@ -384,6 +384,56 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     await confirm.getByRole("button", { name: "Discard" }).tap();
     await expect(dialog).toBeHidden();
   });
+
+  test("Edit split swipes the same way: unchanged it closes, changed from the saved split it asks", async ({ page }) => {
+    await phone(page);
+    const { splitExpenseId } = await postJson(page, "/api/splits/expenses/create", {
+      groupId: null,
+      date: `${MONTH}-10`,
+      description: `Swipe edit split ${Date.now()}`,
+      categoryName: "Groceries",
+      payerPersonName: "Tim",
+      amountMinor: 8640,
+      note: "",
+      splitBasisPoints: 5000,
+      splitAmountMinor: 4320,
+      currency: "SGD",
+      paymentMethod: "cash",
+      paymentStatus: "recorded"
+    });
+    let updates = 0;
+    page.on("request", (request) => {
+      if (request.url().includes("/api/splits/expenses/update")) updates += 1;
+    });
+    const open = async () => {
+      await page.goto(`/splits?view=person-tim&month=${MONTH}&split_group=split-group-none&editing_split_expense=${splitExpenseId}`);
+      const dialog = page.getByRole("dialog", { name: "Edit split" });
+      await expect(dialog).toBeVisible({ timeout: 60_000 });
+      return dialog;
+    };
+    const selector = ".split-dialog-content.split-expense-card-dialog";
+    let dialog = await open();
+    await swipeDown(page, dialog, selector);
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("alertdialog", { name: "Discard changes?" })).toHaveCount(0);
+
+    dialog = await open();
+    const total = dialog.locator(".lsd-card").getByRole("textbox", { name: "Expense total" });
+    await total.fill("90");
+    await dialog.getByRole("heading", { name: "Edit split" }).click();
+    await swipeDown(page, dialog, selector);
+    const confirm = page.getByRole("alertdialog", { name: "Discard changes?" });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Keep editing" }).tap();
+    await expect(total).toHaveValue("90.00");
+    // Typed back to the saved total, it is clean again.
+    await total.fill("86.40");
+    await dialog.getByRole("heading", { name: "Edit split" }).click();
+    await swipeDown(page, dialog, selector);
+    await expect(dialog).toBeHidden();
+    await expect(confirm).toHaveCount(0);
+    expect(updates).toBe(0);
+  });
 });
 
 // Real touch input (Chromium only): the browser's own gesture pipeline, so
