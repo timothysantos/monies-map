@@ -14,7 +14,7 @@ import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers
 
 const PHONE = { width: 390, height: 664 };
 const MONTH = "2026-05";
-const INK = { text: "rgb(38, 35, 31)", rose: "rgb(163, 53, 42)" };
+const INK = { text: "rgb(59, 42, 31)", rose: "rgb(151, 50, 35)" };
 
 async function phone(page, { hidden = false } = {}) {
   await page.addInitScript((value) => window.localStorage.setItem("monies-map:money-totals-visible", value), hidden ? "false" : "true");
@@ -545,9 +545,13 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   const editor = page.locator(".entry-inline-editor .entry-edit-card.is-inline");
   await expect(editor).toBeVisible({ timeout: 60_000 });
 
-  // The card is left of the rows, and every row keeps an inline field.
+  // The lead card spans the top, the rows sit under it in two columns, and
+  // every row keeps an inline field.
   const [cardBox, rowsBox] = await Promise.all([box(editor.locator(".lsd-card")), box(editor.locator(".lsd-rows"))]);
-  expect(rowsBox.x).toBeGreaterThan(cardBox.x + cardBox.width - 1);
+  expect(rowsBox.y).toBeGreaterThan(cardBox.y + cardBox.height - 1);
+  expect(cardBox.width).toBeGreaterThan(rowsBox.width - 4);
+  const columnXs = await editor.locator(".lsd-rows .lsd-row").evaluateAll((rows) => [...new Set(rows.map((row) => Math.round(row.getBoundingClientRect().x)))]);
+  expect(columnXs).toHaveLength(2);
   await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Owner", "Splits", "Note", "Date", "Wallet", "Posted date", "Type"]);
 
   // Tab walks description, amount, then the rows in order (a date field's

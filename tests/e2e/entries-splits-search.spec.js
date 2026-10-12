@@ -186,9 +186,10 @@ test("manual split rows keep delete inside the editor", async ({ page }) => {
   await expect(row.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
   await row.click();
 
-  const editor = page.locator(".split-inline-editor-card").filter({ hasText: description });
+  const editor = page.locator(".split-inline-editor-card");
   await expect(editor).toBeVisible();
-  await editor.getByRole("button", { name: "Delete" }).click();
+  await expect(editor.getByRole("textbox", { name: "Description" })).toHaveValue(description);
+  await editor.getByRole("button", { name: "Delete", exact: true }).click();
 
   const deleteDialog = page.locator(".split-delete-dialog");
   await expect(deleteDialog).toBeVisible();
@@ -235,23 +236,40 @@ test("mobile split editor can delete an existing manual split", async ({ page })
   await expect(page.locator(".split-activity-card").filter({ hasText: description })).toHaveCount(0);
 });
 
-test("splits search is integrated into the themed summary strip on desktop and mobile", async ({ page }) => {
+test("splits search is its own field under the lead card on desktop and mobile", async ({ page }) => {
   await reseedDemo(page);
 
   await gotoPageAfterApi(
     page,
     "/splits?view=person-tim&month=2026-06&split_group=split-group-none",
     "/api/splits-page",
-    () => page.locator(".splits-summary-strip .split-summary-search")
+    () => page.locator(".splits-search")
   );
 
-  const desktopSearch = page.locator(".splits-summary-strip .split-summary-search");
-  await expect(desktopSearch).toBeVisible();
-  await expectInlineSearch(desktopSearch);
-  await expect(desktopSearch.locator(".entries-filter-label")).toHaveCSS("color", "rgb(255, 248, 243)");
+  async function expectSearchUnderLead() {
+    const search = page.locator(".splits-search");
+    await expect(search).toBeVisible();
+    const [leadBox, searchBox, labelBox, iconBox, inputBox] = await Promise.all([
+      page.locator(".splits-lead").boundingBox(),
+      search.boundingBox(),
+      search.locator(".entries-filter-label").boundingBox(),
+      search.locator(".search-filter-control svg").first().boundingBox(),
+      search.locator("input").boundingBox()
+    ]);
+    // Under the card and as wide as it, not a strip beside other controls.
+    expect(searchBox.y).toBeGreaterThanOrEqual(leadBox.y + leadBox.height - 1);
+    expect(Math.abs(searchBox.width - leadBox.width)).toBeLessThanOrEqual(2);
+    // The label stays for assistive tech but takes no room; the icon sits left of the field.
+    expect(labelBox.width).toBeLessThanOrEqual(1);
+    expect(iconBox.x).toBeLessThan(inputBox.x + 24);
+    expect(Math.abs((iconBox.y + iconBox.height / 2) - (inputBox.y + inputBox.height / 2))).toBeLessThanOrEqual(8);
+  }
+
+  // Named for what it searches, and still found by its label.
+  await expect(page.getByRole("combobox", { name: "Search" })).toHaveAttribute("placeholder", "Search Non-group expenses");
+  await expectSearchUnderLead();
   await expect(page.locator(".split-search-bar")).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(desktopSearch).toBeVisible();
-  await expectInlineSearch(desktopSearch);
+  await expectSearchUnderLead();
 });

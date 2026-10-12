@@ -1,3 +1,4 @@
+import "./splits-activity-list.css";
 import { messages } from "./copy/en-SG";
 import { EmptyState } from "./ui-states";
 import { SplitActivityGroups } from "./splits-activity";
@@ -13,6 +14,7 @@ export function SplitsActivitySection({
   inlineSplitDraft,
   inlineSplitError,
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock,
   isSubmitting,
@@ -57,6 +59,7 @@ export function SplitsActivitySection({
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
+            inlineReadOnly={inlineReadOnly}
             isUndoingSettlementLock={isUndoingSettlementLock}
             onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}

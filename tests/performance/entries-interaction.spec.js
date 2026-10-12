@@ -89,7 +89,7 @@ test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo
   }
   async function closeFilters() {
     if (!mobile) return;
-    await page.locator(".mobile-context-dialog-close").click();
+    await page.getByRole("dialog", { name: "View and scope" }).getByRole("button", { name: "Done", exact: true }).click();
     await expect(search).toBeHidden();
   }
 

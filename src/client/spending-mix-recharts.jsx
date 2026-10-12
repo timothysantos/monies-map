@@ -1,10 +1,8 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
-import { moniesClient } from "./monies-client-service";
+import { money, moneyWithCurrency } from "./formatters";
 import { getIconComponent } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
-
-const { format: formatService } = moniesClient;
 
 export default function SpendingMixRecharts({
   chartData,
@@ -12,6 +10,7 @@ export default function SpendingMixRecharts({
   currency = "",
   totalLabel,
   compact,
+  callouts,
   isNarrowViewport,
   resolvedHeight,
   resolvedInnerRadius,
@@ -32,7 +31,7 @@ export default function SpendingMixRecharts({
             paddingAngle={0}
             isAnimationActive={false}
             labelLine={false}
-            label={(props) => renderPieCallout(props, total, { compact: isNarrowViewport })}
+            label={callouts ? (props) => renderPieCallout(props, total, { compact: isNarrowViewport }) : false}
           >
             {chartData.map((entry) => (
               <Cell key={entry.key} fill={entry.color} />
@@ -42,7 +41,7 @@ export default function SpendingMixRecharts({
       </ResponsiveContainer>
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong><PrivateMoney>{currency ? formatService.moneyWithCurrency(total, currency) : formatService.money(total)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{currency ? moneyWithCurrency(total, currency) : money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );

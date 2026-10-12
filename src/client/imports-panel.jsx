@@ -4,6 +4,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
@@ -23,7 +24,8 @@ import {
   shouldPreserveStatementPreviewOnRefreshError
 } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
-import { buildImportPreviewModel } from "./import-preview-model";
+import { buildImportPreviewModel, countRowsToImport } from "./import-preview-model";
+import { ImportFileCard } from "./import-file-card";
 import { buildStatementTitle, ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportCommitBar } from "./import-commit-bar";
@@ -740,7 +742,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setInferredAmounts(parsed.ocrReview?.inferredAmounts ?? []);
     setCsvText(statementRowsToCsv(parsed.rows));
 
-    setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
+    setUploadStatus({ tone: "active", message: importMessages.uploadPreviewing(parsed.rows.length) });
     await previewImportRows({
       rows: parsed.rows,
       nextSourceLabel: parsed.sourceLabel,
@@ -756,8 +758,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     const row = buildRecoveryImportRow(candidate, amountMinor);
     return refreshPreviewFromRows({
       rows: [...previewRowsRef.current.map(importService.buildRawRowFromPreviewRow), row],
-      activeMessage: messages.imports.statementRecoveryAdding,
-      successMessage: messages.imports.statementRecoveryAdded
+      activeMessage: importMessages.statementRecoveryAdding,
+      successMessage: importMessages.statementRecoveryAdded
     });
   }
 
@@ -816,7 +818,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     setPreviewError("");
-    setUploadStatus({ tone: "active", message: messages.imports.intakeParsing(files.length) });
+    setUploadStatus({ tone: "active", message: importMessages.intakeParsing(files.length) });
     setIsParsingStatement(true);
     const nextItems = [];
     const existingFingerprints = new Set(intakeQueue.map((item) => item.fingerprint));
@@ -837,9 +839,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       }
       setIntakeQueue((current) => [...current, ...nextItems]);
       // Queued, not done: they wait for review.
-      setUploadStatus({ tone: "waiting", message: messages.imports.intakeReady(nextItems.length) });
+      setUploadStatus({ tone: "waiting", message: importMessages.intakeReady(nextItems.length) });
     } catch (error) {
-      const previewErrorDetail = buildImportPreviewError(error, messages.imports.intakeFailed);
+      const previewErrorDetail = buildImportPreviewError(error, importMessages.intakeFailed);
       setPreviewError(previewErrorDetail);
       setUploadStatus({ tone: "error", message: previewErrorDetail.message });
     } finally {
@@ -853,7 +855,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     // waits in the queue again.
     setActiveIntakeItemId(null);
     setPreviewError("");
-    setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
+    setUploadStatus({ tone: "active", message: importMessages.uploadReading(file.name) });
     setPreview(null);
     setPreviewRows([]);
     setStatementReconciliation(null);
@@ -885,15 +887,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
 
     if (fileKind === "ocr-statement") {
-      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
       const parsed = parseStatementText(await file.text(), file.name);
       return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
     }
 
     if (fileKind === "pdf") {
-      setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
+      setUploadStatus({ tone: "active", message: importMessages.uploadExtracting(file.name) });
       const text = await importService.extractPdfText(file);
-      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
       let parsed;
       try {
         parsed = parseStatementText(text, file.name);
@@ -902,11 +904,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed = await tryAiStatementTextFallback(text, file.name, error);
           return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
         }
-        setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
+        setUploadStatus({ tone: "active", message: importMessages.uploadOcr(file.name) });
         const onOcrProgress = ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
           setUploadStatus({
             tone: "active",
-            message: messages.imports.uploadOcrProgress({
+            message: importMessages.uploadOcrProgress({
               fileName: file.name,
               pageNumber,
               pageCount,
@@ -916,7 +918,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           });
         };
         const ocrText = await importService.extractPdfOcrText(file, onOcrProgress);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
         try {
           parsed = await importService.parseImageStatement({
             file,
@@ -933,7 +935,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     if (fileKind === "xls") {
-      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
       return {
         parsed: parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name),
         sourceType: "csv"
@@ -949,7 +951,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
 
     if (csvKind === "citibank-activity-csv") {
-      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
       return {
         parsed: parseCitibankActivityCsv(nextText, file.name, activityContext),
         sourceType: "csv"
@@ -957,7 +959,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     if (csvKind === "ocbc-activity-csv") {
-      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
       return {
         parsed: parseOcbcActivityCsv(nextText, file.name, activityContext),
         sourceType: "csv"
@@ -1011,7 +1013,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setStatementCheckpoints([]);
       setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
       setStatementWarnings([]);
-      setUploadStatus({ tone: "success", message: messages.imports.uploadCsvReady(parsedImport.fileName ?? "CSV") });
+      setUploadStatus({ tone: "success", message: importMessages.uploadCsvReady(parsedImport.fileName ?? "CSV") });
       return;
     }
 
@@ -1020,8 +1022,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       sourceType: parsedImport.sourceType,
       nextStatementCheckpoints: parsedImport.sourceType === "pdf" ? parsedImport.parsed.checkpoints : [],
       successMessage: parsedImport.sourceType === "pdf" && parsedImport.parsed.checkpoints.length > 1
-        ? messages.imports.uploadStatementReady(parsedImport.parsed.rows.length, parsedImport.parsed.checkpoints.length)
-        : messages.imports.uploadReady(parsedImport.parsed.rows.length),
+        ? importMessages.uploadStatementReady(parsedImport.parsed.rows.length, parsedImport.parsed.checkpoints.length)
+        : importMessages.uploadReady(parsedImport.parsed.rows.length),
       keepCommitSummary
     });
   }
@@ -1136,8 +1138,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       };
       void refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed,
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed,
         silent: true,
         isAutoRefresh: true
       });
@@ -1173,7 +1175,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          successMessage: messages.imports.uploadReady(parsed.rows.length)
+          successMessage: importMessages.uploadReady(parsed.rows.length)
         });
       } catch (error) {
         setPreviewError(buildImportPreviewError(error));
@@ -1214,7 +1216,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         parsed,
         sourceType: "csv",
         nextStatementCheckpoints: [],
-        successMessage: messages.imports.uploadReady(parsed.rows.length)
+        successMessage: importMessages.uploadReady(parsed.rows.length)
       });
     } catch (error) {
       setPreviewError(buildImportPreviewError(error));
@@ -1256,7 +1258,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     setIsSubmitting(true);
-    setRecentImportStatus({ tone: "active", message: messages.imports.recentCommitWorking });
+    setRecentImportStatus({ tone: "active", message: importMessages.recentCommitWorking });
     setIsRecentImportsRefreshing(true);
     const committedSourceLabel = preview?.sourceLabel ?? sourceLabel;
     let commitResult;
@@ -1290,7 +1292,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       });
     } catch (error) {
       // A failed commit keeps the review as it is and opens nothing.
-      const commitErrorDetail = buildImportPreviewError(error, messages.imports.commitFailed);
+      const commitErrorDetail = buildImportPreviewError(error, importMessages.commitFailed);
       setRecentImportStatus({
         tone: "error",
         message: commitErrorDetail.message,
@@ -1370,7 +1372,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       const committedBatch = latestPage?.importsPage?.recentImports?.find((item) => item.id === committedImportId);
       setRecentImportStatus({
         tone: "success",
-        message: messages.imports.recentCommitSuccess(
+        message: importMessages.recentCommitSuccess(
           committedFileName || committedSourceLabel || DEFAULT_SOURCE_LABEL,
           committedBatch?.accountNames ?? []
         ),
@@ -1501,8 +1503,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       nextStatementFixes,
       nextSourceType: context.nextSourceType ?? statementImportMeta.sourceType,
       nextStatementCheckpoints: context.nextStatementCheckpoints ?? statementCheckpointsRef.current,
-      activeMessage: messages.imports.statementReconciliationRefreshing,
-      successMessage: messages.imports.statementReconciliationRefreshed
+      activeMessage: importMessages.statementReconciliationRefreshing,
+      successMessage: importMessages.statementReconciliationRefreshed
     });
   }
 
@@ -1608,8 +1610,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     // badges on rows that should disappear after remapping.
     void refreshPreviewFromRows({
       rows: nextRows.map(importService.buildRawRowFromPreviewRow),
-      activeMessage: messages.imports.accountMappingRefreshing,
-      successMessage: messages.imports.accountMappingRefreshed
+      activeMessage: importMessages.accountMappingRefreshing,
+      successMessage: importMessages.accountMappingRefreshed
     });
   }
 
@@ -1631,8 +1633,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     if (statementCheckpoints.length) {
       void refreshPreviewFromRows({
         rows: nextRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed
       });
     }
   }
@@ -1681,7 +1683,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           ...row,
           reconciliationTargetTransactionId: estimate.transactionId,
           commitStatus: "included",
-          commitStatusReason: messages.imports.unlistedEstimateLinkedReason(
+          commitStatusReason: importMessages.unlistedEstimateLinkedReason(
             estimate.originalAmount,
             formatService.money(estimate.amountMinor),
             formatService.money(row.amountMinor)
@@ -1719,8 +1721,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     if (statementCheckpoints.length) {
       void refreshPreviewFromRows({
         rows: nextRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed
       });
     }
   }
@@ -1777,8 +1779,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     void refreshPreviewFromRows({
       rows: nextRows.map(importService.buildRawRowFromPreviewRow),
       nextStatementCheckpoints: nextCheckpoints,
-      activeMessage: messages.imports.accountMappingRefreshing,
-      successMessage: messages.imports.accountMappingRefreshed
+      activeMessage: importMessages.accountMappingRefreshing,
+      successMessage: importMessages.accountMappingRefreshed
     });
   }
 
@@ -1808,8 +1810,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       await refreshPreviewFromRows({
         rows: nextRows.map(importService.buildRawRowFromPreviewRow),
         nextStatementCheckpoints: nextCheckpoints,
-        activeMessage: messages.imports.accountMappingRefreshing,
-        successMessage: messages.imports.accountMappingRefreshed
+        activeMessage: importMessages.accountMappingRefreshing,
+        successMessage: importMessages.accountMappingRefreshed
       });
     } catch {
       // refreshPreviewFromRows already translated the failure into UI state.
@@ -1884,7 +1886,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       await onRefresh(buildImportAccountCreationRefreshPlan());
       await applyStatementAccountMapping(detectedAccountName, createdAccount);
       setReviewChangeCount((count) => count + 1);
-      setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
+      setUploadStatus({ tone: "success", message: importMessages.accountCreatedFromStatement(createdAccount.name) });
       setAccountDialog(null);
       setPendingStatementAccountName("");
     } catch (error) {
@@ -1901,8 +1903,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     void refreshPreviewFromRows({
       rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-      activeMessage: messages.imports.statementReconciliationRefreshing,
-      successMessage: messages.imports.statementReconciliationRefreshed
+      activeMessage: importMessages.statementReconciliationRefreshing,
+      successMessage: importMessages.statementReconciliationRefreshed
     });
   }
 
@@ -1922,8 +1924,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       ));
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed,
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed,
         silent: true
       });
       setUploadStatus({ tone: "success", message: "Ledger row deleted. Statement check refreshed." });
@@ -1944,7 +1946,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     setUploadStatus({
       tone: "active",
-      message: messages.imports.deleteDiagnosticEntriesProgress(ledgerRows.length)
+      message: importMessages.deleteDiagnosticEntriesProgress(ledgerRows.length)
     });
     setIsSubmitting(true);
     try {
@@ -1958,13 +1960,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       ));
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed,
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed,
         silent: true
       });
       setUploadStatus({
         tone: "success",
-        message: messages.imports.deleteDiagnosticEntriesSuccess(ledgerRows.length)
+        message: importMessages.deleteDiagnosticEntriesSuccess(ledgerRows.length)
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete ledger rows.";
@@ -1985,11 +1987,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     const formattedPostDate = options.label ?? postDate;
     const activeMessage = options.mode === "defer"
-      ? messages.imports.deferDiagnosticEntryProgress({ description: row.description, deferDate: formattedPostDate })
-      : messages.imports.setDiagnosticPostDateProgress({ description: row.description, postDate: formattedPostDate });
+      ? importMessages.deferDiagnosticEntryProgress({ description: row.description, deferDate: formattedPostDate })
+      : importMessages.setDiagnosticPostDateProgress({ description: row.description, postDate: formattedPostDate });
     const successMessage = options.mode === "defer"
-      ? messages.imports.deferDiagnosticEntrySuccess({ deferDate: formattedPostDate })
-      : messages.imports.setDiagnosticPostDateSuccess({ postDate: formattedPostDate });
+      ? importMessages.deferDiagnosticEntrySuccess({ deferDate: formattedPostDate })
+      : importMessages.setDiagnosticPostDateSuccess({ postDate: formattedPostDate });
 
     setUploadStatus({ tone: "active", message: activeMessage });
     setIsSubmitting(true);
@@ -1997,8 +1999,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       await updateDiagnosticLedgerPostDate(row, postDate);
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed,
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed,
         silent: true
       });
       setUploadStatus({ tone: "success", message: successMessage });
@@ -2006,13 +2008,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       const message = error instanceof Error ? error.message : "Failed to update posted date.";
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-        activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed,
+        activeMessage: importMessages.statementReconciliationRefreshing,
+        successMessage: importMessages.statementReconciliationRefreshed,
         silent: true
       });
       setUploadStatus({
         tone: "error",
-        message: messages.imports.setDiagnosticPostDateUnconfirmed(message)
+        message: importMessages.setDiagnosticPostDateUnconfirmed(message)
       });
     } finally {
       setIsSubmitting(false);
@@ -2165,6 +2167,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         title: preview.sourceLabel ?? sourceLabel
       }
       : null;
+  // The card names the account itself only when no Account row does.
+  const previewAccountNames = [...new Set(previewRows.map((row) => row.accountName).filter(Boolean))];
+  const singlePreviewAccountName = previewAccountNames.length === 1 ? previewAccountNames[0] : undefined;
   const importBatch = isBatchInProgress
     ? buildImportBatchFiles({ committedFiles: committedBatchFiles, currentFile: currentBatchFile, queue: intakeQueue, activeItemId: activeIntakeItemId })
     : { files: [], index: 0, total: 0 };
@@ -2248,12 +2253,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   return (
     <article ref={panelRef} className={`panel import-panel${isBatchInProgress ? " has-sticky-bar" : ""}`}>
       {isPageDragActive ? (
-        <div className="import-page-drop-hint" role="status">{messages.imports.pageDropHint}</div>
+        <div className="import-page-drop-hint" role="status">{importMessages.pageDropHint}</div>
       ) : null}
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.imports}</h2>
-          <span className="panel-context">{messages.imports.viewing(viewLabel)}</span>
+          <span className="panel-context">{importMessages.viewing(viewLabel)}</span>
         </div>
       </div>
       <ImportBatchBar
@@ -2265,7 +2270,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             stage={importStage}
             bringSummary={canCollapseBringFiles
               ? uploadStatus?.message ?? preview?.sourceLabel ?? sourceLabel
-              : messages.imports.stageBringSummary(intakeQueue.length)}
+              : importMessages.stageBringSummary(intakeQueue.length)}
             isBringAlert={canCollapseBringFiles && uploadStatus?.tone === "error"}
             isBringOpen={isBringFilesOpen}
             canCollapseBring={canCollapseBringFiles}
@@ -2309,13 +2314,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           {/* Stage 1: the drop zone first, then the queue, then the inbox. */}
           <section className="panel-subsection import-workflow">
             <div className="import-header">
-              <div>
-                <h3>{messages.imports.composerTitle}</h3>
-                <p className="lede compact">{messages.imports.composerDetail}</p>
-              </div>
+              <h3>{importMessages.composerTitle}</h3>
               {importDraftExists ? (
                 <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
-                  {messages.imports.startOver}
+                  {importMessages.startOver}
                 </button>
               ) : null}
             </div>
@@ -2347,6 +2349,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isPasteDefaultsOpen={isPasteDefaultsOpen}
               onTogglePasteDefaults={() => setIsPasteDefaultsOpen((current) => !current)}
               isSlim={isDropZoneSlim}
+              intro={importMessages.composerDetail}
               hasWaitingFiles={Boolean(nextIntakeItem)}
               onShowQueue={() => jumpToImportTarget({ kind: "intake-queue" }, panelRef.current ?? document)}
             />
@@ -2402,17 +2405,31 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}
           data-page-drop={preview ? "off" : undefined}
         >
+          {preview && !isStatementReview ? (
+            <ImportFileCard
+              title={currentBatchFile?.label ?? preview.sourceLabel ?? sourceLabel}
+              subtitle={showStatementAccountMapping ? undefined : singlePreviewAccountName}
+              rowCount={countRowsToImport(previewRows)}
+              coverage={preview.startDate && preview.endDate
+                ? importMessages.fileCardCovers(formatService.formatDateOnly(preview.startDate), formatService.formatDateOnly(preview.endDate))
+                : undefined}
+              showAccountState={showStatementAccountMapping}
+              // The same count the "Map N accounts" blocker on the import bar says.
+              unknownAccountCount={importPreviewModel.hasUnmappedAccounts ? Math.max(1, importPreviewModel.unmappedCommitAccountNames?.length ?? 1) : 0}
+              ownerName={ownerName}
+            />
+          ) : null}
           {isStatementReview ? null : (
           <div className="import-stage-head">
             <div className="section-head">
-              <h3>{messages.imports.previewRows}</h3>
+              <h3>{importMessages.previewRows}</h3>
               <span className="panel-context">
-                {preview ? messages.imports.transactionCount(preview.importedRows) : messages.imports.previewEmpty}
+                {preview ? importMessages.transactionCount(preview.importedRows) : importMessages.previewEmpty}
               </span>
             </div>
             <div className="import-stage-head-actions">
               <span className={`import-stage-label ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
-                {messages.imports.steps[2]}
+                {importMessages.steps[2]}
               </span>
               {preview ? (
                 <button
@@ -2420,15 +2437,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
                   className="subtle-action"
                   onClick={() => resetImportForm()}
                 >
-                  {messages.imports.startOver}
+                  {importMessages.startOver}
                 </button>
               ) : null}
             </div>
           </div>
           )}
-          {preview && !isStatementReview ? <p className="import-stage-note">{messages.imports.previewReady}</p> : null}
+          {preview && !isStatementReview ? <p className="import-stage-note">{importMessages.previewReady}</p> : null}
           {previewRows.length > 100 ? (
-            <p className="import-stage-note">{messages.imports.largeImportNotice(previewRows.length)}</p>
+            <p className="import-stage-note">{importMessages.largeImportNotice(previewRows.length)}</p>
           ) : null}
           {statementWarnings.length ? (
             <section className="import-warning import-warning-attention" aria-live="polite">
@@ -2516,6 +2533,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               onUpdatePreviewRowCommitStatus={trackReviewChange(updatePreviewRowCommitStatus)}
               onPromotePreviewRowReconciliationTarget={trackReviewChange(promotePreviewRowReconciliationTarget)}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+              isPhoneLayout={isPhoneLayout}
             />
           ) : null}
           </InferredAmountsContext.Provider>
@@ -2538,7 +2556,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               onJumpToNext={importBlockers.blockers.length ? () => jumpToBlocker(importBlockers.blockers[0]) : undefined}
               onShowRemaining={isPhoneLayout ? () => setIsProgressSheetOpen(true) : undefined}
               skip={nextIntakeItem ? {
-                question: hasUnsavedReviewWork ? messages.imports.batchSwitchWarning(nextIntakeItem.fileName) : null,
+                question: hasUnsavedReviewWork ? importMessages.batchSwitchWarning(nextIntakeItem.fileName) : null,
                 onSkip: handleSkipForNow
               } : undefined}
               onCommit={handleCommit}
@@ -2546,7 +2564,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isStatementSavedBefore={commitKind === "saved_again"}
             />
           ) : (
-            <EmptyState>{messages.imports.previewEmpty}</EmptyState>
+            <EmptyState>{importMessages.previewEmpty}</EmptyState>
           )}
         </div>
         ) : null}
@@ -2556,15 +2574,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       {showSplitCleanupNotice ? (
         <section className="import-post-cleanup-card">
           <div>
-            <h3>{messages.imports.splitCleanupTitle(pendingSplitMatchCount)}</h3>
-            <p>{messages.imports.splitCleanupDetail}</p>
+            <h3>{importMessages.splitCleanupTitle(pendingSplitMatchCount)}</h3>
+            <p>{importMessages.splitCleanupDetail}</p>
           </div>
           <div className="import-post-cleanup-actions">
             <button type="button" className="dialog-primary" onClick={openSplitMatchReview}>
-              {messages.imports.reviewSplitMatchesNow}
+              {importMessages.reviewSplitMatchesNow}
             </button>
             <button type="button" className="subtle-action" onClick={() => dispatchSplitCleanup({ type: "later" })}>
-              {messages.imports.reviewSplitMatchesLater}
+              {importMessages.reviewSplitMatchesLater}
             </button>
           </div>
         </section>

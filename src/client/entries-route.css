@@ -339,6 +339,12 @@
     gap: 10px;
     align-items: center;
     flex-wrap: nowrap;
+    /* Room for the breakdown toggle's 44 px hit area inside this scrolling
+       strip, with the page spacing unchanged. */
+    padding: 7px 9px 17px;
+    margin: -7px -7px -4px;
+    width: calc(100% + 14px);
+    max-width: none;
   }
 
   .entries-totals-item {
@@ -402,7 +408,9 @@
     gap: 8px;
     width: 100vw;
     margin: -10px calc(50% - 50vw) 4px;
-    padding: 10px 12px 6px;
+    /* 44 px tall around the 26 px refresh button, so its hit area is not
+       clipped by `contain: paint` (design.md, every tappable is 44 px). */
+    padding: 9px 12px;
     border-radius: 0;
     max-width: none;
     box-sizing: border-box;
@@ -680,15 +688,27 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   flex: 0 1 160px;
 }
 
-/* Wide screen: the card left, the rows right, the actions under them. */
+/* Wide screen: the lead card across the top, the rows in two balanced
+   columns under it, the actions under them (the Splits inline card does the
+   same). */
 .entry-edit-card.is-inline {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 24px;
+  gap: 16px;
 }
 
 .entry-edit-card.is-inline .lsd-rows {
   background: rgba(255, 255, 255, 0.9);
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--line);
+}
+
+.entry-edit-card.is-inline .lsd-rows .lsd-row {
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding-block: 8px;
+  break-inside: avoid;
 }
 
 .entry-edit-inline-actions.lsd-bottom {
@@ -700,9 +720,9 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   flex: 0 0 auto;
 }
 
-@media (max-width: 1100px) {
-  .entry-edit-card.is-inline {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 760px) {
+  .entry-edit-card.is-inline .lsd-rows {
+    column-count: 1;
   }
 }
 

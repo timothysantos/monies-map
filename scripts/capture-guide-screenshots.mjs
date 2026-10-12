@@ -193,7 +193,7 @@ const SHOTS = [
     name: "summary-charts", device: "desktop",
     run: async (page) => {
       await open(page, `/summary?view=household&month=${MONTH}`);
-      await scrollToLocator(page, page.getByText("Intent vs Outcome", { exact: true }), 20);
+      await scrollToLocator(page, page.getByRole("heading", { name: "Spending Mix" }), 20);
     }
   },
   {
@@ -221,7 +221,7 @@ const SHOTS = [
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
       const row = page.locator("tr").filter({ hasText: "Food & Drinks" }).first();
       await scrollToLocator(page, row, 220);
-      await row.getByText("Food & Drinks").first().click();
+      await row.locator(".month-cell-item").click();
       await page.locator(".month-inline-action-row").first().waitFor();
       await page.waitForTimeout(300);
     }
@@ -291,7 +291,7 @@ const SHOTS = [
     name: "splits-add-expense", device: "desktop",
     run: async (page) => {
       await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
-      await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
+      await page.locator(".splits-lead").getByRole("button", { name: "+ Add expense" }).click();
       const dialog = page.getByRole("dialog", { name: "New split expense" });
       await dialog.getByLabel("Description").fill("Dinner at Din Tai Fung");
       await dialog.getByLabel("Category").selectOption("Food & Drinks");
@@ -321,7 +321,7 @@ const SHOTS = [
     name: "splits-create-group", device: "desktop",
     run: async (page) => {
       await open(page, splitsUrl());
-      await page.locator(".splits-groups-row:not(.splits-groups-row-floating)").getByRole("button", { name: "Create group" }).click();
+      await page.locator(".splits-strip").getByRole("button", { name: "Create group" }).click();
       const dialog = page.getByRole("dialog", { name: "Create group" });
       await dialog.getByLabel("Group name").fill("Seoul trip");
       await dialog.getByLabel("Group currency").selectOption("KRW");
@@ -457,7 +457,7 @@ const SHOTS = [
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
       const row = page.locator("tr").filter({ hasText: "Food & Drinks" }).first();
       await scrollToLocator(page, row, 260);
-      await row.getByText("Food & Drinks").first().click();
+      await row.locator(".month-cell-item").click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(600);
       await hideCaret(page);
@@ -639,9 +639,12 @@ const SHOTS = [
       const card = page.locator(".split-activity-card").filter({ hasText: "Jumbo Seafood dinner" }).first();
       await scrollToLocator(page, card, 200);
       await card.click();
-      // An open expense edits in place; its form replaces the row.
-      const editor = page.locator(".split-date-group").filter({ has: page.getByRole("button", { name: "Delete", exact: true }) }).first();
+      // An open expense is the same card as New split expense, in the list
+      // in place of its row.
+      const editor = page.locator(".split-inline-editor-card");
       await editor.waitFor();
+      // Back to the top, so the shot leads with the card and its total.
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
       await scrollToLocator(page, editor, 60);
       await hideCaret(page);
       await capture("splits-edit");

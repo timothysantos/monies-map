@@ -1,4 +1,4 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { formatDateOnly, formatMonthLabel } from "./formatters";
 import { getMissingStatementMonths } from "./import-preview-model";
 
@@ -76,19 +76,19 @@ export function buildImportBlockers({
   const isMappingAsked = previewModel.hasUnmappedAccounts;
   if (isMappingAsked) {
     blockers.push(blocker("account-mapping", {
-      label: messages.imports.blockerMapAccounts(Math.max(1, previewModel.unmappedCommitAccountNames?.length ?? 1)),
+      label: importMessages.blockerMapAccounts(Math.max(1, previewModel.unmappedCommitAccountNames?.length ?? 1)),
       target: { kind: "account-mapping" }
     }));
   }
   if (previewModel.hasDuplicateCheckpointAccounts) {
     blockers.push(blocker("card-accounts", {
-      label: messages.imports.blockerCardAccounts,
+      label: importMessages.blockerCardAccounts,
       target: { kind: "statement-details" }
     }));
   }
   if (previewModel.hasBlockingCategoryPolicy) {
     blockers.push(blocker("unknown-categories", {
-      label: messages.imports.blockerUnknownCategories(unknownCategoryCount),
+      label: importMessages.blockerUnknownCategories(unknownCategoryCount),
       target: { kind: "unknown-categories" }
     }));
   }
@@ -97,13 +97,13 @@ export function buildImportBlockers({
   if (isStale || isUnchecked) {
     blockers.push(blocker("statement-check", {
       effect: isUnchecked ? "disable" : "ask",
-      label: messages.imports.blockerRefreshCheck,
+      label: importMessages.blockerRefreshCheck,
       target: { kind: "statement-check" }
     }));
   }
   if (hasOcrRecovery) {
     blockers.push(blocker("statement-ocr-recovery", {
-      label: messages.imports.blockerOcrRecovery,
+      label: importMessages.blockerOcrRecovery,
       target: { kind: "statement-ocr-recovery" },
       order: BLOCKER_ORDER["statement-ocr-recovery"]
     }));
@@ -129,13 +129,13 @@ export function buildImportBlockers({
   }
   if (previewModel.needsReviewPreviewRowCount > 0) {
     blockers.push(blocker("rows-to-check", {
-      label: messages.imports.blockerRowsToCheck(previewModel.needsReviewPreviewRowCount),
+      label: importMessages.blockerRowsToCheck(previewModel.needsReviewPreviewRowCount),
       target: { kind: "review-rows" }
     }));
   } else if (!previewModel.hasCommitPayload) {
     // Rows to check also leave nothing to commit; that chip says it better.
     blockers.push(blocker("nothing-to-import", {
-      label: messages.imports.blockerNothingToImport,
+      label: importMessages.blockerNothingToImport,
       target: { kind: "preview-rows" }
     }));
   }
@@ -147,7 +147,7 @@ export function buildImportBlockers({
     remainingCount: blockers.length,
     isCommitDisabled: isSubmitting || isParsingStatement || blockers.some((item) => item.effect === "disable"),
     commitQuestion: hasOcrRecovery ? null : buildCommitQuestion({ isStatement, isPreviewDirty, openCards, previewModel }),
-    matched: matchedCount ? { count: matchedCount, label: messages.imports.blockerRowsMatched(matchedCount) } : null
+    matched: matchedCount ? { count: matchedCount, label: importMessages.blockerRowsMatched(matchedCount) } : null
   };
 }
 
@@ -160,8 +160,8 @@ function buildColumnBlockers({ readyForMapping, missingRequiredFields = [], dupl
     return [];
   }
   return [
-    ...missingRequiredFields.map((field) => ({ id: `column:${field}`, label: messages.imports.blockerMapColumn(field), field })),
-    ...duplicateMappings.map((field) => ({ id: `column-duplicate:${field}`, label: messages.imports.blockerDuplicateColumn(field), field }))
+    ...missingRequiredFields.map((field) => ({ id: `column:${field}`, label: importMessages.blockerMapColumn(field), field })),
+    ...duplicateMappings.map((field) => ({ id: `column-duplicate:${field}`, label: importMessages.blockerDuplicateColumn(field), field }))
   ].map(({ id, label, field }, index) => ({
     id,
     kind: "column-mapping",
@@ -178,12 +178,12 @@ function buildColumnBlockers({ readyForMapping, missingRequiredFields = [], dupl
 // ("OCBC 365 Credit Card: import Sept 2026 first"), with or without money.
 function describeCardLabel(card, { areTotalsVisible, formatMoney, missingMonths = [] }) {
   if (missingMonths.length) {
-    return messages.imports.blockerCardImportFirst(card.accountName, missingMonths.map(formatMonthLabel).join(" and "));
+    return importMessages.blockerCardImportFirst(card.accountName, missingMonths.map(formatMonthLabel).join(" and "));
   }
   const deltaMinor = Number(card.deltaMinor ?? 0);
   return areTotalsVisible && deltaMinor !== 0
-    ? messages.imports.blockerCardOff(card.accountName, formatMoney(Math.abs(deltaMinor)))
-    : messages.imports.blockerCardNoMatch(card.accountName);
+    ? importMessages.blockerCardOff(card.accountName, formatMoney(Math.abs(deltaMinor)))
+    : importMessages.blockerCardNoMatch(card.accountName);
 }
 
 // Committing a statement that does not close, whose check is out of date
@@ -196,8 +196,8 @@ function buildCommitQuestion({ isStatement, isPreviewDirty, openCards, previewMo
   if (isPreviewDirty) {
     return {
       kind: "stale_check",
-      message: messages.imports.commitStatementStaleWarning,
-      confirmLabel: messages.imports.statementReconciliationRefresh
+      message: importMessages.commitStatementStaleWarning,
+      confirmLabel: importMessages.statementReconciliationRefresh
     };
   }
   if (!openCards.length) {
@@ -206,8 +206,8 @@ function buildCommitQuestion({ isStatement, isPreviewDirty, openCards, previewMo
     return previous
       ? {
         kind: "save_again",
-        message: messages.imports.commitSaveAgainWarning(previous.sourceLabel, formatDateOnly(previous.importedAt)),
-        confirmLabel: messages.imports.commitSaveAgain
+        message: importMessages.commitSaveAgainWarning(previous.sourceLabel, formatDateOnly(previous.importedAt)),
+        confirmLabel: importMessages.commitSaveAgain
       }
       : null;
   }
@@ -215,8 +215,8 @@ function buildCommitQuestion({ isStatement, isPreviewDirty, openCards, previewMo
   return {
     kind: "statement_mismatch",
     accountNames,
-    message: messages.imports.commitStatementMismatchWarning(joinNames(accountNames)),
-    confirmLabel: messages.imports.commitAnyway
+    message: importMessages.commitStatementMismatchWarning(joinNames(accountNames)),
+    confirmLabel: importMessages.commitAnyway
   };
 }
 

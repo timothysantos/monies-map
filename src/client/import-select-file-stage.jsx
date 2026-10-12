@@ -2,9 +2,12 @@ import { useId } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { moniesClient } from "./monies-client-service";
 import { describeUploadStatus } from "./import-upload-status";
 import { useMoneyPrivacy } from "./money-privacy";
+import { DetailRow, DetailRows, MoreDetails } from "./ui-components";
+import "./import-select-file-stage.css";
 
 const { accounts: accountService } = moniesClient;
 
@@ -43,7 +46,8 @@ export function ImportSelectFileStage({
   onTogglePasteDefaults,
   isSlim = false,
   hasWaitingFiles = false,
-  onShowQueue
+  onShowQueue,
+  intro = ""
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
@@ -66,14 +70,28 @@ export function ImportSelectFileStage({
   const dropzoneClassName = `import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`;
   const stepHint = (
     <div className="import-step-hint">
-      <strong>{messages.imports.selectFileNextUpload}</strong>
+      <strong>{importMessages.selectFileNextUpload}</strong>
     </div>
   );
   const trustNotes = (
     <>
-      <p className="lede compact">{messages.imports.trustHint}</p>
+      <p className="lede compact">{importMessages.trustHint}</p>
       <p className="lede compact">{rollbackPolicy}</p>
     </>
+  );
+  // The explanations are one folded row, "How importing works", so the drop
+  // zone and its Select file are the first thing on the screen.
+  const howImporting = (
+    <DetailRows className="import-how">
+      <MoreDetails label={importMessages.howImportingTitle} openLabel={importMessages.howImportingTitle}>
+        <div className="import-how-notes">
+          {intro ? <p className="lede compact">{intro}</p> : null}
+          <p className="lede compact">{importMessages.selectFileDetail}</p>
+          {stepHint}
+          {trustNotes}
+        </div>
+      </MoreDetails>
+    </DetailRows>
   );
 
   return (
@@ -82,11 +100,10 @@ export function ImportSelectFileStage({
       {isSlim ? null : (
         <div className="import-stage-head">
           <div className="section-head">
-            <h3>{messages.imports.selectFileTitle}</h3>
-            <span className="panel-context">{messages.imports.selectFileDetail}</span>
+            <h3>{importMessages.selectFileTitle}</h3>
           </div>
           <span className={`import-stage-label ${stageClassName}`}>
-            {messages.imports.steps[0]}
+            {importMessages.steps[0]}
           </span>
         </div>
       )}
@@ -95,9 +112,9 @@ export function ImportSelectFileStage({
         <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel,.hsbc-ocr.tsv,.tsv,text/tab-separated-values" hidden multiple onChange={onUploadImportFile} />
         {isSlim ? (
           <div className={`${dropzoneClassName} is-slim`} {...dropHandlers}>
-            <span>{messages.imports.dropMoreFiles}</span>{" "}
+            <span>{importMessages.dropMoreFiles}</span>{" "}
             <button type="button" className="subtle-action" onClick={openFilePicker}>
-              {messages.imports.selectFileTitle}
+              {importMessages.selectFileTitle}
             </button>
           </div>
         ) : (
@@ -114,8 +131,8 @@ export function ImportSelectFileStage({
             }}
             {...dropHandlers}
           >
-            <strong>{messages.imports.dropzoneTitle}</strong>
-            <span>{messages.imports.dropzoneDetail}</span>
+            <strong>{importMessages.dropzoneTitle}</strong>
+            <span>{importMessages.dropzoneDetail}</span>
           </div>
         )}
         <div className="import-sidecar">
@@ -131,7 +148,6 @@ export function ImportSelectFileStage({
               {statusContent}
             </div>
           ) : null}
-          {isSlim ? null : stepHint}
           <label className="checkbox-field import-ai-consent">
             <input
               type="checkbox"
@@ -140,7 +156,7 @@ export function ImportSelectFileStage({
             />
             <span>Allow optional AI fallback for an unsupported PDF using extracted text only. Original files are not uploaded or stored.</span>
           </label>
-          {isSlim ? null : trustNotes}
+          {isSlim ? null : howImporting}
         </div>
       </div>
 
@@ -152,56 +168,50 @@ export function ImportSelectFileStage({
         onClick={onTogglePasteDefaults}
       >
         <ChevronRight size={16} aria-hidden="true" className={isPasteDefaultsOpen ? "is-open" : ""} />
-        {messages.imports.pasteRowsOrDefaults}
+        {importMessages.pasteRowsOrDefaults}
       </button>
 
       {isPasteDefaultsOpen ? (
         <div id={pasteDefaultsId} className="import-paste-defaults">
-          {isSlim ? <div className="import-paste-defaults-notes">{stepHint}{trustNotes}</div> : null}
-          <div className="import-form-grid">
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.sourceLabel}</span>
+          {isSlim ? <div className="import-paste-defaults-notes">{intro ? <p className="lede compact">{intro}</p> : null}{stepHint}{trustNotes}</div> : null}
+          <DetailRows className="import-defaults-rows" label={importMessages.pasteRowsOrDefaults}>
+            <DetailRow label={importMessages.sourceLabel}>
               <input
-                className="table-edit-input"
                 value={sourceLabel}
                 onChange={(event) => onSourceLabelChange(event.target.value)}
-                placeholder={messages.imports.sourceLabelPlaceholder}
+                placeholder={importMessages.sourceLabelPlaceholder}
               />
-            </label>
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.defaultAccount}</span>
-              <select className="table-edit-input" value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
+            </DetailRow>
+            <DetailRow label={importMessages.defaultAccount} value={defaultAccountName || messages.entries.allWallets}>
+              <select className="lsd-row-native" aria-label={importMessages.defaultAccount} value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
                 <option value="">{messages.entries.allWallets}</option>
                 {accountOptions.map((account) => (
                   <option key={account.id} value={account.name}>{account.label}</option>
                 ))}
               </select>
-            </label>
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.owner}</span>
-              <select className="table-edit-input" value={ownerName} onChange={(event) => onOwnerNameChange(event.target.value)}>
+            </DetailRow>
+            <DetailRow label={importMessages.owner} value={ownerName}>
+              <select className="lsd-row-native" aria-label={importMessages.owner} value={ownerName} onChange={(event) => onOwnerNameChange(event.target.value)}>
                 {people.map((person) => (
                   <option key={person.id} value={person.name}>{person.name}</option>
                 ))}
               </select>
-            </label>
-            <label className="entries-filter import-note-field">
-              <span className="entries-filter-label">{messages.imports.importNote}</span>
+            </DetailRow>
+            <DetailRow label={importMessages.importNote}>
               <input
-                className="table-edit-input"
                 value={importNote}
                 onChange={(event) => onImportNoteChange(event.target.value)}
-                placeholder={messages.imports.importNotePlaceholder}
+                placeholder={importMessages.importNotePlaceholder}
               />
-            </label>
-          </div>
-          <p className="lede compact">{messages.imports.defaultsHint}</p>
+            </DetailRow>
+          </DetailRows>
+          <p className="lede compact">{importMessages.defaultsHint}</p>
 
           <label className="entries-filter import-csv-field">
-            <span className="entries-filter-label">{messages.imports.csvInput}</span>
+            <span className="entries-filter-label">{importMessages.csvInput}</span>
             {!areTotalsVisible ? (
               <span className="import-privacy-notice">
-                {messages.imports.csvScreenedWhileHidden}
+                {importMessages.csvScreenedWhileHidden}
               </span>
             ) : null}
             <textarea
@@ -209,10 +219,10 @@ export function ImportSelectFileStage({
               value={csvText}
               onInput={(event) => onCsvTextChange(event.currentTarget.value)}
               onChange={(event) => onCsvTextChange(event.target.value)}
-              placeholder={messages.imports.csvPlaceholder}
+              placeholder={importMessages.csvPlaceholder}
             />
           </label>
-          <p className="lede compact">{messages.imports.selectFileNextPaste}</p>
+          <p className="lede compact">{importMessages.selectFileNextPaste}</p>
         </div>
       ) : null}
     </div>

@@ -168,6 +168,10 @@ Recommended relationship:
 - `savings target` is a first-class month-level planning input
 - `realized savings` is a derived month-level outcome
 - `savings variance` is `realized savings - savings target`
+- the `savings bar` (Summary and Month lead) draws actual income as 100%,
+  with spent and kept (income minus spent, the same as realized savings) as
+  its parts; when spent is more than income, the excess is shown as money
+  that "came out of savings". It reuses these figures and adds no field.
 
 Optional related concept:
 - a `planned savings allocation` may exist as one or more `month plan rows`
@@ -1581,7 +1585,7 @@ Person month total and person views:
   share`). An entry that is someone else's direct expense never counts
 - a person view counts entries by the same rule
   (`personEntryAmountMinor`, `person-entry-amount.ts`) in Summary months,
-  metric cards and category charts, in the Month `Actual spend` card,
+  metric cards and category charts, in the Month lead's spent figure,
   plan actuals and category chart, and in the Summary and Month Money
   check-ins (`filterEntriesForView`, `person-view-scope.ts`). The view's
   scope narrows it:
@@ -2094,7 +2098,9 @@ These boundaries are important enough to preserve explicitly:
   signal has a `signal kind` (code name in brackets), shown as a chip in
   plain words: `To do` (`quick_fix`: makes the numbers right or settles an
   obligation: a statement gap, a card bill due within a week or overdue
-  with no payment yet, a planned bill with no payment linked, a split
+  with no payment yet, a planned bill with no payment linked, a month's
+  plan that spends more than its planned income (savings rows are part of
+  its planned spend, never added again; month in progress or ahead only), a split
   balance, entries in Other, a trip still in Other, a settlement payment
   waiting to be matched, and the account routine's moved income, missed
   payment, own-account transfer counted as income and scheduled check),

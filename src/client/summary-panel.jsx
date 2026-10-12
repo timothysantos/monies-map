@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronRight, SquarePen, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   useLocation,
   useNavigate,
@@ -8,24 +8,22 @@ import {
 } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { moniesClient } from "./monies-client-service";
+import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
+import { money, unmaskedMoney } from "./formatters";
+import "./summary-body.css";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
-import { BarLine } from "./ui-components";
 import { SummaryLead } from "./summary-lead";
+import { SummaryIntentVsOutcomeSection } from "./summary-intent-outcome";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
-import { flowTone, headroomTone, reconciliationTone, signTone, spendTone } from "../domain/money-tone";
+import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-const {
-  accounts: accountService,
-  format: formatService
-} = moniesClient;
-
+import { DetailRow, DetailRows } from "./ui-components";
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -74,7 +72,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountPills: safeSummaryPage.accountPills,
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
-      formatMoney: formatService.unmaskedMoney
+      formatMoney: unmaskedMoney
     }),
     page: "summary",
     // The range's last month is the period Summary rotates by.
@@ -168,7 +166,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         className="financial-insight-summary"
       />
 
-      <div className="summary-top-grid">
+      <div className="summary-top-grid has-intent-grid">
         {/* All months: the whole range's spending by category. */}
         <SpendingMixSection
           donutData={safeSummaryPage.categoryShareChart}
@@ -244,135 +242,9 @@ function SummaryScopeSwitch({ view, onScopeChange }) {
   );
 }
 
-function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote }) {
-  const sortedMonths = [...months].sort((left, right) => right.month.localeCompare(left.month));
-
-  return (
-    <section className="chart-card">
-      <div className="chart-head">
-        <h3>{messages.summary.intentVsOutcome}</h3>
-        <p>{messages.summary.intentVsOutcomeDetail}</p>
-      </div>
-      <div className="chart-bars">
-        {sortedMonths.map((month, index) => {
-          const monthPlanReview = buildMonthPlanReview(month);
-          return (
-            <SummaryMonthPlanCard
-              key={month.month}
-              month={month}
-              monthPlanReview={monthPlanReview}
-              isInitiallyOpen={index === 0}
-              onOpenMonth={onOpenMonth}
-              onEditNote={onEditNote}
-            />
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenMonth, onEditNote }) {
-  return (
-    <details className="plan-row-card" open={isInitiallyOpen}>
-      <summary className="plan-row-summary">
-        <div className="plan-row-head">
-          <div className="plan-row-title">
-            <span className="plan-row-disclosure" aria-hidden="true">
-              <ChevronRight size={18} />
-            </span>
-            <div>
-              <button
-                type="button"
-                className="summary-month-link"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onOpenMonth(month.month);
-                }}
-              >
-                {formatService.formatMonthLabel(month.month)}
-              </button>
-              <p>Planned income <PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney> • Actual income <PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></p>
-            </div>
-          </div>
-          <span className={moneyToneClass(monthPlanReview.spendVarianceTone)}>
-            <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
-          </span>
-        </div>
-      </summary>
-
-      <div className="plan-row-content">
-        <BarLine
-          label={messages.month.table.planned}
-          valueMinor={month.estimatedExpensesMinor}
-          maxMinor={monthPlanReview.maxExpenseBarMinor}
-          tone="plan"
-        />
-        <BarLine
-          label={messages.month.table.actual}
-          valueMinor={month.realExpensesMinor}
-          maxMinor={monthPlanReview.maxExpenseBarMinor}
-          tone={monthPlanReview.actualSpendTone}
-        />
-
-        <div className="table-wrap plan-detail-table-wrap">
-          <table className="plan-detail-table">
-            <thead>
-              <tr>
-                <th>{messages.summary.table.metric}</th>
-                <th>{messages.summary.table.estimate}</th>
-                <th>{messages.summary.table.actual}</th>
-                <th>{messages.summary.table.variance}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{messages.summary.table.income}</td>
-                <td><PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.actualIncomeTone)}><PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.incomeVarianceTone)}>
-                  <PrivateMoney>{formatService.money(monthPlanReview.incomeVarianceMinor)}</PrivateMoney>
-                </td>
-              </tr>
-              <tr>
-                <td>{messages.summary.table.expectedExpenses}</td>
-                <td><PrivateMoney>{formatService.money(month.estimatedExpensesMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.actualSpendTone)}><PrivateMoney>{formatService.money(month.realExpensesMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.spendVarianceTone)}>
-                  <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
-                </td>
-              </tr>
-              <tr>
-                <td>{messages.summary.table.expectedSavings}</td>
-                <td><PrivateMoney>{formatService.money(month.savingsGoalMinor)}</PrivateMoney></td>
-                <td className={moneyToneClass(monthPlanReview.realizedSavingsTone)}>
-                  <PrivateMoney>{formatService.money(month.realizedSavingsMinor)}</PrivateMoney>
-                </td>
-                <td className={moneyToneClass(monthPlanReview.savingsVarianceTone)}>
-                  <PrivateMoney>{formatService.money(monthPlanReview.savingsVarianceMinor)}</PrivateMoney>
-                </td>
-              </tr>
-              <tr className="summary-context-row">
-                <td colSpan={4}>
-                  <button
-                    type="button"
-                    className="note-trigger summary-note-trigger"
-                    onClick={() => onEditNote(month.month, month.note)}
-                  >
-                    <span>{month.note || messages.common.emptyValue}</span>
-                    <SquarePen size={14} />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </details>
-  );
-}
-
+// Wallets in view (design.md, "Summary body"): one group of rows, each the
+// wallet, how fresh its statement is (not shown while money is hidden, as it
+// says which side of the statement the wallet is on) and its balance.
 function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   if (!accountPills.length) {
@@ -381,23 +253,31 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
 
   return (
     <section className="summary-accounts">
-      <div className="panel-subhead">
-        <h3>Wallets in view</h3>
-        <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
-      </div>
-      <div className="summary-account-pills">
-        {accountPills.map((account) => (
-          <button
-            key={account.accountId}
-            type="button"
-            className={`summary-account-pill ${moneyToneClass(reconciliationTone(account.reconciliationStatus), "soft")}`}
-            onClick={() => onOpenEntriesForAccount(account.accountId)}
-          >
-            <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
-            <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor)}</PrivateMoney></span>
-            {areTotalsVisible ? <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span> : null}
-          </button>
-        ))}
+      <div className="summary-accounts-body">
+        <div className="summary-accounts-head">
+          <h3>Wallets in view</h3>
+          <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
+        </div>
+        <DetailRows label="Wallets in view">
+          {accountPills.map((account) => (
+            <DetailRow
+              key={account.accountId}
+              className="summary-wallet-row"
+              label={(
+                <>
+                  <span className="summary-wallet-name">{formatAccountDisplayName(account)}</span>
+                  {areTotalsVisible ? (
+                    <span className={`summary-wallet-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
+                      {describeAccountHealth(account)}
+                    </span>
+                  ) : null}
+                </>
+              )}
+              value={<PrivateMoney>{money(account.balanceMinor)}</PrivateMoney>}
+              onClick={() => onOpenEntriesForAccount(account.accountId)}
+            />
+          ))}
+        </DetailRows>
       </div>
     </section>
   );
@@ -454,22 +334,4 @@ function SummaryMonthNoteDialog({ monthNoteDialog, isSaving = false, errorMessag
       </Dialog.Portal>
     </Dialog.Root>
   );
-}
-
-function buildMonthPlanReview(month) {
-  const incomeVarianceMinor = month.actualIncomeMinor - month.plannedIncomeMinor;
-  const spendVarianceMinor = month.estimatedExpensesMinor - month.realExpensesMinor;
-  const savingsVarianceMinor = month.realizedSavingsMinor - month.savingsGoalMinor;
-  return {
-    incomeVarianceMinor,
-    spendVarianceMinor,
-    savingsVarianceMinor,
-    actualIncomeTone: flowTone(month.actualIncomeMinor),
-    actualSpendTone: spendTone(month.realExpensesMinor, month.estimatedExpensesMinor),
-    realizedSavingsTone: signTone(month.realizedSavingsMinor),
-    incomeVarianceTone: headroomTone(incomeVarianceMinor),
-    spendVarianceTone: headroomTone(spendVarianceMinor),
-    savingsVarianceTone: headroomTone(savingsVarianceMinor),
-    maxExpenseBarMinor: Math.max(month.realExpensesMinor, month.estimatedExpensesMinor)
-  };
 }

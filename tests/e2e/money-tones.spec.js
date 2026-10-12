@@ -10,11 +10,11 @@ import { gotoPageAfterApi, loadEntriesPage, loadMonthPage, loadSplitsPage, postJ
 // actually sees, so a stylesheet rule that paints over a tone fails here.
 
 const INK = {
-  in: "rgb(23, 104, 74)",
-  short: "rgb(163, 53, 42)",
-  plan: "rgb(47, 91, 134)",
-  text: "rgb(38, 35, 31)",
-  muted: "rgb(115, 111, 105)"
+  in: "rgb(76, 94, 26)",
+  short: "rgb(151, 50, 35)",
+  plan: "rgb(44, 95, 95)",
+  text: "rgb(59, 42, 31)",
+  muted: "rgb(110, 95, 84)"
 };
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
 
@@ -49,9 +49,9 @@ async function openSummary(page, view, month) {
   );
 }
 
-const card = (page, label) => page.locator(".metric-row-month .metric")
-  .filter({ has: page.locator(":scope > span", { hasText: new RegExp(`^${label}$`) }) });
-const cardValue = (page, label) => card(page, label).locator("strong .private-money");
+// The Month top (month-overview.jsx MonthLead): the spend lead and its pills.
+const monthLead = (page, part) => page.locator(`.month-lead ${part}`);
+const monthPill = (page, metric) => page.locator(`.month-lead-group .lead-column[data-metric="${metric}"]`);
 
 // The demo seeds no income entries, so each test records one salary.
 test.beforeEach(async ({ page }) => {
@@ -104,14 +104,14 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
     // Nothing spent against no plan: neither under nor over.
     await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
   }
-  const fill = await looks(page.locator(".summary-lead .lsd-bar-fill"));
-  expect(fill.className).toContain(overPlan ? "money-short" : "money-neutral");
+  // The spend-vs-plan bar is gone: the plan line above carries the tone.
+  await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
   const savings = amount("Realized savings");
   expect((await looks(summaryPill(page, "saved").locator("strong .private-money"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
 
-  // Intent vs Outcome is a table: text only, no tint behind the numbers.
-  const varianceCells = page.locator(".plan-detail-table td[class*='money-']");
-  await page.locator(".plan-row-card").first().evaluate((details) => { details.open = true; });
+  // Intent vs Outcome's detail rows (the latest month's are open): text
+  // only, no tint behind the numbers.
+  const varianceCells = page.locator(".summary-intent-month").first().locator(".summary-intent-metric dd[class*='money-']");
   await expect(varianceCells.first()).toBeVisible();
   for (const cell of await varianceCells.all()) {
     const style = await looks(cell);
@@ -135,13 +135,18 @@ test("Month: over-plan outcomes are rose, under-plan mint, tables text-only", as
   expect(over, JSON.stringify(amounts)).toBeTruthy();
   expect(under, JSON.stringify(amounts)).toBeTruthy();
 
-  const openMonth = ({ view, month }) => gotoPageAfterApi(page, `/month?view=${view}&month=${month}&scope=direct_plus_shared`, "/api/month-page", () => card(page, "Spend gap"));
+  const openMonth = ({ view, month }) => gotoPageAfterApi(page, `/month?view=${view}&month=${month}&scope=direct_plus_shared`, "/api/month-page", () => monthLead(page, ".summary-lead-headroom"));
 
+  // The lead: spend rose over plan, the spend gap ("over plan") rose text
+  // with no tint, the plan sky text.
   await openMonth(over);
-  expect((await looks(cardValue(page, "Actual spend"))).color).toBe(INK.short);
-  expect((await looks(cardValue(page, "Spend gap"))).color).toBe(INK.short);
-  expect((await looks(card(page, "Spend gap"))).className).toContain("money-soft");
-  expect((await looks(cardValue(page, "Planned spend"))).color).toBe(INK.plan);
+  expect((await looks(monthLead(page, ".summary-lead-spent .private-money"))).color).toBe(INK.short);
+  const overGap = await looks(monthLead(page, ".summary-lead-headroom"));
+  expect(overGap.color).toBe(INK.short);
+  expect(overGap.background).toBe(TRANSPARENT);
+  await expect(monthLead(page, ".summary-lead-headroom")).toContainText("over plan");
+  expect((await looks(monthLead(page, ".summary-lead-plan"))).color).toBe(INK.plan);
+  await expect(monthLead(page, ".lsd-bar")).toHaveCount(0);
 
   // Plan tables: a row over its plan shows a rose variance and actual; the
   // cells stay unfilled.
@@ -168,8 +173,9 @@ test("Month: over-plan outcomes are rose, under-plan mint, tables text-only", as
   for (const row of tableColours) expect(row.varianceBackground).toBe(TRANSPARENT);
 
   await openMonth(under);
-  expect((await looks(cardValue(page, "Actual spend"))).color).toBe(INK.text);
-  expect((await looks(cardValue(page, "Spend gap"))).color).toBe(INK.in);
+  expect((await looks(monthLead(page, ".summary-lead-spent .private-money"))).color).toBe(INK.text);
+  expect((await looks(monthLead(page, ".summary-lead-headroom"))).color).toBe(INK.in);
+  await expect(monthLead(page, ".summary-lead-headroom")).toContainText("under plan");
 });
 
 test("Entries: expenses rose with their minus sign, income mint, transfers plain", async ({ page }) => {
@@ -220,7 +226,7 @@ test("Entries: expenses rose with their minus sign, income mint, transfers plain
   expect((await looks(item("Transfers").locator("strong"))).color).toBe(INK.text);
 });
 
-test("Splits: balances on the orange are plain text; activity is coloured text only", async ({ page }) => {
+test("Splits: the lead card carries the balance tone; tiles on the orange are plain text; activity is coloured text only", async ({ page }) => {
   await revealMoney(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   const splits = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
@@ -229,16 +235,16 @@ test("Splits: balances on the orange are plain text; activity is coloured text o
 
   for (const group of groups.slice(0, 2)) {
     await gotoPageAfterApi(page, `/splits?view=person-tim&month=2025-10&split_group=${group.id}`, "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
-    const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
-    await expect(balance).toContainText(group.balanceMinor > 0 ? "You are owed" : "You owe");
-    // No coloured chip on the orange: the balance keeps the strip's own
-    // white text and no fill (the owner found tinted chips too much there).
-    const strip = await looks(balance);
-    expect(strip.background).toBe(TRANSPARENT);
-    expect([INK.in, INK.short]).not.toContain(strip.color);
-    expect([INK.in, INK.short]).not.toContain((await looks(balance.locator("strong"))).color);
+    // The lead is a white card (not the orange): money owed to you is mint
+    // text, a debt rose text, never a fill.
+    const lead = page.locator(".splits-lead");
+    const figure = lead.locator(".lsd-amount");
+    await expect(lead.locator(".lsd-amount-caption")).toContainText(group.balanceMinor > 0 ? "owes you" : "You owe");
+    const leadFigure = await looks(figure);
+    expect(leadFigure.color).toBe(group.balanceMinor > 0 ? INK.in : INK.short);
+    expect(leadFigure.background).toBe(TRANSPARENT);
 
-    const pillBalance = page.locator(".split-group-pill").filter({ hasText: group.name }).first().locator(".split-group-pill-balance");
+    const pillBalance = page.locator(".splits-strip-tile").filter({ hasText: group.name }).first().locator(".splits-strip-tile-balance");
     const pill = await looks(pillBalance);
     expect(pill.background).toBe(TRANSPARENT);
     expect([INK.in, INK.short]).not.toContain(pill.color);
@@ -263,20 +269,30 @@ test("hidden money shows no tone", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openSummary(page, "household", "2026-04");
   await expect(page.getByRole("button", { name: "Show money totals" })).toBeVisible();
-  // The lead: dots in plain ink, the plan muted, the bar's empty track only.
+  // The lead: dots in plain ink, the plan muted, no spend line, only the savings bar's percentages.
   await expect(page.locator(".summary-lead-spent")).toHaveText("••••");
   expect((await looks(page.locator(".summary-lead-spent .private-money"))).color).toBe(INK.text);
   expect((await looks(page.locator(".summary-lead-plan"))).color).toBe(INK.muted);
-  await expect(page.locator(".summary-lead .lsd-bar")).toBeVisible();
-  await expect(page.locator(".summary-lead .lsd-bar-fill")).toHaveCount(0);
+  await expect(page.locator(".summary-lead .savings-bar-track")).toBeVisible();
+  await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
   await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
   for (const metric of ["income", "saved"]) {
     const pill = summaryPill(page, metric);
     await expect(pill.locator("strong")).toHaveText("••••");
     expect((await looks(pill.locator("strong .private-money"))).color, metric).toBe(INK.text);
-    // The pill keeps no mint or rose tint either (a neutral one is fine).
-    const surface = parseColour((await looks(pill)).background).rgb;
-    expect(Math.max(...surface) - Math.min(...surface), `${metric} tint`).toBeLessThan(12);
+    // The pill keeps no mint or rose tint either: none, or the cream neutral.
+    const surface = parseColour((await looks(pill)).background);
+    if (surface.alpha > 0) {
+      const neutral = parseColour(await page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--pastel-neutral)";
+        document.body.append(probe);
+        const colour = getComputedStyle(probe).color;
+        probe.remove();
+        return colour;
+      })).rgb;
+      surface.rgb.forEach((channel, index) => expect(Math.abs(channel - neutral[index]), `${metric} tint`).toBeLessThan(3));
+    }
     expect((await looks(pill.locator(".summary-support-pill-label"))).color).toBe(INK.muted);
   }
 
@@ -302,20 +318,23 @@ test("hidden money shows no sign or outcome in words", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const visibleText = () => page.locator("main").innerText();
 
-  await gotoPageAfterApi(page, "/month?view=household&month=2025-06&scope=direct_plus_shared", "/api/month-page", () => card(page, "Remaining budget"));
-  await expect(cardValue(page, "Remaining budget")).toHaveText("••••");
+  await gotoPageAfterApi(page, "/month?view=household&month=2025-06&scope=direct_plus_shared", "/api/month-page", () => monthPill(page, "remaining"));
+  await expect(monthPill(page, "remaining").locator("strong")).toHaveText("••••");
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
 
   await openSummary(page, "household", "2026-04");
-  await expect(page.locator(".summary-account-pill").first()).toBeVisible();
+  await expect(page.locator(".summary-wallet-row").first()).toBeVisible();
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
   // A wallet's statement health is an outcome too: hidden with the money.
-  expect(await page.locator(".summary-account-pill-meta").allInnerTexts()).toEqual([]);
+  expect(await page.locator(".summary-wallet-health").allInnerTexts()).toEqual([]);
 
   await gotoPageAfterApi(page, "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
   await expect(page.locator(".split-activity-card").first()).toBeVisible();
-  const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
-  await expect(balance).toContainText("Net");
+  const balance = page.locator(".splits-lead .lsd-amount-caption");
+  await expect(balance).toContainText("Balance with");
+  await expect(page.locator(".splits-lead .lsd-amount")).toHaveText("••••");
+  // Hidden money turns the figure to plain ink: no tone says which side of zero it is.
+  expect((await looks(page.locator(".splits-lead .lsd-amount"))).color).toBe(INK.text);
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
 
   // Revealing brings the wording back.

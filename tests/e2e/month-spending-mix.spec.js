@@ -17,7 +17,7 @@ const formatMoney = (minor) => moneyFormatter.format(minor / 100);
 const sumMinor = (data) => data.reduce((sum, item) => sum + item.valueMinor, 0);
 const monthLabel = (month) => {
   const [year, number] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1));
+  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1)).replace(/\bSept\b/, "Sep");
 };
 
 async function waitUsable(page) {
@@ -52,11 +52,14 @@ async function expectMix(page, share) {
   const mix = spendingMix(page);
   await expect(mix).toHaveCount(1);
   await expect(mix.locator(".donut-center strong")).toHaveText(formatMoney(sumMinor(share)));
-  const rows = mix.locator(".share-row");
-  await expect(rows).toHaveCount(share.length);
+  // The ranked list shows the top five; "Show all N" lists the rest
+  // (tests/e2e/summary-body-lsd.spec.js covers the toggle).
+  const rows = mix.locator(".summary-mix-row");
+  const listed = Math.min(share.length, 5);
+  await expect(rows).toHaveCount(listed);
   await expect(rows.first()).toContainText(share[0].label);
   await expect(rows.first()).toContainText(formatMoney(share[0].valueMinor));
-  await expect(rows.last()).toContainText(share.at(-1).label);
+  await expect(rows.last()).toContainText(share[listed - 1].label);
 }
 
 // Spending Mix sits in the Month content after the money insights and before
@@ -149,7 +152,7 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     await page.goto(`/month?view=person-tim&month=${later}&${RANGE_QUERY}`);
     await waitUsable(page);
     const mix = spendingMix(page);
-    await expect(mix.locator(".share-row")).toHaveCount(monthShare(summary, later).length);
+    await expect(mix.locator(".summary-mix-row")).toHaveCount(Math.min(monthShare(summary, later).length, 5));
     const text = await mix.innerText();
     expect(text).not.toMatch(/\$\s?\d/);
     expect(text).toContain("••••");
@@ -185,7 +188,7 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     await expect(mix).toHaveCount(1);
     await expect(mix.locator(".empty-state")).toHaveText("No spend rows in this view.");
     await expect(mix.locator(".spending-mix-chart-shell")).toHaveCount(0);
-    await expect(mix.locator(".share-row")).toHaveCount(0);
+    await expect(mix.locator(".summary-mix-row")).toHaveCount(0);
   });
 });
 

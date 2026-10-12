@@ -498,6 +498,8 @@ test.describe("settings reference data", () => {
 
     await openSettingsPage(page);
     await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    // The account priority folds under the "Default account" row.
+    await page.getByRole("button", { name: /^Default account/ }).click();
     await expect(page.locator(".settings-shortcut-account-row").first()).toContainText(activeAccounts[0].name);
 
     const saveResponse = page.waitForResponse((response) => (
@@ -511,6 +513,7 @@ test.describe("settings reference data", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await settingsReload;
     await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await page.getByRole("button", { name: /^Default account/ }).click();
     await expect(page.locator(".settings-shortcut-account-row").first()).toContainText(movedAccount.name);
 
     const settingsPage = await loadSettingsPage(page);
@@ -542,6 +545,9 @@ test.describe("settings reference data", () => {
     await openSettingsPage(page);
     const shortcutUrl = new URL(shortcutPath, page.url()).toString();
     await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    // The four steps and the account priority fold under their own rows.
+    await page.getByRole("button", { name: /^How to set it up/ }).click();
+    await page.getByRole("button", { name: /^Default account/ }).click();
     await expect(page.getByText("Paste the copied connection into Apple's plain-text setup field.")).toBeVisible();
     await expect(page.getByText(/keep the Dictionary with value, merchant, and name/)).toBeVisible();
     await expect(page.getByText(/replace Register Apple Pay Transaction with Monies Map Apple Pay API/)).toBeVisible();

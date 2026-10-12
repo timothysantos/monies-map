@@ -52,17 +52,17 @@ test("a statement after months that were never imported names them, and the card
   await page.goto("/imports");
   await page.locator("input[type=file]").setInputFiles(pdfPath);
 
-  const card = page.locator(".statement-reconciliation-row").filter({ hasText: "OCBC 365 Credit Card • Sept 2026" });
+  const card = page.locator(".statement-reconciliation-row").filter({ hasText: "OCBC 365 Credit Card • Sep 2026" });
   await expect(card).toBeVisible({ timeout: 60_000 });
   const title = card.locator(".statement-reconciliation-card-title strong");
-  await expect(title).toHaveText("JoyceOCBC 365 Credit Card • Sept 2026 • ending 7528");
+  await expect(title).toHaveText("JoyceOCBC 365 Credit Card • Sep 2026 • ending 7528");
   // The owner chip wears Joyce's colour, the same one as her Entries rows.
   await expect(title.locator(".statement-card-owner")).toHaveText("Joyce");
   const chipVars = await title.locator(".statement-card-owner").evaluate((element) => element.style.getPropertyValue("--person-colour"));
-  expect(chipVars.trim().toUpperCase()).toBe("#DE726D");
+  expect(chipVars.trim().toUpperCase()).toBe("#B97680");
   // The cycle runs from the day after the previous statement date, not the
   // first row's date (24 Aug).
-  await expect(page.getByText("Statement date 1 Sept 2026 · covers 2 Aug 2026 – 1 Sept 2026 · 1 card · 5 rows")).toBeVisible();
+  await expect(page.getByText("Statement date 1 Sep 2026 · covers 2 Aug 2026 – 1 Sep 2026 · 1 card · 5 rows")).toBeVisible();
 
   await expect(card.locator(".statement-fix-check")).toContainText(
     "Your Jul 2026 and Aug 2026 statements aren't imported yet. Your ledger stops at the 1 Jun 2026 statement ($0.00), and this statement starts from $101.86 owed. Import them first, then this one."
@@ -110,7 +110,7 @@ test("a statement right after the last saved one keeps the general opening-balan
   await page.goto("/imports");
   await page.locator("input[type=file]").setInputFiles(pdfPath);
 
-  const card = page.locator(".statement-reconciliation-row").filter({ hasText: "OCBC 365 Credit Card • Sept 2026" });
+  const card = page.locator(".statement-reconciliation-row").filter({ hasText: "OCBC 365 Credit Card • Sep 2026" });
   await expect(card.locator(".statement-fix-check")).toContainText(
     "The balance before this statement is off by $101.86. An earlier statement may be missing, or an earlier entry is off.",
     { timeout: 60_000 }

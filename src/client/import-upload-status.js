@@ -1,10 +1,10 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 
 const TITLES = {
-  active: messages.imports.uploadStatusWorking,
-  success: messages.imports.uploadStatusReady,
-  error: messages.imports.uploadStatusError,
-  waiting: messages.imports.uploadStatusWaiting
+  active: importMessages.uploadStatusWorking,
+  success: importMessages.uploadStatusReady,
+  error: importMessages.uploadStatusError,
+  waiting: importMessages.uploadStatusWaiting
 };
 
 /**
@@ -29,7 +29,7 @@ export function describeUploadStatus(status, { hasWaitingFiles = false } = {}) {
   }
   return {
     tone: status.tone,
-    title: TITLES[status.tone] ?? messages.imports.uploadStatusWorking,
+    title: TITLES[status.tone] ?? importMessages.uploadStatusWorking,
     message: status.message,
     role: status.tone === "error" ? "alert" : "status",
     opensQueue: isWaiting

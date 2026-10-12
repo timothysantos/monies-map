@@ -29,6 +29,9 @@ a doc here in the same change.
 - [`code-spec.md`](code-spec.md): compact implementation spec, query budgets,
   and invalidation contracts.
 - [`../design.md`](../design.md): client-side boundaries and helper services.
+- [`proposals/colour-directions/README.md`](proposals/colour-directions/README.md):
+  the shipped 1970s colour tokens beside the 60s mod and 80s pop
+  alternatives, as tables with their contrast.
 - [`macro-performance-plan.md`](macro-performance-plan.md): macro architecture
   and performance plan, budgets, and task sequence.
 - [`macro-performance-implementation.md`](macro-performance-implementation.md):
@@ -175,6 +178,9 @@ a doc here in the same change.
   two-tab entry and splits refresh.
 - [`audits/uob-may-2026-import-reconciliation-audit.md`](audits/uob-may-2026-import-reconciliation-audit.md):
   UOB May 2026 import reconciliation.
+- [`audits/view-scope-sheet.md`](audits/view-scope-sheet.md): what the
+  mobile chrome redesign moved or removed in the phone View and scope sheet,
+  with before and after screenshots.
 
 ## Runbooks
 

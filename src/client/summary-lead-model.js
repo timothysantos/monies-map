@@ -41,7 +41,6 @@ export function buildSummaryLeadModel(metricCards = []) {
     headroom: plannedMinor > 0 || actualMinor > 0
       ? { amountMinor: Math.abs(headroomMinor), isOver: headroomMinor < 0, tone: headroomTone(headroomMinor) }
       : null,
-    progress: { valueMinor: actualMinor, planMinor: plannedMinor },
     income: { amountMinor: card.actualIncome.amountMinor, tone: card.actualIncome.tone, planMinor: card.plannedIncome.amountMinor },
     saved: { amountMinor: card.realizedSavings.amountMinor, tone: card.realizedSavings.tone, planMinor: card.savingsTarget.amountMinor }
   };

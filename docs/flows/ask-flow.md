@@ -402,7 +402,7 @@ Ask reads nothing of its own:
   query key), so going back to Entries joins that data;
 - the Summary page and wallet pills already cached for the view, for the
   "since you last looked" card (`ask-brief-card.jsx`, composed by
-  `composeCheckInHeadline` in `financial-insight.jsx`). Never fetched and no
+  `composeCheckInHeadline` in `check-in-headline.js`). Never fetched and no
   AI on open; with nothing cached the card does not show.
 
 The Claude credit status (`GET /api/ai-assist/provider-status`, DOMAIN.md

@@ -38,6 +38,26 @@ Month state is split between:
 
 The page must preserve active edits while background freshness catches up.
 
+The top of the page is one lead card (`MonthLead` in `month-overview.jsx`,
+design.md "Lead · Support · Detail"): "Spent · May 2026", the month's actual
+spend "of" its planned spend, the bar, the percent of plan and how far under
+or over plan. Income (received, with "plan $x"), Saved (with "target $x") and
+Remaining budget are one row of three equal columns inside the card, under
+the bar, split by hairlines, in text colour only (no tinted boxes); the card
+is at most 190 px tall on an iPhone 13 so Money insights start above the
+fold. The
+figures are the month page DTO's metric cards plus the month's Summary row
+(`buildMonthLeadModel`), so they equal what the six tiles showed; the
+Remaining budget column (labelled "To allocate" or "Overplanned", "Remaining budget" when money is hidden) opens its explanation. Nothing scrolls sideways at
+390 px (`tests/e2e/summary-month-lsd.spec.js`).
+
+The plan tables (Income, Budget Buckets, Planned Items) keep their table
+markup on every layout and add hierarchy: the item leads, the money columns
+are right-aligned, and a thin bar under each actual shows actual against
+plan. On the sheet layout each row is a compact card (bubble, item and
+category, actual of planned, the bar, the note and the variance) and the
+tables never scroll sideways; a tap opens the plan card sheet as before.
+
 Opening a plan row (income, planned items, budget buckets) starts the same
 edit on both layouts: inline editing on desktop, the edit sheet on mobile. A
 row opens from a click anywhere on the row outside its own controls, or from
@@ -90,7 +110,7 @@ the Account and Note columns scroll inside the table while Category, Item,
 Planned, Actual and Variance stay on screen. "+ Add planned item", the row
 open buttons, the header tabs and the period controls stay on screen and
 uncovered, and inline Save and Cancel stay at the visible edge of the table.
-From 1,100 to 1,199 px the plan tables and summary cards tighten a
+From 1,100 to 1,199 px the plan tables tighten a
 little (narrower cell padding, notes cut off earlier on one line) so the
 full tables fit whole, also with wider fonts, and every note's edit icon
 stays on screen. The phone layout and 1,200 px and wider are unchanged.
@@ -148,7 +168,7 @@ own, also on a deep link before the range's Summary page lands. It is the
 same projection as the Summary page's `categoryShareByMonth` entry for the
 month (`buildDonutChart` over the view's entries in the scope);
 `tests/month-spending-mix.test.mjs` holds the two equal for every view and
-scope. A category card's arrow opens Entries for that category in this
+scope. A category row's arrow opens Entries for that category in this
 month and scope (`handleOpenEntriesForActual`, as the tables' Actual
 drilldowns). `tests/e2e/month-spending-mix.spec.js` proves it on a phone
 and a desktop.

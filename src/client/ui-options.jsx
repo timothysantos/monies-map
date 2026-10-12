@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../domain/category-palette";
+import { ACCOUNT_KIND_LABELS } from "./enum-labels";
 
 export const ICON_OPTIONS = [
   { key: "arrow-right-left", label: "Transfer", Icon: ArrowRightLeft },
@@ -61,10 +62,4 @@ export const COLOR_OPTIONS = CATEGORY_COLOURS;
 
 export const FALLBACK_THEME = { colorHex: FALLBACK_CATEGORY_COLOUR, iconKey: "receipt" };
 
-export const ACCOUNT_KIND_OPTIONS = [
-  { value: "bank", label: "Bank" },
-  { value: "credit_card", label: "Credit card" },
-  { value: "loan", label: "Loan" },
-  { value: "cash", label: "Cash" },
-  { value: "investment", label: "Investment" }
-];
+export const ACCOUNT_KIND_OPTIONS = Object.entries(ACCOUNT_KIND_LABELS).map(([value, label]) => ({ value, label }));

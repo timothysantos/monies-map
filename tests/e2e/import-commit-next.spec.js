@@ -102,7 +102,7 @@ test("a commit opens the next file under the last commit's summary, whose rollba
   );
   // A sky notice; with nothing waiting, Import another file sits by the
   // title and the rollback at the foot.
-  await expect(fullDoneCard(page)).toHaveCSS("background-color", "rgb(227, 236, 246)");
+  await expect(fullDoneCard(page)).toHaveCSS("background-color", "rgb(214, 231, 226)");
   await expect(fullDoneCard(page).locator(".import-done-head").getByRole("button", { name: "Import another file" })).toBeVisible();
   await expect(fullDoneCard(page).getByRole("button", { name: "Close" })).toHaveCount(0);
   await expect(fullDoneCard(page).locator(".import-done-actions").getByRole("button", { name: "Roll back this import" })).toBeVisible();

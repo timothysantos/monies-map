@@ -53,7 +53,11 @@ test.describe("financial insights", () => {
 
   test.beforeEach(async ({ page }) => {
     wordingRequests = recordWordingRequests(page);
-    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    // The phone's insights start folded; these checks read the open block.
+    await page.addInitScript(() => {
+      window.localStorage.setItem("monies-map:money-totals-visible", "true");
+      window.localStorage.setItem("monies-map:money-insights-phone", "true");
+    });
     await reseedDemo(page);
   });
 

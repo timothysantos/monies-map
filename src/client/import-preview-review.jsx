@@ -2,10 +2,13 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { Info, X } from "lucide-react";
-import { DuplicateMatchPopover } from "./import-preview-rows-table";
+import { DuplicateMatchPopover } from "./import-preview-row-helpers";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
+import { entryTypeLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton, DetailRow, DetailRows } from "./ui-components";
+import { AddRow } from "./settings-add-row";
 import { StatementFixSuggestions } from "./statement-fix-suggestions";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
@@ -200,8 +203,10 @@ export function ImportPreviewReview({
         />
       ) : null}
 
-      {/* These pills give a fast count of what the larger preview table will contain. */}
+      {/* These pills give a fast count of what the larger preview table will contain.
+          The file card above them already gives the dates it covers. */}
       <PreviewGuardrailPills
+        showCoverage={false}
         preview={preview}
         previewReconciliationRowCount={previewReconciliationRowCount}
         skippedPreviewRowCount={skippedPreviewRowCount}
@@ -294,8 +299,8 @@ export function ImportPreviewReview({
 
       {previewReconciliationRowCount ? (
         <div className="import-warning import-warning-attention">
-          <strong>{messages.imports.reconciliationMatchesTitle}</strong>
-          <p className="lede compact">{messages.imports.reconciliationMatchesDetail}</p>
+          <strong>{importMessages.reconciliationMatchesTitle}</strong>
+          <p className="lede compact">{importMessages.reconciliationMatchesDetail}</p>
         </div>
       ) : null}
     </>
@@ -307,15 +312,15 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
   return (
     <>
       <div className="import-warning import-warning-attention">
-        <strong>{messages.imports.certifiedConflictTitle(rows.length)}</strong>
-        <p className="lede compact">{messages.imports.certifiedConflictDetail}</p>
+        <strong>{importMessages.certifiedConflictTitle(rows.length)}</strong>
+        <p className="lede compact">{importMessages.certifiedConflictDetail}</p>
         <div className="stack">
           {rows.map((row) => {
             const match = row.reconciliationMatch;
             return (
               <div key={row.rowId} className="import-card import-card-compact">
                 <div className="import-history-main">
-                  <strong>{messages.imports.certifiedConflictRow(
+                  <strong>{importMessages.certifiedConflictRow(
                     formatService.formatDateOnly(row.date),
                     row.description,
                     formatService.formatMinorInput(row.amountMinor)
@@ -323,7 +328,7 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
                   <span className="import-history-inline">
                     {messages.common.triplet(
                       row.accountName ?? messages.common.emptyValue,
-                      row.entryType,
+                      entryTypeLabel(row.entryType),
                       formatService.formatMinorInput(row.amountMinor)
                     )}
                   </span>
@@ -331,7 +336,7 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
                   {match ? (
                     <div className="duplicate-row-detail-line">
                       <small className="duplicate-row-detail">
-                        {messages.imports.duplicateRowDetail(formatDuplicateMatch(match))}
+                        {importMessages.duplicateRowDetail(formatDuplicateMatch(match))}
                       </small>
                       <DuplicateMatchPopover row={row} match={match} statementImportSourceType="pdf" />
                     </div>
@@ -348,7 +353,7 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
                         onUpdatePreviewRowCommitStatus(row.rowId, "included");
                       }}
                     >
-                      {messages.imports.restorePreviewRow}
+                      {importMessages.restorePreviewRow}
                     </button>
                   </div>
                 </div>
@@ -364,8 +369,8 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
           <Dialog.Content className="note-dialog-content settings-account-dialog">
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{messages.imports.restorePreviewRow}</Dialog.Title>
-                <Dialog.Description>{messages.imports.restoreExactCoveredRowConfirm}</Dialog.Description>
+                <Dialog.Title>{importMessages.restorePreviewRow}</Dialog.Title>
+                <Dialog.Description>{importMessages.restoreExactCoveredRowConfirm}</Dialog.Description>
               </div>
               <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
             </div>
@@ -399,9 +404,9 @@ function NoLongerListedEntries({ entries, isKept, isSubmitting, onKeptChange }) 
   const accountNames = Array.from(new Set(entries.map((entry) => entry.accountName)));
   return (
     <div className="import-warning">
-      <strong>{messages.imports.noLongerListedTitle(entries.length, accountNames.join(", "))}</strong>
-      <p className="lede compact">{isKept ? messages.imports.noLongerListedKeptDetail(entries.length) : messages.imports.noLongerListedDetail(entries.length)}</p>
-      <div className="import-overlap-entry-list" aria-label={messages.imports.noLongerListedListLabel}>
+      <strong>{importMessages.noLongerListedTitle(entries.length, accountNames.join(", "))}</strong>
+      <p className="lede compact">{isKept ? importMessages.noLongerListedKeptDetail(entries.length) : importMessages.noLongerListedDetail(entries.length)}</p>
+      <div className="import-overlap-entry-list" aria-label={importMessages.noLongerListedListLabel}>
         {entries.map((entry) => (
           <div key={entry.transactionId} className="import-overlap-entry-row">
             <span className="import-overlap-entry-date">{formatService.formatDateOnly(entry.date)}</span>
@@ -418,7 +423,7 @@ function NoLongerListedEntries({ entries, isKept, isSubmitting, onKeptChange }) 
           disabled={isSubmitting}
           onChange={(event) => onKeptChange?.(event.target.checked)}
         />
-        <span>{messages.imports.noLongerListedKeep(entries.length)}</span>
+        <span>{importMessages.noLongerListedKeep(entries.length)}</span>
       </label>
     </div>
   );
@@ -433,19 +438,19 @@ function UnlistedEstimate({ estimate, linkedRowId, isSubmitting, onLink }) {
   const name = `unlisted-estimate-${estimate.transactionId}`;
   return (
     <div className="import-warning">
-      <strong>{messages.imports.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}</strong>
-      <p className="lede compact">{messages.imports.unlistedEstimateDetail(restoredAmount, estimate.candidates.length > 0)}</p>
+      <strong>{importMessages.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}</strong>
+      <p className="lede compact">{importMessages.unlistedEstimateDetail(restoredAmount, estimate.candidates.length > 0)}</p>
       {estimate.candidates.length ? (
-        <div className="import-estimate-choices" role="radiogroup" aria-label={messages.imports.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}>
+        <div className="import-estimate-choices" role="radiogroup" aria-label={importMessages.unlistedEstimateTitle(estimate.originalAmount, estimate.walletDescription, estimate.accountName)}>
           {estimate.candidates.map((candidate) => (
             <label key={candidate.rowId} className="import-keep-entries">
               <input type="radio" name={name} checked={linkedRowId === candidate.rowId} disabled={isSubmitting} onChange={() => onLink(candidate.rowId)} />
-              <span>{messages.imports.unlistedEstimateSamePurchase(formatService.formatDateOnly(candidate.date), candidate.description, formatService.money(candidate.amountMinor))}</span>
+              <span>{importMessages.unlistedEstimateSamePurchase(formatService.formatDateOnly(candidate.date), candidate.description, formatService.money(candidate.amountMinor))}</span>
             </label>
           ))}
           <label className="import-keep-entries">
             <input type="radio" name={name} checked={!linkedRowId} disabled={isSubmitting} onChange={() => onLink(null)} />
-            <span>{messages.imports.unlistedEstimateNotInFile(restoredAmount)}</span>
+            <span>{importMessages.unlistedEstimateNotInFile(restoredAmount)}</span>
           </label>
         </div>
       ) : null}
@@ -456,15 +461,15 @@ function UnlistedEstimate({ estimate, linkedRowId, isSubmitting, onLink }) {
 function ExceptionRegister({ exceptions }) {
   return (
     <div className="import-warning import-warning-review">
-      <strong>{messages.imports.exceptionRegisterTitle}</strong>
-      <p className="lede compact">{messages.imports.exceptionRegisterDetail}</p>
+      <strong>{importMessages.exceptionRegisterTitle}</strong>
+      <p className="lede compact">{importMessages.exceptionRegisterDetail}</p>
       <div className="pill-row dense">
         {exceptions.map((item) => (
           <span
             key={item.kind}
             className={`pill ${item.tone === "blocking" ? "warning" : item.tone === "review" ? "neutral" : ""}`}
           >
-            {messages.imports.exceptionKinds[item.kind](item.count)}
+            {importMessages.exceptionKinds[item.kind](item.count)}
           </span>
         ))}
       </div>
@@ -516,31 +521,46 @@ function StatementAccountMapping({
     return accountMatches.length === 1 ? accountMatches[0].id : "";
   }
 
+  // Lead · Support · Detail: one Account row per detected account that opens
+  // its own picker (a native select laid over the row), and "Create account"
+  // as the row that ends the group. The title and its one-line reason stay,
+  // quietly, so the person knows why the row asks for a choice.
   return (
-    <div className="import-warning import-warning-action" data-import-target="account-mapping">
-      <strong>{unknownPreviewAccountNames.length ? messages.imports.unknownAccounts : messages.imports.accountMappingTitle}</strong>
-      <p className="lede compact">{messages.imports.accountMappingDetail}</p>
+    <div className="import-account-map" data-import-target="account-mapping">
+      <div className="import-account-map-copy">
+        <strong className={unknownPreviewAccountNames.length ? "is-action" : undefined}>
+          {unknownPreviewAccountNames.length ? importMessages.unknownAccounts : importMessages.accountMappingTitle}
+        </strong>
+        <p>{importMessages.accountMappingDetail}</p>
+      </div>
       <div className="statement-account-map-grid">
-        {accountMappingAccountNames.map((accountName) => (
-          <div key={accountName} className="statement-account-map-row">
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
-              <select
-                className="table-edit-input"
-                value={selectedAccountValue(accountName)}
-                onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
+        {accountMappingAccountNames.map((accountName) => {
+          const selectedValue = selectedAccountValue(accountName);
+          const selectedOption = accountOptions.find((account) => account.value === selectedValue);
+          return (
+            <DetailRows key={accountName} className="statement-account-map-row">
+              <DetailRow
+                label={importMessages.detectedAccount(accountName)}
+                value={selectedOption?.label}
+                emptyLabel={importMessages.chooseAccount}
+                state={selectedOption ? undefined : "action"}
               >
-                <option value="">{messages.imports.chooseAccount}</option>
-                {accountOptions.map((account) => (
-                  <option key={account.id} value={account.value}>{account.label}</option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="subtle-action" onClick={() => onCreateStatementAccount(accountName)}>
-              {messages.imports.createDetectedAccount}
-            </button>
-          </div>
-        ))}
+                <select
+                  className="lsd-row-native"
+                  aria-label={importMessages.detectedAccount(accountName)}
+                  value={selectedValue}
+                  onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
+                >
+                  <option value="">{importMessages.chooseAccount}</option>
+                  {accountOptions.map((account) => (
+                    <option key={account.id} value={account.value}>{account.label}</option>
+                  ))}
+                </select>
+              </DetailRow>
+              <AddRow onClick={() => onCreateStatementAccount(accountName)}>{importMessages.createDetectedAccount}</AddRow>
+            </DetailRows>
+          );
+        })}
       </div>
     </div>
   );
@@ -561,14 +581,14 @@ function formatDuplicateMatch(match) {
 function UnknownCategories({ categoryNames, unknownCategoryMode }) {
   return (
     <div className="import-warning import-warning-attention" data-import-target="unknown-categories">
-      <strong>{messages.imports.unknownCategories}</strong>
+      <strong>{importMessages.unknownCategories}</strong>
       <div className="pill-row dense">
         {categoryNames.map((categoryName) => (
           <span key={categoryName} className="pill warning">{categoryName}</span>
         ))}
       </div>
       <p className="lede compact">
-        {unknownCategoryMode === "other" ? messages.imports.categoryFallbackHelp : messages.imports.categoryFallbackBlocked}
+        {unknownCategoryMode === "other" ? importMessages.categoryFallbackHelp : importMessages.categoryFallbackBlocked}
       </p>
     </div>
   );
@@ -581,32 +601,38 @@ function PreviewGuardrailPills({
   statementImportSourceType,
   skippedPreviewRowCount,
   needsReviewPreviewRowCount,
-  visibleOverlapImports
+  visibleOverlapImports,
+  showCoverage = true
 }) {
+  const coverageShown = showCoverage && Boolean(preview.startDate && preview.endDate);
+  // Nothing to say (the file card already gives the dates): no empty strip.
+  if (!coverageShown && !previewReconciliationRowCount && !reconciledExistingRowCount && !skippedPreviewRowCount && !needsReviewPreviewRowCount && !visibleOverlapImports.length) {
+    return null;
+  }
   return (
-    <div className="import-summary-strip" aria-label={messages.imports.previewGuardrailsLabel}>
-      {preview.startDate && preview.endDate ? (
-        <span className="import-summary-item">{messages.imports.previewCoverage(
+    <div className="import-summary-strip" aria-label={importMessages.previewGuardrailsLabel}>
+      {coverageShown ? (
+        <span className="import-summary-item">{importMessages.previewCoverage(
           formatService.formatDateOnly(preview.startDate),
           formatService.formatDateOnly(preview.endDate)
         )}</span>
       ) : null}
       {previewReconciliationRowCount ? (
-        <span className="import-summary-item is-warning">{messages.imports.reconciliationCandidates(previewReconciliationRowCount)}</span>
+        <span className="import-summary-item is-warning">{importMessages.reconciliationCandidates(previewReconciliationRowCount)}</span>
       ) : null}
       {reconciledExistingRowCount ? (
         <span className="import-summary-item is-success">
-          {messages.imports.reconciledExistingRows(reconciledExistingRowCount, statementImportSourceType)}
+          {importMessages.reconciledExistingRows(reconciledExistingRowCount, statementImportSourceType)}
         </span>
       ) : null}
       {skippedPreviewRowCount ? (
-        <span className="import-summary-item">{messages.imports.willSkipRows(skippedPreviewRowCount)}</span>
+        <span className="import-summary-item">{importMessages.willSkipRows(skippedPreviewRowCount)}</span>
       ) : null}
       {needsReviewPreviewRowCount ? (
-        <span className="import-summary-item is-warning">{messages.imports.needsReviewRows(needsReviewPreviewRowCount)}</span>
+        <span className="import-summary-item is-warning">{importMessages.needsReviewRows(needsReviewPreviewRowCount)}</span>
       ) : null}
       {visibleOverlapImports.length ? (
-        <span className="import-summary-item is-warning">{messages.imports.overlappingImports(visibleOverlapImports.length)}</span>
+        <span className="import-summary-item is-warning">{importMessages.overlappingImports(visibleOverlapImports.length)}</span>
       ) : null}
     </div>
   );
@@ -628,14 +654,14 @@ function OverlapImports({
   return (
     <div className="import-warning import-warning-overlap">
       <div className="import-warning-title-row">
-        <strong>{messages.imports.previewOverlapTitle}</strong>
+        <strong>{importMessages.previewOverlapTitle}</strong>
         <OverlapScopeInfo />
       </div>
-      <p className="lede compact">{messages.imports.previewOverlapDetail}</p>
+      <p className="lede compact">{importMessages.previewOverlapDetail}</p>
       <div className="import-overlap-guidance">
-        <strong>{messages.imports.previewOverlapActionTitle}</strong>
+        <strong>{importMessages.previewOverlapActionTitle}</strong>
         <ol>
-          {messages.imports.previewOverlapActions({
+          {importMessages.previewOverlapActions({
             skippedPreviewRowCount,
             needsReviewPreviewRowCount,
             hasStatementReconciliationMismatch,
@@ -656,12 +682,12 @@ function OverlapImports({
               <span className="import-history-inline">
                 {messages.common.triplet(
                   item.importedAt ? formatService.formatDate(item.importedAt) : messages.common.emptyValue,
-                  messages.imports.transactionCount(item.transactionCount),
+                  importMessages.transactionCount(item.transactionCount),
                   item.sourceType ? item.sourceType.toUpperCase() : messages.common.emptyValue
                 )}
               </span>
               {item.startDate && item.endDate ? (
-                <span className="import-history-inline">{messages.imports.importCoverage(
+                <span className="import-history-inline">{importMessages.importCoverage(
                   formatService.formatDateOnly(item.startDate),
                   formatService.formatDateOnly(item.endDate)
                 )}</span>
@@ -675,12 +701,12 @@ function OverlapImports({
                       className="subtle-action import-overlap-entry-title-button"
                       onClick={onJumpToSkippedRows}
                     >
-                      {messages.imports.previewOverlapEntriesLabel}
+                      {importMessages.previewOverlapEntriesLabel}
                     </button>
                   ) : (
-                    <span className="import-history-inline import-overlap-entry-title">{messages.imports.previewOverlapEntriesLabel}</span>
+                    <span className="import-history-inline import-overlap-entry-title">{importMessages.previewOverlapEntriesLabel}</span>
                   )}
-                  <div className="import-overlap-entry-list" aria-label={messages.imports.previewOverlapEntriesLabel}>
+                  <div className="import-overlap-entry-list" aria-label={importMessages.previewOverlapEntriesLabel}>
                     {item.overlapEntries.map((entry) => (
                       <div key={entry.id} className="import-overlap-entry-row">
                         <span className="import-overlap-entry-date">{formatService.formatDateOnly(entry.date)}</span>
@@ -695,7 +721,7 @@ function OverlapImports({
             </div>
             <div className="import-meta import-meta-compact">
               <button type="button" className="subtle-action" onClick={() => onDismissOverlap(item.id)}>
-                {messages.imports.dismissOverlap}
+                {importMessages.dismissOverlap}
               </button>
             </div>
           </div>
@@ -719,7 +745,7 @@ function getOverlapMismatchHint(imports, statementReconciliations) {
     return "";
   }
 
-  return messages.imports.previewOverlapMismatchExplained(formatService.money(Math.abs(mismatch.deltaMinor)));
+  return importMessages.previewOverlapMismatchExplained(formatService.money(Math.abs(mismatch.deltaMinor)));
 }
 
 function getOverlapEntrySignedMinor(entry) {
@@ -748,7 +774,7 @@ function OverlapScopeInfo() {
         <button
           type="button"
           className="info-icon-button"
-          aria-label={messages.imports.previewOverlapScopeAriaLabel}
+          aria-label={importMessages.previewOverlapScopeAriaLabel}
           onMouseEnter={openPopover}
           onMouseLeave={closePopoverSoon}
           onFocus={openPopover}
@@ -768,11 +794,11 @@ function OverlapScopeInfo() {
           onMouseLeave={closePopoverSoon}
         >
           <div className="category-popover-head">
-            <strong>{messages.imports.previewOverlapScopeTitle}</strong>
-            <span>{messages.imports.previewOverlapScopeDetail}</span>
+            <strong>{importMessages.previewOverlapScopeTitle}</strong>
+            <span>{importMessages.previewOverlapScopeDetail}</span>
           </div>
           <ul>
-            {messages.imports.previewOverlapScopeItems.map((item) => (
+            {importMessages.previewOverlapScopeItems.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
@@ -811,20 +837,20 @@ function StatementBalanceCheck({
     <div className={`import-warning ${hasMismatch ? "import-warning-attention" : "import-warning-reconciled"}`}>
       <div className="import-warning-head">
         <div>
-          <strong>{messages.imports.statementReconciliationTitle}</strong>
+          <strong>{importMessages.statementReconciliationTitle}</strong>
           <p className="lede compact">
             {hasMismatch
-              ? messages.imports.statementReconciliationMismatchDetail
-              : messages.imports.statementReconciliationMatchedDetail}
+              ? importMessages.statementReconciliationMismatchDetail
+              : importMessages.statementReconciliationMatchedDetail}
           </p>
         </div>
         <button type="button" className="subtle-action" onClick={onRefreshStatementReconciliation} disabled={isSubmitting}>
-          {messages.imports.statementReconciliationRefresh}
+          {importMessages.statementReconciliationRefresh}
         </button>
       </div>
       {diagnosis?.rejectedFixes?.map((item) => (
         <p key={`${item.fix.kind}-${item.fix.entryId}`} className="lede compact statement-fix-rejected">
-          {messages.imports.statementFixRejected(item.reason)}
+          {importMessages.statementFixRejected(item.reason)}
         </p>
       ))}
       <div className="stack">
@@ -832,12 +858,12 @@ function StatementBalanceCheck({
           <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card statement-reconciliation-row">
             <div className="statement-reconciliation-card-head">
               <div className="statement-reconciliation-card-title">
-                <strong>{messages.imports.statementReconciliationAccount(
+                <strong>{importMessages.statementReconciliationAccount(
                   item.accountName,
                   formatService.formatMonthLabel(item.checkpointMonth)
                 )}</strong>
                 {item.statementStartDate && item.statementEndDate ? (
-                  <span className="import-history-inline">{messages.imports.importCoverage(
+                  <span className="import-history-inline">{importMessages.importCoverage(
                     formatService.formatDateOnly(item.statementStartDate),
                     formatService.formatDateOnly(item.statementEndDate)
                   )}</span>
@@ -846,10 +872,10 @@ function StatementBalanceCheck({
               </div>
               <div className="statement-reconciliation-card-meta">
                 <span className={`pill ${item.status === "matched" ? "success" : "warning"}`}>
-                  {messages.imports.statementReconciliationStatus[item.status]}
+                  {importMessages.statementReconciliationStatus[item.status]}
                 </span>
                 {item.deltaMinor != null && item.deltaMinor !== 0 ? (
-                  <p>{messages.imports.statementReconciliationDelta(formatService.money(Math.abs(item.deltaMinor)))}</p>
+                  <p>{importMessages.statementReconciliationDelta(formatService.money(Math.abs(item.deltaMinor)))}</p>
                 ) : null}
               </div>
             </div>
@@ -867,8 +893,8 @@ function StatementBalanceCheck({
               />
             ) : null}
             {item.supersededLedgerRows?.length ? (
-              <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>
-                <strong>{messages.imports.statementReconciliationSupersededRowsTitle}</strong>
+              <div className="import-overlap-entry-list" aria-label={importMessages.statementReconciliationSupersededRowsTitle}>
+                <strong>{importMessages.statementReconciliationSupersededRowsTitle}</strong>
                 {item.supersededLedgerRows.map((row) => (
                   <div key={row.transactionId} className="import-overlap-entry-row">
                     <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
@@ -926,38 +952,38 @@ function StatementReconciliationBreakdown({
     <div className="statement-reconciliation-breakdown">
       <strong>
         {isMatched
-          ? messages.imports.statementReconciliationMatchedBreakdownTitle
-          : messages.imports.statementReconciliationBreakdownTitle}
+          ? importMessages.statementReconciliationMatchedBreakdownTitle
+          : importMessages.statementReconciliationBreakdownTitle}
       </strong>
       <p className="lede compact">
         {isMatched
-          ? messages.imports.statementReconciliationMatchedAuthority
-          : messages.imports.statementReconciliationAuthority}
+          ? importMessages.statementReconciliationMatchedAuthority
+          : importMessages.statementReconciliationAuthority}
       </p>
       {!isMatched ? (
         <div className="statement-reconciliation-quick-fix">
-          <strong>{messages.imports.statementReconciliationQuickFixTitle}</strong>
+          <strong>{importMessages.statementReconciliationQuickFixTitle}</strong>
           <p className="lede compact">
             {existingRowsExplainMismatch
-              ? messages.imports.statementReconciliationQuickFixIntroExact(formatService.money(resultDeltaMinor))
-              : messages.imports.statementReconciliationQuickFixIntroGeneric}
+              ? importMessages.statementReconciliationQuickFixIntroExact(formatService.money(resultDeltaMinor))
+              : importMessages.statementReconciliationQuickFixIntroGeneric}
           </p>
           <ol>
             <li>{existingRowsExplainMismatch
-              ? messages.imports.statementReconciliationQuickFixStep1Exact
-              : messages.imports.statementReconciliationQuickFixStep1Generic}</li>
-            <li>{messages.imports.statementReconciliationQuickFixStep2}</li>
-            <li>{messages.imports.statementReconciliationQuickFixStep3}</li>
+              ? importMessages.statementReconciliationQuickFixStep1Exact
+              : importMessages.statementReconciliationQuickFixStep1Generic}</li>
+            <li>{importMessages.statementReconciliationQuickFixStep2}</li>
+            <li>{importMessages.statementReconciliationQuickFixStep3}</li>
           </ol>
         </div>
       ) : null}
       <div className={`statement-reconciliation-result ${moneyToneClass(isMatched ? "in" : "short", "emphasis")}`}>
         {isMatched
-          ? messages.imports.statementReconciliationMatchedResult({
+          ? importMessages.statementReconciliationMatchedResult({
             projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
             statementBalance: formatStatementBalanceForAccount(breakdown.statementBalanceMinor, accountKind)
           })
-          : messages.imports.statementReconciliationResult({
+          : importMessages.statementReconciliationResult({
             projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
             statementBalance: formatStatementBalanceForAccount(breakdown.statementBalanceMinor, accountKind),
             delta: formatService.money(resultDeltaMinor)
@@ -965,51 +991,51 @@ function StatementReconciliationBreakdown({
       </div>
       <div className="statement-reconciliation-movement-grid">
         <StatementReconciliationMovement
-          label={messages.imports.statementReconciliationMovementLabels.priorBalance}
+          label={importMessages.statementReconciliationMovementLabels.priorBalance}
           value={formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind)}
           detail="ledger balance before the statement start date"
-          explanation={messages.imports.statementReconciliationMovementHelp.priorBalance({
+          explanation={importMessages.statementReconciliationMovementHelp.priorBalance({
             startDate: statementStartLabel,
             endDate: statementEndLabel,
             value: formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind)
           })}
         />
         <StatementReconciliationMovement
-          label={messages.imports.statementReconciliationMovementLabels.existingRows}
+          label={importMessages.statementReconciliationMovementLabels.existingRows}
           value={formatMovementForAccount(breakdown.statementPeriodExistingRowsMinor, accountKind)}
           detail="ledger-only rows already inside the PDF period"
           isProblem={Boolean(breakdown.statementPeriodExistingRowsMinor)}
-          explanation={messages.imports.statementReconciliationMovementHelp.existingRows({
+          explanation={importMessages.statementReconciliationMovementHelp.existingRows({
             startDate: statementStartLabel,
             endDate: statementEndLabel,
             value: formatMovementForAccount(breakdown.statementPeriodExistingRowsMinor, accountKind)
           })}
         />
         <StatementReconciliationMovement
-          label={messages.imports.statementReconciliationMovementLabels.includedRows}
+          label={importMessages.statementReconciliationMovementLabels.includedRows}
           value={formatMovementForAccount(breakdown.includedStatementRowsMinor, accountKind)}
           detail="net movement from rows in this PDF preview"
-          explanation={messages.imports.statementReconciliationMovementHelp.includedRows({
+          explanation={importMessages.statementReconciliationMovementHelp.includedRows({
             startDate: statementStartLabel,
             endDate: statementEndLabel,
             value: formatMovementForAccount(breakdown.includedStatementRowsMinor, accountKind)
           })}
         />
         <StatementReconciliationMovement
-          label={messages.imports.statementReconciliationMovementLabels.supersededAdjustment}
+          label={importMessages.statementReconciliationMovementLabels.supersededAdjustment}
           value={formatMovementForAccount(-breakdown.supersededLedgerRowsMinor, accountKind)}
           detail="provisional ledger rows removed because the PDF does not contain them"
-          explanation={messages.imports.statementReconciliationMovementHelp.supersededAdjustment({
+          explanation={importMessages.statementReconciliationMovementHelp.supersededAdjustment({
             startDate: statementStartLabel,
             endDate: statementEndLabel,
             value: formatMovementForAccount(-breakdown.supersededLedgerRowsMinor, accountKind)
           })}
         />
         <StatementReconciliationMovement
-          label={messages.imports.statementReconciliationMovementLabels.projectedBalance}
+          label={importMessages.statementReconciliationMovementLabels.projectedBalance}
           value={formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)}
           detail="what the ledger would show after this preview"
-          explanation={messages.imports.statementReconciliationMovementHelp.projectedBalance({
+          explanation={importMessages.statementReconciliationMovementHelp.projectedBalance({
             startDate: statementStartLabel,
             endDate: statementEndLabel,
             value: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)
@@ -1018,7 +1044,7 @@ function StatementReconciliationBreakdown({
       </div>
       {breakdown.suspectedCauses?.length ? (
         <div className="statement-reconciliation-causes">
-          <strong>{messages.imports.statementReconciliationCausesTitle}</strong>
+          <strong>{importMessages.statementReconciliationCausesTitle}</strong>
           <ul>
             {breakdown.suspectedCauses.map((cause) => <li key={cause}>{cause}</li>)}
           </ul>
@@ -1026,11 +1052,11 @@ function StatementReconciliationBreakdown({
       ) : null}
       {showSkippedRows ? (
         <StatementReconciliationDiagnosticRows
-          title={messages.imports.statementReconciliationSkippedRowsTitle}
-          detail={messages.imports.statementReconciliationSkippedRowsDetail}
-          summary={(summaryInput) => messages.imports.statementReconciliationSkippedRowsSummary(summaryInput)}
+          title={importMessages.statementReconciliationSkippedRowsTitle}
+          detail={importMessages.statementReconciliationSkippedRowsDetail}
+          summary={(summaryInput) => importMessages.statementReconciliationSkippedRowsSummary(summaryInput)}
           actionDetail={skippedRowsExplainMismatch
-            ? messages.imports.statementReconciliationSkippedRowsExactAction(formatService.money(resultDeltaMinor))
+            ? importMessages.statementReconciliationSkippedRowsExactAction(formatService.money(resultDeltaMinor))
             : null}
           rows={breakdown.skippedStatementRows}
           totalRowCount={breakdown.skippedStatementRowCount}
@@ -1040,11 +1066,11 @@ function StatementReconciliationBreakdown({
       ) : null}
       {showExistingRows ? (
         <StatementReconciliationDiagnosticRows
-          title={messages.imports.statementReconciliationExistingRowsTitle}
-          detail={messages.imports.statementReconciliationExistingRowsDetail}
-          summary={(summaryInput) => messages.imports.statementReconciliationExistingRowsSummary(summaryInput)}
+          title={importMessages.statementReconciliationExistingRowsTitle}
+          detail={importMessages.statementReconciliationExistingRowsDetail}
+          summary={(summaryInput) => importMessages.statementReconciliationExistingRowsSummary(summaryInput)}
           actionDetail={existingRowsExplainMismatch
-            ? messages.imports.statementReconciliationExistingRowsExactAction(formatService.money(resultDeltaMinor))
+            ? importMessages.statementReconciliationExistingRowsExactAction(formatService.money(resultDeltaMinor))
             : null}
           rows={breakdown.periodExistingLedgerRows}
           totalRowCount={breakdown.periodExistingLedgerRowCount}
@@ -1059,13 +1085,13 @@ function StatementReconciliationBreakdown({
       ) : null}
       {showMatchedRows ? (
         <StatementReconciliationDiagnosticRows
-          title={messages.imports.statementReconciliationMatchedRowsTitle}
-          detail={messages.imports.statementReconciliationMatchedRowsDetail}
-          summary={(summaryInput) => messages.imports.statementReconciliationMatchedRowsSummary({
+          title={importMessages.statementReconciliationMatchedRowsTitle}
+          detail={importMessages.statementReconciliationMatchedRowsDetail}
+          summary={(summaryInput) => importMessages.statementReconciliationMatchedRowsSummary({
             ...summaryInput,
             isMatched
           })}
-          collapsedSummary={(summaryInput) => messages.imports.statementReconciliationMatchedRowsCollapsedSummary(summaryInput)}
+          collapsedSummary={(summaryInput) => importMessages.statementReconciliationMatchedRowsCollapsedSummary(summaryInput)}
           collapsedByDefault={isMatched}
           rows={breakdown.matchedStatementRows}
           totalRowCount={breakdown.matchedStatementRowCount}
@@ -1153,7 +1179,7 @@ function StatementReconciliationDiagnosticRows({
   };
   const summaryText = summary
     ? summary(summaryInput)
-    : messages.imports.statementReconciliationExistingRowsSummary(summaryInput);
+    : importMessages.statementReconciliationExistingRowsSummary(summaryInput);
   const content = (
     <>
       {detail ? <p className="lede compact">{detail}</p> : null}
@@ -1176,7 +1202,7 @@ function StatementReconciliationDiagnosticRows({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {messages.imports.openDiagnosticEntry}
+                {importMessages.openDiagnosticEntry}
               </a>
               {onSetDiagnosticLedgerPostDate ? (
                 <SetPostedDateButton
@@ -1188,17 +1214,17 @@ function StatementReconciliationDiagnosticRows({
               {onDeleteDiagnosticLedgerRow ? (
                 <DeleteRowButton
                   label={row.description}
-                  triggerLabel={messages.imports.deleteDiagnosticEntry}
-                  confirmLabel={messages.imports.deleteDiagnosticEntry}
+                  triggerLabel={importMessages.deleteDiagnosticEntry}
+                  confirmLabel={importMessages.deleteDiagnosticEntry}
                   buttonClassName="statement-reconciliation-delete-button"
-                  prompt={messages.imports.deleteDiagnosticEntryConfirm({
+                  prompt={importMessages.deleteDiagnosticEntryConfirm({
                     date: formatService.formatDateOnly(row.date),
                     description: row.description,
                     amount: formatSignedDiagnosticAmount(row.signedAmountMinor)
                   })}
                   onConfirm={() => onDeleteDiagnosticLedgerRow(row)}
                 >
-                  {messages.imports.deleteDiagnosticEntry}
+                  {importMessages.deleteDiagnosticEntry}
                 </DeleteRowButton>
               ) : null}
             </span>
@@ -1229,17 +1255,17 @@ function StatementReconciliationDiagnosticRows({
         <strong>{title}</strong>
         {canBulkDeleteLedgerRows ? (
           <DeleteRowButton
-            label={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
-            triggerLabel={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
-            confirmLabel={messages.imports.deleteDiagnosticEntries}
+            label={importMessages.deleteDiagnosticEntriesLabel(ledgerRows.length)}
+            triggerLabel={importMessages.deleteDiagnosticEntriesLabel(ledgerRows.length)}
+            confirmLabel={importMessages.deleteDiagnosticEntries}
             buttonClassName="statement-reconciliation-delete-all-button"
-            prompt={messages.imports.deleteDiagnosticEntriesConfirm({
+            prompt={importMessages.deleteDiagnosticEntriesConfirm({
               count: ledgerRows.length,
               amount: formattedTotalAmount
             })}
             onConfirm={() => onDeleteDiagnosticLedgerRows(ledgerRows)}
           >
-            {messages.imports.deleteDiagnosticEntries}
+            {importMessages.deleteDiagnosticEntries}
           </DeleteRowButton>
         ) : null}
       </div>
@@ -1269,10 +1295,10 @@ function SetPostedDateButton({ row, statementEndDate, onSetPostDate }) {
       {deferDate ? (
         <ConfirmLedgerActionButton
           label={row.description}
-          triggerLabel={messages.imports.deferDiagnosticEntry}
-          confirmLabel={messages.imports.deferDiagnosticEntryConfirm}
+          triggerLabel={importMessages.deferDiagnosticEntry}
+          confirmLabel={importMessages.deferDiagnosticEntryConfirm}
           buttonClassName="statement-reconciliation-post-date-button"
-          prompt={messages.imports.deferDiagnosticEntryDetail({
+          prompt={importMessages.deferDiagnosticEntryDetail({
             statementEndDate: statementEndLabel,
             deferDate: deferDateLabel
           })}
@@ -1281,7 +1307,7 @@ function SetPostedDateButton({ row, statementEndDate, onSetPostDate }) {
             label: deferDateLabel
           })}
         >
-          {messages.imports.deferDiagnosticEntry}
+          {importMessages.deferDiagnosticEntry}
         </ConfirmLedgerActionButton>
       ) : null}
     </>
@@ -1413,7 +1439,7 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
     >
       <Dialog.Trigger asChild>
         <button type="button" className="statement-reconciliation-post-date-button">
-          {messages.imports.setDiagnosticPostDate}
+          {importMessages.setDiagnosticPostDate}
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -1422,9 +1448,9 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
           <form onSubmit={(event) => void handleSubmit(event)}>
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{messages.imports.setDiagnosticPostDateTitle}</Dialog.Title>
+                <Dialog.Title>{importMessages.setDiagnosticPostDateTitle}</Dialog.Title>
                 <Dialog.Description className="lede compact">
-                  {messages.imports.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
+                  {importMessages.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
@@ -1434,7 +1460,7 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
               </Dialog.Close>
             </div>
             <label className="field-stack">
-              <span>{messages.imports.setDiagnosticPostDateField}</span>
+              <span>{importMessages.setDiagnosticPostDateField}</span>
               <input
                 className="table-edit-input"
                 type="date"
@@ -1450,7 +1476,7 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
                 </button>
               </Dialog.Close>
               <button type="submit" className="dialog-primary" disabled={isWorking}>
-                {messages.imports.setDiagnosticPostDateConfirm}
+                {importMessages.setDiagnosticPostDateConfirm}
               </button>
             </div>
           </form>
@@ -1463,16 +1489,16 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
 function getDiagnosticRowDateDetail(row, statementEndDate) {
   if (row.source === "statement") {
     if (row.eventDate && row.eventDate !== row.date) {
-      return messages.imports.statementReconciliationStatementDualDateDetail({
+      return importMessages.statementReconciliationStatementDualDateDetail({
         postedDate: formatService.formatDateOnly(row.date),
         eventDate: formatService.formatDateOnly(row.eventDate)
       });
     }
-    return messages.imports.statementReconciliationStatementDateDetail;
+    return importMessages.statementReconciliationStatementDateDetail;
   }
 
   if (row.postedDate && statementEndDate && row.postedDate > statementEndDate) {
-    return messages.imports.statementReconciliationLedgerPostedAfterCutoffDetail({
+    return importMessages.statementReconciliationLedgerPostedAfterCutoffDetail({
       transactionDate: formatService.formatDateOnly(row.date),
       postedDate: formatService.formatDateOnly(row.postedDate),
       statementEndDate: formatService.formatDateOnly(statementEndDate)
@@ -1480,12 +1506,12 @@ function getDiagnosticRowDateDetail(row, statementEndDate) {
   }
 
   if (row.postedDate && row.postedDate !== row.date) {
-    return messages.imports.statementReconciliationLedgerDualDateDetail({
+    return importMessages.statementReconciliationLedgerDualDateDetail({
       transactionDate: formatService.formatDateOnly(row.date),
       postedDate: formatService.formatDateOnly(row.postedDate)
     });
   }
-  return messages.imports.statementReconciliationLedgerDateDetail;
+  return importMessages.statementReconciliationLedgerDateDetail;
 }
 
 function getNextIsoDate(date) {
@@ -1560,16 +1586,16 @@ function StatementCheckpointDrafts({
 
   return (
     <div className="import-warning import-warning-review" data-import-target="statement-details">
-      <strong>{messages.imports.statementCheckpointsTitle(statementCheckpoints.length)}</strong>
-      <p className="lede compact">{messages.imports.statementCheckpointsDetail(statementCheckpoints.length)}</p>
+      <strong>{importMessages.statementCheckpointsTitle(statementCheckpoints.length)}</strong>
+      <p className="lede compact">{importMessages.statementCheckpointsDetail(statementCheckpoints.length)}</p>
       {hasDuplicateCheckpointAccounts ? (
-        <p className="form-error">{messages.imports.duplicateCheckpointAccounts(duplicateCheckpointAccounts.join(", "))}</p>
+        <p className="form-error">{importMessages.duplicateCheckpointAccounts(duplicateCheckpointAccounts.join(", "))}</p>
       ) : null}
       <div className="statement-checkpoint-grid">
         {statementCheckpoints.map((checkpoint, index) => (
           <div key={`${checkpoint.accountName}-${index}`} className="statement-checkpoint-row">
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.statementCheckpointAccount}</span>
+              <span className="entries-filter-label">{importMessages.statementCheckpointAccount}</span>
               <select
                 className="table-edit-input"
                 value={checkpoint.accountId ?? accounts.find((account) => account.name === checkpoint.accountName)?.id ?? checkpoint.accountName}
@@ -1590,19 +1616,19 @@ function StatementCheckpointDrafts({
               </select>
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.statementCheckpointMonth}</span>
+              <span className="entries-filter-label">{importMessages.statementCheckpointMonth}</span>
               <input className="table-edit-input" type="month" value={checkpoint.checkpointMonth} onChange={(event) => onUpdateStatementCheckpoint(index, { checkpointMonth: event.target.value })} />
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.statementCheckpointStart}</span>
+              <span className="entries-filter-label">{importMessages.statementCheckpointStart}</span>
               <input className="table-edit-input" type="date" value={checkpoint.statementStartDate ?? ""} onChange={(event) => onUpdateStatementCheckpoint(index, { statementStartDate: event.target.value })} />
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.statementCheckpointEnd}</span>
+              <span className="entries-filter-label">{importMessages.statementCheckpointEnd}</span>
               <input className="table-edit-input" type="date" value={checkpoint.statementEndDate ?? ""} onChange={(event) => onUpdateStatementCheckpoint(index, { statementEndDate: event.target.value })} />
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.statementCheckpointBalance}</span>
+              <span className="entries-filter-label">{importMessages.statementCheckpointBalance}</span>
               <input
                 className="table-edit-input"
                 value={formatService.formatMinorInput(checkpoint.statementBalanceMinor)}
@@ -1612,7 +1638,7 @@ function StatementCheckpointDrafts({
               />
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.statementCheckpointNote}</span>
+              <span className="entries-filter-label">{importMessages.statementCheckpointNote}</span>
               <input className="table-edit-input" value={checkpoint.note ?? ""} onChange={(event) => onUpdateStatementCheckpoint(index, { note: event.target.value })} />
             </label>
           </div>
@@ -1634,9 +1660,9 @@ export function buildStatementTitle({ parserKey, statementReconciliations, sourc
     return sourceLabel;
   }
   const kind = /card/.test(parserKey) || statementReconciliations.every((item) => item.accountKind === "credit_card")
-    ? messages.imports.statementKindCard
-    : messages.imports.statementKindAccount;
-  return messages.imports.statementTitle(bank, kind, formatService.formatMonthLabel(month));
+    ? importMessages.statementKindCard
+    : importMessages.statementKindAccount;
+  return importMessages.statementTitle(bank, kind, formatService.formatMonthLabel(month));
 }
 
 // A card's outcome, read from the diagnosis after the fixes it suggests.
@@ -1644,7 +1670,7 @@ export function buildStatementTitle({ parserKey, statementReconciliations, sourc
 // butter partly explained, lavender found but not fixable here, rose not
 // explained.
 export function getStatementCardStatus({ reconciliation, diagnosis }) {
-  const labels = messages.imports.statementCardStatus;
+  const labels = importMessages.statementCardStatus;
   if (reconciliation.status === "unknown_account") {
     return { key: "unknown_account", tone: "warning", label: labels.unknown_account };
   }
@@ -1723,17 +1749,17 @@ function StatementReview({
   const startDate = statementReconciliations.map((item) => item.statementStartDate).filter(Boolean).sort()[0];
   const endDate = statementReconciliations.map((item) => item.statementEndDate).filter(Boolean).sort().at(-1);
   const overall = openCount === 0
-    ? { tone: "success", label: messages.imports.statementAllBalance(statementReconciliations.length) }
+    ? { tone: "success", label: importMessages.statementAllBalance(statementReconciliations.length) }
     : fixReadyCount === openCount
-      ? { tone: "pill-sky", label: messages.imports.statementFixesReady(openFixEntryCount) }
-      : { tone: "warning", label: messages.imports.statementCardsNeedYou(openCount) };
+      ? { tone: "pill-sky", label: importMessages.statementFixesReady(openFixEntryCount) }
+      : { tone: "warning", label: importMessages.statementCardsNeedYou(openCount) };
 
   return (
-    <section className="statement-review" aria-label={messages.imports.statementReconciliationTitle}>
+    <section className="statement-review" aria-label={importMessages.statementReconciliationTitle}>
       <div className="statement-review-head">
         <div className="statement-review-title">
           <h3>{buildStatementTitle({ parserKey, statementReconciliations, sourceLabel: preview.sourceLabel })}</h3>
-          <span className="lede compact">{messages.imports.statementReviewSubline({
+          <span className="lede compact">{importMessages.statementReviewSubline({
             endDate: endDate ? formatService.formatDateOnly(endDate) : "",
             startDate: startDate ? formatService.formatDateOnly(startDate) : "",
             cardCount: statementReconciliations.length,
@@ -1743,18 +1769,18 @@ function StatementReview({
         <div className="statement-review-actions">
           <span className={`pill ${overall.tone}`}>{overall.label}</span>
           <button type="button" className="subtle-action" data-import-target="statement-check" onClick={onRefreshStatementReconciliation} disabled={isSubmitting}>
-            {messages.imports.statementReconciliationRefresh}
+            {importMessages.statementReconciliationRefresh}
           </button>
           {!needsStatementAccountMapping && accountMapping ? (
             <button type="button" className="subtle-action" aria-expanded={isMappingOpen} onClick={() => setIsMappingOpen((current) => !current)}>
-              {messages.imports.statementChangeAccounts}
+              {importMessages.statementChangeAccounts}
             </button>
           ) : null}
           <button type="button" className="subtle-action" aria-expanded={isDetailsOpen || hasDuplicateCheckpointAccounts} onClick={() => setIsDetailsOpen((current) => !current)}>
-            {messages.imports.statementEditDetails}
+            {importMessages.statementEditDetails}
           </button>
           <button type="button" className="subtle-action" aria-pressed={isEditingRows} onClick={onToggleEditRows}>
-            {isEditingRows ? messages.imports.statementHideRowEditor : messages.imports.statementEditRows}
+            {isEditingRows ? importMessages.statementHideRowEditor : importMessages.statementEditRows}
           </button>
         </div>
       </div>
@@ -1763,15 +1789,15 @@ function StatementReview({
       {isDetailsOpen || hasDuplicateCheckpointAccounts ? statementDetails : null}
       {diagnosis?.rejectedFixes?.map((item) => (
         <p key={`${item.fix.kind}-${item.fix.entryId}`} className="lede compact statement-fix-rejected">
-          {messages.imports.statementFixRejected(item.reason)}
+          {importMessages.statementFixRejected(item.reason)}
         </p>
       ))}
       {certifiedConflicts}
       {autoAppliedStatementFixCount && isAutomaticStatementFixes ? (
         <div className="statement-auto-applied">
-          <span>{messages.imports.statementAutoApplied(autoAppliedStatementFixCount)}</span>
+          <span>{importMessages.statementAutoApplied(autoAppliedStatementFixCount)}</span>
           <button type="button" className="subtle-action" onClick={() => onAutomaticStatementFixesChange(false)}>
-            {messages.imports.statementAskFirst}
+            {importMessages.statementAskFirst}
           </button>
         </div>
       ) : null}
@@ -1801,7 +1827,7 @@ function StatementReview({
         ))}
       </div>
       <details className="statement-more-checks">
-        <summary>{messages.imports.statementMoreChecks}</summary>
+        <summary>{importMessages.statementMoreChecks}</summary>
         <div className="stack">{moreChecks}</div>
       </details>
     </section>
@@ -1870,27 +1896,27 @@ function StatementCardSection({
               {owner ? (
                 <span className="statement-card-owner" style={getPersonColourVars(owner)}>{owner}</span>
               ) : null}
-              {messages.imports.statementReconciliationAccount(
+              {importMessages.statementReconciliationAccount(
                 reconciliation.accountName,
                 formatService.formatMonthLabel(reconciliation.checkpointMonth)
               )}
-              {reconciliation.accountLast4 ? ` • ${messages.imports.statementCardEnding(reconciliation.accountLast4)}` : ""}
+              {reconciliation.accountLast4 ? ` • ${importMessages.statementCardEnding(reconciliation.accountLast4)}` : ""}
             </strong>
             <span className="import-history-inline">
               {formatService.formatStatementReconciliationLine(reconciliation)}
               {deltaMinor !== 0
-                ? ` • ${messages.imports.statementCardDifference(
+                ? ` • ${importMessages.statementCardDifference(
                   formatService.money(Math.abs(deltaMinor)),
                   projectedDeltaMinor !== deltaMinor ? formatService.money(Math.abs(projectedDeltaMinor)) : ""
                 )}`
                 : ""}
             </span>
-            <span className="import-history-inline">{messages.imports.statementCardCounts(addedCount, confirmedCount)}</span>
+            <span className="import-history-inline">{importMessages.statementCardCounts(addedCount, confirmedCount)}</span>
             {paymentDue ? (
               <span className="import-history-inline statement-card-payment-due">
                 {paymentDue.isDueNow
-                  ? messages.imports.statementPaymentDueNow(formatService.money(paymentDue.owedMinor))
-                  : messages.imports.statementPaymentDue(
+                  ? importMessages.statementPaymentDueNow(formatService.money(paymentDue.owedMinor))
+                  : importMessages.statementPaymentDue(
                     formatService.money(paymentDue.owedMinor),
                     formatService.formatDateOnly(paymentDue.dueDate),
                     paymentDue.minimumMinor ? formatService.money(paymentDue.minimumMinor) : ""
@@ -1899,13 +1925,13 @@ function StatementCardSection({
             ) : null}
             {previousImport ? (
               <span className="import-history-inline statement-card-previous-import">
-                {messages.imports.statementAlreadyImported(formatService.formatDateOnly(previousImport.importedAt), previousImport.sourceLabel)}
+                {importMessages.statementAlreadyImported(formatService.formatDateOnly(previousImport.importedAt), previousImport.sourceLabel)}
               </span>
             ) : null}
           </div>
         </div>
         <button type="button" className="subtle-action" aria-expanded={isOpen} onClick={() => setManualOpen(!isOpen)}>
-          {isOpen ? messages.imports.statementCardHide : messages.imports.statementCardShow}
+          {isOpen ? importMessages.statementCardHide : importMessages.statementCardShow}
         </button>
       </div>
       {isOpen ? (
@@ -1927,8 +1953,8 @@ function StatementCardSection({
             />
           ) : null}
           {reconciliation.supersededLedgerRows?.length ? (
-            <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>
-              <strong>{messages.imports.statementReconciliationSupersededRowsTitle}</strong>
+            <div className="import-overlap-entry-list" aria-label={importMessages.statementReconciliationSupersededRowsTitle}>
+              <strong>{importMessages.statementReconciliationSupersededRowsTitle}</strong>
               {reconciliation.supersededLedgerRows.map((row) => (
                 <div key={row.transactionId} className="import-overlap-entry-row">
                   <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
@@ -1942,7 +1968,7 @@ function StatementCardSection({
           <StatementCardRows rows={rows} />
           {reconciliation.reconciliationBreakdown && deltaMinor !== 0 ? (
             <details className="statement-card-breakdown">
-              <summary>{messages.imports.statementHowItAddsUp}</summary>
+              <summary>{importMessages.statementHowItAddsUp}</summary>
               <StatementReconciliationBreakdown
                 reconciliation={reconciliation}
                 breakdown={reconciliation.reconciliationBreakdown}
@@ -1981,7 +2007,7 @@ function StatementCardRows({ rows }) {
   ));
   return (
     <details className="statement-card-rows" open={needsAttention}>
-      <summary>{messages.imports.statementCardRowsTitle(rows.length)}</summary>
+      <summary>{importMessages.statementCardRowsTitle(rows.length)}</summary>
       <ul>
         {visible.map((row) => {
           const chip = getStatementRowChip(row);
@@ -1993,8 +2019,8 @@ function StatementCardRows({ rows }) {
               <span className={`statement-card-row-chips${isInferredAmountRow(row, inferredAmountKeys) ? " has-mark" : ""}`}>
                 <span className={`pill ${chip.tone}`}>{chip.label}</span>
                 {isInferredAmountRow(row, inferredAmountKeys) ? (
-                  <span className="pill pill-lavender statement-inferred-amount" title={messages.imports.statementInferredAmountHint}>
-                    {messages.imports.statementInferredAmount}
+                  <span className="pill pill-lavender statement-inferred-amount" title={importMessages.statementInferredAmountHint}>
+                    {importMessages.statementInferredAmount}
                   </span>
                 ) : null}
               </span>
@@ -2007,7 +2033,7 @@ function StatementCardRows({ rows }) {
       </ul>
       {sorted.length > STATEMENT_CARD_ROW_LIMIT ? (
         <button type="button" className="subtle-action" aria-expanded={isShowingAll} onClick={() => setIsShowingAll((current) => !current)}>
-          {isShowingAll ? messages.imports.statementCardFewerRows : messages.imports.statementCardMoreRows(sorted.length - STATEMENT_CARD_ROW_LIMIT)}
+          {isShowingAll ? importMessages.statementCardFewerRows : importMessages.statementCardMoreRows(sorted.length - STATEMENT_CARD_ROW_LIMIT)}
         </button>
       ) : null}
     </details>
@@ -2015,7 +2041,7 @@ function StatementCardRows({ rows }) {
 }
 
 function getStatementRowChip(row) {
-  const chips = messages.imports.statementRowChip;
+  const chips = importMessages.statementRowChip;
   if (row.commitStatus === "needs_review") {
     return { tone: "pill-lavender", label: chips.needsReview };
   }

@@ -15,7 +15,7 @@ import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
-import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
+import { MonthLead, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
   buildMobileMonthPlanDialog,
@@ -42,6 +42,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
 import "./month-mid-width.css";
+import "./month-plan-rows.css";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const {
@@ -1485,7 +1486,12 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         isDemoEnvironment={isDemoEnvironment}
       />
 
-      <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
+      <MonthLead
+        cards={monthMetricCards}
+        monthSummary={selectedMonthSummary}
+        month={view.monthPage.month}
+        isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
+      />
 
       <FinancialInsight
         audienceName={view.id === "household" ? "" : view.label}

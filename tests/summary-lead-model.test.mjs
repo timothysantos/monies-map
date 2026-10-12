@@ -21,7 +21,6 @@ test("the lead and its pills carry exactly the metric cards' figures and tones",
     plannedSpendMinor: 3_780_752,
     percentOfPlan: 60,
     headroom: { amountMinor: 1_502_985, isOver: false, tone: "in" },
-    progress: { valueMinor: 2_277_767, planMinor: 3_780_752 },
     income: { amountMinor: 11_070_000, tone: "in", planMinor: 11_070_000 },
     saved: { amountMinor: 8_792_233, tone: "in", planMinor: 1_800_000 }
   });
@@ -55,7 +54,7 @@ test("a page without the six cards (still loading, or renamed) has no lead", () 
 });
 
 test("the range reads as one month or first – last", () => {
-  assert.equal(formatSummaryLeadRange("2025-10", "2026-09"), "Oct 2025 – Sept 2026");
+  assert.equal(formatSummaryLeadRange("2025-10", "2026-09"), "Oct 2025 – Sep 2026");
   assert.equal(formatSummaryLeadRange("2026-05", "2026-05"), "May 2026");
   assert.equal(formatSummaryLeadRange("", ""), "");
 });

@@ -27,7 +27,7 @@ test("legacy shared ledger rows do not use the Splits shared cue", () => {
   assert.equal(display.ownerTitle, "Tim");
   assert.equal(display.ownerChipClassName, "entry-chip-owner");
   assert.equal(display.splitPercent, 50);
-  assert.equal(ownerCue.style["--entry-owner-border-color"], "rgba(51, 164, 113, 1)");
+  assert.equal(ownerCue.style["--entry-owner-border-color"], "rgba(70, 120, 142, 1)");
 });
 
 test("linked split rows keep the Splits workspace label and cue", () => {

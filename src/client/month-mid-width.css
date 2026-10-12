@@ -74,18 +74,8 @@
    the panel used to run into the shell's 18px right gutter; with wider text
    (Linux's default sans fonts, or larger letter spacing) it ran past the
    window and the page scrolled sideways. Tighter cells and an earlier,
-   still one-line, note cut-off keep every column and note icon on screen.
-   The summary cards lose a little padding so their labels keep to one
-   line in the narrower panel. */
+   still one-line, note cut-off keep every column and note icon on screen. */
 @container shell (min-width: 1064px) and (max-width: 1163px) {
-  .metric-row-month {
-    gap: 10px;
-  }
-
-  .metric-row-month .metric {
-    padding-inline: 12px;
-  }
-
   .month-table-wrap th,
   .month-table-wrap td {
     padding-left: 6px;

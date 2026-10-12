@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SpendingMixChart } from "./category-visuals";
@@ -12,7 +11,8 @@ import {
 } from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
-import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
+import { PrivateMoney } from "./money-privacy";
+import { SplitsLeadCard } from "./splits-lead-card";
 
 const { format: formatService } = moniesClient;
 
@@ -20,21 +20,19 @@ export function SplitsBreakdownSection({
   showBreakdown,
   // The active group's currency: its balance and spend are in that currency.
   currency = "SGD",
-  totalExpenseMinor,
-  groupBalanceMinor,
-  groupSummaryLabel,
+  lead,
+  activeGroup,
   donutRows,
   donutChart,
   categories,
   onToggleBreakdown,
   onAddExpense,
   searchControl = null,
-  summaryToolbar = null,
+  leadControls,
   onOpenHistory,
   isRefreshingDerived = false,
   readOnly = false
 }) {
-  const { areTotalsVisible } = useMoneyPrivacy();
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
   const visibleDonutChart = useMemo(
     () => getVisibleDonutData(donutChart, hiddenCategoryIds),
@@ -48,36 +46,17 @@ export function SplitsBreakdownSection({
 
   return (
     <>
-      <section className="entries-summary-strip splits-summary-strip">
-        <button
-          type="button"
-          className={`summary-chevron ${showBreakdown ? "is-open" : ""}`}
-          aria-label="Toggle split donut"
-          onClick={onToggleBreakdown}
-        >
-          <ChevronRight size={18} />
-        </button>
-        {searchControl}
-        <div className="entries-summary-metrics">
-          {!readOnly ? (
-            <span>{areTotalsVisible ? groupSummaryLabel : messages.splits.net} <strong><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
-          ) : null}
-          <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.moneyWithCurrency(totalExpenseMinor, currency)}</PrivateMoney></strong></span>
-        </div>
-        {summaryToolbar}
-        <button type="button" className="subtle-action split-history-trigger" onClick={onOpenHistory}>Activity history</button>
-        {!readOnly ? (
-          <div className="splits-summary-actions">
-            <button
-              type="button"
-              className="subtle-action"
-              onClick={onAddExpense}
-            >
-              {messages.splits.addExpense}
-            </button>
-          </div>
-        ) : null}
-      </section>
+      {lead ? <SplitsLeadCard
+        lead={lead}
+        iconKey={activeGroup?.iconKey}
+        currency={currency}
+        readOnly={readOnly}
+        showBreakdown={showBreakdown}
+        onToggleBreakdown={onToggleBreakdown}
+        onOpenHistory={onOpenHistory}
+        onAddExpense={onAddExpense}
+        {...leadControls}
+      /> : null}
       {isRefreshingDerived ? (
         <div className="split-derived-refreshing" role="status" aria-live="polite">
           <span className="app-spinner" aria-hidden="true" />
@@ -134,6 +113,7 @@ export function SplitsBreakdownSection({
           )}
         </section>
       ) : null}
+      {searchControl}
     </>
   );
 }
