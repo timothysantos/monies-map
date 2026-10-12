@@ -5,6 +5,7 @@ import { Info, X } from "lucide-react";
 import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
+import { entryTypeLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
 import { StatementFixSuggestions } from "./statement-fix-suggestions";
@@ -324,7 +325,7 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
                   <span className="import-history-inline">
                     {messages.common.triplet(
                       row.accountName ?? messages.common.emptyValue,
-                      row.entryType,
+                      entryTypeLabel(row.entryType),
                       formatService.formatMinorInput(row.amountMinor)
                     )}
                   </span>

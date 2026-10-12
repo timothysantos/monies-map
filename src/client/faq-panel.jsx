@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
+import { categoryRowDetail } from "./category-utils";
 import { CategoryGlyph } from "./ui-components";
 import { categories as defaultCategories } from "../domain/demo-data";
 import { GUIDE_TABS, classifyGuideHref, parseGuideMarkdown, tokenizeInline } from "./guide-markdown";
@@ -270,7 +271,7 @@ function GuideBlocks({ blocks, entryKey, onLinkClick }) {
               </span>
               <div className="faq-category-copy">
                 <strong>{category.name}</strong>
-                <p>{messages.common.triplet(category.iconKey, category.colorHex, category.slug)}</p>
+                {categoryRowDetail(category) ? <p>{categoryRowDetail(category)}</p> : null}
               </div>
             </div>
           ))}
