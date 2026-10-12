@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { shardStack, wranglerDevArgs } from "../scripts/e2e-stack.mjs";
+import { e2eOutputSuffix, shardStack, wranglerDevArgs } from "../scripts/e2e-stack.mjs";
 
 test("shard stacks get distinct ports, and an offset moves all of them together", () => {
   const plain = [0, 1, 2].map((index) => shardStack(index, { portOffset: 0 }));
@@ -52,4 +52,14 @@ test("a stack's Worker vars become wrangler --var pairs, and test stacks pass no
   const guide = { ...stack, vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: "2026-09" } };
   assert.deepEqual(wranglerDevArgs(guide).slice(-4), ["--var", "DEMO_DATASET:showcase", "--var", "DEMO_SEED_MONTH:2026-09"]);
   assert.equal(wranglerDevArgs(guide).filter((arg) => arg === "--var").length, 2);
+});
+
+// Two runs from one checkout on different offsets must not empty each
+// other's logs, blobs or reports either.
+test("a run with a port offset logs and reports under its own folders", () => {
+  assert.equal(e2eOutputSuffix(0), "");
+  assert.equal(e2eOutputSuffix(300), "-300");
+  assert.equal(shardStack(1, { portOffset: 0 }).serverLog, "test-results/e2e-sharded/logs/shard-1-servers.log");
+  assert.equal(shardStack(1, { portOffset: 300 }).serverLog, "test-results/e2e-sharded-300/logs/shard-1-servers.log");
+  assert.notEqual(shardStack(1, { portOffset: 300 }).serverLog, shardStack(1, { portOffset: 310 }).serverLog);
 });

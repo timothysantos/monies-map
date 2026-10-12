@@ -15,7 +15,14 @@ const viteServer = path.resolve("scripts/e2e-vite-server.mjs");
 /** Ports and directories for shard `index` (1-based). */
 // E2E_PORT_OFFSET moves every shard's ports, so two worktrees (or two
 // sessions) can run sharded suites at the same time without colliding.
-export function shardStack(index, { logDir = "test-results/e2e-sharded/logs", portOffset = Number(process.env.E2E_PORT_OFFSET) || 0 } = {}) {
+// A run with an offset also writes its logs, blobs and reports under its own
+// folders (`test-results/e2e-sharded-<offset>`), so two runs from one checkout
+// never empty or merge each other's results.
+export function e2eOutputSuffix(portOffset = Number(process.env.E2E_PORT_OFFSET) || 0) {
+  return portOffset ? `-${portOffset}` : "";
+}
+
+export function shardStack(index, { portOffset = Number(process.env.E2E_PORT_OFFSET) || 0, logDir = `test-results/e2e-sharded${e2eOutputSuffix(portOffset)}/logs` } = {}) {
   const uiPort = 5500 + portOffset + index;
   const apiPort = 8900 + portOffset + index;
   return {

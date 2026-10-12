@@ -29,7 +29,12 @@ and parallel sessions kept colliding on those ports.
   and two servers that share `node_modules/.vite` race each other's
   dependency optimisation. Busy ports fail the run at once instead of reusing
   another tree's server. Servers run in their own process groups and are
-  stopped, with their state removed, when the shard ends or on Ctrl+C.
+  stopped, with their state removed, when the shard ends or on Ctrl+C. A run
+  with `E2E_PORT_OFFSET` set also writes its logs, blobs and reports under
+  `test-results/e2e-sharded-<offset>` and `playwright-report-<offset>`; before
+  13 October 2026 every run emptied the one shared `test-results/e2e-sharded`
+  folder at its start, so two offset runs from one worktree wiped each
+  other's results.
 - `scripts/e2e-shard-plan.mjs`: the work comes from `playwright test --list`,
   so a new spec is always included. Whole files are placed longest first on
   the least-loaded shard, using `tests/e2e/shard-weights.json` (measured

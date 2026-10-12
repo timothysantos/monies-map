@@ -23,10 +23,11 @@ import process from "node:process";
 
 import { DEFAULT_SHARD_COUNT, DEFAULT_SMOKE_SHARD_COUNT, planShards, unitsFromPlaywrightList, weightsFromJsonReport } from "./e2e-shard-plan.mjs";
 import { smokeBatches } from "./e2e-smoke-workflows.mjs";
-import { prepareStack, shardStack, startStack } from "./e2e-stack.mjs";
+import { e2eOutputSuffix, prepareStack, shardStack, startStack } from "./e2e-stack.mjs";
 
 const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
-const outRoot = path.resolve("test-results/e2e-sharded");
+const outRoot = path.resolve(`test-results/e2e-sharded${e2eOutputSuffix()}`);
+const reportDir = path.resolve(`playwright-report${e2eOutputSuffix()}`);
 const blobRoot = path.join(outRoot, "blobs");
 const weightsFile = path.resolve("tests/e2e/shard-weights.json");
 const testDir = "tests/e2e";
@@ -251,7 +252,7 @@ async function mergeReports(sourceDir) {
     env: {
       ...process.env,
       PLAYWRIGHT_JSON_OUTPUT_FILE: jsonFile,
-      PLAYWRIGHT_HTML_OUTPUT_DIR: path.resolve("playwright-report"),
+      PLAYWRIGHT_HTML_OUTPUT_DIR: reportDir,
       PLAYWRIGHT_HTML_OPEN: "never"
     }
   });
@@ -283,7 +284,7 @@ function summarize(report, expectedTests) {
     console.log(`  Test count mismatch: Playwright lists ${expectedTests} tests, the shards reported ${total}.`);
     ok = false;
   }
-  console.log("HTML report: playwright-report/index.html; JSON: test-results/e2e-sharded/report.json");
+  console.log(`HTML report: ${path.relative(process.cwd(), reportDir)}/index.html; JSON: ${path.relative(process.cwd(), path.join(outRoot, "report.json"))}`);
   return ok;
 }
 
