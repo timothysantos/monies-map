@@ -141,6 +141,23 @@ export function SplitActivityGroups({
     return () => window.cancelAnimationFrame(frame);
   }, [archived, editingDraftKey]);
 
+  // Escape closes the inline split card from anywhere on the page (focus is
+  // on the page itself right after the row turns into the card), unless a
+  // dialog or an open list has it.
+  useEffect(() => {
+    if (!editingDraft || archived || editingDraft.kind !== "expense") {
+      return undefined;
+    }
+    function handleEscape(event) {
+      if (event.key !== "Escape" || event.defaultPrevented || isSubmitting || document.querySelector("[role='dialog']")) {
+        return;
+      }
+      onCancelEditing?.();
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [archived, editingDraft, isSubmitting, onCancelEditing]);
+
   // When an inline card closes (Escape, Cancel or Save), the row comes back
   // and takes focus, so keyboard focus continues from where it was opened.
   const editedKeyRef = useRef("");
@@ -225,12 +242,6 @@ export function SplitActivityGroups({
                 key={splitItemKey(item)}
                 className="split-inline-editor-card split-inline-expense-card"
                 onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape" && !event.defaultPrevented && !isSubmitting) {
-                    event.stopPropagation();
-                    onCancelEditing?.();
-                  }
-                }}
               >
                 {inlineReadOnly
                   ? <SettlementLockNotice lock={inlineSettlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />

@@ -1440,7 +1440,7 @@ link it instead of adding it again ([Link a bank row to a split](#link-a-bank-ro
 To change a split, select it in the activity list (or Tab to it and press
 Enter or Space). It opens as the same card you used to add it: on a phone as a
 sheet, on a wide screen in the list in place of the row. Change the total, a share, the category or the group, open
-**More details** on a phone for the rest, and select **Save expense**.
+**More details** on a phone for the rest (on a wide screen, change the date, who paid or how it was paid from the chips under the total), and select **Save expense**.
 **Delete** is at the bottom left and asks before it removes anything: select
 **Delete**, then **Delete split row**. Escape or **Cancel** closes the card
 without saving, and the cursor goes back to the split you opened. A deleted

@@ -35,7 +35,10 @@ twice. Dialog form errors are `InlineError` alerts.
 
 Selecting a split expense row opens the split expense card. On a wide screen
 it opens inline in the list in place of the row, like the Entries inline
-editor (the `splitInlineEditor` page flag, no dialog); a phone opens the
+editor (the `splitInlineEditor` page flag, no dialog; the lead card across the
+top and the Detail rows in two columns, with Date, Paid by and Paid using
+edited from their Support chips and the share editor opened from a share row
+or the shares chip); a phone opens the
 sheet, and the household view and an archived batch open the dialog. The
 `editing_split_expense` deep link opens the same card the same way. Enter
 and Space on the focused row open it, Escape and Cancel close it and the row

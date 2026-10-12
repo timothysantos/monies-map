@@ -97,13 +97,10 @@ test("linked split payment method is derived from the ledger account and locked"
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
   const editDialog = page.locator(".split-inline-editor-card");
-  // The split expense card: the Paid using row and chip are locked to Card,
-  // with no picker (design.md, "Tappable chips").
-  const paymentRow = editDialog.locator("[data-row='paymentMethod']");
-  await expect(paymentRow).toHaveClass(/is-locked/);
-  await expect(paymentRow).toContainText("Paid using (ledger)");
-  await expect(paymentRow).toContainText("Card");
-  await expect(paymentRow.locator("select")).toHaveCount(0);
+  // The split expense card: Paid using is the Support chip alone (no row repeats
+  // it), locked to Card with no picker (design.md, "Tappable chips").
+  await expect(editDialog.locator("[data-row='paymentMethod']")).toHaveCount(0);
+  await expect(editDialog.locator(".lsd-card select[aria-label^='Change paid using']")).toHaveCount(0);
   await expect(editDialog.locator(".lsd-card .lsd-chip.is-locked")).toHaveText("Card, set by the linked entry");
 });
 

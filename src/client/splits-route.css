@@ -680,8 +680,7 @@ button.split-activity-card:hover {
   display: contents;
 }
 
-.split-expense-card.is-dialog,
-.split-expense-card.is-inline {
+.split-expense-card.is-dialog {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: 20px;
@@ -724,8 +723,7 @@ button.split-activity-card:hover {
   min-height: 44px;
 }
 
-.split-expense-card.is-dialog .split-expense-source-note,
-.split-expense-card.is-inline .split-expense-source-note {
+.split-expense-card.is-dialog .split-expense-source-note {
   grid-column: 2;
 }
 
@@ -805,7 +803,8 @@ button.split-activity-card:hover {
    then the bottom bar at the end. */
 .split-inline-expense-card {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .split-inline-expense-card > .settlement-lock-error,
@@ -826,9 +825,29 @@ button.split-activity-card:hover {
   flex: 0 0 auto;
 }
 
-@media (max-width: 1100px) {
-  .split-expense-card.is-inline {
-    grid-template-columns: minmax(0, 1fr);
+/* Inline: the lead card across the top, the Detail rows in two balanced
+   columns under it (the Entries inline editor does the same). */
+.split-expense-card.is-inline .split-expense-rows {
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--line);
+}
+
+.split-expense-card.is-inline .split-expense-rows .lsd-row {
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding-block: 8px;
+  break-inside: avoid;
+}
+
+.split-expense-card.is-inline .split-share-rows,
+.split-expense-card.is-inline .split-share-editor {
+  break-inside: avoid;
+}
+
+@media (max-width: 760px) {
+  .split-expense-card.is-inline .split-expense-rows {
+    column-count: 1;
   }
 }
 

@@ -238,6 +238,8 @@ test.describe("money field editability", () => {
     const splitCard = page.locator(".split-inline-editor-card");
     await expect(splitCard).toBeVisible();
 
+    // The share editor opens from a share row.
+    await splitCard.locator("[data-share-row]").first().click();
     const amountInput = splitCard.getByRole("textbox", { name: "Expense total" });
     const percentInput = splitCard.getByRole("textbox", { name: / share %$/ });
     const exactAmountInput = splitCard.getByRole("textbox", { name: / share amount$/ });

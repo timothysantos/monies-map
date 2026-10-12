@@ -12,7 +12,7 @@ import { buildSplitShareRows, formatShareRatio } from "./split-share-rows";
 import { todayInAppTimeZone } from "./app-dates";
 import { formatCurrencyMinor } from "../domain/split-currency";
 import { CategoryGlyph } from "./ui-components";
-import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+import { ChipDateField, ChipSelectField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 const copy = messages.splits;
@@ -41,10 +41,15 @@ const PAYMENT_ICONS = { cash: Banknote, card: CreditCard, bank: Landmark, other:
 export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, layout, autoFocusAmount = false, readOnly = false, onViewLinkedEntry = undefined, amountAction = null }) {
   // "dialog" (the wide dialog) and "inline" (in the list on a wide screen) are the two-column card.
   const isSheet = layout === "sheet";
+  // Inline in the list: the lead card across the top and the Detail rows in
+  // two columns under it. Date, Paid by and Paid using are edited from their
+  // Support chips (no row repeats them) and the share editor opens from a
+  // share row or the shares chip.
+  const isInline = layout === "inline";
   const amountInputRef = useRef(null);
   const [openPicker, setOpenPicker] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
-  const [shareEditorOpen, setShareEditorOpen] = useState(!isSheet && !readOnly);
+  const [shareEditorOpen, setShareEditorOpen] = useState(!isSheet && !readOnly && !isInline);
   const shareEditorId = useId();
   const cardRef = useRef(null);
   const today = todayInAppTimeZone();
@@ -169,7 +174,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
 
   const dateLabel = dialog?.date ? formatCardDate(dialog.date, today, { withYear: true }) : "";
   const otherRows = [
-    shownRow("date", copy.expenseDate, dateLabel, (
+    isInline ? null : shownRow("date", copy.expenseDate, dateLabel, (
       <DateRow
         key="date"
         rowKey="date"
@@ -180,7 +185,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         onValueChange={(date) => update({ date })}
       />
     )),
-    shownRow("payer", copy.expensePaidBy, dialog?.payerPersonName ?? "", <PickerRow
+    isInline ? null : shownRow("payer", copy.expensePaidBy, dialog?.payerPersonName ?? "", <PickerRow
       key="payer"
       {...pickerProps("payer")}
       label={copy.expensePaidBy}
@@ -189,7 +194,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
       options={people.map((person) => ({ value: person.name, label: person.name }))}
       onValueChange={(payerPersonName) => update({ payerPersonName })}
     />),
-    shownRow("paymentMethod", paidUsingLabel, paymentLabel, <PickerRow
+    isInline ? null : shownRow("paymentMethod", paidUsingLabel, paymentLabel, <PickerRow
       key="paymentMethod"
       {...pickerProps("paymentMethod")}
       label={paidUsingLabel}
@@ -228,7 +233,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
         onChange={(note) => update({ note })}
       />
     </DetailRow>)
-  ];
+  ].filter(Boolean);
 
   const linkedEntryRow = isLinked && onViewLinkedEntry ? (
     <DetailRow
@@ -312,7 +317,15 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
                 data-chip="payer"
                 person={dialog.payerPersonName}
                 actionLabel={messages.common.changeChip(copy.expensePaidBy, dialog.payerPersonName)}
-                onClick={readOnly ? undefined : () => openFieldFromChip("payer")}
+                onClick={readOnly || isInline ? undefined : () => openFieldFromChip("payer")}
+                control={readOnly || !isInline ? null : (
+                  <ChipSelectField
+                    value={dialog.payerPersonName}
+                    label={messages.common.changeChip(copy.expensePaidBy, dialog.payerPersonName)}
+                    options={people.map((person) => ({ value: person.name, label: person.name }))}
+                    onValueChange={(payerPersonName) => update({ payerPersonName })}
+                  />
+                )}
               >
                 {cardCopy.paidBy(dialog.payerPersonName)}
               </MetaChip>
@@ -338,7 +351,15 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
               locked={isLinked}
               lockedLabel={cardCopy.paymentLockedByLedger}
               actionLabel={messages.common.changeChip(cardCopy.paidUsing, paymentLabel)}
-              onClick={readOnly ? undefined : () => openFieldFromChip("paymentMethod")}
+              onClick={readOnly || isInline ? undefined : () => openFieldFromChip("paymentMethod")}
+              control={readOnly || !isInline ? null : (
+                <ChipSelectField
+                  value={paymentMethod}
+                  label={messages.common.changeChip(cardCopy.paidUsing, paymentLabel)}
+                  options={allowedPaymentMethods.map((method) => ({ value: method, label: cardCopy.paymentMethods[method] }))}
+                  onValueChange={(nextMethod) => update({ paymentMethod: nextMethod })}
+                />
+              )}
             >
               {paymentLabel}
             </MetaChip>

@@ -668,7 +668,8 @@ Where it is used:
   "View split"), the transfer match for a transfer, Note, then Date, Wallet,
   Posted date, Type (and Transfer direction); on a phone those last ones fold
   into More details, and a certified entry lists only Posted date (locked)
-  and Type. On a wide screen the card sits left of the rows and each row
+  and Type. On a wide screen (the inline editor) the lead card spans the
+  top and the rows sit under it in two balanced columns, and each row
   keeps an inline field, so Tab walks description, amount, the eye, then the
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
@@ -677,7 +678,14 @@ Where it is used:
   split expense row opens this card, as does the `editing_split_expense`
   link: on a wide screen it opens inline in the list, in place of the row,
   exactly as the Entries inline editor does (`layout="inline"`, the
-  `splitInlineEditor` page flag, the bottom bar at its end; no dialog); a
+  `splitInlineEditor` page flag, the bottom bar at its end; no dialog). Its
+  layout is compact: the lead card across the top, then the Detail rows in
+  two columns (share rows, Category, Group, Currency, Evidence, Note). Date,
+  Paid by and Paid using have no row there, since each is a Support chip that
+  edits it (a date field over the chip, a native select over the other two;
+  a linked split's Paid using chip is locked), and the percent and amount
+  editor opens from a share row or the shares chip rather than sitting open
+  under the shares; a
   phone opens the sheet, and the household view and the archived batch open
   the dialog (`returnFocusToSplitRow`: a modal Dialog with no trigger
   button would otherwise drop focus on the page). A settlement row still
