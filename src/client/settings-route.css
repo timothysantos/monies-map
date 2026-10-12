@@ -342,6 +342,18 @@
 }
 
 @media (max-width: 760px) {
+  /* The edit, delete and move icons are transparent buttons: 44 x 44 px each,
+     8 px apart. */
+  .settings-account-actions,
+  .settings-category-card .settings-account-actions {
+    gap: 8px;
+  }
+
+  .settings-account-actions .icon-action {
+    width: 44px;
+    height: 44px;
+  }
+
   .settings-rule-row {
     padding: 10px 12px;
   }

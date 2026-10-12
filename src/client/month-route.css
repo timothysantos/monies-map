@@ -466,6 +466,11 @@
     line-height: 1.1;
   }
 
+  /* Room above "Draft a summary" for its 44 px hit area to clear the note. */
+  .note-card-actions .subtle-action {
+    margin-top: 11px;
+  }
+
   .month-lead-group {
     margin-bottom: 12px;
   }

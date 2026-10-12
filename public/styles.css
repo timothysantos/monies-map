@@ -8936,6 +8936,63 @@ th {
   }
 }
 
+/* Phone tap targets (design.md: every tappable is at least 44 x 44 px). A
+   control that is smaller keeps its look and gains a centred, invisible hit
+   area of at least 44 x 44 px (its own width when that is already wider).
+   :where() keeps these at zero specificity, so a control that is already
+   positioned (absolute, fixed, sticky) keeps its own position. Controls a
+   pseudo-element cannot reach (fields, clipped rows) grow instead, next to
+   their own rules. tests/e2e/phone-tap-targets.spec.js measures the result. */
+@media (max-width: 760px) {
+  :where(
+    .period-range-segment, .financial-insight-toggle, .icon-action, .month-actions-trigger,
+    .month-plan-summary-toggle, .table-sort-button, .note-trigger,
+    .entries-date-refresh-button, .entries-breakdown-toggle, .summary-chevron,
+    .split-matches-link, .checkin-action, .subtle-action, .ask-chip, details > summary
+  ) {
+    position: relative;
+  }
+
+  :where(
+    .period-range-segment, .financial-insight-toggle, .icon-action, .month-actions-trigger,
+    .month-plan-summary-toggle, .table-sort-button, .note-trigger,
+    .entries-date-refresh-button, .entries-breakdown-toggle, .summary-chevron,
+    .split-matches-link, .checkin-action, .subtle-action, .ask-chip, details > summary
+  )::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  .dialog-primary,
+  .panel-splits .dialog-primary,
+  .panel-splits .split-match-card .dialog-primary,
+  select.table-edit-input {
+    min-height: 44px;
+  }
+
+  /* The person pills clip their text with an ellipsis, which would clip a
+     hit area too: the pill itself is 44 px, inside a row with no padding. */
+  .context-block .pill {
+    min-height: 44px;
+  }
+
+  .context-block .pill-row {
+    padding: 1px;
+  }
+
+  /* A transparent icon button (no fill) is simply 44 x 44. */
+  .share-row-secondary-action {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+}
+
 /* Money tones: src/domain/money-tone.ts, design.md "Money colour". Last, so
    a tone wins over a component colour. */
 .money-in { --money-ink: var(--pastel-mint-ink); --money-fill: var(--pastel-mint); color: var(--money-ink); }
