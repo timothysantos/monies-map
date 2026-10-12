@@ -131,6 +131,10 @@
   .panel-splits .split-list-section .split-date-header {
     margin-inline: 0;
     padding: 14px 2px 8px;
+    /* Paint containment would clip the refresh button's 44 px hit area at
+       the header's 2px side padding; the header is still its own layer
+       through the translate3d set in splits-route.css. */
+    contain: layout style;
   }
 
   .panel-splits .split-list-section .split-activity-card {

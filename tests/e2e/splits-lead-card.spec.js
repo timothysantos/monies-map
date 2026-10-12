@@ -8,8 +8,8 @@ import { gotoPageAfterApi, loadSplitsPage, postJson, reseedDemo } from "./helper
 // owe Joyce $260.25), Baby River (You owe Joyce $117.03) and Okaeri (settled).
 
 const INK = {
-  short: "rgb(163, 53, 42)",
-  text: "rgb(38, 35, 31)"
+  short: "rgb(151, 50, 35)",
+  text: "rgb(59, 42, 31)"
 };
 const month = "2025-10";
 const groupUrl = (groupId) => `/splits?view=person-tim&month=${month}&split_group=${groupId}`;
