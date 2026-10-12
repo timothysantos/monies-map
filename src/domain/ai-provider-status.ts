@@ -264,8 +264,9 @@ export function buildAiProviderStatus(
 export type ClaudeMode = ClaudeSpendMode;
 
 // "ask" features answer a person who is waiting: a receipt, a typed entry
-// sentence, the wording of an Ask answer. Everything else is background help.
-const ASK_TIER_CAPABILITIES: ReadonlySet<AiAssistCapability> = new Set(["receipt_read", "entry_draft", "ask_answer"]);
+// sentence, the wording of an Ask answer, a plan request read into a draft.
+// Everything else is background help.
+const ASK_TIER_CAPABILITIES: ReadonlySet<AiAssistCapability> = new Set(["receipt_read", "entry_draft", "ask_answer", "plan_draft"]);
 
 export function isAskTierCapability(capability: AiAssistCapability) {
   return ASK_TIER_CAPABILITIES.has(capability);

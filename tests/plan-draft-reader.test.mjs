@@ -54,6 +54,7 @@ test("leaves entries, transfers, questions and searches to the other readers", (
     "show planned items",
     "groceries last month",
     "move $50 from DBS to OCBC",
+    "move 200 from uob one to citi cash back",
     "",
     "x".repeat(301)
   ]) {
