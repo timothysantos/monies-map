@@ -53,3 +53,14 @@ export function buildSummaryEntriesLocation(search, nextFilters) {
     search: `?${next.toString()}`
   };
 }
+
+// A Money insights "show these entries" link from Summary: Entries filtered to
+// the records it names, in the month they are in. Kept here (not in
+// check-in-action.js) so the first screen loads no extra chunk for it.
+export function buildSummaryEntriesForIdsLocation(search, { entryIds = [], month } = {}) {
+  const location = buildSummaryEntriesLocation(search, month ? { month } : {});
+  const next = new URLSearchParams(location.search);
+  next.delete("entry_id");
+  entryIds.forEach((entryId) => next.append("entry_id", entryId));
+  return { ...location, search: `?${next.toString()}` };
+}

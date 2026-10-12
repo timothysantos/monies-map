@@ -10,7 +10,7 @@ import {
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { SpendingMixSection } from "./spending-mix-section";
-import { buildSummaryEntriesLocation } from "./summary-workflow";
+import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { BarLine } from "./ui-components";
 import { SummaryLead } from "./summary-lead";
 import { FinancialInsight } from "./financial-insight";
@@ -21,7 +21,6 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { flowTone, headroomTone, reconciliationTone, signTone, spendTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-import { entriesLocationForAction } from "./check-in-action";
 const {
   accounts: accountService,
   format: formatService
@@ -91,7 +90,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     } else if (action.id === "open-category" && action.categoryName) {
       handleOpenEntriesForCategory(action.categoryName);
     } else if (action.id === "show-entries" && action.entryIds?.length) {
-      navigate(entriesLocationForAction(location.search, action));
+      navigate(buildSummaryEntriesForIdsLocation(location.search, action));
     }
   }
 
