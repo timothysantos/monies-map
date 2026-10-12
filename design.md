@@ -259,6 +259,9 @@ question (docs/flows/ask-flow.md "Money questions"):
 - Support: the plan, the other month, the largest shares ("Home 54%") or
   the Splits groups, as `MetaChip`s with masked amounts when money is
   hidden (labels never say over, under or who owes).
+- Tag: words the optional AI phrased carry the entry card's butter tag
+  ("Worded by AI", with the sparkle) above the head line; the computed
+  wording has none, and hidden money hides it with the words.
 - Detail: the answer in one to three sentences, then quiet rows (label and
   a short detail on the left; the amount on the right in its tone, with the
   plan or the other month small under it). Hidden money replaces the words

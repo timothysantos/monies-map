@@ -623,8 +623,9 @@ answer isn't thrown off by it:
 ![Check this first on Ask: a PayNow from Serene to Ethan that looks like a settle-up, with Mark as settlement and It's real spending](/faq/guide/phone/thumbs/phone-ask-money-check.webp)
 
 When Claude is set up, it may put the answer into its own words, using only
-those figures; if its words don't match the figures exactly, you see Ask's
-own sentence instead. Nothing you ask is kept once you close the tab.
+those figures, and the card is then marked **Worded by AI**; if its words
+don't match the figures exactly, you see Ask's own sentence instead, with no
+mark. Nothing you ask is kept once you close the tab.
 
 Other questions, such as "should I buy a car?", aren't answered; Ask says
 so.

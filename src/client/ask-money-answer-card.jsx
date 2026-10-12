@@ -1,11 +1,11 @@
-import { ArrowRight, Banknote, ChartPie, Receipt, Scale, Target, Users } from "lucide-react";
+import { ArrowRight, Banknote, ChartPie, Receipt, Scale, Sparkles, Target, Users } from "lucide-react";
 
 import { skewCountedKind } from "./ask-skew-check";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
-import { LeadCard, MetaChip } from "./ui-components";
+import { LeadCard, MetaChip } from "./ui/lead-support-detail";
 
 const NEUTRAL_BUBBLE_COLOUR = "#7C8791";
 const INTENT_ICONS = {
@@ -25,11 +25,16 @@ const INTENT_ICONS = {
 // figure is the server's, read from the same projections the screens
 // show; only the words may be AI-phrased (validated against those facts).
 // With money hidden, amounts are masked and the words and rows (which say
-// over, under, or who owes whom) give way to the usual hidden note.
+// over, under, or who owes whom) give way to the usual hidden note. Words
+// the optional AI phrased are tagged "Worded by AI".
 export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, settled = false }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const { lead } = answer;
   const plan = Number.isFinite(lead.planMinor) && lead.planMinor > 0 ? lead.planMinor : null;
+  // Words the optional AI phrased carry the entry card's butter tag; the
+  // computed wording has none. It goes with the words: hidden money hides
+  // both.
+  const aiWorded = wording.source === "ai" && areTotalsVisible;
   return (
     <LeadCard
       id={id}
@@ -37,6 +42,12 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
       aria-label={answer.title}
       data-ask-money-answer={intent}
       data-wording-source={wording.source}
+      tag={aiWorded ? (
+        <span className="ask-card-tag is-filled ask-money-ai-tag">
+          <Sparkles size={13} aria-hidden="true" />
+          {askCopy.money.wordedByAi}
+        </span>
+      ) : null}
       category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: INTENT_ICONS[intent] ?? ChartPie }}
       title={<strong className="lsd-title ask-answer-title">{answer.title}</strong>}
       subtitle={<span className="ask-answer-detail">{lead.label}</span>}

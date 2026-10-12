@@ -279,7 +279,8 @@
   color: var(--money-ink);
 }
 
-.ask-skew-tag {
+.ask-skew-tag,
+.ask-money-ai-tag {
   justify-self: start;
 }
 

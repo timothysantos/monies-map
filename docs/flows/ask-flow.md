@@ -259,7 +259,10 @@ and two chips:
   candidate in `keepCandidateIds` (kept with the check in the conversation).
 
 The wording is computed (`source: "template"`) unless AI is on and its
-phrasing passes validation (see "Data Flow").
+phrasing passes validation (see "Data Flow"). AI words (`source: "ai"`)
+carry the entry card's butter tag, "Worded by AI", above the card's head
+line; the computed wording has no tag, and with money hidden the tag goes
+with the words.
 
 ## Data Flow
 
@@ -501,6 +504,7 @@ Current status: aligned with tests (`tests/ask-card-model.test.mjs`,
 `tests/claude-credit-notice.test.mjs`, `tests/ask-answer-intent.test.mjs`,
 `tests/ask-answer-route.test.mjs`, `tests/ask-answer-skew.test.mjs`,
 `tests/ask-answer-ai.test.mjs`, `tests/ask-money-answer.test.mjs`,
+`tests/ask-money-answer-card.test.mjs`,
 `tests/e2e/ask-money-answers.spec.js`,
 `tests/e2e/ask-page.spec.js`, `tests/e2e/ask-voice.spec.js`,
 `tests/e2e/ask-composer.spec.js`, `tests/e2e/ask-search.spec.js`,

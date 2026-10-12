@@ -242,6 +242,9 @@ export const askCopy = {
   // figures. The answer's own words come from the server's facts.
   money: {
     reading: "Working that out…",
+    // The tag on an answer whose words the optional AI phrased (the figures
+    // never come from it).
+    wordedByAi: "Worded by AI",
     failed: "That couldn't be answered just now. Try again in a moment.",
     check: {
       title: "Check this first",
