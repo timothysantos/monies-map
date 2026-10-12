@@ -1,5 +1,6 @@
 import "./summary-intent-outcome.css";
 import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { PrivateMoney } from "./money-privacy";
@@ -46,10 +47,13 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote 
 
 function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
   const monthLabel = formatMonthLabel(card.month);
+  // The card widens when its Details are open; a class on the card does that
+  // without a :has() that scans every descendant.
+  const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const { headroom } = card;
   return (
     <LeadCard
-      className="summary-intent-month"
+      className={isOpen ? "summary-intent-month is-details-open" : "summary-intent-month"}
       data-month={card.month}
       tag={(
         <button type="button" className="summary-month-link" onClick={() => onOpenMonth(card.month)}>
@@ -80,7 +84,7 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
       ]}
     >
       <DetailRows label={copy.detailsFor(monthLabel)}>
-        <MoreDetails label={copy.details} openLabel={copy.details} summary={copy.detailsHint} defaultOpen={isInitiallyOpen}>
+        <MoreDetails label={copy.details} openLabel={copy.details} summary={copy.detailsHint} open={isOpen} onOpenChange={setIsOpen}>
           {card.metrics.map((metric) => (
             <div key={metric.key} className="lsd-row is-readonly summary-intent-metric" data-metric={metric.key}>
               <span className="lsd-row-label">{METRIC_LABELS[metric.key]}</span>

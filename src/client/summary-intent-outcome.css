@@ -131,7 +131,7 @@ html[data-money-privacy="hidden"] .summary-intent-plan.money-plan {
 
   /* A card with its Details open is the full row, so nothing leaves a gap
      beside it. */
-  .summary-intent-month:has(.lsd-row-more.is-open) {
+  .summary-intent-month.is-details-open {
     grid-column: 1 / -1;
   }
 }
