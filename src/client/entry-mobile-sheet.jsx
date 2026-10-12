@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { RemoveScroll } from "react-remove-scroll";
 import { ResponsiveSelect } from "./responsive-select";
 import { findSheetOpener, returnFocusFromSheet } from "./sheet-focus-return";
+import { SheetDiscardConfirm, SheetDragHandle, useSheetSwipeDismiss } from "./sheet-swipe";
 import { InlineError } from "./ui-states";
 import { useKeyboardInset } from "./use-keyboard-inset";
 
@@ -32,6 +33,11 @@ import { useKeyboardInset } from "./use-keyboard-inset";
 //   sheet lands on it and closes the sheet instead of reaching the page.
 // - The sheet lifts itself above the phone keyboard (use-keyboard-inset.js),
 //   so its Save bar and the focused field stay in sight.
+// - It swipes down to close (sheet-swipe.jsx; the grab bar is the cue).
+//   `isDirty` says whether the draft changed since the sheet opened:
+//   unchanged, the swipe closes it; changed, it springs back and asks
+//   "Discard changes?". The body is `data-sheet-body`: a drag starts there
+//   only while it is scrolled to its top.
 export function EntryMobileSheet({
   title,
   description,
@@ -43,6 +49,7 @@ export function EntryMobileSheet({
   cancelLabel = "Cancel",
   isSaveDisabled = false,
   isSubmitting = false,
+  isDirty = false,
   secondaryAction = null,
   footerContent = null,
   onClose,
@@ -63,6 +70,7 @@ export function EntryMobileSheet({
   const scrollShards = useMemo(() => (sheet ? [sheet] : []), [sheet]);
   usePageKeyboardScrollLock();
   useKeyboardInset(sheet);
+  const swipe = useSheetSwipeDismiss({ sheet, isDirty, isSubmitting, onClose });
 
   return (
     <Dialog.Root
@@ -108,9 +116,12 @@ export function EntryMobileSheet({
             // Focus cannot leave while trapped; never treat an attempt as a
             // dismissal (the desktop modal dialogs behave the same way).
             onFocusOutside={(event) => event.preventDefault()}
+            {...swipe.contentProps}
           >
+            <SheetDragHandle />
             <form
               className="entry-mobile-sheet-form"
+              inert={swipe.isConfirmOpen}
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!isSaveDisabled) {
@@ -118,7 +129,7 @@ export function EntryMobileSheet({
                 }
               }}
             >
-            <div className="entry-mobile-sheet-scroll">
+            <div className="entry-mobile-sheet-scroll" data-sheet-body>
               <div className="note-dialog-head split-dialog-head entry-composer-head">
                 <div className="entry-composer-copy">
                   <Dialog.Title asChild><strong>{title}</strong></Dialog.Title>
@@ -147,6 +158,7 @@ export function EntryMobileSheet({
               </div>
             )}
             </form>
+            <SheetDiscardConfirm open={swipe.isConfirmOpen} onKeepEditing={swipe.keepEditing} onDiscard={swipe.discard} />
           </Dialog.Content>
         </FocusScope>
       </Dialog.Portal>

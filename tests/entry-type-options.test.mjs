@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  BANK_FACTS_LOCK_LINE,
   getBankFactsLockMessage,
   getEntryTypeOptions,
   getTransferDirectionForTypeSwitch
@@ -40,7 +41,13 @@ test("switching an unlocked entry to Transfer keeps the old default", () => {
   assert.equal(getTransferDirectionForTypeSwitch({ entryType: "transfer", transferDirection: "in" }), "in");
 });
 
-test("the lock message names the type choice for the entry's direction", () => {
+test("the line under a certified Edit entry card is the short approved one", () => {
+  assert.equal(BANK_FACTS_LOCK_LINE, "Bank details are locked to the statement. Category, owner, note and splits stay editable.");
+  // The long rule stays for the lock chip's description, not the line.
+  assert.doesNotMatch(BANK_FACTS_LOCK_LINE, /statement certified|Type can switch/);
+});
+
+test("the full lock rule (the lock chip's description) names the type choice for the entry's direction", () => {
   assert.equal(
     getBankFactsLockMessage({ entryType: "transfer", transferDirection: "in" }),
     "This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Income and Transfer in, and you can change the note, category, owner or splits."

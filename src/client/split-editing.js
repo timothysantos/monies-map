@@ -176,7 +176,9 @@ export function validateSplitSettlementDraft(draft) {
   return "";
 }
 
-function buildComparableSplitDraft(draft) {
+// The fields a person edits in a split draft. Also what makes a swipe down
+// on the phone Splits dialog ask "Discard changes?" (splits-dialogs.jsx).
+export function buildComparableSplitDraft(draft) {
   if (!draft) {
     return null;
   }
