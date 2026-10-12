@@ -399,8 +399,11 @@ components.
   `getPersonColourVars` (tint, border, `--person-ink`, a dot); `tone` a
   status in its pastel pair at the soft strength (`mint`, `rose`, `sky`,
   `butter`, `lavender`; an unknown tone is ignored), such as the mint
-  "Statement certified" chip with a lock. At most four per card; chips are
-  read-only: a value you change has its own Detail row.
+  "Statement certified" chip with a lock. At most four per card. A chip is
+  read-only unless it names a field you can change (see "Tappable chips"
+  below): `onClick` or a laid-over `control` (`ChipDateField`), with
+  `actionLabel`, makes it open that field's picker; `locked` (with
+  `lockedLabel`) shows a lock and opens nothing.
 - `DetailRows {label}` and `DetailRow {label, value, emptyLabel, state,
   action, locked, disabled, hint, labelId, onClick, children}`: rows of
   48 px or more in one rounded group, label left (muted), value right (600)
@@ -415,7 +418,9 @@ components.
   with its `emptyLabel`, "Add a note"), `action` (terracotta, "Add to
   splits", "See the 10 entries"; also the `action` flag) and `locked`
   (muted with a lock instead of the `›`, never clickable; also the `locked`
-  flag). `disabled` mutes a button row and drops its `›`.
+  flag). `disabled` mutes a button row and drops its `›`. `readOnly` is a
+  plain line with no icon, for a fact nobody changes on that screen (Added
+  by).
 - `MoreDetails {summary, open, onOpenChange, defaultOpen, forceOpen, label,
   openLabel}`: the folding row inside the group; it lists what it holds
   while closed, and its rows follow it in the same group when open.
@@ -440,6 +445,39 @@ share: `PickerRow` (the phone picker sheet, `ResponsiveSelect`, in a sheet; a
 native select laid over the row on a wide screen), `DateRow` (a date field
 over the row in a sheet; a visible inline date field on a wide screen) and
 `GrowingTextarea` (what it was, a note).
+
+Tappable chips: a Support chip that names a field you can change opens
+the same picker or editor as that field's Detail row, so the fact you look
+at is also the way to change it. Edit entry card: date (the date picker),
+wallet (the wallet picker, unfolding More details) and owner. Ask draft
+card: date, wallet and owner. Create split expense card: date, paid by,
+shares (the share editor) and paid using. The Month plan card's chips are
+not fields there, and a saved Ask card's chips are not editors.
+
+- Calm, not loud: the pill keeps its size and colours and adds only a small
+  muted chevron and the rows' press state; no new colour.
+- 44 × 44 px: the pill sits inside a transparent button (or under a date
+  field laid over it) at least 44 px each way; the chips row pulls in 4 px
+  top and bottom so the taller targets add little height.
+- Named for what it does: "Change date, Yesterday", "Change wallet, UOB
+  One", "Change paid by, Tim", "Change shares, 50 / 50".
+- Locked: a field the statement certified (date, wallet), or a payment way
+  the linked entry set, shows a small lock and opens nothing; assistive
+  tech hears ", locked by the statement" (or ", set by the linked entry").
+- State chips (Manual provisional, Statement certified) are never editors.
+- On a wide screen a chip moves focus to its row's select (and opens it
+  where the browser allows).
+
+Source chip: the bank state chip names the tool that saved a provisional
+entry, "Apple Pay · provisional" (the Apple Pay Shortcut) or "Ask ·
+provisional", on the Edit entry card and Ask's saved card; a certified
+entry says "Statement certified" and other entries keep "Manual
+provisional" or "Import provisional". More details then has a read-only
+"Added by" row (Apple Pay shortcut, Ask), and an Entries row shows a small
+muted glyph inside its amount's line (a contactless mark, "Added with Apple
+Pay"; a sparkle, "Added in Ask") that keeps the row's height and is the
+same with money hidden. The words come from `entry-source.js`, from the
+entry's `addedBy`.
 
 The phone picker sheet (`ResponsiveSelect`, and the Entries filter
 multi-select) keeps its title in place and scrolls its options list, so the

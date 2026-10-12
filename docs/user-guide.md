@@ -421,7 +421,10 @@ The round **+** button opens a new entry card on [Ask](#ask); its **Edit in
 form** button opens the usual entry form in a sheet instead. A row opens in
 a sheet with the same card: tap a row such as **Category** or **Owner** to
 pick a new value, and **More details** for the date, wallet, posted date and
-type. **Save** is at the bottom, with **Cancel** (or **Close**) beside it and
+type. The small labels on the card under what it was do the same: tap the
+date, the wallet or the person to change them (a small arrow marks the ones
+you can tap; a lock means the bank statement has fixed it). Long lists of
+wallets or categories scroll. **Save** is at the bottom, with **Cancel** (or **Close**) beside it and
 **Delete entry** apart on the left. The eye at the top shows or hides the
 amounts. The **View and scope** bar and month buttons float above the
 navigation.
@@ -509,7 +512,8 @@ When you are adding an entry, a **card** shows it as it will be saved: the
 category, what it was, the amount (red for spending, green for money in,
 plain for a transfer), the date, the wallet and whose it is. Under it are
 **Date**, **Category**, **Wallet** and **Type**; **More details** adds the
-posted date, the owner and a note. Tap any of them to change it.
+posted date, the owner and a note. Tap any of them to change it, or tap the
+date, wallet or person label on the card itself.
 
 ### What each control does
 
@@ -1456,7 +1460,8 @@ open it for you to check.
 ![The Apple Pay shortcut section in Settings](/faq/guide/desktop/thumbs/settings-shortcut.webp)
 
 After a purchase, a notification shows the merchant, amount and account, and
-the new entry opens on [Ask](#ask) as a saved card. If it landed in
+the new entry opens on [Ask](#ask) as a saved card, marked **Apple Pay ·
+provisional**. If it landed in
 **Other**, Ask suggests a few categories to tap; it also offers to share it
 on Splits, and **Open this entry** opens it in Entries to change anything
 else.
@@ -1837,7 +1842,9 @@ saves every row or none of them.
   one statement period.
 - **Reconcile**: prove your ledger matches the statement's closing balance.
 - **Manual provisional**: an entry you typed (or Apple Pay created) that no
-  bank file has confirmed yet.
+  bank file has confirmed yet. One that Apple Pay or Ask saved says so:
+  **Apple Pay · provisional** or **Ask · provisional**, with **Added by**
+  under **More details**, and a small mark beside its amount in the list.
 - **Import provisional**: an entry from an activity export, not yet confirmed
   by a statement.
 - **Statement certified**: an entry a bank statement has confirmed. Its bank

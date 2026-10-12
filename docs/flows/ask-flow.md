@@ -350,7 +350,13 @@ Ask does not own:
   tone.
 - Filled fields carry the butter tag on the card and a dot on their row; a
   hand edit removes the dot.
-- After a save the card shows Saved and the chips offer the way back first.
+- After a save the card shows Saved and the chips offer the way back first;
+  its bank state chip reads "Ask · provisional" ("Apple Pay · provisional"
+  for the Shortcut's saved entry, `card.saved.addedBy`), and its Support
+  chips are no longer editors.
+- On a draft the date, wallet and owner chips open their rows' pickers (the
+  owner's unfolds More details; on a wide screen the chip focuses the row's
+  select), each a 44 × 44 px target named "Change <field>, <value>".
 - Spoken words land in the message box and are sent only when the person
   taps Send; the mic is hidden when neither voice path is available.
 - The + inside the field opens an in-app menu (Take a photo, Choose a
