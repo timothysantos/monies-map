@@ -9,6 +9,11 @@ export const wholeMoney = (minor) => wholeMoneyFormatter.format(minor / 100);
 
 const atLeastZero = (minor) => Math.max(0, minor ?? 0);
 
+// The window event a lead's "Ask about this" sends on a wide screen
+// ({ text }); the shell (App.jsx, which names it as a literal so neither
+// side imports the other) opens the Ask panel with it.
+export const ASK_ABOUT_EVENT = "monies:ask-about";
+
 // What the period's income went to, from figures the lead already has
 // (design.md "Money jobs"; DOMAIN.md "Money job"). The lead's spend counts
 // every expense entry, including money filed under the Investments and

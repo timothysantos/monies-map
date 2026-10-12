@@ -299,6 +299,18 @@ export function App() {
   // keyboard-friendly on small screens.
   useEffect(() => installMobileFocusVisibility(), []);
 
+  // A lead's "Ask about this" on a wide screen (ui/money-actions.jsx): the
+  // Ask panel beside the page, with the question in its message box. The
+  // shell opens it, so the dock's launcher stays out of the Summary chunk.
+  useEffect(() => {
+    const onAskAbout = (event) => {
+      const text = /** @type {CustomEvent} */ (event).detail?.text;
+      if (typeof text === "string" && text) openAskDock({ intent: { mode: "chat" }, text });
+    };
+    window.addEventListener("monies:ask-about", onAskAbout);
+    return () => window.removeEventListener("monies:ask-about", onAskAbout);
+  }, []);
+
   // The active route's code loads beside its data rather than after it (the
   // panel renders only once its data is here). This is the page being
   // opened, never another route, so it is not warmup. It also starts

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { messages } from "../copy/en-SG";
 import { buildSavingsBarModel } from "../savings-bar-model";
-import { MoneyActions } from "./money-actions-lazy";
+import { MoneyActions } from "./money-actions";
 
 const copy = messages.summary.lead.savingsBar;
 

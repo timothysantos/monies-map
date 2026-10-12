@@ -4,7 +4,7 @@ import { messages } from "../copy/en-SG";
 import { buildMoneyJobs } from "../money-jobs-model";
 import { moneyToneClass } from "../money-tone-class";
 import { useIsMobileLayout } from "../use-viewport";
-import { MoneyActions } from "./money-actions-lazy";
+import { MoneyActions } from "./money-actions";
 
 const copy = messages.summary.lead.moneyJobs;
 

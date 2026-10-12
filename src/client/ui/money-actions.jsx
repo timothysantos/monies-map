@@ -1,10 +1,9 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { openAskDock } from "../ask-dock";
 import { messages } from "../copy/en-SG";
 import { buildEntriesFilterSearch } from "../entry-filter-params";
 import { formatMonthLabel } from "../formatters";
-import { moneyActionTarget } from "../money-jobs-model";
+import { ASK_ABOUT_EVENT, moneyActionTarget } from "../money-jobs-model";
 import { isMobileLayout } from "../use-viewport";
 
 const copy = messages.summary.lead.moneyActions;
@@ -39,7 +38,9 @@ export function MoneyActions({ actionKey, name, figures, hidden, period }) {
       const params = new URLSearchParams({ view: viewId, month: endMonth, scope, ask_text: question });
       navigate({ pathname: "/ask", search: `?${params.toString()}` });
     } else {
-      openAskDock({ intent: { mode: "chat" }, text: question });
+      // The shell opens the Ask panel (App.jsx), so the dock's launcher and
+      // its route loader stay out of this first-screen chunk.
+      window.dispatchEvent(new CustomEvent(ASK_ABOUT_EVENT, { detail: { text: question } }));
     }
   };
 
