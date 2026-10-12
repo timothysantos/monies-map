@@ -363,3 +363,9 @@
   color: var(--text);
   font-weight: 600;
 }
+
+.sheet-dialog.is-three-actions .lsd-bottom-end > .lsd-primary {
+  min-width: 0;
+  padding: 0 10px;
+  white-space: nowrap;
+}
