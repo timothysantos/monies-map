@@ -92,6 +92,9 @@ a doc here in the same change.
   and remaining task.
 - [`audits/macro-loading-baseline.md`](audits/macro-loading-baseline.md): macro
   loading baseline evidence (H00, H01).
+- [`audits/states-lsd.md`](audits/states-lsd.md): empty, loading and error
+  states and the FAQ page in Lead · Support · Detail, with before and after
+  screenshots.
 - [`audits/route-assets-baseline.json`](audits/route-assets-baseline.json): route
   asset size baseline.
 - [`audits/e2e-sharding.md`](audits/e2e-sharding.md): parallel isolated
