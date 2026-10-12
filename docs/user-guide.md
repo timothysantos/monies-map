@@ -965,8 +965,9 @@ you can bookmark or share a link to it.
 
 ### On a phone
 
-FAQ is under the **•••** button. The tabs and contents sit at the top; tap a
-picture to open it full size.
+FAQ is under the **•••** button. The two tabs sit at the top, and **Contents**
+is one row under them: tap it to open the list, so the guide starts straight
+away. Tap a picture to open it full size.
 
 ![The FAQ screen on a phone](/faq/guide/phone/thumbs/phone-faq.webp)
 
@@ -1922,9 +1923,11 @@ it. Filters stay in the address, so you can bookmark a filtered view.
 
 ## The app stays on Loading
 
-The app loads in small steps and shows a percentage. If a step takes too
-long, it stops waiting and shows which part failed, with a button to try
-again.
+While a page loads, the app shows a pale outline of it, so nothing jumps
+when your figures arrive. When you move to another page, the old one stays
+until the new one is ready, with a small "Loading latest data..." note near
+the top. If a step takes too long, the app stops waiting and shows which part
+failed, with a button to try again.
 
 1. Select the retry button.
 2. If it keeps failing, check your internet connection and reload the page.

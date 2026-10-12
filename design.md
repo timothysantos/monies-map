@@ -1890,25 +1890,67 @@ failed load failed until the page reloads.
 
 ## Shared States
 
-`ui-states.jsx` is the one presentation for "nothing here", "this failed"
-and "this screen failed"; callers pass copy from `copy/en-SG.js` and own
-every retry handler.
+`ui-states.jsx` is the one presentation for "nothing here", "this failed",
+"this screen failed", notices and loading; callers pass copy from
+`copy/en-SG.js` and own every retry handler. Its stylesheet is
+`ui/states.css` (imported by `ui-states.jsx`, so it rides with the entry chunk
+and never grows `public/styles.css`; the old `.app-loading-*` and
+`.import-stale-banner` rules were removed from `styles.css` for it).
 
-- `EmptyState` renders an empty section as one muted line, or as a titled
-  block with actions (the Entries wallet-view mismatch). Empty sections
-  say what is missing instead of showing a bare dash.
+Every state follows Lead · Support · Detail: **one clear lead** (the title, 1.08
+rem 800, what is missing or what failed), **one quiet support line** (what to do
+about it, 0.94 rem 500, muted, or the tone's ink on a pastel surface), a
+**technical Detail** line only where there is one (0.76 rem), and **one primary
+action** at the bottom (the `BottomActions` bar: primary last, any other action
+quiet beside it). On a phone the primary is full width and at least 50 px tall;
+a screen-level state is centred in the viewport (`is-screen`, `min-height:
+min(60dvh, 26rem)`) so its action lands mid-screen, not under the status bar.
+Colours are tokens only (`data-tone`: `rose`, `sky`, `butter`, `mint`).
+
+- `EmptyState` renders an empty section as one muted line, or, with a `title`
+  or an `action`, as a white Lead card (the strong lead shadow, an optional
+  44 px icon bubble) saying what is missing, why or what next, and the one next
+  step (`action`; `secondary` beside it). `compact` is the same lead and
+  support with no card, for a section whose action is nearby (the spending-mix
+  empty, the empty Ask chat). Where an action exists it reuses the page's own
+  handler and label: Entries with no entries ("+ Add entry"), Entries with
+  filters on ("Reset filters"), Splits with no activity ("+ Add expense"), no
+  groups ("Create group") and a search with no results ("Clear search"), the
+  empty Imports queue ("Select file", opens the file chooser).
 - `InlineError` renders a failure inside a section as `role="alert"`, with
   an optional retry button; forms, dialogs and the mobile sheet use it.
-- `ErrorPanel` is the screen-level failure. `ShellErrorScreen` (shell,
-  reference data and first page load) and the screen error boundary both
-  render it, so each is an alert with the same layout and a primary
-  `dialog-primary` retry. The detail line is plain language
-  (`common.loadFailedDetail`). The technical reason ("Page request failed
-  with status 503") is not shown: a server or network failure adds one plain
-  line, "We couldn't reach your data just now." (`describeLoadFailure`), and
-  the panel keeps the reason as `data-technical-detail`. A stored code
-  (credit_card, a category slug, a hex colour) is never shown either; screens
-  use the label maps in `src/client/enum-labels.js` (`tests/raw-enum-guard.test.mjs`).
+- `ErrorPanel` is the screen-level failure: a rose card (pastel fill, rose ink,
+  no shadow). `ShellErrorScreen` (shell, reference data and first page load),
+  the page error inside the shell, the Entries load error, the FAQ guide
+  failure and the screen error boundary all render it, so each is an alert
+  with the same layout: the title, the plain-language detail
+  (`common.loadFailedDetail`), and a primary `lsd-primary dialog-primary` retry
+  (the boundary's "Reload app" is a quiet `lsd-quiet` button beside it). The
+  technical reason ("Page request failed with status 503") is not shown: a
+  server or network failure adds one plain Detail line, "We couldn't reach your
+  data just now." (`describeLoadFailure`, passed as `technical`), and the card
+  keeps the reason as `data-technical-detail`. A stored code (credit_card, a
+  category slug, a hex colour) is never shown either; screens use the label
+  maps in `src/client/enum-labels.js` (`tests/raw-enum-guard.test.mjs`).
+- `StateBanner` is a notice above a page: the refresh failure notice (butter,
+  "Refresh now" primary, "Dismiss" quiet) and the import inbox banner (sky,
+  "Open import inbox" primary). Pastel fill, the tone's ink, one primary action
+  of at least 48 px, full width on a phone.
+- Loading, first load: `ShellLoadingScreen` (app-shell-status.jsx) shows the
+  header and the page's own blocks as quiet placeholders (`.state-skeleton`,
+  `SKELETON_SHAPES`: Summary = chips, lead card, insight lines, a chart card;
+  Entries = totals strip, insight lines, filter bar, a day of rows; Splits =
+  group row, lead card, a day of rows; any other page = lead card and rows) with
+  one support line ("Loading..." plus what the shell reports, and the seconds
+  after five). No buttons and no figures, so hidden money has nothing to leak.
+  Placeholders shimmer only when the person has not asked for reduced motion.
+  They never take their own height from data: heights are fixed per block so
+  the page replaces them without a jump.
+- Loading, later: while a route fetches with the previous page still on screen,
+  `AppLoadingOverlay` is one sky pill (`.state-pill`) centred under the header
+  (clear of the period picker), with percent, detail and seconds in its
+  tooltip; only a problem is spelled out. The Entries page's own refresh uses
+  the same pill (`entries-page-loading`).
 
 A page load that fails after the person navigated shows the page
 `ErrorPanel` inside the shell, and hides the previous page. Otherwise the
@@ -2368,4 +2410,11 @@ The FAQ route renders two Markdown guides as tabs: `docs/user-guide.md`
   families (`/faq/guide/desktop/`, `/phone/`, `/iphone/`) get a fixed aspect
   ratio so lazy images never shift a deep-linked section.
 - The route stays static: it reports ready immediately and never busy.
+- Layout (Lead · Support · Detail): the guide is the lead. The contents are
+  Support: open beside the guide on a wide screen, one 48 px row ("Contents",
+  `aria-expanded`) on a phone, so the first section starts on screen; the guide
+  tabs are two equal 48 px segments on a phone. While a guide downloads the
+  page shows the shared placeholders and one "Loading guide..." line
+  (`.faq-guide-status`); a failed download is the shared rose `ErrorPanel`
+  with "Try again".
 

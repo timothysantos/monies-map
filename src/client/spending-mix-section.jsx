@@ -135,7 +135,7 @@ export function SpendingMixSection({
           </DetailRows>
         </div>
       ) : (
-        <EmptyState>{messages.entries.noSpendBreakdown}</EmptyState>
+        <EmptyState compact title={messages.entries.noSpendBreakdown}>{messages.entries.noSpendBreakdownDetail}</EmptyState>
       )}
     </section>
   );

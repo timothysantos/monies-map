@@ -277,9 +277,76 @@
   line-height: 1.4;
 }
 
+/* Support: the contents fold into one row on a phone. */
+.faq-contents-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 12px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.faq-contents-toggle svg {
+  color: var(--muted);
+}
+
+.faq-contents-toggle svg.is-open {
+  transform: rotate(90deg);
+}
+
+.faq-contents-toggle:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.faq-toc[hidden] {
+  display: none;
+}
+
+/* Loading and failure are the shared states, sized for a section. */
+.faq-guide-status {
+  display: grid;
+  gap: 12px;
+}
+
+.faq-guide-status .state-detail {
+  margin: 0;
+}
+
+.faq-guide-error.is-screen {
+  min-height: 0;
+}
+
 @media (max-width: 760px) {
   .faq-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
     padding: 0 12px;
+  }
+
+  .faq-tab {
+    min-height: 48px;
+    justify-content: center;
+  }
+
+  .faq-contents-toggle {
+    width: calc(100% - 24px);
+    margin-inline: 12px;
+  }
+
+  .faq-guide-status,
+  .faq-guide-error {
+    margin-inline: 12px;
   }
 
   .faq-toc {

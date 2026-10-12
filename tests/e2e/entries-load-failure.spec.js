@@ -83,7 +83,8 @@ for (const layout of ["desktop", "mobile"]) {
     const alert = page.getByRole("alert").filter({ hasText: "The Entries page could not load." });
     await expect(alert).toBeVisible({ timeout: 20_000 });
     await expect(alert).toContainText("Your saved data is not affected.");
-    await expect(alert).toContainText("Entries exploded");
+    // The technical reason is kept on the card, not shown as screen text.
+    await expect(alert).toHaveAttribute("data-technical-detail", /Entries exploded/);
     await expect(page.locator(".period-range-segment")).toHaveText("Oct 2025");
     // May's rows and totals are not passed off as October's, and October is
     // not called empty.

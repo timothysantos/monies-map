@@ -510,121 +510,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   position: relative;
 }
 
-.app-loading-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  min-height: 160px;
-  background: rgb(var(--paper-rgb) / 0.84);
-}
-
-.app-loading-main,
-.app-loading-overlay-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.app-loading-panel p {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.app-loading-panel-error {
-  gap: 16px;
-}
-
-.screen-error-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.app-loading-panel .app-loading-error-copy {
-  margin-top: 8px;
-  max-width: 760px;
-  color: var(--text);
-  font-size: 0.94rem;
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-.app-loading-diagnosis {
-  display: grid;
-  gap: 8px;
-  width: min(100%, 820px);
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px solid rgb(var(--accent-strong-rgb) / 0.2);
-  border-radius: 8px;
-  background: rgb(var(--cream-rgb, 255 250 246) / 0.74);
-}
-
-.app-loading-diagnosis strong {
-  color: var(--text);
-}
-
-.app-loading-diagnosis p {
-  color: var(--muted);
-  font-weight: 500;
-  line-height: 1.45;
-}
-
-.app-loading-overlay {
-  position: fixed;
-  z-index: 20;
-  top: max(14px, env(safe-area-inset-top));
-  right: max(14px, env(safe-area-inset-right));
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgb(var(--paper-rgb) / 0.94);
-  box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: 0.84rem;
-  font-weight: 700;
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: min(320px, calc(100vw - 28px));
-}
-
-.app-loading-status {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-}
-
-.app-loading-status small {
-  color: var(--muted);
-  font-size: 0.66rem;
-  font-weight: 500;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-}
-
-.app-loading-status.is-compact small {
-  font-size: 0.62rem;
-}
-
-.app-loading-status small.is-error,
-.app-loading-issue-inline {
-  color: color-mix(in srgb, var(--accent-strong) 78%, rgb(var(--accent-ink-rgb, 110 44 15)) 22%);
-}
-
-.app-loading-issue-inline {
-  margin-top: 8px;
-  font-size: 0.82rem;
-}
-
 .app-spinner,
 .chart-spinner {
   width: 22px;
@@ -2456,8 +2341,8 @@ body[data-ask-dock="docked"] .entries-fab {
   right: calc(22px + var(--ask-dock-width));
 }
 
-body[data-ask-dock="docked"] .app-loading-overlay {
-  right: calc(14px + var(--ask-dock-width));
+body[data-ask-dock="docked"] .state-pill {
+  right: calc(12px + var(--ask-dock-width));
 }
 
 body[data-ask-dock="docked"] .environment-banner {
@@ -4605,38 +4490,6 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 /* Import review flow: source defaults, upload sidecar, mapping, preview, and history. */
-.import-stale-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid rgb(var(--accent-strong-rgb) / 0.24);
-  border-radius: 8px;
-  background: rgb(var(--cream-rgb, 255 250 246) / 0.94);
-}
-
-.import-stale-banner strong,
-.import-stale-banner span {
-  display: block;
-}
-
-.import-stale-banner strong {
-  color: var(--ink);
-}
-
-.import-stale-banner span {
-  margin-top: 3px;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.refresh-failure-notice-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .import-inbox-section {
   display: grid;
   gap: 16px;
@@ -4897,25 +4750,6 @@ body[data-ask-dock="docked"] .environment-banner {
   font-weight: 700;
 }
 
-.import-intake-empty {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 1px dashed var(--pastel-mint-line);
-  border-radius: 8px;
-  background: rgb(var(--paper-rgb) / 0.64);
-}
-
-.import-intake-empty strong {
-  color: var(--ink);
-}
-
-.import-intake-empty span {
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
 .import-intake-list {
   display: grid;
   gap: 8px;
@@ -4985,14 +4819,6 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 @media (max-width: 620px) {
-  .import-stale-banner {
-    display: grid;
-  }
-
-  .import-stale-banner .dialog-primary {
-    justify-self: start;
-  }
-
   .import-inbox-section {
     padding: 14px;
   }

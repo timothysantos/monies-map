@@ -127,7 +127,7 @@ export function EntriesBreakdownPanel({
             ) : null}
           </>
         ) : (
-          <EmptyState>{messages.entries.noSpendBreakdown}</EmptyState>
+          <EmptyState compact title={messages.entries.noSpendBreakdown}>{messages.entries.noSpendBreakdownDetail}</EmptyState>
         )}
       </div>
       <div className="entries-breakdown-list category-list">
