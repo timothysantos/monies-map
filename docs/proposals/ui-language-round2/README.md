@@ -157,6 +157,30 @@ Four placements are mocked (all phone and desktop, normal and hidden money; the
   only reachable after scrolling to the end on a phone (the floating bar and the
   sheet are the other way in). Images: `splits-groups-D2c-*`.
 
+- **D2e: D2d, sticky and slimmer.** The halved New/All tile stays at the left
+  edge of the strip and never scrolls away, so it is slimmer, 56 px wide (icon and
+  short label in each 44 px+ half; the row is 89 px tall as in D2d). The group
+  tiles scroll past it and slide under its right edge, with a soft fade and
+  shadow so it is clear they continue. At rest: the open group first after the
+  sticky tile and the next tile peeking. Mid-scroll: tiles passing under it.
+  Scroll-snap keeps a tile starting just right of the sticky tile. Desktop does not
+  need sticky (the row does not scroll): use D2d's desktop images. Images:
+  `splits-groups-D2e-phone-strip`, `-D2e-phone-hidden-strip`,
+  `-D2e-phone-midscroll`, `-D2e-phone-hidden-midscroll`,
+  `-D2e-phone-all-sheet`. Risk: a sticky element inside a horizontal scroller needs
+  an opaque backing so the tiles do not show through (the mock's backing is a
+  close match of the panel colour; the real one should use the panel's own
+  background), and iOS scroll-snap with `position: sticky` needs a device check.
+
+What the "All" sheet contains (the same list as option A, a vertical sheet
+titled "All groups"): one row per group with its balance in plain words, groups
+owed to you first, then what you owe, then "Non-group expenses" (with its own
+balance or "No balance"), then a folded "N settled groups" row listing any real
+group at zero, then "+ Create group", and Done at the bottom. Tapping a row
+opens that group. Picture: `splits-groups-D2e-phone-all-sheet.webp` (also
+`splits-groups-D-phone-all-sheet.webp`). With money hidden every balance reads
+"Balance hidden" and the order is the natural one.
+
 Why D2d first: the two actions are always in view and do not cost row width
 twice, at the price of a taller row. If 89 px is too tall, D2 (All first,
 New last) is the next best: the same height as D (64 px) with "All" always

@@ -54,7 +54,13 @@ const CSS = `
 .mk-tile.is-split2 button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #fff; font: inherit; font-size: 0.8rem; font-weight: 700; }
 .mk-tile.is-split2 button svg { width: 16px; height: 16px; }
 .mk-tile.is-split2 i { background: rgba(255,255,255,0.4); }
-.mk-strip.d2d .mk-tile { min-height: 89px; }
+.mk-strip.d2d .mk-tile, .mk-strip.d2e .mk-tile { min-height: 89px; }
+/* D2e: the halved tile is sticky at the left edge; tiles slide under it with a soft fade. */
+.mk-strip.d2e { scroll-padding-left: 74px; gap: 10px; }
+.mk-sticky-tile { position: sticky; left: 0; z-index: 3; flex: 0 0 56px; display: flex; padding-right: 8px; margin-right: -2px; background: linear-gradient(90deg, var(--accent-strong) 0, var(--accent-strong) calc(100% - 14px), transparent 100%); }
+.mk-sticky-tile::after { content: ""; position: absolute; top: 0; bottom: 0; right: -10px; width: 12px; background: linear-gradient(90deg, rgba(120,60,25,0.28), transparent); pointer-events: none; }
+.mk-sticky-tile .mk-tile.is-split2 { flex: 1 1 auto; min-width: 0; width: 56px; }
+.mk-strip.d2e .mk-tile.is-split2 { flex: 0 0 56px; }
 @media (min-width: 761px) {
   .mk-strip.d2 { flex-wrap: nowrap; overflow: hidden; }
   .mk-strip.d2 .mk-tile { flex: 0 0 200px; }
@@ -156,9 +162,9 @@ function mount({ variant, screen, phone }) {
     const newTile = `<button class="mk-tile is-end2" type="button" aria-label="Create group">${M.icon("plus", 20)}<span>New</span></button>`;
     const tilesHtml = order.map(tile).join("");
     const [first, last] = !d2 ? ["", `<button class="mk-tile is-end" type="button">All groups</button><button class="mk-tile is-end" type="button">+ Create group</button>`]
-      : variant === "D2d" ? [`<div class="mk-tile is-split2" role="group" aria-label="Groups actions"><button type="button" aria-label="Create group">${M.icon("plus", 16)}<span>New</span></button><i></i><button type="button" aria-label="All groups" data-all>${M.icon("list", 16)}<span>All</span></button></div>`, ""]
+      : variant === "D2d" || variant === "D2e" ? [`${variant === "D2e" ? '<div class="mk-sticky-tile">' : ""}<div class="mk-tile is-split2" role="group" aria-label="Groups actions"><button type="button" aria-label="Create group">${M.icon("plus", 16)}<span>New</span></button><i></i><button type="button" aria-label="All groups" data-all>${M.icon("list", 16)}<span>All</span></button></div>${variant === "D2e" ? "</div>" : ""}`, ""]
       : variant === "D2" ? [allTile, newTile] : variant === "D2b" ? [allTile + newTile, ""] : ["", allTile + newTile];
-    const strip = M.el(`<div class="mk-strip ${d2 ? "d2" : ""} ${variant === "D2d" ? "d2d" : ""} ${window.__narrow ? "is-narrow-demo" : ""}" role="list" aria-label="Groups">${first}${tilesHtml}${last}</div>`);
+    const strip = M.el(`<div class="mk-strip ${d2 ? "d2" : ""} ${variant === "D2d" ? "d2d" : ""} ${variant === "D2e" ? "d2e" : ""} ${window.__narrow ? "is-narrow-demo" : ""}" role="list" aria-label="Groups">${first}${tilesHtml}${last}</div>`);
     const head = document.querySelector(".panel-splits .panel-head");
     head.parentNode.insertBefore(strip, head);
     if (d2 && !phone) {
@@ -207,7 +213,7 @@ const runOne = (variant, device, screen, name, { sheet = false } = {}) => async 
   }
 };
 
-const runD = (device, name, { scrolled = false, sheet = false, variant = "D", end = false, narrow = false } = {}) => async (page, h, shot) => {
+const runD = (device, name, { scrolled = false, sheet = false, variant = "D", end = false, narrow = false, mid = false } = {}) => async (page, h, shot) => {
   const phone = device === "phone";
   await h.open(page, URL_);
   await h.inject(page, CSS);
@@ -218,6 +224,12 @@ const runD = (device, name, { scrolled = false, sheet = false, variant = "D", en
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.waitForTimeout(400);
   await shot(name, { keepFloaters: true });
+  if (mid) {
+    await page.evaluate(() => { const st = document.querySelector(".mk-strip"); st.style.scrollSnapType = "none"; st.scrollTo({ left: 120, behavior: "instant" }); });
+    await page.waitForTimeout(300);
+    await shot("midscroll", { keepFloaters: true });
+    await page.evaluate(() => { const st = document.querySelector(".mk-strip"); st.scrollTo({ left: 0, behavior: "instant" }); });
+  }
   if (end) {
     await page.evaluate(() => { const st = document.querySelector(".mk-strip"); st.scrollTo({ left: st.scrollWidth, behavior: "instant" }); });
     await page.waitForTimeout(300);
@@ -240,6 +252,7 @@ const SD = (device, name, opts, hidden) => ({ name: `splits-groups-${opts?.varia
 const S = (variant, device, screen, name, opts, hidden) => ({ name: `splits-groups-${variant}-${device}${hidden ? "-hidden" : ""}`, device, hidden, run: runOne(variant, device, screen, name, opts) });
 
 export const scenarios = [
+  SD("phone", "strip", { variant: "D2e", mid: true, sheet: true }), SD("phone", "strip", { variant: "D2e", mid: true }, true),
   ...["D2d", "D2", "D2b", "D2c"].flatMap((v) => [
     SD("phone", "strip", { variant: v, end: true, scrolled: v === "D2" }), SD("phone", "strip", { variant: v, end: true }, true),
     SD("desktop", "strip", { variant: v }), SD("desktop", "strip", { variant: v }, true), SD("desktop", "strip", { variant: v, narrow: true })
