@@ -115,3 +115,23 @@ html[data-money-privacy="hidden"] .summary-intent-plan.money-plan {
     flex: 0 0 34%;
   }
 }
+
+/* Wide screens: the month cards are a grid, latest first, 2 across from
+   1,024px and 3 across from 1,440px, and the section takes the full row
+   under Spending Mix so the cards have room for their figures. */
+@media (min-width: 1024px) {
+  .summary-top-grid.has-intent-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summary-intent-months {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (min-width: 1440px) {
+  .summary-intent-months {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -11,29 +11,17 @@
   gap: 10px;
 }
 
-/* The Month top: the spend lead with Income, Saved and Remaining budget
-   pills (month-overview.jsx MonthLead; the layout is summary-lead.css). */
+/* The Month top: the spend lead with Income, Saved and Remaining budget as
+   one row inside it (month-overview.jsx MonthLead; the columns are in
+   summary-lead.css). Compact: a phone fits the Money insights above the
+   fold. */
 .month-lead-group {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-/* Remaining budget is a button: the whole pill opens its explanation. */
-button.summary-support-pill {
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-button.summary-support-pill:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
-  outline-offset: 2px;
-}
-
-.month-lead-detail {
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 0.16em;
+.month-lead.lsd-card {
+  gap: 8px;
+  padding: 14px 16px 6px;
 }
 
 .metric-detail-popover {

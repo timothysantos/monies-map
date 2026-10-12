@@ -280,7 +280,7 @@ function IncomePlanSection({
                                 <option key={category.id} value={category.id}>{category.name}</option>
                               ))}
                             </select>
-                          ) : <span>{row.categoryName}</span>}
+                          ) : <span className={row.categoryName === row.label ? "is-same-as-item" : undefined}>{row.categoryName}</span>}
                         </div>
                       </td>
                       <td className="month-cell-item">
@@ -328,7 +328,7 @@ function IncomePlanSection({
                         </div>
                       </td>
                       <td className={`month-cell-variance ${moneyToneClass(incomeVarianceTone(row.plannedMinor, row.actualMinor))}`}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
-                      <td className="month-cell-note">
+                      <td className={`month-cell-note ${row.note ? "" : "is-empty"}`}>
                         <div className="table-note-actions">
                           <button
                             type="button"
@@ -575,7 +575,7 @@ function PlanningRow({
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
-            ) : <span>{row.categoryName}</span>}
+            ) : <span className={row.categoryName === row.label ? "is-same-as-item" : undefined}>{row.categoryName}</span>}
           </div>
         </td>
         {isPlannedItemsSection(section.key) ? (
@@ -688,7 +688,7 @@ function PlanningRow({
             ) : row.accountName ?? messages.common.emptyValue}
           </td>
         ) : null}
-        <td className="month-cell-note">
+        <td className={`month-cell-note ${row.note ? "" : "is-empty"}`}>
           <div className="table-note-actions">
             <button
               type="button"

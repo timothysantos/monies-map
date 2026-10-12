@@ -12,10 +12,14 @@ const planWords = messages.summary.monthChoice;
 // The spend lead and its Income and Saved pills, shared by the Summary top
 // and the Month top (month-overview.jsx, which adds Remaining budget as
 // `children`). `model` is buildSummaryLeadModel's shape.
-export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName = "", children = null }) {
+//
+// `inline` is the Month top: Income, Saved and `children` (Remaining budget)
+// fold into the lead card as one row of equal columns under the bar, in
+// text colour only, so the whole card stays compact on a phone.
+export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName = "", inline = false, children = null }) {
   const { headroom } = model;
   return (
-    <div className={`summary-lead-group ${className}`}>
+    <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${className}`}>
       <LeadCard
         className={leadClassName}
         eyebrow={eyebrow}
@@ -36,8 +40,16 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
             {formatService.money(headroom.amountMinor)} {headroom.isOver ? copy.overPlan : copy.underPlan}
           </span>
         ) : null}
-      />
-      <div className="summary-support-pills">
+      >
+        {inline ? (
+          <div className="lead-columns">
+            <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
+            <LeadColumn metric="saved" label={copy.saved} amountMinor={model.saved.amountMinor} tone={model.saved.tone} planLabel={copy.savedTarget} planMinor={model.saved.planMinor} />
+            {children}
+          </div>
+        ) : null}
+      </LeadCard>
+      {inline ? null : <div className="summary-support-pills">
         <SummarySupportPill
           metric="income"
           label={copy.income}
@@ -55,7 +67,20 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
           planMinor={model.saved.planMinor}
         />
         {children}
-      </div>
+      </div>}
+    </div>
+  );
+}
+
+// One column of the Month lead's support row: a small label, the figure on
+// one line (its money tone as text colour only) and the plan or target as a
+// quiet line under it.
+export function LeadColumn({ metric, label, amountMinor, tone, planLabel = null, planMinor = null }) {
+  return (
+    <div className="lead-column" data-metric={metric}>
+      <span className="lead-column-label">{label}</span>
+      <strong className={moneyToneClass(tone)}><PrivateMoney>{formatService.money(amountMinor)}</PrivateMoney></strong>
+      {planLabel ? <small>{planLabel} <PrivateMoney>{formatService.money(planMinor)}</PrivateMoney></small> : null}
     </div>
   );
 }

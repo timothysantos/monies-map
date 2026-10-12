@@ -11,7 +11,7 @@ import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
 import { reconciliationTone } from "../domain/money-tone";
-import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
+import { moneyToneClass } from "./money-tone-class";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -243,28 +243,28 @@ export function MonthLead({ cards, monthSummary, month, isRefreshing = false }) 
           model={model}
           className="month-lead-group"
           leadClassName="month-lead"
+          inline
           eyebrow={messages.summary.lead.spent(formatService.formatMonthLabel(month))}
         >
-          <RemainingBudgetPill remaining={model.remaining} />
+          <RemainingColumn remaining={model.remaining} />
         </SpendLeadGroup>
       ) : null}
     </>
   );
 }
 
-// Remaining budget (planned income minus planned spend): a soft pill whose
-// "To allocate" or "Overplanned" line explains itself. The whole pill opens
-// the explanation, so the tap target is the pill. The line names the side of
-// zero, so it hides with the money.
-function RemainingBudgetPill({ remaining }) {
+// Remaining budget (planned income minus planned spend), the third column of
+// the lead's support row. Its label says which side of zero it is ("To
+// allocate" or "Overplanned"), so with hidden money it falls back to the
+// plain name. The whole column opens the explanation (a 44px target).
+function RemainingColumn({ remaining }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <button type="button" className={`summary-support-pill ${metricCardToneClass(remaining.tone)}`} data-metric="remaining">
-          <span className="summary-support-pill-label">{remaining.label}</span>
-          <strong><PrivateMoney>{formatService.money(remaining.amountMinor)}</PrivateMoney></strong>
-          {areTotalsVisible ? <small className="month-lead-detail">{remaining.detail}</small> : null}
+        <button type="button" className="lead-column is-button" data-metric="remaining">
+          <span className="lead-column-label">{areTotalsVisible ? remaining.detail : remaining.label}</span>
+          <strong className={moneyToneClass(remaining.tone)}><PrivateMoney>{formatService.money(remaining.amountMinor)}</PrivateMoney></strong>
         </button>
       </Popover.Trigger>
       <Popover.Portal>

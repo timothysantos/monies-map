@@ -31,7 +31,7 @@ function colour(locator) {
 function box(locator) {
   return locator.evaluate((element) => {
     const rect = element.getBoundingClientRect();
-    return { x: rect.x, y: rect.y, width: rect.width, right: rect.right, bottom: rect.bottom };
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom };
   });
 }
 
@@ -102,14 +102,13 @@ async function expectMonthLeadFigures(page) {
   await expect(lead.locator(".lsd-progress-line")).toHaveText(
     `${figures.percent}% of plan${money(Math.abs(figures.gap))} ${figures.gap >= 0 ? "under plan" : "over plan"}`
   );
-  const pill = (metric) => page.locator(`.month-lead-group .summary-support-pill[data-metric="${metric}"]`);
+  const pill = (metric) => page.locator(`.month-lead-group .lead-column[data-metric="${metric}"]`);
   await expect(pill("income").locator("strong")).toHaveText(money(figures.actualIncome));
   await expect(pill("income").locator("small")).toHaveText(`plan ${money(figures.plannedIncome)}`);
   await expect(pill("saved").locator("strong")).toHaveText(money(figures.saved));
   await expect(pill("saved").locator("small")).toHaveText(`target ${money(figures.savingsTarget)}`);
-  await expect(pill("remaining").locator(".summary-support-pill-label")).toHaveText("Remaining budget");
+  await expect(pill("remaining").locator(".lead-column-label")).toHaveText(figures.remaining >= 0 ? "To allocate" : "Overplanned");
   await expect(pill("remaining").locator("strong")).toHaveText(money(figures.remaining));
-  await expect(pill("remaining").locator("small")).toHaveText(figures.remaining >= 0 ? "To allocate" : "Overplanned");
   // The six tiles are gone; their figures are all above.
   await expect(page.locator(".month-panel .metric")).toHaveCount(0);
   return figures;
@@ -117,7 +116,7 @@ async function expectMonthLeadFigures(page) {
 
 // Remaining budget keeps its explanation: a tap on the pill opens it.
 async function expectRemainingExplains(page, figures) {
-  await page.locator('.month-lead-group .summary-support-pill[data-metric="remaining"]').click();
+  await page.locator('.month-lead-group .lead-column[data-metric="remaining"]').click();
   await expect(page.locator(".metric-detail-popover")).toContainText(
     figures.remaining >= 0 ? "Money is still unassigned" : "Planned spend is higher than planned income"
   );
@@ -206,8 +205,26 @@ test.describe("phone", { tag: "@webkit" }, () => {
     const income = await box(page.locator('.month-lead-group [data-metric="income"]'));
     const remaining = await box(page.locator('.month-lead-group [data-metric="remaining"]'));
     expect(lead.width).toBeGreaterThan(390 - 2 * 24);
-    expect(income.y).toBeGreaterThan(lead.bottom);
+    // One compact card: the Income, Saved and Remaining columns are inside
+    // it, on one row of equal widths, and it is at most 190px tall so the
+    // Money insights start above the fold.
+    const saved = await box(page.locator('.month-lead-group [data-metric="saved"]'));
+    expect(lead.bottom - lead.y, "lead card height").toBeLessThanOrEqual(190);
+    for (const column of [income, saved, remaining]) {
+      expect(column.y).toBeGreaterThanOrEqual(lead.y);
+      expect(column.bottom).toBeLessThanOrEqual(lead.bottom);
+      expect(column.height, "tap target").toBeGreaterThanOrEqual(44);
+      expect(Math.abs(column.y - income.y)).toBeLessThanOrEqual(1);
+    }
+    expect(Math.abs(income.width - saved.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(saved.width - remaining.width)).toBeLessThanOrEqual(1);
     expect(remaining.right).toBeLessThanOrEqual(390);
+    const insights = await box(page.locator(".financial-insight").first());
+    expect(insights.y, "Money insights start above the fold").toBeLessThan(664);
+    // No tinted boxes: the columns carry no fill.
+    for (const metric of ["income", "saved", "remaining"]) {
+      expect(await page.locator(`.month-lead-group [data-metric="${metric}"]`).evaluate((element) => getComputedStyle(element).backgroundColor), metric).toBe("rgba(0, 0, 0, 0)");
+    }
     await expectNoSidewaysScroll(page, ".month-lead-group");
     await expectRemainingExplains(page, figures);
   });
@@ -252,6 +269,46 @@ test.describe("phone", { tag: "@webkit" }, () => {
     await expect(page.locator(".entry-mobile-sheet")).toBeVisible();
   });
 
+  test("plan rows: no category line that repeats the item, nothing where a note is empty", async ({ page }) => {
+    await revealMoney(page);
+    await openMonth(page);
+    const data = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    const rows = data.monthPage.planSections.flatMap((section) => section.rows);
+    const same = rows.filter((row) => row.categoryName === row.label);
+    const noNote = rows.filter((row) => !row.note);
+    expect(same.length, "the fixture has rows named after their category").toBeGreaterThan(0);
+    expect(noNote.length, "the fixture has rows without a note").toBeGreaterThan(0);
+    const budgets = page.locator(".month-plan-section tbody tr:not(.month-inline-action-row)");
+    const row = budgets.filter({ hasText: same[0].label }).first();
+    await expect(row.locator(".month-category-cell > span")).toBeHidden();
+    // The item name shows once in the card.
+    expect((await row.innerText()).split("\n").filter((line) => line.trim() === same[0].label).length).toBe(1);
+    for (const cell of await page.locator(".month-plan-section td.month-cell-note.is-empty").all()) {
+      await expect(cell).toBeHidden();
+    }
+    const visibleText = await page.locator(".month-plan-section tbody").first().innerText();
+    expect(visibleText).not.toContain("—");
+    // A row with a different category keeps its category line.
+    const differing = rows.find((row) => row.categoryName !== row.label && budgets.filter({ hasText: row.label }).count());
+    if (differing) {
+      await expect(budgets.filter({ hasText: differing.label }).first().locator(".month-category-cell > span")).toBeVisible();
+    }
+  });
+
+  test("the column strip is small tappable chips, the active sort shows its direction", async ({ page }) => {
+    await revealMoney(page);
+    await openMonth(page);
+    const chips = page.locator(".month-plan-section-budgets thead .table-sort-button:visible");
+    await expect(chips).toHaveCount(5);
+    for (const chip of await chips.all()) {
+      const chipBox = await box(chip);
+      expect(chipBox.height).toBeGreaterThanOrEqual(36);
+      expect(await chip.evaluate((element) => getComputedStyle(element).borderTopLeftRadius)).not.toBe("0px");
+    }
+    await chips.filter({ hasText: "Planned" }).click();
+    await expect(chips.filter({ hasText: "Planned" })).toContainText("↑");
+  });
+
   test("hidden money: plan rows keep only the bar's track", async ({ page }) => {
     await openMonth(page);
     const rows = page.locator(".month-plan-section-budgets tbody tr:not(.month-inline-action-row)");
@@ -274,6 +331,7 @@ test.describe("phone", { tag: "@webkit" }, () => {
       await expect(pill.locator("strong")).toHaveText("••••");
       expect(await colour(pill.locator("strong .private-money")), metric).toBe(INK.text);
     }
+    await expect(page.locator('.month-lead-group [data-metric="remaining"] .lead-column-label')).toHaveText("Remaining budget");
     expect(await page.locator(".month-lead-group").innerText()).not.toMatch(SIGN_WORDING);
 
     await openSummary(page);
@@ -298,15 +356,19 @@ test.describe("desktop", () => {
     await recordSalary(page);
   });
 
-  test("Month top: the lead with the pills in a column to its right, the plan sky, under plan mint", async ({ page }) => {
+  test("Month top: the lead with Income, Saved and Remaining in one row inside it, the plan sky, under plan mint", async ({ page }) => {
     await revealMoney(page);
     const figures = await expectMonthLeadFigures(page);
     const lead = await box(page.locator(".month-lead"));
     const income = await box(page.locator('.month-lead-group [data-metric="income"]'));
     const saved = await box(page.locator('.month-lead-group [data-metric="saved"]'));
-    expect(income.x).toBeGreaterThan(lead.right);
-    expect(saved.x).toBe(income.x);
-    expect(saved.y).toBeGreaterThan(income.bottom);
+    const remaining = await box(page.locator('.month-lead-group [data-metric="remaining"]'));
+    for (const column of [income, saved, remaining]) {
+      expect(column.bottom).toBeLessThanOrEqual(lead.bottom);
+      expect(Math.abs(column.y - income.y)).toBeLessThanOrEqual(1);
+    }
+    expect(saved.x).toBeGreaterThan(income.x);
+    expect(remaining.x).toBeGreaterThan(saved.x);
     expect(await colour(page.locator(".month-lead .summary-lead-plan"))).toBe(INK.plan);
     const isOver = figures.actual > figures.planned;
     expect(await colour(page.locator(".month-lead .summary-lead-spent .private-money"))).toBe(isOver ? INK.short : INK.text);
@@ -329,6 +391,29 @@ test.describe("desktop", () => {
     expect(await row.locator(".month-cell-planned").evaluate((cell) => getComputedStyle(cell).textAlign)).toBe("right");
     expect(Number(await row.locator(".month-cell-item").evaluate((cell) => getComputedStyle(cell).fontWeight))).toBeGreaterThanOrEqual(600);
     await expect(row.locator(".month-actual-drilldown")).toHaveText(money(budgets[0].actualMinor));
+  });
+
+  test("Intent vs Outcome: the month cards are a grid, 3 across at 1440px, 2 across at 1100px, latest first", async ({ page }) => {
+    await revealMoney(page);
+    await openSummary(page);
+    const data = await loadSummaryPage(page, { view: VIEW, month: MONTH, summaryStart: RANGE.start, summaryEnd: RANGE.end });
+    const latest = [...data.summaryPage.months].sort((left, right) => right.month.localeCompare(left.month))[0].month;
+    const cards = page.locator(".summary-intent-month");
+    await expect(cards.first().locator(".summary-month-link")).toHaveText(monthLabel(latest));
+    const across = async () => {
+      const boxes = [];
+      for (const index of [0, 1, 2, 3]) boxes.push(await box(cards.nth(index)));
+      return boxes.filter((card) => Math.abs(card.y - boxes[0].y) <= 1).length;
+    };
+    expect(await across()).toBe(3);
+    await expectNoSidewaysScroll(page, ".summary-intent");
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await expect.poll(across).toBe(2);
+    await expectNoSidewaysScroll(page, ".summary-intent");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const first = await box(cards.first());
+    const second = await box(cards.nth(1));
+    expect(second.x, "the second month is to the right of the latest").toBeGreaterThan(first.x);
   });
 
   test("Intent vs Outcome: the same cards, the note row edits the month note", async ({ page }) => {

@@ -51,7 +51,7 @@ async function openSummary(page, view, month) {
 
 // The Month top (month-overview.jsx MonthLead): the spend lead and its pills.
 const monthLead = (page, part) => page.locator(`.month-lead ${part}`);
-const monthPill = (page, metric) => page.locator(`.month-lead-group .summary-support-pill[data-metric="${metric}"]`);
+const monthPill = (page, metric) => page.locator(`.month-lead-group .lead-column[data-metric="${metric}"]`);
 
 // The demo seeds no income entries, so each test records one salary.
 test.beforeEach(async ({ page }) => {
