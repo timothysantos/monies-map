@@ -14,10 +14,6 @@ import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 const iPhone = devices["iPhone 12 Pro"].viewport;
 
-function displayOf(locator) {
-  return locator.evaluate((element) => getComputedStyle(element).display);
-}
-
 test.describe("page chrome while editing on a phone", () => {
   test.use({ viewport: iPhone });
 
@@ -109,7 +105,7 @@ test.describe("page chrome while editing on a phone", () => {
     await expect(stickyBar).toBeVisible();
   });
 
-  test("a Splits dialog hides the floating totals button and group row, and Splits keeps its own background", async ({ page }) => {
+  test("a Splits dialog hides the floating totals button and group bar, and Splits keeps its own background", async ({ page }) => {
     await gotoPageAfterApi(
       page,
       "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river",
@@ -118,7 +114,7 @@ test.describe("page chrome while editing on a phone", () => {
     );
     const addButton = page.locator(".splits-fab");
     const totalsButton = page.locator(".totals-visibility-toggle--floating");
-    const groupRow = page.locator(".splits-groups-row-floating");
+    const groupRow = page.locator(".splits-group-bar");
     const splitsBackground = await page.evaluate(() => ({
       body: getComputedStyle(document.body).backgroundImage,
       shell: getComputedStyle(document.querySelector("main.shell")).backgroundImage
@@ -127,14 +123,16 @@ test.describe("page chrome while editing on a phone", () => {
     expect(splitsBackground.shell).toContain("linear-gradient");
     await expect(addButton).toBeVisible();
     await expect(totalsButton).toBeVisible();
-    expect(await displayOf(groupRow)).not.toBe("none");
+    // The group bar takes over from the strip once the strip has scrolled away.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(groupRow).toBeVisible();
 
     // On a phone a split opens in a dialog, not inline.
     await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
     const dialog = page.getByRole("dialog", { name: "Edit split" });
     await expect(dialog).toBeVisible();
     await expect(totalsButton).toBeHidden();
-    await expect.poll(() => displayOf(groupRow)).toBe("none");
+    await expect(groupRow).toBeHidden();
     // The receipt button gives way to a dialog too, as the Entries + does.
     await expect(addButton).toBeHidden();
 
@@ -142,7 +140,7 @@ test.describe("page chrome while editing on a phone", () => {
     await expect(dialog).toHaveCount(0);
     await expect(totalsButton).toBeVisible();
     await expect(addButton).toBeVisible();
-    await expect.poll(() => displayOf(groupRow)).not.toBe("none");
+    await expect(groupRow).toBeVisible();
 
     // Other pages keep the shared page background.
     await page.locator("nav.tab-strip").getByRole("link", { name: "Entries" }).click();
