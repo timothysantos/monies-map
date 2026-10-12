@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildImportDoneSummary } from "../src/client/import-done-model.js";
-import { messages } from "../src/client/copy/en-SG.js";
+import { importMessages } from "../src/client/copy/en-SG-imports.js";
 
 const reconciliation = (overrides = {}) => ({
   accountId: "acct-uob-one",
@@ -151,7 +151,7 @@ test("the Done card counts the entries the bank no longer lists that the import 
     isStatement: false,
     removedEntryCount: 1
   });
-  assert.equal(messages.imports.doneRowsDetail(activity.counts), "1 row added · 0 entries confirmed · 1 entry the bank no longer lists removed");
+  assert.equal(importMessages.doneRowsDetail(activity.counts), "1 row added · 0 entries confirmed · 1 entry the bank no longer lists removed");
 
   // A statement removes a card's superseded rows only when the card balances.
   const statement = (status) => buildImportDoneSummary({

@@ -1,4 +1,5 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
 import "./statement-fix-suggestions.css";
 
@@ -54,12 +55,12 @@ export function StatementFixSuggestions({
   }
 
   return (
-    <div className="statement-fix-list" aria-label={messages.imports.statementReconciliationTitle}>
+    <div className="statement-fix-list" aria-label={importMessages.statementReconciliationTitle}>
       {Array.from(moveGroups.entries()).map(([toAccountId, group]) => (
         <FixGroup
           key={`move-${toAccountId}`}
-          title={messages.imports.statementFixMoveTitle(group.length, accountName(toAccountId))}
-          detail={messages.imports.statementFixMoveDetail({
+          title={importMessages.statementFixMoveTitle(group.length, accountName(toAccountId))}
+          detail={importMessages.statementFixMoveDetail({
             count: group.length,
             fromName: accountName(group[0].entry.accountId),
             toName: accountName(toAccountId),
@@ -67,7 +68,7 @@ export function StatementFixSuggestions({
             closes: group.some((finding) => hasFact(finding, "closes_statement"))
           })}
           findings={group}
-          actionLabel={messages.imports.statementFixMoveAction(group.length, accountName(toAccountId))}
+          actionLabel={importMessages.statementFixMoveAction(group.length, accountName(toAccountId))}
           isSubmitting={isSubmitting}
           onApply={onApplyStatementFixes}
           onDismiss={onDismissStatementFindings}
@@ -77,15 +78,15 @@ export function StatementFixSuggestions({
       ))}
       {openDefers.length ? (
         <FixGroup
-          title={messages.imports.statementFixDeferTitle(openDefers.length)}
-          detail={messages.imports.statementFixDeferDetail({
+          title={importMessages.statementFixDeferTitle(openDefers.length)}
+          detail={importMessages.statementFixDeferDetail({
             count: openDefers.length,
             endDate: formatService.formatDateOnly(statementEndDate),
             amount: formatService.money(Math.abs(sumEffect(openDefers))),
             closes: openDefers.some((finding) => hasFact(finding, "closes_statement"))
           })}
           findings={openDefers}
-          actionLabel={messages.imports.statementFixDeferAction(openDefers.length)}
+          actionLabel={importMessages.statementFixDeferAction(openDefers.length)}
           isSubmitting={isSubmitting}
           onApply={onApplyStatementFixes}
           onDismiss={onDismissStatementFindings}
@@ -96,7 +97,7 @@ export function StatementFixSuggestions({
       {Array.from(appliedMoveGroups.entries()).map(([toAccountId, group]) => (
         <AppliedFixes
           key={`applied-move-${toAccountId}`}
-          message={messages.imports.statementFixMoveApplied(group.length, accountName(toAccountId))}
+          message={importMessages.statementFixMoveApplied(group.length, accountName(toAccountId))}
           findings={group}
           isSubmitting={isSubmitting}
           onUndo={onUndoStatementFixes}
@@ -104,21 +105,21 @@ export function StatementFixSuggestions({
       ))}
       {appliedDefers.length ? (
         <AppliedFixes
-          message={messages.imports.statementFixDeferApplied(appliedDefers.length, formatService.formatDateOnly(appliedDefers[0].fix.postDate))}
+          message={importMessages.statementFixDeferApplied(appliedDefers.length, formatService.formatDateOnly(appliedDefers[0].fix.postDate))}
           findings={appliedDefers}
           isSubmitting={isSubmitting}
           onUndo={onUndoStatementFixes}
         />
       ) : null}
       {incomingMoves.length ? (
-        <p className="lede compact">{messages.imports.statementFixDestinationNote(incomingMoves.length, accountName(incomingMoves[0].accountId))}</p>
+        <p className="lede compact">{importMessages.statementFixDestinationNote(incomingMoves.length, accountName(incomingMoves[0].accountId))}</p>
       ) : null}
       {hasOpenFixes && card.projectedDeltaMinor !== 0 ? (
-        <p className="lede compact">{messages.imports.statementFixUnexplained(formatService.money(Math.abs(card.projectedDeltaMinor)))}</p>
+        <p className="lede compact">{importMessages.statementFixUnexplained(formatService.money(Math.abs(card.projectedDeltaMinor)))}</p>
       ) : null}
       {toCheck.length ? (
         <div className="statement-fix-check">
-          <strong>{messages.imports.statementFixAlsoCheck}</strong>
+          <strong>{importMessages.statementFixAlsoCheck}</strong>
           <ul>
             {toCheck.map((finding) => (
               <li key={finding.id}>{describeFindingToCheck(finding, accountName, accounts.find((account) => account.id === finding.accountId)?.kind)}</li>
@@ -128,7 +129,7 @@ export function StatementFixSuggestions({
       ) : null}
       {card.laterStatementEntryCount ? (
         <div className="statement-fix-later">
-          <span>{messages.imports.statementFixLaterEntries(card.laterStatementEntryCount)}</span>
+          <span>{importMessages.statementFixLaterEntries(card.laterStatementEntryCount)}</span>
           {card.laterStatementEntries.map((entry) => (
             <div key={entry.id} className="import-overlap-entry-row">
               <span className="import-overlap-entry-date">{formatService.formatDateOnly(entry.transactionDate)}</span>
@@ -170,7 +171,7 @@ export function FixGroup({ title, detail, findings, actionLabel, isSubmitting, o
             disabled={isSubmitting}
             onClick={() => onApply(strong.map((finding) => finding.fix))}
           >
-            {strong.length === findings.length ? actionLabel : messages.imports.statementFixApplyClear(strong.length)}
+            {strong.length === findings.length ? actionLabel : importMessages.statementFixApplyClear(strong.length)}
           </button>
         ) : null}
         <button
@@ -179,7 +180,7 @@ export function FixGroup({ title, detail, findings, actionLabel, isSubmitting, o
           disabled={isSubmitting}
           onClick={() => onDismiss([...strong, ...toReview].map((finding) => finding.id))}
         >
-          {messages.imports.statementFixKeep}
+          {importMessages.statementFixKeep}
         </button>
         {strong.length && onAutomaticChange ? (
           <label className="statement-fix-automatic">
@@ -188,7 +189,7 @@ export function FixGroup({ title, detail, findings, actionLabel, isSubmitting, o
               checked={isAutomatic}
               onChange={(event) => onAutomaticChange(event.target.checked)}
             />
-            {messages.imports.statementFixAutomatic}
+            {importMessages.statementFixAutomatic}
           </label>
         ) : null}
       </div>
@@ -205,7 +206,7 @@ function FixRow({ finding, isSubmitting, onApply }) {
       <span className="import-overlap-entry-description">
         {entry.description}
         <span className="import-history-inline">
-          {messages.imports.statementFixRowDates(
+          {importMessages.statementFixRowDates(
             formatService.formatDateOnly(transactionDate),
             statementRow?.postedDate ? formatService.formatDateOnly(statementRow.postedDate) : undefined
           )}
@@ -214,13 +215,13 @@ function FixRow({ finding, isSubmitting, onApply }) {
       <strong className="import-overlap-entry-amount">{formatService.money(Math.abs(entry.signedAmountMinor))}</strong>
       {onApply ? (
         <span className="statement-fix-row-review">
-          <span className="pill warning">{messages.imports.statementFixCheckThisOne}</span>
+          <span className="pill warning">{importMessages.statementFixCheckThisOne}</span>
           <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onApply([finding.fix])}>
             {finding.fix.kind === "move_to_statement_account"
-              ? messages.imports.statementFixMoveOne
+              ? importMessages.statementFixMoveOne
               : finding.fix.kind === "remove_duplicate_entry"
-                ? messages.settings.statementCorrectionRemoveOne
-                : messages.imports.statementFixDeferAction(1)}
+                ? settingsMessages.statementCorrectionRemoveOne
+                : importMessages.statementFixDeferAction(1)}
           </button>
         </span>
       ) : null}
@@ -234,7 +235,7 @@ function AppliedFixes({ message, findings, isSubmitting, onUndo }) {
       <div className="statement-fix-applied-head">
         <span>{message}</span>
         <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onUndo(findings.map((finding) => finding.fix))}>
-          {messages.imports.statementFixUndo}
+          {importMessages.statementFixUndo}
         </button>
       </div>
       <div className="statement-fix-rows">
@@ -250,7 +251,7 @@ function AppliedFixes({ message, findings, isSubmitting, onUndo }) {
 }
 
 function describeFindingToCheck(finding, accountName, accountKind) {
-  const explain = messages.imports.statementFixExplanation;
+  const explain = importMessages.statementFixExplanation;
   const amount = (minor) => formatService.money(Math.abs(minor ?? 0));
   const description = finding.entry?.description ?? finding.statementRow?.description ?? "";
   switch (finding.kind) {
@@ -289,7 +290,7 @@ function formatBalanceForAccount(valueMinor, accountKind) {
     return formatService.money(valueMinor);
   }
   const amount = formatService.money(Math.abs(valueMinor));
-  return valueMinor < 0 ? messages.imports.statementBalanceOwed(amount) : messages.imports.statementBalanceInCredit(amount);
+  return valueMinor < 0 ? importMessages.statementBalanceOwed(amount) : importMessages.statementBalanceInCredit(amount);
 }
 
 export function groupBy(items, key) {

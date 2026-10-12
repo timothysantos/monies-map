@@ -3312,11 +3312,11 @@ function ImportInboxRouteBanner({ inbox, onOpenImports }) {
   return (
     <section className="import-stale-banner" role="status">
       <div>
-        <strong>{messages.imports.routeBannerTitle(inbox.summary.requiredFileCount)}</strong>
-        <span>{messages.imports.routeBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}</span>
+        <strong>{messages.shell.importInboxBannerTitle(inbox.summary.requiredFileCount)}</strong>
+        <span>{messages.shell.importInboxBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}</span>
       </div>
       <button type="button" className="dialog-primary" onClick={onOpenImports}>
-        {messages.imports.routeBannerAction}
+        {messages.shell.importInboxBannerAction}
       </button>
     </section>
   );

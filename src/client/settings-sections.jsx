@@ -6,6 +6,8 @@ import { buildClaudeCreditLine } from "./claude-credit-model";
 import { ClaudeCreditActions, ClaudeTopUpForm } from "./claude-credit-notice";
 import { claudeCreditCopy } from "./copy/claude-credit-copy";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { useMoneyPrivacy } from "./money-privacy";
 import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
@@ -64,8 +66,8 @@ export function SettingsPeopleSection({ people, isOpen, onToggle, onEditPerson }
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.peopleTitle}
-        detail={messages.settings.peopleDetail}
+        title={settingsMessages.peopleTitle}
+        detail={settingsMessages.peopleDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -75,10 +77,10 @@ export function SettingsPeopleSection({ people, isOpen, onToggle, onEditPerson }
             <div key={person.id} className="settings-account-row settings-person-card">
               <div className="settings-account-main">
                 <strong>{person.name}</strong>
-                <p>{messages.settings.personUsageHint}</p>
+                <p>{settingsMessages.personUsageHint}</p>
               </div>
               <div className="settings-account-actions">
-                <button type="button" className="icon-action" aria-label={messages.settings.editPerson} onClick={() => onEditPerson(person)}>
+                <button type="button" className="icon-action" aria-label={settingsMessages.editPerson} onClick={() => onEditPerson(person)}>
                   <SquarePen size={16} />
                 </button>
               </div>
@@ -140,8 +142,8 @@ export function SettingsShortcutApiSection({
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.shortcutApiTitle}
-        detail={messages.settings.shortcutApiDetail}
+        title={settingsMessages.shortcutApiTitle}
+        detail={settingsMessages.shortcutApiDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -153,8 +155,8 @@ export function SettingsShortcutApiSection({
             <div className="settings-shortcut-install-copy">
               <span className="settings-shortcut-install-icon" aria-hidden="true"><ShieldCheck size={18} /></span>
               <div>
-                <strong>{messages.settings.shortcutInstallTitle}</strong>
-                <p>{messages.settings.shortcutInstallDetail}</p>
+                <strong>{settingsMessages.shortcutInstallTitle}</strong>
+                <p>{settingsMessages.shortcutInstallDetail}</p>
               </div>
             </div>
             <button
@@ -164,24 +166,24 @@ export function SettingsShortcutApiSection({
               onClick={() => void handleInstallShortcut()}
             >
               <ExternalLink size={16} aria-hidden="true" />
-              {isInstalling ? messages.settings.shortcutInstalling : messages.settings.shortcutInstall}
+              {isInstalling ? settingsMessages.shortcutInstalling : settingsMessages.shortcutInstall}
             </button>
           </div>
           <ol className="settings-shortcut-steps">
-            <li>{messages.settings.shortcutInstallStep}</li>
-            <li>{messages.settings.shortcutPasteStep}</li>
-            <li>{messages.settings.shortcutAutomationStep}</li>
-            <li>{messages.settings.shortcutAutomationRunStep}</li>
+            <li>{settingsMessages.shortcutInstallStep}</li>
+            <li>{settingsMessages.shortcutPasteStep}</li>
+            <li>{settingsMessages.shortcutAutomationStep}</li>
+            <li>{settingsMessages.shortcutAutomationRunStep}</li>
           </ol>
           <details className="settings-shortcut-advanced">
-            <summary>{messages.settings.shortcutAdvancedTitle}</summary>
+            <summary>{settingsMessages.shortcutAdvancedTitle}</summary>
             <div className="settings-shortcut-advanced-content">
               <label className="table-edit-field settings-form-wide">
-                <span>{messages.settings.shortcutEndpoint}</span>
+                <span>{settingsMessages.shortcutEndpoint}</span>
                 <input className="table-edit-input" value={endpoint} readOnly />
               </label>
               <div className="table-edit-field settings-form-wide">
-                <label htmlFor="shortcut-api-key">{messages.settings.shortcutApiKey}</label>
+                <label htmlFor="shortcut-api-key">{settingsMessages.shortcutApiKey}</label>
                 <div className="settings-shortcut-secret-input">
                   <input
                     id="shortcut-api-key"
@@ -195,54 +197,54 @@ export function SettingsShortcutApiSection({
                   <button
                     type="button"
                     className="icon-action"
-                    aria-label={isApiKeyVisible ? messages.settings.shortcutHideApiKey : messages.settings.shortcutShowApiKey}
-                    title={isApiKeyVisible ? messages.settings.shortcutHideApiKey : messages.settings.shortcutShowApiKey}
+                    aria-label={isApiKeyVisible ? settingsMessages.shortcutHideApiKey : settingsMessages.shortcutShowApiKey}
+                    title={isApiKeyVisible ? settingsMessages.shortcutHideApiKey : settingsMessages.shortcutShowApiKey}
                     onClick={() => setIsApiKeyVisible((current) => !current)}
                   >
                     {isApiKeyVisible ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                <small className="field-help">{messages.settings.shortcutApiKeyHelp(shortcutSettings.apiKeySource)}</small>
+                <small className="field-help">{settingsMessages.shortcutApiKeyHelp(shortcutSettings.apiKeySource)}</small>
               </div>
               <label className="table-edit-field settings-form-wide">
-                <span>{messages.settings.shortcutDefaultParams}</span>
+                <span>{settingsMessages.shortcutDefaultParams}</span>
                 <textarea
                   className="table-edit-input settings-shortcut-params-input"
                   value={draft.defaultParams}
                   onChange={(event) => onDefaultParamsChange(event.target.value)}
-                  placeholder={messages.settings.shortcutDefaultParamsPlaceholder}
+                  placeholder={settingsMessages.shortcutDefaultParamsPlaceholder}
                   rows={2}
                 />
-                <small className="field-help">{messages.settings.shortcutDefaultParamsHelp}</small>
+                <small className="field-help">{settingsMessages.shortcutDefaultParamsHelp}</small>
               </label>
               <div className="settings-shortcut-reference">
                 <div>
-                  <strong>{messages.settings.shortcutUrlParamsTitle}</strong>
-                  <p>{messages.settings.shortcutUrlParamsList}</p>
+                  <strong>{settingsMessages.shortcutUrlParamsTitle}</strong>
+                  <p>{settingsMessages.shortcutUrlParamsList}</p>
                 </div>
                 <div>
-                  <strong>{messages.settings.shortcutApiParamsTitle}</strong>
-                  <p>{messages.settings.shortcutApiParamsList}</p>
+                  <strong>{settingsMessages.shortcutApiParamsTitle}</strong>
+                  <p>{settingsMessages.shortcutApiParamsList}</p>
                 </div>
                 <div>
-                  <strong>{messages.settings.shortcutSystemDefaultsTitle}</strong>
-                  <p>{messages.settings.shortcutSystemDefaultsDetail}</p>
+                  <strong>{settingsMessages.shortcutSystemDefaultsTitle}</strong>
+                  <p>{settingsMessages.shortcutSystemDefaultsDetail}</p>
                 </div>
               </div>
               <div className="settings-actions">
                 <button type="button" className="subtle-action" onClick={onGenerateApiKey} disabled={isSubmitting}>
-                  {messages.settings.shortcutGenerateApiKey}
+                  {settingsMessages.shortcutGenerateApiKey}
                 </button>
                 <button type="button" className="subtle-action" onClick={onSave} disabled={isSubmitting || !draft.apiKey.trim() || orderedAccounts.length === 0}>
-                  {isSubmitting ? messages.common.saving : messages.settings.shortcutSave}
+                  {isSubmitting ? messages.common.saving : settingsMessages.shortcutSave}
                 </button>
               </div>
             </div>
           </details>
           <div className="settings-shortcut-priority">
             <div className="chart-head">
-              <h3>{messages.settings.shortcutDefaultAccountsTitle}</h3>
-              <p>{messages.settings.shortcutDefaultAccountsDetail}</p>
+              <h3>{settingsMessages.shortcutDefaultAccountsTitle}</h3>
+              <p>{settingsMessages.shortcutDefaultAccountsDetail}</p>
             </div>
             <div className="settings-shortcut-account-list">
               {orderedAccounts.map((account, index) => (
@@ -266,7 +268,7 @@ export function SettingsShortcutApiSection({
                     <button
                       type="button"
                       className="icon-action"
-                      aria-label={messages.settings.shortcutMoveAccountUp(account.name)}
+                      aria-label={settingsMessages.shortcutMoveAccountUp(account.name)}
                       disabled={isSubmitting || index === 0}
                       onClick={() => void onMoveAccount(index, index - 1)}
                     >
@@ -275,7 +277,7 @@ export function SettingsShortcutApiSection({
                     <button
                       type="button"
                       className="icon-action"
-                      aria-label={messages.settings.shortcutMoveAccountDown(account.name)}
+                      aria-label={settingsMessages.shortcutMoveAccountDown(account.name)}
                       disabled={isSubmitting || index === orderedAccounts.length - 1}
                       onClick={() => void onMoveAccount(index, index + 1)}
                     >
@@ -288,18 +290,18 @@ export function SettingsShortcutApiSection({
           </div>
           <div className="settings-shortcut-priority">
             <div className="chart-head">
-              <h3>{messages.settings.shortcutForeignCurrencyTitle}</h3>
-              <p>{messages.settings.shortcutForeignCurrencyDetail}</p>
+              <h3>{settingsMessages.shortcutForeignCurrencyTitle}</h3>
+              <p>{settingsMessages.shortcutForeignCurrencyDetail}</p>
             </div>
             <label className="table-edit-field">
-              <span>{messages.settings.shortcutForeignCurrencyLabel}</span>
+              <span>{settingsMessages.shortcutForeignCurrencyLabel}</span>
               <select
                 className="table-edit-input"
                 value={draft.foreignCurrencyAccountId}
                 disabled={isSubmitting}
                 onChange={(event) => void onForeignCurrencyAccountChange(event.target.value)}
               >
-                <option value="">{messages.settings.shortcutForeignCurrencySame}</option>
+                <option value="">{settingsMessages.shortcutForeignCurrencySame}</option>
                 {orderedAccounts.map((account) => (
                   <option key={account.id} value={account.id}>{account.name}</option>
                 ))}
@@ -327,8 +329,8 @@ export function SettingsPaymentWaysSection({
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.paymentWaysTitle}
-        detail={messages.settings.paymentWaysDetail}
+        title={settingsMessages.paymentWaysTitle}
+        detail={settingsMessages.paymentWaysDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -345,7 +347,7 @@ export function SettingsPaymentWaysSection({
                 <legend>{way.personName}</legend>
                 <div className="settings-payment-way-fields">
                   <div className="table-edit-field">
-                    <label htmlFor={bankId}>{messages.settings.paymentWaysBankLabel}</label>
+                    <label htmlFor={bankId}>{settingsMessages.paymentWaysBankLabel}</label>
                     <select
                       id={bankId}
                       className="table-edit-input"
@@ -353,16 +355,16 @@ export function SettingsPaymentWaysSection({
                       disabled={isSubmitting}
                       onChange={(event) => void onChange(way.personId, { bankTransferAccountId: event.target.value })}
                     >
-                      <option value="">{messages.settings.paymentWaysNone}</option>
+                      <option value="">{settingsMessages.paymentWaysNone}</option>
                       {options.bankTransfer.map((account) => (
                         <option key={account.id} value={account.id}>
-                          {messages.settings.paymentWaysAccountOption(account.name, account.ownerLabel)}
+                          {settingsMessages.paymentWaysAccountOption(account.name, account.ownerLabel)}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="table-edit-field">
-                    <label htmlFor={cashId}>{messages.settings.paymentWaysCashLabel}</label>
+                    <label htmlFor={cashId}>{settingsMessages.paymentWaysCashLabel}</label>
                     <select
                       id={cashId}
                       className="table-edit-input"
@@ -371,15 +373,15 @@ export function SettingsPaymentWaysSection({
                       aria-describedby={options.cash.length === 0 ? `${cashId}-help` : undefined}
                       onChange={(event) => void onChange(way.personId, { cashAccountId: event.target.value })}
                     >
-                      <option value="">{messages.settings.paymentWaysNone}</option>
+                      <option value="">{settingsMessages.paymentWaysNone}</option>
                       {options.cash.map((account) => (
                         <option key={account.id} value={account.id}>
-                          {messages.settings.paymentWaysAccountOption(account.name, account.ownerLabel)}
+                          {settingsMessages.paymentWaysAccountOption(account.name, account.ownerLabel)}
                         </option>
                       ))}
                     </select>
                     {options.cash.length === 0 ? (
-                      <small id={`${cashId}-help`} className="field-help">{messages.settings.paymentWaysNoCashAccounts}</small>
+                      <small id={`${cashId}-help`} className="field-help">{settingsMessages.paymentWaysNoCashAccounts}</small>
                     ) : null}
                   </div>
                 </div>
@@ -403,8 +405,8 @@ export function SettingsCategoriesSection({
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.categoriesTitle}
-        detail={messages.settings.categoriesDetail}
+        title={settingsMessages.categoriesTitle}
+        detail={settingsMessages.categoriesDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -412,7 +414,7 @@ export function SettingsCategoriesSection({
         <>
           <div className="settings-actions">
             <button type="button" className="subtle-action" onClick={onCreateCategory}>
-              {messages.settings.addCategory}
+              {settingsMessages.addCategory}
             </button>
           </div>
           <div className="settings-categories-grid">
@@ -429,15 +431,15 @@ export function SettingsCategoriesSection({
                   <p>{messages.common.triplet(category.slug, category.iconKey, category.colorHex)}</p>
                 </div>
                 <div className="settings-account-actions">
-                  <button type="button" className="icon-action" aria-label={messages.settings.editCategory} onClick={() => onEditCategory(category)}>
+                  <button type="button" className="icon-action" aria-label={settingsMessages.editCategory} onClick={() => onEditCategory(category)}>
                     <SquarePen size={16} />
                   </button>
                   <DeleteRowButton
                     label={category.name}
-                    triggerLabel={messages.settings.deleteCategory}
-                    confirmLabel={messages.settings.deleteCategory}
+                    triggerLabel={settingsMessages.deleteCategory}
+                    confirmLabel={settingsMessages.deleteCategory}
                     destructive={false}
-                    prompt={messages.settings.deleteCategoryDetail(category.name)}
+                    prompt={settingsMessages.deleteCategoryDetail(category.name)}
                     onConfirm={() => onDeleteCategory(category)}
                   />
                 </div>
@@ -478,8 +480,8 @@ export function SettingsCategoryMatchRulesSection({
   return (
     <section id={id} className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.categoryRulesTitle}
-        detail={messages.settings.categoryRulesDetail}
+        title={settingsMessages.categoryRulesTitle}
+        detail={settingsMessages.categoryRulesDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -488,18 +490,18 @@ export function SettingsCategoryMatchRulesSection({
           {duplicateRuleIssues.length ? (
             <section className="settings-duplicate-rule-panel">
               <div className="settings-rule-group-header">
-                <strong>{messages.settings.categoryRuleDuplicatesTitle}</strong>
-                <span>{messages.settings.categoryRuleDuplicatesCount(duplicateRuleIssues.length)}</span>
+                <strong>{settingsMessages.categoryRuleDuplicatesTitle}</strong>
+                <span>{settingsMessages.categoryRuleDuplicatesCount(duplicateRuleIssues.length)}</span>
               </div>
-              <p className="lede compact">{messages.settings.categoryRuleDuplicatesDetail}</p>
+              <p className="lede compact">{settingsMessages.categoryRuleDuplicatesDetail}</p>
               <div className="settings-duplicate-rule-list">
                 {duplicateRuleIssues.map((issue) => (
                   <div key={issue.id} className={`settings-duplicate-rule-issue is-${issue.kind}`}>
                     <div className="settings-duplicate-rule-summary">
-                      <strong>{messages.settings.categoryRuleDuplicateKind(issue.kind)}</strong>
-                      <p>{messages.settings.categoryRuleDuplicateDetail(issue.rules[0], issue.rules[1])}</p>
+                      <strong>{settingsMessages.categoryRuleDuplicateKind(issue.kind)}</strong>
+                      <p>{settingsMessages.categoryRuleDuplicateDetail(issue.rules[0], issue.rules[1])}</p>
                       <button type="button" className="subtle-action" onClick={() => onIgnoreIssue(issue)}>
-                        {messages.settings.ignoreCategoryRuleIssue}
+                        {settingsMessages.ignoreCategoryRuleIssue}
                       </button>
                     </div>
                     <div className="settings-duplicate-rule-actions">
@@ -507,18 +509,18 @@ export function SettingsCategoryMatchRulesSection({
                         <div key={rule.id} className="settings-account-row settings-rule-row settings-duplicate-rule-row">
                           <div className="settings-account-main">
                             <strong>{rule.pattern}</strong>
-                            <p>{messages.common.triplet(rule.categoryName, messages.settings.categoryRulePriorityValue(rule.priority), rule.note || messages.common.emptyValue)}</p>
+                            <p>{messages.common.triplet(rule.categoryName, settingsMessages.categoryRulePriorityValue(rule.priority), rule.note || messages.common.emptyValue)}</p>
                           </div>
                           <div className="settings-account-actions">
-                            <button type="button" className="icon-action" aria-label={messages.settings.editCategoryRule} onClick={() => onEditRule(rule)}>
+                            <button type="button" className="icon-action" aria-label={settingsMessages.editCategoryRule} onClick={() => onEditRule(rule)}>
                               <SquarePen size={16} />
                             </button>
                             <DeleteRowButton
                               label={rule.pattern}
-                              triggerLabel={messages.settings.deleteCategoryRule}
-                              confirmLabel={messages.settings.deleteCategoryRule}
+                              triggerLabel={settingsMessages.deleteCategoryRule}
+                              confirmLabel={settingsMessages.deleteCategoryRule}
                               destructive={false}
-                              prompt={messages.settings.deleteCategoryRuleDetail(rule.pattern)}
+                              prompt={settingsMessages.deleteCategoryRuleDetail(rule.pattern)}
                               onConfirm={() => onDeleteRule(rule)}
                             />
                           </div>
@@ -531,18 +533,18 @@ export function SettingsCategoryMatchRulesSection({
             </section>
           ) : null}
           {backfills.length ? (
-            <section className="settings-suggestion-panel settings-rule-backfill-panel" aria-label={messages.settings.categoryRuleBackfillsTitle}>
+            <section className="settings-suggestion-panel settings-rule-backfill-panel" aria-label={settingsMessages.categoryRuleBackfillsTitle}>
               <div className="settings-rule-group-header">
-                <strong>{messages.settings.categoryRuleBackfillsTitle}</strong>
-                <span>{messages.settings.categoryRuleBackfillsCount(backfills.length)}</span>
+                <strong>{settingsMessages.categoryRuleBackfillsTitle}</strong>
+                <span>{settingsMessages.categoryRuleBackfillsCount(backfills.length)}</span>
               </div>
-              <p className="lede compact">{messages.settings.categoryRuleBackfillsDetail}</p>
+              <p className="lede compact">{settingsMessages.categoryRuleBackfillsDetail}</p>
               <div className="settings-suggestion-list">
                 {backfills.map((backfill) => (
                   <div key={backfill.ruleId} className="settings-account-row settings-suggestion-row">
                     <div className="settings-account-main">
                       <strong>{backfill.pattern}</strong>
-                      <p>{messages.settings.categoryRuleBackfillSummary(backfill.categoryName, backfill.entryCount)}</p>
+                      <p>{settingsMessages.categoryRuleBackfillSummary(backfill.categoryName, backfill.entryCount)}</p>
                       <ul className="settings-rule-suggestion-samples">
                         {backfill.sampleDescriptions.map((sample) => (
                           <li key={sample}>{sample}</li>
@@ -551,7 +553,7 @@ export function SettingsCategoryMatchRulesSection({
                     </div>
                     <div className="settings-account-actions settings-suggestion-actions">
                       <button type="button" className="subtle-action" onClick={() => onApplyBackfill(backfill)}>
-                        {messages.settings.applyCategoryRuleBackfill(backfill.entryCount)}
+                        {settingsMessages.applyCategoryRuleBackfill(backfill.entryCount)}
                       </button>
                     </div>
                   </div>
@@ -562,16 +564,16 @@ export function SettingsCategoryMatchRulesSection({
           {suggestions.length ? (
             <section className="settings-suggestion-panel">
               <div className="settings-rule-group-header">
-                <strong>{messages.settings.categoryRuleSuggestionsTitle}</strong>
-                <span>{messages.settings.categoryRuleSuggestionsCount(suggestions.length)}</span>
+                <strong>{settingsMessages.categoryRuleSuggestionsTitle}</strong>
+                <span>{settingsMessages.categoryRuleSuggestionsCount(suggestions.length)}</span>
               </div>
-              <p className="lede compact">{messages.settings.categoryRuleSuggestionsDetail}</p>
+              <p className="lede compact">{settingsMessages.categoryRuleSuggestionsDetail}</p>
               <div className="settings-suggestion-list">
                 {suggestions.map((suggestion) => (
                   <div key={suggestion.id} className="settings-account-row settings-suggestion-row">
                     <div className="settings-account-main">
                       <strong>{suggestion.pattern}</strong>
-                      <p>{messages.common.triplet(suggestion.categoryName, messages.settings.categoryRuleSuggestionSeen(suggestion.sourceCount), suggestion.sampleDescriptions[0] ?? messages.common.emptyValue)}</p>
+                      <p>{messages.common.triplet(suggestion.categoryName, settingsMessages.categoryRuleSuggestionSeen(suggestion.sourceCount), suggestion.sampleDescriptions[0] ?? messages.common.emptyValue)}</p>
                       {suggestion.sampleDescriptions.length > 1 ? (
                         <ul className="settings-rule-suggestion-samples">
                           {suggestion.sampleDescriptions.slice(1).map((sample) => (
@@ -582,13 +584,13 @@ export function SettingsCategoryMatchRulesSection({
                     </div>
                     <div className="settings-account-actions settings-suggestion-actions">
                       <button type="button" className="subtle-action" onClick={() => onAcceptSuggestion(suggestion)}>
-                        {messages.settings.acceptCategoryRuleSuggestion}
+                        {settingsMessages.acceptCategoryRuleSuggestion}
                       </button>
                       <button type="button" className="subtle-action" onClick={() => onEditSuggestion(suggestion)}>
-                        {messages.settings.editCategoryRuleSuggestion}
+                        {settingsMessages.editCategoryRuleSuggestion}
                       </button>
                       <button type="button" className="subtle-action muted-action" onClick={() => onIgnoreSuggestion(suggestion)}>
-                        {messages.settings.ignoreCategoryRuleSuggestion}
+                        {settingsMessages.ignoreCategoryRuleSuggestion}
                       </button>
                     </div>
                   </div>
@@ -601,7 +603,7 @@ export function SettingsCategoryMatchRulesSection({
               {isAiWorking ? "Preparing suggestions..." : "Suggest rules from history"}
             </button>
             <button type="button" className="subtle-action" onClick={onCreateRule}>
-              {messages.settings.addCategoryRule}
+              {settingsMessages.addCategoryRule}
             </button>
             {ruleGroups.length ? (
               <button
@@ -609,7 +611,7 @@ export function SettingsCategoryMatchRulesSection({
                 className="subtle-action"
                 onClick={() => setAreRuleGroupsExpanded((current) => !current)}
               >
-                {areRuleGroupsExpanded ? messages.settings.collapseCategoryRules : messages.settings.expandCategoryRules}
+                {areRuleGroupsExpanded ? settingsMessages.collapseCategoryRules : settingsMessages.expandCategoryRules}
               </button>
             ) : null}
           </div>
@@ -629,25 +631,25 @@ export function SettingsCategoryMatchRulesSection({
                     ) : null}
                     <strong>{group.categoryName}</strong>
                   </span>
-                  <span className="settings-rule-group-count">{messages.settings.categoryRuleGroupCount(group.rules.length)}</span>
+                  <span className="settings-rule-group-count">{settingsMessages.categoryRuleGroupCount(group.rules.length)}</span>
                 </summary>
                 <div className="settings-rule-group-list">
                   {group.rules.map((rule) => (
                     <div key={rule.id} className={`settings-account-row settings-rule-row ${rule.isActive ? "" : "is-muted"}`}>
                       <div className="settings-account-main">
                         <strong>{rule.pattern}</strong>
-                        <p>{messages.common.triplet(messages.settings.categoryRulePriorityValue(rule.priority), rule.isActive ? messages.settings.categoryRuleActive : messages.settings.categoryRuleInactive, rule.note || messages.common.emptyValue)}</p>
+                        <p>{messages.common.triplet(settingsMessages.categoryRulePriorityValue(rule.priority), rule.isActive ? settingsMessages.categoryRuleActive : settingsMessages.categoryRuleInactive, rule.note || messages.common.emptyValue)}</p>
                       </div>
                       <div className="settings-account-actions">
-                        <button type="button" className="icon-action" aria-label={messages.settings.editCategoryRule} onClick={() => onEditRule(rule)}>
+                        <button type="button" className="icon-action" aria-label={settingsMessages.editCategoryRule} onClick={() => onEditRule(rule)}>
                           <SquarePen size={16} />
                         </button>
                         <DeleteRowButton
                           label={rule.pattern}
-                          triggerLabel={messages.settings.deleteCategoryRule}
-                          confirmLabel={messages.settings.deleteCategoryRule}
+                          triggerLabel={settingsMessages.deleteCategoryRule}
+                          confirmLabel={settingsMessages.deleteCategoryRule}
                           destructive={false}
-                          prompt={messages.settings.deleteCategoryRuleDetail(rule.pattern)}
+                          prompt={settingsMessages.deleteCategoryRuleDetail(rule.pattern)}
                           onConfirm={() => onDeleteRule(rule)}
                         />
                       </div>
@@ -656,7 +658,7 @@ export function SettingsCategoryMatchRulesSection({
                 </div>
               </details>
             )) : (
-              <EmptyState>{messages.settings.categoryRulesEmpty}</EmptyState>
+              <EmptyState>{settingsMessages.categoryRulesEmpty}</EmptyState>
             )}
           </div>
         </>
@@ -730,8 +732,8 @@ export function SettingsTrustSection({
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.trustRulesTitle}
-        detail={openExceptionCount ? messages.settings.trustRulesDetailWithExceptions(openExceptionCount) : messages.settings.trustRulesDetail}
+        title={settingsMessages.trustRulesTitle}
+        detail={openExceptionCount ? settingsMessages.trustRulesDetailWithExceptions(openExceptionCount) : settingsMessages.trustRulesDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -739,27 +741,27 @@ export function SettingsTrustSection({
         <div className="settings-trust-stack">
           <div className="settings-trust-grid">
             <div className="settings-demo-meta-item">
-              <span>{messages.settings.trustOpeningTitle}</span>
-              <strong>{messages.settings.trustOpeningDetail}</strong>
-              <p>{messages.settings.trustOpeningAction}</p>
+              <span>{settingsMessages.trustOpeningTitle}</span>
+              <strong>{settingsMessages.trustOpeningDetail}</strong>
+              <p>{settingsMessages.trustOpeningAction}</p>
             </div>
             <div className="settings-demo-meta-item">
-              <span>{messages.settings.trustCheckpointTitle}</span>
-              <strong>{messages.settings.trustCheckpointDetail}</strong>
-              <p>{messages.settings.trustCheckpointAction}</p>
+              <span>{settingsMessages.trustCheckpointTitle}</span>
+              <strong>{settingsMessages.trustCheckpointDetail}</strong>
+              <p>{settingsMessages.trustCheckpointAction}</p>
             </div>
             <div className="settings-demo-meta-item">
-              <span>{messages.settings.trustTransfersTitle}</span>
-              <strong>{messages.settings.trustTransfersDetail}</strong>
-              <p>{messages.settings.trustTransfersAction}</p>
+              <span>{settingsMessages.trustTransfersTitle}</span>
+              <strong>{settingsMessages.trustTransfersDetail}</strong>
+              <p>{settingsMessages.trustTransfersAction}</p>
             </div>
           </div>
 
           <div className="settings-exception-panel">
             <div className="settings-exception-head">
               <div>
-                <h3>{messages.settings.reconciliationExceptionsTitle}</h3>
-                <p>{messages.settings.reconciliationExceptionsDetail}</p>
+                <h3>{settingsMessages.reconciliationExceptionsTitle}</h3>
+                <p>{settingsMessages.reconciliationExceptionsDetail}</p>
               </div>
               <button
                 type="button"
@@ -770,7 +772,7 @@ export function SettingsTrustSection({
                   setDraft((current) => current.accountId ? current : buildEmptyExceptionDraft(accounts));
                 }}
               >
-                {draftOpen ? messages.settings.cancelException : messages.settings.addReconciliationException}
+                {draftOpen ? settingsMessages.cancelException : settingsMessages.addReconciliationException}
               </button>
             </div>
 
@@ -786,20 +788,20 @@ export function SettingsTrustSection({
                 }}
               >
                 <label>
-                  <span>{messages.settings.exceptionAccountLabel}</span>
+                  <span>{settingsMessages.exceptionAccountLabel}</span>
                   <select
                     className="table-edit-input"
                     value={draft.accountId}
                     onChange={(event) => updateDraft({ accountId: event.target.value })}
                   >
-                    <option value="">{messages.settings.exceptionNoAccount}</option>
+                    <option value="">{settingsMessages.exceptionNoAccount}</option>
                     {accounts.map((account) => (
                       <option key={account.id} value={account.id}>{account.name}</option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  <span>{messages.settings.exceptionMonthLabel}</span>
+                  <span>{settingsMessages.exceptionMonthLabel}</span>
                   <input
                     className="table-edit-input"
                     type="month"
@@ -809,47 +811,47 @@ export function SettingsTrustSection({
                   />
                 </label>
                 <label>
-                  <span>{messages.settings.exceptionKindLabel}</span>
+                  <span>{settingsMessages.exceptionKindLabel}</span>
                   <select
                     className="table-edit-input"
                     value={draft.kind}
                     onChange={(event) => updateDraft({ kind: event.target.value })}
                   >
                     {RECONCILIATION_EXCEPTION_KINDS.map((kind) => (
-                      <option key={kind} value={kind}>{messages.settings.exceptionKindLabels[kind]}</option>
+                      <option key={kind} value={kind}>{settingsMessages.exceptionKindLabels[kind]}</option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  <span>{messages.settings.exceptionSeverityLabel}</span>
+                  <span>{settingsMessages.exceptionSeverityLabel}</span>
                   <select
                     className="table-edit-input"
                     value={draft.severity}
                     onChange={(event) => updateDraft({ severity: event.target.value })}
                   >
                     {RECONCILIATION_EXCEPTION_SEVERITIES.map((severity) => (
-                      <option key={severity} value={severity}>{messages.settings.exceptionSeverityLabels[severity]}</option>
+                      <option key={severity} value={severity}>{settingsMessages.exceptionSeverityLabels[severity]}</option>
                     ))}
                   </select>
                 </label>
                 <label className="settings-exception-form-wide">
-                  <span>{messages.settings.exceptionTitleLabel}</span>
+                  <span>{settingsMessages.exceptionTitleLabel}</span>
                   <input
                     className="table-edit-input"
                     enterKeyHint="done"
                     value={draft.title}
                     onChange={(event) => updateDraft({ title: event.target.value })}
-                    placeholder={messages.settings.exceptionTitlePlaceholder}
+                    placeholder={settingsMessages.exceptionTitlePlaceholder}
                   />
                 </label>
                 <label className="settings-exception-form-wide">
-                  <span>{messages.settings.exceptionNoteLabel}</span>
+                  <span>{settingsMessages.exceptionNoteLabel}</span>
                   <textarea
                     className="table-edit-input"
                     rows={3}
                     value={draft.note}
                     onChange={(event) => updateDraft({ note: event.target.value })}
-                    placeholder={messages.settings.exceptionNotePlaceholder}
+                    placeholder={settingsMessages.exceptionNotePlaceholder}
                   />
                 </label>
                 <div className="settings-exception-form-actions">
@@ -858,7 +860,7 @@ export function SettingsTrustSection({
                     className="subtle-action"
                     disabled={isSubmitting || !draft.title.trim()}
                   >
-                    {isSubmitting ? messages.common.working : messages.settings.saveReconciliationException}
+                    {isSubmitting ? messages.common.working : settingsMessages.saveReconciliationException}
                   </button>
                 </div>
               </form>
@@ -874,10 +876,10 @@ export function SettingsTrustSection({
                   </div>
                   <div className="settings-exception-status">
                     <span className={`entry-chip entry-chip-exception is-${item.severity}`}>
-                      {messages.settings.exceptionSeverityLabels[item.severity]}
+                      {settingsMessages.exceptionSeverityLabels[item.severity]}
                     </span>
                     <span className={`entry-chip entry-chip-exception-status is-${item.status}`}>
-                      {item.status === "open" ? messages.settings.exceptionOpen : messages.settings.exceptionResolved}
+                      {item.status === "open" ? settingsMessages.exceptionOpen : settingsMessages.exceptionResolved}
                     </span>
                   </div>
                   {item.status === "open" ? (
@@ -887,12 +889,12 @@ export function SettingsTrustSection({
                       disabled={isSubmitting}
                       onClick={() => onResolveException?.(item.id)}
                     >
-                      {messages.settings.resolveReconciliationException}
+                      {settingsMessages.resolveReconciliationException}
                     </button>
                   ) : null}
                 </div>
               )) : (
-                <EmptyState>{messages.settings.noReconciliationExceptions}</EmptyState>
+                <EmptyState>{settingsMessages.noReconciliationExceptions}</EmptyState>
               )}
             </div>
           </div>
@@ -904,8 +906,8 @@ export function SettingsTrustSection({
 
 function formatExceptionMeta(item) {
   return messages.common.triplet(
-    messages.settings.exceptionKindLabels[item.kind] ?? item.kind,
-    item.accountName ?? messages.settings.exceptionNoAccount,
+    settingsMessages.exceptionKindLabels[item.kind] ?? item.kind,
+    item.accountName ?? settingsMessages.exceptionNoAccount,
     item.checkpointMonth ? formatService.formatMonthLabel(item.checkpointMonth) : formatService.formatDateOnly(item.createdAt)
   );
 }
@@ -933,8 +935,8 @@ export function SettingsTransfersSection({
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.unresolvedTransfersTitle}
-        detail={transfers.length ? messages.settings.unresolvedTransfersDetailWithCount(transfers.length) : messages.settings.unresolvedTransfersDetail}
+        title={settingsMessages.unresolvedTransfersTitle}
+        detail={transfers.length ? settingsMessages.unresolvedTransfersDetailWithCount(transfers.length) : settingsMessages.unresolvedTransfersDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -944,14 +946,14 @@ export function SettingsTransfersSection({
             <>
               <div className="settings-actions settings-transfer-actions">
                 <button type="button" className="subtle-action" disabled={isSubmitting} onClick={onDismissAllTransfers}>
-                  {messages.settings.clearAllTransfers}
+                  {settingsMessages.clearAllTransfers}
                 </button>
                 <button type="button" className="subtle-action" disabled={isSubmitting || isRefreshing} onClick={onRefreshTransfers}>
-                  {isRefreshing ? messages.settings.refreshingTransfers : messages.settings.refreshTransfers}
+                  {isRefreshing ? settingsMessages.refreshingTransfers : settingsMessages.refreshTransfers}
                 </button>
               </div>
               {monthGroups.length > 1 ? (
-                <div className="settings-transfer-months" role="list" aria-label={messages.settings.transferMonthQueueLabel}>
+                <div className="settings-transfer-months" role="list" aria-label={settingsMessages.transferMonthQueueLabel}>
                   {monthGroups.map((group) => (
                     <button
                       key={group.month}
@@ -969,7 +971,7 @@ export function SettingsTransfersSection({
                 </div>
               ) : null}
               {truncatedDescriptionCount ? (
-                <p className="settings-warning">{messages.settings.transferTruncatedDescriptionWarning(truncatedDescriptionCount)}</p>
+                <p className="settings-warning">{settingsMessages.transferTruncatedDescriptionWarning(truncatedDescriptionCount)}</p>
               ) : null}
               {visibleTransfers.map((item) => (
                 <div key={item.entryId} className="settings-account-row settings-transfer-row">
@@ -984,33 +986,33 @@ export function SettingsTransfersSection({
                   <strong className="settings-transfer-amount">{formatService.money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
                   <div className="settings-account-actions">
                     <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onDismissTransfer(item.entryId)}>
-                      {messages.settings.clearTransfer}
+                      {settingsMessages.clearTransfer}
                     </button>
                     <button type="button" className="subtle-action" onClick={() => onOpenTransferReview(item)}>
-                      {messages.settings.openTransferReview}
+                      {settingsMessages.openTransferReview}
                     </button>
                     <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onManageTransfer(item.entryId)}>
-                      {messages.settings.manageTransferReview}
+                      {settingsMessages.manageTransferReview}
                     </button>
                   </div>
                 </div>
               ))}
               {pageCount > 1 ? (
                 <div className="import-history-pagination settings-transfer-pagination">
-                  <span>{messages.settings.transferPage(currentPage, pageCount, activeTransfers.length)}</span>
+                  <span>{settingsMessages.transferPage(currentPage, pageCount, activeTransfers.length)}</span>
                   <div className="import-history-pagination-actions">
                     <button type="button" className="subtle-action" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-                      {messages.imports.previousPage}
+                      {importMessages.previousPage}
                     </button>
                     <button type="button" className="subtle-action" disabled={currentPage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
-                      {messages.imports.nextPage}
+                      {importMessages.nextPage}
                     </button>
                   </div>
                 </div>
               ) : null}
             </>
           ) : (
-            <EmptyState>{messages.settings.unresolvedTransfersEmpty}</EmptyState>
+            <EmptyState>{settingsMessages.unresolvedTransfersEmpty}</EmptyState>
           )}
         </div>
       ) : null}
@@ -1052,8 +1054,8 @@ export function SettingsActivitySection({ activityGroups, isOpen, onToggle }) {
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.recentActivityTitle}
-        detail={messages.settings.recentActivityDetail}
+        title={settingsMessages.recentActivityTitle}
+        detail={settingsMessages.recentActivityDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
@@ -1075,7 +1077,7 @@ export function SettingsActivitySection({ activityGroups, isOpen, onToggle }) {
               </div>
             </section>
           )) : (
-            <EmptyState>{messages.settings.recentActivityEmpty}</EmptyState>
+            <EmptyState>{settingsMessages.recentActivityEmpty}</EmptyState>
           )}
         </div>
       ) : null}
@@ -1092,22 +1094,22 @@ export function SettingsErrorDiagnosticsSection({ diagnostics, isOpen, onToggle,
   return (
     <section id="settings-error-diagnostics" className="chart-card settings-card">
       <SettingsSectionToggle
-        title={messages.settings.errorDiagnosticsTitle}
-        detail={messages.settings.errorDiagnosticsDetail}
+        title={settingsMessages.errorDiagnosticsTitle}
+        detail={settingsMessages.errorDiagnosticsDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
       {isOpen ? (
         <div className="settings-diagnostics">
           <div className="settings-diagnostics-toolbar">
-            <p>{messages.settings.errorDiagnosticsRetentionDetail}</p>
+            <p>{settingsMessages.errorDiagnosticsRetentionDetail}</p>
             <button
               type="button"
               className="subtle-action"
               disabled={isSubmitting || diagnostics.length === 0}
               onClick={onRetainLatest}
             >
-              {messages.settings.errorDiagnosticsRetainLatest}
+              {settingsMessages.errorDiagnosticsRetainLatest}
             </button>
           </div>
           {visibleDiagnostics.length ? (
@@ -1120,45 +1122,45 @@ export function SettingsErrorDiagnosticsSection({ diagnostics, isOpen, onToggle,
                         <strong>{diagnostic.action}</strong>
                         <span>{formatService.formatDate(diagnostic.createdAt)}</span>
                       </span>
-                      <span>{messages.settings.errorDiagnosticsStatus(diagnostic)}</span>
+                      <span>{settingsMessages.errorDiagnosticsStatus(diagnostic)}</span>
                     </summary>
                     <div className="settings-diagnostic-body">
                       <dl className="settings-diagnostic-grid">
                         <div>
-                          <dt>{messages.settings.errorDiagnosticsPreviousAction}</dt>
+                          <dt>{settingsMessages.errorDiagnosticsPreviousAction}</dt>
                           <dd>{diagnostic.previousAction || messages.common.emptyValue}</dd>
                         </div>
                         <div>
-                          <dt>{messages.settings.errorDiagnosticsRoute}</dt>
+                          <dt>{settingsMessages.errorDiagnosticsRoute}</dt>
                           <dd>{[diagnostic.method, diagnostic.route].filter(Boolean).join(" ") || messages.common.emptyValue}</dd>
                         </div>
                         <div>
-                          <dt>{messages.settings.errorDiagnosticsContentType}</dt>
+                          <dt>{settingsMessages.errorDiagnosticsContentType}</dt>
                           <dd>{diagnostic.contentType || messages.common.emptyValue}</dd>
                         </div>
                         <div>
-                          <dt>{messages.settings.errorDiagnosticsPossibleReason}</dt>
-                          <dd>{diagnostic.possibleReason || messages.settings.errorDiagnosticsUnknownReason}</dd>
+                          <dt>{settingsMessages.errorDiagnosticsPossibleReason}</dt>
+                          <dd>{diagnostic.possibleReason || settingsMessages.errorDiagnosticsUnknownReason}</dd>
                         </div>
                       </dl>
                       <div className="settings-diagnostic-block">
-                        <strong>{messages.settings.errorDiagnosticsShownMessage}</strong>
+                        <strong>{settingsMessages.errorDiagnosticsShownMessage}</strong>
                         <p>{diagnostic.errorMessage}</p>
                       </div>
                       {diagnostic.requestContextJson ? (
                         <div className="settings-diagnostic-block">
-                          <strong>{messages.settings.errorDiagnosticsRequestContext}</strong>
+                          <strong>{settingsMessages.errorDiagnosticsRequestContext}</strong>
                           <pre>{diagnostic.requestContextJson}</pre>
                         </div>
                       ) : null}
                       {diagnostic.responseBody ? (
                         <div className="settings-diagnostic-block">
-                          <strong>{messages.settings.errorDiagnosticsResponseBody}</strong>
+                          <strong>{settingsMessages.errorDiagnosticsResponseBody}</strong>
                           <pre>{diagnostic.responseBody}</pre>
                         </div>
                       ) : diagnostic.responseExcerpt ? (
                         <div className="settings-diagnostic-block">
-                          <strong>{messages.settings.errorDiagnosticsResponseBody}</strong>
+                          <strong>{settingsMessages.errorDiagnosticsResponseBody}</strong>
                           <pre>{diagnostic.responseExcerpt}</pre>
                         </div>
                       ) : null}
@@ -1167,19 +1169,19 @@ export function SettingsErrorDiagnosticsSection({ diagnostics, isOpen, onToggle,
                 ))}
               </div>
               <div className="import-history-pagination">
-                <span>{messages.settings.errorDiagnosticsPage(page, pageCount, diagnostics.length)}</span>
+                <span>{settingsMessages.errorDiagnosticsPage(page, pageCount, diagnostics.length)}</span>
                 <div>
                   <button type="button" className="subtle-action" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-                    {messages.imports.previousPage}
+                    {importMessages.previousPage}
                   </button>
                   <button type="button" className="subtle-action" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
-                    {messages.imports.nextPage}
+                    {importMessages.nextPage}
                   </button>
                 </div>
               </div>
             </>
           ) : (
-            <EmptyState>{messages.settings.errorDiagnosticsEmpty}</EmptyState>
+            <EmptyState>{settingsMessages.errorDiagnosticsEmpty}</EmptyState>
           )}
         </div>
       ) : null}
@@ -1215,16 +1217,16 @@ export function SettingsDemoSection({
       >
         <div className="settings-section-toggle-copy">
           <div className="chart-head">
-            <h3>{messages.settings.demoTitle}</h3>
-            <p>{messages.settings.demoDetail}</p>
+            <h3>{settingsMessages.demoTitle}</h3>
+            <p>{settingsMessages.demoDetail}</p>
           </div>
           <div className="settings-demo-meta">
             <div className="settings-demo-meta-item">
-              <span>{messages.settings.state}</span>
-              <strong>{demo.emptyState ? messages.settings.emptyMode : messages.settings.seededMode}</strong>
+              <span>{settingsMessages.state}</span>
+              <strong>{demo.emptyState ? settingsMessages.emptyMode : settingsMessages.seededMode}</strong>
             </div>
             <div className="settings-demo-meta-item">
-              <span>{messages.settings.seededAt}</span>
+              <span>{settingsMessages.seededAt}</span>
               <strong>{formatService.formatDate(demo.lastSeededAt)}</strong>
             </div>
           </div>
@@ -1238,7 +1240,7 @@ export function SettingsDemoSection({
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="settings-actions">
             <button type="button" className="subtle-action" onClick={onReseed} disabled={isSubmitting}>
-              {isSubmitting ? messages.common.working : messages.settings.reseed}
+              {isSubmitting ? messages.common.working : settingsMessages.reseed}
             </button>
             <Dialog.Root
               open={reloadDialogOpen}
@@ -1251,7 +1253,7 @@ export function SettingsDemoSection({
             >
               <Dialog.Trigger asChild>
                 <button type="button" className="subtle-action" disabled={isSubmitting}>
-                  {messages.settings.refresh}
+                  {settingsMessages.refresh}
                 </button>
               </Dialog.Trigger>
               <Dialog.Portal>
@@ -1259,8 +1261,8 @@ export function SettingsDemoSection({
                 <Dialog.Content className="note-dialog-content">
                   <div className="note-dialog-head">
                     <div>
-                      <Dialog.Title>{messages.settings.reloadDataTitle}</Dialog.Title>
-                      <Dialog.Description>{messages.settings.reloadDataDetail}</Dialog.Description>
+                      <Dialog.Title>{settingsMessages.reloadDataTitle}</Dialog.Title>
+                      <Dialog.Description>{settingsMessages.reloadDataDetail}</Dialog.Description>
                     </div>
                     <Dialog.Close asChild>
                       <button
@@ -1275,7 +1277,7 @@ export function SettingsDemoSection({
                   </div>
                   <input
                     className="table-edit-input"
-                    placeholder={messages.settings.reloadDataPlaceholder}
+                    placeholder={settingsMessages.reloadDataPlaceholder}
                     value={reloadText}
                     onChange={(event) => onReloadTextChange(event.target.value)}
                   />
@@ -1289,7 +1291,7 @@ export function SettingsDemoSection({
                       disabled={reloadText.trim().toLowerCase() !== "reload data" || isSubmitting}
                       onClick={onRefresh}
                     >
-                      {isSubmitting ? messages.common.working : messages.settings.reloadDataConfirm}
+                      {isSubmitting ? messages.common.working : settingsMessages.reloadDataConfirm}
                     </button>
                   </div>
                 </Dialog.Content>
@@ -1306,7 +1308,7 @@ export function SettingsDemoSection({
             >
               <Dialog.Trigger asChild>
                 <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
-                  {messages.settings.emptyState}
+                  {settingsMessages.emptyState}
                 </button>
               </Dialog.Trigger>
               <Dialog.Portal>
@@ -1314,8 +1316,8 @@ export function SettingsDemoSection({
                 <Dialog.Content className="note-dialog-content">
                   <div className="note-dialog-head">
                     <div>
-                      <Dialog.Title>{messages.settings.emptyState}</Dialog.Title>
-                      <Dialog.Description>{messages.settings.emptyStateDetail}</Dialog.Description>
+                      <Dialog.Title>{settingsMessages.emptyState}</Dialog.Title>
+                      <Dialog.Description>{settingsMessages.emptyStateDetail}</Dialog.Description>
                     </div>
                     <Dialog.Close asChild>
                       <button
@@ -1330,7 +1332,7 @@ export function SettingsDemoSection({
                   </div>
                   <input
                     className="table-edit-input"
-                    placeholder={messages.settings.emptyStatePlaceholder}
+                    placeholder={settingsMessages.emptyStatePlaceholder}
                     value={emptyStateText}
                     onChange={(event) => onEmptyStateTextChange(event.target.value)}
                   />
@@ -1344,14 +1346,14 @@ export function SettingsDemoSection({
                       disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
                       onClick={onEmptyState}
                     >
-                      {isSubmitting ? messages.common.working : messages.settings.emptyStateConfirm}
+                      {isSubmitting ? messages.common.working : settingsMessages.emptyStateConfirm}
                     </button>
                   </div>
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
           </div>
-          <p className="lede compact">{messages.settings.refreshHint}</p>
+          <p className="lede compact">{settingsMessages.refreshHint}</p>
         </>
       ) : null}
     </section>

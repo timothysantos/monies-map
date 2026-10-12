@@ -1,4 +1,5 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
 import { FixGroup, groupBy, hasFact, sumEffect } from "./statement-fix-suggestions";
 
@@ -44,16 +45,16 @@ export function StatementCorrectionSuggestions({
   const fixGroupProps = { isSubmitting, onDismiss };
   return (
     <div className="settings-statement-compare-block statement-fix-list statement-correction-list">
-      <h3>{messages.settings.statementCorrectionTitle}</h3>
+      <h3>{settingsMessages.statementCorrectionTitle}</h3>
       {correction ? (
         <div className="import-card statement-fix-card statement-fix-applied">
           <div className="statement-fix-applied-head">
             <span>
               {correction.summary}
-              {targetCard?.deltaMinor === 0 ? ` ${messages.settings.statementCorrectionMatches}` : ""}
+              {targetCard?.deltaMinor === 0 ? ` ${settingsMessages.statementCorrectionMatches}` : ""}
             </span>
             <button type="button" className="subtle-action" disabled={isSubmitting} onClick={onUndo}>
-              {messages.imports.statementFixUndo}
+              {importMessages.statementFixUndo}
             </button>
           </div>
         </div>
@@ -65,8 +66,8 @@ export function StatementCorrectionSuggestions({
           <FixGroup
             key={`move-${fromAccountId}-${toAccountId}`}
             {...fixGroupProps}
-            title={messages.imports.statementFixMoveTitle(group.length, toName)}
-            detail={messages.settings.statementCorrectionMoveDetail({
+            title={importMessages.statementFixMoveTitle(group.length, toName)}
+            detail={settingsMessages.statementCorrectionMoveDetail({
               count: group.length,
               fromName: accountName(fromAccountId),
               toName,
@@ -74,8 +75,8 @@ export function StatementCorrectionSuggestions({
               closes: group.some((finding) => hasFact(finding, "closes_statement"))
             })}
             findings={group}
-            actionLabel={messages.imports.statementFixMoveAction(group.length, toName)}
-            onApply={(fixes) => onApply(fixes, messages.settings.statementCorrectionMoved(fixes.length, toName))}
+            actionLabel={importMessages.statementFixMoveAction(group.length, toName)}
+            onApply={(fixes) => onApply(fixes, settingsMessages.statementCorrectionMoved(fixes.length, toName))}
           />
         );
       })}
@@ -85,8 +86,8 @@ export function StatementCorrectionSuggestions({
           <FixGroup
             key={`remove-${accountId}`}
             {...fixGroupProps}
-            title={messages.settings.statementCorrectionRemoveTitle(group.length)}
-            detail={messages.settings.statementCorrectionRemoveDetail({
+            title={settingsMessages.statementCorrectionRemoveTitle(group.length)}
+            detail={settingsMessages.statementCorrectionRemoveDetail({
               count: group.length,
               accountName: accountName(accountId),
               otherName: otherAccountIds.size === 1 ? accountName(Array.from(otherAccountIds)[0]) : "",
@@ -94,20 +95,20 @@ export function StatementCorrectionSuggestions({
               closes: group.some((finding) => hasFact(finding, "closes_statement"))
             })}
             findings={group}
-            actionLabel={messages.settings.statementCorrectionRemoveAction(group.length)}
-            onApply={(fixes) => onApply(fixes, messages.settings.statementCorrectionRemoved(fixes.length, accountName(accountId)))}
+            actionLabel={settingsMessages.statementCorrectionRemoveAction(group.length)}
+            onApply={(fixes) => onApply(fixes, settingsMessages.statementCorrectionRemoved(fixes.length, accountName(accountId)))}
           />
         );
       })}
       {blocked.length ? (
         <div className="statement-fix-check">
-          <strong>{messages.imports.statementFixAlsoCheck}</strong>
+          <strong>{importMessages.statementFixAlsoCheck}</strong>
           <ul>
             {blocked.map((finding) => {
               const fact = finding.facts.find((item) => item.code === "unbalances_saved_statement");
               return (
                 <li key={finding.id}>
-                  {messages.settings.statementCorrectionBlocked(
+                  {settingsMessages.statementCorrectionBlocked(
                     finding.entry.description,
                     formatService.money(Math.abs(finding.entry.signedAmountMinor)),
                     fact.accountName,
