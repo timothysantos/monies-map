@@ -657,6 +657,20 @@ Where it is used:
   button: the whole pill opens its explanation popover, and its "To
   allocate" / "Overplanned" line hides with the money. The six sideways
   tiles are gone; nothing scrolls sideways at 390 px.
+- Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
+  Month route chunk): Income, Budget Buckets and Planned Items keep their
+  `<table>` markup (inline editing, sorting, row opening and the tests'
+  hooks are unchanged); only the hierarchy changes. Every layout: the item
+  is the heavy lead, Planned, Actual and Variance are right-aligned and
+  tabular, Category, Date, Account and Note are quiet, and a 4 px bar under
+  each actual (`PlanRowBar`, the lead card's fill rule: rose only past the
+  plan, mint for income received, track only when money is hidden). Phone
+  and portrait tablet (the sheet layout) draw each row as a compact card:
+  the category bubble, the item and its category on the left, the actual
+  with "of $planned" on the right, the bar, then the note and "Variance
+  $x"; the date and account are on the plan card sheet a tap opens, the
+  column names are a strip of sort buttons, the total is one line, and
+  nothing scrolls sideways (`tests/e2e/summary-month-lsd.spec.js`).
 - Summary Intent vs Outcome (`summary-intent-outcome.jsx`,
   `summary-intent-outcome-model.js`, `summary-intent-outcome.css` in the
   Summary route chunk): newest month first, each a compact `LeadCard`. The

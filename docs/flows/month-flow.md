@@ -48,6 +48,13 @@ figures are the month page DTO's metric cards plus the month's Summary row
 Remaining budget pill opens its explanation. Nothing scrolls sideways at
 390 px (`tests/e2e/summary-month-lsd.spec.js`).
 
+The plan tables (Income, Budget Buckets, Planned Items) keep their table
+markup on every layout and add hierarchy: the item leads, the money columns
+are right-aligned, and a thin bar under each actual shows actual against
+plan. On the sheet layout each row is a compact card (bubble, item and
+category, actual of planned, the bar, the note and the variance) and the
+tables never scroll sideways; a tap opens the plan card sheet as before.
+
 Opening a plan row (income, planned items, budget buckets) starts the same
 edit on both layouts: inline editing on desktop, the edit sheet on mobile. A
 row opens from a click anywhere on the row outside its own controls, or from

@@ -337,7 +337,9 @@ stays highlighted, and the range at the top stays as it was.
   list as on Summary. Select a category to hide or show it in the donut; its
   **›** opens that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
-- **Income**: planned income sources.
+- **Income**: planned income sources. On every plan row a thin bar shows how
+  much of the plan you have used. On a phone each row is a small card; tap it
+  to change it.
 - **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
 - **Planned Items**: fixed commitments such as savings, insurance, loans and
