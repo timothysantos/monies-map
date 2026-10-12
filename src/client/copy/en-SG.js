@@ -131,7 +131,14 @@ export const messages = {
     focusMonth: "Focus",
     intentVsOutcome: "Intent vs Outcome",
     intentVsOutcomeDetail: "Monthly comparison with expandable detail.",
-    incomeLabel: (plannedValue, actualValue) => `Planned income ${plannedValue} • Actual income ${actualValue}`,
+    // Each Intent vs Outcome month card (summary-intent-outcome.jsx).
+    intent: {
+      plannedIncome: "Planned income",
+      actualIncome: "Actual income",
+      details: "Details",
+      detailsHint: "Income · spend · savings · note",
+      detailsFor: (monthLabel) => `${monthLabel} details`
+    },
     totalSpend: "Total spend",
     scope: "Scope",
     // The desktop scope switch under the Summary title.

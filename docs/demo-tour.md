@@ -29,12 +29,13 @@ from one month to the next.
 
 Open **Summary** with **Household** selected.
 
-- The cards compare planned and actual income and spending over the last 12
-  months. "Realized savings" is what was actually left over.
+- The top card compares spending with the plan over the last 12 months;
+  income and savings sit beside it. "Realized savings" is what was actually left over.
 - **Money insights** under the cards lead with a **To do**: Serene's OCBC 365
   Card statement differs from what's recorded by $42.80. Its **Big picture** line says the household
   kept about 61% of what came in over the last 11 complete months.
-- Scroll to **Intent vs Outcome**: most months finish under plan. One month,
+- Scroll to **Intent vs Outcome**: each month is a card with its spend
+  against plan. Most months finish under plan. One month,
   two months ago, sticks out above the plan. Hold that thought.
 
 Story: "You see what you intended and what actually happened, month by
