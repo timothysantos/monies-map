@@ -674,9 +674,9 @@ button.split-activity-card:hover {
   }
 }
 
-/* The create split expense card (split-expense-card.jsx, design.md "Lead ·
-   Support · Detail"): the lead card, then the share rows, the share editor
-   and the other Detail rows. A phone sheet stacks them; the wide dialog
+/* The split expense card (split-expense-card.jsx, design.md "Lead ·
+   Support · Detail"), for a new, edited or viewed expense: the lead card,
+   then the share rows, the share editor and the other Detail rows. A phone sheet stacks them; the wide dialog
    puts the card left of the rows. The blocks are in
    ui/lead-support-detail.css. */
 .split-expense-card {
@@ -738,25 +738,25 @@ button.split-activity-card:hover {
 }
 
 /* The head: title, context line and a round close button. */
-.split-expense-create-head {
+.split-expense-card-head {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 12px;
 }
 
-.split-expense-create-head-actions {
+.split-expense-card-head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.split-expense-create-head .totals-visibility-toggle--form {
+.split-expense-card-head .totals-visibility-toggle--form {
   width: 44px;
   height: 44px;
   border-radius: 50%;
 }
 
-.split-expense-create-close {
+.split-expense-card-close {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -769,12 +769,12 @@ button.split-activity-card:hover {
 }
 
 /* The bottom bar: Cancel, then Save expense under the thumb. */
-.split-dialog-content > form > .split-expense-create-actions {
+.split-dialog-content > form > .split-expense-card-actions {
   display: block;
 }
 
-.split-dialog-content .split-expense-create-actions .lsd-quiet,
-.split-dialog-content .split-expense-create-actions .lsd-primary {
+.split-dialog-content .split-expense-card-actions .lsd-quiet,
+.split-dialog-content .split-expense-card-actions .lsd-primary {
   min-height: 48px;
   padding: 0 18px;
   border-radius: 14px;
@@ -782,17 +782,17 @@ button.split-activity-card:hover {
   line-height: 1.2;
 }
 
-.split-dialog-content .split-expense-create-actions .lsd-primary {
+.split-dialog-content .split-expense-card-actions .lsd-primary {
   flex: 0 1 200px;
 }
 
 @media (max-width: 760px) {
-  .split-expense-create .split-dialog-scroll {
+  .split-expense-card-dialog .split-dialog-scroll {
     padding-right: 0;
     scrollbar-gutter: auto;
   }
 
-  .split-expense-create-head h2 {
+  .split-expense-card-head h2 {
     font-size: 1.45rem;
     line-height: 1.1;
   }
