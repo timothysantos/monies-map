@@ -414,30 +414,590 @@
   }
 }
 
-/* Settings -> Payment ways: one card per person, the two selects side by
-   side where there is room and stacked on a phone. */
-.settings-payment-ways {
+/* Settings in Lead · Support · Detail (design.md, "Settings").
+   The page is one list of 52 px rows; an opened section unfolds under its row.
+   Rounded groups come from the sibling selectors below: a run of rows is one
+   group, and an open section's body ends the run before it. */
+.settings-list {
+  display: block;
+}
+
+.settings-list > .settings-section > .settings-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-width: 0 1px 1px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-list > .settings-section:first-child > .settings-section-toggle,
+.settings-list > .settings-section.is-open + .settings-section > .settings-section-toggle {
+  border-top-width: 1px;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.settings-list > .settings-section:last-child > .settings-section-toggle,
+.settings-list > .settings-section.is-open > .settings-section-toggle {
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+.settings-list > .settings-section.is-open > .settings-section-toggle {
+  background: color-mix(in srgb, var(--accent-strong) 7%, white);
+}
+
+.settings-section-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.settings-section-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.settings-section-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.settings-section-value svg {
+  flex: 0 0 auto;
+}
+
+.settings-section-status {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-section-body {
   display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 12px 0 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+@media (min-width: 761px) {
+  .settings-section-body {
+    padding: 14px;
+  }
+}
+
+.settings-section-body .lsd-card {
+  box-shadow: 0 8px 20px rgba(27, 24, 21, 0.08);
+}
+
+.settings-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.settings-hint-strong {
+  color: var(--text);
+}
+
+.settings-hint-action {
+  color: var(--accent-strong);
+}
+
+/* Text that belongs to a group of rows but is not a row (a list of steps, a
+   form): inside the group, under the row that opens it. */
+.settings-detail-block {
+  display: grid;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.lsd-rows > .settings-detail-block:last-child {
+  border-bottom: 0;
+}
+
+.settings-row-name {
+  min-width: 0;
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-add-row .lsd-row-label {
+  max-width: none;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+/* A row with its own editor on the main part and a delete at the end. */
+.lsd-row.settings-split-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 4px 0 0;
+  cursor: default;
+}
+
+.settings-row-main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 8px 6px 8px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-row-main:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+.settings-row-main > svg {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.settings-row-text {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-row-text strong,
+.settings-row-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row-text small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.settings-row-main .settings-row-name {
+  flex: 1 1 auto;
+}
+
+.icon-action.settings-row-icon {
+  align-self: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.settings-category-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+}
+
+.lsd-row.settings-split-row.is-muted {
+  opacity: 0.65;
+}
+
+/* Quiet text buttons inside the opened sections: at least 44 px high. */
+.settings-section-body .settings-actions .subtle-action,
+.settings-section-body .settings-account-actions .subtle-action,
+.settings-section-body .settings-transfer-buttons .subtle-action,
+.settings-section-body .settings-suggestion-actions .subtle-action,
+.settings-section-body .settings-exception-row .subtle-action,
+.settings-section-body .settings-exception-form-actions .subtle-action,
+.settings-section-body .settings-duplicate-rule-summary .subtle-action,
+.settings-section-body .import-history-pagination .subtle-action {
+  min-height: 44px;
+  padding: 0 10px;
+  font-weight: 600;
+}
+
+.settings-section-body .subtle-action.muted-action {
+  color: var(--muted);
+}
+
+.settings-section-body .subtle-action:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* Panels that ask for attention (overlapping rules, past entries a rule now
+   matches, suggestions): a pastel pair, not a bordered card in a card. */
+.settings-section-body .settings-attention-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--pastel-sky-line);
+  border-radius: 16px;
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
+}
+
+.settings-section-body .settings-attention-panel.settings-duplicate-rule-panel {
+  border-color: var(--pastel-rose-line);
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+}
+
+.settings-attention-panel .settings-hint,
+.settings-attention-panel p {
+  color: inherit;
+}
+
+.settings-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
-.settings-account-row.settings-payment-way-person {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+.settings-panel-head h3 {
   margin: 0;
+  font-size: 1rem;
+}
+
+.settings-section-body .settings-suggestion-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+}
+
+.settings-suggestion-main strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.settings-suggestion-main p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.settings-section-body .settings-suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.settings-section-body .settings-duplicate-rule-issue {
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--pastel-rose-line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+}
+
+.settings-section-body .settings-duplicate-rule-summary p {
+  color: var(--muted);
+}
+
+/* Rule groups: one row per category, folded until opened. */
+.settings-section-body .settings-rule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-section-body .settings-rule-group {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+}
+
+.settings-section-body .settings-rule-group-header {
+  min-height: 52px;
+  padding: 8px 14px;
+}
+
+.settings-section-body .settings-rule-group-list {
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.settings-section-body .settings-rule-group-list > .lsd-row {
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-section-body .settings-rule-group-list > .lsd-row:last-child {
+  border-bottom: 0;
+}
+
+/* Accounts: one white card each, with the balance as its figure. */
+.settings-section-body .settings-accounts-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 10px;
+}
+
+.settings-section-body .settings-account-card {
+  display: grid;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 8px;
+  height: auto;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.settings-account-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-account-top .settings-account-main strong {
+  font-size: 1rem;
+}
+
+.settings-account-balance {
+  display: grid;
+  justify-items: end;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.settings-account-balance strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-account-balance small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.settings-account-facts {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-account-facts p {
+  margin: 0;
+}
+
+.settings-section-body .settings-account-actions {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.settings-account-icons {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* Apple Pay shortcut. */
+.settings-section-body .settings-shortcut-priority {
+  gap: 10px;
+}
+
+.settings-section-body .settings-shortcut-account-row {
+  height: auto;
+  padding: 6px 6px 6px 12px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.settings-shortcut-install-button {
+  width: 100%;
+  min-height: 50px;
+}
+
+.settings-shortcut-install-button svg {
+  flex: 0 0 auto;
+}
+
+.settings-section-body .settings-shortcut-steps {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+/* Payment ways: a person chip, then that person's two rows. */
+.settings-payment-ways {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-payment-way-person {
+  display: grid;
+  gap: 8px;
   min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .settings-payment-way-person legend {
   float: left;
   width: 100%;
+  margin: 0 0 8px;
   padding: 0;
-  font-weight: 700;
 }
 
-.settings-payment-way-fields {
+.settings-payment-way-person > .lsd-rows,
+.settings-payment-way-person > .settings-hint {
+  clear: both;
+}
+
+/* Ask and AI: the lead, two read-only rows, then the credit line. */
+.settings-claude-credit {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 10px;
+  gap: 12px;
+}
+
+/* Balance trust rules and the exception list. */
+.settings-section-body .settings-exception-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-section-body .settings-exception-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.settings-section-body .settings-exception-main {
+  gap: 2px;
+}
+
+.settings-section-body .settings-exception-main strong,
+.settings-section-body .settings-exception-main p,
+.settings-section-body .settings-exception-main small {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.settings-section-body .settings-exception-main p,
+.settings-section-body .settings-exception-main small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.settings-exception-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.settings-section-body .settings-exception-form {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+/* Unresolved transfers and recent balance activity: flat rows in one group. */
+.settings-section-body .settings-transfer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px 12px;
+  height: auto;
+  padding: 12px 14px;
+  cursor: default;
+}
+
+.settings-transfer-main {
+  min-width: 0;
+}
+
+.settings-transfer-main strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.settings-transfer-main p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.settings-transfer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 2px 6px;
+  margin: 0 -10px;
+}
+
+.settings-section-body .settings-activity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 12px;
+  height: auto;
+  padding: 12px 14px;
+  cursor: default;
+}
+
+.settings-activity-main {
+  min-width: 0;
+}
+
+.settings-activity-main strong {
+  display: block;
+}
+
+.settings-activity-main p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+/* Error diagnostics: each failure is one 56 px row that opens its details. */
+.settings-section-body .settings-diagnostic-row {
+  border-radius: 14px;
+}
+
+.settings-section-body .settings-diagnostic-row summary {
+  min-height: 56px;
 }

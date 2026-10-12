@@ -258,7 +258,7 @@ test.describe("the Claude credit notice and Settings on a wide screen", () => {
     const section = page.locator("#settings-ask-ai");
     await expect(section.locator(".claude-credit-line")).toHaveText("Claude credits are running low: about $16.40 of $20 used. Ask still works.");
     await expect(section.getByRole("link", { name: "Top up in the Claude Console" })).toHaveAttribute("href", BILLING);
-    await expect(section.getByText(/^Last checked /)).toBeVisible();
+    await expect(section.getByText("Last checked", { exact: true })).toBeVisible();
 
     await section.getByRole("button", { name: "I've topped up" }).click();
     const dialog = page.getByRole("dialog", { name: "I've topped up" });
