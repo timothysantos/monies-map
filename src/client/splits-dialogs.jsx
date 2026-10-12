@@ -41,14 +41,33 @@ const SPLIT_CURRENCY_OPTIONS = [
   ["INR", "Indian rupee"]
 ];
 
+// The fields the group dialog edits: a change to any of them makes a swipe
+// down ask "Discard changes?" before closing.
+function pickGroupFields(dialog) {
+  return [dialog.name ?? "", dialog.currency ?? "SGD", dialog.expenseSource ?? "mixed"];
+}
+
 // SplitsPanel owns the draft state; these dialogs keep the long JSX out of the panel body.
 export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = false, onChange, onClose, onSave }) {
+  const isMobileLayout = useIsMobileLayout();
+  const [content, setContent] = useState(null);
+  // On a phone the dialog is a bottom sheet and swipes down to close,
+  // asking first once a field changed.
+  const isDirty = useDraftChanged(readOnly ? null : dialog, pickGroupFields);
+  const swipe = useSheetSwipeDismiss({ sheet: content, enabled: isMobileLayout, isDirty, isSubmitting, onClose });
+
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-dialog-content">
+        <Dialog.Content
+          ref={setContent}
+          className="note-dialog-content split-dialog-content split-group-dialog"
+          {...swipe.contentProps}
+        >
+          {isMobileLayout ? <SheetDragHandle /> : null}
           <form
+            inert={swipe.isConfirmOpen}
             onSubmit={(event) => {
               event.preventDefault();
               if (isSubmitting) {
@@ -88,6 +107,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
               </button>
             </div>
           </form>
+          <SheetDiscardConfirm open={swipe.isConfirmOpen} onKeepEditing={swipe.keepEditing} onDiscard={swipe.discard} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -553,12 +573,27 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
 }
 
 export function SplitSettlementDialog({ dialog, groupOptions, people, formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+  const isMobileLayout = useIsMobileLayout();
+  const [content, setContent] = useState(null);
+  // On a phone the dialog is a bottom sheet (Settle group, Record
+  // settlement) and swipes down to close, asking first when the draft
+  // changed since it opened.
+  const isDirty = useDraftChanged(readOnly ? null : dialog, buildComparableSplitDraft);
+  const swipe = useSheetSwipeDismiss({ sheet: content, enabled: isMobileLayout, isDirty, isSubmitting, onClose });
+
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-dialog-content" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <Dialog.Content
+          ref={setContent}
+          className="note-dialog-content split-dialog-content split-settlement-dialog"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          {...swipe.contentProps}
+        >
+          {isMobileLayout ? <SheetDragHandle /> : null}
           <form
+            inert={swipe.isConfirmOpen}
             onSubmit={(event) => {
               event.preventDefault();
               if (isSubmitting || isSaveDisabled) {
@@ -573,7 +608,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
                 ? "Review the split and its linked ledger evidence."
                 : messages.splits.groupSettlementDetail(groupOptions.find((group) => group.value === dialog?.groupId)?.label)}</Dialog.Description>
             </div>
-            <div className="split-dialog-scroll">
+            <div className="split-dialog-scroll" data-sheet-body>
               <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount={!readOnly} />
@@ -612,6 +647,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
               </button> : null}
             </div>
           </form>
+          <SheetDiscardConfirm open={swipe.isConfirmOpen} onKeepEditing={swipe.keepEditing} onDiscard={swipe.discard} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
