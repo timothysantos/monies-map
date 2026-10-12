@@ -28,7 +28,6 @@ test("Month lead: the cards' spend, plan, target and remaining budget, with inco
     plannedSpendMinor: 500_000,
     percentOfPlan: 84,
     headroom: { amountMinor: 80_000, isOver: false, tone: "in" },
-    progress: { valueMinor: 420_000, planMinor: 500_000 },
     income: { amountMinor: 650_000, tone: "in", planMinor: 600_000 },
     saved: { amountMinor: 230_000, tone: "in", planMinor: 180_000 },
     remaining: {

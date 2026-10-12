@@ -168,6 +168,10 @@ Recommended relationship:
 - `savings target` is a first-class month-level planning input
 - `realized savings` is a derived month-level outcome
 - `savings variance` is `realized savings - savings target`
+- the `savings bar` (Summary and Month lead) draws actual income as 100%,
+  with spent and kept (income minus spent, the same as realized savings) as
+  its parts; when spent is more than income, the excess is shown as money
+  that "came out of savings". It reuses these figures and adds no field.
 
 Optional related concept:
 - a `planned savings allocation` may exist as one or more `month plan rows`

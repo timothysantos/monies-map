@@ -140,7 +140,9 @@ masked too.
 The choice is remembered only in that browser. A different browser or a
 cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
-they appear with the real figures as soon as you reveal totals. Edit
+they appear with the real figures as soon as you reveal totals. The earned,
+spent and kept bar keeps its shape and shows only percentages (no amounts) while
+totals are hidden. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -242,8 +244,18 @@ over plan.
 ### What you see
 
 - **Spent**: what you spent over the selected range against what you planned
-  to spend, with a bar, the share of the plan used and how much you are under
+  to spend, with the share of the plan used and how much you are under
   (green) or over (red) plan.
+- **Earned, spent and kept**: under the Spent figure, one bar stands for all
+  the money you earned over the range. The red part is what you spent and the
+  green part is what you kept. If you spent more than you earned, the bar
+  runs to a small **income** mark and the striped part after it is the money
+  that came out of your savings. A thin blue bar under it shows your plan on
+  the same scale: what you planned to spend, then what you planned to save.
+  One line says it in words ("You kept $38,000 of the $247,000 you earned
+  (15%)"), with your plan in smaller print under it. Hover over a part of the
+  bar (on a phone, tap it) to see how much it is and what share of your
+  income that is.
 - **Income** and **Saved**: the income that came in, with the planned income
   under it, and what you kept, with your savings target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
@@ -309,8 +321,8 @@ there to reach other months.
   before or after, within the range.
 - The **Summary** button in the navigation always goes back to All months.
 
-With totals hidden, the amounts show as dots, the bar is empty, and nothing
-turns red or says "under" or "over".
+With totals hidden, the amounts show as dots, the bar turns grey and shows
+only percentages, and nothing turns red or says "under" or "over".
 
 ### On a phone
 
@@ -330,8 +342,9 @@ stays highlighted, and the range at the top stays as it was.
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
 - **The top card**: what you have spent this month against what you
-  planned, with a bar, the percent of plan, and how much you are under or
-  over plan. Under the bar, in the same card, are **Income** (received, with
+  planned, with the percent of plan and how much you are under or over plan.
+  Under that is the same earned, spent and kept bar as on
+  [Summary](#summary), for this month. Under it, in the same card, are **Income** (received, with
   the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
   Select it to see what it means.

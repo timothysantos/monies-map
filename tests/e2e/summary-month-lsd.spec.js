@@ -206,10 +206,10 @@ test.describe("phone", { tag: "@webkit" }, () => {
     const remaining = await box(page.locator('.month-lead-group [data-metric="remaining"]'));
     expect(lead.width).toBeGreaterThan(390 - 2 * 24);
     // One compact card: the Income, Saved and Remaining columns are inside
-    // it, on one row of equal widths, and it is at most 190px tall so the
-    // Money insights start above the fold.
+    // it, on one row of equal widths, and it is at most 205px tall (savings
+    // bar included) so the Money insights start above the fold.
     const saved = await box(page.locator('.month-lead-group [data-metric="saved"]'));
-    expect(lead.bottom - lead.y, "lead card height").toBeLessThanOrEqual(190);
+    expect(lead.bottom - lead.y, "lead card height").toBeLessThanOrEqual(205);
     for (const column of [income, saved, remaining]) {
       expect(column.y).toBeGreaterThanOrEqual(lead.y);
       expect(column.bottom).toBeLessThanOrEqual(lead.bottom);
@@ -323,8 +323,8 @@ test.describe("phone", { tag: "@webkit" }, () => {
     const lead = page.locator(".month-lead");
     await expect(lead.locator(".summary-lead-spent")).toHaveText("••••");
     expect(await colour(lead.locator(".summary-lead-spent .private-money"))).toBe(INK.text);
-    await expect(lead.locator(".lsd-bar")).toBeVisible();
-    await expect(lead.locator(".lsd-bar-fill")).toHaveCount(0);
+    await expect(lead.locator(".savings-bar-track")).toBeVisible();
+    await expect(lead.locator(".lsd-bar")).toHaveCount(0);
     await expect(lead.locator(".lsd-progress-line")).toHaveCount(0);
     for (const metric of ["income", "saved", "remaining"]) {
       const pill = page.locator(`.month-lead-group [data-metric="${metric}"]`);
@@ -373,7 +373,7 @@ test.describe("desktop", () => {
     const isOver = figures.actual > figures.planned;
     expect(await colour(page.locator(".month-lead .summary-lead-spent .private-money"))).toBe(isOver ? INK.short : INK.text);
     expect(await colour(page.locator(".month-lead .summary-lead-headroom"))).toBe(isOver ? INK.short : INK.in);
-    expect(await page.locator(".month-lead .lsd-bar-fill").getAttribute("class")).toContain(isOver ? "money-short" : "money-neutral");
+    await expect(page.locator(".month-lead .lsd-bar")).toHaveCount(0);
     await expectRemainingExplains(page, figures);
   });
 
