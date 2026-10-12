@@ -166,7 +166,7 @@ test.describe("phone", () => {
     await reseedDemo(page);
   });
 
-  test("Month lead: the bar, line and plan from the DTO, a tap opens the percentages, the card stays near 230px", async ({ page }) => {
+  test("Month lead: the bar, line and plan from the DTO, a tap opens the percentages, the card stays near 200px", async ({ page }) => {
     await recordSalary(page, 6_500_000);
     await revealMoney(page);
     const figures = await expectedFigures(page, "month");
@@ -174,12 +174,12 @@ test.describe("phone", () => {
     const lead = await openLead(page, "month");
     const { bar, keptSegment, spentSegment, description } = await expectKeptBar(page, lead, figures);
 
-    // One line of text each (the card is compact), the card ≤ 230px, and the
+    // One line of text each (the card is compact), the card ≤ 205px, and the
     // Money insights still start above the fold.
     expect((await box(bar.locator("[data-savings-sentence]"))).height, "sentence on one line").toBeLessThan(22);
     expect((await box(bar.locator("[data-savings-plan]"))).height, "plan line on one line").toBeLessThan(18);
     const card = await box(lead);
-    expect(card.height, "Month lead card height").toBeLessThanOrEqual(230);
+    expect(card.height, "Month lead card height").toBeLessThanOrEqual(205);
     expect((await box(page.locator(".financial-insight").first())).y, "Money insights above the fold").toBeLessThan(664);
     for (const column of ["income", "saved", "remaining"]) {
       const columnBox = await box(page.locator(`.month-lead-group [data-metric="${column}"]`));
@@ -218,7 +218,7 @@ test.describe("phone", () => {
     expect(figures.over, "the fixture month overspends the small salary").toBe(true);
     const lead = await openLead(page, "month");
     await expectOverBar(page, lead, figures);
-    expect((await box(lead)).height, "Month lead card height").toBeLessThanOrEqual(230);
+    expect((await box(lead)).height, "Month lead card height").toBeLessThanOrEqual(205);
     await expect(lead.locator('[data-segment="savings"]')).toHaveAccessibleName("Came out of savings");
     await lead.locator('[data-segment="savings"]').tap();
     await expect(lead.locator('[data-popover="savings"]')).toBeVisible();
@@ -285,9 +285,11 @@ test.describe("desktop", () => {
     await page.keyboard.press("Escape");
     await expect(keptPopover).toBeHidden();
 
-    // The Support pills and the spend bar are still there.
+    // The Support pills and the plan line are still there; the old spend-vs-plan
+    // bar is not (the savings bar and its plan bar are the only bars).
     await expect(page.locator('.summary-support-pill[data-metric="income"] strong')).toBeVisible();
-    await expect(lead.locator(".lsd-bar")).toBeVisible();
+    await expect(lead.locator(".lsd-progress-line")).toBeVisible();
+    await expect(lead.locator(".lsd-bar")).toHaveCount(0);
   });
 
   test("Summary lead, spending more than was earned: the income tick and the hatched part", async ({ page }) => {

@@ -633,8 +633,9 @@ Rules:
 Where it is used:
 
 - Summary top (`summary-lead.jsx`, `summary-lead-model.js`): "Spent ·
-  range", the range's actual spend "of" its planned spend, the bar, the
-  percent of plan and how far under (mint) or over (rose) plan; Income and
+  range", the range's actual spend "of" its planned spend, then one text line
+  (no bar) with the percent of plan and how far under (mint) or over (rose)
+  plan, then the savings bar (below); Income and
   Saved pills with planned income and the savings target. Every figure and
   tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
   stacks the pills under the lead; desktop and tablet put them in a column
@@ -647,13 +648,15 @@ Where it is used:
   a phone).
 - Month top (`MonthLead` in `month-overview.jsx`, `month-lead-model.js`): the
   same `SpendLeadGroup` for one month, eyebrow "Spent · May 2026". The lead
-  is actual spend against planned spend with the bar, "x% of plan" and "$y
-  under plan" (mint) or "$y over plan" (rose, the old Spend gap); Income
+  is actual spend against planned spend with one text line (no bar), "x% of
+  plan" and "$y under plan" (mint) or "$y over plan" (rose, the old Spend
+  gap), then the savings bar (below); Income
   (received, with "plan $x"), Saved (realized, with "target $x") and
   Remaining budget are one row of three equal columns inside the lead
-  card under the bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
-  colour only, 52 px tall, at most 230 px for the whole card on an iPhone 13
-  with the savings bar, the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
+  card under the savings bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
+  colour only, 52 px tall, at most 205 px for the whole card on an iPhone 13
+  with the savings bar (about 203 px; the card's gaps and padding are tight
+  in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
   spend, plan, savings target and remaining budget are the Month metric
   cards' own figures, so nothing is recomputed. Remaining budget is a
@@ -662,9 +665,10 @@ Where it is used:
   tiles are gone; nothing scrolls sideways at 390 px.
 - Savings bar (`ui/savings-bar.jsx`, `savings-bar-model.js`, CSS in
   `summary-lead.css`; inside `SpendLeadGroup`, so on both the Summary top and
-  the Month top, between the spend bar and the Income / Saved pills or
-  columns). The spend bar says how spending compares with the plan; this one
-  says what the period left you with. All money earned in the period
+  the Month top, under the spend line and above the Income / Saved pills or
+  columns). The old spend-against-plan bar was removed (three bars were too
+  many; its text line stays), so this is the lead's only bar: it says what the
+  period left you with. All money earned in the period
   (income) is one 10 px bar, income = 100%: rose is spent, mint is kept
   (income minus spent). If spent is more than income there is no mint: the bar
   is as long as the spending, rose up to a small "income" tick, and the part

@@ -244,7 +244,7 @@ over plan.
 ### What you see
 
 - **Spent**: what you spent over the selected range against what you planned
-  to spend, with a bar, the share of the plan used and how much you are under
+  to spend, with the share of the plan used and how much you are under
   (green) or over (red) plan.
 - **Earned, spent and kept**: under the Spent figure, one bar stands for all
   the money you earned over the range. The red part is what you spent and the
@@ -321,8 +321,8 @@ there to reach other months.
   before or after, within the range.
 - The **Summary** button in the navigation always goes back to All months.
 
-With totals hidden, the amounts show as dots, the bar is empty, and nothing
-turns red or says "under" or "over".
+With totals hidden, the amounts show as dots, the bar turns grey and shows
+only percentages, and nothing turns red or says "under" or "over".
 
 ### On a phone
 
@@ -342,8 +342,8 @@ stays highlighted, and the range at the top stays as it was.
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
 - **The top card**: what you have spent this month against what you
-  planned, with a bar, the percent of plan, and how much you are under or
-  over plan. Under that bar is the same earned, spent and kept bar as on
+  planned, with the percent of plan and how much you are under or over plan.
+  Under that is the same earned, spent and kept bar as on
   [Summary](#summary), for this month. Under it, in the same card, are **Income** (received, with
   the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
