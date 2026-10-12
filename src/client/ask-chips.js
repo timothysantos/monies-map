@@ -27,7 +27,8 @@
 
 import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
 import { formatSuggestedShare } from "./ask-split-suggestion";
-import { askCopy, formatCardDate, formatMonthYear } from "./copy/ask-copy";
+import { askCopy, formatCardDate } from "./copy/ask-copy";
+import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
 import { moneyWithCurrency } from "./formatters";
 
 /** @typedef {{ key: string, label: string, onClick: () => void, primary?: boolean, back?: boolean, disabled?: boolean }} AskChip */
@@ -342,12 +343,12 @@ export function buildPlanQuestionChips({ focus, actions }) {
   const repeated = new Set(labels.filter((label, index) => labels.indexOf(label) !== index));
   const optionLabel = (option) => {
     if (question.field === "month") return formatMonthYear(option);
-    if (question.field === "line" && (repeated.has(option.label) || !option.label) && option.ownerLabel) return askCopy.plan.lineWithOwner(option.label, option.ownerLabel);
+    if (question.field === "line" && (repeated.has(option.label) || !option.label) && option.ownerLabel) return askPlanCopy.lineWithOwner(option.label, option.ownerLabel);
     return option.label;
   };
   const prompt = question.field === "month"
-    ? askCopy.plan.questions.month
-    : question.field === "line" ? askCopy.plan.questions.line(question.name) : askCopy.plan.questions.owner(question.line);
+    ? askPlanCopy.questions.month
+    : question.field === "line" ? askPlanCopy.questions.line(question.name) : askPlanCopy.questions.owner(question.line);
   return {
     prompt,
     items: /** @type {AskChip[]} */ (question.options.slice(0, MAX_PLAN_OPTION_CHIPS).map((option, index) => ({

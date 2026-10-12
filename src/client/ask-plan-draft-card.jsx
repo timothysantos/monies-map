@@ -1,7 +1,8 @@
 import { ArrowLeftRight, CalendarDays, CopyPlus, Sparkles, Tag } from "lucide-react";
 import { useState } from "react";
 
-import { askCopy, formatMonthYear, formatShortMonth } from "./copy/ask-copy";
+import { formatShortMonth } from "./copy/ask-copy";
+import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
@@ -18,19 +19,19 @@ const SHOWN_LINES = 6;
 export function planDraftHead(draft) {
   const amount = moneyWithCurrency(draft.lead.amountMinor);
   if (draft.kind === "move") {
-    return { title: askCopy.plan.moveTitle(amount), subtitle: askCopy.plan.moveSubtitle(draft.lead.fromLabel ?? "", draft.lead.toLabel ?? ""), caption: formatShortMonth(draft.month) };
+    return { title: askPlanCopy.moveTitle(amount), subtitle: askPlanCopy.moveSubtitle(draft.lead.fromLabel ?? "", draft.lead.toLabel ?? ""), caption: formatShortMonth(draft.month) };
   }
   if (draft.kind === "copy") {
     return {
-      title: askCopy.plan.copyTitle(formatMonthYear(draft.month)),
-      subtitle: askCopy.plan.copySubtitle(formatMonthYear(draft.copyFrom)),
-      caption: askCopy.plan.was(moneyWithCurrency(draft.lead.beforeMinor ?? 0))
+      title: askPlanCopy.copyTitle(formatMonthYear(draft.month)),
+      subtitle: askPlanCopy.copySubtitle(formatMonthYear(draft.copyFrom)),
+      caption: askPlanCopy.was(moneyWithCurrency(draft.lead.beforeMinor ?? 0))
     };
   }
   return {
-    title: askCopy.plan.lineTitle(draft.lead.label),
+    title: askPlanCopy.lineTitle(draft.lead.label),
     subtitle: formatMonthYear(draft.month),
-    caption: draft.lead.beforeMinor === null ? askCopy.plan.newLine : askCopy.plan.was(moneyWithCurrency(draft.lead.beforeMinor))
+    caption: draft.lead.beforeMinor === null ? askPlanCopy.newLine : askPlanCopy.was(moneyWithCurrency(draft.lead.beforeMinor))
   };
 }
 
@@ -79,7 +80,7 @@ export function AskPlanDraftCard({ item, categories = [], people = [], busy = fa
       key={change.rowId}
       readOnly
       data-plan-line={change.rowId}
-      label={showOwner && change.ownerLabel ? askCopy.plan.lineWithOwner(change.label, change.ownerLabel) : change.label}
+      label={showOwner && change.ownerLabel ? askPlanCopy.lineWithOwner(change.label, change.ownerLabel) : change.label}
       value={<ChangeValue beforeMinor={change.beforeMinor} afterMinor={change.afterMinor} hidden={!areTotalsVisible} />}
     />
   ));
@@ -90,16 +91,16 @@ export function AskPlanDraftCard({ item, categories = [], people = [], busy = fa
   ];
 
   return (
-    <section id={item.id} className={`ask-plan-draft${settled ? " is-settled" : ""}`} data-plan-draft={item.status} aria-label={askCopy.plan.cardLabel}>
+    <section id={item.id} className={`ask-plan-draft${settled ? " is-settled" : ""}`} data-plan-draft={item.status} aria-label={askPlanCopy.cardLabel}>
       <LeadCard
         className="ask-plan-lead"
         tag={(
           <span className="ask-plan-tags">
-            <span className={`ask-card-tag ${saved ? "is-saved" : "is-filled"}`}>{saved ? askCopy.plan.savedTag : askCopy.plan.draftTag}</span>
+            <span className={`ask-card-tag ${saved ? "is-saved" : "is-filled"}`}>{saved ? askPlanCopy.savedTag : askPlanCopy.draftTag}</span>
             {item.source === "ai" && !saved ? (
               <span className="ask-card-tag is-filled ask-plan-ai-tag">
                 <Sparkles size={13} aria-hidden="true" />
-                {askCopy.plan.aiTag}
+                {askPlanCopy.aiTag}
               </span>
             ) : null}
           </span>
@@ -109,26 +110,26 @@ export function AskPlanDraftCard({ item, categories = [], people = [], busy = fa
         subtitle={<span className="ask-plan-subtitle" style={category ? { "--cat": category.colorHex } : undefined}>{head.subtitle}</span>}
         amount={moneyWithCurrency(draft.kind === "copy" ? after.plannedSpendMinor : draft.lead.amountMinor)}
         tone={areTotalsVisible ? "plan" : "neutral"}
-        amountCaption={saved ? askCopy.plan.planned : (areTotalsVisible || head.caption === askCopy.plan.newLine || draft.kind === "move" ? head.caption : null)}
+        amountCaption={saved ? askPlanCopy.planned : (areTotalsVisible || head.caption === askPlanCopy.newLine || draft.kind === "move" ? head.caption : null)}
         chips={saved ? null : (
           <>
-            {viewPerson ? <MetaChip person={viewPerson.name}>{viewPerson.name}</MetaChip> : <MetaChip>{askCopy.plan.household}</MetaChip>}
+            {viewPerson ? <MetaChip person={viewPerson.name}>{viewPerson.name}</MetaChip> : <MetaChip>{askPlanCopy.household}</MetaChip>}
             {draft.kind === "move" ? null : <MetaChip icon={CalendarDays}>{formatShortMonth(draft.month)}</MetaChip>}
-            {sameSpend ? <MetaChip tone="sky" data-chip="same-spend">{askCopy.plan.sameSpend}</MetaChip> : null}
+            {sameSpend ? <MetaChip tone="sky" data-chip="same-spend">{askPlanCopy.sameSpend}</MetaChip> : null}
           </>
         )}
       />
       {saved ? (
-        <DetailRows label={askCopy.plan.savedRowsLabel}>
-          <DetailRow label={askCopy.plan.seeOnMonth} state="action" onClick={onOpenMonth} disabled={busy} />
-          <DetailRow label={item.status === "undoing" ? askCopy.plan.undoing : askCopy.plan.undo} onClick={onUndo} disabled={busy} data-plan-undo="" />
+        <DetailRows label={askPlanCopy.savedRowsLabel}>
+          <DetailRow label={askPlanCopy.seeOnMonth} state="action" onClick={onOpenMonth} disabled={busy} />
+          <DetailRow label={item.status === "undoing" ? askPlanCopy.undoing : askPlanCopy.undo} onClick={onUndo} disabled={busy} data-plan-undo="" />
         </DetailRows>
       ) : (
         <>
-          <DetailRows label={askCopy.plan.rowsLabel}>
+          <DetailRows label={askPlanCopy.rowsLabel}>
             {lineRows.slice(0, SHOWN_LINES)}
             {lineRows.length > SHOWN_LINES ? (
-              <MoreDetails label={askCopy.plan.moreLines(lineRows.length - SHOWN_LINES)} openLabel={askCopy.plan.fewerLines} open={linesOpen} onOpenChange={setLinesOpen}>
+              <MoreDetails label={askPlanCopy.moreLines(lineRows.length - SHOWN_LINES)} openLabel={askPlanCopy.fewerLines} open={linesOpen} onOpenChange={setLinesOpen}>
                 {lineRows.slice(SHOWN_LINES)}
               </MoreDetails>
             ) : null}
@@ -138,7 +139,7 @@ export function AskPlanDraftCard({ item, categories = [], people = [], busy = fa
                 readOnly
                 className="ask-plan-total"
                 data-plan-total={key}
-                label={askCopy.plan.totals[key]}
+                label={askPlanCopy.totals[key]}
                 value={<ChangeValue beforeMinor={beforeMinor} afterMinor={afterMinor} tone={tone} hidden={!areTotalsVisible} />}
               />
             ))}
@@ -146,10 +147,10 @@ export function AskPlanDraftCard({ item, categories = [], people = [], busy = fa
           {draft.warning && areTotalsVisible ? <p className="ask-plan-warning" data-plan-warning="">{draft.warning.text}</p> : null}
           <BottomActions
             className="ask-plan-actions"
-            quietLabel={askCopy.plan.discard}
+            quietLabel={askPlanCopy.discard}
             onQuiet={onDiscard}
             quietDisabled={busy}
-            primaryLabel={item.status === "saving" ? askCopy.plan.saving : askCopy.plan.save}
+            primaryLabel={item.status === "saving" ? askPlanCopy.saving : askPlanCopy.save}
             onPrimary={onSave}
             primaryDisabled={busy}
           />

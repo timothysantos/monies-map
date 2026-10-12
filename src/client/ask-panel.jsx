@@ -56,7 +56,8 @@ import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
 import { buildChipRow, findActiveItem } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
 import { createPressGesture, createVoiceController, joinSpokenText } from "./ask-voice";
-import { askCopy, formatMonthYear, formatShortMonth } from "./copy/ask-copy";
+import { askCopy, formatShortMonth } from "./copy/ask-copy";
+import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
@@ -623,11 +624,11 @@ function AskConversation({
   // its answer drafts against the same ones.
   async function askPlanDraft(text, request, answers = {}) {
     setWorking("plan");
-    setStatus(askCopy.plan.reading);
+    setStatus(askPlanCopy.reading);
     try {
       const result = await requestPlanDraft({ text, viewId: request.viewId, month: request.month, answers });
       if (!result.ok) {
-        appendThread(threadItem("note", { text: askCopy.plan.notes.failed, tone: "calm" }));
+        appendThread(threadItem("note", { text: askPlanCopy.notes.failed, tone: "calm" }));
         return true;
       }
       const { reading } = result;
@@ -640,7 +641,7 @@ function AskConversation({
         appendThread(threadItem("note", { text: describePlanNote(reading.note, areTotalsVisible) }));
       } else {
         appendThread(
-          threadItem("note", { text: askCopy.plan.intro }),
+          threadItem("note", { text: askPlanCopy.intro }),
           threadItem("plan-draft", { text, request, draft: reading.draft, source: reading.source, status: "draft" })
         );
       }
@@ -686,7 +687,7 @@ function AskConversation({
     updateThreadItem(itemId, { status: "saving" });
     setWorking("plan-save");
     try {
-      const result = await applyPlanChanges({ month: item.draft.month, changes: item.draft.apply }, { fallbackError: askCopy.plan.notes.saveFailed });
+      const result = await applyPlanChanges({ month: item.draft.month, changes: item.draft.apply }, { fallbackError: askPlanCopy.notes.saveFailed });
       if (!result.ok) {
         updateThreadItem(itemId, { status: "draft" });
         appendThread(threadItem("note", { text: result.error }));
@@ -694,7 +695,7 @@ function AskConversation({
       }
       updateThreadItem(itemId, { status: "saved", undo: result.undo });
       onEntryMutation?.({ month: item.draft.month, invalidateMonth: true, invalidateSummary: true });
-      appendThread(threadItem("note", { text: askCopy.plan.notes.saved(formatMonthYear(item.draft.month)) }));
+      appendThread(threadItem("note", { text: askPlanCopy.notes.saved(formatMonthYear(item.draft.month)) }));
     } finally {
       setWorking("");
     }
@@ -706,7 +707,7 @@ function AskConversation({
       return;
     }
     updateThreadItem(itemId, { status: "discarded" });
-    appendThread(threadItem("note", { text: askCopy.plan.notes.discarded }));
+    appendThread(threadItem("note", { text: askPlanCopy.notes.discarded }));
   }
 
   // Undo this change: the save's own undo list, the same way; the card is
@@ -719,7 +720,7 @@ function AskConversation({
     updateThreadItem(itemId, { status: "undoing" });
     setWorking("plan-undo");
     try {
-      const result = await applyPlanChanges({ month: item.draft.month, changes: item.undo }, { fallbackError: askCopy.plan.notes.undoFailed });
+      const result = await applyPlanChanges({ month: item.draft.month, changes: item.undo }, { fallbackError: askPlanCopy.notes.undoFailed });
       if (!result.ok) {
         updateThreadItem(itemId, { status: "saved" });
         appendThread(threadItem("note", { text: result.error }));
@@ -727,7 +728,7 @@ function AskConversation({
       }
       updateThreadItem(itemId, { status: "draft", undo: [] });
       onEntryMutation?.({ month: item.draft.month, invalidateMonth: true, invalidateSummary: true });
-      appendThread(threadItem("note", { text: askCopy.plan.notes.undone }));
+      appendThread(threadItem("note", { text: askPlanCopy.notes.undone }));
     } finally {
       setWorking("");
     }
@@ -1666,7 +1667,7 @@ function ThreadItem({ item, settled = false, answerProps }) {
 // Why a plan request drew no draft, in plain words. A line that is short
 // keeps its amount out of sight while money is hidden.
 function describePlanNote(note, totalsVisible) {
-  const notes = askCopy.plan.notes;
+  const notes = askPlanCopy.notes;
   const month = (key) => formatMonthYear(key);
   if (note.reason === "no_plan_to_copy") return notes.noPlanToCopy(month(note.month));
   if (note.reason === "same_month") return notes.sameMonth(month(note.month));
