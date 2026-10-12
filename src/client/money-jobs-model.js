@@ -9,10 +9,11 @@ export const wholeMoney = (minor) => wholeMoneyFormatter.format(minor / 100);
 
 const atLeastZero = (minor) => Math.max(0, minor ?? 0);
 
-// The window event a lead's "Ask about this" sends on a wide screen
-// ({ text }); the shell (App.jsx, which names it as a literal so neither
-// side imports the other) opens the Ask panel with it.
-export const ASK_ABOUT_EVENT = "monies:ask-about";
+// The window event a bar part's or a job's menu sends (ui/money-actions.jsx):
+// { entries: { pathname, search } } to open Entries, or { askText } to open
+// Ask with that question. The shell (App.jsx, which names it as a literal so
+// neither side imports the other) navigates.
+export const MONEY_ACTION_EVENT = "monies:money-action";
 
 // What the period's income went to, from figures the lead already has
 // (design.md "Money jobs"; DOMAIN.md "Money job"). The lead's spend counts

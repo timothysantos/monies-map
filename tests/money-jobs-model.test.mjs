@@ -168,9 +168,9 @@ test("the Month lead takes the investment goal from its Investments plan rows, n
   }), { income: 900_000, spending: 350_000, invested: 150_000, movedToSavings: 0, kept: 400_000, spendPlan: 225_000, savePlan: 180_000, investPlan: 195_000 });
 });
 
-test("the shell listens for the lead's Ask about this under the same event name", async () => {
-  const { ASK_ABOUT_EVENT } = await import("../src/client/money-jobs-model.js");
+test("the shell listens for the lead menu under the same event name", async () => {
+  const { MONEY_ACTION_EVENT } = await import("../src/client/money-jobs-model.js");
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("../src/client/App.jsx", import.meta.url), "utf8");
-  assert.ok(app.includes(`window.addEventListener("${ASK_ABOUT_EVENT}"`), "App.jsx opens the Ask panel for it");
+  assert.ok(app.includes(`window.addEventListener("${MONEY_ACTION_EVENT}"`), "App.jsx navigates for it");
 });

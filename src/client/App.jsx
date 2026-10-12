@@ -299,16 +299,28 @@ export function App() {
   // keyboard-friendly on small screens.
   useEffect(() => installMobileFocusVisibility(), []);
 
-  // A lead's "Ask about this" on a wide screen (ui/money-actions.jsx): the
-  // Ask panel beside the page, with the question in its message box. The
-  // shell opens it, so the dock's launcher stays out of the Summary chunk.
+  // The Summary and Month lead's menu (ui/money-actions.jsx, design.md
+  // "Money jobs"): Entries filtered to a part's money, or "Ask about this"
+  // with its question in the message box: the Ask page on a phone, the Ask
+  // panel beside the page on a wider screen. The shell navigates, so the
+  // router and the dock's launcher stay out of the lead's chunk.
+  const moneyActionRef = useRef(/** @type {(detail: any) => void} */ (() => {}));
+  moneyActionRef.current = (detail) => {
+    if (detail?.entries?.pathname === "/entries") {
+      navigate(detail.entries);
+    } else if (typeof detail?.askText === "string" && detail.askText) {
+      if (isMobileLayout()) {
+        const target = buildAskLocation(searchParams);
+        navigate({ pathname: target.pathname, search: `${target.search}&ask_text=${encodeURIComponent(detail.askText)}` });
+      } else {
+        openAskDock({ intent: { mode: "chat" }, text: detail.askText });
+      }
+    }
+  };
   useEffect(() => {
-    const onAskAbout = (event) => {
-      const text = /** @type {CustomEvent} */ (event).detail?.text;
-      if (typeof text === "string" && text) openAskDock({ intent: { mode: "chat" }, text });
-    };
-    window.addEventListener("monies:ask-about", onAskAbout);
-    return () => window.removeEventListener("monies:ask-about", onAskAbout);
+    const onMoneyAction = (event) => moneyActionRef.current(/** @type {CustomEvent} */ (event).detail);
+    window.addEventListener("monies:money-action", onMoneyAction);
+    return () => window.removeEventListener("monies:money-action", onMoneyAction);
   }, []);
 
   // The active route's code loads beside its data rather than after it (the
