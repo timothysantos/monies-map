@@ -2,7 +2,7 @@ name: Verify
 
 # Runs on pull requests, on pushes to a `ci/**` branch, and by hand (Actions
 # tab > Verify > Run workflow, on any branch). It does not run on every push
-# to master: a full run costs about 75 runner minutes and the private-repo
+# to master: a full run costs about 70 runner minutes and the private-repo
 # free tier is 2,000 a month (docs/developer-guide.md, "How does CI run?").
 # To test a branch in CI without a pull request: `git push origin HEAD:ci/<name>`.
 on:

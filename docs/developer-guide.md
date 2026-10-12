@@ -183,11 +183,12 @@ git push origin HEAD:ci/my-change
 ```
 
 A newer push to the same branch cancels the older run. Runners have two
-vCPUs. A full run takes about 15 minutes and bills about 75 runner minutes
-(GitHub rounds each job up to a whole minute): roughly 3 for the static job,
-20 for the three unit jobs, 50 for the four browser shards and 2 for the
-merge and verify jobs. The private-repository free tier is 2,000 minutes a
-month, so about 25 full runs.
+vCPUs. The first green run (12 October 2026) took 13 minutes and billed
+about 67 runner minutes (GitHub rounds each job up to a whole minute): 1 for
+the static job, 20 for the three unit jobs (5.5 to 7.5 minutes each), 44 for
+the four browser shards (8 to 12.5 minutes each) and 2 for the merge and
+verify jobs. The private-repository free tier is 2,000 minutes a month, so
+plan on about 25 to 30 full runs, fewer as the suites grow.
 
 # Guides and screenshots
 
