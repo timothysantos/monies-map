@@ -1,4 +1,4 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { describeIntakeSource, orderIntakeQueue } from "./import-intake-model";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -73,9 +73,9 @@ export function skipIntakeItem(queue, itemId) {
 // Saving an empty statement, or one saved before, has none and keeps its
 // own words.
 const OPEN_NEXT_LABELS = {
-  rows: messages.imports.commitAndOpenNext,
-  certify_rows: messages.imports.certifyAndOpenNext,
-  covered_checkpoint: messages.imports.saveStatementBalanceAndOpenNext
+  rows: importMessages.commitAndOpenNext,
+  certify_rows: importMessages.certifyAndOpenNext,
+  covered_checkpoint: importMessages.saveStatementBalanceAndOpenNext
 };
 
 /**
@@ -114,21 +114,21 @@ export function describeImportFileLabel({ fileName = "", sourceType, parserKey =
     if (checkpoints.length === 1) {
       const name = checkpoints[0].accountName ?? checkpoints[0].detectedAccountName;
       if (name) {
-        return messages.imports.batchStatementLabel(name, month);
+        return importMessages.batchStatementLabel(name, month);
       }
     }
     if (source.bank) {
       return source.kind === "account_statement"
-        ? messages.imports.batchManyAccountsLabel(source.bank, month)
-        : messages.imports.batchManyCardsLabel(source.bank, month);
+        ? importMessages.batchManyAccountsLabel(source.bank, month)
+        : importMessages.batchManyCardsLabel(source.bank, month);
     }
   }
   if (source.bank && (source.kind === "card_activity" || source.kind === "account_activity")) {
-    return messages.imports.batchActivityLabel(source.bank);
+    return importMessages.batchActivityLabel(source.bank);
   }
   const name = fileName.trim();
   if (!name) {
-    return messages.imports.batchFileFallback;
+    return importMessages.batchFileFallback;
   }
   return name.length > LABEL_LIMIT + 1 ? `${name.slice(0, LABEL_LIMIT)}…` : name;
 }

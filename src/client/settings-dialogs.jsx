@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { CategoryEditDialog } from "./category-edit-dialog";
 import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { selectAllOnFocus } from "./focus-utils";
 
 // Settings dialogs receive draft objects from SettingsPanel; save handlers stay
@@ -23,8 +24,8 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
           >
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{messages.settings.editPerson}</Dialog.Title>
-                <Dialog.Description>{messages.settings.editPersonDetail}</Dialog.Description>
+                <Dialog.Title>{settingsMessages.editPerson}</Dialog.Title>
+                <Dialog.Description>{settingsMessages.editPersonDetail}</Dialog.Description>
               </div>
               <button
                 type="button"
@@ -38,7 +39,7 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
             </div>
             <div className="settings-account-form settings-person-form">
               <label className="table-edit-field">
-                <span>{messages.settings.personDisplayName}</span>
+                <span>{settingsMessages.personDisplayName}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.name ?? ""}
@@ -56,7 +57,7 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
                 className="dialog-primary"
                 disabled={!dialog?.name?.trim() || isSubmitting}
               >
-                {isSubmitting ? messages.common.saving : messages.settings.savePerson}
+                {isSubmitting ? messages.common.saving : settingsMessages.savePerson}
               </button>
             </div>
           </form>
@@ -87,8 +88,8 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
           >
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{dialog?.mode === "create" ? messages.settings.createCategoryRule : messages.settings.editCategoryRule}</Dialog.Title>
-                <Dialog.Description>{messages.settings.categoryRuleDialogDetail}</Dialog.Description>
+                <Dialog.Title>{dialog?.mode === "create" ? settingsMessages.createCategoryRule : settingsMessages.editCategoryRule}</Dialog.Title>
+                <Dialog.Description>{settingsMessages.categoryRuleDialogDetail}</Dialog.Description>
               </div>
               <button
                 type="button"
@@ -102,7 +103,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
             </div>
             <div className="settings-account-form">
               <label className="table-edit-field">
-                <span>{messages.settings.categoryRulePattern}</span>
+                <span>{settingsMessages.categoryRulePattern}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.pattern ?? ""}
@@ -112,7 +113,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.categoryRuleCategory}</span>
+                <span>{settingsMessages.categoryRuleCategory}</span>
                 <select
                   className="table-edit-input"
                   value={dialog?.categoryId ?? categories[0]?.id ?? ""}
@@ -124,7 +125,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
                 </select>
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.categoryRulePriority}</span>
+                <span>{settingsMessages.categoryRulePriority}</span>
                 <input
                   className="table-edit-input table-edit-input-money"
                   type="number"
@@ -134,21 +135,21 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
                   onFocus={selectAllOnFocus}
                   onChange={(event) => onChange((current) => current ? { ...current, priority: Number(event.target.value) } : current)}
                 />
-                <small className="field-help">{messages.settings.categoryRulePriorityHelp}</small>
+                <small className="field-help">{settingsMessages.categoryRulePriorityHelp}</small>
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.categoryRuleStatus}</span>
+                <span>{settingsMessages.categoryRuleStatus}</span>
                 <select
                   className="table-edit-input"
                   value={dialog?.isActive === false ? "inactive" : "active"}
                   onChange={(event) => onChange((current) => current ? { ...current, isActive: event.target.value === "active" } : current)}
                 >
-                  <option value="active">{messages.settings.categoryRuleActive}</option>
-                  <option value="inactive">{messages.settings.categoryRuleInactive}</option>
+                  <option value="active">{settingsMessages.categoryRuleActive}</option>
+                  <option value="inactive">{settingsMessages.categoryRuleInactive}</option>
                 </select>
               </label>
               <label className="table-edit-field settings-form-wide">
-                <span>{messages.settings.categoryRuleNote}</span>
+                <span>{settingsMessages.categoryRuleNote}</span>
                 <textarea
                   className="table-edit-input"
                   value={dialog?.note ?? ""}
@@ -165,7 +166,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
                 className="dialog-primary"
                 disabled={!dialog?.pattern?.trim() || !dialog?.categoryId || isSubmitting}
               >
-                {isSubmitting ? messages.common.saving : messages.settings.saveCategoryRule}
+                {isSubmitting ? messages.common.saving : settingsMessages.saveCategoryRule}
               </button>
             </div>
           </form>

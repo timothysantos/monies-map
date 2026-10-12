@@ -2,6 +2,7 @@ import { useId } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { moniesClient } from "./monies-client-service";
 import { describeUploadStatus } from "./import-upload-status";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -66,12 +67,12 @@ export function ImportSelectFileStage({
   const dropzoneClassName = `import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`;
   const stepHint = (
     <div className="import-step-hint">
-      <strong>{messages.imports.selectFileNextUpload}</strong>
+      <strong>{importMessages.selectFileNextUpload}</strong>
     </div>
   );
   const trustNotes = (
     <>
-      <p className="lede compact">{messages.imports.trustHint}</p>
+      <p className="lede compact">{importMessages.trustHint}</p>
       <p className="lede compact">{rollbackPolicy}</p>
     </>
   );
@@ -82,11 +83,11 @@ export function ImportSelectFileStage({
       {isSlim ? null : (
         <div className="import-stage-head">
           <div className="section-head">
-            <h3>{messages.imports.selectFileTitle}</h3>
-            <span className="panel-context">{messages.imports.selectFileDetail}</span>
+            <h3>{importMessages.selectFileTitle}</h3>
+            <span className="panel-context">{importMessages.selectFileDetail}</span>
           </div>
           <span className={`import-stage-label ${stageClassName}`}>
-            {messages.imports.steps[0]}
+            {importMessages.steps[0]}
           </span>
         </div>
       )}
@@ -95,9 +96,9 @@ export function ImportSelectFileStage({
         <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel,.hsbc-ocr.tsv,.tsv,text/tab-separated-values" hidden multiple onChange={onUploadImportFile} />
         {isSlim ? (
           <div className={`${dropzoneClassName} is-slim`} {...dropHandlers}>
-            <span>{messages.imports.dropMoreFiles}</span>{" "}
+            <span>{importMessages.dropMoreFiles}</span>{" "}
             <button type="button" className="subtle-action" onClick={openFilePicker}>
-              {messages.imports.selectFileTitle}
+              {importMessages.selectFileTitle}
             </button>
           </div>
         ) : (
@@ -114,8 +115,8 @@ export function ImportSelectFileStage({
             }}
             {...dropHandlers}
           >
-            <strong>{messages.imports.dropzoneTitle}</strong>
-            <span>{messages.imports.dropzoneDetail}</span>
+            <strong>{importMessages.dropzoneTitle}</strong>
+            <span>{importMessages.dropzoneDetail}</span>
           </div>
         )}
         <div className="import-sidecar">
@@ -152,7 +153,7 @@ export function ImportSelectFileStage({
         onClick={onTogglePasteDefaults}
       >
         <ChevronRight size={16} aria-hidden="true" className={isPasteDefaultsOpen ? "is-open" : ""} />
-        {messages.imports.pasteRowsOrDefaults}
+        {importMessages.pasteRowsOrDefaults}
       </button>
 
       {isPasteDefaultsOpen ? (
@@ -160,16 +161,16 @@ export function ImportSelectFileStage({
           {isSlim ? <div className="import-paste-defaults-notes">{stepHint}{trustNotes}</div> : null}
           <div className="import-form-grid">
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.sourceLabel}</span>
+              <span className="entries-filter-label">{importMessages.sourceLabel}</span>
               <input
                 className="table-edit-input"
                 value={sourceLabel}
                 onChange={(event) => onSourceLabelChange(event.target.value)}
-                placeholder={messages.imports.sourceLabelPlaceholder}
+                placeholder={importMessages.sourceLabelPlaceholder}
               />
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.defaultAccount}</span>
+              <span className="entries-filter-label">{importMessages.defaultAccount}</span>
               <select className="table-edit-input" value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
                 <option value="">{messages.entries.allWallets}</option>
                 {accountOptions.map((account) => (
@@ -178,7 +179,7 @@ export function ImportSelectFileStage({
               </select>
             </label>
             <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.owner}</span>
+              <span className="entries-filter-label">{importMessages.owner}</span>
               <select className="table-edit-input" value={ownerName} onChange={(event) => onOwnerNameChange(event.target.value)}>
                 {people.map((person) => (
                   <option key={person.id} value={person.name}>{person.name}</option>
@@ -186,22 +187,22 @@ export function ImportSelectFileStage({
               </select>
             </label>
             <label className="entries-filter import-note-field">
-              <span className="entries-filter-label">{messages.imports.importNote}</span>
+              <span className="entries-filter-label">{importMessages.importNote}</span>
               <input
                 className="table-edit-input"
                 value={importNote}
                 onChange={(event) => onImportNoteChange(event.target.value)}
-                placeholder={messages.imports.importNotePlaceholder}
+                placeholder={importMessages.importNotePlaceholder}
               />
             </label>
           </div>
-          <p className="lede compact">{messages.imports.defaultsHint}</p>
+          <p className="lede compact">{importMessages.defaultsHint}</p>
 
           <label className="entries-filter import-csv-field">
-            <span className="entries-filter-label">{messages.imports.csvInput}</span>
+            <span className="entries-filter-label">{importMessages.csvInput}</span>
             {!areTotalsVisible ? (
               <span className="import-privacy-notice">
-                {messages.imports.csvScreenedWhileHidden}
+                {importMessages.csvScreenedWhileHidden}
               </span>
             ) : null}
             <textarea
@@ -209,10 +210,10 @@ export function ImportSelectFileStage({
               value={csvText}
               onInput={(event) => onCsvTextChange(event.currentTarget.value)}
               onChange={(event) => onCsvTextChange(event.target.value)}
-              placeholder={messages.imports.csvPlaceholder}
+              placeholder={importMessages.csvPlaceholder}
             />
           </label>
-          <p className="lede compact">{messages.imports.selectFileNextPaste}</p>
+          <p className="lede compact">{importMessages.selectFileNextPaste}</p>
         </div>
       ) : null}
     </div>

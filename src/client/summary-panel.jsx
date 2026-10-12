@@ -8,7 +8,8 @@ import {
 } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { moniesClient } from "./monies-client-service";
+import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
+import { formatMonthLabel, money, unmaskedMoney } from "./formatters";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { SummaryLead } from "./summary-lead";
@@ -21,11 +22,6 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-const {
-  accounts: accountService,
-  format: formatService
-} = moniesClient;
-
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -74,7 +70,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountPills: safeSummaryPage.accountPills,
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
-      formatMoney: formatService.unmaskedMoney
+      formatMoney: unmaskedMoney
     }),
     page: "summary",
     // The range's last month is the period Summary rotates by.
@@ -264,9 +260,9 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
             className={`summary-account-pill ${moneyToneClass(reconciliationTone(account.reconciliationStatus), "soft")}`}
             onClick={() => onOpenEntriesForAccount(account.accountId)}
           >
-            <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
-            <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor)}</PrivateMoney></span>
-            {areTotalsVisible ? <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span> : null}
+            <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
+            <span className="summary-account-pill-amount"><PrivateMoney>{money(account.balanceMinor)}</PrivateMoney></span>
+            {areTotalsVisible ? <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span> : null}
           </button>
         ))}
       </div>

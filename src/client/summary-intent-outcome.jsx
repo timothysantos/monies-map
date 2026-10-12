@@ -4,11 +4,10 @@ import { ChevronRight } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
-import { moniesClient } from "./monies-client-service";
+import { formatMonthLabel, money } from "./formatters";
 import { buildIntentMonthCard } from "./summary-intent-outcome-model";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
 
-const { format: formatService } = moniesClient;
 const copy = messages.summary.intent;
 const leadCopy = messages.summary.lead;
 const planWords = messages.summary.monthChoice;
@@ -46,7 +45,7 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote 
 }
 
 function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
-  const monthLabel = formatService.formatMonthLabel(card.month);
+  const monthLabel = formatMonthLabel(card.month);
   const { headroom } = card;
   return (
     <LeadCard
@@ -60,24 +59,24 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
       )}
       amount={(
         <span className={`summary-intent-spent ${moneyToneClass(card.spent.tone)}`}>
-          <PrivateMoney>{formatService.money(card.spent.amountMinor)}</PrivateMoney>
+          <PrivateMoney>{money(card.spent.amountMinor)}</PrivateMoney>
         </span>
       )}
       amountAside={(
         <span className={`summary-intent-plan ${moneyToneClass("plan")}`}>
-          {planWords.planPrefix} <PrivateMoney>{formatService.money(card.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
+          {planWords.planPrefix} <PrivateMoney>{money(card.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
         </span>
       )}
       progress={card.progress}
       progressStart={card.percentOfPlan === null ? null : leadCopy.percentOfPlan(card.percentOfPlan)}
       progressEnd={headroom ? (
         <span className={`summary-intent-headroom ${moneyToneClass(headroom.tone)}`}>
-          {formatService.money(headroom.amountMinor)} {headroom.isOver ? leadCopy.overPlan : leadCopy.underPlan}
+          {money(headroom.amountMinor)} {headroom.isOver ? leadCopy.overPlan : leadCopy.underPlan}
         </span>
       ) : null}
       chips={[
-        <MetaChip key="planned">{copy.plannedIncome} <PrivateMoney>{formatService.money(card.plannedIncomeMinor)}</PrivateMoney></MetaChip>,
-        <MetaChip key="actual">{copy.actualIncome} <PrivateMoney>{formatService.money(card.actualIncomeMinor)}</PrivateMoney></MetaChip>
+        <MetaChip key="planned">{copy.plannedIncome} <PrivateMoney>{money(card.plannedIncomeMinor)}</PrivateMoney></MetaChip>,
+        <MetaChip key="actual">{copy.actualIncome} <PrivateMoney>{money(card.actualIncomeMinor)}</PrivateMoney></MetaChip>
       ]}
     >
       <DetailRows label={copy.detailsFor(monthLabel)}>
@@ -88,15 +87,15 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
               <dl className="summary-intent-figures">
                 <div>
                   <dt>{table.estimate}</dt>
-                  <dd><PrivateMoney>{formatService.money(metric.plannedMinor)}</PrivateMoney></dd>
+                  <dd><PrivateMoney>{money(metric.plannedMinor)}</PrivateMoney></dd>
                 </div>
                 <div>
                   <dt>{table.actual}</dt>
-                  <dd className={moneyToneClass(metric.actualTone)}><PrivateMoney>{formatService.money(metric.actualMinor)}</PrivateMoney></dd>
+                  <dd className={moneyToneClass(metric.actualTone)}><PrivateMoney>{money(metric.actualMinor)}</PrivateMoney></dd>
                 </div>
                 <div>
                   <dt>{table.variance}</dt>
-                  <dd className={moneyToneClass(metric.varianceTone)}><PrivateMoney>{formatService.money(metric.varianceMinor)}</PrivateMoney></dd>
+                  <dd className={moneyToneClass(metric.varianceTone)}><PrivateMoney>{money(metric.varianceMinor)}</PrivateMoney></dd>
                 </div>
               </dl>
             </div>
