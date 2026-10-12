@@ -9,8 +9,9 @@ This doc describes the Ask page flow in three parts:
 The Ask page is one full page (not a sheet) where a person adds an entry by
 hand, from a typed or spoken sentence or from a receipt photo, finds entries
 by asking ("grab rides in september"), asks about their money ("why was
-August so expensive?", "what do I owe Serene?"), and sees what changed since
-they last looked. Its visual design is in `design.md` ("Ask page").
+August so expensive?", "what do I owe Serene?", "how did September go?"),
+changes a month's plan ("move $50 from Shopping to Groceries in October",
+saved only with Save plan), and sees what changed since they last looked. Its visual design is in `design.md` ("Ask page").
 
 ## Route Flow
 
@@ -320,8 +321,13 @@ of six intents:
 
 - `spending`: "why was August so expensive?" (why) or "where did September
   go?", "what did I spend the most on?" (where);
-- `plan`: "how am I doing against the plan?", "am I on track?", "over
-  budget?";
+- `plan` (intent against outcome): "how am I doing against the plan?",
+  "am I on track?", "over budget?", "how did September go?", "how was
+  August?", "did we stick to the plan in Q3?". A quarter ("Q3", "q2
+  2026", "the third quarter", "this quarter", "last quarter"; without a
+  year the latest one that has started) covers its months up to this
+  month; a quarter in any other question is not answered rather than
+  answered for one month;
 - `compare`: "compare August with July", "August vs September", "did I
   spend more than last month?" (one month named after to, with or than is
   compared with the month in view; "compare July" with the month before);
@@ -354,6 +360,16 @@ links, the first filled: `Open in Entries` (the answer's Entries filter
 through `buildEntriesFilterSearch`, with the From Ask chip), `Open Month`
 (`/month` with the answer's view, month and scope), `Open Splits`
 (`/splits` with the group of the largest balance), then the usual chips.
+
+The plan answer is Intent vs Outcome (mockups `chat-intent-*`): its lead
+is Actual spend against Planned spend with the plan bar, and under it the
+Month and Summary lead's savings bar (`SavingsBar`, from the answer's
+`outcome`: income received, Actual spend, Planned spend and the Savings
+target, the Month cards' own), then Plan and Income chips, the wording and
+the plan rows that went furthest over. Its links are Open Month and Open in
+Entries. A quarter's answer adds the months up (`combineMonthFacts`), lists
+each month against its plan first, and links Open Month for its last month
+only (Entries shows one month at a time).
 
 Every figure comes from the server's facts: the Month page DTO of the view
 and month (the Actual spend and Planned spend cards, the summary month's
@@ -388,6 +404,86 @@ phrasing passes validation (see "Data Flow"). AI words (`source: "ai"`)
 carry the entry card's butter tag, "Worded by AI", above the card's head
 line; the computed wording has no tag, and with money hidden the tag goes
 with the words.
+
+### Planning by chat
+
+A typed change to a month's plan (DOMAIN.md "Plan Draft"; mockups
+`chat-plan*`) is read before the money-question and filter readers by the
+plan request reader (`src/domain/plan-draft-reader.ts`, rules, shared with
+the route):
+
+- copy a month: "plan November like September", "copy September to
+  November", with changes after but, and, with or a comma ("… but
+  Groceries $700");
+- set a line: "set groceries plan to $700 for November", "plan $700 for
+  groceries in November", "groceries budget 700";
+- change a line: "raise groceries by $50", "cut shopping by 100", "add $50
+  to the groceries plan";
+- move between lines: "move $50 from Shopping to Groceries in October" (a
+  move between two wallets stays a transfer entry);
+- add a line: "add a Travel line of $300 to November".
+
+A month without a year is the nearest one (planning looks both ways). A
+sentence that reads like planning (a plan verb or the word plan or budget)
+but fits no shape is "unread". While an entry card is open, only a reading
+that names the plan or a month goes to planning ("set the amount to 12"
+still changes the card).
+
+The page sends `{ text, viewId, month, answers }` to
+`POST /api/ai-assist/plan-draft` (status line "Drafting that change…"),
+which reads it again and answers with one of:
+
+- `{ supported: false }`: not a plan request after all (or unread with AI
+  off or no usable AI reading); the page reads the text as before;
+- `{ question }`: chips in the chip row, one per option, the question above
+  them: "Which month's plan?" (no month named, or one more than a year
+  ahead or two back: this month, the next and the month in view), "Which
+  line do you mean by “sports”?" (a name that fits more than one line; two
+  lines with the same name say whose), "Whose Travel line is it?" (a new
+  line on the household view: each person, or Shared, split evenly). A
+  chip sends the same text again with the answer;
+- `{ note }`: no plan to copy, the same month, no such line (a name that
+  is neither a line nor a category), nothing would change, a line that
+  would go below zero, or a move between income and spending;
+- `{ draft, source }`: the plan draft card.
+
+Which lines a view can change are the rows Month shows for it (a person's
+own and shared lines; every line on the household view). A name resolves by
+label, then category, then its words; a name that is not a line but names
+a category starts a new line (a budget bucket) for the view's person.
+Copying a month copies the view's lines: a line the month already has takes
+the copied amount, any other is added; lines only the month has stay.
+
+The plan draft card (`ask-plan-draft-card.jsx`, design.md "Plan draft"):
+the butter Draft tag ("Read by AI" beside it when the optional AI read the
+request), the head line (the line's "Groceries plan" with the month and
+"was $650.00" or "New line"; "Move $50.00" with "Shopping to Groceries";
+"November 2026 plan" with "Like September 2026" and the planned spend),
+the person and month chips ("Planned spend stays the same" for a move),
+then read-only Detail rows: each changed line before → after (six shown,
+the rest behind "N more lines"), and Planned income, Planned spend and
+Remaining budget before → after, as the Month cards add them. The plan
+amounts are sky; Remaining budget rose when below zero. When the plan after
+the change spends more than it expects to earn, the Money insights
+plan-balance line shows under the rows (rose). Discard and Save plan close
+the card. The intro note says "Here is the change. Nothing is saved until
+you tap Save."
+
+- Save plan posts the draft's `apply` list to
+  `POST /api/month-plan/apply-changes` (one batch on the server). Saved:
+  the Saved tag, "planned" under the amount, and See it on Month (`/month`
+  with the draft's view and month) and Undo this change; the note "Saved to
+  the November 2026 plan." The month's Month and Summary data are
+  refreshed (the entry mutation with Month and Summary only). A plan
+  changed since the draft is refused whole with "The plan changed since
+  this draft was made. Ask again to see it as it is now."; the card stays a
+  draft.
+- Undo this change posts the save's `undo` list the same way; the card is a
+  draft again ("Undone. The plan is back as it was.").
+- Discard writes nothing: the card goes and the note "Discarded. The plan
+  is unchanged." stays.
+- With money hidden every amount is dots, the "was" figure and the warning
+  go, and a "not enough planned" note drops its figure.
 
 ## Data Flow
 
@@ -444,9 +540,21 @@ Readers (`ask-api.js`, the one module to adjust when their branches land):
   shows the computed wording. The route writes nothing but the allowance
   counter.
 
+- `POST /api/ai-assist/plan-draft` `{ text, viewId, month, answers }` →
+  `PlanDraftResponseDto` (`{ ok, supported, source, draft | question |
+  note, ai }`), see "Planning by chat". Rules first; only a request that
+  reads like planning but fits no shape, and only with AI on, spends one
+  allowance unit asking the provider (`runTextJson`, ask tier) to read the
+  redacted request into the same structure. `parsePlanAiReading` keeps it
+  only when every line name is words of the request, every amount a number
+  written in it and every month one it names. The draft itself is built
+  from the month's plan rows on the server (`loadMonthPlanRowsForDraft`,
+  `buildPlanDraft`). The route writes nothing but the allowance counter.
+
 The first two fail soft: any error leaves the card manual with a calm
 note. A failed answer request is the calm note "That couldn't be answered
-just now. Try again in a moment."
+just now. Try again in a moment." A failed plan-draft request is the calm
+note "That couldn't be drafted just now. Try again in a moment."
 
 ### Split suggestion
 
@@ -557,6 +665,18 @@ Writes, all existing routes:
 - The Shortcut card's follow-ups: `POST /api/entries/update-category`,
   `POST /api/splits/expenses/from-entry`.
 
+One write route is Ask's own, for a plan draft:
+`POST /api/month-plan/apply-changes` `{ month, changes }` →
+`{ ok, month, applied, undo }` (`applyMonthPlanChanges`). Every update and
+new line is the same row and split statements as the Month editor's
+`/api/month-plan/save`, every delete the same as `/api/month-plan/delete`,
+all in one batch with the month's refresh marker (a move or a copy is never
+half saved). A line that no longer holds what the draft saw, or a new
+line's id that is taken, is a 409 and nothing is written. Undo posts
+`undo` the same way. After either, Ask publishes the entry mutation with
+Month and Summary only (`invalidateMonth`, `invalidateSummary`), so a Month
+page beside the dock refreshes.
+
 After a write Ask publishes the entry (and split) mutation through the
 shell's `broadcastEntryMutation` / `broadcastSplitMutation`, and refreshes
 that month's Entries page DTO through `runBackgroundRefresh`: a failure keeps
@@ -570,6 +690,8 @@ Ask owns:
 - the filter reader and the answer card;
 - the money answer card, the check before it and the chips that resolve it
   (the answer, its facts and the skew candidates are the server's);
+- the plan draft card and its questions (the draft, its figures and its
+  Save list are the server's);
 - the chip row and the question wording (the readers send structured
   questions; the client words them);
 - the receipt photo while it is on screen (memory only, revoked on leave);
@@ -582,7 +704,9 @@ Ask does not own:
 - the Entries filtering or the filter URL (`entry-filtering.js`,
   `entry-filter-params.js`, shared with Entries);
 - the create, delete or split rules (the existing routes and the Entries
-  composer's create path).
+  composer's create path);
+- the plan-row save rules (`applyMonthPlanChanges` writes the Month
+  editor's own statements).
 
 ## Visible User Contract
 
@@ -615,6 +739,12 @@ Ask does not own:
   view and month; a likely settle-up or own-account move is asked about
   before any answer, and nothing changes until Mark as settlement or Link
   as transfer is tapped.
+- A plan request shows a draft with each line and the view's Planned
+  income, Planned spend and Remaining budget before → after, equal to the
+  Month page; nothing changes until Save plan; Discard writes nothing; a
+  name that fits two lines or a request with no month asks with chips;
+  after Save, See it on Month shows the new plan and Undo this change puts
+  it back.
 - Leaving Ask and coming back, or reloading the tab, keeps the
   conversation; the Ask tab shows a dot meanwhile.
 - On a phone, after the + or the receipt button, the header's "‹ Entries"
@@ -633,7 +763,10 @@ Ask does not own:
 
 ## Persisted / Query Contract
 
-- No new write route and no new table. The answer route only reads (and,
+- No new table. One new write route, `/api/month-plan/apply-changes`, for
+  a saved plan draft (the plan-row save statements in one batch; see
+  "Data Flow"). The plan-draft route only reads (and, with AI on, writes
+  the allowance counter). The answer route only reads (and,
   with AI on, writes the allowance counter); resolving a check uses the
   existing transfer, classification and Splits routes. A saved entry is an ordinary manual
   entry, with `external_reference` = `ask:<client id>` (the existing unique
@@ -645,7 +778,8 @@ Ask does not own:
   when turned round); the other wallet is shown but not posted, for the
   later transfer match, as the entry draft defines.
 - The conversation is kept only in this browser tab's sessionStorage (text,
-  the card's fields, filters, money answers and open checks; never photos,
+  the card's fields, filters, money answers, open checks and plan drafts
+  (one caught saving comes back a draft; never photos,
   audio or status lines) and is
   gone when the tab closes. Nothing about it, the sentences, photos, voice
   clips or spoken words is sent to be stored or logged.
@@ -669,6 +803,9 @@ Current status: aligned with tests (`tests/ask-origin.test.mjs`,
 `tests/ask-answer-ai.test.mjs`, `tests/ask-money-answer.test.mjs`,
 `tests/ask-money-answer-card.test.mjs`,
 `tests/e2e/ask-money-answers.spec.js`,
+`tests/plan-draft-reader.test.mjs`, `tests/plan-draft.test.mjs`,
+`tests/plan-draft-route.test.mjs`, `tests/atomic-writes-plan-draft.test.mjs`,
+`tests/ask-plan-draft.test.mjs`, `tests/e2e/ask-planning.spec.js`,
 `tests/e2e/ask-page.spec.js`, `tests/e2e/ask-voice.spec.js`,
 `tests/e2e/ask-composer.spec.js`, `tests/e2e/ask-search.spec.js`,
 `tests/e2e/claude-credit-notice.spec.js`, the last two also in WebKit on an
@@ -689,6 +826,12 @@ iPhone 13 profile) and runtime behaviour on a phone.
   naming a category or wallet) are not answered; the page says so instead
   of reading them as entries. No AI reads a question to decide what it
   means.
+- Planning by chat changes amounts and adds budget lines; it does not
+  rename, re-date, move between sections or delete lines (Month does).
+  Splits chat (settle up, split an expense) from the same mockups is not
+  built yet.
+- A plan draft is kept in the conversation as it was drafted; a change
+  made elsewhere since then makes its Save a 409 ("Ask again").
 - The filter reader has no AI gap-filler: a request it cannot read gets the
   "not answered yet" note. A later optional AI reader would be an explicit
   action with a strict schema (AGENTS.md "Optional AI Assistance").

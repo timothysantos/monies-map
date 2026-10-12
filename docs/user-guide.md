@@ -668,8 +668,11 @@ Ask also answers questions about your money in plain words:
 - "Why was August so expensive?" or "Where did September go?": what was
   spent, against the plan and the month before, where most of it went and
   the biggest single costs.
-- "How am I doing against the plan?" or "Am I on track?": the month's
-  spending against its plan, and what went furthest over.
+- "How am I doing against the plan?", "Am I on track?" or "How did
+  September go?": the month's spending against its plan, the same bar
+  Month shows for what you earned, spent and kept, and what went furthest
+  over. "Did we stick to the plan in Q3?" does the same for the three
+  months of a quarter, month by month.
 - "Compare August with July": both months side by side and what changed
   most.
 - "What's my biggest expense this month?": the largest expenses.
@@ -707,6 +710,43 @@ mark. Nothing you ask is kept once you close the tab.
 
 Other questions, such as "should I buy a car?", aren't answered; Ask says
 so.
+
+### Change your plan by asking
+
+You can also change a month's plan by typing what you want:
+
+- "Set groceries plan to $700 for November", or "plan $700 for groceries
+  in November".
+- "Raise groceries by $50 for November", or "cut shopping by $100 this
+  month".
+- "Move $50 from Shopping to Groceries in October": one line goes down, the
+  other up, and what you plan to spend stays the same.
+- "Add a Travel line of $300 to November".
+- "Plan November like September", or "plan November like September but
+  Groceries $700": September's lines are copied into November, with your
+  changes on top. Lines November already has take September's amounts;
+  lines only November has stay.
+
+Ask shows a **Draft** card: each line that changes, from what it is now to
+what it would be, and the month's Planned income, Planned spend and
+Remaining budget before and after, the same figures Month shows for your
+view. If the plan would then spend more than it expects to earn, a line
+under the card says so. Nothing changes until you tap **Save plan**;
+**Discard** leaves the plan as it was.
+
+After saving, **See it on Month** opens that month, and **Undo this
+change** puts the plan back. If the plan was changed somewhere else in the
+meantime, Save doesn't go through and Ask tells you to ask again, so you
+never overwrite a change you haven't seen.
+
+If you don't name a month, or a word could mean two lines (say "sports"
+for both Sports & Hobbies and Tennis lesson), Ask asks which, with a button
+for each. A line name that isn't in the plan but is one of your categories
+starts a new line; on the Household view Ask asks whose line it is.
+
+When Claude is set up and Ask can't read a request on its own, Claude may
+read it into the same draft, marked **Read by AI**; the figures are still
+your plan's own, and nothing is saved until you tap Save plan.
 
 ### Ask on a computer
 
@@ -1029,7 +1069,9 @@ Good to know:
 > Tip: keep budget buckets broad. One Food bucket works better than a row for
 > every restaurant. Plan only what is stable as planned items.
 
-Next month, use **Actions → Duplicate month** to copy the plan and adjust it.
+Next month, use **Actions → Duplicate month** to copy the plan and adjust it,
+or type it on Ask: "plan November like October but Groceries $700"
+([Change your plan by asking](#change-your-plan-by-asking)).
 
 ## Link planned items to entries
 
