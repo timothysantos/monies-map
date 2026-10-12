@@ -26,7 +26,8 @@ import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams } from "./entry-filter-params";
 import { EntriesAskChip } from "./entries-ask-chip";
 import { EntriesDateGroups } from "./entries-list";
-import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
+import { EntriesBreakdownPanel, EntriesTotals } from "./entries-overview";
+import { buildEntriesTotalsModel, describeEntryFilters } from "./entries-totals-model";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileSheet, EntrySplitGroupPickerFooter } from "./entry-mobile-sheet";
 import { useAskOriginSheet, useAskReturn } from "./use-ask-origin";
@@ -89,6 +90,7 @@ export function EntriesPanel({
   entriesSourceView = view,
   selectedMonth,
   mobileContextOpen = false,
+  onOpenMobileContext,
   onCloseMobileContext,
   onMobileFilterStateChange,
   externalRefreshToken = 0,
@@ -519,6 +521,17 @@ export function EntriesPanel({
       pinnedEntryIds: editingEntryId ? [editingEntryId] : []
     }),
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
+  );
+  const totalsModel = useMemo(
+    () => buildEntriesTotalsModel({
+      entryTotals,
+      entryOutflowMinor,
+      entryGrossOutflowMinor,
+      entryNetMinor,
+      month: entryView.monthPage.month,
+      personLabel: entryView.label
+    }),
+    [entryGrossOutflowMinor, entryNetMinor, entryOutflowMinor, entryTotals, entryView.label, entryView.monthPage.month]
   );
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
@@ -1165,14 +1178,14 @@ export function EntriesPanel({
         </ErrorPanel>
       ) : (
         <>
-          <EntriesTotalsStrip
+          <EntriesTotals
+            model={totalsModel}
             showExpenseBreakdown={showExpenseBreakdown}
-            entryTotals={entryTotals}
-            entryOutflowMinor={entryOutflowMinor}
-            entryGrossOutflowMinor={entryGrossOutflowMinor}
-            entryNetMinor={entryNetMinor}
             onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
-            onAddEntry={openEntryComposer}
+            // The phone's filters live in the View and scope sheet; a wide
+            // screen has the filter bar on the page.
+            filtersValue={describeEntryFilters(activeEntryFilterCount)}
+            onOpenFilters={useMobileEntrySheet ? onOpenMobileContext : undefined}
           />
 
           <FinancialInsight

@@ -262,6 +262,16 @@ export const messages = {
     type: "By type",
     allTypes: "All types",
     totalsLabel: "Entry totals",
+    // The Entries top (entries-overview.jsx, design.md "Entries top").
+    totals: {
+      spentEyebrow: (monthLabel) => `Spent · ${monthLabel}`,
+      shareAside: (name) => `${name}'s share`,
+      pillShare: (name) => `${name}'s`,
+      spendingByCategory: "Spending by category",
+      filters: "Filters",
+      filtersAll: "All entries",
+      filtersOn: (count) => `${count} ${count === 1 ? "filter" : "filters"} on`
+    },
     totalSpend: "Spend",
     totalTransfersOut: "Transfers",
     totalOutflow: "Outflow",

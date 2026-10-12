@@ -239,6 +239,10 @@ export function App() {
   const closeMobileContext = useCallback(() => {
     setMobileContextOpen(false);
   }, []);
+  // The Entries top's Filters row opens the same sheet as the floating bar.
+  const openMobileContext = useCallback(() => {
+    setMobileContextOpen(true);
+  }, []);
   const handleEntriesMobileFilterStateChange = useCallback((nextProps) => {
     setEntriesMobileFilterProps((current) => areEntriesMobileFilterPropsEqual(current, nextProps) ? current : nextProps);
   }, []);
@@ -2092,6 +2096,7 @@ export function App() {
           entriesSourceView={pageView}
           selectedMonth={selectedMonth}
           mobileContextOpen={mobileContextOpen}
+          onOpenMobileContext={openMobileContext}
           onCloseMobileContext={closeMobileContext}
           onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
           externalRefreshToken={entriesExternalRefreshToken}
@@ -2206,6 +2211,7 @@ export function App() {
     isUnregisteringLogin,
     loginIdentityError,
     mobileContextOpen,
+    openMobileContext,
     openSummaryMonth,
     pageView,
     referenceData,

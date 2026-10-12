@@ -28,36 +28,133 @@
   right: max(14px, env(safe-area-inset-right));
 }
 
-.entries-totals-strip::-webkit-scrollbar {
-  display: none;
+/* The Entries top (entries-overview.jsx, design.md "Entries top"): the
+   Spent lead, four pills and the Detail rows. Nothing here scrolls sideways
+   or is cut off at any width: the old strip did at 390 and 1024 px.
+   A wide screen: the lead and its rows on the left, the pills 2 x 2 on the
+   right (as Summary). A phone: lead, pills, rows, in one column. */
+.entries-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  margin: 6px 0 12px;
 }
 
-.entries-breakdown-toggle:hover {
-  background: rgba(177, 94, 47, 0.12);
+.entries-totals-main {
+  display: contents;
 }
 
-.entries-totals-spacer {
-  flex: 1 1 auto;
+.entries-totals-lead {
+  order: 1;
+  align-content: center;
 }
 
-.entries-add-inline {
-  flex: 0 0 auto;
+.entries-totals-lead .lsd-amount {
+  color: var(--text);
 }
 
-.entries-totals-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  white-space: nowrap;
+.entries-totals-lead .lsd-amount-aside {
+  color: var(--muted);
+}
+
+.entries-totals-pills {
+  order: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.entries-totals-rows {
+  order: 3;
+}
+
+.entries-totals-pill {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.entries-totals-pill:not(.money-soft) {
+  background: var(--pastel-neutral);
 }
 
 .entries-totals-label {
   color: var(--money-ink, var(--muted));
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.entries-totals-pill strong {
+  color: var(--money-ink, var(--text));
+  font-size: 1.12rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .entries-totals-secondary {
   color: var(--money-ink, var(--muted));
-  font-size: 0.92rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* The wide filter bar: the Search label sits over its field like the
+   other filters' labels (beside it, it took 60 px and left "Me" at 1,024
+   px), and the search gets the widest column. Narrow desktops (961 to
+   1,099 px) put it on its own row, so what is typed and the placeholder
+   read whole. */
+@media (min-width: 761px) {
+  .entries-filter-bar .search-filter {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .entries-filter-bar {
+    grid-template-columns: auto minmax(190px, 1.5fr) repeat(3, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1099px) {
+  .entries-filter-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+
+  .entries-filter-bar .entries-filter-refresh {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .entries-filter-bar .search-filter {
+    grid-column: 1 / 4;
+    grid-row: 1;
+  }
+}
+
+@media (min-width: 761px) {
+  .entries-totals {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    margin-top: 10px;
+  }
+
+  .entries-totals-main {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .entries-totals-pills {
+    order: 0;
+    align-content: stretch;
+  }
 }
 
 @media (min-width: 961px) {
@@ -77,11 +174,11 @@
    focus and screen readers still reach them because they stay in the DOM.
    "auto" keeps each row's last rendered height, so the scrollbar stays put
    once a row has been seen. The fallback is the measured content height
-   (68 px row minus its 1 px top border): the intrinsic size excludes the
+   (72 px row minus its 1 px top border): the intrinsic size excludes the
    border, and a 1 px error per row adds up over a 2,000-row month. */
 .entry-row:not(.is-editing) {
   content-visibility: auto;
-  contain-intrinsic-size: auto 67px;
+  contain-intrinsic-size: auto 71px;
 }
 
 /* Paint containment clips anything outside the row, so draw the keyboard
@@ -235,32 +332,12 @@
     align-items: flex-start;
   }
 
-  .entries-totals-strip {
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 760px) {
   .entry-row.is-inline-editing:first-child {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-  }
-
-  .entries-totals-strip {
-    gap: 10px;
-    align-items: center;
-    flex-wrap: nowrap;
-  }
-
-  .entries-totals-item {
-    min-width: auto;
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .entries-breakdown-toggle {
-    width: 30px;
-    height: 30px;
   }
 
   .entries-breakdown-list .category-toggle-actions {
@@ -274,85 +351,6 @@
     font-size: 0.74rem;
   }
 
-  .entries-add-inline,
-  .entries-totals-spacer {
-    display: none;
-  }
-
-  .entry-row-main {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "category description right"
-      "category meta meta";
-    gap: 8px 10px;
-    padding: 8px 0;
-    align-items: start;
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .entries-date-groups {
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .entries-date-group {
-    padding: 10px 12px;
-    border-radius: 0;
-    overflow: visible;
-  }
-
-  .entry-row:not(.is-editing) {
-    contain-intrinsic-size: auto 88px;
-  }
-
-  .entries-date-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: 8px;
-    width: 100vw;
-    margin: -10px calc(50% - 50vw) 4px;
-    padding: 10px 12px 6px;
-    border-radius: 0;
-    max-width: none;
-    box-sizing: border-box;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    contain: paint;
-  }
-
-  .entries-date-actions {
-    min-width: 0;
-    gap: 6px;
-  }
-
-  .entry-row-category {
-    grid-area: category;
-    align-items: flex-start;
-  }
-
-  .entry-row-description {
-    grid-area: description;
-    min-width: 0;
-  }
-
-  .entry-row-transfer {
-    display: none;
-  }
-
-  .entry-row-right {
-    display: contents;
-  }
-
-  .entry-row-amount {
-    grid-area: right;
-    align-items: flex-end;
-    gap: 2px;
-    min-width: 0;
-    max-width: 100%;
-  }
-
   .entry-row-amount p {
     font-size: 0.72rem;
     line-height: 1;
@@ -361,10 +359,6 @@
   .entry-row-main p {
     font-size: 0.76rem;
     line-height: 1.02;
-  }
-
-  .entry-pills {
-    align-self: start;
   }
 
   .entry-chip-linked-split {
@@ -383,17 +377,239 @@
   }
 }
 
+/* Entries list rows and day headers (design.md, "Entries list"). The
+   hierarchy comes from spacing, not from weight: a quiet category line over
+   the merchant (regular weight, not bolder), the wallet as a quiet line, the
+   amount right-aligned and tabular, the day as a hairline divider with the
+   daily net at its right, and a day's rows in one rounded white group. The
+   person's colour edge (.has-owner-cue) stays on every row. */
+.entries-date-groups {
+  gap: 0;
+  margin-top: 4px;
+}
+
+.entries-date-group {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.entries-date-head {
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 18px 2px 8px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.entries-date-head > strong {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font: 500 0.7rem/1.2 ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0.12em;
+  text-overflow: clip;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.entries-date-head > strong::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--line);
+}
+
+.entries-date-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.entries-date-actions .entries-date-refresh-button {
+  opacity: 0.55;
+}
+
+.entries-date-group .entries-rows {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+/* An open inline editor sits inside the group, so its inset is positive
+   (the old negative margin would be clipped by the group's rounded edge). */
+.entries-date-group .entry-row.is-inline-editing {
+  margin: 8px;
+}
+
+.entry-row-category-label strong {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.entry-row-description {
+  display: grid;
+  gap: 2px;
+}
+
+.entry-row-amount > strong {
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A matched transfer is settled bookkeeping: a quiet line, not a pill. */
+.entry-chip.entry-chip-transfer.is-matched {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+@media (min-width: 761px) {
+  .entry-row-main {
+    padding: 14px 16px 14px 0;
+  }
+
+  .entry-row-main.has-owner-cue {
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .entries-date-group {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .entries-date-head {
+    display: flex;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    padding: 16px 2px 8px;
+    transform: none;
+    backface-visibility: visible;
+    contain: none;
+  }
+
+  .entries-date-head > strong {
+    font-size: 0.7rem;
+  }
+
+  .entries-date-actions {
+    min-width: 0;
+  }
+
+  /* A 68 px row: the icon, then the quiet category over the merchant (the
+     amount on its line), the wallet, and the chips. */
+  .entry-row-main {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon desc amount"
+      "icon sub sub"
+      "icon chips chips";
+    gap: 3px 12px;
+    align-items: center;
+    min-height: 68px;
+    padding: 12px 14px 12px 11px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .entry-row-category {
+    grid-area: icon;
+    display: grid;
+    place-items: center;
+  }
+
+  .entry-row-description {
+    grid-area: desc;
+    gap: 1px;
+  }
+
+  .entry-row-description > strong {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .entry-row-category-label strong {
+    font-size: 0.76rem;
+    line-height: 1.2;
+  }
+
+  .entry-row-transfer {
+    grid-area: sub;
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    color: var(--muted);
+  }
+
+  .entry-row-transfer strong {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .entry-row-transfer p {
+    display: none;
+  }
+
+  .entry-row-right {
+    display: contents;
+  }
+
+  .entry-row-amount {
+    grid-area: amount;
+    align-items: flex-end;
+    justify-self: end;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .entry-row-amount > strong {
+    min-width: 0;
+    font-size: 1.02rem;
+    line-height: 1.25;
+  }
+
+  .entry-pills {
+    grid-area: chips;
+    justify-self: start;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .entry-row:not(.is-editing) {
+    contain-intrinsic-size: auto 102px;
+  }
+}
+
 /* Entries could not load the requested month: the shared error panel sits
    inside the Entries panel in place of its figures and rows. */
 .entries-load-error {
   min-height: 0;
   margin-top: 16px;
-}
-
-.entries-totals-item.money-soft {
-  margin: -2px -6px;
-  padding: 2px 6px;
-  border-radius: 999px;
 }
 
 /* The From Ask chip (entries-ask-chip.jsx): white like the View and scope
