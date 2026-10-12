@@ -176,6 +176,8 @@ export interface Env {
   AI_CLAUDE_PRICE_OUT_PER_MTOK?: string;
   AI_CLAUDE_CREDIT_USD?: string;
   AI_CLAUDE_WARN_AT_USD?: string;
+  // Monthly Claude budget target (US$, default 8) for auto-balance.
+  AI_CLAUDE_MONTHLY_TARGET_USD?: string;
 }
 
 const API_PAGE_SLOW_MS = 750;

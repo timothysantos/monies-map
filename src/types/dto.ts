@@ -1388,6 +1388,9 @@ export interface EntryDraftResponseDto {
 export type ClaudeFailureCategory = "credit_exhausted" | "spend_capped" | "auth" | "other";
 export type ClaudeCreditState = "ok" | "low" | "exhausted" | "capped" | "unknown";
 
+// Auto-balance (src/domain/ai-provider-status.ts): who is asked first.
+export type ClaudeSpendMode = "claude_all" | "ask_only" | "basic_first";
+
 export type AiProviderStatusResponseDto =
   | { ok: true; visible: false }
   | {
@@ -1400,6 +1403,11 @@ export type AiProviderStatusResponseDto =
     estimatedSpendUsd: number;
     creditUsd: number;
     warnAtUsd: number;
+    // Estimated Claude spend this calendar month (Asia/Singapore), the
+    // monthly target, and the resulting auto-balance mode.
+    monthSpendUsd: number;
+    monthTargetUsd: number;
+    mode: ClaudeSpendMode;
     lastFailureAt?: string;
     lastFailureReason?: ClaudeFailureCategory;
     lastSuccessAt?: string;

@@ -19,7 +19,7 @@ const IMAGE = { mediaType: "image/jpeg", base64: "/9j/AAAA" };
 const SCHEMA = { type: "object", additionalProperties: false, required: ["total"], properties: { total: { type: "string" } } };
 const parseTotal = (value) => (value && typeof value.total === "string" ? value : null);
 
-function createFakeDb({ quotaChanges = 1, usedUnits = 2, statusWrite } = {}) {
+function createFakeDb({ quotaChanges = 1, usedUnits = 2, statusWrite, statusRow = null, statusReadFails = false } = {}) {
   const statements = [];
   return {
     statements,
@@ -34,7 +34,16 @@ function createFakeDb({ quotaChanges = 1, usedUnits = 2, statusWrite } = {}) {
           }
           return { meta: { changes: quotaChanges } };
         },
-        async first() { statements.push({ sql, args: self.args }); return { used_units: usedUnits }; }
+        async first() {
+          statements.push({ sql, args: self.args });
+          if (/FROM ai_provider_status/.test(sql)) {
+            if (statusReadFails) {
+              throw new Error("no such column: spend_month");
+            }
+            return statusRow;
+          }
+          return { used_units: usedUnits };
+        }
       };
       return self;
     }
@@ -373,7 +382,7 @@ const CREDIT_TOO_LOW = {
     message: "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
   }
 };
-const statusWrites = (db) => db.statements.filter((statement) => /ai_provider_status/.test(statement.sql));
+const statusWrites = (db) => db.statements.filter((statement) => /INSERT INTO ai_provider_status/.test(statement.sql));
 
 test("a Claude success records its time and the estimated cost of its usage, and clears a stale failure", async (t) => {
   mockFetch(t, () => claudeResponse({ total: "5.00" }, { usage: { input_tokens: 2_000, output_tokens: 600 } }));
@@ -479,4 +488,122 @@ test("only the allowance counter and the status row are written, with no prompt,
       }
     }
   }
+});
+
+
+// ------------------------------------------------------------- auto-balance
+//
+// Owner-approved 2026-10-12. With both providers available, the month's
+// estimated Claude spend against its pace line decides who is asked first:
+// claude_all (at or under pace) Claude first for everything; ask_only (over
+// pace) the basic model first for background features, Claude first for ask
+// features; basic_first (90% of the target or more) the basic model first for
+// everything. The other provider is always the fallback.
+
+const ASK_TIER = ["receipt_read", "entry_draft", "ask_answer"];
+const BACKGROUND_TIER = ["monthly_narrative", "import_explanation", "category_rules", "statement_text_fallback"];
+// 15 October 2026, noon in Singapore: target US$8 gives a pace of about US$3.87 and a 90% line of US$7.20.
+const MID_MONTH = new Date("2026-10-15T04:00:00.000Z");
+const MODE_ROWS = {
+  claude_all: { spend_month: "2026-10", month_spend_micro_usd: 3_000_000 },
+  ask_only: { spend_month: "2026-10", month_spend_micro_usd: 5_000_000 },
+  basic_first: { spend_month: "2026-10", month_spend_micro_usd: 7_500_000 }
+};
+
+async function runFor(t, capability, statusRow, { claudeFails = false, workersAiFails = false } = {}) {
+  t.mock.timers.reset();
+  t.mock.timers.enable({ apis: ["Date"], now: MID_MONTH });
+  const order = [];
+  mockFetch(t, () => {
+    order.push("claude");
+    return claudeFails ? new Response("{}", { status: 500 }) : claudeResponse({ total: "1.00" });
+  });
+  const ai = stubWorkersAi(() => {
+    order.push("workers-ai");
+    if (workersAiFails) {
+      throw new Error("down");
+    }
+    return { response: "{\"total\":\"2.00\"}" };
+  });
+  const db = createFakeDb({ statusRow });
+  const input = { capability, prompt: "Go.", schema: SCHEMA, maxTokens: 100, parse: parseTotal };
+  const result = capability === "receipt_read"
+    ? await runVisionJson(db, { ...GATEWAY_BYOK, AI: ai }, { ...input, images: [IMAGE] })
+    : await runTextJson(db, { ...GATEWAY_BYOK, AI: ai }, { ...input, units: 1 });
+  return { order, result, db };
+}
+
+for (const [mode, expectations] of Object.entries({
+  claude_all: { ask: "claude", background: "claude" },
+  ask_only: { ask: "claude", background: "workers-ai" },
+  basic_first: { ask: "workers-ai", background: "workers-ai" }
+})) {
+  for (const [tier, capabilities] of [["ask", ASK_TIER], ["background", BACKGROUND_TIER]]) {
+    for (const capability of capabilities) {
+      test(`${mode}: ${capability} (${tier}) asks ${expectations[tier]} first and does not ask the other when it answers`, async (t) => {
+        const { order, result } = await runFor(t, capability, MODE_ROWS[mode]);
+        assert.deepEqual(order, [expectations[tier]]);
+        assert.equal(result.provider, expectations[tier]);
+        assert.equal(result.available, true);
+      });
+    }
+  }
+}
+
+test("the other provider is the fallback in every order, and a Claude answer is recorded wherever it comes in the order", async (t) => {
+  // Claude first, Claude down: the basic model answers.
+  const first = await runFor(t, "monthly_narrative", MODE_ROWS.claude_all, { claudeFails: true });
+  assert.deepEqual(first.order, ["claude", "workers-ai"]);
+  assert.equal(first.result.provider, "workers-ai");
+});
+
+test("basic model first, basic model down: Claude answers and its spend is still recorded", async (t) => {
+  const { order, result, db } = await runFor(t, "monthly_narrative", MODE_ROWS.ask_only, { workersAiFails: true });
+  assert.deepEqual(order, ["workers-ai", "claude"]);
+  assert.equal(result.provider, "claude");
+  assert.equal(statusWrites(db).length, 1);
+});
+
+test("basic model first and an unusable answer from it falls through to Claude, then to unavailable when both fail", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: MID_MONTH });
+  const order = [];
+  mockFetch(t, () => { order.push("claude"); return new Response("{}", { status: 529 }); });
+  const ai = stubWorkersAi(() => { order.push("workers-ai"); return { response: "{\"nope\":1}" }; });
+  const result = await runTextJson(createFakeDb({ statusRow: MODE_ROWS.basic_first }), { ...GATEWAY_BYOK, AI: ai }, {
+    capability: "category_rules", units: 1, prompt: "Go.", schema: SCHEMA, maxTokens: 100, parse: parseTotal, unusableReason: "AI returned an unusable suggestion."
+  });
+  assert.deepEqual(order, ["workers-ai", "claude"]);
+  assert.equal(result.available, false);
+  assert.equal(result.reason, "AI returned an unusable suggestion.");
+});
+
+test("a new month, no row or a row from before auto-balance all mean Claude first, and a single provider never reorders", async (t) => {
+  for (const [name, statusRow] of [
+    ["last month's spend", { spend_month: "2026-09", month_spend_micro_usd: 9_000_000 }],
+    ["no row yet", null],
+    ["a row from before auto-balance", { spend_month: undefined, month_spend_micro_usd: undefined }]
+  ]) {
+    const { order } = await runFor(t, "monthly_narrative", statusRow);
+    assert.deepEqual(order, ["claude"], name);
+  }
+  // Claude alone or Workers AI alone: nothing to order, and the status row is not even read.
+  t.mock.timers.reset();
+  t.mock.timers.enable({ apis: ["Date"], now: MID_MONTH });
+  const claudeOnlyDb = createFakeDb({ statusRow: MODE_ROWS.basic_first });
+  mockFetch(t, () => claudeResponse({ total: "1.00" }));
+  const claudeOnly = await runTextJson(claudeOnlyDb, GATEWAY_BYOK, { capability: "monthly_narrative", units: 1, prompt: "Go.", schema: SCHEMA, maxTokens: 100, parse: parseTotal });
+  assert.equal(claudeOnly.provider, "claude");
+  assert.equal(claudeOnlyDb.statements.filter((statement) => /^\s*SELECT[\s\S]*FROM ai_provider_status/.test(statement.sql)).length, 0);
+});
+
+test("an unreadable status table does not change the order", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: MID_MONTH });
+  const order = [];
+  mockFetch(t, () => { order.push("claude"); return claudeResponse({ total: "1.00" }); });
+  const ai = stubWorkersAi(() => { order.push("workers-ai"); return { response: "{\"total\":\"2.00\"}" }; });
+  const result = await runTextJson(createFakeDb({ statusReadFails: true }), { ...GATEWAY_BYOK, AI: ai }, {
+    capability: "monthly_narrative", units: 1, prompt: "Go.", schema: SCHEMA, maxTokens: 100, parse: parseTotal
+  });
+  assert.deepEqual(order, ["claude"]);
+  assert.equal(result.provider, "claude");
 });

@@ -10,6 +10,10 @@
 //    Claude call is rate-limited, over the gateway's spend cap, failing,
 //    slow or returns unusable JSON.
 //
+// Auto-balance: with both providers available, a monthly Claude budget target
+// decides who goes first (shouldAskClaudeFirst; deterministic, no AI). The
+// other provider is still the fallback.
+//
 // Like runAiJson, it never throws into a caller: every failure is an
 // ordinary { available: false, reason } result, and the normal workflow
 // carries on. Each request reserves the shared daily allowance once,
@@ -21,7 +25,10 @@
 import { reserveDailyAiBudget, type AiAssistCapability, type AiAssistEnv, type AiAssistResult } from "./ai-assistance";
 import {
   categorizeClaudeFailure,
+  claudeGoesFirst,
+  computeClaudePacing,
   estimateClaudeCostMicroUsd,
+  loadAiProviderStatusRow,
   recordClaudeFailure,
   recordClaudeSuccess,
   type AiProviderStatusEnv
@@ -206,30 +213,59 @@ async function runJson<T>(
   }
 
   const timeoutMs = Math.max(1, Math.round(input.timeoutMs ?? DEFAULT_TIMEOUT_MS));
+  const claudeFirst = claude && env.AI ? await shouldAskClaudeFirst(db, env, input.capability) : true;
   // True once a provider has answered (Claude 2xx, Workers AI resolved in
   // time) and the answer was refused, malformed or rejected by `parse`.
   let answerRejected = false;
-  if (claude) {
-    const attempt = await callClaude(claude, input, request.images, timeoutMs);
+
+  const askClaude = async (): Promise<AiProviderResult<T> | null> => {
+    if (!claude) {
+      return null;
+    }
+    const attempt = await callClaude(claude, input, request.images ?? [], timeoutMs);
     await recordClaudeOutcome(db, env, attempt.outcome);
     const value = parseAnswer(input.parse, attempt.raw);
     if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "claude" };
     }
     answerRejected ||= attempt.outcome.kind === "success";
-  }
-  if (env.AI) {
-    const attempt = await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images, timeoutMs);
+    return null;
+  };
+  const askWorkersAi = async (): Promise<AiProviderResult<T> | null> => {
+    if (!env.AI) {
+      return null;
+    }
+    const attempt = await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images ?? [], timeoutMs);
     const value = parseAnswer(input.parse, attempt.raw);
     if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "workers-ai" };
     }
     answerRejected ||= attempt.answered;
+    return null;
+  };
+
+  const answer = claudeFirst
+    ? (await askClaude()) ?? (await askWorkersAi())
+    : (await askWorkersAi()) ?? (await askClaude());
+  if (answer) {
+    return answer;
   }
   return unavailable(
     answerRejected && input.unusableReason ? input.unusableReason : "AI is temporarily unavailable.",
     budget.remaining
   );
+}
+
+// Auto-balance (ai-provider-status.ts): when both providers are available,
+// the month's Claude spend against its pace decides who is asked first.
+// Claude goes first whenever the pace cannot be read, so a status table
+// problem never changes behaviour.
+async function shouldAskClaudeFirst(db: D1Database, env: AiProviderEnv, capability: AiAssistCapability) {
+  try {
+    return claudeGoesFirst(computeClaudePacing(await loadAiProviderStatusRow(db), env).mode, capability);
+  } catch {
+    return true;
+  }
 }
 
 // Returns the parsed JSON answer, or null for any failure (status, network,
