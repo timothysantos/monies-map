@@ -202,8 +202,10 @@ export function ImportPreviewReview({
         />
       ) : null}
 
-      {/* These pills give a fast count of what the larger preview table will contain. */}
+      {/* These pills give a fast count of what the larger preview table will contain.
+          The file card above them already gives the dates it covers. */}
       <PreviewGuardrailPills
+        showCoverage={false}
         preview={preview}
         previewReconciliationRowCount={previewReconciliationRowCount}
         skippedPreviewRowCount={skippedPreviewRowCount}
@@ -598,11 +600,17 @@ function PreviewGuardrailPills({
   statementImportSourceType,
   skippedPreviewRowCount,
   needsReviewPreviewRowCount,
-  visibleOverlapImports
+  visibleOverlapImports,
+  showCoverage = true
 }) {
+  const coverageShown = showCoverage && Boolean(preview.startDate && preview.endDate);
+  // Nothing to say (the file card already gives the dates): no empty strip.
+  if (!coverageShown && !previewReconciliationRowCount && !reconciledExistingRowCount && !skippedPreviewRowCount && !needsReviewPreviewRowCount && !visibleOverlapImports.length) {
+    return null;
+  }
   return (
     <div className="import-summary-strip" aria-label={importMessages.previewGuardrailsLabel}>
-      {preview.startDate && preview.endDate ? (
+      {coverageShown ? (
         <span className="import-summary-item">{importMessages.previewCoverage(
           formatService.formatDateOnly(preview.startDate),
           formatService.formatDateOnly(preview.endDate)
