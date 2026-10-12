@@ -33,6 +33,19 @@ default. New and All sit in a column beside the tile scroller; All opens the
 All groups sheet, and a floating bar shows the open group once the strip has
 scrolled away on a phone.
 
+The open group's lead card (see design.md, "Splits page: lead card, search,
+activity list") is also a presentation of the page DTO: `buildSplitsLead`
+(`splits-lead-model.js`) turns the open group, the viewer and the money
+privacy state into the figure, its tone, the plain words and who it is with,
+and the group's spend is the search-filtered open expenses already used for
+the breakdown. Its buttons call the same handlers the old summary strip and
+page head did (Settle group, Activity history, + Add expense, Simplify
+settlement, the category breakdown); the page head keeps Review matches and,
+on a wide screen, Simplify settlement. In the bank-match review
+(`split_mode=matches`) the card is not rendered and the review shows its own
+lead with Back. The search box (`split_search`) is unchanged and sits under
+the card.
+
 The page should preserve active matching state while freshness catches up,
 instead of replacing the current workflow blindly.
 
@@ -57,6 +70,15 @@ same card read-only: "Settled on <date>. Undo the settle-up to change it." or
 button directly under, no Save or Delete; after the undo the card is
 editable in place. The server refusal below stays as the backstop (a stale
 page, an entry save, a settlement row).
+
+The dialogs and panels share the Lead · Support · Detail blocks: Record
+settlement is `SplitSettlementCard` in the phone sheet, the wide dialog and
+inline in the list (the household view and an archived batch open it
+read-only; the draft, validation and save are unchanged), Create group is
+`SplitGroupCard`, and the simplified settlement and the bank-match review are
+`SplitsCheckpointPanel` and `SplitMatchesList`. View included activity on the
+open simplified settlement scrolls to the first included row (it previously
+passed the click event instead of the checkpoint and did nothing).
 
 ## Data Flow
 
@@ -114,6 +136,8 @@ Watch area:
 - restoring an archived split does not alter an existing checkpoint snapshot
 - a refused restore (for example, already restored in another tab) shows its
   error inside the Activity history dialog and refreshes the page data
+- browser coverage for the lead card, the flat activity list and the
+  restyled dialogs and panels lives in `splits-lead-card.spec.js`
 - browser coverage for creating an expense through `+ Add expense`, a JPY
   cash-only travel group and restoring from Activity history lives in
   `splits-add-expense-dialog.spec.js`, `splits-travel-group.spec.js` and
