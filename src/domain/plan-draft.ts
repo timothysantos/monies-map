@@ -266,7 +266,8 @@ function resolveLine(name: string, state: OpState, { create, anyName = false }: 
       question: {
         field: "line",
         name,
-        options: found.map((line) => ({ rowId: line.row.id, label: line.row.label, ownerLabel: ownerLabel(line.row), plannedMinor: line.afterMinor }))
+        // By name, so the chips keep one order however the rows were stored.
+        options: [...found].sort((left, right) => left.row.label.localeCompare(right.row.label)).map((line) => ({ rowId: line.row.id, label: line.row.label, ownerLabel: ownerLabel(line.row), plannedMinor: line.afterMinor }))
       }
     });
   }
