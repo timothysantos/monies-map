@@ -502,18 +502,10 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     expect(group?.summaryText).not.toBe("Settled up");
   });
 
-  test("the other phone sheets swipe closed too: View and scope, Activity history, Create group (asks once changed)", async ({ page }) => {
+  test("the other phone sheets swipe closed too: Activity history, Create group (asks once changed)", async ({ page }) => {
     await phone(page);
 
-    await page.goto("/summary?view=person-tim&month=2026-04");
-    await waitUsable(page);
-    await page.locator(".mobile-context-trigger").click();
-    const scopeSheet = page.getByRole("dialog", { name: "View and scope" });
-    await expect(scopeSheet).toBeVisible();
-    await expect(scopeSheet.locator(".sheet-drag-handle")).toBeVisible();
-    await swipeDown(page, scopeSheet, ".mobile-context-dialog");
-    await expect(scopeSheet).toBeHidden();
-
+    // View and scope gains swipe with the mobile chrome redesign (its lazy import here split the first screen).
     await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
     await waitUsable(page);
     await page.getByRole("button", { name: "Activity history" }).filter({ visible: true }).first().click();

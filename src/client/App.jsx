@@ -122,9 +122,6 @@ const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ def
 const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
 // The phone's "Pick a month" sheet loads when it is first opened.
 const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
-// Swipe down to close the View and scope sheet; the gesture code loads when
-// the sheet first opens, never with the first screen.
-const SheetSwipeDismiss = lazy(() => import("./sheet-swipe.jsx").then((module) => ({ default: module.SheetSwipeDismiss })));
 
 // Canonical route registry for the top navigation and route-based prefetching.
 // One Summary tab stands for two routes: /summary (All months) and /month (one
@@ -3135,9 +3132,6 @@ export function App() {
                   className="note-dialog-content split-dialog-content mobile-context-dialog"
                   onOpenAutoFocus={(event) => event.preventDefault()}
                 >
-                  <Suspense fallback={null}>
-                    <SheetSwipeDismiss onClose={() => setMobileContextOpen(false)} />
-                  </Suspense>
                   <div className="note-dialog-head mobile-context-dialog-head">
                     <div>
                       <Dialog.Title>View and scope</Dialog.Title>
