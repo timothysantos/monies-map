@@ -24,6 +24,8 @@ test("a normal saving: spent and kept share the income bar and the sentence says
     "Kept $38,000 · 15% of income"
   ]);
   assert.equal(model.sentence, "You kept $38,000 of the $247,000 you earned (15%)");
+  // Without investing the sentence already fits a phone line.
+  assert.equal(model.shortSentence, model.sentence);
   // The planned spend leaves out the savings target, which follows it: here
   // the spend plan alone ($247,673) is longer than the income bar.
   assert.deepEqual({ spend: model.plan.spendPercent, invest: model.plan.investPercent, save: model.plan.savePercent }, { spend: 100, invest: 0, save: 0 });
@@ -50,6 +52,8 @@ test("investments: the bar says invested as its own part, and the sentence says 
     "Kept $12,000 · 5% of income"
   ]);
   assert.equal(model.sentence, "You kept $12,000 and invested $8,000 of the $247,000 you earned");
+  // On a phone the same facts fit one line, so the Month card stays at most 205 px.
+  assert.equal(model.shortSentence, "Kept $12,000 · invested $8,000 of $247,000");
   // Plan: spend $220,000, invest $10,000, save $10,000 on the $247,000 scale.
   assert.deepEqual({ spend: rounded(model.plan.spendPercent), invest: rounded(model.plan.investPercent), save: rounded(model.plan.savePercent) }, { spend: 89.0688, invest: 4.0486, save: 4.0486 });
 });
@@ -114,6 +118,7 @@ test("overspent and invested: the investing after the hatched part, and the sent
     "Invested $200 · 20% of income"
   ]);
   assert.equal(model.sentence, "You spent $300 more than you earned, and invested $200");
+  assert.equal(model.shortSentence, "Spent $300 over income · invested $200");
 });
 
 test("investing more than spending left: the tick falls in the invested part and nothing is hatched", () => {
@@ -169,5 +174,6 @@ test("hidden money keeps the percentages and drops every amount and every sign w
   const invested = build({ incomeMinor: 24_700_000, spentMinor: 23_500_000, investedMinor: 800_000 }, { hidden: true, formatMoney: noFormatting });
   assert.deepEqual(invested.segments.map((segment) => segment.popover), ["Spent · 92% of income", "Invested · 3% of income", "Kept · 5% of income"]);
   assert.equal(invested.sentence, "Spent, invested and kept, as a share of what you earned");
+  assert.equal(invested.shortSentence, "Spent, invested and kept, as shares of income");
   assert.doesNotMatch(JSON.stringify(invested), /\$|more than|from savings/);
 });

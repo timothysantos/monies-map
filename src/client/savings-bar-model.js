@@ -41,7 +41,10 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     ...extra
   });
   const segments = [];
+  // The sentence, and its one-line phone form (`short`); only the sentences
+  // that name investing differ.
   let sentence;
+  let shortSentence = null;
 
   if (isOver) {
     const spentWithin = Math.min(spending, income);
@@ -57,8 +60,12 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     }
     if (hidden) {
       sentence = invested > 0 ? copy.hiddenSentenceInvested : copy.hiddenSentence;
+      shortSentence = invested > 0 ? copy.short.hiddenSentenceInvested : null;
+    } else if (spentPast > 0 && invested > 0) {
+      sentence = copy.spentMoreAndInvested(formatMoney(spentPast), formatMoney(invested));
+      shortSentence = copy.short.spentMoreAndInvested(formatMoney(spentPast), formatMoney(invested));
     } else if (spentPast > 0) {
-      sentence = invested > 0 ? copy.spentMoreAndInvested(formatMoney(spentPast), formatMoney(invested)) : copy.spentMore(formatMoney(spentPast));
+      sentence = copy.spentMore(formatMoney(spentPast));
     } else {
       sentence = copy.investedFromSavings(formatMoney(invested), formatMoney(outMinor - income));
     }
@@ -77,10 +84,12 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     }
     if (hidden) {
       sentence = invested > 0 ? copy.hiddenSentenceInvested : copy.hiddenSentence;
+      shortSentence = invested > 0 ? copy.short.hiddenSentenceInvested : null;
+    } else if (invested > 0) {
+      sentence = copy.keptAndInvested(formatMoney(kept), formatMoney(invested), formatMoney(income));
+      shortSentence = copy.short.keptAndInvested(formatMoney(kept), formatMoney(invested), formatMoney(income));
     } else {
-      sentence = invested > 0
-        ? copy.keptAndInvested(formatMoney(kept), formatMoney(invested), formatMoney(income))
-        : copy.kept(formatMoney(kept), formatMoney(income), keptShare);
+      sentence = copy.kept(formatMoney(kept), formatMoney(income), keptShare);
     }
   }
 
@@ -89,6 +98,7 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     // Where the income ends on a bar that is longer than it.
     tickPercent: isOver && income > 0 ? width(income) : null,
     sentence,
+    shortSentence: shortSentence ?? sentence,
     plan: hidden ? null : buildPlan(scaleMinor, figures)
   };
 }

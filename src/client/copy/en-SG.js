@@ -166,45 +166,21 @@ export const messages = {
         spentMoreAndInvested: (more, invested) => `You spent ${more} more than you earned, and invested ${invested}`,
         investedFromSavings: (invested, fromSavings) => `You invested ${invested}, ${fromSavings} of it from savings`,
         hiddenSentence: "Spent and kept, as a share of what you earned",
-        hiddenSentenceInvested: "Spent, invested and kept, as a share of what you earned"
-      },
-      // The money jobs under the savings bar (ui/money-jobs.jsx, design.md
-      // "Money jobs"): each plan line's job and whether it was done. Only
-      // what happened and the household's own plan; "so far" while the
-      // month is still going. Hidden money: ✓ or a percentage, no amount.
-      moneyJobs: {
-        summary: (done, total, soFar) => `${done} of ${total} money ${total === 1 ? "job" : "jobs"} done${soFar ? " so far" : ""}`,
-        listLabel: "Money jobs",
-        spend: (plan) => (plan ? `Spend within ${plan}` : "Spend within plan"),
-        save: (plan) => (plan ? `Save ${plan}` : "Save"),
-        invest: (plan) => (plan ? `Invest ${plan}` : "Invest"),
-        income: (plan) => (plan ? `Income ${plan}` : "Income"),
-        done: (soFar) => (soFar ? "✓ so far" : "✓ done"),
-        short: (amount, soFar) => `short by ${amount}${soFar ? " so far" : ""}`,
-        over: (amount, soFar) => `over by ${amount}${soFar ? " so far" : ""}`,
-        hiddenDone: "✓",
-        hiddenPercent: (percent) => `${percent}%`
-      },
-      // The small menu a bar segment or a money job opens: the entries
-      // behind it, or a question for Ask to fill in (the person sends it).
-      moneyActions: {
-        label: (name) => `${name}: what next`,
-        viewEntries: "View entries",
-        viewMonthEntries: (monthLabel) => `View ${monthLabel} entries`,
-        ask: "Ask about this",
-        // The period as a question says it: "in Sep 2026", "from Oct 2025 to Sep 2026".
-        inMonth: (monthLabel) => `in ${monthLabel}`,
-        inRange: (startLabel, endLabel) => `from ${startLabel} to ${endLabel}`,
-        questions: {
-          spentOverPlan: (period) => `Why did I spend more than planned ${period}?`,
-          spentMost: (period) => `What did I spend the most on ${period}?`,
-          spentVsPlan: (period) => `How did my spending compare with the plan ${period}?`,
-          spentMore: (period) => `Why did I spend more than I earned ${period}?`,
-          spentVsIncome: (period) => `How did my spending compare with my income ${period}?`,
-          invested: (period) => `How much did I invest ${period}?`,
-          saved: (period) => `How much did I save ${period}?`,
-          income: (period) => `How much did I earn ${period}?`
+        hiddenSentenceInvested: "Spent, invested and kept, as a share of what you earned",
+        // The same, short enough for one line on a phone (the Month card
+        // stays at most 205 px). Only the sentences that name investing differ.
+        short: {
+          keptAndInvested: (kept, invested, earned) => `Kept ${kept} · invested ${invested} of ${earned}`,
+          spentMoreAndInvested: (more, invested) => `Spent ${more} over income · invested ${invested}`,
+          hiddenSentenceInvested: "Spent, invested and kept, as shares of income"
         }
+      },
+      // The money jobs line under the savings bar (ui/money-jobs.jsx,
+      // design.md "Money jobs"): how many of the plan's jobs were done. The
+      // opened rows and their menu are worded in copy/money-jobs-copy.js,
+      // which loads with them, out of the first screen.
+      moneyJobs: {
+        summary: (done, total, soFar) => `${done} of ${total} money ${total === 1 ? "job" : "jobs"} done${soFar ? " so far" : ""}`
       }
     },
     fromMonth: "From",

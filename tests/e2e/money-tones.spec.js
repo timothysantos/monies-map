@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, loadMonthPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, leadFigures, loadEntriesPage, loadMonthPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
 // Money colour follows one rule on every page (src/domain/money-tone.ts,
 // design.md "Money colour"): money in or a good outcome is mint, a deficit,
@@ -95,9 +95,11 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
   expect((await looks(summaryPill(page, "income").locator(".summary-support-pill-label"))).color).toBe(INK.in);
   expect((await looks(summaryPill(page, "income").locator("small"))).color).toBe(INK.in);
 
-  const overPlan = amount("Actual spend") > amount("Planned spend");
+  // The lead is the spend job: spending against the spend plan (leadFigures).
+  const lead = leadFigures(summary);
+  const overPlan = lead.spent > lead.planned;
   expect((await looks(page.locator(".summary-lead-spent .private-money"))).color).toBe(overPlan ? INK.short : INK.text);
-  if (amount("Planned spend") > 0 || amount("Actual spend") > 0) {
+  if (lead.planned > 0 || lead.spent > 0) {
     expect((await looks(page.locator(".summary-lead-headroom"))).color).toBe(overPlan ? INK.short : INK.in);
     await expect(page.locator(".summary-lead-headroom")).toContainText(overPlan ? "over plan" : "under plan");
   } else {
@@ -106,7 +108,8 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
   }
   // The spend-vs-plan bar is gone: the plan line above carries the tone.
   await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
-  const savings = amount("Realized savings");
+  // Saved is what was kept: money moved to Savings counts as saved.
+  const savings = lead.kept;
   expect((await looks(summaryPill(page, "saved").locator("strong .private-money"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
 
   // Intent vs Outcome's detail rows (the latest month's are open): text
@@ -126,9 +129,8 @@ test("Month: over-plan outcomes are rose, under-plan mint, tables text-only", as
   // Find an overspent and an underspent planned month in the demo.
   const candidates = ["household", "person-tim"].flatMap((view) => ["2025-06", "2025-07", "2025-11", "2026-04"].map((month) => ({ view, month })));
   const amounts = await Promise.all(candidates.map(async ({ view, month }) => {
-    const data = await loadMonthPage(page, { view, month });
-    const value = (label) => data.monthPage.metricCards.find((item) => item.label === label).amountMinor;
-    return { view, month, planned: value("Planned spend"), actual: value("Actual spend") };
+    const lead = leadFigures(await loadMonthPage(page, { view, month }));
+    return { view, month, planned: lead.planned, actual: lead.spent };
   }));
   const over = amounts.find((item) => item.planned > 0 && item.actual > item.planned);
   const under = amounts.find((item) => item.planned > 0 && item.actual <= item.planned);

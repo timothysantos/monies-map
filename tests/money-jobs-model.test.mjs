@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMoneyJobs, moneyActionTarget, splitMoneyUse } from "../src/client/money-jobs-model.js";
+import { messages } from "../src/client/copy/en-SG.js";
+import { describeMoneyJobs, moneyActionTarget, moneyActionView } from "../src/client/money-jobs-words.js";
+import { listMoneyJobs, splitMoneyUse } from "../src/client/money-jobs-model.js";
 import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
 import { buildSummaryLeadModel } from "../src/client/summary-lead-model.js";
 
@@ -19,6 +21,21 @@ const PERIOD = {
   plannedInvestMinor: 1_000_000
 };
 const noFormatting = () => { throw new Error("hidden money must not be formatted"); };
+
+// What the lead shows: the folded line from the first-screen numbers
+// (listMoneyJobs) and the rows worded by the module that loads on open.
+function buildMoneyJobs({ figures, plannedIncomeMinor = 0, inProgress = false, hidden = false, formatMoney = undefined }) {
+  const jobs = listMoneyJobs({ figures, plannedIncomeMinor });
+  if (!jobs.length) {
+    return null;
+  }
+  const doneCount = jobs.filter((job) => job.done).length;
+  return {
+    jobs: describeMoneyJobs(jobs, { inProgress, hidden, ...(formatMoney ? { formatMoney } : {}) }),
+    doneCount,
+    summary: messages.summary.lead.moneyJobs.summary(doneCount, jobs.length, inProgress)
+  };
+}
 const rows = (model) => model.jobs.map(({ key, label, status, tone }) => ({ key, label, status, tone }));
 
 test("splitMoneyUse takes invested and moved-to-savings money out of the spend, and their plans out of the planned spend", () => {
@@ -131,10 +148,17 @@ test("the Summary lead reads invested and moved-to-savings money from the range'
       { key: "Savings", label: "Savings", valueMinor: 150_000 }
     ]
   });
-  assert.deepEqual({ invested: model.investedMinor, moved: model.savedMovedMinor, plan: model.plannedInvestMinor }, { invested: 800_000, moved: 150_000, plan: 1_000_000 });
+  assert.deepEqual({ invested: model.figures.invested, moved: model.figures.movedToSavings, plan: model.figures.investPlan }, { invested: 800_000, moved: 150_000, plan: 1_000_000 });
+  // The lead, the bar and the jobs read this one split: the spend job's
+  // figures are the headline's, the save job's kept is the Saved pill.
+  const jobs = listMoneyJobs({ figures: model.figures, plannedIncomeMinor: model.income.planMinor });
+  const spendJob = jobs.find((job) => job.key === "spend");
+  assert.deepEqual([spendJob.actualMinor, spendJob.planMinor], [model.spent.amountMinor, model.plannedSpendMinor]);
+  assert.equal(spendJob.done, !model.headroom.isOver);
+  assert.equal(jobs.find((job) => job.key === "save").actualMinor, model.saved.amountMinor);
   // Without them (an older page, or none filed) nothing is invested.
   const plain = buildSummaryLeadModel(SUMMARY_CARDS);
-  assert.deepEqual({ invested: plain.investedMinor, moved: plain.savedMovedMinor, plan: plain.plannedInvestMinor }, { invested: 0, moved: 0, plan: 0 });
+  assert.deepEqual({ invested: plain.figures.invested, moved: plain.figures.movedToSavings, plan: plain.figures.investPlan }, { invested: 0, moved: 0, plan: 0 });
 });
 
 test("the Month lead takes the investment goal from its Investments plan rows, not a Savings row", () => {
@@ -155,17 +179,10 @@ test("the Month lead takes the investment goal from its Investments plan rows, n
     planRows,
     categoryShare: [{ key: "Investments", label: "Investments", valueMinor: 150_000 }]
   });
-  assert.equal(model.plannedInvestMinor, 195_000);
-  assert.equal(model.investedMinor, 150_000);
-  assert.deepEqual(splitMoneyUse({
-    incomeMinor: model.income.amountMinor,
-    spentMinor: model.spent.amountMinor,
-    investedMinor: model.investedMinor,
-    savedMovedMinor: model.savedMovedMinor,
-    plannedSpendMinor: model.plannedSpendMinor,
-    savingsTargetMinor: model.saved.planMinor,
-    plannedInvestMinor: model.plannedInvestMinor
-  }), { income: 900_000, spending: 350_000, invested: 150_000, movedToSavings: 0, kept: 400_000, spendPlan: 225_000, savePlan: 180_000, investPlan: 195_000 });
+  assert.deepEqual(model.figures, { income: 900_000, spending: 350_000, invested: 150_000, movedToSavings: 0, kept: 400_000, spendPlan: 225_000, savePlan: 180_000, investPlan: 195_000 });
+  // The headline is the spending against the spend plan.
+  assert.deepEqual([model.spent.amountMinor, model.plannedSpendMinor], [350_000, 225_000]);
+  assert.deepEqual(model.headroom, { amountMinor: 125_000, isOver: true, tone: "short" });
 });
 
 test("the shell listens for the lead menu under the same event name", async () => {
@@ -173,4 +190,27 @@ test("the shell listens for the lead menu under the same event name", async () =
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("../src/client/App.jsx", import.meta.url), "utf8");
   assert.ok(app.includes(`window.addEventListener("${MONEY_ACTION_EVENT}"`), "App.jsx navigates for it");
+});
+
+test("a part's menu: the Entries location for the period's last month in the page's view and scope, and its question", () => {
+  const figures = splitMoneyUse({ ...PERIOD });
+  const month = { startMonth: "2026-05", endMonth: "2026-05" };
+  assert.deepEqual(moneyActionView("invested", { name: "Invested", figures, period: month, search: "?view=person-tim&month=2026-05&scope=direct&summary_start=2026-05" }), {
+    label: "Invested: what next",
+    entries: {
+      label: "View entries",
+      location: { pathname: "/entries", search: "?view=person-tim&month=2026-05&scope=direct&entries_scope=direct&entry_category=Investments" }
+    },
+    ask: { label: "Ask about this", question: "How much did I invest in May 2026?" }
+  });
+  // A range opens its last month, and says so; household has no person scope.
+  const range = moneyActionView("spent", { name: "Spent", figures, period: { startMonth: "2025-10", endMonth: "2026-09" }, search: "" });
+  assert.equal(range.entries.label, "View Sep 2026 entries");
+  assert.equal(range.entries.location.search, "?view=household&month=2026-09&scope=direct_plus_shared&entries_scope=direct_plus_shared&entry_type=expense");
+  assert.equal(range.ask.question, "Why did I spend more than planned from Oct 2025 to Sep 2026?");
+  // Money left in the bank has no entry to show: only the question.
+  assert.equal(moneyActionView("kept", { name: "Kept", figures, period: month }).entries, null);
+  // Hidden money never says which side of the plan the spending fell.
+  assert.equal(moneyActionView("spent", { name: "Spent", figures, hidden: true, period: month }).ask.question, "How did my spending compare with the plan in May 2026?");
+  assert.equal(moneyActionView("tick", { name: "", figures, period: month }), null);
 });

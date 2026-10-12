@@ -3,7 +3,6 @@ import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
 import { money } from "../formatters";
-import { splitMoneyUse } from "../money-jobs-model";
 import { LeadCard } from "./lead-support-detail";
 import { MoneyJobs } from "./money-jobs";
 import { SavingsBar } from "./savings-bar";
@@ -15,9 +14,11 @@ const planWords = messages.summary.monthChoice;
 // and the Month top (month-overview.jsx, which adds Remaining budget as
 // `children`). `model` is buildSummaryLeadModel's shape.
 //
-// Under the figure is its plan line ("63% of plan", "$x under plan"), then the
-// savings bar (savings-bar.jsx) and the money jobs (money-jobs.jsx), built
-// from the income, spend, plans and invested money this model already has.
+// The figure is the spend job's spending against the spend job's plan
+// (summary-lead-model.js: money moved to Investments or Savings is not
+// spend). Under it is its plan line ("63% of plan", "$x under plan"), then
+// the savings bar (savings-bar.jsx) and the money jobs (money-jobs.jsx),
+// all from the model's one split of the period's money (`model.figures`).
 // The old spend-vs-plan bar is gone: three bars were too many, and the text
 // line says the same.
 //
@@ -74,26 +75,17 @@ export function SpendLeadGroup({ model, eyebrow, period, className = "", leadCla
   );
 }
 
-// The savings bar and the money jobs under it read the same split of the
-// period's money (splitMoneyUse): spend, invested and kept, and the plan's
-// spend, investment and savings jobs. `period` is { startMonth, endMonth,
-// inProgress } for the parts' menus and the jobs' "so far".
+// The savings bar and the money jobs under it read the lead's split of the
+// period's money (`model.figures`, splitMoneyUse): spend, invested and kept,
+// and the plan's spend, investment and savings jobs. `period` is
+// { startMonth, endMonth, inProgress } for the parts' menus and "so far".
 function MoneyUse({ model, period }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const hidden = !areTotalsVisible;
-  const figures = splitMoneyUse({
-    incomeMinor: model.income.amountMinor,
-    spentMinor: model.spent.amountMinor,
-    investedMinor: model.investedMinor,
-    savedMovedMinor: model.savedMovedMinor,
-    plannedSpendMinor: model.plannedSpendMinor,
-    savingsTargetMinor: model.saved.planMinor,
-    plannedInvestMinor: model.plannedInvestMinor
-  });
   return (
     <>
-      <SavingsBar figures={figures} hidden={hidden} period={period} />
-      <MoneyJobs figures={figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />
+      <SavingsBar figures={model.figures} hidden={hidden} period={period} />
+      <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />
     </>
   );
 }

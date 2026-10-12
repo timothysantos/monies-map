@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadMonthPage, loadSummaryPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, leadFigures, loadMonthPage, loadSummaryPage, postJson, reseedDemo } from "./helpers";
 
 // The Month top and Summary's Intent vs Outcome in the Lead · Support · Detail
 // language (design.md). Month: one lead card (the month's actual spend
@@ -51,26 +51,26 @@ async function expectNoSidewaysScroll(page, selector) {
   expect(result.scrollers, `${selector} sideways scrollers`).toEqual([]);
 }
 
-// What the Month lead must show, from the Month page DTO: the plan rows and
-// their metric cards, and the month's own Summary rollup for income and
-// savings.
+// What the Month lead must show, from the Month page DTO: the spend job's
+// spending against its plan (money filed under Savings or Investments is
+// not spend, the savings target is not spend plan; leadFigures), the
+// month's Summary rollup for income, Saved as what was kept, and the
+// remaining budget against the whole plan.
 async function expectedMonthFigures(page) {
   const data = await loadMonthPage(page, { view: VIEW, month: MONTH });
   const card = (label) => data.monthPage.metricCards.find((item) => item.label === label).amountMinor;
-  const summaryMonth = data.summaryPage.months[0];
   const plannedIncome = data.monthPage.incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0);
-  const planned = card("Planned spend");
-  const actual = card("Actual spend");
+  const { spent: actual, planned, kept, income, savingsTarget } = leadFigures(data);
   return {
     planned,
     actual,
     percent: Math.round((actual / planned) * 100),
     gap: planned - actual,
-    savingsTarget: card("Savings target"),
+    savingsTarget,
     plannedIncome,
-    actualIncome: summaryMonth.actualIncomeMinor,
-    saved: summaryMonth.realizedSavingsMinor,
-    remaining: plannedIncome - planned
+    actualIncome: income,
+    saved: kept,
+    remaining: plannedIncome - card("Planned spend")
   };
 }
 
