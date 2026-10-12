@@ -293,6 +293,9 @@ export const messages = {
       fewerDetails: "Fewer details",
       moreDetailsOpen: "Date, wallet, posted date, type",
       moreDetailsLocked: "Posted date, type",
+      // The same, when the entry has an Added by row.
+      moreDetailsOpenAddedBy: "Date, wallet, posted date, type, added by",
+      moreDetailsLockedAddedBy: "Posted date, type, added by",
       transferOut: "Transfer out",
       transferIn: "Transfer in",
       splits: "Splits",
