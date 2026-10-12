@@ -26,7 +26,7 @@ const SCREENS = [
     path: "/summary?view=person-tim&month=2026-05",
     required: [".period-range-segment"],
     optional: [
-      ".financial-insight-fold", ".financial-insight-toggle", ".share-row-secondary-action",
+      ".financial-insight-fold", ".financial-insight-toggle", ".summary-mix-arrow", ".summary-mix-main", ".summary-mix-more", ".summary-wallet-row", ".summary-note-trigger",
       ".checkin-action", ".summary-chevron"
     ]
   },
