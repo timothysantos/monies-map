@@ -1,5 +1,5 @@
 // node sheet.cjs out width name...
-const sharp = require("/Users/tim/22m/ai-projects/monies_map/.claude/worktrees/agent-a5fed01af598d5cb6/node_modules/sharp");
+const sharp = require(require("node:path").resolve(__dirname, "../../../../node_modules/sharp"));
 (async () => {
   const [out, w, ...names] = process.argv.slice(2);
   const W = Number(w);

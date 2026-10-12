@@ -3,9 +3,10 @@
 // with the app's own tokens and lsd- blocks) and saves PNGs to ./out.
 import { readFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { chromium, devices, webkit } from "/Users/tim/22m/ai-projects/monies_map/.claude/worktrees/agent-a5fed01af598d5cb6/node_modules/@playwright/test/index.mjs";
+import { fileURLToPath } from "node:url";
 
-const ROOT = "/Users/tim/22m/ai-projects/monies_map/.claude/worktrees/agent-a5fed01af598d5cb6";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+const { chromium, devices, webkit } = await import(`${ROOT}/node_modules/@playwright/test/index.mjs`);
 const BASE = "http://127.0.0.1:5471";
 const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "out");
 const [scenarioFile, ...filters] = process.argv.slice(2);

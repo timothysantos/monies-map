@@ -1,5 +1,7 @@
 // Run with cwd = the worktree. Keeps an isolated showcase stack alive.
-import { prepareStack, startStack } from "/Users/tim/22m/ai-projects/monies_map/.claude/worktrees/agent-a5fed01af598d5cb6/scripts/e2e-stack.mjs";
+import path from "node:path";
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../..");
+const { prepareStack, startStack } = await import(`${ROOT}/scripts/e2e-stack.mjs`);
 const STACK = {
   index: "mock2", uiPort: 5471, apiPort: 8871, inspectorPort: 9471,
   baseURL: "http://127.0.0.1:5471", apiOrigin: "http://127.0.0.1:8871",

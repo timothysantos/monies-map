@@ -1,9 +1,12 @@
 import { copyFile, mkdir } from "node:fs/promises";
-const ROOT = "/Users/tim/22m/ai-projects/monies_map/.claude/worktrees/agent-a5fed01af598d5cb6";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 export const MONTH = "2026-08";
 const SAMPLE_EXPORT_NAME = "CC_TXN_History_06052026211223";
 const SAMPLE_CARD_ACCOUNT = "UOB One Card (new)";
-const SCRATCH = "/private/tmp/claude-502/-Users-tim-22m-ai-projects-monies-map/15beb4a5-7672-4e38-a363-5e44b5aefb04/scratchpad/mock";
+const SCRATCH = process.env.MOCK_SCRATCH ?? path.join(os.tmpdir(), "mock-round2");
 
 export async function reseed(page) {
   for (let attempt = 0; attempt < 10; attempt += 1) {
