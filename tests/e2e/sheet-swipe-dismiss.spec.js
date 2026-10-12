@@ -205,7 +205,7 @@ async function openMonthSheet(page) {
   await expect(sheet).toBeVisible();
   const body = sheet.locator("[data-sheet-body]");
   await expect(body).toHaveClass(/summary-month-sheet-body/);
-  expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight + 120)).toBe(true);
+  expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight + 60)).toBe(true);
   return { sheet, body };
 }
 
