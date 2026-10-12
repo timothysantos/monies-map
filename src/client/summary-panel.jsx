@@ -9,7 +9,7 @@ import {
 
 import { messages } from "./copy/en-SG";
 import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
-import { formatMonthLabel, money, unmaskedMoney } from "./formatters";
+import { money, unmaskedMoney } from "./formatters";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { SummaryLead } from "./summary-lead";
