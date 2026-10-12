@@ -346,7 +346,9 @@ state), and the Ask page itself inside (`AskPanel` with `placement`).
   banner move beside it. Nothing is ever under it.
 - Popup (761 to 1,279 px): 410 × 560 px (less on a short window), 22 px
   radius, a hairline border and a deep soft shadow, 22 px from the right
-  and 24 px from the bottom, over the page and the + button.
+  and 24 px from the bottom, over the page; on Entries and Splits it sits
+  94 px from the bottom, above the round + or receipt button, which open
+  their new entry card in it (and in the docked panel) on a wide screen.
 - Inside both: the Ask page with 16 px gutters. The header is the page's
   ("Ask" at 1.7 rem with the person · scope · month line), with New chat,
   the expand control (popup on a window wide enough to dock: an accent

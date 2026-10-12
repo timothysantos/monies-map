@@ -2782,6 +2782,12 @@ body[data-split-inline-editor] .ask-dock-field {
   overflow: hidden;
 }
 
+/* Above the + or receipt button, so it stays in reach. */
+.ask-dock.is-popup.is-beside-fab {
+  bottom: 94px;
+  height: min(560px, calc(100vh - 118px));
+}
+
 body {
   --ask-dock-width: clamp(360px, 27vw, 400px);
 }

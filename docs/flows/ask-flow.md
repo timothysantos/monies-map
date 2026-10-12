@@ -16,9 +16,12 @@ looked. Its visual design is in `design.md` ("Ask page").
 Route entry:
 
 - `/ask`: chat mode, from the Ask tab.
-- `/ask?mode=add&from=entries`: add mode, from the Entries + button.
+- `/ask?mode=add&from=entries`: add mode, from the Entries + button on a
+  phone (on a wide screen the + opens the same card in the Ask panel, see
+  "Desktop").
 - `/ask?mode=expense&from=splits&split_group=<id>`: add mode with the Splits
-  switch on for that group, from the Splits receipt button.
+  switch on for that group, from the Splits receipt button on a phone (on a
+  wide screen, in the Ask panel).
 - `/ask?mode=add&from=ask` and `/ask?mode=expense&from=ask`: add mode from the
   chat mode's Add entry and Add expense chips.
 - `/ask?saved_entry=<id>&month=<YYYY-MM>&view=<view>&from=shortcut`: the
@@ -42,9 +45,10 @@ On a phone the tab bar reads Summary, Entries, Splits, Ask, ··· (one grid
 column per primary tab; Month is not a tab, it is the Summary tab's month
 choice). On a wide screen (761 px and up) the Ask tab is hidden: the Ask
 field at the bottom right of every page opens the same conversation beside
-the page (see "Desktop" below). `/ask` itself still renders in the main
-area there (the Entries + and Splits receipt buttons, the Shortcut's link,
-the From Ask chip's way back), and shows no field or panel.
+the page (see "Desktop" below), and the Entries + and Splits receipt
+buttons open their new entry card there too. `/ask` itself still renders in
+the main area there (the Shortcut's link, the From Ask chip's way back, an
+old link), and shows no field or panel.
 
 Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`, and an
 answer's `Open in Entries`, see "Search and filter"), the entry's
@@ -81,6 +85,17 @@ Where it opens (`ask-dock-layout.js`, pure, unit tested):
   and docks again when it widens. A popup kept open while the window
   widens stays a popup and shows the expand control ("Dock Ask beside the
   page"), which docks it.
+
+The Entries + and the Splits receipt button open their new entry card in
+the dock (`openAskDock` with the way in `add`/`entries`, or
+`expense`/`splits` with the open split group), docked or as a popup by the
+same rule; the page stays where it was. Each press is a new visit (the
+dock's `visit` remounts the conversation), so a saved card gives way to a
+new one, as on the phone. On Entries and Splits the popup sits above the
+round button (94 px from the bottom) so it stays in reach. A save in the
+panel refreshes the page beside it the way a save from another browser tab
+does (`handleRemoteEntryMutation` / `handleRemoteSplitMutation`), so the new
+row shows in the Entries list beside it.
 
 The panel is the Ask page itself (`AskPanel` with `placement` "docked" or
 "popup", the same lazy chunk `/ask` loads) on the shared conversation
@@ -474,10 +489,6 @@ iPhone 13 profile) and runtime behaviour on a phone.
 
 ## Known Exceptions / Watch Areas
 
-- On a wide screen the Entries + and Splits receipt buttons still open
-  `/ask` in the main area, where the panel hides (one Ask on screen at a
-  time); it comes back on the next page. Whether they should open the
-  panel's new entry instead is an open decision.
 - Only the header and Month follow the page's width when the panel narrows
   it; other pages keep their window-width rules (Splits' toolbar is tight
   at 1,280 px with the panel docked, as it is in a 960 px window).

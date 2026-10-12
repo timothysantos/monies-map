@@ -19,11 +19,27 @@ import { isAskDockWide, useIsAskDockWide, useIsMobileLayout } from "./use-viewpo
 // but /ask, where the page is Ask.
 
 /**
+ * Opens Ask beside the page (the field, or on a wide screen the Entries +
+ * and Splits receipt buttons with their new entry's way in). An open panel
+ * keeps its mode; otherwise the window's width picks it.
+ * @param {{ intent?: object, file?: File | null }} [options]
+ */
+export function openAskDock({ intent = undefined, file = null } = {}) {
+  const store = getAskDockStore();
+  const current = store.getSnapshot();
+  store.open({
+    mode: current.open ? current.mode : askDockModeOnOpen(askDockBandWidth({ phone: false, wide: isAskDockWide() })),
+    intent,
+    file
+  });
+}
+
+/**
  * @param {{
  *   besideFab: boolean,
  *   intentProps?: Record<string, Function>,
  *   canLoad: boolean,
- *   renderConversation: (dock: { layout: "docked" | "popup", canExpand: boolean, intent: import("./ask-dock-state").AskIntent }) => import("react").ReactNode
+ *   renderConversation: (dock: { layout: "docked" | "popup", canExpand: boolean, intent: import("./ask-dock-state").AskIntent, visit: number }) => import("react").ReactNode
  * }} props
  */
 export function AskDock({ besideFab, intentProps = undefined, canLoad, renderConversation }) {
@@ -43,7 +59,7 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
   // open after a reload never gets in the first screen's way), or at once
   // when the person opens it.
   const [loadAllowed, setLoadAllowed] = useState(false);
-  if (open && !loadAllowed && canLoad) {
+  if (open && !loadAllowed && (canLoad || state.openedByHand)) {
     setLoadAllowed(true);
   }
 
@@ -67,9 +83,7 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
 
   const openAsk = (file = null) => {
     const resume = askConversationPresence.getSnapshot().resumeIntent;
-    setLoadAllowed(true);
-    store.open({
-      mode: askDockModeOnOpen(askDockBandWidth({ phone: false, wide: isAskDockWide() })),
+    openAskDock({
       // Reopening goes back to the conversation in progress, as the phone's
       // Ask tab does: a new entry still being filled, else the chat.
       intent: store.getSnapshot().open ? undefined : resume ? { ...CHAT_INTENT, ...resume, savedEntryId: "" } : CHAT_INTENT,
@@ -179,9 +193,9 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
         </div>
       )}
       {open ? (
-        <aside className={`ask-dock is-${layout}`} aria-labelledby="ask-page-title">
+        <aside className={`ask-dock is-${layout}${besideFab ? " is-beside-fab" : ""}`} aria-labelledby="ask-page-title">
           {loadAllowed ? (
-            <Suspense fallback={loading}>{renderConversation({ layout, canExpand, intent: state.intent })}</Suspense>
+            <Suspense fallback={loading}>{renderConversation({ layout, canExpand, intent: state.intent, visit: state.visit })}</Suspense>
           ) : loading}
         </aside>
       ) : null}

@@ -609,8 +609,11 @@ its message box.
   that screen beside it. Ask stays open as you move between screens, and
   after a reload, until you click **Close**. **Esc** closes the box on a
   smaller window, and the side panel when you are typing in it.
-- It is the same conversation as the Ask page the round **+** opens, and
-  the same one Ask shows if you make the window as narrow as a phone.
+- The round **+** on Entries and the receipt button on Splits open a new
+  entry card here too, beside the screen, which stays where it was. Once
+  you save, the entry shows in the list beside it.
+- It is the same conversation Ask shows if you make the window as narrow as
+  a phone.
 
 ![Ask as a box over Summary on a smaller window](/faq/guide/desktop/thumbs/desktop-ask-popup.webp)
 

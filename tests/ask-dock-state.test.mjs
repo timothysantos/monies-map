@@ -152,3 +152,25 @@ test("works without storage (private mode)", () => {
   assert.equal(store.getSnapshot().open, true);
   assert.equal(createAskDockStore({ storage: null }).getSnapshot().open, false);
 });
+
+test("a person's open marks the dock opened by hand; a restored one is not", () => {
+  const storage = memoryStorage();
+  const store = createAskDockStore({ storage });
+  assert.equal(store.getSnapshot().openedByHand, false);
+  store.open({ mode: "docked", intent: { mode: "add", from: "entries" } });
+  assert.equal(store.getSnapshot().openedByHand, true);
+  assert.deepEqual(store.getSnapshot().intent, { mode: "add", from: "entries", savedEntryId: "", splitGroupId: "" });
+  assert.equal(createAskDockStore({ storage }).getSnapshot().openedByHand, false);
+});
+
+test("each open that names a way in is a new visit; reopening from the field is not", () => {
+  const store = createAskDockStore({ storage: memoryStorage() });
+  const start = store.getSnapshot().visit;
+  store.open({ mode: "docked", intent: { mode: "add", from: "entries" } });
+  store.open({ mode: "docked", intent: { mode: "add", from: "entries" } });
+  assert.equal(store.getSnapshot().visit, start + 2);
+  store.open({ mode: "docked" });
+  assert.equal(store.getSnapshot().visit, start + 2);
+  store.setIntent({ mode: "chat" });
+  assert.equal(store.getSnapshot().visit, start + 3);
+});

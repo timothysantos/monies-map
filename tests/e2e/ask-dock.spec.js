@@ -351,6 +351,56 @@ test.describe("desktop Ask", () => {
     await expect(panel(page)).toHaveCount(0);
   });
 
+  for (const [width, layout] of [[1440, "is-docked"], [1024, "is-popup"]]) {
+    test(`at ${width} px the Entries + opens the new entry card in Ask and Entries stays where it was`, async ({ page }) => {
+      const description = `Dock + ${width} ${Date.now()}`;
+      await page.setViewportSize({ width, height: 800 });
+      await openUsable(page, "/entries?view=person-tim&month=2026-04");
+      const before = page.url();
+      // The month Entries shows (the shell may move the link to a tracked one).
+      const month = new URL(before).searchParams.get("month");
+      await page.locator(".entries-fab:not(.splits-fab)").click();
+      await expect(panel(page)).toHaveClass(new RegExp(layout));
+      await expect(page.getByRole("heading", { name: "New entry" })).toBeVisible();
+      await expect(page.locator('.ask-dock [data-ask-card="draft"]')).toBeVisible();
+      // The page beside it did not move.
+      expect(page.url()).toBe(before);
+      await expect(page.locator(".entry-row").first()).toBeVisible();
+      await expect(suggestions(page).getByRole("button").first()).toHaveText("‹ Entries");
+
+      await page.getByRole("textbox", { name: "What it was" }).fill(description);
+      await page.getByRole("textbox", { name: "Amount" }).fill("12.50");
+      await page.getByLabel("Date", { exact: true }).fill(`${month}-20`);
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(page.locator('.ask-dock [data-ask-card="saved"]')).toBeVisible();
+      // The Entries list beside it shows the saved row.
+      await expect(page.locator(".entry-row").filter({ hasText: description })).toBeVisible({ timeout: 20_000 });
+      expect(new URL(page.url()).pathname).toBe("/entries");
+
+      // The next + starts a new card.
+      await page.locator(".entries-fab:not(.splits-fab)").click();
+      await expect(page.locator('.ask-dock [data-ask-card="draft"]')).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue("");
+    });
+  }
+
+  test("at 1,280 px the Splits receipt button opens the card in Ask with Splits on for the open group, and Splits stays", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openUsable(page, "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
+    const before = page.url();
+    await page.locator(".splits-fab").click();
+    await expect(panel(page)).toHaveClass(/is-docked/);
+    await expect(page.locator('.ask-dock [data-ask-card="draft"]')).toBeVisible();
+    await expect(page.locator(".ask-dock").getByRole("switch")).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".ask-dock .ask-share small")).toHaveText("Baby River");
+    await expect(suggestions(page).getByRole("button").first()).toHaveText("‹ Splits");
+    expect(page.url()).toBe(before);
+    // Back to the chat from the field: the chat, not the card.
+    await panel(page).getByRole("button", { name: "Close Ask" }).click();
+    await field(page).click();
+    await expect(page.getByRole("heading", { name: "Ask", exact: true })).toBeVisible();
+  });
+
   test("the panel and the phone's Ask tab are one conversation", async ({ page }) => {
     const month = await trackedMonth(page);
     await page.setViewportSize({ width: 1440, height: 800 });

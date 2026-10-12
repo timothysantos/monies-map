@@ -48,7 +48,7 @@ import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ErrorPanel } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
-import { AskDock } from "./ask-dock";
+import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
@@ -109,6 +109,7 @@ import {
 } from "./summary-month-choice";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
+import { isMobileLayout } from "./use-viewport";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -2224,9 +2225,21 @@ export function App() {
     () => buildPageViewFromRouteData("ask", null, routeViewId, appShell),
     [appShell, routeViewId]
   );
-  const renderAskDockConversation = useCallback(({ layout, canExpand, intent }) => (
+  // A save in the panel also brings the page beside it up to date, as a
+  // save from another browser tab does (the Entries list, Splits, Month or
+  // Summary of that month).
+  const onAskDockEntryMutation = useCallback((payload) => {
+    broadcastEntryMutation(payload);
+    void handleRemoteEntryMutation(payload);
+  }, [broadcastEntryMutation, handleRemoteEntryMutation]);
+  const onAskDockSplitMutation = useCallback((payload) => {
+    broadcastSplitMutation(payload);
+    void handleRemoteSplitMutation(payload);
+  }, [broadcastSplitMutation, handleRemoteSplitMutation]);
+  const renderAskDockConversation = useCallback(({ layout, canExpand, intent, visit }) => (
     <RouteWorkProvider registry={routeWorkRegistry} routeKey={null}>
       <AskPanel
+        key={visit}
         placement={layout}
         canExpand={canExpand}
         intent={intent}
@@ -2239,8 +2252,8 @@ export function App() {
         trackedMonths={appShell?.trackedMonths}
         shortcutSettings={appShell?.settingsPage?.shortcutSettings}
         fetchEntriesPage={fetchAskEntriesPage}
-        onEntryMutation={broadcastEntryMutation}
-        onSplitMutation={broadcastSplitMutation}
+        onEntryMutation={onAskDockEntryMutation}
+        onSplitMutation={onAskDockSplitMutation}
         runBackgroundRefresh={runBackgroundRefresh}
         fetchRequiredQuery={fetchRequiredQuery}
         routeUsable={routeWork.usable}
@@ -2252,11 +2265,11 @@ export function App() {
     appShell?.settingsPage?.shortcutSettings,
     appShell?.trackedMonths,
     askDockView,
-    broadcastEntryMutation,
-    broadcastSplitMutation,
     categories,
     fetchAskEntriesPage,
     fetchRequiredQuery,
+    onAskDockEntryMutation,
+    onAskDockSplitMutation,
     routeWork.usable,
     routeWorkRegistry,
     runBackgroundRefresh,
@@ -3292,10 +3305,15 @@ export function App() {
       {renderedTabId === "entries" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab" onClick={() => {
-              // The + button opens the Ask page's new entry card; the
-              // Entries composer stays on "+ Add entry" and the card's
-              // "Edit in form".
-              navigate(buildAskLocation(searchParams, { mode: "add", from: "entries" }));
+              // The + button opens Ask's new entry card: on a phone the Ask
+              // page, on a wide screen in the Ask panel beside Entries,
+              // which stays. The Entries composer stays on "+ Add entry"
+              // and the card's "Edit in form".
+              if (isMobileLayout()) {
+                navigate(buildAskLocation(searchParams, { mode: "add", from: "entries" }));
+              } else {
+                openAskDock({ intent: { mode: "add", from: "entries" } });
+              }
             }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
               <Plus size={24} />
             </button>,
@@ -3317,15 +3335,20 @@ export function App() {
       {renderedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab splits-fab" onClick={() => {
-              // The receipt button opens the Ask page's card with the
-              // Splits switch on for the open group; the Splits expense
+              // The receipt button opens Ask's card with the Splits switch
+              // on for the open group (the Ask page on a phone, the Ask
+              // panel beside Splits on a wide screen); the Splits expense
               // dialog stays on "+ Add expense" and the card's "Edit in form".
               // The open group: the URL's, else the one Splits chose itself
               // (it marks its hidden add trigger with it).
               const trigger = document.querySelector("[data-splits-fab-trigger='true']");
               const splitGroup = searchParams.get("split_group")
                 ?? (trigger instanceof HTMLElement ? trigger.dataset.splitGroup ?? "" : "");
-              navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }));
+              if (isMobileLayout()) {
+                navigate(buildAskLocation(searchParams, { mode: "expense", from: "splits", splitGroup }));
+              } else {
+                openAskDock({ intent: { mode: "expense", from: "splits", splitGroupId: splitGroup } });
+              }
             }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
               <Receipt size={24} />
             </button>,

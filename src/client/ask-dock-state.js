@@ -56,7 +56,13 @@ export function createAskDockStore({ storage = null } = {}) {
     // Memory only: the field's words until the conversation takes them,
     // and whether the conversation has mounted (the field hides then).
     draftText: "",
-    ready: false
+    ready: false,
+    // A person opened it in this page's life (its code then loads at once),
+    // as opposed to a panel restored open after a reload.
+    openedByHand: false,
+    // Counts the opens that name a way in (the + and receipt buttons), so
+    // each one is a new visit: a saved new entry then gives way to a new card.
+    visit: 0
   };
   let handoffFile = null;
   let focusPending = false;
@@ -89,13 +95,19 @@ export function createAskDockStore({ storage = null } = {}) {
       focusPending = focus || focusPending;
       returnFocusPending = false;
       if (file) handoffFile = file;
-      set({ open: true, mode: readMode(mode), intent: intent === undefined ? snapshot.intent : readIntent(intent) }, { save: true });
+      set({
+        open: true,
+        openedByHand: true,
+        mode: readMode(mode),
+        intent: intent === undefined ? snapshot.intent : readIntent(intent),
+        visit: intent === undefined ? snapshot.visit : snapshot.visit + 1
+      }, { save: true });
     },
     expand() {
       set({ mode: "docked" }, { save: true });
     },
     setIntent(intent) {
-      set({ intent: readIntent(intent) }, { save: true });
+      set({ intent: readIntent(intent), visit: snapshot.visit + 1 }, { save: true });
     },
     close({ returnFocus = false } = {}) {
       focusPending = false;
