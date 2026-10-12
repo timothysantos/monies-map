@@ -417,7 +417,7 @@ const SHOTS = [
   { name: "settings-reconcile", d: PD, run: async (p) => { await openSettingsSection(p, "Accounts"); await p.getByRole("button", { name: "Reconcile" }).first().click(); await waitDialog(p); await hideCaret(p); } },
   { name: "settings-edit-category", d: PD, run: async (p) => {
     await openSettingsSection(p, "Categories");
-    const btn = p.locator(".settings-section").filter({ has: p.getByRole("heading", { name: "Categories", exact: true }) }).getByRole("button", { name: /Edit/ }).first();
+    const btn = p.getByRole("button", { name: "Edit category", exact: true }).first();
     await btn.click(); await waitDialog(p);
   } },
   { name: "settings-ask-ai-low-credit", d: P, run: async (p) => { await stubCredit(p, "low"); await openSettingsSection(p, "Ask and AI"); } },
