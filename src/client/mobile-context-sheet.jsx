@@ -1,10 +1,11 @@
 import "./mobile-context-sheet.css";
 import "./mobile-sheet-head.css";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { mobileContextCopy as copy } from "./copy/mobile-context-copy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
+import { useKeyboardInset } from "./use-keyboard-inset";
 import { BottomActions } from "./ui-components";
 
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
@@ -34,10 +35,14 @@ export default function MobileContextSheetBody({
   onScopeChange,
   onClose
 }) {
+  // The search field can open the phone keyboard: the sheet (this body's
+  // parent, App's Dialog.Content) lifts itself above it with its bottom bar.
+  const [body, setBody] = useState(/** @type {HTMLElement | null} */ (null));
+  useKeyboardInset(body?.parentElement ?? null);
   return (
     <>
       <SheetSwipeDismiss onClose={onClose} />
-      <div className="mobile-context-body" data-sheet-body>
+      <div ref={setBody} className="mobile-context-body" data-sheet-body>
         <section className="mobile-context-lead" aria-label={viewLabel}>
           {personChip}
           {scopeLabel ? <strong className="mobile-context-lead-scope">{scopeLabel}</strong> : null}
