@@ -686,7 +686,7 @@ Where it is used:
   rows (Income, Expected spend, Savings goal: planned, actual, variance) and
   the month note row, which edits the note. The latest month starts open,
   the others fold. From 1,024 px the cards are a grid, 2 across (3 from 1,440
-  px), latest first, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
+  px), latest first; a card with its Details open spans the whole row so no gap sits beside it, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
   percent and no under/over words, the variance dots too.
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for

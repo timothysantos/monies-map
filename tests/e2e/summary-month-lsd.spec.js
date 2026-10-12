@@ -20,7 +20,7 @@ const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shar
 const INK = { in: "rgb(23, 104, 74)", short: "rgb(163, 53, 42)", plan: "rgb(47, 91, 134)", text: "rgb(38, 35, 31)", muted: "rgb(115, 111, 105)" };
 const SIGN_WORDING = /\b(To allocate|Overplanned|over plan|under plan|% of plan)\b|[-−]\s?••••/;
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
-const monthLabel = (month) => new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
+const monthLabel = (month) => new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`)).replace(/\bSept\b/, "Sep");
 // The phone the owner tests on; `npm run test:e2e:webkit` runs it in WebKit.
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 
@@ -393,7 +393,7 @@ test.describe("desktop", () => {
     await expect(row.locator(".month-actual-drilldown")).toHaveText(money(budgets[0].actualMinor));
   });
 
-  test("Intent vs Outcome: the month cards are a grid, 3 across at 1440px, 2 across at 1100px, latest first", async ({ page }) => {
+  test("Intent vs Outcome: the month cards are a grid, 3 across at 1440px, 2 across at 1100px, latest first (open, full row)", async ({ page }) => {
     await revealMoney(page);
     await openSummary(page);
     const data = await loadSummaryPage(page, { view: VIEW, month: MONTH, summaryStart: RANGE.start, summaryEnd: RANGE.end });
@@ -402,7 +402,7 @@ test.describe("desktop", () => {
     await expect(cards.first().locator(".summary-month-link")).toHaveText(monthLabel(latest));
     const across = async () => {
       const boxes = [];
-      for (const index of [0, 1, 2, 3]) boxes.push(await box(cards.nth(index)));
+      for (const index of [1, 2, 3, 4]) boxes.push(await box(cards.nth(index)));
       return boxes.filter((card) => Math.abs(card.y - boxes[0].y) <= 1).length;
     };
     expect(await across()).toBe(3);
@@ -411,9 +411,35 @@ test.describe("desktop", () => {
     await expect.poll(across).toBe(2);
     await expectNoSidewaysScroll(page, ".summary-intent");
     await page.setViewportSize({ width: 1440, height: 900 });
-    const first = await box(cards.first());
+    // The latest month is open, so it is the full first row; the folded
+    // months follow it in order, left to right.
     const second = await box(cards.nth(1));
-    expect(second.x, "the second month is to the right of the latest").toBeGreaterThan(first.x);
+    const third = await box(cards.nth(2));
+    expect(third.x, "months run left to right, latest first").toBeGreaterThan(second.x);
+  });
+
+  test("Intent vs Outcome: a card with its Details open spans the whole grid row, so no gap sits beside it", async ({ page }) => {
+    await revealMoney(page);
+    await openSummary(page);
+    const grid = page.locator(".summary-intent-months");
+    const cards = page.locator(".summary-intent-month");
+    const gridBox = await box(grid);
+    // The latest month starts open: it takes the full row.
+    const first = await box(cards.first());
+    expect(first.width).toBeGreaterThanOrEqual(gridBox.width - 1);
+    // The next two folded months share the row below it.
+    const second = await box(cards.nth(1));
+    const third = await box(cards.nth(2));
+    expect(second.y).toBeGreaterThan(first.bottom - 1);
+    expect(Math.abs(third.y - second.y)).toBeLessThanOrEqual(1);
+    // Opening another month's Details takes that card to a full row too.
+    await cards.nth(1).getByRole("button", { name: /^Details/ }).click();
+    const opened = await box(cards.nth(1));
+    expect(opened.width).toBeGreaterThanOrEqual(gridBox.width - 1);
+    // Folding the latest again puts it back in the grid beside the next one.
+    await cards.first().getByRole("button", { name: /^Details/ }).click();
+    const folded = await box(cards.first());
+    expect(folded.width).toBeLessThan(gridBox.width - 100);
   });
 
   test("Intent vs Outcome: the same cards, the note row edits the month note", async ({ page }) => {
