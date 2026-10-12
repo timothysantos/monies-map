@@ -453,10 +453,16 @@ always know you are working on shared money rather than your bank ledger.
 
 ### What you see
 
-- **Group buttons**: **Non-group expenses** plus your named groups (for
-  example a trip or home bills). Each shows its currency, number of entries
-  and your balance, such as "You owe Serene $108.58" or "Settled up". The **+**
-  creates a group.
+- **Group tiles**: a row under the person switcher with your named groups
+  (for example a trip or home bills) and **Non-group expenses**. The group you
+  have open comes first as a white tile with its balance in words, such as
+  "Serene owes you $303.15" or "You owe Serene $108.58", and how many entries
+  it has. The others are smaller tiles with one balance line: groups that owe
+  you first, then groups you owe, then Non-group expenses ("No balance" when
+  it is even), then settled groups, dimmed and marked "Settled". The cream
+  tile on the left stays put: **New** creates a group and **All** opens a list
+  of every group with its balance. When money is hidden every tile says
+  "Balance hidden".
 - **Money insights** for the selected group.
 - **Search**, your balance, the group's spend, **Activity history** and
   **+ Add expense**.
@@ -487,7 +493,9 @@ open.
 
 ### On a phone
 
-The view switch stays at the top, groups scroll sideways, and the round
+The view switch stays at the top, the group tiles slide sideways beside the
+cream **New** / **All** tile, and when you scroll down a bar with the open
+group takes their place (tap it to open **All groups**). The round
 receipt button opens a new entry card on [Ask](#ask), already set to share
 with the other person in the group you are looking at. **+ Add expense**
 (and **Edit in form** on Ask) opens the new expense as a card in a sheet,

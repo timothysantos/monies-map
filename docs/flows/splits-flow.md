@@ -26,6 +26,13 @@ Splits state is split between:
 - split activity-history state for recovery and audit review
 - transient UI state for dialogs and responsive controls
 
+The group strip (see design.md, "Splits group strip") is a presentation of the
+page DTO's groups: the open group is the `split_group` address parameter, and
+with none the group this viewer used last (localStorage, per view) or the
+default. New and All sit in a column beside the tile scroller; All opens the
+All groups sheet, and a floating bar shows the open group once the strip has
+scrolled away on a phone.
+
 The page should preserve active matching state while freshness catches up,
 instead of replacing the current workflow blindly.
 

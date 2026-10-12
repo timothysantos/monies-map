@@ -68,6 +68,32 @@ payment method, pending statement evidence, and FX review. Foreign amounts are
 shown as entered, with any home-currency estimate or converted ledger amount
 secondary and explicitly labeled.
 
+### Splits group strip
+
+The strip under the person switcher (`splits-group-strip.jsx`, rules in
+`splits-group-strip-model.js`, styles in `splits-group-strip.css`) is in the
+page flow, never floating over rows. On a phone it is two siblings in one
+row: the New/All control (a solid cream chrome-surface tile, about 56 px wide,
+a hairline between two 44 px+ buttons "New" with aria-label "Create group" and
+"All" with "All groups") and, to its right, the tile scroller. The control is
+not inside the scroller and is not sticky, so no tile ever slides under it;
+the scroller fades its left edge (only once scrolled) and its right edge (only
+while more tiles follow) with a CSS mask, and scroll-snaps tiles to its start.
+The open group is the first tile: white, about 60% wide, terracotta outline
+and tick, its balance in words and its entry count; the others are
+translucent group tiles with one balance line. Order: owed to you, you owe,
+Non-group expenses (its own balance, "No balance" at zero, never "Settled"),
+then settled real groups, muted. Hidden money: "Balance hidden" on every tile
+and a stable by-name order with no settled styling. The open group is kept per
+viewer in localStorage (`monies-map:splits-last-group:<view>`, try/catch) and
+used when the address has no `split_group`. All opens the All groups sheet
+(same order, a folded "N settled groups" row, Create group, Done, swipe down to
+close). Once the strip has scrolled out above the viewport (IntersectionObserver)
+a floating bar shows the open group and opens the same sheet; it hides under
+any dialog. Desktop is one row with the control first; tiles that do not fit
+are dropped (never wrapped or scrolled) and the All half reads "All · N more".
+Group tiles carry no money tone (the Splits orange).
+
 Split activity history is an action-oriented recovery surface opened from the
 splits summary area. It uses the splits color contract, stays compact and
 newest-first, labels archived actions clearly, and places Restore beside a
@@ -1746,7 +1772,7 @@ only says where desktop Ask docks: "Desktop Ask"):
   matches the `@media (max-width: 760px)` blocks in `public/styles.css` (a
   unit test checks the stylesheet). Entries, Splits, the responsive pickers,
   the spending chart, the last-period hint, inline editor scrolling, the
-  Splits group pills and focus visibility use it.
+  Splits group strip and focus visibility use it.
 - `MONTH_SHEET_LAYOUT_QUERY` adds `(max-width: 1024px) and (orientation:
   portrait)`. Month plan and income rows open the mobile sheet on a portrait
   tablet too, while the CSS and every other page keep the desktop layout.
