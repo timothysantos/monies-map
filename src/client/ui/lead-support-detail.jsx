@@ -265,6 +265,20 @@ export function ChipDateField({ value = "", label, onValueChange }) {
 }
 
 /**
+ * The select a tappable chip lays over itself, for a chip whose field has no
+ * Detail row (the inline card on a wide screen): invisible, it takes the
+ * tap and opens the browser's list.
+ * @param {{ value?: string, label: string, options: Array<{ value: string, label: string }>, onValueChange: (value: string) => void }} props
+ */
+export function ChipSelectField({ value = "", label, options, onValueChange }) {
+  return (
+    <select className="lsd-chip-native" aria-label={label} value={value} onChange={(event) => onValueChange(event.target.value)}>
+      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
+  );
+}
+
+/**
  * One rounded group of Detail rows, named for assistive tech.
  * @param {{ label?: string, children?: any, className?: string }} props
  */
