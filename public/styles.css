@@ -936,6 +936,31 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   }
 }
 
+/* A period that does not apply to the page (Splits, Settings, Imports, FAQ)
+   reads as a plain label with dimmed arrows, not a disabled box. */
+@media (min-width: 761px) {
+  .period-nav-cluster.is-passive .period-display {
+    border-color: transparent;
+    background: transparent;
+    opacity: 1;
+  }
+}
+
+/* On a page narrower than 1,064 px the Entries search label sits above the
+   field, as the other filters' labels do, so the field keeps its width. */
+@media (min-width: 961px) {
+  @container shell (max-width: 1063px) {
+    .entries-filter-stack .entries-filter-bar {
+      grid-template-columns: auto minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)) auto;
+    }
+
+    .entries-filter-bar .search-filter {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+    }
+  }
+}
+
 .panel-subgrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2185,10 +2210,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
    months, then the range's months). A phone uses the island control. */
 .summary-month-selector {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   padding: 2px 0;
 }
 

@@ -82,6 +82,16 @@
   }
 }
 
+/* On a page narrower than 1,064 px (a 1,024 px window, or the docked Ask
+   panel) the totals wrap to a second line rather than clip at the edge. */
+@container shell (max-width: 1063px) {
+  .entries-totals-strip {
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    overflow-x: visible;
+  }
+}
+
 .entries-date-groups {
   display: grid;
   gap: 10px;

@@ -178,6 +178,64 @@ test.describe("desktop chrome tokens", () => {
     }
   });
 
+  // Audit items: on a page narrowed by the docked panel or a 1,024 px window
+  // nothing may be clipped at the page edge (the Entries totals, the Summary
+  // month row), and the Entries search keeps a usable width.
+  test("a narrow desktop page clips nothing: Entries totals, search and the Summary month row", async ({ page }) => {
+    for (const layout of LAYOUTS.filter((item) => item.width < 1440)) {
+      await setLayout(page, layout);
+      const where = layout.name;
+
+      await openPage(page, "/entries?view=person-tim&month=2026-04", layout);
+      const entries = await page.evaluate(() => {
+        const strip = document.querySelector(".entries-totals-strip");
+        const search = document.querySelector(".entries-filter-bar .search-filter-input");
+        const label = document.querySelector(".entries-filter-bar .search-filter .entries-filter-label");
+        return {
+          stripClipped: strip.scrollWidth > strip.clientWidth + 1,
+          searchWidth: Math.round(search.getBoundingClientRect().width),
+          labelAboveField: label.getBoundingClientRect().bottom <= search.getBoundingClientRect().top
+        };
+      });
+      expect(entries.stripClipped, `${where}: Entries totals`).toBe(false);
+      expect(entries.searchWidth, `${where}: Entries search`).toBeGreaterThanOrEqual(150);
+      expect(entries.labelAboveField, `${where}: search label above the field`).toBe(true);
+
+      await openPage(page, "/summary?view=household&month=2026-05", layout);
+      const chips = await page.evaluate(() => {
+        const edge = document.querySelector(".summary-month-selector").getBoundingClientRect().right;
+        return [...document.querySelectorAll(".summary-month-selector .summary-focus-button")].map((chip) => chip.getBoundingClientRect().right <= edge + 0.5);
+      });
+      expect(chips.length, `${where}: month chips`).toBeGreaterThanOrEqual(13);
+      expect(chips.filter((inside) => !inside), `${where}: month chips past the edge`).toEqual([]);
+    }
+  });
+
+  // The period does not apply on Splits and Settings. It reads as a plain
+  // label with dimmed arrows, not as a disabled box, and still takes no input.
+  test("a period that does not apply is a plain label with dimmed, inert arrows", async ({ page }) => {
+    for (const layout of LAYOUTS) {
+      await setLayout(page, layout);
+      for (const path of ["/splits?view=household&month=2026-05", "/settings?view=household&month=2026-05"]) {
+        await openPage(page, path, layout);
+        const where = `${path} at ${layout.name}`;
+        const display = page.locator(".period-display");
+        await expect(display, where).toHaveCSS("opacity", "1");
+        await expect(display, where).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+        await expect(display, where).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+        for (const label of ["Previous period", "Next period"]) {
+          const arrow = page.locator(`[aria-label="${label}"]`);
+          await expect(arrow, where).toBeDisabled();
+          expect(Number(await arrow.evaluate((element) => getComputedStyle(element).opacity)), `${where}: ${label}`).toBeLessThan(1);
+        }
+      }
+      // Negative: a page that uses the period keeps its bordered box and live arrows.
+      await openPage(page, "/entries?view=person-tim&month=2026-04", layout);
+      await expect(page.locator(".period-display"), layout.name).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await expect(page.locator('[aria-label="Next period"]'), layout.name).toBeEnabled();
+    }
+  });
+
   // Negative: hiding money must not leave a figure, its sign or its tone
   // behind in the larger key figure.
   test("hidden money still shows dots, with no digits, in the Entries key figure", async ({ page }) => {
