@@ -654,7 +654,8 @@ over the row in a sheet; a visible inline date field on a wide screen) and
 Tappable chips: a Support chip that names a field you can change opens
 the same picker or editor as that field's Detail row, so the fact you look
 at is also the way to change it. Edit entry card: date (the date picker),
-wallet (the wallet picker, unfolding More details) and owner. Ask draft
+wallet (the wallet picker, unfolding More details) and owner; on a wide
+screen the inline editor's three chips are the fields themselves. Ask draft
 card: date, wallet and owner. New split expense card: date, paid by,
 shares (the share editor) and paid using. The Month plan card's chips are
 not fields there, and a saved Ask card's chips are not editors.
@@ -670,8 +671,9 @@ not fields there, and a saved Ask card's chips are not editors.
   the linked entry set, shows a small lock and opens nothing; assistive
   tech hears ", locked by the statement" (or ", set by the linked entry").
 - State chips (Manual provisional, Statement certified) are never editors.
-- On a wide screen a chip moves focus to its row's select (and opens it
-  where the browser allows).
+- On a wide screen the Entries inline editor has no row for date, wallet or
+  owner, so those chips are the fields (a date field, a native list); the
+  Splits inline card does the same for date, paid by and paid using.
 
 Source chip: the bank state chip names the tool that saved a provisional
 entry, "Apple Pay · provisional" (the Apple Pay Shortcut) or "Ask ·
@@ -939,10 +941,48 @@ Where it is used:
   Posted date, Type (and Transfer direction); on a phone those last ones fold
   into More details, and a certified entry lists only Posted date (locked)
   and Type. On a wide screen (the inline editor) the lead card spans the
-  top and the rows sit under it in two balanced columns, and each row
-  keeps an inline field, so Tab walks description, amount, the eye, then the
-  rows in order. Delete entry (and Delete split once it is on Splits),
-  Cancel and Save are in the bottom bar.
+  top and the rows sit under it in two balanced columns. No row repeats a
+  lead chip there, as on the Splits inline card: Owner, Date and Wallet have
+  no row, and their chips are the fields (a date field over the date chip, a
+  native list over the wallet and owner chips; the wallet chip shows even
+  with no wallet set). A certified entry's date and wallet chips stay
+  locked, the owner chip still edits. The rows that remain (Category,
+  Splits, Note, Posted date, Type) keep an inline field, so Tab walks
+  description, amount, the eye, the three chips, then the rows in order, and
+  the card is about 40 px shorter (the stated cap at 1,280 px is 380 px for
+  the editor, `entries-lsd.spec.js`). The saved request is the one the rows
+  sent. Delete entry (and Delete split once it is on Splits), Cancel and
+  Save are in the bottom bar.
+- The Entries top (`entries-overview.jsx` `EntriesTotals`,
+  `entries-totals-model.js`, its CSS in `entries-route.css`, in the lazy
+  Entries route). Lead: "Spent · Aug 2026", the filtered view's gross spend
+  in plain ink (spending is not bad for being spending), the person's share
+  as its aside ("Ethan's share $1,369.25", only where it differs). Support:
+  four pills, Income, Difference, Transfers and Outflow, the same figures the
+  old sideways strip showed (a tint only where money has a direction: mint
+  income, a mint surplus, a rose deficit; transfers and outflow plain, with
+  the person's share as a small line where it differs). Detail: "Spending by
+  category" (opens the existing breakdown, `aria-expanded`) and, on a phone
+  only, "Filters" with "All entries" or "2 filters on" (opens the View and
+  scope sheet, which holds the filters; `onOpenMobileContext`). A wide
+  screen puts the pills 2 x 2 beside the lead and its row (as Summary) and
+  keeps the filter bar on the page; a phone stacks lead, pills, rows. The
+  inline "+ Add entry" is gone (the round + opens Ask's new entry card,
+  whose "Edit in form" opens the Entries form). Hidden money: dots in plain
+  ink, no sign, pills lose their tint. Nothing scrolls sideways or is cut
+  off at 390, 1,024 or 1,280 px (`tests/e2e/entries-lsd.spec.js`). The wide
+  filter bar stacks the Search label over its field and, from 961 to 1,099
+  px, puts the search on its own row.
+- Entries list rows and day headers (`entries-list.jsx`, `entries-route.css`).
+  The hierarchy is spacing, not weight: the category is a quiet line above
+  the merchant (regular weight; a bolder merchant was declined), the wallet a
+  quiet line, the amount right-aligned and tabular on the merchant's line, an
+  empty note or wallet detail renders nothing, and a matched transfer is
+  plain muted text (an unmatched one keeps its pill). The person's colour edge
+  stays on every row. The day header is a hairline divider (small caps date,
+  rule, "Daily net" and the refresh button at the right) and a day's rows sit
+  in one rounded white group. A phone row is 68 px or more (icon, category,
+  merchant and amount, wallet, chips), a wide row keeps the three columns.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
   dialog in the phone sheet and the wide dialog, and in the list). Selecting a
   split expense row opens this card, as does the `editing_split_expense`
@@ -1036,6 +1076,67 @@ Where it is used:
   handlers as the table, which every wider screen keeps. The commit bar is one
   line on a phone. There is no split nudge: nothing in the app suggests splits
   before a commit, so none is drawn.
+
+### Dialogs and small sheets (`sheet-dialog.jsx`)
+
+Every other dialog, confirmation and small sheet shares one frame,
+`SheetDialog` (`src/client/sheet-dialog.jsx`, route CSS `sheet-dialog.css`,
+which ships with the code that opens a dialog and never with the first-screen
+stylesheet). The caller gives it the copy, a lead, the rows or fields and the
+actions; it gives them the layout:
+
+- Phone (and a portrait tablet when a caller passes `asSheet`): the shared
+  `EntryMobileSheet` (grab handle, swipe down, "Discard changes?" when
+  `isDirty`, lifted above the keyboard) with the title and a round 44 px close
+  on top, the lead and rows in the body and a `BottomActions` bar
+  (`is-sheet-bar`) at the bottom: Cancel (or a destructive action) at the
+  start, the primary action at the end under the thumb. A dialog opened from a
+  clickable row keeps React's submit, click and key events inside itself
+  (`isolateEvents`), and a sheet nested in a modal Radix dialog opts back in to
+  pointer events.
+- Wide screen: a centred Radix dialog (520 px, `wide` 720 px) with the same
+  head, lead, rows and bar (`is-dialog-bar`, Cancel at the start, primary at
+  the end). The first field takes focus, so the close button shows no ring.
+- Lead: what the dialog is about (`LeadCard`): the item being deleted, the
+  account being edited, the planned item being matched, the month a note
+  belongs to. A confirmation uses `ConfirmLead`, a rose bubble with the
+  consequence as one line under it (`neutral` for a calm ask such as Archive
+  account). Support chips mirror values you can read at a glance (type,
+  currency, owner, month, "N linked"). Detail rows (`DetailRow`, `PickerRow`,
+  `DateRow`) hold the fields; a one-field dialog (a note, a typed
+  confirmation) has the field under the lead.
+- Destructive: `tone="danger"` makes the primary button pastel rose with the
+  rose ink (`lsd-primary is-danger`, never a saturated red) and Cancel the
+  quiet button beside it; a typed confirmation (Reset month, Delete month,
+  Empty state) keeps the primary disabled until the words match. Reload app
+  data is the same ask in neutral. `DeleteRowButton`
+  (`delete-row-button.jsx`) is a popover on a wide screen and this sheet on a
+  phone.
+- A dialog that must be answered (`dismissible={false}`: Set up this login)
+  has no close button and no Cancel, ignores Escape, a tap outside and a
+  swipe, and is saved with its one button.
+- Converted: Edit category (the lead bubble shows the live icon and colour;
+  Slug, Icon and Colour are rows), Transfer details (Done in the bar, Convert
+  entry or Break connection apart at the start), Delete entry and Delete
+  split, Delete split row, Reset and Delete month, Clear unresolved transfers,
+  the row, month and Summary notes (`note-sheet-dialog.jsx`, one
+  `MonthNoteDialog` that Summary loads on demand), Match planned item
+  (`month-plan-link-dialog.jsx`), the Settings account, person, category and
+  match rule editors, Statement checkpoint (fits a phone), Set up this login,
+  Reload app data and Empty state, Restore preview row, Set diagnostic post
+  date, "Update connected note?" (Cancel, Save only this and Update both), the
+  Month Actions list (a sheet of Detail rows on a phone; the popover stays on
+  a wide screen), "I've topped up" and the import progress sheet (Close in
+  its bar). The Month plan-row sheet already served Add income source, Add
+  budget bucket and Add planned item on a phone; wide screens keep the inline
+  add rows.
+- The phone picker sheet (`picker-sheet.jsx`, lazy-loaded by
+  `ResponsiveSelect` and the Entries multi-select because both are
+  first-screen code) is a bottom sheet with the handle, a 44 px close, the
+  options as a scrolling list under the title and Close in its bar (Clear and
+  Done for several choices).
+- Tests: `tests/e2e/dialogs-lead-support-detail.spec.js` (primary, Cancel,
+  destructive confirm, tap targets, hidden money; WebKit and Chromium).
 
 ## Apple Shortcut Install Boundary
 
@@ -1581,7 +1682,8 @@ faded plum and harvest gold, with the terracotta accent and the Splits
 orange panel kept as they were. The palette lives once, in `:root` of
 `public/styles.css`; a state or category surface uses a fill token, and text
 on it uses the same hue's `-ink` token, which meets WCAG AA on that fill.
-Do not add saturated fills or new hex colours outside these tokens.
+Do not add saturated fills or new hex colours outside these tokens: a colour
+preset (see "Colour presets") re-colours the app only through them.
 
 The token names stayed when the values moved from the pastel set to the 70s
 set, so code and older notes that say mint, rose, sky, lavender or butter
@@ -1622,6 +1724,74 @@ full fill for banners that need attention (the environment banners: demo
 sky, local mint; the tab badge; the danger button; statement results). `--muted` keeps 5.59 on the neutral fill; on any
 other tint, text uses that tint's ink instead.
 
+## Colour Presets
+
+The 70s Warm palette above is the default. **Settings → Colours** offers
+five more whole schemes, each with its own accent, Splits panel, money
+tones, surfaces, category and person colours; the meaning of every tone
+stays (mint money in, rose out and over plan, sky a plan, butter a To do,
+lavender "think about").
+
+| Preset | Id | Feel | Accent / Splits panel |
+| --- | --- | --- | --- |
+| 70s Warm | `70s` | cream paper, chocolate ink (the default) | terracotta #b15e2f / terracotta |
+| 60s Mod | `60s` | mid-century cream and charcoal: olive, coral, Eames blue, mustard, aubergine | teal #127a74 / teal |
+| 80s Pop | `80s` | Memphis lilac-grey and deep indigo: aqua mint, hot pink, electric teal, neon purple, sunny yellow | magenta #b0198a / magenta into purple |
+| Modern | `modern` | neutral greys and white, crisp fintech | indigo #4f46e5 / indigo |
+| Black & White | `mono` | monochrome, high contrast | near-black #1a1a1a / black |
+| Code | `code` | dark terminal (near-black, monospace headings) | cyan #56d4dd / amber #e3b341 |
+
+How it works:
+
+- **Tokens.** Every colour in the stylesheets is a token. Besides the
+  `:root` tokens above, `--paper-rgb` is every white surface,
+  `--on-strong-rgb` the text on a strong fill (accent buttons, the Splits
+  panel), `--splits-rgb` / `--splits-deep-rgb` the Splits panel and
+  `--accent-rgb` / `--accent-strong-rgb` the accent tints. A few hand-tuned
+  70s shades are written as `var(--cream-rgb, 255 250 246)` (also
+  `--blush-rgb`, `--on-strong-tint-rgb`, `--accent-deep-rgb`,
+  `--accent-ink-rgb`, `--ink-rgb`, `--muted-rgb`): only a preset sets them,
+  so the default keeps each shade exactly. Shadows and modal scrims stay
+  neutral dark in every preset. New CSS uses these tokens, never a raw
+  colour.
+- **Sheets.** A preset is one small stylesheet, `public/palettes/<id>.css`
+  (about 2 kB, minified by the build like `styles.css`), that overrides the
+  tokens under `:root[data-palette="<id>"]`. Only the default is in the
+  first-screen CSS. `src/client/colour-presets.js` lists the presets (name,
+  four swatch dots) and `applyColourPreset` loads the sheet, then sets the
+  attribute; a later choice wins over a sheet that arrives late.
+- **Before the first paint.** The inline script in `index.html` reads
+  `localStorage["monies-map:palette"]` and, for a known id, sets
+  `data-palette` and writes the sheet's `<link>` into the head, so the
+  sheet blocks the first paint and the default never flashes. Blocked or
+  empty storage means the default.
+- **Category, person and group colours.** They all come from the category
+  palette, so `src/client/palette-colour.js` (`paletteColour`) hands each to
+  the page as `var(--cat-<70s hex>, <70s hex>)` and a preset sets one
+  `--cat-*` token per palette colour. Stored colours never change. The
+  donut keeps the 70s colour in its `fill` attribute and draws the preset's
+  through `style`.
+- **Black & White** shows money direction in the type as well as the grey:
+  money in is bold, money out and over plan italic, a plan dotted and a To
+  do wavy underlined; hidden amounts keep none of it. Categories are greys
+  told apart by icon and name.
+- **Code** is dark: `color-scheme: dark`, dark fills with bright inks, and a
+  bright accent and Splits panel with near-black text on them.
+
+`tests/colour-contrast.test.mjs` runs every check of the 70s palette
+(money inks on the panel, soft tint, full fill and Splits wash; text and
+muted on every neutral surface; the accent; person and group chips) against
+every preset, plus text on a strong fill. `tests/colour-presets.test.mjs`
+checks that each preset sets every colour token, every preset-only token
+the stylesheets read and a `--cat-*` colour for every palette colour the
+client draws; that the category colours read (3:1 on the panel, glyph 3:1
+on its tint, label 4.5:1) and stay 8 apart in Lab (greys in Black &
+White); that the Settings swatches match the tokens; and that the
+`index.html` script knows exactly the preset ids.
+`tests/e2e/colour-presets.spec.js` chooses a preset, reloads with the sheet
+held back (the first frame already shows the preset), checks a donut
+segment draws the preset's colour, and blocks storage.
+
 ## Person Colour
 
 Each person keeps one colour across the app, from the 70s category palette:
@@ -1651,7 +1821,7 @@ balances, split activity); `src/client/money-tone-class.js` renders it as
 | `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | brick red (rose ink) |
 | `plan` | an intention: planned income, planned spend, a savings target | dusty teal (sky ink) |
 | `caution` | something needs a check (a statement not yet checked) | dark mustard on harvest gold (butter ink) |
-| `out` | money out in a list: an expense row, a negative day, an Imports expense row, the Entries spend total, a settle-up you paid (with its minus sign) | brick red (rose ink), text only |
+| `out` | money out in a list: an expense row, a negative day, an Imports expense row, a settle-up you paid (with its minus sign) | brick red (rose ink), text only |
 | `neutral` | transfers, zero, counts | plain chocolate ink |
 
 Exactly on plan, and a fully allocated budget, count as `in`; zero
@@ -1669,8 +1839,8 @@ Three strengths, never two on one element:
 - **Soft tint** (compact summary objects): the fill at 60% with a hairline
   in the same hue, and every line in the ink. Summary's Income and Saved
   pills, Month outcome cards (actual income, actual spend over plan,
-  realized savings, remaining budget, spend gap), Entries strip items with a direction (income,
-  difference), wallet pills by statement health, and a statement movement
+  realized savings, remaining budget, spend gap), the Entries top's pills with a direction (income,
+  difference; the Spent lead, Transfers and Outflow stay plain ink), wallet pills by statement health, and a statement movement
   that is off. Plans stay text-only so a row of cards does not read as a
   traffic light. Balances on the Splits orange (the group tiles) stay plain
   text with no chip: the owner found tinted chips too much there. The
@@ -1819,25 +1989,67 @@ failed load failed until the page reloads.
 
 ## Shared States
 
-`ui-states.jsx` is the one presentation for "nothing here", "this failed"
-and "this screen failed"; callers pass copy from `copy/en-SG.js` and own
-every retry handler.
+`ui-states.jsx` is the one presentation for "nothing here", "this failed",
+"this screen failed", notices and loading; callers pass copy from
+`copy/en-SG.js` and own every retry handler. Its stylesheet is
+`ui/states.css` (imported by `ui-states.jsx`, so it rides with the entry chunk
+and never grows `public/styles.css`; the old `.app-loading-*` and
+`.import-stale-banner` rules were removed from `styles.css` for it).
 
-- `EmptyState` renders an empty section as one muted line, or as a titled
-  block with actions (the Entries wallet-view mismatch). Empty sections
-  say what is missing instead of showing a bare dash.
+Every state follows Lead · Support · Detail: **one clear lead** (the title, 1.08
+rem 800, what is missing or what failed), **one quiet support line** (what to do
+about it, 0.94 rem 500, muted, or the tone's ink on a pastel surface), a
+**technical Detail** line only where there is one (0.76 rem), and **one primary
+action** at the bottom (the `BottomActions` bar: primary last, any other action
+quiet beside it). On a phone the primary is full width and at least 50 px tall;
+a screen-level state is centred in the viewport (`is-screen`, `min-height:
+min(60dvh, 26rem)`) so its action lands mid-screen, not under the status bar.
+Colours are tokens only (`data-tone`: `rose`, `sky`, `butter`, `mint`).
+
+- `EmptyState` renders an empty section as one muted line, or, with a `title`
+  or an `action`, as a white Lead card (the strong lead shadow, an optional
+  44 px icon bubble) saying what is missing, why or what next, and the one next
+  step (`action`; `secondary` beside it). `compact` is the same lead and
+  support with no card, for a section whose action is nearby (the spending-mix
+  empty, the empty Ask chat). Where an action exists it reuses the page's own
+  handler and label: Entries with no entries ("+ Add entry"), Entries with
+  filters on ("Reset filters"), Splits with no activity ("+ Add expense"), no
+  groups ("Create group") and a search with no results ("Clear search"), the
+  empty Imports queue ("Select file", opens the file chooser).
 - `InlineError` renders a failure inside a section as `role="alert"`, with
   an optional retry button; forms, dialogs and the mobile sheet use it.
-- `ErrorPanel` is the screen-level failure. `ShellErrorScreen` (shell,
-  reference data and first page load) and the screen error boundary both
-  render it, so each is an alert with the same layout and a primary
-  `dialog-primary` retry. The detail line is plain language
-  (`common.loadFailedDetail`). The technical reason ("Page request failed
-  with status 503") is not shown: a server or network failure adds one plain
-  line, "We couldn't reach your data just now." (`describeLoadFailure`), and
-  the panel keeps the reason as `data-technical-detail`. A stored code
-  (credit_card, a category slug, a hex colour) is never shown either; screens
-  use the label maps in `src/client/enum-labels.js` (`tests/raw-enum-guard.test.mjs`).
+- `ErrorPanel` is the screen-level failure: a rose card (pastel fill, rose ink,
+  no shadow). `ShellErrorScreen` (shell, reference data and first page load),
+  the page error inside the shell, the Entries load error, the FAQ guide
+  failure and the screen error boundary all render it, so each is an alert
+  with the same layout: the title, the plain-language detail
+  (`common.loadFailedDetail`), and a primary `lsd-primary dialog-primary` retry
+  (the boundary's "Reload app" is a quiet `lsd-quiet` button beside it). The
+  technical reason ("Page request failed with status 503") is not shown: a
+  server or network failure adds one plain Detail line, "We couldn't reach your
+  data just now." (`describeLoadFailure`, passed as `technical`), and the card
+  keeps the reason as `data-technical-detail`. A stored code (credit_card, a
+  category slug, a hex colour) is never shown either; screens use the label
+  maps in `src/client/enum-labels.js` (`tests/raw-enum-guard.test.mjs`).
+- `StateBanner` is a notice above a page: the refresh failure notice (butter,
+  "Refresh now" primary, "Dismiss" quiet) and the import inbox banner (sky,
+  "Open import inbox" primary). Pastel fill, the tone's ink, one primary action
+  of at least 48 px, full width on a phone.
+- Loading, first load: `ShellLoadingScreen` (app-shell-status.jsx) shows the
+  header and the page's own blocks as quiet placeholders (`.state-skeleton`,
+  `SKELETON_SHAPES`: Summary = chips, lead card, insight lines, a chart card;
+  Entries = totals strip, insight lines, filter bar, a day of rows; Splits =
+  group row, lead card, a day of rows; any other page = lead card and rows) with
+  one support line ("Loading..." plus what the shell reports, and the seconds
+  after five). No buttons and no figures, so hidden money has nothing to leak.
+  Placeholders shimmer only when the person has not asked for reduced motion.
+  They never take their own height from data: heights are fixed per block so
+  the page replaces them without a jump.
+- Loading, later: while a route fetches with the previous page still on screen,
+  `AppLoadingOverlay` is one sky pill (`.state-pill`) centred under the header
+  (clear of the period picker), with percent, detail and seconds in its
+  tooltip; only a problem is spelled out. The Entries page's own refresh uses
+  the same pill (`entries-page-loading`).
 
 A page load that fails after the person navigated shows the page
 `ErrorPanel` inside the shell, and hides the previous page. Otherwise the
@@ -1923,8 +2135,10 @@ the plan-table redesign.
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
-Month plan sheets, the Entries add and edit sheets, the import progress
-sheet and the Claude "I've topped up" sheet. It behaves like the modal
+Month plan sheets, the Entries add and edit sheets, and every dialog on
+`SheetDialog` (see "Dialogs and small sheets" under "Lead · Support · Detail":
+the import progress sheet, the Claude "I've topped up" sheet, the delete and
+note sheets and the Settings editors). It behaves like the modal
 desktop dialogs, and swipes down to close (below):
 
 - Focus moves into the sheet on open. The sheet itself takes focus, not a
@@ -2295,4 +2509,11 @@ The FAQ route renders two Markdown guides as tabs: `docs/user-guide.md`
   families (`/faq/guide/desktop/`, `/phone/`, `/iphone/`) get a fixed aspect
   ratio so lazy images never shift a deep-linked section.
 - The route stays static: it reports ready immediately and never busy.
+- Layout (Lead · Support · Detail): the guide is the lead. The contents are
+  Support: open beside the guide on a wide screen, one 48 px row ("Contents",
+  `aria-expanded`) on a phone, so the first section starts on screen; the guide
+  tabs are two equal 48 px segments on a phone. While a guide downloads the
+  page shows the shared placeholders and one "Loading guide..." line
+  (`.faq-guide-status`); a failed download is the shared rose `ErrorPanel`
+  with "Try again".
 

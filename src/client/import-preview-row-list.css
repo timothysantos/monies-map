@@ -18,7 +18,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #fff;
+  background: var(--paper);
   list-style: none;
 }
 
@@ -114,7 +114,7 @@
   height: 44px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: rgba(38, 35, 31, 0.06);
+  background: rgb(var(--ink-rgb, 38 35 31) / 0.06);
 }
 
 .import-row-sheet:focus-visible {

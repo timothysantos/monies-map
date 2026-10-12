@@ -4,11 +4,13 @@
 import "./entries-route.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { Inbox, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import * as Dialog from "@radix-ui/react-dialog";
+import { Trash2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { AppLoadingOverlay } from "./app-shell-status";
 import { EmptyState, ErrorPanel } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { useEntryActions } from "./entry-actions";
@@ -26,7 +28,8 @@ import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams } from "./entry-filter-params";
 import { EntriesAskChip } from "./entries-ask-chip";
 import { EntriesDateGroups } from "./entries-list";
-import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
+import { EntriesBreakdownPanel, EntriesTotals } from "./entries-overview";
+import { buildEntriesTotalsModel, describeEntryFilters } from "./entries-totals-model";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileSheet, EntrySplitGroupPickerFooter } from "./entry-mobile-sheet";
 import { useAskOriginSheet, useAskReturn } from "./use-ask-origin";
@@ -41,6 +44,7 @@ import {
   syncLinkedEntryRequest
 } from "./linked-entry-request";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import {
   getActiveEntryFilterCount,
   getEntryDerivedData,
@@ -89,6 +93,7 @@ export function EntriesPanel({
   entriesSourceView = view,
   selectedMonth,
   mobileContextOpen = false,
+  onOpenMobileContext,
   onCloseMobileContext,
   onMobileFilterStateChange,
   externalRefreshToken = 0,
@@ -519,6 +524,17 @@ export function EntriesPanel({
       pinnedEntryIds: editingEntryId ? [editingEntryId] : []
     }),
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
+  );
+  const totalsModel = useMemo(
+    () => buildEntriesTotalsModel({
+      entryTotals,
+      entryOutflowMinor,
+      entryGrossOutflowMinor,
+      entryNetMinor,
+      month: entryView.monthPage.month,
+      personLabel: entryView.label
+    }),
+    [entryGrossOutflowMinor, entryNetMinor, entryOutflowMinor, entryTotals, entryView.label, entryView.monthPage.month]
   );
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
@@ -1164,14 +1180,14 @@ export function EntriesPanel({
         />
       ) : (
         <>
-          <EntriesTotalsStrip
+          <EntriesTotals
+            model={totalsModel}
             showExpenseBreakdown={showExpenseBreakdown}
-            entryTotals={entryTotals}
-            entryOutflowMinor={entryOutflowMinor}
-            entryGrossOutflowMinor={entryGrossOutflowMinor}
-            entryNetMinor={entryNetMinor}
             onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
-            onAddEntry={openEntryComposer}
+            // The phone's filters live in the View and scope sheet; a wide
+            // screen has the filter bar on the page.
+            filtersValue={describeEntryFilters(activeEntryFilterCount)}
+            onOpenFilters={useMobileEntrySheet ? onOpenMobileContext : undefined}
           />
 
           <FinancialInsight
@@ -1205,10 +1221,7 @@ export function EntriesPanel({
       {!useMobileEntrySheet && !entriesLoadError ? <EntriesFilterStack {...filterStackProps} /> : null}
 
       {isEntriesPageLoading ? (
-        <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">
-          <span className="app-spinner" aria-hidden="true" />
-          <span>{messages.common.loadingLatest}</span>
-        </div>
+        <AppLoadingOverlay className="entries-page-loading" />
       ) : null}
 
       {showEntryComposer && !useMobileEntrySheet ? (
@@ -1469,7 +1482,10 @@ export function EntriesPanel({
       ) : (
         <EntriesEmptyState
           suggestion={entriesEmptyStateSuggestion}
+          hasFilters={activeEntryFilterCount > 0}
           onSwitchView={applySuggestedView}
+          onAddEntry={openEntryComposer}
+          onResetFilters={resetEntryFilters}
         />
       )}
       <LinkedNoteSyncDialog
@@ -1501,76 +1517,73 @@ export function EntriesPanel({
 }
 
 function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, onCancel, onConfirm }) {
-  const isEntryDelete = confirmation?.kind === "entry";
-  const entry = confirmation?.entry;
+  if (!confirmation) {
+    return null;
+  }
+  const isEntryDelete = confirmation.kind === "entry";
+  const entry = confirmation.entry;
   const amountMinor = entry ? moniesClient.entries.getTotalAmountMinor(entry) : null;
-  const amountLabel = amountMinor == null ? "" : moniesClient.format.money(amountMinor);
+  const amountLabel = amountMinor == null ? null : moniesClient.format.money(amountMinor);
   const dateLabel = entry?.date ? moniesClient.format.formatDateOnly(entry.date) : "";
   const description = entry?.description || "this row";
-  const detailParts = [dateLabel, description, amountLabel].filter(Boolean);
+  const title = isEntryDelete ? "Delete entry?" : "Delete split?";
+  const consequence = isEntryDelete ? "This removes the ledger entry." : "The ledger entry stays in Entries.";
 
   return (
-    <Dialog.Root
-      open={Boolean(confirmation)}
-      onOpenChange={(open) => {
-        if (!open && !isSubmitting) {
-          onCancel();
-        }
-      }}
-    >
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content entry-delete-dialog">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!isSubmitting) {
-                onConfirm();
-              }
-            }}
-          >
-            <div className="note-dialog-head">
-              <Dialog.Title>{isEntryDelete ? "Delete entry?" : "Delete split?"}</Dialog.Title>
-              <Dialog.Description>
-                {isEntryDelete
-                  ? `Delete ${detailParts.join(" - ")}? This removes the ledger entry.`
-                  : `Delete the split record for ${description}? The ledger entry stays in Entries.`}
-              </Dialog.Description>
-            </div>
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onCancel}>
-                Cancel
-              </button>
-              <button type="submit" className="dialog-danger" disabled={isSubmitting}>
-                {isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      tone="danger"
+      className="entry-delete-dialog"
+      title={title}
+      description={isEntryDelete
+        ? `Delete ${[dateLabel, description].filter(Boolean).join(" - ")}? ${consequence}`
+        : `Delete the split record for ${description}? ${consequence}`}
+      descriptionHidden
+      lead={(
+        <ConfirmLead icon={Trash2} title={description} subtitle={dateLabel || null} amount={amountLabel}>
+          <p className="lsd-note">{consequence}</p>
+        </ConfirmLead>
+      )}
+      primaryLabel={isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
+      primaryDisabled={isSubmitting}
+      isSubmitting={isSubmitting}
+      onSubmit={onConfirm}
+      onClose={onCancel}
+    />
   );
 }
 
-function EntriesEmptyState({ suggestion, onSwitchView }) {
+// Nothing to list. With filters on, the way forward is to reset them; with
+// none, it is to add an entry (or import a file, which the line says).
+function EntriesEmptyState({ suggestion, hasFilters, onSwitchView, onAddEntry, onResetFilters }) {
   if (!suggestion) {
-    return <EmptyState>{messages.entries.noEntries}</EmptyState>;
+    return hasFilters ? (
+      <EmptyState
+        className="entries-empty-state"
+        icon={<SearchX />}
+        title={messages.entries.noEntries}
+        action={{ label: messages.entries.resetFilters, onClick: onResetFilters }}
+      >
+        {messages.entries.noEntriesFilteredDetail}
+      </EmptyState>
+    ) : (
+      <EmptyState
+        className="entries-empty-state"
+        icon={<Inbox />}
+        title={messages.entries.noEntriesYet}
+        action={{ label: messages.entries.addEntry, onClick: onAddEntry }}
+      >
+        {messages.entries.noEntriesYetDetail}
+      </EmptyState>
+    );
   }
 
   return (
     <EmptyState
-      className="entries-empty-state linked-entry-notice"
+      className="entries-empty-state"
+      icon={<Inbox />}
       title={messages.entries.walletViewMismatchTitle}
-      actions={(
-        <>
-          <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
-            {messages.entries.walletViewMismatchHouseholdAction}
-          </button>
-          <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
-            {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
-          </button>
-        </>
-      )}
+      action={{ label: messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel), onClick: () => onSwitchView(suggestion.ownerPersonId) }}
+      secondary={{ label: messages.entries.walletViewMismatchHouseholdAction, onClick: () => onSwitchView("household") }}
     >
       {messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
     </EmptyState>

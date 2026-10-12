@@ -160,7 +160,10 @@ test("closed rows skip off-screen rendering but stay reachable by find and the k
   // An off-screen row's contents are skipped until they are needed.
   const isRendered = () => last.locator(".entry-row-main").evaluate((main) => main.checkVisibility({ contentVisibilityAuto: true }));
   expect(await isRendered()).toBe(false);
-  expect(await rows.first().locator(".entry-row-main").evaluate((main) => main.checkVisibility({ contentVisibilityAuto: true }))).toBe(true);
+  // The first row is on the page's first screen at a normal height; the
+  // totals above it take most of this short one, so bring it into view.
+  await rows.first().scrollIntoViewIfNeeded();
+  await expect.poll(() => rows.first().locator(".entry-row-main").evaluate((main) => main.checkVisibility({ contentVisibilityAuto: true }))).toBe(true);
 
   // Find-in-page still matches text inside skipped rows.
   const lastDescription = (await last.locator(".entry-row-description > strong").textContent()).trim();

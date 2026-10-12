@@ -12,7 +12,7 @@ import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { addedByLabel, bankStateChipLabel, moreDetailsSummary } from "./entry-source";
 import { CategoryGlyph } from "./ui-components";
-import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+import { ChipDateField, ChipSelectField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { entryAmountTone } from "../domain/money-tone";
 import { todayInAppTimeZone } from "./app-dates";
@@ -32,16 +32,20 @@ const BANK_STATE_TONES = {
 // - Lead: the category bubble (which opens the category editor), what it
 //   was (an inline field, read-only when certified) and the amount in its
 //   money tone (an inline field unless certified).
-// - Support: date, wallet, owner and bank state chips. The date, wallet and
-//   owner chips open the same picker as their Detail row (the wallet's
-//   unfolds More details first); a field the statement certified shows a
-//   lock instead, and the bank state chip is never an editor (it names the
-//   tool that saved a provisional entry: "Apple Pay · provisional").
+// - Support: date, wallet, owner and bank state chips. On a phone the date,
+//   wallet and owner chips open the same picker as their Detail row (the
+//   wallet's unfolds More details first). On a wide screen no row repeats
+//   them, so each chip is its own field, as on the Splits inline card: a
+//   date field over the date chip, a native list over the wallet and owner
+//   chips. A field the statement certified shows a lock instead, and the
+//   bank state chip is never an editor (it names the tool that saved a
+//   provisional entry: "Apple Pay · provisional").
 // - Detail: Category, Owner, Splits (or the transfer match), Note, then
 //   Date, Wallet, Posted date and Type. On a phone those last ones fold into
-//   More details and each row opens the app's own picker; on a wide screen
-//   nothing folds and each row keeps an inline field, so Tab walks the
-//   fields in order.
+//   More details and each row opens the app's own picker. On a wide screen
+//   nothing folds, the Owner, Date and Wallet rows are left to their chips,
+//   and each remaining row keeps an inline field, so Tab walks the fields in
+//   order (the lead, then the chips, then the rows).
 // Callers keep ownership of saving, deleting and the Splits actions, as
 // they did with the grid editor.
 export function EntryEditCard({
@@ -75,7 +79,6 @@ export function EntryEditCard({
   const [moreOpen, setMoreOpen] = useState(false);
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
   useRouteWorkBusy(categoryQuickSaveOpen);
-  const cardRef = useRef(null);
   const quickSaveCategoryNameRef = useRef("");
   const lockDetailId = useId();
 
@@ -83,6 +86,7 @@ export function EntryEditCard({
   const walletOptions = accountOptions.map((option) => ({ value: option.value, label: option.label }));
   const walletValue = entry.accountId ?? entry.accountName;
   const walletLabel = walletOptions.find((option) => option.value === walletValue)?.label ?? entry.accountName ?? copy.editCard.notSet;
+  const walletChipValue = entry.accountName || copy.editCard.notSet;
   const ownerLabel = entry.ownershipType === "shared" ? copy.shared : entry.ownerName ?? copy.editCard.notSet;
   const categorySelectOptions = categoryOptions.map((option) => {
     const optionCategory = categories.find((item) => item.name === option);
@@ -112,26 +116,14 @@ export function EntryEditCard({
     });
   }
 
-  // A Support chip opens its field's own picker: in a sheet the picker
-  // sheet (unfolding More details for a folded row), on a wide screen the
-  // row's own select.
+  // On a phone a Support chip opens its field's own picker sheet (unfolding
+  // More details for the wallet's folded row). A wide screen's chips are
+  // their own fields (see the chips below).
   function openFieldFromChip(key) {
-    if (isSheet) {
-      if (key === "wallet") {
-        setMoreOpen(true);
-      }
-      setOpenPicker(key);
-      return;
+    if (key === "wallet") {
+      setMoreOpen(true);
     }
-    const select = cardRef.current?.querySelector(`[data-row="${key}"] select`);
-    if (select instanceof HTMLSelectElement) {
-      select.focus();
-      try {
-        select.showPicker?.();
-      } catch {
-        // Focus alone is enough where a select cannot open from script.
-      }
-    }
+    setOpenPicker(key);
   }
 
   function changeType(nextEntryType) {
@@ -229,14 +221,17 @@ export function EntryEditCard({
     </Popover.Root>
   ) : categoryRow;
 
-  const ownerRow = pickerRow({
+  const ownerSelectOptions = ownerOptions.map((person) => ({ value: person, label: person }));
+  // A wide screen's chips are the date, wallet and owner fields, so those
+  // three have no row there: a row would only repeat what its chip says.
+  const ownerRow = isSheet ? pickerRow({
     key: "owner",
     label: copy.editOwner,
     valueLabel: ownerLabel,
     value: entry.ownerName ?? "",
-    options: ownerOptions.map((person) => ({ value: person, label: person })),
+    options: ownerSelectOptions,
     onValueChange: onOwnerChange
-  });
+  }) : null;
 
   const noteRow = (
     <DetailRow key="note" label={copy.editNote} className="lsd-row-note" data-row="note">
@@ -256,8 +251,8 @@ export function EntryEditCard({
 
   // Bank facts: on a phone, fold the ones most people never change here.
   const bankRows = [
-    bankFactsLocked ? null : dateRow({ key: "date", label: copy.editDate, value: entry.date, onValueChange: (date) => onChange({ date }) }),
-    bankFactsLocked ? null : pickerRow({
+    bankFactsLocked || !isSheet ? null : dateRow({ key: "date", label: copy.editDate, value: entry.date, onValueChange: (date) => onChange({ date }) }),
+    bankFactsLocked || !isSheet ? null : pickerRow({
       key: "wallet",
       label: copy.editWallet,
       valueLabel: walletLabel,
@@ -294,7 +289,7 @@ export function EntryEditCard({
   ].filter(Boolean);
 
   return (
-    <div ref={cardRef} className={`entry-edit-card is-${layout}`}>
+    <div className={`entry-edit-card is-${layout}`}>
       <div className="entry-edit-card-lead">
         <LeadCard
           className="entry-edit-lead"
@@ -347,17 +342,27 @@ export function EntryEditCard({
             >
               {formatCardDate(entry.date, today)}
             </MetaChip>,
-            entry.accountName ? (
+            // A wide screen has no Wallet row, so its chip shows even with no
+            // wallet set; a phone's row is under More details.
+            entry.accountName || !isSheet ? (
               <MetaChip
                 key="wallet"
                 data-chip="wallet"
                 icon={CreditCard}
                 locked={bankFactsLocked}
                 lockedLabel={messages.common.chipLockedByStatement}
-                actionLabel={messages.common.changeChip(copy.editWallet, entry.accountName)}
-                onClick={() => openFieldFromChip("wallet")}
+                actionLabel={messages.common.changeChip(copy.editWallet, walletChipValue)}
+                onClick={isSheet ? () => openFieldFromChip("wallet") : undefined}
+                control={isSheet ? null : (
+                  <ChipSelectField
+                    value={walletValue ?? ""}
+                    label={messages.common.changeChip(copy.editWallet, walletChipValue)}
+                    options={walletOptions}
+                    onValueChange={changeWallet}
+                  />
+                )}
               >
-                {entry.accountName}
+                {walletChipValue}
               </MetaChip>
             ) : null,
             <MetaChip
@@ -365,7 +370,15 @@ export function EntryEditCard({
               data-chip="owner"
               person={entry.ownershipType === "shared" ? "shared" : entry.ownerName}
               actionLabel={messages.common.changeChip(copy.editOwner, ownerLabel)}
-              onClick={() => openFieldFromChip("owner")}
+              onClick={isSheet ? () => openFieldFromChip("owner") : undefined}
+              control={isSheet ? null : (
+                <ChipSelectField
+                  value={entry.ownerName ?? ""}
+                  label={messages.common.changeChip(copy.editOwner, ownerLabel)}
+                  options={ownerSelectOptions}
+                  onValueChange={onOwnerChange}
+                />
+              )}
             >
               {ownerLabel}
             </MetaChip>,

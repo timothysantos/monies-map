@@ -632,6 +632,9 @@ test.describe("Swipe down with real touch input", () => {
   test("a long list inside the sheet scrolls by touch both ways, with the swipe installed", async ({ page }) => {
     await phone(page);
     const { sheet, list } = await openPlanLinkSheet(page);
+    // The lead and filters sit above the list: scroll the sheet's body so the
+    // list's rows are on screen, then drag inside them.
+    await list.evaluate((element) => element.scrollIntoView({ block: "start" }));
     const client = await page.context().newCDPSession(page);
     const listBox = await list.boundingBox();
     const x = listBox.x + 40;

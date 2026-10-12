@@ -246,19 +246,20 @@ test.describe("tappable Support chips on a wide screen", () => {
     await reseedDemo(page);
   });
 
-  test("the inline editor's wallet chip moves focus to the Wallet field; the keyboard reaches every chip", async ({ page }) => {
+  test("the inline editor's chips are their own fields: a date field and a list for the wallet and the owner", async ({ page }) => {
     const entryId = await createManualEntry(page);
     await page.goto(`/entries?view=person-tim&month=${MONTH}&editing_entry=${entryId}`);
     const card = page.locator(".entry-edit-card.is-inline");
     await expect(card).toBeVisible({ timeout: 60_000 });
-    const walletChip = card.getByRole("button", { name: "Change wallet, UOB One" });
+    // No row repeats a chip, so the chips are the fields (entries-lsd.spec.js
+    // saves the request).
+    await expect(card.locator('[data-row="wallet"], [data-row="owner"], [data-row="date"]')).toHaveCount(0);
+    const walletChip = card.getByLabel("Change wallet, UOB One");
+    expect(await walletChip.evaluate((element) => element.tagName)).toBe("SELECT");
     await walletChip.focus();
-    await page.keyboard.press("Enter");
-    expect(await page.evaluate(() => document.activeElement?.closest("[data-row]")?.getAttribute("data-row"))).toBe("wallet");
-    await expect(card.locator('[data-row="wallet"] select')).toBeFocused();
-    const ownerChip = card.getByRole("button", { name: "Change owner, Tim" });
-    await ownerChip.click();
-    await expect(card.locator('[data-row="owner"] select')).toBeFocused();
+    await expect(walletChip).toBeFocused();
+    const ownerChip = card.getByLabel("Change owner, Tim");
+    expect(await ownerChip.evaluate((element) => element.tagName)).toBe("SELECT");
     await expect(card.getByLabel(/^Change date, /)).toHaveAttribute("type", "date");
   });
 });

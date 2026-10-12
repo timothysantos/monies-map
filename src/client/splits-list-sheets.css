@@ -176,7 +176,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgb(var(--paper-rgb) / 0.6);
 }
 
 .split-archive-batch-detail .split-activity-card {

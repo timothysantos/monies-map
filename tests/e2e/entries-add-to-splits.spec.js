@@ -131,7 +131,7 @@ test("linked entry category save preserves ledger amount and can update the conn
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel("Amount")).toHaveValue("22.00");
 
-  await editor.locator("select").first().selectOption("Entertainment");
+  await editor.locator("[data-row='category'] select").selectOption("Entertainment");
   await editor.getByRole("button", { name: "Done editing entry" }).click();
 
   const syncDialog = page.getByRole("dialog", { name: "Update connected split category?" });

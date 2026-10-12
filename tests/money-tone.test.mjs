@@ -71,10 +71,10 @@ test("entries: income and refunds are money in, expenses plain, transfers neutra
   assert.equal(row("transfer", 80_000, "out").amountTone, "neutral");
 
   assert.deepEqual(entryTotalsTones({ incomeMinor: 500_000, netMinor: 120_000 }), {
-    spend: "out", income: "in", difference: "in", transfers: "neutral", outflow: "out"
+    spend: "neutral", income: "in", difference: "in", transfers: "neutral", outflow: "neutral"
   });
   assert.deepEqual(entryTotalsTones({ incomeMinor: 0, netMinor: -4_500 }), {
-    spend: "out", income: "neutral", difference: "short", transfers: "neutral", outflow: "out"
+    spend: "neutral", income: "neutral", difference: "short", transfers: "neutral", outflow: "neutral"
   });
   assert.equal(entryTotalsTones({ incomeMinor: 10, netMinor: 0 }).difference, "neutral");
 });

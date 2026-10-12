@@ -1,6 +1,4 @@
-import { useMemo, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import {
   useLocation,
   useNavigate,
@@ -9,7 +7,7 @@ import {
 
 import { messages } from "./copy/en-SG";
 import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
-import { money, unmaskedMoney } from "./formatters";
+import { formatMonthLabel, money, unmaskedMoney } from "./formatters";
 import "./summary-body.css";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
@@ -24,6 +22,8 @@ import { useIsMobileLayout } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows } from "./ui-components";
+// The Monthly Note dialog is only needed once a note is opened.
+const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -188,21 +188,24 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         onOpenEntriesForAccount={handleOpenEntriesForAccount}
       />
 
-      <SummaryMonthNoteDialog
-        monthNoteDialog={monthNoteDialog}
-        isSaving={isSavingMonthNote}
-        errorMessage={monthNoteError}
-        onClose={() => {
-          if (!isSavingMonthNote) {
-            setMonthNoteDialog(null);
-            setMonthNoteError("");
-          }
-        }}
-        onChangeDraft={(draft) => {
-          setMonthNoteDialog((current) => (current ? { ...current, draft } : current));
-        }}
-        onSave={saveSummaryMonthNote}
-      />
+      {monthNoteDialog ? (
+        <Suspense fallback={null}>
+          <MonthNoteDialog
+            monthLabel={`${formatMonthLabel(monthNoteDialog.month)} · ${view.label}`}
+            value={monthNoteDialog.draft ?? ""}
+            onChange={(draft) => setMonthNoteDialog((current) => (current ? { ...current, draft } : current))}
+            errorMessage={monthNoteError}
+            isSaving={isSavingMonthNote}
+            onSave={saveSummaryMonthNote}
+            onClose={() => {
+              if (!isSavingMonthNote) {
+                setMonthNoteDialog(null);
+                setMonthNoteError("");
+              }
+            }}
+          />
+        </Suspense>
+      ) : null}
     </article>
   );
 }
@@ -281,58 +284,5 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
         </DetailRows>
       </div>
     </section>
-  );
-}
-
-function SummaryMonthNoteDialog({ monthNoteDialog, isSaving = false, errorMessage = "", onClose, onChangeDraft, onSave }) {
-  return (
-    <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open && !isSaving) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (isSaving) {
-                return;
-              }
-              void onSave();
-            }}
-          >
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
-                <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close month note editor"
-                disabled={isSaving}
-                onClick={onClose}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
-            <textarea
-              className="note-dialog-textarea"
-              value={monthNoteDialog?.draft ?? ""}
-              onChange={(event) => onChangeDraft(event.target.value)}
-              rows={10}
-              enterKeyHint="done"
-            />
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSaving} onClick={onClose}>
-                {messages.month.cancelEdit}
-              </button>
-              <button type="submit" className="dialog-primary" disabled={isSaving}>
-                {isSaving ? messages.common.saving : messages.month.doneEdit}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
   );
 }

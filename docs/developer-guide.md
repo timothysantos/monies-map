@@ -1629,6 +1629,20 @@ endpoint that is consistently too expensive. The durable fix is to keep broad
 reads split into route-specific payloads or move the Worker to a plan with more
 CPU/resource headroom if the production data size now requires it.
 
+## How do the colour presets load?
+
+The 70s default is the only scheme in the first-screen `styles.css`. Each
+other preset (Settings → Colours) is a small stylesheet in
+`public/palettes/<id>.css` that overrides the colour tokens under
+`:root[data-palette="<id>"]`; the build minifies it like `styles.css`. A
+short inline script in `index.html` reads the stored choice
+(`localStorage["monies-map:palette"]`) and writes that sheet's `<link>`
+into the head before the page paints, so a reload never flashes the
+default. To change a preset, edit its sheet and run
+`tests/colour-contrast.test.mjs` and `tests/colour-presets.test.mjs`: they
+fail on any unreadable pair or missing token. design.md, "Colour presets",
+has the token list.
+
 ## How should saves and refreshes behave?
 
 The app is moving toward a more precise save model for row-heavy screens such as
@@ -1736,6 +1750,22 @@ use them. `tests/lead-support-detail.test.mjs` renders each block's states;
 `tests/e2e/lead-support-detail.spec.js` checks the plan sheet on an iPhone
 13 profile (tagged `@webkit`), its 44px tap targets and the Summary lead's
 figures. The colour guard reads `src/client/ui` too.
+
+Dialogs and small sheets use one more shared piece, `SheetDialog`
+(`src/client/sheet-dialog.jsx`, CSS in `sheet-dialog.css`): on a phone it is
+the shared `EntryMobileSheet` with the actions in its bottom bar, on a wide
+screen a centred Radix dialog with the same head, lead, rows and bar. A caller
+passes the copy, a `lead` (`LeadCard`, or `ConfirmLead` for a confirmation),
+the rows or fields as children, and the actions (`primaryLabel`, `onSubmit`,
+`quietLabel`, `destructive`, `tone="danger"`). `dismissible={false}` is for a
+dialog that must be answered. Mount it only while it is open. Keep it, and
+anything that imports it, out of first-screen files: `App.jsx`,
+`summary-panel.jsx`, `responsive-select.jsx` and `ui-components.jsx` load
+`login-registration-dialog.jsx`, `month-note-dialog.jsx` and `picker-sheet.jsx`
+with `React.lazy`, and `check:bundle` fails if a new first-screen file appears.
+`DeleteRowButton` lives in `delete-row-button.jsx`, not in `ui-components.jsx`.
+`tests/e2e/dialogs-lead-support-detail.spec.js` proves each dialog's primary
+action, Cancel, destructive confirm, tap targets and hidden money.
 
 ## What does background prefetching do?
 

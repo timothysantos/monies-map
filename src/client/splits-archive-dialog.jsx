@@ -8,6 +8,7 @@ import { SheetSwipeDismiss } from "./sheet-swipe";
 import { SplitActivityGroups } from "./splits-activity";
 import { BottomActions } from "./ui/lead-support-detail";
 import { useKeyboardInset } from "./use-keyboard-inset";
+import { paletteColour } from "./palette-colour";
 
 const { format: formatService, splits: splitService } = moniesClient;
 
@@ -88,7 +89,7 @@ export function SplitArchiveDialog({
                 return (
                   <button key={batch.batchId} type="button" className="split-archive-row" onClick={() => onOpenBatch(batch.batchId)}>
                     <span className="split-archive-row-date">{splitService.formatArchiveDate(batch.closedAt)}</span>
-                    <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": "#BF7D51" }}>
+                    <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": paletteColour("#BF7D51") }}>
                       <ArrowRightLeft size={16} />
                     </span>
                     <span className="split-archive-row-copy">

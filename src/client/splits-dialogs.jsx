@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -8,6 +8,7 @@ import { buildComparableSplitDraft } from "./split-editing";
 import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { SheetDiscardConfirm, SheetDragHandle, useSheetSwipeDismiss } from "./sheet-swipe";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { SplitExpenseCard } from "./split-expense-card";
 import { SplitGroupCard } from "./split-group-card";
 import { SplitSettlementCard } from "./split-settlement-card";
@@ -274,40 +275,33 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
 }
 
 export function SplitDeleteDialog({ target, formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, onClose, onConfirm }) {
-  const label = target?.description ?? target?.note ?? "this split row";
+  if (!target) {
+    return null;
+  }
+  const label = target.description ?? target.note ?? "this split row";
+  const consequence = "This removes the split record only. Any linked bank ledger row stays in entries.";
 
   return (
-    <Dialog.Root open={Boolean(target)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-delete-dialog">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (isSubmitting) {
-                return;
-              }
-              void onConfirm();
-            }}
-          >
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>Delete split row</Dialog.Title>
-              <Dialog.Description>
-                Delete {label}? This removes the split record only. Any linked bank ledger row stays in entries.
-              </Dialog.Description>
-            </div>
-            {settlementLock
-              ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
-              : <InlineError message={formError} />}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-              <button type="submit" className="dialog-danger" disabled={isSubmitting}>
-                {isSubmitting ? messages.common.working : "Delete split row"}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      tone="danger"
+      className="split-delete-dialog"
+      title="Delete split row"
+      description={`Delete ${label}? ${consequence}`}
+      descriptionHidden
+      lead={(
+        <ConfirmLead icon={Trash2} title={label}>
+          <p className="lsd-note">{consequence}</p>
+        </ConfirmLead>
+      )}
+      errorContent={settlementLock
+        ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+        : undefined}
+      errorMessage={formError}
+      primaryLabel={isSubmitting ? messages.common.working : "Delete split row"}
+      primaryDisabled={isSubmitting}
+      isSubmitting={isSubmitting}
+      onSubmit={onConfirm}
+      onClose={onClose}
+    />
   );
 }

@@ -1,4 +1,4 @@
-import * as Dialog from "@radix-ui/react-dialog";
+import { RestorePreviewRowDialog } from "./import-restore-row-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { Fragment } from "react";
 
@@ -26,38 +26,11 @@ export function buildAccountChange({ row, nextValue, accounts, getPreviewAccount
 }
 
 // Including a row the ledger already covers exactly asks first.
+// "Restore preview row" asks first when the skipped row exactly matches an
+// entry that is already recorded; it is the shared sheet frame
+// (import-restore-row-dialog.jsx).
 export function RestoreRowDialog({ target, onClose, onConfirm }) {
-  return (
-    <Dialog.Root open={Boolean(target)} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content settings-account-dialog">
-          <div className="note-dialog-head">
-            <div>
-              <Dialog.Title>{importMessages.restorePreviewRow}</Dialog.Title>
-              <Dialog.Description>{importMessages.restoreExactCoveredRowConfirm}</Dialog.Description>
-            </div>
-            <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
-          </div>
-          <div className="note-dialog-actions">
-            <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
-            <button
-              type="button"
-              className="dialog-primary"
-              onClick={() => {
-                if (target) {
-                  onConfirm(target);
-                }
-                onClose();
-              }}
-            >
-              Restore row
-            </button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
+  return <RestorePreviewRowDialog row={target} onClose={onClose} onRestore={onConfirm} />;
 }
 
 export function formatDuplicateMatch(match) {

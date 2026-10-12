@@ -197,8 +197,8 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   min-width: 0;
   padding: 0;
   border: 0;
-  background: color-mix(in srgb, var(--money-ink, var(--text)) 78%, white);
-  box-shadow: inset -1px 0 0 #fff;
+  background: color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper));
+  box-shadow: inset -1px 0 0 var(--paper);
   cursor: pointer;
 }
 
@@ -233,7 +233,7 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
 .savings-bar-segment.is-hatched {
   background: repeating-linear-gradient(
     135deg,
-    color-mix(in srgb, var(--money-ink, var(--text)) 78%, white) 0 3px,
+    color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper)) 0 3px,
     var(--pastel-rose) 3px 6px
   );
 }
@@ -241,7 +241,7 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
 html[data-money-privacy="hidden"] .savings-bar-segment.is-hatched {
   background: repeating-linear-gradient(
     135deg,
-    color-mix(in srgb, var(--text) 50%, white) 0 3px,
+    color-mix(in srgb, var(--text) 50%, var(--paper)) 0 3px,
     var(--pastel-neutral) 3px 6px
   );
 }
@@ -251,11 +251,11 @@ html[data-money-privacy="hidden"] .savings-bar-segment {
 }
 
 html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="kept"] {
-  background: color-mix(in srgb, var(--text) 18%, white);
+  background: color-mix(in srgb, var(--text) 18%, var(--paper));
 }
 
 html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
-  background: color-mix(in srgb, var(--text) 50%, white);
+  background: color-mix(in srgb, var(--text) 50%, var(--paper));
 }
 
 .savings-bar .savings-bar-tick {
@@ -281,7 +281,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   align-items: center;
   padding: 0 3px;
   border-radius: 3px;
-  background: #fff;
+  background: var(--paper);
   color: var(--muted);
   font-size: 0.58rem;
   font-weight: 600;
@@ -306,7 +306,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: 0 10px 24px rgba(24, 18, 12, 0.14);
 }
 
@@ -450,7 +450,7 @@ html[data-money-privacy="hidden"] .money-job .money-job-status {
   display: flex;
   height: 3px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--pastel-sky) 85%, white);
+  background: color-mix(in srgb, var(--pastel-sky) 85%, var(--paper));
 }
 
 .savings-bar-plan-spend,
@@ -466,11 +466,11 @@ html[data-money-privacy="hidden"] .money-job .money-job-status {
 
 .savings-bar-plan-spend {
   border-radius: 3px 0 0 3px;
-  background: color-mix(in srgb, var(--pastel-sky-ink) 60%, white);
+  background: color-mix(in srgb, var(--pastel-sky-ink) 60%, var(--paper));
 }
 
 .savings-bar-plan-save {
-  background: color-mix(in srgb, var(--pastel-sky-ink) 28%, white);
+  background: color-mix(in srgb, var(--pastel-sky-ink) 28%, var(--paper));
 }
 
 .savings-bar .savings-bar-sentence {

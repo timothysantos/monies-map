@@ -99,7 +99,7 @@ test("saving after Add to splits wrote the entry into the link closes the editor
   const row = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(row).toBeVisible({ timeout: 60_000 });
   await expect(page).not.toHaveURL(/editing_entry=/);
-  await row.click();
+  await row.locator(".entry-row-main").click();
   const editor = page.locator(".entry-inline-editor");
   await expect(editor).toHaveCount(1);
 

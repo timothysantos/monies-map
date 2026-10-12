@@ -308,8 +308,13 @@ Details and the reasons are in `docs/code-spec.md` and
   surface uses that hue's `-ink` token and meets WCAG AA
   (`tests/colour-contrast.test.mjs`). Category colours come from
   `src/domain/category-palette.ts`. Don't introduce saturated fills or new
-  hex colours outside the tokens: a raw colour may only be a neutral or the
-  terracotta accent (design.md, "Pastel palette").
+  hex colours outside the tokens: write white surfaces as `--paper`, text
+  on a strong fill as `--on-strong` and accent tints as
+  `rgb(var(--accent-strong-rgb) / a)`, so every colour preset
+  (`public/palettes/*.css`, design.md "Colour presets") re-colours them; a
+  raw colour may only be a neutral shadow or scrim. Hand category, person
+  or group colours to the page through `paletteColour`
+  (`src/client/palette-colour.js`).
 - A per-person or per-owner cue (an edge, chip, band or row wash) uses that
   person's colour from `src/client/person-colour.js` (`getPersonColour`,
   `getPersonColourVars`), the same colour as the Entries row edge. Never

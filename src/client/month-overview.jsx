@@ -1,10 +1,12 @@
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { SquarePen } from "lucide-react";
+import { CalendarDays, RotateCcw, SquarePen, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
+import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
+import { useIsMobileLayout } from "./use-viewport";
 import { SpendLeadGroup } from "./ui-components";
 import { buildMonthLeadModel } from "./month-lead-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
@@ -40,6 +42,33 @@ export function MonthPanelHeader({
   const [resetError, setResetError] = useState("");
   const [deleteError, setDeleteError] = useState("");
   useRouteWorkBusy(resetDialogOpen || deleteDialogOpen);
+  const monthLabel = `${formatService.formatMonthLabel(view.monthPage.month)} · ${view.label}`;
+  const isSheet = useIsMobileLayout();
+
+  // The Actions list is a popover on a wide screen and a bottom sheet on a
+  // phone; both run the same three actions.
+  function closeActions() {
+    setDuplicateError("");
+    onActionsOpenChange(false);
+  }
+
+  async function duplicateMonth() {
+    if (await runAction(onDuplicateMonth, setDuplicateError, messages.month.duplicateMonthFailed)) {
+      onActionsOpenChange(false);
+    }
+  }
+
+  function openResetDialog() {
+    setResetError("");
+    setResetDialogOpen(true);
+    onActionsOpenChange(false);
+  }
+
+  function openDeleteDialog() {
+    setDeleteError("");
+    setDeleteDialogOpen(true);
+    onActionsOpenChange(false);
+  }
 
   async function runAction(action, setError, fallback) {
     setError("");
@@ -78,6 +107,50 @@ export function MonthPanelHeader({
             ))}
           </div>
         ) : null}
+        {isSheet ? (
+          <>
+            <button
+              type="button"
+              className="month-actions-trigger"
+              aria-haspopup="dialog"
+              aria-expanded={actionsOpen}
+              onClick={() => onActionsOpenChange(true)}
+            >
+              {messages.month.actions}
+            </button>
+            {actionsOpen ? (
+              <SheetDialog
+                className="month-actions-sheet"
+                title={messages.month.actions}
+                description={monthLabel}
+                descriptionHidden
+                lead={(
+                  <LeadCard className="sheet-dialog-lead" category={{ icon: CalendarDays }} title={monthLabel} subtitle={messages.month.actions} />
+                )}
+                errorMessage={duplicateError}
+                quietLabel={null}
+                primaryLabel="Done"
+                onSubmit={closeActions}
+                onClose={closeActions}
+              >
+                <DetailRows label={messages.month.actions}>
+                  <DetailRow
+                    label={isDuplicating ? messages.common.working : messages.month.duplicateMonth}
+                    disabled={isDuplicating}
+                    onClick={duplicateMonth}
+                  />
+                  <DetailRow label={messages.month.resetMonth} disabled={isResettingMonth} onClick={openResetDialog} />
+                  <DetailRow
+                    className="is-danger"
+                    label={messages.month.deleteMonth}
+                    disabled={isDeletingMonth}
+                    onClick={openDeleteDialog}
+                  />
+                </DetailRows>
+              </SheetDialog>
+            ) : null}
+          </>
+        ) : (
         <Popover.Root
           open={actionsOpen}
           onOpenChange={(open) => {
@@ -97,11 +170,7 @@ export function MonthPanelHeader({
               <button
                 type="button"
                 className="month-actions-item"
-                onClick={async () => {
-                  if (await runAction(onDuplicateMonth, setDuplicateError, messages.month.duplicateMonthFailed)) {
-                    onActionsOpenChange(false);
-                  }
-                }}
+                onClick={duplicateMonth}
                 disabled={isDuplicating}
               >
                 {isDuplicating ? messages.common.working : messages.month.duplicateMonth}
@@ -109,11 +178,7 @@ export function MonthPanelHeader({
               <InlineError message={duplicateError} />
               <button
                 type="button"
-                onClick={() => {
-                  setResetError("");
-                  setResetDialogOpen(true);
-                  onActionsOpenChange(false);
-                }}
+                onClick={openResetDialog}
                 className="month-actions-item"
                 disabled={isResettingMonth}
               >
@@ -121,11 +186,7 @@ export function MonthPanelHeader({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setDeleteError("");
-                  setDeleteDialogOpen(true);
-                  onActionsOpenChange(false);
-                }}
+                onClick={openDeleteDialog}
                 className="month-actions-item month-actions-item-danger"
                 disabled={isDeletingMonth}
               >
@@ -134,96 +195,57 @@ export function MonthPanelHeader({
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
+        )}
         {/* The confirmation dialogs live outside the Actions popover: opening one
             closes the popover, which would otherwise unmount the dialog with it. */}
-        <Dialog.Root
-          open={resetDialogOpen}
-          onOpenChange={(open) => {
-            if (!open && isResettingMonth) {
-              return;
-            }
-            setResetDialogOpen(open);
-            setResetError("");
-          }}
-        >
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content">
-              <div className="note-dialog-head">
-                <Dialog.Title>{messages.month.resetMonth}</Dialog.Title>
-                <Dialog.Description>{messages.month.resetMonthDetail}</Dialog.Description>
-              </div>
-              <input
-                className="table-edit-input"
-                placeholder={messages.month.resetMonthPlaceholder}
-                value={resetMonthText}
-                onChange={(event) => onResetMonthTextChange(event.target.value)}
-              />
-              <InlineError message={resetError} />
-              <div className="note-dialog-actions">
-                <Dialog.Close asChild>
-                  <button type="button" className="subtle-action" disabled={isResettingMonth}>Cancel</button>
-                </Dialog.Close>
-                <button
-                  type="button"
-                  className="subtle-action subtle-danger"
-                  disabled={resetMonthText.trim().toLowerCase() !== "reset month" || isResettingMonth}
-                  onClick={async () => {
-                    if (await runAction(onResetMonth, setResetError, messages.month.resetMonthFailed)) {
-                      setResetDialogOpen(false);
-                    }
-                  }}
-                >
-                  {isResettingMonth ? messages.common.working : messages.month.resetMonthConfirm}
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-        <Dialog.Root
-          open={deleteDialogOpen}
-          onOpenChange={(open) => {
-            if (!open && isDeletingMonth) {
-              return;
-            }
-            setDeleteDialogOpen(open);
-            setDeleteError("");
-          }}
-        >
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content">
-              <div className="note-dialog-head">
-                <Dialog.Title>{messages.month.deleteMonth}</Dialog.Title>
-                <Dialog.Description>{messages.month.deleteMonthDetail({ isDemo: isDemoEnvironment })}</Dialog.Description>
-              </div>
-              <input
-                className="table-edit-input"
-                placeholder={messages.month.deleteMonthPlaceholder}
-                value={deleteMonthText}
-                onChange={(event) => onDeleteMonthTextChange(event.target.value)}
-              />
-              <InlineError message={deleteError} />
-              <div className="note-dialog-actions">
-                <Dialog.Close asChild>
-                  <button type="button" className="subtle-action" disabled={isDeletingMonth}>Cancel</button>
-                </Dialog.Close>
-                <button
-                  type="button"
-                  className="subtle-action subtle-danger"
-                  disabled={deleteMonthText.trim().toLowerCase() !== "delete month" || isDeletingMonth}
-                  onClick={async () => {
-                    if (await runAction(onDeleteMonth, setDeleteError, messages.month.deleteMonthFailed)) {
-                      setDeleteDialogOpen(false);
-                    }
-                  }}
-                >
-                  {isDeletingMonth ? messages.common.working : messages.month.deleteMonthConfirm}
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+        {resetDialogOpen ? (
+          <MonthTypedConfirmDialog
+            icon={RotateCcw}
+            title={messages.month.resetMonth}
+            detail={messages.month.resetMonthDetail}
+            monthLabel={monthLabel}
+            placeholder={messages.month.resetMonthPlaceholder}
+            phrase="reset month"
+            confirmLabel={messages.month.resetMonthConfirm}
+            text={resetMonthText}
+            error={resetError}
+            isWorking={isResettingMonth}
+            onTextChange={onResetMonthTextChange}
+            onClose={() => {
+              setResetDialogOpen(false);
+              setResetError("");
+            }}
+            onConfirm={async () => {
+              if (await runAction(onResetMonth, setResetError, messages.month.resetMonthFailed)) {
+                setResetDialogOpen(false);
+              }
+            }}
+          />
+        ) : null}
+        {deleteDialogOpen ? (
+          <MonthTypedConfirmDialog
+            icon={Trash2}
+            title={messages.month.deleteMonth}
+            detail={messages.month.deleteMonthDetail({ isDemo: isDemoEnvironment })}
+            monthLabel={monthLabel}
+            placeholder={messages.month.deleteMonthPlaceholder}
+            phrase="delete month"
+            confirmLabel={messages.month.deleteMonthConfirm}
+            text={deleteMonthText}
+            error={deleteError}
+            isWorking={isDeletingMonth}
+            onTextChange={onDeleteMonthTextChange}
+            onClose={() => {
+              setDeleteDialogOpen(false);
+              setDeleteError("");
+            }}
+            onConfirm={async () => {
+              if (await runAction(onDeleteMonth, setDeleteError, messages.month.deleteMonthFailed)) {
+                setDeleteDialogOpen(false);
+              }
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -334,5 +356,42 @@ export function MonthNotesAndAccounts({
         </div>
       </section>
     </div>
+  );
+}
+
+// Reset and Delete month ask for the words typed first. The lead names the
+// month and whose view it is; what it does follows as one line, and the typed
+// words unlock the rose button.
+function MonthTypedConfirmDialog({ icon, title, detail, monthLabel, placeholder, phrase, confirmLabel, text, error, isWorking, onTextChange, onClose, onConfirm }) {
+  return (
+    <SheetDialog
+      tone="danger"
+      title={title}
+      description={detail}
+      descriptionHidden
+      lead={(
+        <ConfirmLead icon={icon} title={monthLabel}>
+          <p className="lsd-note">{detail}</p>
+        </ConfirmLead>
+      )}
+      errorMessage={error}
+      primaryLabel={isWorking ? messages.common.working : confirmLabel}
+      primaryDisabled={text.trim().toLowerCase() !== phrase || isWorking}
+      isSubmitting={isWorking}
+      onSubmit={onConfirm}
+      onClose={onClose}
+    >
+      <label className="sheet-dialog-field">
+        <input
+          className="table-edit-input"
+          placeholder={placeholder}
+          aria-label={placeholder}
+          autoComplete="off"
+          autoCapitalize="none"
+          value={text}
+          onChange={(event) => onTextChange(event.target.value)}
+        />
+      </label>
+    </SheetDialog>
   );
 }

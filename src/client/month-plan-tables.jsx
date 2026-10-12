@@ -14,7 +14,8 @@ import {
 } from "./month-row-editing";
 import { getMonthPlanEditSource } from "./month-state";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
-import { DeleteRowButton, SortableHeader } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
+import { SortableHeader } from "./ui-components";
 import { leadProgress } from "./ui/lead-support-detail";
 import { useIsMobileLayout, useIsMonthSheetLayout } from "./use-viewport";
 import { moneyToneClass } from "./money-tone-class";

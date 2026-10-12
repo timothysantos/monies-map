@@ -149,10 +149,10 @@ test("an entry edit whose refresh fails stays saved and raises the notice instea
   await page.goto("/entries?view=person-tim&month=2026-05");
   await waitUsable(page);
   const entryRow = page.locator(".entry-row").filter({ hasText: description });
-  await entryRow.first().click();
+  await entryRow.first().locator(".entry-row-main").click();
   const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
-  await entryEditor.locator("select").first().selectOption("Groceries");
+  await entryEditor.locator("[data-row='category'] select").selectOption("Groceries");
 
   await page.route("**/api/entries-page**", failJson);
   const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());

@@ -60,17 +60,18 @@ export function entryAmountTone(entryType: string, signedAmountMinor: number): M
 }
 
 /**
- * The Entries totals strip has no plan to compare with: spend and outflow are
- * plain outflows, transfers are neutral, income and the difference carry
+ * The Entries totals (the "Spent" lead and its four pills) have no plan to
+ * compare with, and spending is not bad for being spending: spend, outflow
+ * and transfers stay plain ink, and only income and the difference carry
  * their direction (a negative difference is a deficit).
  */
 export function entryTotalsTones({ incomeMinor, netMinor }: { incomeMinor: number; netMinor: number }) {
   return {
-    spend: "out",
+    spend: "neutral",
     income: flowTone(incomeMinor),
     difference: signTone(netMinor),
     transfers: "neutral",
-    outflow: "out"
+    outflow: "neutral"
   } satisfies Record<string, MoneyTone>;
 }
 

@@ -1,10 +1,11 @@
 import * as Popover from "@radix-ui/react-popover";
-import { Check, Clock, FileText } from "lucide-react";
+import { Check, Clock, FileText, ListChecks } from "lucide-react";
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+import { BottomActions, LeadCard } from "./ui/lead-support-detail";
 import "./import-review.css";
 
 // The import bar: the three steps, one chip per file of this session's
@@ -198,13 +199,21 @@ export function ImportProgressSheet({
     <EntryMobileSheet
       title={importMessages.batchBarLabel}
       description={importMessages.blockerThingsLeft(blockers.remainingCount)}
+      descriptionClassName="lsd-sr-only"
       saveLabel={messages.common.close}
       isSaveDisabled
       onSave={onClose}
       onClose={onClose}
-      footerContent={<></>}
+      footerContent={(
+        <BottomActions className="is-sheet-bar" primaryLabel={messages.common.close} onPrimary={onClose} />
+      )}
     >
       <div className="import-progress-sheet">
+        <LeadCard
+          className="import-progress-lead"
+          category={{ icon: ListChecks }}
+          title={importMessages.blockerThingsLeft(blockers.remainingCount)}
+        />
         {batch.total ? (
           <section className="import-progress-sheet-section">
             <span className="import-blockers-title" id="import-progress-files-title">{importMessages.batchFilesLabel}</span>

@@ -290,3 +290,12 @@ export function leadFigures(page) {
   const planned = Math.max(0, card("Planned spend") - card("Savings target") - investPlan);
   return { income, invested, spent, planned, savingsTarget: card("Savings target"), kept: income - spent - invested };
 }
+
+// Opens the Entries page's new-entry form on a wide screen. The inline "+ Add
+// entry" button left the totals; the round + button opens Ask's new entry
+// card, whose "Edit in form" opens the form (the same route a person takes).
+export async function openEntryComposer(page) {
+  await page.locator(".entries-fab").click();
+  await page.getByRole("button", { name: "Edit in form" }).click();
+  await expect(page.locator(".entry-composer")).toBeVisible();
+}

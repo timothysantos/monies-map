@@ -13,6 +13,7 @@ import { getIconComponent } from "./ui-components";
 import { messages } from "./copy/en-SG";
 import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
+import { paletteColour } from "./palette-colour";
 
 // The Ask page's entry card (design.md "Ask page"): the hero card with the
 // category bubble, what it was, the amount and its date, wallet and person
@@ -155,7 +156,7 @@ export function AskEntryCard({
       data-ask-card={card.status}
       category={bubble}
       title={title}
-      subtitle={<span className="ask-card-category" style={{ "--cat": bubbleColour }}>{isTransfer ? askCopy.card.transfer : card.fields.categoryName}</span>}
+      subtitle={<span className="ask-card-category" style={{ "--cat": paletteColour(bubbleColour) }}>{isTransfer ? askCopy.card.transfer : card.fields.categoryName}</span>}
       amount={amount}
       tag={tag ? (
         <span className={`ask-card-tag ${tag.className}`}>

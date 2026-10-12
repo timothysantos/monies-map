@@ -552,27 +552,24 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   expect(cardBox.width).toBeGreaterThan(rowsBox.width - 4);
   const columnXs = await editor.locator(".lsd-rows .lsd-row").evaluateAll((rows) => [...new Set(rows.map((row) => Math.round(row.getBoundingClientRect().x)))]);
   expect(columnXs).toHaveLength(2);
-  await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Owner", "Splits", "Note", "Date", "Wallet", "Posted date", "Type"]);
+  // Date, Wallet and Owner are the lead's chips: no row repeats them.
+  await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Posted date", "Type"]);
 
   // Tab walks description, amount, then the rows in order (a date field's
   // day, month and year parts are one stop here).
   await editor.getByRole("textbox", { name: "Description" }).focus();
   const order = [];
-  for (let step = 0; step < 14 && order.length < 9; step += 1) {
+  // The tappable Support chips (date, wallet, owner) are their own fields on
+  // a wide screen: they come after the lead's fields, before the rows
+  // (design.md, "Tappable chips").
+  for (let step = 0; step < 16 && order.length < 9; step += 1) {
     await page.keyboard.press("Tab");
     const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
     if (order.at(-1) !== name) order.push(name);
   }
-  // The tappable Support chips (date, wallet, owner) come after the lead's
-  // fields, before the rows (design.md, "Tappable chips").
-  for (let step = 0; step < 6 && order.length < 12; step += 1) {
-    await page.keyboard.press("Tab");
-    const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
-    if (order.at(-1) !== name) order.push(name);
-  }
-  expect(order.slice(0, 12)).toEqual([
+  expect(order.slice(0, 9)).toEqual([
     "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
-    "Category", "Owner", "SplitsAdd to splits", "Note", "Date", "Wallet", "Posted date"
+    "Category", "SplitsAdd to splits", "Note", "Posted date"
   ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");

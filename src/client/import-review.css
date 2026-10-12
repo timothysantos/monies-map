@@ -305,14 +305,14 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgb(var(--paper-rgb) / 0.5);
   color: var(--muted);
   min-width: 0;
 }
 
 .import-stepper-step.is-current {
   border: 2px solid var(--accent-strong);
-  background: #fff;
+  background: var(--paper);
   color: var(--text);
 }
 
@@ -686,7 +686,7 @@
   padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(var(--paper-rgb) / 0.7);
   color: var(--muted);
   font: inherit;
   font-size: 0.85rem;
@@ -716,7 +716,7 @@
 
 .import-file-chip.is-reviewing {
   border: 2px solid var(--accent-strong);
-  background: #fff;
+  background: var(--paper);
   color: var(--text);
   font-weight: 700;
 }

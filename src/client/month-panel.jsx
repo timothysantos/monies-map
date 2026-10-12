@@ -1,20 +1,18 @@
 // First, so these rules load before the stylesheets the modules below import.
 import "./month-route.css";
 import { spendingMinor } from "../domain/category-offset";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { EmptyState, InlineError } from "./ui-states";
-import { EntryMobileSheet } from "./entry-mobile-sheet";
+import MonthNoteDialog from "./month-note-dialog";
+import { MonthPlanLinkDialog } from "./month-plan-link-dialog";
+import { NoteSheetDialog } from "./note-sheet-dialog";
 import { useDraftChanged } from "./use-draft-changed";
 import { MonthPlanSheet } from "./month-plan-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
-import { useMoneyPrivacy } from "./money-privacy";
 import { MonthLead, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
@@ -1460,6 +1458,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     }
   }
 
+  // The note dialogs name whose note it is: the month and the view, and for a
+  // plan row its label.
+  const monthLabelForNotes = `${formatService.formatMonthLabel(view.monthPage.month)} · ${view.label}`;
+  const rowNoteRow = noteDialog
+    ? (noteDialog.kind === "income"
+      ? incomeRows.find((item) => item.id === noteDialog.rowId)
+      : planSections.find((item) => item.key === noteDialog.sectionKey)?.rows.find((item) => item.id === noteDialog.rowId))
+    : null;
+  const rowNoteLabel = rowNoteRow?.label || "Plan row";
+
   return (
     <article className="panel month-panel">
       <MonthPanelHeader
@@ -1581,285 +1589,62 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         />
       ) : null}
 
-      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) closeNoteDialog(); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content">
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                commitNoteDialog();
-              }}
-            >
-              <div className="note-dialog-head">
-                <div>
-                  <Dialog.Title>Edit note</Dialog.Title>
-                  <Dialog.Description>Write the planning context without squeezing it into the table.</Dialog.Description>
-                </div>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel"
-                  aria-label="Close note editor"
-                  disabled={isSavingRowNote}
-                  onClick={closeNoteDialog}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <InlineError message={rowNoteError} />
-              <textarea
-                className="note-dialog-textarea"
-                value={noteDialog?.draft ?? ""}
-                onChange={(event) => setNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
-                rows={10}
-                enterKeyHint="done"
-              />
-              <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" disabled={isSavingRowNote} onClick={closeNoteDialog}>
-                  {messages.month.cancelEdit}
-                </button>
-                <button type="submit" className="dialog-primary" disabled={isSavingRowNote}>
-                  {isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-
-      {!useMobileMonthSheet ? (
-        <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) closePlanLinkDialog(); }}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content planned-link-dialog">
-              <MonthPlanLinkContent
-                planLinkDialog={planLinkDialog}
-                row={planLinkPickerModel.row}
-                allCandidates={planLinkPickerModel.allCandidates}
-                candidates={planLinkPickerModel.candidates}
-                selectedIds={planLinkPickerModel.selectedIds}
-                isSaving={isSavingPlanLinks}
-                errorMessage={planLinkError}
-                onClose={closePlanLinkDialog}
-                onToggleFilter={togglePlanLinkFilter}
-                onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
-                onToggleEntry={togglePlanLinkEntry}
-                onSave={() => void savePlanLinkDialog()}
-              />
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+      {noteDialog ? (
+        <NoteSheetDialog
+          title="Edit note"
+          description="Write the planning context without squeezing it into the table."
+          leadTitle={rowNoteLabel}
+          leadSubtitle={monthLabelForNotes}
+          value={noteDialog.draft ?? ""}
+          onChange={(draft) => setNoteDialog((current) => current ? { ...current, draft } : current)}
+          errorMessage={rowNoteError}
+          isSaving={isSavingRowNote}
+          saveLabel={isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
+          cancelLabel={messages.month.cancelEdit}
+          closeLabel="Close note editor"
+          onSave={commitNoteDialog}
+          onClose={closeNoteDialog}
+        />
       ) : null}
 
-      {useMobileMonthSheet && planLinkDialog ? (
-        <EntryMobileSheet
-          title="Match planned item"
-          description={`Link exact ledger entries to ${planLinkPickerModel.row?.label ?? "this planned item"}. Budget buckets still use category totals.`}
-          saveLabel={isSavingPlanLinks ? messages.common.saving : "Save matches"}
-          errorMessage={planLinkError}
-          isSubmitting={isSavingPlanLinks}
-          isSaveDisabled={isSavingPlanLinks}
+      {planLinkDialog ? (
+        <MonthPlanLinkDialog
+          asSheet={useMobileMonthSheet}
+          planLinkDialog={planLinkDialog}
+          row={planLinkPickerModel.row}
+          category={categoryService.get(categories, { categoryName: planLinkPickerModel.row?.categoryName })}
+          allCandidates={planLinkPickerModel.allCandidates}
+          candidates={planLinkPickerModel.candidates}
+          selectedIds={planLinkPickerModel.selectedIds}
+          isSaving={isSavingPlanLinks}
           isDirty={hasPlanLinkChanges}
+          errorMessage={planLinkError}
           onClose={closePlanLinkDialog}
+          onToggleFilter={togglePlanLinkFilter}
+          onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
+          onToggleEntry={togglePlanLinkEntry}
           onSave={() => void savePlanLinkDialog()}
-        >
-          <MonthPlanLinkContent
-            planLinkDialog={planLinkDialog}
-            row={planLinkPickerModel.row}
-            allCandidates={planLinkPickerModel.allCandidates}
-            candidates={planLinkPickerModel.candidates}
-            selectedIds={planLinkPickerModel.selectedIds}
-            onToggleFilter={togglePlanLinkFilter}
-            onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
-            onToggleEntry={togglePlanLinkEntry}
-            isMobile
-          />
-        </EntryMobileSheet>
+        />
       ) : null}
 
-      <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open && !isSavingMonthNote) setMonthNoteDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content">
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (isSavingMonthNote) {
-                  return;
-                }
-                void commitMonthNoteDialog();
-              }}
-            >
-              <div className="note-dialog-head">
-                <div>
-                  <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
-                  <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
-                </div>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel"
-                  aria-label="Close month note editor"
-                  disabled={isSavingMonthNote}
-                  onClick={() => setMonthNoteDialog(null)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <InlineError message={monthNoteError} />
-              <textarea
-                className="note-dialog-textarea"
-                value={monthNoteDialog?.draft ?? ""}
-                onChange={(event) => setMonthNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
-                rows={10}
-                enterKeyHint="done"
-              />
-              <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" disabled={isSavingMonthNote} onClick={() => setMonthNoteDialog(null)}>
-                  {messages.month.cancelEdit}
-                </button>
-                <button type="submit" className="dialog-primary" disabled={isSavingMonthNote}>
-                  {isSavingMonthNote ? messages.common.saving : messages.month.doneEdit}
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {monthNoteDialog ? (
+        <MonthNoteDialog
+          monthLabel={monthLabelForNotes}
+          value={monthNoteDialog.draft ?? ""}
+          onChange={(draft) => setMonthNoteDialog((current) => current ? { ...current, draft } : current)}
+          errorMessage={monthNoteError}
+          isSaving={isSavingMonthNote}
+          onSave={commitMonthNoteDialog}
+          onClose={() => {
+            if (!isSavingMonthNote) {
+              setMonthNoteDialog(null);
+            }
+          }}
+        />
+      ) : null}
     </article>
   );
 }
-
-function MonthPlanLinkContent({
-  planLinkDialog,
-  row,
-  allCandidates,
-  candidates,
-  selectedIds,
-  isSaving = false,
-  errorMessage = "",
-  onClose = undefined,
-  onToggleFilter,
-  onDescriptionFilterChange,
-  onToggleEntry,
-  onSave = undefined,
-  isMobile = false
-}) {
-  const filters = [
-    ["filterLinkedOnly", "Linked"],
-    ["filterSameCategoryOnly", "Same category"],
-    ["filterSameAccountOnly", "Same account"],
-    ["filterCurrentMonthOnly", "This month only"]
-  ];
-
-  // On mobile this sits inside the sheet's own form, which saves on submit. A
-  // nested form would take Enter from the filter field and submit the page.
-  const FormElement = isMobile ? "div" : "form";
-  return (
-    <FormElement
-      onSubmit={isMobile ? undefined : (event) => {
-        event.preventDefault();
-        void onSave();
-      }}
-    >
-      {!isMobile ? (
-        <div className="note-dialog-head">
-          <div>
-            <Dialog.Title>Match planned item</Dialog.Title>
-            <Dialog.Description>
-              Link exact ledger entries to {row?.label ?? "this planned item"}. Budget buckets still use category totals.
-            </Dialog.Description>
-          </div>
-          <button
-            type="button"
-            className="icon-action subtle-cancel"
-            aria-label="Close planned item matching"
-            disabled={isSaving}
-            onClick={onClose}
-          >
-            <X size={16} />
-          </button>
-        </div>
-      ) : null}
-      {!isMobile ? <InlineError message={errorMessage} /> : null}
-      <div className="planned-link-filter-panel">
-        <div className="planned-link-filter-chips" aria-label="Match filters">
-          {filters.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              className={`planned-link-filter-chip ${planLinkDialog?.[key] ? "is-active" : ""}`}
-              aria-pressed={Boolean(planLinkDialog?.[key])}
-              onClick={() => onToggleFilter(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="planned-link-filter-summary">
-          Showing {candidates.length} of {allCandidates.length} candidate entries.
-        </p>
-        <label className="planned-link-search">
-          <span>Description filter</span>
-          <input
-            type="text"
-            className="table-edit-input"
-            placeholder="Filter descriptions in this list"
-            value={planLinkDialog?.descriptionFilter ?? ""}
-            enterKeyHint="next"
-            onChange={(event) => onDescriptionFilterChange(event.target.value)}
-          />
-        </label>
-      </div>
-      {candidates.length ? (
-        <div className="planned-link-list">
-          {candidates.map((entry) => (
-            <MemoizedPlanLinkCandidateRow
-              key={entry.id}
-              entry={entry}
-              checked={selectedIds.has(entry.id)}
-              onToggleEntry={onToggleEntry}
-            />
-          ))}
-        </div>
-      ) : (
-        <EmptyState>{messages.month.planLinkNoCandidates}</EmptyState>
-      )}
-      {!isMobile ? (
-        <div className="note-dialog-actions">
-          <button type="button" className="subtle-cancel" disabled={isSaving} onClick={onClose}>
-            {messages.month.cancelEdit}
-          </button>
-          <button type="submit" className="dialog-primary" disabled={isSaving}>
-            {isSaving ? messages.common.saving : "Save matches"}
-          </button>
-        </div>
-      ) : null}
-    </FormElement>
-  );
-}
-
-// Memoized: a checkbox or filter change re-renders only the rows it changes.
-// It subscribes to money privacy because the shared formatter reads it.
-function PlanLinkCandidateRow({ entry, checked, onToggleEntry }) {
-  useMoneyPrivacy();
-  return (
-    <label className="planned-link-row">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onToggleEntry(entry.id, event.target.checked)}
-      />
-      <span className="planned-link-row-main">
-        <strong>{entry.description}</strong>
-        <small>{formatService.formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
-        {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
-      </span>
-      <span>{formatService.money(entry.amountMinor)}</span>
-    </label>
-  );
-}
-
-const MemoizedPlanLinkCandidateRow = memo(PlanLinkCandidateRow);
 
 function getPreviousMonthKey(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);

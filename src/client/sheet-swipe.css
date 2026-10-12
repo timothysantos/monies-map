@@ -51,7 +51,7 @@
   padding: 18px max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   border-top: 1px solid var(--line);
   border-radius: 20px 20px 0 0;
-  background: rgba(255, 252, 249, 0.995);
+  background: rgb(var(--cream-rgb, 255 252 249) / 0.995);
   box-shadow: 0 -12px 28px rgba(27, 24, 21, 0.14);
 }
 

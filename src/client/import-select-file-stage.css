@@ -2,7 +2,7 @@
    the explanations are one folded row, the defaults are Detail rows. Ships
    with the lazy Imports route. */
 .import-how {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(var(--paper-rgb) / 0.7);
 }
 
 .import-how-notes {
@@ -17,5 +17,5 @@
 }
 
 .import-defaults-rows {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgb(var(--paper-rgb) / 0.8);
 }

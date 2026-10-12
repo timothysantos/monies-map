@@ -483,7 +483,7 @@ test.describe("month page", () => {
 
     await page.goto(`/month?view=person-tim&month=${targetMonth}&scope=direct_plus_shared`);
     await page.locator(".note-card-button").click();
-    const dialog = page.locator(".note-dialog-content");
+    const dialog = page.locator(".entry-mobile-sheet.note-sheet-dialog");
     await expect(dialog).toBeVisible();
 
     await page.route("**/api/month-note/update", async (route) => {
