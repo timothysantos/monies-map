@@ -121,12 +121,9 @@ export function ClaudeTopUpForm({ onClose, onSave }) {
       className={isMobile ? "claude-topup-sheet" : "claude-topup-dialog"}
       title={copy.form.title}
       description={copy.form.description}
-      descriptionHidden
       closeLabel={copy.form.close}
       lead={(
-        <LeadCard className="sheet-dialog-lead" category={{ icon: Sparkles }} title={copy.regionLabel}>
-          <p className="lsd-note">{copy.form.description}</p>
-        </LeadCard>
+        <LeadCard className="sheet-dialog-lead" category={{ icon: Sparkles }} title={copy.regionLabel} />
       )}
       errorMessage={error}
       primaryLabel={saveLabel}
