@@ -48,6 +48,8 @@ import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
+import { SplitsGroupStrip } from "./splits-group-strip";
+import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 import { moniesClient } from "./monies-client-service";
@@ -111,7 +113,10 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const closedSplitIdRef = useRef("");
   const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
-  const selectedGroupId = selectedGroupParam ?? defaultGroupId;
+  // With no group in the address, reopen the group this viewer used last.
+  const lastUsedGroupId = readLastGroupId(view.id);
+  const openingGroupId = splitsPage.groups.some((group) => group.id === lastUsedGroupId) ? lastUsedGroupId : defaultGroupId;
+  const selectedGroupId = selectedGroupParam ?? openingGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const splitSearchQuery = searchParams.get("split_search") ?? "";
   const isHouseholdView = view.id === "household";
@@ -272,8 +277,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    updateSplitView({ groupId: defaultGroupId, mode: "entries" });
+    updateSplitView({ groupId: selectedGroupId, mode: "entries" });
   }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
+
+  // Remember the open group per viewer for the next visit.
+  useEffect(() => {
+    if (selectedMode !== "matches" && activeGroup?.id) {
+      writeLastGroupId(view.id, activeGroup.id);
+    }
+  }, [activeGroup?.id, selectedMode, view.id]);
 
   useEffect(() => {
     setDismissedMatchIds([]);
@@ -1263,6 +1275,19 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   return (
     <article ref={pageFlagRef(PAGE_FLAG.splitsPanel)} className="panel panel-accent panel-splits">
+      <SplitsGroupStrip
+        groups={groups}
+        activeGroup={activeGroup}
+        selectedMode={selectedMode}
+        isHousehold={isHouseholdView}
+        readOnly={isHouseholdView}
+        hideBar={Boolean(inlineSplitDraft)}
+        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
+        onCreateGroup={() => {
+          setFormError("");
+          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
+        }}
+      />
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.splits}</h2>
@@ -1286,7 +1311,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       />
 
       <SplitsMainSection
-        groups={groups}
         activeGroup={activeGroup}
         selectedMode={selectedMode}
         pendingMatchCount={pendingMatchCount}
@@ -1313,17 +1337,12 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         isUndoingSettlementLock={isCheckpointing}
         onUndoSettlementLock={inlineCardLock && !inlineCardLock.canUndo ? undefined : () => void undoSettlementLock(inlineCardLock)}
         isSubmitting={isSubmitting}
-        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
         onOpenHistory={() => {
           setHistoryError("");
           setShowHistory(true);
         }}
         onBackToGroup={openActiveGroupView}
-        onCreateGroup={() => {
-          setFormError("");
-          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
-        }}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
         onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
