@@ -5,6 +5,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { entryAddedByFromReference } from "../src/domain/entry-source.ts";
+import { moreDetailsSummary } from "../src/client/entry-source.js";
+
+// The Edit entry card's folded More details names what it holds, and the
+// Added by row is one of those rows when the source is known.
+test("More details names its Added by row when the source is known", () => {
+  assert.equal(moreDetailsSummary({ locked: false, addedBy: "apple_pay_shortcut" }), "Date, wallet, posted date, type, added by");
+  assert.equal(moreDetailsSummary({ locked: false, addedBy: "ask" }), "Date, wallet, posted date, type, added by");
+  // Certified: date and wallet are locked chips, so only the bank facts fold.
+  assert.equal(moreDetailsSummary({ locked: true, addedBy: "apple_pay_shortcut" }), "Posted date, type, added by");
+});
+
+test("More details leaves Added by out when no tool added the entry", () => {
+  assert.equal(moreDetailsSummary({ locked: false, addedBy: undefined }), "Date, wallet, posted date, type");
+  assert.equal(moreDetailsSummary({ locked: false, addedBy: null }), "Date, wallet, posted date, type");
+  assert.equal(moreDetailsSummary({ locked: true }), "Posted date, type");
+  // An unknown source shows no row, so the summary does not name one.
+  assert.equal(moreDetailsSummary({ locked: false, addedBy: "import" }), "Date, wallet, posted date, type");
+});
 
 test("a Shortcut reference is the Apple Pay shortcut", () => {
   assert.equal(entryAddedByFromReference("shortcut:3F2A-77"), "apple_pay_shortcut");

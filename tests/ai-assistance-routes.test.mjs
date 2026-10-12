@@ -127,8 +127,9 @@ test("a valid AI template is rendered from computed facts only", async () => {
     available: true,
     explanations: [{ accountName: "UOB One", message: "UOB One is out by $42.80 for August 2026; check a card payment recorded twice first.", source: "ai" }]
   });
-  assert.equal(ai.calls[0].model, "@cf/meta/llama-3.2-3b-instruct");
-  assert.equal(ai.calls[0].input.max_tokens, 140);
+  // Without a Claude gateway the provider layer asks Workers AI Gemma 4 directly.
+  assert.equal(ai.calls[0].model, "@cf/google/gemma-4-26b-a4b-it");
+  assert.equal(ai.calls[0].input.max_completion_tokens, 140);
 });
 
 test("an AI template with its own figures is refused and the computed wording is used", async () => {

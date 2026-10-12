@@ -99,7 +99,8 @@ those ports outside CI).
 `npm run test:e2e:sharded` runs the same suite faster as parallel shards. It
 builds `dist/` once. Then each shard starts its own stack on its own ports
 (Vite `5501+`, Wrangler `8901+`, inspector `9501+`) with its own local D1 in
-`.wrangler/state-shard-N`, and runs its spec files with one worker. At the end
+`.wrangler/state-shard-<Wrangler port>` (so runs with different
+`E2E_PORT_OFFSET` values never share one), and runs its spec files with one worker. At the end
 it merges every shard into `playwright-report/` and
 `test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
 removes the shard servers and state. Shard logs are in
@@ -335,8 +336,12 @@ for shared devices or if the sign-in context should expire sooner.
 Nothing is needed today. With no gateway settings, the optional AI layer
 (`src/domain/ai-provider.ts`) uses Workers AI directly through the existing
 `AI` binding: Gemma 4 (`@cf/google/gemma-4-26b-a4b-it`) for receipt images
-and other JSON answers. There is no failed gateway call, no extra wait and no
-log line.
+and other JSON answers (Ask's answer wording, the Monthly Note draft, the
+statement-mismatch explanation, category-rule suggestions and the statement
+text fallback). There is no failed gateway call, no extra wait and no log
+line. The entry draft uses the provider layer too, and
+duplicate and transfer ranking use Workers AI embeddings; neither goes
+through the gateway.
 
 Claude Haiku (`claude-haiku-5-5`) through Cloudflare AI Gateway can be added
 later with an Anthropic API key from any Anthropic account, including a
@@ -380,8 +385,8 @@ To add Claude later:
    `AI_FALLBACK_MODEL` (default Gemma 4; use
    `@cf/meta/llama-4-scout-17b-16e-instruct` if Gemma 4 is withdrawn),
    `AI_ASSIST_VISION_UNITS` (allowance units per receipt image, default 2,
-   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, 4 to 60;
-   `wrangler.jsonc` sets 40, and a Worker without it uses 12).
+   1 to 10) and `AI_ASSIST_DAILY_LIMIT` (shared daily units, 4 to 100;
+   `wrangler.jsonc` sets 100, and a Worker without it uses 12).
 7. Deploy as usual. If Claude rejects the key, model or gateway (400, 401,
    403 or 404), `npx wrangler tail` shows `AI provider config rejected` with
    the status code only; receipts keep working through Workers AI.
@@ -402,7 +407,7 @@ The routes:
 
 - `GET /api/ai-assist/provider-status` returns `{ ok, visible: true,
   claudeConfigured, state, estimatedSpendUsd, creditUsd, warnAtUsd,
-  lastFailureAt?, lastFailureReason?, lastSuccessAt?, consoleBillingUrl }`,
+  monthSpendUsd, monthTargetUsd, mode, lastFailureAt?, lastFailureReason?, lastSuccessAt?, consoleBillingUrl }`,
   where `state` is `exhausted`, `capped`, `low` (estimated spend at or over
   the warn amount), `unknown` (no Claude config, no success yet, or a
   rejected key) or `ok`. A later Claude success turns `exhausted` or
@@ -432,6 +437,15 @@ Optional vars (defaults in brackets):
   first top-up mark; after a mark, the marked amount is used.
 - `AI_CLAUDE_WARN_AT_USD` [15]: the estimated spend that turns the state
   to `low` (never more than the credit).
+- `AI_CLAUDE_MONTHLY_TARGET_USD` [8]: the monthly Claude budget for
+  auto-balance. `mode` is `claude_all` while the month's estimated spend is
+  at or under target x day / days in the month (Asia/Singapore),
+  `ask_only` when it is over that pace (background help asks the basic model
+  first; receipts, entry drafts and Ask wording still ask Claude first) and
+  `basic_first` from 90% of the target (everything asks the basic model
+  first). Claude or the basic model is always the other's fallback, and the
+  month's figure restarts at zero each month. Settings shows it as one line
+  under the credit line.
 
 The estimate is only an estimate: it does not see credit spent by other
 apps on the same Anthropic account, or a balance the owner topped up without
@@ -459,7 +473,9 @@ in-app form that posts the top-up route and keeps its answer as the new
 status) and a dismiss kept in sessionStorage
 (`monies.claudeCreditNotice.v1`) until the state gets worse. Settings →
 Ask and AI shows the same line, the two actions and when it was last
-checked, or "Claude isn't set up, so Ask uses the basic model." A viewer
+checked, or "Claude isn't set up, so Ask uses the basic model." (or
+"Claude hasn't been used yet." when Claude is set up, the state is unknown
+and no failure is recorded). A viewer
 the GET answers `{ visible: false }` sees neither. `wrangler.test.jsonc`
 sets no `AI_ALERT_EMAILS`, so the browser tests stub the route for each
 state (`tests/e2e/claude-credit-notice.spec.js`; the phone tests also run
@@ -474,8 +490,11 @@ To test locally, use the unit tests: `tests/ai-provider.test.mjs` mocks the
 gateway with a stubbed `fetch` (success, 429, timeout, malformed JSON, both
 providers down, no Anthropic config, and what each records in the status
 row), `tests/ai-provider-status.test.mjs` covers the credit status on a real
-local D1, and `tests/receipt-read-route.test.mjs` drives the route with a
-stub `AI` binding. `wrangler.test.jsonc` has no AI
+local D1, `tests/receipt-read-route.test.mjs` drives the route with a
+stub `AI` binding, and `tests/ai-text-provider-routes.test.mjs` drives the
+four text routes (Monthly Note, mismatch explanation, category rules,
+statement fallback) through Claude, the Gemma fallback, both down, refused
+answers and AI off. `wrangler.test.jsonc` has no AI
 binding, so the browser tests prove the no-AI path. For a manual check
 against the real gateway, put the secrets in `.dev.vars` (ignored by git)
 and the vars in a local, uncommitted copy of the config; note that the
@@ -1858,6 +1877,13 @@ import transactions, change a category, skip a row, certify a statement, or
 link a transfer on its own. Use the normal review controls to accept any
 suggestion.
 
+These four (Monthly Note, mismatch wording, category-rule drafts and the
+statement fallback) go through the same provider as receipts: Claude
+through AI Gateway when it is set up, with logging and caching off, and
+Workers AI Gemma otherwise or when Claude fails. Each sends a JSON schema
+for its answer, and the app's own check still decides whether the answer is
+usable; the allowance cost of each is unchanged.
+
 For a PDF that no supported parser can read, Imports offers an explicit
 checkbox to allow an AI fallback. The browser still tries the dedicated parser
 and private in-browser OCR first, including HSBC image statements. Only the
@@ -1931,6 +1957,24 @@ three ways in: the Ask tab (chat mode, with a "since you last looked" card
 built from the Summary data already cached, never a fetch or AI call), the
 Entries + and Splits receipt buttons (`?mode=add` / `?mode=expense`, the new
 entry card), and the Apple Pay Shortcut's `openUrl` (`?saved_entry=<id>`).
+
+On a wide screen there is no Ask tab: `ask-dock.jsx` (the only dock
+code in the first screen, with `ask-dock-field.jsx` and `ask-dock-entry.js`;
+the panel, store and layout rules load in the Ask page's chunk on the first
+way in, so `npm run check:bundle` stays within budget) puts a one-line Ask field at the bottom right of every page but
+`/ask`, and opens the same `AskPanel` beside the page with a `placement`
+prop: docked from 1,280 px (the body gets the panel's width as right
+padding, so the page narrows), a popup from 761 px. `ask-dock-layout.js`
+holds the pure rules (`tests/ask-dock-layout.test.mjs`) and
+`ask-dock-state.js` the per-tab session state (`monies.askDock.v1`:
+open, mode, way in; `tests/ask-dock-state.test.mjs`; the first-screen hand-off
+is `tests/ask-dock-entry.test.mjs`). The conversation is
+the shared store's, so the panel and `/ask` are one conversation. The
+header and the Month mid-width rules are container queries on `.shell`,
+so the narrowed page lays out like a window of its width.
+`tests/e2e/ask-dock.spec.js` runs it at 1,024, 1,280 and 1,440 px, and
+`tests/e2e/header-tab-fit.spec.js` checks every page's header with the
+panel docked.
 
 The card is a pure state machine (`ask-card-model.js`) with unit tests for
 every state. Saving goes through the Entries composer's create path

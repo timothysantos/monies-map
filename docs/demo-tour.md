@@ -42,16 +42,17 @@ month, without building a spreadsheet."
 
 ## 2. Same month last year (1 minute)
 
-The same-season comparison needs the month a year earlier inside the range,
-and the default range is only the last 12 months.
+Summary's Money insights talk about the last month of the range, and the
+same-season comparison needs that month to be finished and the month a year
+earlier inside the range. The default range is only the last 12 months,
+ending in the current month.
 
 1. Tap the **Range** control and set the start to the **earliest month**
-   (17 months back). Keep the end at the current month.
-2. Under **Spending Mix**, pick **last month**.
-3. Read the Money insights **Big picture** line.
+   (17 months back) and the end to **last month**.
+2. Stay on **All months** and read the Money insights **Big picture** line.
 
 With last year's month in the range, the Big picture can compare the two:
-last month spent about $1,100 less than the same month last year (the year
+last month spent about $1,000 less than the same month last year (the year
 before had a Bali long weekend). The Big picture takes turns by month with the
 household's keep rate and cushion, so on some months it shows one of those
 instead.
@@ -80,7 +81,11 @@ sees everything."
 
 ## 4. Month: the plan versus reality (2 minutes)
 
-Go back to **Household**, open **Month** and choose **two months ago**.
+Go back to **Household** and set the **Range** end back to the current
+month. Then pick **two months ago**: on a computer in the row of months
+under the top bar, on a phone with the **All months** button beside the
+View and scope bar. The Summary button stays highlighted; a picked month
+shows that month's plan.
 
 - **Actual spend** is above **Planned spend** by about $3,100. The month
   note explains it: both aircon units were replaced and the new sofa

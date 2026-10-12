@@ -103,6 +103,11 @@ Watch area:
   `lead-support-detail-sheets.spec.js` proves the saved totals and shares
   for an even and an uneven split, the existing refusals, tap targets and
   hidden money on a phone
+- the new expense dialog is titled "New split expense" (editing keeps "Edit
+  split"). On a phone the expense dialog is a bottom sheet that swipes down
+  to close: unchanged it closes; changed since it opened
+  (`buildComparableSplitDraft`) it springs back and asks "Discard changes?"
+  (`sheet-swipe-dismiss.spec.js`). The settlement dialog does not swipe yet
 
 ## Known Exceptions / Watch Areas
 

@@ -11,13 +11,18 @@
 // - an estimated spend since the owner last marked a top-up, from each
 //   success's `usage` tokens times configurable per-million-token prices
 // - the top-up mark's time and credit amount
+// - this calendar month (Asia/Singapore) and the estimated Claude spend
+//   within it, which restarts at zero in a new month and drives auto-balance
+//   (see "Auto-balance" below)
 //
 // Nothing else is stored: no prompt, image, response, error text or
 // request id. Like the allowance counter it is a cost-control aggregate, not
 // household data, so every write is a single upsert statement and a failed
 // write is swallowed by the provider (it can never break an AI answer).
 
-import type { AiProviderStatusResponseDto, ClaudeFailureCategory, ClaudeCreditState } from "../types/dto";
+import { isoDateInAppTimeZone } from "../lib/app-calendar";
+import type { AiAssistCapability } from "./ai-assistance";
+import type { AiProviderStatusResponseDto, ClaudeFailureCategory, ClaudeCreditState, ClaudeSpendMode } from "../types/dto";
 
 export const CLAUDE_CONSOLE_BILLING_URL = "https://platform.claude.com/settings/billing";
 
@@ -33,6 +38,8 @@ export interface AiProviderStatusEnv {
   // estimated spend at which the owner is warned (US$, default 15).
   AI_CLAUDE_CREDIT_USD?: string;
   AI_CLAUDE_WARN_AT_USD?: string;
+  // Monthly Claude budget target for auto-balance (US$, default 8).
+  AI_CLAUDE_MONTHLY_TARGET_USD?: string;
 }
 
 export interface AiProviderStatusRow {
@@ -42,6 +49,10 @@ export interface AiProviderStatusRow {
   estimated_spend_micro_usd: number;
   topped_up_at: string | null;
   topped_up_credit_micro_usd: number | null;
+  // YYYY-MM of the month `month_spend_micro_usd` counts, or null before the
+  // first Claude success that recorded one.
+  spend_month?: string | null;
+  month_spend_micro_usd?: number | null;
 }
 
 const PROVIDER_KEY = "claude";
@@ -49,6 +60,9 @@ const DEFAULT_PRICE_IN_PER_MTOK = 0.1;
 const DEFAULT_PRICE_OUT_PER_MTOK = 0.5;
 const DEFAULT_CREDIT_USD = 20;
 const DEFAULT_WARN_AT_USD = 15;
+const DEFAULT_MONTHLY_TARGET_USD = 8;
+// At this share of the monthly target, every feature goes basic-model-first.
+const BASIC_FIRST_SHARE = 0.9;
 const MAX_PRICE_PER_MTOK = 1_000;
 // One request never reports more than this many tokens of a kind; anything
 // larger is a malformed usage block, not real spend.
@@ -95,9 +109,10 @@ export function estimateClaudeCostMicroUsd(usage: unknown, env: AiProviderStatus
 // a failure that finished later (a concurrent request) is kept.
 export async function recordClaudeSuccess(db: D1Database, costMicroUsd: number, at = new Date().toISOString()) {
   const cost = Math.max(0, Math.min(MAX_SPEND_MICRO_USD, Math.round(Number(costMicroUsd) || 0)));
+  const month = monthKeyInAppTimeZone(new Date(at));
   await db.prepare(`
-    INSERT INTO ai_provider_status (provider, last_success_at, estimated_spend_micro_usd)
-    VALUES ('${PROVIDER_KEY}', ?1, ?2)
+    INSERT INTO ai_provider_status (provider, last_success_at, estimated_spend_micro_usd, spend_month, month_spend_micro_usd)
+    VALUES ('${PROVIDER_KEY}', ?1, ?2, ?3, ?2)
     ON CONFLICT(provider) DO UPDATE SET
       last_success_at = MAX(COALESCE(ai_provider_status.last_success_at, ''), excluded.last_success_at),
       last_failure_category = CASE
@@ -106,8 +121,13 @@ export async function recordClaudeSuccess(db: D1Database, costMicroUsd: number, 
       last_failure_at = CASE
         WHEN ai_provider_status.last_failure_at IS NULL OR ai_provider_status.last_failure_at <= excluded.last_success_at THEN NULL
         ELSE ai_provider_status.last_failure_at END,
-      estimated_spend_micro_usd = MIN(ai_provider_status.estimated_spend_micro_usd + excluded.estimated_spend_micro_usd, ${MAX_SPEND_MICRO_USD})
-  `).bind(at, cost).run();
+      estimated_spend_micro_usd = MIN(ai_provider_status.estimated_spend_micro_usd + excluded.estimated_spend_micro_usd, ${MAX_SPEND_MICRO_USD}),
+      month_spend_micro_usd = CASE
+        WHEN ai_provider_status.spend_month = excluded.spend_month
+          THEN MIN(COALESCE(ai_provider_status.month_spend_micro_usd, 0) + excluded.month_spend_micro_usd, ${MAX_SPEND_MICRO_USD})
+        ELSE excluded.month_spend_micro_usd END,
+      spend_month = excluded.spend_month
+  `).bind(at, cost, month).run();
 }
 
 // A failure older than the last success changes nothing, and a transient
@@ -144,7 +164,8 @@ export async function markClaudeToppedUp(db: D1Database, creditUsd: number, at =
 
 export async function loadAiProviderStatusRow(db: D1Database) {
   return db.prepare(`
-    SELECT last_failure_category, last_failure_at, last_success_at, estimated_spend_micro_usd, topped_up_at, topped_up_credit_micro_usd
+    SELECT last_failure_category, last_failure_at, last_success_at, estimated_spend_micro_usd, topped_up_at, topped_up_credit_micro_usd,
+      spend_month, month_spend_micro_usd
     FROM ai_provider_status WHERE provider = ?
   `).bind(PROVIDER_KEY).first<AiProviderStatusRow>();
 }
@@ -199,13 +220,15 @@ export function buildAiProviderStatus(
   env: AiProviderStatusEnv,
   // From resolveClaudeGateway (and AI_ASSIST_ENABLED), passed in so this
   // module does not import the provider that records into it.
-  claudeConfigured: boolean
+  claudeConfigured: boolean,
+  now = new Date()
 ): Extract<AiProviderStatusResponseDto, { visible: true }> {
   const creditMicroUsd = row?.topped_up_credit_micro_usd && row.topped_up_credit_micro_usd > 0
     ? row.topped_up_credit_micro_usd
     : Math.round(readAmount(env.AI_CLAUDE_CREDIT_USD, DEFAULT_CREDIT_USD, 0.01) * 1_000_000);
   const warnAtMicroUsd = Math.min(creditMicroUsd, Math.round(readAmount(env.AI_CLAUDE_WARN_AT_USD, DEFAULT_WARN_AT_USD, 0) * 1_000_000));
   const lastFailureReason = isFailureCategory(row?.last_failure_category) ? row.last_failure_category : undefined;
+  const pacing = computeClaudePacing(row, env, now);
   return {
     ok: true,
     visible: true,
@@ -214,10 +237,71 @@ export function buildAiProviderStatus(
     estimatedSpendUsd: toUsd(row?.estimated_spend_micro_usd ?? 0),
     creditUsd: toUsd(creditMicroUsd),
     warnAtUsd: toUsd(warnAtMicroUsd),
+    monthSpendUsd: toUsd(pacing.monthSpendMicroUsd),
+    monthTargetUsd: toUsd(pacing.monthTargetMicroUsd),
+    mode: pacing.mode,
     ...(row?.last_failure_at && lastFailureReason ? { lastFailureAt: row.last_failure_at, lastFailureReason } : {}),
     ...(row?.last_success_at ? { lastSuccessAt: row.last_success_at } : {}),
     consoleBillingUrl: CLAUDE_CONSOLE_BILLING_URL
   };
+}
+
+// ---------------------------------------------------------------- auto-balance
+//
+// A deterministic spending pace, no AI. The month's estimated Claude spend is
+// compared with a pace line (target x day / days in the month, Asia/Singapore)
+// and with the target itself:
+//
+// - claude_all:  at or under the pace line; every feature asks Claude first
+// - ask_only:    over the pace line; "background" features ask the basic
+//                model (Workers AI) first, "ask" features still ask Claude first
+// - basic_first: at 90% of the target or more; every feature asks the basic
+//                model first
+//
+// Claude stays the fallback in every mode (and the basic model stays the
+// fallback when Claude goes first), so a mode only changes the order.
+
+export type ClaudeMode = ClaudeSpendMode;
+
+// "ask" features answer a person who is waiting: a receipt, a typed entry
+// sentence, the wording of an Ask answer. Everything else is background help.
+const ASK_TIER_CAPABILITIES: ReadonlySet<AiAssistCapability> = new Set(["receipt_read", "entry_draft", "ask_answer"]);
+
+export function isAskTierCapability(capability: AiAssistCapability) {
+  return ASK_TIER_CAPABILITIES.has(capability);
+}
+
+export function monthKeyInAppTimeZone(instant: Date) {
+  return isoDateInAppTimeZone(instant).slice(0, 7);
+}
+
+export interface ClaudePacing {
+  monthSpendMicroUsd: number;
+  monthTargetMicroUsd: number;
+  paceMicroUsd: number;
+  mode: ClaudeMode;
+}
+
+export function computeClaudePacing(
+  row: Pick<AiProviderStatusRow, "spend_month" | "month_spend_micro_usd"> | null | undefined,
+  env: Pick<AiProviderStatusEnv, "AI_CLAUDE_MONTHLY_TARGET_USD">,
+  now = new Date()
+): ClaudePacing {
+  const today = isoDateInAppTimeZone(now);
+  const [year, month, day] = today.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const monthTargetMicroUsd = Math.round(readAmount(env.AI_CLAUDE_MONTHLY_TARGET_USD, DEFAULT_MONTHLY_TARGET_USD, 0.01) * 1_000_000);
+  // Spend recorded in an earlier month does not count: a new month starts at 0.
+  const monthSpendMicroUsd = row?.spend_month === today.slice(0, 7) ? Math.max(0, Number(row.month_spend_micro_usd) || 0) : 0;
+  const paceMicroUsd = Math.round(monthTargetMicroUsd * day / daysInMonth);
+  const mode: ClaudeMode = monthSpendMicroUsd >= monthTargetMicroUsd * BASIC_FIRST_SHARE
+    ? "basic_first"
+    : monthSpendMicroUsd > paceMicroUsd ? "ask_only" : "claude_all";
+  return { monthSpendMicroUsd, monthTargetMicroUsd, paceMicroUsd, mode };
+}
+
+export function claudeGoesFirst(mode: ClaudeMode, capability: AiAssistCapability) {
+  return mode === "claude_all" || (mode === "ask_only" && isAskTierCapability(capability));
 }
 
 function isFailureCategory(value: unknown): value is ClaudeFailureCategory {

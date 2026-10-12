@@ -50,11 +50,11 @@ test("CI's unit shards run the files npm run test:unit runs", async () => {
   assert.match(workflow, /--test-shard=\$\{\{ matrix\.shard \}\}\//);
 });
 
-// The production AI allowance (owner-approved 2026-10-11): 40 shared units a
-// day, inside the 4 to 60 clamp, so the Worker reserves against 40 exactly.
-test("production configures 40 daily AI allowance units and the Worker honours it unclamped", async () => {
+// The production AI allowance (owner-approved 2026-10-12): 100 shared units a
+// day, inside the 4 to 100 clamp, so the Worker reserves against 100 exactly.
+test("production configures 100 daily AI allowance units and the Worker honours it unclamped", async () => {
   const appConfig = JSON.parse(await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
-  assert.equal(appConfig.vars.AI_ASSIST_DAILY_LIMIT, "40");
+  assert.equal(appConfig.vars.AI_ASSIST_DAILY_LIMIT, "100");
 
   const { reserveDailyAiBudget } = await import("../src/domain/ai-assistance.ts");
   const bound = [];
@@ -69,6 +69,6 @@ test("production configures 40 daily AI allowance units and the Worker honours i
     }
   };
   const result = await reserveDailyAiBudget(db, { AI_ASSIST_DAILY_LIMIT: appConfig.vars.AI_ASSIST_DAILY_LIMIT }, 1);
-  assert.deepEqual(result, { available: true, remaining: 39 });
-  assert.equal(bound[0].at(-1), 40, "the upsert caps usage at the configured limit");
+  assert.deepEqual(result, { available: true, remaining: 99 });
+  assert.equal(bound[0].at(-1), 100, "the upsert caps usage at the configured limit");
 });
