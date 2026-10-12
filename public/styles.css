@@ -2737,6 +2737,16 @@ body[data-split-inline-editor] .ask-dock-field {
   box-shadow: inset 0 0 0 1px var(--line), 0 12px 30px rgba(27, 24, 21, 0.14);
 }
 
+/* The field is fixed over the page's bottom right. The shell's bottom padding
+   already keeps the page end clear of it; a sticky bar pinned to the window
+   bottom (the Imports commit bar, import-review.css) sits above the field:
+   its 48px height plus 29px bottom gap plus a gap. */
+@media (min-width: 761px) {
+  body {
+    --ask-dock-field-clearance: 89px;
+  }
+}
+
 .ask-dock-field.is-beside-fab {
   right: 92px;
 }
