@@ -60,7 +60,7 @@ const SCREENS = [
   {
     name: "Settings",
     path: "/settings?view=person-tim&month=2026-05",
-    required: [".settings-account-actions .icon-action", "select.table-edit-input"],
+    required: [".settings-account-actions .icon-action", "select.lsd-row-native"],
     optional: ["button.subtle-action"],
     ready: ".settings-section-toggle",
     prepare: async (page) => {
