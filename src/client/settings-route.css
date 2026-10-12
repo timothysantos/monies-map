@@ -548,12 +548,6 @@
   text-overflow: ellipsis;
 }
 
-.settings-add-row .lsd-row-label {
-  max-width: none;
-  color: var(--accent-strong);
-  font-weight: 600;
-}
-
 /* A row with its own editor on the main part and a delete at the end. */
 .lsd-row.settings-split-row {
   display: flex;
