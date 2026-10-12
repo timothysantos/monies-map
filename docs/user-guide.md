@@ -1453,7 +1453,7 @@ under it (**Undo settle-up** or **Undo simplification**) opens that activity
 again. After the
 undo the same card turns editable and you can change and save it.
 
-![Selecting a split opens it as a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
+![Selecting a split turns its row into a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
 
 ![Deleting a split asks you to confirm](/faq/guide/desktop/thumbs/splits-delete.webp)
 
