@@ -74,7 +74,13 @@ Spending Mix follows the tab's month choice and has no month chips of its
 own: on All months it shows the whole range (`categoryShareChart`); with a
 month picked the Month page shows that month's (`month-flow.md`). The
 section is shared (`spending-mix-section.jsx`) and shows the Entries empty
-state ("No spend rows in this view.") when there is no spending. The month sheet and the desktop month row read the same
+state ("No spend rows in this view.") when there is no spending. Its donut has
+no labels on it; a ranked list (`.summary-mix-row`: bubble, name, amount, share
+and bar; the top five, then "Show all N") carries them, and a row's main tap
+hides the slice, its bubble edits the category and its arrow opens Entries
+(`design.md`, "Summary body"; `tests/e2e/summary-body-lsd.spec.js`). Wallets in
+view is one `DetailRows` group of wallet rows (name, freshness, balance) from
+`/api/summary-account-pills`; a row opens Entries for the wallet. The month sheet and the desktop month row read the same
 DTO's `rangeMonths` and `months` (`realExpensesMinor` against
 `estimatedExpensesMinor`); they add no request.
 
