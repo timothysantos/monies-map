@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { PickerRow } from "./detail-field-rows";
 import { SheetDialog } from "./sheet-dialog";
-import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
+import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui-components";
 import { useIsMobileLayout } from "./use-viewport";
 
 // Asks an unlinked login which household profile it belongs to. Modal

@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { InlineError } from "./ui-states";
-import { BottomActions, LeadCard } from "./ui/lead-support-detail";
+import { BottomActions, LeadCard } from "./ui-components";
 import { useIsMobileLayout } from "./use-viewport";
 
 // The one frame for the app's dialogs and small sheets (design.md, "Lead ·

@@ -3,7 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X } from "lucide-react";
 
 import { SheetSwipeDismiss } from "./sheet-swipe";
-import { BottomActions } from "./ui/lead-support-detail";
+import { BottomActions } from "./ui-components";
 
 // The phone's picker sheet (design.md, "Lead · Support · Detail"): the title
 // and a round close button on top, the options as a list that scrolls under

@@ -2,7 +2,7 @@ import { NotebookPen } from "lucide-react";
 import { useRef } from "react";
 
 import { SheetDialog } from "./sheet-dialog";
-import { LeadCard } from "./ui/lead-support-detail";
+import { LeadCard } from "./ui-components";
 
 // The note dialogs (a plan row's note, the month's note, the Summary month
 // note) share one shape: the lead says whose note it is, the note is the one
