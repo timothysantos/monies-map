@@ -841,7 +841,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   .context-block .pill-row,
   .desktop-scope-toggle,
   .summary-scope-switch .pill-row {
-    padding: 3px;
+    padding: 2px;
     border: 0;
     border-radius: var(--radius-group);
     background: var(--track);
@@ -850,7 +850,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   .context-block .pill,
   .desktop-scope-toggle .pill,
   .summary-scope-switch .pill {
-    min-height: 34px;
+    min-height: 32px;
     padding: 0 14px;
     border: 0;
     border-radius: var(--radius-control);

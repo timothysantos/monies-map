@@ -15,15 +15,6 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
-/* Desktop chrome (design.md "Desktop Chrome"): the totals cards are quiet
-   support under the page title, flat on the panel with the group radius. */
-@media (min-width: 761px) {
-  .metric-row-month .metric {
-    border-radius: var(--radius-group);
-    box-shadow: none;
-  }
-}
-
 .month-actual-drilldown:disabled {
   cursor: default;
   opacity: 0.62;
