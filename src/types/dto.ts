@@ -1593,6 +1593,52 @@ export interface AskAnswerResponseDto {
   ai?: { requested: boolean; available: boolean; reason?: string; remaining?: number };
 }
 
+// An Entries filter as Ask carries it (src/client/ask-filter-reader.js reads
+// the same shape on the device). Amounts are minor units the app computed.
+export interface EntriesFilterDto {
+  month: string;
+  viewId: string;
+  scope: PersonScope;
+  search: string;
+  categories: string[];
+  wallets: string[];
+  type: "" | "expense" | "income" | "transfer";
+  minAmountMinor: number | null;
+  maxAmountMinor: number | null;
+}
+
+export interface AskFilterOptionDto {
+  key: string;
+  label: string;
+  patch: Partial<EntriesFilterDto>;
+}
+
+// A follow-up the app asks instead of guessing: one chip per option.
+export interface AskFilterQuestionDto {
+  field: "month" | "wallet" | "category" | "person";
+  reason?: "unknown";
+  word?: string;
+  options: AskFilterOptionDto[];
+}
+
+// What the optional AI's proposal became after the app checked it against
+// the household's own categories, wallets and people
+// (src/domain/ask-filter-ai.ts; DOMAIN.md "Ask Filter Proposal").
+export type AskFilterReadingDto =
+  | { kind: "filter"; filter: EntriesFilterDto }
+  | { kind: "question"; filter: EntriesFilterDto; questions: AskFilterQuestionDto[] }
+  | { kind: "unknown"; reason: "category"; word: string };
+
+// POST /api/ai-assist/filter: only ever asked after the rules reader found
+// nothing. supported false (AI off, out of allowance, malformed or not a
+// search) keeps the page's existing note.
+export interface AskFilterResponseDto {
+  ok: true;
+  supported: boolean;
+  reading?: AskFilterReadingDto;
+  ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
+}
+
 // What one receipt says, read either by the optional AI provider from an
 // image the user explicitly supplied, or by in-browser OCR when AI is off.
 // It is a draft only: nothing is saved until the user taps save in the
