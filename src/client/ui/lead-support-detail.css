@@ -4,8 +4,11 @@
    screen) and never in public/styles.css.
    Colours are tokens only: the category colour (--cat) from the category
    palette, the person colour from person-colour.js, the pastel pairs, the
-   money tones and the terracotta accent; raw colours are neutrals. Every
-   tappable here is at least 44px tall. */
+   money tones and the terracotta accent; raw colours are neutrals. Type
+   sizes, radii, shadows, tap sizes and spacing are the design tokens in
+   :root of public/styles.css (design.md "Design tokens"), checked by
+   tests/design-token-guard.test.mjs. Every tappable here is at least
+   var(--tap-min) (44px) tall. */
 
 /* Lead: the one card with the strong shadow. */
 .lsd-card {
@@ -14,15 +17,15 @@
   min-width: 0;
   padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 22px;
+  border-radius: var(--radius-card);
   background: #fff;
-  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
+  box-shadow: var(--elevation-lead);
 }
 
 /* Without a title: an eyebrow over the big figure (the Summary lead). */
 .lsd-eyebrow {
   color: var(--muted);
-  font: 500 0.68rem/1.2 ui-monospace, "SF Mono", monospace;
+  font: 500 var(--type-eyebrow)/1.2 ui-monospace, "SF Mono", monospace;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -31,12 +34,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 8px;
+  gap: var(--space-1) var(--space-2);
 }
 
 .lsd-figure .lsd-amount {
   justify-self: auto;
-  font-size: 1.9rem;
+  font-size: var(--type-lead-figure);
   line-height: 1;
 }
 
@@ -50,7 +53,7 @@
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .lsd-bubble,
@@ -96,7 +99,7 @@
 }
 
 .lsd-title {
-  font-size: 1.08rem;
+  font-size: var(--type-lead-title);
   font-weight: 800;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -105,13 +108,13 @@
 
 .lsd-subtitle {
   color: color-mix(in srgb, var(--cat) 62%, var(--text));
-  font-size: 0.86rem;
+  font-size: var(--type-label);
   font-weight: 600;
 }
 
 .lsd-amount {
   justify-self: end;
-  font-size: 1.65rem;
+  font-size: var(--type-lead-amount);
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -129,7 +132,7 @@
 
 .lsd-amount-caption {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--type-caption);
   font-weight: 600;
 }
 
@@ -152,7 +155,7 @@
   display: block;
   width: 6.2em;
   max-width: 8em;
-  min-height: 44px;
+  min-height: var(--tap-min);
   padding: 2px 0 0;
   border: 0;
   border-radius: 0;
@@ -168,13 +171,13 @@
 .lsd-amount > input:focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .lsd-amount-field {
   display: inline-flex;
   align-items: baseline;
-  min-height: 44px;
+  min-height: var(--tap-min);
   padding: 0 2px;
   border-bottom: 2px solid transparent;
   cursor: text;
@@ -186,10 +189,10 @@
 
 .lsd-amount-input {
   min-width: 3ch;
-  min-height: 44px;
+  min-height: var(--tap-min);
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -206,16 +209,16 @@
   display: block;
   width: 100%;
   min-width: 0;
-  min-height: 44px;
+  min-height: var(--tap-min);
   overflow: hidden;
   resize: none;
   padding: 10px 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text);
   font-family: inherit;
-  font-size: max(16px, 1.08rem);
+  font-size: max(var(--type-input-min), var(--type-lead-title));
 }
 
 .lsd-title-input:read-only {
@@ -244,21 +247,21 @@
   display: block;
   height: 8px;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--pastel-sky) 85%, white);
 }
 
 .lsd-bar-fill {
   display: block;
   height: 100%;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--money-ink, color-mix(in srgb, var(--text) 55%, white));
 }
 
 .lsd-progress-line {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   color: var(--muted);
   font-size: 0.84rem;
   font-variant-numeric: tabular-nums;
@@ -277,7 +280,7 @@
 .lsd-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .lsd-chip {
@@ -286,9 +289,9 @@
   gap: 5px;
   padding: 5px 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-chip);
   background: var(--pastel-neutral);
-  font-size: 0.82rem;
+  font-size: var(--type-support);
   font-weight: 600;
 }
 
@@ -335,8 +338,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
   margin: 0;
   padding: 0;
   border: 0;
@@ -391,7 +394,7 @@
   opacity: 0;
   cursor: pointer;
   appearance: none;
-  font-size: 16px;
+  font-size: var(--type-input-min);
 }
 
 /* A field the statement certified: a lock, never a picker. */
@@ -415,10 +418,10 @@
 .lsd-note {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: var(--type-label);
   line-height: 1.4;
 }
 
@@ -432,7 +435,8 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-group);
+  box-shadow: var(--elevation-flat);
   background: rgba(255, 255, 255, 0.6);
 }
 
@@ -443,7 +447,7 @@
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  min-height: 48px;
+  min-height: var(--tap-large);
   margin: 0;
   padding: 11px 14px;
   border: 0;
@@ -452,7 +456,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.94rem;
+  font-size: var(--type-body);
   text-align: left;
   cursor: pointer;
 }
@@ -544,7 +548,7 @@
   opacity: 0;
   cursor: pointer;
   appearance: none;
-  font-size: 16px;
+  font-size: var(--type-input-min);
 }
 
 .lsd-row-native:disabled {
@@ -561,7 +565,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--type-input-min);
   font-weight: 600;
   text-align: right;
   resize: none;
@@ -593,7 +597,7 @@
   box-shadow: none;
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--type-input-min);
   font-weight: 600;
   text-align: right;
   text-align-last: right;
@@ -657,14 +661,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .lsd-bottom-start,
 .lsd-bottom-end {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -686,7 +690,7 @@
   bottom: 0;
   z-index: 2;
   flex: 0 0 auto;
-  gap: 12px;
+  gap: var(--space-3);
   margin: 0 calc(-1 * var(--bottom-actions-bleed, 0px));
   padding: 12px max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   border-top: 1px solid var(--line);
@@ -714,12 +718,12 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 44px;
-  min-height: 48px;
+  min-width: var(--tap-min);
+  min-height: var(--tap-large);
   padding: 0 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--type-action);
   white-space: nowrap;
   cursor: pointer;
 }

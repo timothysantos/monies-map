@@ -2,7 +2,9 @@
    so none of it is in the first-screen stylesheet. Colours are the app's
    tokens: pastel tags and chips with their -ink, the person colour from
    person-colour.js, the category colour from the category palette, money
-   tones from money-tone.ts; raw colours are neutrals only. */
+   tones from money-tone.ts; raw colours are neutrals only. Type sizes,
+   radii and shadows use the design tokens (design.md "Design tokens");
+   the older one-off values are frozen in tests/design-token-guard.test.mjs. */
 
 .ask-page {
   display: flex;
@@ -105,15 +107,15 @@
 .ask-brief {
   display: grid;
   gap: 10px;
-  padding: 16px;
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: 20px;
   background: #fff;
-  box-shadow: 0 10px 26px rgba(27, 24, 21, 0.08);
+  box-shadow: var(--elevation-support);
 }
 
 .ask-brief .checkin-chip {
-  font-size: 0.78rem;
+  font-size: var(--type-tag);
   padding: 2px 10px;
 }
 
@@ -134,7 +136,7 @@
 
 .ask-brief-month {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   padding-top: 10px;
   border-top: 1px solid var(--line);
 }
@@ -143,7 +145,7 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-size: 0.86rem;
+  font-size: var(--type-label);
   font-variant-numeric: tabular-nums;
 }
 
@@ -155,14 +157,14 @@
   display: block;
   height: 6px;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--pastel-sky) 85%, white);
 }
 
 .ask-brief-bar i {
   display: block;
   height: 100%;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--text) 55%, white);
 }
 
@@ -242,7 +244,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--space-3);
   padding: 9px 0;
   border-bottom: 1px solid var(--line);
   font-size: 0.9rem;
@@ -297,8 +299,8 @@
   align-items: center;
   gap: 5px;
   padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
+  border-radius: var(--radius-chip);
+  font-size: var(--type-tag);
   font-weight: 700;
 }
 
@@ -320,7 +322,7 @@
   resize: none;
   padding: 2px 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text);
   font-family: inherit;
@@ -348,7 +350,7 @@
   min-width: 3ch;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -367,7 +369,7 @@
 
 .ask-card-coax {
   margin: 0;
-  padding-top: 12px;
+  padding-top: var(--space-3);
   border-top: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
   color: var(--muted);
   font-size: 0.92rem;
@@ -388,7 +390,7 @@
    Splits switch. */
 .ask-rows-wrap {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .ask-row-dot {
@@ -403,10 +405,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--accent-strong) 26%, white);
-  border-radius: 16px;
+  border-radius: var(--radius-group);
   background: color-mix(in srgb, var(--accent-strong) 8%, white);
 }
 
@@ -433,7 +435,7 @@
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-chip);
   background: color-mix(in srgb, var(--text) 18%, white);
   cursor: pointer;
 }
@@ -564,7 +566,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--type-input-min);
   line-height: 1.35;
   resize: none;
   overflow-y: auto;
@@ -629,7 +631,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--type-action);
   text-align: left;
   cursor: pointer;
 }
@@ -651,7 +653,7 @@
   height: 44px;
   padding: 0;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   background: var(--accent-strong);
   color: #fff;
   cursor: pointer;
@@ -661,11 +663,11 @@
   height: 44px;
   padding: 0 22px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   background: var(--accent-strong);
   color: #fff;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--type-action);
   font-weight: 700;
   cursor: pointer;
 }
@@ -723,7 +725,7 @@
   display: grid;
   gap: 6px;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: var(--type-label);
 }
 
 .ask-sr-only {
