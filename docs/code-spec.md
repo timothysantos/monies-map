@@ -170,7 +170,9 @@ Budget rules:
 - a lazy route that imports a module from the Summary route's static graph
   on its own (not through the shared chunk that already holds it, such as
   `ui-components.jsx` or `financial-insight.jsx`) splits that module into one
-  more first-screen file, and importing `query-leases.js` beside React hooks
+  more first-screen file (`App.jsx` imports `account-display.js` for this
+  reason: as its own chunk it keeps React and the copy out of the entry and
+  adds two files), and importing `query-leases.js` beside React hooks
   in a lazy route splits React and the runtime out of the entry chunk. The
   Ask page therefore reaches the check-in through `financial-insight.jsx`
   exports, gets the Entries page read from App (`fetchEntriesPage` prop over
