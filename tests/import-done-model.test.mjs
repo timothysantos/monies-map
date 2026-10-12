@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildImportDoneSummary } from "../src/client/import-done-model.js";
-import { messages } from "../src/client/copy/en-SG.js";
+import { importMessages } from "../src/client/copy/en-SG-imports.js";
 
 const reconciliation = (overrides = {}) => ({
   accountId: "acct-uob-one",
@@ -69,7 +69,7 @@ test("the Done card names each account with its owner, as Recent imports does", 
 
   assert.equal(
     summary.confirmation,
-    "The import of PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf into UOB One Card - Tim and UOB Privi Miles - Tim for the 13 Aug 2026 – 13 Sept 2026 statement is done. No further action needed."
+    "The import of PERSONAL CREDIT CARD STATEMENT_Sep 2026.pdf into UOB One Card - Tim and UOB Privi Miles - Tim for the 13 Aug 2026 – 13 Sep 2026 statement is done. No further action needed."
   );
   // The card headings keep the plain account name.
   assert.deepEqual(summary.cards.map((card) => card.name), ["UOB One Card", "UOB Privi Miles"]);
@@ -134,7 +134,7 @@ test("an activity file's Done card covers the dates of the rows it committed, ac
 
   assert.equal(
     summary.confirmation,
-    "The import of ACCT_activity.csv into OCBC 360 and UOB One, covering 3 Sept 2026 – 9 Sept 2026, is done. No further action needed."
+    "The import of ACCT_activity.csv into OCBC 360 and UOB One, covering 3 Sep 2026 – 9 Sep 2026, is done. No further action needed."
   );
   assert.deepEqual(summary.counts, { added: 2, confirmed: 0, removed: 0 });
   assert.equal(summary.statusLabel, undefined);
@@ -151,7 +151,7 @@ test("the Done card counts the entries the bank no longer lists that the import 
     isStatement: false,
     removedEntryCount: 1
   });
-  assert.equal(messages.imports.doneRowsDetail(activity.counts), "1 row added · 0 entries confirmed · 1 entry the bank no longer lists removed");
+  assert.equal(importMessages.doneRowsDetail(activity.counts), "1 row added · 0 entries confirmed · 1 entry the bank no longer lists removed");
 
   // A statement removes a card's superseded rows only when the card balances.
   const statement = (status) => buildImportDoneSummary({

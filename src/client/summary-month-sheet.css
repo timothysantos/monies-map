@@ -18,8 +18,11 @@
 }
 
 .summary-month-sheet-change-range {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   border: 0;
-  padding: 0;
+  padding: 0 4px;
   background: transparent;
   color: var(--accent-strong);
   font: inherit;

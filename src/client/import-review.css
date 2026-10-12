@@ -168,6 +168,13 @@
   box-shadow: 0 -8px 24px rgba(27, 24, 21, 0.06);
 }
 
+/* Desktop: the fixed Ask field (public/styles.css) sits at the bottom right. */
+@media (min-width: 761px) {
+  .import-commit-bar {
+    bottom: var(--ask-dock-field-clearance, 0px);
+  }
+}
+
 .import-commit-bar-summary {
   margin: 0;
   min-width: 0;

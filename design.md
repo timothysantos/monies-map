@@ -68,6 +68,32 @@ payment method, pending statement evidence, and FX review. Foreign amounts are
 shown as entered, with any home-currency estimate or converted ledger amount
 secondary and explicitly labeled.
 
+### Splits group strip
+
+The strip under the person switcher (`splits-group-strip.jsx`, rules in
+`splits-group-strip-model.js`, styles in `splits-group-strip.css`) is in the
+page flow, never floating over rows. On a phone it is two siblings in one
+row: the New/All control (a solid cream chrome-surface tile, about 56 px wide,
+a hairline between two 44 px+ buttons "New" with aria-label "Create group" and
+"All" with "All groups") and, to its right, the tile scroller. The control is
+not inside the scroller and is not sticky, so no tile ever slides under it;
+the scroller fades its left edge (only once scrolled) and its right edge (only
+while more tiles follow) with a CSS mask, and scroll-snaps tiles to its start.
+The open group is the first tile: white, about 60% wide, terracotta outline
+and tick, its balance in words and its entry count; the others are
+translucent group tiles with one balance line. Order: owed to you, you owe,
+Non-group expenses (its own balance, "No balance" at zero, never "Settled"),
+then settled real groups, muted. Hidden money: "Balance hidden" on every tile
+and a stable by-name order with no settled styling. The open group is kept per
+viewer in localStorage (`monies-map:splits-last-group:<view>`, try/catch) and
+used when the address has no `split_group`. All opens the All groups sheet
+(same order, a folded "N settled groups" row, Create group, Done, swipe down to
+close). Once the strip has scrolled out above the viewport (IntersectionObserver)
+a floating bar shows the open group and opens the same sheet; it hides under
+any dialog. Desktop is one row with the control first; tiles that do not fit
+are dropped (never wrapped or scrolled) and the All half reads "All · N more".
+Group tiles carry no money tone (the Splits orange).
+
 Split activity history is an action-oriented recovery surface opened from the
 splits summary area. It uses the splits color contract, stays compact and
 newest-first, labels archived actions clearly, and places Restore beside a
@@ -107,6 +133,29 @@ fixed at mount (`useCheckInClock`). Its styles live in `money-checkin.css`,
 which ships with the routes, not the first-screen stylesheet. On a phone
 the insights reserve the right-hand column the floating money-privacy
 button covers (`tests/e2e/money-insights-phone.spec.js`).
+
+Money insights fold (`tests/e2e/money-insights-fold.spec.js`). Folded, a
+block is its eyebrow over a teaser card that is one button, the full width
+of the block (`aria-expanded`, `aria-controls`, at most about 96px). Row 1: the
+top insight's own kind chip, then "+N more" (when more wait behind it) and the
+chevron. Row 2: its bold headline, one line. Row 3: the start of its think line
+in muted ink, one line. Both lines end in an ellipsis when cut. On a phone the
+card spans under the floating eye button's column, which can cover the pill and
+chevron while scrolling. The card takes the pastel surface of the headline's
+kind (butter To do, lavender Something to think about, sky Worth knowing, mint
+Going well, neutral otherwise; ink text), and two thin offset edges under it
+(`data-more`) read as a deck when more than one insight exists. On Splits the
+card is a light wash on the orange with no pastel fill. With money hidden the
+card says only "N insights · tap to see": no headline, chip, pill or amounts
+(hidden mode never shows a headline today). Open, the same button is a plain
+row at the top (eyebrow and chevron) that folds the block again. Phone (760px
+and below) starts folded, desktop starts open; the choice is kept per layout
+in localStorage (`monies-map:money-insights-phone`, `...-desktop`), every read
+and write guarded so the block renders without storage. The fold costs
+first-screen bytes (Summary ships it), so `initial-bundle-budget.json` stays
+as is and the code is kept small (`composeCheckInHeadline` moved to
+`check-in-headline.js` for that); its CSS is in `money-checkin.css` and
+`splits-panel.css`.
 
 The Splits workspace uses a dark surface but paid-settlement follow-ups use a
 light proof card. Controls on that card must use an explicit light-card theme:
@@ -638,9 +687,59 @@ Where it is used:
   Saved pills with planned income and the savings target. Every figure and
   tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
   stacks the pills under the lead; desktop and tablet put them in a column
-  on its right. The CSS is `summary-lead.css` in the Summary route chunk
+  on its right. The group is `SpendLeadGroup` (`ui/spend-lead-group.jsx`,
+  re-exported by `ui-components.jsx` so the Month top shares its chunk and
+  the first screen keeps its file count); its CSS is `summary-lead.css`
   (it sits in `.panel-head`, whose `span` rule mutes spans, so its money
-  spans take their tone back at a higher specificity).
+  spans take their tone back at a higher specificity). Until the metric
+  cards arrive the top shows nothing (the old tile row scrolled sideways on
+  a phone).
+- Month top (`MonthLead` in `month-overview.jsx`, `month-lead-model.js`): the
+  same `SpendLeadGroup` for one month, eyebrow "Spent · May 2026". The lead
+  is actual spend against planned spend with the bar, "x% of plan" and "$y
+  under plan" (mint) or "$y over plan" (rose, the old Spend gap); Income
+  (received, with "plan $x"), Saved (realized, with "target $x") and
+  Remaining budget are one row of three equal columns inside the lead
+  card under the bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
+  colour only, 52 px tall, at most 190 px for the whole card on an iPhone 13,
+  the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
+  Summary rollup (`summaryPage.months[0]`, already on the Month page);
+  spend, plan, savings target and remaining budget are the Month metric
+  cards' own figures, so nothing is recomputed. Remaining budget is a
+  button: the whole column opens its explanation popover; its label is "To
+  allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
+  tiles are gone; nothing scrolls sideways at 390 px.
+- Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
+  Month route chunk): Income, Budget Buckets and Planned Items keep their
+  `<table>` markup (inline editing, sorting, row opening and the tests'
+  hooks are unchanged); only the hierarchy changes. Every layout: the item
+  is the heavy lead, Planned, Actual and Variance are right-aligned and
+  tabular, Category, Date, Account and Note are quiet, and a 4 px bar under
+  each actual (`PlanRowBar`, the lead card's fill rule: rose only past the
+  plan, mint for income received, track only when money is hidden). Phone
+  and portrait tablet (the sheet layout) draw each row as a compact card:
+  the category bubble, the item and its category on the left, the actual
+  with "of $planned" on the right, the bar, then the note and "Variance
+  $x"; the date and account are on the plan card sheet a tap opens, the
+  column names are a strip of small chips (the active sort shows its arrow),
+  the category line is dropped when it equals the item's name, an empty note
+  shows nothing, the total is one line, and
+  nothing scrolls sideways (`tests/e2e/summary-month-lsd.spec.js`).
+- Summary Intent vs Outcome (`summary-intent-outcome.jsx`,
+  `summary-intent-outcome-model.js`, `summary-intent-outcome.css` in the
+  Summary route chunk): newest month first, each a compact `LeadCard`. The
+  month name (a 44 px link) opens the month; Lead: that month's spent
+  against planned spend with the bar and "x% of plan · $y under/over plan"
+  (the old row's variance); Support: Planned income and Actual income chips;
+  Detail: a `MoreDetails` row named "Details" holds the old table's three
+  rows (Income, Expected spend, Savings goal: planned, actual, variance) and
+  the month note row, which edits the note. The latest month starts open,
+  the others fold. From 1,024 px the cards are a grid, 2 across (3 from 1,440
+  px), latest first; a card with its Details open spans the whole row so no gap sits beside it, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
+  percent and no under/over words, the variance dots too.
+  `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
+  DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
+  sideways scroll.
 - Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
   add and edit for income, planned items and budget buckets): the planned
   amount is the editable lead under the row's name, kind and category
@@ -668,13 +767,29 @@ Where it is used:
   "View split"), the transfer match for a transfer, Note, then Date, Wallet,
   Posted date, Type (and Transfer direction); on a phone those last ones fold
   into More details, and a certified entry lists only Posted date (locked)
-  and Type. On a wide screen the card sits left of the rows and each row
+  and Type. On a wide screen (the inline editor) the lead card spans the
+  top and the rows sit under it in two balanced columns, and each row
   keeps an inline field, so Tab walks description, amount, the eye, then the
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
-  dialog in both layouts: the phone sheet and the wide dialog; a row on a
-  wide screen still opens the inline form).
+  dialog in the phone sheet and the wide dialog, and in the list). Selecting a
+  split expense row opens this card, as does the `editing_split_expense`
+  link: on a wide screen it opens inline in the list, in place of the row,
+  exactly as the Entries inline editor does (`layout="inline"`, the
+  `splitInlineEditor` page flag, the bottom bar at its end; no dialog). Its
+  layout is compact: the lead card across the top, then the Detail rows in
+  two columns (share rows, Category, Group, Currency, Evidence, Note). Date,
+  Paid by and Paid using have no row there, since each is a Support chip that
+  edits it (a date field over the chip, a native select over the other two;
+  a linked split's Paid using chip is locked), and the percent and amount
+  editor opens from a share row or the shares chip rather than sitting open
+  under the shares; a
+  phone opens the sheet, and the household view and the archived batch open
+  the dialog (`returnFocusToSplitRow`: a modal Dialog with no trigger
+  button would otherwise drop focus on the page). A settlement row still
+  edits in its own form. Enter and Space on the focused row open the card,
+  Escape and Cancel close it, and the row takes focus back.
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
   (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
@@ -692,7 +807,20 @@ Where it is used:
   chip and row) is locked and reads ", set by the linked entry"; the linked
   entry is a "View entry" row. View split (the read-only household view) shows
   the same card with no controls and Close. The save request is the one the
-  form sent.
+  form sent. Deleting from the card closes it once the split is gone. A
+  settled split (in a simplified settlement, `settlementCheckpointId`, or a
+  closed group batch, `isArchived`) opens the same card read-only
+  (the dialog is titled "View split"; `split-card-lock.js`): a short lock line
+  on top ("Settled on 17 May 2026. Undo the settle-up to change it." or
+  "Simplified on 20 May 2026. Undo the simplification to change it."), its
+  Undo button directly under it, then the card with no fields, no Save
+  and no Delete, and Close. After the undo succeeds the card turns editable
+  in place (the card is keyed by mode so its share editor opens fresh), and a
+  failed undo shows its message in the same place. The household view is
+  always read-only without the lock line. The server still refuses a change
+  or delete of a settled split (`split_settlement_locked`), so a stale page
+  cannot change one. A settlement row is not a card: its dialog and inline
+  editor keep the in-place refusal.
 
 ## Apple Shortcut Install Boundary
 
@@ -1100,29 +1228,27 @@ scope control:
   header: `.summary-scope-switch` takes its own row in the title column with
   `contain: inline-size` (no content width) and a -12px margin that cancels
   the title row's 12px flex gap, so the title column is exactly as wide as
-  without it, and the row fits beside the two rows of metric cards, so the
+  without it, and the row fits beside the Summary lead, so the
   header is exactly as tall. Where the header stacks (960 px and below) the
   switch joins the title row instead, again adding no height.
   `tests/e2e/summary-workflow.spec.js` measures the header, the cards and the
   check-in with and without the switch at 1,440 and 1,920 px.
 - Phone (`useIsMobileLayout()`): Summary, Month and Entries show the floating
   View and scope bar from `App.jsx` (`stickyScopeConfig`), and Summary does
-  not render its switch at all. The bar's dialog holds the view pills and
-  the scope pills; on Summary the scope section also carries the line saying
-  what the scope counts. Entries adds month arrows beside the bar; the
+  not render its switch at all. The bar's sheet holds the view and the scope
+  as segmented chips and its lead carries the line saying what the scope
+  counts, on every tab. Entries adds month arrows beside the bar; the
   Summary tab (Summary or Month) adds its month control instead ("Summary
   Tab Month Choice" below), because its range moves from the header.
 
-The bar's label is two lines: the person and a short scope name
-(`messages.views.scopeShortLabel`: `Direct`, `Shared`, `Direct + Shared`),
-then `View and scope`. Beside the Summary tab's month control the second
-line is dropped, so the bar stays one 46 px row. The label is wrapping text whose scope part
-(`· Direct + Shared`) is `nowrap`, so a long name wraps before the scope
-instead of either being cut short; there is no ellipsis. The trigger is at
-least 46 px tall, and on Month and Summary the floating money toggle sits
-above it. The household view has one Combined scope: the bar shows only
-`Household` and `View`, the dialog has no scope section, and desktop Summary
-shows no switch.
+The bar is the phone's Support bar ("Phone Chrome" below): the person's chip
+in their colour (`ContextPersonChip`, `getPersonColourVars`), the short scope
+name (`messages.views.scopeShortLabel`: `Direct`, `Shared`,
+`Direct + Shared`) as quiet text and a caret, then the month control as a chip,
+all on one row. The trigger's accessible name stays `Tim · Direct + Shared
+View and scope` (`View` for the household, which has one Combined scope:
+the chip reads `Household`, there is no scope text and the sheet has no scope
+group). On Month and Summary the floating money toggle sits above the bar.
 
 The active scope on Summary is the scope of the request the figures on
 screen answer: `buildSummaryPageView` reads it from the Summary owner's
@@ -1160,12 +1286,13 @@ picking the range on both routes; the months offered are the range's months
   deep link fetches it. It never blocks the Month page or shows its error
   screen; until it lands the header shows the URL's range and the month
   controls wait.
-- Phone island (`SummaryMonthIslandControl` in `summary-month-picker.jsx`,
-  entry chunk): beside the View and scope trigger, `All months ▾` with the
-  hint `Month`; with a month picked `‹ Sep 2026 ›`, where the arrows step
-  through the range's months (disabled at its ends) and the middle opens the
-  sheet. Same height, border, radius and shadow as the trigger
-  (`.mobile-month-choice`).
+- Phone chip (`SummaryMonthIslandControl` in `summary-month-picker.jsx`,
+  entry chunk): in the Support bar beside the View and scope trigger,
+  `All months ▾` (`Month` is heard, not shown); with a month picked
+  `‹ Sep 2026 ›`, where the arrows are 44 px buttons that step through the
+  range's months (disabled at its ends) and the middle opens the sheet. The
+  quiet chip (`.mobile-month-chip`) sits inside a 44 px button and never
+  wraps.
 - "Pick a month" sheet (`summary-month-sheet.jsx` and its CSS, a lazy chunk
   loaded on first open): a modal Radix dialog with the View and scope
   sheet's classes (bottom sheet, focus trapped, Escape and backdrop close,
@@ -1213,8 +1340,8 @@ when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures. Hiding money also hides its
 sign, in colour and in words: every money tone (below) turns neutral, and
 wording that says which side of zero a hidden figure is on goes too. Month's
-Remaining budget drops its "To allocate" / "Overplanned" detail (a card sets
-`detailFollowsAmount`), the Summary lead and the Month plan sheet drop
+Remaining budget drops its "To allocate" / "Overplanned" line (the Month
+lead's pill hides it with the amount), the Summary lead and the Month plan sheet drop
 "under / over plan", "% of plan", "left", "over" and "to come" and keep only
 their bar's empty track, wallet pills and Settings drop the statement health
 line ("off by"), the Splits strip labels its balance "Net" instead of "You
@@ -1286,8 +1413,8 @@ Three strengths, never two on one element:
 
 - **Text only** (lists and tables, the default): only the amount's text
   takes the ink; no fill, no border. Entries row amounts and daily net, Month
-  Actual and Variance columns and totals, Intent vs Outcome values and its
-  month total, Splits activity (`you lent`, `you borrowed`, `you received`,
+  Actual and Variance columns and totals, Intent vs Outcome's detail
+  figures, Splits activity (`you lent`, `you borrowed`, `you received`,
   `you paid`),
   Settings statement health, Imports preview amounts and statement rows, and
   the planned cards on Month, and the planned spend in the Summary lead.
@@ -1305,9 +1432,9 @@ Three strengths, never two on one element:
   statement card's bank charges and notices (`.statement-bank-charges`, full
   rose with its ink).
 
-Intent vs Outcome bars take the tone's ink as their fill: the plan a light
-sky, actual spend the muted grey, or rose when over plan. The lead card's
-actual-vs-plan bar (Summary, the Month plan sheet) follows the same rule.
+The lead card's actual-vs-plan bar (Summary, the Month top, each Intent vs
+Outcome month, the Month plan sheet) takes the tone's ink as its fill: the
+track a light sky, the fill the muted grey, or rose when over plan.
 
 `tests/money-tone.test.mjs` pins the rule; `tests/e2e/money-tones.spec.js`
 reads the computed colours on Summary, Month, Entries and Splits, including
@@ -1486,6 +1613,45 @@ card change only after the save succeeds), and duplicate, reset and delete
 month (a failure keeps the Actions popover or confirmation dialog open).
 The reset and delete confirmation dialogs render beside the Actions popover,
 not inside it, because closing the popover unmounts its content.
+
+## Phone Chrome
+
+The phone's floating chrome follows Lead · Support · Detail (below) and one
+set of tokens in `:root` of `public/styles.css`: `--chrome-edge` (12 px, the
+inset of the tab bar, the Support bar and the round buttons, so their right
+edges line up), `--chrome-radius` (22 px), `--chrome-surface`,
+`--chrome-shadow` and `--sheet-radius` (24 px, every bottom sheet). Every
+target is at least 44 x 44 px and nothing wraps or scrolls sideways at 375 px.
+
+- Support bar (`.mobile-context-sticky-bar` in `App.jsx`): one white surface
+  (chrome radius and shadow, no border-radius or shadow on anything inside it),
+  48 px tall, 80 px above the bottom: the person chip, the scope as quiet text
+  and a caret in the trigger, then the month control (Summary tab: the month
+  chip; Entries: two 44 px arrows). The household gets a neutral chip.
+- View and scope sheet (`mobile-context-sheet.jsx`, its CSS and
+  `copy/mobile-context-copy.js`, a lazy chunk): Lead is who you are viewing,
+  a large person chip with the scope name and what it counts
+  (`messages.views.scopeHint`); Support is the view and the scope as two
+  segmented groups (`role="group"` named `View` and `Scope`, `aria-pressed`
+  chips, 44 px); Detail (Entries only) is the filters as quiet 48 px rows
+  (label left, value and chevron right) opening the existing pickers
+  (`EntriesFilterStack` with `hideActions`). `Reset filters` (Entries only)
+  and `Done` are the bottom bar (`BottomActions` with `is-sheet-bar`), `Done`
+  last under the thumb. A grab bar and a swipe down close the sheet
+  (`SheetSwipeDismiss`, nothing to lose).
+  The choices are unchanged: a person keeps the sheet open, a scope or the
+  household closes it, Reset keeps it open; every one sets the same URL params
+  (`view`, `scope` or `entries_scope`, `entry_*`).
+- Chunking: `App.jsx` keeps the dialog's Portal, Overlay, Content and head so
+  Radix stays in the entry chunk; only the inside is `lazy` (with the swipe
+  code and the filter stack). The lazy module must not import modules App
+  imports (it receives the person chip as an element): doing so makes Rollup
+  split the entry chunk and `check:bundle` fails on file count.
+- The round buttons: the money toggle (44 px, above the Support bar, higher on
+  Entries and Splits to clear the + button) and the + button (54 px, accent
+  fill with the same lift in the accent's shade) share the tab bar's right
+  edge. The More pages popover uses the chrome radius and lift and 44 px
+  rows. Proof: `tests/e2e/mobile-chrome.spec.js`.
 
 ## Mobile Sheet
 
@@ -1708,7 +1874,7 @@ only says where desktop Ask docks: "Desktop Ask"):
   matches the `@media (max-width: 760px)` blocks in `public/styles.css` (a
   unit test checks the stylesheet). Entries, Splits, the responsive pickers,
   the spending chart, the last-period hint, inline editor scrolling, the
-  Splits group pills and focus visibility use it.
+  Splits group strip and focus visibility use it.
 - `MONTH_SHEET_LAYOUT_QUERY` adds `(max-width: 1024px) and (orientation:
   portrait)`. Month plan and income rows open the mobile sheet on a portrait
   tablet too, while the CSS and every other page keep the desktop layout.
@@ -1794,7 +1960,7 @@ rules win over base rules of the same specificity.
   right gutter, and with wider fonts (Linux CI) the page scrolled sideways.
   A last block in `month-mid-width.css` tightens cell padding to 6 px,
   header letter spacing, the category gap and the note cut-off (160 px,
-  still one line), and the summary cards' gap and padding, so the tables
+  still one line), so the tables
   fit the grid whole with about 50 px spare under Verdana. The panel keeps
   its automatic minimum width here: making it shrinkable instead clipped
   the note edit icons. `header-tab-fit.spec.js` checks 1,100 to 1,279 px

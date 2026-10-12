@@ -41,7 +41,7 @@ async function openMonth(page) {
 // The phone opens a row by tapping it (the row's own button is for wider
 // layouts).
 async function openRowSheet(page, label, title) {
-  await page.locator("tr").filter({ hasText: label }).first().getByText(label, { exact: true }).first().click();
+  await page.locator("tr").filter({ hasText: label }).first().locator(".month-cell-item").click();
   const sheet = page.locator(`.entry-mobile-sheet[aria-label="${title}"]`);
   await expect(sheet).toBeVisible();
   return sheet;

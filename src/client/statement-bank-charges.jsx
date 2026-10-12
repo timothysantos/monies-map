@@ -1,4 +1,4 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { moniesClient } from "./monies-client-service";
 import { summarizeStatementCharges } from "./statement-charges-model";
 
@@ -12,21 +12,21 @@ export function StatementBankCharges({ rows, notices }) {
   if (!summary.hasAnything) {
     return null;
   }
-  const kinds = messages.imports.statementChargeKinds;
+  const kinds = importMessages.statementChargeKinds;
   const list = (items) => items.map((item) => `${kinds[item.kind]} ${formatService.money(item.amountMinor)}`).join(" · ");
   return (
     <div className="statement-bank-charges" role="note">
       {summary.charges.length ? (
         <p>
-          <strong>{messages.imports.statementChargesTitle}:</strong> {list(summary.charges)}
+          <strong>{importMessages.statementChargesTitle}:</strong> {list(summary.charges)}
         </p>
       ) : null}
-      {summary.reversals.length ? <p>{messages.imports.statementChargesReversed(list(summary.reversals))}</p> : null}
+      {summary.reversals.length ? <p>{importMessages.statementChargesReversed(list(summary.reversals))}</p> : null}
       {summary.notices.map((notice) => (
         <p key={notice.code}>
           {notice.code === "penalty_interest"
-            ? messages.imports.statementNotices.penalty_interest(notice.annualRatePercent)
-            : messages.imports.statementNotices.past_due}
+            ? importMessages.statementNotices.penalty_interest(notice.annualRatePercent)
+            : importMessages.statementNotices.past_due}
         </p>
       ))}
     </div>

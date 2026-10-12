@@ -1,4 +1,4 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { formatAccountSelectLabel } from "./account-display";
 import { formatDateOnly, formatMonthLabel } from "./formatters";
 
@@ -27,8 +27,8 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
     return {
       importId,
       sourceLabel,
-      title: messages.imports.doneTitle(title),
-      confirmation: messages.imports.doneConfirmation({
+      title: importMessages.doneTitle(title),
+      confirmation: importMessages.doneConfirmation({
         fileName: shownFileName,
         accountNames: uniqueNames(committedRows.map((row) => accountLabel(row.accountId, row.accountName))),
         period: dates.length ? formatPeriod(dates[0], dates[dates.length - 1]) : "",
@@ -57,15 +57,15 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
   return {
     importId,
     sourceLabel,
-    title: messages.imports.doneTitle(title),
-    confirmation: messages.imports.doneConfirmation({
+    title: importMessages.doneTitle(title),
+    confirmation: importMessages.doneConfirmation({
       fileName: shownFileName,
       accountNames: uniqueNames(cards.map((card) => accountLabel(card.reconciliation.accountId, card.name))),
       period: statementPeriod(statementReconciliations[0]),
       isStatement: true,
       unbalancedCount: unbalanced
     }),
-    statusLabel: unbalanced ? messages.imports.doneSavedWithDifference(unbalanced) : messages.imports.doneAllBalanced,
+    statusLabel: unbalanced ? importMessages.doneSavedWithDifference(unbalanced) : importMessages.doneAllBalanced,
     statusTone: unbalanced ? "warning" : "success",
     cards
   };
@@ -83,7 +83,7 @@ function uniqueNames(names) {
 function formatPeriod(startDate, endDate) {
   return startDate === endDate
     ? formatDateOnly(startDate)
-    : messages.imports.donePeriod(formatDateOnly(startDate), formatDateOnly(endDate));
+    : importMessages.donePeriod(formatDateOnly(startDate), formatDateOnly(endDate));
 }
 
 // The cards of one statement share its period; the first card's dates are

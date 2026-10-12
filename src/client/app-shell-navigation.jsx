@@ -28,7 +28,7 @@ export function ShellRouteTabs({
 }) {
   const titleFor = (tab) => (
     tab.id === "settings" && pendingCategorySuggestionCount
-      ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)
+      ? messages.shell.categorySuggestionBadgeTitle(pendingCategorySuggestionCount)
       : undefined
   );
   // A conversation left in progress on Ask: a small accent dot on its tab,
@@ -41,7 +41,7 @@ export function ShellRouteTabs({
       <span>{tab.label}</span>
       {showsAskDot(tab) ? <span className="tab-dot" aria-hidden="true" /> : null}
       {tab.id === "settings" && pendingCategorySuggestionCount ? (
-        <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
+        <span className="tab-badge" title={messages.shell.categorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
           {pendingCategorySuggestionCount}
         </span>
       ) : null}

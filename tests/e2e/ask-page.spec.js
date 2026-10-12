@@ -51,7 +51,7 @@ test.describe("the Ask page on a phone", () => {
     await expect(page.getByRole("heading", { name: "Ask", exact: true })).toBeVisible();
     // The context line names the person, scope and the month in view.
     const month = new URL(page.url()).searchParams.get("month");
-    const monthLabel = new Date(`${month}-01T00:00:00Z`).toLocaleString("en-SG", { month: "short", year: "numeric", timeZone: "UTC" });
+    const monthLabel = new Date(`${month}-01T00:00:00Z`).toLocaleString("en-SG", { month: "short", year: "numeric", timeZone: "UTC" }).replace(/\bSept\b/, "Sep");
     await expect(page.locator(".ask-context")).toHaveText(`Tim · Direct + Shared · ${monthLabel}`);
     const chips = page.getByRole("group", { name: "Suggestions" }).getByRole("button");
     await expect(chips).toHaveText(["Scan receipt", "Paste", "Add entry", "Add expense"]);
