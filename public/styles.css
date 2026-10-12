@@ -710,6 +710,19 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   font-size: 0.8rem;
 }
 
+/* Text announced to screen readers but never shown (e.g. a picker's dialog description). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .mobile-context-sticky-wrap{
   display: none;
 }
@@ -3009,9 +3022,29 @@ body[data-split-inline-editor] .totals-visibility-toggle--floating {
   margin-bottom: 10px;
 }
 
+/* The picker sheet keeps its title in place and scrolls the options list
+   under it, so the last of many wallets or categories is a swipe away. The
+   open picker's scroll lock cancels any swipe that has nothing inside the
+   sheet to scroll, so a list cut off by the sheet would not move at all. */
+.mobile-select-dialog {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-select-head,
+.mobile-select-actions {
+  flex: 0 0 auto;
+}
+
 .mobile-select-options {
   display: grid;
+  align-content: start;
   gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .mobile-select-option {
@@ -8254,7 +8287,12 @@ th {
     right: 12px;
     width: auto;
     max-height: calc(100dvh - 128px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    overflow: hidden;
+    /* A centred dialog taller than this (Transfer details) scrolls inside
+       itself; dialogs with a scroller of their own (the picker list, the
+       Splits sheets below) never grow past it, so they show no second one. */
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     transform: translateY(-50%);
     padding: 18px;
   }
