@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { entryTypeLabel } from "./enum-labels";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
@@ -537,7 +538,7 @@ export function EntryTransferTools({
                                 </span>
                                 <span>
                                   <span className="transfer-match-label">Type</span>
-                                  <strong>{candidate.entryType}</strong>
+                                  <strong>{entryTypeLabel(candidate.entryType)}</strong>
                                 </span>
                               </div>
                             ) : null}

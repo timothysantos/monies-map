@@ -1,6 +1,7 @@
 import "./ui/states.css";
 import { CircleAlert } from "lucide-react";
 
+import { describeLoadFailure } from "./request-errors";
 import { BottomActions } from "./ui/lead-support-detail";
 
 // Shared presentation for "nothing here", "this failed" and "this screen
@@ -30,9 +31,9 @@ function StateActions({ actions }) {
 
 // The Lead card behind every titled state: an optional icon bubble, the
 // title, one support line, extra detail lines and the action bar.
-function StateCard({ state, tone = undefined, icon = null, title, detail = null, detailClassName = "", className = "", role = undefined, children = null, actions = null }) {
+function StateCard({ state, tone = undefined, icon = null, title, detail = null, detailClassName = "", className = "", role = undefined, technicalDetail = "", children = null, actions = null }) {
   return (
-    <section className={["state-card", icon ? "has-icon" : "", className].filter(Boolean).join(" ")} data-state={state} data-tone={tone} role={role}>
+    <section className={["state-card", icon ? "has-icon" : "", className].filter(Boolean).join(" ")} data-state={state} data-tone={tone} role={role} data-technical-detail={technicalDetail || undefined}>
       <div className="state-head">
         {icon ? <span className="state-bubble" aria-hidden="true">{icon}</span> : null}
         <div className="state-text">
@@ -91,8 +92,12 @@ export function InlineError({ message, retryLabel = "", retryingLabel = "", isRe
 // A whole screen (or the whole app) could not be shown: a rose Lead card
 // centred in the viewport. `actions` lists the buttons in order; the first
 // `primary` one is the main way forward and the rest sit quietly beside it.
-// `children` is the technical Detail (the loading issue, a diagnosis).
-export function ErrorPanel({ title, detail, children = null, actions = [], className = "" }) {
+// `technical` is the failure's technical reason: the card shows one plain line
+// for it (describeLoadFailure) as the Detail and keeps the reason itself on the
+// card as data-technical-detail, for inspection, never as screen text.
+// `children` is any further Detail (a diagnosis).
+export function ErrorPanel({ title, detail, technical = "", children = null, actions = [], className = "" }) {
+  const plainLine = describeLoadFailure(technical);
   return (
     <StateCard
       state="error"
@@ -103,8 +108,10 @@ export function ErrorPanel({ title, detail, children = null, actions = [], class
       detailClassName="app-loading-error-copy"
       className={["is-screen app-loading-panel app-loading-panel-error", className].filter(Boolean).join(" ")}
       role="alert"
+      technicalDetail={technical}
       actions={actions.length ? <StateActions actions={actions} /> : null}
     >
+      {plainLine ? <p className="app-loading-issue-inline">{plainLine}</p> : null}
       {children}
     </StateCard>
   );

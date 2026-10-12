@@ -319,10 +319,14 @@ test.describe("first-load page failures", () => {
       const panel = page.locator(".app-loading-panel-error");
       await expect(panel).toBeVisible({ timeout: 30_000 });
       await expect(panel.locator(".app-loading-error-copy")).not.toBeEmpty();
-      // The panel names the page that failed, in plain words; the technical
-      // line keeps the server's reason and never blames the app shell.
+      // The panel names the page that failed, in plain words; the server's
+      // reason stays off the screen (on the panel as data) and never blames
+      // the app shell.
       await expect(panel).toContainText(`The ${name} page could not load.`);
-      await expect(panel.locator(".app-loading-issue-inline")).toContainText(`${name} exploded`);
+      await expect(panel.locator(".app-loading-issue-inline")).toHaveText("We couldn't reach your data just now.");
+      await expect(panel).not.toContainText(`${name} exploded`);
+      await expect(panel).not.toContainText("status 500");
+      await expect(panel).toHaveAttribute("data-technical-detail", new RegExp(`${name} exploded`));
       await expect(panel).not.toContainText("App shell");
       const retry = panel.getByRole("button", { name: "Try loading again" });
       await expect(retry).toBeVisible();

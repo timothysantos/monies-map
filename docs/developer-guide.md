@@ -599,10 +599,9 @@ Required fields:
 `accountId` or `accountName` is optional. An explicit account must identify an
 active account. Without one, an exact, unique Wallet `name` match selects that
 active account; otherwise, when the amount names another currency than the
-first priority account's and Settings -> Apple Pay shortcut -> Paying in another
-currency names an active card (`foreignCurrencyAccountId` in the stored
+first priority account's and Settings -> Apple Pay shortcut -> Other currencies go to names an active card (`foreignCurrencyAccountId` in the stored
 shortcut settings), that card is used; otherwise the API uses the first active
-account in Default account priority. `accountResolution` in the response reports
+account in Default account. `accountResolution` in the response reports
 `explicit`, `wallet_name`, `foreign_currency`, or `priority`, so the Shortcut
 can show what happened instead of silently guessing.
 
@@ -745,7 +744,7 @@ request is rejected.
 ### How do I install the Apple Shortcut?
 
 1. Open Settings -> Apple Pay shortcut.
-2. Put the card used most often first under Default account priority.
+2. Put the card used most often first under Default account.
 3. Select Install Apple Shortcut. Monies Map saves the connection, copies it,
    and opens the repository-owned Apple-signed shortcut file.
 4. Select Add Shortcut. If this device already has `Monies Map Apple Pay API`,
@@ -1882,7 +1881,7 @@ named uses that person's payment way from Settings -> Payment ways (stored
 in `app_settings` under `payment_ways`, saved through
 `POST /api/settings/payment-ways/save`, `src/domain/payment-ways.ts`). With
 none chosen, cash is asked (`accountId` question, reason `missing`) and a
-bank word keeps Default account priority unless that is a card, which is
+bank word keeps Default account unless that is a card, which is
 asked too. AI is asked only when the sentence
 named no amount or left no description: one allowance unit, the redacted
 sentence alone, 80 tokens. Its answer fills only those gaps after

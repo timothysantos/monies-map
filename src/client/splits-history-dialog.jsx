@@ -1,6 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw } from "lucide-react";
 import { messages } from "./copy/en-SG";
+import { splitHistoryActionLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { EmptyState, InlineError } from "./ui-states";
@@ -30,7 +31,7 @@ export function SplitHistoryDialog({ open, history = [], error = "", isSubmittin
               <article className="split-history-row" key={item.id}>
                 <div>
                   <strong>{item.description}</strong>
-                  <small>{item.groupName ?? "Non-group expenses"} · {formatHistoryMoney(item)} · {item.action} · {item.occurredAt}</small>
+                  <small>{item.groupName ?? "Non-group expenses"} · {formatHistoryMoney(item)} · {splitHistoryActionLabel(item.action)} · {item.occurredAt}</small>
                 </div>
                 {item.canRestore ? <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onRestore(item)}><RotateCcw size={15} /> Restore</button> : null}
               </article>

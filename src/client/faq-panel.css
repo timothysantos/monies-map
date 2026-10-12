@@ -150,7 +150,7 @@
 }
 
 .faq-item strong {
-  color: var(--ink, #26231f);
+  color: var(--text);
 }
 
 .faq-item code {

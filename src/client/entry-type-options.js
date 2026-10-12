@@ -4,11 +4,7 @@
 // only be refiled within its direction (the server's bank-fact lock compares
 // the signed amount the same way).
 
-const TYPE_LABELS = {
-  expense: "Expense",
-  income: "Income",
-  transfer: "Transfer"
-};
+import { ENTRY_TYPE_LABELS } from "./enum-labels";
 
 /** @param {{ entryType: string, transferDirection?: string | null }} entry */
 export function getEntryMoneyDirection(entry) {
@@ -27,7 +23,7 @@ export function getEntryTypeOptions(entry, { bankFactsLocked = false } = {}) {
     : getEntryMoneyDirection(entry) === "in"
       ? ["income", "transfer"]
       : ["expense", "transfer"];
-  return types.map((value) => ({ value, label: TYPE_LABELS[value] }));
+  return types.map((value) => ({ value, label: ENTRY_TYPE_LABELS[value] }));
 }
 
 // The direction a switch to Transfer starts with. A locked entry keeps the

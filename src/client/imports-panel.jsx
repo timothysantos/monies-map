@@ -24,7 +24,8 @@ import {
   shouldPreserveStatementPreviewOnRefreshError
 } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
-import { buildImportPreviewModel } from "./import-preview-model";
+import { buildImportPreviewModel, countRowsToImport } from "./import-preview-model";
+import { ImportFileCard } from "./import-file-card";
 import { buildStatementTitle, ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportCommitBar } from "./import-commit-bar";
@@ -2166,6 +2167,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         title: preview.sourceLabel ?? sourceLabel
       }
       : null;
+  // The card names the account itself only when no Account row does.
+  const previewAccountNames = [...new Set(previewRows.map((row) => row.accountName).filter(Boolean))];
+  const singlePreviewAccountName = previewAccountNames.length === 1 ? previewAccountNames[0] : undefined;
   const importBatch = isBatchInProgress
     ? buildImportBatchFiles({ committedFiles: committedBatchFiles, currentFile: currentBatchFile, queue: intakeQueue, activeItemId: activeIntakeItemId })
     : { files: [], index: 0, total: 0 };
@@ -2310,10 +2314,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           {/* Stage 1: the drop zone first, then the queue, then the inbox. */}
           <section className="panel-subsection import-workflow">
             <div className="import-header">
-              <div>
-                <h3>{importMessages.composerTitle}</h3>
-                <p className="lede compact">{importMessages.composerDetail}</p>
-              </div>
+              <h3>{importMessages.composerTitle}</h3>
               {importDraftExists ? (
                 <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
                   {importMessages.startOver}
@@ -2348,6 +2349,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isPasteDefaultsOpen={isPasteDefaultsOpen}
               onTogglePasteDefaults={() => setIsPasteDefaultsOpen((current) => !current)}
               isSlim={isDropZoneSlim}
+              intro={importMessages.composerDetail}
               hasWaitingFiles={Boolean(nextIntakeItem)}
               onShowQueue={() => jumpToImportTarget({ kind: "intake-queue" }, panelRef.current ?? document)}
             />
@@ -2404,6 +2406,20 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}
           data-page-drop={preview ? "off" : undefined}
         >
+          {preview && !isStatementReview ? (
+            <ImportFileCard
+              title={currentBatchFile?.label ?? preview.sourceLabel ?? sourceLabel}
+              subtitle={showStatementAccountMapping ? undefined : singlePreviewAccountName}
+              rowCount={countRowsToImport(previewRows)}
+              coverage={preview.startDate && preview.endDate
+                ? importMessages.fileCardCovers(formatService.formatDateOnly(preview.startDate), formatService.formatDateOnly(preview.endDate))
+                : undefined}
+              showAccountState={showStatementAccountMapping}
+              // The same count the "Map N accounts" blocker on the import bar says.
+              unknownAccountCount={importPreviewModel.hasUnmappedAccounts ? Math.max(1, importPreviewModel.unmappedCommitAccountNames?.length ?? 1) : 0}
+              ownerName={ownerName}
+            />
+          ) : null}
           {isStatementReview ? null : (
           <div className="import-stage-head">
             <div className="section-head">
@@ -2518,6 +2534,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               onUpdatePreviewRowCommitStatus={trackReviewChange(updatePreviewRowCommitStatus)}
               onPromotePreviewRowReconciliationTarget={trackReviewChange(promotePreviewRowReconciliationTarget)}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+              isPhoneLayout={isPhoneLayout}
             />
           ) : null}
           </InferredAmountsContext.Provider>

@@ -1,9 +1,10 @@
 import "../summary-lead.css";
 import { messages } from "../copy/en-SG";
-import { PrivateMoney } from "../money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
 import { money } from "../formatters";
 import { LeadCard } from "./lead-support-detail";
+import { SavingsBar } from "./savings-bar";
 
 const copy = messages.summary.lead;
 const planWords = messages.summary.monthChoice;
@@ -12,11 +13,15 @@ const planWords = messages.summary.monthChoice;
 // and the Month top (month-overview.jsx, which adds Remaining budget as
 // `children`). `model` is buildSummaryLeadModel's shape.
 //
+// Under the figure is its plan line ("63% of plan", "$x under plan"), then the
+// savings bar (savings-bar.jsx), built from the income, spend, planned spend
+// and savings target this model already has. The old spend-vs-plan bar is
+// gone: three bars were too many, and the text line says the same.
+//
 // `inline` is the Month top: Income, Saved and `children` (Remaining budget)
 // fold into the lead card as one row of equal columns under the bar, in
 // text colour only, so the whole card stays compact on a phone.
 export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName = "", inline = false, children = null }) {
-  const { headroom } = model;
   return (
     <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${className}`}>
       <LeadCard
@@ -32,14 +37,14 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
             {planWords.planPrefix} <PrivateMoney>{money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
           </span>
         )}
-        progress={model.progress}
-        progressStart={model.percentOfPlan === null ? null : copy.percentOfPlan(model.percentOfPlan)}
-        progressEnd={headroom ? (
-          <span className={`summary-lead-headroom ${moneyToneClass(headroom.tone)}`}>
-            {money(headroom.amountMinor)} {headroom.isOver ? copy.overPlan : copy.underPlan}
-          </span>
-        ) : null}
       >
+        <SpendLine model={model} />
+        <SavingsBar
+          income={model.income.amountMinor}
+          spent={model.spent.amountMinor}
+          plannedSpend={model.plannedSpendMinor}
+          savingsTarget={model.saved.planMinor}
+        />
         {inline ? (
           <div className="lead-columns">
             <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
@@ -67,6 +72,26 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
         />
         {children}
       </div>}
+    </div>
+  );
+}
+
+// The percent of plan and how far under or over it, as one line (no bar).
+// Hidden money drops the whole line: both halves are side-of-zero words.
+function SpendLine({ model }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const { headroom } = model;
+  if (!areTotalsVisible || (model.percentOfPlan === null && !headroom)) {
+    return null;
+  }
+  return (
+    <div className="lsd-progress-line summary-lead-line">
+      {model.percentOfPlan === null ? null : <span>{copy.percentOfPlan(model.percentOfPlan)}</span>}
+      {headroom ? (
+        <span className={`summary-lead-headroom ${moneyToneClass(headroom.tone)}`}>
+          {money(headroom.amountMinor)} {headroom.isOver ? copy.overPlan : copy.underPlan}
+        </span>
+      ) : null}
     </div>
   );
 }

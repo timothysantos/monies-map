@@ -33,7 +33,8 @@ well; ties go to the larger amount, then to what was not seen recently.
 On Month, a statement gap (a To do about a wallet, not the month)
 goes right after the month's own Something to think about, so that line
 leads and the gap is listed under "Also this month"; other Month To do
-lines (planned bills with no payment linked) keep their place, and Summary still
+lines (planned bills with no payment linked, a plan that spends more than it
+expects to earn) keep their place, and Summary still
 leads with a statement gap.
 Big picture is a separate quieter line; Fun fact is one line shown only
 when the headline is not a Something to think about. "See all insights" adds up
@@ -836,6 +837,44 @@ Way to think about it (count of 1), in turn:
 - A bill that hasn't turned up may be late, or cancelled. Matching it to its payment ("linking") settles which.
 
 Said once when it clears (Going well): Sorted: every bill you planned so far is matched to its payment. / Each one now shows what it really cost next to what you planned.
+
+### planShortfall (To do)
+
+The plan for the month in progress or a month ahead spends more than its planned income by more than $50 and 2% of that income (planned spend counts its savings rows once). Not for a finished month, or one with no income planned.
+
+Phrasings:
+
+- In {month} you planned to spend {over} more than you expect to earn.
+- Your {month} plan spends {over} more than it expects to earn.
+- {month}'s plan spends {planned} but only expects {income} to come in, {over} less.
+- The {month} plan doesn't balance: {planned} planned to go out, {income} expected to come in.
+
+Way to think about it, in turn:
+
+- Raising the income you expect, or trimming a budget line, brings the plan back to even.
+- A plan that spends more than it brings in can't all happen. Raising the income you expect, or trimming a budget line, fixes that.
+- Changing the plan now is easier than finding the gap at the end of the month.
+- Either the income you expect is too low or a budget line is too high. If a bonus or extra pay is coming, adding it may close the gap.
+
+Said once when it clears (Going well): Sorted: the plan now covers what you planned to spend. / The income you expect matches what you planned to spend.
+
+### planShortfallSavings (To do)
+
+As above, when the plan has a savings goal bigger than the shortfall: part of the goal still fits.
+
+Phrasings:
+
+- Your {month} plan spends {over} more than it expects to earn, so only {kept} of the {goal} savings goal fits.
+- In {month} you planned to spend {over} more than you expect to earn, which leaves room for only {kept} of the {goal} you planned to save.
+- {month}'s plan spends {planned} against {income} of expected income, so only {kept} of the {goal} savings goal fits.
+- The {month} plan is {over} short, so only {kept} of the {goal} you planned to save fits.
+
+Way to think about it, in turn:
+
+- Raising the income you expect, or trimming a budget line, brings the plan back to even.
+- A plan that spends more than it brings in can't all happen. Raising the income you expect, or trimming a budget line, fixes that.
+- Changing the plan now is easier than finding the gap at the end of the month.
+- Either the income you expect is too low or a budget line is too high. If a bonus or extra pay is coming, adding it may close the gap.
 
 ### oneOffOverPlan (Something to think about)
 

@@ -1156,15 +1156,14 @@ export function EntriesPanel({
           className="entries-load-error"
           title={messages.common.pageLoadErrorTitleFor(messages.tabs.entries)}
           detail={messages.common.loadFailedDetail}
+          technical={entriesLoadError.message}
           actions={[{
             label: isRetryingPageLoad ? messages.common.working : messages.common.retryPageLoad,
             onClick: () => void retryEntriesPageLoad(),
             disabled: isRetryingPageLoad,
             primary: true
           }]}
-        >
-          <p className="app-loading-issue-inline">{entriesLoadError.message}</p>
-        </ErrorPanel>
+        />
       ) : (
         <>
           <EntriesTotalsStrip

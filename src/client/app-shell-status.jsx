@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { describeLoadFailure } from "./request-errors";
 import { ErrorPanel } from "./ui-states";
 
 // Loading and error chrome for the app shell. Presentation only: App decides
@@ -33,7 +34,7 @@ export function EnvironmentBanner({ environment }) {
 
 // A whole-shell failure with one retry. The detail line is plain language;
 // the technical reason (the loading issue, or the raw error when no issue was
-// recorded) sits underneath in the smaller issue line.
+// recorded) goes to the panel, which words it plainly (see ErrorPanel).
 export function ShellErrorScreen({ environment, title, detail = messages.common.loadFailedDetail, message, diagnosis = null, issue, retryLabel, onRetry }) {
   const technical = issue && (!message || String(issue).includes(message)) ? issue : [message, issue].filter(Boolean).join(" · ");
   return (
@@ -42,10 +43,10 @@ export function ShellErrorScreen({ environment, title, detail = messages.common.
       <ErrorPanel
         title={title}
         detail={detail}
+        technical={technical}
         actions={[{ label: retryLabel, onClick: onRetry, primary: true }]}
       >
         {diagnosis}
-        {technical ? <p className="app-loading-issue-inline">{technical}</p> : null}
       </ErrorPanel>
     </main>
   );
@@ -69,6 +70,8 @@ const PAGE_SHAPES = "lead row row row";
 // support line saying what is happening. No buttons, no figures.
 export function ShellLoadingScreen({ environment, tabId, status, elapsedSeconds }) {
   const detail = ellipsizeText(status?.detail ?? "");
+  // A past failure is worded plainly here too, never as its technical reason.
+  const issueLine = describeLoadFailure(status?.issue);
   const support = [messages.common.loading, detail, elapsedSeconds >= 5 ? `${elapsedSeconds}s` : ""].filter(Boolean).join(" · ");
   return (
     <main className="shell">
@@ -79,7 +82,7 @@ export function ShellLoadingScreen({ environment, tabId, status, elapsedSeconds 
           <div className="sk sk-title" />
           <p className="state-detail">{support}</p>
           {(SKELETON_SHAPES[tabId] ?? PAGE_SHAPES).split(" ").map((shape, index) => <div key={index} className={`sk sk-${shape}`} />)}
-          {status?.issue ? <p className="app-loading-issue-inline">{ellipsizeText(status.issue, 84)}</p> : null}
+          {issueLine ? <p className="app-loading-issue-inline" title={status.issue}>{issueLine}</p> : null}
         </div>
       </section>
     </main>
@@ -91,11 +94,13 @@ export function ShellLoadingScreen({ environment, tabId, status, elapsedSeconds 
 // (percent, detail, elapsed) are the tooltip; only a problem is spelled out.
 export function AppLoadingOverlay({ status = null, elapsedSeconds = 0, className = "" }) {
   const progress = [typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : "", ellipsizeText(status?.detail ?? ""), elapsedSeconds > 0 ? `${elapsedSeconds}s` : ""].filter(Boolean).join(" · ");
+  // A past failure is worded plainly here too, never as its technical reason.
+  const issueLine = describeLoadFailure(status?.issue);
   return (
     <div className={["state-pill app-loading-overlay", className].filter(Boolean).join(" ")} role="status" aria-live="polite" title={progress}>
       <span className="app-spinner" aria-hidden="true" />
       <span>{messages.common.loadingLatest}</span>
-      {status?.issue ? <small>{ellipsizeText(status.issue, 64)}</small> : null}
+      {issueLine ? <small title={status.issue}>{issueLine}</small> : null}
     </div>
   );
 }

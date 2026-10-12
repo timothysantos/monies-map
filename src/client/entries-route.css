@@ -245,6 +245,12 @@
     gap: 10px;
     align-items: center;
     flex-wrap: nowrap;
+    /* Room for the breakdown toggle's 44 px hit area inside this scrolling
+       strip, with the page spacing unchanged. */
+    padding: 7px 9px 17px;
+    margin: -7px -7px -4px;
+    width: calc(100% + 14px);
+    max-width: none;
   }
 
   .entries-totals-item {
@@ -308,7 +314,9 @@
     gap: 8px;
     width: 100vw;
     margin: -10px calc(50% - 50vw) 4px;
-    padding: 10px 12px 6px;
+    /* 44 px tall around the 26 px refresh button, so its hit area is not
+       clipped by `contain: paint` (design.md, every tappable is 44 px). */
+    padding: 9px 12px;
     border-radius: 0;
     max-width: none;
     box-sizing: border-box;
