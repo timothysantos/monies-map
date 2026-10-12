@@ -32,7 +32,7 @@ and parallel sessions kept colliding on those ports.
   stopped, with their state removed, when the shard ends or on Ctrl+C. A run
   with `E2E_PORT_OFFSET` set also writes its logs, blobs and reports under
   `test-results/e2e-sharded-<offset>` and `playwright-report-<offset>`; before
-  13 October 2026 every run emptied the one shared `test-results/e2e-sharded`
+  12 October 2026 every run emptied the one shared `test-results/e2e-sharded`
   folder at its start, so two offset runs from one worktree wiped each
   other's results.
 - `scripts/e2e-shard-plan.mjs`: the work comes from `playwright test --list`,
