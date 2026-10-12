@@ -54,6 +54,7 @@ import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
+import { getPersonColourVars } from "./person-colour";
 import {
   buildAppShellErrorMessage,
   buildRequestFailureMessage,
@@ -3005,6 +3006,8 @@ export function App() {
                 type="button"
                 onClick={() => handleViewChange(person.id)}
                 title={person.name}
+                // Their colour (the Entries row edge) marks a person's view while it is active.
+                style={/** @type {import("react").CSSProperties} */ (getPersonColourVars(person.name))}
               >
                 {selectedViewId === person.id ? person.name : getInactivePersonViewLabel(person.name)}
               </button>
