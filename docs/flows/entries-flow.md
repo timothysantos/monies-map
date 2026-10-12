@@ -85,7 +85,8 @@ focuses its row's select); a certified entry's date and wallet chips show a
 lock and open nothing, and the bank state chip is never an editor
 (design.md "Tappable chips"). The bank state chip names the tool that saved
 a provisional entry ("Apple Pay · provisional", "Ask · provisional"), More
-details adds a read-only "Added by" row when the entry's `addedBy` is known,
+details adds a read-only "Added by" row when the entry's `addedBy` is known
+(and its folded hint ends "added by", `moreDetailsSummary`),
 and a list row shows a small muted glyph inside its amount's line ("Added
 with Apple Pay", "Added in Ask"). `addedBy` is derived on the server from
 the entry's external reference, which never reaches the page (DOMAIN.md
