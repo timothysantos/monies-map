@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { SpendLeadGroup } from "./summary-lead";
+import { SpendLeadGroup } from "./ui-components";
 import { buildMonthLeadModel } from "./month-lead-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
