@@ -42,3 +42,12 @@
 .is-picker-sheet .lsd-bottom.is-sheet-bar {
   flex: 0 0 auto;
 }
+
+/* Over another sheet it dims that sheet too (see sheet-dialog.css). */
+.note-dialog-overlay:has(+ .is-picker-sheet) {
+  z-index: 90;
+}
+
+.mobile-select-dialog.is-picker-sheet {
+  z-index: 91;
+}

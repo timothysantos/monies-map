@@ -87,7 +87,9 @@ export function SheetDialog({
   title,
   description = null,
   descriptionHidden = false,
-  closeLabel = undefined,
+  // Not "Close {title}": a confirmation's title is also its button ("Delete
+  // entry"), and the two must not share a name.
+  closeLabel = "Close dialog",
   className = "",
   tone = undefined,
   lead = null,
@@ -204,7 +206,7 @@ export function SheetDialog({
                 <button
                   type="button"
                   className="icon-action subtle-cancel"
-                  aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
+                  aria-label={closeLabel}
                   disabled={isSubmitting}
                   onClick={close}
                 >

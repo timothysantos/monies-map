@@ -215,17 +215,21 @@ test.describe("phone pickers scroll by touch", { tag: "@webkit" }, () => {
     await expect(categoryRow.locator(".responsive-select-value")).toHaveText(label);
   });
 
-  test("Edit entry: Transfer details scrolls to its last action", async ({ page, browserName }) => {
+  test("Edit entry: Transfer details scrolls to its last row", async ({ page, browserName }) => {
     await page.goto(`/entries?view=person-tim&month=${MONTH}&editing_entry=txn-oct-transfer-out`);
     const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
     await expect(sheet).toBeVisible({ timeout: 60_000 });
     await sheet.getByRole("button", { name: "Manage transfer" }).tap();
     const dialog = page.locator(".transfer-match-dialog");
     await expect(dialog).toBeVisible();
-    const lastAction = dialog.getByRole("button").last();
-    await expect(lastAction).not.toBeInViewport();
-    await swipeToEnd(page, browserName, dialog);
-    await expect(lastAction).toBeInViewport({ ratio: 0.9 });
+    // The sheet's body scrolls under the lead and above the bar; Done and the
+    // destructive action stay in the bar, always in reach.
+    const body = dialog.locator("[data-sheet-body]");
+    const lastRow = body.locator(".lsd-row").last();
+    await expect(lastRow).not.toBeInViewport();
+    await swipeToEnd(page, browserName, body);
+    await expect(lastRow).toBeInViewport({ ratio: 0.9 });
     await expect(dialog.getByRole("button", { name: "Close transfer manager" })).toBeVisible();
+    await expect(dialog.locator(".lsd-bottom.is-sheet-bar").getByRole("button", { name: "Done" })).toBeInViewport();
   });
 });

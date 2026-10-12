@@ -45,7 +45,9 @@ export function MonthPlanLinkDialog({
     <SheetDialog
       wide
       asSheet={asSheet}
-      className="planned-link-dialog"
+      // Only the wide dialog carries the legacy dialog class: the tests that
+      // tell a dialog from a sheet look for it.
+      className={asSheet ? "planned-link-body" : "planned-link-body planned-link-dialog"}
       title="Match planned item"
       description={`Link exact ledger entries to ${label}. Budget buckets still use category totals.`}
       descriptionHidden
@@ -66,7 +68,7 @@ export function MonthPlanLinkDialog({
             </>
           )}
         >
-          <p className="lsd-note">Link exact ledger entries to this item. Budget buckets still use category totals.</p>
+          <p className="lsd-note">Budget buckets still use category totals.</p>
         </LeadCard>
       )}
       errorMessage={errorMessage}

@@ -43,10 +43,8 @@ export function LinkedNoteSyncDialog({
         <LeadCard
           className="sheet-dialog-lead"
           category={{ icon: Link2 }}
-          title={prompt.title ?? "Update connected note?"}
-        >
-          <p className="lsd-note">{prompt.description}</p>
-        </LeadCard>
+          title={prompt.description}
+        />
       )}
       errorMessage={prompt.error}
       primaryLabel={isSubmitting ? "Updating..." : "Update both"}

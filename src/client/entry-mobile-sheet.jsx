@@ -82,6 +82,7 @@ export function EntryMobileSheet({
   usePageKeyboardScrollLock();
   useKeyboardInset(sheet);
   const swipe = useSheetSwipeDismiss({ sheet, isDirty, isSubmitting, onClose });
+  const isTopSheet = useSheetStack();
   const eventGuards = isolateEvents ? {
     onSubmit: (event) => event.stopPropagation(),
     onClick: (event) => event.stopPropagation(),
@@ -133,6 +134,13 @@ export function EntryMobileSheet({
             // dismissal (the desktop modal dialogs behave the same way).
             onFocusOutside={(event) => event.preventDefault()}
             {...swipe.contentProps}
+            onPointerDownOutside={(event) => {
+              if (!isTopSheet()) {
+                event.preventDefault();
+                return;
+              }
+              swipe.contentProps.onPointerDownOutside(event);
+            }}
             {...eventGuards}
           >
             <SheetDragHandle />
@@ -183,6 +191,27 @@ export function EntryMobileSheet({
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+// The sheets that are open, the top one last. A sheet opened over another (a
+// confirmation over the Edit entry sheet) is not part of the lower sheet's
+// React tree, so a tap on it would count as "outside" for the one below and
+// close it too. Only the top sheet answers an outside tap.
+const openSheets = [];
+
+function useSheetStack() {
+  const idRef = useRef({});
+  useEffect(() => {
+    const id = idRef.current;
+    openSheets.push(id);
+    return () => {
+      const index = openSheets.indexOf(id);
+      if (index !== -1) {
+        openSheets.splice(index, 1);
+      }
+    };
+  }, []);
+  return () => openSheets[openSheets.length - 1] === idRef.current;
 }
 
 // `overflow: hidden` on <html> stops Space, Page Down and arrow keys from

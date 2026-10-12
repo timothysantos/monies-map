@@ -192,16 +192,16 @@
 }
 
 /* Match planned item: its filter chips and list rows are real tap targets. */
-.planned-link-dialog .planned-link-filter-chip {
+.planned-link-body .planned-link-filter-chip {
   min-height: 44px;
   padding: 0 16px;
 }
 
-.planned-link-dialog .planned-link-filter-panel {
+.planned-link-body .planned-link-filter-panel {
   margin: 0;
 }
 
-.planned-link-dialog .planned-link-row {
+.planned-link-body .planned-link-row {
   min-height: 56px;
 }
 
@@ -297,9 +297,19 @@
   flex: 1 1 100%;
 }
 
-.sheet-dialog.is-three-actions .lsd-bottom-end > * {
+.sheet-dialog.is-three-actions .lsd-bottom-end > .lsd-primary {
   flex: 1 1 0;
   max-width: none;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end > .lsd-secondary {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom .lsd-quiet {
+  min-width: 56px;
+  padding: 0 8px;
 }
 
 .sheet-dialog.is-three-actions .lsd-bottom.is-dialog-bar .lsd-bottom-end {
@@ -331,4 +341,25 @@
 /* The Month Actions sheet: Delete month reads in the rose ink. */
 .lsd-row.is-danger .lsd-row-label {
   color: var(--pastel-rose-ink);
+}
+
+/* A dialog opened over another sheet (Delete entry over the Edit entry sheet,
+   Transfer details, a picker) dims that sheet too, so its backdrop and itself
+   sit above it. */
+.entry-composer-overlay:has(+ .entry-mobile-sheet.is-dialog-sheet),
+.note-dialog-overlay:has(+ .is-picker-sheet) {
+  z-index: 90;
+}
+
+.entry-mobile-sheet.is-dialog-sheet,
+.mobile-select-dialog.is-picker-sheet {
+  z-index: 91;
+}
+
+/* The Month Actions rows are actions, not muted fields: their words read in
+   the ink. */
+.month-actions-sheet .lsd-row-label {
+  max-width: none;
+  color: var(--text);
+  font-weight: 600;
 }

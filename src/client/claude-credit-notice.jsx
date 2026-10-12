@@ -13,6 +13,7 @@ import { useClaudeCreditStatus } from "./claude-credit-status";
 import { claudeCreditCopy as copy } from "./copy/claude-credit-copy";
 import { useMoneyPrivacy } from "./money-privacy";
 import { SheetDialog } from "./sheet-dialog";
+import { useIsMobileLayout } from "./use-viewport";
 import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
 // Shipped with Ask and Settings, the two routes that import this module.
@@ -76,6 +77,7 @@ export function ClaudeCreditActions({ actions, onToppedUp }) {
 // the keyboard), a small dialog on a wide screen. Open while it shows, so
 // no optional work runs under it; closes only when the save succeeded.
 export function ClaudeTopUpForm({ onClose, onSave }) {
+  const isMobile = useIsMobileLayout();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -116,7 +118,7 @@ export function ClaudeTopUpForm({ onClose, onSave }) {
   // dialog on a wide screen).
   return (
     <SheetDialog
-      className="claude-topup-dialog"
+      className={isMobile ? "claude-topup-sheet" : "claude-topup-dialog"}
       title={copy.form.title}
       description={copy.form.description}
       descriptionHidden
