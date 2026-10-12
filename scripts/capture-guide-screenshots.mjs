@@ -291,7 +291,7 @@ const SHOTS = [
     name: "splits-add-expense", device: "desktop",
     run: async (page) => {
       await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
-      await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
+      await page.locator(".splits-lead").getByRole("button", { name: "+ Add expense" }).click();
       const dialog = page.getByRole("dialog", { name: "New split expense" });
       await dialog.getByLabel("Description").fill("Dinner at Din Tai Fung");
       await dialog.getByLabel("Category").selectOption("Food & Drinks");

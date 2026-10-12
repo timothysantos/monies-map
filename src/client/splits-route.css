@@ -13,17 +13,6 @@
   scrollbar-gutter: stable;
 }
 
-.split-dialog-scroll-cue {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin: -2px 0 8px;
-  color: var(--accent-strong);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
 .split-dialog-section {
   padding: 0;
   margin-bottom: 12px;
@@ -54,41 +43,6 @@
   color: var(--muted-text, #717379);
   font-size: 0.78rem;
   line-height: 1.35;
-}
-
-.split-dialog-actions-divider {
-  align-self: center;
-  width: 1px;
-  height: 24px;
-  background: rgba(122, 127, 125, 0.36);
-  color: transparent;
-  font-size: 0;
-  line-height: 0;
-}
-
-.splits-summary-strip {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.summary-chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(177, 94, 47, 0.12);
-  color: var(--accent-strong);
-  cursor: pointer;
-  flex: 0 0 auto;
 }
 
 .split-donut-panel {
@@ -189,21 +143,6 @@
   justify-items: center;
 }
 
-.split-match-confidence {
-  flex: 0 0 auto;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: var(--pastel-mint);
-  color: var(--positive);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.split-match-confidence.is-medium {
-  background: rgba(177, 94, 47, 0.12);
-  color: var(--accent-strong);
-}
-
 .split-match-deltas {
   margin: 0;
   font-size: 0.88rem;
@@ -253,12 +192,6 @@
   flex-wrap: wrap;
 }
 
-.split-summary-toolbar {
-  display: none;
-  margin-left: auto;
-  flex: 0 0 auto;
-}
-
 .split-matches-link {
   appearance: none;
   -webkit-appearance: none;
@@ -281,24 +214,13 @@
   transition: color 140ms ease, opacity 140ms ease;
 }
 
-.panel-splits .split-match-card {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  padding: 14px 16px;
-  border: 1px solid rgba(255, 230, 216, 0.72);
-  border-radius: 14px;
-  background: rgba(251, 242, 236, 0.95);
-  color: var(--text);
-}
-
 .panel-splits .split-checkpoint-panel.is-matched {
   border-color: rgba(205, 238, 220, 0.95);
   background: var(--pastel-mint);
   color: var(--positive);
 }
 
-.split-checkpoint-summary,
-.split-checkpoint-heading {
+.split-checkpoint-summary {
   display: grid;
   gap: 4px;
 }
@@ -317,19 +239,6 @@
   justify-items: end;
   align-content: start;
   gap: 7px;
-}
-
-.split-checkpoint-view-action {
-  appearance: none;
-  border: 1px solid #9b4a21;
-  border-radius: 999px;
-  background: #b15e2f;
-  color: #fffaf6;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-  min-height: 40px;
-  padding: 0 15px;
 }
 
 .split-checkpoint-navigation-hint {
@@ -386,10 +295,6 @@
   font-weight: 700;
 }
 
-.split-history-list { display: grid; gap: 8px; max-height: min(60vh, 520px); overflow: auto; }
-
-.split-history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid rgba(177, 94, 47, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.5); }
-
 .panel-splits .split-payment-marker {
   color: #8a4d2c;
   font-size: 0.78rem;
@@ -432,10 +337,6 @@
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
-}
-
-.summary-chevron svg {
-  transition: transform 160ms ease;
 }
 
 .split-list-section {
@@ -560,21 +461,9 @@ button.split-activity-card:hover {
   gap: 10px;
 }
 
-.split-settle-header {
-  flex: 0 0 auto;
-}
-
 .split-matches-link:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.62);
   outline-offset: 3px;
-}
-
-.panel-splits .split-summary-search .search-filter-input::placeholder {
-  color: rgba(83, 72, 64, 0.58);
-}
-
-.split-checkpoint-view-action:hover {
-  background: #9b4a21;
 }
 
 .panel-splits .split-checkpoint-panel .split-checkpoint-actions,
@@ -631,17 +520,9 @@ button.split-activity-card:hover {
   border-color: rgba(255, 244, 236, 0.58);
 }
 
-.panel-splits .split-history-trigger { margin-left: auto; }
-
-.split-history-row button { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-
 @media (max-width: 760px) {
   .split-checkpoint-navigation {
     justify-items: stretch;
-  }
-
-  .split-checkpoint-view-action {
-    width: 100%;
   }
 
   .split-checkpoint-navigation-hint {
@@ -703,14 +584,6 @@ button.split-activity-card:hover {
     box-shadow: inset 0 -16px 18px -22px rgba(71, 45, 30, 0.7);
   }
 
-  .split-dialog-scroll-cue {
-    display: flex;
-  }
-
-  .split-dialog-content .split-dialog-actions-divider {
-    display: none;
-  }
-
   .split-odd-cent-actions {
     display: grid;
     grid-template-columns: 1fr;
@@ -731,29 +604,6 @@ button.split-activity-card:hover {
 
   .split-inline-editor-card .split-dialog-grid {
     grid-template-columns: 1fr;
-  }
-
-  .split-inline-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    align-items: stretch;
-    justify-content: stretch;
-  }
-
-  .split-inline-actions .inline-action-button,
-  .panel-splits .split-inline-actions .subtle-action {
-    width: auto;
-    height: auto;
-    justify-content: center;
-    min-height: 40px;
-    padding: 0 10px;
-    font-size: 0.86rem;
-  }
-
-  .split-inline-actions .split-linked-entry-action {
-    grid-column: 1 / -1;
-    min-height: 42px;
   }
 
   .split-list-section {
@@ -842,122 +692,15 @@ button.split-activity-card:hover {
     font-size: 0.76rem;
   }
 
-  .panel-splits .split-match-list {
-    gap: 10px;
-  }
-
-  .panel-splits .split-match-card {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    align-items: start;
-    margin-right: -12px;
-    margin-left: -12px;
-    padding: 12px;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-  }
-
-  .panel-splits .split-match-actions {
-    width: 100%;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .splits-summary-strip {
-    gap: 8px;
-    margin-right: -12px;
-    margin-left: -12px;
-    padding: 6px 12px;
-    width: calc(100% + 24px);
-    max-width: calc(100% + 24px);
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex-wrap: nowrap;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-  }
-
-  .splits-summary-strip .summary-chevron {
-    width: 32px;
-    height: 32px;
-  }
-
-  .splits-summary-strip .split-summary-search {
-    grid-template-columns: auto minmax(170px, 1fr);
-    flex: 0 0 min(320px, calc(100vw - 72px));
-    min-width: min(320px, calc(100vw - 72px));
-    gap: 8px;
-    margin-left: 0;
-  }
-
-  .splits-summary-strip .split-summary-search .entries-filter-label {
-    font-size: 0.82rem;
-  }
-
-  .panel-splits .splits-summary-strip .split-summary-search .search-filter-input {
-    min-height: 44px;
-    font-size: 0.9rem;
-  }
-
-  .splits-summary-strip .entries-summary-metrics {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    font-size: 0.82rem;
-  }
-
-  .splits-summary-actions {
-    display: none;
-  }
-
-  .entries-summary-metrics {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 8px 14px;
-    font-size: 0.94rem;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
-  .entries-summary-metrics > span {
-    flex: 0 0 auto;
-  }
-
-  .splits-summary-actions {
-    width: auto;
-    justify-content: flex-start;
-    margin-left: 0;
-    flex: 0 0 auto;
-  }
-
   .panel-splits {
     overflow-x: clip;
     padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .split-settle-header {
-    min-height: 34px;
-    padding: 0 12px;
-    font-size: 0.82rem;
   }
 
   .split-head-actions {
     justify-content: flex-end;
     gap: 8px;
     width: auto;
-  }
-
-  .splits-summary-strip .split-summary-toolbar {
-    display: flex;
-    margin-left: auto;
-    flex-wrap: nowrap;
   }
 
   .split-matches-link {
@@ -1162,4 +905,27 @@ button.split-activity-card:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* The settlement card lead (split-settlement-card.jsx): who paid whom is a
+   long title, so in the phone sheet and the wide dialog the amount sits on
+   its own line under the bubble and title instead of squeezing them. */
+.split-settlement-card:is(.is-sheet, .is-dialog) .lsd-hero {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.split-settlement-card:is(.is-sheet, .is-dialog) .lsd-hero > .lsd-amount {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/* Create group is one stacked card, so it takes a narrower dialog. */
+.split-group-dialog {
+  width: min(520px, calc(100vw - 40px));
+}
+
+@media (max-width: 760px) {
+  .note-dialog-content.split-group-dialog {
+    width: 100%;
+  }
 }

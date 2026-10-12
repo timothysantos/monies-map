@@ -1,3 +1,4 @@
+import "./splits-activity-list.css";
 import { messages } from "./copy/en-SG";
 import { EmptyState } from "./ui-states";
 import { SplitActivityGroups } from "./splits-activity";
