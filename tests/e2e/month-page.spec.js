@@ -1098,7 +1098,7 @@ test.describe("month page", () => {
 
     // One tap must run the open handler once and leave exactly one sheet.
     await takeMonthRowOpenCount(page);
-    await row.locator("td").nth(4).click();
+    await row.locator("td.month-cell-planned").click();
     await expect(editSheet).toBeVisible();
     await expect(sheets).toHaveCount(1);
     expect(await takeMonthRowOpenCount(page)).toBe(1);
