@@ -609,7 +609,8 @@ over the row in a sheet; a visible inline date field on a wide screen) and
 Tappable chips: a Support chip that names a field you can change opens
 the same picker or editor as that field's Detail row, so the fact you look
 at is also the way to change it. Edit entry card: date (the date picker),
-wallet (the wallet picker, unfolding More details) and owner. Ask draft
+wallet (the wallet picker, unfolding More details) and owner; on a wide
+screen the inline editor's three chips are the fields themselves. Ask draft
 card: date, wallet and owner. New split expense card: date, paid by,
 shares (the share editor) and paid using. The Month plan card's chips are
 not fields there, and a saved Ask card's chips are not editors.
@@ -625,8 +626,9 @@ not fields there, and a saved Ask card's chips are not editors.
   the linked entry set, shows a small lock and opens nothing; assistive
   tech hears ", locked by the statement" (or ", set by the linked entry").
 - State chips (Manual provisional, Statement certified) are never editors.
-- On a wide screen a chip moves focus to its row's select (and opens it
-  where the browser allows).
+- On a wide screen the Entries inline editor has no row for date, wallet or
+  owner, so those chips are the fields (a date field, a native list); the
+  Splits inline card does the same for date, paid by and paid using.
 
 Source chip: the bank state chip names the tool that saved a provisional
 entry, "Apple Pay · provisional" (the Apple Pay Shortcut) or "Ask ·
@@ -768,10 +770,48 @@ Where it is used:
   Posted date, Type (and Transfer direction); on a phone those last ones fold
   into More details, and a certified entry lists only Posted date (locked)
   and Type. On a wide screen (the inline editor) the lead card spans the
-  top and the rows sit under it in two balanced columns, and each row
-  keeps an inline field, so Tab walks description, amount, the eye, then the
-  rows in order. Delete entry (and Delete split once it is on Splits),
-  Cancel and Save are in the bottom bar.
+  top and the rows sit under it in two balanced columns. No row repeats a
+  lead chip there, as on the Splits inline card: Owner, Date and Wallet have
+  no row, and their chips are the fields (a date field over the date chip, a
+  native list over the wallet and owner chips; the wallet chip shows even
+  with no wallet set). A certified entry's date and wallet chips stay
+  locked, the owner chip still edits. The rows that remain (Category,
+  Splits, Note, Posted date, Type) keep an inline field, so Tab walks
+  description, amount, the eye, the three chips, then the rows in order, and
+  the card is about 40 px shorter (the stated cap at 1,280 px is 380 px for
+  the editor, `entries-lsd.spec.js`). The saved request is the one the rows
+  sent. Delete entry (and Delete split once it is on Splits), Cancel and
+  Save are in the bottom bar.
+- The Entries top (`entries-overview.jsx` `EntriesTotals`,
+  `entries-totals-model.js`, its CSS in `entries-route.css`, in the lazy
+  Entries route). Lead: "Spent · Aug 2026", the filtered view's gross spend
+  in plain ink (spending is not bad for being spending), the person's share
+  as its aside ("Ethan's share $1,369.25", only where it differs). Support:
+  four pills, Income, Difference, Transfers and Outflow, the same figures the
+  old sideways strip showed (a tint only where money has a direction: mint
+  income, a mint surplus, a rose deficit; transfers and outflow plain, with
+  the person's share as a small line where it differs). Detail: "Spending by
+  category" (opens the existing breakdown, `aria-expanded`) and, on a phone
+  only, "Filters" with "All entries" or "2 filters on" (opens the View and
+  scope sheet, which holds the filters; `onOpenMobileContext`). A wide
+  screen puts the pills 2 x 2 beside the lead and its row (as Summary) and
+  keeps the filter bar on the page; a phone stacks lead, pills, rows. The
+  inline "+ Add entry" is gone (the round + opens Ask's new entry card,
+  whose "Edit in form" opens the Entries form). Hidden money: dots in plain
+  ink, no sign, pills lose their tint. Nothing scrolls sideways or is cut
+  off at 390, 1,024 or 1,280 px (`tests/e2e/entries-lsd.spec.js`). The wide
+  filter bar stacks the Search label over its field and, from 961 to 1,099
+  px, puts the search on its own row.
+- Entries list rows and day headers (`entries-list.jsx`, `entries-route.css`).
+  The hierarchy is spacing, not weight: the category is a quiet line above
+  the merchant (regular weight; a bolder merchant was declined), the wallet a
+  quiet line, the amount right-aligned and tabular on the merchant's line, an
+  empty note or wallet detail renders nothing, and a matched transfer is
+  plain muted text (an unmatched one keeps its pill). The person's colour edge
+  stays on every row. The day header is a hairline divider (small caps date,
+  rule, "Daily net" and the refresh button at the right) and a day's rows sit
+  in one rounded white group. A phone row is 68 px or more (icon, category,
+  merchant and amount, wallet, chips), a wide row keeps the three columns.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
   dialog in the phone sheet and the wide dialog, and in the list). Selecting a
   split expense row opens this card, as does the `editing_split_expense`
@@ -1403,7 +1443,7 @@ balances, split activity); `src/client/money-tone-class.js` renders it as
 | `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | rose ink |
 | `plan` | an intention: planned income, planned spend, a savings target | sky ink |
 | `caution` | something needs a check (a statement not yet checked) | butter ink |
-| `out` | money out in a list: an expense row, a negative day, an Imports expense row, the Entries spend total, a settle-up you paid (with its minus sign) | rose ink, text only |
+| `out` | money out in a list: an expense row, a negative day, an Imports expense row, a settle-up you paid (with its minus sign) | rose ink, text only |
 | `neutral` | transfers, zero, counts | plain ink |
 
 Exactly on plan, and a fully allocated budget, count as `in`; zero
@@ -1421,8 +1461,8 @@ Three strengths, never two on one element:
 - **Soft tint** (compact summary objects): the fill at 60% with a hairline
   in the same hue, and every line in the ink. Summary's Income and Saved
   pills, Month outcome cards (actual income, actual spend over plan,
-  realized savings, remaining budget, spend gap), Entries strip items with a direction (income,
-  difference), wallet pills by statement health, and a statement movement
+  realized savings, remaining budget, spend gap), the Entries top's pills with a direction (income,
+  difference; the Spent lead, Transfers and Outflow stay plain ink), wallet pills by statement health, and a statement movement
   that is off. Plans stay text-only so a row of cards does not read as a
   traffic light. Balances on the Splits orange (the summary strip and group
   pills) stay plain text with no chip: the owner found tinted chips too much

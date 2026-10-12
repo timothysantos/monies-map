@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { postJson, reseedDemo } from "./helpers";
+import { openEntryComposer, postJson, reseedDemo } from "./helpers";
 
 // H12a: reference data (accounts, categories) has one owner. A cross-tab
 // refresh keeps the last good data on screen, never blanks the shell or
@@ -43,7 +43,7 @@ test("a cross-tab refresh updates reference data without blanking the shell or d
   await other.goto(ENTRIES_URL);
   await waitUsable(other);
 
-  await other.getByRole("button", { name: "+ Add entry" }).first().click();
+  await openEntryComposer(other);
   const description = other.getByLabel("Description");
   await description.fill("Draft kept across refresh");
   const sawLoading = await watchFor(other, ".app-loading-panel");
@@ -67,7 +67,7 @@ test("two quick cross-tab refreshes never flash the error screen, and the newest
   await other.goto(ENTRIES_URL);
   await waitUsable(other);
   // The entry composer lists categories from reference data.
-  await other.getByRole("button", { name: "+ Add entry" }).first().click();
+  await openEntryComposer(other);
 
   // Hold the first refresh's request so the second overtakes it.
   let held = 0;

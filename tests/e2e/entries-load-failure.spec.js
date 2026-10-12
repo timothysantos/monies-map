@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, openEntryComposer, reseedDemo } from "./helpers";
 
 // When Entries cannot load the month the person moved to, the previous
 // month's rows must never stand in for it and the page must not claim the
@@ -47,7 +47,7 @@ for (const layout of ["desktop", "mobile"]) {
     const description = `Draft kept through a failed load ${Date.now()}`;
     if (layout === "desktop") {
       // An open new-entry draft must survive the failure itself.
-      await page.getByRole("button", { name: "+ Add entry" }).first().click();
+      await openEntryComposer(page);
       await page.locator(".entry-composer").getByLabel("Description").fill(description);
     }
 
@@ -88,7 +88,7 @@ for (const layout of ["desktop", "mobile"]) {
     // May's rows and totals are not passed off as October's, and October is
     // not called empty.
     await expect(page.locator(".entry-row:not(.entry-composer):visible")).toHaveCount(0);
-    await expect(page.locator(".entries-totals-strip:visible")).toHaveCount(0);
+    await expect(page.locator(".entries-totals:visible")).toHaveCount(0);
     await expect(page.getByText("No entries match this view.")).toHaveCount(0);
     // It is a load failure, not a refresh of rows that are on screen.
     await expect(page.locator(".refresh-failure-notice")).toHaveCount(0);
