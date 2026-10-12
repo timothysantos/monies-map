@@ -1,5 +1,7 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { InlineError } from "./ui-states";
+import { Link2 } from "lucide-react";
+
+import { SheetDialog } from "./sheet-dialog";
+import { LeadCard } from "./ui/lead-support-detail";
 
 function formatNotePreview(value) {
   const note = value?.trim();
@@ -14,6 +16,10 @@ function formatPromptValue(prompt, key) {
   return formatNotePreview(prompt[key]);
 }
 
+// "Update connected note?": a note was changed on a record that is connected
+// to another (an entry and its split). The lead is the question; the two notes
+// sit side by side as quiet panels; Cancel is at the start of the bottom bar,
+// "Save only this" beside the primary "Update both" at the end.
 export function LinkedNoteSyncDialog({
   prompt,
   isSubmitting = false,
@@ -24,47 +30,45 @@ export function LinkedNoteSyncDialog({
   if (!prompt) {
     return null;
   }
+  const help = prompt.helpText ?? "Choose \"Update both\" when the note is a shared explanation for the same real-world item. Choose \"Save only this\" when the connected record needs a different note.";
 
   return (
-    <Dialog.Root open={Boolean(prompt)} onOpenChange={(open) => { if (!open && !isSubmitting) onCancel(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content linked-note-sync-dialog">
-          <div className="note-dialog-head">
-            <div>
-              <Dialog.Title>{prompt.title ?? "Update connected note?"}</Dialog.Title>
-              <Dialog.Description>{prompt.description}</Dialog.Description>
-            </div>
-          </div>
-
-          <div className="linked-note-sync-grid">
-            <section className="linked-note-sync-panel">
-              <h4>{prompt.editedLabel}</h4>
-              <p>{formatPromptValue(prompt, "editedValue")}</p>
-            </section>
-            <section className="linked-note-sync-panel">
-              <h4>{prompt.connectedLabel}</h4>
-              <p>{formatPromptValue(prompt, "connectedValue")}</p>
-            </section>
-          </div>
-
-          <p className="linked-note-sync-help">
-            {prompt.helpText ?? "Choose \"Update both\" when the note is a shared explanation for the same real-world item. Choose \"Save only this\" when the connected record needs a different note."}
-          </p>
-
-          <InlineError message={prompt.error} />
-
-          <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onCancel}>Cancel</button>
-            <button type="button" className="subtle-action" disabled={isSubmitting} onClick={onSaveOnly}>
-              {isSubmitting ? "Saving..." : "Save only this"}
-            </button>
-            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={onUpdateBoth}>
-              {isSubmitting ? "Updating..." : "Update both"}
-            </button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      className="linked-note-sync-dialog is-three-actions"
+      title={prompt.title ?? "Update connected note?"}
+      description={prompt.description}
+      descriptionHidden
+      closeLabel="Close"
+      lead={(
+        <LeadCard
+          className="sheet-dialog-lead"
+          category={{ icon: Link2 }}
+          title={prompt.description}
+        />
+      )}
+      errorMessage={prompt.error}
+      primaryLabel={isSubmitting ? "Updating..." : "Update both"}
+      primaryDisabled={isSubmitting}
+      secondary={(
+        <button type="button" className="lsd-secondary" disabled={isSubmitting} onClick={onSaveOnly}>
+          {isSubmitting ? "Saving..." : "Save only this"}
+        </button>
+      )}
+      isSubmitting={isSubmitting}
+      onSubmit={onUpdateBoth}
+      onClose={onCancel}
+    >
+      <div className="linked-note-sync-grid">
+        <section className="linked-note-sync-panel">
+          <h4>{prompt.editedLabel}</h4>
+          <p>{formatPromptValue(prompt, "editedValue")}</p>
+        </section>
+        <section className="linked-note-sync-panel">
+          <h4>{prompt.connectedLabel}</h4>
+          <p>{formatPromptValue(prompt, "connectedValue")}</p>
+        </section>
+      </div>
+      <p className="lsd-note">{help}</p>
+    </SheetDialog>
   );
 }

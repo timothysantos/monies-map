@@ -938,7 +938,15 @@ selecting the tab opens Category matching.
 
 ### On a phone
 
-Settings is under the **•••** button. Dialogs open as sheets.
+Settings is under the **•••** button. Dialogs open as sheets from the bottom
+of the screen. Every one of them has the same parts: a card at the top that
+says what you are changing or removing, the fields as rows under it, and the
+buttons at the bottom within reach of your thumb. **Cancel** is at the left
+and the main button at the right. A button that removes something (such as
+**Delete entry**) is pink with dark red text, and a sheet that asks you to
+type words first (such as **Reset month**) keeps its button off until you
+have typed them. You can swipe any of them down to close it. On a computer the
+same dialogs open in the middle of the screen.
 
 ## Help (FAQ)
 

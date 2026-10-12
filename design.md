@@ -978,6 +978,67 @@ Where it is used:
   line on a phone. There is no split nudge: nothing in the app suggests splits
   before a commit, so none is drawn.
 
+### Dialogs and small sheets (`sheet-dialog.jsx`)
+
+Every other dialog, confirmation and small sheet shares one frame,
+`SheetDialog` (`src/client/sheet-dialog.jsx`, route CSS `sheet-dialog.css`,
+which ships with the code that opens a dialog and never with the first-screen
+stylesheet). The caller gives it the copy, a lead, the rows or fields and the
+actions; it gives them the layout:
+
+- Phone (and a portrait tablet when a caller passes `asSheet`): the shared
+  `EntryMobileSheet` (grab handle, swipe down, "Discard changes?" when
+  `isDirty`, lifted above the keyboard) with the title and a round 44 px close
+  on top, the lead and rows in the body and a `BottomActions` bar
+  (`is-sheet-bar`) at the bottom: Cancel (or a destructive action) at the
+  start, the primary action at the end under the thumb. A dialog opened from a
+  clickable row keeps React's submit, click and key events inside itself
+  (`isolateEvents`), and a sheet nested in a modal Radix dialog opts back in to
+  pointer events.
+- Wide screen: a centred Radix dialog (520 px, `wide` 720 px) with the same
+  head, lead, rows and bar (`is-dialog-bar`, Cancel at the start, primary at
+  the end). The first field takes focus, so the close button shows no ring.
+- Lead: what the dialog is about (`LeadCard`): the item being deleted, the
+  account being edited, the planned item being matched, the month a note
+  belongs to. A confirmation uses `ConfirmLead`, a rose bubble with the
+  consequence as one line under it (`neutral` for a calm ask such as Archive
+  account). Support chips mirror values you can read at a glance (type,
+  currency, owner, month, "N linked"). Detail rows (`DetailRow`, `PickerRow`,
+  `DateRow`) hold the fields; a one-field dialog (a note, a typed
+  confirmation) has the field under the lead.
+- Destructive: `tone="danger"` makes the primary button pastel rose with the
+  rose ink (`lsd-primary is-danger`, never a saturated red) and Cancel the
+  quiet button beside it; a typed confirmation (Reset month, Delete month,
+  Empty state) keeps the primary disabled until the words match. Reload app
+  data is the same ask in neutral. `DeleteRowButton`
+  (`delete-row-button.jsx`) is a popover on a wide screen and this sheet on a
+  phone.
+- A dialog that must be answered (`dismissible={false}`: Set up this login)
+  has no close button and no Cancel, ignores Escape, a tap outside and a
+  swipe, and is saved with its one button.
+- Converted: Edit category (the lead bubble shows the live icon and colour;
+  Slug, Icon and Colour are rows), Transfer details (Done in the bar, Convert
+  entry or Break connection apart at the start), Delete entry and Delete
+  split, Delete split row, Reset and Delete month, Clear unresolved transfers,
+  the row, month and Summary notes (`note-sheet-dialog.jsx`, one
+  `MonthNoteDialog` that Summary loads on demand), Match planned item
+  (`month-plan-link-dialog.jsx`), the Settings account, person, category and
+  match rule editors, Statement checkpoint (fits a phone), Set up this login,
+  Reload app data and Empty state, Restore preview row, Set diagnostic post
+  date, "Update connected note?" (Cancel, Save only this and Update both), the
+  Month Actions list (a sheet of Detail rows on a phone; the popover stays on
+  a wide screen), "I've topped up" and the import progress sheet (Close in
+  its bar). The Month plan-row sheet already served Add income source, Add
+  budget bucket and Add planned item on a phone; wide screens keep the inline
+  add rows.
+- The phone picker sheet (`picker-sheet.jsx`, lazy-loaded by
+  `ResponsiveSelect` and the Entries multi-select because both are
+  first-screen code) is a bottom sheet with the handle, a 44 px close, the
+  options as a scrolling list under the title and Close in its bar (Clear and
+  Done for several choices).
+- Tests: `tests/e2e/dialogs-lead-support-detail.spec.js` (primary, Cancel,
+  destructive confirm, tap targets, hidden money; WebKit and Chromium).
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display
@@ -1933,8 +1994,10 @@ the plan-table redesign.
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
-Month plan sheets, the Entries add and edit sheets, the import progress
-sheet and the Claude "I've topped up" sheet. It behaves like the modal
+Month plan sheets, the Entries add and edit sheets, and every dialog on
+`SheetDialog` (see "Dialogs and small sheets" under "Lead · Support · Detail":
+the import progress sheet, the Claude "I've topped up" sheet, the delete and
+note sheets and the Settings editors). It behaves like the modal
 desktop dialogs, and swipes down to close (below):
 
 - Focus moves into the sheet on open. The sheet itself takes focus, not a

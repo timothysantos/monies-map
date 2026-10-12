@@ -1,5 +1,4 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowDown, ArrowUp, ChevronRight, ExternalLink, Eye, EyeOff, GripVertical, Receipt, ShieldCheck, Smartphone, Sparkles, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ExternalLink, Eye, EyeOff, GripVertical, Receipt, RefreshCw, ShieldCheck, Smartphone, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { buildClaudeCreditLine } from "./claude-credit-model";
@@ -10,6 +9,7 @@ import { importMessages } from "./copy/en-SG-imports";
 import { humanizeEnum } from "./enum-labels";
 import { settingsMessages } from "./copy/en-SG-settings";
 import { useMoneyPrivacy } from "./money-privacy";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { describeAccountLine } from "./settings-account-line";
@@ -18,7 +18,8 @@ import { SettingsSection } from "./settings-section";
 import { describeAskAi } from "./settings-summary-model";
 import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
 import { buildPaymentWayAccountOptions, findDuplicateCategoryMatchRules } from "./settings-workflow";
-import { CategoryGlyph, DeleteRowButton, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
+import { CategoryGlyph, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { paletteColour } from "./palette-colour";
 
@@ -1234,118 +1235,83 @@ export function SettingsDemoSection({
         <button type="button" className="subtle-action" onClick={onReseed} disabled={isSubmitting}>
           {isSubmitting ? messages.common.working : settingsMessages.reseed}
         </button>
-        <Dialog.Root
-          open={reloadDialogOpen}
-          onOpenChange={(open) => {
-            if (!open && isSubmitting) {
-              return;
-            }
-            onReloadDialogOpenChange(open);
-          }}
-        >
-          <Dialog.Trigger asChild>
-            <button type="button" className="subtle-action" disabled={isSubmitting}>
-              {settingsMessages.refresh}
-            </button>
-          </Dialog.Trigger>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content">
-              <div className="note-dialog-head">
-                <div>
-                  <Dialog.Title>{settingsMessages.reloadDataTitle}</Dialog.Title>
-                  <Dialog.Description>{settingsMessages.reloadDataDetail}</Dialog.Description>
-                </div>
-                <Dialog.Close asChild>
-                  <button
-                    type="button"
-                    className="icon-action subtle-cancel"
-                    aria-label="Close reload app data dialog"
-                    disabled={isSubmitting}
-                  >
-                    <X size={16} />
-                  </button>
-                </Dialog.Close>
-              </div>
-              <input
-                className="table-edit-input"
-                placeholder={settingsMessages.reloadDataPlaceholder}
-                value={reloadText}
-                onChange={(event) => onReloadTextChange(event.target.value)}
-              />
-              <div className="note-dialog-actions">
-                <Dialog.Close asChild>
-                  <button type="button" className="subtle-action" disabled={isSubmitting}>Cancel</button>
-                </Dialog.Close>
-                <button
-                  type="button"
-                  className="subtle-action"
-                  disabled={reloadText.trim().toLowerCase() !== "reload data" || isSubmitting}
-                  onClick={onRefresh}
-                >
-                  {isSubmitting ? messages.common.working : settingsMessages.reloadDataConfirm}
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-        <Dialog.Root
-          open={emptyStateDialogOpen}
-          onOpenChange={(open) => {
-            if (!open && isSubmitting) {
-              return;
-            }
-            onEmptyStateDialogOpenChange(open);
-          }}
-        >
-          <Dialog.Trigger asChild>
-            <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
-              {settingsMessages.emptyState}
-            </button>
-          </Dialog.Trigger>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content">
-              <div className="note-dialog-head">
-                <div>
-                  <Dialog.Title>{settingsMessages.emptyState}</Dialog.Title>
-                  <Dialog.Description>{settingsMessages.emptyStateDetail}</Dialog.Description>
-                </div>
-                <Dialog.Close asChild>
-                  <button
-                    type="button"
-                    className="icon-action subtle-cancel"
-                    aria-label="Close empty-state dialog"
-                    disabled={isSubmitting}
-                  >
-                    <X size={16} />
-                  </button>
-                </Dialog.Close>
-              </div>
-              <input
-                className="table-edit-input"
-                placeholder={settingsMessages.emptyStatePlaceholder}
-                value={emptyStateText}
-                onChange={(event) => onEmptyStateTextChange(event.target.value)}
-              />
-              <div className="note-dialog-actions">
-                <Dialog.Close asChild>
-                  <button type="button" className="subtle-action" disabled={isSubmitting}>Cancel</button>
-                </Dialog.Close>
-                <button
-                  type="button"
-                  className="subtle-action subtle-danger"
-                  disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
-                  onClick={onEmptyState}
-                >
-                  {isSubmitting ? messages.common.working : settingsMessages.emptyStateConfirm}
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+        <button type="button" className="subtle-action" disabled={isSubmitting} aria-haspopup="dialog" onClick={() => onReloadDialogOpenChange(true)}>
+          {settingsMessages.refresh}
+        </button>
+        <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting} aria-haspopup="dialog" onClick={() => onEmptyStateDialogOpenChange(true)}>
+          {settingsMessages.emptyState}
+        </button>
+        {reloadDialogOpen ? (
+          <TypedConfirmDialog
+            icon={RefreshCw}
+            title={settingsMessages.reloadDataTitle}
+            detail={settingsMessages.reloadDataDetail}
+            closeLabel="Close reload app data dialog"
+            placeholder={settingsMessages.reloadDataPlaceholder}
+            phrase="reload data"
+            confirmLabel={settingsMessages.reloadDataConfirm}
+            text={reloadText}
+            isWorking={isSubmitting}
+            onTextChange={onReloadTextChange}
+            onConfirm={onRefresh}
+            onClose={() => onReloadDialogOpenChange(false)}
+          />
+        ) : null}
+        {emptyStateDialogOpen ? (
+          <TypedConfirmDialog
+            danger
+            icon={Trash2}
+            title={settingsMessages.emptyState}
+            detail={settingsMessages.emptyStateDetail}
+            closeLabel="Close empty-state dialog"
+            placeholder={settingsMessages.emptyStatePlaceholder}
+            phrase="empty state"
+            confirmLabel={settingsMessages.emptyStateConfirm}
+            text={emptyStateText}
+            isWorking={isSubmitting}
+            onTextChange={onEmptyStateTextChange}
+            onConfirm={onEmptyState}
+            onClose={() => onEmptyStateDialogOpenChange(false)}
+          />
+        ) : null}
       </div>
       <p className="settings-hint">{settingsMessages.refreshHint}</p>
     </SettingsSection>
+  );
+}
+
+// Reload and Empty state ask for the words typed first. Reload replaces the
+// data, so it is a neutral confirmation; Empty state deletes it, so it is rose.
+function TypedConfirmDialog({ danger = false, icon, title, detail, closeLabel, placeholder, phrase, confirmLabel, text, isWorking, onTextChange, onConfirm, onClose }) {
+  return (
+    <SheetDialog
+      tone={danger ? "danger" : undefined}
+      title={title}
+      description={detail}
+      descriptionHidden
+      closeLabel={closeLabel}
+      lead={(
+        <ConfirmLead icon={icon} title={title}>
+          <p className="lsd-note">{detail}</p>
+        </ConfirmLead>
+      )}
+      primaryLabel={isWorking ? messages.common.working : confirmLabel}
+      primaryDisabled={text.trim().toLowerCase() !== phrase || isWorking}
+      isSubmitting={isWorking}
+      onSubmit={onConfirm}
+      onClose={onClose}
+    >
+      <label className="sheet-dialog-field">
+        <input
+          className="table-edit-input"
+          placeholder={placeholder}
+          aria-label={placeholder}
+          autoComplete="off"
+          autoCapitalize="none"
+          value={text}
+          onChange={(event) => onTextChange(event.target.value)}
+        />
+      </label>
+    </SheetDialog>
   );
 }

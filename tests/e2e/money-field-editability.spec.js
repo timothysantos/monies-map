@@ -357,7 +357,7 @@ test.describe("money field editability", () => {
     await expect(page.locator(".settings-account-row").filter({ hasText: "UOB One" }).first()).toContainText(formatMoney(123456));
 
     await page.locator(".settings-account-row").filter({ hasText: "UOB One" }).first().getByRole("button", { name: "Reconcile" }).click();
-    const reconciliationDialog = page.locator(".settings-reconciliation-dialog");
+    const reconciliationDialog = page.locator(".statement-checkpoint-dialog");
     await expect(reconciliationDialog.getByRole("heading", { name: "Statement checkpoint" })).toBeVisible();
     await reconciliationDialog.getByLabel("Statement month").fill("2026-05");
     await reconciliationDialog.getByLabel("Statement start date").fill("2026-05-01");

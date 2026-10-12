@@ -54,7 +54,6 @@ import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
 import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
-import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -127,6 +126,8 @@ const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ def
 const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
 // The phone's "Pick a month" sheet loads when it is first opened.
 const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
+// Only an unlinked login ever sees this dialog, and it uses the shared sheet frame.
+const LoginRegistrationDialog = lazy(() => import("./login-registration-dialog.jsx").then((module) => ({ default: module.LoginRegistrationDialog })));
 
 // Canonical route registry for the top navigation and route-based prefetching.
 // One Summary tab stands for two routes: /summary (All months) and /month (one
@@ -3248,6 +3249,7 @@ export function App() {
 
       {/* Login registration is modal because it must interrupt the flow only when the shell has no stable identity mapping. */}
       {loginRegistrationDraft ? (
+        <Suspense fallback={null}>
         <LoginRegistrationDialog
           draft={loginRegistrationDraft}
           people={appShell.household.people}
@@ -3264,6 +3266,7 @@ export function App() {
           }}
           onNameChange={(name) => setLoginRegistrationDraft((current) => current ? { ...current, name } : current)}
         />
+        </Suspense>
       ) : null}
 
       {renderedTabId === "entries" && typeof document !== "undefined"

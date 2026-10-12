@@ -1751,6 +1751,22 @@ use them. `tests/lead-support-detail.test.mjs` renders each block's states;
 13 profile (tagged `@webkit`), its 44px tap targets and the Summary lead's
 figures. The colour guard reads `src/client/ui` too.
 
+Dialogs and small sheets use one more shared piece, `SheetDialog`
+(`src/client/sheet-dialog.jsx`, CSS in `sheet-dialog.css`): on a phone it is
+the shared `EntryMobileSheet` with the actions in its bottom bar, on a wide
+screen a centred Radix dialog with the same head, lead, rows and bar. A caller
+passes the copy, a `lead` (`LeadCard`, or `ConfirmLead` for a confirmation),
+the rows or fields as children, and the actions (`primaryLabel`, `onSubmit`,
+`quietLabel`, `destructive`, `tone="danger"`). `dismissible={false}` is for a
+dialog that must be answered. Mount it only while it is open. Keep it, and
+anything that imports it, out of first-screen files: `App.jsx`,
+`summary-panel.jsx`, `responsive-select.jsx` and `ui-components.jsx` load
+`login-registration-dialog.jsx`, `month-note-dialog.jsx` and `picker-sheet.jsx`
+with `React.lazy`, and `check:bundle` fails if a new first-screen file appears.
+`DeleteRowButton` lives in `delete-row-button.jsx`, not in `ui-components.jsx`.
+`tests/e2e/dialogs-lead-support-detail.spec.js` proves each dialog's primary
+action, Cancel, destructive confirm, tap targets and hidden money.
+
 ## What does background prefetching do?
 
 After the first usable screen renders, the app also uses browser idle time to
