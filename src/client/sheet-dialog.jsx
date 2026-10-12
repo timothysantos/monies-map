@@ -80,7 +80,7 @@ export function ConfirmLead({ icon, title, subtitle = null, amount = null, tone 
  *   className?: string, tone?: "danger", lead?: any, errorMessage?: string, errorContent?: any,
  *   children?: any, primaryLabel?: any, primaryDisabled?: boolean, onSubmit?: () => void,
  *   quietLabel?: any, onQuiet?: () => void, destructive?: any, secondary?: any, hideSubmit?: boolean,
- *   isSubmitting?: boolean, isDirty?: boolean, onClose: () => void, wide?: boolean, asSheet?: boolean
+ *   isSubmitting?: boolean, isDirty?: boolean, onClose: () => void, wide?: boolean, asSheet?: boolean, dismissible?: boolean
  * }} props
  */
 export function SheetDialog({
@@ -106,15 +106,19 @@ export function SheetDialog({
   isDirty = false,
   onClose,
   wide = false,
-  asSheet = undefined
+  asSheet = undefined,
+  dismissible = true
 }) {
   // The phone layout by default; Month also opens its sheets on a portrait
   // tablet, which passes `asSheet`.
   const isPhoneLayout = useIsMobileLayout();
   const isMobile = asSheet ?? isPhoneLayout;
   const isDanger = tone === "danger";
+  // A dialog that must be answered (Set up this login) has no close button,
+  // ignores Escape and a tap outside, and cannot be swiped away.
+  const isLocked = isSubmitting || !dismissible;
   const close = () => {
-    if (!isSubmitting) {
+    if (!isLocked) {
       onClose();
     }
   };
@@ -136,7 +140,7 @@ export function SheetDialog({
     <BottomActions
       className={barClass}
       destructive={destructive}
-      quietLabel={quietLabel}
+      quietLabel={dismissible ? quietLabel : null}
       quietDisabled={isSubmitting}
       onQuiet={onQuiet ?? close}
       secondary={secondary}
@@ -164,9 +168,10 @@ export function SheetDialog({
         errorContent={errorContent}
         saveLabel={typeof primaryLabel === "string" ? primaryLabel : ""}
         isSaveDisabled={primaryDisabled || hideSubmit}
-        isSubmitting={isSubmitting}
+        hideClose={!dismissible}
+        isSubmitting={isLocked}
         isDirty={isDirty}
-        onClose={onClose}
+        onClose={close}
         onSave={submit}
         footerContent={actions("is-sheet-bar")}
       >
@@ -195,15 +200,17 @@ export function SheetDialog({
                 <Dialog.Title>{title}</Dialog.Title>
                 <Dialog.Description className={descriptionHidden ? "lsd-sr-only" : undefined}>{description}</Dialog.Description>
               </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
-                disabled={isSubmitting}
-                onClick={close}
-              >
-                <X size={16} />
-              </button>
+              {dismissible ? (
+                <button
+                  type="button"
+                  className="icon-action subtle-cancel"
+                  aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
+                  disabled={isSubmitting}
+                  onClick={close}
+                >
+                  <X size={16} />
+                </button>
+              ) : null}
             </div>
             {errorContent ?? <InlineError message={errorMessage} />}
             {body}

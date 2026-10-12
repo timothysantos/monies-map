@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
+import { RestorePreviewRowDialog } from "./import-restore-row-dialog";
 import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
@@ -315,35 +315,11 @@ function PreviewRowsTable({
           })}
         </tbody>
       </table>
-      <Dialog.Root open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{importMessages.restorePreviewRow}</Dialog.Title>
-                <Dialog.Description>{importMessages.restoreExactCoveredRowConfirm}</Dialog.Description>
-              </div>
-              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
-            </div>
-            <div className="note-dialog-actions">
-              <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
-              <button
-                type="button"
-                className="dialog-primary"
-                onClick={() => {
-                  if (restoreTarget) {
-                    onUpdatePreviewRowCommitStatus(restoreTarget.rowId, "included");
-                  }
-                  setRestoreTarget(null);
-                }}
-              >
-                Restore row
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <RestorePreviewRowDialog
+        row={restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onRestore={(row) => onUpdatePreviewRowCommitStatus(row.rowId, "included")}
+      />
     </div>
   );
 }

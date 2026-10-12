@@ -50,6 +50,8 @@ export function EntryMobileSheet({
   // and key events inside the sheet (see keepEventsInDialog in
   // category-edit-dialog.jsx).
   isolateEvents = false,
+  // A sheet that must be answered has no close button.
+  hideClose = false,
   className = "",
   headerAction = null,
   errorMessage = "",
@@ -152,14 +154,16 @@ export function EntryMobileSheet({
                 </div>
                 <div className="entry-composer-head-actions">
                   {headerAction}
-                  <button
-                    type="button"
-                    className="icon-action subtle-cancel entry-composer-close"
-                    aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
-                    onClick={onClose}
-                  >
-                    <X size={16} />
-                  </button>
+                  {hideClose ? null : (
+                    <button
+                      type="button"
+                      className="icon-action subtle-cancel entry-composer-close"
+                      aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
+                      onClick={onClose}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
               {errorContent ?? <InlineError message={errorMessage} className="entry-submit-error" />}

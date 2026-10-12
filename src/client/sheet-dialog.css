@@ -258,3 +258,58 @@
   border: 0;
   background: transparent;
 }
+
+/* A second, outlined action beside the primary one ("Save only this"). */
+.lsd-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lsd-secondary:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.lsd-secondary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Three actions (Cancel, Save only this, Update both) share the bar: Cancel
+   stays at the start, the other two split the row under it on a phone. */
+.sheet-dialog.is-three-actions .lsd-bottom {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end {
+  flex: 1 1 100%;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end > * {
+  flex: 1 1 0;
+  max-width: none;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom.is-dialog-bar .lsd-bottom-end {
+  flex: 1 1 auto;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom.is-dialog-bar .lsd-bottom-end > * {
+  flex: 0 0 auto;
+}
+
+.linked-note-sync-dialog .linked-note-sync-grid {
+  margin: 0;
+}
