@@ -30,6 +30,9 @@ test("Month lead: the cards' spend, plan, target and remaining budget, with inco
     headroom: { amountMinor: 80_000, isOver: false, tone: "in" },
     income: { amountMinor: 650_000, tone: "in", planMinor: 600_000 },
     saved: { amountMinor: 230_000, tone: "in", planMinor: 180_000 },
+    plannedInvestMinor: 0,
+    investedMinor: 0,
+    savedMovedMinor: 0,
     remaining: {
       label: "Remaining budget",
       amountMinor: 100_000,

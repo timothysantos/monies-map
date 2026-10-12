@@ -6,6 +6,7 @@ import { buildPlanRowsForView } from "./month-projection";
 import { incomeMinor, spendingMinor } from "./category-offset";
 import { buildDonutChart } from "./donut-chart-projection";
 import { flowTone, signTone, spendTone } from "./money-tone";
+import { plannedInvestMinor } from "./money-jobs";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 import type {
   AccountDto,
@@ -17,11 +18,16 @@ import type {
   SummaryMonthDto
 } from "../types/dto";
 
+// A month's planned totals from its current plan rows, with the investment
+// goal (money-jobs.ts) beside them. The goal is summed into the Summary's
+// "Planned investments" card and never sent per month.
+export type PlannedSummaryMonth = SummaryMonthDto & { plannedInvestMinor?: number };
+
 export function buildSummaryPage(
   personId: string,
   visibleEntries: EntryDto[],
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
-  plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
+  plannedSummaryMonthsByView: Record<string, PlannedSummaryMonth[]>,
   categories: CategoryDto[],
   selectedMonth: string,
   summaryRangeMonths: string[],
@@ -52,6 +58,12 @@ export function buildSummaryPage(
   const actualIncomeTotalMinor = sumMinor(months, "actualIncomeMinor");
   const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
   const realizedSavingsMinor = sumMinor(months, "realizedSavingsMinor");
+  // The investment goal comes from the plan rows of the range's months (the
+  // stored month totals have no field for it).
+  const plannedInvestTotalMinor = rangeMonths.reduce(
+    (sum, month) => sum + (plannedFallbackMonthByKey.get(month)?.plannedInvestMinor ?? 0),
+    0
+  );
   const metricCards: MetricCardDto[] = [
     {
       label: "Planned income",
@@ -82,6 +94,11 @@ export function buildSummaryPage(
       label: "Realized savings",
       amountMinor: realizedSavingsMinor,
       tone: signTone(realizedSavingsMinor)
+    },
+    {
+      label: "Planned investments",
+      amountMinor: plannedInvestTotalMinor,
+      tone: "plan"
     }
   ];
 
@@ -143,14 +160,16 @@ export function buildEmptySummaryMonth(month: string): SummaryMonthDto {
 }
 
 export function applyActualsFromEntries(
-  snapshot: SummaryMonthDto,
+  snapshot: PlannedSummaryMonth,
   visibleEntries: EntryDto[],
   month: string
 ): SummaryMonthDto {
   const derived = buildDerivedSummaryMonth(month, visibleEntries);
+  // A planned month's investment goal stays on the server (buildSummaryPage).
+  const { plannedInvestMinor: _plannedInvest, ...summaryMonth } = snapshot;
 
   return {
-    ...snapshot,
+    ...summaryMonth,
     actualIncomeMinor: derived.actualIncomeMinor,
     realExpensesMinor: derived.realExpensesMinor,
     realizedSavingsMinor: derived.actualIncomeMinor - derived.realExpensesMinor,
@@ -162,7 +181,7 @@ export async function loadPlannedSummaryMonthsForViews(
   db: D1Database,
   viewIds: string[],
   months: string[]
-): Promise<Record<string, SummaryMonthDto[]>> {
+): Promise<Record<string, PlannedSummaryMonth[]>> {
   const uniqueViewIds = [...new Set(viewIds)].filter(Boolean);
   const uniqueMonths = [...new Set(months)].filter(Boolean).sort();
   const monthPlanRowsByMonth = new Map(
@@ -176,7 +195,7 @@ export async function loadPlannedSummaryMonthsForViews(
       ] as const)))
     )
   );
-  const result = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as SummaryMonthDto[]]));
+  const result = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as PlannedSummaryMonth[]]));
 
   for (const viewId of uniqueViewIds) {
     for (const month of uniqueMonths) {
@@ -203,7 +222,8 @@ export async function loadPlannedSummaryMonthsForViews(
         realizedSavingsMinor: 0,
         estimatedDiffMinor: plannedIncomeMinor - estimatedExpensesMinor,
         realDiffMinor: 0,
-        note: "Month derived from current planning rows."
+        note: "Month derived from current planning rows.",
+        plannedInvestMinor: plannedInvestMinor(visibleRows)
       });
     }
   }

@@ -1,4 +1,5 @@
 import { headroomTone } from "../domain/money-tone";
+import { isInvestmentsCategoryName, isSavingsCategoryName } from "../domain/money-jobs";
 import { formatMonthLabel } from "./formatters";
 
 // The Summary top in the Lead · Support · Detail language (design.md): one
@@ -16,9 +17,23 @@ const CARD_LABELS = {
   realizedSavings: "Realized savings"
 };
 
+// The money filed under Investments and under Savings in the period's
+// category share (the same spending the lead's spend counts), for the
+// savings bar and the money jobs (money-jobs-model.js).
+function movedMoney(categoryShare) {
+  let investedMinor = 0;
+  let savedMovedMinor = 0;
+  for (const slice of categoryShare ?? []) {
+    if (isInvestmentsCategoryName(slice.label)) investedMinor += slice.valueMinor;
+    else if (isSavingsCategoryName(slice.label)) savedMovedMinor += slice.valueMinor;
+  }
+  return { investedMinor, savedMovedMinor };
+}
+
 // Null when any of the six cards is missing (the page is still loading): the
-// panel then shows the cards as they come.
-export function buildSummaryLeadModel(metricCards = []) {
+// panel then shows the cards as they come. "Planned investments" and the
+// category share are optional: without them nothing is invested.
+export function buildSummaryLeadModel(metricCards = [], { categoryShare = [] } = {}) {
   const byLabel = new Map(metricCards.map((card) => [card.label, card]));
   const card = {};
   for (const [key, label] of Object.entries(CARD_LABELS)) {
@@ -42,7 +57,9 @@ export function buildSummaryLeadModel(metricCards = []) {
       ? { amountMinor: Math.abs(headroomMinor), isOver: headroomMinor < 0, tone: headroomTone(headroomMinor) }
       : null,
     income: { amountMinor: card.actualIncome.amountMinor, tone: card.actualIncome.tone, planMinor: card.plannedIncome.amountMinor },
-    saved: { amountMinor: card.realizedSavings.amountMinor, tone: card.realizedSavings.tone, planMinor: card.savingsTarget.amountMinor }
+    saved: { amountMinor: card.realizedSavings.amountMinor, tone: card.realizedSavings.tone, planMinor: card.savingsTarget.amountMinor },
+    plannedInvestMinor: byLabel.get("Planned investments")?.amountMinor ?? 0,
+    ...movedMoney(categoryShare)
   };
 }
 

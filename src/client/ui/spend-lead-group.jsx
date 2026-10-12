@@ -3,7 +3,9 @@ import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
 import { money } from "../formatters";
+import { splitMoneyUse } from "../money-jobs-model";
 import { LeadCard } from "./lead-support-detail";
+import { MoneyJobs } from "./money-jobs";
 import { SavingsBar } from "./savings-bar";
 
 const copy = messages.summary.lead;
@@ -14,14 +16,15 @@ const planWords = messages.summary.monthChoice;
 // `children`). `model` is buildSummaryLeadModel's shape.
 //
 // Under the figure is its plan line ("63% of plan", "$x under plan"), then the
-// savings bar (savings-bar.jsx), built from the income, spend, planned spend
-// and savings target this model already has. The old spend-vs-plan bar is
-// gone: three bars were too many, and the text line says the same.
+// savings bar (savings-bar.jsx) and the money jobs (money-jobs.jsx), built
+// from the income, spend, plans and invested money this model already has.
+// The old spend-vs-plan bar is gone: three bars were too many, and the text
+// line says the same.
 //
 // `inline` is the Month top: Income, Saved and `children` (Remaining budget)
 // fold into the lead card as one row of equal columns under the bar, in
 // text colour only, so the whole card stays compact on a phone.
-export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName = "", inline = false, children = null }) {
+export function SpendLeadGroup({ model, eyebrow, period, className = "", leadClassName = "", inline = false, children = null }) {
   return (
     <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${className}`}>
       <LeadCard
@@ -39,12 +42,7 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
         )}
       >
         <SpendLine model={model} />
-        <SavingsBar
-          income={model.income.amountMinor}
-          spent={model.spent.amountMinor}
-          plannedSpend={model.plannedSpendMinor}
-          savingsTarget={model.saved.planMinor}
-        />
+        <MoneyUse model={model} period={period} />
         {inline ? (
           <div className="lead-columns">
             <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
@@ -73,6 +71,30 @@ export function SpendLeadGroup({ model, eyebrow, className = "", leadClassName =
         {children}
       </div>}
     </div>
+  );
+}
+
+// The savings bar and the money jobs under it read the same split of the
+// period's money (splitMoneyUse): spend, invested and kept, and the plan's
+// spend, investment and savings jobs. `period` is { startMonth, endMonth,
+// inProgress } for the parts' menus and the jobs' "so far".
+function MoneyUse({ model, period }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const hidden = !areTotalsVisible;
+  const figures = splitMoneyUse({
+    incomeMinor: model.income.amountMinor,
+    spentMinor: model.spent.amountMinor,
+    investedMinor: model.investedMinor,
+    savedMovedMinor: model.savedMovedMinor,
+    plannedSpendMinor: model.plannedSpendMinor,
+    savingsTargetMinor: model.saved.planMinor,
+    plannedInvestMinor: model.plannedInvestMinor
+  });
+  return (
+    <>
+      <SavingsBar figures={figures} hidden={hidden} period={period} />
+      <MoneyJobs figures={figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />
+    </>
   );
 }
 

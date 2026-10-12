@@ -22,7 +22,11 @@ test("the lead and its pills carry exactly the metric cards' figures and tones",
     percentOfPlan: 60,
     headroom: { amountMinor: 1_502_985, isOver: false, tone: "in" },
     income: { amountMinor: 11_070_000, tone: "in", planMinor: 11_070_000 },
-    saved: { amountMinor: 8_792_233, tone: "in", planMinor: 1_800_000 }
+    saved: { amountMinor: 8_792_233, tone: "in", planMinor: 1_800_000 },
+    // No "Planned investments" card and no category share: nothing invested.
+    plannedInvestMinor: 0,
+    investedMinor: 0,
+    savedMovedMinor: 0
   });
 });
 
