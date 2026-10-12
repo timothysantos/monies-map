@@ -1,3 +1,5 @@
+import { describeLoadFailure } from "./request-errors";
+
 // Shared presentation for "nothing here", "this failed" and "this screen
 // failed" states, so every page words, structures and retries them the same
 // way. Presentation only: callers own the copy (from copy/en-SG.js) and every
@@ -41,12 +43,21 @@ export function InlineError({ message, retryLabel = "", retryingLabel = "", isRe
 
 // A whole screen (or the whole app) could not be shown. `actions` lists the
 // buttons in order; the first `primary` one is the main way forward.
-export function ErrorPanel({ title, detail, children = null, actions = [], className = "" }) {
+// `technical` is the failure's technical reason: the screen shows one plain
+// line for it (describeLoadFailure) and keeps the reason itself on the panel
+// as data-technical-detail, for inspection, never as screen text.
+export function ErrorPanel({ title, detail, technical = "", children = null, actions = [], className = "" }) {
+  const plainLine = describeLoadFailure(technical);
   return (
-    <section className={["panel app-loading-panel app-loading-panel-error", className].filter(Boolean).join(" ")} role="alert">
+    <section
+      className={["panel app-loading-panel app-loading-panel-error", className].filter(Boolean).join(" ")}
+      role="alert"
+      data-technical-detail={technical || undefined}
+    >
       <div>
         <p>{title}</p>
         {detail ? <p className="app-loading-error-copy">{detail}</p> : null}
+        {plainLine ? <p className="app-loading-issue-inline">{plainLine}</p> : null}
         {children}
       </div>
       {actions.length ? (

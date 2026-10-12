@@ -21,7 +21,6 @@ test("the lead and its pills carry exactly the metric cards' figures and tones",
     plannedSpendMinor: 3_780_752,
     percentOfPlan: 60,
     headroom: { amountMinor: 1_502_985, isOver: false, tone: "in" },
-    progress: { valueMinor: 2_277_767, planMinor: 3_780_752 },
     income: { amountMinor: 11_070_000, tone: "in", planMinor: 11_070_000 },
     saved: { amountMinor: 8_792_233, tone: "in", planMinor: 1_800_000 }
   });

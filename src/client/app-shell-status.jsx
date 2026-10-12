@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { describeLoadFailure } from "./request-errors";
 import { ErrorPanel } from "./ui-states";
 
 // Loading and error chrome for the app shell. Presentation only: App decides
@@ -33,7 +34,7 @@ export function EnvironmentBanner({ environment }) {
 
 // A whole-shell failure with one retry. The detail line is plain language;
 // the technical reason (the loading issue, or the raw error when no issue was
-// recorded) sits underneath in the smaller issue line.
+// recorded) goes to the panel, which words it plainly (see ErrorPanel).
 export function ShellErrorScreen({ environment, title, detail = messages.common.loadFailedDetail, message, diagnosis = null, issue, retryLabel, onRetry }) {
   const technical = issue && (!message || String(issue).includes(message)) ? issue : [message, issue].filter(Boolean).join(" · ");
   return (
@@ -42,10 +43,10 @@ export function ShellErrorScreen({ environment, title, detail = messages.common.
       <ErrorPanel
         title={title}
         detail={detail}
+        technical={technical}
         actions={[{ label: retryLabel, onClick: onRetry, primary: true }]}
       >
         {diagnosis}
-        {technical ? <p className="app-loading-issue-inline">{technical}</p> : null}
       </ErrorPanel>
     </main>
   );
@@ -68,11 +69,13 @@ function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
   const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
   const detailText = ellipsizeText(status?.detail ?? "");
   const meta = [percentText, detailText, elapsedText].filter(Boolean).join(" · ");
+  // A past failure is worded plainly here too, never as its technical reason.
+  const issueLine = describeLoadFailure(status?.issue);
 
   return (
     <div className={`app-loading-status ${compact ? "is-compact" : ""}`}>
       <small title={status?.detail ?? ""}>{meta}</small>
-      {status?.issue ? <small className="is-error" title={status.issue}>{ellipsizeText(status.issue, compact ? 64 : 84)}</small> : null}
+      {issueLine ? <small className="is-error" title={status.issue}>{issueLine}</small> : null}
     </div>
   );
 }

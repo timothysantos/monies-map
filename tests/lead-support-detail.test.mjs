@@ -167,8 +167,8 @@ test("a tag sits above the head line and children come after the chips", () => {
 test("a person chip takes the person's colour and a state chip its pastel pair", () => {
   const person = render(h(MetaChip, { person: "Tim" }, "Tim"));
   assert.match(person, /class="lsd-chip is-person"/);
-  assert.match(person, /--person-colour:#33A471/);
-  assert.match(person, /--person-ink:color-mix\(in srgb, #33A471 55%, var\(--text\)\)/);
+  assert.match(person, /--person-colour:#46788E/);
+  assert.match(person, /--person-ink:color-mix\(in srgb, #46788E 55%, var\(--text\)\)/);
   assert.match(person, /--person-chip-bg:color-mix\(in srgb, #[0-9A-F]{6} 16%, white\)/);
 
   const state = render(h(MetaChip, { tone: "mint" }, "Statement certified"));

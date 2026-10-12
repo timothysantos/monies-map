@@ -53,8 +53,8 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
 
 export function getSplitGroupChipStyle(groupName) {
   // Eight hues of the category palette; the chip is its tint with a darker
-  // ink (5.4:1 or more), as every pastel surface is.
-  const palette = ["#5C90C9", "#33A471", "#9385D9", "#D07E43", "#499DA4", "#C0862A", "#DA6DA1", "#7C8791"];
+  // ink (5:1 or more), as every pastel surface is.
+  const palette = ["#46788E", "#758C4D", "#625A7A", "#B16739", "#699696", "#C67D3F", "#A77899", "#6E858A"];
   const hash = Array.from(String(groupName)).reduce(
     (value, character) => ((value << 5) - value + character.charCodeAt(0)) | 0,
     0

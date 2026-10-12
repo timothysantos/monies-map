@@ -601,6 +601,23 @@ export const importMessages = {
   bankCertificationStatusIncomingStatement: "Statement certified on commit",
   openLedgerEntry: "Open ledger entry",
   needsReview: "Needs review",
+  // The file card at the top of a preview (Lead · Support · Detail).
+  howImportingTitle: "How importing works",
+  fileCardRowsCaption: (count) => (count === 1 ? "row will import" : "rows will import"),
+  fileCardCovers: (start, end) => `Covers ${start} \u2013 ${end}`,
+  fileCardAccountMapped: "Account mapped",
+  fileCardMapAccounts: (count) => (count === 1 ? "Map 1 account" : `Map ${count} accounts`),
+  // Preview rows on a phone: flat rows that open the row sheet.
+  previewRowsTapHint: "tap a row to edit",
+  editRowTitle: "Edit row",
+  editRowDone: "Done",
+  rowFieldType: "Type",
+  rowFieldCategory: "Category",
+  rowFieldAccount: "Account",
+  rowFieldOwner: "Owner",
+  rowFieldNote: "Note",
+  rowFieldNoteEmpty: "Add a note",
+  rowFieldChooseCategory: "Choose a category",
   willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
   willReconcileExistingRows: (count, sourceType) => sourceType === "pdf"
     ? `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`

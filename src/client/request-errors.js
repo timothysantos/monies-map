@@ -1,3 +1,5 @@
+import { messages } from "./copy/en-SG";
+
 function isHtmlResponseText(detail) {
   const normalizedDetail = String(detail ?? "").trim();
   return /^<!doctype html\b/i.test(normalizedDetail) || /^<html\b/i.test(normalizedDetail);
@@ -65,4 +67,16 @@ export function describeAppShellError(error) {
 
 export function isAppShellResourceLimitError(message) {
   return /cloudflare stopped the worker because it exceeded cpu or resource limits/i.test(String(message ?? ""));
+}
+
+// The one plain line a failed load shows in place of its technical reason
+// ("Page request failed with status 503"): a server, network or Cloudflare
+// failure means the data could not be reached. Any other reason adds no line;
+// the screen's title and detail already say the page could not load and that
+// saved data is safe.
+const UNREACHABLE_PATTERN = /failed with status 5\d\d|\bstatus 5\d\d\b|failed to fetch|load failed|network ?error|network request failed|cloudflare stopped|html error page/i;
+
+/** @param {unknown} technical */
+export function describeLoadFailure(technical) {
+  return UNREACHABLE_PATTERN.test(String(technical ?? "")) ? messages.common.loadFailedUnreachable : "";
 }

@@ -10,11 +10,11 @@ import { gotoPageAfterApi, loadEntriesPage, loadMonthPage, loadSplitsPage, postJ
 // actually sees, so a stylesheet rule that paints over a tone fails here.
 
 const INK = {
-  in: "rgb(23, 104, 74)",
-  short: "rgb(163, 53, 42)",
-  plan: "rgb(47, 91, 134)",
-  text: "rgb(38, 35, 31)",
-  muted: "rgb(115, 111, 105)"
+  in: "rgb(76, 94, 26)",
+  short: "rgb(151, 50, 35)",
+  plan: "rgb(44, 95, 95)",
+  text: "rgb(59, 42, 31)",
+  muted: "rgb(110, 95, 84)"
 };
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
 
@@ -104,8 +104,8 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
     // Nothing spent against no plan: neither under nor over.
     await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
   }
-  const fill = await looks(page.locator(".summary-lead .lsd-bar-fill"));
-  expect(fill.className).toContain(overPlan ? "money-short" : "money-neutral");
+  // The spend-vs-plan bar is gone: the plan line above carries the tone.
+  await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
   const savings = amount("Realized savings");
   expect((await looks(summaryPill(page, "saved").locator("strong .private-money"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
 
@@ -146,7 +146,7 @@ test("Month: over-plan outcomes are rose, under-plan mint, tables text-only", as
   expect(overGap.background).toBe(TRANSPARENT);
   await expect(monthLead(page, ".summary-lead-headroom")).toContainText("over plan");
   expect((await looks(monthLead(page, ".summary-lead-plan"))).color).toBe(INK.plan);
-  expect((await looks(monthLead(page, ".lsd-bar-fill"))).className).toContain("money-short");
+  await expect(monthLead(page, ".lsd-bar")).toHaveCount(0);
 
   // Plan tables: a row over its plan shows a rose variance and actual; the
   // cells stay unfilled.
@@ -271,20 +271,30 @@ test("hidden money shows no tone", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openSummary(page, "household", "2026-04");
   await expect(page.getByRole("button", { name: "Show money totals" })).toBeVisible();
-  // The lead: dots in plain ink, the plan muted, the bar's empty track only.
+  // The lead: dots in plain ink, the plan muted, no spend line, only the savings bar's percentages.
   await expect(page.locator(".summary-lead-spent")).toHaveText("••••");
   expect((await looks(page.locator(".summary-lead-spent .private-money"))).color).toBe(INK.text);
   expect((await looks(page.locator(".summary-lead-plan"))).color).toBe(INK.muted);
-  await expect(page.locator(".summary-lead .lsd-bar")).toBeVisible();
-  await expect(page.locator(".summary-lead .lsd-bar-fill")).toHaveCount(0);
+  await expect(page.locator(".summary-lead .savings-bar-track")).toBeVisible();
+  await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
   await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
   for (const metric of ["income", "saved"]) {
     const pill = summaryPill(page, metric);
     await expect(pill.locator("strong")).toHaveText("••••");
     expect((await looks(pill.locator("strong .private-money"))).color, metric).toBe(INK.text);
-    // The pill keeps no mint or rose tint either (a neutral one is fine).
-    const surface = parseColour((await looks(pill)).background).rgb;
-    expect(Math.max(...surface) - Math.min(...surface), `${metric} tint`).toBeLessThan(12);
+    // The pill keeps no mint or rose tint either: none, or the cream neutral.
+    const surface = parseColour((await looks(pill)).background);
+    if (surface.alpha > 0) {
+      const neutral = parseColour(await page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--pastel-neutral)";
+        document.body.append(probe);
+        const colour = getComputedStyle(probe).color;
+        probe.remove();
+        return colour;
+      })).rgb;
+      surface.rgb.forEach((channel, index) => expect(Math.abs(channel - neutral[index]), `${metric} tint`).toBeLessThan(3));
+    }
     expect((await looks(pill.locator(".summary-support-pill-label"))).color).toBe(INK.muted);
   }
 

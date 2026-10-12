@@ -212,8 +212,26 @@
 }
 
 .month-lead.lsd-card {
-  gap: 8px;
-  padding: 14px 16px 6px;
+  gap: 5px;
+  padding: 10px 16px 5px;
+}
+
+/* The savings bar adds two bars and two lines to this card, so the card's
+   other gaps are tight to keep it near 200px on a phone. */
+.month-lead .lsd-progress-line {
+  line-height: 1.15;
+}
+
+.month-lead .savings-bar {
+  gap: 3px;
+}
+
+.month-lead .savings-bar .savings-bar-sentence {
+  margin-top: 0;
+}
+
+.month-lead .lead-column {
+  padding-block: 0;
 }
 
 .metric-detail-popover {
@@ -464,6 +482,11 @@
   .month-panel .month-actions-trigger {
     padding: 2px 0;
     line-height: 1.1;
+  }
+
+  /* Room above "Draft a summary" for its 44 px hit area to clear the note. */
+  .note-card-actions .subtle-action {
+    margin-top: 11px;
   }
 
   .month-lead-group {

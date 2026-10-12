@@ -194,6 +194,7 @@ test("every sheet with a draft tells the swipe whether it changed; the phone Spl
     "entries-panel.jsx",
     "entry-composer-section.jsx",
     "import-batch-bar.jsx",
+    "import-preview-row-list.jsx",
     "month-panel.jsx",
     "month-plan-sheet.jsx"
   ]);

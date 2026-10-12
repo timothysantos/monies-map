@@ -769,7 +769,7 @@ button.split-activity-card:hover {
   .split-date-header {
     margin-bottom: 0;
     margin-inline: -12px;
-    padding: 10px 12px 6px;
+    padding: 9px 12px;
     border-radius: 0;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
@@ -897,8 +897,8 @@ button.split-activity-card:hover {
     font-size: 0.82rem;
   }
 
-  .splits-summary-strip .split-summary-search .search-filter-input {
-    min-height: 34px;
+  .panel-splits .splits-summary-strip .split-summary-search .search-filter-input {
+    min-height: 44px;
     font-size: 0.9rem;
   }
 

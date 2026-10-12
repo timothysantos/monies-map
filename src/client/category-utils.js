@@ -1,4 +1,4 @@
-import { COLOR_OPTIONS, FALLBACK_THEME } from "./ui-options";
+import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS } from "./ui-options";
 
 export function getCategory(categories, item) {
   if (item.categoryId) {
@@ -72,4 +72,17 @@ export function slugify(value) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+// The quiet line under a category's name in Settings and the guide: the
+// icon's label from the picker ("Icon: Food"), and nothing when it only
+// repeats the name. The slug, icon key and hex colour are storage details; the colour is
+// already the swatch beside the name.
+/** @param {{ name: string, iconKey?: string | null }} category */
+export function categoryRowDetail(category) {
+  const label = ICON_OPTIONS.find((option) => option.key === category.iconKey)?.label ?? "";
+  if (!label || label.toLowerCase() === String(category.name ?? "").trim().toLowerCase()) {
+    return "";
+  }
+  return `Icon: ${label}`;
 }

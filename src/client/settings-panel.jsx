@@ -60,6 +60,7 @@ import {
 import { DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
 import { buildSettingsRefreshPlan } from "./settings-refresh-plan";
+import { buildSettingsSummaries } from "./settings-summary-model";
 import {
   buildCheckpointHistoryYears,
   buildCreateAccountDialog,
@@ -1235,6 +1236,17 @@ export function SettingsPanel({
     }
   }
 
+  // The status word on each closed row of the Settings list.
+  const summaries = buildSettingsSummaries({
+    people,
+    accounts: visibleAccounts,
+    shortcutIsSetUp: Boolean(shortcutSettingsDraft.apiKey?.trim()),
+    claudeStatus: claudeCredit.status,
+    categories: visibleCategories,
+    exceptions: safeSettingsPage.reconciliationExceptions ?? [],
+    unresolvedTransfers: safeSettingsPage.unresolvedTransfers ?? []
+  });
+
   function toggleSettingsSection(sectionKey) {
     setSettingsSectionsOpen((current) => ({
       ...current,
@@ -1275,7 +1287,9 @@ export function SettingsPanel({
         </section>
       ) : null}
 
+      <div className="settings-list">
       <SettingsPeopleSection
+        summary={summaries.people}
         people={people}
         isOpen={settingsSectionsOpen.people}
         onToggle={() => toggleSettingsSection("people")}
@@ -1283,6 +1297,7 @@ export function SettingsPanel({
       />
 
       <SettingsAccountsSection
+        summary={summaries.accounts}
         accounts={visibleAccounts}
         categories={categories}
         people={people}
@@ -1309,6 +1324,7 @@ export function SettingsPanel({
       />
 
       <SettingsShortcutApiSection
+        summary={summaries.shortcutApi}
         accounts={accounts}
         draft={shortcutSettingsDraft}
         error={shortcutSettingsError}
@@ -1341,6 +1357,7 @@ export function SettingsPanel({
       />
 
       <SettingsPaymentWaysSection
+        summary={summaries.paymentWays}
         accounts={accounts}
         draft={paymentWaysDraft}
         error={paymentWaysError}
@@ -1352,6 +1369,7 @@ export function SettingsPanel({
       />
 
       <SettingsCategoriesSection
+        summary={summaries.categories}
         categories={visibleCategories}
         isOpen={settingsSectionsOpen.categories}
         onToggle={() => toggleSettingsSection("categories")}
@@ -1362,6 +1380,7 @@ export function SettingsPanel({
 
       <SettingsCategoryMatchRulesSection
         id="settings-category-rules"
+        summary={summaries.categoryRules}
         rules={safeSettingsPage.categoryMatchRules ?? []}
         categories={categories}
         suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
@@ -1383,6 +1402,7 @@ export function SettingsPanel({
       />
 
       <SettingsTrustSection
+        summary={summaries.trust}
         accounts={visibleAccounts}
         exceptions={safeSettingsPage.reconciliationExceptions ?? []}
         isOpen={settingsSectionsOpen.trust}
@@ -1393,6 +1413,7 @@ export function SettingsPanel({
       />
 
       <SettingsTransfersSection
+        summary={summaries.transfers}
         transfers={safeSettingsPage.unresolvedTransfers}
         isOpen={settingsSectionsOpen.transfers}
         isSubmitting={isSubmitting}
@@ -1404,6 +1425,45 @@ export function SettingsPanel({
         onManageTransfer={openTransferManager}
         isRefreshing={isRefreshingTransfers}
       />
+
+      <SettingsErrorDiagnosticsSection
+        summary={summaries.errorDiagnostics}
+        diagnostics={safeSettingsPage.errorDiagnostics ?? []}
+        isOpen={settingsSectionsOpen.errorDiagnostics}
+        isSubmitting={isSubmitting}
+        onToggle={() => toggleSettingsSection("errorDiagnostics")}
+        onRetainLatest={handleRetainLatestErrorDiagnostics}
+      />
+
+      <SettingsActivitySection
+        summary={summaries.activity}
+        activityGroups={recentActivityGroups}
+        isOpen={settingsSectionsOpen.activity}
+        onToggle={() => toggleSettingsSection("activity")}
+      />
+
+      {canUseDemoControls ? (
+        <SettingsDemoSection
+          demo={safeSettingsPage.demo}
+          error={demoActionError}
+          emptyStateDialogOpen={emptyStateDialogOpen}
+          emptyStateText={emptyStateText}
+          isOpen={demoStateOpen}
+          isSubmitting={isSubmitting}
+          reloadDialogOpen={reloadDialogOpen}
+          reloadText={reloadText}
+          onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
+          onReloadDialogOpenChange={setReloadDialogOpen}
+          onToggle={() => setDemoStateOpen((current) => !current)}
+          onEmptyStateTextChange={setEmptyStateText}
+          onReloadTextChange={setReloadText}
+          onReseed={handleReseed}
+          onRefresh={handleRefresh}
+          onEmptyState={handleEmptyState}
+        />
+      ) : null}
+
+      </div>
 
       {transferDialogEntry ? (
         <EntryTransferTools
@@ -1439,41 +1499,6 @@ export function SettingsPanel({
               {settingsMessages.manageTransferReview}
             </button>
           )}
-        />
-      ) : null}
-
-      <SettingsErrorDiagnosticsSection
-        diagnostics={safeSettingsPage.errorDiagnostics ?? []}
-        isOpen={settingsSectionsOpen.errorDiagnostics}
-        isSubmitting={isSubmitting}
-        onToggle={() => toggleSettingsSection("errorDiagnostics")}
-        onRetainLatest={handleRetainLatestErrorDiagnostics}
-      />
-
-      <SettingsActivitySection
-        activityGroups={recentActivityGroups}
-        isOpen={settingsSectionsOpen.activity}
-        onToggle={() => toggleSettingsSection("activity")}
-      />
-
-      {canUseDemoControls ? (
-        <SettingsDemoSection
-          demo={safeSettingsPage.demo}
-          error={demoActionError}
-          emptyStateDialogOpen={emptyStateDialogOpen}
-          emptyStateText={emptyStateText}
-          isOpen={demoStateOpen}
-          isSubmitting={isSubmitting}
-          reloadDialogOpen={reloadDialogOpen}
-          reloadText={reloadText}
-          onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
-          onReloadDialogOpenChange={setReloadDialogOpen}
-          onToggle={() => setDemoStateOpen((current) => !current)}
-          onEmptyStateTextChange={setEmptyStateText}
-          onReloadTextChange={setReloadText}
-          onReseed={handleReseed}
-          onRefresh={handleRefresh}
-          onEmptyState={handleEmptyState}
         />
       ) : null}
 
