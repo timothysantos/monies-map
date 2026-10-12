@@ -59,7 +59,7 @@
   padding: 0 8px;
   border-radius: 10px;
   color: var(--accent-strong);
-  font-size: 1rem;
+  font-size: var(--type-action);
   font-weight: 700;
   text-decoration: none;
 }

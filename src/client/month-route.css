@@ -221,11 +221,6 @@
 }
 
 @media (max-width: 760px) {
-  .month-add-dialog-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
   .month-title {
     display: none;
   }

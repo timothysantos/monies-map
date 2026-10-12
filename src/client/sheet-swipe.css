@@ -18,10 +18,10 @@
 
 .sheet-drag-handle-bar {
   display: block;
-  width: 36px;
-  height: 5px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--muted) 42%, transparent);
+  width: var(--sheet-handle-width);
+  height: var(--sheet-handle-height);
+  border-radius: var(--radius-chip);
+  background: var(--sheet-handle-colour);
 }
 
 /* While the finger holds the sheet, a long press must not select text. */

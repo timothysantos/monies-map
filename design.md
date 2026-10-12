@@ -1249,12 +1249,10 @@ nothing on screen.
 | `--space-2` | 8px | Between chips, bar buttons, a glyph and its line |
 | `--space-3` | 12px | Inside a head line, between a label and a figure |
 | `--space-4` | 16px | Card padding (a support card) |
-| `--space-5` | 24px | Between groups |
 | `--radius-card` | 22px | The lead card |
 | `--radius-group` | 16px | A group of Detail rows, a support panel inside a card |
 | `--radius-control` | 14px | Buttons (the bottom bar, Ask Send and Save) |
 | `--radius-chip` | 999px | Chips, tags, switch tracks: a full pill |
-| `--radius-sheet` | 24px | A bottom sheet's top corners |
 | `--radius-sm` | 6px | The actual-vs-plan bar, a focus ring on an inline amount |
 | `--radius-xs` | 4px | An inline text field inside a card |
 | `--elevation-lead` | `0 14px 32px` ink at 10% | The lead card: the only strong shadow on a sheet or screen top |
@@ -1262,23 +1260,22 @@ nothing on screen.
 | `--elevation-flat` | none | Detail rows and chips: flat, no shadow |
 | `--tap-min` | 44px | The smallest tappable, each way |
 | `--tap-large` | 48px | Detail rows and bottom-bar buttons |
-| `--sheet-handle-width` | 36px | The grab handle at a bottom sheet's top, if a sheet gets one |
+| `--sheet-handle-width` | 36px | The grab handle at a bottom sheet top: the swipe-to-dismiss cue |
 | `--sheet-handle-height` | 5px | Its height (it takes `--radius-chip`) |
-| `--sheet-handle-colour` | ink at 20% | Its colour, a neutral |
+| `--sheet-handle-colour` | muted ink at 42% | Its colour, a neutral |
 
-No sheet draws the handle yet: neither sheet supports swipe to dismiss
-(see "Lead · Support · Detail"), and a handle suggests that gesture, so it
-belongs with that change. A circle is `border-radius: 50%`, and 0, `none`
-and `inherit` stay raw.
+The handle is drawn by `SheetDragHandle` in `sheet-swipe.css` on every
+phone sheet that swipes to dismiss. A circle is `border-radius: 50%`, and 0,
+`none` and `inherit` stay raw.
 
-`ui/lead-support-detail.css` and the Ask card styles in `ask-route.css`
-use the tokens. `tests/design-token-guard.test.mjs` fails on a raw
+`ui/lead-support-detail.css`, the Ask card styles in `ask-route.css` and the
+sheet handle in `sheet-swipe.css` use the tokens. `tests/design-token-guard.test.mjs` fails on a raw
 `font-size` (or a size in the `font` shorthand), `border-radius` or
 `box-shadow` in any stylesheet under `src/client` except the legacy ones
 it lists, and on a raw value set inline in a `src/client/ui/` component.
-The off-scale values those two files had before the tokens (the Ask
-headings, messages and composer; the lead's amount aside and bar line) are
-frozen in its `KNOWN_LITERALS` list: they keep their look until the
+The off-scale values those files hold (the Ask headings, messages,
+composer, back link and dock controls; the lead's amount aside and bar line;
+the sheet's "Discard changes?" bar) are frozen in its `KNOWN_LITERALS` list: they keep their look until the
 redesign folds them into a step, and the list only shrinks. A new
 stylesheet is checked from its first line. Every token a checked file uses
 must be defined in `:root`, and every token must be in the table above.

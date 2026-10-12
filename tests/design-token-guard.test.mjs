@@ -89,7 +89,19 @@ const KNOWN_LITERALS = {
     "box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 45%, transparent)",
     "box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-strong) 0%, transparent)",
     "font-size: 2.3rem",
-    "font-size: 1.85rem"
+    "font-size: 1.85rem",
+    // The Back link above the title on a phone (10px corner) and the docked
+    // or popup panel's heading and expand control (1.7rem, 12px corner).
+    "border-radius: 10px",
+    "font-size: 1.7rem",
+    "border-radius: 12px"
+  ],
+  "sheet-swipe.css": [
+    // The "Discard changes?" bar at a sheet's bottom: its own 20px top
+    // corners, upward shadow and title, off the sheet token scale.
+    "border-radius: 20px 20px 0 0",
+    "box-shadow: 0 -12px 28px rgba(27, 24, 21, 0.14)",
+    "font-size: 1.1rem"
   ]
 };
 
@@ -156,6 +168,7 @@ test("checked stylesheets size type, corners and shadows with the design tokens"
 test("the guard checks the shared blocks, the Ask page and any new stylesheet", () => {
   assert.ok(checkedStylesheets.includes("ui/lead-support-detail.css"));
   assert.ok(checkedStylesheets.includes("ask-route.css"));
+  assert.ok(checkedStylesheets.includes("sheet-swipe.css"));
   for (const name of LEGACY_STYLESHEETS) {
     assert.ok(clientFiles.includes(name), `${name} is gone; remove it from LEGACY_STYLESHEETS`);
   }
