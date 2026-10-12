@@ -1,8 +1,7 @@
 // First, so these rules load before the stylesheets the modules below import.
 import "./settings-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { LogOut } from "lucide-react";
+import { ArrowLeftRight, LogOut } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
@@ -39,6 +38,7 @@ import {
   updateSettingsPerson
 } from "./settings-api";
 import { AccountDialog } from "./account-dialog";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
@@ -1548,30 +1548,29 @@ export function SettingsPanel({
         formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${formatService.money(Math.abs(item.deltaMinor))}`)}
       />
 
-      <Dialog.Root open={dismissTransfersConfirmOpen} onOpenChange={(open) => { if (!open && !isSubmitting) setDismissTransfersConfirmOpen(false); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>Clear unresolved transfers?</Dialog.Title>
-                <Dialog.Description>
-                  This hides {safeSettingsPage.unresolvedTransfers.length} unresolved transfer review{safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"} from the review list.
-                </Dialog.Description>
-              </div>
-              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">
-                ×
-              </Dialog.Close>
-            </div>
-            <div className="note-dialog-actions">
-              <Dialog.Close className="subtle-action" disabled={isSubmitting}>Cancel</Dialog.Close>
-              <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void confirmDismissAllUnresolvedTransfers()}>
-                {isSubmitting ? messages.common.saving : "Clear transfers"}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {dismissTransfersConfirmOpen ? (
+        <SheetDialog
+          tone="danger"
+          className="settings-account-dialog"
+          title="Clear unresolved transfers?"
+          description={`This hides ${safeSettingsPage.unresolvedTransfers.length} unresolved transfer review${safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"} from the review list.`}
+          descriptionHidden
+          closeLabel="Close confirmation dialog"
+          lead={(
+            <ConfirmLead
+              icon={ArrowLeftRight}
+              title={`${safeSettingsPage.unresolvedTransfers.length} unresolved transfer review${safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"}`}
+            >
+              <p className="lsd-note">They are hidden from the review list.</p>
+            </ConfirmLead>
+          )}
+          primaryLabel={isSubmitting ? messages.common.saving : "Clear transfers"}
+          primaryDisabled={isSubmitting}
+          isSubmitting={isSubmitting}
+          onSubmit={confirmDismissAllUnresolvedTransfers}
+          onClose={() => setDismissTransfersConfirmOpen(false)}
+        />
+      ) : null}
 
     </article>
   );

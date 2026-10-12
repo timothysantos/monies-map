@@ -204,3 +204,46 @@
 .planned-link-dialog .planned-link-row {
   min-height: 56px;
 }
+
+/* Transfer details: the candidate cards and their buttons are real tap
+   targets, and the sections read as one stack under the lead. */
+.transfer-match-dialog .transfer-match-layout,
+.transfer-match-dialog .sheet-dialog-body {
+  gap: 16px;
+}
+
+.transfer-match-dialog .transfer-match-section {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.transfer-match-dialog .transfer-match-section-head {
+  flex-wrap: wrap;
+}
+
+.transfer-match-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.transfer-match-dialog .transfer-match-card {
+  align-items: center;
+}
+
+.transfer-match-dialog .transfer-match-card-toggle {
+  min-height: 48px;
+}
+
+.transfer-match-dialog .transfer-match-card .lsd-quiet {
+  flex: 0 0 auto;
+}
+
+.transfer-match-dialog .transfer-settlement {
+  margin-top: 0;
+}
+
+/* The category pickers float above a dialog, not behind it. */
+.category-picker-popover {
+  z-index: 90;
+}

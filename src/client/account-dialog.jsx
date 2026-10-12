@@ -1,137 +1,125 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Landmark } from "lucide-react";
+import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { settingsMessages } from "./copy/en-SG-settings";
+import { PickerRow } from "./detail-field-rows";
 import { selectAllOnFocus } from "./focus-utils";
+import { SheetDialog } from "./sheet-dialog";
 import { ACCOUNT_KIND_OPTIONS } from "./ui-options";
-import { InlineError } from "./ui-states";
+import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
+import { useDraftChanged } from "./use-draft-changed";
+import { useIsMobileLayout } from "./use-viewport";
+
+const SHARED = "__joint__";
 
 // Account editing is shared between settings and imports, so keep the dialog
-// presentational and workflow-agnostic here.
+// presentational and workflow-agnostic here. The lead is the account (its
+// name typed in place) with its type, currency and owner as chips; the other
+// fields are Detail rows, and Cancel and Save sit in the bottom bar.
 export function AccountDialog({ dialog, error, people, isSubmitting, onChange, onClose, onSave }) {
+  const isSheet = useIsMobileLayout();
+  const isDirty = useDraftChanged(dialog);
+  const [openRow, setOpenRow] = useState(null);
+  if (!dialog) {
+    return null;
+  }
+  const isCreate = dialog.mode === "create";
+  const canSave = Boolean(dialog.name?.trim() && dialog.institution?.trim());
+  const set = (patch) => onChange((current) => current ? { ...current, ...patch } : current);
+  const kindOption = ACCOUNT_KIND_OPTIONS.find((option) => option.value === (dialog.kind ?? "bank"));
+  const ownerValue = dialog.isJoint ? SHARED : (dialog.ownerPersonId ?? "");
+  const ownerOptions = [{ value: SHARED, label: "Shared" }, ...people.map((person) => ({ value: person.id, label: person.name }))];
+  const ownerLabel = ownerOptions.find((option) => option.value === ownerValue)?.label ?? "Shared";
+  const rowOpenProps = (key) => ({ open: openRow === key, onOpenChange: (open) => setOpenRow(open ? key : null) });
+
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content settings-account-dialog">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!dialog?.name?.trim() || !dialog?.institution?.trim() || isSubmitting) {
-                return;
-              }
-              void onSave();
-            }}
-          >
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{dialog?.mode === "create" ? settingsMessages.createAccount : settingsMessages.editAccount}</Dialog.Title>
-                <Dialog.Description>{dialog?.mode === "create" ? settingsMessages.createAccountDetail : settingsMessages.editAccountDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close account dialog"
-                disabled={isSubmitting}
-                onClick={onClose}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <InlineError message={error} />
-            <div className="settings-account-form">
-              <label className="table-edit-field">
-                <span>{settingsMessages.accountName}</span>
-                <input
-                  className="table-edit-input"
-                  value={dialog?.name ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.accountInstitution}</span>
-                <input
-                  className="table-edit-input"
-                  value={dialog?.institution ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, institution: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.accountType}</span>
-                <select
-                  className="table-edit-input"
-                  value={dialog?.kind ?? "bank"}
-                  onChange={(event) => onChange((current) => current ? { ...current, kind: event.target.value } : current)}
-                >
-                  {ACCOUNT_KIND_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.accountCurrency}</span>
-                <input
-                  className="table-edit-input"
-                  value={dialog?.currency ?? "SGD"}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.accountOpeningBalance}</span>
-                <input
-                  className="table-edit-input table-edit-input-money"
-                  inputMode="decimal"
-                  value={dialog?.openingBalance ?? "0.00"}
-                  enterKeyHint="next"
-                  onMouseDown={selectAllOnFocus}
-                  onFocus={selectAllOnFocus}
-                  onChange={(event) => onChange((current) => current ? { ...current, openingBalance: event.target.value } : current)}
-                />
-                <small className="field-help">{settingsMessages.accountOpeningBalanceHelp}</small>
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.accountOwner}</span>
-                <select
-                  className="table-edit-input"
-                  value={dialog?.isJoint ? "__joint__" : (dialog?.ownerPersonId ?? "")}
-                  onChange={(event) => onChange((current) => {
-                    if (!current) {
-                      return current;
-                    }
-
-                    if (event.target.value === "__joint__") {
-                      return { ...current, isJoint: true, ownerPersonId: "" };
-                    }
-
-                    return { ...current, isJoint: false, ownerPersonId: event.target.value };
-                  })}
-                >
-                  <option value="__joint__">Shared</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>{person.name}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="dialog-primary"
-                disabled={!dialog?.name?.trim() || !dialog?.institution?.trim() || isSubmitting}
-              >
-                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? settingsMessages.createAccount : settingsMessages.saveAccount}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      className="settings-account-dialog"
+      title={isCreate ? settingsMessages.createAccount : settingsMessages.editAccount}
+      description={isCreate ? settingsMessages.createAccountDetail : settingsMessages.editAccountDetail}
+      descriptionHidden
+      closeLabel="Close account dialog"
+      lead={(
+        <LeadCard
+          className="sheet-dialog-lead"
+          category={{ icon: Landmark }}
+          title={(
+            <input
+              className="lsd-title lsd-title-input"
+              aria-label={settingsMessages.accountName}
+              placeholder={settingsMessages.accountName}
+              value={dialog.name ?? ""}
+              enterKeyHint="next"
+              onChange={(event) => set({ name: event.target.value })}
+            />
+          )}
+          subtitle={dialog.institution?.trim() || null}
+          chips={(
+            <>
+              {kindOption ? <MetaChip>{kindOption.label}</MetaChip> : null}
+              {dialog.currency ? <MetaChip>{dialog.currency}</MetaChip> : null}
+              <MetaChip person={ownerValue === SHARED ? undefined : ownerLabel}>{ownerLabel}</MetaChip>
+            </>
+          )}
+        />
+      )}
+      errorMessage={error}
+      primaryLabel={isSubmitting ? messages.common.saving : isCreate ? settingsMessages.createAccount : settingsMessages.saveAccount}
+      primaryDisabled={!canSave || isSubmitting}
+      isSubmitting={isSubmitting}
+      isDirty={isDirty}
+      onSubmit={onSave}
+      onClose={onClose}
+    >
+      <DetailRows label={settingsMessages.editAccount}>
+        <DetailRow label={settingsMessages.accountInstitution}>
+          <input
+            value={dialog.institution ?? ""}
+            enterKeyHint="next"
+            onChange={(event) => set({ institution: event.target.value })}
+          />
+        </DetailRow>
+        <PickerRow
+          isSheet={isSheet}
+          rowKey="kind"
+          label={settingsMessages.accountType}
+          valueLabel={kindOption?.label ?? ""}
+          value={dialog.kind ?? "bank"}
+          options={ACCOUNT_KIND_OPTIONS}
+          onValueChange={(kind) => set({ kind })}
+          {...rowOpenProps("kind")}
+        />
+        <DetailRow label={settingsMessages.accountCurrency}>
+          <input
+            value={dialog.currency ?? "SGD"}
+            enterKeyHint="next"
+            autoCapitalize="characters"
+            onChange={(event) => set({ currency: event.target.value.toUpperCase() })}
+          />
+        </DetailRow>
+        <DetailRow label={settingsMessages.accountOpeningBalance}>
+          <input
+            inputMode="decimal"
+            value={dialog.openingBalance ?? "0.00"}
+            enterKeyHint="next"
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
+            onChange={(event) => set({ openingBalance: event.target.value })}
+          />
+        </DetailRow>
+        <PickerRow
+          isSheet={isSheet}
+          rowKey="owner"
+          label={settingsMessages.accountOwner}
+          valueLabel={ownerLabel}
+          value={ownerValue}
+          options={ownerOptions}
+          onValueChange={(value) => set(value === SHARED ? { isJoint: true, ownerPersonId: "" } : { isJoint: false, ownerPersonId: value })}
+          {...rowOpenProps("owner")}
+        />
+      </DetailRows>
+      <p className="lsd-note">{settingsMessages.accountOpeningBalanceHelp}</p>
+    </SheetDialog>
   );
 }

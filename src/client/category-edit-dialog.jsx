@@ -1,23 +1,13 @@
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { settingsMessages } from "./copy/en-SG-settings";
+import { SheetDialog } from "./sheet-dialog";
 import { CategoryGlyph } from "./ui-components";
+import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
+import { useDraftChanged } from "./use-draft-changed";
 import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS } from "./ui-options";
-
-// The dialog is portalled out of the DOM, but React still bubbles its events
-// through the component tree into whatever opened it: the entry or plan-row
-// form of a mobile sheet or the desktop composer (submit), a list row that
-// opens its editor on click or on Enter and Space (click, keydown). Stopping
-// them at the dialog keeps a category save, click or key press on the
-// category only. Pointer-down is left alone: Radix dismisses on it.
-const keepEventsInDialog = {
-  onSubmit: (event) => event.stopPropagation(),
-  onClick: (event) => event.stopPropagation(),
-  onKeyDown: (event) => event.stopPropagation()
-};
 
 export function CategoryEditDialog({
   dialog,
@@ -26,86 +16,63 @@ export function CategoryEditDialog({
   onClose,
   onSave
 }) {
+  const isDirty = useDraftChanged(dialog);
+  if (!dialog) {
+    return null;
+  }
+  const isCreate = dialog.mode === "create";
+  const set = (patch) => onChange((current) => current ? { ...current, ...patch } : current);
+  const iconKey = dialog.iconKey ?? FALLBACK_THEME.iconKey;
+  const colorHex = dialog.colorHex ?? FALLBACK_THEME.colorHex;
+  const title = isCreate ? settingsMessages.createCategory : settingsMessages.editCategory;
+
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" {...keepEventsInDialog} />
-        <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog" {...keepEventsInDialog}>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!dialog?.name?.trim() || isSubmitting) {
-                return;
-              }
-              void onSave();
-            }}
-          >
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{dialog?.mode === "create" ? settingsMessages.createCategory : settingsMessages.editCategory}</Dialog.Title>
-                <Dialog.Description>{dialog?.mode === "create" ? settingsMessages.createCategoryDetail : settingsMessages.editCategoryDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close category dialog"
-                disabled={isSubmitting}
-                onClick={onClose}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="settings-account-form">
-              <label className="table-edit-field">
-                <span>{settingsMessages.categoryName}</span>
-                <input
-                  className="table-edit-input"
-                  value={dialog?.name ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.categorySlug}</span>
-                <input
-                  className="table-edit-input"
-                  value={dialog?.slug ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, slug: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.categoryIcon}</span>
-                <CategoryIconSelector
-                  value={dialog?.iconKey ?? FALLBACK_THEME.iconKey}
-                  colorHex={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
-                  onChange={(iconKey) => onChange((current) => current ? { ...current, iconKey } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{settingsMessages.categoryColor}</span>
-                <CategoryColorSelector
-                  value={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
-                  onChange={(colorHex) => onChange((current) => current ? { ...current, colorHex } : current)}
-                />
-              </label>
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="dialog-primary"
-                disabled={!dialog?.name?.trim() || isSubmitting}
-              >
-                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? settingsMessages.createCategory : settingsMessages.saveCategory}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      className="settings-account-dialog settings-category-dialog"
+      title={title}
+      description={isCreate ? settingsMessages.createCategoryDetail : settingsMessages.editCategoryDetail}
+      descriptionHidden
+      closeLabel="Close category dialog"
+      lead={(
+        <LeadCard
+          className="sheet-dialog-lead"
+          // The bubble is the live icon and colour, so a change shows at once.
+          category={{ colorHex, iconKey }}
+          title={(
+            <input
+              className="lsd-title lsd-title-input"
+              aria-label={settingsMessages.categoryName}
+              placeholder={settingsMessages.categoryName}
+              value={dialog.name ?? ""}
+              enterKeyHint="next"
+              onChange={(event) => set({ name: event.target.value })}
+            />
+          )}
+        />
+      )}
+      primaryLabel={isSubmitting ? messages.common.saving : isCreate ? settingsMessages.createCategory : settingsMessages.saveCategory}
+      primaryDisabled={!dialog.name?.trim() || isSubmitting}
+      isSubmitting={isSubmitting}
+      isDirty={isDirty}
+      onSubmit={onSave}
+      onClose={onClose}
+    >
+      <DetailRows label={title}>
+        <DetailRow label={settingsMessages.categorySlug}>
+          <input
+            value={dialog.slug ?? ""}
+            enterKeyHint="next"
+            onChange={(event) => set({ slug: event.target.value })}
+          />
+        </DetailRow>
+        <DetailRow label={settingsMessages.categoryIcon}>
+          <CategoryIconSelector value={iconKey} colorHex={colorHex} onChange={(next) => set({ iconKey: next })} />
+        </DetailRow>
+        <DetailRow label={settingsMessages.categoryColor}>
+          <CategoryColorSelector value={colorHex} onChange={(next) => set({ colorHex: next })} />
+        </DetailRow>
+      </DetailRows>
+    </SheetDialog>
   );
 }
 
