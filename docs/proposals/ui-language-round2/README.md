@@ -25,7 +25,7 @@ Summary
 
 | Screen | Effort | Risk | Needs the owner's call |
 | --- | --- | --- | --- |
-| Splits page (lead card, group bar, sheet) | M | Medium | New phone group bar replaces the sideways tiles |
+| Splits page (lead card, group bar, sheet) | M | Medium | Everything but the single collapsed group bar is approved; pick A, B or C below |
 | Entries totals strip and filters | S to M | Low | Spend is plain ink; the strip becomes a card plus pills |
 | Settings (closed list, three sections) | M | Low | Status words per row |
 | Imports (file card, compact rows, row sheet, one-line bar) | L | High | A row edit sheet on phone |
@@ -57,6 +57,53 @@ the balance and settle-up maths, the activity list contents, Review matches.
 
 Desktop: ![](splits-desktop-before.webp) ![](splits-desktop-after.webp)
 (also `splits-desktop-before-top.webp`, `splits-desktop-after-top.webp`).
+
+### Splits groups: owner feedback and three alternatives
+
+Everything in this proposal is approved except the single collapsed
+"Japan trip · 4 groups" bar: it hides the other groups and loses the old
+strip's quick per-group summary (who owes whom, how much). The lead card,
+chips and search above stay as approved. Below are three ways to keep every
+group in view. Each shows 4 groups, one of them settled, with the receipt
+button, the eye and the nav island visible as in the app. Group rows are white
+rows with plain words ("Serene owes you $303.15") and no money tone on the
+orange; groups owed to you come first, then what you owe, settled last.
+(Images: `splits-groups-<A|B|C>-<phone|desktop>[-hidden]-<screen>.webp`.)
+
+**A (recommended): an "All groups" list first.** Splits opens on a vertical
+list, one 56 px row per group (icon, name, balance in words), settled groups
+folded into "1 settled group", then "+ Create group". Tapping a group opens it
+(lead card and activity) with "‹ All groups" at the top; the floating bar in a
+group shows the current group and opens the same list as a sheet.
+Pros: every group and every balance visible at once, no sideways scroll, one
+list used in two places, simplest to explain. Cons: one extra tap to reach the
+activity of the usual group (remember the last group to open straight into it,
+with the back link), and a new first screen. Effort M, risk low to medium.
+Images: `splits-groups-A-phone-list`, `-A-phone-group`, `-A-phone-group-sheet`,
+`-A-desktop-list`, `-A-desktop-group`, `-A-desktop-group-sheet`, and the
+`-hidden` ones.
+
+**B: stay in the group; the floating bar expands into the list.** The
+collapsed bar keeps a summary of the others ("Japan trip · 3 others, $194.57
+owed to you", the SGD net; with money hidden "3 other groups"); tapping it
+opens a sheet with the same rows as A.
+Pros: the smallest change to how Splits works today, always opens on the
+activity. Cons: the other groups are still one tap away, the summary adds up
+only groups in one currency (a JPY group is left out of the SGD total), and
+the bar is the control the owner worried about. Effort S to M, risk low.
+Images: `splits-groups-B-phone-bar`, `-B-phone-bar-sheet`, `-B-desktop-bar`,
+`-B-desktop-bar-sheet`, and the `-hidden` ones.
+
+**C: a compact "Groups" card above the lead.** Three rows (selected one
+tinted) and "Show all 4" that unfolds the settled and the rest.
+Pros: groups and balances visible on the first screen with no new screen or
+bar. Cons: pushes the lead card and activity down by about three rows on a
+phone, and it is a second card above the one that matters (breaks "one lead
+per screen top" unless the card stays quiet). Effort M, risk low.
+Images: `splits-groups-C-phone-card`, `-C-desktop-card`, and the `-hidden` ones.
+
+Recommendation: A, with "open the last used group" so the list is one tap
+back rather than a toll.
 
 ## 2. Entries totals and filters
 
