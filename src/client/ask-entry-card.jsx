@@ -1,21 +1,24 @@
-import { ArrowLeftRight, CalendarDays, Check, CreditCard, Sparkles } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Sparkles } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { entryAmountTone } from "../domain/money-tone";
+import { bankStateChipLabel } from "./entry-source";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { ResponsiveSelect } from "./responsive-select";
 import { getIconComponent } from "./ui-components";
-import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+import { messages } from "./copy/en-SG";
+import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
 
 // The Ask page's entry card (design.md "Ask page"): the hero card with the
 // category bubble, what it was, the amount and its date, wallet and person
-// chips, then the quiet detail rows, each opening the app's existing picker,
-// and the Splits switch. A saved card keeps the hero only, marked Saved.
+// chips (on a draft, each opens its row's picker: date, wallet, owner), then
+// the quiet detail rows, each opening the app's existing picker, and the
+// Splits switch. A saved card keeps the hero only, marked Saved.
 // Built on the shared Lead · Support · Detail blocks (ui/lead-support-detail).
 
 const SIGNS = { expense: "−", income: "+", transfer: "" };
@@ -45,6 +48,29 @@ function partnerName(context, ownerName) {
   return other?.name ?? "";
 }
 
+const SAVED_STATE_TONES = { statement_certified: "mint", import_provisional: "sky", manual_provisional: "butter" };
+const SAVED_STATE_LABELS = { statement_certified: "Statement certified", import_provisional: "Import provisional", manual_provisional: "Manual provisional" };
+
+// A saved card's bank state chip, as on the Edit entry card: the tool that
+// saved a provisional entry ("Ask · provisional", "Apple Pay · provisional"),
+// else its bank state. A card Ask saved before the chip existed is Ask's.
+export function savedCardState(card) {
+  if (card?.status !== "saved") {
+    return null;
+  }
+  const saved = card.saved ?? {};
+  const status = saved.bankCertificationStatus ?? (card.origin === "saved" ? null : "manual_provisional");
+  if (!status) {
+    return null;
+  }
+  const addedBy = saved.addedBy ?? (card.origin === "saved" ? undefined : "ask");
+  return {
+    label: bankStateChipLabel({ addedBy, bankCertificationStatus: status }, saved.bankCertificationLabel || SAVED_STATE_LABELS[status] || ""),
+    tone: SAVED_STATE_TONES[status],
+    locked: status === "statement_certified"
+  };
+}
+
 export function AskEntryCard({
   settled = false,
   card,
@@ -52,7 +78,8 @@ export function AskEntryCard({
   today,
   descriptionRef,
   amountRef,
-  onChange
+  onChange,
+  onOpenField = undefined
 }) {
   const isSaved = card.status === "saved";
   const isEditable = card.status === "draft";
@@ -76,6 +103,7 @@ export function AskEntryCard({
         ? { className: "is-filled", icon: <Sparkles size={13} aria-hidden="true" />, label: askCopy.card.readFromReceipt }
         : null;
   const ownerKey = card.fields.ownerName === SHARED_OWNER ? "shared" : card.fields.ownerName;
+  const savedState = savedCardState(card);
 
   const title = isTransfer ? (
     <strong className="lsd-title ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
@@ -137,11 +165,42 @@ export function AskEntryCard({
       ) : null}
       chips={(
         <>
-          <MetaChip icon={CalendarDays}>{formatCardDate(card.fields.date, today)}</MetaChip>
+          <MetaChip
+            data-chip="date"
+            icon={CalendarDays}
+            control={isEditable ? (
+              <ChipDateField
+                value={card.fields.date}
+                label={messages.common.changeChip(askCopy.card.rows.date, formatCardDate(card.fields.date, today))}
+                onValueChange={(date) => onChange({ date })}
+              />
+            ) : null}
+          >
+            {formatCardDate(card.fields.date, today)}
+          </MetaChip>
           {!isTransfer && card.fields.accountName ? (
-            <MetaChip icon={CreditCard}>{card.fields.accountName}</MetaChip>
+            <MetaChip
+              data-chip="wallet"
+              icon={CreditCard}
+              actionLabel={messages.common.changeChip(askCopy.card.rows.wallet, card.fields.accountName)}
+              onClick={isEditable && onOpenField ? () => onOpenField("wallet") : undefined}
+            >
+              {card.fields.accountName}
+            </MetaChip>
           ) : null}
-          {card.fields.ownerName ? <MetaChip person={ownerKey}>{card.fields.ownerName}</MetaChip> : null}
+          {card.fields.ownerName ? (
+            <MetaChip
+              data-chip="owner"
+              person={ownerKey}
+              actionLabel={messages.common.changeChip(askCopy.card.rows.owner, card.fields.ownerName)}
+              onClick={isEditable && onOpenField ? () => onOpenField("owner") : undefined}
+            >
+              {card.fields.ownerName}
+            </MetaChip>
+          ) : null}
+          {savedState ? (
+            <MetaChip data-chip="state" icon={savedState.locked ? Lock : null} tone={savedState.tone}>{savedState.label}</MetaChip>
+          ) : null}
         </>
       )}
     >

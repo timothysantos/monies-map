@@ -620,6 +620,32 @@ the same normalized ledger facts returns the existing entry; reusing it for
 different facts is a conflict. Bank imports continue to use import-row and
 reconciliation evidence rather than this API retry identity.
 
+### Added By
+
+Which in-app tool created a ledger entry, derived from its external request
+reference: `shortcut:<request id>` is the Apple Pay Shortcut and
+`ask:<card id>` is the Ask card. Anything else (a manual entry, an import)
+has no recorded source.
+
+Canonical term:
+- `added by`
+
+DTO field:
+- `addedBy`: `apple_pay_shortcut` | `ask`, left out when unknown
+
+UI labels:
+- `Added by` row: `Apple Pay shortcut`, `Ask`
+- bank state chip while provisional: `Apple Pay · provisional`,
+  `Ask · provisional`
+- Entries row glyph: `Added with Apple Pay`, `Added in Ask`
+
+Important distinctions:
+- It is derived on the server (`src/domain/entry-source.ts`); the reference
+  itself (a Shortcut request id, an Ask card id) never reaches a page.
+- It is provenance, not trust: a statement can still certify the entry, and
+  the bank state chip then says `Statement certified` while `Added by` stays.
+- It is not the `import batch` source: an imported row has none.
+
 ### Entry Draft
 
 One typed sentence ("Koufu lunch $12.50 yesterday, Citi") read into the
@@ -777,6 +803,10 @@ UI states:
 - `Manual provisional`
 - `Import provisional`
 - `Statement certified`
+
+A provisional entry the Apple Pay Shortcut or Ask saved names the tool in
+its bank state chip instead (`Apple Pay · provisional`, `Ask · provisional`;
+see `Added By`).
 
 Storage states:
 - `provisional`

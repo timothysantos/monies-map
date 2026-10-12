@@ -1088,6 +1088,24 @@ function AskConversation({
             descriptionRef={descriptionRef}
             amountRef={amountRef}
             onChange={updateCard}
+            onOpenField={(key) => {
+              // A chip opens its row's picker; the owner row folds into More
+              // details. On a wide screen the row is a native select, so it
+              // takes focus (and opens, where a browser allows it).
+              if (key === "owner") setMoreOpen(true);
+              setOpenPicker(key);
+              window.requestAnimationFrame(() => {
+                const select = document.querySelector(`[data-ask-row="${key}"] select`);
+                if (select instanceof HTMLSelectElement) {
+                  select.focus();
+                  try {
+                    select.showPicker?.();
+                  } catch {
+                    // Focus alone is enough where a select cannot open from script.
+                  }
+                }
+              });
+            }}
           />
         ) : null}
         {card && card.status !== "saved" ? (
