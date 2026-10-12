@@ -63,6 +63,7 @@
     "db:empty-production": "node ./scripts/empty-production.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@cloudflare/workers-types": "^5.20260821.1",
     "@eslint/js": "^10.0.0",
     "@playwright/test": "^1.59.1",
