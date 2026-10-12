@@ -160,3 +160,25 @@
     height: auto;
   }
 }
+
+/* The sheet itself takes focus when it opens (no keyboard pop); that is not a
+   control, so it shows no ring. */
+.entry-mobile-sheet.is-dialog-sheet:focus,
+.note-dialog-content.sheet-dialog:focus {
+  outline: none;
+}
+
+/* A confirmation names what it does ("Confirm delete month"), so its button
+   takes the room it needs and wraps rather than clipping. */
+.sheet-dialog .lsd-bottom .lsd-primary {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 132px;
+  padding: 8px 16px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.sheet-dialog .lsd-bottom.is-sheet-bar .lsd-bottom-end {
+  flex: 1 1 60%;
+}

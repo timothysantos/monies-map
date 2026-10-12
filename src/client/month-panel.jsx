@@ -9,6 +9,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { EmptyState, InlineError } from "./ui-states";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+import MonthNoteDialog from "./month-note-dialog";
+import { NoteSheetDialog } from "./note-sheet-dialog";
 import { useDraftChanged } from "./use-draft-changed";
 import { MonthPlanSheet } from "./month-plan-sheet";
 import { FinancialInsight } from "./financial-insight";
@@ -1460,6 +1462,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     }
   }
 
+  // The note dialogs name whose note it is: the month and the view, and for a
+  // plan row its label.
+  const monthLabelForNotes = `${formatService.formatMonthLabel(view.monthPage.month)} · ${view.label}`;
+  const rowNoteRow = noteDialog
+    ? (noteDialog.kind === "income"
+      ? incomeRows.find((item) => item.id === noteDialog.rowId)
+      : planSections.find((item) => item.key === noteDialog.sectionKey)?.rows.find((item) => item.id === noteDialog.rowId))
+    : null;
+  const rowNoteLabel = rowNoteRow?.label || "Plan row";
+
   return (
     <article className="panel month-panel">
       <MonthPanelHeader
@@ -1579,51 +1591,23 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         />
       ) : null}
 
-      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) closeNoteDialog(); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content">
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                commitNoteDialog();
-              }}
-            >
-              <div className="note-dialog-head">
-                <div>
-                  <Dialog.Title>Edit note</Dialog.Title>
-                  <Dialog.Description>Write the planning context without squeezing it into the table.</Dialog.Description>
-                </div>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel"
-                  aria-label="Close note editor"
-                  disabled={isSavingRowNote}
-                  onClick={closeNoteDialog}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <InlineError message={rowNoteError} />
-              <textarea
-                className="note-dialog-textarea"
-                value={noteDialog?.draft ?? ""}
-                onChange={(event) => setNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
-                rows={10}
-                enterKeyHint="done"
-              />
-              <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" disabled={isSavingRowNote} onClick={closeNoteDialog}>
-                  {messages.month.cancelEdit}
-                </button>
-                <button type="submit" className="dialog-primary" disabled={isSavingRowNote}>
-                  {isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {noteDialog ? (
+        <NoteSheetDialog
+          title="Edit note"
+          description="Write the planning context without squeezing it into the table."
+          leadTitle={rowNoteLabel}
+          leadSubtitle={monthLabelForNotes}
+          value={noteDialog.draft ?? ""}
+          onChange={(draft) => setNoteDialog((current) => current ? { ...current, draft } : current)}
+          errorMessage={rowNoteError}
+          isSaving={isSavingRowNote}
+          saveLabel={isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
+          cancelLabel={messages.month.cancelEdit}
+          closeLabel="Close note editor"
+          onSave={commitNoteDialog}
+          onClose={closeNoteDialog}
+        />
+      ) : null}
 
       {!useMobileMonthSheet ? (
         <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) closePlanLinkDialog(); }}>
@@ -1675,54 +1659,21 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         </EntryMobileSheet>
       ) : null}
 
-      <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open && !isSavingMonthNote) setMonthNoteDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content">
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (isSavingMonthNote) {
-                  return;
-                }
-                void commitMonthNoteDialog();
-              }}
-            >
-              <div className="note-dialog-head">
-                <div>
-                  <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
-                  <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
-                </div>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel"
-                  aria-label="Close month note editor"
-                  disabled={isSavingMonthNote}
-                  onClick={() => setMonthNoteDialog(null)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <InlineError message={monthNoteError} />
-              <textarea
-                className="note-dialog-textarea"
-                value={monthNoteDialog?.draft ?? ""}
-                onChange={(event) => setMonthNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
-                rows={10}
-                enterKeyHint="done"
-              />
-              <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" disabled={isSavingMonthNote} onClick={() => setMonthNoteDialog(null)}>
-                  {messages.month.cancelEdit}
-                </button>
-                <button type="submit" className="dialog-primary" disabled={isSavingMonthNote}>
-                  {isSavingMonthNote ? messages.common.saving : messages.month.doneEdit}
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {monthNoteDialog ? (
+        <MonthNoteDialog
+          monthLabel={monthLabelForNotes}
+          value={monthNoteDialog.draft ?? ""}
+          onChange={(draft) => setMonthNoteDialog((current) => current ? { ...current, draft } : current)}
+          errorMessage={monthNoteError}
+          isSaving={isSavingMonthNote}
+          onSave={commitMonthNoteDialog}
+          onClose={() => {
+            if (!isSavingMonthNote) {
+              setMonthNoteDialog(null);
+            }
+          }}
+        />
+      ) : null}
     </article>
   );
 }
