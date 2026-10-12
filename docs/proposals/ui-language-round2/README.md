@@ -126,9 +126,54 @@ Images: `splits-groups-D-phone-strip`, `-D-phone-hidden-strip`,
 `-D-phone-scrolled` (collapsed bar), `-D-phone-hidden-scrolled`,
 `-D-phone-all-sheet`, `-D-desktop-strip`, `-D-desktop-hidden-strip`.
 
-Recommendation: A, with "open the last used group" so the list is one tap
-back rather than a toll; D if the per-group summaries on the first screen
-matter more than keeping the app free of sideways scrolling.
+**D2: the owner's choice. D with no second row.** The strip keeps D's tiles
+(white Lead tile for the open group, translucent Support tiles, in the page
+flow, collapsing into the floating bar on scroll). "All groups" and "+ Create
+group" become compact tiles on the same row, the same height as the group
+tiles: about 68 px wide, icon on top and a short label ("All", "New"), dashed
+outline, white on the orange, 44 px+ targets, with the aria-labels "All groups"
+and "Create group". Phone: the row scrolls as in D. Desktop: one row, no wrap and
+no scroll; the tiles that fit are shown and "All" carries the count ("All · 2
+more") when some do not (`-count-` images force a narrow row to show it).
+Four placements are mocked (all phone and desktop, normal and hidden money; the
+`-end` images are the row scrolled to its end):
+
+- **D2d (the owner's favourite candidate): one compact tile first, split in
+  two.** "New" over "All" in one 68 px tile divided by a hairline, each half a
+  separate 44 px+ button. Two 44 px halves make every tile in the row 89 px
+  tall (about 25 px more than the 64 px tiles of D), and the strip is always at its start so both buttons
+  are visible without scrolling. The next group tile peeks after the lead tile.
+  Images: `splits-groups-D2d-phone-strip`, `-D2d-phone-hidden-strip`,
+  `-D2d-phone-end`, `-D2d-desktop-strip`, `-D2d-desktop-hidden-strip`,
+  `-D2d-desktop-count-strip`.
+- **D2: "All" first, "New" last.** "All" is always visible left of the open
+  group; "New" ends the row. The next group tile still peeks after All and the
+  open group. Images: `splits-groups-D2-phone-strip`, `-D2-phone-end`,
+  `-D2-phone-scrolled` (collapsed bar), `-D2-desktop-strip` and the hidden ones.
+- **D2b: both compact tiles first**, then the open group, then the others.
+  Both always visible, but they push the open group right by about 150 px so
+  less of the next tile peeks. Images: `splits-groups-D2b-*`.
+- **D2c: both tiles last.** Smallest change from D, but "All" and "New" are
+  only reachable after scrolling to the end on a phone (the floating bar and the
+  sheet are the other way in). Images: `splits-groups-D2c-*`.
+
+Why D2d first: the two actions are always in view and do not cost row width
+twice, at the price of a taller row. If 89 px is too tall, D2 (All first,
+New last) is the next best: the same height as D (64 px) with "All" always
+visible.
+
+"Non-group expenses" is not a group. I labelled its tile with its own balance
+in plain words, or "No balance" when it is zero (the demo's is zero), kept it
+after the real groups and before any settled group, and in the group list
+(A, B) it is an ordinary row, not folded into "settled groups". "Settled" now
+only labels a real group whose balance is zero; the demo has none, so the
+muted settled tile style is not in the pictures. The A, B, C and D images were
+regenerated with the new label and order. With money hidden no tile is ordered
+or worded by who owes whom.
+
+Recommendation: D2d (or D2) for Splits; A remains the alternative that
+removes the sideways scroll altogether, with "open the last used group" so the
+list is one tap back rather than a toll.
 
 ## 2. Entries totals and filters
 

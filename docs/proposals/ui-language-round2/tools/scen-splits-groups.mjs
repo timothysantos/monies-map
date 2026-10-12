@@ -45,6 +45,23 @@ const CSS = `
 .mk-tile.is-lead .mk-tick { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-strong); color: #fff; }
 .mk-tile.is-settled { opacity: 0.72; background: rgba(255,255,255,0.08); }
 .mk-tile.is-end { flex-basis: 34%; place-items: center; text-align: center; background: rgba(255,255,255,0.08); border-style: dashed; font-weight: 700; }
+/* D2: two compact end tiles on the same row. */
+.mk-tile.is-end2 { flex: 0 0 68px; min-width: 68px; display: grid; justify-items: center; align-content: center; gap: 3px; padding: 8px 4px; border-style: dashed; background: rgba(255,255,255,0.08); font-size: 0.78rem; font-weight: 700; text-align: center; }
+.mk-tile.is-end2 svg { width: 20px; height: 20px; }
+.mk-strip.d2 { scroll-padding-right: 8px; }
+/* D2d: one compact tile, two stacked halves (New over All), each a 44 px+ button. */
+.mk-tile.is-split2 { flex: 0 0 68px; min-width: 68px; padding: 0; display: grid; grid-template-rows: minmax(44px, 1fr) 1px minmax(44px, 1fr); overflow: hidden; border-style: dashed; background: rgba(255,255,255,0.08); }
+.mk-tile.is-split2 button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #fff; font: inherit; font-size: 0.8rem; font-weight: 700; }
+.mk-tile.is-split2 button svg { width: 16px; height: 16px; }
+.mk-tile.is-split2 i { background: rgba(255,255,255,0.4); }
+.mk-strip.d2d .mk-tile { min-height: 89px; }
+@media (min-width: 761px) {
+  .mk-strip.d2 { flex-wrap: nowrap; overflow: hidden; }
+  .mk-strip.d2 .mk-tile { flex: 0 0 200px; }
+  .mk-strip.d2 .mk-tile.is-lead { flex-basis: 280px; }
+  .mk-strip.d2 .mk-tile.is-end2, .mk-strip.d2 .mk-tile.is-split2 { flex: 0 0 68px; }
+  .mk-strip.d2.is-narrow-demo { max-width: 760px; }
+}
 @media (min-width: 761px) {
   .mk-strip { flex-wrap: wrap; overflow: visible; }
   .mk-tile, .mk-tile.is-lead, .mk-tile.is-end { flex: 0 1 220px; }
@@ -65,10 +82,11 @@ function read() {
     const m = balance.match(/(JP¥|\$)([\d,.]+)$/);
     const amount = m ? Number(m[2].replace(/,/g, "")) : 0;
     const dir = /owes you/.test(balance) ? 1 : /You owe/.test(balance) ? -1 : 0;
-    return { name: t.querySelector("strong")?.textContent.trim(), lines, balance, icon: t.querySelector(".split-group-pill-icon")?.innerHTML ?? "", active: t.classList.contains("is-active"), cur: m?.[1], amount, dir, settled: /^Settled/.test(balance) };
+    const nm = t.querySelector("strong")?.textContent.trim();
+    return { name: nm, lines, balance: nm === "Non-group expenses" && /^Settled/.test(balance) ? "No balance" : balance, icon: t.querySelector(".split-group-pill-icon")?.innerHTML ?? "", active: t.classList.contains("is-active"), cur: m?.[1], amount, dir, settled: /^Settled/.test(balance) && t.querySelector("strong")?.textContent.trim() !== "Non-group expenses", nongroup: t.querySelector("strong")?.textContent.trim() === "Non-group expenses" };
   });
   // owed to you first, then what you owe, settled last
-  const rank = (g) => (g.dir === 1 ? 0 : g.dir === -1 ? 1 : 2);
+  const rank = (g) => (g.dir === 1 ? 0 : g.dir === -1 ? 1 : g.nongroup ? 2 : 3);
   const sorted = [...groups].sort((a, b) => rank(a) - rank(b));
   const sgdNet = groups.filter((g) => g.cur === "$").reduce((n, g) => n + g.dir * g.amount, 0);
   const metrics = [...document.querySelectorAll(".splits-summary-strip .entries-summary-metrics > span")].map((s) => s.textContent.trim());
@@ -128,14 +146,28 @@ function mount({ variant, screen, phone }) {
   };
   window.__sheet = sheet;
 
-  if (variant === "D") {
+  if (variant === "D" || variant.startsWith("D2")) {
+    const d2 = variant.startsWith("D2");
     const order = [active, ...sorted.filter((g) => g !== active && !g.settled), ...sorted.filter((g) => g !== active && g.settled)];
     const tile = (g) => g === active
       ? `<button class="mk-tile is-lead" type="button" aria-current="true"><span class="mk-tick">${M.icon("check", 14)}</span><strong>${g.name}</strong><small>${g.balance}</small><small>${g.lines[1]}</small></button>`
       : `<button class="mk-tile ${g.settled ? "is-settled" : ""}" type="button"><strong>${g.name}</strong><small>${g.settled && !hidden ? "Settled" : g.balance}</small></button>`;
-    const strip = M.el(`<div class="mk-strip" role="list" aria-label="Groups">${order.map(tile).join("")}<button class="mk-tile is-end" type="button">All groups</button><button class="mk-tile is-end" type="button">+ Create group</button></div>`);
+    const allTile = `<button class="mk-tile is-end2" type="button" aria-label="All groups" data-all>${M.icon("list", 20)}<span>All</span></button>`;
+    const newTile = `<button class="mk-tile is-end2" type="button" aria-label="Create group">${M.icon("plus", 20)}<span>New</span></button>`;
+    const tilesHtml = order.map(tile).join("");
+    const [first, last] = !d2 ? ["", `<button class="mk-tile is-end" type="button">All groups</button><button class="mk-tile is-end" type="button">+ Create group</button>`]
+      : variant === "D2d" ? [`<div class="mk-tile is-split2" role="group" aria-label="Groups actions"><button type="button" aria-label="Create group">${M.icon("plus", 16)}<span>New</span></button><i></i><button type="button" aria-label="All groups" data-all>${M.icon("list", 16)}<span>All</span></button></div>`, ""]
+      : variant === "D2" ? [allTile, newTile] : variant === "D2b" ? [allTile + newTile, ""] : ["", allTile + newTile];
+    const strip = M.el(`<div class="mk-strip ${d2 ? "d2" : ""} ${variant === "D2d" ? "d2d" : ""} ${window.__narrow ? "is-narrow-demo" : ""}" role="list" aria-label="Groups">${first}${tilesHtml}${last}</div>`);
     const head = document.querySelector(".panel-splits .panel-head");
     head.parentNode.insertBefore(strip, head);
+    if (d2 && !phone) {
+      // Desktop: one row, no wrap, no scroll. Hide tiles from the end until the rest fit; "All" says how many.
+      const tiles = [...strip.querySelectorAll(".mk-tile:not(.is-end2):not(.is-split2)")];
+      let hiddenCount = 0;
+      while (strip.scrollWidth > strip.clientWidth + 1 && tiles.length - hiddenCount > 1) { tiles[tiles.length - 1 - hiddenCount].style.display = "none"; hiddenCount += 1; }
+      if (hiddenCount) { const all = strip.querySelector("[data-all] span"); all.textContent = `All · ${hiddenCount} more`; all.closest(".mk-tile").style.flexBasis = "96px"; }
+    }
     anchor.parentNode.insertBefore(M.el(`<div class="mk-groups-wrap">${leadHtml(phone, false)}</div>`), anchor);
     window.__bar = () => document.body.appendChild(M.el(`<div class="mk-float-bar" role="button" aria-label="Choose a group">${M.bubble(active.icon)}<span class="mk-float-copy"><strong>${active.name}</strong><small>${hidden ? `${groups.length} groups` : active.balance}</small></span>${M.icon("chevronDown", 20)}</div>`));
     return;
@@ -175,16 +207,22 @@ const runOne = (variant, device, screen, name, { sheet = false } = {}) => async 
   }
 };
 
-const runD = (device, name, { scrolled = false, sheet = false } = {}) => async (page, h, shot) => {
+const runD = (device, name, { scrolled = false, sheet = false, variant = "D", end = false, narrow = false } = {}) => async (page, h, shot) => {
   const phone = device === "phone";
   await h.open(page, URL_);
   await h.inject(page, CSS);
   await page.evaluate(`window.read = ${read.toString()}; window.rowHtml = ${rowHtml.toString()}; window.listHtml = ${listHtml.toString()}; window.leadHtml = ${leadHtml.toString()};`);
   const fn = mount.toString().replace("read();", "window.read();").replace(/\browHtml\(/g, "window.rowHtml(").replace(/\blistHtml\(/g, "window.listHtml(").replace(/\bleadHtml\(/g, "window.leadHtml(");
-  await page.evaluate(`(${fn})(${JSON.stringify({ variant: "D", screen: "strip", phone })})`);
+  await page.evaluate(`window.__narrow = ${narrow};`);
+  await page.evaluate(`(${fn})(${JSON.stringify({ variant, screen: "strip", phone })})`);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.waitForTimeout(400);
   await shot(name, { keepFloaters: true });
+  if (end) {
+    await page.evaluate(() => { const st = document.querySelector(".mk-strip"); st.scrollTo({ left: st.scrollWidth, behavior: "instant" }); });
+    await page.waitForTimeout(300);
+    await shot("end", { keepFloaters: true });
+  }
   if (scrolled) {
     // Scrolled down: the strip leaves the page and the existing floating bar shows the active group.
     await page.evaluate(() => { window.scrollTo({ top: 760, behavior: "instant" }); window.__bar(); });
@@ -197,11 +235,15 @@ const runD = (device, name, { scrolled = false, sheet = false } = {}) => async (
     await shot("all-sheet", { keepFloaters: true });
   }
 };
-const SD = (device, name, opts, hidden) => ({ name: `splits-groups-D-${device}${hidden ? "-hidden" : ""}`, device, hidden, run: runD(device, name, opts) });
+const SD = (device, name, opts, hidden) => ({ name: `splits-groups-${opts?.variant ?? "D"}-${device}${opts?.narrow ? "-count" : ""}${hidden ? "-hidden" : ""}`, device, hidden, run: runD(device, name, opts) });
 
 const S = (variant, device, screen, name, opts, hidden) => ({ name: `splits-groups-${variant}-${device}${hidden ? "-hidden" : ""}`, device, hidden, run: runOne(variant, device, screen, name, opts) });
 
 export const scenarios = [
+  ...["D2d", "D2", "D2b", "D2c"].flatMap((v) => [
+    SD("phone", "strip", { variant: v, end: true, scrolled: v === "D2" }), SD("phone", "strip", { variant: v, end: true }, true),
+    SD("desktop", "strip", { variant: v }), SD("desktop", "strip", { variant: v }, true), SD("desktop", "strip", { variant: v, narrow: true })
+  ]),
   SD("phone", "strip", { scrolled: true, sheet: true }), SD("phone", "strip", { scrolled: true }, true), SD("desktop", "strip"), SD("desktop", "strip", {}, true),
   
   S("A", "phone", "list", "list"), S("A", "phone", "group", "group", { sheet: true }),
