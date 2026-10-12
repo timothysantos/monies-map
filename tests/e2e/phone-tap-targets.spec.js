@@ -24,8 +24,11 @@ const SCREENS = [
   {
     name: "Summary",
     path: "/summary?view=person-tim&month=2026-05",
-    required: [".period-range-segment", ".financial-insight-toggle"],
-    optional: [".share-row-secondary-action", ".checkin-action", ".summary-chevron"]
+    required: [".period-range-segment"],
+    optional: [
+      ".financial-insight-fold", ".financial-insight-toggle", ".share-row-secondary-action",
+      ".checkin-action", ".summary-chevron"
+    ]
   },
   {
     name: "Month",
@@ -33,7 +36,7 @@ const SCREENS = [
     required: [".period-range-segment", ".table-sort-button"],
     optional: [
       ".month-actions-trigger", ".month-plan-summary-toggle", ".note-trigger",
-      ".note-card-actions .subtle-action", ".financial-insight-toggle", ".checkin-action"
+      ".note-card-actions .subtle-action", ".financial-insight-fold", ".financial-insight-toggle", ".checkin-action"
     ]
   },
   {
