@@ -84,6 +84,9 @@ export const askCopy = {
     undo: "Undo",
     shareOnSplits: "Share on Splits",
     addToGroup: (name) => `Add to ${name}`,
+    // The split suggestion's two answers (ask-split-suggestion.js).
+    suggestedSplit: (share, groupName) => `Split ${share} in ${groupName}`,
+    notThisTime: "Not this time",
     chooseCategory: "Choose category",
     openInEntries: "Open in Entries",
     // An unsaved card further up the thread, once something newer owns the chips.
@@ -212,6 +215,7 @@ export const askCopy = {
     splitBasisPoints: "How was it split?",
     otherCategory: "It landed in Other. Which category fits?",
     shareOnSplits: "Share it on Splits?",
+    usualSplit: (name, groupName) => `You usually split this with ${name}. Add it to ${groupName}?`,
     checkField: (label) => `Check the ${label.toLowerCase()}.`
   },
   shareOption: (name, percent) => `${name} ${percent}%`,

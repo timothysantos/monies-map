@@ -1804,6 +1804,37 @@ Important distinctions:
   has that `last4`; otherwise Default account priority applies. A total in
   another currency than that account's is a currency hint, not an amount.
 
+### Split Suggestion
+
+The group and share Ask offers for a new expense that looks like the ones its
+payer usually puts on Splits, asked as "You usually split this with {name}.
+Add it to {group}?". Deterministic and read-only: a pure rule over the
+owner's own expenses of the last 12 months, no AI, and it never writes; the
+person answers it and the ordinary Splits switch (or Add to Splits on the
+Apple Pay card) does the writing.
+
+Canonical term:
+- `split suggestion`
+
+Code:
+- `src/domain/split-suggestion.ts` (the rule, `SPLIT_SUGGESTION_POLICY`)
+- `src/domain/pages/split-suggestion.ts` (loads the history)
+- `SplitSuggestionDto` in `src/types/dto.ts`
+- `POST /api/splits/suggestion` (src/index.ts)
+- `src/client/ask-split-suggestion.js` (the card's side)
+
+Important distinctions:
+- The shop's own history decides (same normalised description, at least 2
+  matching entries and 60% of them split in one group at one share). Only a
+  shop with fewer than 2 entries falls back to the same category (at least 4
+  entries, 75%), never Other or the income and transfer categories.
+- A habit counts only when the owner paid and the split was shared between
+  the owner and the other person only; mixed groups, tied habits, income,
+  transfers, an entry already on Splits and other people's purchases give no
+  suggestion.
+- Ask offers only an even share, since the Splits switch saves 50/50.
+- "Not this time" is kept on the card only; nothing is learned from it.
+
 ### AI Provider Status
 
 One aggregate row about the optional Claude provider, kept so the app can
@@ -1815,6 +1846,10 @@ is `AI_ALERT_EMAILS`: a list of Access emails, or `"*"` for everyone (what
 Canonical term:
 - `AI provider status` (the row); `credit state` (its derived `ok`, `low`,
   `exhausted`, `capped` or `unknown`)
+- `auto-balance` (the monthly pacing that orders the providers); `spend mode`
+  (`claude_all`, `ask_only` or `basic_first`); `ask tier` (receipt read,
+  entry draft, Ask answer wording) and `background tier` (monthly note, import
+  explanation, category rules, statement fallback)
 
 Code and storage:
 - `src/domain/ai-provider-status.ts` (failure categories, spend estimate,
@@ -1822,7 +1857,10 @@ Code and storage:
 - `ai_provider_status` (one row, `provider = 'claude'`): last failure
   category (`credit_exhausted`, `spend_capped`, `auth`, `other`) and time,
   last success time, `estimated_spend_micro_usd` since the last top-up mark,
-  and that mark's time and credit (`topped_up_credit_micro_usd`)
+  and that mark's time and credit (`topped_up_credit_micro_usd`), plus
+  `spend_month` (`YYYY-MM`, Asia/Singapore) and `month_spend_micro_usd`, the
+  estimated Claude spend in that month, replaced by the next success of a
+  new month (aggregates only)
 - `GET /api/ai-assist/provider-status`,
   `POST /api/ai-assist/provider-status/topped-up`
   (`src/server/ai-provider-status-route.ts`); `AiProviderStatusResponseDto`
@@ -1837,6 +1875,15 @@ Important distinctions:
 - A top-up mark is the owner saying how much credit they bought; it restarts
   the estimate and clears a `credit_exhausted` failure, not a gateway spend
   cap.
+- Auto-balance is deterministic and uses no AI. The month's spend is
+  compared with a pace line (`AI_CLAUDE_MONTHLY_TARGET_USD`, default 8,
+  times day over days in the month): at or under it `claude_all` asks Claude
+  first for everything; over it `ask_only` asks the basic model (Workers AI)
+  first for background features and still Claude first for ask features; at
+  90% of the target `basic_first` asks the basic model first for everything.
+  The other provider is always the fallback, so a mode only changes the
+  order. It also shows as `monthSpendUsd`, `monthTargetUsd` and `mode` on the
+  status route and as one Settings line.
 - Only owners listed in `AI_ALERT_EMAILS` (Cloudflare Access emails) see it.
   It is not household data: no prompt, image, response, error text or
   request id is stored, and it is not part of any page DTO.

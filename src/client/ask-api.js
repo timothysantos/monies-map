@@ -22,6 +22,13 @@
 //   or { needsConfirmation, candidates } (skew candidates with their
 //   suggested actions), or { answer, wording: { text, source } }.
 //
+// - POST /api/splits/suggestion (src/domain/pages/split-suggestion.ts): the
+//   split group and share the payer usually uses for entries like this one
+//   (DOMAIN.md "Split Suggestion"). Body { entryId } for a saved entry, else
+//   the card's { entryType, description, categoryName, ownerName,
+//   accountId, date }. Response { ok, suggestion: SplitSuggestionDto | null }.
+//   Read-only.
+//
 // Saving never uses a new route: the card goes through the Entries
 // composer's create path (entry-actions.js createEntryFromDraft), and the
 // follow-ups through the existing entry and split routes.
@@ -30,11 +37,13 @@
 // comes back as { ok: false, reason } and the card stays manual.
 
 import { createEntryFromDraft } from "./entry-create-request";
+import { readSplitSuggestionResponse } from "./ask-split-suggestion";
 
 export const ASK_ENDPOINTS = Object.freeze({
   entryDraft: "/api/ai-assist/entry-draft",
   receiptRead: "/api/ai-assist/receipt-read",
-  answer: "/api/ai-assist/answer"
+  answer: "/api/ai-assist/answer",
+  splitSuggestion: "/api/splits/suggestion"
 });
 
 const DRAFT_FIELD_NAMES = [
@@ -182,6 +191,22 @@ export async function requestReceiptRead({ image, signal = undefined, fetchImpl 
       throw error;
     }
     return { ok: false, reason: "network" };
+  }
+}
+
+// The split suggestion for a card (ask-split-suggestion.js builds the body).
+// Fails soft: any error, refusal or unreadable answer is no suggestion.
+export async function requestSplitSuggestion(body, { signal = undefined, fetchImpl = fetch } = {}) {
+  try {
+    const response = await fetchImpl(ASK_ENDPOINTS.splitSuggestion, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal
+    });
+    return response.ok ? readSplitSuggestionResponse(await readJson(response)) : null;
+  } catch {
+    return null;
   }
 }
 
