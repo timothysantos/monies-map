@@ -137,10 +137,11 @@ test.describe("month page", () => {
   });
 
   test("switching the Month view to a person loads that person's page instead of the cached household page", async ({ page }) => {
-    const metricValue = (label) => page.locator(".metric").filter({ hasText: label }).first();
+    // The Month lead: actual spend, and "of $planned plan" beside it.
+    const metricValue = (label) => page.locator(label === "Planned spend" ? ".month-lead .summary-lead-plan" : ".month-lead .summary-lead-spent");
     const readMetrics = async () => ({
-      plannedSpend: (await metricValue("Planned spend").innerText()).replace(/^PLANNED SPEND\s*/i, "").trim(),
-      actualSpend: (await metricValue("Actual spend").innerText()).replace(/^ACTUAL SPEND\s*/i, "").trim()
+      plannedSpend: (await metricValue("Planned spend").innerText()).replace(/^of\s*|\s*plan$/g, "").trim(),
+      actualSpend: (await metricValue("Actual spend").innerText()).trim()
     });
 
     // Tim's figures as a direct load shows them, before any household cache exists.
@@ -660,7 +661,7 @@ test.describe("month page", () => {
     const trigger = stickyBar.locator(".mobile-context-trigger");
     await expect(stickyBar).toBeVisible();
     await expect(trigger).toContainText("Household");
-    await expect(trigger).toContainText("View");
+    await expect(trigger).toHaveAccessibleName("Household View");
     await expect(trigger).not.toContainText("Direct");
     await expect(page.getByText(directDescription, { exact: true })).toBeVisible();
     await expect(page.getByText(sharedDescription, { exact: true })).toBeVisible();
@@ -668,12 +669,12 @@ test.describe("month page", () => {
     await trigger.click();
     const dialog = page.locator(".mobile-context-dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('section[aria-label="Scope"]')).toHaveCount(0);
+    await expect(dialog.getByRole("group", { name: "Scope" })).toHaveCount(0);
 
     await dialog.getByRole("button", { name: "Tim" }).click();
     await expect(page).toHaveURL(/view=person-tim/);
-    await expect(dialog.locator('section[aria-label="Scope"]')).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Direct + Shared" })).toHaveClass(/is-active/);
+    await expect(dialog.getByRole("group", { name: "Scope" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Direct + Shared" })).toHaveAttribute("aria-pressed", "true");
 
     await dialog.getByRole("button", { name: "Shared", exact: true }).click();
     await expect(dialog).toHaveCount(0);
@@ -1097,7 +1098,7 @@ test.describe("month page", () => {
 
     // One tap must run the open handler once and leave exactly one sheet.
     await takeMonthRowOpenCount(page);
-    await row.locator("td").nth(4).click();
+    await row.locator("td.month-cell-planned").click();
     await expect(editSheet).toBeVisible();
     await expect(sheets).toHaveCount(1);
     expect(await takeMonthRowOpenCount(page)).toBe(1);

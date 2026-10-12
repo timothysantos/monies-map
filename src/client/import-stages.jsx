@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { DeleteRowButton } from "./ui-components";
@@ -13,18 +13,18 @@ import "./import-review.css";
 // check refresh); the stuck import bar keeps that line instead of folding it.
 export function ImportStepper({ stage, bringSummary, isBringAlert = false, isBringOpen, canCollapseBring, onToggleBring }) {
   const steps = [
-    { key: "bring", label: messages.imports.stageBring, summary: bringSummary },
-    { key: "review", label: messages.imports.stageReview, summary: messages.imports.stageReviewSummary },
-    { key: "done", label: messages.imports.stageDone, summary: messages.imports.stageDoneSummary }
+    { key: "bring", label: importMessages.stageBring, summary: bringSummary },
+    { key: "review", label: importMessages.stageReview, summary: importMessages.stageReviewSummary },
+    { key: "done", label: importMessages.stageDone, summary: importMessages.stageDoneSummary }
   ];
   const currentIndex = steps.findIndex((step) => step.key === stage);
   return (
-    <ol className="import-stepper" aria-label={messages.imports.stageStepsLabel}>
+    <ol className="import-stepper" aria-label={importMessages.stageStepsLabel}>
       {steps.map((step, index) => {
         const state = index < currentIndex ? "is-done" : index === currentIndex ? "is-current" : "is-next";
         const changeButton = (className) => (
           <button type="button" className={`subtle-action import-stepper-change ${className}`} aria-expanded={isBringOpen} onClick={onToggleBring}>
-            {isBringOpen ? messages.imports.stageHideFiles : messages.imports.stageChangeFiles}
+            {isBringOpen ? importMessages.stageHideFiles : importMessages.stageChangeFiles}
           </button>
         );
         const canChange = step.key === "bring" && canCollapseBring;
@@ -33,7 +33,7 @@ export function ImportStepper({ stage, bringSummary, isBringAlert = false, isBri
             <span className="import-stepper-head">
               <span className="import-stepper-label">
                 {state === "is-done" ? <Check size={14} aria-hidden="true" /> : null}
-                {messages.imports.stageNumbered(index + 1, step.label)}{index < currentIndex ? ` · ${messages.imports.stageDoneMark}` : ""}
+                {importMessages.stageNumbered(index + 1, step.label)}{index < currentIndex ? ` · ${importMessages.stageDoneMark}` : ""}
               </span>
               {/* The stuck import bar hides the summary; Change stays here. */}
               {canChange ? changeButton("is-stuck-only") : null}
@@ -66,12 +66,12 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
       label={summary.sourceLabel}
       destructive={false}
       buttonClassName="subtle-action import-done-rollback"
-      triggerLabel={messages.imports.doneRollback}
-      confirmLabel={messages.imports.rollbackConfirm}
-      prompt={<>{messages.imports.rollbackDetail(summary.sourceLabel)}</>}
+      triggerLabel={importMessages.doneRollback}
+      confirmLabel={importMessages.rollbackConfirm}
+      prompt={<>{importMessages.rollbackDetail(summary.sourceLabel)}</>}
       onConfirm={onRollback}
     >
-      {messages.imports.doneRollback}
+      {importMessages.doneRollback}
     </DeleteRowButton>
   ) : null;
   if (compact) {
@@ -80,7 +80,7 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
         <div className="import-done-head">
           <h3>{summary.title}</h3>
           {summary.statusLabel ? <span className={`pill ${summary.statusTone}`}>{summary.statusLabel}</span> : null}
-          <span className="import-done-compact-detail">{messages.imports.doneRowsDetail(totalDoneCounts(summary))}</span>
+          <span className="import-done-compact-detail">{importMessages.doneRowsDetail(totalDoneCounts(summary))}</span>
           {rollback}
         </div>
       </section>
@@ -95,11 +95,11 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
         <h3>{summary.title}</h3>
         <div className="import-done-next">
           <button type="button" className="subtle-action" onClick={onClose}>
-            {nextItem ? messages.imports.doneClose : messages.imports.doneImportAnother}
+            {nextItem ? importMessages.doneClose : importMessages.doneImportAnother}
           </button>
           {nextItem ? (
             <button type="button" className="import-commit-button" onClick={onReviewNext}>
-              {messages.imports.doneReviewNext(nextItem.fileName)}
+              {importMessages.doneReviewNext(nextItem.fileName)}
             </button>
           ) : null}
         </div>
@@ -110,13 +110,13 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
           {summary.cards.map((card) => (
             <article key={card.name} className="import-card import-done-account">
               <strong>{card.name}</strong>
-              <span>{messages.imports.doneCardBalance(formatStatementBalance(card.reconciliation), card.balanced)}</span>
-              <span className="import-history-inline">{messages.imports.doneCardDetail(card.counts)}</span>
+              <span>{importMessages.doneCardBalance(formatStatementBalance(card.reconciliation), card.balanced)}</span>
+              <span className="import-history-inline">{importMessages.doneCardDetail(card.counts)}</span>
             </article>
           ))}
         </div>
       ) : (
-        <p className="lede compact">{messages.imports.doneRowsDetail(summary.counts)}</p>
+        <p className="lede compact">{importMessages.doneRowsDetail(summary.counts)}</p>
       )}
       <div className="import-done-actions">
         {rollback ?? <span />}
@@ -143,9 +143,9 @@ function totalDoneCounts(summary) {
 function formatStatementBalance(reconciliation) {
   const balanceMinor = Number(reconciliation.statementBalanceMinor ?? 0);
   if (reconciliation.accountKind !== "credit_card") {
-    return messages.imports.doneBalance(money(balanceMinor));
+    return importMessages.doneBalance(money(balanceMinor));
   }
   return balanceMinor < 0
-    ? messages.imports.doneOwed(money(Math.abs(balanceMinor)))
-    : messages.imports.doneCredit(money(balanceMinor));
+    ? importMessages.doneOwed(money(Math.abs(balanceMinor)))
+    : importMessages.doneCredit(money(balanceMinor));
 }

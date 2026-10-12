@@ -174,8 +174,11 @@ The app is designed for phones as well as desktops. The differences:
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
-  `Ethan · Direct + Shared`). Tap it to change the view first, then the
-  scope. Entries adds previous and next month buttons beside it.
+  `Ethan · Direct + Shared`), with the person in their own colour. Tap it to
+  change the view first, then the scope; on Entries the sheet also has the
+  filters, with **Reset filters** and **Done** at the bottom. Swipe the sheet
+  down to close it. Entries adds previous and next month buttons beside the
+  bar.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
 - **Month button.** On Summary, the button beside the bar says **All
   months**. Tap it to pick one month of the range
@@ -248,8 +251,10 @@ over plan.
 - **Spending Mix**: a donut of spending by category over the whole range,
   with a list of categories below it. Pick a month to see that month's
   ([Month](#month)).
-- **Intent vs Outcome**: one card per month comparing planned and actual
-  income, spending and savings.
+- **Intent vs Outcome**: one card per month, newest first. Each leads with
+  what you spent against what you planned, with a bar, the percent of plan
+  and how far under or over you are. Your planned and actual income sit
+  under it, and **Details** opens the income, spending and savings figures.
 - **Wallets in view**: the current balance of each account and whether a
   statement has confirmed it.
 
@@ -270,9 +275,9 @@ over plan.
 - **A category in the list**: select it to hide or show it in the donut (it
   says Shown or Hidden). The **›** beside it opens that category's entries.
   The coloured icon changes the category's icon and colour.
-- **A month card** in Intent vs Outcome: expand it for the planned, actual and
-  variance table. The pencil edits that month's note. The month's name opens
-  that month.
+- **A month card** in Intent vs Outcome: select **Details** for the planned,
+  actual and variance figures (the latest month starts open). The **Note** row
+  there edits that month's note. The month's name opens that month.
 
 ![Wallets in view shows current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
 
@@ -324,15 +329,20 @@ stays highlighted, and the range at the top stays as it was.
 ### What you see
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
-- **Six cards**: Planned income, Planned spend, Remaining budget (planned
-  income minus planned spend; it says Overplanned when negative), Actual
-  spend, Savings target and Spend gap (planned minus actual).
+- **The top card**: what you have spent this month against what you
+  planned, with a bar, the percent of plan, and how much you are under or
+  over plan. Under the bar, in the same card, are **Income** (received, with
+  the plan), **Saved** (with the savings target) and **To allocate**
+  (planned income minus planned spend; it says Overplanned when negative).
+  Select it to see what it means.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
   list as on Summary. Select a category to hide or show it in the donut; its
   **›** opens that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
-- **Income**: planned income sources.
+- **Income**: planned income sources. On every plan row a thin bar shows how
+  much of the plan you have used. On a phone each row is a small card; tap it
+  to change it.
 - **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
 - **Planned Items**: fixed commitments such as savings, insurance, loans and
@@ -450,10 +460,16 @@ always know you are working on shared money rather than your bank ledger.
 
 ### What you see
 
-- **Group buttons**: **Non-group expenses** plus your named groups (for
-  example a trip or home bills). Each shows its currency, number of entries
-  and your balance, such as "You owe Serene $108.58" or "Settled up". The **+**
-  creates a group.
+- **Group tiles**: a row under the person switcher with your named groups
+  (for example a trip or home bills) and **Non-group expenses**. The group you
+  have open comes first as a white tile with its balance in words, such as
+  "Serene owes you $303.15" or "You owe Serene $108.58", and how many entries
+  it has. The others are smaller tiles with one balance line: groups that owe
+  you first, then groups you owe, then Non-group expenses ("No balance" when
+  it is even), then settled groups, dimmed and marked "Settled". The cream
+  tile on the left stays put: **New** creates a group and **All** opens a list
+  of every group with its balance. When money is hidden every tile says
+  "Balance hidden".
 - **Money insights** for the selected group.
 - **Search**, your balance, the group's spend, **Activity history** and
   **+ Add expense**.
@@ -484,7 +500,9 @@ open.
 
 ### On a phone
 
-The view switch stays at the top, groups scroll sideways, and the round
+The view switch stays at the top, the group tiles slide sideways beside the
+cream **New** / **All** tile, and when you scroll down a bar with the open
+group takes their place (tap it to open **All groups**). The round
 receipt button opens a new entry card on [Ask](#ask), already set to share
 with the other person in the group you are looking at. **+ Add expense**
 (and **Edit in form** on Ask) opens the new expense as a card in a sheet,
@@ -965,8 +983,8 @@ Good to know:
 4. Under **Budget Buckets**, select **+ Add budget bucket** for flexible
    spending such as Food, Groceries, Transport and Shopping.
 5. Select **Save** on each row.
-6. Check the cards: **Remaining budget** should not say Overplanned, and
-   **Savings target** should be what you want to put aside.
+6. Check the top of the page: it should say **To allocate**, not Overplanned,
+   and the **Saved** target should be what you want to put aside.
 
 > Tip: keep budget buckets broad. One Food bucket works better than a row for
 > every restaurant. Plan only what is stable as planned items.
@@ -1434,15 +1452,23 @@ There are two ways, depending on where the expense is.
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 
-To change a split, select it in the activity list. On a phone it opens as the
-same card you used to add it: change the total, a share, the category or the
-group, open **More details** for the rest, and select **Save expense**.
-**Delete** is at the bottom left and asks before it removes anything.
-On a wide screen the row turns into its form: change the fields and select **Save**. To remove it, select **Delete**,
-then **Delete split row**. A deleted split can be restored
-([Restore a deleted split](#restore-a-deleted-split)).
+To change a split, select it in the activity list (or Tab to it and press
+Enter or Space). It opens as the same card you used to add it: on a phone as a
+sheet, on a wide screen in the list in place of the row. Change the total, a share, the category or the group, open
+**More details** on a phone for the rest (on a wide screen, change the date, who paid or how it was paid from the chips under the total), and select **Save expense**.
+**Delete** is at the bottom left and asks before it removes anything: select
+**Delete**, then **Delete split row**. Escape or **Cancel** closes the card
+without saving, and the cursor goes back to the split you opened. A deleted
+split can be restored ([Restore a deleted split](#restore-a-deleted-split)).
 
-![Selecting a split opens its form in place of the row](/faq/guide/desktop/thumbs/splits-edit.webp)
+A split that has been settled up (or included in a simplified settlement)
+opens read-only: you can read it, but not change it. A line at the top says
+when it was settled ("Settled on 17 May 2026") or simplified, and the button
+under it (**Undo settle-up** or **Undo simplification**) opens that activity
+again. After the
+undo the same card turns editable and you can change and save it.
+
+![Selecting a split turns its row into a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
 
 ![Deleting a split asks you to confirm](/faq/guide/desktop/thumbs/splits-delete.webp)
 
@@ -1521,16 +1547,17 @@ Expenses that are part of a settle-up or a simplified settlement are locked:
 their amount, currency, shares, payer, date and group cannot change, and they
 cannot be deleted. Otherwise the settled amount would silently stop matching.
 
-If you try, the save is refused and nothing changes. The message names the
-settlement and offers a button:
+Select a settled expense and it opens with nothing to change. A line at the
+top says when it was settled or simplified and the button under it undoes it:
 
 1. Select **Undo settle-up** (for a settled group) or **Undo simplification**
    (for a simplified settlement). You can also open the batch in **Archived
    batches** and undo it there.
-2. Your change is still in the form: select save again.
+2. The same card turns editable: make your change and select **Save expense**.
 3. Settle again for the new balance.
 
-Description, category, note and bank links stay editable without undoing.
+If a change reaches a settled split another way (for example an entry on
+Entries), it is refused with the same message and button, and nothing changes.
 
 ## Restore a deleted split
 
@@ -1696,6 +1723,15 @@ back a shared balance ("settling up").
    shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
+
+Money insights can be folded. Under the title, a card shows the
+first thing worth knowing (a **To do** comes first): its label, its headline
+and the start of the line beneath it, with "+2 more" and an arrow when there
+are others. Select the card to open all of it, and select the
+title row to fold it again. On a phone it starts folded; on a computer it
+starts open. With money totals hidden, the card just says how many insights
+there are. Each choice is remembered in this browser, separately for phone and
+computer.
 
 Money insights change month by month. Each month they word the same fact a
 different way and pick a different Fun fact and quote, so none of
@@ -1939,8 +1975,8 @@ saves every row or none of them.
 
 - **Actual**: what really happened, taken from your entries.
 - **Planned**: what you intended, from the Month plan.
-- **Variance** or **Spend gap**: planned minus actual. Positive means you
-  spent less than planned.
+- **Variance**, or the **under plan** and **over plan** amount at the top:
+  planned minus actual. Under plan means you spent less than planned.
 - **Planned item**: a fixed commitment (savings, loan, subscription) whose
   actual comes from the entries you link to it.
 - **Budget bucket**: a flexible category budget whose actual comes from all

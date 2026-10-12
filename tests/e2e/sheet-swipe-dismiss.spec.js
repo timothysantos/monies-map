@@ -565,6 +565,14 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     await swipeDown(page, history, ".split-history-dialog");
     await expect(history).toBeHidden();
 
+    // The All groups sheet has nothing to lose, so a swipe always closes it.
+    await page.getByRole("button", { name: "All groups" }).filter({ visible: true }).first().click();
+    const allGroups = page.getByRole("dialog", { name: "All groups" });
+    await expect(allGroups).toBeVisible();
+    await expect(allGroups.locator(".sheet-drag-handle")).toBeVisible();
+    await swipeDown(page, allGroups, ".splits-groups-sheet");
+    await expect(allGroups).toBeHidden();
+
     const openGroupSheet = async () => {
       await page.getByRole("button", { name: "Create group" }).filter({ visible: true }).first().click();
       const sheet = page.getByRole("dialog", { name: "Create group" });

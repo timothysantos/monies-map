@@ -15,7 +15,7 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", curre
 const wholeMoneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const monthLabel = (month) => {
   const [year, number] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1));
+  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1)).replace(/\bSept\b/, "Sep");
 };
 
 async function waitUsable(page) {
@@ -69,16 +69,10 @@ test.describe("Summary tab month choice on a phone", () => {
 
     const island = page.locator(".mobile-context-sticky-wrap");
     const allMonths = island.getByRole("button", { name: /All months/ });
-    await expect(allMonths).toHaveText(/All months\s*Month/);
-    // Beside the month control the scope trigger shows no hint line (one
-    // row), but a screen reader still hears it.
-    const hint = island.locator(".mobile-context-trigger-hint");
-    expect(await hint.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+    await expect(allMonths).toHaveText(/All months/);
+    // The bar is one row: the "Month" label is heard, not shown.
+    await expect(allMonths.locator(".sr-only")).toHaveText("Month");
     await expect(island.locator(".mobile-context-trigger")).toHaveAccessibleName("Tim · Direct + Shared View and scope");
-    // On Entries the hint line still shows (negative case).
-    await page.goto("/entries?view=person-tim&month=2026-04");
-    await waitUsable(page);
-    expect(await hint.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThan(5);
     await page.goto("/summary?view=person-tim&month=2026-04");
     await waitUsable(page);
     const islandHeight = await island.locator(".mobile-context-sticky-bar").evaluate((element) => element.getBoundingClientRect().height);

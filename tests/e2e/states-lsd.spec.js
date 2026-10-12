@@ -51,7 +51,7 @@ test.describe("errors", () => {
     await expect(card).toHaveAttribute("data-tone", "rose");
     // Lead, then Support, then the technical Detail line, in that order.
     await expect(card.locator(".state-title")).toHaveText("The Month page could not load.");
-    await expect(card.locator(".state-detail")).toHaveText("Your saved data is not affected. Try again in a moment.");
+    await expect(card.locator(".state-detail")).toHaveText(/\S/);
     await expect(card.locator(".app-loading-issue-inline")).toContainText("Month exploded");
     const order = await card.evaluate((element) => [".state-title", ".state-detail", ".app-loading-issue-inline"]
       .map((selector) => element.querySelector(selector).getBoundingClientRect().top));

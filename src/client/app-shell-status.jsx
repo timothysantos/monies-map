@@ -89,7 +89,7 @@ export function ShellLoadingScreen({ environment, tabId, status, elapsedSeconds 
 // A route is fetching the latest data while the previous page stays on
 // screen: one quiet pill, clear of the period picker. The figures behind it
 // (percent, detail, elapsed) are the tooltip; only a problem is spelled out.
-export function AppLoadingOverlay({ status, elapsedSeconds, className = "" }) {
+export function AppLoadingOverlay({ status = null, elapsedSeconds = 0, className = "" }) {
   const progress = [typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : "", ellipsizeText(status?.detail ?? ""), elapsedSeconds > 0 ? `${elapsedSeconds}s` : ""].filter(Boolean).join(" · ");
   return (
     <div className={["state-pill app-loading-overlay", className].filter(Boolean).join(" ")} role="status" aria-live="polite" title={progress}>

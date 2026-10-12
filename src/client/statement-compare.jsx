@@ -2,6 +2,8 @@ import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { EmptyState, InlineError } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
@@ -37,16 +39,16 @@ export function StatementCompareResultView({
   const categorySelectOptions = categoryService.listForSelect(categories);
   return (
     <section className="settings-statement-compare">
-      <strong>{messages.settings.statementCompareSummary(result)}</strong>
+      <strong>{settingsMessages.statementCompareSummary(result)}</strong>
       {deltaMinor != null ? (
-        <p className="settings-account-health money-short">{messages.settings.statementCompareDelta(formatService.money(Math.abs(deltaMinor)))}</p>
+        <p className="settings-account-health money-short">{settingsMessages.statementCompareDelta(formatService.money(Math.abs(deltaMinor)))}</p>
       ) : null}
       <div className="settings-statement-compare-periods">
-        <p>{messages.settings.statementCompareCheckpointPeriod(
+        <p>{settingsMessages.statementCompareCheckpointPeriod(
           result.statementStartDate ? formatService.formatDateOnly(result.statementStartDate) : messages.common.emptyValue,
           formatService.formatDateOnly(result.statementEndDate)
         )}</p>
-        <p>{messages.settings.statementCompareUploadedPeriod(
+        <p>{settingsMessages.statementCompareUploadedPeriod(
           result.uploadedStatementStartDate ? formatService.formatDateOnly(result.uploadedStatementStartDate) : messages.common.emptyValue,
           result.uploadedStatementEndDate ? formatService.formatDateOnly(result.uploadedStatementEndDate) : messages.common.emptyValue
         )}</p>
@@ -65,18 +67,18 @@ export function StatementCompareResultView({
       ) : null}
       {result.possibleMatches.length ? (
         <div className="settings-statement-compare-block">
-          <h3>{messages.settings.statementComparePossibleTitle}</h3>
+          <h3>{settingsMessages.statementComparePossibleTitle}</h3>
           {result.possibleMatches.slice(0, 5).map((candidate) => (
             <p key={`${candidate.statementRow.id}-${candidate.ledgerRow.id}`}>
-              {messages.settings.statementComparePossibleRow(candidate)}
+              {settingsMessages.statementComparePossibleRow(candidate)}
             </p>
           ))}
         </div>
       ) : null}
       {directionMismatches.length ? (
         <div className="settings-statement-compare-block is-warning">
-          <h3>{messages.settings.statementCompareDirectionTitle}</h3>
-          <p className="settings-statement-compare-explainer">{messages.settings.statementCompareDirectionDetail}</p>
+          <h3>{settingsMessages.statementCompareDirectionTitle}</h3>
+          <p className="settings-statement-compare-explainer">{settingsMessages.statementCompareDirectionDetail}</p>
           {directionMismatches.slice(0, 5).map((candidate) => (
             <StatementCompareDirectionMismatch
               key={`${candidate.statementRow.id}-${candidate.ledgerRow.id}`}
@@ -89,20 +91,20 @@ export function StatementCompareResultView({
         </div>
       ) : null}
       <div className="settings-statement-compare-block">
-        <h3>{messages.settings.statementCompareDuplicateTitle}</h3>
+        <h3>{settingsMessages.statementCompareDuplicateTitle}</h3>
         {duplicateStatementGroups.length || duplicateLedgerGroups.length ? (
           <>
-            <p>{messages.settings.statementCompareDuplicateSummary(duplicateStatementGroups.length, duplicateLedgerGroups.length)}</p>
-            <StatementCompareDuplicateGroups title={messages.settings.statementCompareDuplicateStatement} groups={duplicateStatementGroups} />
-            <StatementCompareDuplicateGroups title={messages.settings.statementCompareDuplicateLedger} groups={duplicateLedgerGroups} />
+            <p>{settingsMessages.statementCompareDuplicateSummary(duplicateStatementGroups.length, duplicateLedgerGroups.length)}</p>
+            <StatementCompareDuplicateGroups title={settingsMessages.statementCompareDuplicateStatement} groups={duplicateStatementGroups} />
+            <StatementCompareDuplicateGroups title={settingsMessages.statementCompareDuplicateLedger} groups={duplicateLedgerGroups} />
           </>
         ) : (
-          <EmptyState>{messages.settings.statementCompareDuplicateNone}</EmptyState>
+          <EmptyState>{settingsMessages.statementCompareDuplicateNone}</EmptyState>
         )}
       </div>
       <div className="settings-statement-compare-grid">
         <div>
-          <h3>{messages.settings.statementCompareMissingTitle}</h3>
+          <h3>{settingsMessages.statementCompareMissingTitle}</h3>
           {result.unmatchedStatementRows.length ? result.unmatchedStatementRows.slice(0, 12).map((row) => (
             <StatementCompareMissingRow
               key={row.id}
@@ -114,13 +116,13 @@ export function StatementCompareResultView({
               people={people}
               onEntryAdded={onEntryAdded}
             />
-          )) : <EmptyState>{messages.settings.statementCompareNone}</EmptyState>}
+          )) : <EmptyState>{settingsMessages.statementCompareNone}</EmptyState>}
         </div>
         <div>
-          <h3>{messages.settings.statementCompareExtraTitle}</h3>
+          <h3>{settingsMessages.statementCompareExtraTitle}</h3>
           {result.unmatchedLedgerRows.length ? result.unmatchedLedgerRows.slice(0, 12).map((row) => (
             <StatementCompareDisplayRow key={row.id} row={row} />
-          )) : <EmptyState>{messages.settings.statementCompareNone}</EmptyState>}
+          )) : <EmptyState>{settingsMessages.statementCompareNone}</EmptyState>}
         </div>
       </div>
     </section>
@@ -210,12 +212,12 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
 
   return (
     <div className="settings-statement-direction-row">
-      <StatementCompareDisplayRow row={candidate.statementRow} label={messages.settings.statementCompareMissingTitle} />
+      <StatementCompareDisplayRow row={candidate.statementRow} label={settingsMessages.statementCompareMissingTitle} />
       <div>
-        <StatementCompareDisplayRow row={candidate.ledgerRow} label={messages.settings.statementCompareExtraTitle} />
+        <StatementCompareDisplayRow row={candidate.ledgerRow} label={settingsMessages.statementCompareExtraTitle} />
         <Popover.Root open={open} onOpenChange={setOpen}>
           <Popover.Trigger asChild>
-            <button type="button" className="settings-text-link">{messages.settings.statementCompareFixDirection}</button>
+            <button type="button" className="settings-text-link">{settingsMessages.statementCompareFixDirection}</button>
           </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
@@ -228,10 +230,10 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
                 void saveDraft();
               }}
             >
-              <strong>{messages.settings.statementCompareFixDirectionTitle}</strong>
+              <strong>{settingsMessages.statementCompareFixDirectionTitle}</strong>
               <div className="settings-statement-entry-form">
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.type}</span>
+                  <span>{importMessages.table.type}</span>
                   <select className="table-edit-input" value={draft.entryType} onChange={(event) => updateDraft({ entryType: event.target.value })}>
                     <option value="expense">Expense</option>
                     <option value="income">Income</option>
@@ -248,7 +250,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
                   </label>
                 ) : (
                   <label className="table-edit-field">
-                    <span>{messages.imports.table.category}</span>
+                    <span>{importMessages.table.category}</span>
                     <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
                       {categorySelectOptions.map((category) => (
                         <option key={category.id} value={category.name}>{category.name}</option>
@@ -261,7 +263,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
               <div className="dialog-actions">
                 <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
                 <button type="submit" className="dialog-primary" disabled={isSaving || !draft.entryType || !draft.categoryName}>
-                  {messages.settings.statementCompareFixDirectionSave}
+                  {settingsMessages.statementCompareFixDirectionSave}
                 </button>
               </div>
             </form>
@@ -361,7 +363,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
       <p>{row.description}</p>
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
-          <button type="button" className="settings-text-link">{messages.settings.statementCompareAddEntry}</button>
+          <button type="button" className="settings-text-link">{settingsMessages.statementCompareAddEntry}</button>
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
@@ -374,14 +376,14 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                 void saveDraft();
               }}
             >
-              <strong>{messages.settings.statementCompareAddEntryTitle}</strong>
+              <strong>{settingsMessages.statementCompareAddEntryTitle}</strong>
               <div className="settings-statement-entry-form">
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.date}</span>
+                  <span>{importMessages.table.date}</span>
                   <input className="table-edit-input" type="date" value={draft.date} enterKeyHint="next" onChange={(event) => updateDraft({ date: event.target.value })} />
                 </label>
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.account}</span>
+                  <span>{importMessages.table.account}</span>
                   <select className="table-edit-input" value={draft.accountName} onChange={(event) => updateDraft({ accountName: event.target.value })}>
                     {accountOptions.map((accountOption) => (
                       <option key={accountOption.id} value={accountOption.value}>{accountOption.label}</option>
@@ -389,11 +391,11 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                   </select>
                 </label>
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.description}</span>
+                  <span>{importMessages.table.description}</span>
                   <input className="table-edit-input" value={draft.description} enterKeyHint="next" onChange={(event) => updateDraft({ description: event.target.value })} />
                 </label>
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.amount}</span>
+                  <span>{importMessages.table.amount}</span>
                   <input
                     className="table-edit-input"
                     value={formatService.formatMinorInput(draft.amountMinor)}
@@ -405,7 +407,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                   />
                 </label>
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.type}</span>
+                  <span>{importMessages.table.type}</span>
                   <select className="table-edit-input" value={draft.entryType} onChange={(event) => updateDraft({ entryType: event.target.value })}>
                     <option value="expense">Expense</option>
                     <option value="income">Income</option>
@@ -422,7 +424,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                   </label>
                 ) : (
                   <label className="table-edit-field">
-                    <span>{messages.imports.table.category}</span>
+                    <span>{importMessages.table.category}</span>
                     <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
                       {categorySelectOptions.map((category) => (
                         <option key={category.id} value={category.name}>{category.name}</option>
@@ -431,7 +433,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                   </label>
                 )}
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.owner}</span>
+                  <span>{importMessages.table.owner}</span>
                   <select className="table-edit-input" value={draft.ownerName} onChange={(event) => {
                     updateDraft({ ownershipType: "direct", ownerName: event.target.value });
                   }}>
@@ -441,7 +443,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                   </select>
                 </label>
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.note}</span>
+                  <span>{importMessages.table.note}</span>
                   <input className="table-edit-input" value={draft.note} enterKeyHint="done" onChange={(event) => updateDraft({ note: event.target.value })} />
                 </label>
               </div>
@@ -449,7 +451,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
               <div className="dialog-actions">
                 <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
                 <button type="submit" className="dialog-primary" disabled={isSaving || !draft.date || !draft.description || !draft.accountName || !draft.categoryName || !draft.amountMinor}>
-                  {messages.settings.statementCompareAddEntrySave}
+                  {settingsMessages.statementCompareAddEntrySave}
                 </button>
               </div>
             </form>

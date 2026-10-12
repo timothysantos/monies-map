@@ -6,7 +6,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import {
   canInlineEditMonthPlanRow,
   canOpenMonthMobileSheet,
@@ -15,6 +15,7 @@ import {
 import { getMonthPlanEditSource } from "./month-state";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
+import { leadProgress } from "./ui/lead-support-detail";
 import { useIsMobileLayout, useIsMonthSheetLayout } from "./use-viewport";
 import { moneyToneClass } from "./money-tone-class";
 import { flowTone, headroomTone, incomeVarianceTone, spendTone } from "../domain/money-tone";
@@ -25,6 +26,21 @@ const SECTION_ORDER = {
   budget_buckets: 0,
   planned_items: 1
 };
+
+// A thin actual-against-plan bar under a plan row's actual figure (design.md,
+// "Lead · Support · Detail"): the same fill rule as the lead card's bar,
+// rose only past the plan; money received (income) fills mint. Hidden money
+// keeps only the empty track, since its length would say over or under plan.
+function PlanRowBar({ actualMinor, plannedMinor, isIncome = false }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const { percent, isOver } = leadProgress(actualMinor, plannedMinor, { overIsShort: !isIncome });
+  const tone = isIncome ? "in" : isOver ? "short" : "neutral";
+  return (
+    <span className="lsd-bar month-row-bar" aria-hidden="true">
+      {areTotalsVisible ? <span className={`lsd-bar-fill ${moneyToneClass(tone)}`} style={{ width: `${percent}%` }} /> : null}
+    </span>
+  );
+}
 
 function isPlannedItemsSection(sectionKey) {
   return sectionKey === "planned_items";
@@ -247,7 +263,7 @@ function IncomePlanSection({
                       className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
                       onClick={isRowOpenable ? handleRowOpen : undefined}
                     >
-                      <td>
+                      <td className="month-cell-category">
                         <div className="month-category-cell">
                           <CategoryAppearancePopover
                             category={categoryService.get(categories, row)}
@@ -264,10 +280,10 @@ function IncomePlanSection({
                                 <option key={category.id} value={category.id}>{category.name}</option>
                               ))}
                             </select>
-                          ) : <span>{row.categoryName}</span>}
+                          ) : <span className={row.categoryName === row.label ? "is-same-as-item" : undefined}>{row.categoryName}</span>}
                         </div>
                       </td>
-                      <td>
+                      <td className="month-cell-item">
                         {isEditing ? (
                           <input
                             className="table-edit-input"
@@ -279,7 +295,7 @@ function IncomePlanSection({
                           <MonthRowOpenButton row={row} onOpen={() => onBeginIncomeEdit(row)} />
                         ) : row.label}
                       </td>
-                      <td>
+                      <td className="month-cell-planned">
                         {isEditing ? (
                         <input
                           className="table-edit-input table-edit-input-money"
@@ -291,7 +307,7 @@ function IncomePlanSection({
                         />
                         ) : <PrivateMoney>{formatService.money(row.plannedMinor)}</PrivateMoney>}
                       </td>
-                      <td>
+                      <td className="month-cell-actual">
                         <div className="month-actual-cell">
                           <button
                             type="button"
@@ -308,10 +324,11 @@ function IncomePlanSection({
                             <PrivateMoney className={moneyToneClass(flowTone(row.actualMinor))}>{formatService.money(row.actualMinor)}</PrivateMoney>
                           </button>
                           {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
+                          <PlanRowBar actualMinor={row.actualMinor} plannedMinor={row.plannedMinor} isIncome />
                         </div>
                       </td>
-                      <td className={moneyToneClass(incomeVarianceTone(row.plannedMinor, row.actualMinor))}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
-                      <td>
+                      <td className={`month-cell-variance ${moneyToneClass(incomeVarianceTone(row.plannedMinor, row.actualMinor))}`}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
+                      <td className={`month-cell-note ${row.note ? "" : "is-empty"}`}>
                         <div className="table-note-actions">
                           <button
                             type="button"
@@ -534,7 +551,7 @@ function PlanningRow({
         className={`${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
         onClick={isRowOpenable ? handleRowOpen : undefined}
       >
-        <td>
+        <td className="month-cell-category">
           <div className="month-category-cell">
             <CategoryAppearancePopover
               category={categoryService.get(categories, row)}
@@ -558,11 +575,11 @@ function PlanningRow({
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
-            ) : <span>{row.categoryName}</span>}
+            ) : <span className={row.categoryName === row.label ? "is-same-as-item" : undefined}>{row.categoryName}</span>}
           </div>
         </td>
         {isPlannedItemsSection(section.key) ? (
-          <td>
+          <td className="month-cell-date">
             {isEditing ? (
               <input
                 className="table-edit-input"
@@ -574,7 +591,7 @@ function PlanningRow({
             ) : formatRowDateLabel(row, view.monthPage.month)}
           </td>
         ) : null}
-        <td>
+        <td className="month-cell-item">
           {isEditing ? (
             <input
               className="table-edit-input"
@@ -593,7 +610,7 @@ function PlanningRow({
             <MonthRowOpenButton row={row} onOpen={() => onBeginPlanEdit(section.key, row)} />
           ) : row.label}
         </td>
-        <td>
+        <td className="month-cell-planned">
           {isEditing ? (
             <div className="month-planned-cell">
               <input
@@ -618,7 +635,7 @@ function PlanningRow({
             </div>
           ) : <PrivateMoney>{formatService.money(row.plannedMinor)}</PrivateMoney>}
         </td>
-        <td>
+        <td className="month-cell-actual">
           <div className="month-actual-cell">
             <button
               type="button"
@@ -635,6 +652,7 @@ function PlanningRow({
               <PrivateMoney className={moneyToneClass(spendTone(row.actualMinor, row.plannedMinor))}>{formatService.money(row.actualMinor)}</PrivateMoney>
             </button>
             {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
+            <PlanRowBar actualMinor={row.actualMinor} plannedMinor={row.plannedMinor} />
             {isPlannedItemsSection(section.key) ? (
               <button
                 type="button"
@@ -652,9 +670,9 @@ function PlanningRow({
             ) : null}
           </div>
         </td>
-        <td className={moneyToneClass(headroomTone(variance))}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
+        <td className={`month-cell-variance ${moneyToneClass(headroomTone(variance))}`}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
         {isPlannedItemsSection(section.key) ? (
-          <td>
+          <td className="month-cell-account">
             {isEditing ? (
               <select
                 className="table-edit-input"
@@ -670,7 +688,7 @@ function PlanningRow({
             ) : row.accountName ?? messages.common.emptyValue}
           </td>
         ) : null}
-        <td>
+        <td className={`month-cell-note ${row.note ? "" : "is-empty"}`}>
           <div className="table-note-actions">
             <button
               type="button"
@@ -778,12 +796,12 @@ function IncomeTotalsFooter({ rows }) {
   return (
     <tfoot>
       <tr className="table-total-row">
-        <td>{messages.month.table.total}</td>
-        <td>{messages.common.emptyValue}</td>
-        <td><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
-        <td className={moneyToneClass(flowTone(totals.actualMinor))}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
-        <td className={moneyToneClass(incomeVarianceTone(totals.plannedMinor, totals.actualMinor))}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
-        <td>{messages.common.emptyValue}</td>
+        <td className="month-cell-total">{messages.month.table.total}</td>
+        <td className="month-cell-blank">{messages.common.emptyValue}</td>
+        <td className="month-cell-planned"><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
+        <td className={`month-cell-actual ${moneyToneClass(flowTone(totals.actualMinor))}`}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
+        <td className={`month-cell-variance ${moneyToneClass(incomeVarianceTone(totals.plannedMinor, totals.actualMinor))}`}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
+        <td className="month-cell-blank">{messages.common.emptyValue}</td>
       </tr>
     </tfoot>
   );
@@ -795,14 +813,14 @@ function PlanningTotalsFooter({ section }) {
   return (
     <tfoot>
       <tr className="table-total-row">
-        <td>{messages.month.table.total}</td>
-        {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
-        <td>{messages.common.emptyValue}</td>
-        <td><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
-        <td className={moneyToneClass(spendTone(totals.actualMinor, totals.plannedMinor))}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
-        <td className={moneyToneClass(headroomTone(totals.varianceMinor))}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
-        {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
-        <td>{messages.common.emptyValue}</td>
+        <td className="month-cell-total">{messages.month.table.total}</td>
+        {section.key === "planned_items" ? <td className="month-cell-blank">{messages.common.emptyValue}</td> : null}
+        <td className="month-cell-blank">{messages.common.emptyValue}</td>
+        <td className="month-cell-planned"><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
+        <td className={`month-cell-actual ${moneyToneClass(spendTone(totals.actualMinor, totals.plannedMinor))}`}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
+        <td className={`month-cell-variance ${moneyToneClass(headroomTone(totals.varianceMinor))}`}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
+        {section.key === "planned_items" ? <td className="month-cell-blank">{messages.common.emptyValue}</td> : null}
+        <td className="month-cell-blank">{messages.common.emptyValue}</td>
       </tr>
     </tfoot>
   );

@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { selectAllOnFocus } from "./focus-utils";
 import { ACCOUNT_KIND_OPTIONS } from "./ui-options";
 import { InlineError } from "./ui-states";
@@ -25,8 +26,8 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
           >
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{dialog?.mode === "create" ? messages.settings.createAccount : messages.settings.editAccount}</Dialog.Title>
-                <Dialog.Description>{dialog?.mode === "create" ? messages.settings.createAccountDetail : messages.settings.editAccountDetail}</Dialog.Description>
+                <Dialog.Title>{dialog?.mode === "create" ? settingsMessages.createAccount : settingsMessages.editAccount}</Dialog.Title>
+                <Dialog.Description>{dialog?.mode === "create" ? settingsMessages.createAccountDetail : settingsMessages.editAccountDetail}</Dialog.Description>
               </div>
               <button
                 type="button"
@@ -41,7 +42,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
             <InlineError message={error} />
             <div className="settings-account-form">
               <label className="table-edit-field">
-                <span>{messages.settings.accountName}</span>
+                <span>{settingsMessages.accountName}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.name ?? ""}
@@ -50,7 +51,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.accountInstitution}</span>
+                <span>{settingsMessages.accountInstitution}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.institution ?? ""}
@@ -59,7 +60,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.accountType}</span>
+                <span>{settingsMessages.accountType}</span>
                 <select
                   className="table-edit-input"
                   value={dialog?.kind ?? "bank"}
@@ -71,7 +72,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 </select>
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.accountCurrency}</span>
+                <span>{settingsMessages.accountCurrency}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.currency ?? "SGD"}
@@ -80,7 +81,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.accountOpeningBalance}</span>
+                <span>{settingsMessages.accountOpeningBalance}</span>
                 <input
                   className="table-edit-input table-edit-input-money"
                   inputMode="decimal"
@@ -90,10 +91,10 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                   onFocus={selectAllOnFocus}
                   onChange={(event) => onChange((current) => current ? { ...current, openingBalance: event.target.value } : current)}
                 />
-                <small className="field-help">{messages.settings.accountOpeningBalanceHelp}</small>
+                <small className="field-help">{settingsMessages.accountOpeningBalanceHelp}</small>
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.accountOwner}</span>
+                <span>{settingsMessages.accountOwner}</span>
                 <select
                   className="table-edit-input"
                   value={dialog?.isJoint ? "__joint__" : (dialog?.ownerPersonId ?? "")}
@@ -125,7 +126,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 className="dialog-primary"
                 disabled={!dialog?.name?.trim() || !dialog?.institution?.trim() || isSubmitting}
               >
-                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? messages.settings.createAccount : messages.settings.saveAccount}
+                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? settingsMessages.createAccount : settingsMessages.saveAccount}
               </button>
             </div>
           </form>

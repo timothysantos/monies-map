@@ -30,7 +30,7 @@ function StateActions({ actions }) {
 
 // The Lead card behind every titled state: an optional icon bubble, the
 // title, one support line, extra detail lines and the action bar.
-function StateCard({ state, tone, icon = null, title, detail = null, detailClassName = "", className = "", role = undefined, children = null, actions = null }) {
+function StateCard({ state, tone = undefined, icon = null, title, detail = null, detailClassName = "", className = "", role = undefined, children = null, actions = null }) {
   return (
     <section className={["state-card", icon ? "has-icon" : "", className].filter(Boolean).join(" ")} data-state={state} data-tone={tone} role={role}>
       <div className="state-head">

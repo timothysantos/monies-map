@@ -17,7 +17,7 @@ const formatMoney = (minor) => moneyFormatter.format(minor / 100);
 const sumMinor = (data) => data.reduce((sum, item) => sum + item.valueMinor, 0);
 const monthLabel = (month) => {
   const [year, number] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1));
+  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1)).replace(/\bSept\b/, "Sep");
 };
 
 async function waitUsable(page) {

@@ -233,13 +233,16 @@ test.describe("money field editability", () => {
   test("split expense amount and split percent replace their formatted values by typing", async ({ page }) => {
     await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
     await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
-    const inlineEditor = page.locator(".split-inline-editor-card").first();
-    await expect(inlineEditor).toBeVisible();
+    // A split expense opens as the card; its total sits in the lead and the
+    // share editor (percent, exact amount) is open on a wide screen.
+    const splitCard = page.locator(".split-inline-editor-card");
+    await expect(splitCard).toBeVisible();
 
-    const moneyInputs = inlineEditor.locator(".table-edit-input-money");
-    const amountInput = moneyInputs.nth(0);
-    const percentInput = moneyInputs.nth(1);
-    const exactAmountInput = moneyInputs.nth(2);
+    // The share editor opens from a share row.
+    await splitCard.locator("[data-share-row]").first().click();
+    const amountInput = splitCard.getByRole("textbox", { name: "Expense total" });
+    const percentInput = splitCard.getByRole("textbox", { name: / share %$/ });
+    const exactAmountInput = splitCard.getByRole("textbox", { name: / share amount$/ });
     await page.route("**/api/splits/expenses/update", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await route.continue();
@@ -256,7 +259,7 @@ test.describe("money field editability", () => {
     await exactAmountInput.type("01");
     await expect(exactAmountInput).toHaveValue("8.01");
 
-    const saveButton = inlineEditor.getByRole("button", { name: "Done editing split" });
+    const saveButton = splitCard.getByRole("button", { name: /^(Save expense|Saving)/ });
     const saveResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/update") && response.ok());
     await saveButton.click();
     await expect(saveButton).toBeDisabled();

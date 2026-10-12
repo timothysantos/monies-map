@@ -1,4 +1,5 @@
 import { moneyWithCurrency } from "./formatters";
+import { shortMonthText } from "../lib/short-month";
 
 export function groupSplitActivityByDate(items) {
   const grouped = new Map();
@@ -40,7 +41,7 @@ export function groupSplitActivityByBatch(items) {
 
 export function formatArchiveDate(date) {
   const value = new Date(`${date}T00:00:00`);
-  return new Intl.DateTimeFormat("en-SG", { month: "short", day: "2-digit" }).format(value);
+  return shortMonthText(new Intl.DateTimeFormat("en-SG", { month: "short", day: "2-digit" }).format(value));
 }
 
 export function getArchivedBatchSummary(batch, viewId) {

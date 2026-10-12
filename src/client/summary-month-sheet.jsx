@@ -6,7 +6,9 @@ import { formatMonthLabel, money } from "./formatters";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { buildMonthSheetModel, PLAN_TONE_CLASS } from "./summary-month-choice";
+import "./mobile-sheet-head.css";
 import "./summary-month-sheet.css";
+import { shortMonthText } from "../lib/short-month";
 
 const copy = messages.summary.monthChoice;
 // Tiles show whole dollars so three fit across a phone; the All months card
@@ -21,7 +23,7 @@ const shortMonthFormatter = new Intl.DateTimeFormat("en-SG", { month: "short" })
 
 function shortMonthLabel(month) {
   const [year, monthNumber] = month.split("-").map(Number);
-  return shortMonthFormatter.format(new Date(year, monthNumber - 1, 1));
+  return shortMonthText(shortMonthFormatter.format(new Date(year, monthNumber - 1, 1)));
 }
 
 // Spend against plan as a thin bar: the track is the plan, the fill what was
