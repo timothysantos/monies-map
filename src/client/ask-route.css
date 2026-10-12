@@ -41,6 +41,32 @@
   font-size: 0.9rem;
 }
 
+/* The way back after the Entries + or the Splits receipt button opened Ask
+   on a phone: the standard Back place, top left above the title, far from
+   Save. A 44 px target that takes only a short row. */
+.ask-head.has-back > .ask-back {
+  grid-column: 1 / -1;
+}
+
+.ask-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -10px 0 -6px -8px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: var(--accent-strong);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ask-back:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
 /* New chat: a quiet text button at the header's right, 44 px tall. */
 .ask-head.has-new-chat {
   grid-template-columns: minmax(0, 1fr) auto;

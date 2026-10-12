@@ -39,6 +39,7 @@ import { AskBriefCard } from "./ask-brief-card";
 import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
 import { getAskDockStore } from "./ask-dock-state";
+import { planAskBack, readAskOrigin, rememberAskOrigin } from "./ask-origin";
 import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
@@ -135,6 +136,14 @@ function useAskConversation(store, key, create) {
 // A typed line that reads as a question rather than something to add.
 function looksLikeQuestion(text) {
   return /\?\s*$/.test(text) || /^(how|what|when|where|why|which|who|did|do|does|is|are|can|show)\b/i.test(text.trim());
+}
+
+function sessionStore() {
+  try {
+    return typeof window === "undefined" ? null : window.sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 function prefersReducedMotion() {
@@ -263,6 +272,15 @@ function AskConversation({
     ready: true,
     busy: Boolean(working) || voiceActive || card?.status === "saving" || Boolean(card?.touched && card.status === "draft")
   });
+
+  // The place the + kept rides on this history entry; it is also kept for
+  // the tab's session, for a way back after the entry has lost it (the Ask
+  // tab reopening the card).
+  useEffect(() => {
+    if (!inDock) {
+      rememberAskOrigin(sessionStore(), location.state?.askOrigin);
+    }
+  }, [inDock, location.state]);
 
   // Leaving the page keeps the conversation in the store, with how far up
   // the person had scrolled. Photos live in memory only while the page
@@ -851,6 +869,36 @@ function AskConversation({
     navigate({ pathname, search: `?${next.toString()}` });
   }
 
+  // Back to the page the + or the receipt button opened Ask from, exactly
+  // as it was (ask-origin.js): history.back when that page is right behind
+  // Ask, the same as the phone's back gesture; else the kept place; else the
+  // plain page for this view and month. A started card stays in the
+  // conversation store, so nothing is lost and nothing needs confirming.
+  // In the desktop panel the page beside it never left: the chip opens the
+  // plain page there, as before.
+  const backPlan = useMemo(() => {
+    if (intent.from !== "entries" && intent.from !== "splits") {
+      return null;
+    }
+    const next = new URLSearchParams(params);
+    if (intent.from === "splits" && intent.splitGroupId) next.set("split_group", intent.splitGroupId);
+    const fallback = { pathname: `/${intent.from}`, search: `?${next.toString()}` };
+    return inDock
+      ? { kind: /** @type {const} */ ("navigate"), to: fallback, state: undefined }
+      : planAskBack({ from: intent.from, state: location.state, storage: sessionStore(), fallback });
+  }, [inDock, intent.from, intent.splitGroupId, location.state, params]);
+  const backHref = backPlan?.kind === "navigate"
+    ? `${backPlan.to.pathname}${backPlan.to.search}`
+    : readAskOrigin(location.state?.askOrigin)?.path ?? "";
+
+  function goBackToOrigin() {
+    if (backPlan?.kind === "history") {
+      navigate(-1);
+    } else if (backPlan) {
+      navigate(backPlan.to, { state: backPlan.state });
+    }
+  }
+
   // Another way into Ask: the /ask route, or in the dock the dock's own
   // conversation (the page beside it stays).
   function openAsk(extra = {}) {
@@ -867,10 +915,8 @@ function AskConversation({
     addEntry: () => openAsk({ mode: "add", from: "ask" }),
     addExpense: () => openAsk({ mode: "expense", from: "ask" }),
     back: () => {
-      if (intent.from === "splits") {
-        goTo("/splits", { split_group: intent.splitGroupId });
-      } else if (intent.from === "entries") {
-        goTo("/entries");
+      if (backPlan) {
+        goBackToOrigin();
       } else {
         openAsk();
       }
@@ -944,6 +990,9 @@ function AskConversation({
   // card (findActiveItem in ask-chips.js).
   const active = findActiveItem({ thread, card, cardSlot, pending });
   const cardActive = active?.kind === "card";
+  // The header's back link: the phone's Ask page after the + or the receipt
+  // button opened it (in the desktop panel the page beside it never left).
+  const showHeaderBack = !inDock && isAddMode && Boolean(backPlan);
   const chips = buildChipRow({
     active,
     intent,
@@ -958,6 +1007,7 @@ function AskConversation({
     // would show the nearest month instead).
     canOpenAnswer: active?.kind !== "answer" || isTrackedMonth(active.filter.month),
     moneyLabels: active?.kind === "money-check" ? skewCheckLabels(active.candidate) : null,
+    headerBack: showHeaderBack,
     actions
   });
 
@@ -1143,7 +1193,23 @@ function AskConversation({
       }}
       onDrop={handleDrop}
     >
-      <header className={`ask-head${isAddMode ? " is-inline" : ""}${showNewChat ? " has-new-chat" : ""}${inDock ? " has-actions" : ""}`}>
+      <header className={`ask-head${isAddMode ? " is-inline" : ""}${showNewChat ? " has-new-chat" : ""}${inDock ? " has-actions" : ""}${showHeaderBack ? " has-back" : ""}`}>
+        {showHeaderBack ? (
+          <a
+            className="ask-back"
+            href={backHref}
+            aria-label={askCopy.chips.backTo(askCopy.backLabels[intent.from])}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+              }
+              event.preventDefault();
+              goBackToOrigin();
+            }}
+          >
+            {askCopy.chips.back(askCopy.backLabels[intent.from])}
+          </a>
+        ) : null}
         <h2 id="ask-page-title">{title}</h2>
         <span className="ask-context">{contextLine}</span>
         {inDock ? (
