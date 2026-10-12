@@ -41,6 +41,7 @@ import {
 import { AccountDialog } from "./account-dialog";
 import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
+import { SettingsColoursSection } from "./settings-colours-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import { EntryTransferTools } from "./entry-editor";
@@ -161,6 +162,7 @@ export function SettingsPanel({
     paymentWays: false,
     categories: false,
     categoryRules: false,
+    colours: false,
     trust: false,
     transfers: false,
     errorDiagnostics: false,
@@ -1399,6 +1401,11 @@ export function SettingsPanel({
         aiStatus={aiCategoryRuleStatus}
         isAiWorking={isSubmitting}
         onRequestAiSuggestions={() => void handleRequestAiCategoryRules()}
+      />
+
+      <SettingsColoursSection
+        isOpen={settingsSectionsOpen.colours}
+        onToggle={() => toggleSettingsSection("colours")}
       />
 
       <SettingsTrustSection

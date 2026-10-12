@@ -37,6 +37,11 @@ export const settingsMessages = {
   editPersonDetail: "Update the display name used throughout the app without changing ownership IDs.",
   personDisplayName: "Display name",
   personUsageHint: "Used in ownership, filters, and split labels.",
+  // Settings > Colours (design.md, "Colour presets"). The preset names live
+  // with the presets in src/client/colour-presets.js.
+  coloursTitle: "Colours",
+  coloursChoiceLabel: "Colour scheme",
+  coloursDeviceHint: "Saved on this device only.",
   accountsTitle: "Accounts",
   accountsDetail: "Reference finance accounts used by imports, entries, and planning.",
   addAccount: "+ Add account",

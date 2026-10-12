@@ -8,6 +8,17 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
+    <script>
+      // The colour preset chosen on this device (src/client/colour-presets.js),
+      // set before the first paint so the page never flashes the default.
+      try {
+        var palette = localStorage.getItem("monies-map:palette");
+        if (/^(60s|80s|modern|mono|code)$/.test(palette)) {
+          document.documentElement.setAttribute("data-palette", palette);
+          document.write('<link rel="stylesheet" href="/palettes/' + palette + '.css" data-palette-sheet="' + palette + '" />');
+        }
+      } catch (error) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

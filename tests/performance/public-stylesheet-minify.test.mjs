@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -86,4 +86,32 @@ test("styles.css takes the lightningcss options route CSS gets", async () => {
     await minifyWithPlugin({ lightningcss: { exclude: Features.VendorPrefixes } }),
     ".panel{color:red;-webkit-appearance:none;appearance:none}.sheet-backdrop{backdrop-filter:blur(4px)}@media (width<=760px){.panel{padding:0 12px}}"
   );
+});
+
+test("the colour preset sheets are minified in place as well", async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), "monies-map-palettes-"));
+  try {
+    await writeFile(path.join(outDir, "styles.css"), ".panel {\n  color: red;\n}\n");
+    await mkdir(path.join(outDir, "palettes"));
+    await writeFile(path.join(outDir, "palettes", "modern.css"), [
+      "/* A preset. */",
+      ':root[data-palette="modern"] {',
+      "  --accent: #3730a3;",
+      "  --paper-rgb: 255 255 255;",
+      "}",
+      ""
+    ].join("\n"));
+    const plugin = minifyPublicStylesheet();
+    plugin.configResolved({
+      root: outDir,
+      build: { outDir: ".", cssTarget: VITE_DEFAULT_CSS_TARGET },
+      css: viteConfig.css ?? {},
+      logger: { warn: (message) => assert.fail(message) }
+    });
+    await plugin.writeBundle();
+    assert.equal(await readFile(path.join(outDir, "palettes", "modern.css"), "utf8"), ":root[data-palette=modern]{--accent:#3730a3;--paper-rgb:255 255 255}");
+    assert.equal(await readFile(path.join(outDir, "styles.css"), "utf8"), ".panel{color:red}");
+  } finally {
+    await rm(outDir, { recursive: true, force: true });
+  }
 });
