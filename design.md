@@ -664,9 +664,59 @@ Where it is used:
   Saved pills with planned income and the savings target. Every figure and
   tone is the Summary DTO's own metric card (the DTO is unchanged). Phone
   stacks the pills under the lead; desktop and tablet put them in a column
-  on its right. The CSS is `summary-lead.css` in the Summary route chunk
+  on its right. The group is `SpendLeadGroup` (`ui/spend-lead-group.jsx`,
+  re-exported by `ui-components.jsx` so the Month top shares its chunk and
+  the first screen keeps its file count); its CSS is `summary-lead.css`
   (it sits in `.panel-head`, whose `span` rule mutes spans, so its money
-  spans take their tone back at a higher specificity).
+  spans take their tone back at a higher specificity). Until the metric
+  cards arrive the top shows nothing (the old tile row scrolled sideways on
+  a phone).
+- Month top (`MonthLead` in `month-overview.jsx`, `month-lead-model.js`): the
+  same `SpendLeadGroup` for one month, eyebrow "Spent · May 2026". The lead
+  is actual spend against planned spend with the bar, "x% of plan" and "$y
+  under plan" (mint) or "$y over plan" (rose, the old Spend gap); Income
+  (received, with "plan $x"), Saved (realized, with "target $x") and
+  Remaining budget are one row of three equal columns inside the lead
+  card under the bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
+  colour only, 52 px tall, at most 190 px for the whole card on an iPhone 13,
+  the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
+  Summary rollup (`summaryPage.months[0]`, already on the Month page);
+  spend, plan, savings target and remaining budget are the Month metric
+  cards' own figures, so nothing is recomputed. Remaining budget is a
+  button: the whole column opens its explanation popover; its label is "To
+  allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
+  tiles are gone; nothing scrolls sideways at 390 px.
+- Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
+  Month route chunk): Income, Budget Buckets and Planned Items keep their
+  `<table>` markup (inline editing, sorting, row opening and the tests'
+  hooks are unchanged); only the hierarchy changes. Every layout: the item
+  is the heavy lead, Planned, Actual and Variance are right-aligned and
+  tabular, Category, Date, Account and Note are quiet, and a 4 px bar under
+  each actual (`PlanRowBar`, the lead card's fill rule: rose only past the
+  plan, mint for income received, track only when money is hidden). Phone
+  and portrait tablet (the sheet layout) draw each row as a compact card:
+  the category bubble, the item and its category on the left, the actual
+  with "of $planned" on the right, the bar, then the note and "Variance
+  $x"; the date and account are on the plan card sheet a tap opens, the
+  column names are a strip of small chips (the active sort shows its arrow),
+  the category line is dropped when it equals the item's name, an empty note
+  shows nothing, the total is one line, and
+  nothing scrolls sideways (`tests/e2e/summary-month-lsd.spec.js`).
+- Summary Intent vs Outcome (`summary-intent-outcome.jsx`,
+  `summary-intent-outcome-model.js`, `summary-intent-outcome.css` in the
+  Summary route chunk): newest month first, each a compact `LeadCard`. The
+  month name (a 44 px link) opens the month; Lead: that month's spent
+  against planned spend with the bar and "x% of plan · $y under/over plan"
+  (the old row's variance); Support: Planned income and Actual income chips;
+  Detail: a `MoreDetails` row named "Details" holds the old table's three
+  rows (Income, Expected spend, Savings goal: planned, actual, variance) and
+  the month note row, which edits the note. The latest month starts open,
+  the others fold. From 1,024 px the cards are a grid, 2 across (3 from 1,440
+  px), latest first; a card with its Details open spans the whole row so no gap sits beside it, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
+  percent and no under/over words, the variance dots too.
+  `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
+  DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
+  sideways scroll.
 - Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
   add and edit for income, planned items and budget buckets): the planned
   amount is the editable lead under the row's name, kind and category
@@ -1126,7 +1176,7 @@ scope control:
   header: `.summary-scope-switch` takes its own row in the title column with
   `contain: inline-size` (no content width) and a -12px margin that cancels
   the title row's 12px flex gap, so the title column is exactly as wide as
-  without it, and the row fits beside the two rows of metric cards, so the
+  without it, and the row fits beside the Summary lead, so the
   header is exactly as tall. Where the header stacks (960 px and below) the
   switch joins the title row instead, again adding no height.
   `tests/e2e/summary-workflow.spec.js` measures the header, the cards and the
@@ -1238,8 +1288,8 @@ when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures. Hiding money also hides its
 sign, in colour and in words: every money tone (below) turns neutral, and
 wording that says which side of zero a hidden figure is on goes too. Month's
-Remaining budget drops its "To allocate" / "Overplanned" detail (a card sets
-`detailFollowsAmount`), the Summary lead and the Month plan sheet drop
+Remaining budget drops its "To allocate" / "Overplanned" line (the Month
+lead's pill hides it with the amount), the Summary lead and the Month plan sheet drop
 "under / over plan", "% of plan", "left", "over" and "to come" and keep only
 their bar's empty track, wallet pills and Settings drop the statement health
 line ("off by"), the Splits strip labels its balance "Net" instead of "You
@@ -1311,8 +1361,8 @@ Three strengths, never two on one element:
 
 - **Text only** (lists and tables, the default): only the amount's text
   takes the ink; no fill, no border. Entries row amounts and daily net, Month
-  Actual and Variance columns and totals, Intent vs Outcome values and its
-  month total, Splits activity (`you lent`, `you borrowed`, `you received`,
+  Actual and Variance columns and totals, Intent vs Outcome's detail
+  figures, Splits activity (`you lent`, `you borrowed`, `you received`,
   `you paid`),
   Settings statement health, Imports preview amounts and statement rows, and
   the planned cards on Month, and the planned spend in the Summary lead.
@@ -1330,9 +1380,9 @@ Three strengths, never two on one element:
   statement card's bank charges and notices (`.statement-bank-charges`, full
   rose with its ink).
 
-Intent vs Outcome bars take the tone's ink as their fill: the plan a light
-sky, actual spend the muted grey, or rose when over plan. The lead card's
-actual-vs-plan bar (Summary, the Month plan sheet) follows the same rule.
+The lead card's actual-vs-plan bar (Summary, the Month top, each Intent vs
+Outcome month, the Month plan sheet) takes the tone's ink as its fill: the
+track a light sky, the fill the muted grey, or rose when over plan.
 
 `tests/money-tone.test.mjs` pins the rule; `tests/e2e/money-tones.spec.js`
 reads the computed colours on Summary, Month, Entries and Splits, including
@@ -1858,7 +1908,7 @@ rules win over base rules of the same specificity.
   right gutter, and with wider fonts (Linux CI) the page scrolled sideways.
   A last block in `month-mid-width.css` tightens cell padding to 6 px,
   header letter spacing, the category gap and the note cut-off (160 px,
-  still one line), and the summary cards' gap and padding, so the tables
+  still one line), so the tables
   fit the grid whole with about 50 px spare under Verdana. The panel keeps
   its automatic minimum width here: making it shrinkable instead clipped
   the note edit icons. `header-tab-fit.spec.js` checks 1,100 to 1,279 px

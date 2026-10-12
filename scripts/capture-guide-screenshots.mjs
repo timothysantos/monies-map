@@ -221,7 +221,7 @@ const SHOTS = [
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
       const row = page.locator("tr").filter({ hasText: "Food & Drinks" }).first();
       await scrollToLocator(page, row, 220);
-      await row.getByText("Food & Drinks").first().click();
+      await row.locator(".month-cell-item").click();
       await page.locator(".month-inline-action-row").first().waitFor();
       await page.waitForTimeout(300);
     }
@@ -457,7 +457,7 @@ const SHOTS = [
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
       const row = page.locator("tr").filter({ hasText: "Food & Drinks" }).first();
       await scrollToLocator(page, row, 260);
-      await row.getByText("Food & Drinks").first().click();
+      await row.locator(".month-cell-item").click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(600);
       await hideCaret(page);

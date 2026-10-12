@@ -15,7 +15,7 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", curre
 const wholeMoneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const monthLabel = (month) => {
   const [year, number] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1));
+  return new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric" }).format(new Date(year, number - 1, 1)).replace(/\bSept\b/, "Sep");
 };
 
 async function waitUsable(page) {

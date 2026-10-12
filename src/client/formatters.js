@@ -1,5 +1,6 @@
 import { formatCurrencyMinor } from "../domain/split-currency";
 import { APP_TIME_ZONE } from "./app-dates";
+import { shortMonthText } from "../lib/short-month";
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", {
   style: "currency",
@@ -61,20 +62,20 @@ export function decimalStringToMinor(value) {
 }
 
 export function formatDate(value) {
-  return new Intl.DateTimeFormat("en-SG", {
+  return shortMonthText(new Intl.DateTimeFormat("en-SG", {
     timeZone: APP_TIME_ZONE,
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(parseDisplayDate(value));
+  }).format(parseDisplayDate(value)));
 }
 
 export function formatDateOnly(value) {
-  return new Intl.DateTimeFormat("en-SG", {
+  return shortMonthText(new Intl.DateTimeFormat("en-SG", {
     timeZone: APP_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric"
-  }).format(parseDisplayDate(value));
+  }).format(parseDisplayDate(value)));
 }
 
 function parseDisplayDate(value) {
@@ -92,10 +93,10 @@ function parseDisplayDate(value) {
 
 export function formatMonthLabel(value) {
   const [year, month] = value.split("-");
-  return new Intl.DateTimeFormat("en-SG", {
+  return shortMonthText(new Intl.DateTimeFormat("en-SG", {
     month: "short",
     year: "numeric"
-  }).format(new Date(Number(year), Number(month) - 1, 1));
+  }).format(new Date(Number(year), Number(month) - 1, 1)));
 }
 
 export function formatMinorInput(valueMinor) {

@@ -1,3 +1,5 @@
+import { shortMonthText } from "../lib/short-month";
+
 // Foreign-currency Wallet amounts (DOMAIN.md, "Foreign Currency Estimate").
 // A card in one currency can be charged in another: an Amaze card in
 // Singapore turns a purchase in Bali (IDR) into an SGD charge on the linked
@@ -120,7 +122,7 @@ async function fetchRate(base: string, quote: string, fetchImpl: FetchImpl) {
 }
 
 function formatRateDate(rateDate: string) {
-  return new Intl.DateTimeFormat("en-SG", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${rateDate}T00:00:00Z`));
+  return shortMonthText(new Intl.DateTimeFormat("en-SG", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${rateDate}T00:00:00Z`)));
 }
 
 async function ensureFxRatesTable(db: D1Database) {

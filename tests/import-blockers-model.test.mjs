@@ -197,10 +197,10 @@ test("a card whose earlier statements were never imported says which to import f
     previewRows: [row({ rowId: "ladys-1", accountId: LADYS.id, accountName: LADYS.name })]
   };
   const shown = blockersFor(input).blockers.find((blocker) => blocker.kind === "statement-card");
-  assert.equal(shown.label, "UOB Lady's Card: import Aug 2026 and Sept 2026 first");
+  assert.equal(shown.label, "UOB Lady's Card: import Aug 2026 and Sep 2026 first");
   // It says nothing about the amount, so hidden money shows the same words.
   const hidden = blockersFor(input, { areTotalsVisible: false }).blockers.find((blocker) => blocker.kind === "statement-card");
-  assert.equal(hidden.label, "UOB Lady's Card: import Aug 2026 and Sept 2026 first");
+  assert.equal(hidden.label, "UOB Lady's Card: import Aug 2026 and Sep 2026 first");
 
   // A gap with no missing month keeps the amount.
   const plain = blockersFor({ ...input, statementDiagnosis: { cards: [], findings: [{ ...statementDiagnosis.findings[0], facts: [] }] } });

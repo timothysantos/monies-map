@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
@@ -75,17 +76,17 @@ export function ImportPreviewRowsTable({
       ) : (
         <EmptyState>
           {ledgerMatchedStatement
-            ? messages.imports.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount)
+            ? importMessages.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount)
             : hasAlreadyCoveredCheckpointRefresh
-            ? messages.imports.noRowsToImportCoveredStatement
+            ? importMessages.noRowsToImportCoveredStatement
             : hasEmptyStatementCheckpointOnly
-              ? messages.imports.noRowsToImportEmptyStatement
-              : messages.imports.noRowsToImport}
+              ? importMessages.noRowsToImportEmptyStatement
+              : importMessages.noRowsToImport}
         </EmptyState>
       )}
       {skippedRows.length ? (
         <details ref={skippedRowsRef} className="import-skipped-rows" id="import-skipped-rows">
-          <summary>{messages.imports.skippedRowsTitle(skippedRows.length)}</summary>
+          <summary>{importMessages.skippedRowsTitle(skippedRows.length)}</summary>
           <PreviewRowsTable
             rows={skippedRows}
           accounts={accounts}
@@ -131,17 +132,17 @@ function PreviewRowsTable({
       <table className="summary-table import-preview-table">
         <thead>
           <tr>
-            <th>{messages.imports.table.row}</th>
-            <th>{messages.imports.table.actions}</th>
-            <th>{messages.imports.table.date}</th>
-            <th>{messages.imports.table.description}</th>
-            <th>{messages.imports.table.amount}</th>
-            <th>{messages.imports.table.type}</th>
-            <th>{messages.imports.table.account}</th>
-            <th>{messages.imports.table.category}</th>
-            <th>{messages.imports.table.owner}</th>
-            <th>{messages.imports.table.split}</th>
-            <th>{messages.imports.table.note}</th>
+            <th>{importMessages.table.row}</th>
+            <th>{importMessages.table.actions}</th>
+            <th>{importMessages.table.date}</th>
+            <th>{importMessages.table.description}</th>
+            <th>{importMessages.table.amount}</th>
+            <th>{importMessages.table.type}</th>
+            <th>{importMessages.table.account}</th>
+            <th>{importMessages.table.category}</th>
+            <th>{importMessages.table.owner}</th>
+            <th>{importMessages.table.split}</th>
+            <th>{importMessages.table.note}</th>
           </tr>
         </thead>
         <tbody>
@@ -162,16 +163,16 @@ function PreviewRowsTable({
                           className="subtle-action"
                           onClick={() => onPromotePreviewRowReconciliationTarget(row.rowId, duplicateMatch.existingTransactionId)}
                         >
-                          {messages.imports.promoteExistingPreviewRow}
+                          {importMessages.promoteExistingPreviewRow}
                         </button>
                       ) : null}
                       {row.commitStatus === "needs_review" ? (
                         <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
-                          {canPromoteExistingRow ? messages.imports.importAsNewPreviewRow : messages.imports.importPreviewRow}
+                          {canPromoteExistingRow ? importMessages.importAsNewPreviewRow : importMessages.importPreviewRow}
                         </button>
                       ) : null}
                       {isAutoMatchedExistingRow ? (
-                        <span className="pill success">{messages.imports.matchedExistingPreviewRow}</span>
+                        <span className="pill success">{importMessages.matchedExistingPreviewRow}</span>
                       ) : isSkippedTable ? (
                         <button
                           type="button"
@@ -184,11 +185,11 @@ function PreviewRowsTable({
                             onUpdatePreviewRowCommitStatus(row.rowId, "included");
                           }}
                         >
-                          {messages.imports.restorePreviewRow}
+                          {importMessages.restorePreviewRow}
                         </button>
                       ) : (
                         <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "skipped")}>
-                          {messages.imports.skipPreviewRow}
+                          {importMessages.skipPreviewRow}
                         </button>
                       )}
                     </div>
@@ -211,8 +212,8 @@ function PreviewRowsTable({
                       disabled={isSkippedTable}
                     />
                     {isInferredAmountRow(row, inferredAmountKeys) ? (
-                      <span className="import-inferred-amount-note" title={messages.imports.statementInferredAmountHint}>
-                        {messages.imports.statementInferredAmount}
+                      <span className="import-inferred-amount-note" title={importMessages.statementInferredAmountHint}>
+                        {importMessages.statementInferredAmount}
                       </span>
                     ) : null}
                   </td>
@@ -289,14 +290,14 @@ function PreviewRowsTable({
                             </span>
                           ) : null}
                           {row.commitStatus === "needs_review" ? (
-                            <span className="pill warning duplicate-row-pill">{messages.imports.needsReview}</span>
+                            <span className="pill warning duplicate-row-pill">{importMessages.needsReview}</span>
                           ) : null}
                         </div>
                         <div className="duplicate-row-copy">
                           {duplicateMatch ? (
                             <div className="duplicate-row-detail-line">
                               <small className="duplicate-row-detail">
-                                {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
+                                {importMessages.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
                               </small>
                               <DuplicateMatchPopover row={row} match={duplicateMatch} statementImportSourceType={statementImportSourceType} />
                             </div>
@@ -320,8 +321,8 @@ function PreviewRowsTable({
           <Dialog.Content className="note-dialog-content settings-account-dialog">
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{messages.imports.restorePreviewRow}</Dialog.Title>
-                <Dialog.Description>{messages.imports.restoreExactCoveredRowConfirm}</Dialog.Description>
+                <Dialog.Title>{importMessages.restorePreviewRow}</Dialog.Title>
+                <Dialog.Description>{importMessages.restoreExactCoveredRowConfirm}</Dialog.Description>
               </div>
               <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
             </div>
@@ -371,18 +372,18 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
     <Popover.Root>
       <Popover.Trigger asChild>
         <button type="button" className="duplicate-row-link">
-          {messages.imports.viewLedgerMatch}
+          {importMessages.viewLedgerMatch}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content className="duplicate-match-popover" sideOffset={8} align="center">
           <div className="duplicate-match-head">
-            <strong>{messages.imports.duplicateMatchPopoverTitle}</strong>
-            <span>{messages.imports.duplicateMatchPopoverDetail}</span>
+            <strong>{importMessages.duplicateMatchPopoverTitle}</strong>
+            <span>{importMessages.duplicateMatchPopoverDetail}</span>
           </div>
           <div className="duplicate-match-flow">
             <DuplicateMatchCard
-              label={messages.imports.duplicateMatchIncomingLabel}
+              label={importMessages.duplicateMatchIncomingLabel}
               date={row.date}
               eventDate={getIncomingEventDate(row)}
               postedDate={row.date}
@@ -394,7 +395,7 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
             />
             <span className="duplicate-match-arrow" aria-hidden="true">{"->"}</span>
             <DuplicateMatchCard
-              label={messages.imports.duplicateMatchLedgerLabel}
+              label={importMessages.duplicateMatchLedgerLabel}
               date={match.date}
               eventDate={match.date}
               postedDate={match.postedDate}
@@ -407,7 +408,7 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
           </div>
           {ledgerHref ? (
             <a className="duplicate-match-open-link" href={ledgerHref} target="_blank" rel="noreferrer">
-              {messages.imports.openLedgerEntry}
+              {importMessages.openLedgerEntry}
             </a>
           ) : null}
           <Popover.Arrow className="category-popover-arrow" />
@@ -425,15 +426,15 @@ function DuplicateMatchCard({ label, date, eventDate, postedDate, description, c
       <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatService.formatMinorInput(amountMinor))}</p>
       <dl className="duplicate-match-dates">
         <div>
-          <dt>{messages.imports.duplicateMatchTransactionDate}</dt>
+          <dt>{importMessages.duplicateMatchTransactionDate}</dt>
           <dd>{formatOptionalMatchDate(eventDate)}</dd>
         </div>
         <div>
-          <dt>{messages.imports.duplicateMatchPostedDate}</dt>
+          <dt>{importMessages.duplicateMatchPostedDate}</dt>
           <dd>{formatOptionalMatchDate(postedDate)}</dd>
         </div>
       </dl>
-      <small>{messages.imports.bankCertificationStatusLine(bankCertificationLabel)}</small>
+      <small>{importMessages.bankCertificationStatusLine(bankCertificationLabel)}</small>
     </div>
   );
 }
@@ -473,12 +474,12 @@ function normalizeMatchDate(value) {
 
 function formatOptionalMatchDate(value) {
   const normalized = normalizeMatchDate(value);
-  return normalized ? formatImportPreviewDate(normalized) : messages.imports.duplicateMatchDateUnavailable;
+  return normalized ? formatImportPreviewDate(normalized) : importMessages.duplicateMatchDateUnavailable;
 }
 
 function getIncomingBankCertificationLabel(sourceType) {
   if (sourceType === "pdf") {
-    return messages.imports.bankCertificationStatusIncomingStatement;
+    return importMessages.bankCertificationStatusIncomingStatement;
   }
 
   if (sourceType === "manual") {
@@ -571,13 +572,13 @@ function normalizeTextForHighlight(value) {
 
 function formatDuplicateMatchKind(matchKind) {
   if (matchKind === "exact") {
-    return messages.imports.duplicateMatchKindExact;
+    return importMessages.duplicateMatchKindExact;
   }
 
   if (matchKind === "probable") {
-    return messages.imports.duplicateMatchKindProbable;
+    return importMessages.duplicateMatchKindProbable;
   }
 
-  return messages.imports.duplicateMatchKindNear;
+  return importMessages.duplicateMatchKindNear;
 }
 
