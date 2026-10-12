@@ -170,9 +170,9 @@ test("entry and split editors include a local money visibility toggle", async ({
   );
 
   await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
-  const splitEditor = page.locator(".split-inline-editor-card").first();
+  const splitEditor = page.locator(".split-inline-editor-card");
   await expect(splitEditor).toBeVisible();
-  const splitAmountInput = splitEditor.locator(".table-edit-input-money").first();
+  const splitAmountInput = splitEditor.getByRole("textbox", { name: "Expense total" });
   await expect(splitAmountInput).toHaveCSS("-webkit-text-security", "disc");
   await splitEditor.locator(".totals-visibility-toggle--form").first().click();
   await expect(splitAmountInput).not.toHaveCSS("-webkit-text-security", "disc");

@@ -10,9 +10,12 @@ test("editing an existing split expense keeps the row in place and persists the 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
 
   await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
-  const inlineEditor = page.locator(".split-inline-editor-card").first();
-  await inlineEditor.locator("textarea").nth(1).fill(updatedNote);
-  await inlineEditor.getByRole("button", { name: "Done editing split" }).click();
+  // On a wide screen a saved split expense opens as the card in the list, not a dialog.
+  const editDialog = page.locator(".split-inline-editor-card");
+  await expect(editDialog).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await editDialog.getByRole("textbox", { name: "Note", exact: true }).fill(updatedNote);
+  await editDialog.getByRole("button", { name: "Save expense" }).click();
   const syncDialog = page.getByRole("dialog", { name: "Update connected note?" });
   if (await syncDialog.isVisible().catch(() => false)) {
     await syncDialog.getByRole("button", { name: "Save only this" }).click();
@@ -51,7 +54,7 @@ test("editing a linked split note can update the connected entry note", async ({
   });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   await editDialog.getByRole("textbox", { name: "Note", exact: true }).fill(syncedNote);
   await editDialog.getByRole("button", { name: "Save expense" }).click();
@@ -93,14 +96,11 @@ test("linked split payment method is derived from the ledger account and locked"
   });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
-  // The split expense card: the Paid using row and chip are locked to Card,
-  // with no picker (design.md, "Tappable chips").
-  const paymentRow = editDialog.locator("[data-row='paymentMethod']");
-  await expect(paymentRow).toHaveClass(/is-locked/);
-  await expect(paymentRow).toContainText("Paid using (ledger)");
-  await expect(paymentRow).toContainText("Card");
-  await expect(paymentRow.locator("select")).toHaveCount(0);
+  const editDialog = page.locator(".split-inline-editor-card");
+  // The split expense card: Paid using is the Support chip alone (no row repeats
+  // it), locked to Card with no picker (design.md, "Tappable chips").
+  await expect(editDialog.locator("[data-row='paymentMethod']")).toHaveCount(0);
+  await expect(editDialog.locator(".lsd-card select[aria-label^='Change paid using']")).toHaveCount(0);
   await expect(editDialog.locator(".lsd-card .lsd-chip.is-locked")).toHaveText("Card, set by the linked entry");
 });
 
@@ -155,7 +155,7 @@ test("editing a linked split category can update the connected entry category", 
   });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   await editDialog.getByLabel("Category").selectOption("Groceries");
   await editDialog.getByRole("button", { name: "Save expense" }).click();
@@ -237,7 +237,7 @@ test("a late amount autofocus never moves a note being typed in the split dialog
   const splitData = await createLinkedSplit(page, { month, note: "entry current note" });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   const amount = editDialog.getByRole("textbox", { name: /Expense total/ });
   const note = editDialog.getByRole("textbox", { name: "Note", exact: true });
@@ -271,7 +271,7 @@ test("the split dialog still focuses the amount when nothing else was focused", 
   const splitData = await createLinkedSplit(page, { month, note: "entry current note" });
 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
-  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
   const amount = editDialog.getByRole("textbox", { name: /Expense total/ });
   await expect(amount).not.toBeFocused();
@@ -280,7 +280,7 @@ test("the split dialog still focuses the amount when nothing else was focused", 
   await expect(amount).toBeFocused();
 });
 
-test("a late amount autofocus never moves a note being typed in the inline split editor", async ({ page }) => {
+test("a late amount autofocus never moves a note being typed in the split card opened from its row", async ({ page }) => {
   const typedNote = `Inline note ${Date.now()}`;
   await installShortTimerHold(page, "split_group=split-group-baby-river");
   await page.goto("/");
@@ -290,9 +290,10 @@ test("a late amount autofocus never moves a note being typed in the inline split
   const card = page.locator(".split-activity-card").filter({ hasText: "Family support" }).first();
   await expect(card).toBeVisible();
   await card.click();
-  const inlineEditor = page.locator(".split-inline-editor-card").first();
-  const note = inlineEditor.locator("textarea").nth(1);
-  const amount = inlineEditor.getByRole("textbox", { name: /Expense total/ });
+  const cardDialog = page.locator(".split-inline-editor-card");
+  await expect(cardDialog).toBeVisible();
+  const note = cardDialog.getByRole("textbox", { name: "Note", exact: true });
+  const amount = cardDialog.getByRole("textbox", { name: /Expense total/ });
   const amountBefore = await amount.inputValue();
 
   await note.fill(typedNote.slice(0, 6));

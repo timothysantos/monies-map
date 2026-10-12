@@ -36,13 +36,6 @@
   padding: 0;
 }
 
-.split-share-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
 .split-odd-cent-control {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -744,18 +737,9 @@ button.split-activity-card:hover {
     display: none;
   }
 
-  .split-dialog-inline .split-dialog-field-exact-amount {
-    grid-column: 2;
-  }
-
-  .split-share-preview,
   .split-odd-cent-actions {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .split-share-preview > span {
-    justify-content: space-between;
   }
 
   .split-odd-cent-control {
@@ -771,8 +755,7 @@ button.split-activity-card:hover {
     padding: 12px;
   }
 
-  .split-inline-editor-card .split-dialog-grid,
-  .split-inline-editor-card .entry-writing-grid {
+  .split-inline-editor-card .split-dialog-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1217,4 +1200,74 @@ button.split-activity-card:hover {
     font-size: 1.45rem;
     line-height: 1.1;
   }
+}
+
+/* A settled split's card (read-only): the reason on top, the Undo button
+   directly under it, then the card. */
+.split-expense-card-dialog .split-dialog-scroll > .settlement-lock-error {
+  margin: 0 0 12px;
+}
+
+.split-expense-card-dialog .settlement-lock-error > span {
+  flex: 1 1 100%;
+}
+
+/* The split expense card in the list on a wide screen (like the Entries
+   inline editor): the reason and Undo of a settled split on top, the card,
+   then the bottom bar at the end. */
+.split-inline-expense-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.split-inline-expense-card > .settlement-lock-error,
+.split-inline-expense-card > .settlement-lock-undone {
+  margin: 0;
+}
+
+.split-inline-expense-card .settlement-lock-error > span {
+  flex: 1 1 100%;
+}
+
+.split-inline-expense-actions.lsd-bottom {
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.split-inline-expense-actions .lsd-bottom-end {
+  flex: 0 0 auto;
+}
+
+/* Inline: the lead card across the top, the Detail rows in two balanced
+   columns under it (the Entries inline editor does the same). */
+.split-expense-card.is-inline .split-expense-rows {
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--line);
+}
+
+.split-expense-card.is-inline .split-expense-rows .lsd-row {
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding-block: 8px;
+  break-inside: avoid;
+}
+
+.split-expense-card.is-inline .split-share-rows,
+.split-expense-card.is-inline .split-share-editor {
+  break-inside: avoid;
+}
+
+@media (max-width: 760px) {
+  .split-expense-card.is-inline .split-expense-rows {
+    column-count: 1;
+  }
+}
+
+/* The total with the money visibility toggle beside it (inline card). */
+.split-expense-card .split-lead-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

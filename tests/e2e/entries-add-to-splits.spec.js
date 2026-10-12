@@ -50,8 +50,9 @@ test("entries can add a direct expense to splits and jump into the created split
   ), { timeout: 60_000 });
   await page.goto(`/splits?view=person-tim&month=2026-04&editing_split_expense=${splitData.splitExpenseId}`);
   await splitsPageReady;
-  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
+  const splitCard = page.locator(".split-inline-editor-card");
+  await expect(splitCard).toBeVisible({ timeout: 60_000 });
+  await expect(splitCard.getByLabel("Description")).toHaveValue(description);
 });
 
 test("entries shared scope is based on the linked split record, not ledger ownership", async ({ page }) => {
@@ -207,10 +208,11 @@ test("newly added split can be viewed immediately and preserves the entries scop
   expect(new URL(page.url()).searchParams.get("view")).toBe("person-tim");
   expect(new URL(page.url()).searchParams.get("month")).toBe(month);
   expect(new URL(page.url()).searchParams.get("scope")).toBe("direct_plus_shared");
-  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
+  const splitInline = page.locator(".split-inline-editor-card");
+  await expect(splitInline).toBeVisible({ timeout: 60_000 });
+  await expect(splitInline.getByLabel("Description")).toHaveValue(description);
 
-  await page.getByRole("dialog").getByRole("button", { name: "View entry" }).click();
+  await splitInline.locator("[data-row='linkedEntry']").click();
   await expect(page).toHaveURL(/\/entries\?/);
   const returnUrl = new URL(page.url());
   expect(returnUrl.searchParams.get("view")).toBe("person-tim");

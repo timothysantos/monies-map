@@ -33,6 +33,24 @@ Empty group, activity, search, match and history states use the shared
 `EmptyState`. When there are no matches, the match review says so once, not
 twice. Dialog form errors are `InlineError` alerts.
 
+Selecting a split expense row opens the split expense card. On a wide screen
+it opens inline in the list in place of the row, like the Entries inline
+editor (the `splitInlineEditor` page flag, no dialog; the lead card across the
+top and the Detail rows in two columns, with Date, Paid by and Paid using
+edited from their Support chips and the share editor opened from a share row
+or the shares chip); a phone opens the
+sheet, and the household view and an archived batch open the dialog. The
+`editing_split_expense` deep link opens the same card the same way. Enter
+and Space on the focused row open it, Escape and Cancel close it and the row
+takes focus back. Deleting from the card asks in the app first and closes the
+card when the split is gone. A settlement row edits in its own form. A
+settled split expense (`settlementCheckpointId` or `isArchived`) opens the
+same card read-only: "Settled on <date>. Undo the settle-up to change it." or
+"Simplified on <date>. Undo the simplification to change it." on top, its Undo
+button directly under, no Save or Delete; after the undo the card is
+editable in place. The server refusal below stays as the backstop (a stale
+page, an entry save, a settlement row).
+
 ## Data Flow
 
 Splits data comes from:
@@ -71,7 +89,8 @@ Watch area:
 - checkpoint membership is immutable until the user explicitly reopens it,
   and so are the settled facts of its records: a Splits edit or delete, or an
   Entries save that would move a linked split, is refused with
-  `split_settlement_locked` and the form offers `Undo simplification`
+  `split_settlement_locked` and the form (for a split expense, the read-only
+  card) offers `Undo simplification`
   (`settlement-lock-notice.jsx`); an edit never reopens a checkpoint by itself
 - a closed group batch (settled by a settle-up) locks its records the same
   way; the refusal names the `batchId` and offers `Undo settle-up`, which the

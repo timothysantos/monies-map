@@ -28,6 +28,7 @@ export function SplitsMainSection({
   inlineSplitDraft,
   inlineSplitError,
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock,
   isSubmitting,
@@ -147,6 +148,7 @@ export function SplitsMainSection({
             inlineSplitDraft={inlineSplitDraft}
             inlineSplitError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
+            inlineReadOnly={inlineReadOnly}
             isUndoingSettlementLock={isUndoingSettlementLock}
             onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}

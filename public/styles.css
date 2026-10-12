@@ -2622,23 +2622,6 @@ body[data-ask-dock="docked"] .environment-banner {
   flex: 0 1 auto;
 }
 
-.split-share-preview > span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  min-height: 34px;
-  padding: 6px 10px;
-  border: 1px solid rgba(177, 94, 47, 0.14);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-
-.split-share-preview strong {
-  color: var(--ink);
-}
-
 .split-odd-cent-control strong {
   display: block;
   margin-bottom: 3px;
