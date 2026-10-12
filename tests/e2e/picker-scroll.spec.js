@@ -206,7 +206,9 @@ test.describe("phone pickers scroll by touch", { tag: "@webkit" }, () => {
 
   test("Month plan sheet: the Category picker reaches and picks the last category", async ({ page, browserName }) => {
     await gotoPageAfterApi(page, `/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`, "/api/month-page", () => page.locator("tr").filter({ hasText: "Savings" }).first());
-    await page.locator("tr").filter({ hasText: "Savings" }).first().getByText("Savings", { exact: true }).first().tap();
+    // The row opens from its item name: the category line under it is hidden
+    // when it repeats the item's own name ("Savings"), so it is no target.
+    await page.locator("tr").filter({ hasText: "Savings" }).first().getByRole("button", { name: "Edit Savings row" }).tap();
     const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
     await expect(sheet).toBeVisible();
     const categoryRow = sheet.locator("label").filter({ hasText: "Category" });
