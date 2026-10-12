@@ -2343,7 +2343,7 @@ body[data-ask-dock="docked"] .entries-fab {
 }
 
 body[data-ask-dock="docked"] .state-pill {
-  left: calc(50% - var(--ask-dock-width) / 2);
+  right: calc(12px + var(--ask-dock-width));
 }
 
 body[data-ask-dock="docked"] .environment-banner {

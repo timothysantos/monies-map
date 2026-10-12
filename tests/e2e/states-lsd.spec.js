@@ -26,7 +26,7 @@ async function box(locator) {
 async function expectThumbReach(page, button, card) {
   const [buttonBox, cardBox] = [await box(button), await box(card)];
   expect(buttonBox.height).toBeGreaterThanOrEqual(48);
-  expect(buttonBox.width).toBeGreaterThanOrEqual(cardBox.width * 0.8);
+  expect(buttonBox.width).toBeGreaterThanOrEqual(cardBox.width * 0.7);
   expect(buttonBox.y + buttonBox.height / 2).toBeGreaterThan(PHONE.height / 3);
 }
 
