@@ -11,6 +11,28 @@ Before and after screenshots (desktop 1280 px in Chromium, phone on the iPhone
 [`states-lsd/before/`](states-lsd/before/) and [`states-lsd/after/`](states-lsd/after/),
 one file per state and device, for example `empty-entries.phone.webp`.
 
+The screenshots use the 70s colours. Pairs, before then after (desktop and
+phone for each):
+
+| State | Before | After |
+| --- | --- | --- |
+| Loading, Summary | ![](states-lsd/before/loading-summary.desktop.webp) | ![](states-lsd/after/loading-summary.desktop.webp) |
+| Loading, Summary (phone) | ![](states-lsd/before/loading-summary.phone.webp) | ![](states-lsd/after/loading-summary.phone.webp) |
+| Loading the next page | ![](states-lsd/before/loading-pill.phone.webp) | ![](states-lsd/after/loading-pill.phone.webp) |
+| Page failed (phone) | ![](states-lsd/before/error-page.phone.webp) | ![](states-lsd/after/error-page.phone.webp) |
+| Screen crashed (phone) | ![](states-lsd/before/error-boundary.phone.webp) | ![](states-lsd/after/error-boundary.phone.webp) |
+| Import inbox banner | ![](states-lsd/before/banner-import.desktop.webp) | ![](states-lsd/after/banner-import.desktop.webp) |
+| Refresh failed banner | ![](states-lsd/before/banner-refresh.desktop.webp) | ![](states-lsd/after/banner-refresh.desktop.webp) |
+| Entries, no rows (phone) | ![](states-lsd/before/empty-entries.phone.webp) | ![](states-lsd/after/empty-entries.phone.webp) |
+| Entries, filters match nothing (phone) | ![](states-lsd/before/empty-entries-filtered.phone.webp) | ![](states-lsd/after/empty-entries-filtered.phone.webp) |
+| Splits, no activity (phone) | ![](states-lsd/before/empty-splits.phone.webp) | ![](states-lsd/after/empty-splits.phone.webp) |
+| Splits, no groups | ![](states-lsd/before/empty-splits-no-groups.desktop.webp) | ![](states-lsd/after/empty-splits-no-groups.desktop.webp) |
+| Splits, search finds nothing (phone) | ![](states-lsd/before/empty-splits-search.phone.webp) | ![](states-lsd/after/empty-splits-search.phone.webp) |
+| Imports, empty queue | ![](states-lsd/before/empty-imports.desktop.webp) | ![](states-lsd/after/empty-imports.desktop.webp) |
+| Ask, empty chat (phone) | ![](states-lsd/before/empty-ask.phone.webp) | ![](states-lsd/after/empty-ask.phone.webp) |
+| FAQ (phone) | ![](states-lsd/before/faq.phone.webp) | ![](states-lsd/after/faq.phone.webp) |
+| FAQ guide failed (phone) | ![](states-lsd/before/faq-error.phone.webp) | ![](states-lsd/after/faq-error.phone.webp) |
+
 ## What changed
 
 | State | Before | After |

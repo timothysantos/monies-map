@@ -254,11 +254,14 @@
   }
 }
 
+
 /* Loading skeleton: the first screen's own Lead · Support · Detail layout as
-   quiet blocks (app-shell-status.jsx), so the page that replaces it does not
-   move things. It holds no controls and no figures. Heights follow the real
-   pages at desktop and phone width. */
+   quiet blocks (app-shell-status.jsx), so the page that replaces it lands
+   where they stood. It holds no controls and no figures. Neutral washes only;
+   the shimmer is off for people who prefer reduced motion. Heights follow the
+   real pages at desktop and phone width. */
 .state-skeleton {
+  --sk: color-mix(in srgb, var(--text) 6%, transparent);
   display: grid;
   gap: 14px;
 }
@@ -267,7 +270,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: var(--sk);
 }
 
 .sk-panel {
@@ -281,6 +284,14 @@
 
 .sk-panel > .state-detail {
   margin: -8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.sk-panel > .app-loading-issue-inline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 
 .sk-bar { height: 70px; border-radius: 22px; }
@@ -290,90 +301,13 @@
 .sk-lines { height: 96px; }
 .sk-filter { height: 88px; border-radius: 22px; }
 .sk-nav { height: 68px; border-radius: 22px; }
-.sk-day { height: 48px; }
-.sk-row { height: 64px; }
+.sk-day { height: 48px; border-radius: 10px; }
+.sk-row { height: 64px; border-radius: 10px; }
 .sk-card { height: 240px; border-radius: 22px; }
 
-/* The Lead: the white card with the strong shadow, as on the page. */
+/* The Lead: the white card with the strong shadow, as on the page, with three
+   quiet bars for the eyebrow, the figure and the progress line. */
 .sk-lead {
-  height: 150px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .sk::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-    transform: translateX(-100%);
-    animation: sk-shimmer 1.6s ease-in-out infinite;
-  }
-}
-
-@keyframes sk-shimmer {
-  to { transform: translateX(100%); }
-}
-
-@media (max-width: 760px) {
-  .state-skeleton { gap: 12px; }
-  .sk-bar { height: 54px; border-radius: 16px; }
-  .sk-chips { display: none; }
-  .sk-panel { padding: 16px; border-inline: 0; border-radius: 0; }
-  .sk-lead { height: 210px; }
-}
-
-/* Loading skeleton: the first screen's own blocks as quiet placeholders, so
-   the page that replaces them lands where they stood. Neutral washes only;
-   the shimmer is off for people who prefer reduced motion. */
-.state-skeleton {
-  display: grid;
-  gap: 16px;
-}
-
-.state-skeleton .sk {
-  position: relative;
-  overflow: hidden;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-}
-
-.state-skeleton .sk-bar {
-  height: 70px;
-  margin-bottom: -2px;
-  border-radius: 22px;
-}
-
-.sk-panel {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.sk-panel .state-detail {
-  margin: -8px 0 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.sk-panel .app-loading-issue-inline {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
-.state-skeleton .sk-title { width: 180px; height: 30px; }
-.state-skeleton .sk-chips { height: 34px; width: 72%; }
-/* The lead card keeps its own white surface and shadow, with three quiet bars
-   standing in for the eyebrow, the figure and the progress line. */
-.state-skeleton .sk-lead {
-  --sk: color-mix(in srgb, var(--text) 6%, transparent);
   height: 150px;
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -384,13 +318,6 @@
     #fff;
   box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
 }
-.state-skeleton .sk-lines { height: 96px; }
-.state-skeleton .sk-card { height: 240px; border-radius: 16px; }
-.state-skeleton .sk-totals { height: 40px; }
-.state-skeleton .sk-filter { height: 88px; border-radius: 16px; }
-.state-skeleton .sk-nav { height: 68px; border-radius: 22px; }
-.state-skeleton .sk-day { height: 48px; border-radius: 10px; }
-.state-skeleton .sk-row { height: 64px; border-radius: 10px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .sk::after {
@@ -413,78 +340,4 @@
   .sk-chips { display: none; }
   .sk-panel { padding: 16px; border-inline: 0; border-radius: 0; }
   .sk-lead { height: 210px; }
-}
-
-/* Loading skeleton: the first screen's own blocks as quiet placeholders, so
-   the page that replaces them lands where they stood. Neutral washes only;
-   the shimmer is off for people who prefer reduced motion. */
-.state-skeleton {
-  display: grid;
-  gap: 16px;
-}
-
-.state-skeleton .sk {
-  position: relative;
-  overflow: hidden;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-}
-
-.state-skeleton .sk-bar {
-  height: 70px;
-  margin-bottom: -2px;
-  border-radius: 22px;
-}
-
-.sk-panel {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.sk-panel .state-detail {
-  margin: -8px 0 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.sk-panel .app-loading-issue-inline {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
-.sk-title { width: 180px; height: 30px; }
-.sk-chips { height: 34px; width: 72%; }
-.sk-lead { height: 150px; border-radius: 22px !important; border: 1px solid var(--line); background: #fff !important; box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1); }
-.sk-lines { height: 96px; }
-.sk-card { height: 240px; border-radius: 16px !important; }
-.sk-totals { height: 40px; }
-.sk-filter { height: 88px; border-radius: 16px !important; }
-.sk-nav { height: 68px; border-radius: 22px !important; }
-.sk-day { height: 48px; border-radius: 10px !important; }
-.sk-row { height: 64px; border-radius: 10px !important; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .state-skeleton .sk::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-    transform: translateX(-100%);
-    animation: sk-shimmer 1.5s ease-in-out infinite;
-  }
-
-  @keyframes sk-shimmer {
-    to { transform: translateX(100%); }
-  }
-}
-
-@media (max-width: 760px) {
-  .state-skeleton .sk-bar { height: 54px; }
-  .sk-panel { padding: 16px; border-width: 1px 0; border-radius: 0; }
-  .state-skeleton .sk-lead { height: 200px; }
 }
