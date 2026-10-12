@@ -1222,6 +1222,64 @@ owe" / "You are owed" / "Settled up", and Splits activity drops "you lent" /
 "you borrowed" / "you paid" / "you received". `tests/e2e/money-tones.spec.js`
 reads the hidden pages for any such word.
 
+## Design Tokens
+
+Type size, spacing, corner radius, elevation and tap size come from custom
+properties in `:root` of `public/styles.css`, beside the pastel palette, so
+the app-wide redesign stays one system. They encode the Lead · Support ·
+Detail hierarchy: one lead (the biggest type and the only strong shadow),
+smaller support facts, quiet flat detail rows. Every value is what the
+blocks used before the tokens, so moving a rule onto a token changes
+nothing on screen.
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--type-lead-figure` | 1.9rem | The big figure of a lead without a title (the Summary lead) |
+| `--type-lead-amount` | 1.65rem | The lead amount beside a head line |
+| `--type-lead-title` | 1.08rem | The lead title (what it was, the subject) |
+| `--type-action` | 1rem | Button labels: the bottom bar, Ask Save, menu rows |
+| `--type-body` | 0.94rem | Detail row text |
+| `--type-label` | 0.86rem | The lead sub-label, a note line, a muted label beside a figure |
+| `--type-support` | 0.82rem | Support chips |
+| `--type-tag` | 0.78rem | A tag above the head line (the Ask tag), a kind chip |
+| `--type-caption` | 0.74rem | A caption under an amount ("planned") |
+| `--type-eyebrow` | 0.68rem | The monospace eyebrow over a lead figure |
+| `--type-input-min` | 16px | The smallest type in a field, so iPhone does not zoom on focus |
+| `--space-1` | 4px | Spacing scale: tight gaps (a figure and its aside) |
+| `--space-2` | 8px | Between chips, bar buttons, a glyph and its line |
+| `--space-3` | 12px | Inside a head line, between a label and a figure |
+| `--space-4` | 16px | Card padding (a support card) |
+| `--radius-card` | 22px | The lead card |
+| `--radius-group` | 16px | A group of Detail rows, a support panel inside a card |
+| `--radius-control` | 14px | Buttons (the bottom bar, Ask Send and Save) |
+| `--radius-chip` | 999px | Chips, tags, switch tracks: a full pill |
+| `--radius-sm` | 6px | The actual-vs-plan bar, a focus ring on an inline amount |
+| `--radius-xs` | 4px | An inline text field inside a card |
+| `--elevation-lead` | `0 14px 32px` ink at 10% | The lead card: the only strong shadow on a sheet or screen top |
+| `--elevation-support` | `0 10px 26px` ink at 8% | A support card beside the lead (the Ask "since you last looked" card) |
+| `--elevation-flat` | none | Detail rows and chips: flat, no shadow |
+| `--tap-min` | 44px | The smallest tappable, each way |
+| `--tap-large` | 48px | Detail rows and bottom-bar buttons |
+| `--sheet-handle-width` | 36px | The grab handle at a bottom sheet top: the swipe-to-dismiss cue |
+| `--sheet-handle-height` | 5px | Its height (it takes `--radius-chip`) |
+| `--sheet-handle-colour` | muted ink at 42% | Its colour, a neutral |
+
+The handle is drawn by `SheetDragHandle` in `sheet-swipe.css` on every
+phone sheet that swipes to dismiss. A circle is `border-radius: 50%`, and 0,
+`none` and `inherit` stay raw.
+
+`ui/lead-support-detail.css`, the Ask card styles in `ask-route.css` and the
+sheet handle in `sheet-swipe.css` use the tokens. `tests/design-token-guard.test.mjs` fails on a raw
+`font-size` (or a size in the `font` shorthand), `border-radius` or
+`box-shadow` in any stylesheet under `src/client` except the legacy ones
+it lists, and on a raw value set inline in a `src/client/ui/` component.
+The off-scale values those files hold (the Ask headings, messages,
+composer, back link and dock controls; the lead's amount aside and bar line;
+the sheet's "Discard changes?" bar) are frozen in its `KNOWN_LITERALS` list: they keep their look until the
+redesign folds them into a step, and the list only shrinks. A new
+stylesheet is checked from its first line. Every token a checked file uses
+must be defined in `:root`, and every token must be in the table above.
+
 ## Pastel Palette
 
 Colour in the app is pastel. The palette lives once, in `:root` of

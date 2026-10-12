@@ -428,11 +428,6 @@ button.split-activity-card:hover {
     gap: 4px;
   }
 
-  .split-activity-date {
-    font-size: 0.72rem;
-    line-height: 1.02;
-  }
-
   .split-activity-copy p {
     font-size: 0.76rem;
     line-height: 1.02;
