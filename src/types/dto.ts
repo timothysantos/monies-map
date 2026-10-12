@@ -288,6 +288,10 @@ export interface LinkedTransferDto {
   transactionDate: string;
 }
 
+// Which in-app tool created an entry (DOMAIN.md "Added by"), derived from
+// its external reference on the server; absent when not known.
+export type EntryAddedBy = "apple_pay_shortcut" | "ask";
+
 export interface EntryDto {
   id: string;
   date: string;
@@ -311,6 +315,7 @@ export interface EntryDto {
   importedSourceType?: "csv" | "pdf" | "manual";
   importedSourceLabel?: string;
   statementCertifiedAt?: string;
+  addedBy?: EntryAddedBy;
   linkedTransfer?: LinkedTransferDto;
   linkedSplitExpenseId?: string;
   linkedSplitGroupName?: string;
@@ -1383,6 +1388,9 @@ export interface EntryDraftResponseDto {
 export type ClaudeFailureCategory = "credit_exhausted" | "spend_capped" | "auth" | "other";
 export type ClaudeCreditState = "ok" | "low" | "exhausted" | "capped" | "unknown";
 
+// Auto-balance (src/domain/ai-provider-status.ts): who is asked first.
+export type ClaudeSpendMode = "claude_all" | "ask_only" | "basic_first";
+
 export type AiProviderStatusResponseDto =
   | { ok: true; visible: false }
   | {
@@ -1395,6 +1403,11 @@ export type AiProviderStatusResponseDto =
     estimatedSpendUsd: number;
     creditUsd: number;
     warnAtUsd: number;
+    // Estimated Claude spend this calendar month (Asia/Singapore), the
+    // monthly target, and the resulting auto-balance mode.
+    monthSpendUsd: number;
+    monthTargetUsd: number;
+    mode: ClaudeSpendMode;
     lastFailureAt?: string;
     lastFailureReason?: ClaudeFailureCategory;
     lastSuccessAt?: string;
@@ -1501,6 +1514,85 @@ export interface SkewCandidatesDto {
   omittedCandidateCount: number;
 }
 
+// Ask's answer to a money question (DOMAIN.md "Money Question",
+// POST /api/ai-assist/answer). Every figure comes from the same projections
+// the screens show; only `wording.text` may be AI-phrased, and only after
+// validation against the facts it was given.
+export type AskAnswerIntentKind = "spending" | "plan" | "compare" | "biggest" | "owed" | "income";
+
+export interface AskAnswerLeadDto {
+  label: string;
+  amountMinor: number;
+  currency: string;
+  tone: MoneyTone;
+  // The plan the lead is measured against (the actual-vs-plan bar).
+  planMinor?: number;
+  // Income: more than the plan is fine.
+  overIsShort?: boolean;
+}
+
+// A Support chip: a name, with an amount or a share when it has one.
+export interface AskAnswerChipDto {
+  label: string;
+  amountMinor?: number;
+  currency?: string;
+  percent?: number;
+}
+
+// A Detail row: what it is, a short non-money detail, its amount and,
+// optionally, the plan or the other month beside it.
+export interface AskAnswerLineDto {
+  label: string;
+  detail?: string;
+  amountMinor: number;
+  currency: string;
+  tone: MoneyTone;
+  secondary?: { kind: "plan" | "compare"; label: string; amountMinor: number };
+}
+
+// The Entries filter an answer opens, read back by Entries' own reader
+// (src/client/entry-filter-params.js); the client builds the URL.
+export interface AskAnswerEntriesFilterDto {
+  month: string;
+  viewId: string;
+  scope: PersonScope;
+  search: string;
+  categories: string[];
+  wallets: string[];
+  type: "" | "expense" | "income" | "transfer";
+  minAmountMinor: number | null;
+  maxAmountMinor: number | null;
+}
+
+export type AskAnswerLinkDto =
+  | { kind: "entries"; label: string; filter: AskAnswerEntriesFilterDto }
+  | { kind: "month"; label: string; month: string; viewId: string; scope: PersonScope }
+  | { kind: "splits"; label: string; month: string; viewId: string; groupId: string | null };
+
+export interface AskAnswerCardDto {
+  title: string;
+  lead: AskAnswerLeadDto;
+  support: AskAnswerChipDto[];
+  lines: AskAnswerLineDto[];
+  links: AskAnswerLinkDto[];
+}
+
+export interface AskAnswerResponseDto {
+  ok: true;
+  supported: boolean;
+  intent?: AskAnswerIntentKind;
+  viewId?: string;
+  scope?: PersonScope;
+  months?: string[];
+  // A high-confidence skew candidate would change the facts: no answer
+  // until the person resolves it or says it is real.
+  needsConfirmation?: boolean;
+  candidates?: SkewCandidateDto[];
+  answer?: AskAnswerCardDto;
+  wording?: { text: string; source: "template" | "ai" };
+  ai?: { requested: boolean; available: boolean; reason?: string; remaining?: number };
+}
+
 // What one receipt says, read either by the optional AI provider from an
 // image the user explicitly supplied, or by in-browser OCR when AI is off.
 // It is a draft only: nothing is saved until the user taps save in the
@@ -1552,4 +1644,24 @@ export interface ReceiptReadDto {
   cardLast4: string | null;
   lineItems: ReceiptLineItemDto[];
   questions: ReceiptQuestionDto[];
+}
+
+// A split suggestion (DOMAIN.md "Split Suggestion",
+// POST /api/splits/suggestion): the split group and share an expense's
+// payer usually puts entries like it on, from the household's own last
+// 12 months. Read-only and deterministic; nothing is written until the
+// person saves with Splits on.
+export interface SplitSuggestionDto {
+  // "split-group-none" for Non-group expenses.
+  groupId: string;
+  groupName: string;
+  // The payer's (the entry owner's) share; the other person has the rest.
+  basisPoints: number;
+  otherPersonId: string;
+  otherPersonName: string;
+  // How many matching entries went to this group with this share, out of
+  // matchedCount matching entries in the window.
+  evidenceCount: number;
+  matchedCount: number;
+  matchedBy: "description" | "category";
 }

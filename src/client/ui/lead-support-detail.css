@@ -320,6 +320,97 @@
   color: inherit;
 }
 
+/* Tappable chips (design.md, "Tappable chips"): a chip for a field you can
+   change opens that field's picker. The pill keeps its size and colours and
+   gains a small muted chevron; the transparent button (or the date field
+   laid over it) around it is the 44 x 44 px hit area. The chips row pulls
+   in by 4 px top and bottom so the taller hit areas add little height. */
+.lsd-chips:has(.lsd-chip-hit) {
+  align-items: center;
+  margin-block: -4px;
+}
+
+.lsd-chip-hit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lsd-chip.is-tappable {
+  padding-right: 8px;
+}
+
+.lsd-chip .lsd-chip-chevron {
+  margin-left: -1px;
+  color: var(--muted);
+}
+
+.lsd-chip:is(.is-mint, .is-rose, .is-sky, .is-butter, .is-lavender, .is-person) .lsd-chip-chevron {
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* The press state: the pill darkens a touch, as a tapped row does. */
+.lsd-chip-hit:active .lsd-chip {
+  box-shadow: inset 0 0 0 999px rgba(27, 24, 21, 0.06);
+}
+
+.lsd-chip-hit:focus-visible,
+.lsd-chip-native:focus-visible {
+  outline: none;
+}
+
+.lsd-chip-hit:focus-visible .lsd-chip,
+.lsd-chip-hit.has-control:focus-within .lsd-chip {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* The date field over a date chip: invisible, it takes the tap and opens
+   the date picker. 16px text keeps iPhone from zooming on focus. */
+.lsd-chip-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  font-size: 16px;
+}
+
+/* A field the statement certified: a lock, never a picker. */
+.lsd-chip .lsd-chip-lock {
+  color: var(--muted);
+}
+
+.lsd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* One short muted line under the lead (a lock, a reason). */
 .lsd-note {
   display: flex;
@@ -371,7 +462,8 @@
   border-bottom: 0;
 }
 
-.lsd-row.is-locked {
+.lsd-row.is-locked,
+.lsd-row.is-readonly {
   cursor: default;
 }
 

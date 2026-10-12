@@ -4,7 +4,8 @@
 //
 // - Chat mode, no card: Scan receipt, Paste, Add entry, Add expense.
 // - Add mode: "‹ Entries" (or Splits, Ask) first, back to where the person
-//   came from; then a pending question's answers, or what fits the card:
+//   came from (on the phone's Ask page, where the header has its own back
+//   link, only while the card is untouched); then a pending question's answers, or what fits the card:
 //   Scan receipt, Paste, Transfer, Income on an empty expense; Split with
 //   <partner>, Add a note, Different card once it has content; Swap
 //   direction for a transfer; Edit in form last, to the Entries composer or
@@ -13,12 +14,19 @@
 //   Open this entry, Open on Splits when it was shared, Undo. A card the
 //   Apple Pay Shortcut saved offers Open this entry, then a category
 //   question when it landed in Other, and Splits.
+// - A split suggestion (ask-split-suggestion.js), when the person usually
+//   splits entries like this one: one question, "You usually split this
+//   with <name>. Add it to <group>?", with "Split 50/50 in <group>" (filled)
+//   and "Not this time". On a draft it comes after a reader's questions; on
+//   the Apple Pay card after the Other question, in place of the plain
+//   Splits chips.
 //
 // These are the card's chips, shown only while the card is the newest
 // thing in the conversation; findActiveItem and buildChipRow (below) pick
 // the row for whatever is newest.
 
 import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
+import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { moneyWithCurrency } from "./formatters";
 
@@ -97,7 +105,30 @@ function backLabel(intent) {
   return askCopy.backLabels[intent.from] ?? askCopy.backLabels.entries;
 }
 
-function savedChips({ intent, card, context, splitGroups, entries, actions }) {
+// The split suggestion's question and its two chips, while the card can
+// still take it (not answered, not on Splits).
+function suggestionChips(card, splitSuggestion, actions) {
+  if (!splitSuggestion || card.variant !== "expense" || card.splitSuggestionAnswer) {
+    return null;
+  }
+  if (card.status === "saved" ? card.saved?.splitExpenseId : card.share.on || card.fields.ownerName === SHARED_OWNER) {
+    return null;
+  }
+  return {
+    prompt: askCopy.questions.usualSplit(splitSuggestion.otherPersonName, splitSuggestion.groupName),
+    items: /** @type {AskChip[]} */ ([
+      {
+        key: "suggested-split",
+        label: askCopy.chips.suggestedSplit(formatSuggestedShare(splitSuggestion.basisPoints), splitSuggestion.groupName),
+        primary: true,
+        onClick: actions.acceptSplitSuggestion
+      },
+      { key: "suggested-split-no", label: askCopy.chips.notThisTime, onClick: actions.declineSplitSuggestion }
+    ])
+  };
+}
+
+function savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, actions }) {
   /** @type {AskChip[]} */
   const items = [];
   let prompt = "";
@@ -111,6 +142,13 @@ function savedChips({ intent, card, context, splitGroups, entries, actions }) {
       items.push({ key: "choose-category", label: askCopy.chips.chooseCategory, onClick: actions.chooseCategory });
     }
     const canShare = card.variant === "expense" && !card.saved?.splitExpenseId && (context.people ?? []).length > 1 && splitGroups.length > 0;
+    const suggested = !prompt && canShare ? suggestionChips(card, splitSuggestion, actions) : null;
+    if (suggested) {
+      // The suggestion's chip is the filled one while it is asked.
+      items[0] = { ...items[0], primary: undefined };
+      items.push(...suggested.items);
+      return { items, prompt: suggested.prompt };
+    }
     if (canShare) {
       prompt ||= askCopy.questions.shareOnSplits;
       if (splitGroups.length === 1) {
@@ -139,7 +177,7 @@ function savedChips({ intent, card, context, splitGroups, entries, actions }) {
   return { items, prompt };
 }
 
-export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", actions }) {
+export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, headerBack = false, actions }) {
   const isAddMode = intent.mode !== "chat";
   if (!card) {
     if (intent.savedEntryId) {
@@ -156,17 +194,23 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
     };
   }
   if (card.status === "saved") {
-    return savedChips({ intent, card, context, splitGroups, entries, actions });
+    return savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, actions });
   }
 
   /** @type {AskChip[]} */
   const items = [];
-  if (isAddMode) {
+  // With the header's back link, the chip is a second way back only for a
+  // card nobody has started (docs/flows/ask-flow.md "Back to where you were").
+  if (isAddMode && !(headerBack && (card.touched || card.origin))) {
     items.push({ key: "back", label: askCopy.chips.back(backLabel(intent)), back: true, onClick: actions.back });
   }
   const question = card.questions?.[0] ?? null;
+  const suggested = question ? null : suggestionChips(card, splitSuggestion, actions);
   let prompt = "";
-  if (question) {
+  if (suggested) {
+    prompt = suggested.prompt;
+    items.push(...suggested.items);
+  } else if (question) {
     prompt = describeQuestion(question, context);
     for (const [index, option] of (question.options ?? []).slice(0, MAX_OPTION_CHIPS).entries()) {
       const label = describeOption(option, question, context, today);
@@ -234,7 +278,8 @@ export function buildFilterChips({ focus, base, viewLabel = "", actions }) {
 // Which thread item owns the chip row and the composer's primary button
 // (docs/flows/ask-flow.md "State Flow"): always the newest one.
 // - an open follow-up question or view change;
-// - else an answer that is the newest settled item and sits below the card;
+// - else an answer, a money answer or an open check before one that is the
+//   newest settled item and sits below the card;
 // - else the card, while the person has said nothing since it (a message
 //   that changes the card moves it below that message; notes such as
 //   "Saved to Entries." do not count);
@@ -249,6 +294,13 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
   if (last?.kind === "answer" && (!card || cardSlot < settled.length)) {
     return { kind: "answer", filter: last.filter };
   }
+  // A money answer, or the check before one while it is still open.
+  if (last?.kind === "money-answer" && (!card || cardSlot < settled.length)) {
+    return { kind: "money-answer", itemId: last.id, links: last.answer?.links ?? [] };
+  }
+  if (last?.kind === "money-check" && last.status === "open" && (!card || cardSlot < settled.length)) {
+    return { kind: "money-check", itemId: last.id, candidate: last.candidate };
+  }
   if (card && !settled.slice(cardSlot).some((item) => item.kind === "me")) {
     return { kind: "card" };
   }
@@ -260,9 +312,9 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // "Back to the unsaved entry", which makes it the newest item again. An
 // answer for a month with no entries (canOpenAnswer false) has no Entries
 // page to open.
-export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", viewLabel = "", canOpenAnswer = true, actions }) {
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, actions }) {
   if (active?.kind === "card") {
-    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, actions });
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, headerBack, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }
@@ -270,5 +322,33 @@ export function buildChipRow({ active, intent, card, context, splitGroups = [], 
   if (!active || (active.kind === "answer" && !canOpenAnswer)) {
     return rest;
   }
+  if (active.kind === "money-answer" || active.kind === "money-check") {
+    return buildMoneyChips({ focus: active, base: rest, labels: moneyLabels, actions });
+  }
   return buildFilterChips({ focus: active, base: rest, viewLabel, actions });
+}
+
+// The chip row for a money answer: its links to the screens (the first
+// filled: Open in Entries, Open Month or Open Splits), then the usual
+// chips. For the check before an answer: resolve it through the existing
+// routes (Mark as settlement or Link as transfer, filled) or keep it as it
+// is (It's real spending), and nothing else until one is tapped.
+export function buildMoneyChips({ focus, base, labels = null, actions }) {
+  if (focus.kind === "money-check") {
+    return {
+      prompt: "",
+      items: /** @type {AskChip[]} */ ([
+        { key: "skew-resolve", label: labels?.resolve ?? "", primary: true, onClick: actions.resolveCheck },
+        { key: "skew-keep", label: labels?.keep ?? "", onClick: actions.keepCheck }
+      ])
+    };
+  }
+  const rest = base.items.map((item) => ({ ...item, primary: false }));
+  return {
+    prompt: base.prompt,
+    items: /** @type {AskChip[]} */ ([
+      ...focus.links.map((link, index) => ({ key: `money-link-${link.kind}-${index}`, label: link.label, primary: index === 0, onClick: () => actions.openAnswerLink(link) })),
+      ...rest
+    ])
+  };
 }

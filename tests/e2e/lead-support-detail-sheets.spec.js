@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
-// The Entries edit sheet and Create split expense in the Lead · Support ·
+// The Entries edit sheet and New split expense in the Lead · Support ·
 // Detail style (design.md): one lead card, Support chips, quiet Detail rows
 // and a bottom bar with the primary action under the thumb. These prove the
 // sheets save what the forms saved, keep the statement lock and the in-app
@@ -98,7 +98,7 @@ async function openEditSheet(page, entryId) {
 
 async function openCreateExpense(page) {
   await page.goto(`/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense`);
-  const dialog = page.getByRole("dialog", { name: "Create split expense" });
+  const dialog = page.getByRole("dialog", { name: "New split expense" });
   await expect(dialog).toBeVisible({ timeout: 60_000 });
   return dialog;
 }
@@ -134,8 +134,14 @@ async function tapTargets(scope) {
       // under the bottom bar is not).
       const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
       const onTop = Boolean(hit && (target === hit || target.contains(hit)));
+      // A target the sheet's scroll area cuts through is measured where it
+      // shows in full (the sheet test checks at its top and its bottom).
+      const scroller = target.closest(".entry-mobile-sheet-scroll");
+      const view = scroller?.getBoundingClientRect();
+      const clipped = Boolean(view && (rect.top < view.top - 1 || rect.bottom > view.bottom + 1));
       targets.push({
         onTop,
+        clipped,
         name: (target.getAttribute("aria-label") || target.textContent || target.className).trim().replace(/\s+/g, " ").slice(0, 40),
         width: Math.round(rect.width * 10) / 10,
         height: Math.round(rect.height * 10) / 10,
@@ -156,7 +162,7 @@ function gapBetween(a, b) {
 // them is the row edge); they are full-width and 44 px or taller, so only
 // targets side by side or in different groups need the 8 px gap.
 function crowdedPairs(allTargets) {
-  const targets = allTargets.filter((target) => target.onTop);
+  const targets = allTargets.filter((target) => target.onTop && !target.clipped);
   const pairs = [];
   for (let i = 0; i < targets.length; i += 1) {
     for (let j = i + 1; j < targets.length; j += 1) {
@@ -261,8 +267,12 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     await expect(lead.locator(".lsd-chip.is-mint")).toHaveText("Statement certified");
     await expect(lead.locator(".lsd-chip")).toContainText([accountName]);
     await expect(sheet.locator(".entry-edit-lock-message")).toHaveText(
-      "This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Expense and Transfer out, and you can change the note, category, owner or splits."
+      "Bank details are locked to the statement. Category, owner, note and splits stay editable."
     );
+    // The full rule stays on the lock chip, for a hover and a screen reader.
+    const lockChip = lead.locator(".lsd-chip.is-mint");
+    await expect(lockChip).toHaveAttribute("title", "This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Expense and Transfer out, and you can change the note, category, owner or splits.");
+    await expect(lockChip).toHaveAccessibleDescription("This row is statement certified. Description, date, posted date, wallet and amount are locked to the saved statement. Type can switch between Expense and Transfer out, and you can change the note, category, owner or splits.");
 
     await sheet.getByRole("button", { name: /More details/ }).click();
     // Date and wallet are in the chips only; posted date is a locked line.
@@ -350,11 +360,21 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     const entryId = await createManualEntry(page, `Lead sheet targets ${Date.now()}`);
     const sheet = await openEditSheet(page, entryId);
     await sheet.getByRole("button", { name: /More details/ }).click();
-    const targets = await tapTargets(sheet);
-    const small = targets.filter((target) => target.width < 44 || target.height < 44).map((target) => `${target.name} ${target.width}x${target.height}`);
-    expect(small).toEqual([]);
-    expect(crowdedPairs(targets)).toEqual([]);
-    expect(targets.length).toBeGreaterThan(12);
+    // Measured with the sheet scrolled to its top, then to its bottom, so
+    // every target is seen in full once (the lead's tappable chips too).
+    const measured = new Set();
+    for (const edge of ["top", "bottom"]) {
+      await sheet.locator(".entry-mobile-sheet-scroll").evaluate((scroller, where) => {
+        scroller.scrollTop = where === "top" ? 0 : scroller.scrollHeight;
+      }, edge);
+      const targets = await tapTargets(sheet);
+      const small = targets.filter((target) => !target.clipped && (target.width < 44 || target.height < 44)).map((target) => `${target.name} ${target.width}x${target.height}`);
+      expect(small).toEqual([]);
+      expect(crowdedPairs(targets)).toEqual([]);
+      targets.filter((target) => !target.clipped).forEach((target) => measured.add(target.name));
+    }
+    expect(measured.size).toBeGreaterThan(12);
+    expect([...measured]).toEqual(expect.arrayContaining(["Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim"]));
     // The numeric field brings up the number keypad.
     await expect(sheet.locator(".lsd-card").getByRole("textbox", { name: "Amount" })).toHaveAttribute("inputmode", "decimal");
   });
@@ -384,7 +404,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     await expect(sheet.locator(".lsd-card .lsd-amount-sign")).toBeHidden();
   });
 
-  test("Create split expense saves an even split's total and shares as the form did", async ({ page }) => {
+  test("New split expense saves an even split's total and shares as the form did", async ({ page }) => {
     await phone(page);
     const description = `Lead split even ${Date.now()}`;
     const dialog = await openCreateExpense(page);
@@ -489,7 +509,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     expect(creates).toBe(0);
   });
 
-  test("every tap target in Create split expense is 44 px or more with room around it", async ({ page }) => {
+  test("every tap target in New split expense is 44 px or more with room around it", async ({ page }) => {
     await phone(page);
     const dialog = await openCreateExpense(page);
     await dialog.locator(".lsd-card").getByRole("textbox", { name: "Expense total" }).fill("10.01");
@@ -539,7 +559,17 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
     const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
     if (order.at(-1) !== name) order.push(name);
   }
-  expect(order.slice(0, 9)).toEqual(["Amount", "Hide money totals", "Category", "Owner", "SplitsAdd to splits", "Note", "Date", "Wallet", "Posted date"]);
+  // The tappable Support chips (date, wallet, owner) come after the lead's
+  // fields, before the rows (design.md, "Tappable chips").
+  for (let step = 0; step < 6 && order.length < 12; step += 1) {
+    await page.keyboard.press("Tab");
+    const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
+    if (order.at(-1) !== name) order.push(name);
+  }
+  expect(order.slice(0, 12)).toEqual([
+    "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
+    "Category", "Owner", "SplitsAdd to splits", "Note", "Date", "Wallet", "Posted date"
+  ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");
   await editor.getByLabel("Category").selectOption("Home");

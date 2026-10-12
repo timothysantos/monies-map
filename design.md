@@ -125,7 +125,11 @@ Layout, top to bottom:
   "Saved" (add mode) with a context line: person · scope · month in chat,
   person · month beside the title in add mode. In chat mode, once there is
   something to start over from, a quiet "New chat" text button (accent
-  text with a pen glyph, 44 px tall) sits at the header's right.
+  text with a pen glyph, 44 px tall) sits at the header's right. On a
+  phone, after the Entries + or the Splits receipt button opened the card,
+  a "‹ Entries" / "‹ Splits" back link (accent text, bold, a 44 px target
+  in a short row) sits at the top left above the title, the standard Back
+  place, far from Save. Its way back is "Ask origin" below.
 - Conversation (`role="log"`, polite live region), which scrolls: first,
   only while Claude credits are low, used up or capped, the Claude credit
   notice (see "Claude credit notice"), in every mode; then in chat
@@ -242,6 +246,38 @@ While it adds up it says "Adding it up…"; a month with no entries says so.
 "Open in Entries" is the first chip of the row (filled) while the answer is
 the newest thing in the conversation.
 
+### Money answer
+
+`ask-money-answer-card.jsx`, the same `LeadCard` for an answer to a money
+question (docs/flows/ask-flow.md "Money questions"):
+
+- Head: a neutral bubble with the intent's glyph (a pie for spending, a
+  target for the plan, scales for a comparison, a receipt for the biggest
+  expenses, people for Splits, a banknote for income), the title ("August
+  spending", "August against plan", "July and June", "Biggest in August",
+  "Splits with Serene", "August income") and, muted under it, what the
+  figure counts ("Spent · 51 expenses", "Came in · 2 entries", "Balance").
+- Lead: the figure on the right. Spending is rose only over plan, income
+  mint, a Splits balance mint when owed to you and rose when you owe;
+  the actual-vs-plan bar with "of $7,263.09 plan" in sky when there is a
+  plan.
+- Support: the plan, the other month, the largest shares ("Home 54%") or
+  the Splits groups, as `MetaChip`s with masked amounts when money is
+  hidden (labels never say over, under or who owes).
+- Tag: words the optional AI phrased carry the entry card's butter tag
+  ("Worded by AI", with the sparkle) above the head line; the computed
+  wording has none, and hidden money hides it with the words.
+- Detail: the answer in one to three sentences, then quiet rows (label and
+  a short detail on the left; the amount on the right in its tone, with the
+  plan or the other month small under it). Hidden money replaces the words
+  and rows with "Reveal money totals to read these insights."
+
+The check before an answer is the same card with the butter "Check this
+first" tag over the head ("Serene → Ethan" or the two accounts, the bank
+description muted, the amount in plain ink) and one plain paragraph; its
+chips are Mark as settlement or Link as transfer (filled) and It's real
+spending. Once answered it stays in the thread, faded.
+
 ### Bottom chips
 
 The row and the composer's primary button belong to the newest thing in
@@ -256,7 +292,9 @@ while the card is active.
 `buildAskChips` derives the card's row from the mode and the card:
 
 - chat, no card: Scan receipt, Paste, Add entry, Add expense;
-- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first; then a pending
+- add mode: `‹ Entries` / `‹ Splits` / `‹ Ask` first (with the header's
+  back link, the phone's Ask page after the + or the receipt button, only
+  while the card is untouched: `headerBack`); then a pending
   question's answers (the readers send structured questions; the client
   words them and shows the question as a line above the row), or Scan
   receipt, Paste, Transfer, Income on an empty expense; Split with
@@ -272,7 +310,34 @@ while the card is active.
   chat chips; a follow-up question: only its options (one per wallet,
   category, month or person, then "All of them"), with the question as the
   line above the row; a view change: "Switch to Serene · Shared" (filled),
-  then the same as after an answer, under "Change the view?".
+  then the same as after an answer, under "Change the view?";
+- after a money answer (`buildMoneyChips`): its links (Open in Entries,
+  Open Month or Open Splits, the first filled), then the same as after an
+  answer; an open check before an answer: only Mark as settlement (or Link
+  as transfer, filled) and It's real spending.
+
+### Ask origin
+
+Where Ask's back link goes on a phone (`ask-origin.js`, pure, unit tested;
+`use-ask-origin.js`, the Entries and Splits hooks; both ship with those
+routes, never the first screen). The shell's + and receipt handlers
+(`openAskFromPage` in App.jsx, a few lines inline to stay out of the
+module) build the origin (an id, the way in, the page's path with its
+query, the window's scroll), fire `monies:ask-origin` so the page can add
+an open sheet with its draft (`useAskOriginSheet`: Entries adds its edit
+sheet's edited entry, or its add sheet's draft), replace the page's own
+history entry with the origin as `state.askReturn`, then push `/ask` with
+it as `state.askOrigin`. The Ask page keeps it in sessionStorage
+(`monies.askOrigin.v1`, one per way in, versioned) and plans its way back
+with `planAskBack`: history.back while its history entry has the origin
+(so the link and the phone's back gesture are one way), else the kept
+place (opened with `state.askReturn`), else the plain page for the view
+and month. The page puts the place back once (`useAskReturn`): the sheet,
+then the scroll, set each frame until it holds (rows render over a few
+frames), never after the person scrolls; and it keeps its URL and scroll
+as the kept place whenever it is left another way, for a card the Ask tab
+reopens. Paths are checked against the way in's page, so a kept origin
+never leads outside the app.
 
 ### Ask conversation store
 
@@ -323,9 +388,12 @@ at the top of the list, under the page title.
 ## Desktop Ask
 
 Owner-approved desktop design. Flow: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md)
-"Desktop". Code: `ask-dock.jsx` (field and frame, first screen),
-`ask-dock-layout.js` (pure layout rules), `ask-dock-state.js` (session
-state), and the Ask page itself inside (`AskPanel` with `placement`).
+"Desktop". Code: `ask-dock.jsx` (field, `/` key and loading frame: the only part in
+the first screen, with `ask-dock-field.jsx` and `ask-dock-entry.js`),
+`ask-dock-panel.jsx` (the panel, loaded with the Ask page's chunk on the
+first way in), `ask-dock-layout.js` (pure layout rules), `ask-dock-state.js`
+(session state), and the Ask page itself inside (`AskPanel` with
+`placement`).
 
 - The field: one white pill, 340 × 48 px, 24 px radius, the inset hairline
   and a soft shadow, fixed 22 px from the right and 29 px from the bottom
@@ -392,7 +460,9 @@ data in `claude-credit-status.js`. Flow:
   Apple Pay shortcut) shows the same sentence as text in the tone's ink
   (plain ink when fine), the two actions as neutral pills, and "Last
   checked …" muted; with Claude not set up, only the calm line "Claude
-  isn't set up, so Ask uses the basic model."
+  isn't set up, so Ask uses the basic model."; set up but not answered yet
+  (state unknown, no failure recorded), only "Claude hasn't been used
+  yet."
 
 ## Lead · Support · Detail
 
@@ -440,8 +510,11 @@ components.
   `getPersonColourVars` (tint, border, `--person-ink`, a dot); `tone` a
   status in its pastel pair at the soft strength (`mint`, `rose`, `sky`,
   `butter`, `lavender`; an unknown tone is ignored), such as the mint
-  "Statement certified" chip with a lock. At most four per card; chips are
-  read-only: a value you change has its own Detail row.
+  "Statement certified" chip with a lock. At most four per card. A chip is
+  read-only unless it names a field you can change (see "Tappable chips"
+  below): `onClick` or a laid-over `control` (`ChipDateField`), with
+  `actionLabel`, makes it open that field's picker; `locked` (with
+  `lockedLabel`) shows a lock and opens nothing.
 - `DetailRows {label}` and `DetailRow {label, value, emptyLabel, state,
   action, locked, disabled, hint, labelId, onClick, children}`: rows of
   48 px or more in one rounded group, label left (muted), value right (600)
@@ -456,7 +529,9 @@ components.
   with its `emptyLabel`, "Add a note"), `action` (terracotta, "Add to
   splits", "See the 10 entries"; also the `action` flag) and `locked`
   (muted with a lock instead of the `›`, never clickable; also the `locked`
-  flag). `disabled` mutes a button row and drops its `›`.
+  flag). `disabled` mutes a button row and drops its `›`. `readOnly` is a
+  plain line with no icon, for a fact nobody changes on that screen (Added
+  by).
 - `MoreDetails {summary, open, onOpenChange, defaultOpen, forceOpen, label,
   openLabel}`: the folding row inside the group; it lists what it holds
   while closed, and its rows follow it in the same group when open.
@@ -481,6 +556,41 @@ share: `PickerRow` (the phone picker sheet, `ResponsiveSelect`, in a sheet; a
 native select laid over the row on a wide screen), `DateRow` (a date field
 over the row in a sheet; a visible inline date field on a wide screen) and
 `GrowingTextarea` (what it was, a note).
+
+Tappable chips: a Support chip that names a field you can change opens
+the same picker or editor as that field's Detail row, so the fact you look
+at is also the way to change it. Edit entry card: date (the date picker),
+wallet (the wallet picker, unfolding More details) and owner. Ask draft
+card: date, wallet and owner. New split expense card: date, paid by,
+shares (the share editor) and paid using. The Month plan card's chips are
+not fields there, and a saved Ask card's chips are not editors.
+
+- Calm, not loud: the pill keeps its size and colours and adds only a small
+  muted chevron and the rows' press state; no new colour.
+- 44 × 44 px: the pill sits inside a transparent button (or under a date
+  field laid over it) at least 44 px each way; the chips row pulls in 4 px
+  top and bottom so the taller targets add little height.
+- Named for what it does: "Change date, Yesterday", "Change wallet, UOB
+  One", "Change paid by, Tim", "Change shares, 50 / 50".
+- Locked: a field the statement certified (date, wallet), or a payment way
+  the linked entry set, shows a small lock and opens nothing; assistive
+  tech hears ", locked by the statement" (or ", set by the linked entry").
+- State chips (Manual provisional, Statement certified) are never editors.
+- On a wide screen a chip moves focus to its row's select (and opens it
+  where the browser allows).
+
+Source chip: the bank state chip names the tool that saved a provisional
+entry, "Apple Pay · provisional" (the Apple Pay Shortcut) or "Ask ·
+provisional", on the Edit entry card and Ask's saved card; a certified
+entry says "Statement certified" and other entries keep "Manual
+provisional" or "Import provisional". More details then has a read-only
+"Added by" row (Apple Pay shortcut, Ask), and its folded hint names it
+("Date, wallet, posted date, type, added by"; certified: "Posted date,
+type, added by"; `moreDetailsSummary`), and an Entries row shows a small
+muted glyph inside its amount's line (a contactless mark, "Added with Apple
+Pay"; a sparkle, "Added in Ask") that keeps the row's height and is the
+same with money hidden. The words come from `entry-source.js`, from the
+entry's `addedBy`.
 
 The phone picker sheet (`ResponsiveSelect`, and the Entries filter
 multi-select) keeps its title in place and scrolls its options list, so the
@@ -514,9 +624,10 @@ Rules:
 - Keyboard: every bottom sheet with a bottom bar lifts itself above the
   phone keyboard (`use-keyboard-inset.js` sets `--keyboard-inset`; see
   "Mobile Sheet"), so the bar and the focused field stay in sight, and the
-  bar keeps the safe-area inset. Swipe down to dismiss is not supported:
-  neither the mobile sheet nor the Radix dialog has it, and adding it would
-  be a new gesture that discards a draft.
+  bar keeps the safe-area inset. Swipe down to close is supported only
+  through `sheet-swipe.jsx`, which closes an unchanged sheet and asks
+  before discarding a changed one (see "Swipe down to close" under "Mobile
+  Sheet").
 - No AI tag outside the Ask flow; a bank- or rule-filled value is not AI.
 
 Where it is used:
@@ -547,7 +658,10 @@ Where it is used:
 - The Entries edit sheet and inline editor (`entry-edit-card.jsx`). Lead:
   the category bubble (opens the category editor), what it was and the
   amount, typed in place unless a statement certified them (then read-only,
-  with the existing lock line under the card). The amount field shows
+  with the short lock line under the card, "Bank details are locked to the
+  statement. Category, owner, note and splits stay editable."; the full rule,
+  with the type choice, is the Statement certified chip's `title` and
+  accessible description). The amount field shows
   money with two decimals ("64.20") until it is focused and the raw text
   while it is typed in (`leadAmountFieldValue`). Support: date, wallet,
   owner, bank state. Detail: Category, Owner, Splits ("Add to splits" or
@@ -558,8 +672,9 @@ Where it is used:
   keeps an inline field, so Tab walks description, amount, the eye, then the
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
-- Create split expense (`split-expense-card.jsx`, from the Splits dialog in
-  both layouts; editing and viewing a saved split keep the form for now).
+- New, edit and view split expense (`split-expense-card.jsx`, from the Splits
+  dialog in both layouts: the phone sheet and the wide dialog; a row on a
+  wide screen still opens the inline form).
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
   (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
@@ -570,6 +685,14 @@ Where it is used:
   linked through the existing `updateSplitExpenseDraft`, so what the card
   shows and saves is what the form saved. The odd cent choice shows under
   the share rows whenever it applies.
+  Edit split is the same card on a saved split, titled "Edit split", with
+  Delete (quiet, rose, set apart; it asks in the app first), Cancel and
+  Save expense in the bottom bar; swiping the phone sheet down asks "Discard
+  changes?" when something changed. What a linked entry set (the paid-using
+  chip and row) is locked and reads ", set by the linked entry"; the linked
+  entry is a "View entry" row. View split (the read-only household view) shows
+  the same card with no controls and Close. The save request is the one the
+  form sent.
 
 ## Apple Shortcut Install Boundary
 
@@ -921,9 +1044,10 @@ strip EXIF and location in the browser first (re-encoding through a canvas
 does both, `ask-receipt-image.js`); keep the image in transient page state
 only, dropped when the page goes; on `available: false` (or any failure)
 read the same image on the device with the app's Tesseract worker into the
-same `ReceiptReadDto` (the domain's `readReceiptOcrText`; Ask still uses its
-own smaller `parseReceiptText` in `ask-receipt-image.js`, to be replaced by
-the domain parser); and fill the entry card
+same `ReceiptReadDto` (the domain's `readReceiptOcrText`, which Ask calls
+through `readReceiptTextOnDevice` in `ask-receipt-image.js` with the
+household currency, SGD, as the default so a receipt that prints no
+currency raises no currency question); and fill the entry card
 or editor from it (`applyReceiptRead` on Ask, `receiptReadToDraftFields`
 for the `/api/entries/create` field names), saving nothing until the user
 taps Save, through the normal create route. The
@@ -1366,8 +1490,9 @@ not inside it, because closing the popover unmounts its content.
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
-Month plan sheets and the Entries add and edit sheets. It behaves like the
-modal desktop dialogs:
+Month plan sheets, the Entries add and edit sheets, the import progress
+sheet and the Claude "I've topped up" sheet. It behaves like the modal
+desktop dialogs, and swipes down to close (below):
 
 - Focus moves into the sheet on open. The sheet itself takes focus, not a
   field, so opening it does not raise the phone keyboard.
@@ -1424,6 +1549,44 @@ modal desktop dialogs:
   by unit test and on a real phone only.
 - `headerAction` adds a control before the close button (the Entries edit
   sheet's money eye) and `className` a variant (`is-lead-sheet`).
+- Swipe down to close (`sheet-swipe.jsx`, rules in the pure
+  `sheet-swipe-controller.js`). The phone Splits expense dialog uses the
+  same hook. A grab bar sits in the sheet's top padding (drawn only:
+  `aria-hidden`, not a tap target; the ✕ and Cancel stay the keyboard and
+  screen-reader ways out). The sheet follows the finger; released past
+  30% of its height (80 to 160 px) or flicked down (0.6 px/ms, 24 px or
+  more) it is dismissed.
+  - Discard rule: each sheet passes `isDirty`, whether its draft changed
+    since it opened (the Entries edit sheet's `hasEditingEntryChanges`; the
+    others `useDraftChanged(draft, pickFields)`, which keeps the draft it
+    opened with). Unchanged, the swipe closes it straight away. Changed, it
+    springs back and asks "Discard changes?" in a bar at the sheet's bottom,
+    under the thumb: **Discard** (destructive, `lsd-quiet is-danger`) closes
+    it through the sheet's own close (the same as Cancel), **Keep editing**
+    (`lsd-primary`, focused) keeps the draft. Escape or a tap outside while
+    it asks means Keep editing. Never a system confirm. The form behind is
+    `inert` while it asks.
+  - Where a drag may start: the grab bar and header, or the body
+    (`data-sheet-body`) while it is scrolled to its top. Never from a text
+    field, an active text selection, a long press (500 ms before moving),
+    content scrolled away from its top, or a scrollable list or chip row
+    inside the body (`.planned-link-list`, a sideways chip row): those keep
+    every touch. Sideways or upward movement hands the gesture back to the
+    browser.
+  - Scrolling stays native: `touchstart` is passive, `touchmove` cancels
+    only a move the controller claimed for the sheet (a clearly downward
+    one), and the sheet never sets `touch-action`. A touchmove the browser
+    already made uncancelable (it started scrolling) ends the drag. A click
+    right after a drag is eaten, so a drag never taps a row.
+  - While `isSubmitting` the swipe is ignored, as Escape is.
+  - `prefers-reduced-motion`: the sheet still follows the finger (direct
+    manipulation), but springing back and sliding away are instant.
+  - The styles (`sheet-swipe.css`) and copy (`copy/sheet-swipe-copy.js`)
+    ship with the routes, not the first screen.
+    `tests/sheet-swipe-controller.test.mjs` proves the rules and pins every
+    sheet's `isDirty`; `tests/e2e/sheet-swipe-dismiss.spec.js` proves them
+    in WebKit (iPhone 13) and Chromium, including real CDP touch scrolling
+    of the body and of a long list inside a sheet.
 - The opener is found by `sheet-focus-return.js`, not from
   `document.activeElement` alone: iPhone and iPad Safari (WebKit) do not
   focus a tapped or clicked button, so after a tap `activeElement` is

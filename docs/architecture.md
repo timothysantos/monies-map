@@ -142,7 +142,10 @@ conversation and one entry card. The Entries + and Splits receipt buttons
 open it; their old forms stay reachable. On a wide screen the same page
 also opens beside any other page, docked or as a popup, from the
 bottom-right Ask field (`ask-dock.jsx`, design.md "Desktop Ask"), on the
-same conversation store.
+same conversation store. Money questions ("why was August so expensive?",
+"what do I owe Serene?") go to `POST /api/ai-assist/answer`, which reads
+them by rules, checks the skew candidates first and answers from the Month
+and Splits page DTOs (DOMAIN.md "Money Question").
 
 Rules:
 
@@ -606,7 +609,14 @@ gateway logging and caching off on every request and a hard monthly gateway
 spend limit; Workers AI (Gemma 4) is the fallback for a rate limit, spend
 cap, failure, timeout or unusable answer. With no gateway config, Workers AI
 is used directly. Neither provider is required: the route answers
-unavailable and the client uses its deterministic fallback.
+unavailable and the client uses its deterministic fallback. Receipts, Ask's
+answer wording, the Monthly Note draft, statement-mismatch wording,
+category-rule suggestions, the statement text fallback and the entry draft
+all use it; match ranking uses Workers AI embeddings. A monthly Claude
+target (`AI_CLAUDE_MONTHLY_TARGET_USD`, default 8) paces who is asked first
+(auto-balance: Claude first under pace, the basic model first for background
+help over pace, for everything at 90% of the target), deterministically and
+without AI; Settings shows the month's line.
 
 The app cannot buy Claude credits. After each Claude attempt the provider
 writes one aggregate row (`ai_provider_status`: last failure kind and time,
@@ -678,6 +688,20 @@ authoritative. Before any AI explanation of a month's spending or income,
 the deterministic `skew candidates` (see "Skew candidates" above) are the
 evidence of likely unlinked settlements and own-account moves; AI may phrase
 them but never decides or links them.
+
+Ask's money answers follow that order (`POST /api/ai-assist/answer`,
+`src/server/ask-answer-route.ts`): rules read the question into one of six
+intents (where and why the money went, the plan, two months compared, the
+biggest expenses, income, who owes whom on Splits); a high-confidence skew
+candidate that would change the facts is asked about first, with Mark as
+settlement or Link as transfer (the candidate's suggested routes, run by
+the person's tap) and It's real spending; the facts are read from the Month
+and Splits page DTOs, so the answer's figures equal the screens its chips
+open; a computed 1-3 sentence wording is always ready. Only with AI on may
+the provider phrase that wording from a bounded fact list, and the phrasing
+is shown only when every number and name in it is in the facts
+(`validateAiWording`). Nothing but the allowance counter is written
+(`docs/audits/ask-answers-audit.md`).
 
 The Money consequence map that used to sit under "See all insights" was
 retired in September 2026: it repeated what the signals say, and its
