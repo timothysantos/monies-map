@@ -1,0 +1,21 @@
+/* Bring files (import-select-file-stage.jsx) in Lead · Support · Detail:
+   the explanations are one folded row, the defaults are Detail rows. Ships
+   with the lazy Imports route. */
+.import-how {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.import-how-notes {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px 14px;
+}
+
+.import-how-notes p,
+.import-how-notes .import-step-hint {
+  margin: 0;
+}
+
+.import-defaults-rows {
+  background: rgba(255, 255, 255, 0.8);
+}

@@ -261,19 +261,21 @@
     font-size: 0.82rem;
   }
 
-  /* Start over and Skip for now on one line, the commit button under
-     them across the bar: wrapped, never squeezed. */
+  /* One line: Start over, then the commit button across the rest of the bar.
+     With Skip for now too, the button wraps under them rather than being
+     squeezed. */
   .import-commit-bar-actions {
     flex-wrap: wrap;
     width: 100%;
   }
 
   .import-commit-bar-actions .subtle-action {
+    min-height: 44px;
     white-space: nowrap;
   }
 
   .import-commit-bar-actions .import-commit-start-over {
-    flex: 1 1 100%;
+    flex: 0 0 auto;
   }
 
   .import-commit-bar-actions .import-commit-button.import-commit-secondary {
@@ -281,7 +283,8 @@
   }
 
   .import-commit-bar-actions .import-commit-button {
-    flex: 1 1 100%;
+    flex: 1 1 10rem;
+    min-height: 50px;
   }
 }
 
@@ -945,4 +948,84 @@
 .import-estimate-choices {
   display: grid;
   gap: 2px;
+}
+
+/* Lead · Support · Detail on the Imports review (design.md, "Imports"). */
+
+/* Account mapping: one Account row per detected account, then "Create
+   account". The reason it asks stays as a quiet line above. */
+.import-account-map {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.import-account-map-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.import-account-map-copy strong {
+  font-size: 0.95rem;
+}
+
+.import-account-map-copy strong.is-action {
+  color: var(--accent-strong);
+}
+
+.import-account-map-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.import-account-map .statement-account-map-grid {
+  gap: 10px;
+}
+
+.import-account-map .statement-account-map-row {
+  display: block;
+  max-width: none;
+}
+
+/* The preview note is a quiet line, not a bold accent sentence. */
+.import-stage-card[data-import-target="preview-rows"] > .import-stage-note {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* On a phone the preview is not a panel in a panel: the file card, the
+   Account row, the rows and the commit bar sit on the page. */
+@media (max-width: 767px) {
+  .import-workflow:has(> .import-stage-card[data-import-target="preview-rows"]) {
+    padding: 0 12px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .import-stage-card[data-import-target="preview-rows"] {
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  /* The Account row comes right after the file card, before the rows. */
+  .import-stage-card[data-import-target="preview-rows"] > .import-account-map {
+    order: -1;
+  }
+
+  /* Start over is on the commit bar, in the thumb zone. */
+  .import-stage-card[data-import-target="preview-rows"] .import-stage-head-actions {
+    display: none;
+  }
+
+  .import-stage-card[data-import-target="preview-rows"] .import-file-card {
+    box-shadow: 0 10px 24px rgba(27, 24, 21, 0.09);
+  }
 }

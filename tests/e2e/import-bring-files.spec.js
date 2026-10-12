@@ -355,6 +355,9 @@ test("once files are queued the drop zone is one slim line and the first Review 
   await expect(dropzone).toContainText("Drop a CSV, PDF, or XLS here");
   await expect(dropzone).not.toHaveClass(/is-slim/);
   const trustHint = page.getByText("Statement imports are only trustworthy when date coverage is complete");
+  // The notes are one folded row, "How importing works", beside the drop zone.
+  await expect(trustHint).toBeHidden();
+  await page.getByRole("button", { name: "How importing works" }).click();
   await expect(trustHint).toBeVisible();
 
   await page.locator("input[type=file]").setInputFiles([pdfPath, OCBC_ACTIVITY.pathname, csvPath]);
