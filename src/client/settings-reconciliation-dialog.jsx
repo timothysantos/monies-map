@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { SquarePen, X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { selectAllOnFocus } from "./focus-utils";
 import { moneyToneClass } from "./money-tone-class";
 import { statementDifferenceTone } from "../domain/money-tone";
@@ -43,8 +44,8 @@ export function SettingsReconciliationDialog({
           >
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{messages.settings.reconcileAccountTitle}</Dialog.Title>
-                <Dialog.Description>{messages.settings.reconcileAccountDetail}</Dialog.Description>
+                <Dialog.Title>{settingsMessages.reconcileAccountTitle}</Dialog.Title>
+                <Dialog.Description>{settingsMessages.reconcileAccountDetail}</Dialog.Description>
               </div>
               <button
                 type="button"
@@ -58,11 +59,11 @@ export function SettingsReconciliationDialog({
             </div>
             <div className="settings-account-form settings-reconciliation-form">
               <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.accountName}</span>
+                <span>{settingsMessages.accountName}</span>
                 <input className="table-edit-input" value={dialog?.accountName ?? ""} readOnly />
               </label>
               <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.checkpointMonth}</span>
+                <span>{settingsMessages.checkpointMonth}</span>
                 <input
                   type="month"
                   className="table-edit-input"
@@ -72,7 +73,7 @@ export function SettingsReconciliationDialog({
                 />
               </label>
               <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.checkpointStartDate}</span>
+                <span>{settingsMessages.checkpointStartDate}</span>
                 <input
                   type="date"
                   className="table-edit-input"
@@ -82,7 +83,7 @@ export function SettingsReconciliationDialog({
                 />
               </label>
               <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.checkpointEndDate}</span>
+                <span>{settingsMessages.checkpointEndDate}</span>
                 <input
                   type="date"
                   className="table-edit-input"
@@ -90,10 +91,10 @@ export function SettingsReconciliationDialog({
                   enterKeyHint="next"
                   onChange={(event) => onChange((current) => current ? { ...current, statementEndDate: event.target.value } : current)}
                 />
-                <small className="field-help">{messages.settings.checkpointHelp}</small>
+                <small className="field-help">{settingsMessages.checkpointHelp}</small>
               </label>
               <label className="table-edit-field settings-reconciliation-balance-field">
-                <span>{messages.settings.checkpointBalance}</span>
+                <span>{settingsMessages.checkpointBalance}</span>
                 <input
                   className="table-edit-input table-edit-input-money"
                   value={dialog?.statementBalance ?? "0.00"}
@@ -104,7 +105,7 @@ export function SettingsReconciliationDialog({
                 />
               </label>
               <label className="table-edit-field settings-reconciliation-note-field">
-                <span>{messages.settings.checkpointNote}</span>
+                <span>{settingsMessages.checkpointNote}</span>
                 <textarea
                   className="table-edit-input"
                   rows={4}
@@ -141,7 +142,7 @@ export function SettingsReconciliationDialog({
                 className="dialog-primary"
                 disabled={!dialog?.checkpointMonth?.trim() || isSubmitting}
               >
-                {isSubmitting ? messages.common.saving : messages.settings.checkpointSave}
+                {isSubmitting ? messages.common.saving : settingsMessages.checkpointSave}
               </button>
             </div>
           </form>
@@ -169,8 +170,8 @@ function SettingsCheckpointHistory({
   return (
     <section className="settings-account-history">
       <div className="panel-subhead">
-        <h3>{messages.settings.checkpointHistoryTitle}</h3>
-        <p>{messages.settings.checkpointHistoryDetail}</p>
+        <h3>{settingsMessages.checkpointHistoryTitle}</h3>
+        <p>{settingsMessages.checkpointHistoryDetail}</p>
       </div>
       {checkpointHistoryYears.length > 1 ? (
         <div className="settings-checkpoint-year-filter">
@@ -205,7 +206,7 @@ function SettingsCheckpointHistory({
                       disabled={isSubmitting}
                       onClick={() => void onDownloadCheckpoint(item)}
                     >
-                      {messages.settings.checkpointExport}
+                      {settingsMessages.checkpointExport}
                     </button>
                     <button
                       type="button"
@@ -213,7 +214,7 @@ function SettingsCheckpointHistory({
                       disabled={isSubmitting}
                       onClick={() => onCompareCheckpoint(item)}
                     >
-                      {messages.settings.statementCompareOpen}
+                      {settingsMessages.statementCompareOpen}
                     </button>
                   </>
                 ) : null}
@@ -221,7 +222,7 @@ function SettingsCheckpointHistory({
               {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
             </div>
             <div className="settings-account-actions">
-              <button type="button" className="icon-action" aria-label={messages.settings.checkpointEdit} onClick={() => onEditCheckpoint(item)}>
+              <button type="button" className="icon-action" aria-label={settingsMessages.checkpointEdit} onClick={() => onEditCheckpoint(item)}>
                 <SquarePen size={16} />
               </button>
               {renderCheckpointDeleteAction(item)}

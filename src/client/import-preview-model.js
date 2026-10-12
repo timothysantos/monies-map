@@ -1,4 +1,4 @@
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 
 // Read alongside docs/import-summary-code-glossary.md.
 // This model translates raw preview payloads into UI concepts:
@@ -7,11 +7,11 @@ import { messages } from "./copy/en-SG";
 //   whether the commit is disabled or asks first)
 // - which helper sections the preview page should render
 const COMMIT_LABELS = {
-  certify_rows: messages.imports.certifyMatchedEntries,
-  covered_checkpoint: () => messages.imports.saveStatementBalance,
-  saved_again: () => messages.imports.saveStatementAgain,
-  empty_checkpoint: () => messages.imports.saveEmptyStatementCheckpoint,
-  rows: () => messages.imports.commit
+  certify_rows: importMessages.certifyMatchedEntries,
+  covered_checkpoint: () => importMessages.saveStatementBalance,
+  saved_again: () => importMessages.saveStatementAgain,
+  empty_checkpoint: () => importMessages.saveEmptyStatementCheckpoint,
+  rows: () => importMessages.commit
 };
 
 // A row paired with an entry the ledger already has: confirmed by the

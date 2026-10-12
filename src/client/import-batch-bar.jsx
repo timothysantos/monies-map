@@ -3,6 +3,7 @@ import { Check, Clock, FileText } from "lucide-react";
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import "./import-review.css";
 
@@ -32,13 +33,13 @@ export function ImportBatchBar({
     <>
       {/* Leaves the top of the window as the bar sticks (useImportStickyBar). */}
       <div className="import-batch-bar-sentinel" aria-hidden="true" />
-      <nav ref={barRef} className={`import-batch-bar${isSticky ? " is-sticky" : ""}${isStuck ? " is-stuck" : ""}`} aria-label={messages.imports.batchBarLabel}>
+      <nav ref={barRef} className={`import-batch-bar${isSticky ? " is-sticky" : ""}${isStuck ? " is-stuck" : ""}`} aria-label={importMessages.batchBarLabel}>
         <div className="import-batch-bar-surface">
           {stepper}
           {batch.total ? (
             <div className="import-file-strip">
               {/* Says what the chips are: the files the user brought. */}
-              <span className="import-blockers-title" id="import-files-title">{messages.imports.batchFilesRowLabel}</span>
+              <span className="import-blockers-title" id="import-files-title">{importMessages.batchFilesRowLabel}</span>
               <ul className="import-file-chips" aria-labelledby="import-files-title">
                 {batch.files.map((file) => (
                   <li key={file.id}>
@@ -53,14 +54,14 @@ export function ImportBatchBar({
                   </li>
                 ))}
               </ul>
-              <span className="import-file-position">{messages.imports.batchFilePosition(batch.index, batch.total)}</span>
+              <span className="import-file-position">{importMessages.batchFilePosition(batch.index, batch.total)}</span>
             </div>
           ) : null}
           {showBlockers && (blockers.blockers.length || blockers.matched) ? (
             <div className="import-blockers">
               {blockers.blockers.length ? (
                 <>
-                  <span className="import-blockers-title" id="import-blockers-title">{messages.imports.blockersTitle}</span>
+                  <span className="import-blockers-title" id="import-blockers-title">{importMessages.blockersTitle}</span>
                   <ul className="import-blocker-list" aria-labelledby="import-blockers-title">
                     {blockers.blockers.map((blocker) => (
                       <li key={blocker.id}>
@@ -77,7 +78,7 @@ export function ImportBatchBar({
           ) : null}
           {/* Announces the count as blockers are fixed. */}
           <span className="import-blockers-live import-sr-only" aria-live="polite">
-            {showBlockers && blockers.remainingCount ? messages.imports.blockerThingsLeft(blockers.remainingCount) : ""}
+            {showBlockers && blockers.remainingCount ? importMessages.blockerThingsLeft(blockers.remainingCount) : ""}
           </span>
         </div>
       </nav>
@@ -95,7 +96,7 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
         type="button"
         className="import-file-chip is-done"
         title={file.title}
-        aria-label={messages.imports.batchFileDone(file.label)}
+        aria-label={importMessages.batchFileDone(file.label)}
         disabled={!canShowDone}
         onClick={onShowDoneFile}
       >
@@ -109,7 +110,7 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
       <button type="button" className="import-file-chip is-reviewing" title={file.title} aria-current="step" onClick={onShowCurrentFile}>
         <FileText size={14} aria-hidden="true" />
         <span>{file.label}</span>
-        <span className="import-file-chip-state">{" · "}{messages.imports.batchFileStateReviewing}</span>
+        <span className="import-file-chip-state">{" · "}{importMessages.batchFileStateReviewing}</span>
       </button>
     );
   }
@@ -117,7 +118,7 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
   // review, so it asks first, like the commit button does.
   return (
     <ImportAskFirst
-      question={hasUnsavedReviewWork ? messages.imports.batchSwitchWarning(file.title) : null}
+      question={hasUnsavedReviewWork ? importMessages.batchSwitchWarning(file.title) : null}
       inline={inline}
       onConfirm={() => onOpenFile(file.item)}
     >
@@ -130,7 +131,7 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
         >
           <Clock size={14} aria-hidden="true" />
           <span>{file.label}</span>
-          <span className="import-file-chip-state">{" · "}{messages.imports.batchFileStateWaiting}</span>
+          <span className="import-file-chip-state">{" · "}{importMessages.batchFileStateWaiting}</span>
         </button>
       )}
     </ImportAskFirst>
@@ -155,7 +156,7 @@ export function ImportAskFirst({ question, inline = false, onConfirm, children }
       <p>{question}</p>
       <div className="delete-popover-actions">
         <Popover.Close asChild>
-          <button type="button" className="subtle-action">{messages.imports.batchSwitchCancel}</button>
+          <button type="button" className="subtle-action">{importMessages.batchSwitchCancel}</button>
         </Popover.Close>
         <button
           type="button"
@@ -165,7 +166,7 @@ export function ImportAskFirst({ question, inline = false, onConfirm, children }
             onConfirm();
           }}
         >
-          {messages.imports.batchSwitchConfirm}
+          {importMessages.batchSwitchConfirm}
         </button>
       </div>
     </Popover.Content>
@@ -195,8 +196,8 @@ export function ImportProgressSheet({
 }) {
   return (
     <EntryMobileSheet
-      title={messages.imports.batchBarLabel}
-      description={messages.imports.blockerThingsLeft(blockers.remainingCount)}
+      title={importMessages.batchBarLabel}
+      description={importMessages.blockerThingsLeft(blockers.remainingCount)}
       saveLabel={messages.common.close}
       isSaveDisabled
       onSave={onClose}
@@ -206,7 +207,7 @@ export function ImportProgressSheet({
       <div className="import-progress-sheet">
         {batch.total ? (
           <section className="import-progress-sheet-section">
-            <span className="import-blockers-title" id="import-progress-files-title">{messages.imports.batchFilesLabel}</span>
+            <span className="import-blockers-title" id="import-progress-files-title">{importMessages.batchFilesLabel}</span>
             <ul className="import-file-chips" aria-labelledby="import-progress-files-title">
               {batch.files.map((file) => (
                 <li key={file.id}>
@@ -222,12 +223,12 @@ export function ImportProgressSheet({
                 </li>
               ))}
             </ul>
-            <span className="import-file-position">{messages.imports.batchFilePosition(batch.index, batch.total)}</span>
+            <span className="import-file-position">{importMessages.batchFilePosition(batch.index, batch.total)}</span>
           </section>
         ) : null}
         {blockers.blockers.length ? (
           <section className="import-progress-sheet-section">
-            <span className="import-blockers-title" id="import-progress-blockers-title">{messages.imports.blockersTitle}</span>
+            <span className="import-blockers-title" id="import-progress-blockers-title">{importMessages.blockersTitle}</span>
             <ul className="import-blocker-list" aria-labelledby="import-progress-blockers-title">
               {blockers.blockers.map((blocker) => (
                 <li key={blocker.id}>

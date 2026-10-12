@@ -5,6 +5,420 @@
    rule of the same specificity sets the same properties on these elements,
    so the cascade result is unchanged. */
 
+.split-dialog-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 2px 8px 0;
+  scrollbar-gutter: stable;
+}
+
+.split-dialog-scroll-cue {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: -2px 0 8px;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.split-dialog-section {
+  padding: 0;
+  margin-bottom: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.split-dialog-section-compact {
+  padding: 0;
+}
+
+.split-odd-cent-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(177, 94, 47, 0.16);
+  border-radius: 14px;
+  background: rgba(250, 244, 238, 0.78);
+}
+
+.split-dialog-help {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted-text, #717379);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.split-dialog-actions-divider {
+  align-self: center;
+  width: 1px;
+  height: 24px;
+  background: rgba(122, 127, 125, 0.36);
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.split-group-pill-content {
+  display: grid;
+  gap: 1px;
+}
+
+.splits-summary-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.summary-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(177, 94, 47, 0.12);
+  color: var(--accent-strong);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.split-donut-panel {
+  margin-bottom: 18px;
+}
+
+.split-refresh-status,
+.split-derived-refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.84rem;
+}
+
+.split-derived-refreshing {
+  margin-top: 10px;
+}
+
+.split-activity-list,
+.split-match-list {
+  display: grid;
+  gap: 12px;
+}
+
+.split-checkpoint-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.split-checkpoint-transfer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.split-date-group {
+  display: grid;
+  gap: 10px;
+  overflow: visible;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(250, 241, 234, 0.96);
+  color: var(--text);
+}
+
+.split-date-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -12px -16px 2px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgba(217, 207, 194, 0.5);
+  border-radius: 12px 12px 0 0;
+  background: rgba(251, 242, 236, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.split-date-items .split-activity-card:first-child {
+  border-top: 0;
+}
+
+.split-inline-editor-card {
+  display: grid;
+  gap: 14px;
+  scroll-margin-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding: 16px;
+  border: 1px solid rgba(191, 103, 45, 0.3);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 246, 238, 0.98), rgba(255, 251, 247, 0.96) 52%, rgba(255, 242, 230, 0.94)),
+    linear-gradient(0deg, rgba(191, 103, 45, 0.14), rgba(191, 103, 45, 0.02) 76%),
+    radial-gradient(circle at top right, rgba(177, 94, 47, 0.12), transparent 48%);
+  box-shadow: 0 10px 24px rgba(56, 40, 28, 0.1);
+}
+
+.split-delete-action {
+  color: var(--negative);
+}
+
+.split-activity-leading {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.split-match-confidence {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--pastel-mint);
+  color: var(--positive);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.split-match-confidence.is-medium {
+  background: rgba(177, 94, 47, 0.12);
+  color: var(--accent-strong);
+}
+
+.split-match-deltas {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.split-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.split-dialog-delete-action {
+  margin-right: auto;
+}
+
+.panel-splits .split-date-group {
+  background: rgba(251, 242, 236, 0.95);
+  border-color: rgba(255, 230, 216, 0.72);
+  color: var(--text);
+}
+
+.split-archive-trigger,
+.split-archive-row {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.split-archive-row-date {
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.panel-splits .split-breakdown-panel {
+  border-color: rgba(255, 230, 216, 0.72);
+  background: rgba(251, 242, 236, 0.95);
+}
+
+.split-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.split-summary-toolbar {
+  display: none;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.split-matches-link {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color 140ms ease, opacity 140ms ease;
+}
+
+.panel-splits .split-match-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 230, 216, 0.72);
+  border-radius: 14px;
+  background: rgba(251, 242, 236, 0.95);
+  color: var(--text);
+}
+
+.panel-splits .split-checkpoint-panel.is-matched {
+  border-color: rgba(205, 238, 220, 0.95);
+  background: var(--pastel-mint);
+  color: var(--positive);
+}
+
+.split-checkpoint-summary,
+.split-checkpoint-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.split-checkpoint-kicker {
+  color: currentColor;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+  text-transform: uppercase;
+}
+
+.split-checkpoint-navigation {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 7px;
+}
+
+.split-checkpoint-view-action {
+  appearance: none;
+  border: 1px solid #9b4a21;
+  border-radius: 999px;
+  background: #b15e2f;
+  color: #fffaf6;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 0 15px;
+}
+
+.split-checkpoint-navigation-hint {
+  color: currentColor;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  max-width: 230px;
+  text-align: right;
+  opacity: 0.78;
+}
+
+.panel-splits .split-settlement-follow-ups {
+  margin: 12px 0 10px;
+  border: 1px solid rgba(255, 244, 236, 0.52);
+  border-radius: 12px;
+  background: rgba(101, 57, 31, 0.2);
+  overflow: hidden;
+}
+
+.split-settlement-follow-up-list {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid rgba(255, 244, 236, 0.3);
+}
+
+.split-settlement-follow-up {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(255, 248, 243, 0.96);
+  color: #65391f;
+}
+
+.split-settlement-follow-up-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-splits .split-checkpoint-transfer {
+  border-color: rgba(155, 74, 33, 0.22);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.panel-splits .split-activity-card.is-settlement-included {
+  border-left: 5px solid #b15e2f;
+  border-radius: 8px 0 0 8px;
+  padding-left: 9px;
+}
+
+.panel-splits .split-settlement-marker {
+  color: #b15e2f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.split-history-list { display: grid; gap: 8px; max-height: min(60vh, 520px); overflow: auto; }
+
+.split-history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid rgba(177, 94, 47, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.5); }
+
+.panel-splits .split-payment-marker {
+  color: #8a4d2c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.panel-splits .split-payment-marker.is-certified {
+  color: var(--positive);
+}
+
+.category-row-button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-row-button:hover,
+.category-row-button:focus-visible {
+  border-color: rgba(62, 91, 70, 0.42);
+  box-shadow: 0 12px 26px rgba(53, 72, 55, 0.08);
+}
+
 .split-odd-cent-actions {
   display: flex;
   flex-wrap: wrap;

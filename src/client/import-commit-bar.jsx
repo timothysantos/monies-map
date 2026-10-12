@@ -2,6 +2,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import "./import-review.css";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { ImportAskFirst } from "./import-batch-bar";
 
 // The one commit control of an import preview. It stays in view at the
@@ -41,19 +42,19 @@ export function ImportCommitBar({
   const skippedCount = visibleRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
   const summaryItems = ledgerMatchedStatement ? [
-    { text: messages.imports.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount) }
+    { text: importMessages.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount) }
   ] : [
-    newImportCount || !statementCheckpointCount ? { text: messages.imports.willImportRows(newImportCount) } : null,
-    reconciledExistingRowCount ? { text: messages.imports.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType) } : null,
-    statementCheckpointCount ? { text: messages.imports.willSaveStatementCheckpoints(statementCheckpointCount) } : null,
-    skippedCount ? { text: messages.imports.willSkipRows(skippedCount) } : null,
-    removedEntryCount ? { text: messages.imports.willRemoveEntries(removedEntryCount) } : null,
-    reopenedEstimateCount ? { text: messages.imports.willReopenEstimates(reopenedEstimateCount) } : null,
-    needsReviewCount ? { text: messages.imports.needsReviewRows(needsReviewCount), tone: "warning" } : null
+    newImportCount || !statementCheckpointCount ? { text: importMessages.willImportRows(newImportCount) } : null,
+    reconciledExistingRowCount ? { text: importMessages.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType) } : null,
+    statementCheckpointCount ? { text: importMessages.willSaveStatementCheckpoints(statementCheckpointCount) } : null,
+    skippedCount ? { text: importMessages.willSkipRows(skippedCount) } : null,
+    removedEntryCount ? { text: importMessages.willRemoveEntries(removedEntryCount) } : null,
+    reopenedEstimateCount ? { text: importMessages.willReopenEstimates(reopenedEstimateCount) } : null,
+    needsReviewCount ? { text: importMessages.needsReviewRows(needsReviewCount), tone: "warning" } : null
   ].filter(Boolean);
 
   return (
-    <div className="import-commit-bar" role="region" aria-label={messages.imports.previewCommitSummaryLabel}>
+    <div className="import-commit-bar" role="region" aria-label={importMessages.previewCommitSummaryLabel}>
       <p className="import-commit-bar-summary import-preview-status-row">
         {summaryItems.map((item, index) => (
           <span key={item.text} className={item.tone ? `is-${item.tone}` : undefined}>
@@ -65,12 +66,12 @@ export function ImportCommitBar({
         <span className="import-commit-bar-left">
           {onShowRemaining ? (
             <button type="button" className="subtle-action import-commit-bar-remaining" aria-haspopup="dialog" onClick={onShowRemaining}>
-              {messages.imports.blockerThingsLeft(remainingCount)}
+              {importMessages.blockerThingsLeft(remainingCount)}
             </button>
-          ) : messages.imports.blockerThingsLeft(remainingCount)}
+          ) : importMessages.blockerThingsLeft(remainingCount)}
           {" · "}
-          <button type="button" className="subtle-action import-commit-bar-jump" title={messages.imports.blockerJumpKeys} onClick={onJumpToNext}>
-            {messages.imports.blockerJumpNext}
+          <button type="button" className="subtle-action import-commit-bar-jump" title={importMessages.blockerJumpKeys} onClick={onJumpToNext}>
+            {importMessages.blockerJumpNext}
           </button>
         </span>
       ) : null}
@@ -82,14 +83,14 @@ export function ImportCommitBar({
             onClick={onStartOver}
             disabled={isSubmitting}
           >
-            {messages.imports.startOver}
+            {importMessages.startOver}
           </button>
         ) : null}
         {skip ? (
           <ImportAskFirst question={skip.question} onConfirm={skip.onSkip}>
             {({ onClick }) => (
               <button type="button" className="subtle-action import-commit-bar-skip" disabled={isSubmitting} onClick={onClick}>
-                {messages.imports.skipForNow}
+                {importMessages.skipForNow}
               </button>
             )}
           </ImportAskFirst>
@@ -130,7 +131,7 @@ function ImportCommitButton({ disabled, isSubmitting, onCommit, label, warning, 
           <p>{warning.message}</p>
           <div className="delete-popover-actions">
             <Popover.Close asChild>
-              <button type="button" className="subtle-action">{messages.imports.commitWarningCancel}</button>
+              <button type="button" className="subtle-action">{importMessages.commitWarningCancel}</button>
             </Popover.Close>
             <button
               type="button"

@@ -3,6 +3,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown, X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { CategoryGlyph } from "./ui-components";
 import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS } from "./ui-options";
 
@@ -41,8 +42,8 @@ export function CategoryEditDialog({
           >
             <div className="note-dialog-head">
               <div>
-                <Dialog.Title>{dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.editCategory}</Dialog.Title>
-                <Dialog.Description>{dialog?.mode === "create" ? messages.settings.createCategoryDetail : messages.settings.editCategoryDetail}</Dialog.Description>
+                <Dialog.Title>{dialog?.mode === "create" ? settingsMessages.createCategory : settingsMessages.editCategory}</Dialog.Title>
+                <Dialog.Description>{dialog?.mode === "create" ? settingsMessages.createCategoryDetail : settingsMessages.editCategoryDetail}</Dialog.Description>
               </div>
               <button
                 type="button"
@@ -56,7 +57,7 @@ export function CategoryEditDialog({
             </div>
             <div className="settings-account-form">
               <label className="table-edit-field">
-                <span>{messages.settings.categoryName}</span>
+                <span>{settingsMessages.categoryName}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.name ?? ""}
@@ -65,7 +66,7 @@ export function CategoryEditDialog({
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.categorySlug}</span>
+                <span>{settingsMessages.categorySlug}</span>
                 <input
                   className="table-edit-input"
                   value={dialog?.slug ?? ""}
@@ -74,7 +75,7 @@ export function CategoryEditDialog({
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.categoryIcon}</span>
+                <span>{settingsMessages.categoryIcon}</span>
                 <CategoryIconSelector
                   value={dialog?.iconKey ?? FALLBACK_THEME.iconKey}
                   colorHex={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
@@ -82,7 +83,7 @@ export function CategoryEditDialog({
                 />
               </label>
               <label className="table-edit-field">
-                <span>{messages.settings.categoryColor}</span>
+                <span>{settingsMessages.categoryColor}</span>
                 <CategoryColorSelector
                   value={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
                   onChange={(colorHex) => onChange((current) => current ? { ...current, colorHex } : current)}
@@ -98,7 +99,7 @@ export function CategoryEditDialog({
                 className="dialog-primary"
                 disabled={!dialog?.name?.trim() || isSubmitting}
               >
-                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
+                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? settingsMessages.createCategory : settingsMessages.saveCategory}
               </button>
             </div>
           </form>
