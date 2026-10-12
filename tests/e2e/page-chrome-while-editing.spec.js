@@ -102,7 +102,7 @@ test.describe("page chrome while editing on a phone", () => {
     // A dialog, unlike a sheet or an inline editor, keeps the tab strip.
     await expect(tabStrip).toBeVisible();
 
-    await page.locator(".mobile-context-dialog-close").click();
+    await page.getByRole("dialog", { name: "View and scope" }).getByRole("button", { name: "Done", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(addButton).toBeVisible();
     await expect(totalsButton).toBeVisible();

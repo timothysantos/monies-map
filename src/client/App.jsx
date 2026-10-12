@@ -107,13 +107,14 @@ import {
   clampMonthToRange,
   stepMonthInRange
 } from "./summary-month-choice";
+import { ContextPersonChip } from "./mobile-context-chip";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
-const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
+const MobileContextSheet = lazy(() => import("./mobile-context-sheet.jsx"));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
@@ -2541,21 +2542,28 @@ export function App() {
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
   // The bar names the person and a short scope name ("Tim · Direct + Shared")
-  // that it never cuts short. On Summary the dialog also carries the line
-  // saying what the scope counts, which desktop shows under the pills.
+  // that it never cuts short. The sheet's lead also carries the line saying
+  // what the scope counts, which desktop shows under the pills.
   const mobileContextScopeLabel = selectedViewSupportsScope && selectedMobileScope
     ? messages.views.scopeShortLabel[selectedMobileScope.key] ?? selectedMobileScope.label
     : "";
-  const mobileContextScopeHint = renderedTabId === "summary" && selectedMobileScope
+  const mobileContextScopeHint = selectedViewSupportsScope && selectedMobileScope
     ? messages.views.scopeHint[selectedMobileScope.key]?.(pageView?.label ?? "") ?? ""
     : "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
+  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
+  // What a screen reader hears on the Support bar's trigger: who, the scope,
+  // then what it opens.
+  const mobileContextTriggerName = [
+    pageView?.label ?? "",
+    mobileContextScopeLabel ? `· ${mobileContextScopeLabel}` : "",
+    showMobileContextScopeSection ? "View and scope" : "View"
+  ].filter(Boolean).join(" ");
   // The Summary tab moves its range from the header and picks its month in
   // the bar (All months, or one month with arrows); Entries keeps the bar's
   // month arrows for its single month.
   const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileMonthChoice = showMobileContextSticky && isSummaryTab;
-  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
   // Collapse the mobile sheet when the sticky context is no longer relevant.
   useEffect(() => {
@@ -3105,24 +3113,13 @@ export function App() {
                 <button
                   type="button"
                   className="mobile-context-trigger"
+                  aria-label={mobileContextTriggerName}
                   onClick={(event) => {
                     event.currentTarget.blur();
                   }}
                 >
-                  <span className="mobile-context-trigger-copy">
-                    {/* The label wraps between the name and the scope rather than truncating. */}
-                    <span className="mobile-context-trigger-label">
-                      {pageView?.label ?? ""}
-                      {mobileContextScopeLabel ? (
-                        <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
-                      ) : null}
-                    </span>
-                    {/* Beside the month control the hint is for screen readers only, so the bar stays one 46px row. */}
-                    {" "}
-                    <span className={`mobile-context-trigger-hint ${showMobileMonthChoice ? "is-screen-reader-only" : ""}`}>
-                      {showMobileContextScopeSection ? "View and scope" : "View"}
-                    </span>
-                  </span>
+                  <ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />
+                  {mobileContextScopeLabel ? <span className="mobile-context-scope">{mobileContextScopeLabel}</span> : null}
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
               </Dialog.Trigger>
@@ -3135,75 +3132,28 @@ export function App() {
                   <div className="note-dialog-head mobile-context-dialog-head">
                     <div>
                       <Dialog.Title>View and scope</Dialog.Title>
-                      <Dialog.Description>
+                      <Dialog.Description className="sr-only">
                         Change the active household view without scrolling back to the top.
                       </Dialog.Description>
                     </div>
-                    <Dialog.Close asChild>
-                      <button type="button" className="subtle-action mobile-context-dialog-close">Done</button>
-                    </Dialog.Close>
                   </div>
-
-                  <section className="mobile-context-dialog-section" aria-label="View">
-                    <strong className="mobile-context-dialog-section-title">View</strong>
-                    <div className="pill-row mobile-context-pill-row mobile-context-view-row">
-                      {renderedTabId !== "splits"
-                        ? (
-                            <button
-                              className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
-                              type="button"
-                              onClick={() => handleViewChange("household")}
-                            >
-                              {messages.views.household}
-                            </button>
-                          )
-                        : (
-                            <span className="pill pill-disabled" aria-disabled="true">
-                              {messages.views.household}
-                            </span>
-                          )}
-                      {appShell.household.people.map((person) => (
-                        <button
-                          key={person.id}
-                          className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
-                          type="button"
-                          onClick={() => handleViewChange(person.id)}
-                          title={person.name}
-                        >
-                          {person.name}
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-
-                  {showMobileContextScopeSection ? (
-                    <section className="mobile-context-dialog-section" aria-label="Scope">
-                      <strong className="mobile-context-dialog-section-title">Scope</strong>
-                      <div className="scope-toggle pill-row scope-toggle-row mobile-context-pill-row">
-                        {mobileContextScopes.map((scope) => (
-                          <button
-                            key={scope.key}
-                            className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
-                            type="button"
-                            onClick={() => handleStickyScopeChange(scope.key)}
-                          >
-                            {scope.label}
-                          </button>
-                        ))}
-                      </div>
-                      {mobileContextScopeHint ? (
-                        <span className="panel-context">{mobileContextScopeHint}</span>
-                      ) : null}
-                    </section>
-                  ) : null}
-
-                  {renderedTabId === "entries" && entriesMobileFilterProps ? (
-                    <section className="mobile-context-dialog-section mobile-context-dialog-filters-slot" aria-label="Filters">
-                      <Suspense fallback={null}>
-                        <EntriesFilterStack {...entriesMobileFilterProps} />
-                      </Suspense>
-                    </section>
-                  ) : null}
+                  {/* The inside (and the swipe-down code) loads with the sheet, not the first screen. */}
+                  <Suspense fallback={null}>
+                    <MobileContextSheet
+                      viewLabel={pageView?.label ?? ""}
+                      personChip={<ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />}
+                      people={appShell.household.people}
+                      selectedViewId={selectedViewId}
+                      scopeLabel={mobileContextScopeLabel}
+                      scopeHint={mobileContextScopeHint}
+                      scopes={showMobileContextScopeSection ? mobileContextScopes : []}
+                      selectedScopeKey={stickyScopeConfig.selectedKey}
+                      filterProps={renderedTabId === "entries" ? entriesMobileFilterProps : null}
+                      onViewChange={handleViewChange}
+                      onScopeChange={handleStickyScopeChange}
+                      onClose={closeMobileContext}
+                    />
+                  </Suspense>
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>

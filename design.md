@@ -1124,22 +1124,20 @@ scope control:
   check-in with and without the switch at 1,440 and 1,920 px.
 - Phone (`useIsMobileLayout()`): Summary, Month and Entries show the floating
   View and scope bar from `App.jsx` (`stickyScopeConfig`), and Summary does
-  not render its switch at all. The bar's dialog holds the view pills and
-  the scope pills; on Summary the scope section also carries the line saying
-  what the scope counts. Entries adds month arrows beside the bar; the
+  not render its switch at all. The bar's sheet holds the view and the scope
+  as segmented chips and its lead carries the line saying what the scope
+  counts, on every tab. Entries adds month arrows beside the bar; the
   Summary tab (Summary or Month) adds its month control instead ("Summary
   Tab Month Choice" below), because its range moves from the header.
 
-The bar's label is two lines: the person and a short scope name
-(`messages.views.scopeShortLabel`: `Direct`, `Shared`, `Direct + Shared`),
-then `View and scope`. Beside the Summary tab's month control the second
-line is dropped, so the bar stays one 46 px row. The label is wrapping text whose scope part
-(`· Direct + Shared`) is `nowrap`, so a long name wraps before the scope
-instead of either being cut short; there is no ellipsis. The trigger is at
-least 46 px tall, and on Month and Summary the floating money toggle sits
-above it. The household view has one Combined scope: the bar shows only
-`Household` and `View`, the dialog has no scope section, and desktop Summary
-shows no switch.
+The bar is the phone's Support bar ("Phone Chrome" below): the person's chip
+in their colour (`ContextPersonChip`, `getPersonColourVars`), the short scope
+name (`messages.views.scopeShortLabel`: `Direct`, `Shared`,
+`Direct + Shared`) as quiet text and a caret, then the month control as a chip,
+all on one row. The trigger's accessible name stays `Tim · Direct + Shared
+View and scope` (`View` for the household, which has one Combined scope:
+the chip reads `Household`, there is no scope text and the sheet has no scope
+group). On Month and Summary the floating money toggle sits above the bar.
 
 The active scope on Summary is the scope of the request the figures on
 screen answer: `buildSummaryPageView` reads it from the Summary owner's
@@ -1177,12 +1175,13 @@ picking the range on both routes; the months offered are the range's months
   deep link fetches it. It never blocks the Month page or shows its error
   screen; until it lands the header shows the URL's range and the month
   controls wait.
-- Phone island (`SummaryMonthIslandControl` in `summary-month-picker.jsx`,
-  entry chunk): beside the View and scope trigger, `All months ▾` with the
-  hint `Month`; with a month picked `‹ Sep 2026 ›`, where the arrows step
-  through the range's months (disabled at its ends) and the middle opens the
-  sheet. Same height, border, radius and shadow as the trigger
-  (`.mobile-month-choice`).
+- Phone chip (`SummaryMonthIslandControl` in `summary-month-picker.jsx`,
+  entry chunk): in the Support bar beside the View and scope trigger,
+  `All months ▾` (`Month` is heard, not shown); with a month picked
+  `‹ Sep 2026 ›`, where the arrows are 44 px buttons that step through the
+  range's months (disabled at its ends) and the middle opens the sheet. The
+  quiet chip (`.mobile-month-chip`) sits inside a 44 px button and never
+  wraps.
 - "Pick a month" sheet (`summary-month-sheet.jsx` and its CSS, a lazy chunk
   loaded on first open): a modal Radix dialog with the View and scope
   sheet's classes (bottom sheet, focus trapped, Escape and backdrop close,
@@ -1503,6 +1502,45 @@ card change only after the save succeeds), and duplicate, reset and delete
 month (a failure keeps the Actions popover or confirmation dialog open).
 The reset and delete confirmation dialogs render beside the Actions popover,
 not inside it, because closing the popover unmounts its content.
+
+## Phone Chrome
+
+The phone's floating chrome follows Lead · Support · Detail (below) and one
+set of tokens in `:root` of `public/styles.css`: `--chrome-edge` (12 px, the
+inset of the tab bar, the Support bar and the round buttons, so their right
+edges line up), `--chrome-radius` (22 px), `--chrome-surface`,
+`--chrome-shadow` and `--sheet-radius` (24 px, every bottom sheet). Every
+target is at least 44 x 44 px and nothing wraps or scrolls sideways at 375 px.
+
+- Support bar (`.mobile-context-sticky-bar` in `App.jsx`): one white surface
+  (chrome radius and shadow, no border-radius or shadow on anything inside it),
+  48 px tall, 80 px above the bottom: the person chip, the scope as quiet text
+  and a caret in the trigger, then the month control (Summary tab: the month
+  chip; Entries: two 44 px arrows). The household gets a neutral chip.
+- View and scope sheet (`mobile-context-sheet.jsx`, its CSS and
+  `copy/mobile-context-copy.js`, a lazy chunk): Lead is who you are viewing,
+  a large person chip with the scope name and what it counts
+  (`messages.views.scopeHint`); Support is the view and the scope as two
+  segmented groups (`role="group"` named `View` and `Scope`, `aria-pressed`
+  chips, 44 px); Detail (Entries only) is the filters as quiet 48 px rows
+  (label left, value and chevron right) opening the existing pickers
+  (`EntriesFilterStack` with `hideActions`). `Reset filters` (Entries only)
+  and `Done` are the bottom bar (`BottomActions` with `is-sheet-bar`), `Done`
+  last under the thumb. A grab bar and a swipe down close the sheet
+  (`SheetSwipeDismiss`, nothing to lose).
+  The choices are unchanged: a person keeps the sheet open, a scope or the
+  household closes it, Reset keeps it open; every one sets the same URL params
+  (`view`, `scope` or `entries_scope`, `entry_*`).
+- Chunking: `App.jsx` keeps the dialog's Portal, Overlay, Content and head so
+  Radix stays in the entry chunk; only the inside is `lazy` (with the swipe
+  code and the filter stack). The lazy module must not import modules App
+  imports (it receives the person chip as an element): doing so makes Rollup
+  split the entry chunk and `check:bundle` fails on file count.
+- The round buttons: the money toggle (44 px, above the Support bar, higher on
+  Entries and Splits to clear the + button) and the + button (54 px, accent
+  fill with the same lift in the accent's shade) share the tab bar's right
+  edge. The More pages popover uses the chrome radius and lift and 44 px
+  rows. Proof: `tests/e2e/mobile-chrome.spec.js`.
 
 ## Mobile Sheet
 
