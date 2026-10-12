@@ -119,6 +119,11 @@ team conventions evolve.
   `ALLOW_DEPLOY_FROM_BRANCH=1` only in an emergency, and say why.
 - Use `npm run verify` as the local merge gate. It must pass strict TypeScript,
   unit and parser contracts, the production build, and the smoke bundle.
+- CI (`.github/workflows/verify.yml`) runs on pull requests, on pushes to
+  `ci/**` branches and by hand, not on every push to master (runner
+  minutes). Its `verify` job passes only when the static, unit and full
+  browser jobs all pass. `git push origin HEAD:ci/<name>` runs it on a
+  branch.
 - Keep `npm run lint` (correctness-only ESLint) and `npm run typecheck:client`
   (checkJs over `src/client`) at zero errors; both run in `verify`.
 - Run `npm run test:e2e` before merging a large refactor branch or a change that
