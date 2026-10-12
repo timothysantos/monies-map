@@ -231,9 +231,9 @@ Home Screen from Safari's Share menu to open it like an app.
 Each screen in the order it appears in the navigation: what you see, what
 each control does, the common tasks, and what changes on a phone.
 
-Money colours mean the same on every screen: green is money coming in or
-something going well, red is money going out, over plan, short or owed by
-you, blue is a plan, and transfers stay in plain text. In lists only the
+Money colours mean the same on every screen: olive green is money coming in
+or something going well, brick red is money going out, over plan, short or
+owed by you, teal is a plan, and transfers stay in plain text. In lists only the
 amount's text is coloured; Summary's spending turns red only when you are
 over plan.
 
@@ -1042,7 +1042,7 @@ words.
    **Before you can commit:** at the top, or **Jump to next** beside the
    commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
-   batch appears under **Recent imports**. The **Done** step (a blue box)
+   batch appears under **Recent imports**. The **Done** step (a teal box)
    names the file, the accounts it went into and the statement period, and
    says **No further action needed** when every card balanced. It shows what
    changed on each card (rows added, entries confirmed or moved, entries left
@@ -1163,7 +1163,7 @@ A card statement that asks for money also says what to pay, for example
 bank printed IMMEDIATE because the card is past due. The due date and
 minimum are saved with the statement for **Money insights**.
 
-When the statement has the bank's own charges, a rose box above the checks
+When the statement has the bank's own charges, a brick-red box above the checks
 lists them, for example "Bank charges on this statement: Late charge $100.00
 · Interest $4.37". It also says when the bank reversed one ("Reversed by
 the bank: Annual fee $196.20") and repeats the bank's notices, such as "The

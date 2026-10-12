@@ -10,11 +10,11 @@ import { gotoPageAfterApi, loadEntriesPage, loadMonthPage, loadSplitsPage, postJ
 // actually sees, so a stylesheet rule that paints over a tone fails here.
 
 const INK = {
-  in: "rgb(23, 104, 74)",
-  short: "rgb(163, 53, 42)",
-  plan: "rgb(47, 91, 134)",
-  text: "rgb(38, 35, 31)",
-  muted: "rgb(115, 111, 105)"
+  in: "rgb(76, 94, 26)",
+  short: "rgb(151, 50, 35)",
+  plan: "rgb(44, 95, 95)",
+  text: "rgb(59, 42, 31)",
+  muted: "rgb(110, 95, 84)"
 };
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
 

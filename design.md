@@ -1273,43 +1273,67 @@ reads the hidden pages for any such word.
 
 ## Pastel Palette
 
-Colour in the app is pastel. The palette lives once, in `:root` of
+Colour in the app is a faded 1970s print: warm cream paper, chocolate-brown
+ink, warm grey hairlines and soft tints of avocado, brick red, dusty teal,
+faded plum and harvest gold, with the terracotta accent and the Splits
+orange panel kept as they were. The palette lives once, in `:root` of
 `public/styles.css`; a state or category surface uses a fill token, and text
 on it uses the same hue's `-ink` token, which meets WCAG AA on that fill.
 Do not add saturated fills or new hex colours outside these tokens.
 
+The token names stayed when the values moved from the pastel set to the 70s
+set, so code and older notes that say mint, rose, sky, lavender or butter
+mean these colours:
+
 | Token | Fill | Ink | Ink on the panel | Ink on a soft tint | Ink on the full fill | Ink on the Splits wash |
 | --- | --- | --- | --- | --- | --- | --- |
-| mint | `--pastel-mint` #e4f2ea | `--pastel-mint-ink` #17684a | 6.67 | 6.16 | 5.84 | 5.43 |
-| rose | `--pastel-rose` #f9e5e1 | `--pastel-rose-ink` #a3352a | 6.71 | 6.02 | 5.59 | 5.21 |
-| sky | `--pastel-sky` #e3ecf6 | `--pastel-sky-ink` #2f5b86 | 7.02 | 6.36 | 5.94 | 5.53 |
-| lavender | `--pastel-lavender` #ece8f5 | `--pastel-lavender-ink` #5c4d8c | 7.18 | 6.47 | 6.02 | 5.61 |
-| butter | `--pastel-butter` #f8efd3 | `--pastel-butter-ink` #735512 | 6.85 | 6.34 | 6.02 | 5.60 |
-| neutral | `--pastel-neutral` #f6f4ef | `--text` #26231f | 15.48 | 14.72 | 14.23 | 13.22 |
+| mint (avocado) | `--pastel-mint` #e8ebd0 | `--pastel-mint-ink` #4c5e1a | 6.95 | 6.30 | 5.89 | 5.44 |
+| rose (brick red) | `--pastel-rose` #f5ded4 | `--pastel-rose-ink` #973223 | 7.26 | 6.37 | 5.82 | 5.39 |
+| sky (dusty teal) | `--pastel-sky` #d6e7e2 | `--pastel-sky-ink` #2c5f5f | 6.98 | 6.15 | 5.63 | 5.20 |
+| lavender (faded plum) | `--pastel-lavender` #eedce6 | `--pastel-lavender-ink` #6b4360 | 7.82 | 6.80 | 6.17 | 5.71 |
+| butter (harvest gold) | `--pastel-butter` #f5e4b8 | `--pastel-butter-ink` #664a0b | 7.97 | 7.08 | 6.54 | 6.05 |
+| neutral (cream) | `--pastel-neutral` #faf4e6 | `--text` #3b2a1f | 13.22 | 12.76 | 12.46 | 11.46 |
 
-Contrast is against the white panel, the soft tint (the fill at 60% over the
+The surfaces: `--bg` #eee4cf (cream paper), `--panel` rgba(255, 253, 248,
+0.92) (a warm paper card, #fefbf5 over the background), `--text` #3b2a1f
+(chocolate), `--muted` #6e5f54 (warm grey-brown, 4.85 on the background and
+5.59 on the neutral fill) and `--line` rgba(110, 95, 84, 0.2) (a warm grey
+hairline). `--accent` #934923 and `--accent-strong` #b15e2f did not change.
+Harvest gold's ink is a dark mustard: a mid gold such as #b48639 is only
+3.2:1 as text on the cream, so gold is a surface, never text.
+
+What each hue means: avocado is money in or going well; brick red is over
+plan, money out in a list and debts; dusty teal is a plan and "worth
+knowing"; harvest gold is a To do or a warning; faded plum is "think about".
+
+Contrast is against the cream panel, the soft tint (the fill at 60% over the
 panel), the full fill, and the Splits wash (the fill at 94% over the darker
-end of the orange panel). `--positive` and `--negative` alias the mint and
+end of the orange panel). `tests/colour-contrast.test.mjs` reads `:root` and
+checks every one of these pairs, the text and muted inks on every neutral
+surface, the person and split group chips, and that the fills stay soft.
+`--positive` and `--negative` alias the mint and
 rose inks, and each hue has a hairline (`--pastel-mint-line` and so on, the
 ink at 22%) for borders. Status surfaces use them at the same three
 strengths as money: text (delete actions, form errors, match confidence),
 a soft fill (status pills, chips, Imports inbox and intake states), and the
 full fill for banners that need attention (the environment banners: demo
-sky, local mint; the tab badge; the danger button; statement results). `--muted` keeps 4.54 on the neutral fill; on any
+sky, local mint; the tab badge; the danger button; statement results). `--muted` keeps 5.59 on the neutral fill; on any
 other tint, text uses that tint's ink instead.
 
 ## Person Colour
 
-Each person keeps one colour across the app, from the category palette:
-`src/client/person-colour.js` (`getPersonColour`) gives Tim green, Joyce
-coral, Splits-linked rows terracotta and any other owner (Shared) a stable
-palette pick. Entries draws it as the row's 5px edge; the Import inbox
+Each person keeps one colour across the app, from the 70s category palette:
+`src/client/person-colour.js` (`getPersonColour`) gives Tim dusty teal
+(#46788E), Joyce mauve (#B97680), Splits-linked rows the terracotta
+(#BF7D51, unchanged) and any other owner (Shared) a stable pick of warm
+grey, grey teal, olive, terracotta, deep teal or plum. Entries draws it as the row's 5px edge; the Import inbox
 owner groups use `getPersonColourVars`: a chip (16% tint, `--person-ink`),
 the solid account edge, a 10% header band and a 6% wash on alternate
 months. Each statement card on the import review starts its name with the
 account owner's chip (`.statement-card-owner`, the same chip). `--person-ink`
-is the colour 55% into `--text`, 5.4:1 or more on the chip and band. Any
-later per-person cue reuses these, never new hues.
+is the colour 55% into the chocolate `--text`, 5.2:1 or more on the chip,
+band and wash (`tests/colour-contrast.test.mjs`). Any later per-person cue
+reuses these, never new hues.
 
 ## Money Colour
 
@@ -1321,12 +1345,12 @@ balances, split activity); `src/client/money-tone-class.js` renders it as
 
 | Tone | Means | Colour |
 | --- | --- | --- |
-| `in` | money in or a good outcome: income, a refund, received, owed to you, on or under plan, savings made, a matched statement | mint ink |
-| `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | rose ink |
-| `plan` | an intention: planned income, planned spend, a savings target | sky ink |
-| `caution` | something needs a check (a statement not yet checked) | butter ink |
-| `out` | money out in a list: an expense row, a negative day, an Imports expense row, the Entries spend total, a settle-up you paid (with its minus sign) | rose ink, text only |
-| `neutral` | transfers, zero, counts | plain ink |
+| `in` | money in or a good outcome: income, a refund, received, owed to you, on or under plan, savings made, a matched statement | avocado (mint ink) |
+| `short` | a deficit, over plan, income still to come, a debt you owe, a statement that is off | brick red (rose ink) |
+| `plan` | an intention: planned income, planned spend, a savings target | dusty teal (sky ink) |
+| `caution` | something needs a check (a statement not yet checked) | dark mustard on harvest gold (butter ink) |
+| `out` | money out in a list: an expense row, a negative day, an Imports expense row, the Entries spend total, a settle-up you paid (with its minus sign) | brick red (rose ink), text only |
+| `neutral` | transfers, zero, counts | plain chocolate ink |
 
 Exactly on plan, and a fully allocated budget, count as `in`; zero
 realized savings and no income yet are `neutral`.
@@ -1367,51 +1391,58 @@ class by hand.
 ### Category palette
 
 `src/domain/category-palette.ts` holds the 31 category colours (plus the
-fallback), one per former colour and in the same hue family (within 12
-degrees), each at least 3:1 on white so a donut segment or icon reads on the
-panel. The closest pair is 6.2 apart in Lab; the former palette had two
-oranges 3.0 apart. An icon's glyph mixes the colour 70% with the text ink on
-its tint (16-34% of the colour); a donut percentage mixes it 62% for 4.5:1.
-Stored colours are never rewritten: the category DTO
-(`app-repository-categories.ts`) shows a former colour as its calm one and
-darkens any other colour toward the text ink only as far as 3:1 needs, so
-the picker, the donut and every icon agree. Split group chips and entry
+fallback), one per former colour, each in a faded 1970s family: harvest
+gold, mustard, avocado, olive, rust, burnt orange, tan, brown, dusty teal
+(from sea green to denim) and mauve (from lilac through plum to dusty rose).
+A category keeps its role's feel where it can (Income and Salary avocado,
+Food and Groceries burnt orange, Home and Transfer rust, Travel and Family
+denim teal). Each colour is at least 3:1 on the cream panel so a donut
+segment or icon reads there, and no colour goes past chroma 52 (faded
+print). The closest pair is 8.6 apart in Lab; the original palette had two
+oranges 3.0 apart. A category's surface is a faded tint of its colour and
+its ink mixes the colour with the chocolate text: an icon's glyph mixes it
+70% on its tint (16-34% of the colour); a donut percentage mixes it 62% for
+4.5:1. Stored colours are never rewritten: the category DTO
+(`app-repository-categories.ts`) shows a former colour, or a calm pastel
+colour the picker saved before the 70s palette, as its 70s one and darkens
+any other colour toward the text ink only as far as 3:1 on the panel needs,
+so the picker, the donut and every icon agree. Split group chips and entry
 owner cues draw on the same colours.
 
-| Former | Colour | On white | Glyph on its tint | Label on white |
-| --- | --- | --- | --- | --- |
-| #1F7A63 | #27725F | 5.74 | 4.79 | 8.60 |
-| #C97B47 | #BF7D51 | 3.35 | 3.61 | 5.91 |
-| #7C8791 | #7C8791 | 3.66 | 3.82 | 6.27 |
-| #8FAE4B | #7F9B43 | 3.15 | 3.51 | 5.64 |
-| #22B573 | #33A471 | 3.14 | 3.48 | 5.69 |
-| #D5A24B | #B88A3D | 3.12 | 3.48 | 5.60 |
-| #B8875D | #B9875C | 3.14 | 3.50 | 5.63 |
-| #E96A7A | #D77481 | 3.13 | 3.47 | 5.65 |
-| #F08FA0 | #D46377 | 3.59 | 3.72 | 6.27 |
-| #F7A21B | #C0862A | 3.14 | 3.48 | 5.65 |
-| #D4B35D | #AE8E3D | 3.12 | 3.48 | 5.60 |
-| #4F8FD6 | #5C90C9 | 3.34 | 3.62 | 5.91 |
-| #7EBDC2 | #499DA4 | 3.16 | 3.51 | 5.69 |
-| #F85A53 | #DE726D | 3.12 | 3.45 | 5.65 |
-| #F062A6 | #DA6DA1 | 3.14 | 3.47 | 5.68 |
-| #CC63D8 | #C36ECD | 3.26 | 3.55 | 5.83 |
-| #F08B43 | #D07E43 | 3.11 | 3.46 | 5.62 |
-| #567CC9 | #5D7EC2 | 4.02 | 4.00 | 6.73 |
-| #A06C5B | #A96852 | 4.39 | 4.17 | 7.14 |
-| #66D2CF | #3BA19E | 3.10 | 3.46 | 5.63 |
-| #62C7B2 | #40A18D | 3.13 | 3.49 | 5.67 |
-| #7D86F2 | #838BDF | 3.12 | 3.50 | 5.62 |
-| #5EA89B | #48988A | 3.42 | 3.66 | 6.02 |
-| #8B78E6 | #9385D9 | 3.18 | 3.53 | 5.69 |
-| #D56BDD | #C360CA | 3.59 | 3.72 | 6.28 |
-| #FFA51A | #A87321 | 4.09 | 4.01 | 6.80 |
-| #D86B73 | #C9656D | 3.77 | 3.83 | 6.47 |
-| #C98A5A | #A66C3F | 4.34 | 4.14 | 7.09 |
-| #717379 | #717379 | 4.74 | 4.37 | 7.49 |
-| #56A4C9 | #519ABD | 3.13 | 3.50 | 5.65 |
-| #BDD93C | #879930 | 3.17 | 3.52 | 5.67 |
-| #6A7A73 | #6A7A73 | 4.52 | 4.26 | 7.25 |
+| Category (demo) | Former | Colour | Family | On the panel | Glyph on its tint | Label on the panel |
+| --- | --- | --- | --- | --- | --- | --- |
+| Income | #1F7A63 | #566432 | avocado | 6.22 | 4.86 | 8.37 |
+| Transfer | #C97B47 | #AA6647 | rust | 4.32 | 3.99 | 6.56 |
+| Savings | #7C8791 | #6E858A | dusty teal | 3.77 | 3.79 | 6.01 |
+| Investments | #8FAE4B | #918E54 | olive | 3.28 | 3.50 | 5.42 |
+| Salary | #22B573 | #758C4D | avocado | 3.62 | 3.69 | 5.84 |
+| Extra Income | #D5A24B | #B48639 | harvest gold | 3.17 | 3.41 | 5.29 |
+| Other - Income | #B8875D | #A98466 | tan | 3.29 | 3.49 | 5.42 |
+| Subscriptions MO | #E96A7A | #B97680 | mauve | 3.41 | 3.54 | 5.57 |
+| Subscriptions YR | #F08FA0 | #9F667B | mauve | 4.36 | 4.03 | 6.60 |
+| Food & Drinks | #F7A21B | #C67D3F | burnt orange | 3.17 | 3.39 | 5.29 |
+| Healthcare | #D4B35D | #A58F45 | mustard | 3.07 | 3.37 | 5.17 |
+| Family & Personal | #4F8FD6 | #46788E | dusty teal | 4.68 | 4.24 | 7.03 |
+| Baby & Kids | #7EBDC2 | #699696 | dusty teal | 3.17 | 3.46 | 5.35 |
+| Home | #F85A53 | #C36351 | rust | 3.89 | 3.76 | 6.13 |
+| Church | #F062A6 | #A77899 | mauve | 3.51 | 3.62 | 5.69 |
+| Tax | #CC63D8 | #7A587D | mauve | 5.77 | 4.67 | 7.95 |
+| Groceries | #F08B43 | #B16739 | burnt orange | 4.17 | 3.91 | 6.41 |
+| Travel | #567CC9 | #2C627C | dusty teal | 6.46 | 4.99 | 8.72 |
+| Loans | #A06C5B | #7E584A | brown | 6.01 | 4.75 | 8.13 |
+| Sports & Hobbies | #66D2CF | #619989 | dusty teal | 3.16 | 3.45 | 5.34 |
+| Bills | #62C7B2 | #53806F | dusty teal | 4.34 | 4.07 | 6.65 |
+| Education | #7D86F2 | #7C7998 | mauve | 4.03 | 3.91 | 6.27 |
+| Insurance | #5EA89B | #376966 | dusty teal | 6.02 | 4.81 | 8.29 |
+| Fees | #8B78E6 | #625A7A | mauve | 6.23 | 4.87 | 8.36 |
+| Beauty | #D56BDD | #816C93 | mauve | 4.51 | 4.14 | 6.77 |
+| Entertainment | #FFA51A | #986C29 | harvest gold | 4.50 | 4.09 | 6.74 |
+| Shopping | #D86B73 | #92535F | mauve | 5.60 | 4.57 | 7.80 |
+| Gifts | #C98A5A | #8E6849 | tan | 4.81 | 4.25 | 7.03 |
+| Other | #717379 | #7D7369 | brown | 4.49 | 4.13 | 6.73 |
+| Public Transport | #56A4C9 | #568C99 | dusty teal | 3.62 | 3.71 | 5.89 |
+| Taxi | #BDD93C | #7E7541 | olive | 4.51 | 4.12 | 6.75 |
+| fallback | #6A7A73 | #8B897A | olive | 3.41 | 3.58 | 5.58 |
 
 Raw colours elsewhere are only neutrals or the terracotta accent the Splits
 theme is built on; `tests/money-colour-guard.test.mjs` fails on any other

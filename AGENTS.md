@@ -301,9 +301,12 @@ Details and the reasons are in `docs/code-spec.md` and
   (Other, linking, settle up) is explained once in the same sentence.
   Money insights copy is linted for this (`findAppJargon`,
   `docs/money-insights-copy.md`, "Tone").
-- Colour is pastel: state and category surfaces use the pastel tokens in
-  `:root` of `public/styles.css`; text on a pastel surface uses that hue's
-  `-ink` token and meets WCAG AA. Category colours come from
+- Colour is a faded 1970s print (cream paper, chocolate ink; the token
+  names stay `--pastel-*`: mint is avocado, rose brick red, sky dusty teal,
+  lavender faded plum, butter harvest gold): state and category surfaces
+  use the pastel tokens in `:root` of `public/styles.css`; text on a pastel
+  surface uses that hue's `-ink` token and meets WCAG AA
+  (`tests/colour-contrast.test.mjs`). Category colours come from
   `src/domain/category-palette.ts`. Don't introduce saturated fills or new
   hex colours outside the tokens: a raw colour may only be a neutral or the
   terracotta accent (design.md, "Pastel palette").
