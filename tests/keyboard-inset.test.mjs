@@ -149,8 +149,9 @@ test("every bottom sheet with a bottom bar lifts itself above the keyboard", () 
   const withBar = files.filter((name) => /<BottomActions\b/.test(read(`src/client/${name}`)));
   // The wide-screen inline editors (entries, split expenses) and the open
   // simplified settlement on the page are not sheets and have no keyboard.
-  const notSheets = new Set(["entries-list.jsx", "splits-activity.jsx", "splits-checkpoint-panel.jsx"]);
-  assert.deepEqual(withBar.sort(), ["claude-credit-notice.jsx", "entries-list.jsx", "entries-panel.jsx", "import-preview-row-list.jsx", "mobile-context-sheet.jsx", "month-plan-sheet.jsx", "splits-activity.jsx", "splits-archive-dialog.jsx", "splits-checkpoint-panel.jsx", "splits-dialogs.jsx", "splits-groups-sheet.jsx", "splits-history-dialog.jsx"]);
+  // Ask's plan draft card sits in the conversation, not in a sheet.
+  const notSheets = new Set(["ask-plan-draft-card.jsx", "entries-list.jsx", "splits-activity.jsx", "splits-checkpoint-panel.jsx"]);
+  assert.deepEqual(withBar.sort(), ["ask-plan-draft-card.jsx", "claude-credit-notice.jsx", "entries-list.jsx", "entries-panel.jsx", "import-preview-row-list.jsx", "mobile-context-sheet.jsx", "month-plan-sheet.jsx", "splits-activity.jsx", "splits-archive-dialog.jsx", "splits-checkpoint-panel.jsx", "splits-dialogs.jsx", "splits-groups-sheet.jsx", "splits-history-dialog.jsx"]);
   for (const name of withBar.filter((file) => !notSheets.has(file))) {
     const source = read(`src/client/${name}`);
     const lifted = /useKeyboardInset\(/.test(source) || /<EntryMobileSheet\b/.test(source);
