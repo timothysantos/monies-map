@@ -168,7 +168,7 @@ own, also on a deep link before the range's Summary page lands. It is the
 same projection as the Summary page's `categoryShareByMonth` entry for the
 month (`buildDonutChart` over the view's entries in the scope);
 `tests/month-spending-mix.test.mjs` holds the two equal for every view and
-scope. A category card's arrow opens Entries for that category in this
+scope. A category row's arrow opens Entries for that category in this
 month and scope (`handleOpenEntriesForActual`, as the tables' Actual
 drilldowns). `tests/e2e/month-spending-mix.spec.js` proves it on a phone
 and a desktop.

@@ -23,7 +23,11 @@ export function SpendingMixChart({
   innerRadius = 70,
   outerRadius = 120,
   // A Splits chart passes its split currency; other charts are SGD.
-  currency = ""
+  currency = "",
+  // Percent labels and category badges around the ring. Spending Mix turns
+  // them off: its ranked list beside the donut carries them, and they
+  // collided with each other when many categories had small slices.
+  callouts = true
 }) {
   const total = typeof totalMinor === "number"
     ? totalMinor
@@ -46,6 +50,7 @@ export function SpendingMixChart({
           currency={currency}
           totalLabel={totalLabel}
           compact={compact}
+          callouts={callouts}
           isNarrowViewport={isNarrowViewport}
           resolvedHeight={resolvedHeight}
           resolvedInnerRadius={resolvedInnerRadius}

@@ -323,10 +323,10 @@ test("hidden money shows no sign or outcome in words", async ({ page }) => {
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
 
   await openSummary(page, "household", "2026-04");
-  await expect(page.locator(".summary-account-pill").first()).toBeVisible();
+  await expect(page.locator(".summary-wallet-row").first()).toBeVisible();
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
   // A wallet's statement health is an outcome too: hidden with the money.
-  expect(await page.locator(".summary-account-pill-meta").allInnerTexts()).toEqual([]);
+  expect(await page.locator(".summary-wallet-health").allInnerTexts()).toEqual([]);
 
   await gotoPageAfterApi(page, "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
   await expect(page.locator(".split-activity-card").first()).toBeVisible();

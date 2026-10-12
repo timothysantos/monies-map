@@ -819,6 +819,39 @@ Where it is used:
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
   sideways scroll.
+- Summary body, under the lead (`spending-mix-section.jsx`,
+  `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
+  chunks; no `styles.css` growth). The Spending Mix donut has no labels on it
+  (`SpendingMixChart callouts={false}`; the percent labels and category
+  badges around the ring collided when many categories had thin slices, and
+  Entries and Splits keep theirs) and is small: 216 px on a phone, 300 px
+  from 761 px. Under it (beside it from 1,024 px, where the card has the full
+  row) a ranked list in one `DetailRows` group, biggest first: the 44 px
+  category bubble (edits the category, as before), the name and amount on
+  one line (the name is one line with an ellipsis), a 6 px bar in the
+  category's colour whose width is the category's share of all spending, and
+  the share to one decimal; the `›` (44 × 44) opens Entries for the category.
+  The main tap still hides or shows the slice in the donut (`aria-pressed`);
+  a hidden category stays listed, dimmed, with the existing "Hidden" word
+  and a grey bar, and the donut's total follows the shown ones while the
+  shares stay of all spending. The top five show; a last row, "Show all N" /
+  "Show fewer" (`aria-expanded`), lists the rest. The old per-category
+  transaction count and the old "Shown" caption are gone with the cards.
+  Wallets in view is one group of `DetailRow`s (a `DetailRows` group, from
+  1,024 px the heading on the left and the group on the right): the wallet
+  name with its statement freshness under it ("Reconciled to Sep 2026
+  statement", in the money tone's ink: mint when matched, rose when off,
+  plain when no checkpoint) and the balance with a `›`, 60 px or more. It
+  replaces the wrapping tone-filled pills, so a wallet that is off no longer
+  fills a whole rose card; a tap opens Entries for that wallet. Month's
+  Accounts section still uses the pills. The note rows of Intent vs
+  Outcome are Detail rows (48 px). Hidden money: dots for every amount,
+  the donut's centre and the bars and shares kept (a share is not an
+  amount), and no wallet freshness line (it says which side of the
+  statement the wallet is on). `tests/e2e/summary-body-lsd.spec.js` checks no
+  two labels or badges overlap, the top 5 and Show all, the three taps,
+  every wallet against `/api/summary-account-pills`, targets of at least
+  44 px, no sideways scroll, and hidden money, on a phone and a desktop.
 - Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
   add and edit for income, planned items and budget buckets): the planned
   amount is the editable lead under the row's name, kind and category
@@ -1450,8 +1483,8 @@ picking the range on both routes; the months offered are the range's months
   work, as on All months it sits beside Intent vs Outcome), from the Month
   page DTO's `categoryShareChart` (no request). One component for both
   (`SpendingMixSection`, `spending-mix-section.jsx`): same card, donut and
-  category cards; no spending shows the Entries empty state instead of an
-  empty donut. Its only Month rule (spacing) is in `month-route.css`.
+  ranked category list ("Summary body" above); no spending shows the Entries
+  empty state instead of an empty donut. Its only Month rule (spacing) is in `month-route.css`.
   `summary_focus` is ignored.
 - Bundle: the island control, the row and the rules are in the entry chunk
   (about 0.8 kB gzip); the sheet is not. The sheet draws its tick itself and

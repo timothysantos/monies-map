@@ -10,6 +10,7 @@ export default function SpendingMixRecharts({
   currency = "",
   totalLabel,
   compact,
+  callouts,
   isNarrowViewport,
   resolvedHeight,
   resolvedInnerRadius,
@@ -30,7 +31,7 @@ export default function SpendingMixRecharts({
             paddingAngle={0}
             isAnimationActive={false}
             labelLine={false}
-            label={(props) => renderPieCallout(props, total, { compact: isNarrowViewport })}
+            label={callouts ? (props) => renderPieCallout(props, total, { compact: isNarrowViewport }) : false}
           >
             {chartData.map((entry) => (
               <Cell key={entry.key} fill={entry.color} />

@@ -261,16 +261,17 @@ over plan.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
-  with a list of categories below it. Pick a month to see that month's
-  ([Month](#month)).
+  with the categories ranked beside it (under it on a phone): each shows its
+  amount, its share and a thin bar. The top five show; **Show all** lists
+  the rest. Pick a month to see that month's ([Month](#month)).
 - **Intent vs Outcome**: one card per month, newest first. Each leads with
   what you spent against what you planned, with a bar, the percent of plan
   and how far under or over you are. Your planned and actual income sit
   under it, and **Details** opens the income, spending and savings figures.
-- **Wallets in view**: the current balance of each account and whether a
-  statement has confirmed it.
+- **Wallets in view**: one list with each wallet's current balance and
+  whether a statement has confirmed it. Select a wallet to open its entries.
 
-![Spending Mix and Intent vs Outcome side by side](/faq/guide/desktop/thumbs/summary-charts.webp)
+![Spending Mix: the donut beside the ranked categories, with Intent vs Outcome below](/faq/guide/desktop/thumbs/summary-charts.webp)
 
 ### What each control does
 
@@ -284,9 +285,12 @@ over plan.
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
   ([Pick a month](#pick-a-month)).
-- **A category in the list**: select it to hide or show it in the donut (it
-  says Shown or Hidden). The **›** beside it opens that category's entries.
-  The coloured icon changes the category's icon and colour.
+- **A category in the list**: select its name to hide or show it in the donut
+  (a hidden one is dimmed and says Hidden). The **›** beside it opens that
+  category's entries. The coloured icon changes the category's icon and
+  colour. **Show all** under the first five lists every category;
+  **Show fewer** folds it back. With money hidden the amounts show as dots and
+  the percentages stay.
 - **A month card** in Intent vs Outcome: select **Details** for the planned,
   actual and variance figures (the latest month starts open). The **Note** row
   there edits that month's note. The month's name opens that month.
@@ -350,7 +354,7 @@ stays highlighted, and the range at the top stays as it was.
   Select it to see what it means.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
-  list as on Summary. Select a category to hide or show it in the donut; its
+  ranked list as on Summary. Select a category to hide or show it in the donut; its
   **›** opens that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
 - **Income**: planned income sources. On every plan row a thin bar shows how

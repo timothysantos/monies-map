@@ -193,7 +193,7 @@ const SHOTS = [
     name: "summary-charts", device: "desktop",
     run: async (page) => {
       await open(page, `/summary?view=household&month=${MONTH}`);
-      await scrollToLocator(page, page.getByText("Intent vs Outcome", { exact: true }), 20);
+      await scrollToLocator(page, page.getByRole("heading", { name: "Spending Mix" }), 20);
     }
   },
   {
