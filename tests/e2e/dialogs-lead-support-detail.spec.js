@@ -188,7 +188,7 @@ test.describe("@webkit phone: confirmations are bottom sheets with the destructi
     await expect(confirm).toBeVisible();
     const amount = await confirm.locator(".lsd-amount").innerText();
     expect(amount).not.toMatch(/\d/);
-    expect(amount).not.toMatch(/[$+\-]/);
+    expect(amount).not.toMatch(/[$+-]/);
     expect(await confirm.innerText()).not.toContain("43.21");
   });
 
