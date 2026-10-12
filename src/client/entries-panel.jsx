@@ -1259,6 +1259,7 @@ export function EntriesPanel({
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
           isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
+          isDirty={hasEditingEntryChanges}
           footerContent={mobileEditExpenseFooterMode === "picker" && activeEditingEntry.entryType === "expense"
             ? (
                 <EntrySplitGroupPickerFooter

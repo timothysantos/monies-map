@@ -13,10 +13,17 @@ import { buildPlanSheetLead } from "./month-plan-sheet-model";
 import { LastPeriodBudgetHint } from "./month-plan-tables";
 import { ResponsiveSelect } from "./responsive-select";
 import { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
+import { useDraftChanged } from "./use-draft-changed";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 const copy = messages.month.planSheet;
 const table = messages.month.table;
+
+// The fields the sheet edits: a change to any of them makes a swipe down
+// ask "Discard changes?" before closing.
+function pickPlanSheetFields(dialog) {
+  return [dialog.plannedMinor, dialog.label, dialog.categoryValue, dialog.planDate, dialog.accountName, dialog.note];
+}
 
 // The Month plan-row sheet on a phone or portrait tablet (income, planned
 // items, budget buckets; add and edit), in the Lead · Support · Detail
@@ -53,6 +60,7 @@ export function MonthPlanSheet({
     plannedMinor: formatService.parseDraftMoneyInput(dialog.plannedMinor)
   });
   const actualMoney = formatService.money(lead.progress.valueMinor);
+  const isDirty = useDraftChanged(dialog, pickPlanSheetFields);
   const saveLabel = isSaving ? messages.common.saving : messages.month.doneEdit;
   const categoryLabelId = useId();
   const accountLabelId = useId();
@@ -66,6 +74,7 @@ export function MonthPlanSheet({
       saveLabel={saveLabel}
       isSaveDisabled={isSaving}
       isSubmitting={isSaving}
+      isDirty={isDirty}
       onClose={onClose}
       onSave={onSave}
       footerContent={(

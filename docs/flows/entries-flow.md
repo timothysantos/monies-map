@@ -63,7 +63,12 @@ Empty views use the shared `EmptyState` ("No entries match this view.", or
 the wallet-view mismatch block with its two view buttons). The mobile add
 and edit sheets are modal dialogs. Escape closes them, except while a save
 or delete is in flight, and focus returns to the opener. Sheet errors are
-announced as alerts.
+announced as alerts. Both swipe down to close (design.md "Mobile Sheet"):
+the edit sheet reads `hasEditingEntryChanges` and the add sheet compares
+the draft with the one it opened with (`useDraftChanged`), so a changed
+draft springs back and asks "Discard changes?" instead of closing;
+`sheet-swipe-dismiss.spec.js` proves it on an iPhone 13 profile and in
+Chromium.
 
 The edit sheet (phone) and the inline editor (wide screen) both render
 `EntryEditCard` (`entry-edit-card.jsx`, design.md "Lead · Support ·
@@ -73,7 +78,11 @@ Detail rows. It patches the same draft through the same `updateEntry`,
 payload is unchanged; the Splits row runs the same Add to splits / View
 split actions, Delete entry goes through the in-app confirmation, and a
 statement-certified entry keeps its bank facts read-only (description,
-amount, date, wallet, posted date; type within its direction). The phone
+amount, date, wallet, posted date; type within its direction). Its line
+under the card is the short "Bank details are locked to the statement.
+Category, owner, note and splits stay editable."; the full rule
+(`getBankFactsLockMessage`) is the Statement certified chip's `title` and
+accessible description. The phone
 sheet's bottom bar holds Delete entry (and Delete split once linked),
 Cancel or Close, and Save; while Add to splits asks for a group, the bar
 becomes the group question (`EntrySplitGroupPickerFooter`). The add sheet

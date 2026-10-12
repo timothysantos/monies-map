@@ -427,7 +427,9 @@ in-app form that posts the top-up route and keeps its answer as the new
 status) and a dismiss kept in sessionStorage
 (`monies.claudeCreditNotice.v1`) until the state gets worse. Settings →
 Ask and AI shows the same line, the two actions and when it was last
-checked, or "Claude isn't set up, so Ask uses the basic model." A viewer
+checked, or "Claude isn't set up, so Ask uses the basic model." (or
+"Claude hasn't been used yet." when Claude is set up, the state is unknown
+and no failure is recorded). A viewer
 the GET answers `{ visible: false }` sees neither. `wrangler.test.jsonc`
 sets no `AI_ALERT_EMAILS`, so the browser tests stub the route for each
 state (`tests/e2e/claude-credit-notice.spec.js`; the phone tests also run
