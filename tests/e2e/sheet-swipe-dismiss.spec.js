@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
 // Swipe down to close on phone bottom sheets (design.md, "Mobile Sheet"):
 // the shared EntryMobileSheet (here the Entries edit sheet) and the phone
@@ -175,6 +175,49 @@ async function openPlanLinkSheet(page) {
 }
 
 const EDIT_SHEET = '.entry-mobile-sheet[aria-label="Edit entry"]';
+const MONTH_SHEET = ".summary-month-sheet";
+const SETTLEMENT_SHEET = ".split-dialog-content.split-settlement-dialog";
+
+async function waitUsable(page) {
+  await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 45_000 }).toBe(true);
+}
+
+// The Summary tab's "Pick a month" sheet with a tile for every month of the
+// year-long range (the demo leaves some months empty), so the tiles run
+// past the sheet and its body scrolls.
+async function openMonthSheet(page) {
+  for (const month of ["2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04"]) {
+    await postJson(page, "/api/entries/create", {
+      date: `${month}-12`,
+      description: `Swipe tile ${month}`,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 4200,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+  }
+  await page.goto("/summary?view=person-tim&month=2026-05&summary_start=2025-06&summary_end=2026-05");
+  await waitUsable(page);
+  await page.locator(".mobile-context-sticky-wrap").getByRole("button", { name: /All months/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Pick a month" });
+  await expect(sheet).toBeVisible();
+  const body = sheet.locator("[data-sheet-body]");
+  await expect(body).toHaveClass(/summary-month-sheet-body/);
+  expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight + 120)).toBe(true);
+  return { sheet, body };
+}
+
+// The phone Splits "Record settlement" sheet, from the group's Settle group.
+async function openSettlementSheet(page) {
+  await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await waitUsable(page);
+  await page.getByRole("button", { name: "Settle group" }).filter({ visible: true }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Record settlement" });
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
 
 test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
   test("a clean sheet follows the finger and closes on release; a short drag springs back", async ({ page }) => {
@@ -384,6 +427,136 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     await confirm.getByRole("button", { name: "Discard" }).tap();
     await expect(dialog).toBeHidden();
   });
+
+  test("the Summary Pick a month sheet swipes closed from its top, and its month grid keeps its touches", async ({ page }) => {
+    await phone(page);
+    const { sheet, body } = await openMonthSheet(page);
+    await expect(sheet.locator(".sheet-drag-handle")).toBeVisible();
+    await expect(sheet.locator(".sheet-drag-handle")).toHaveAttribute("aria-hidden", "true");
+
+    // An upward drag on the month tiles scrolls them: never cancelled, the
+    // sheet stays put.
+    const bodyBox = await body.boundingBox();
+    const upward = await syntheticDrag(page, {
+      from: { x: bodyBox.x + bodyBox.width / 2, y: bodyBox.y + bodyBox.height - 60 },
+      moves: [{ dy: -4 }, { dy: -20 }, { dy: -60 }],
+      sheetSelector: MONTH_SHEET
+    });
+    expect(upward.prevented).toEqual([false, false, false]);
+    expect(upward.transformDuringDrag).toBe("");
+
+    // Scrolled down the grid, a downward drag on it scrolls the grid back
+    // rather than moving the sheet.
+    await body.evaluate((element) => { element.scrollTop = 160; });
+    const scrolled = await syntheticDrag(page, {
+      from: { x: bodyBox.x + bodyBox.width / 2, y: bodyBox.y + 120 },
+      moves: down(260),
+      stepMs: 20,
+      restMs: 140,
+      sheetSelector: MONTH_SHEET
+    });
+    expect(scrolled.prevented.some(Boolean)).toBe(false);
+    expect(scrolled.transformDuringDrag).toBe("");
+    await expect(sheet).toBeVisible();
+    expect(await sheet.evaluate((element) => getComputedStyle(element).touchAction)).toBe("auto");
+
+    // Nothing to lose here: a swipe from the top closes it straight away,
+    // leaving All months as it was.
+    await body.evaluate((element) => { element.scrollTop = 0; });
+    const swipe = await swipeDown(page, sheet, MONTH_SHEET);
+    expect(swipe.transformDuringDrag).toBe("translateY(260px)");
+    await expect(sheet).toBeHidden();
+    await expect(page.getByRole("alertdialog", { name: "Discard changes?" })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/summary\?/);
+    await expect(page).not.toHaveURL(/\/month\?/);
+  });
+
+  test("the Splits settlement sheet swipes: an untouched one closes, a changed one asks Discard changes?", async ({ page }) => {
+    await phone(page);
+    let sheet = await openSettlementSheet(page);
+    await expect(sheet.locator(".sheet-drag-handle")).toBeVisible();
+    // The amount field takes focus on open; a swipe from the grab bar still works.
+    await swipeDown(page, sheet, SETTLEMENT_SHEET);
+    await expect(sheet).toBeHidden();
+    await expect(page.getByRole("alertdialog", { name: "Discard changes?" })).toHaveCount(0);
+
+    sheet = await openSettlementSheet(page);
+    const note = sheet.getByLabel("Note");
+    await note.fill("Half-typed settle-up note");
+    await sheet.getByRole("heading", { name: "Record settlement" }).click();
+    await swipeDown(page, sheet, SETTLEMENT_SHEET);
+    const confirm = page.getByRole("alertdialog", { name: "Discard changes?" });
+    await expect(confirm).toBeVisible();
+    await expect(sheet).toBeVisible();
+    await expect(confirm.getByRole("button", { name: "Keep editing" })).toBeFocused();
+    await confirm.getByRole("button", { name: "Keep editing" }).tap();
+    await expect(confirm).toBeHidden();
+    await expect(note).toHaveValue("Half-typed settle-up note");
+
+    await swipeDown(page, sheet, SETTLEMENT_SHEET);
+    await confirm.getByRole("button", { name: "Discard" }).tap();
+    await expect(sheet).toBeHidden();
+    // Nothing was recorded: the group is still open.
+    const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+    const group = data.splitsPage.groups.find((item) => item.id === "split-group-none");
+    expect(group?.summaryText).not.toBe("Settled up");
+  });
+
+  test("the other phone sheets swipe closed too: View and scope, Activity history, Create group (asks once changed)", async ({ page }) => {
+    await phone(page);
+
+    await page.goto("/summary?view=person-tim&month=2026-04");
+    await waitUsable(page);
+    await page.locator(".mobile-context-trigger").click();
+    const scopeSheet = page.getByRole("dialog", { name: "View and scope" });
+    await expect(scopeSheet).toBeVisible();
+    await expect(scopeSheet.locator(".sheet-drag-handle")).toBeVisible();
+    await swipeDown(page, scopeSheet, ".mobile-context-dialog");
+    await expect(scopeSheet).toBeHidden();
+
+    await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+    await waitUsable(page);
+    await page.getByRole("button", { name: "Activity history" }).filter({ visible: true }).first().click();
+    const history = page.getByRole("dialog", { name: "Split activity history" });
+    await expect(history).toBeVisible();
+    await expect(history.locator(".sheet-drag-handle")).toBeVisible();
+    await swipeDown(page, history, ".split-history-dialog");
+    await expect(history).toBeHidden();
+
+    const openGroupSheet = async () => {
+      await page.getByRole("button", { name: "Create group" }).filter({ visible: true }).first().click();
+      const sheet = page.getByRole("dialog", { name: "Create group" });
+      await expect(sheet).toBeVisible();
+      return sheet;
+    };
+    let group = await openGroupSheet();
+    await expect(group.locator(".sheet-drag-handle")).toBeVisible();
+    await swipeDown(page, group, ".split-group-dialog");
+    await expect(group).toBeHidden();
+    await expect(page.getByRole("alertdialog", { name: "Discard changes?" })).toHaveCount(0);
+
+    group = await openGroupSheet();
+    await group.getByLabel("Group name").fill("Swipe trip");
+    await group.getByRole("heading", { name: "Create group" }).click();
+    await swipeDown(page, group, ".split-group-dialog");
+    const confirm = page.getByRole("alertdialog", { name: "Discard changes?" });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Discard" }).tap();
+    await expect(group).toBeHidden();
+    const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+    expect(data.splitsPage.groups.some((item) => item.name === "Swipe trip")).toBe(false);
+  });
+
+  test("on a desktop the same Splits dialogs stay centred dialogs with no grab bar", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await reseedDemo(page);
+    await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+    await waitUsable(page);
+    await page.locator("article.panel-splits .panel-head .split-settle-header").click();
+    const sheet = page.getByRole("dialog", { name: "Record settlement" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator(".sheet-drag-handle")).toHaveCount(0);
+  });
 });
 
 // Real touch input (Chromium only): the browser's own gesture pipeline, so
@@ -423,6 +596,29 @@ test.describe("Swipe down with real touch input", () => {
     await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeLessThan(scrolled);
     await expect(sheet).toBeVisible();
     expect(await sheet.evaluate((element) => element.style.transform)).toBe("");
+  });
+
+  test("the Pick a month grid scrolls by touch both ways, and a swipe from the top closes the sheet", async ({ page }) => {
+    await phone(page);
+    const { sheet, body } = await openMonthSheet(page);
+    const client = await page.context().newCDPSession(page);
+    const bodyBox = await body.boundingBox();
+    const x = bodyBox.x + bodyBox.width / 2;
+    await realDrag(page, client, { from: { x, y: bodyBox.y + bodyBox.height - 40 }, to: { x, y: bodyBox.y + 60 } });
+    await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(60);
+    await expect(sheet).toBeVisible();
+    expect(await sheet.evaluate((element) => element.style.transform)).toBe("");
+
+    const scrolledTop = await body.evaluate((element) => element.scrollTop);
+    await realDrag(page, client, { from: { x, y: bodyBox.y + 60 }, to: { x, y: bodyBox.y + 60 + Math.min(scrolledTop, 150) / 2 } });
+    await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeLessThan(scrolledTop);
+    await expect(sheet).toBeVisible();
+
+    await body.evaluate((element) => { element.scrollTop = 0; });
+    const rect = await sheet.boundingBox();
+    const top = { x: rect.x + rect.width / 2, y: rect.y + 8 };
+    await realDrag(page, client, { from: top, to: { x: top.x, y: top.y + 260 }, steps: 12, stepMs: 20, restMs: 140 });
+    await expect(sheet).toBeHidden();
   });
 
   test("the long sheet body still scrolls by touch, and a swipe from the top closes it", async ({ page }) => {

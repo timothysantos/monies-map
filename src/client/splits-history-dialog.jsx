@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { SheetSwipeDismiss } from "./sheet-swipe";
 import { EmptyState, InlineError } from "./ui-states";
 
 const { format: formatService } = moniesClient;
@@ -16,11 +17,15 @@ export function SplitHistoryDialog({ open, history = [], error = "", isSubmittin
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content split-history-dialog">
+          {/* A phone sheet that swipes down to close (nothing to lose); the
+              list is its body, so a drag there moves the sheet only from
+              the list's top. */}
+          <SheetSwipeDismiss onClose={onClose} />
           <div className="note-dialog-head split-dialog-head">
             <Dialog.Title>Split activity history</Dialog.Title>
             <Dialog.Description>Review deleted and restored split records. Restore keeps the original split and ledger link.</Dialog.Description>
           </div>
-          <div className="split-history-list">
+          <div className="split-history-list" data-sheet-body>
             {history.length ? history.map((item) => (
               <article className="split-history-row" key={item.id}>
                 <div>
