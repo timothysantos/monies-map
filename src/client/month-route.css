@@ -196,8 +196,7 @@
   background: rgba(191, 103, 45, 0.06);
 }
 
-.panel-subgrid > section,
-.month-plan-grid > section {
+.panel-subgrid > section {
   min-width: 0;
 }
 
@@ -230,11 +229,6 @@
 }
 
 @media (max-width: 760px) {
-  .month-add-dialog-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
   .month-title {
     display: none;
   }
