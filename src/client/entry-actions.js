@@ -379,6 +379,21 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     setEntrySnapshot({ ...entry, splits: entry.splits.map((split) => ({ ...split })) });
   }
 
+  // Reopens the editor on `draft`, an edited copy of one of these entries
+  // kept while the person was on Ask (use-ask-origin.js). The snapshot is
+  // the entry as saved now, so Close still discards the draft.
+  function resumeEntryEdit(draft) {
+    const saved = entries.find((entry) => entry.id === draft?.id);
+    if (!saved) {
+      return;
+    }
+    setShowEntryComposer(false);
+    setEntrySubmitError("");
+    setEditingEntryId(saved.id);
+    setEntrySnapshot({ ...saved, splits: saved.splits.map((split) => ({ ...split })) });
+    setEntries((current) => current.map((entry) => (entry.id === saved.id ? { ...saved, ...draft } : entry)));
+  }
+
   async function finishEntryEdit(patch) {
     const result = await persistExistingEntry(editingEntryId, { closeEditor: true, patch });
     return result.ok;
@@ -782,6 +797,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     updateEntryDraftSplit,
     saveEntryDraft,
     beginEntryEdit,
+    resumeEntryEdit,
     finishEntryEdit,
     cancelEntryEdit,
     linkTransferCandidate,

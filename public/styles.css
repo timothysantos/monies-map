@@ -87,7 +87,7 @@ button {
 .shell {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 18px 46px;
+  padding: 24px 18px 96px;
 }
 
 .environment-banner {
@@ -2730,8 +2730,153 @@ body[data-split-inline-editor] .splits-fab {
 
 body:has(> .note-dialog-overlay) .totals-visibility-toggle--floating,
 body[data-entry-inline-editor] .totals-visibility-toggle--floating,
-body[data-split-inline-editor] .totals-visibility-toggle--floating {
+body[data-split-inline-editor] .totals-visibility-toggle--floating,
+body:has(> .note-dialog-overlay) .ask-dock-field,
+body:has(> [data-radix-popper-content-wrapper]) .ask-dock-field,
+body[data-entry-inline-editor] .ask-dock-field,
+body[data-split-inline-editor] .ask-dock-field {
   display: none;
+}
+
+/* Desktop Ask (ask-dock.jsx, design.md "Desktop Ask"): the one-line field
+   at the bottom right (beside the + or receipt button where there is one)
+   and the frame of the panel or popup it opens. The conversation's own
+   styles load with it (ask-route.css). */
+.ask-dock-field {
+  position: fixed;
+  right: 22px;
+  bottom: 29px;
+  z-index: 56;
+  display: flex;
+  align-items: center;
+  width: min(340px, calc(100vw - 44px));
+  height: 48px;
+  padding-left: 14px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line), 0 12px 30px rgba(27, 24, 21, 0.14);
+}
+
+.ask-dock-field.is-beside-fab {
+  right: 92px;
+}
+
+.ask-dock-field:focus-within {
+  box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px color-mix(in srgb, var(--accent-strong) 45%, transparent), 0 12px 30px rgba(27, 24, 21, 0.14);
+}
+
+.ask-dock-field-icon {
+  flex: none;
+  color: var(--accent-strong);
+}
+
+.ask-dock-field-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 6px 0 10px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+}
+
+.ask-dock-field-input:focus-visible {
+  outline: none;
+}
+
+.ask-dock-field-attach {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ask-dock {
+  --ask-dock-gutter: 16px;
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--pastel-neutral);
+}
+
+/* Docked: full height at the right; the page narrows beside it. */
+.ask-dock.is-docked {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--ask-dock-width);
+  border-left: 1px solid var(--line);
+}
+
+.ask-dock.is-popup {
+  right: 22px;
+  bottom: 24px;
+  width: min(410px, calc(100vw - 44px));
+  height: min(560px, calc(100vh - 48px));
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(27, 24, 21, 0.2);
+  overflow: hidden;
+}
+
+/* Above the + or receipt button, so it stays in reach. */
+.ask-dock.is-popup.is-beside-fab {
+  bottom: 94px;
+  height: min(560px, calc(100vh - 118px));
+}
+
+body {
+  --ask-dock-width: clamp(360px, 27vw, 400px);
+}
+
+body[data-ask-dock="docked"] {
+  padding-right: var(--ask-dock-width);
+}
+
+body[data-ask-dock="docked"] .entries-fab {
+  right: calc(22px + var(--ask-dock-width));
+}
+
+body[data-ask-dock="docked"] .app-loading-overlay {
+  right: calc(14px + var(--ask-dock-width));
+}
+
+body[data-ask-dock="docked"] .environment-banner {
+  width: calc(100vw - var(--ask-dock-width));
+  margin-inline: calc(50% - 50vw + var(--ask-dock-width) / 2);
+}
+
+.ask-dock-close {
+  min-height: 44px;
+  padding: 0 4px 0 8px;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ask-dock-loading {
+  padding: var(--ask-dock-gutter);
+}
+
+.ask-dock-loading .ask-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ask-dock-loading-note {
+  color: var(--muted);
 }
 
 .split-dialog-content {
@@ -7912,8 +8057,19 @@ th {
   
 }
 
-/* One header row from 1,100 px: tighter spacing below 1,200 px. */
-@media (min-width: 1100px) and (max-width: 1199px) {
+/* The header reads the page's own width (the .shell container), not the
+   window's, so a docked Ask panel (ask-dock.jsx) that narrows the page
+   narrows it the same way. Without the panel the page is the window less
+   36 px, so 1,064 to 1,163 px here is a 1,100 to 1,199 px window. */
+@media (min-width: 761px) {
+  .shell {
+    container: shell / inline-size;
+  }
+}
+
+/* One header row from 1,100 px: tighter spacing below 1,200 px (and on a
+   narrower page, with the changes further down). */
+@container shell (min-width: 840px) and (max-width: 1163px) {
   .control-bar {
     gap: 10px;
   }
@@ -7956,6 +8112,40 @@ th {
 @media (min-width: 761px) and (max-width: 960px) {
   .period-inline {
     justify-content: flex-start;
+  }
+}
+
+/* A page 840 to 1,063 px wide (an 876 to 1,099 px window, or a docked Ask
+   panel beside a 1,280 to 1,499 px one): still one row, with the tighter
+   spacing above, the period box sized to its words, and Imports, Settings
+   and FAQ behind the "More pages" menu, as on a phone. */
+@container shell (min-width: 840px) and (max-width: 1063px) {
+  .control-bar,
+  .context-block {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .tab-secondary {
+    display: none;
+  }
+
+  .tab-overflow-trigger {
+    display: inline-flex;
+  }
+
+  .period-inline {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+
+  .period-nav-cluster {
+    display: contents;
+  }
+
+  .period-display {
+    min-width: 0;
   }
 }
 
