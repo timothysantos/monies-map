@@ -1,5 +1,4 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -12,12 +11,11 @@ import {
 } from "./claude-credit-model";
 import { useClaudeCreditStatus } from "./claude-credit-status";
 import { claudeCreditCopy as copy } from "./copy/claude-credit-copy";
-import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { useMoneyPrivacy } from "./money-privacy";
-import { BottomActions } from "./ui-components";
-import { InlineError } from "./ui-states";
-import { useRouteWorkBusy } from "./use-route-work-status";
+import { SheetDialog } from "./sheet-dialog";
 import { useIsMobileLayout } from "./use-viewport";
+import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
+import { useRouteWorkBusy } from "./use-route-work-status";
 // Shipped with Ask and Settings, the two routes that import this module.
 import "./claude-credit-notice.css";
 
@@ -114,87 +112,46 @@ export function ClaudeTopUpForm({ onClose, onSave }) {
     }
   };
   const saveLabel = isSaving ? copy.form.saving : copy.form.save;
-  const field = (
-    <label className="claude-topup-field">
-      <span>{copy.form.amountLabel}</span>
-      <input
-        className="table-edit-input"
-        name="creditUsd"
-        type="text"
-        inputMode="decimal"
-        enterKeyHint="done"
-        autoComplete="off"
-        value={amount}
-        aria-invalid={error ? "true" : undefined}
-        onChange={(event) => {
-          setAmount(event.target.value);
-          setError("");
-        }}
-      />
-    </label>
-  );
 
-  if (isMobile) {
-    return (
-      <EntryMobileSheet
-        className="claude-topup-sheet"
-        title={copy.form.title}
-        description={copy.form.description}
-        errorMessage={error}
-        saveLabel={saveLabel}
-        isSaveDisabled={isSaving || !amount.trim()}
-        isSubmitting={isSaving}
-        isDirty={Boolean(amount.trim())}
-        onClose={close}
-        onSave={() => void save()}
-        footerContent={(
-          <BottomActions
-            className="is-sheet-bar"
-            primaryLabel={saveLabel}
-            primaryDisabled={isSaving || !amount.trim()}
-            quietLabel={copy.form.cancel}
-            quietDisabled={isSaving}
-            onQuiet={close}
-          />
-        )}
-      >
-        <div className="claude-topup-body">{field}</div>
-      </EntryMobileSheet>
-    );
-  }
-
+  // Lead: what the money is for. Detail: the one field. Cancel and Save are
+  // the bottom bar of the shared sheet frame (a sheet on a phone, a small
+  // dialog on a wide screen).
   return (
-    <Dialog.Root open onOpenChange={(open) => { if (!open) close(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content claude-topup-dialog">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void save();
+    <SheetDialog
+      className={isMobile ? "claude-topup-sheet" : "claude-topup-dialog"}
+      title={copy.form.title}
+      description={copy.form.description}
+      closeLabel={copy.form.close}
+      lead={(
+        <LeadCard className="sheet-dialog-lead" category={{ icon: Sparkles }} title={copy.regionLabel} />
+      )}
+      errorMessage={error}
+      primaryLabel={saveLabel}
+      primaryDisabled={isSaving || !amount.trim()}
+      quietLabel={copy.form.cancel}
+      isSubmitting={isSaving}
+      isDirty={Boolean(amount.trim())}
+      onSubmit={save}
+      onClose={close}
+    >
+      <DetailRows label={copy.form.title}>
+        <DetailRow label={copy.form.amountLabel}>
+          <input
+            name="creditUsd"
+            type="text"
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoComplete="off"
+            value={amount}
+            aria-invalid={error ? "true" : undefined}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              setError("");
             }}
-          >
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{copy.form.title}</Dialog.Title>
-                <Dialog.Description>{copy.form.description}</Dialog.Description>
-              </div>
-              <button type="button" className="icon-action subtle-cancel" aria-label={copy.form.close} disabled={isSaving} onClick={close}>
-                <X size={16} />
-              </button>
-            </div>
-            <div className="claude-topup-body">
-              {field}
-              <InlineError message={error} />
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSaving} onClick={close}>{copy.form.cancel}</button>
-              <button type="submit" className="dialog-primary" disabled={isSaving || !amount.trim()}>{saveLabel}</button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          />
+        </DetailRow>
+      </DetailRows>
+    </SheetDialog>
   );
 }
 

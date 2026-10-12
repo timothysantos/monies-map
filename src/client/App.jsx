@@ -44,17 +44,15 @@ import {
 import {
   AppLoadingOverlay,
   EnvironmentBanner,
-  RouteChunkLoadingFallback,
   ShellErrorScreen,
   ShellLoadingScreen
 } from "./app-shell-status";
 import { ScreenErrorBoundary } from "./screen-error-boundary";
-import { ErrorPanel } from "./ui-states";
+import { ErrorPanel, StateBanner } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
 import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
-import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -127,6 +125,8 @@ const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ def
 const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
 // The phone's "Pick a month" sheet loads when it is first opened.
 const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
+// Only an unlinked login ever sees this dialog, and it uses the shared sheet frame.
+const LoginRegistrationDialog = lazy(() => import("./login-registration-dialog.jsx").then((module) => ({ default: module.LoginRegistrationDialog })));
 
 // Canonical route registry for the top navigation and route-based prefetching.
 // One Summary tab stands for two routes: /summary (All months) and /month (one
@@ -238,6 +238,10 @@ export function App() {
   // effective filter props actually change.
   const closeMobileContext = useCallback(() => {
     setMobileContextOpen(false);
+  }, []);
+  // The Entries top's Filters row opens the same sheet as the floating bar.
+  const openMobileContext = useCallback(() => {
+    setMobileContextOpen(true);
   }, []);
   const handleEntriesMobileFilterStateChange = useCallback((nextProps) => {
     setEntriesMobileFilterProps((current) => areEntriesMobileFilterPropsEqual(current, nextProps) ? current : nextProps);
@@ -2092,6 +2096,7 @@ export function App() {
           entriesSourceView={pageView}
           selectedMonth={selectedMonth}
           mobileContextOpen={mobileContextOpen}
+          onOpenMobileContext={openMobileContext}
           onCloseMobileContext={closeMobileContext}
           onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
           externalRefreshToken={entriesExternalRefreshToken}
@@ -2206,6 +2211,7 @@ export function App() {
     isUnregisteringLogin,
     loginIdentityError,
     mobileContextOpen,
+    openMobileContext,
     openSummaryMonth,
     pageView,
     referenceData,
@@ -2299,31 +2305,32 @@ export function App() {
       setIsRetryingRoutePage(false);
     }
   };
-  const routeBody = pageView
-    ? (
-        <>
-          {showRoutePageError ? (
-            <ErrorPanel
-              className="route-page-error"
-              title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
-              detail={messages.common.loadFailedDetail}
-              technical={routePageError}
-              actions={[{
-                label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
-                onClick: () => void retryRoutePageFromPanel(),
-                disabled: isRetryingRoutePage,
-                primary: true
-              }]}
-            />
-          ) : null}
-          <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
-            <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
-              {renderedRouteElement}
-            </RouteWorkProvider>
-          </div>
-        </>
-      )
-    : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
+  // pageView is always set here: the shell returns the loading skeleton above
+  // until the first page has settled, and a later navigation keeps the
+  // previous page.
+  const routeBody = (
+    <>
+      {showRoutePageError ? (
+        <ErrorPanel
+          className="route-page-error"
+          title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
+          detail={messages.common.loadFailedDetail}
+          technical={routePageError}
+          actions={[{
+            label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
+            onClick: () => void retryRoutePageFromPanel(),
+            disabled: isRetryingRoutePage,
+            primary: true
+          }]}
+        />
+      ) : null}
+      <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
+        <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
+          {renderedRouteElement}
+        </RouteWorkProvider>
+      </div>
+    </>
+  );
   const showImportInboxBanner = Boolean(
     importInboxBanner
     && ["summary", "month"].includes(renderedTabId)
@@ -2632,7 +2639,7 @@ export function App() {
   // Render the loading state while either the shell or the active page is
   // still being resolved.
   if (!appShell || !referenceData || !pageView) {
-    return <ShellLoadingScreen environment={appEnvironment} status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
+    return <ShellLoadingScreen environment={appEnvironment} tabId={selectedTabId} status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   }
 
   // The top chrome reflects the active period semantics of the current route.
@@ -3248,6 +3255,7 @@ export function App() {
 
       {/* Login registration is modal because it must interrupt the flow only when the shell has no stable identity mapping. */}
       {loginRegistrationDraft ? (
+        <Suspense fallback={null}>
         <LoginRegistrationDialog
           draft={loginRegistrationDraft}
           people={appShell.household.people}
@@ -3264,6 +3272,7 @@ export function App() {
           }}
           onNameChange={(name) => setLoginRegistrationDraft((current) => current ? { ...current, name } : current)}
         />
+        </Suspense>
       ) : null}
 
       {renderedTabId === "entries" && typeof document !== "undefined"
@@ -3339,34 +3348,27 @@ export function App() {
 // screen, and the person can refresh again without losing their place.
 function RefreshFailureNotice({ onRetry, onDismiss }) {
   return (
-    <section className="import-stale-banner refresh-failure-notice" role="status">
-      <div>
-        <strong>{messages.common.refreshFailedTitle}</strong>
-        <span>{messages.common.refreshFailedDetail}</span>
-      </div>
-      <div className="refresh-failure-notice-actions">
-        <button type="button" className="dialog-primary" onClick={onRetry}>
-          {messages.common.refreshFailedRetry}
-        </button>
-        <button type="button" className="subtle-action" onClick={onDismiss}>
-          {messages.common.refreshFailedDismiss}
-        </button>
-      </div>
-    </section>
+    <StateBanner
+      className="refresh-failure-notice"
+      tone="butter"
+      title={messages.common.refreshFailedTitle}
+      detail={messages.common.refreshFailedDetail}
+      actions={[
+        { label: messages.common.refreshFailedRetry, onClick: onRetry, primary: true },
+        { label: messages.common.refreshFailedDismiss, onClick: onDismiss }
+      ]}
+    />
   );
 }
 
 function ImportInboxRouteBanner({ inbox, onOpenImports }) {
   return (
-    <section className="import-stale-banner" role="status">
-      <div>
-        <strong>{messages.shell.importInboxBannerTitle(inbox.summary.requiredFileCount)}</strong>
-        <span>{messages.shell.importInboxBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}</span>
-      </div>
-      <button type="button" className="dialog-primary" onClick={onOpenImports}>
-        {messages.shell.importInboxBannerAction}
-      </button>
-    </section>
+    <StateBanner
+      tone="sky"
+      title={messages.shell.importInboxBannerTitle(inbox.summary.requiredFileCount)}
+      detail={messages.shell.importInboxBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}
+      actions={[{ label: messages.shell.importInboxBannerAction, onClick: onOpenImports, primary: true }]}
+    />
   );
 }
 

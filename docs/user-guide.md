@@ -406,26 +406,37 @@ and the month's name opens **Pick a month**.
 
 ### What you see
 
-- **Totals strip**: Spend, Income, Difference, Transfers and Outflow (Spend
-  plus Transfers). In a person view, a shared row counts at the full amount
-  first, with that person's share in brackets.
-- **+ Add entry** and **Money insights**.
-- **Filters**: refresh, Search, By wallet, By category, By type and **Reset
-  filters**. Whose entries you see follows the view at the top left.
-- **Days**: entries grouped by date, newest first, with each day's net.
+- **Spent this month** at the top, in a large card: what you spent. Beside
+  it (under it on a phone) are four small boxes: **Income**, **Difference**,
+  **Transfers** and **Outflow** (Spent plus Transfers). Income and a surplus
+  are tinted green and a shortfall rose; the rest stay plain. In a person
+  view, a shared row counts at the full amount first, with that person's
+  share written next to it.
+- **Spending by category** opens the breakdown by category. On a phone,
+  **Filters** (it says **All entries**, or how many filters are on) opens
+  **View and scope**, where the filters are.
+- **Money insights**.
+- **Filters** (on a wide screen): refresh, Search, By wallet, By category, By
+  type and **Reset filters**. Whose entries you see follows the view at the
+  top left.
+- **Days**: entries grouped by date, newest first, with each day's net at
+  the right of a thin line.
 
-Each row shows the category, description, note, wallet and owner, the amount,
-and small labels such as **On splits**, **Matched transfer out** or the
-owner's name.
+Each row shows the category (small, above), the description, the note, the
+wallet, the amount at the right, and small labels such as **On splits** or
+the owner's name. A matched transfer says so in plain grey text. The coloured
+bar on the left is the owner's colour.
 
 ### What each control does
 
 - **Select a row** to edit it. The editor shows the entry as a card: what
   it was and the amount (type over either to change it), its category,
   and small labels for the date, wallet, owner and how well the bank has
-  confirmed it ([Glossary](#words-used-in-the-app)). Beside the card are
-  rows for **Category**, **Owner**, **Splits**, **Note**, **Date**,
-  **Wallet**, **Posted date** and **Type** (expense, income or transfer).
+  confirmed it ([Glossary](#words-used-in-the-app)). On a wide screen those
+  three labels are the fields: choose the date, the wallet or the person on
+  the card itself to change it (a lock means the bank statement has fixed
+  it). Under the card are rows for **Category**, **Splits**, **Note**,
+  **Posted date** and **Type** (expense, income or transfer).
   ![Selecting an entry opens it as a card with rows for each field, and Delete entry, Cancel and Save under them](/faq/guide/desktop/thumbs/entries-edit.webp)
 - **Splits** row: **Add to splits** shares this entry ([Split an expense](#split-an-expense));
   once it is shared, **View split** opens it on Splits.
@@ -957,6 +968,12 @@ set up**). Select a row to open it; it opens right under its row.
   name, icon or colour.
 - **Category matching**: rules that categorise imported rows, plus
   suggestions and overlapping rules to review.
+- **Colours**: the colour scheme. Pick **70s Warm** (the usual one), **60s
+  Mod**, **80s Pop**, **Modern**, **Black & White** or **Code** (dark) and
+  the whole app changes at once. Money in, money out and plans keep their
+  meaning in every scheme; in Black & White, money in is bold and money out
+  is in italics. The choice is saved on this device only, so your phone and
+  computer can differ.
 - **Balance trust rules**: what makes a balance trustworthy, and a list of
   known gaps (reconciliation exceptions).
 - **Unresolved transfers**: transfers that are not paired yet.
@@ -972,7 +989,15 @@ selecting the tab opens Category matching.
 
 ### On a phone
 
-Settings is under the **•••** button. Dialogs open as sheets.
+Settings is under the **•••** button. Dialogs open as sheets from the bottom
+of the screen. Every one of them has the same parts: a card at the top that
+says what you are changing or removing, the fields as rows under it, and the
+buttons at the bottom within reach of your thumb. **Cancel** is at the left
+and the main button at the right. A button that removes something (such as
+**Delete entry**) is pink with dark red text, and a sheet that asks you to
+type words first (such as **Reset month**) keeps its button off until you
+have typed them. You can swipe any of them down to close it. On a computer the
+same dialogs open in the middle of the screen.
 
 ## Help (FAQ)
 
@@ -991,8 +1016,9 @@ you can bookmark or share a link to it.
 
 ### On a phone
 
-FAQ is under the **•••** button. The tabs and contents sit at the top; tap a
-picture to open it full size.
+FAQ is under the **•••** button. The two tabs sit at the top, and **Contents**
+is one row under them: tap it to open the list, so the guide starts straight
+away. Tap a picture to open it full size.
 
 ![The FAQ screen on a phone](/faq/guide/phone/thumbs/phone-faq.webp)
 
@@ -1003,12 +1029,13 @@ Step-by-step recipes. Each assumes you start from the screen named in step 1.
 ## Add an expense
 
 1. Open **Entries** and choose the month at the top right.
-2. Select **+ Add entry**. On a phone, the round **+** button opens a new
-   entry card on [Ask](#ask) instead: type the amount and what it was (or
-   say it in the message box, or use a receipt photo), check the rows under
-   the card and select **Save**.
-3. Choose the **Category**, **Date**, **Wallet** (the account or card you
-   paid with), **Owner** (who paid) and **Type** (Expense).
+2. Select the round **+** button. It opens a new entry card on
+   [Ask](#ask) (beside the page on a wide screen): type the amount and what
+   it was (or say it in the message box, or use a receipt photo), check the
+   rows under the card and select **Save**. To use the full form instead,
+   select **Edit in form**.
+3. In the form, choose the **Category**, **Date**, **Wallet** (the account or
+   card you paid with), **Owner** (who paid) and **Type** (Expense).
 4. Type the **Amount** and a **Description**. Use the merchant name, such as
    `FairPrice` or `Grab`, so a later bank import can recognise it.
 5. Add a **Note** if the reason matters later.
@@ -1028,9 +1055,10 @@ them ([Record entries before the bank file arrives](#record-entries-before-the-b
 1. Open **Entries** and find the entry ([Find an entry](#find-an-entry-filters-search-and-months)).
 2. Select the row. It opens as a card with rows for each field, in place
    (a sheet on a phone).
-3. Type over what it was or the amount on the card, or change a row such as
-   **Category**, **Owner** or **Note** (on a phone the date, wallet, posted
-   date and type are under **More details**). Select **Save**, or **Cancel**
+3. Type over what it was or the amount on the card, change the date, wallet
+   or owner on the card's small labels, or change a row such as
+   **Category** or **Note** (on a phone the posted date and type are under
+   **More details**, with the date and wallet). Select **Save**, or **Cancel**
    to leave it as it was.
 4. To remove it, select **Delete entry**, then confirm.
 
@@ -1950,9 +1978,11 @@ it. Filters stay in the address, so you can bookmark a filtered view.
 
 ## The app stays on Loading
 
-The app loads in small steps and shows a percentage. If a step takes too
-long, it stops waiting and shows which part failed, with a button to try
-again.
+While a page loads, the app shows a pale outline of it, so nothing jumps
+when your figures arrive. When you move to another page, the old one stays
+until the new one is ready, with a small "Loading latest data..." note near
+the top. If a step takes too long, the app stops waiting and shows which part
+failed, with a button to try again.
 
 1. Select the retry button.
 2. If it keeps failing, check your internet connection and reload the page.

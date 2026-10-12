@@ -1,10 +1,15 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { SquarePen, X } from "lucide-react";
+import { Landmark, SquarePen } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { settingsMessages } from "./copy/en-SG-settings";
+import { DateRow } from "./detail-field-rows";
 import { selectAllOnFocus } from "./focus-utils";
+import { formatDateOnly, formatMonthLabel } from "./formatters";
 import { moneyToneClass } from "./money-tone-class";
+import { SheetDialog } from "./sheet-dialog";
+import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
+import { useDraftChanged } from "./use-draft-changed";
+import { useIsMobileLayout } from "./use-viewport";
 import { statementDifferenceTone } from "../domain/money-tone";
 
 // Checkpoint editing has its own dialog because it also owns history review
@@ -28,128 +33,122 @@ export function SettingsReconciliationDialog({
   formatCheckpointBalanceLine,
   formatCheckpointDelta
 }) {
+  const isSheet = useIsMobileLayout();
+  const isDirty = useDraftChanged(dialog, pickCheckpointFields);
+  if (!dialog) {
+    return null;
+  }
+  const set = (patch) => onChange((current) => current ? { ...current, ...patch } : current);
+  const monthLabel = dialog.checkpointMonth ? formatMonthLabel(dialog.checkpointMonth) : null;
+  const dateLabel = (value) => (value ? formatDateOnly(value) : "");
+
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content settings-account-dialog settings-reconciliation-dialog">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!dialog?.checkpointMonth?.trim() || isSubmitting) {
-                return;
-              }
-              void onSave();
-            }}
-          >
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{settingsMessages.reconcileAccountTitle}</Dialog.Title>
-                <Dialog.Description>{settingsMessages.reconcileAccountDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close reconciliation dialog"
-                disabled={isSubmitting}
-                onClick={onClose}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="settings-account-form settings-reconciliation-form">
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{settingsMessages.accountName}</span>
-                <input className="table-edit-input" value={dialog?.accountName ?? ""} readOnly />
-              </label>
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{settingsMessages.checkpointMonth}</span>
-                <input
-                  type="month"
-                  className="table-edit-input"
-                  value={dialog?.checkpointMonth ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, checkpointMonth: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{settingsMessages.checkpointStartDate}</span>
-                <input
-                  type="date"
-                  className="table-edit-input"
-                  value={dialog?.statementStartDate ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, statementStartDate: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{settingsMessages.checkpointEndDate}</span>
-                <input
-                  type="date"
-                  className="table-edit-input"
-                  value={dialog?.statementEndDate ?? ""}
-                  enterKeyHint="next"
-                  onChange={(event) => onChange((current) => current ? { ...current, statementEndDate: event.target.value } : current)}
-                />
-                <small className="field-help">{settingsMessages.checkpointHelp}</small>
-              </label>
-              <label className="table-edit-field settings-reconciliation-balance-field">
-                <span>{settingsMessages.checkpointBalance}</span>
-                <input
-                  className="table-edit-input table-edit-input-money"
-                  value={dialog?.statementBalance ?? "0.00"}
-                  enterKeyHint="done"
-                  onMouseDown={selectAllOnFocus}
-                  onFocus={selectAllOnFocus}
-                  onChange={(event) => onChange((current) => current ? { ...current, statementBalance: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field settings-reconciliation-note-field">
-                <span>{settingsMessages.checkpointNote}</span>
-                <textarea
-                  className="table-edit-input"
-                  rows={4}
-                  value={dialog?.note ?? ""}
-                  onChange={(event) => onChange((current) => current ? { ...current, note: event.target.value } : current)}
-                />
-              </label>
-            </div>
-            <div className="settings-reconciliation-scroll">
-              {dialog?.history?.length ? (
-                <SettingsCheckpointHistory
-                  isSubmitting={isSubmitting}
-                  checkpointHistoryYears={checkpointHistoryYears}
-                  checkpointHistoryYear={checkpointHistoryYear}
-                  visibleCheckpointHistory={visibleCheckpointHistory}
-                  onHistoryYearChange={onHistoryYearChange}
-                  onEditCheckpoint={onEditCheckpoint}
-                  onDownloadCheckpoint={onDownloadCheckpoint}
-                  onCompareCheckpoint={onCompareCheckpoint}
-                  renderCheckpointDeleteAction={renderCheckpointDeleteAction}
-                  formatCheckpointMonth={formatCheckpointMonth}
-                  formatCheckpointCoverage={formatCheckpointCoverage}
-                  formatCheckpointBalanceLine={formatCheckpointBalanceLine}
-                  formatCheckpointDelta={formatCheckpointDelta}
-                />
-              ) : null}
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="dialog-primary"
-                disabled={!dialog?.checkpointMonth?.trim() || isSubmitting}
-              >
-                {isSubmitting ? messages.common.saving : settingsMessages.checkpointSave}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <SheetDialog
+      wide
+      className="settings-account-dialog statement-checkpoint-dialog"
+      title={settingsMessages.reconcileAccountTitle}
+      description={settingsMessages.reconcileAccountDetail}
+      descriptionHidden
+      closeLabel="Close reconciliation dialog"
+      lead={(
+        <LeadCard
+          className="sheet-dialog-lead"
+          category={{ icon: Landmark }}
+          title={dialog.accountName ?? ""}
+          subtitle={settingsMessages.reconcileAccountTitle}
+          chips={(
+            <>
+              {monthLabel ? <MetaChip>{monthLabel}</MetaChip> : null}
+              {dialog.statementStartDate && dialog.statementEndDate
+                ? <MetaChip>{`${dateLabel(dialog.statementStartDate)} to ${dateLabel(dialog.statementEndDate)}`}</MetaChip>
+                : null}
+            </>
+          )}
+        >
+          <p className="lsd-note">{settingsMessages.reconcileAccountDetail}</p>
+        </LeadCard>
+      )}
+      primaryLabel={isSubmitting ? messages.common.saving : settingsMessages.checkpointSave}
+      primaryDisabled={!dialog.checkpointMonth?.trim() || isSubmitting}
+      isSubmitting={isSubmitting}
+      isDirty={isDirty}
+      onSubmit={onSave}
+      onClose={onClose}
+    >
+      <DetailRows label={settingsMessages.reconcileAccountTitle}>
+        <DetailRow label={settingsMessages.checkpointMonth}>
+          <input
+            type="month"
+            value={dialog.checkpointMonth ?? ""}
+            enterKeyHint="next"
+            onChange={(event) => set({ checkpointMonth: event.target.value })}
+          />
+        </DetailRow>
+        <DateRow
+          isSheet={isSheet}
+          rowKey="start"
+          label={settingsMessages.checkpointStartDate}
+          value={dialog.statementStartDate ?? ""}
+          valueLabel={dateLabel(dialog.statementStartDate)}
+          onValueChange={(statementStartDate) => set({ statementStartDate })}
+        />
+        <DateRow
+          isSheet={isSheet}
+          rowKey="end"
+          label={settingsMessages.checkpointEndDate}
+          value={dialog.statementEndDate ?? ""}
+          valueLabel={dateLabel(dialog.statementEndDate)}
+          onValueChange={(statementEndDate) => set({ statementEndDate })}
+        />
+        <DetailRow label={settingsMessages.checkpointBalance}>
+          <input
+            inputMode="decimal"
+            value={dialog.statementBalance ?? "0.00"}
+            enterKeyHint="done"
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
+            onChange={(event) => set({ statementBalance: event.target.value })}
+          />
+        </DetailRow>
+        <DetailRow label={settingsMessages.checkpointNote}>
+          <textarea
+            rows={1}
+            value={dialog.note ?? ""}
+            onChange={(event) => set({ note: event.target.value })}
+          />
+        </DetailRow>
+      </DetailRows>
+      <p className="lsd-note">{settingsMessages.checkpointHelp}</p>
+      {dialog.history?.length ? (
+        <SettingsCheckpointHistory
+          isSubmitting={isSubmitting}
+          checkpointHistoryYears={checkpointHistoryYears}
+          checkpointHistoryYear={checkpointHistoryYear}
+          visibleCheckpointHistory={visibleCheckpointHistory}
+          onHistoryYearChange={onHistoryYearChange}
+          onEditCheckpoint={onEditCheckpoint}
+          onDownloadCheckpoint={onDownloadCheckpoint}
+          onCompareCheckpoint={onCompareCheckpoint}
+          renderCheckpointDeleteAction={renderCheckpointDeleteAction}
+          formatCheckpointMonth={formatCheckpointMonth}
+          formatCheckpointCoverage={formatCheckpointCoverage}
+          formatCheckpointBalanceLine={formatCheckpointBalanceLine}
+          formatCheckpointDelta={formatCheckpointDelta}
+        />
+      ) : null}
+    </SheetDialog>
   );
+}
+
+// The fields a person edits; the history list does not count as a change.
+function pickCheckpointFields(dialog) {
+  return {
+    checkpointMonth: dialog.checkpointMonth,
+    statementStartDate: dialog.statementStartDate,
+    statementEndDate: dialog.statementEndDate,
+    statementBalance: dialog.statementBalance,
+    note: dialog.note
+  };
 }
 
 function SettingsCheckpointHistory({

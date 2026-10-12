@@ -8,6 +8,7 @@ import { ImportAskFirst } from "./import-batch-bar";
 import { useFollowingFold } from "./use-following-fold";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
+import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { addDaysToIsoDate, todayInAppTimeZone } from "./app-dates";
 import "./import-bring-files.css";
@@ -181,7 +182,8 @@ export function ImportIntakeQueueSection({
   hasUnsavedReviewWork = false,
   onLoadItem,
   onRemoveItem,
-  onClear
+  onClear,
+  onChooseFiles = undefined
 }) {
   return (
     <section className="panel-subsection import-intake-section" data-import-target="intake-queue">
@@ -249,10 +251,13 @@ export function ImportIntakeQueueSection({
           </div>
         </>
       ) : (
-        <div className="import-intake-empty">
-          <strong>{importMessages.intakeEmptyTitle}</strong>
-          <span>{importMessages.intakeEmptyDetail}</span>
-        </div>
+        <EmptyState
+          icon={<FileText />}
+          title={importMessages.intakeEmptyTitle}
+          action={onChooseFiles ? { label: importMessages.selectFileTitle, onClick: onChooseFiles } : null}
+        >
+          {importMessages.intakeEmptyDetail}
+        </EmptyState>
       )}
     </section>
   );

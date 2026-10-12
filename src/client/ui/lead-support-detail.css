@@ -15,7 +15,7 @@
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 22px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
 }
 
@@ -63,8 +63,8 @@
 }
 
 .lsd-bubble {
-  border: 1px solid color-mix(in srgb, var(--cat) 35%, white);
-  background: color-mix(in srgb, var(--cat) 20%, white);
+  border: 1px solid color-mix(in srgb, var(--cat) 35%, var(--paper));
+  background: color-mix(in srgb, var(--cat) 20%, var(--paper));
   color: color-mix(in srgb, var(--cat) 70%, var(--text));
 }
 
@@ -78,8 +78,8 @@
 /* A caller's bubble (the category appearance button) in the category's
    soft pair, like the built one. */
 .lsd-bubble-slot > .category-icon {
-  border: 1px solid color-mix(in srgb, var(--category-color) 35%, white);
-  background: color-mix(in srgb, var(--category-color) 20%, white);
+  border: 1px solid color-mix(in srgb, var(--category-color) 35%, var(--paper));
+  background: color-mix(in srgb, var(--category-color) 20%, var(--paper));
   box-shadow: none;
   color: color-mix(in srgb, var(--category-color) 70%, var(--text));
 }
@@ -145,7 +145,7 @@
   display: inline-flex;
   align-items: baseline;
   justify-content: flex-end;
-  border-bottom: 2px solid color-mix(in srgb, var(--accent-strong) 55%, white);
+  border-bottom: 2px solid color-mix(in srgb, var(--accent-strong) 55%, var(--paper));
 }
 
 .lsd-amount > input {
@@ -245,14 +245,14 @@
   height: 8px;
   overflow: hidden;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--pastel-sky) 85%, white);
+  background: color-mix(in srgb, var(--pastel-sky) 85%, var(--paper));
 }
 
 .lsd-bar-fill {
   display: block;
   height: 100%;
   border-radius: 6px;
-  background: var(--money-ink, color-mix(in srgb, var(--text) 55%, white));
+  background: var(--money-ink, color-mix(in srgb, var(--text) 55%, var(--paper)));
 }
 
 .lsd-progress-line {
@@ -433,7 +433,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgb(var(--paper-rgb) / 0.6);
 }
 
 .lsd-row {
@@ -690,7 +690,7 @@
   margin: 0 calc(-1 * var(--bottom-actions-bleed, 0px));
   padding: 12px max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   border-top: 1px solid var(--line);
-  background: rgba(255, 252, 249, 0.98);
+  background: rgb(var(--cream-rgb, 255 252 249) / 0.98);
 }
 
 .lsd-bottom.is-sheet-bar .lsd-quiet {
@@ -740,12 +740,12 @@
   padding: 0 22px;
   border: 0;
   background: var(--accent-strong);
-  color: #fff;
+  color: var(--on-strong);
   font-weight: 700;
 }
 
 .lsd-primary:disabled {
-  background: color-mix(in srgb, var(--accent-strong) 28%, white);
+  background: color-mix(in srgb, var(--accent-strong) 28%, var(--paper));
   cursor: default;
 }
 

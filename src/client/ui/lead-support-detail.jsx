@@ -7,6 +7,7 @@ import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { moneyToneClass } from "../money-tone-class";
 import { getPersonColourVars } from "../person-colour";
 import { ICON_REGISTRY } from "../ui-options";
+import { paletteColour } from "../palette-colour";
 
 // Lead · Support · Detail (design.md): each sheet or screen top has one thing
 // you look at first (the Lead card), a few facts that explain it (Support
@@ -120,7 +121,7 @@ export function LeadCard({
           <LeadBubble bubble={bubble ?? category?.bubble ?? null} category={category} colour={colour} />
           <div className="lsd-heading">
             {typeof title === "string" ? <strong className="lsd-title">{title}</strong> : title}
-            {subtitle ? <span className="lsd-subtitle" style={{ "--cat": colour }}>{subtitle}</span> : null}
+            {subtitle ? <span className="lsd-subtitle" style={{ "--cat": paletteColour(colour) }}>{subtitle}</span> : null}
           </div>
           {amountNode && amountCaption ? (
             <AmountColumn className="lsd-amount-column">
@@ -167,7 +168,7 @@ function LeadBubble({ bubble, category, colour }) {
   }
   const Icon = category?.icon ?? (category?.iconKey ? ICON_REGISTRY[category.iconKey] ?? Receipt : null);
   return (
-    <span className="lsd-bubble" style={{ "--cat": colour }} aria-hidden="true">
+    <span className="lsd-bubble" style={{ "--cat": paletteColour(colour) }} aria-hidden="true">
       {Icon ? <Icon size={26} strokeWidth={2} /> : null}
     </span>
   );

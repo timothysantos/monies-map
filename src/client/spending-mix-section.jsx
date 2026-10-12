@@ -14,6 +14,7 @@ import {
   toggleHiddenDonutItemIds
 } from "./donut-visibility";
 import { getCategory, getCategoryTheme } from "./category-utils";
+import { paletteColour } from "./palette-colour";
 import { money } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { EmptyState } from "./ui-states";
@@ -94,7 +95,7 @@ export function SpendingMixSection({
                 <div
                   key={item.key}
                   className={`summary-mix-row ${isHidden ? "is-hidden-from-donut" : ""}`}
-                  style={{ "--bar-color": getCategoryTheme(categories, item, index).color }}
+                  style={{ "--bar-color": paletteColour(getCategoryTheme(categories, item, index).color) }}
                 >
                   <CategoryAppearancePopover category={category} onChange={onCategoryAppearanceChange} />
                   <button
@@ -134,7 +135,7 @@ export function SpendingMixSection({
           </DetailRows>
         </div>
       ) : (
-        <EmptyState>{messages.entries.noSpendBreakdown}</EmptyState>
+        <EmptyState compact title={messages.entries.noSpendBreakdown}>{messages.entries.noSpendBreakdownDetail}</EmptyState>
       )}
     </section>
   );

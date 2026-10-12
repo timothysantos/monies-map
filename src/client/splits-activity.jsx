@@ -14,6 +14,7 @@ import { InlineError } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
+import { paletteColour } from "./palette-colour";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -336,7 +337,7 @@ export function SplitActivityGroups({
           const cardContent = (
             <>
               <div className="split-activity-leading">
-                <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
+                <span className="category-icon category-icon-static" style={{ "--category-color": paletteColour(theme.color) }}>
                   <CategoryGlyph iconKey={theme.iconKey} />
                 </span>
               </div>

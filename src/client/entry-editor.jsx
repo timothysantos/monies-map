@@ -1,7 +1,6 @@
-import { X } from "lucide-react";
-import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowLeftRight } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
-import { useEffect, useRef, useState } from "react";
+import { cloneElement, useEffect, useRef, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -9,12 +8,17 @@ import { entryTypeLabel } from "./enum-labels";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
+import { PickerRow } from "./detail-field-rows";
 import { ResponsiveSelect } from "./responsive-select";
+import { SheetDialog } from "./sheet-dialog";
 import { CategoryGlyph } from "./ui-components";
+import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
 import { moneyToneClass } from "./money-tone-class";
 import { entryAmountTone } from "../domain/money-tone";
 import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
+import { paletteColour } from "./palette-colour";
 
 const {
   categories: categoryService,
@@ -130,7 +134,7 @@ export function EntryEditorFields({
             ) : (
               <span
                 className="category-icon category-icon-static"
-                style={{ "--category-color": categoryTheme.color }}
+                style={{ "--category-color": paletteColour(categoryTheme.color) }}
               >
                 <CategoryGlyph iconKey={categoryTheme.iconKey} />
               </span>
@@ -374,11 +378,14 @@ export function EntryTransferTools({
   showLabel = true
 }) {
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
+  const [openRow, setOpenRow] = useState(null);
+  const isSheet = useIsMobileLayout();
 
   if (entry.entryType !== "transfer") {
     return null;
   }
 
+  const isOpen = transferDialogEntryId === entry.id;
   const isLinkedTransfer = Boolean(entry.linkedTransfer);
   const isRefreshingCandidates = refreshingTransferCandidatesEntryId === entry.id;
   const isRankingCandidates = rankingTransferCandidatesEntryId === entry.id;
@@ -388,242 +395,225 @@ export function EntryTransferTools({
   const entrySignedAmountMinor = entry.transferDirection === "out"
     ? -Math.abs(entry.amountMinor)
     : Math.abs(entry.amountMinor);
+  const wallets = entryService.getTransferWallets(entry);
+  const settlementCategories = categoryOptions.filter((option) => option !== "Transfer").map((option) => ({ value: option, label: option }));
+  const settlementDraft = transferSettlementDrafts[entry.id];
+
+  function openDialog() {
+    onEnsureSettlementDraft(entry);
+    onTransferDialogEntryChange(entry.id);
+    setExpandedCandidateId(null);
+    void onRefreshCandidates?.(entry);
+  }
+
+  function closeDialog() {
+    setExpandedCandidateId(null);
+    setOpenRow(null);
+    onTransferDialogEntryChange((current) => current === entry.id ? null : current);
+  }
+
+  const openTrigger = trigger ?? <button type="button" className="subtle-action">Manage transfer</button>;
+  const rowOpenProps = (key) => ({ open: openRow === key, onOpenChange: (open) => setOpenRow(open ? key : null) });
 
   return (
     <div className="entry-edit-transfer-helper">
       {showLabel ? <span>Transfer match</span> : null}
-      <Dialog.Root
-        open={transferDialogEntryId === entry.id}
-        onOpenChange={(open) => {
-          if (open) {
-            onEnsureSettlementDraft(entry);
-            onTransferDialogEntryChange(entry.id);
-            setExpandedCandidateId(null);
-            void onRefreshCandidates?.(entry);
-            return;
-          }
-          setExpandedCandidateId(null);
-          onTransferDialogEntryChange((current) => current === entry.id ? null : current);
-        }}
-      >
-        <Dialog.Trigger asChild>
-          {trigger ?? (
-            <button type="button" className="subtle-action">
-              Manage transfer
+      {cloneElement(openTrigger, {
+        "aria-haspopup": "dialog",
+        "aria-expanded": isOpen,
+        onClick: (event) => {
+          openTrigger.props.onClick?.(event);
+          openDialog();
+        }
+      })}
+      {isOpen ? (
+        <SheetDialog
+          wide
+          className="transfer-match-dialog"
+          title="Transfer details"
+          description={isLinkedTransfer
+            ? "Review, relink, or break this matched transfer pair."
+            : "This row is marked as a transfer and still needs a matching wallet row."}
+          closeLabel="Close transfer manager"
+          lead={(
+            <LeadCard
+              className="sheet-dialog-lead"
+              category={{ icon: ArrowLeftRight }}
+              title={entry.description}
+              subtitle={formatService.formatDateOnly(entry.date)}
+              amount={formatService.money(entrySignedAmountMinor)}
+              chips={(
+                <>
+                  <MetaChip tone={isLinkedTransfer ? "mint" : "butter"}>{isLinkedTransfer ? "Matched" : "Needs a match"}</MetaChip>
+                  <MetaChip>{entry.transferDirection === "in" ? "Transfer in" : "Transfer out"}</MetaChip>
+                </>
+              )}
+            >
+              {entry.note ? <p className="lsd-note">{entry.note}</p> : null}
+            </LeadCard>
+          )}
+          quietLabel={null}
+          destructive={(
+            <button
+              type="button"
+              className="lsd-quiet is-danger"
+              disabled={settlingTransferEntryId === entry.id}
+              onClick={() => void onSettleTransfer(entry)}
+            >
+              {isLinkedTransfer ? "Break connection" : "Convert entry"}
             </button>
           )}
-        </Dialog.Trigger>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content transfer-match-dialog">
-            <div className="transfer-match-head">
-              <div>
-                <Dialog.Title>Transfer details</Dialog.Title>
-                <Dialog.Description>
-                  {isLinkedTransfer
-                    ? "Review, relink, or break this matched transfer pair."
-                    : "This row is marked as a transfer and still needs a matching wallet row."}
-                </Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close transfer manager"
-                onClick={() => onTransferDialogEntryChange(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="transfer-match-layout">
-              <section className="transfer-match-section">
-                <h4>Wallets</h4>
-                <div className="transfer-wallet-grid">
-                  <div>
-                    <span className="transfer-match-label">From wallet</span>
-                    <strong>{entryService.getTransferWallets(entry).fromWalletName}</strong>
-                  </div>
-                  <div>
-                    <span className="transfer-match-label">To wallet</span>
-                    <strong>{entryService.getTransferWallets(entry).toWalletName}</strong>
-                  </div>
-                </div>
-              </section>
-              <section className="transfer-match-section">
-                <h4>This entry</h4>
-                <div className="transfer-match-card transfer-match-card-static">
-                  <div className="transfer-match-card-body">
-                    <strong>{entryWalletLabel}</strong>
-                    <p>{formatService.formatDateOnly(entry.date)} • {entry.description}</p>
-                    <div className="transfer-match-detail-grid">
-                      <span>
-                        <span className="transfer-match-label">Amount</span>
-                        <strong>{formatService.money(entrySignedAmountMinor)}</strong>
-                      </span>
-                      <span>
-                        <span className="transfer-match-label">Direction</span>
-                        <strong>{entry.transferDirection === "in" ? "Transfer in" : "Transfer out"}</strong>
-                      </span>
-                    </div>
-                    {entry.note ? (
-                      <p className="transfer-match-detail-note">{entry.note}</p>
-                    ) : null}
-                  </div>
-                </div>
-              </section>
-              <section className="transfer-match-section">
-                <h4>{isLinkedTransfer ? "Exact matches" : "Find matching side"}</h4>
-                <div className="transfer-match-section-head">
-                  <span className="transfer-match-label">
-                    {isLinkedTransfer ? "Potential exact matches" : "Potential rows with the same amount in another wallet"}
-                  </span>
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={isRefreshingCandidates}
-                    onClick={() => void onRefreshCandidates?.(entry)}
-                  >
-                    {isRefreshingCandidates ? "Checking..." : "Recheck matches"}
-                  </button>
-                  {onRankCandidates ? (
-                    <button
-                      type="button"
-                      className="subtle-action"
-                      disabled={isRankingCandidates || !transferCandidates.length}
-                      onClick={() => void onRankCandidates(entry)}
-                    >
-                      {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="transfer-match-stack">
-                  {transferCandidatesError ? (
-                    <p className="transfer-match-empty">{transferCandidatesError}</p>
-                  ) : null}
-                  {transferCandidates.length ? transferCandidates.map((candidate) => {
-                    const isCurrentLink = entry.linkedTransfer?.transactionId === candidate.id;
-                    const candidateWalletLabel = candidate.accountOwnerLabel
-                      ? `${candidate.accountName} - ${candidate.accountOwnerLabel}`
-                      : candidate.accountName;
-                    const candidateSignedAmountMinor = candidate.transferDirection === "out"
-                      ? -Math.abs(candidate.amountMinor)
-                      : Math.abs(candidate.amountMinor);
-                    const isExpanded = expandedCandidateId === candidate.id;
-                    return (
-                      <div key={candidate.id} className="transfer-match-card">
-                        <button
-                          type="button"
-                          className="transfer-match-card-toggle"
-                          aria-expanded={isExpanded}
-                          onClick={() => setExpandedCandidateId((current) => current === candidate.id ? null : candidate.id)}
-                        >
-                          <div className="transfer-match-card-body">
-                            <strong>{candidateWalletLabel}</strong>
-                            <p>{formatService.formatDateOnly(candidate.date)} • {candidate.description}</p>
-                            {typeof transferAiScores[candidate.id] === "number" ? (
-                              <p className="transfer-match-label">Optional description similarity: {transferAiScores[candidate.id]}%</p>
-                            ) : null}
-                            {isExpanded ? (
-                              <div className="transfer-match-detail-grid">
-                                <span>
-                                  <span className="transfer-match-label">Amount</span>
-                                  <strong>{formatService.money(candidateSignedAmountMinor)}</strong>
-                                </span>
-                                <span>
-                                  <span className="transfer-match-label">Direction</span>
-                                  <strong>{candidate.transferDirection === "in" ? "Transfer in" : "Transfer out"}</strong>
-                                </span>
-                                <span>
-                                  <span className="transfer-match-label">Wallet</span>
-                                  <strong>{candidateWalletLabel}</strong>
-                                </span>
-                                <span>
-                                  <span className="transfer-match-label">Type</span>
-                                  <strong>{entryTypeLabel(candidate.entryType)}</strong>
-                                </span>
-                              </div>
-                            ) : null}
-                            {isExpanded && candidate.note ? (
-                              <p className="transfer-match-detail-note">{candidate.note}</p>
-                            ) : null}
-                          </div>
-                          <span className="transfer-match-detail-toggle">
-                            {isExpanded ? "Hide details" : "View details"}
-                          </span>
-                        </button>
-                        {isCurrentLink ? (
-                          <span className="entry-chip entry-chip-transfer">Current match</span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="subtle-action"
-                            disabled={linkingTransferEntryId === entry.id}
-                            onClick={() => void onLinkCandidate(entry, candidate)}
-                          >
-                            Use match
-                          </button>
-                        )}
-                      </div>
-                    );
-                  }) : (
-                    <p className="transfer-match-empty">
-                      {isLinkedTransfer
-                        ? "No exact amount match found in another wallet for this month."
-                        : "No matching row exists yet. Import or add the other side of this transfer, then link it here."}
-                    </p>
-                  )}
-                </div>
-              </section>
-              <section className="transfer-match-section transfer-settlement">
-                <h4>{isLinkedTransfer ? "Break connection" : "Not a transfer?"}</h4>
-                <span className="transfer-match-label">
-                  {isLinkedTransfer ? "Break connection and convert both sides" : "Convert this unmatched transfer into a regular entry"}
-                </span>
-                <div className="transfer-settlement-grid">
-                  <label>
-                    <span>This entry becomes</span>
-                    <select
-                      className="table-edit-input"
-                      value={transferSettlementDrafts[entry.id]?.currentCategoryName ?? "Other"}
-                      onChange={(event) => onSettlementDraftChange(entry.id, { currentCategoryName: event.target.value })}
-                    >
-                      {categoryOptions.filter((option) => option !== "Transfer").map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </label>
-                  {entry.linkedTransfer ? (
-                    <label>
-                      <span>Counterpart becomes</span>
-                      <select
-                        className="table-edit-input"
-                        value={transferSettlementDrafts[entry.id]?.counterpartCategoryName ?? "Other"}
-                        onChange={(event) => onSettlementDraftChange(entry.id, { counterpartCategoryName: event.target.value })}
-                      >
-                        {categoryOptions.filter((option) => option !== "Transfer").map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                </div>
-                <p className="transfer-match-empty">
-                  {isLinkedTransfer
-                    ? "This removes the transfer link for both sides so you do not leave the counterpart behind as a transfer."
-                    : "Use this only if the import classified the row as a transfer but it is actually normal income or spending."}
-                </p>
+          primaryLabel="Done"
+          onSubmit={closeDialog}
+          onClose={closeDialog}
+        >
+          <DetailRows label="Wallets">
+            <DetailRow readOnly label="From wallet" value={wallets.fromWalletName} />
+            <DetailRow readOnly label="To wallet" value={wallets.toWalletName} />
+            <DetailRow readOnly label="This entry" value={entryWalletLabel} />
+          </DetailRows>
+          <section className="transfer-match-section transfer-match-candidates">
+            <h4>{isLinkedTransfer ? "Exact matches" : "Find matching side"}</h4>
+            <div className="transfer-match-section-head">
+              <span className="transfer-match-label">
+                {isLinkedTransfer ? "Potential exact matches" : "Potential rows with the same amount in another wallet"}
+              </span>
+              <div className="transfer-match-tools">
                 <button
                   type="button"
-                  className="subtle-action"
-                  disabled={settlingTransferEntryId === entry.id}
-                  onClick={() => void onSettleTransfer(entry)}
+                  className="lsd-quiet"
+                  disabled={isRefreshingCandidates}
+                  onClick={() => void onRefreshCandidates?.(entry)}
                 >
-                  {isLinkedTransfer ? "Break connection" : "Convert entry"}
+                  {isRefreshingCandidates ? "Checking..." : "Recheck matches"}
                 </button>
-              </section>
+                {onRankCandidates ? (
+                  <button
+                    type="button"
+                    className="lsd-quiet"
+                    disabled={isRankingCandidates || !transferCandidates.length}
+                    onClick={() => void onRankCandidates(entry)}
+                  >
+                    {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
+                  </button>
+                ) : null}
+              </div>
             </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+            <div className="transfer-match-stack">
+              {transferCandidatesError ? (
+                <p className="transfer-match-empty">{transferCandidatesError}</p>
+              ) : null}
+              {transferCandidates.length ? transferCandidates.map((candidate) => {
+                const isCurrentLink = entry.linkedTransfer?.transactionId === candidate.id;
+                const candidateWalletLabel = candidate.accountOwnerLabel
+                  ? `${candidate.accountName} - ${candidate.accountOwnerLabel}`
+                  : candidate.accountName;
+                const candidateSignedAmountMinor = candidate.transferDirection === "out"
+                  ? -Math.abs(candidate.amountMinor)
+                  : Math.abs(candidate.amountMinor);
+                const isExpanded = expandedCandidateId === candidate.id;
+                return (
+                  <div key={candidate.id} className="transfer-match-card">
+                    <button
+                      type="button"
+                      className="transfer-match-card-toggle"
+                      aria-expanded={isExpanded}
+                      onClick={() => setExpandedCandidateId((current) => current === candidate.id ? null : candidate.id)}
+                    >
+                      <div className="transfer-match-card-body">
+                        <strong>{candidateWalletLabel}</strong>
+                        <p>{formatService.formatDateOnly(candidate.date)} • {candidate.description}</p>
+                        {typeof transferAiScores[candidate.id] === "number" ? (
+                          <p className="transfer-match-label">Optional description similarity: {transferAiScores[candidate.id]}%</p>
+                        ) : null}
+                        {isExpanded ? (
+                          <div className="transfer-match-detail-grid">
+                            <span>
+                              <span className="transfer-match-label">Amount</span>
+                              <strong>{formatService.money(candidateSignedAmountMinor)}</strong>
+                            </span>
+                            <span>
+                              <span className="transfer-match-label">Direction</span>
+                              <strong>{candidate.transferDirection === "in" ? "Transfer in" : "Transfer out"}</strong>
+                            </span>
+                            <span>
+                              <span className="transfer-match-label">Wallet</span>
+                              <strong>{candidateWalletLabel}</strong>
+                            </span>
+                            <span>
+                              <span className="transfer-match-label">Type</span>
+                              <strong>{entryTypeLabel(candidate.entryType)}</strong>
+                            </span>
+                          </div>
+                        ) : null}
+                        {isExpanded && candidate.note ? (
+                          <p className="transfer-match-detail-note">{candidate.note}</p>
+                        ) : null}
+                      </div>
+                      <span className="transfer-match-detail-toggle">
+                        {isExpanded ? "Hide details" : "View details"}
+                      </span>
+                    </button>
+                    {isCurrentLink ? (
+                      <span className="entry-chip entry-chip-transfer">Current match</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="lsd-quiet"
+                        disabled={linkingTransferEntryId === entry.id}
+                        onClick={() => void onLinkCandidate(entry, candidate)}
+                      >
+                        Use match
+                      </button>
+                    )}
+                  </div>
+                );
+              }) : (
+                <p className="transfer-match-empty">
+                  {isLinkedTransfer
+                    ? "No exact amount match found in another wallet for this month."
+                    : "No matching row exists yet. Import or add the other side of this transfer, then link it here."}
+                </p>
+              )}
+            </div>
+          </section>
+          <section className="transfer-match-section transfer-settlement">
+            <h4>{isLinkedTransfer ? "Break connection" : "Not a transfer?"}</h4>
+            <span className="transfer-match-label">
+              {isLinkedTransfer ? "Break connection and convert both sides" : "Convert this unmatched transfer into a regular entry"}
+            </span>
+            <DetailRows label={isLinkedTransfer ? "Break connection" : "Not a transfer?"}>
+              <PickerRow
+                isSheet={isSheet}
+                rowKey="current-category"
+                label="This entry becomes"
+                valueLabel={settlementDraft?.currentCategoryName ?? "Other"}
+                value={settlementDraft?.currentCategoryName ?? "Other"}
+                options={settlementCategories}
+                onValueChange={(currentCategoryName) => onSettlementDraftChange(entry.id, { currentCategoryName })}
+                {...rowOpenProps("current-category")}
+              />
+              {entry.linkedTransfer ? (
+                <PickerRow
+                  isSheet={isSheet}
+                  rowKey="counterpart-category"
+                  label="Counterpart becomes"
+                  valueLabel={settlementDraft?.counterpartCategoryName ?? "Other"}
+                  value={settlementDraft?.counterpartCategoryName ?? "Other"}
+                  options={settlementCategories}
+                  onValueChange={(counterpartCategoryName) => onSettlementDraftChange(entry.id, { counterpartCategoryName })}
+                  {...rowOpenProps("counterpart-category")}
+                />
+              ) : null}
+            </DetailRows>
+            <p className="transfer-match-empty">
+              {isLinkedTransfer
+                ? "This removes the transfer link for both sides so you do not leave the counterpart behind as a transfer."
+                : "Use this only if the import classified the row as a transfer but it is actually normal income or spending."}
+            </p>
+          </section>
+        </SheetDialog>
+      ) : null}
     </div>
   );
 }

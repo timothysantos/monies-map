@@ -1,14 +1,18 @@
-import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
-import { Info, X } from "lucide-react";
+import { CalendarDays, Info } from "lucide-react";
 import { DuplicateMatchPopover } from "./import-preview-row-helpers";
+import { RestorePreviewRowDialog } from "./import-restore-row-dialog";
+import { DateRow } from "./detail-field-rows";
+import { SheetDialog } from "./sheet-dialog";
+import { DetailRow, DetailRows, LeadCard } from "./ui-components";
+import { AddRow } from "./settings-add-row";
+import { DeleteRowButton } from "./delete-row-button";
+import { useIsMobileLayout } from "./use-viewport";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
 import { entryTypeLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton, DetailRow, DetailRows } from "./ui-components";
-import { AddRow } from "./settings-add-row";
 import { StatementFixSuggestions } from "./statement-fix-suggestions";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
@@ -363,35 +367,11 @@ function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
         </div>
       </div>
 
-      <Dialog.Root open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{importMessages.restorePreviewRow}</Dialog.Title>
-                <Dialog.Description>{importMessages.restoreExactCoveredRowConfirm}</Dialog.Description>
-              </div>
-              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
-            </div>
-            <div className="note-dialog-actions">
-              <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
-              <button
-                type="button"
-                className="dialog-primary"
-                onClick={() => {
-                  if (restoreTarget) {
-                    onUpdatePreviewRowCommitStatus(restoreTarget.rowId, "included");
-                  }
-                  setRestoreTarget(null);
-                }}
-              >
-                Restore row
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <RestorePreviewRowDialog
+        row={restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onRestore={(row) => onUpdatePreviewRowCommitStatus(row.rowId, "included")}
+      />
     </>
   );
 }
@@ -1401,9 +1381,9 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
   const [postDate, setPostDate] = useState(initialDate);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
+  const isSheet = useIsMobileLayout();
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function handleSubmit() {
     if (!postDate) {
       setError("Choose a posted date.");
       return;
@@ -1424,65 +1404,58 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
   }
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (isWorking) {
-          return;
-        }
-        setOpen(nextOpen);
-        if (nextOpen) {
+    <>
+      <button
+        type="button"
+        className="statement-reconciliation-post-date-button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
           setPostDate(initialDate);
           setError("");
-        }
-      }}
-    >
-      <Dialog.Trigger asChild>
-        <button type="button" className="statement-reconciliation-post-date-button">
-          {importMessages.setDiagnosticPostDate}
-        </button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content statement-reconciliation-post-date-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-          <form onSubmit={(event) => void handleSubmit(event)}>
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{importMessages.setDiagnosticPostDateTitle}</Dialog.Title>
-                <Dialog.Description className="lede compact">
-                  {importMessages.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
-                </Dialog.Description>
-              </div>
-              <Dialog.Close asChild>
-                <button type="button" className="icon-action subtle-cancel" aria-label="Close" disabled={isWorking}>
-                  <X size={16} aria-hidden="true" />
-                </button>
-              </Dialog.Close>
-            </div>
-            <label className="field-stack">
-              <span>{importMessages.setDiagnosticPostDateField}</span>
-              <input
-                className="table-edit-input"
-                type="date"
-                value={postDate}
-                onChange={(event) => setPostDate(event.target.value)}
-              />
-            </label>
-            <InlineError message={error} />
-            <div className="note-dialog-actions">
-              <Dialog.Close asChild>
-                <button type="button" className="subtle-action" disabled={isWorking}>
-                  Cancel
-                </button>
-              </Dialog.Close>
-              <button type="submit" className="dialog-primary" disabled={isWorking}>
-                {importMessages.setDiagnosticPostDateConfirm}
-              </button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          setOpen(true);
+        }}
+      >
+        {importMessages.setDiagnosticPostDate}
+      </button>
+      {open ? (
+        <SheetDialog
+          className="statement-reconciliation-post-date-dialog"
+          title={importMessages.setDiagnosticPostDateTitle}
+          description={importMessages.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
+          descriptionHidden
+          closeLabel="Close"
+          lead={(
+            <LeadCard
+              className="sheet-dialog-lead"
+              category={{ icon: CalendarDays }}
+              title={row.description}
+              subtitle={formatService.formatDateOnly(initialDate)}
+            >
+              <p className="lsd-note">{importMessages.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}</p>
+            </LeadCard>
+          )}
+          errorMessage={error}
+          primaryLabel={importMessages.setDiagnosticPostDateConfirm}
+          primaryDisabled={isWorking}
+          isSubmitting={isWorking}
+          isDirty={postDate !== initialDate}
+          onSubmit={handleSubmit}
+          onClose={() => setOpen(false)}
+        >
+          <DetailRows label={importMessages.setDiagnosticPostDateTitle}>
+            <DateRow
+              isSheet={isSheet}
+              rowKey="post-date"
+              label={importMessages.setDiagnosticPostDateField}
+              value={postDate}
+              valueLabel={postDate ? formatService.formatDateOnly(postDate) : ""}
+              onValueChange={setPostDate}
+            />
+          </DetailRows>
+        </SheetDialog>
+      ) : null}
+    </>
   );
 }
 

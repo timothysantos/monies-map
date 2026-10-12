@@ -88,11 +88,15 @@ Cancel or Close, and Save; while Add to splits asks for a group, the bar
 becomes the group question (`EntrySplitGroupPickerFooter`). The add sheet
 (composer) still uses the grid form (`EntryEditorFields`).
 
-The card's date, wallet and owner chips open the same picker as their
-Detail row (the wallet's unfolds More details; on a wide screen a chip
-focuses its row's select); a certified entry's date and wallet chips show a
-lock and open nothing, and the bank state chip is never an editor
-(design.md "Tappable chips"). The bank state chip names the tool that saved
+On a phone the card's date, wallet and owner chips open the same picker as
+their Detail row (the wallet's unfolds More details). On a wide screen the
+inline editor has no Date, Wallet or Owner row (a row would repeat its
+chip), so those chips are the fields: a date field over the date chip, a
+native list over the wallet and owner chips, patching the same draft through
+the same handlers, so the saved request is the one the rows sent
+(`entries-lsd.spec.js`). A certified entry's date and wallet chips show a
+lock and open nothing (the owner chip still edits), and the bank state chip
+is never an editor (design.md "Tappable chips"). The bank state chip names the tool that saved
 a provisional entry ("Apple Pay · provisional", "Ask · provisional"), More
 details adds a read-only "Added by" row when the entry's `addedBy` is known
 (and its folded hint ends "added by", `moreDetailsSummary`),
@@ -102,6 +106,21 @@ the entry's external reference, which never reaches the page (DOMAIN.md
 "Added By"). Every phone picker scrolls its own options list, so a long
 Wallet or Category list reaches its last option by touch
 (`tests/e2e/picker-scroll.spec.js`).
+
+The top of the page is a lead and four pills (`EntriesTotals`,
+`entries-totals-model.js`): "Spent · month" in plain ink with the person's
+share as its aside, then Income, Difference, Transfers and Outflow. The
+figures are the filtered view's totals (`entry-totals.js`, unchanged); the
+model only picks tones (`entryTotalsTones`: income and the difference carry
+their direction, the rest is plain ink) and shows a person's share where it
+differs from the whole. Two Detail rows sit with the lead: "Spending by
+category" toggles the existing breakdown, and, on a phone only, "Filters"
+opens the View and scope sheet (`onOpenMobileContext` in `App.jsx`; the
+row says "All entries" or "N filters on"). The inline "+ Add entry" is gone:
+the round + opens Ask's new entry card and its "Edit in form" opens the
+form. List rows show a quiet category line, the wallet as a quiet line and a
+right-aligned amount, with the person's colour edge; the day header is a
+hairline divider with the daily net (design.md "Entries list").
 
 ## Data Flow
 

@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { entryAmountTone } from "../domain/money-tone";
+import { paletteColour } from "./palette-colour";
 import { getPersonColour } from "./person-colour";
 
 export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
@@ -35,6 +36,9 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
     transferLabel: entry.entryType === "transfer"
       ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
       : null,
+    // A matched transfer is settled bookkeeping, so its chip is a quiet
+    // line; an unmatched one keeps the pill that asks for a look.
+    isTransferMatched: entry.entryType === "transfer" && Boolean(entry.linkedTransfer),
     transferDetail: entry.linkedTransfer
       ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
       : entry.accountName,
@@ -56,12 +60,12 @@ export function getSplitGroupChipStyle(groupName) {
     (value, character) => ((value << 5) - value + character.charCodeAt(0)) | 0,
     0
   );
-  const colour = palette[Math.abs(hash) % palette.length];
+  const colour = paletteColour(palette[Math.abs(hash) % palette.length]);
 
   return {
-    "--split-group-chip-bg": `color-mix(in srgb, ${colour} 16%, white)`,
+    "--split-group-chip-bg": `color-mix(in srgb, ${colour} 16%, var(--paper))`,
     "--split-group-chip-color": `color-mix(in srgb, ${colour} 55%, var(--text))`,
-    "--split-group-chip-border": `color-mix(in srgb, ${colour} 45%, white)`
+    "--split-group-chip-border": `color-mix(in srgb, ${colour} 45%, var(--paper))`
   };
 }
 
@@ -69,13 +73,13 @@ export function getEntryOwnerCue(entry, isLinkedToSplits = false) {
   const ownerKey = isLinkedToSplits
     ? "linked-splits"
     : entry.ownerName ?? entry.accountOwnerLabel ?? "unassigned";
-  const color = getPersonColour(ownerKey);
+  const color = paletteColour(getPersonColour(ownerKey));
 
   return {
     style: {
       "--entry-owner-color": color,
       // Solid, so the 5px edge keeps 3:1 against the row.
-      "--entry-owner-border-color": hexToRgba(color, 1)
+      "--entry-owner-border-color": color
     }
   };
 }
@@ -163,16 +167,4 @@ function getSignedTotalAmountMinor(entry) {
   }
 
   return -totalAmountMinor;
-}
-
-function hexToRgba(hex, alpha) {
-  const normalized = hex.replace("#", "");
-  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
-    return `rgba(106, 122, 115, ${alpha})`;
-  }
-
-  const red = Number.parseInt(normalized.slice(0, 2), 16);
-  const green = Number.parseInt(normalized.slice(2, 4), 16);
-  const blue = Number.parseInt(normalized.slice(4, 6), 16);
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }

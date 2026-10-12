@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, openEntryComposer, reseedDemo } from "./helpers";
 
 // The category dialog opens from inside entry and plan-row forms (the
 // mobile sheets and the desktop entry composer). It is portalled, but React
@@ -51,7 +51,7 @@ test("mobile: saving the category from the entry edit sheet saves only the categ
   const categorySaves = countRequests(page, "/api/categories/update");
 
   // An expense row: transfer rows show a locked category icon.
-  await rows.filter({ hasText: "Vivify" }).first().click();
+  await rows.filter({ hasText: "Vivify" }).first().locator(".entry-row-main").click();
   const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
   await expect(sheet).toBeVisible();
   const description = sheet.getByLabel("Description");
@@ -101,7 +101,7 @@ test("desktop: saving the category from the new entry composer saves only the ca
   const entryCreates = countRequests(page, "/api/entries/create");
   const categorySaves = countRequests(page, "/api/categories/update");
 
-  await page.getByRole("button", { name: "+ Add entry" }).first().click();
+  await openEntryComposer(page);
   const composer = page.locator(".entry-composer");
   await expect(composer).toBeVisible();
   const draft = `Unsaved composer draft ${Date.now()}`;

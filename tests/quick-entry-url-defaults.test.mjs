@@ -84,3 +84,37 @@ test("quick-entry URL keeps shared=true as a non-ledger hint", () => {
   assert.equal(result.draft.ownerName, "Tim");
   assert.equal(result.draft.addToSplits, false);
 });
+
+// Ask's "Edit in form" opens the same composer link with source=ask. A
+// blank card is a person starting by hand, not a Shortcut that lost its
+// Amount variable, so only a Shortcut link warns.
+test("a blank Ask card opened in the form carries no Shortcut warning", () => {
+  const result = buildQuickExpenseDraftPatch({
+    searchParams: new URLSearchParams("action=add-expense&source=ask"),
+    accountOptions,
+    categoryOptions: ["Other"],
+    ownerOptions: ["Tim", "Shared"],
+    fallbackOwnerName: "Tim"
+  });
+
+  assert.equal(result.warning, "");
+  assert.equal(result.draft.amountMinor, 0);
+  assert.equal(result.draft.ownerName, "Tim");
+});
+
+test("a Shortcut link without an amount still warns", () => {
+  for (const query of ["action=add-expense&merchant=Toast", "action=add-expense&amount=%5BAmount%5D&merchant=Toast"]) {
+    const result = buildQuickExpenseDraftPatch({
+      searchParams: new URLSearchParams(query),
+      accountOptions,
+      categoryOptions: ["Other"],
+      ownerOptions: ["Tim", "Shared"],
+      fallbackOwnerName: "Tim"
+    });
+    assert.equal(
+      result.warning,
+      "Shortcut did not pass an amount. Check that the URL uses the real Amount variable, not placeholder text.",
+      query
+    );
+  }
+});

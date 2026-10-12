@@ -44,7 +44,7 @@ test("money values start hidden, reveal together, and cover individual activity"
     "/api/entries-page",
     () => page.getByRole("heading", { name: "Entries", exact: true })
   );
-  await expect(page.locator(".entries-totals-strip")).toContainText("••••");
+  await expect(page.locator(".entries-totals")).toContainText("••••");
   await expect(page.locator(".entry-row-amount").first()).toContainText("••••");
   await expect(page.locator(".totals-visibility-toggle--entries")).toBeVisible();
   const entriesToggleBox = await page.locator(".totals-visibility-toggle--entries").boundingBox();

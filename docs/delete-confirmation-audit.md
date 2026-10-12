@@ -16,16 +16,16 @@ Every destructive user action must require an app-native confirmation before it 
 | Entries mobile edit sheet: Delete split created from entry | `/api/splits/expenses/delete` | Confirmed by `EntriesDeleteConfirmationDialog`; linked ledger entry stays intact. |
 | Splits page: Delete split expense row | `/api/splits/expenses/delete` | Confirmed by `SplitDeleteDialog`. |
 | Splits page: Delete settlement row | `/api/splits/settlements/delete` | Confirmed by `SplitDeleteDialog`. |
-| Month page: Delete planning income row | `/api/month-plan/delete` | Confirmed by `DeleteRowButton` popover. |
-| Month page: Delete planning row | `/api/month-plan/delete` | Confirmed by `DeleteRowButton` popover. |
+| Month page: Delete planning income row | `/api/month-plan/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone). |
+| Month page: Delete planning row | `/api/month-plan/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone). |
 | Month page: Delete whole month | `/api/months/delete` | Typed confirmation dialog; user must type `delete month`. |
-| Imports diagnostic reconciliation: Delete ledger row | `/api/entries/delete` | Confirmed by `DeleteRowButton` popover with row details. |
-| Imports diagnostic reconciliation: Delete all shown ledger rows | `/api/entries/delete` per row | Confirmed by `DeleteRowButton` popover with count and net amount. |
-| Imports history: Rollback import | `/api/imports/rollback` | Confirmed by `DeleteRowButton` popover before removing imported ledger rows. |
-| Settings: Archive account | account settings mutation | Confirmed by `DeleteRowButton` popover. |
-| Settings: Delete account checkpoint | `/api/accounts/checkpoints/delete` | Confirmed by `DeleteRowButton` popover. |
-| Settings: Delete category | `/api/categories/delete` | Confirmed by `DeleteRowButton` popover. |
-| Settings: Delete category match rule | `/api/category-match-rules/delete` | Confirmed by `DeleteRowButton` popover, including duplicate-rule shortcuts. |
+| Imports diagnostic reconciliation: Delete ledger row | `/api/entries/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone) with row details. |
+| Imports diagnostic reconciliation: Delete all shown ledger rows | `/api/entries/delete` per row | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone) with count and net amount. |
+| Imports history: Rollback import | `/api/imports/rollback` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone) before removing imported ledger rows. |
+| Settings: Archive account | account settings mutation | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone). |
+| Settings: Delete account checkpoint | `/api/accounts/checkpoints/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone). |
+| Settings: Delete category | `/api/categories/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone). |
+| Settings: Delete category match rule | `/api/category-match-rules/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone), including duplicate-rule shortcuts. |
 
 ## 2026-07-05 Finding
 

@@ -61,8 +61,11 @@ the page exactly as it was, see "Back to where you were"), the entry's
 editor (`Open this entry`: `/entries?editing_entry=<id>` in the entry's month),
 Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
 `/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
-Entries composer through `?action=add-expense` with the card's values, or the
-Splits expense dialog through `?split_action=add-expense`).
+Entries composer through `?action=add-expense&source=ask` with the card's
+values, or the Splits expense dialog through `?split_action=add-expense`).
+`source=ask` keeps the Apple Pay Shortcut's "Shortcut did not pass …"
+warnings off a card opened by hand: a blank card is not a Shortcut that
+lost its Amount variable (`tests/e2e/entry-form-shortcut-warning.spec.js`).
 
 ## Back to where you were
 

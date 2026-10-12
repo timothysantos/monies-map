@@ -42,8 +42,8 @@
 .summary-mix-row .category-icon {
   width: 44px;
   height: 44px;
-  border-color: color-mix(in srgb, var(--category-color) 35%, white);
-  background: color-mix(in srgb, var(--category-color) 20%, white);
+  border-color: color-mix(in srgb, var(--category-color) 35%, var(--paper));
+  background: color-mix(in srgb, var(--category-color) 20%, var(--paper));
   box-shadow: none;
 }
 
@@ -105,7 +105,7 @@
   min-width: 0;
   overflow: hidden;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--text) 8%, white);
+  background: color-mix(in srgb, var(--text) 8%, var(--paper));
 }
 
 .summary-mix-bar-fill {
@@ -134,7 +134,7 @@
 }
 
 .summary-mix-row.is-hidden-from-donut .summary-mix-bar-fill {
-  background: color-mix(in srgb, var(--text) 30%, white);
+  background: color-mix(in srgb, var(--text) 30%, var(--paper));
 }
 
 .summary-mix-arrow {

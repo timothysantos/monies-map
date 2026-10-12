@@ -26,8 +26,8 @@
   padding: 14px 2px 8px;
   border: 0;
   border-radius: 0;
-  background: rgba(167, 88, 45, 0.96);
-  color: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96));
+  color: rgb(var(--on-strong-rgb) / 0.88);
   font-size: 0.8rem;
 }
 
@@ -46,7 +46,7 @@
   content: "";
   flex: 1 1 auto;
   height: 1px;
-  background: rgba(255, 255, 255, 0.32);
+  background: rgb(var(--on-strong-rgb) / 0.32);
 }
 
 .panel-splits .split-list-section .split-date-actions,
@@ -59,14 +59,14 @@
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgb(var(--on-strong-rgb) / 0.88);
 }
 
 .panel-splits .split-list-section .split-date-items {
   display: block;
   overflow: hidden;
   border-radius: 16px;
-  background: #fff;
+  background: var(--paper);
 }
 
 .panel-splits .split-list-section .split-activity-card {
@@ -113,14 +113,14 @@
 
 /* Archived batches: a dashed outline row, not a filled bar. */
 .panel-splits .split-archive-trigger {
-  border: 1px dashed rgba(255, 255, 255, 0.45);
+  border: 1px dashed rgb(var(--on-strong-rgb) / 0.45);
   background: transparent;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgb(var(--on-strong-rgb) / 0.9);
 }
 
 .panel-splits .split-archive-trigger:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgb(var(--on-strong-rgb) / 0.7);
+  background: rgb(var(--on-strong-rgb) / 0.08);
 }
 
 @media (max-width: 760px) {
