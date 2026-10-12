@@ -333,8 +333,10 @@ state), and the Ask page itself inside (`AskPanel` with `placement`).
   Entries and Splits). An accent ✦ glyph, the placeholder "Ask, or drop a
   receipt…" in muted ink, and a muted paperclip in a 44 px hit area ("Add
   a receipt photo"). The accent focus ring shows on the pill while it has
-  focus. It hides under a dialog or an inline editor (as the + does) and
-  once the panel's conversation is showing. Page content gets 96 px of
+  focus. It hides under a dialog or an inline editor (as the + does), while
+  any menu or popover is open (one near the bottom right, such as Confirm
+  rollback, would otherwise sit under it), and once the panel's
+  conversation is showing. Page content gets 96 px of
   bottom room on a wide screen so nothing ends under it.
 - Docked (1,280 px and wider): a full-height panel at the right,
   `clamp(360px, 27vw, 400px)` wide, on the pastel neutral with a hairline

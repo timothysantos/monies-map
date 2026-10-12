@@ -2687,6 +2687,7 @@ body:has(> .note-dialog-overlay) .totals-visibility-toggle--floating,
 body[data-entry-inline-editor] .totals-visibility-toggle--floating,
 body[data-split-inline-editor] .totals-visibility-toggle--floating,
 body:has(> .note-dialog-overlay) .ask-dock-field,
+body:has([data-radix-popper-content-wrapper]) .ask-dock-field,
 body[data-entry-inline-editor] .ask-dock-field,
 body[data-split-inline-editor] .ask-dock-field {
   display: none;

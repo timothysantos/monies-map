@@ -103,6 +103,16 @@ test.describe("desktop Ask", () => {
         expect(1280 - (box.x + box.width), url).toBe(22);
       }
     }
+    // An open menu or popover near the bottom right is never under the
+    // field: the field steps aside while one is open (More pages shows on
+    // a 1,024 px window).
+    await page.setViewportSize({ width: 1024, height: 800 });
+    await expect(page.locator(".ask-dock-field")).toBeVisible();
+    await page.getByRole("button", { name: "More pages" }).click();
+    await expect(page.locator(".tab-overflow-popover")).toBeVisible();
+    await expect(page.locator(".ask-dock-field")).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".ask-dock-field")).toBeVisible();
     // On /ask the page is Ask: no field, no panel.
     await openUsable(page, `/ask?view=household&month=${month}`);
     await expect(message(page)).toBeVisible();
