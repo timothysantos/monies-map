@@ -38,6 +38,16 @@ Month state is split between:
 
 The page must preserve active edits while background freshness catches up.
 
+The top of the page is one lead card (`MonthLead` in `month-overview.jsx`,
+design.md "Lead · Support · Detail"): "Spent · May 2026", the month's actual
+spend "of" its planned spend, the bar, the percent of plan and how far under
+or over plan. Income (received, with the plan), Saved (with the savings
+target) and Remaining budget are pills beside it (under it on a phone). The
+figures are the month page DTO's metric cards plus the month's Summary row
+(`buildMonthLeadModel`), so they equal what the six tiles showed; the
+Remaining budget pill opens its explanation. Nothing scrolls sideways at
+390 px (`tests/e2e/summary-month-lsd.spec.js`).
+
 Opening a plan row (income, planned items, budget buckets) starts the same
 edit on both layouts: inline editing on desktop, the edit sheet on mobile. A
 row opens from a click anywhere on the row outside its own controls, or from
@@ -90,7 +100,7 @@ the Account and Note columns scroll inside the table while Category, Item,
 Planned, Actual and Variance stay on screen. "+ Add planned item", the row
 open buttons, the header tabs and the period controls stay on screen and
 uncovered, and inline Save and Cancel stay at the visible edge of the table.
-From 1,100 to 1,199 px the plan tables and summary cards tighten a
+From 1,100 to 1,199 px the plan tables tighten a
 little (narrower cell padding, notes cut off earlier on one line) so the
 full tables fit whole, also with wider fonts, and every note's edit icon
 stays on screen. The phone layout and 1,200 px and wider are unchanged.

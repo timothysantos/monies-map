@@ -248,8 +248,10 @@ over plan.
 - **Spending Mix**: a donut of spending by category over the whole range,
   with a list of categories below it. Pick a month to see that month's
   ([Month](#month)).
-- **Intent vs Outcome**: one card per month comparing planned and actual
-  income, spending and savings.
+- **Intent vs Outcome**: one card per month, newest first. Each leads with
+  what you spent against what you planned, with a bar, the percent of plan
+  and how far under or over you are. Your planned and actual income sit
+  under it, and **Details** opens the income, spending and savings figures.
 - **Wallets in view**: the current balance of each account and whether a
   statement has confirmed it.
 
@@ -270,9 +272,9 @@ over plan.
 - **A category in the list**: select it to hide or show it in the donut (it
   says Shown or Hidden). The **›** beside it opens that category's entries.
   The coloured icon changes the category's icon and colour.
-- **A month card** in Intent vs Outcome: expand it for the planned, actual and
-  variance table. The pencil edits that month's note. The month's name opens
-  that month.
+- **A month card** in Intent vs Outcome: select **Details** for the planned,
+  actual and variance figures (the latest month starts open). The **Note** row
+  there edits that month's note. The month's name opens that month.
 
 ![Wallets in view shows current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
 
@@ -324,9 +326,12 @@ stays highlighted, and the range at the top stays as it was.
 ### What you see
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
-- **Six cards**: Planned income, Planned spend, Remaining budget (planned
-  income minus planned spend; it says Overplanned when negative), Actual
-  spend, Savings target and Spend gap (planned minus actual).
+- **The top card**: what you have spent this month against what you
+  planned, with a bar, the percent of plan, and how much you are under or
+  over plan. Beside it (under it on a phone) are **Income** (received, with
+  the plan), **Saved** (with the savings target) and **Remaining budget**
+  (planned income minus planned spend; it says Overplanned when negative).
+  Select Remaining budget to see what it means.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
   list as on Summary. Select a category to hide or show it in the donut; its
@@ -965,8 +970,8 @@ Good to know:
 4. Under **Budget Buckets**, select **+ Add budget bucket** for flexible
    spending such as Food, Groceries, Transport and Shopping.
 5. Select **Save** on each row.
-6. Check the cards: **Remaining budget** should not say Overplanned, and
-   **Savings target** should be what you want to put aside.
+6. Check the top of the page: **Remaining budget** should not say Overplanned, and
+   the **Saved** pill's target should be what you want to put aside.
 
 > Tip: keep budget buckets broad. One Food bucket works better than a row for
 > every restaurant. Plan only what is stable as planned items.
@@ -1939,8 +1944,8 @@ saves every row or none of them.
 
 - **Actual**: what really happened, taken from your entries.
 - **Planned**: what you intended, from the Month plan.
-- **Variance** or **Spend gap**: planned minus actual. Positive means you
-  spent less than planned.
+- **Variance**, or the **under plan** and **over plan** amount at the top:
+  planned minus actual. Under plan means you spent less than planned.
 - **Planned item**: a fixed commitment (savings, loan, subscription) whose
   actual comes from the entries you link to it.
 - **Budget bucket**: a flexible category budget whose actual comes from all
