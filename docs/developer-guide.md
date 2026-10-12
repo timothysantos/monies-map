@@ -1660,16 +1660,20 @@ has not changed. On Entries, the same pills reuse the loaded household month
 rows and apply the person as a local filter. Switching between people should
 feel like changing a filter, not like reloading the whole page.
 
-On a phone, Summary, Month and Entries have one floating View and scope bar
-above the bottom navigation. It names the view and the whole scope on one
-line, such as `Tim · Direct + Shared`, with `View and scope` under it, and
-never cuts either short (a long name wraps instead). Entries adds previous
-and next month buttons beside it. Summary and Month are one Summary tab
-(below), so there the bar holds the month control instead and drops the
-`View and scope` line to stay one row. Tapping the bar opens a bottom sheet
-where you can switch the household/person view first and then the scope,
-when that view has more than one; on Summary a line under the scope says
-what it counts.
+On a phone, Summary, Month and Entries have one floating Support bar above
+the bottom navigation: the person's chip in their colour, the short scope
+(`Direct + Shared`) as quiet text and a caret, then the month control as a
+chip (Summary and Month) or previous and next period buttons (Entries). It
+sits on the shared chrome tokens (`--chrome-*` in `public/styles.css`) and
+every target is at least 44 px. Tapping it opens a bottom sheet in Lead ·
+Support · Detail: who you are viewing and what the scope counts, then the view
+and scope as segmented chips (the scope group only when that view has more
+than one), then, on Entries, the filters as quiet rows that open the existing
+pickers; `Reset filters` and `Done` sit in the bottom bar and a swipe down
+closes it. The sheet's inside is a lazy chunk
+(`src/client/mobile-context-sheet.jsx`) so the first screen does not carry the
+swipe code; see "Phone Chrome" in `design.md`. Browser proof:
+`tests/e2e/mobile-chrome.spec.js`.
 
 ## How do Summary and Month share one tab?
 

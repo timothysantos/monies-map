@@ -174,8 +174,11 @@ The app is designed for phones as well as desktops. The differences:
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
-  `Ethan · Direct + Shared`). Tap it to change the view first, then the
-  scope. Entries adds previous and next month buttons beside it.
+  `Ethan · Direct + Shared`), with the person in their own colour. Tap it to
+  change the view first, then the scope; on Entries the sheet also has the
+  filters, with **Reset filters** and **Done** at the bottom. Swipe the sheet
+  down to close it. Entries adds previous and next month buttons beside the
+  bar.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
 - **Month button.** On Summary, the button beside the bar says **All
   months**. Tap it to pick one month of the range
