@@ -2,6 +2,7 @@ import { addMonths, readAnswerIntent, type AskAnswerIntent } from "../ask-answer
 import {
   buildMonthFacts,
   buildSplitsBalanceFacts,
+  combineMonthFacts,
   compareCategories,
   type AskAnswerFacts,
   type MonthFacts
@@ -79,6 +80,11 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
       const [current, previous] = await Promise.all([monthFacts(intent.month), previousIfTracked(intent.month)]);
       return { kind: "spending", focus: intent.focus, current, previous };
     }
+    if (intent.kind === "plan" && intent.months && intent.months.length > 1) {
+      // A quarter: each month as Month shows it, and their sum.
+      const months = await Promise.all(intent.months.map((month) => monthFacts(month)));
+      return { kind: "plan", current: combineMonthFacts(months), isCurrentMonth: false, months };
+    }
     if (intent.kind === "plan") {
       return { kind: "plan", current: await monthFacts(intent.month), isCurrentMonth: intent.month === today.slice(0, 7) };
     }
@@ -127,6 +133,7 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
 
 function intentMonths(intent: AskAnswerIntent, requestMonth: string, today: string) {
   if (intent.kind === "compare") return [intent.month, intent.otherMonth];
+  if (intent.kind === "plan" && intent.months?.length) return intent.months;
   if (intent.kind === "owed") return [/^\d{4}-\d{2}$/.test(requestMonth) ? requestMonth : today.slice(0, 7)];
   return [intent.month];
 }
@@ -185,6 +192,7 @@ function emptyMonthFacts(month: string, viewId: string, scope: PersonScope): Mon
     plannedMinor: 0,
     incomeMinor: 0,
     plannedIncomeMinor: 0,
+    savingsTargetMinor: 0,
     entryCount: 0,
     expenseCount: 0,
     categories: [],

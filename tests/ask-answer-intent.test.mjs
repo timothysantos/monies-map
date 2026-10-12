@@ -80,6 +80,29 @@ test("filter requests, entry sentences and other questions are not answer questi
   }
 });
 
+test("how a month or a quarter went is intent against outcome: the plan answer, over every month asked about", () => {
+  const table = [
+    ["how did September go?", { kind: "plan", month: "2026-09" }],
+    ["How was August?", { kind: "plan", month: "2026-08" }],
+    ["how did we do this month?", { kind: "plan", month: "2026-10" }],
+    ["did we stick to the plan in Q3?", { kind: "plan", month: "2026-09", months: ["2026-07", "2026-08", "2026-09"] }],
+    ["how did Q2 2026 go?", { kind: "plan", month: "2026-06", months: ["2026-04", "2026-05", "2026-06"] }],
+    ["how did the second quarter go?", { kind: "plan", month: "2026-06", months: ["2026-04", "2026-05", "2026-06"] }],
+    ["how did last quarter go?", { kind: "plan", month: "2026-09", months: ["2026-07", "2026-08", "2026-09"] }],
+    // A quarter still running ends this month.
+    ["how is this quarter going against the plan?", { kind: "plan", month: "2026-10", months: ["2026-10"] }],
+    ["how did q4 2025 go?", { kind: "plan", month: "2025-12", months: ["2025-10", "2025-11", "2025-12"] }]
+  ];
+  for (const [text, expected] of table) {
+    assert.deepEqual(readAnswerIntent(text, context), expected, text);
+  }
+  // A quarter only reads as the plan answer; nothing is answered for a
+  // quarter that has not started, or with one month standing in for it.
+  for (const text of ["where did Q3 go?", "what did we earn in Q3?", "how did q1 2027 go?", "how much did I spend in September?", "how often do we eat out?"]) {
+    assert.equal(readAnswerIntent(text, context), null, text);
+  }
+});
+
 test("a compare question needs two different months", () => {
   assert.equal(readAnswerIntent("compare august with august", context), null);
   assert.deepEqual(readAnswerIntent("compare july", context), { kind: "compare", month: "2026-07", otherMonth: "2026-06" });

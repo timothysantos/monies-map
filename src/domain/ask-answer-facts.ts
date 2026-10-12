@@ -72,6 +72,8 @@ export interface MonthFacts {
   plannedMinor: number;
   incomeMinor: number;
   plannedIncomeMinor: number;
+  // The Month "Savings target" card (the plan's Savings lines).
+  savingsTargetMinor: number;
   // Every entry the view counts this month, and the expenses among them
   // (the rows Open in Entries shows for spending).
   entryCount: number;
@@ -109,7 +111,9 @@ export interface OpenSettlementFact {
 
 export type AskAnswerFacts =
   | { kind: "spending"; focus: "why" | "where"; current: MonthFacts; previous: MonthFacts | null }
-  | { kind: "plan"; current: MonthFacts; isCurrentMonth: boolean }
+  // `months`: a quarter's months, oldest first; `current` is then their sum
+  // (combineMonthFacts), dated by the last.
+  | { kind: "plan"; current: MonthFacts; isCurrentMonth: boolean; months?: MonthFacts[] }
   | { kind: "compare"; current: MonthFacts; other: MonthFacts; categoryChanges: CategoryChangeFact[] }
   | { kind: "biggest"; current: MonthFacts }
   | { kind: "income"; current: MonthFacts; previous: MonthFacts | null }
@@ -180,6 +184,7 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
     plannedMinor: metric(monthPage.metricCards, "Planned spend"),
     incomeMinor: summaryMonth?.actualIncomeMinor ?? 0,
     plannedIncomeMinor: summaryMonth?.plannedIncomeMinor ?? 0,
+    savingsTargetMinor: metric(monthPage.metricCards, "Savings target"),
     entryCount: visible.length,
     expenseCount: visible.filter((entry) => entry.entryType === "expense").length,
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
@@ -189,6 +194,54 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
     incomeSources: [...sources.values()]
       .sort((left, right) => right.amountMinor - left.amountMinor || left.name.localeCompare(right.name))
       .slice(0, INCOME_SOURCE_COUNT)
+  };
+}
+
+// Several months as one (a quarter): every figure is the months' own
+// figures added up, the categories, plan rows and income sources by name,
+// and the biggest expenses across them all. Dated by the last month.
+export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
+  const last = months[months.length - 1];
+  const total = (pick: (facts: MonthFacts) => number) => months.reduce((sum, facts) => sum + pick(facts), 0);
+  const byName = <T extends { name: string; amountMinor: number; entryCount: number }>(lists: T[][]) => {
+    const merged = new Map<string, { name: string; amountMinor: number; entryCount: number }>();
+    for (const item of lists.flat()) {
+      const current = merged.get(item.name) ?? { name: item.name, amountMinor: 0, entryCount: 0 };
+      current.amountMinor += item.amountMinor;
+      current.entryCount += item.entryCount;
+      merged.set(item.name, current);
+    }
+    return [...merged.values()].sort((left, right) => right.amountMinor - left.amountMinor || left.name.localeCompare(right.name));
+  };
+  const categories = byName(months.map((facts) => facts.allCategories));
+  const categoryTotal = categories.reduce((sum, category) => sum + category.amountMinor, 0);
+  const allCategories = categories.map((category) => ({ ...category, sharePercent: categoryTotal > 0 ? Math.round((category.amountMinor * 100) / categoryTotal) : 0 }));
+  const planRows = new Map<string, PlanRowFact>();
+  for (const row of months.flatMap((facts) => facts.planRows)) {
+    const current = planRows.get(row.label) ?? { label: row.label, plannedMinor: 0, actualMinor: 0 };
+    current.plannedMinor += row.plannedMinor;
+    current.actualMinor += row.actualMinor;
+    planRows.set(row.label, current);
+  }
+  return {
+    month: last.month,
+    viewId: last.viewId,
+    scope: last.scope,
+    spentMinor: total((facts) => facts.spentMinor),
+    plannedMinor: total((facts) => facts.plannedMinor),
+    incomeMinor: total((facts) => facts.incomeMinor),
+    plannedIncomeMinor: total((facts) => facts.plannedIncomeMinor),
+    savingsTargetMinor: total((facts) => facts.savingsTargetMinor),
+    entryCount: total((facts) => facts.entryCount),
+    expenseCount: total((facts) => facts.expenseCount),
+    categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
+    allCategories,
+    biggest: months
+      .flatMap((facts) => facts.biggest)
+      .sort((left, right) => right.amountMinor - left.amountMinor || left.date.localeCompare(right.date) || left.id.localeCompare(right.id))
+      .slice(0, BIGGEST_ENTRY_COUNT),
+    planRows: [...planRows.values()],
+    incomeSources: byName(months.map((facts) => facts.incomeSources)).slice(0, INCOME_SOURCE_COUNT)
   };
 }
 

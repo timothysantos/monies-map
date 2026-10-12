@@ -1575,6 +1575,10 @@ export interface AskAnswerCardDto {
   support: AskAnswerChipDto[];
   lines: AskAnswerLineDto[];
   links: AskAnswerLinkDto[];
+  // Intent against outcome (the plan answer): the figures the Month and
+  // Summary savings bar draws, the Month cards' own (income received,
+  // Actual spend, Planned spend, Savings target).
+  outcome?: { incomeMinor: number; spentMinor: number; plannedSpendMinor: number; savingsTargetMinor: number };
 }
 
 export interface AskAnswerResponseDto {
