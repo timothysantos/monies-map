@@ -79,6 +79,27 @@ test("entries search filters visible rows and preserves the query in the URL", a
   expect(new URL(page.url()).searchParams.get("entry_search")).toBe("fairprice 42.80");
 });
 
+// The search box shows what was typed at once, while the URL (which holds
+// the query) catches up: typed quickly right after the page loads, no key
+// is lost, a space between words stays, and Reset filters still empties it.
+test("entries search keeps every key typed quickly right after the page loads", async ({ page }) => {
+  await reseedDemo(page);
+  await gotoPageAfterApi(page, "/entries?view=person-tim&month=2026-05", "/api/entries-page", () => page.locator(".entry-row").first());
+  const search = page.getByRole("combobox", { name: "Search" });
+  await search.click();
+  await page.keyboard.type("food court");
+  await expect(search).toHaveValue("food court");
+  await expect.poll(() => new URL(page.url()).searchParams.get("entry_search")).toBe("food court");
+  // A space typed last stays in the box (the URL keeps the trimmed words).
+  await page.keyboard.type(" 2");
+  await expect(search).toHaveValue("food court 2");
+  await expect.poll(() => new URL(page.url()).searchParams.get("entry_search")).toBe("food court 2");
+  // A change from outside the box still shows in it.
+  await page.getByRole("button", { name: "Reset filters" }).click();
+  await expect(search).toHaveValue("");
+  expect(new URL(page.url()).searchParams.get("entry_search")).toBeNull();
+});
+
 test("entries mobile search keeps the label, icon, and field on one line", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await reseedDemo(page);

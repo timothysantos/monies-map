@@ -144,6 +144,7 @@ export function ClaudeTopUpForm({ onClose, onSave }) {
         saveLabel={saveLabel}
         isSaveDisabled={isSaving || !amount.trim()}
         isSubmitting={isSaving}
+        isDirty={Boolean(amount.trim())}
         onClose={close}
         onSave={() => void save()}
         footerContent={(

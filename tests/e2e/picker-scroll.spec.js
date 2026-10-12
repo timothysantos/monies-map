@@ -195,9 +195,9 @@ test.describe("phone pickers scroll by touch", { tag: "@webkit" }, () => {
     await expect(page.locator('[data-ask-row="wallet"]')).toContainText(label.split(" - ")[0]);
   });
 
-  test("Create split expense: the Category picker reaches and picks the last category", async ({ page, browserName }) => {
+  test("New split expense: the Category picker reaches and picks the last category", async ({ page, browserName }) => {
     await page.goto(`/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense`);
-    const dialog = page.getByRole("dialog", { name: "Create split expense" });
+    const dialog = page.getByRole("dialog", { name: "New split expense" });
     await expect(dialog).toBeVisible({ timeout: 60_000 });
     await dialog.locator('[data-row="category"]').tap();
     const label = await expectLastOptionReachable(page, browserName, "Category");

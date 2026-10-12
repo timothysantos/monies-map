@@ -39,6 +39,20 @@ export function addedByLabel(addedBy) {
   return ADDED_BY_LABELS[addedBy] ?? null;
 }
 
+/**
+ * The Edit entry card's folded More details hint: the rows it holds, with
+ * "added by" when the entry has an Added by row. A statement-certified
+ * entry's date and wallet are locked chips, so they are not folded there.
+ * @param {{ locked?: boolean, addedBy?: string | null }} options
+ */
+export function moreDetailsSummary({ locked = false, addedBy = null }) {
+  const editCopy = messages.entries.editCard;
+  if (addedByLabel(addedBy)) {
+    return locked ? editCopy.moreDetailsLockedAddedBy : editCopy.moreDetailsOpenAddedBy;
+  }
+  return locked ? editCopy.moreDetailsLocked : editCopy.moreDetailsOpen;
+}
+
 /** The list row glyph ({ kind, label }), or null. */
 export function addedByGlyph(addedBy) {
   return GLYPHS[addedBy] ?? null;

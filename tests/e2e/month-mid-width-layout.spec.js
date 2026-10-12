@@ -17,11 +17,16 @@ const MID_WIDTHS = [
   {
     name: "820x1180 portrait tablet",
     layout: "sheet",
+    // Every page tab shows; the period controls wrap below the tabs.
+    tabs: ["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ"],
     use: { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }
   },
   {
     name: "1024x768 landscape window",
     layout: "inline",
+    // One header row: Imports, Settings and FAQ wait behind More pages.
+    tabs: ["Summary", "Entries", "Splits"],
+    moreMenu: true,
     use: { viewport: { width: 1024, height: 768 } }
   }
 ];
@@ -134,9 +139,12 @@ for (const size of MID_WIDTHS) {
     test("every page tab and month control in the header is on screen and not covered", async ({ page }) => {
       const tabs = page.locator("nav.tab-strip > a.tab:visible");
       const tabNames = await tabs.allTextContents();
-      expect(tabNames.map((name) => name.trim())).toEqual(expect.arrayContaining(["Summary", "Entries", "Settings", "FAQ"]));
+      expect(tabNames.map((name) => name.trim())).toEqual(size.tabs);
+      const moreMenu = page.getByRole("button", { name: "More pages" });
+      await (size.moreMenu ? expect(moreMenu).toBeVisible() : expect(moreMenu).toBeHidden());
       const controls = [
         ...(await tabs.all()),
+        ...(size.moreMenu ? [moreMenu] : []),
         page.getByRole("button", { name: "Previous period" }),
         page.getByRole("button", { name: "Next period" }),
         page.locator(".totals-visibility-toggle--header")
