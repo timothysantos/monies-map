@@ -222,6 +222,71 @@ test.describe("empty", () => {
   });
 });
 
+// The FAQ page: the guide is the Lead, the contents are quiet Support that
+// folds on a phone, and its own loading and failure states are the shared ones.
+test.describe("faq", () => {
+  test("on a phone the contents fold into one row so the guide starts on screen", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto("/faq");
+    const panel = page.getByRole("tabpanel", { name: "User guide" });
+    const toggle = panel.getByRole("button", { name: "Contents" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect((await box(toggle)).height).toBeGreaterThanOrEqual(48);
+    await expect(panel.getByRole("navigation", { name: "Contents" })).toBeHidden();
+    // The first guide section is on screen without scrolling.
+    await expect(panel.getByRole("heading", { name: "Start here", exact: true })).toBeInViewport();
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const nav = panel.getByRole("navigation", { name: "Contents" });
+    await expect(nav).toBeVisible();
+    await nav.getByRole("link", { name: "Undo an import" }).click();
+    await expect(page.getByRole("heading", { name: "Undo an import", exact: true })).toBeInViewport();
+  });
+
+  test("on a phone the guide tabs are two equal 48px segments", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto("/faq");
+    const [user, developers] = await Promise.all([
+      box(page.getByRole("tab", { name: "User guide" })),
+      box(page.getByRole("tab", { name: "For developers" }))
+    ]);
+    expect(user.height).toBeGreaterThanOrEqual(48);
+    expect(Math.abs(user.width - developers.width)).toBeLessThanOrEqual(2);
+  });
+
+  test("on a wide screen the contents stay open with no toggle", async ({ page }) => {
+    await page.goto("/faq");
+    const panel = page.getByRole("tabpanel", { name: "User guide" });
+    await expect(panel.getByRole("navigation", { name: "Contents" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Contents" })).toHaveCount(0);
+  });
+
+  test("while the guide downloads, placeholders and one support line show; then the guide", async ({ page }) => {
+    const release = await holdResponses(page, "**/user-guide.md*");
+    await page.goto("/faq");
+    const status = page.locator(".faq-guide-status");
+    await expect(status).toHaveAttribute("role", "status");
+    await expect(status.locator(".state-detail")).toHaveText("Loading guide...");
+    await expect(status.locator(".sk").first()).toBeVisible();
+    release();
+    await expect(page.getByRole("heading", { name: "Start here", exact: true })).toBeVisible();
+    await expect(status).toHaveCount(0);
+  });
+
+  test("a guide that fails to download shows the shared error card with one Try again", async ({ page }) => {
+    await page.route("**/user-guide.md*", (route) => route.abort());
+    await page.goto("/faq");
+    const card = page.getByRole("alert").filter({ hasText: "This guide could not load." });
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute("data-tone", "rose");
+    await expect(card.getByRole("button", { name: "Try again" })).toHaveClass(/lsd-primary/);
+    // One primary action and a plain-language lead; no guide text behind it.
+    await expect(card.getByRole("button")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Start here", exact: true })).toHaveCount(0);
+  });
+});
+
 test.describe("loading", () => {
   const FIRST_SCREENS = [
     ["summary", "/summary?view=household&month=2026-05", "**/api/summary-page**", "Summary", "chips lead lines card"],

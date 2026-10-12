@@ -549,7 +549,8 @@ const SHOTS = [
     name: "phone-faq", device: "phone",
     run: async (page) => {
       await open(page, "/faq?view=household");
-      await page.getByRole("navigation", { name: "Contents" }).waitFor();
+      // On a phone the contents are folded into one row.
+      await page.getByRole("button", { name: "Contents" }).waitFor();
     }
   },
   {
