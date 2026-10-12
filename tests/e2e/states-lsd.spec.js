@@ -109,3 +109,86 @@ test.describe("errors", () => {
     expect((await box(banner.getByRole("button"))).height).toBeGreaterThanOrEqual(44);
   });
 });
+
+// Hold a page API response until the test lets it go.
+async function holdResponses(page, pattern) {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await page.route(pattern, async (route) => {
+    await gate;
+    await route.continue().catch(() => {});
+  });
+  return release;
+}
+
+test.describe("loading", () => {
+  const FIRST_SCREENS = [
+    ["summary", "/summary?view=household&month=2026-05", "**/api/summary-page**", "Summary", "chips lead lines card"],
+    ["entries", "/entries?view=person-tim&month=2026-05", "**/api/entries-page**", "Entries", "totals lines filter day row row row"],
+    ["splits", "/splits?view=person-tim&month=2025-10", "**/api/splits-page**", "Splits", "nav lead day row row row"],
+    ["page", "/settings", "**/api/settings-page**", "Settings", "lead row row row"]
+  ];
+
+  for (const [kind, url, pattern, heading, shapes] of FIRST_SCREENS) {
+    test(`the ${kind} first load shows its own Lead, Support and Detail blocks, then the page`, async ({ page }) => {
+      const release = await holdResponses(page, pattern);
+      await page.goto(url);
+
+      const skeleton = page.locator(".state-skeleton");
+      await expect(skeleton).toBeVisible();
+      await expect(skeleton).toHaveAttribute("data-skeleton", kind);
+      await expect(skeleton).toHaveAttribute("role", "status");
+      await expect(skeleton).toHaveAttribute("aria-busy", "true");
+      // The blocks match the page that replaces them, top to bottom.
+      const blocks = await skeleton.locator(".sk-panel > .sk").evaluateAll((nodes) => nodes.map((node) => [...node.classList].find((name) => name.startsWith("sk-")).slice(3)));
+      expect(blocks).toEqual(["title", ...shapes.split(" ")]);
+      // One quiet support line, no controls, and no figure or money sign.
+      await expect(skeleton.locator(".state-detail")).toContainText("Loading");
+      await expect(skeleton.getByRole("button")).toHaveCount(0);
+      await expect(skeleton.getByRole("link")).toHaveCount(0);
+      expect(await skeleton.innerText()).not.toMatch(/[$•]|\d{3}/);
+
+      release();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      await expect(skeleton).toHaveCount(0);
+    });
+  }
+
+  test("while the next page loads, the previous page stays and a pill sits clear of the header", async ({ page }) => {
+    await page.goto("/summary?view=household&month=2026-05");
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    const release = await holdResponses(page, "**/api/entries-page**");
+    await page.getByRole("link", { name: "Entries", exact: true }).first().click();
+
+    const pill = page.locator(".state-pill");
+    await expect(pill).toBeVisible();
+    await expect(pill).toContainText("Loading latest data");
+    // The previous page is still readable, and no skeleton replaces it.
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    await expect(page.locator(".state-skeleton")).toHaveCount(0);
+    const [pillBox, barBox] = [await box(pill), await box(page.locator(".control-bar").first())];
+    expect(pillBox.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
+
+    release();
+    await expect(page.getByRole("heading", { name: "Entries", exact: true })).toBeVisible();
+    await expect(pill).toHaveCount(0);
+  });
+
+  test("the first load adds almost no layout shift when the data lands", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__shift = 0;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (!entry.hadRecentInput) window.__shift += entry.value;
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    const release = await holdResponses(page, "**/api/summary-page**");
+    await page.goto("/summary?view=household&month=2026-05");
+    await expect(page.locator(".state-skeleton")).toBeVisible();
+    release();
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => window.__shift)).toBeLessThan(0.1);
+  });
+});
