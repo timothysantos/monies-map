@@ -160,6 +160,57 @@ test.describe("header on a narrow desktop window", () => {
     }
   });
 
+  // The header reads the page's width, not the window's: a docked Ask panel
+  // (design.md "Desktop Ask") narrows the page to 880 to 1,060 px at 1,280
+  // to 1,440 px, and a 1,024 px window is about as narrow. The row stays one
+  // row at its wide height with Imports, Settings and FAQ behind More pages;
+  // nothing reaches under the panel and nothing scrolls sideways.
+  test("the header stays one row on a page narrowed by the docked Ask panel, and at 1,024 px", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    const wideHeight = {};
+    for (const path of PAGES) {
+      await openPage(page, path);
+      wideHeight[path] = (await readHeader(page)).headerHeight;
+    }
+    const cases = [
+      { width: 1024, docked: false },
+      { width: 1280, docked: true },
+      { width: 1440, docked: true }
+    ];
+    for (const { width, docked } of cases) {
+      await page.evaluate((open) => {
+        window.sessionStorage.setItem("monies.askDock.v1", JSON.stringify({ version: 1, open, mode: "docked", intent: { mode: "chat", from: "", savedEntryId: "", splitGroupId: "" } }));
+      }, docked);
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of PAGES) {
+        await openPage(page, path);
+        const where = `${path} at ${width} px${docked ? " with Ask docked" : ""}`;
+        if (docked) await expect(page.locator(".ask-dock.is-docked"), where).toBeVisible();
+        const header = await readHeader(page);
+        expect(header.tabHits.map((tab) => tab.name), where).toEqual(["Summary", "Entries", "Splits"]);
+        expect(header.tabHits.filter((tab) => !tab.left || !tab.centre || !tab.right), where).toEqual([]);
+        await expect(page.getByRole("button", { name: "More pages" }), where).toBeVisible();
+        expect(header.controls, where).toEqual([true, true, true, true]);
+        const [first, ...rest] = header.rowMiddles;
+        expect(rest.map((middle) => Math.abs(middle - first) <= 2), where).toEqual(rest.map(() => true));
+        expect(header.headerHeight, where).toBe(wideHeight[path]);
+        expect(header.pageScrollsSideways, where).toBe(false);
+        // Nothing on the page reaches under the panel.
+        const pastEdge = await page.evaluate(() => {
+          const edge = document.querySelector(".ask-dock.is-docked")?.getBoundingClientRect().left ?? document.documentElement.clientWidth;
+          return [...document.querySelectorAll(".shell *")]
+            .filter((element) => {
+              const rect = element.getBoundingClientRect();
+              return rect.width > 0 && rect.right > edge + 1 && getComputedStyle(element).position !== "fixed";
+            })
+            .slice(0, 3)
+            .map((element) => element.className);
+        });
+        expect(pastEdge, where).toEqual([]);
+      }
+    }
+  });
+
   test("a 1,440 px desktop and a 390 px phone keep their own header spacing", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
     await openPage(page, "/summary?view=household&month=2026-05");

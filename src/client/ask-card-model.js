@@ -4,7 +4,8 @@
 // through these functions:
 //
 //   createAskCard -> setCardField / setCardVariant / applyEntryDraft /
-//   applyReceiptRead / answerCardQuestion -> validateCard ->
+//   applyReceiptRead / answerCardQuestion / acceptSplitSuggestion /
+//   declineSplitSuggestion -> validateCard ->
 //   markCardSaving -> markCardSaved (or markCardSaveFailed) -> markCardUndone
 //
 // Each card has a stable client id (`clientId`), kept with it in the Ask
@@ -118,6 +119,8 @@ export function createAskCard(context, { mode = "add", splitGroupId = "" } = {})
       splitGroupId: mode === "expense" ? splitGroupId : ""
     },
     questions: [],
+    // "accepted" or "declined" once the split suggestion was answered.
+    splitSuggestionAnswer: "",
     saveError: "",
     saved: null
   };
@@ -238,6 +241,21 @@ export function setShare(card, { on, splitGroupId }) {
       splitGroupId: splitGroupId ?? card.share.splitGroupId ?? ""
     }
   };
+}
+
+// The split suggestion's two answers (ask-split-suggestion.js). Choosing it
+// turns the Splits switch on with the suggested group, exactly as the
+// switch and its group row would; nothing is written until Save. Either
+// answer is kept on the card, so the question is never asked again for it.
+export function acceptSplitSuggestion(card, suggestion) {
+  if (card.status !== "draft" || !suggestion?.groupId) {
+    return card;
+  }
+  return { ...setShare(card, { on: true, splitGroupId: suggestion.groupId }), splitSuggestionAnswer: "accepted" };
+}
+
+export function declineSplitSuggestion(card) {
+  return card ? { ...card, splitSuggestionAnswer: "declined" } : card;
 }
 
 // The groups a shared expense can go to; with one group the switch picks it.

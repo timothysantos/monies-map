@@ -29,6 +29,7 @@ import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileSheet, EntrySplitGroupPickerFooter } from "./entry-mobile-sheet";
+import { useAskOriginSheet, useAskReturn } from "./use-ask-origin";
 import { applyCheckInAction, isCheckInActionApplied } from "./check-in-action";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
@@ -193,6 +194,7 @@ export function EntriesPanel({
     updateEntryDraftSplit,
     saveEntryDraft,
     beginEntryEdit,
+    resumeEntryEdit,
     finishEntryEdit,
     cancelEntryEdit,
     linkTransferCandidate,
@@ -247,6 +249,21 @@ export function EntriesPanel({
       || Boolean(transferDialogEntryId)
       || Boolean(refreshingTransferCandidatesEntryId)
       || Boolean(addingToSplitsEntryId)
+  });
+  // Ask's way back (docs/flows/ask-flow.md "Back to where you were"): an
+  // open edit or add sheet, with its draft, is part of the place the + keeps,
+  // and comes back with the scroll once this month's list is here.
+  useAskOriginSheet(() => {
+    const editing = editingEntryId ? entries.find((entry) => entry.id === editingEntryId) : null;
+    if (editing) {
+      return { kind: "edit", entry: editing };
+    }
+    return showEntryComposer ? { kind: "add", draft: entryDraft } : null;
+  });
+  useAskReturn({
+    from: "entries",
+    ready: !isEntriesPageLoading && entriesPage.monthPage.month === selectedMonth,
+    onSheet: (sheet) => (sheet.kind === "edit" ? resumeEntryEdit(sheet.entry) : openEntryComposer(sheet.draft))
   });
   const openEntryComposerRef = useRef(openEntryComposer);
   const entryComposerEditorRef = useRef(null);
@@ -1259,6 +1276,7 @@ export function EntriesPanel({
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
           isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
+          isDirty={hasEditingEntryChanges}
           footerContent={mobileEditExpenseFooterMode === "picker" && activeEditingEntry.entryType === "expense"
             ? (
                 <EntrySplitGroupPickerFooter

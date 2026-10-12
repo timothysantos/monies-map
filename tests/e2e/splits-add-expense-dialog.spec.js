@@ -13,7 +13,7 @@ async function openAddExpenseDialog(page) {
   await expect(page.locator("article.panel-splits")).toBeVisible();
 
   await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
-  const dialog = page.getByRole("dialog", { name: "Create split expense" });
+  const dialog = page.getByRole("dialog", { name: "New split expense" });
   await expect(dialog).toBeVisible();
   return dialog;
 }

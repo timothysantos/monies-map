@@ -10,6 +10,10 @@
 //    Claude call is rate-limited, over the gateway's spend cap, failing,
 //    slow or returns unusable JSON.
 //
+// Auto-balance: with both providers available, a monthly Claude budget target
+// decides who goes first (shouldAskClaudeFirst; deterministic, no AI). The
+// other provider is still the fallback.
+//
 // Like runAiJson, it never throws into a caller: every failure is an
 // ordinary { available: false, reason } result, and the normal workflow
 // carries on. Each request reserves the shared daily allowance once,
@@ -21,7 +25,10 @@
 import { reserveDailyAiBudget, type AiAssistCapability, type AiAssistEnv, type AiAssistResult } from "./ai-assistance";
 import {
   categorizeClaudeFailure,
+  claudeGoesFirst,
+  computeClaudePacing,
   estimateClaudeCostMicroUsd,
+  loadAiProviderStatusRow,
   recordClaudeFailure,
   recordClaudeSuccess,
   type AiProviderStatusEnv
@@ -79,6 +86,12 @@ interface JsonRequest<T> {
   parse: (response: unknown) => T | null;
   // Per-provider wait in milliseconds; defaults suit a phone on 4G.
   timeoutMs?: number;
+  // The reason to report when a provider did answer but `parse` rejected
+  // every answer. Without it, a rejected answer reads like any other
+  // failure ("AI is temporarily unavailable."). The text features that moved
+  // here from runAiJson pass AI_UNUSABLE_SUGGESTION_REASON so their wording
+  // is unchanged.
+  unusableReason?: string;
 }
 
 interface ClaudeGateway {
@@ -200,21 +213,59 @@ async function runJson<T>(
   }
 
   const timeoutMs = Math.max(1, Math.round(input.timeoutMs ?? DEFAULT_TIMEOUT_MS));
-  if (claude) {
-    const attempt = await callClaude(claude, input, request.images, timeoutMs);
+  const claudeFirst = claude && env.AI ? await shouldAskClaudeFirst(db, env, input.capability) : true;
+  // True once a provider has answered (Claude 2xx, Workers AI resolved in
+  // time) and the answer was refused, malformed or rejected by `parse`.
+  let answerRejected = false;
+
+  const askClaude = async (): Promise<AiProviderResult<T> | null> => {
+    if (!claude) {
+      return null;
+    }
+    const attempt = await callClaude(claude, input, request.images ?? [], timeoutMs);
     await recordClaudeOutcome(db, env, attempt.outcome);
     const value = parseAnswer(input.parse, attempt.raw);
     if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "claude" };
     }
-  }
-  if (env.AI) {
-    const value = parseAnswer(input.parse, await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images, timeoutMs));
+    answerRejected ||= attempt.outcome.kind === "success";
+    return null;
+  };
+  const askWorkersAi = async (): Promise<AiProviderResult<T> | null> => {
+    if (!env.AI) {
+      return null;
+    }
+    const attempt = await callWorkersAi(env.AI, env.AI_FALLBACK_MODEL?.trim() || DEFAULT_WORKERS_AI_FALLBACK_MODEL, input, request.images ?? [], timeoutMs);
+    const value = parseAnswer(input.parse, attempt.raw);
     if (value !== null) {
       return { available: true, value, remaining: budget.remaining, provider: "workers-ai" };
     }
+    answerRejected ||= attempt.answered;
+    return null;
+  };
+
+  const answer = claudeFirst
+    ? (await askClaude()) ?? (await askWorkersAi())
+    : (await askWorkersAi()) ?? (await askClaude());
+  if (answer) {
+    return answer;
   }
-  return unavailable("AI is temporarily unavailable.", budget.remaining);
+  return unavailable(
+    answerRejected && input.unusableReason ? input.unusableReason : "AI is temporarily unavailable.",
+    budget.remaining
+  );
+}
+
+// Auto-balance (ai-provider-status.ts): when both providers are available,
+// the month's Claude spend against its pace decides who is asked first.
+// Claude goes first whenever the pace cannot be read, so a status table
+// problem never changes behaviour.
+async function shouldAskClaudeFirst(db: D1Database, env: AiProviderEnv, capability: AiAssistCapability) {
+  try {
+    return claudeGoesFirst(computeClaudePacing(await loadAiProviderStatusRow(db), env).mode, capability);
+  } catch {
+    return true;
+  }
 }
 
 // Returns the parsed JSON answer, or null for any failure (status, network,
@@ -314,7 +365,14 @@ async function recordClaudeOutcome(db: D1Database, env: AiProviderEnv, outcome: 
   }
 }
 
-async function callWorkersAi(ai: Ai, model: string, input: JsonRequest<unknown>, images: AiImage[], timeoutMs: number) {
+// `answered` is false only when the call threw or ran out of time.
+async function callWorkersAi(
+  ai: Ai,
+  model: string,
+  input: JsonRequest<unknown>,
+  images: AiImage[],
+  timeoutMs: number
+): Promise<{ raw: unknown; answered: boolean }> {
   // Gemma 4 uses the OpenAI-style chat shape; older Workers AI models take
   // the schema directly in JSON mode and `max_tokens`.
   const openAiStyle = model.includes("gemma-4");
@@ -337,15 +395,19 @@ async function callWorkersAi(ai: Ai, model: string, input: JsonRequest<unknown>,
       : { max_tokens: input.maxTokens })
   };
 
+  const timedOut = Symbol("timed out");
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const output = await Promise.race([
       (ai as unknown as { run: (model: string, inputs: unknown) => Promise<unknown> }).run(model, body),
-      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); })
+      new Promise<typeof timedOut>((resolve) => { timer = setTimeout(() => resolve(timedOut), timeoutMs); })
     ]);
-    return readWorkersAiJson(output);
+    if (output === timedOut) {
+      return { raw: null, answered: false };
+    }
+    return { raw: readWorkersAiJson(output), answered: true };
   } catch {
-    return null;
+    return { raw: null, answered: false };
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);
