@@ -2075,25 +2075,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   line-height: 1.6;
 }
 
-.summary-mix {
-  display: grid;
-  grid-template-columns: 1fr;
-  align-items: start;
-  gap: 18px;
-}
-
-.summary-mix-main {
-  display: grid;
-  gap: 18px;
-}
-
-.summary-mix-months {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
 .summary-focus-button {
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -4169,19 +4150,12 @@ body[data-ask-dock="docked"] .environment-banner {
   font-weight: 700;
 }
 
-.share-list,
 .stack,
 .faq-list {
   display: grid;
   gap: 12px;
 }
 
-.share-list {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  width: 100%;
-}
-
-.share-row,
 .account,
 .import-card {
   display: flex;
@@ -4206,69 +4180,18 @@ body[data-ask-dock="docked"] .environment-banner {
   background: rgba(255, 255, 255, 0.8);
 }
 
-.share-row {
-  min-width: 0;
-}
-
-.share-row.chart-toggle-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-}
-
-.share-row.chart-toggle-row .category-key {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  width: 100%;
-}
-
-.share-row.is-hidden-from-donut,
 .category-row.is-hidden-from-donut {
   border-style: dashed;
   opacity: 0.58;
 }
 
-.share-row.is-hidden-from-donut .category-icon,
 .category-row.is-hidden-from-donut .category-icon {
   filter: grayscale(0.75);
 }
 
-.share-row-button {
-  display: block;
-  width: 100%;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.share-row-button strong,
-.share-row-button p,
-.share-row-button .share-row-meta,
 .category-row strong,
 .category-row p {
   overflow-wrap: anywhere;
-}
-
-.share-row.chart-toggle-row .share-row-button strong,
-.share-row.chart-toggle-row .share-row-button p,
-.share-row.chart-toggle-row .share-row-meta {
-  overflow-wrap: normal;
-  word-break: normal;
-}
-
-.share-row-secondary-action {
-  align-self: center;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
 }
 
 .chart-toggle-action,
@@ -4287,7 +4210,6 @@ body[data-ask-dock="docked"] .environment-banner {
   border-color: rgba(177, 94, 47, 0.2);
 }
 
-.share-row p,
 .account p,
 .import-card p {
   margin: 6px 0 0;
@@ -7028,14 +6950,6 @@ th {
     align-self: center;
   }
 
-  .summary-mix{
-    grid-template-columns: 1fr;
-  }
-
-  .share-list {
-    grid-template-columns: 1fr;
-  }
-
   .entry-edit-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -7072,7 +6986,6 @@ th {
     margin-left: 0;
   }
 
-  .share-row,
   .account,
   .import-card {
     flex-direction: column;
@@ -8118,9 +8031,7 @@ th {
   .entries-breakdown-panel,
   .split-breakdown-panel,
   .splits-summary-strip,
-  .chart-head,
-  .summary-mix,
-  .summary-mix-main {
+  .chart-head {
     min-width: 0;
     width: 100%;
     max-width: 100%;
@@ -8394,27 +8305,12 @@ th {
     letter-spacing: -0.01em;
   }
 
-  .summary-mix-months::-webkit-scrollbar,
-  .share-list::-webkit-scrollbar,
   .entries-summary-metrics::-webkit-scrollbar {
     display: none;
   }
 
-  .summary-mix-months {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    width: 100%;
-    max-width: 100%;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
   .summary-focus-button {
     flex: 0 0 auto;
-  }
-
-  .summary-mix-main {
-    min-width: 0;
   }
 
   .spending-mix-chart-shell,
@@ -8427,41 +8323,6 @@ th {
     width: 106px;
   }
 
-  .share-list {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 10px;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
-  .share-row {
-    flex: 0 0 min(246px, calc(100vw - 104px));
-    min-width: min(246px, calc(100vw - 104px));
-    grid-template-columns: minmax(0, 1fr) 36px;
-    gap: 12px;
-    padding: 12px 10px 12px 12px;
-  }
-
-  .share-row .category-key {
-    gap: 10px;
-  }
-
-  .share-row .category-icon {
-    width: 40px;
-    height: 40px;
-  }
-
-  .share-row-button strong {
-    display: block;
-    line-height: 1.15;
-  }
-
-  .share-row-button p,
   .share-row-meta {
     line-height: 1.18;
   }

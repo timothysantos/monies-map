@@ -110,6 +110,12 @@ export const messages = {
   },
   summary: {
     spendingMix: "Spending Mix",
+    // The ranked category list under (or beside) the donut: the top five,
+    // then the rest on request.
+    mixList: {
+      showAll: (count) => `Show all ${count}`,
+      showFewer: "Show fewer"
+    },
     // The Summary tab's month choice: the phone island control, its "Pick a
     // month" sheet and the desktop month row (summary-month-picker.jsx).
     monthChoice: {

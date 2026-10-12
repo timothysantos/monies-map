@@ -221,19 +221,19 @@ test.describe("summary workflow", () => {
     await expect(scopeSection).toBeVisible();
   });
 
-  test("summary spending mix cards keep readable text columns on desktop", async ({ page }) => {
+  test("summary spending mix rows keep readable text columns on desktop", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
 
     await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05");
     await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible();
     await page.getByRole("button", { name: "Show money totals" }).click();
-    const firstCard = page.locator(".share-list .share-row").first();
+    const firstCard = page.locator(".summary-mix-list .summary-mix-row").first();
     await expect(firstCard).toBeVisible();
 
     const layout = await firstCard.evaluate((card) => {
-      const textButton = card.querySelector(".share-row-button");
+      const textButton = card.querySelector(".summary-mix-main");
       const title = textButton?.querySelector("strong");
-      const amount = textButton?.querySelector("p");
+      const amount = textButton?.querySelector(".summary-mix-amount");
       const cardBox = card.getBoundingClientRect();
       const textBox = textButton?.getBoundingClientRect();
       const titleStyle = title ? getComputedStyle(title) : null;
@@ -241,7 +241,7 @@ test.describe("summary workflow", () => {
       return {
         cardWidth: cardBox.width,
         textWidth: textBox?.width ?? 0,
-        titleLines: title && titleLineHeight ? title.getBoundingClientRect().height / titleLineHeight : 0,
+        titleLines: title && titleLineHeight ? Math.round(title.getBoundingClientRect().height / titleLineHeight) : 0,
         amountText: amount?.textContent ?? "",
         overflows: card.scrollWidth > card.clientWidth + 1 || card.scrollHeight > card.clientHeight + 1
       };
@@ -249,7 +249,7 @@ test.describe("summary workflow", () => {
 
     expect(layout.cardWidth).toBeGreaterThan(300);
     expect(layout.textWidth).toBeGreaterThan(170);
-    expect(layout.titleLines).toBeLessThanOrEqual(2);
+    expect(layout.titleLines).toBeLessThanOrEqual(1);
     expect(layout.amountText).toMatch(/^\$/);
     expect(layout.overflows).toBe(false);
   });
