@@ -303,8 +303,12 @@ for shared devices or if the sign-in context should expire sooner.
 Nothing is needed today. With no gateway settings, the optional AI layer
 (`src/domain/ai-provider.ts`) uses Workers AI directly through the existing
 `AI` binding: Gemma 4 (`@cf/google/gemma-4-26b-a4b-it`) for receipt images
-and other JSON answers. There is no failed gateway call, no extra wait and no
-log line.
+and other JSON answers (Ask's answer wording, the Monthly Note draft, the
+statement-mismatch explanation, category-rule suggestions and the statement
+text fallback). There is no failed gateway call, no extra wait and no log
+line. The entry draft still uses Llama 3.2 3B on Workers AI (`runAiJson`),
+and duplicate and transfer ranking use Workers AI embeddings; neither goes
+through the gateway.
 
 Claude Haiku (`claude-haiku-5-5`) through Cloudflare AI Gateway can be added
 later with an Anthropic API key from any Anthropic account, including a
@@ -442,8 +446,11 @@ To test locally, use the unit tests: `tests/ai-provider.test.mjs` mocks the
 gateway with a stubbed `fetch` (success, 429, timeout, malformed JSON, both
 providers down, no Anthropic config, and what each records in the status
 row), `tests/ai-provider-status.test.mjs` covers the credit status on a real
-local D1, and `tests/receipt-read-route.test.mjs` drives the route with a
-stub `AI` binding. `wrangler.test.jsonc` has no AI
+local D1, `tests/receipt-read-route.test.mjs` drives the route with a
+stub `AI` binding, and `tests/ai-text-provider-routes.test.mjs` drives the
+four text routes (Monthly Note, mismatch explanation, category rules,
+statement fallback) through Claude, the Gemma fallback, both down, refused
+answers and AI off. `wrangler.test.jsonc` has no AI
 binding, so the browser tests prove the no-AI path. For a manual check
 against the real gateway, put the secrets in `.dev.vars` (ignored by git)
 and the vars in a local, uncommitted copy of the config; note that the
@@ -1825,6 +1832,13 @@ validating the model's template. AI cannot
 import transactions, change a category, skip a row, certify a statement, or
 link a transfer on its own. Use the normal review controls to accept any
 suggestion.
+
+These four (Monthly Note, mismatch wording, category-rule drafts and the
+statement fallback) go through the same provider as receipts: Claude
+through AI Gateway when it is set up, with logging and caching off, and
+Workers AI Gemma otherwise or when Claude fails. Each sends a JSON schema
+for its answer, and the app's own check still decides whether the answer is
+usable; the allowance cost of each is unchanged.
 
 For a PDF that no supported parser can read, Imports offers an explicit
 checkbox to allow an AI fallback. The browser still tries the dedicated parser

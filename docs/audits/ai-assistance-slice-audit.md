@@ -480,3 +480,61 @@ and AI section with the same line (design.md "Claude credit notice";
   failures) and `tests/e2e/claude-credit-notice.spec.js` (the route stubbed
   for each state on an iPhone, also in WebKit, and a wide screen; a failed
   read shows nothing; no read on the first screen).
+
+### Update, 12 October 2026: the text features move to the provider layer
+
+Owner-approved (branch `ai-provider-migrate`, server only, no UI change):
+the Monthly Note draft, statement-mismatch explanation, category-rule
+suggestions and statement text fallback moved from `runAiJson` (Workers AI
+Llama 3.2 3B) to `runTextJson` (`src/domain/ai-provider.ts`): Claude Haiku
+through AI Gateway when configured, Workers AI Gemma 4 directly otherwise
+and as its fallback. The Money insights wording route on the original list
+was already removed (update of 11 October above) and stays removed. The
+entry draft stays on `runAiJson` for now (it was not part of this change),
+and match ranking stays on Workers AI embeddings (`bge-small-en-v1.5`).
+
+- Unchanged: each route's prompt, redaction (`redactAiText`,
+  `redactAiStatementText`, the 12,000-character statement cap), validator,
+  allowance units (1; 1 per mismatched statement; 2; 8), answer cap (180,
+  140, 300, 700 tokens) and deterministic fallback. Each route now sends a
+  JSON schema for its answer (`TEMPLATE_SCHEMA`, `buildCategoryRuleSchema`
+  with the evidence's category names as an enum, `STATEMENT_ROWS_SCHEMA`),
+  but the validator still decides: a schema-valid answer with a figure in a
+  template, an index into another category's evidence or a row without an
+  ISO date is refused exactly as before. A refused answer still reports
+  "AI returned an unusable suggestion." (the provider's new optional
+  `unusableReason`); a provider failure or timeout still reports "AI is
+  temporarily unavailable.". Receipts and Ask pass no `unusableReason` and
+  keep their wording.
+- Privacy: when Claude is configured, these prompts go to Anthropic through
+  AI Gateway with logging and caching off, the same terms as receipts and
+  Ask (update of 11 October above). The Monthly Note and mismatch prompts
+  carry placeholders only, no figures or names; the category-rule prompt
+  carries up to 32 redacted expense descriptions (100 characters each,
+  long digit runs removed) with their category names; the statement
+  fallback carries the consented, redacted, bounded browser-extracted text.
+  Nothing is stored: the only writes are the allowance counter, the
+  aggregate Claude status after a Claude attempt, and, for category rules,
+  verified pending suggestions as before.
+- Cost: the allowance is reserved once per request before inference, so a
+  Claude failure that falls back to Gemma costs no extra unit. Claude gets
+  the answer cap plus the provider's fixed 1,024-token thinking headroom
+  at low effort; at Haiku 5.5's list price the largest of these (a
+  statement fallback, about 4,000 input and 1,724 output tokens at most)
+  costs about US$0.0013. Each provider attempt now has a 15 s
+  timeout; `runAiJson` had none.
+- Behaviour change: with Claude configured and no `AI` binding, these
+  routes can now answer through Claude; before, a missing binding always
+  meant "not configured". With neither, the reasons and fallbacks are as
+  before.
+- Tests: `tests/ai-text-provider-routes.test.mjs` drives each route
+  through the Worker: Claude first (schema, cap, no-log headers, status
+  row), Claude 429 to Gemma with the same prompt, both down, refused
+  answers from both providers, Workers AI alone (valid and malformed), AI
+  off, unconfigured and over its allowance (no provider called, no
+  allowance reserved), and one reservation per request (one per statement
+  for explanations). `tests/ai-provider.test.mjs` covers `unusableReason`.
+  The migration tests fail on the old code; the down/off cases pass on
+  both, which is the point.
+- Not verified here: real Claude or Gemma wording quality for these
+  prompts, which were written for Llama 3B.

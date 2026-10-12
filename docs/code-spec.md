@@ -257,9 +257,31 @@ gateway location and a credential, `AI_GATEWAY_TOKEN` or
 non-2xx (429 includes the spend cap), network error, timeout (15 s each by
 default), refusal, cut-off or answer the caller's `parse` rejects. Gateway
 requests always carry `cf-aig-collect-log: false` and `cf-aig-skip-cache:
-true`; only a 400/401/403/404 is logged, as the status code alone. The
-existing text capabilities still use `runAiJson` on Workers AI until a
-reviewed change moves them.
+true`; only a 400/401/403/404 is logged, as the status code alone. When a
+provider did answer but `parse` refused every answer, the result's reason
+is the caller's optional `unusableReason`; otherwise (and for any failure or
+timeout) it is "AI is temporarily unavailable.".
+
+The Monthly Note draft, statement-mismatch explanation, category-rule
+suggestions and statement text fallback (`src/server/ai-assistance-routes.ts`)
+use `runTextJson`, each with its own JSON schema (`TEMPLATE_SCHEMA` for the
+two wording routes, `buildCategoryRuleSchema`, whose `categoryName` enum is
+the evidence's category names, and `STATEMENT_ROWS_SCHEMA`) and
+`unusableReason: AI_UNUSABLE_SUGGESTION_REASON`, so a refused answer still
+reads "AI returned an unusable suggestion.". The schema only shapes the
+answer: each route's validator (`parseNarrativeTemplate`,
+`parseImportExplanationTemplate`, `parseAiCategoryRuleProposals`,
+`parseAiStatementRows`) is unchanged and still decides what is usable, and
+counts (5 proposals, 40 rows) are enforced there. Prompts, redaction
+(`redactAiText`, `redactAiStatementText`), units (1, 1 per mismatched
+statement, 2, 8) and answer caps (180, 140, 300, 700 tokens: Workers AI's
+`max_completion_tokens`, Claude's `max_tokens` less the provider's fixed
+1,024-token thinking headroom) are as before. Only the entry draft still
+uses `runAiJson` (Llama 3.2 3B on Workers AI), and match ranking stays on
+Workers AI embeddings (`runAiEmbeddings`, `@cf/baai/bge-small-en-v1.5`).
+Proof: `tests/ai-text-provider-routes.test.mjs` (per route: Claude first,
+Claude failing to Gemma, both down, refused answers, Workers AI alone, AI
+off, unconfigured or over its allowance, one allowance reservation).
 
 After every Claude attempt the provider records the aggregate AI provider
 status (`src/domain/ai-provider-status.ts`, DOMAIN.md "AI Provider
@@ -358,7 +380,8 @@ for an AI gap-filler over a deterministic answer. The pure parser
 draft is always returned; `entryDraftWantsAi` allows AI only when the
 sentence named no amount at all or left no description (never for two
 amounts, an unknown currency or a foreign amount, which are the user's
-call). Then one allowance unit, 80 tokens, the redacted sentence only (no
+call). Then one allowance unit, 80 tokens through `runAiJson` (Workers AI
+Llama 3.2 3B, not yet on the provider layer), the redacted sentence only (no
 accounts, people, rules or settings), and the untrusted-data system prompt.
 `parseEntryDraftAiSuggestion` validates the answer like any input: an
 amount must be stated in the sentence (its digits, or number words), and
