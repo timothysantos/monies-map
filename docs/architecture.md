@@ -139,7 +139,10 @@ path (`entry-create-request.js`) and the existing split link, borrows the
 Entries and Summary DTOs from the query cache (the Entries one through the
 shell's required read when it must load it), and holds only its
 conversation and one entry card. The Entries + and Splits receipt buttons
-open it; their old forms stay reachable.
+open it; their old forms stay reachable. Money questions ("why was August
+so expensive?", "what do I owe Serene?") go to `POST /api/ai-assist/answer`,
+which reads them by rules, checks the skew candidates first and answers
+from the Month and Splits page DTOs (DOMAIN.md "Money Question").
 
 Rules:
 
@@ -675,6 +678,20 @@ authoritative. Before any AI explanation of a month's spending or income,
 the deterministic `skew candidates` (see "Skew candidates" above) are the
 evidence of likely unlinked settlements and own-account moves; AI may phrase
 them but never decides or links them.
+
+Ask's money answers follow that order (`POST /api/ai-assist/answer`,
+`src/server/ask-answer-route.ts`): rules read the question into one of six
+intents (where and why the money went, the plan, two months compared, the
+biggest expenses, income, who owes whom on Splits); a high-confidence skew
+candidate that would change the facts is asked about first, with Mark as
+settlement or Link as transfer (the candidate's suggested routes, run by
+the person's tap) and It's real spending; the facts are read from the Month
+and Splits page DTOs, so the answer's figures equal the screens its chips
+open; a computed 1-3 sentence wording is always ready. Only with AI on may
+the provider phrase that wording from a bounded fact list, and the phrasing
+is shown only when every number and name in it is in the facts
+(`validateAiWording`). Nothing but the allowance counter is written
+(`docs/audits/ask-answers-audit.md`).
 
 The Money consequence map that used to sit under "See all insights" was
 retired in September 2026: it repeated what the signals say, and its

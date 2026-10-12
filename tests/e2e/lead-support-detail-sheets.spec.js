@@ -134,8 +134,14 @@ async function tapTargets(scope) {
       // under the bottom bar is not).
       const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
       const onTop = Boolean(hit && (target === hit || target.contains(hit)));
+      // A target the sheet's scroll area cuts through is measured where it
+      // shows in full (the sheet test checks at its top and its bottom).
+      const scroller = target.closest(".entry-mobile-sheet-scroll");
+      const view = scroller?.getBoundingClientRect();
+      const clipped = Boolean(view && (rect.top < view.top - 1 || rect.bottom > view.bottom + 1));
       targets.push({
         onTop,
+        clipped,
         name: (target.getAttribute("aria-label") || target.textContent || target.className).trim().replace(/\s+/g, " ").slice(0, 40),
         width: Math.round(rect.width * 10) / 10,
         height: Math.round(rect.height * 10) / 10,
@@ -156,7 +162,7 @@ function gapBetween(a, b) {
 // them is the row edge); they are full-width and 44 px or taller, so only
 // targets side by side or in different groups need the 8 px gap.
 function crowdedPairs(allTargets) {
-  const targets = allTargets.filter((target) => target.onTop);
+  const targets = allTargets.filter((target) => target.onTop && !target.clipped);
   const pairs = [];
   for (let i = 0; i < targets.length; i += 1) {
     for (let j = i + 1; j < targets.length; j += 1) {
@@ -354,11 +360,21 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     const entryId = await createManualEntry(page, `Lead sheet targets ${Date.now()}`);
     const sheet = await openEditSheet(page, entryId);
     await sheet.getByRole("button", { name: /More details/ }).click();
-    const targets = await tapTargets(sheet);
-    const small = targets.filter((target) => target.width < 44 || target.height < 44).map((target) => `${target.name} ${target.width}x${target.height}`);
-    expect(small).toEqual([]);
-    expect(crowdedPairs(targets)).toEqual([]);
-    expect(targets.length).toBeGreaterThan(12);
+    // Measured with the sheet scrolled to its top, then to its bottom, so
+    // every target is seen in full once (the lead's tappable chips too).
+    const measured = new Set();
+    for (const edge of ["top", "bottom"]) {
+      await sheet.locator(".entry-mobile-sheet-scroll").evaluate((scroller, where) => {
+        scroller.scrollTop = where === "top" ? 0 : scroller.scrollHeight;
+      }, edge);
+      const targets = await tapTargets(sheet);
+      const small = targets.filter((target) => !target.clipped && (target.width < 44 || target.height < 44)).map((target) => `${target.name} ${target.width}x${target.height}`);
+      expect(small).toEqual([]);
+      expect(crowdedPairs(targets)).toEqual([]);
+      targets.filter((target) => !target.clipped).forEach((target) => measured.add(target.name));
+    }
+    expect(measured.size).toBeGreaterThan(12);
+    expect([...measured]).toEqual(expect.arrayContaining(["Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim"]));
     // The numeric field brings up the number keypad.
     await expect(sheet.locator(".lsd-card").getByRole("textbox", { name: "Amount" })).toHaveAttribute("inputmode", "decimal");
   });
@@ -543,7 +559,17 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
     const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
     if (order.at(-1) !== name) order.push(name);
   }
-  expect(order.slice(0, 9)).toEqual(["Amount", "Hide money totals", "Category", "Owner", "SplitsAdd to splits", "Note", "Date", "Wallet", "Posted date"]);
+  // The tappable Support chips (date, wallet, owner) come after the lead's
+  // fields, before the rows (design.md, "Tappable chips").
+  for (let step = 0; step < 6 && order.length < 12; step += 1) {
+    await page.keyboard.press("Tab");
+    const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
+    if (order.at(-1) !== name) order.push(name);
+  }
+  expect(order.slice(0, 12)).toEqual([
+    "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
+    "Category", "Owner", "SplitsAdd to splits", "Note", "Date", "Wallet", "Posted date"
+  ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");
   await editor.getByLabel("Category").selectOption("Home");

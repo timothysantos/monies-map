@@ -25,9 +25,9 @@ test("a split expense added through the dialog is listed with its shares and per
   // A new expense starts in the open group, paid by the viewing person.
   await expect(dialog.getByLabel("Group")).toHaveValue("split-group-none");
   await expect(dialog.getByLabel("Currency")).toHaveValue("SGD");
-  await expect(dialog.getByLabel("Paid by")).toHaveValue("Tim");
+  await expect(dialog.getByLabel("Paid by", { exact: true })).toHaveValue("Tim");
 
-  await dialog.getByLabel("Date").fill("2025-10-14");
+  await dialog.getByLabel("Date", { exact: true }).fill("2025-10-14");
   await dialog.getByLabel("Category").selectOption("Home");
   await dialog.getByLabel("Expense total").fill("86.40");
   await dialog.getByLabel("Tim share %").fill("25");

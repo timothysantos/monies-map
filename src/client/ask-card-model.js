@@ -531,6 +531,9 @@ export function markCardSaved(card, result) {
     questions: [],
     saved: {
       entryId: result.entryId,
+      // Saved by Ask, so a provisional entry until a statement certifies it.
+      addedBy: "ask",
+      bankCertificationStatus: "manual_provisional",
       splitExpenseId: result.splitExpenseId ?? null,
       splitExpenseMonth: result.splitExpenseMonth ?? null,
       splitGroupId: result.splitGroupId ?? card.share.splitGroupId ?? "",
@@ -574,6 +577,9 @@ export function cardFromSavedEntry(entry, context) {
     share: { on: Boolean(entry.linkedSplitExpenseId), splitGroupId: "" },
     saved: {
       entryId: entry.id,
+      addedBy: entry.addedBy ?? null,
+      bankCertificationStatus: entry.bankCertificationStatus ?? null,
+      bankCertificationLabel: entry.bankCertificationLabel ?? "",
       splitExpenseId: entry.linkedSplitExpenseId ?? null,
       splitExpenseMonth: entry.linkedSplitExpenseId ? entry.date.slice(0, 7) : null,
       splitGroupId: "",

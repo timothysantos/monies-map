@@ -237,6 +237,31 @@ export const askCopy = {
     noMonth: (month) => `There are no entries for ${month} yet.`,
     loadFailed: "This month's entries couldn't be loaded. Open in Entries to try again."
   },
+  // An answer to a money question (ask-money-answer-card.jsx) and the check
+  // before it when a likely settle-up or own-account move would change the
+  // figures. The answer's own words come from the server's facts.
+  money: {
+    reading: "Working that out…",
+    // The tag on an answer whose words the optional AI phrased (the figures
+    // never come from it).
+    wordedByAi: "Worded by AI",
+    failed: "That couldn't be answered just now. Try again in a moment.",
+    check: {
+      title: "Check this first",
+      settlement: (from, to, date) => `This payment from ${from} to ${to} on ${date} looks like a settle-up between you.`,
+      ownTransfer: (owner, date) => `This looks like ${owner} moving money between their own accounts on ${date}.`,
+      counted: { spending: "It's counted as spending.", income: "It's counted as income.", both: "It's counted as spending and as income." },
+      why: "Sort it first so the answer is right.",
+      markSettlement: "Mark as settlement",
+      linkTransfer: "Link as transfer",
+      realSpending: "It's real spending",
+      realIncome: "It's real income",
+      marked: "Marked as a settlement.",
+      linked: "Linked as a transfer.",
+      keptSpending: "Kept as spending.",
+      keptIncome: "Kept as income."
+    }
+  },
   // Follow-ups when a request could mean more than one thing, and view
   // changes, which always wait for a tap.
   filter: {

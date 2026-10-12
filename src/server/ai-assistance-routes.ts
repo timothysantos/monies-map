@@ -36,6 +36,7 @@ import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
+import { handleAskAnswer } from "./ask-answer-route";
 import { handleReceiptRead } from "./receipt-read-route";
 import { handleTranscribe } from "./transcribe-route";
 
@@ -87,6 +88,15 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
       draft: parseEntrySentence(body?.text, context, result.value),
       ai: { requested: true, available: true, remaining: result.remaining }
     } satisfies EntryDraftResponseDto);
+  }
+
+  // Ask's answer to a money question: rules, skew check and facts first;
+  // AI may only phrase the computed answer (src/server/ask-answer-route.ts).
+  if (url.pathname === "/api/ai-assist/answer") {
+    if (request.method !== "POST") {
+      return json({ ok: false, error: "The answer route only answers POST." }, 405, { Allow: "POST" });
+    }
+    return handleAskAnswer(request, env);
   }
 
   if (url.pathname === "/api/ai-assist/receipt-read" && request.method === "POST") {

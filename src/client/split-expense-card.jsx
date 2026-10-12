@@ -12,7 +12,7 @@ import { buildSplitShareRows, formatShareRatio } from "./split-share-rows";
 import { todayInAppTimeZone } from "./app-dates";
 import { formatCurrencyMinor } from "../domain/split-currency";
 import { CategoryGlyph } from "./ui-components";
-import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 const copy = messages.splits;
@@ -26,7 +26,9 @@ const PAYMENT_ICONS = { cash: Banknote, card: CreditCard, bank: Landmark, other:
 // - Lead: the group bubble, what it was (typed in place), the group and the
 //   total in the group currency (typed in place, plain ink: a split total
 //   has no direction).
-// - Support: date, who paid, the shares (50 / 50) and how it was paid.
+// - Support: date, who paid, the shares (50 / 50) and how it was paid; each
+//   chip opens its Detail row's picker or the share editor (a folded row
+//   unfolds More details first), and a payment way the ledger set is locked.
 // - Detail: each person's share (a row opens the share editor, whose
 //   percent and amount stay linked through the existing share calculation),
 //   Category, Group, then Date, Paid by, Paid using, Currency, Evidence and
@@ -39,6 +41,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareEditorOpen, setShareEditorOpen] = useState(!isSheet);
   const shareEditorId = useId();
+  const cardRef = useRef(null);
   const today = todayInAppTimeZone();
   const currency = dialog?.currency ?? "SGD";
   const selectedGroup = groupOptions.find((group) => group.id === dialog?.groupId);
@@ -81,6 +84,32 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
     open: openPicker === key,
     onOpenChange: (open) => setOpenPicker(open ? key : "")
   });
+
+  // A Support chip opens its field's own picker: the picker sheet in a
+  // sheet (unfolding More details), the row's select on a wide screen.
+  function openFieldFromChip(key) {
+    if (isSheet) {
+      setMoreOpen(true);
+      setOpenPicker(key);
+      return;
+    }
+    const select = cardRef.current?.querySelector(`[data-row="${key}"] select`);
+    if (select instanceof HTMLSelectElement) {
+      select.focus();
+      try {
+        select.showPicker?.();
+      } catch {
+        // Focus alone is enough where a select cannot open from script.
+      }
+    }
+  }
+
+  function openShareEditorFromChip() {
+    setShareEditorOpen(true);
+    window.requestAnimationFrame(() => {
+      cardRef.current?.querySelector(".split-share-rows")?.scrollIntoView({ block: "nearest" });
+    });
+  }
 
   const groupRow = (
     <PickerRow
@@ -183,7 +212,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
   ];
 
   return (
-    <div className={`split-expense-card is-${layout}`}>
+    <div ref={cardRef} className={`split-expense-card is-${layout}`}>
       <div className="split-expense-card-lead">
         <LeadCard
           className="split-expense-lead"
@@ -234,10 +263,56 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
             </label>
           )}
           chips={[
-            <MetaChip key="date" icon={CalendarDays}>{formatCardDate(dialog?.date, today)}</MetaChip>,
-            dialog?.payerPersonName ? <MetaChip key="payer" person={dialog.payerPersonName}>{cardCopy.paidBy(dialog.payerPersonName)}</MetaChip> : null,
-            shareRows.length ? <MetaChip key="shares" icon={Users}>{formatShareRatio(shareRows)}</MetaChip> : null,
-            <MetaChip key="payment" icon={PaymentIcon}>{cardCopy.paymentMethods[paymentMethod] ?? paymentMethod}</MetaChip>
+            <MetaChip
+              key="date"
+              data-chip="date"
+              icon={CalendarDays}
+              control={(
+                <ChipDateField
+                  value={dialog?.date ?? ""}
+                  label={messages.common.changeChip(copy.expenseDate, formatCardDate(dialog?.date, today))}
+                  onValueChange={(date) => update({ date })}
+                />
+              )}
+            >
+              {formatCardDate(dialog?.date, today)}
+            </MetaChip>,
+            dialog?.payerPersonName ? (
+              <MetaChip
+                key="payer"
+                data-chip="payer"
+                person={dialog.payerPersonName}
+                actionLabel={messages.common.changeChip(copy.expensePaidBy, dialog.payerPersonName)}
+                onClick={() => openFieldFromChip("payer")}
+              >
+                {cardCopy.paidBy(dialog.payerPersonName)}
+              </MetaChip>
+            ) : null,
+            shareRows.length ? (
+              <MetaChip
+                key="shares"
+                data-chip="shares"
+                icon={Users}
+                actionLabel={messages.common.changeChip(cardCopy.sharesChip, formatShareRatio(shareRows))}
+                aria-haspopup={undefined}
+                aria-expanded={shareEditorOpen}
+                aria-controls={shareEditorOpen ? shareEditorId : undefined}
+                onClick={openShareEditorFromChip}
+              >
+                {formatShareRatio(shareRows)}
+              </MetaChip>
+            ) : null,
+            <MetaChip
+              key="payment"
+              data-chip="paymentMethod"
+              icon={PaymentIcon}
+              locked={Boolean(dialog?.linkedTransactionId)}
+              lockedLabel={cardCopy.paymentLockedByLedger}
+              actionLabel={messages.common.changeChip(cardCopy.paidUsing, cardCopy.paymentMethods[paymentMethod] ?? paymentMethod)}
+              onClick={() => openFieldFromChip("paymentMethod")}
+            >
+              {cardCopy.paymentMethods[paymentMethod] ?? paymentMethod}
+            </MetaChip>
           ].filter(Boolean)}
         />
       </div>

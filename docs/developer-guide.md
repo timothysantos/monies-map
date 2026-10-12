@@ -1964,6 +1964,24 @@ they always match the Entries page (`tests/ask-filter-answer.test.mjs`,
 `tests/e2e/ask-search.spec.js`). An answer adds `entry_min` / `entry_max`
 and `from_ask=1` to the Entries URL; the last shows the From Ask chip.
 
+Money questions ("why was August so expensive?", "what do I owe Serene?")
+are read first by `src/domain/ask-answer-intent.ts` (rules, shared by the
+page and the route) and sent to `POST /api/ai-assist/answer`
+(`src/server/ask-answer-route.ts`). The route checks the skew candidates of
+the answer's month(s) first and returns `needsConfirmation` with the
+candidates when one would change the figures; otherwise it reads the facts
+from the Month and Splits page DTOs (`ask-answer-facts.ts`,
+`pages/ask-answer.ts`), builds the card and a computed wording
+(`ask-answer-wording.ts`), and, only with AI on, asks the provider to
+phrase the wording, kept only if `validateAiWording` passes. The page shows
+`ask-money-answer-card.jsx`; Mark as settlement / Link as transfer post the
+candidate's suggested actions through `resolveSkewCandidate` (an allowlist
+of the existing routes) and ask again. Tests: `tests/ask-answer-*.test.mjs`
+(intent table, showcase figures against the page DTOs, skew first, AI
+validation and fallbacks), `tests/ask-money-answer.test.mjs` and
+`tests/e2e/ask-money-answers.spec.js`; audit
+`docs/audits/ask-answers-audit.md`.
+
 ## How do Money insights work?
 
 Money insights (the "check-in" in code: `money-signals/checkin.ts`,

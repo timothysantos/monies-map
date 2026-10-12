@@ -649,6 +649,47 @@ const SHOTS = [
     }
   },
   {
+    // A money question answered on Ask: July (the over-plan month) against
+    // its plan, the change from June, where it went and the biggest costs,
+    // with Open in Entries and Open Month first in the chips.
+    name: "phone-ask-money-answer", device: "phone",
+    run: async (page) => {
+      await open(page, `/ask?view=household&month=${MONTH}&scope=direct_plus_shared`);
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill(`Why was ${new Date(`${addMonths(SEED_MONTH, -2)}-01T00:00:00Z`).toLocaleString("en-SG", { month: "long", timeZone: "UTC" })} so expensive?`);
+      await message.press("Enter");
+      await page.locator("[data-ask-money-answer]").waitFor();
+      await message.blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // The check before an answer: the settle-up Serene still owes, paid by
+    // PayNow and filed as spending and income, is asked about first.
+    // Adds two entries, so it reseeds first and runs near the end.
+    name: "phone-ask-money-check", device: "phone", reseed: true,
+    run: async (page) => {
+      const splits = await (await page.request.get(`/api/splits-page?view=person-ethan&month=${MONTH}`)).json();
+      const checkpoint = splits.splitsPage.settlementCheckpoints.find((item) => item.status === "open");
+      const date = checkpoint.settlementDate.replace(/\d{2}$/, (day) => String(Math.min(28, Number(day) + 2)).padStart(2, "0"));
+      for (const entry of [
+        { description: "PAYNOW TRANSFER TO ETHAN", accountName: "UOB One Account", categoryName: "Other", entryType: "expense", ownerName: "Serene" },
+        { description: "PAYNOW FROM SERENE", accountName: "OCBC 360 Account", categoryName: "Other - Income", entryType: "income", ownerName: "Ethan" }
+      ]) {
+        await page.request.post("/api/entries/create", { data: { ...entry, date, amountMinor: checkpoint.amountMinor, ownershipType: "direct" } });
+      }
+      await open(page, `/ask?view=household&month=${date.slice(0, 7)}&scope=direct_plus_shared`);
+      const message = page.getByRole("textbox", { name: "Message" });
+      await message.fill("How am I doing against the plan?");
+      await message.press("Enter");
+      await page.locator('[data-skew-check="open"]').waitFor();
+      await message.blur();
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
     // A card filled in by hand and saved, with its follow-up chips. Last,
     // because it adds an entry.
     name: "phone-ask-saved", device: "phone", reseed: true,

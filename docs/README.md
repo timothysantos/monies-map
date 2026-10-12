@@ -105,6 +105,10 @@ a doc here in the same change.
 - [`audits/ai-entry-draft-audit.md`](audits/ai-entry-draft-audit.md):
   entry draft parser and its optional AI gap-filler (privacy, cost, writes,
   no-AI behaviour).
+- [`audits/ask-answers-audit.md`](audits/ask-answers-audit.md):
+  Ask's answers to money questions: rules, the skew check first, facts from
+  the screens' DTOs, and the validated optional AI wording (privacy, cost,
+  writes, no-AI behaviour).
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):
