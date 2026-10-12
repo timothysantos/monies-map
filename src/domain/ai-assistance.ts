@@ -30,9 +30,14 @@ const DEFAULT_DAILY_LIMIT = 12;
 // DEFAULT_HOUSEHOLD_ID. Nothing joins on it, and renaming it would silently
 // reset the day's used units on deploy.
 const AI_ALLOWANCE_COUNTER_KEY = "household-default";
+// What a text feature reports when the model answered but its answer failed
+// validation, as opposed to a provider that failed or timed out.
+export const AI_UNUSABLE_SUGGESTION_REASON = "AI returned an unusable suggestion.";
 
 // AI assistance is deliberately a best-effort edge. It never throws into a
 // financial workflow and it persists only aggregate daily usage counters.
+// Only the entry draft still calls this (Llama 3.2 3B on Workers AI); the
+// other text features use the provider layer, runTextJson in ai-provider.ts.
 export async function runAiJson<T>(
   db: D1Database,
   env: AiAssistEnv,
@@ -76,7 +81,7 @@ export async function runAiJson<T>(
     });
     const parsed = input.parse(parseAiJsonResponse(output));
     if (!parsed) {
-      return unavailable("AI returned an unusable suggestion.", budget.remaining);
+      return unavailable(AI_UNUSABLE_SUGGESTION_REASON, budget.remaining);
     }
     return { available: true, value: parsed, remaining: budget.remaining };
   } catch {
