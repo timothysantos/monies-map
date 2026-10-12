@@ -189,33 +189,58 @@ test("only the payer's side imported: one-sided candidate that refiles the entry
   assert.deepEqual(result.totals, { spendingMinor: 18245, incomeMinor: 0 });
 });
 
-test("a one-sided candidate whose description names nobody is only medium confidence, shown only when asked for", () => {
-  const entries = [payerOutflow({ description: "FAST PAYMENT 0412" })];
+// A group balance of $42 Ethan owes Serene, last open activity on 2 May.
+const BALI_BALANCE = {
+  groupId: "split-group-bali",
+  groupName: "Bali trip",
+  currency: "SGD",
+  amountMinor: 4200,
+  fromPersonId: ETHAN.id,
+  toPersonId: SERENE.id,
+  lastActivityDate: "2026-05-02"
+};
+const unnamedBaliOutflow = () => entry({ id: "entry-bali-out", date: "2026-05-06", accountId: "acct-ocbc-360", entryType: "expense", categoryName: "Other", amountMinor: 4200, description: "FAST PAYMENT 0412" });
+
+test("a one-sided group-balance payment whose description names nobody is only medium confidence, shown only when asked for", () => {
+  const entries = [unnamedBaliOutflow()];
 
   // Hidden by default: one side and no name is too weak to show.
-  assert.deepEqual(find({ entries }), { candidates: [], totals: { spendingMinor: 0, incomeMinor: 0 }, omittedCandidateCount: 0 });
+  assert.deepEqual(find({ entries, settlementCheckpoints: [], groupBalances: [BALI_BALANCE] }), { candidates: [], totals: { spendingMinor: 0, incomeMinor: 0 }, omittedCandidateCount: 0 });
 
-  const result = find({ entries, includeMedium: true });
+  const result = find({ entries, settlementCheckpoints: [], groupBalances: [BALI_BALANCE], includeMedium: true });
   assert.equal(result.candidates.length, 1);
-  assert.equal(result.candidates[0].id, "settlement:split-checkpoint-may:entry-paynow-out:-");
+  assert.equal(result.candidates[0].id, "settlement:split-group-bali:entry-bali-out:-");
   assert.equal(result.candidates[0].confidence, "medium");
   assert.equal(result.candidates[0].bothSidesFound, false);
   assert.equal(result.candidates[0].reasons.some((reason) => reason.code === "counterparty_named"), false);
-  assert.deepEqual(result.totals, { spendingMinor: 18245, incomeMinor: 0 });
+  assert.deepEqual(result.totals, { spendingMinor: 4200, incomeMinor: 0 });
+});
+
+test("a one-sided checkpoint payment is high even when it names nobody: Money insights offers the same payment", () => {
+  // internal-moves.ts: the exact remaining amount of an open checkpoint in
+  // its window is the settlement's payment candidate on Splits, so Ask's
+  // check must not hide it.
+  const result = find({ entries: [payerOutflow({ description: "FAST PAYMENT 0412" })] });
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].id, "settlement:split-checkpoint-may:entry-paynow-out:-");
+  assert.equal(result.candidates[0].confidence, "high");
+  assert.equal(result.candidates[0].reasons.some((reason) => reason.code === "counterparty_named"), false);
 });
 
 test("negative: hiding medium settlements keeps named one-sided settlements and medium own transfers", () => {
-  // A one-sided settlement that names the payee is high confidence and always shown.
-  const named = find({ entries: [payerOutflow()] });
+  // A one-sided group-balance payment that names the payee is high confidence and always shown.
+  const named = find({ entries: [{ ...unnamedBaliOutflow(), description: "PAYNOW SERENE BALI" }], settlementCheckpoints: [], groupBalances: [BALI_BALANCE] });
   assert.equal(named.candidates.length, 1);
   assert.equal(named.candidates[0].confidence, "high");
 
   // A hidden medium settlement still holds its entry, so the same entry is
   // never offered as something else depending on the filter.
   const hidden = find({
+    settlementCheckpoints: [],
+    groupBalances: [BALI_BALANCE],
     entries: [
-      payerOutflow({ description: "FAST PAYMENT 0412" }),
-      entry({ id: "entry-uob-in", date: "2026-05-13", accountId: "acct-uob-one", entryType: "income", categoryName: "Salary", amountMinor: 18245 })
+      unnamedBaliOutflow(),
+      entry({ id: "entry-uob-in", date: "2026-05-06", accountId: "acct-uob-one", entryType: "income", categoryName: "Salary", amountMinor: 4200 })
     ]
   });
   assert.deepEqual(hidden.candidates, []);
@@ -228,11 +253,11 @@ test("an amount one cent off the settlement is not a candidate", () => {
   assert.deepEqual(result, { candidates: [], totals: { spendingMinor: 0, incomeMinor: 0 }, omittedCandidateCount: 0 });
 });
 
-test("a payment six days from the settlement date is outside the window; five days is inside", () => {
-  const outside = find({ entries: [payerOutflow({ date: "2026-05-16" }), payeeInflow({ date: "2026-05-04" })] });
+test("a payment from 5 days before to 14 days after the settlement date is inside the window; a day more is outside", () => {
+  const outside = find({ entries: [payerOutflow({ date: "2026-05-25" }), payeeInflow({ date: "2026-05-04" })] });
   assert.deepEqual(outside.candidates, []);
 
-  const inside = find({ entries: [payerOutflow({ date: "2026-05-15" }), payeeInflow({ date: "2026-05-05" })] });
+  const inside = find({ entries: [payerOutflow({ date: "2026-05-24" }), payeeInflow({ date: "2026-05-05" })] });
   assert.equal(inside.candidates.length, 1);
   assert.equal(inside.candidates[0].bothSidesFound, true);
 });

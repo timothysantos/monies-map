@@ -87,11 +87,15 @@ test("an open settlement carries the payment that matches it, until that payment
   await db.prepare("UPDATE split_settlement_checkpoints SET status = 'reopened'").run();
   await db.prepare("INSERT INTO split_settlement_checkpoints (id, household_id, from_person_id, to_person_id, amount_minor, settlement_date, status) VALUES ('cp-open', 'household-1', 'person-joyce', 'person-tim', 708217, ?, 'open')")
     .bind(settled).run();
-  const [bank] = await rows(db, "SELECT id FROM accounts WHERE account_kind = 'bank' LIMIT 1");
-  const payer = await addEntry(db, { account: bank.id, date: `${monthAgo(1)}-08`, description: "PAYNOW-FAST TO TIM", amountMinor: 708217 });
-  const payee = await addEntry(db, { account: bank.id, date: `${monthAgo(1)}-08`, description: "PAYNOW-FAST FROM JOYCE", amountMinor: 708217, type: "income", owner: "person-tim" });
+  // Each side on its person's own account (internal-moves.ts): a joint
+  // account belongs to neither.
+  const ownBank = async (personId) => (await rows(db, "SELECT id FROM accounts WHERE account_kind = 'bank' AND is_joint = 0 AND owner_person_id = ? ORDER BY id LIMIT 1", personId))[0].id;
+  const joyceBank = await ownBank("person-joyce");
+  const timBank = await ownBank("person-tim");
+  const payer = await addEntry(db, { account: joyceBank, date: `${monthAgo(1)}-08`, description: "PAYNOW-FAST TO TIM", amountMinor: 708217 });
+  const payee = await addEntry(db, { account: timBank, date: `${monthAgo(1)}-08`, description: "PAYNOW-FAST FROM JOYCE", amountMinor: 708217, type: "income", owner: "person-tim" });
   // A payment after two weeks is not the settlement's.
-  await addEntry(db, { account: bank.id, date: `${monthAgo(1)}-25`, description: "PAYNOW-FAST TO TIM", amountMinor: 708217 });
+  await addEntry(db, { account: joyceBank, date: `${monthAgo(1)}-25`, description: "PAYNOW-FAST TO TIM", amountMinor: 708217 });
 
   const page = async () => (await api(`/api/splits-page?view=household&month=${monthAgo(1)}`)).payload.splitsPage.settlementCheckpoints.find((item) => item.id === "cp-open");
   assert.deepEqual((await page()).paymentCandidate, { date: `${monthAgo(1)}-08`, amountMinor: 708217, entryIds: [payer, payee], countedAsSpending: true });

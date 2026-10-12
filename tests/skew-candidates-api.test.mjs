@@ -232,8 +232,9 @@ test("a cent off, outside the window, or between different people's accounts is 
     date: "2026-05-21", description: "PAYNOW", accountName: OWN_ACCOUNT[payer], categoryName: "Other",
     amountMinor: settlement.amountMinor - 1, entryType: "expense", ownerName: NAME[payer]
   });
-  const tooLate = await createEntry(api, {
-    date: "2026-05-26", description: "PAYNOW", accountName: OWN_ACCOUNT[payee], categoryName: "Other - Income",
+  // Six days before the settlement date (the window is 5 days before to 14 after).
+  const tooEarly = await createEntry(api, {
+    date: "2026-05-14", description: "PAYNOW", accountName: OWN_ACCOUNT[payee], categoryName: "Other - Income",
     amountMinor: settlement.amountMinor, entryType: "income", ownerName: NAME[payee]
   });
   // Ethan to Serene, same amount, no settlement of that size: not an own transfer.
@@ -247,7 +248,7 @@ test("a cent off, outside the window, or between different people's accounts is 
   });
 
   const { payload } = await getCandidates(fetch, { view: "household", month: MONTH });
-  const ids = [centOff, tooLate, crossOut, crossIn];
+  const ids = [centOff, tooEarly, crossOut, crossIn];
   assert.deepEqual(payload.candidates.filter((candidate) => candidate.entryIds.some((id) => ids.includes(id))), []);
 });
 
@@ -289,13 +290,20 @@ test("an open group balance paid by PayNow is a settlement candidate with the ba
   });
 });
 
-test("a one-sided settlement that names nobody is hidden unless include=medium asks for it", async (t) => {
-  const { db, api, fetch } = await openSeededDatabase(t, template);
+test("a one-sided group-balance payment that names nobody is hidden unless include=medium asks for it", async (t) => {
+  const { api, fetch } = await openSeededDatabase(t, template);
   await setUpHousehold(api);
-  const settlement = await simplifySettlement(api, db);
+  // Serene pays an $84 villa deposit, shared 50/50: Ethan owes her $42.
+  const group = await api("/api/splits/groups/create", { name: "Bali trip", currency: "SGD" });
+  assert.equal(group.status, 200, JSON.stringify(group.payload));
+  const expense = await api("/api/splits/expenses/create", {
+    groupId: group.payload.groupId, date: "2026-05-08", description: "Villa deposit", categoryName: "Travel",
+    payerPersonName: "Serene", amountMinor: 8400, splitAmountMinor: 4200, currency: "SGD", paymentMethod: "cash", paymentStatus: "recorded"
+  });
+  assert.equal(expense.status, 200, JSON.stringify(expense.payload));
   const outflowId = await createEntry(api, {
-    date: "2026-05-22", description: "FAST PAYMENT 0412", accountName: OWN_ACCOUNT[settlement.fromPersonId], categoryName: "Other",
-    amountMinor: settlement.amountMinor, entryType: "expense", ownerName: NAME[settlement.fromPersonId]
+    date: "2026-05-12", description: "FAST PAYMENT 0412", accountName: "OCBC 360 Account", categoryName: "Other",
+    amountMinor: 4200, entryType: "expense", ownerName: "Ethan"
   });
   const ours = (payload) => payload.candidates.filter((candidate) => candidate.entryIds.includes(outflowId));
 
@@ -309,12 +317,29 @@ test("a one-sided settlement that names nobody is hidden unless include=medium a
   assert.equal(candidate.kind, "settlement");
   assert.equal(candidate.confidence, "medium");
   assert.equal(candidate.bothSidesFound, false);
-  assert.deepEqual(candidate.settlement, { source: "settlement_checkpoint", checkpointId: settlement.checkpointId, anchorDate: "2026-05-20" });
-  assert.deepEqual(shown.payload.totals, { spendingMinor: settlement.amountMinor, incomeMinor: 0 });
+  assert.deepEqual(candidate.settlement, { source: "group_balance", groupId: group.payload.groupId, groupName: "Bali trip", anchorDate: "2026-05-08" });
+  assert.deepEqual(shown.payload.totals, { spendingMinor: 4200, incomeMinor: 0 });
 
   // An unknown include value shows nothing extra.
   const unknown = await getCandidates(fetch, { view: "household", month: MONTH, include: "low" });
   assert.deepEqual(ours(unknown.payload), []);
+});
+
+test("a one-sided checkpoint payment that names nobody is shown: it is the payment Splits offers for the settlement", async (t) => {
+  const { db, api, fetch } = await openSeededDatabase(t, template);
+  await setUpHousehold(api);
+  const settlement = await simplifySettlement(api, db);
+  const outflowId = await createEntry(api, {
+    date: "2026-05-22", description: "FAST PAYMENT 0412", accountName: OWN_ACCOUNT[settlement.fromPersonId], categoryName: "Other",
+    amountMinor: settlement.amountMinor, entryType: "expense", ownerName: NAME[settlement.fromPersonId]
+  });
+  const { payload } = await getCandidates(fetch, { view: "household", month: MONTH });
+  const candidate = payload.candidates.find((item) => item.entryIds.includes(outflowId));
+  assert.equal(candidate.confidence, "high");
+  assert.deepEqual(candidate.settlement, { source: "settlement_checkpoint", checkpointId: settlement.checkpointId, anchorDate: "2026-05-20" });
+  const splits = await api(`/api/splits-page?view=household&month=${MONTH}`);
+  const checkpoint = splits.payload.splitsPage.settlementCheckpoints.find((item) => item.id === settlement.checkpointId);
+  assert.deepEqual(checkpoint.paymentCandidate.entryIds, [outflowId]);
 });
 
 test("the route only answers GET", async (t) => {
