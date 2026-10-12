@@ -313,13 +313,13 @@ const SHOTS = [
   { name: "splits-scrolled", d: P, run: async (p) => { await open(p, splitsUrl()); await p.evaluate(() => window.scrollTo(0, 900)); await p.waitForTimeout(500); } },
   { name: "splits-add-expense", d: PD, run: async (p) => {
     await open(p, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
-    if (isPhone(p)) await p.locator(".splits-fab").click();
+    if (isPhone(p)) await p.locator("[data-splits-fab-trigger]").evaluate((el) => el.click()); // the receipt FAB opens Ask's card; the dialog stays behind the hidden trigger
     else await p.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
     await p.getByRole("dialog", { name: "New split expense" }).waitFor(); await p.waitForTimeout(500); await hideCaret(p);
   } },
   { name: "splits-add-expense-bottom", d: P, run: async (p) => {
     await open(p, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
-    await p.locator(".splits-fab").click();
+    await p.locator("[data-splits-fab-trigger]").evaluate((el) => el.click());
     const dlg = p.getByRole("dialog", { name: "New split expense" }); await dlg.waitFor(); await p.waitForTimeout(500);
     await dlg.evaluate((el) => { [el, ...el.querySelectorAll("*")].filter((n) => n.scrollHeight > n.clientHeight + 10 && /auto|scroll/.test(getComputedStyle(n).overflowY)).forEach((n) => { n.scrollTop = n.scrollHeight; }); });
     await p.waitForTimeout(300);
@@ -434,6 +434,7 @@ const SHOTS = [
     await open(p, `/entries?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
     await p.getByRole("textbox", { name: /Ask|Message/ }).first().fill("How much on public transport?");
     await p.keyboard.press("Enter");
+    const dockMsg = p.getByRole("textbox", { name: "Message" }); await dockMsg.waitFor(); if ((await dockMsg.inputValue().catch(() => "")) !== "") await dockMsg.press("Enter");
     await p.locator(".ask-answer[data-ask-answer]:not([data-ask-answer=''])").first().waitFor({ timeout: 30_000 });
     await waitUsable(p); await hideCaret(p);
   } },
@@ -441,6 +442,7 @@ const SHOTS = [
     await open(p, `/entries?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
     await p.getByRole("textbox", { name: /Ask|Message/ }).first().fill("How much on public transport?");
     await p.keyboard.press("Enter");
+    const dockMsg = p.getByRole("textbox", { name: "Message" }); await dockMsg.waitFor(); if ((await dockMsg.inputValue().catch(() => "")) !== "") await dockMsg.press("Enter");
     await p.locator(".ask-answer[data-ask-answer]:not([data-ask-answer=''])").first().waitFor({ timeout: 30_000 });
     await waitUsable(p); await hideCaret(p);
   } },
