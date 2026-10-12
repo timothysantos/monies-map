@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadMonthPage, postJson, reseedDemo } from "./helpers";
+import { loadMonthPage, loadSettingsPage, postJson, reseedDemo } from "./helpers";
 
 // The dialogs and small sheets in the Lead · Support · Detail style
 // (design.md, "Lead · Support · Detail"; src/client/sheet-dialog.jsx): one
@@ -106,12 +106,13 @@ async function tapTargetProblems(scope) {
 // What every phone dialog shares: the grab handle, a 44 px round close, one
 // lead, the bar at the bottom of the sheet with the primary action at its end,
 // nothing scrolling sideways, and tap targets that are big enough.
-async function expectSheetFrame(page, surface, { lead = true, primary }) {
+async function expectSheetFrame(page, surface, { lead = true, primary, closable = true }) {
   await expect(surface.locator(".sheet-drag-handle")).toHaveCount(1);
-  const close = surface.locator(".entry-composer-close");
-  const closeBox = await box(close);
-  expect(closeBox.width).toBeGreaterThanOrEqual(44);
-  expect(closeBox.height).toBeGreaterThanOrEqual(44);
+  if (closable) {
+    const closeBox = await box(surface.locator(".entry-composer-close"));
+    expect(closeBox.width).toBeGreaterThanOrEqual(44);
+    expect(closeBox.height).toBeGreaterThanOrEqual(44);
+  }
   if (lead) {
     await expect(surface.locator(".lsd-card")).toHaveCount(1);
   }
@@ -142,7 +143,7 @@ test.describe("@webkit phone: confirmations are bottom sheets with the destructi
     await expect(confirm).toBeVisible();
     await expect(confirm.locator(".lsd-title")).toHaveText(description);
     await expect(confirm.locator(".lsd-amount")).toContainText("$43.21");
-    await expect(confirm.getByText("This removes the ledger entry.")).toBeVisible();
+    await expect(confirm.locator(".lsd-note")).toHaveText("This removes the ledger entry.");
     await expectSheetFrame(page, confirm, { primary: "Delete entry" });
     // Rose pastel with the rose ink, not a saturated red.
     const deleteButton = confirm.locator(".lsd-bottom").getByRole("button", { name: "Delete entry" });
@@ -313,14 +314,14 @@ test.describe("@webkit phone: Settings editors", () => {
 
     await surface.getByRole("button", { name: "Cancel" }).click();
     await expect(surface).toHaveCount(0);
-    await expect(page.getByText(name)).toHaveCount(0);
+    expect((await loadSettingsPage(page)).settingsPage.accounts.some((account) => account.name === name)).toBe(false);
 
     await page.getByRole("button", { name: "+ Add account" }).first().click();
     await sheet(page, "Create account").getByLabel("Display name").fill(name);
     await sheet(page, "Create account").getByLabel("Institution").fill("Dialog Bank");
     await sheet(page, "Create account").locator(".lsd-bottom").getByRole("button", { name: "Create account" }).click();
     await expect(sheet(page, "Create account")).toHaveCount(0);
-    await expect(page.getByText(name).first()).toBeVisible();
+    await expect.poll(async () => (await loadSettingsPage(page)).settingsPage.accounts.some((account) => account.name === name)).toBe(true);
   });
 
   test("Account type opens the picker sheet with a title, a list, a bar and a handle", async ({ page }) => {
@@ -350,7 +351,7 @@ test.describe("@webkit phone: Settings editors", () => {
     const confirm = sheet(page, "Archive account");
     await expect(confirm).toBeVisible();
     await expect(confirm.locator(".sheet-dialog-lead.is-danger")).toHaveCount(0);
-    await expectSheetFrame(page, confirm, { primary: "Confirm" });
+    await expectSheetFrame(page, confirm, { primary: "Archive account" });
     await confirm.getByRole("button", { name: "Cancel" }).click();
     await expect(confirm).toHaveCount(0);
   });
@@ -396,7 +397,7 @@ test.describe("@webkit phone: Settings editors", () => {
     await surface.getByLabel("Statement start date").fill("2026-05-01");
     await surface.getByLabel("Statement end date").fill("2026-05-31");
     await surface.getByLabel("Statement ending balance").fill("2345.67");
-    await expect(surface.locator(".lsd-chip").filter({ hasText: "May 2026" })).toBeVisible();
+    await expect(surface.locator(".lsd-chip").filter({ hasText: /^May 2026$/ })).toBeVisible();
     let saveRequests = 0;
     page.on("request", (request) => {
       if (request.url().includes("/api/accounts/reconcile")) saveRequests += 1;
@@ -406,27 +407,34 @@ test.describe("@webkit phone: Settings editors", () => {
     expect(saveRequests).toBe(0);
   });
 
-  test("Reload app data needs the words typed; Empty state is rose", async ({ page }) => {
+  test("Clear unresolved transfers asks in a rose sheet; Cancel keeps them, Clear transfers hides them", async ({ page }) => {
     await phone(page);
-    await page.goto("/settings?view=person-tim");
-    await page.getByRole("button", { name: /Demo state/ }).first().click({ timeout: 60_000 });
-    await page.getByRole("button", { name: "Reload app data" }).click();
-    const surface = sheet(page, "Reload app data");
+    await postJson(page, "/api/entries/create", {
+      date: "2026-07-08",
+      description: `Dialog unresolved ${Date.now()}`,
+      accountName: "UOB One",
+      categoryName: "Transfer",
+      amountMinor: 71234,
+      entryType: "transfer",
+      transferDirection: "out",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await openSection(page, "Unresolved transfers");
+    await page.getByRole("button", { name: "Clear all" }).first().click();
+    const surface = sheet(page, "Clear unresolved transfers?");
     await expect(surface).toBeVisible();
-    await expectSheetFrame(page, surface, { primary: "Confirm reload" });
-    const confirm = surface.locator(".lsd-bottom").getByRole("button", { name: "Confirm reload" });
-    await expect(confirm).toBeDisabled();
-    await surface.getByRole("textbox").fill("reload data");
-    await expect(confirm).toBeEnabled();
+    await expect(surface.locator(".sheet-dialog-lead.is-danger")).toHaveCount(1);
+    await expectSheetFrame(page, surface, { primary: "Clear transfers" });
     await surface.getByRole("button", { name: "Cancel" }).click();
     await expect(surface).toHaveCount(0);
+    expect((await loadSettingsPage(page)).settingsPage.unresolvedTransfers.length).toBeGreaterThan(0);
 
-    await page.getByRole("button", { name: "Enter empty state" }).click();
-    const empty = sheet(page, "Enter empty state");
-    await expect(empty.locator(".sheet-dialog-lead.is-danger")).toHaveCount(1);
-    await expect(empty.locator(".lsd-bottom").getByRole("button", { name: /Confirm/ })).toBeDisabled();
-    await empty.getByRole("button", { name: "Cancel" }).click();
-    await expect(empty).toHaveCount(0);
+    await page.getByRole("button", { name: "Clear all" }).first().click();
+    const response = page.waitForResponse((r) => r.url().includes("/api/") && r.request().method() === "POST" && r.ok() && /transfer/i.test(r.url()));
+    await sheet(page, "Clear unresolved transfers?").locator(".lsd-bottom").getByRole("button", { name: "Clear transfers" }).click();
+    await response;
+    await expect(sheet(page, "Clear unresolved transfers?")).toHaveCount(0);
   });
 });
 
@@ -491,10 +499,8 @@ test.describe("@webkit phone: topped up and login", () => {
     await page.keyboard.press("Escape");
     await page.mouse.click(195, 20);
     await expect(surface).toBeVisible();
-    await expectSheetFrame(page, surface, { primary: "Save login", lead: true }).catch((error) => {
-      // The close button is absent by design; everything else must hold.
-      if (!String(error.message).includes("entry-composer-close")) throw error;
-    });
+    // The close button is absent by design; everything else holds.
+    await expectSheetFrame(page, surface, { primary: "Save login", closable: false });
     await context.close();
   });
 });
