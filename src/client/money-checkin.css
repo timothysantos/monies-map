@@ -138,11 +138,14 @@
   }
 }
 
-/* The fold row (financial-insight.jsx): the eyebrow over one line (a To do
-   headline or the count) and a chevron, all one button, at least 44px to
-   tap. Folded, the block is this row alone; open, the content sits under
-   it. On a phone the row keeps clear of the floating eye button like the
-   content does. */
+/* The fold (financial-insight.jsx). Open, a plain row at the top (the
+   eyebrow and a chevron) folds the block again. Folded, the eyebrow sits
+   above a teaser card that is one button: the top insight's chip and
+   headline (two lines at most), a "+N more" pill and a chevron. The card
+   takes the pastel surface of its kind (existing tokens, ink text); with
+   more insights behind it, two thin offset edges under it read as a deck.
+   Both at least 44px to tap. On a phone they keep clear of the floating eye
+   button like the content does. */
 .financial-insight:has(> .financial-insight-fold) {
   display: block;
   padding: 0;
@@ -169,14 +172,9 @@
   outline-offset: 2px;
 }
 
-.financial-insight-fold .financial-insight-label,
-.financial-insight-peek {
-  grid-column: 1;
-}
-
 .financial-insight-fold > svg {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+  width: 18px;
+  height: 18px;
   color: var(--accent-strong);
 }
 
@@ -184,24 +182,79 @@
   transform: rotate(180deg);
 }
 
-.financial-insight-peek {
+.financial-insight:has(> .financial-insight-fold[aria-expanded="false"]) > .financial-insight-label {
+  display: block;
+  padding-top: 10px;
+}
+
+.financial-insight-fold[aria-expanded="false"] {
+  --fold-fill: var(--pastel-neutral);
+  --fold-ink: var(--text);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  min-height: 56px;
+  margin: 4px 0 12px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--fold-ink) 18%, transparent);
+  border-radius: 14px;
+  background: var(--fold-fill);
+  color: var(--fold-ink);
+}
+
+.financial-insight-fold[data-kind="quick_fix"] {
+  --fold-fill: var(--pastel-butter);
+  --fold-ink: var(--pastel-butter-ink);
+}
+
+.financial-insight-fold[data-kind="bigger_question"] {
+  --fold-fill: var(--pastel-lavender);
+  --fold-ink: var(--pastel-lavender-ink);
+}
+
+.financial-insight-fold[data-kind="worth_a_look"] {
+  --fold-fill: var(--pastel-sky);
+  --fold-ink: var(--pastel-sky-ink);
+}
+
+.financial-insight-fold[data-kind="going_well"] {
+  --fold-fill: var(--pastel-mint);
+  --fold-ink: var(--pastel-mint-ink);
+}
+
+.financial-insight-fold[aria-expanded="false"][data-more]:not([data-more="0"]) {
+  box-shadow:
+    0 5px 0 -2px color-mix(in srgb, var(--fold-ink) 16%, var(--fold-fill)),
+    0 9px 0 -4px color-mix(in srgb, var(--fold-ink) 9%, var(--fold-fill));
+}
+
+.financial-insight-teaser {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   min-width: 0;
-  color: var(--text);
-  font-size: 0.94rem;
-  line-height: 1.4;
+  font-size: 0.9rem;
+  line-height: 1.3;
 }
 
-.financial-insight-peek .checkin-chip {
-  flex: none;
-}
-
-.financial-insight-peek-fact {
-  min-width: 0;
+.financial-insight-teaser > strong {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-weight: 700;
+}
+
+.financial-insight-fold[aria-expanded="false"] .checkin-chip {
+  --chip-colour: var(--fold-ink);
+}
+
+.financial-insight-more {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fold-ink) 12%, transparent);
+  font-size: 0.72rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -210,7 +263,12 @@
 }
 
 @media (max-width: 760px) {
-  .financial-insight-fold {
+  .financial-insight-fold[aria-expanded="true"] {
     width: calc(100% - 56px);
+  }
+
+  .financial-insight-fold[aria-expanded="false"] {
+    width: calc(100% - 56px);
+    max-width: calc(100% - 56px);
   }
 }

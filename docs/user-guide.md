@@ -1700,11 +1700,13 @@ back a shared balance ("settling up").
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
 
-The top row of Money insights folds the block. Select it to open or close
-it. On a phone it starts closed as one short row: the title, then either the
-**To do** line (so a warning is never hidden) or how many insights there
-are. On a computer it starts open. Each choice is remembered in this
-browser, separately for phone and computer.
+Money insights can be folded. Under the title, a small card shows the
+first thing worth knowing (a **To do** comes first), with "+2 more" when there
+are others and an arrow. Select the card to open all of it, and select the
+title row to fold it again. On a phone it starts folded; on a computer it
+starts open. With money totals hidden, the card just says how many insights
+there are. Each choice is remembered in this browser, separately for phone and
+computer.
 
 Money insights change month by month. Each month they word the same fact a
 different way and pick a different Fun fact and quote, so none of

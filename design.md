@@ -108,18 +108,25 @@ which ships with the routes, not the first-screen stylesheet. On a phone
 the insights reserve the right-hand column the floating money-privacy
 button covers (`tests/e2e/money-insights-phone.spec.js`).
 
-Money insights fold (`tests/e2e/money-insights-fold.spec.js`). Every block
-starts with one fold row, a real button (`aria-expanded`, `aria-controls`,
-at least 48px tall) holding the eyebrow, a one-line peek and a chevron.
-Folded, the block is that row alone: the peek is the headline with its "To do"
-chip when the headline is a To do (never hidden), else "N insights"; with
-money hidden it is always the count, never the headline (it carries amounts).
-Open, the row stays at the top to fold it again. Phone (760px and below)
-starts folded, desktop starts open; the choice is kept per layout in
-localStorage (`monies-map:money-insights-phone`, `...-desktop`), every read
+Money insights fold (`tests/e2e/money-insights-fold.spec.js`). Folded, a
+block is its eyebrow over a teaser card that is one button
+(`aria-expanded`, `aria-controls`, at most about 80px): the top insight's own
+chip and bold headline (two lines at most), a "+N more" pill when more wait
+behind it, and a chevron. The card takes the pastel surface of the headline's
+kind (butter To do, lavender Something to think about, sky Worth knowing, mint
+Going well, neutral otherwise; ink text), and two thin offset edges under it
+(`data-more`) read as a deck when more than one insight exists. On Splits the
+card is a light wash on the orange with no pastel fill. With money hidden the
+card says only "N insights · tap to see": no headline, chip, pill or amounts
+(hidden mode never shows a headline today). Open, the same button is a plain
+row at the top (eyebrow and chevron) that folds the block again. Phone (760px
+and below) starts folded, desktop starts open; the choice is kept per layout
+in localStorage (`monies-map:money-insights-phone`, `...-desktop`), every read
 and write guarded so the block renders without storage. The fold costs
 first-screen bytes (Summary ships it), so `initial-bundle-budget.json` stays
-as is and the code is kept small; its CSS is in `money-checkin.css`.
+as is and the code is kept small (`composeCheckInHeadline` moved to
+`check-in-headline.js` for that); its CSS is in `money-checkin.css` and
+`splits-panel.css`.
 
 The Splits workspace uses a dark surface but paid-settlement follow-ups use a
 light proof card. Controls on that card must use an explicit light-card theme:

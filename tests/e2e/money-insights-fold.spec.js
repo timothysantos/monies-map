@@ -36,49 +36,75 @@ test.describe("money insights fold on a phone", () => {
     await reseedDemo(page);
   });
 
-  test("Summary folds to one short row with the count and opens to the full block", async ({ page }) => {
+  // The teaser card: at most ~80px with the eyebrow above it; a "+N more"
+  // pill and the stacked edges exist only when more insights wait behind it.
+  async function expectDeckHint(page, row) {
+    const more = Number((await row.getAttribute("data-more")) ?? 0);
+    const shadow = await row.evaluate((element) => getComputedStyle(element).boxShadow);
+    if (more > 0) {
+      await expect(row.locator(".financial-insight-more")).toHaveText(`+${more} more`);
+      expect(shadow).not.toBe("none");
+    } else {
+      await expect(row.locator(".financial-insight-more")).toHaveCount(0);
+      expect(shadow).toBe("none");
+    }
+    return more;
+  }
+
+  test("Summary folds to a teaser card of its top insight and opens to the full block", async ({ page }) => {
     await page.setViewportSize(PHONE);
     await open(page, SUMMARY);
     const row = foldRow(page);
-    await expect(row).toHaveAttribute("aria-expanded", "false");
-    await expect(row).toContainText("Household money insights");
-    await expect(row).toContainText(/\d+ insights?$/);
     const section = page.locator(".financial-insight");
-    expect((await section.boundingBox()).height).toBeLessThanOrEqual(64);
+    await expect(row).toHaveAttribute("aria-expanded", "false");
+    await expect(section.locator(".financial-insight-label")).toHaveText("Household money insights");
+    // The card shows the real headline (also in the block's own text).
+    const headline = (await section.locator(".checkin-fact").evaluate((element) => element.textContent)).trim();
+    await expect(row.locator(".financial-insight-teaser strong")).toHaveText(headline);
+    await expect(row).toBeVisible();
+    expect((await row.boundingBox()).height).toBeLessThanOrEqual(80);
     expect((await row.boundingBox()).height).toBeGreaterThanOrEqual(44);
-    await expect(page.locator(".financial-insight .checkin-fact")).toBeHidden();
+    await expect(section.locator(".checkin-fact")).toBeHidden();
+    const more = await expectDeckHint(page, row);
 
     await row.click();
     await expect(row).toHaveAttribute("aria-expanded", "true");
-    await expect(page.locator(".financial-insight .checkin-fact")).toBeVisible();
-    await expect(page.getByRole("button", { name: "See all insights" })).toBeVisible();
+    await expect(section.locator(".checkin-fact")).toBeVisible();
+    await expect(row.locator(".financial-insight-teaser")).toHaveCount(0);
     await expect.poll(async () => (await section.boundingBox()).height).toBeGreaterThan(120);
+    // "+N more" counts the insights "See all insights" lists.
+    if (more > 0) {
+      await page.getByRole("button", { name: "See all insights" }).click();
+      await expect(section.locator(".checkin-also li")).toHaveCount(more);
+    }
 
     await row.click();
     await expect(row).toHaveAttribute("aria-expanded", "false");
-    expect((await section.boundingBox()).height).toBeLessThanOrEqual(64);
+    expect((await row.boundingBox()).height).toBeLessThanOrEqual(80);
   });
 
-  test("Splits folds to one row that keeps the To do headline in view", async ({ page }) => {
+  test("Splits teaser keeps the To do chip and headline, at most two lines, on the orange", async ({ page }) => {
     await page.setViewportSize(PHONE);
     await open(page, await seedTripSplits(page));
     const row = foldRow(page);
     await expect(row).toHaveAttribute("aria-expanded", "false");
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
-    await expect(row.locator(".financial-insight-peek-fact")).toContainText("Joyce owes you JP¥9,000");
-    expect((await page.locator(".financial-insight").boundingBox()).height).toBeLessThanOrEqual(64);
-    // One line: the headline is truncated, never wrapped.
-    expect((await row.locator(".financial-insight-peek-fact").boundingBox()).height).toBeLessThan(26);
+    await expect(row.locator(".financial-insight-teaser strong")).toContainText("Joyce owes you JP¥9,000");
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
+    expect((await row.locator(".financial-insight-teaser strong").boundingBox()).height).toBeLessThan(2.2 * 22);
+    await expectDeckHint(page, row);
     await row.click();
     await expect(page.locator(".financial-insight-content .checkin-fact")).toContainText("Joyce owes you JP¥9,000");
   });
 
-  test("Month shows its To do headline when folded and the choice survives a reload", async ({ page }) => {
+  test("Month teaser shows its To do headline with a +N more pill and stacked edges, and the choice survives a reload", async ({ page }) => {
     await page.setViewportSize(PHONE);
     await open(page, MONTH);
     const row = foldRow(page);
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
-    await expect(row.locator(".financial-insight-peek-fact")).toContainText(/\bbills? (?:you )?planned\b|\bplanned at\b/);
+    await expect(row.locator(".financial-insight-teaser strong")).toContainText(/\bbills? (?:you )?planned\b|\bplanned at\b/);
+    expect(await expectDeckHint(page, row)).toBeGreaterThan(0);
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
     await row.click();
     await expect(row).toHaveAttribute("aria-expanded", "true");
     expect(await page.evaluate((key) => window.localStorage.getItem(key), OPEN_KEY)).toBe("true");
@@ -94,17 +120,18 @@ test.describe("money insights fold on a phone", () => {
     await expect(foldRow(page)).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("hidden money folds to the eyebrow and a count, with no amounts or headline", async ({ page }) => {
+  test("hidden money folds to a card with only a count: no headline, chip, pill or amounts", async ({ page }) => {
     await page.setViewportSize(PHONE);
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "false"));
     await open(page, MONTH);
     const row = foldRow(page);
     await expect(row).toBeVisible();
     await expect(row.locator(".checkin-chip")).toHaveCount(0);
+    await expect(row.locator(".financial-insight-more")).toHaveCount(0);
     const text = (await row.innerText()).replace(/\s+/g, " ").trim();
-    expect(text).toMatch(/^Tim's money insights \d+ insights?$/i);
-    expect(text).not.toMatch(/\$|owe|short|over|under/i);
-    expect((await page.locator(".financial-insight").boundingBox()).height).toBeLessThanOrEqual(64);
+    expect(text).toMatch(/^\d+ insights? · tap to see$/);
+    expect(text).not.toMatch(/\$|\d{2,}|owe|short|over|under|plan/i);
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
   });
 
   test("desktop starts expanded on a first visit, can fold, and remembers it apart from the phone", async ({ page }) => {
@@ -119,7 +146,7 @@ test.describe("money insights fold on a phone", () => {
     await expect(row).toHaveAttribute("aria-expanded", "false");
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
     await expect(page.locator(".financial-insight .checkin-fact")).toBeHidden();
-    expect((await page.locator(".financial-insight").boundingBox()).height).toBeLessThanOrEqual(64);
+    expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(80);
     // The desktop choice is its own key; the phone's key is untouched.
     expect(await page.evaluate(() => [localStorage.getItem("monies-map:money-insights-desktop"), localStorage.getItem("monies-map:money-insights-phone")])).toEqual(["false", null]);
 
@@ -154,7 +181,7 @@ test.describe("money insights fold on a phone", () => {
     await expect(row).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".financial-insight .checkin-fact")).toContainText("Joyce owes you JP¥9,000");
     await row.click();
-    await expect(row.locator(".financial-insight-peek-fact")).toContainText("Joyce owes you JP¥9,000");
+    await expect(row.locator(".financial-insight-teaser strong")).toContainText("Joyce owes you JP¥9,000");
     await expect(page.locator(".financial-insight .checkin-fact")).toBeHidden();
   });
 
