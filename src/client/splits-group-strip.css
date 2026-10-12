@@ -1,0 +1,368 @@
+/* The Splits group strip (splits-group-strip.jsx), the floating group bar and
+   the All groups sheet. Loads with the Splits route, never the first screen.
+   Colour is pastel/tokens only: the New/All control is the chrome surface
+   (the same cream as the floating island buttons); group tiles are
+   translucent white on the orange panel; the open group is a white tile
+   with the terracotta outline. No money tone on the Splits orange. */
+
+.splits-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: 16px;
+}
+
+/* A solid control, never mistaken for a group tile: opaque cream, a hairline
+   between its two halves, a soft 1px border, terracotta icon and label. */
+.splits-strip-control {
+  flex: 0 0 56px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow);
+}
+
+.splits-strip-half {
+  flex: 1 1 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+}
+
+.splits-strip-half + .splits-strip-half {
+  border-top: 1px solid var(--line);
+}
+
+.splits-strip-half:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -3px;
+}
+
+/* The tiles scroll in their own box to the right of the control, so nothing
+   slides under it. Soft fades on the edges (set from the scroll position). */
+.splits-strip-scroll {
+  --fade-left: 0px;
+  --fade-right: 0px;
+  flex: 1 1 0;
+  min-width: 0;
+  /* The tiles must not widen the page: the scroller's own width comes from the row. */
+  contain: inline-size;
+  display: flex;
+  gap: 10px;
+  padding: 4px 4px 12px;
+  margin: -4px -4px -12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent 100%);
+}
+
+.splits-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.splits-strip-tile {
+  position: relative;
+  flex: 0 0 38%;
+  min-width: 0;
+  min-height: 89px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.splits-strip-tile.is-active {
+  flex-basis: 60%;
+  padding-right: 40px;
+  border-color: var(--accent-strong);
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--accent-strong), 0 8px 18px rgba(72, 37, 19, 0.2);
+}
+
+.splits-strip-tile.is-settled {
+  opacity: 0.72;
+}
+
+.splits-strip-tile:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.splits-strip-tile.is-active:focus-visible {
+  outline-color: var(--accent-strong);
+}
+
+/* A long name wraps to two lines before it is cut. */
+.splits-strip-tile-name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.splits-strip-tile-balance,
+.splits-strip-tile-count {
+  font-size: 0.82rem;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.splits-strip-tile.is-active .splits-strip-tile-balance,
+.splits-strip-tile.is-active .splits-strip-tile-count {
+  color: var(--muted);
+}
+
+.splits-strip-tile-tick {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  color: white;
+}
+
+/* Desktop: one row, nothing scrolls; tiles that do not fit are left to the
+   All half ("All · N more"). */
+@media (min-width: 761px) {
+  .splits-strip-control {
+    flex-basis: 88px;
+  }
+
+  .splits-strip-scroll {
+    overflow: hidden;
+    scroll-snap-type: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .splits-strip-tile {
+    flex: 0 0 200px;
+  }
+
+  .splits-strip-tile.is-active {
+    flex-basis: 280px;
+  }
+}
+
+/* The floating bar: the strip has scrolled away, so the open group sits in
+   the same place the View and scope bar sits, left of the receipt button. */
+.splits-group-bar {
+  position: fixed;
+  right: 84px;
+  bottom: calc(94px + env(safe-area-inset-bottom, 0px));
+  left: 12px;
+  z-index: 58;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+body:has(> .note-dialog-overlay) .splits-group-bar,
+body:has(> .entry-mobile-sheet) .splits-group-bar {
+  display: none;
+}
+
+.splits-group-bar-icon,
+.splits-sheet-row-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(177, 94, 47, 0.12);
+  color: var(--accent-strong);
+}
+
+.splits-group-bar-text,
+.splits-sheet-row-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 1px;
+}
+
+.splits-group-bar-text strong,
+.splits-sheet-row-text strong {
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.splits-group-bar-text span,
+.splits-sheet-row-text span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The All groups sheet. */
+.splits-groups-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: min(86dvh, 720px);
+}
+
+.splits-groups-sheet:focus {
+  outline: none;
+}
+
+.splits-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.splits-sheet-close {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--chrome-surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.splits-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 12px;
+}
+
+.splits-sheet-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--chrome-surface);
+}
+
+.splits-sheet-row {
+  width: 100%;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.splits-sheet-row + .splits-sheet-row {
+  border-top: 1px solid var(--line);
+}
+
+.splits-sheet-row.is-active {
+  background: rgba(177, 94, 47, 0.08);
+}
+
+.splits-sheet-row-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.splits-sheet-create {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--chrome-surface);
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.splits-sheet-row:focus-visible,
+.splits-sheet-create:focus-visible,
+.splits-sheet-close:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+
+@media (max-width: 760px) {
+  .splits-groups-sheet.splits-groups-sheet {
+    padding-bottom: 0;
+  }
+
+  .splits-sheet-actions.lsd-bottom.is-sheet-bar {
+    --bottom-actions-bleed: 16px;
+  }
+
+  .splits-sheet-body {
+    margin: 0 -16px;
+    padding: 2px 16px 12px;
+  }
+}

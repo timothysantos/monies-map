@@ -1,13 +1,10 @@
-import { createPortal } from "react-dom";
 import { messages } from "./copy/en-SG";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
-import { SplitsGroupsNav } from "./splits-groups-nav";
 import { SplitMatchesList } from "./splits-matches";
 
 // Main split content is presentation-only; SplitsPanel keeps URL state and API handlers.
 export function SplitsMainSection({
-  groups,
   activeGroup,
   selectedMode,
   pendingMatchCount,
@@ -32,11 +29,9 @@ export function SplitsMainSection({
   onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
-  onSelectGroup,
   onOpenMatches,
   onOpenHistory,
   onBackToGroup,
-  onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
   searchControl,
@@ -57,43 +52,8 @@ export function SplitsMainSection({
   readOnly = false,
   settlementStatus = null
 }) {
-  // The group nav is rendered twice on desktop:
-  // - inline inside the normal document flow
-  // - as a floating portal when no inline editor is open
-  //
-  // That keeps group switching nearby without covering the inline edit card.
-  const groupsNav = (
-    <SplitsGroupsNav
-      groups={groups}
-      activeGroup={activeGroup}
-      selectedMode={selectedMode}
-      onSelectGroup={onSelectGroup}
-      onCreateGroup={onCreateGroup}
-      readOnly={readOnly}
-    />
-  );
-  const floatingGroupsNav = typeof document === "undefined"
-    ? null
-    : inlineSplitDraft
-      ? null
-      : createPortal(
-        <SplitsGroupsNav
-          groups={groups}
-          activeGroup={activeGroup}
-          selectedMode={selectedMode}
-          onSelectGroup={onSelectGroup}
-          onCreateGroup={onCreateGroup}
-          readOnly={readOnly}
-          floating
-        />,
-        document.body
-      );
-
   return (
     <>
-      {groupsNav}
-      {floatingGroupsNav}
-
       <SplitsBreakdownSection
         showBreakdown={showBreakdown}
         currency={activeGroup?.currency ?? "SGD"}
