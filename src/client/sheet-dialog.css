@@ -247,3 +247,14 @@
 .category-picker-popover {
   z-index: 90;
 }
+
+/* The icon and colour pickers sit in their Detail rows as a small preview
+   and a chevron, not as bordered boxes of their own. */
+.sheet-dialog .lsd-row .category-picker-trigger {
+  width: auto;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 0 0 8px;
+  border: 0;
+  background: transparent;
+}
