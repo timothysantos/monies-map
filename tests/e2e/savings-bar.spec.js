@@ -59,26 +59,31 @@ async function revealMoney(page) {
 
 // What the bar must show, from the page DTOs, worked out here by hand rather
 // than by the model under test.
+// Money filed under Savings (the demo's monthly savings allocation) was moved,
+// not spent: the bar counts it as kept (design.md "Money jobs").
 async function expectedFigures(page, where) {
   let cards;
   let income;
+  let chart;
   if (where === "summary") {
     const data = await loadSummaryPage(page, { view: VIEW, month: MONTH, summaryStart: RANGE.start, summaryEnd: RANGE.end });
     cards = data.summaryPage.metricCards;
+    chart = data.summaryPage.categoryShareChart;
     income = cards.find((item) => item.label === "Actual income").amountMinor;
   } else {
     const data = await loadMonthPage(page, { view: VIEW, month: MONTH });
     cards = data.monthPage.metricCards;
+    chart = data.monthPage.categoryShareChart;
     income = data.summaryPage.months[0].actualIncomeMinor;
   }
   const card = (label) => cards.find((item) => item.label === label).amountMinor;
-  const spent = card("Actual spend");
-  const plannedSpend = card("Planned spend");
-  const target = card("Savings target");
-  const over = spent > income;
-  const kept = income - spent;
+  const slice = (label) => chart.find((item) => item.label === label)?.valueMinor ?? 0;
+  const invested = slice("Investments");
+  const spent = card("Actual spend") - invested - slice("Savings");
+  const over = spent + invested > income;
+  const kept = income - spent - invested;
   const keptShare = income > 0 ? Math.round((kept * 100) / income) : null;
-  return { income, spent, plannedSpend, target, over, kept, keptShare };
+  return { income, spent, invested, over, kept, keptShare };
 }
 
 async function openLead(page, where) {
@@ -100,7 +105,8 @@ async function expectKeptBar(page, lead, figures) {
   expect(((await box(keptSegment)).width / track.width) * 100).toBeCloseTo((figures.kept / figures.income) * 100, 0);
   await expect(bar.locator(".savings-bar-tick")).toHaveCount(0);
   await expect(bar.locator("[data-savings-sentence]")).toHaveText(`You kept ${dollars(figures.kept)} of the ${dollars(figures.income)} you earned (${figures.keptShare}%)`);
-  await expect(bar.locator("[data-savings-plan]")).toHaveText(`Plan: spend ${dollars(figures.plannedSpend)} and save ${dollars(figures.target)}.`);
+  // The money jobs line took the old "Plan: spend … and save …" line's place.
+  await expect(bar.locator("[data-savings-plan]")).toHaveCount(0);
   const planBar = await box(bar.locator(".savings-bar-plan"));
   expect(planBar.y).toBeGreaterThanOrEqual(track.bottom);
   expect(planBar.height).toBeLessThanOrEqual(4);
@@ -177,7 +183,7 @@ test.describe("phone", () => {
     // One line of text each (the card is compact), the card ≤ 205px, and the
     // Money insights still start above the fold.
     expect((await box(bar.locator("[data-savings-sentence]"))).height, "sentence on one line").toBeLessThan(22);
-    expect((await box(bar.locator("[data-savings-plan]"))).height, "plan line on one line").toBeLessThan(18);
+    expect((await box(lead.locator("[data-money-jobs-summary]"))).height, "money jobs line on one line").toBeLessThan(18);
     const card = await box(lead);
     expect(card.height, "Month lead card height").toBeLessThanOrEqual(205);
     expect((await box(page.locator(".financial-insight").first())).y, "Money insights above the fold").toBeLessThan(664);
@@ -269,14 +275,25 @@ test.describe("desktop", () => {
     await keptSegment.hover();
     await expect(keptPopover).toBeVisible();
     await expect(keptPopover).toHaveText(`Kept ${dollars(figures.kept)} · ${figures.keptShare}% of income`);
-    // A click while hovering keeps it open (it does not toggle it shut).
-    await keptSegment.click();
-    await expect(keptPopover).toBeVisible();
+    // Hover alone: the next segment's popover, and moving away hides it.
     await spentSegment.hover();
     await expect(spentPopover).toBeVisible();
     await expect(keptPopover).toBeHidden();
     await lead.locator(".lsd-eyebrow").hover();
     await expect(spentPopover).toBeHidden();
+    // A click opens the segment's menu under its popover (it does not toggle
+    // it shut), and the menu stays while the mouse moves to it.
+    await keptSegment.hover();
+    await keptSegment.click();
+    await expect(keptPopover).toBeVisible();
+    await expect(lead.locator('[data-money-actions="kept"]')).toBeVisible();
+    await spentSegment.hover();
+    await expect(keptPopover).toBeVisible();
+    await expect(spentPopover).toBeHidden();
+    await lead.locator('[data-money-actions="kept"] [data-action="ask"]').hover();
+    await expect(keptPopover).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(keptPopover).toBeHidden();
 
     // Keyboard: Enter on a focused segment opens it, Escape closes it.
     await keptSegment.focus();

@@ -142,7 +142,8 @@ cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
 they appear with the real figures as soon as you reveal totals. The earned,
 spent and kept bar keeps its shape and shows only percentages (no amounts) while
-totals are hidden. Edit
+totals are hidden, and each money job shows only ✓ or the share of its plan
+reached. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -247,15 +248,27 @@ over plan.
   to spend, with the share of the plan used and how much you are under
   (green) or over (red) plan.
 - **Earned, spent and kept**: under the Spent figure, one bar stands for all
-  the money you earned over the range. The red part is what you spent and the
-  green part is what you kept. If you spent more than you earned, the bar
+  the money you earned over the range. The red part is what you spent, the
+  plum part is what you invested (entries in the **Investments** category)
+  and the green part is what you kept. Money you filed under **Savings** is
+  counted as kept, not spent. If more went out than you earned, the bar
   runs to a small **income** mark and the striped part after it is the money
   that came out of your savings. A thin blue bar under it shows your plan on
-  the same scale: what you planned to spend, then what you planned to save.
-  One line says it in words ("You kept $38,000 of the $247,000 you earned
-  (15%)"), with your plan in smaller print under it. Hover over a part of the
-  bar (on a phone, tap it) to see how much it is and what share of your
-  income that is.
+  the same scale: what you planned to spend, to invest and to save.
+  One line says it in words ("You kept $12,000 and invested $8,000 of the
+  $247,000 you earned"). Hover over a part of the bar to see how much it is
+  and what share of your income that is; click it (on a phone, tap it) for
+  **View entries**, which opens Entries filtered to that money for the last
+  month shown, and **Ask about this**, which opens Ask with a question about
+  it ready to send.
+- **Money jobs**: each line of your plan has a job: spend within the
+  budget, save the savings target, invest what you planned to invest, and
+  the income you expected. One line says how many were done ("3 of 4 money
+  jobs done"); open it (on a phone, tap it) to see each job with **✓ done**,
+  **short by** or **over by** an amount. While the month is still going it
+  says "so far". Select a job for the same **View entries** and **Ask about
+  this**. It only looks back at what happened against your own plan; it
+  never guesses what is still to come.
 - **Income** and **Saved**: the income that came in, with the planned income
   under it, and what you kept, with your savings target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
@@ -344,7 +357,8 @@ stays highlighted, and the range at the top stays as it was.
 - **The top card**: what you have spent this month against what you
   planned, with the percent of plan and how much you are under or over plan.
   Under that is the same earned, spent and kept bar as on
-  [Summary](#summary), for this month. Under it, in the same card, are **Income** (received, with
+  [Summary](#summary), for this month, and its money jobs line ("2 of 3
+  money jobs done", folded on a phone). Under it, in the same card, are **Income** (received, with
   the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
   Select it to see what it means.

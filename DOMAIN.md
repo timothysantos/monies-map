@@ -169,14 +169,51 @@ Recommended relationship:
 - `realized savings` is a derived month-level outcome
 - `savings variance` is `realized savings - savings target`
 - the `savings bar` (Summary and Month lead) draws actual income as 100%,
-  with spent and kept (income minus spent, the same as realized savings) as
-  its parts; when spent is more than income, the excess is shown as money
-  that "came out of savings". It reuses these figures and adds no field.
+  with spent, invested and kept as its parts. Money filed under the
+  `Investments` category is invested and money filed under `Savings` is
+  kept: both were moved, not spent, so they come out of the spend (the lead
+  figure and realized savings still count them as spend; see "Money job").
+  When more went out than came in, spending past the income is shown as
+  money that "came out of savings".
 
 Optional related concept:
 - a `planned savings allocation` may exist as one or more `month plan rows`
   when the user wants to track a specific savings movement, but that is not the
   same domain concept as the top-level `savings target`
+
+### Money Job
+
+What one line of a month plan is for, and whether it was done
+(`src/domain/money-jobs.ts`, `src/client/money-jobs-model.js`). Each plan
+line has one of four jobs:
+
+- spend within the budget: every planned row except the savings target
+  rows and the Investments rows, against spending (expense entries outside
+  the `Investments` and `Savings` categories);
+- save the `savings target` (rows labelled `Savings`), against what was kept:
+  income minus that spending minus what was invested, so money moved under
+  `Savings` counts as saved;
+- invest the investment goal (planned rows in the `Investments` category,
+  not labelled `Savings`), against expense entries in `Investments`;
+- planned income, against actual income.
+
+Canonical term:
+- `money job`
+
+Important distinctions:
+- A money job is retrospective: done, or short or over by an amount, from
+  recorded entries and the household's own plan. While the month is still
+  going it says "so far"; it never forecasts.
+- A job exists only when its plan line is more than zero.
+- Investing is detected by category name (`Investments`), as category
+  offsets are. A transfer into an investment account is not counted as
+  invested: transfers stay neutral and the money stays in kept.
+- Realized savings (`income - spend`) is unchanged and still counts money
+  filed under `Savings` and `Investments` as spend, so the Saved figure can
+  be lower than the save job's kept figure when such entries exist.
+- The Summary page's `Planned investments` metric card carries the range's
+  investment goal; the Month page derives it from its plan rows. No other
+  field was added.
 
 ### Statement Checkpoint
 
