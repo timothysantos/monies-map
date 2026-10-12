@@ -137,3 +137,80 @@
     padding-inline-end: 56px;
   }
 }
+
+/* The fold row (financial-insight.jsx): the eyebrow over one line (a To do
+   headline or the count) and a chevron, all one button, at least 44px to
+   tap. Folded, the block is this row alone; open, the content sits under
+   it. On a phone the row keeps clear of the floating eye button like the
+   content does. */
+.financial-insight:has(> .financial-insight-fold) {
+  display: block;
+  padding: 0;
+}
+
+.financial-insight-fold {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.financial-insight-fold:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.financial-insight-fold .financial-insight-label,
+.financial-insight-peek {
+  grid-column: 1;
+}
+
+.financial-insight-fold > svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--accent-strong);
+}
+
+.financial-insight-fold[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
+}
+
+.financial-insight-peek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.94rem;
+  line-height: 1.4;
+}
+
+.financial-insight-peek .checkin-chip {
+  flex: none;
+}
+
+.financial-insight-peek-fact {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.financial-insight:has(> .financial-insight-fold) .financial-insight-content {
+  padding-bottom: 12px;
+}
+
+@media (max-width: 760px) {
+  .financial-insight-fold {
+    width: calc(100% - 56px);
+  }
+}

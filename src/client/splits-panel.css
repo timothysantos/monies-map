@@ -65,3 +65,8 @@
 .panel-splits .split-summary-search .entries-filter-label {
   color: #fff8f3;
 }
+
+.panel-splits .financial-insight-peek,
+.panel-splits .financial-insight-fold > svg {
+  color: #fff8f3;
+}

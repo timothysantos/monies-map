@@ -5,6 +5,7 @@ import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { checkInMemoryKey, readVisitMemory, useCheckInClock, writeVisitMemory } from "./checkin-visit-memory";
 import { useMoneyPrivacy } from "./money-privacy";
+import { useIsMobileLayout } from "./use-viewport";
 // The check-in's own styles ship with the route that shows it, not with
 // the first-screen stylesheet.
 import "./money-checkin.css";
@@ -37,6 +38,31 @@ import "./money-checkin.css";
 // records).
 export function FinancialInsight(props) {
   return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
+}
+
+// The block folds to one row (design.md, "Money insights fold"): the
+// eyebrow, a To do headline (else the count) and a chevron, one button. It
+// starts folded on a phone and open on desktop; the choice is this viewer's,
+// kept in this browser per layout. Hidden money shows the count, never the
+// headline (it carries amounts).
+function useInsightsOpen(layout) {
+  const [chosen, setChosen] = useState({});
+  const key = `monies-map:money-insights-${layout}`;
+  let saved = null;
+  try {
+    saved = window.localStorage.getItem(key);
+  } catch {
+    // Blocked storage: the default holds and a choice lasts this visit.
+  }
+  const isOpen = chosen[layout] ?? (saved === null ? layout === "desktop" : saved === "true");
+  return [isOpen, () => {
+    setChosen({ ...chosen, [layout]: !isOpen });
+    try {
+      window.localStorage.setItem(key, String(!isOpen));
+    } catch {
+      // Blocked storage, as above.
+    }
+  }];
 }
 
 function insightLabelFor(audienceName) {
@@ -84,6 +110,22 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   const [quote, setQuote] = useState(null);
   const alsoId = useId();
   const detailsId = useId();
+  const contentId = useId();
+  const isPhone = useIsMobileLayout();
+  const [isOpenNow, toggleOpen] = useInsightsOpen(isPhone ? "phone" : "desktop");
+  const isToDo = areTotalsVisible && headline.kind === "quick_fix";
+  const insightCount = 1 + view.also.length;
+  const foldRow = (
+    <button type="button" className="financial-insight-fold" aria-expanded={isOpenNow} aria-controls={contentId} onClick={toggleOpen}>
+      <span className="financial-insight-label">{insightLabel}</span>
+      {isOpenNow ? null : (
+        <span className="financial-insight-peek">
+          {isToDo ? <><CheckInChip kind="quick_fix" /><strong className="financial-insight-peek-fact">{headline.fact}</strong></> : `${insightCount} insight${insightCount === 1 ? "" : "s"}`}
+        </span>
+      )}
+      <ChevronDown size={18} aria-hidden="true" />
+    </button>
+  );
 
   // A new headline or context closes "See all insights".
   useEffect(() => {
@@ -126,8 +168,8 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   if (!areTotalsVisible) {
     return (
       <section className={`financial-insight ${className}`.trim()} aria-label="Money insights">
-        <span className="financial-insight-label">{insightLabel}</span>
-        <div className="financial-insight-content">
+        {foldRow}
+        <div id={contentId} className="financial-insight-content" hidden={!isOpenNow}>
           <p className="financial-insight-private-copy">Reveal money totals to read these insights.</p>
         </div>
       </section>
@@ -136,8 +178,8 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
 
   return (
     <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" data-checkin-mode={view.mode}>
-      <span className="financial-insight-label">{insightLabel}</span>
-      <div className="financial-insight-content">
+      {foldRow}
+      <div id={contentId} className="financial-insight-content" hidden={!isOpenNow}>
         {headline.kind ? <CheckInChip kind={headline.kind} /> : null}
         <p className="financial-insight-narrative" aria-live="polite">
           <strong className="checkin-fact">{headline.fact}</strong>
