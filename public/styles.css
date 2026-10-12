@@ -9518,11 +9518,12 @@ th {
     justify-self: start;
   }
 
-  /* The + button sits above the money toggle on the same right edge, with
-     the chrome lift in the accent's shade. */
+  /* The + button sits on the same right edge as the money toggle (above the
+     Support bar, the toggle above it), with the chrome lift in the accent's
+     shade. */
   .entries-fab {
     right: var(--chrome-edge);
-    bottom: calc(188px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(152px + env(safe-area-inset-bottom, 0px));
     width: 54px;
     height: 54px;
     z-index: 60;
