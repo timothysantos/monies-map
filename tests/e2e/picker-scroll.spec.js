@@ -13,7 +13,7 @@ import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 // Transfer details, opened from the same sheet, was cut off the same way.
 //
 // Each case seeds or uses more than 15 options (seeded wallets sort last), swipes the list by touch
-// (a real touch scroll gesture in Chromium; in WebKit, which Playwright
+// (real touch input in Chromium; in WebKit, which Playwright
 // cannot drive by touch, the same touch sequence must reach the list
 // uncancelled and the list must scroll natively), then taps the last option
 // and checks the row took it.
@@ -101,12 +101,19 @@ async function touchSwipeIsCancelled(scroller) {
   });
 }
 
-// Swipes a scroller (the options list) up by touch until its end shows. Chromium runs a real
-// touch scroll gesture. Playwright has no touch scrolling (or wheel) in
-// mobile WebKit, so there the swipe must reach the list uncancelled (above)
-// and the list itself must scroll: it moves the list's own scroll position
-// as an uncancelled swipe does, and that only works when the list is a
-// scroll container with more below.
+// Swipes a scroller (the options list) up by touch until its end shows.
+// Chromium gets real touch input: CDP touchStart, touchMove and touchEnd go
+// through the browser's input pipeline, so the page's touch listeners (the
+// scroll lock) see each move and can cancel it, and only an uncancelled
+// swipe over a scroll container with more below scrolls it.
+// (Input.synthesizeScrollGesture with a touch source is not used: on Linux
+// headless Chromium it sends touchstart and touchend but no touchmove, so
+// the list never moved in CI although it scrolled on macOS.)
+// Playwright has no touch scrolling (or wheel) in mobile WebKit, so there
+// the swipe must reach the list uncancelled (above) and the list itself must
+// scroll: it moves the list's own scroll position as an uncancelled swipe
+// does, and that only works when the list is a scroll container with more
+// below.
 async function swipeToEnd(page, browserName, list) {
   expect(await touchSwipeIsCancelled(list), "a swipe on the options list must not be cancelled").toBe(false);
   if (browserName !== "chromium") {
@@ -128,6 +135,8 @@ async function swipeToEnd(page, browserName, list) {
   const distance = Math.round(Math.max(120, startY - Math.max(box.y, 0) - 80));
   const position = () => list.evaluate((element) => ({ top: element.scrollTop, atEnd: element.scrollTop + element.clientHeight >= element.scrollHeight - 1 }));
   const cdp = await page.context().newCDPSession(page);
+  const touch = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: y === undefined ? [] : [{ x, y }] });
+  const steps = 10;
   // Swipe as a person would, as many times as the list needs: the category
   // sheet is one fixed box (design.md "Sheets and the keyboard"), so its
   // 30-odd rows take more swipes than a sheet sized to its content did. Every
@@ -135,7 +144,11 @@ async function swipeToEnd(page, browserName, list) {
   // the list is stuck.
   for (let swipe = 0, before = await position(); !before.atEnd; swipe += 1) {
     expect(swipe, "the options list reaches its end within 40 swipes").toBeLessThan(40);
-    await cdp.send("Input.synthesizeScrollGesture", { x, y: startY, yDistance: -distance, gestureSourceType: "touch", speed: 1600 });
+    await touch("touchStart", startY);
+    for (let step = 1; step <= steps; step += 1) {
+      await touch("touchMove", Math.round(startY - (distance * step) / steps));
+    }
+    await touch("touchEnd");
     const after = await position();
     expect(after.top, "each swipe moves the options list").toBeGreaterThan(before.top);
     before = after;
