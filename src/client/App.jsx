@@ -1,3 +1,7 @@
+// Keeps account-display in the entry chunk. Summary and several lazy routes
+// share it; as its own chunk it stops the bundler merging React and the copy
+// into the entry, which adds two first-screen files (check:bundle fails).
+import "./account-display";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
