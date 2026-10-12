@@ -62,9 +62,17 @@ test.describe("errors", () => {
     // One primary action; the rest of the card is text.
     await expect(card.getByRole("button")).toHaveCount(1);
     await expect(card.getByRole("button", { name: "Try loading again" })).toHaveClass(/lsd-primary/);
-    // Rose is the attention surface: a pastel fill, never a saturated one.
-    const fill = await card.evaluate((element) => getComputedStyle(element).backgroundColor);
-    expect(fill).toBe("rgb(249, 229, 225)");
+    // Rose is the attention surface: the pastel rose token as a fill, never a
+    // saturated one.
+    const [fill, token] = await card.evaluate((element) => {
+      const probe = document.createElement("i");
+      probe.style.background = "var(--pastel-rose)";
+      document.body.append(probe);
+      const expected = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return [getComputedStyle(element).backgroundColor, expected];
+    });
+    expect(fill).toBe(token);
   });
 
   test.describe("on a phone", () => {
