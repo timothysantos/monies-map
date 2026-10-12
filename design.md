@@ -1497,8 +1497,12 @@ every retry handler.
   reference data and first page load) and the screen error boundary both
   render it, so each is an alert with the same layout and a primary
   `dialog-primary` retry. The detail line is plain language
-  (`common.loadFailedDetail`); the technical reason sits in the smaller
-  issue line below it.
+  (`common.loadFailedDetail`). The technical reason ("Page request failed
+  with status 503") is not shown: a server or network failure adds one plain
+  line, "We couldn't reach your data just now." (`describeLoadFailure`), and
+  the panel keeps the reason as `data-technical-detail`. A stored code
+  (credit_card, a category slug, a hex colour) is never shown either; screens
+  use the label maps in `src/client/enum-labels.js` (`tests/raw-enum-guard.test.mjs`).
 
 A page load that fails after the person navigated shows the page
 `ErrorPanel` inside the shell, and hides the previous page. Otherwise the
@@ -1544,6 +1548,12 @@ inset of the tab bar, the Support bar and the round buttons, so their right
 edges line up), `--chrome-radius` (22 px), `--chrome-surface`,
 `--chrome-shadow` and `--sheet-radius` (24 px, every bottom sheet). Every
 target is at least 44 x 44 px and nothing wraps or scrolls sideways at 375 px.
+A control smaller than that keeps its look and carries a centred invisible hit
+area (the phone block before "Money tones" in `public/styles.css`); a field, or
+a control a parent would clip, grows instead. `tests/e2e/phone-tap-targets.spec.js`
+measures what a finger reaches on Summary, Month, Entries, Splits, Imports and
+Settings. The Month plan rows' category icon and actual-amount links are left to
+the plan-table redesign.
 
 - Support bar (`.mobile-context-sticky-bar` in `App.jsx`): one white surface
   (chrome radius and shadow, no border-radius or shadow on anything inside it),

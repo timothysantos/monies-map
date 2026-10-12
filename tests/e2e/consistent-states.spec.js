@@ -42,7 +42,8 @@ test("a page that fails after navigating shows the page error in place of the pr
   const alert = page.getByRole("alert").filter({ hasText: "The Month page could not load." });
   await expect(alert).toBeVisible();
   await expect(alert).toContainText("Your saved data is not affected.");
-  await expect(alert).toContainText("Month exploded");
+  await expect(alert).toContainText("We couldn't reach your data just now.");
+  await expect(alert).not.toContainText("Month exploded");
   await expect(alert).not.toContainText("App shell");
   // The Summary figures must not stay on screen under the Month tab.
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toHaveCount(0);

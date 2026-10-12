@@ -8968,6 +8968,12 @@ th {
     transform: translate(-50%, -50%);
   }
 
+  /* A real button beats a neighbour's invisible hit area where they overlap. */
+  .planned-link-manage-trigger {
+    position: relative;
+    z-index: 1;
+  }
+
   .dialog-primary,
   .panel-splits .dialog-primary,
   .panel-splits .split-match-card .dialog-primary,
