@@ -6,6 +6,7 @@ import { formatMonthLabel, money } from "./formatters";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { buildMonthSheetModel, PLAN_TONE_CLASS } from "./summary-month-choice";
+import "./mobile-sheet-head.css";
 import "./summary-month-sheet.css";
 
 const copy = messages.summary.monthChoice;

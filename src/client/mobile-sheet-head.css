@@ -1,0 +1,16 @@
+/* The head the phone's two chrome sheets share (View and scope, Pick a
+   month): the same spacing and 44px controls. Loads with either sheet. */
+@media (max-width: 760px) {
+  .mobile-context-dialog {
+    padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-context-dialog-head {
+    margin-bottom: 14px;
+  }
+
+  .mobile-context-dialog-close {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+}

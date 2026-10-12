@@ -1,6 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap");
 
 :root {
+  /* The phone chrome shares one set of tokens (design.md, "Phone chrome"):
+     the tab bar, the Support bar, the round buttons and the More pages
+     popover sit on --chrome-edge and take this radius, surface and lift;
+     sheets take --sheet-radius. */
+  --chrome-edge: 12px;
+  --chrome-radius: 22px;
+  --chrome-surface: rgba(255, 255, 255, 0.96);
+  --chrome-shadow: 0 12px 30px rgba(27, 24, 21, 0.14);
+  --sheet-radius: 24px;
   --bg: #ebe8e1;
   --panel: rgba(255, 255, 255, 0.92);
   --panel-strong: #2f2c28;
@@ -403,9 +412,10 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   width: min(180px, calc(100vw - 32px));
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--chrome-radius);
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 40px rgba(26, 28, 34, 0.12);
+  box-shadow: var(--chrome-shadow);
+  outline: none;
 }
 
 .tab-overflow-list {
@@ -414,8 +424,10 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .tab-overflow-link {
-  display: block;
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
   border-radius: 10px;
   color: var(--text);
   text-decoration: none;
@@ -8179,16 +8191,17 @@ th {
 
   .totals-visibility-toggle--floating {
     position: fixed;
-    right: 16px;
-    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    right: var(--chrome-edge);
+    /* Above the Support bar (80px up, 48px tall) with the same 8px gap. */
+    bottom: calc(136px + env(safe-area-inset-bottom, 0px));
     z-index: 59;
     display: inline-grid;
-    width: 46px;
-    height: 46px;
-    border-color: rgba(177, 94, 47, 0.28);
+    width: 44px;
+    height: 44px;
+    border-color: var(--line);
     border-radius: 999px;
-    background: rgba(255, 252, 249, 0.98);
-    box-shadow: 0 12px 28px rgba(74, 36, 18, 0.2);
+    background: var(--chrome-surface);
+    box-shadow: var(--chrome-shadow);
   }
 
   .totals-visibility-toggle--floating[aria-pressed="false"] {
@@ -8440,8 +8453,8 @@ th {
 
   .tab-strip {
     position: fixed;
-    left: 12px;
-    right: 12px;
+    left: var(--chrome-edge);
+    right: var(--chrome-edge);
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     z-index: 50;
     display: grid;
@@ -8452,9 +8465,9 @@ th {
     width: auto;
     padding: 8px;
     border: 1px solid var(--line);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 12px 30px rgba(27, 24, 21, 0.14);
+    border-radius: var(--chrome-radius);
+    background: var(--chrome-surface);
+    box-shadow: var(--chrome-shadow);
     backdrop-filter: blur(10px);
   }
 
@@ -8500,7 +8513,7 @@ th {
     overflow: hidden;
     transform: none;
     padding: 18px 16px 0;
-    border-radius: 24px 24px 0 0;
+    border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
     border-left: 0;
     border-right: 0;
     border-bottom: 0;
@@ -9170,10 +9183,13 @@ th {
     display: none;
   }
 
+  /* The Support bar: one calm surface on the chrome tokens (see :root,
+     --chrome-*), a person chip, the scope as quiet text and the month control
+     as a chip, on one row of 44px targets. */
   .mobile-context-sticky-wrap {
     position: fixed;
-    left: 16px;
-    right: 16px;
+    left: var(--chrome-edge);
+    right: var(--chrome-edge);
     bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     z-index: 58;
     display: block;
@@ -9182,8 +9198,14 @@ th {
   .mobile-context-sticky-bar {
     display: flex;
     align-items: center;
-    justify-content: stretch;
-    gap: 10px;
+    gap: 2px;
+    min-height: 48px;
+    padding: 1px 4px 1px 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--chrome-radius);
+    background: var(--chrome-surface);
+    box-shadow: var(--chrome-shadow);
+    backdrop-filter: blur(10px);
   }
 
   .mobile-context-trigger {
@@ -9191,54 +9213,44 @@ th {
     min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-height: 46px;
-    padding: 6px 14px;
-    border: 1px solid var(--line);
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 8px 0 10px;
+    border: 0;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 10px 26px rgba(27, 24, 21, 0.12);
-    backdrop-filter: blur(10px);
+    background: transparent;
     color: var(--text);
     font: inherit;
     text-align: left;
     cursor: pointer;
   }
 
-  .mobile-context-trigger-copy {
-    display: grid;
-    min-width: 0;
-  }
-
-  .mobile-context-trigger-label {
+  .mobile-context-person-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 11px;
+    border: 1px solid var(--person-chip-border, var(--line));
+    border-radius: 999px;
+    background: var(--person-chip-bg, rgba(38, 35, 31, 0.06));
+    color: var(--person-ink, var(--text));
     font-size: 0.84rem;
     font-weight: 700;
-    line-height: 1.25;
     letter-spacing: -0.01em;
-  }
-
-  .mobile-context-trigger-scope {
     white-space: nowrap;
   }
 
-  .mobile-context-trigger-hint {
+  .mobile-context-scope {
+    min-width: 0;
     color: var(--muted);
-    font-size: 0.72rem;
-    line-height: 1.25;
-  }
-
-  /* Beside the Summary tab's month control: heard, not shown. */
-  .mobile-context-trigger-hint.is-screen-reader-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
+    font-size: 0.8rem;
+    font-weight: 600;
     white-space: nowrap;
   }
 
   .mobile-context-trigger-caret {
+    margin-left: auto;
     color: var(--accent-strong);
     font-size: 0.92rem;
     flex: 0 0 auto;
@@ -9247,46 +9259,44 @@ th {
   .mobile-month-jump {
     display: flex;
     align-items: center;
-    gap: 8px;
     margin-left: auto;
   }
 
   .mobile-month-jump-button {
-    width: 46px;
-    height: 40px;
-    min-width: 46px;
-    padding: 0 10px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    border: 0;
     border-radius: 14px;
+    background: transparent;
+    box-shadow: none;
   }
 
-  /* The Summary tab's month choice beside the View and scope trigger:
-     "All months ▾", or "‹ Sep 2026 ›" with a month picked. One row, the
-     island's 46px height (summary-month-picker.jsx). */
+  /* The Summary tab's month chip: "All months ▾", or "‹ Sep 2026 ▾ ›" with a
+     month picked (summary-month-picker.jsx). A pastel sky chip, one line. */
   .mobile-month-choice {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    min-height: 46px;
-    padding: 0 4px;
-    border: 1px solid var(--line);
+    min-height: 44px;
+    border: 0;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 10px 26px rgba(27, 24, 21, 0.12);
-    backdrop-filter: blur(10px);
+    background: transparent;
     color: var(--text);
   }
 
   .mobile-month-choice-all {
-    gap: 10px;
-    padding: 6px 12px 6px 14px;
-    text-align: left;
+    gap: 6px;
+    padding: 0 10px;
     cursor: pointer;
   }
 
   .mobile-month-choice-copy,
   .mobile-month-choice-open {
-    display: grid;
-    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .mobile-month-choice strong {
@@ -9296,25 +9306,15 @@ th {
     white-space: nowrap;
   }
 
-  .mobile-month-choice-copy > span,
-  .mobile-month-choice-open > span {
-    color: var(--muted);
-    font-size: 0.72rem;
-    line-height: 1.25;
-  }
-
   .mobile-month-choice-caret,
-  .mobile-month-choice-open > span > span {
+  .mobile-month-choice-open > span[aria-hidden] {
     color: var(--accent-strong);
-    font-size: 0.92rem;
-  }
-
-  .mobile-month-choice-open > span > span {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
   }
 
   .mobile-month-choice-open {
-    padding: 4px 6px;
+    min-height: 44px;
+    padding: 0 4px;
     border: 0;
     background: transparent;
     color: var(--text);
@@ -9322,8 +9322,8 @@ th {
   }
 
   .mobile-month-choice-step {
-    width: 30px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -9340,67 +9340,6 @@ th {
 
   .summary-month-selector {
     display: none;
-  }
-
-  .mobile-context-dialog {
-    padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .mobile-context-dialog-head {
-    margin-bottom: 18px;
-  }
-
-  .mobile-context-dialog-close {
-    flex: 0 0 auto;
-  }
-
-  .mobile-context-dialog-section {
-    display: grid;
-    gap: 10px;
-  }
-
-  .mobile-context-dialog-section + .mobile-context-dialog-section {
-    margin-top: 18px;
-  }
-
-  .mobile-context-dialog-section:last-child {
-    margin-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .mobile-context-dialog-filters-slot {
-    margin-top: auto;
-    padding: 8px 14px 0;
-  }
-
-  .mobile-context-dialog-filters-slot > div:empty {
-    display: none;
-  }
-
-  .mobile-context-dialog-section-title {
-    font-size: 0.82rem;
-    color: var(--muted);
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-
-  .mobile-context-pill-row {
-    width: 100%;
-    max-width: none;
-  }
-
-  .mobile-context-view-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .mobile-context-pill-row.scope-toggle-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .mobile-context-pill-row .pill {
-    width: 100%;
-    min-width: 0;
   }
 
   .scope-button {
@@ -9579,12 +9518,15 @@ th {
     justify-self: start;
   }
 
+  /* The + button sits above the money toggle on the same right edge, with
+     the chrome lift in the accent's shade. */
   .entries-fab {
-    right: 16px;
-    bottom: calc(152px + env(safe-area-inset-bottom, 0px));
+    right: var(--chrome-edge);
+    bottom: calc(188px + env(safe-area-inset-bottom, 0px));
     width: 54px;
     height: 54px;
     z-index: 60;
+    box-shadow: 0 12px 30px rgba(177, 94, 47, 0.28);
   }
 
   .splits-fab {
@@ -9684,14 +9626,6 @@ th {
     display: inline-flex;
   }
 
-  .mobile-context-dialog-filters-slot .entries-filter-stack {
-    gap: 12px;
-  }
-
-  .mobile-context-dialog-filters-slot .entries-filter-toggle {
-    display: inline-flex;
-  }
-
   .entries-filter-stack:not(.is-open) .entries-filter-bar {
     display: none;
   }
@@ -9704,18 +9638,6 @@ th {
 
   .search-filter {
     min-width: 0;
-  }
-
-  .mobile-context-dialog-filters-slot .entries-filter-bar {
-    padding: 12px 0 0;
-    border: 0;
-    border-top: 1px solid var(--line);
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .mobile-context-dialog-filters-slot .entries-filter-reset {
-    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   }
 
   .entries-filter-reset {
