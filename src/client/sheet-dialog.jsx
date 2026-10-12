@@ -80,7 +80,7 @@ export function ConfirmLead({ icon, title, subtitle = null, amount = null, tone 
  *   className?: string, tone?: "danger", lead?: any, errorMessage?: string, errorContent?: any,
  *   children?: any, primaryLabel?: any, primaryDisabled?: boolean, onSubmit?: () => void,
  *   quietLabel?: any, onQuiet?: () => void, destructive?: any, secondary?: any, hideSubmit?: boolean,
- *   isSubmitting?: boolean, isDirty?: boolean, onClose: () => void, wide?: boolean
+ *   isSubmitting?: boolean, isDirty?: boolean, onClose: () => void, wide?: boolean, asSheet?: boolean
  * }} props
  */
 export function SheetDialog({
@@ -105,9 +105,13 @@ export function SheetDialog({
   isSubmitting = false,
   isDirty = false,
   onClose,
-  wide = false
+  wide = false,
+  asSheet = undefined
 }) {
-  const isMobile = useIsMobileLayout();
+  // The phone layout by default; Month also opens its sheets on a portrait
+  // tablet, which passes `asSheet`.
+  const isPhoneLayout = useIsMobileLayout();
+  const isMobile = asSheet ?? isPhoneLayout;
   const isDanger = tone === "danger";
   const close = () => {
     if (!isSubmitting) {

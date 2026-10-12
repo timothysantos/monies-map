@@ -171,7 +171,6 @@
 /* A confirmation names what it does ("Confirm delete month"), so its button
    takes the room it needs and wraps rather than clipping. */
 .sheet-dialog .lsd-bottom .lsd-primary {
-  flex: 1 1 auto;
   max-width: none;
   min-width: 132px;
   padding: 8px 16px;
@@ -179,6 +178,29 @@
   white-space: normal;
 }
 
+.sheet-dialog .lsd-bottom.is-sheet-bar .lsd-primary {
+  flex: 1 1 auto;
+}
+
+.sheet-dialog .lsd-bottom.is-dialog-bar .lsd-primary {
+  flex: 0 0 auto;
+  min-height: 48px;
+}
+
 .sheet-dialog .lsd-bottom.is-sheet-bar .lsd-bottom-end {
   flex: 1 1 60%;
+}
+
+/* Match planned item: its filter chips and list rows are real tap targets. */
+.planned-link-dialog .planned-link-filter-chip {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.planned-link-dialog .planned-link-filter-panel {
+  margin: 0;
+}
+
+.planned-link-dialog .planned-link-row {
+  min-height: 56px;
 }
