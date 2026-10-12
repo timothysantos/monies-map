@@ -148,9 +148,10 @@ test("every bottom sheet with a bottom bar lifts itself above the keyboard", () 
   const files = readdirSync(clientDir, { recursive: true }).map(String).filter((name) => /\.jsx?$/.test(name));
   const withBar = files.filter((name) => /<BottomActions\b/.test(read(`src/client/${name}`)));
   // The wide-screen inline editors (entries, split expenses) are not sheets
-  // and have no keyboard.
-  const notSheets = new Set(["entries-list.jsx", "splits-activity.jsx"]);
-  assert.deepEqual(withBar.sort(), ["claude-credit-notice.jsx", "entries-list.jsx", "entries-panel.jsx", "mobile-context-sheet.jsx", "month-plan-sheet.jsx", "splits-activity.jsx", "splits-dialogs.jsx", "splits-groups-sheet.jsx"]);
+  // and have no keyboard, and the shared states (cards and banners with one
+  // primary action) have no field to type in.
+  const notSheets = new Set(["entries-list.jsx", "splits-activity.jsx", "ui-states.jsx"]);
+  assert.deepEqual(withBar.sort(), ["claude-credit-notice.jsx", "entries-list.jsx", "entries-panel.jsx", "mobile-context-sheet.jsx", "month-plan-sheet.jsx", "splits-activity.jsx", "splits-dialogs.jsx", "splits-groups-sheet.jsx", "ui-states.jsx"]);
   for (const name of withBar.filter((file) => !notSheets.has(file))) {
     const source = read(`src/client/${name}`);
     const lifted = /useKeyboardInset\(/.test(source) || /<EntryMobileSheet\b/.test(source);
