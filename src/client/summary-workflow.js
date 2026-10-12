@@ -57,6 +57,7 @@ export function buildSummaryEntriesLocation(search, nextFilters) {
 // A Money insights "show these entries" link from Summary: Entries filtered to
 // the records it names, in the month they are in. Kept here (not in
 // check-in-action.js) so the first screen loads no extra chunk for it.
+/** @param {string} search @param {{ entryIds?: string[], month?: string }} [action] */
 export function buildSummaryEntriesForIdsLocation(search, { entryIds = [], month } = {}) {
   const location = buildSummaryEntriesLocation(search, month ? { month } : {});
   const next = new URLSearchParams(location.search);
