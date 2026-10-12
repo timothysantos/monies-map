@@ -1434,15 +1434,16 @@ There are two ways, depending on where the expense is.
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 
-To change a split, select it in the activity list. On a phone it opens as the
-same card you used to add it: change the total, a share, the category or the
-group, open **More details** for the rest, and select **Save expense**.
-**Delete** is at the bottom left and asks before it removes anything.
-On a wide screen the row turns into its form: change the fields and select **Save**. To remove it, select **Delete**,
-then **Delete split row**. A deleted split can be restored
-([Restore a deleted split](#restore-a-deleted-split)).
+To change a split, select it in the activity list (or Tab to it and press
+Enter or Space). It opens as the same card you used to add it, on a phone and
+on a wide screen: change the total, a share, the category or the group, open
+**More details** on a phone for the rest, and select **Save expense**.
+**Delete** is at the bottom left and asks before it removes anything: select
+**Delete**, then **Delete split row**. Escape or **Cancel** closes the card
+without saving, and the cursor goes back to the split you opened. A deleted
+split can be restored ([Restore a deleted split](#restore-a-deleted-split)).
 
-![Selecting a split opens its form in place of the row](/faq/guide/desktop/thumbs/splits-edit.webp)
+![Selecting a split opens it as a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
 
 ![Deleting a split asks you to confirm](/faq/guide/desktop/thumbs/splits-delete.webp)
 

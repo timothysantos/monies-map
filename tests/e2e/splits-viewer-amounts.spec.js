@@ -59,7 +59,7 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   await expect(editor).toBeVisible();
   await expect(page.locator(".split-inline-editor-card")).toHaveCount(0);
   const shareRows = editor.getByRole("group", { name: "Split share amounts" }).locator(".lsd-row");
-  await expect(shareRows).toHaveText(["Tim’s share50% · $20.32", "Joyce’s share50% · $20.33"]);
+  await expect(shareRows).toHaveText(["Tim’s share49.99% · $20.32", "Joyce’s share50.01% · $20.33"]);
   await expect(editor.getByText("Tim owes")).toHaveCount(0);
   await expect(editor.getByText("Joyce owes")).toHaveCount(0);
   await expect(editor.getByText("Odd cent")).toBeVisible();

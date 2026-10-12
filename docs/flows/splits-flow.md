@@ -33,6 +33,15 @@ Empty group, activity, search, match and history states use the shared
 `EmptyState`. When there are no matches, the match review says so once, not
 twice. Dialog form errors are `InlineError` alerts.
 
+Selecting a split expense row opens the split expense card dialog on every
+screen (the phone sheet and the wide dialog), the same card as the
+`editing_split_expense` deep link. Enter and Space on the focused row open
+it, Escape and Cancel close it and focus returns to the row. Deleting from
+the card asks in the app first and closes the card when the split is gone.
+Only a settlement row still edits inline on a wide screen. A settled split
+opens editable and is refused in place (see the lock bullet below); View
+split is the read-only household view.
+
 ## Data Flow
 
 Splits data comes from:

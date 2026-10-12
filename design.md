@@ -673,8 +673,13 @@ Where it is used:
   rows in order. Delete entry (and Delete split once it is on Splits),
   Cancel and Save are in the bottom bar.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
-  dialog in both layouts: the phone sheet and the wide dialog; a row on a
-  wide screen still opens the inline form).
+  dialog in both layouts: the phone sheet and the wide dialog). Selecting a
+  split expense row opens this card on every screen, as does the
+  `editing_split_expense` link; the old inline row form for a split expense is
+  gone (a settlement row still edits in place on a wide screen). Enter and
+  Space on the focused row open it, Escape and Cancel close it, and focus
+  goes back to the row (`returnFocusToSplitRow`: a modal Dialog with no
+  trigger button would otherwise drop focus on the page).
   Lead: the group bubble (terracotta; a plane for a foreign currency
   group), what it was, the group, and the total in the group currency
   (`formatCurrencyMinor`, plain ink). Support: date, who paid, the shares
@@ -692,7 +697,11 @@ Where it is used:
   chip and row) is locked and reads ", set by the linked entry"; the linked
   entry is a "View entry" row. View split (the read-only household view) shows
   the same card with no controls and Close. The save request is the one the
-  form sent.
+  form sent. Deleting from the card closes it once the split is gone. A
+  settled split (in a simplified settlement or a closed group batch) still
+  opens editable on purpose: the save is refused in place with the lock
+  notice and its Undo button (`split_settlement_locked`), which a read-only
+  View split would take away. View split stays for the household view.
 
 ## Apple Shortcut Install Boundary
 
