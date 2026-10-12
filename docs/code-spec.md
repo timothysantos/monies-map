@@ -153,6 +153,25 @@ Entries ≈23 ms handler / 38 KB gzip, Month ≈31 ms / 47 KB, Summary (12
 months) ≈77 ms / 2 KB, Splits ≈31 ms / 3 KB, account pills and Imports
 ≈30–35 ms. Payload size, not handler time, is what grows with ledger size.
 
+### Performance gate for redesign PRs
+
+Every redesign PR (and any PR that touches a first-screen file, a page DTO
+or a page query) must pass, with no regression, before it merges:
+
+- `npm run check:bundle`: first-screen JS and CSS within +5% of
+  `scripts/initial-bundle-budget.json`
+- the API payload budget spec, `tests/e2e/api-performance.spec.js`
+  (page responses within +10% of `tests/e2e/api-payload-budget.json`, page
+  handlers under the 750 ms slow-log line)
+- `npm run test:performance` on the built client, compared with the PR's
+  base as cohorts (several runs each, interleaved, same machine) through
+  `scripts/compare-performance.mjs`; never one run. A median or p95 more
+  than 10% slower, or more bytes or API requests before Summary is usable,
+  is a regression to fix or to explain in the PR with the numbers
+
+Raise a budget only for a deliberate, measured reason, and say why in the
+commit.
+
 Budget rules:
 
 - visible page queries over `750ms` are a design smell
