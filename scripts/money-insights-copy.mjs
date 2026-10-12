@@ -106,6 +106,8 @@ export const CATALOGUES = [
     period: "the month",
     entries: {
       unlinkedBills: ["quick_fix", "Planned bills dated before today with no entry linked."],
+      planShortfall: ["quick_fix", "The plan for the month in progress or a month ahead spends more than its planned income by more than $50 and 2% of that income (planned spend counts its savings rows once). Not for a finished month, or one with no income planned."],
+      planShortfallSavings: ["quick_fix", "As above, when the plan has a savings goal bigger than the shortfall: part of the goal still fits."],
       oneOffOverPlan: ["bigger_question", "The month went over plan and one or two entries made up at least half of it."],
       categoryOverPlan: ["worth_a_look", "The category budget furthest over its plan (by $1 or more). Steady under 10% and $20 over (see Notability)."],
       incomeAbovePlan: ["worth_a_look", "A moment (a bonus): income $500 and 10% or more above its plan."],
@@ -321,7 +323,8 @@ export function renderCheckInCopyMarkdown() {
     "On Month, a statement gap (a To do about a wallet, not the month)",
     "goes right after the month's own Something to think about, so that line",
     "leads and the gap is listed under \"Also this month\"; other Month To do",
-    "lines (planned bills with no payment linked) keep their place, and Summary still",
+    "lines (planned bills with no payment linked, a plan that spends more than it",
+    "expects to earn) keep their place, and Summary still",
     "leads with a statement gap.",
     "Big picture is a separate quieter line; Fun fact is one line shown only",
     "when the headline is not a Something to think about. \"See all insights\" adds up",

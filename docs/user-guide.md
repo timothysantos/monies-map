@@ -1655,7 +1655,9 @@ A small label says what kind of line it is:
 - **To do**: something small that keeps your numbers right or settles
   something. For example: a card statement that differs from what's
   recorded here by $42.80, a bill you planned that isn't matched to its
-  payment yet, money owed on a shared cost, or purchases with no category
+  payment yet, a month whose plan spends more than the income you expect
+  (the savings goal is already part of that spending), money owed on a
+  shared cost, or purchases with no category
   yet (they sit under "Other" until you pick one). A card bill is one too:
   from a week before its due date while no payment to the card is recorded
   ("Your OCBC 365 Credit Card bill of $33.15 is due in 3 days"), and for a
