@@ -343,6 +343,14 @@ test("J and K move between the blockers in order, and are left alone while typin
   await expect(oneCardSelect).toBeFocused();
 
   // In a text field J is a letter.
+  // Change is in the step summary at the top of the page and in the step's
+  // first line once the bar is stuck; the bar swaps them as it sticks. Click
+  // it from the top with the bar let go, so a jump's smooth scroll still
+  // settling cannot swap them mid-click: Playwright keeps retrying the button
+  // it first found, which then stays hidden (a 150 s timeout in CI).
+  await expectBelowBar(page, oneCardSelect);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await expect(bar(page)).not.toHaveClass(/is-stuck/);
   await bar(page).getByRole("button", { name: "Change" }).click();
   await openPasteRowsAndDefaults(page);
   const sourceLabel = page.getByLabel("Source label");
