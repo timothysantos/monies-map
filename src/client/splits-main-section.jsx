@@ -9,9 +9,7 @@ export function SplitsMainSection({
   selectedMode,
   pendingMatchCount,
   showBreakdown,
-  totalExpenseMinor,
-  groupBalanceMinor,
-  groupSummaryLabel,
+  lead,
   donutRows,
   donutChart,
   categories,
@@ -36,7 +34,7 @@ export function SplitsMainSection({
   onToggleBreakdown,
   onAddExpense,
   searchControl,
-  summaryToolbar,
+  leadControls,
   onDismissMatch,
   onConfirmMatch,
   onOpenArchive,
@@ -58,16 +56,15 @@ export function SplitsMainSection({
       <SplitsBreakdownSection
         showBreakdown={showBreakdown}
         currency={activeGroup?.currency ?? "SGD"}
-        totalExpenseMinor={totalExpenseMinor}
-        groupBalanceMinor={groupBalanceMinor}
-        groupSummaryLabel={groupSummaryLabel}
+        lead={lead}
+        activeGroup={activeGroup}
         donutRows={donutRows}
         donutChart={donutChart}
         categories={categories}
         onToggleBreakdown={onToggleBreakdown}
         onAddExpense={onAddExpense}
         searchControl={searchControl}
-        summaryToolbar={summaryToolbar}
+        leadControls={leadControls}
         onOpenHistory={onOpenHistory}
         readOnly={readOnly}
         isRefreshingDerived={isRefreshingDerived}

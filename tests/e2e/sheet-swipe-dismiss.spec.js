@@ -602,7 +602,7 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     await reseedDemo(page);
     await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
     await waitUsable(page);
-    await page.locator("article.panel-splits .panel-head .split-settle-header").click();
+    await page.locator(".splits-lead").getByRole("button", { name: "Settle group" }).click();
     const sheet = page.getByRole("dialog", { name: "Record settlement" });
     await expect(sheet).toBeVisible();
     await expect(sheet.locator(".sheet-drag-handle")).toHaveCount(0);

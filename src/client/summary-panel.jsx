@@ -10,6 +10,7 @@ import {
 import { messages } from "./copy/en-SG";
 import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
 import { money, unmaskedMoney } from "./formatters";
+import "./summary-body.css";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { SummaryLead } from "./summary-lead";
@@ -22,6 +23,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
+import { DetailRow, DetailRows } from "./ui-components";
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -241,6 +243,9 @@ function SummaryScopeSwitch({ view, onScopeChange }) {
   );
 }
 
+// Wallets in view (design.md, "Summary body"): one group of rows, each the
+// wallet, how fresh its statement is (not shown while money is hidden, as it
+// says which side of the statement the wallet is on) and its balance.
 function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   if (!accountPills.length) {
@@ -249,23 +254,31 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
 
   return (
     <section className="summary-accounts">
-      <div className="panel-subhead">
-        <h3>Wallets in view</h3>
-        <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
-      </div>
-      <div className="summary-account-pills">
-        {accountPills.map((account) => (
-          <button
-            key={account.accountId}
-            type="button"
-            className={`summary-account-pill ${moneyToneClass(reconciliationTone(account.reconciliationStatus), "soft")}`}
-            onClick={() => onOpenEntriesForAccount(account.accountId)}
-          >
-            <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
-            <span className="summary-account-pill-amount"><PrivateMoney>{money(account.balanceMinor)}</PrivateMoney></span>
-            {areTotalsVisible ? <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span> : null}
-          </button>
-        ))}
+      <div className="summary-accounts-body">
+        <div className="summary-accounts-head">
+          <h3>Wallets in view</h3>
+          <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
+        </div>
+        <DetailRows label="Wallets in view">
+          {accountPills.map((account) => (
+            <DetailRow
+              key={account.accountId}
+              className="summary-wallet-row"
+              label={(
+                <>
+                  <span className="summary-wallet-name">{formatAccountDisplayName(account)}</span>
+                  {areTotalsVisible ? (
+                    <span className={`summary-wallet-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
+                      {describeAccountHealth(account)}
+                    </span>
+                  ) : null}
+                </>
+              )}
+              value={<PrivateMoney>{money(account.balanceMinor)}</PrivateMoney>}
+              onClick={() => onOpenEntriesForAccount(account.accountId)}
+            />
+          ))}
+        </DetailRows>
       </div>
     </section>
   );

@@ -115,7 +115,7 @@ async function expectKeptBar(page, lead, figures) {
   const [spentRed, spentGreen] = await backgroundRgb(spentSegment);
   const [keptRed, keptGreen] = await backgroundRgb(keptSegment);
   expect(spentRed - spentGreen, "spent is rose").toBeGreaterThan(40);
-  expect(keptGreen - keptRed, "kept is mint").toBeGreaterThan(30);
+  expect(keptGreen - keptRed, "kept is mint (olive in the 70s palette)").toBeGreaterThan(8);
   // The segment's popover text is also its accessible description.
   const description = async (segment) => {
     const id = await segment.getAttribute("aria-describedby");
@@ -246,10 +246,10 @@ test.describe("phone", () => {
     // Everything the bar holds, hidden popovers too, is free of amounts and sign words.
     const text = await bar.evaluate((element) => [element.textContent, ...[...element.querySelectorAll("[aria-describedby]")].map((segment) => segment.getAttribute("aria-label"))].join(" "));
     expect(text).not.toMatch(/\$|[-−]\s?\d|\bkept \d|more than/i);
-    // Neutral greys: no rose or mint colour reveals a sign.
+    // Neutral warm greys (the 70s ink is brown, so a little chroma): no rose or mint colour reveals a sign.
     for (const key of ["spent", "kept"]) {
       const [red, green, blue] = await backgroundRgb(bar.locator(`[data-segment="${key}"]`));
-      expect(Math.max(red, green, blue) - Math.min(red, green, blue), `${key} is grey`).toBeLessThanOrEqual(12);
+      expect(Math.max(red, green, blue) - Math.min(red, green, blue), `${key} is grey`).toBeLessThanOrEqual(20);
     }
   });
 });

@@ -1114,7 +1114,10 @@ test.describe("import flow", () => {
     const pageRange = await (await page.request.get("/api/summary-page?view=person-tim&month=2025-10&scope=direct_plus_shared")).json();
     const rangeFood = pageRange.summaryPage.categoryShareChart.find((item) => item.label === "Food & Drinks")?.valueMinor ?? 0;
     expect(rangeFood).toBeGreaterThanOrEqual(afterFoodDonut);
-    await expect(page.locator(".share-row").filter({ hasText: "Food & Drinks" }).first()).toContainText(formatMoney(rangeFood), { timeout: 30_000 });
+    // The ranked list shows the top five; Food & Drinks may be further down.
+    const showAll = page.getByRole("button", { name: /^Show all \d+$/ });
+    if (await showAll.count()) await showAll.click();
+    await expect(page.locator(".summary-mix-row").filter({ hasText: "Food & Drinks" }).first()).toContainText(formatMoney(rangeFood), { timeout: 30_000 });
   });
 
   test("final import shows recent-import loading and completion inline", async ({ page }) => {

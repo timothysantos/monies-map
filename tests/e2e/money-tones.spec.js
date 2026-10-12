@@ -226,7 +226,7 @@ test("Entries: expenses rose with their minus sign, income mint, transfers plain
   expect((await looks(item("Transfers").locator("strong"))).color).toBe(INK.text);
 });
 
-test("Splits: balances on the orange are plain text; activity is coloured text only", async ({ page }) => {
+test("Splits: the lead card carries the balance tone; tiles on the orange are plain text; activity is coloured text only", async ({ page }) => {
   await revealMoney(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   const splits = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
@@ -235,14 +235,14 @@ test("Splits: balances on the orange are plain text; activity is coloured text o
 
   for (const group of groups.slice(0, 2)) {
     await gotoPageAfterApi(page, `/splits?view=person-tim&month=2025-10&split_group=${group.id}`, "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
-    const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
-    await expect(balance).toContainText(group.balanceMinor > 0 ? "You are owed" : "You owe");
-    // No coloured chip on the orange: the balance keeps the strip's own
-    // white text and no fill (the owner found tinted chips too much there).
-    const strip = await looks(balance);
-    expect(strip.background).toBe(TRANSPARENT);
-    expect([INK.in, INK.short]).not.toContain(strip.color);
-    expect([INK.in, INK.short]).not.toContain((await looks(balance.locator("strong"))).color);
+    // The lead is a white card (not the orange): money owed to you is mint
+    // text, a debt rose text, never a fill.
+    const lead = page.locator(".splits-lead");
+    const figure = lead.locator(".lsd-amount");
+    await expect(lead.locator(".lsd-amount-caption")).toContainText(group.balanceMinor > 0 ? "owes you" : "You owe");
+    const leadFigure = await looks(figure);
+    expect(leadFigure.color).toBe(group.balanceMinor > 0 ? INK.in : INK.short);
+    expect(leadFigure.background).toBe(TRANSPARENT);
 
     const pillBalance = page.locator(".splits-strip-tile").filter({ hasText: group.name }).first().locator(".splits-strip-tile-balance");
     const pill = await looks(pillBalance);
@@ -323,15 +323,18 @@ test("hidden money shows no sign or outcome in words", async ({ page }) => {
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
 
   await openSummary(page, "household", "2026-04");
-  await expect(page.locator(".summary-account-pill").first()).toBeVisible();
+  await expect(page.locator(".summary-wallet-row").first()).toBeVisible();
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
   // A wallet's statement health is an outcome too: hidden with the money.
-  expect(await page.locator(".summary-account-pill-meta").allInnerTexts()).toEqual([]);
+  expect(await page.locator(".summary-wallet-health").allInnerTexts()).toEqual([]);
 
   await gotoPageAfterApi(page, "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river", "/api/splits-page", () => page.getByRole("heading", { name: "Splits", exact: true }));
   await expect(page.locator(".split-activity-card").first()).toBeVisible();
-  const balance = page.locator(".splits-summary-strip .entries-summary-metrics > span").first();
-  await expect(balance).toContainText("Net");
+  const balance = page.locator(".splits-lead .lsd-amount-caption");
+  await expect(balance).toContainText("Balance with");
+  await expect(page.locator(".splits-lead .lsd-amount")).toHaveText("••••");
+  // Hidden money turns the figure to plain ink: no tone says which side of zero it is.
+  expect((await looks(page.locator(".splits-lead .lsd-amount"))).color).toBe(INK.text);
   expect(await visibleText()).not.toMatch(SIGN_WORDING);
 
   // Revealing brings the wording back.

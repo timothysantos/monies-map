@@ -1,0 +1,228 @@
+/* The Summary body under the lead, in Lead · Support · Detail (design.md,
+   "Summary body"): Spending Mix's donut and ranked category list, and
+   Wallets in view as one group of rows. It ships with the Spending Mix
+   section's chunk, never in public/styles.css. Colours are tokens, the
+   category colours and the money tones; every tappable is at least 44px. */
+
+/* Spending Mix: the donut, then the ranked list (beside it from 1,024px,
+   where Summary gives the card the full row). */
+.summary-mix {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.summary-mix-chart {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summary-mix-list {
+  min-width: 0;
+}
+
+.summary-mix-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px 2px 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.summary-mix-row:last-child {
+  border-bottom: 0;
+}
+
+/* The category bubble in its soft pair, like the Lead card's. */
+.summary-mix-row .category-icon {
+  width: 44px;
+  height: 44px;
+  border-color: color-mix(in srgb, var(--category-color) 35%, white);
+  background: color-mix(in srgb, var(--category-color) 20%, white);
+  box-shadow: none;
+}
+
+.summary-mix-row .category-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.summary-mix-main {
+  display: grid;
+  gap: 7px;
+  align-content: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-mix-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.summary-mix-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-mix-amount {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.summary-mix-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.summary-mix-bar {
+  display: block;
+  flex: 1 1 auto;
+  height: 6px;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 8%, white);
+}
+
+.summary-mix-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--bar-color);
+}
+
+.summary-mix-percent,
+.summary-mix-state {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-mix-percent {
+  min-width: 3.2em;
+  text-align: right;
+}
+
+/* A category hidden from the donut stays listed, dimmed. */
+.summary-mix-row.is-hidden-from-donut {
+  opacity: 0.58;
+}
+
+.summary-mix-row.is-hidden-from-donut .summary-mix-bar-fill {
+  background: color-mix(in srgb, var(--text) 30%, white);
+}
+
+.summary-mix-arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.summary-mix-arrow:hover,
+.summary-mix-arrow:focus-visible,
+.summary-mix-main:focus-visible {
+  color: var(--accent-strong);
+}
+
+/* "Show all N" / "Show fewer": the last row of the group. */
+.summary-mix-more.lsd-row {
+  justify-content: center;
+  gap: 6px;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  .summary-mix {
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+    gap: 28px;
+  }
+}
+
+/* Wallets in view: one card of rows. The name over how fresh its statement
+   is, the balance and a `›` on the right. */
+.summary-accounts-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.summary-accounts-head h3 {
+  margin: 0;
+}
+
+.summary-accounts-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.summary-wallet-row.lsd-row {
+  min-height: 60px;
+}
+
+.summary-wallet-row .lsd-row-label {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  max-width: none;
+  min-width: 0;
+  color: var(--text);
+}
+
+.summary-wallet-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.summary-wallet-health {
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.summary-wallet-row .lsd-row-value {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1024px) {
+  .summary-accounts-body {
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+    align-items: start;
+    gap: 28px;
+  }
+}

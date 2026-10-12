@@ -274,16 +274,17 @@ over plan.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
-  with a list of categories below it. Pick a month to see that month's
-  ([Month](#month)).
+  with the categories ranked beside it (under it on a phone): each shows its
+  amount, its share and a thin bar. The top five show; **Show all** lists
+  the rest. Pick a month to see that month's ([Month](#month)).
 - **Intent vs Outcome**: one card per month, newest first. Each leads with
   what you spent against what you planned, with a bar, the percent of plan
   and how far under or over you are. Your planned and actual income sit
   under it, and **Details** opens the income, spending and savings figures.
-- **Wallets in view**: the current balance of each account and whether a
-  statement has confirmed it.
+- **Wallets in view**: one list with each wallet's current balance and
+  whether a statement has confirmed it. Select a wallet to open its entries.
 
-![Spending Mix and Intent vs Outcome side by side](/faq/guide/desktop/thumbs/summary-charts.webp)
+![Spending Mix: the donut beside the ranked categories, with Intent vs Outcome below](/faq/guide/desktop/thumbs/summary-charts.webp)
 
 ### What each control does
 
@@ -297,9 +298,12 @@ over plan.
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
   ([Pick a month](#pick-a-month)).
-- **A category in the list**: select it to hide or show it in the donut (it
-  says Shown or Hidden). The **›** beside it opens that category's entries.
-  The coloured icon changes the category's icon and colour.
+- **A category in the list**: select its name to hide or show it in the donut
+  (a hidden one is dimmed and says Hidden). The **›** beside it opens that
+  category's entries. The coloured icon changes the category's icon and
+  colour. **Show all** under the first five lists every category;
+  **Show fewer** folds it back. With money hidden the amounts show as dots and
+  the percentages stay.
 - **A month card** in Intent vs Outcome: select **Details** for the planned,
   actual and variance figures (the latest month starts open). The **Note** row
   there edits that month's note. The month's name opens that month.
@@ -364,7 +368,7 @@ stays highlighted, and the range at the top stays as it was.
   Select it to see what it means.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
-  list as on Summary. Select a category to hide or show it in the donut; its
+  ranked list as on Summary. Select a category to hide or show it in the donut; its
   **›** opens that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
 - **Income**: planned income sources. On every plan row a thin bar shows how
@@ -498,22 +502,39 @@ always know you are working on shared money rather than your bank ledger.
   of every group with its balance. When money is hidden every tile says
   "Balance hidden".
 - **Money insights** for the selected group.
-- **Search**, your balance, the group's spend, **Activity history** and
-  **+ Add expense**.
+- **The group card**: a white card for the group you have open. It shows the
+  group's name, its currency and how many entries it has, then the balance as
+  one figure with who owes whom in words under it ("Serene owes you" in
+  green, "You owe Serene" in red, or "Settled up"). Under that are a chip for
+  the other person and a **Group spend** chip (select it to show or hide the
+  spending-by-category chart). **History** is quiet and **Settle group** is
+  the one main button; on a computer **+ Add expense** sits between them. When
+  money is hidden the figure is dots and the words say "Balance with Serene",
+  so nothing shows who owes whom.
+- **Search**, in its own field under the card, named for the group you have
+  open.
 - **Possible split links**: a reminder when imported bank rows may match
   splits you entered by hand ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 - **Archived batches**: groups you have already settled.
-- **Activity**: the group's open expenses and settle-ups, by date.
+- **Activity**: the group's open expenses and settle-ups, by date. Each date
+  is a quiet divider with how many entries it holds, and that day's rows sit
+  together in one white block. Each row says what it was and who paid, with
+  the words and amount that are yours ("you lent", "you borrowed") at the
+  right.
 
 ### What each control does
 
 - **Review matches**: compare imported bank rows with your manual splits.
+  It is at the top right of the page on a computer, and the **Review
+  matches** button in the reminder on a phone.
 - **Settle group**: record a payment that clears the selected group.
 - **Simplify settlement**: combine all open groups in the same currency into
-  one amount to pay.
+  one amount to pay. It is at the top right of the page on a computer, and a
+  row on the group card on a phone.
 - **Select an expense** to edit it in place: its form replaces the row, with
   **Save**, **Cancel** and **Delete**.
-- **Activity history**: deleted and restored split records, with **Restore**.
+- **History** (on the group card): deleted and restored split records, with
+  **Restore**.
 
 Splits is not filtered by the month picker: it always shows what is still
 open.
@@ -529,7 +550,9 @@ open.
 
 The view switch stays at the top, the group tiles slide sideways beside the
 cream **New** / **All** tile, and when you scroll down a bar with the open
-group takes their place (tap it to open **All groups**). The round
+group takes their place (tap it to open **All groups**). On the group card
+**Simplify settlement** is a row of its own, and **History** and **Settle
+group** share the last line. The round
 receipt button opens a new entry card on [Ask](#ask), already set to share
 with the other person in the group you are looking at. **+ Add expense**
 (and **Edit in form** on Ask) opens the new expense as a card in a sheet,
@@ -1508,8 +1531,9 @@ undo the same card turns editable and you can change and save it.
 1. Open **Splits**. When bank rows may match splits you entered by hand, a
    banner says "possible split links".
 2. Select **Review matches**.
-3. Each card shows the **Existing split** next to the **Imported ledger row**,
-   with how far apart the dates and amounts are.
+3. Each white card has the **Existing split** and the **Imported ledger row**
+   as two rows, a chip for how likely the match is, and how far apart the
+   dates and amounts are.
 4. Select **Match** to link them, or **Keep separate** if they are different
    purchases.
 5. Select **Back** when you are done.
@@ -1520,9 +1544,10 @@ A split can be linked to only one bank row.
 
 ## Track a trip in another currency
 
-1. Open **Splits** and select **+** next to the groups.
-2. Type a **Group name** (for example "Seoul trip") and choose the **Group
-   currency** (for example KRW).
+1. Open **Splits** and select **New** in the cream tile beside the groups.
+2. Type the **Group name** at the top of the card (for example "Seoul trip")
+   and choose the **Group currency** (for example KRW). The chips under the
+   name show what you have chosen.
 3. Choose the **Purchase source**: **Cash only** for cash spending, or
    **Bank/card** for card purchases you will later match to your statement.
    Two groups (one of each) keep things simplest.
@@ -1541,9 +1566,12 @@ the linked card row counts in dollars, split the same way.
 ## Settle up a group
 
 1. Open **Splits** in your person view and select the group.
-2. Select **Settle group**.
-3. Check **Paid by**, **Received by** and the **Amount** (filled in with the
-   balance), choose how it was paid, and add a note.
+2. Select **Settle group** on the group card.
+3. The card at the top reads who paid whom ("Serene paid Ethan") and holds
+   the **Amount**, filled in with the balance: type over it to pay a different
+   amount. Below it, check **Paid by**, **Received by** and the **Date**, add
+   a **Note**, and choose how it was paid under **Paid using**.
+   **Currency** and **Evidence** are in the same list.
 4. Select **Save settlement**.
 
 ![Record settlement for one group](/faq/guide/desktop/thumbs/splits-settle-group.webp)
@@ -1556,8 +1584,10 @@ expenses start a fresh batch. Other groups are not touched.
 When you have several open groups in the same currency, **Simplify
 settlement** works out one amount to pay for all of them.
 
-1. Open **Splits** in your person view and select **Simplify settlement**.
-2. The **Simplified settlement** panel shows who pays whom and how much. If
+1. Open **Splits** in your person view and select **Simplify settlement** (at
+   the top right of the page on a computer, a row on the group card on a
+   phone).
+2. The **Simplified settlement** card shows who pays whom and how much. If
    the groups cancel each other out, nothing needs paying. **View included
    activity** marks the expenses it covers.
 3. When the bank transfer appears, choose it in **Match a transfer…** and
@@ -1592,7 +1622,7 @@ Entries), it is refused with the same message and button, and nothing changes.
 
 ## Restore a deleted split
 
-1. Open **Splits** and select **Activity history**.
+1. Open **Splits** and select **History** on the group card.
 2. Find the deleted expense or settle-up.
 3. Select **Restore**. It comes back with the same shares, group, currency and
    bank link.

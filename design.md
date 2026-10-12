@@ -94,8 +94,53 @@ any dialog. Desktop is one row with the control first; tiles that do not fit
 are dropped (never wrapped or scrolled) and the All half reads "All · N more".
 Group tiles carry no money tone (the Splits orange).
 
+### Splits page: lead card, search, activity list
+
+The open group is a Lead · Support · Detail lead card
+(`splits-lead-card.jsx`, words in `copy/splits-lead-copy.js`, what it says
+decided by `splits-lead-model.js`, styles in `splits-lead.css`): the group
+bubble (its icon, the Splits terracotta), the name, "JPY · 10 entries" and the
+balance as the one figure with the plain words under it ("Serene owes you",
+"You owe Serene", "Settled up"; hidden: "Balance with Serene" and dots). Support
+chips: the other person in their colour and "Group spend <amount>", which is
+the old summary strip's category breakdown toggle (it keeps the name "Toggle
+split donut" and `aria-expanded`). History (the `lsd-quiet` action, named
+"Activity history") and Settle group (the one `lsd-primary`; off at zero) share
+the bottom row; a wide screen adds "+ Add expense" between them, in a column
+at the card's right. Simplify settlement stays in the page head on a wide
+screen (with "Review matches (n)") and is a Detail row on the card on a phone,
+where the head is hidden and the receipt button adds expenses. A household
+view has no balance, so the spend is the figure and only History shows. In the
+bank-match review the card steps aside for the review's own lead. The search
+box is its own field under the card, its label kept for assistive tech and its
+placeholder naming the group.
+
+The activity list stays flat (design.md, Lead · Support · Detail: lists are not
+cards): each date is a quiet divider (small mono caps, a hairline, the count
+and refresh at the right; it stays sticky on a faint orange band), and that
+day's rows share one rounded white group with hairlines. The viewer's words and
+figure sit at the row's right in their money tone as text only. An open inline
+split card fills its group as the row opened up. Archived batches is a dashed
+outline row.
+
+The Splits dialogs and panels use the same blocks (no behaviour change):
+Record settlement (`split-settlement-card.jsx`, in the phone sheet, the wide
+dialog and inline in the list, sharing the split expense card's layout:
+lead with the amount typed in place, the date and payment chips, then Group,
+Paid by, Received by, Date, Note, Paid using, Currency, Evidence and a Linked
+entry row), Create group (`split-group-card.jsx`: the name typed in the lead,
+Group currency and Purchase source rows), Split activity history and Archived
+batches (`splits-list-sheets.css`: a head, one rounded group of rows, Close in
+the bottom bar), the simplified settlement (`splits-checkpoint-panel.jsx`: lead
+with who pays whom, Detail rows for View included activity, the matched
+transfers and the transfer to match, Mark paid as the one primary) and the
+bank-match review (`splits-matches.jsx`: a lead, then a white card per candidate
+with the two records as rows and the confidence as a chip). The old Edit linked
+entry dialog (`splits-linked-entry-dialog.jsx`) is never rendered and was left
+as it is.
+
 Split activity history is an action-oriented recovery surface opened from the
-splits summary area. It uses the splits color contract, stays compact and
+group card. It uses the splits color contract, stays compact and
 newest-first, labels archived actions clearly, and places Restore beside a
 recoverable record without exposing destructive controls in the history list.
 
@@ -823,6 +868,39 @@ Where it is used:
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
   sideways scroll.
+- Summary body, under the lead (`spending-mix-section.jsx`,
+  `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
+  chunks; no `styles.css` growth). The Spending Mix donut has no labels on it
+  (`SpendingMixChart callouts={false}`; the percent labels and category
+  badges around the ring collided when many categories had thin slices, and
+  Entries and Splits keep theirs) and is small: 216 px on a phone, 300 px
+  from 761 px. Under it (beside it from 1,024 px, where the card has the full
+  row) a ranked list in one `DetailRows` group, biggest first: the 44 px
+  category bubble (edits the category, as before), the name and amount on
+  one line (the name is one line with an ellipsis), a 6 px bar in the
+  category's colour whose width is the category's share of all spending, and
+  the share to one decimal; the `›` (44 × 44) opens Entries for the category.
+  The main tap still hides or shows the slice in the donut (`aria-pressed`);
+  a hidden category stays listed, dimmed, with the existing "Hidden" word
+  and a grey bar, and the donut's total follows the shown ones while the
+  shares stay of all spending. The top five show; a last row, "Show all N" /
+  "Show fewer" (`aria-expanded`), lists the rest. The old per-category
+  transaction count and the old "Shown" caption are gone with the cards.
+  Wallets in view is one group of `DetailRow`s (a `DetailRows` group, from
+  1,024 px the heading on the left and the group on the right): the wallet
+  name with its statement freshness under it ("Reconciled to Sep 2026
+  statement", in the money tone's ink: mint when matched, rose when off,
+  plain when no checkpoint) and the balance with a `›`, 60 px or more. It
+  replaces the wrapping tone-filled pills, so a wallet that is off no longer
+  fills a whole rose card; a tap opens Entries for that wallet. Month's
+  Accounts section still uses the pills. The note rows of Intent vs
+  Outcome are Detail rows (48 px). Hidden money: dots for every amount,
+  the donut's centre and the bars and shares kept (a share is not an
+  amount), and no wallet freshness line (it says which side of the
+  statement the wallet is on). `tests/e2e/summary-body-lsd.spec.js` checks no
+  two labels or badges overlap, the top 5 and Show all, the three taps,
+  every wallet against `/api/summary-account-pills`, targets of at least
+  44 px, no sideways scroll, and hidden money, on a phone and a desktop.
 - Month plan-row sheet (`month-plan-sheet.jsx`, phone and portrait tablet,
   add and edit for income, planned items and budget buckets): the planned
   amount is the editable lead under the row's name, kind and category
@@ -1454,8 +1532,8 @@ picking the range on both routes; the months offered are the range's months
   work, as on All months it sits beside Intent vs Outcome), from the Month
   page DTO's `categoryShareChart` (no request). One component for both
   (`SpendingMixSection`, `spending-mix-section.jsx`): same card, donut and
-  category cards; no spending shows the Entries empty state instead of an
-  empty donut. Its only Month rule (spacing) is in `month-route.css`.
+  ranked category list ("Summary body" above); no spending shows the Entries
+  empty state instead of an empty donut. Its only Month rule (spacing) is in `month-route.css`.
   `summary_focus` is ignored.
 - Bundle: the island control, the row and the rules are in the entry chunk
   (about 0.8 kB gzip); the sheet is not. The sheet draws its tick itself and
@@ -1479,8 +1557,9 @@ Remaining budget drops its "To allocate" / "Overplanned" line (the Month
 lead's pill hides it with the amount), the Summary lead and the Month plan sheet drop
 "under / over plan", "% of plan", "left", "over" and "to come" and keep only
 their bar's empty track, wallet pills and Settings drop the statement health
-line ("off by"), the Splits strip labels its balance "Net" instead of "You
-owe" / "You are owed" / "Settled up", and Splits activity drops "you lent" /
+line ("off by"), the Splits lead card says "Balance with <name>" in place of
+"<name> owes you" / "You owe <name>" / "Settled up" (and its figure and the
+Group spend chip are dots), and Splits activity drops "you lent" /
 "you borrowed" / "you paid" / "you received". `tests/e2e/money-tones.spec.js`
 reads the hidden pages for any such word.
 
@@ -1583,9 +1662,11 @@ Three strengths, never two on one element:
   realized savings, remaining budget, spend gap), Entries strip items with a direction (income,
   difference), wallet pills by statement health, and a statement movement
   that is off. Plans stay text-only so a row of cards does not read as a
-  traffic light. Balances on the Splits orange (the summary strip and group
-  pills) stay plain text with no chip: the owner found tinted chips too much
-  there.
+  traffic light. Balances on the Splits orange (the group tiles) stay plain
+  text with no chip: the owner found tinted chips too much there. The
+  group's lead card is white, so its balance figure takes the money tone as
+  text (mint owed to you, rose when you owe, plain ink at zero and when
+  hidden), never a fill.
 - **Emphasis** (rare, one per area): the full fill for a banner that needs
   attention: the import statement result, the overlap mismatch hint, and a
   statement card's bank charges and notices (`.statement-bank-charges`, full

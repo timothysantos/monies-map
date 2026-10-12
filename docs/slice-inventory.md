@@ -298,7 +298,12 @@ commit state graph behind one imports API.
 - `src/client/splits-dialogs.jsx` — `Own`
 - `src/client/splits-drafts.js` — `Own`
 - `src/client/splits-groups-nav.jsx` — `Own`
-- `src/client/splits-linked-entry-dialog.jsx` — `Own`
+- `src/client/splits-linked-entry-dialog.jsx` — `Own` (never rendered)
+- `src/client/splits-lead-card.jsx`, `splits-lead-model.js` — `Own` (the open
+  group's lead card and what it says)
+- `src/client/split-settlement-card.jsx`, `split-group-card.jsx`,
+  `splits-checkpoint-panel.jsx` — `Own` (Record settlement, Create group and
+  the open simplified settlement in Lead · Support · Detail)
 - `src/client/splits-main-section.jsx` — `Own`
 - `src/client/splits-matches.jsx` — `Own`
 - `src/client/splits-optimistic.js` — `Own`

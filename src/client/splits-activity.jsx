@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, RefreshCw, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
-import { SplitSettlementFields } from "./splits-dialogs";
+import { SplitSettlementCard } from "./split-settlement-card";
 import { SplitExpenseCard } from "./split-expense-card";
 import { BottomActions } from "./ui/lead-support-detail";
 import { CategoryGlyph } from "./ui-components";
@@ -288,58 +288,47 @@ export function SplitActivityGroups({
           }
 
           if (isEditing) {
+            // A settle-up opens as the settlement card in place of its row
+            // (wide screens), with the same bottom bar as the expense card.
             return (
               <article
                 ref={pageFlagRef(PAGE_FLAG.splitInlineEditor, inlineEditorRef)}
                 id={splitActivityDomId(item)}
                 key={splitItemKey(item)}
-                className="split-inline-editor-card"
+                className="split-inline-editor-card split-inline-expense-card"
                 onClick={(event) => event.stopPropagation()}
               >
-                <SplitSettlementFields
+                <SplitSettlementCard
+                  layout="inline"
                   dialog={editingDraft}
                   groupOptions={groupOptions}
                   people={people}
                   onChange={onChangeEditingDraft}
                   autoFocusAmount
+                  amountAction={<TotalsVisibilityToggle className="totals-visibility-toggle--form" />}
+                  onViewLinkedEntry={onViewLinkedEntry ? () => onViewLinkedEntry(editingDraft) : undefined}
                 />
                 {inlineSettlementLock
                   ? <SettlementLockNotice lock={inlineSettlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
                   : <InlineError message={inlineFormError} />}
-                <div className="split-inline-actions">
-                  {editingDraft.linkedTransactionId ? (
-                    <button
-                      type="button"
-                      className="subtle-action split-linked-entry-action"
-                      disabled={isSubmitting}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onViewLinkedEntry?.(editingDraft);
-                      }}
-                    >
-                      {messages.splits.viewLinkedEntry}
+                <BottomActions
+                  className="split-inline-expense-actions"
+                  destructive={(
+                    <button type="button" className="lsd-quiet is-danger" disabled={isSubmitting} onClick={() => onRequestDelete?.(editingDraft)}>
+                      Delete
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="subtle-action split-delete-action"
-                    disabled={isSubmitting}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onRequestDelete?.(editingDraft);
-                    }}
-                  >
-                    Delete
-                  </button>
-                  <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing split" disabled={isSubmitting || !hasEditingChanges} onClick={() => void onSaveEditing?.()}>
-                    {isSubmitting ? null : <Check size={16} />}
-                    <span className="desktop-action-label">{isSubmitting ? messages.common.saving : "Save"}</span>
-                  </button>
-                  <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel editing split" disabled={isSubmitting} onClick={onCancelEditing}>
-                    <X size={16} />
-                    <span className="desktop-action-label">Cancel</span>
-                  </button>
-                </div>
+                  )}
+                  secondary={(
+                    <button type="button" className="lsd-quiet" aria-label="Cancel editing split" disabled={isSubmitting} onClick={onCancelEditing}>
+                      Cancel
+                    </button>
+                  )}
+                  primary={(
+                    <button type="button" className="lsd-primary" aria-label="Done editing split" disabled={isSubmitting || !hasEditingChanges} onClick={() => void onSaveEditing?.()}>
+                      {isSubmitting ? messages.common.saving : "Save"}
+                    </button>
+                  )}
+                />
               </article>
             );
           }
