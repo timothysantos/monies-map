@@ -17,10 +17,10 @@ import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
 
 const MONTH = "2026-05";
 const INK = {
-  in: "rgb(23, 104, 74)",
-  short: "rgb(163, 53, 42)",
-  text: "rgb(38, 35, 31)",
-  muted: "rgb(115, 111, 105)"
+  in: "rgb(76, 94, 26)",
+  short: "rgb(151, 50, 35)",
+  text: "rgb(59, 42, 31)",
+  muted: "rgb(110, 95, 84)"
 };
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
 const PHONE = { width: 390, height: 664 };
@@ -133,7 +133,16 @@ test.describe("Entries totals: the lead and four pills", () => {
     expect(await totals.innerText()).not.toMatch(/[-−]\s?••••|\$\d/);
     for (const pill of await totals.locator(".entries-totals-pill").all()) {
       const surface = (await looks(pill)).background.match(/[\d.]+/g).slice(0, 3).map(Number);
-      expect(Math.max(...surface) - Math.min(...surface)).toBeLessThan(12);
+      // No mint or rose tint: the palette's cream neutral, or nothing.
+      const neutral = (await page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--pastel-neutral)";
+        document.body.append(probe);
+        const colour = getComputedStyle(probe).color;
+        probe.remove();
+        return colour;
+      })).match(/[\d.]+/g).slice(0, 3).map(Number);
+      surface.forEach((channel, index) => expect(Math.abs(channel - neutral[index])).toBeLessThan(3));
       expect((await looks(pill.locator("strong"))).color).toBe(INK.text);
     }
   });

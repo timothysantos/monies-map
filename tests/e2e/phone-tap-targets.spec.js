@@ -42,7 +42,7 @@ const SCREENS = [
   {
     name: "Entries",
     path: "/entries?view=person-tim&month=2026-05",
-    required: [".entries-date-refresh-button", ".entries-breakdown-toggle"],
+    required: [".entries-date-refresh-button", ".entries-totals-rows .lsd-row"],
     optional: [".period-range-segment", ".financial-insight-toggle"]
   },
   {
