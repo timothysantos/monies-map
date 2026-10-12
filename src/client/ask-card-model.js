@@ -191,8 +191,9 @@ export function setCardVariant(card, variant, context) {
     fields,
     touched: true,
     saveError: "",
-    // Splits shares an expense only.
-    share: variant === "expense" ? card.share : { on: false, splitGroupId: "" }
+    // Splits shares an expense only. The group stays known, so turning the
+    // switch on again goes back to it.
+    share: variant === "expense" ? card.share : { on: false, splitGroupId: card.share.splitGroupId ?? "" }
   };
 }
 
@@ -230,9 +231,11 @@ export function setShare(card, { on, splitGroupId }) {
   return {
     ...card,
     touched: true,
+    // Off keeps the group it was going to (resolveShareGroupId ignores it
+    // while off), so On again does not ask for the group a second time.
     share: {
       on: Boolean(on),
-      splitGroupId: on ? (splitGroupId ?? card.share.splitGroupId ?? "") : ""
+      splitGroupId: splitGroupId ?? card.share.splitGroupId ?? ""
     }
   };
 }

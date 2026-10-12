@@ -18,6 +18,7 @@ import {
   markCardSaveFailed,
   markCardSaving,
   markCardUndone,
+  resolveShareGroupId,
   setCardField,
   setCardVariant,
   setShare,
@@ -67,6 +68,23 @@ test("the household view picks the first person, and an inactive default wallet 
 
 test("expense mode from the Splits receipt button starts with the Splits switch on for that group", () => {
   const card = createAskCard(context, { mode: "expense", splitGroupId: "group-japan" });
+  assert.deepEqual(card.share, { on: true, splitGroupId: "group-japan" });
+});
+
+test("turning the Splits switch off and on again keeps the group it was going to", () => {
+  // QA: from the Splits receipt button, Off then On left "Choose a group"
+  // and Save blocked, although the group was known.
+  const groups = [{ id: "group-japan", name: "Japan trip" }, { id: "group-home", name: "Home & Bills" }];
+  let card = setCardField(createAskCard(context, { mode: "expense", splitGroupId: "group-japan" }), { amountInput: "42", description: "Dinner" }, context);
+  card = setShare(card, { on: false });
+  assert.equal(card.share.on, false);
+  assert.equal(resolveShareGroupId(card, groups), "", "off goes nowhere");
+  assert.equal(buildCardCreateDraft(card, context, { splitGroups: groups }).addToSplits, false);
+  card = setShare(card, { on: true });
+  assert.deepEqual(card.share, { on: true, splitGroupId: "group-japan" });
+  assert.equal(validateCard(card, { splitGroups: groups }).canSave, true);
+  // Through income and back: the switch is off, and on again it is the same group.
+  card = setShare(setCardVariant(setCardVariant(card, "income", context), "expense", context), { on: true });
   assert.deepEqual(card.share, { on: true, splitGroupId: "group-japan" });
 });
 
@@ -231,7 +249,7 @@ test("switching variants swaps only default categories and turns the Splits swit
   let card = setShare(createAskCard(context, { mode: "expense", splitGroupId: "g1" }), { on: true, splitGroupId: "g1" });
   card = setCardVariant(card, "income", context);
   assert.equal(card.fields.categoryName, "Other - Income");
-  assert.deepEqual(card.share, { on: false, splitGroupId: "" });
+  assert.deepEqual(card.share, { on: false, splitGroupId: "g1" });
   card = setCardVariant(card, "transfer", context);
   assert.equal(card.fields.categoryName, "Transfer");
   assert.equal(card.fields.transferDirection, "out");
