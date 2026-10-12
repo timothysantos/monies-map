@@ -223,7 +223,7 @@ button.import-upload-status.is-waiting {
   border: 1px solid var(--person-chip-border);
   border-left: 5px solid var(--person-colour);
   border-radius: 8px;
-  background: #fff;
+  background: var(--paper);
 }
 
 .import-inbox-account-group > .import-inbox-file-main {
@@ -359,7 +359,7 @@ button.import-upload-status.is-waiting {
   padding: 14px;
   border-color: var(--line);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(var(--paper-rgb) / 0.72);
 }
 
 .import-inbox-section.is-folded {

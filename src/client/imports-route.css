@@ -15,8 +15,8 @@
 
 .info-icon-button:hover,
 .info-icon-button:focus-visible {
-  border-color: rgba(142, 81, 39, 0.48);
-  background: rgba(255, 255, 255, 0.95);
+  border-color: rgb(var(--accent-deep-rgb, 142 81 39) / 0.48);
+  background: rgb(var(--paper-rgb) / 0.95);
   outline: none;
 }
 

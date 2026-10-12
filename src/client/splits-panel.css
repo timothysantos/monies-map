@@ -4,12 +4,12 @@
    stylesheet. Every selector is scoped to .panel-splits, which only that
    route renders; it loads after public/styles.css. */
 .panel-splits .financial-insight {
-  border-color: rgba(255, 248, 243, 0.28);
+  border-color: rgb(var(--cream-rgb, 255 248 243) / 0.28);
 }
 
 .panel-splits .financial-insight-label,
 .panel-splits .financial-insight p {
-  color: #fff8f3;
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
 
 .panel-splits .financial-insight .checkin-fact,
@@ -17,30 +17,30 @@
 .panel-splits .financial-insight .checkin-long-view,
 .panel-splits .checkin-quote blockquote,
 .panel-splits .checkin-also li {
-  color: #fff8f3;
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
 
 .panel-splits .checkin-line-label,
 .panel-splits .checkin-action,
 .panel-splits .checkin-quote figcaption {
-  color: rgba(255, 248, 243, 0.86);
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243) / 0.86);
 }
 
 .panel-splits .checkin-chip {
-  --chip-colour: #fff8f3;
+  --chip-colour: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
 
 .panel-splits .checkin-also,
 .panel-splits .checkin-quote {
-  border-color: rgba(255, 248, 243, 0.28);
+  border-color: rgb(var(--cream-rgb, 255 248 243) / 0.28);
 }
 
 .panel-splits .financial-insight-private-copy {
-  color: #fff8f3 !important;
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243)) !important;
 }
 
 .panel-splits .financial-insight-toggle {
-  color: #fff8f3;
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
 
 /* Money tones on the orange (design.md, "Money colour"). Balances on the
@@ -59,28 +59,28 @@
 }
 
 .panel-splits .entries-summary-metrics {
-  color: #fff;
+  color: var(--on-strong);
 }
 
 .panel-splits .split-summary-search .entries-filter-label {
-  color: #fff8f3;
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
 
 /* The folded teaser card on the orange: a light wash and white text, with
    the stacked edges in the same wash (no pastel fill, no money tone). */
 .panel-splits .financial-insight-fold,
 .panel-splits .financial-insight-fold > svg {
-  color: #fff8f3;
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
 
 .panel-splits .financial-insight-fold[aria-expanded="false"] {
-  --fold-fill: color-mix(in srgb, #fff8f3 18%, var(--accent-strong));
-  --fold-ink: #fff8f3;
-  border-color: rgba(255, 248, 243, 0.28);
+  --fold-fill: color-mix(in srgb, rgb(var(--cream-rgb, 255 248 243)) 18%, var(--accent-strong));
+  --fold-ink: rgb(var(--on-strong-tint-rgb, 255 248 243));
+  border-color: rgb(var(--cream-rgb, 255 248 243) / 0.28);
 }
 
 .panel-splits .financial-insight-fold[aria-expanded="false"][data-more]:not([data-more="0"]) {
   box-shadow:
-    0 5px 0 -2px color-mix(in srgb, #fff8f3 12%, var(--accent-strong)),
-    0 9px 0 -4px color-mix(in srgb, #fff8f3 7%, var(--accent-strong));
+    0 5px 0 -2px color-mix(in srgb, rgb(var(--cream-rgb, 255 248 243)) 12%, var(--accent-strong)),
+    0 9px 0 -4px color-mix(in srgb, rgb(var(--cream-rgb, 255 248 243)) 7%, var(--accent-strong));
 }
