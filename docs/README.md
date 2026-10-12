@@ -178,6 +178,9 @@ a doc here in the same change.
   two-tab entry and splits refresh.
 - [`audits/uob-may-2026-import-reconciliation-audit.md`](audits/uob-may-2026-import-reconciliation-audit.md):
   UOB May 2026 import reconciliation.
+- [`audits/view-scope-sheet.md`](audits/view-scope-sheet.md): what the
+  mobile chrome redesign moved or removed in the phone View and scope sheet,
+  with before and after screenshots.
 
 ## Runbooks
 
