@@ -54,3 +54,32 @@ test("split group chip colors are stable per group name", () => {
   assert.deepEqual(getSplitGroupChipStyle("Okaeri"), getSplitGroupChipStyle("Okaeri"));
   assert.notDeepEqual(getSplitGroupChipStyle("Okaeri"), getSplitGroupChipStyle("B.River"));
 });
+
+const transferOut = {
+  ...sharedEntry,
+  id: "entry-transfer",
+  description: "FAST TRANSFER TO POSB",
+  accountName: "OCBC 360 Account",
+  accountOwnerLabel: "Tim",
+  categoryName: "Transfer",
+  entryType: "transfer",
+  transferDirection: "out",
+  ownershipType: "direct",
+  ownerName: "Tim"
+};
+
+test("a matched transfer row is the quiet kind and names the other wallet; an unmatched one is not", () => {
+  const matched = buildEntryRowDisplay({ ...transferOut, linkedTransfer: { accountName: "POSB Joint Account" } }, "person-tim", false);
+  assert.equal(matched.transferLabel, "Matched transfer out");
+  assert.equal(matched.isTransferMatched, true);
+  assert.equal(matched.transferDetail, "To POSB Joint Account");
+  assert.equal(matched.accountDetail, "OCBC 360 Account - Tim");
+
+  const unmatched = buildEntryRowDisplay(transferOut, "person-tim", false);
+  assert.equal(unmatched.transferLabel, "Transfer out");
+  assert.equal(unmatched.isTransferMatched, false);
+
+  const expense = buildEntryRowDisplay(sharedEntry, "person-tim", false);
+  assert.equal(expense.transferLabel, null);
+  assert.equal(expense.isTransferMatched, false);
+});

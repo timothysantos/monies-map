@@ -35,6 +35,9 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
     transferLabel: entry.entryType === "transfer"
       ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
       : null,
+    // A matched transfer is settled bookkeeping, so its chip is a quiet
+    // line; an unmatched one keeps the pill that asks for a look.
+    isTransferMatched: entry.entryType === "transfer" && Boolean(entry.linkedTransfer),
     transferDetail: entry.linkedTransfer
       ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
       : entry.accountName,
