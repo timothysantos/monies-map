@@ -280,9 +280,19 @@ test("hidden money shows no tone", async ({ page }) => {
     const pill = summaryPill(page, metric);
     await expect(pill.locator("strong")).toHaveText("••••");
     expect((await looks(pill.locator("strong .private-money"))).color, metric).toBe(INK.text);
-    // The pill keeps no mint or rose tint either (a neutral one is fine).
-    const surface = parseColour((await looks(pill)).background).rgb;
-    expect(Math.max(...surface) - Math.min(...surface), `${metric} tint`).toBeLessThan(12);
+    // The pill keeps no mint or rose tint either: none, or the cream neutral.
+    const surface = parseColour((await looks(pill)).background);
+    if (surface.alpha > 0) {
+      const neutral = parseColour(await page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--pastel-neutral)";
+        document.body.append(probe);
+        const colour = getComputedStyle(probe).color;
+        probe.remove();
+        return colour;
+      })).rgb;
+      surface.rgb.forEach((channel, index) => expect(Math.abs(channel - neutral[index]), `${metric} tint`).toBeLessThan(3));
+    }
     expect((await looks(pill.locator(".summary-support-pill-label"))).color).toBe(INK.muted);
   }
 
