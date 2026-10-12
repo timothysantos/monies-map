@@ -660,7 +660,7 @@ test.describe("month page", () => {
     const trigger = stickyBar.locator(".mobile-context-trigger");
     await expect(stickyBar).toBeVisible();
     await expect(trigger).toContainText("Household");
-    await expect(trigger).toContainText("View");
+    await expect(trigger).toHaveAccessibleName("Household View");
     await expect(trigger).not.toContainText("Direct");
     await expect(page.getByText(directDescription, { exact: true })).toBeVisible();
     await expect(page.getByText(sharedDescription, { exact: true })).toBeVisible();
@@ -668,12 +668,12 @@ test.describe("month page", () => {
     await trigger.click();
     const dialog = page.locator(".mobile-context-dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('section[aria-label="Scope"]')).toHaveCount(0);
+    await expect(dialog.getByRole("group", { name: "Scope" })).toHaveCount(0);
 
     await dialog.getByRole("button", { name: "Tim" }).click();
     await expect(page).toHaveURL(/view=person-tim/);
-    await expect(dialog.locator('section[aria-label="Scope"]')).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Direct + Shared" })).toHaveClass(/is-active/);
+    await expect(dialog.getByRole("group", { name: "Scope" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Direct + Shared" })).toHaveAttribute("aria-pressed", "true");
 
     await dialog.getByRole("button", { name: "Shared", exact: true }).click();
     await expect(dialog).toHaveCount(0);

@@ -150,14 +150,9 @@
   }
 
   .mobile-context-filters .search-filter-input {
-    padding-left: 32px !important;
     padding-right: 44px !important;
     text-align: left;
     text-overflow: ellipsis;
-  }
-
-  .mobile-context-filters .search-filter-control > svg {
-    left: 8px;
   }
 
   .mobile-context-filters .search-filter-clear {
