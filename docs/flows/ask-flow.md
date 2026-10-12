@@ -446,6 +446,22 @@ The first two fail soft: any error leaves the card manual with a calm
 note. A failed answer request is the calm note "That couldn't be answered
 just now. Try again in a moment."
 
+### Split suggestion
+
+On a new expense card (typed, sentence or receipt) with one owner and
+something in "What it was", and on the Apple Pay saved card until it is on
+Splits, Ask makes one debounced (500 ms) read-only `POST /api/splits/suggestion`
+(`use-ask-split-suggestion.js`) and, when the household's own history says so
+(`src/domain/split-suggestion.ts`: same shop, at least 2 entries and 60%
+split in one group; same category only for a shop with no history, at least
+4 and 75%), shows one follow-up question in the chip row: "You usually
+split this with {name}. Add it to {group}?" with "Split 50/50 in {group}"
+and "Not this time". Choosing it turns the Splits switch on with that group
+(nothing is written until Save; on the Apple Pay card it is the existing
+Add to Splits). "Not this time" hides it for that card. Only an even share is
+offered; a failed, aborted or late answer is no question. It never replaces a
+field question already on the card. No AI, no new write route.
+
 ### Voice input
 
 The composer's mic fills the message box with spoken words; the person

@@ -574,6 +574,13 @@ The card is marked **Saved** and the suggestions change:
 
 ![A saved entry on Ask, with Back to Entries, Open this entry and Undo](/faq/guide/phone/thumbs/phone-ask-saved.webp)
 
+If you usually share a purchase with your partner (the same shop, split
+evenly in the same group, most of the times you bought there), Ask notices
+when you add it again and asks: "You usually split this with Joyce. Add it
+to Home?" **Split 50/50 in Home** turns Splits on for the new entry (it is
+saved when you tap **Save**); **Not this time** puts the question away. It
+only looks at your own past entries and never guesses from one purchase.
+
 ### Find entries by asking
 
 Type what you are looking for, the way you would say it:
