@@ -104,6 +104,7 @@ test("the Settings line covers every state, with the calm not-set-up line and no
     state: "ok",
     tone: "neutral",
     text: "Claude credits are fine: about $3.20 of $20 used.",
+    monthText: null,
     actions: [
       { id: "top-up", label: "Top up in the Claude Console", href: BILLING },
       { id: "topped-up", label: "I've topped up" }
@@ -113,7 +114,7 @@ test("the Settings line covers every state, with the calm not-set-up line and no
   assert.equal(buildClaudeCreditLine(status({ state: "exhausted" }), { areTotalsVisible: true }).tone, "rose");
 
   const off = buildClaudeCreditLine(status({ state: "unknown", claudeConfigured: false }), { areTotalsVisible: true });
-  assert.deepEqual(off, { state: "unknown", tone: "neutral", text: "Claude isn't set up, so Ask uses the basic model.", actions: [] });
+  assert.deepEqual(off, { state: "unknown", tone: "neutral", text: "Claude isn't set up, so Ask uses the basic model.", monthText: null, actions: [] });
   // Not set up wins over everything else Claude-related in the status.
   assert.equal(buildClaudeCreditLine(status({ state: "unknown", claudeConfigured: false, lastFailureAt: "2026-10-11T02:00:00.000Z" }), { areTotalsVisible: true }).text, "Claude isn't set up, so Ask uses the basic model.");
   assert.equal(buildClaudeCreditLine(readClaudeCreditStatus({ ok: true, visible: true, state: "unknown" }), { areTotalsVisible: true }).text, "Claude isn't set up, so Ask uses the basic model.");
@@ -121,12 +122,48 @@ test("the Settings line covers every state, with the calm not-set-up line and no
 
 test("set up but never answered, the Settings line says Claude hasn't been used yet", () => {
   const fresh = buildClaudeCreditLine(status({ state: "unknown", lastSuccessAt: undefined }), { areTotalsVisible: true });
-  assert.deepEqual(fresh, { state: "unknown", tone: "neutral", text: "Claude hasn't been used yet.", actions: [] });
+  assert.deepEqual(fresh, { state: "unknown", tone: "neutral", text: "Claude hasn't been used yet.", monthText: null, actions: [] });
   // A recorded failure (a bad key) is not "not used yet": it keeps the
   // not-set-up line until a later answer.
   const failed = buildClaudeCreditLine(status({ state: "unknown", lastSuccessAt: undefined, lastFailureAt: "2026-10-11T02:00:00.000Z" }), { areTotalsVisible: true });
   assert.equal(failed.text, "Claude isn't set up, so Ask uses the basic model.");
   assert.equal(buildClaudeCreditLine(readClaudeCreditStatus({ ok: true, visible: false }), { areTotalsVisible: true }), null);
+});
+
+// Auto-balance (owner-approved 2026-10-12): one extra Settings line with
+// this month's Claude spend against the monthly target and who is asked first.
+const MONTH = { monthSpendUsd: 3.2, monthTargetUsd: 8 };
+
+test("the Settings month line says who is asked first, per mode, with the dollar figures", () => {
+  const line = (mode, overrides = {}) => buildClaudeCreditLine(status({ ...MONTH, mode, ...overrides }), { areTotalsVisible: true }).monthText;
+  assert.equal(line("claude_all"), "Claude this month: $3.20 of $8 \u00b7 background help is using Claude");
+  assert.equal(line("ask_only", { monthSpendUsd: 5 }), "Claude this month: $5 of $8 \u00b7 background help is using the basic model to save budget");
+  assert.equal(line("basic_first", { monthSpendUsd: 7.5 }), "Claude this month: $7.50 of $8 \u00b7 everything is using the basic model to save budget");
+  // An unknown mode reads as the default; a custom target is shown as sent.
+  assert.equal(line("on-fire"), "Claude this month: $3.20 of $8 \u00b7 background help is using Claude");
+  assert.equal(line("claude_all", { monthTargetUsd: 12.5 }), "Claude this month: $3.20 of $12.50 \u00b7 background help is using Claude");
+});
+
+test("hidden money keeps the month line's words and drops every dollar figure", () => {
+  for (const mode of ["claude_all", "ask_only", "basic_first"]) {
+    const text = buildClaudeCreditLine(status({ ...MONTH, mode }), { areTotalsVisible: false }).monthText;
+    assert.doesNotMatch(text, /\$|\d/, mode);
+    assert.match(text, /^Claude this month \u00b7 (background help is using|everything is using)/, mode);
+  }
+});
+
+test("there is no month line when Claude is off or unknown, or the server sent no target", () => {
+  assert.equal(buildClaudeCreditLine(status({ ...MONTH, claudeConfigured: false, state: "unknown" }), { areTotalsVisible: true }).monthText, null);
+  assert.equal(buildClaudeCreditLine(status({ ...MONTH, state: "unknown" }), { areTotalsVisible: true }).monthText, null);
+  assert.equal(buildClaudeCreditLine(status({ state: "ok" }), { areTotalsVisible: true }).monthText, null);
+  assert.equal(buildClaudeCreditLine(readClaudeCreditStatus({ ok: true, visible: false }), { areTotalsVisible: true }), null);
+});
+
+test("the status reader keeps the month figures and mode, and refuses a bad mode or negative spend", () => {
+  const read = readClaudeCreditStatus({ ok: true, visible: true, claudeConfigured: true, state: "ok", monthSpendUsd: 2.5, monthTargetUsd: 8, mode: "ask_only" });
+  assert.deepEqual([read.monthSpendUsd, read.monthTargetUsd, read.mode], [2.5, 8, "ask_only"]);
+  const bad = readClaudeCreditStatus({ ok: true, visible: true, state: "ok", monthSpendUsd: -4, monthTargetUsd: "8", mode: "everything" });
+  assert.deepEqual([bad.monthSpendUsd, bad.monthTargetUsd, bad.mode], [0, 0, "claude_all"]);
 });
 
 test("the billing link is only offered when the server gives an https Claude Console address", () => {

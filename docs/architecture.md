@@ -609,7 +609,14 @@ gateway logging and caching off on every request and a hard monthly gateway
 spend limit; Workers AI (Gemma 4) is the fallback for a rate limit, spend
 cap, failure, timeout or unusable answer. With no gateway config, Workers AI
 is used directly. Neither provider is required: the route answers
-unavailable and the client uses its deterministic fallback.
+unavailable and the client uses its deterministic fallback. Receipts, Ask's
+answer wording, the Monthly Note draft, statement-mismatch wording,
+category-rule suggestions, the statement text fallback and the entry draft
+all use it; match ranking uses Workers AI embeddings. A monthly Claude
+target (`AI_CLAUDE_MONTHLY_TARGET_USD`, default 8) paces who is asked first
+(auto-balance: Claude first under pace, the basic model first for background
+help over pace, for everything at 90% of the target), deterministically and
+without AI; Settings shows the month's line.
 
 The app cannot buy Claude credits. After each Claude attempt the provider
 writes one aggregate row (`ai_provider_status`: last failure kind and time,

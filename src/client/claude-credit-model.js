@@ -7,6 +7,7 @@
 
 import { claudeCreditCopy as copy } from "./copy/claude-credit-copy";
 
+const MODES = new Set(["claude_all", "ask_only", "basic_first"]);
 const STATES = new Set(["ok", "low", "exhausted", "capped", "unknown"]);
 // Only these three show a notice on Ask. The rank is how bad it is: a
 // dismissed notice comes back only for a higher rank. A used-up balance
@@ -49,6 +50,9 @@ export function readClaudeCreditStatus(body) {
     estimatedSpendUsd: readNumber(body.estimatedSpendUsd),
     creditUsd: readNumber(body.creditUsd),
     warnAtUsd: readNumber(body.warnAtUsd),
+    monthSpendUsd: readNumber(body.monthSpendUsd),
+    monthTargetUsd: readNumber(body.monthTargetUsd),
+    mode: MODES.has(body.mode) ? body.mode : "claude_all",
     lastFailureAt: readTime(body.lastFailureAt),
     lastSuccessAt: readTime(body.lastSuccessAt),
     // Only an https address becomes a link.
@@ -119,6 +123,13 @@ export function buildClaudeCreditLine(status, { areTotalsVisible }) {
   const known = status.claudeConfigured && status.state !== "unknown";
   const notUsedYet = status.claudeConfigured && status.state === "unknown" && !status.lastFailureAt;
   return {
+    // Auto-balance: shown while the credit line is, and only when the
+    // server sent a monthly target (an older answer has none).
+    monthText: known && status.monthTargetUsd > 0
+      ? areTotalsVisible
+        ? copy.monthLine(formatUsd(status.monthSpendUsd), formatUsd(status.monthTargetUsd), status.mode)
+        : copy.monthLineHidden(status.mode)
+      : null,
     state: known ? status.state : "unknown",
     tone: known ? NOTICE_STATES[status.state]?.tone ?? "neutral" : "neutral",
     text: known ? describeState(status, areTotalsVisible) : notUsedYet ? copy.notUsedYet : copy.notSetUp,

@@ -7,7 +7,7 @@
   "vars": {
     "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create",
     "AI_ASSIST_ENABLED": "true",
-    "AI_ASSIST_DAILY_LIMIT": "40",
+    "AI_ASSIST_DAILY_LIMIT": "100",
     "AI_GATEWAY_ACCOUNT_ID": "f36beb0fea34ebd370af7911d073c767",
     "AI_GATEWAY_ID": "monies-map",
     "AI_GATEWAY_BYOK_ALIAS": "monies-map-claude-api-key",
