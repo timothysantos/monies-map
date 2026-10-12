@@ -89,9 +89,14 @@ test("an open settlement carries the payment that matches it, until that payment
     .bind(settled).run();
   // Each side on its person's own account (internal-moves.ts): a joint
   // account belongs to neither.
-  const ownBank = async (personId) => (await rows(db, "SELECT id FROM accounts WHERE account_kind = 'bank' AND is_joint = 0 AND owner_person_id = ? ORDER BY id LIMIT 1", personId))[0].id;
-  const joyceBank = await ownBank("person-joyce");
-  const timBank = await ownBank("person-tim");
+  const [institution] = await rows(db, "SELECT institution_id FROM accounts LIMIT 1");
+  const ownBank = async (id, personId) => {
+    await db.prepare("INSERT INTO accounts (id, household_id, institution_id, owner_person_id, account_name, account_kind, currency) VALUES (?, 'household-1', ?, ?, ?, 'bank', 'SGD')")
+      .bind(id, institution.institution_id, personId, `${id} Savings`).run();
+    return id;
+  };
+  const joyceBank = await ownBank("acct-joyce-own", "person-joyce");
+  const timBank = await ownBank("acct-tim-own", "person-tim");
   const payer = await addEntry(db, { account: joyceBank, date: `${monthAgo(1)}-08`, description: "PAYNOW-FAST TO TIM", amountMinor: 708217 });
   const payee = await addEntry(db, { account: timBank, date: `${monthAgo(1)}-08`, description: "PAYNOW-FAST FROM JOYCE", amountMinor: 708217, type: "income", owner: "person-tim" });
   // A payment after two weeks is not the settlement's.
