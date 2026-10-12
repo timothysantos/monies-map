@@ -952,6 +952,7 @@ function AskConversation({
       const fields = card?.fields;
       goTo("/entries", {
         action: "add-expense",
+        source: "ask",
         amount: fields?.amountMinor ? (fields.amountMinor / 100).toFixed(2) : "",
         merchant: fields?.description,
         date: fields?.date,
