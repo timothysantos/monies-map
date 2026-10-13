@@ -121,12 +121,14 @@ import {
   parseShortcutCreateBody,
   SHORTCUT_NOTE_MAX_LENGTH
 } from "./domain/shortcut-entry-contract";
+import { validateEntryCreateFields } from "./domain/entry-create-validation";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
 import { SplitSettlementLockedError } from "./domain/split-settlement-lock";
 import { getAuthenticatedEmail } from "./server/access-identity";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
+import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
   buildShortcutEntryOpenUrl,
@@ -198,6 +200,12 @@ export default {
 
     if (!isShortcutCreateRequestAllowed(url.pathname, request.method, SHORTCUT_ENDPOINT_PATH)) {
       return json({ ok: false, error: "Shortcut direct-create endpoint only accepts POST." }, 405, { Allow: "POST" });
+    }
+
+    // A write that another site's page triggered in a signed-in browser is
+    // refused before any schema or data work (src/server/cross-site-guard.ts).
+    if (isCrossSiteWrite(request)) {
+      return json({ ok: false, error: "Cross-site requests are not allowed." }, 403);
     }
 
     if (url.pathname === "/api/health") {
@@ -1059,6 +1067,10 @@ export default {
         || !body.ownershipType
       ) {
         return json({ ok: false, error: "Missing entry create fields" }, 400);
+      }
+      const invalidField = validateEntryCreateFields(body);
+      if (invalidField) {
+        return json({ ok: false, error: invalidField }, 400);
       }
       // An Ask card's stable client id: a repeat create with it returns the
       // entry it already made (a reload during a save). The Shortcut's

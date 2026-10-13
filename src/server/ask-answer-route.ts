@@ -29,6 +29,7 @@ import { buildAskAnswer } from "../domain/pages/ask-answer";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import type { AskAnswerResponseDto } from "../types/dto";
 import { json } from "./json";
+import { readJsonBody, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 
 export const ASK_ANSWER_MAX_TEXT = 300;
 const ASK_ANSWER_AI_UNITS = 1;
@@ -47,9 +48,12 @@ const WORDING_SCHEMA = {
 export async function handleAskAnswer(request: Request, env: AiProviderEnv & { DB: D1Database }): Promise<Response> {
   let body: Record<string, unknown> | null = null;
   try {
-    const parsed = await request.json();
+    const parsed = await readJsonBody(request, SMALL_JSON_MAX_BYTES);
     body = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return json({ ok: false, error: error.message }, 413);
+    }
     body = null;
   }
   const text = typeof body?.text === "string" ? body.text.replace(/\s+/g, " ").trim() : "";

@@ -108,6 +108,9 @@ a doc here in the same change.
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice, including the Claude-through-AI-Gateway
   provider and receipt reading (11 October 2026).
+- [`audits/ai-security-review.md`](audits/ai-security-review.md): security
+  review of the AI routes, Ask, the AI Gateway, Access and the write routes
+  (October 2026): findings with severity and status.
 - [`audits/ai-entry-draft-audit.md`](audits/ai-entry-draft-audit.md):
   entry draft parser and its optional AI gap-filler (privacy, cost, writes,
   no-AI behaviour).
