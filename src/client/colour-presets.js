@@ -24,17 +24,17 @@ export const COLOUR_PRESETS = Object.freeze([
   {
     id: "70s",
     name: "70s Warm",
-    swatches: { light: ["#ede0c8", "#b15e2f", "#4c5e1a", "#973223"], dark: ["#1f1711", "#e8996a", "#bccf7c", "#f2a08c"] }
+    swatches: { light: ["#e9e4da", "#b15e2f", "#4a5c22", "#933629"], dark: ["#1b1916", "#e8996a", "#bccb88", "#f09d9b"] }
   },
   {
     id: "60s",
     name: "60s Mod",
-    swatches: { light: ["#e3ebe4", "#127a74", "#485a10", "#a8321f"], dark: ["#14201f", "#4cc3b8", "#b8cc6a", "#f39a85"] }
+    swatches: { light: ["#dfece8", "#0f7d74", "#43590e", "#a8381a"], dark: ["#0e2321", "#5dd3c5", "#b8d070", "#ffa184"] }
   },
   {
     id: "80s",
     name: "80s Pop",
-    swatches: { light: ["#e9e3f5", "#b0198a", "#08684f", "#a3154f"], dark: ["#1b1530", "#f07ad0", "#5fe0b8", "#ff8fb8"] }
+    swatches: { light: ["#eee7f9", "#c2108f", "#06684f", "#a3124e"], dark: ["#110c23", "#ff7ad8", "#5ff0c4", "#ff8fbf"] }
   },
   {
     id: "modern",
@@ -50,6 +50,21 @@ export const COLOUR_PRESETS = Object.freeze([
     id: "code",
     name: "Code",
     swatches: { light: ["#eee8d5", "#1f6aa5", "#4d6800", "#a82c1b"], dark: ["#0f141b", "#56d4dd", "#56d364", "#ff7b72"] }
+  },
+  {
+    id: "midnight",
+    name: "Midnight Calm",
+    swatches: { light: ["#cdd6e4", "#3a5f8f", "#2f5b3c", "#8e3a48"], dark: ["#0f1729", "#a6c4ea", "#a5d0b0", "#eaa9b6"] }
+  },
+  {
+    id: "genz",
+    name: "Gen Z 2026",
+    swatches: { light: ["#eae1e8", "#7652e0", "#3b6a00", "#b0145e"], dark: ["#18121f", "#c4adff", "#b8f05a", "#ff8fc4"] }
+  },
+  {
+    id: "future",
+    name: "Futuristic",
+    swatches: { light: ["#d4dfe0", "#00788f", "#0b6448", "#a3263a"], dark: ["#0b0f10", "#6ae0f7", "#5ee6b0", "#ff8f9f"] }
   }
 ]);
 

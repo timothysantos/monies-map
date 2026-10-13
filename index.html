@@ -21,7 +21,7 @@
         }
         function apply(firstPaint) {
           var palette = stored("monies-map:palette");
-          if (!/^(60s|80s|modern|mono|code)$/.test(palette)) palette = "";
+          if (!/^(60s|80s|modern|mono|code|midnight|genz|future)$/.test(palette)) palette = "";
           var mode = stored("monies-map:colour-mode");
           if (mode !== "light" && mode !== "dark") mode = dark && dark.matches ? "dark" : "light";
           var sheet = (palette || "70s") + "-" + mode;
