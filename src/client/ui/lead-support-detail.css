@@ -7,21 +7,23 @@
    money tones and the terracotta accent; raw colours are neutrals. Every
    tappable here is at least 44px tall. */
 
-/* Lead: the one card with the strong shadow. */
+/* Lead: the card that stands off the page (design.md, "Colour presets":
+   --card a soft step lighter than --page, a hairline and a gentle shadow,
+   the same rule in every preset and mode). */
 .lsd-card {
   display: grid;
   gap: 14px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 22px;
-  background: var(--paper);
-  box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
+  background: var(--card);
+  box-shadow: var(--card-shadow);
 }
 
 /* Without a title: an eyebrow over the big figure (the Summary lead). */
 .lsd-eyebrow {
-  color: var(--muted);
+  color: var(--eyebrow);
   font: 500 0.68rem/1.2 ui-monospace, "SF Mono", monospace;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -285,9 +287,9 @@
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
-  background: var(--pastel-neutral);
+  background: var(--chip);
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -431,9 +433,9 @@
 .lsd-rows {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  background: rgb(var(--paper-rgb) / 0.6);
+  background: var(--card);
 }
 
 .lsd-row {

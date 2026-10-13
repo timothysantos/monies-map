@@ -70,19 +70,22 @@
   order: 3;
 }
 
+/* Metric cards stand off the page like the lead (--card, its hairline and
+   shadow); a toned one keeps its soft tint and hairline. */
 .entries-totals-pill {
   display: grid;
   align-content: start;
   gap: 2px;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
+  box-shadow: var(--card-shadow);
   font-variant-numeric: tabular-nums;
 }
 
 .entries-totals-pill:not(.money-soft) {
-  background: var(--pastel-neutral);
+  background: var(--card);
 }
 
 .entries-totals-label {

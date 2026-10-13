@@ -40,13 +40,15 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   row-gap: 2px;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
+  box-shadow: var(--card-shadow);
   font-variant-numeric: tabular-nums;
 }
 
+/* Metric cards stand off the page like the lead; a toned one keeps its tint. */
 .summary-support-pill:not(.money-soft) {
-  background: var(--pastel-neutral);
+  background: var(--card);
 }
 
 .summary-support-pill .summary-support-pill-label {
