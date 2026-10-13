@@ -75,3 +75,20 @@ test("only production checks the Access token, against its own team and app tag"
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   assert.match(manifest.scripts["dev:api"], /--var ACCESS_JWT_MODE:off/);
 });
+
+// The Ask turn route lets a test stand in for the model through a request
+// header, but only when APP_ENVIRONMENT is "test". Only wrangler.test.jsonc may set it.
+test("only the test Worker sets APP_ENVIRONMENT test, so the Ask turn test-reply header is inert elsewhere", async () => {
+  const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8").then(JSON.parse);
+  assert.equal((await read("wrangler.test.jsonc")).vars.APP_ENVIRONMENT, "test");
+  for (const name of ["wrangler.jsonc", "wrangler.demo.jsonc", "wrangler.shortcuts.jsonc"]) {
+    const config = await read(name);
+    for (const entry of [config, ...Object.values(config.env ?? {})]) {
+      assert.notEqual(entry.vars?.APP_ENVIRONMENT, "test", `${name} must not enable the test reply header`);
+    }
+  }
+  const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.doesNotMatch(JSON.stringify(manifest.scripts), /APP_ENVIRONMENT:test/);
+  const source = await readFile(new URL("../src/server/ask-turn-route.ts", import.meta.url), "utf8");
+  assert.match(source, /env\.APP_ENVIRONMENT === "test" \? request\.headers\.get\(TEST_REPLY_HEADER\)/);
+});
