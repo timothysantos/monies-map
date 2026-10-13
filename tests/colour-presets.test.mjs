@@ -20,7 +20,7 @@ import {
 } from "../src/client/colour-presets.js";
 import { paletteColour } from "../src/client/palette-colour.js";
 import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../src/domain/category-palette.ts";
-import { contrast, deltaE, hexRgb, loadPresets, mix, readPresetSheet, readRootTokens, ROOT, variantSelector } from "./support/colour-presets.mjs";
+import { contrast, deltaE, hexRgb, lab, loadPresets, mix, readPresetSheet, readRootTokens, ROOT, variantSelector } from "./support/colour-presets.mjs";
 
 // Colour presets (design.md, "Colour presets"): each one is a whole scheme
 // in a light and a dark mode, so every mode sheet sets every colour token
@@ -67,14 +67,17 @@ const PALETTE_COLOURS = [...new Set([
 ])];
 const SHEET_IDS = PRESETS.filter((preset) => preset.sheetId).map((preset) => preset.sheetId);
 
-test("the presets are 70s Warm (the default), 60s Mod, 80s Pop, Modern, Black & White and Code", () => {
+test("the presets are 70s Warm (the default), 60s Mod, 80s Pop, Modern, Black & White, Code, Midnight Calm, Gen Z 2026 and Futuristic", () => {
   assert.deepEqual(COLOUR_PRESETS.map((preset) => [preset.id, preset.name]), [
     ["70s", "70s Warm"],
     ["60s", "60s Mod"],
     ["80s", "80s Pop"],
     ["modern", "Modern"],
     ["mono", "Black & White"],
-    ["code", "Code"]
+    ["code", "Code"],
+    ["midnight", "Midnight Calm"],
+    ["genz", "Gen Z 2026"],
+    ["future", "Futuristic"]
   ]);
   assert.equal(DEFAULT_PRESET_ID, "70s");
   assert.equal(findColourPreset("nope").id, "70s", "an unknown id falls back to the default");
@@ -96,7 +99,11 @@ test("each preset comes in Light and Dark, and the mode defaults to Auto (follow
   assert.equal(variantSheetId("code", "light"), "code-light");
   const onDisk = readdirSync(path.join(ROOT, "public/palettes")).filter((name) => name.endsWith(".css")).map((name) => name.replace(/\.css$/, "")).sort();
   assert.deepEqual(onDisk, [...SHEET_IDS].sort(), "no stale single-mode sheets left behind");
-  assert.equal(SHEET_IDS.length, 11);
+  assert.equal(SHEET_IDS.length, 17);
+  for (const id of ["midnight", "genz", "future"]) {
+    assert.equal(variantSheetId(id, "light"), `${id}-light`);
+    assert.equal(variantSheetId(id, "dark"), `${id}-dark`);
+  }
 });
 
 test("the default keeps every colour in :root of the first-screen stylesheet and ships no preset sheet", () => {
@@ -206,6 +213,99 @@ for (const preset of PRESETS) {
     assert.ok(closest >= 8, `closest pair is only ${closest.toFixed(1)} apart`);
   });
 }
+
+// 70s Warm is calmer than the first cream-tan print: an oat page with a hint
+// of warmth, near-neutral cards, and an espresso (not brown-orange) night.
+test("70s Warm is an oat page with near-neutral cards in light and an espresso night in dark", () => {
+  const chroma = (preset, name) => { const [, a, b] = lab(preset.rgb(name)); return Math.hypot(a, b); };
+  const light = PRESETS.find((preset) => preset.id === "70s-light");
+  const dark = PRESETS.find((preset) => preset.id === "70s-dark");
+  for (const name of ["--page", "--bg"]) {
+    const value = chroma(light, name);
+    assert.ok(value >= 3 && value <= 7, `70s Warm Light ${name} chroma ${value.toFixed(1)} (a hint of warmth, not cream-tan)`);
+    assert.ok(lab(light.rgb(name))[2] > 0, `70s Warm Light ${name} still leans warm`);
+  }
+  for (const name of ["--card", "--pastel-neutral"]) {
+    assert.ok(chroma(light, name) <= 6, `70s Warm Light ${name} chroma ${chroma(light, name).toFixed(1)} is near-neutral`);
+  }
+  // A plain chip keeps a soft warm tint, half the old cream's.
+  assert.ok(chroma(light, "--chip") <= 10, `70s Warm Light chip chroma ${chroma(light, "--chip").toFixed(1)}`);
+  for (const name of ["--page", "--bg", "--card", "--chip"]) {
+    assert.ok(chroma(dark, name) <= 5, `70s Warm Dark ${name} chroma ${chroma(dark, name).toFixed(1)} is espresso, not brown-orange`);
+  }
+  // The terracotta accent and Splits panel stay.
+  assert.equal(light.tokens["--accent-strong"], "#b15e2f");
+  assert.equal(light.tokens["--splits-rgb"], "177 94 47");
+  assert.equal(dark.tokens["--accent-strong"], "#e8996a");
+});
+
+// 60s Mod (teal, mustard, tangerine on a cool off-white or deep teal) and
+// 80s Pop (hot magenta, electric violet, aqua on lilac-white or near-black
+// indigo) differ at a glance: page, accent, eyebrow, chip and Splits panel.
+test("60s Mod and 80s Pop are clearly different schemes in both modes", () => {
+  const hue = (colour) => { const [, a, b] = lab(colour); return (Math.atan2(b, a) * 180 / Math.PI + 360) % 360; };
+  for (const mode of ["light", "dark"]) {
+    const sixties = PRESETS.find((preset) => preset.id === `60s-${mode}`);
+    const eighties = PRESETS.find((preset) => preset.id === `80s-${mode}`);
+    const apart = (name, min) => {
+      const distance = deltaE(sixties.rgb(name), eighties.rgb(name));
+      assert.ok(distance >= min, `${mode} ${name} only ${distance.toFixed(1)} apart`);
+    };
+    apart("--page", 8);
+    apart("--accent-strong", 40);
+    apart("--eyebrow", 40);
+    apart("--chip", mode === "light" ? 15 : 8);
+    apart("--splits-rgb", 40);
+    apart("--splits-deep-rgb", 30);
+    // 60s: a teal accent, a mustard eyebrow, a tangerine chip.
+    const tealHue = hue(sixties.rgb("--accent-strong"));
+    assert.ok(tealHue > 170 && tealHue < 230, `60s ${mode} accent hue ${tealHue.toFixed(0)} is teal`);
+    const mustard = hue(sixties.rgb("--eyebrow"));
+    assert.ok(mustard > 65 && mustard < 100, `60s ${mode} eyebrow hue ${mustard.toFixed(0)} is mustard`);
+    const tangerine = hue(sixties.rgb("--chip"));
+    assert.ok(tangerine > 35 && tangerine < 80, `60s ${mode} chip hue ${tangerine.toFixed(0)} is tangerine`);
+    // 80s: a hot magenta accent, an electric violet eyebrow, an aqua chip.
+    const magenta = hue(eighties.rgb("--accent-strong"));
+    assert.ok(magenta > 320 || magenta < 10, `80s ${mode} accent hue ${magenta.toFixed(0)} is magenta`);
+    const violet = hue(eighties.rgb("--eyebrow"));
+    assert.ok(violet > 285 && violet < 320, `80s ${mode} eyebrow hue ${violet.toFixed(0)} is violet`);
+    const aqua = hue(eighties.rgb("--chip"));
+    assert.ok(aqua > 170 && aqua < 240, `80s ${mode} chip hue ${aqua.toFixed(0)} is aqua`);
+  }
+});
+
+// The three newer presets carry their own identity: Midnight Calm is a calm
+// navy with low-contrast surfaces, Gen Z 2026 brings acid lime, digital
+// lavender and bubblegum, and Futuristic is graphite with a cyan glow.
+test("Midnight Calm, Gen Z 2026 and Futuristic each look like themselves", () => {
+  const hue = (colour) => { const [, a, b] = lab(colour); return (Math.atan2(b, a) * 180 / Math.PI + 360) % 360; };
+  const find = (id) => PRESETS.find((preset) => preset.id === id);
+  for (const mode of ["light", "dark"]) {
+    const midnight = find(`midnight-${mode}`);
+    const navy = hue(midnight.rgb(mode === "dark" ? "--page" : "--accent-strong"));
+    assert.ok(navy > 240 && navy < 300, `Midnight Calm ${mode} hue ${navy.toFixed(0)} is navy`);
+    const sage = hue(midnight.rgb("--eyebrow"));
+    assert.ok(sage > 120 && sage < 175, `Midnight Calm ${mode} eyebrow hue ${sage.toFixed(0)} is sage`);
+    // Calm: the card sits only a small step off the page.
+    const step = lab(midnight.rgb("--card"))[0] - lab(midnight.rgb("--page"))[0];
+    assert.ok(step <= 10, `Midnight Calm ${mode} card step ${step.toFixed(1)}`);
+
+    const genz = find(`genz-${mode}`);
+    const lavender = hue(genz.rgb("--accent-strong"));
+    assert.ok(lavender > 280 && lavender < 310, `Gen Z ${mode} accent hue ${lavender.toFixed(0)} is lavender`);
+    const bubblegum = hue(genz.rgb("--eyebrow"));
+    assert.ok(bubblegum > 330 || bubblegum < 10, `Gen Z ${mode} eyebrow hue ${bubblegum.toFixed(0)} is bubblegum`);
+    const lime = hue(genz.rgb(mode === "dark" ? "--splits-rgb" : "--chip"));
+    assert.ok(lime > 100 && lime < 130, `Gen Z ${mode} lime hue ${lime.toFixed(0)}`);
+
+    const future = find(`future-${mode}`);
+    const cyan = hue(future.rgb("--accent-strong"));
+    assert.ok(cyan > 200 && cyan < 240, `Futuristic ${mode} accent hue ${cyan.toFixed(0)} is cyan`);
+    // Graphite: the Splits panel is a near-neutral chrome grey.
+    const [, a, b] = lab(future.rgb("--splits-rgb"));
+    assert.ok(Math.hypot(a, b) <= 8, `Futuristic ${mode} Splits panel chroma ${Math.hypot(a, b).toFixed(1)}`);
+  }
+});
 
 test("Black & White shows money direction in the type in both modes", () => {
   for (const mode of ["light", "dark"]) {

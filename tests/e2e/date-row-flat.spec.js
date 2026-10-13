@@ -11,7 +11,7 @@ import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 // under the top of the screen it keeps that colour and fades out at its
 // bottom edge instead of cutting the rows off with a hard rectangle.
 
-const PRESETS = ["70s", "60s", "80s", "modern", "mono", "code"];
+const PRESETS = ["70s", "60s", "80s", "modern", "mono", "code", "midnight", "genz", "future"];
 const MODES = ["light", "dark"];
 const SCHEMES = PRESETS.flatMap((palette) => MODES.map((mode) => ({ palette, mode })));
 const VIEWPORTS = [

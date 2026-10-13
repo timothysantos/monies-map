@@ -69,8 +69,9 @@ export function lab(colour) {
 export const deltaE = (a, b) => { const p = lab(a); const q = lab(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
 
 // How colourful a light preset's fills may be: faded print for most, the
-// neon pastels of 80s Pop a little brighter, none at all for Black & White.
-const FILL_CHROMA_MAX = { "80s": 44, mono: 2 };
+// neon pastels of 80s Pop and Gen Z 2026's acid lime a little brighter, none
+// at all for Black & White.
+const FILL_CHROMA_MAX = { "80s": 44, genz: 44, mono: 2 };
 
 /**
  * Every preset in every mode as the contrast tests see it, the 70s Warm

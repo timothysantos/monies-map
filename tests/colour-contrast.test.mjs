@@ -26,11 +26,12 @@ function assertAA(ink, surface, label, min = AA) {
 }
 
 test("every preset is checked in a light and a dark mode", () => {
-  assert.equal(PRESETS.length, 12);
+  assert.equal(PRESETS.length, 18);
   assert.equal(DEFAULT.id, "70s-light");
   assert.deepEqual(PRESETS.map((preset) => preset.id), [
     "70s-light", "70s-dark", "60s-light", "60s-dark", "80s-light", "80s-dark",
-    "modern-light", "modern-dark", "mono-light", "mono-dark", "code-light", "code-dark"
+    "modern-light", "modern-dark", "mono-light", "mono-dark", "code-light", "code-dark",
+    "midnight-light", "midnight-dark", "genz-light", "genz-dark", "future-light", "future-dark"
   ]);
 });
 
@@ -42,16 +43,16 @@ test("the 70s tokens are in :root with the same names", () => {
   // The terracotta accent the Splits theme is built on stays.
   assert.equal(TOKENS["--accent"], "#934923");
   assert.equal(TOKENS["--accent-strong"], "#b15e2f");
-  // Chocolate ink on cream-tan paper, not near-black on grey or white.
-  assert.equal(TOKENS["--text"], "#3b2a1f");
+  // Soft chocolate ink on an oat page, not near-black on grey or white.
+  assert.equal(TOKENS["--text"], "#352b24");
   assert.deepEqual(
     Object.fromEntries(HUES.map((hue) => [hue, [TOKENS[`--pastel-${hue}`], TOKENS[`--pastel-${hue}-ink`]]])),
     {
-      mint: ["#e8ebd0", "#4c5e1a"], // avocado
-      rose: ["#f5ded4", "#973223"], // brick red
-      sky: ["#d6e7e2", "#2c5f5f"], // dusty teal
-      lavender: ["#eedce6", "#6b4360"], // faded plum
-      butter: ["#f5e4b8", "#664a0b"] // harvest gold, dark mustard ink
+      mint: ["#e5e9d5", "#4a5c22"], // avocado
+      rose: ["#f3e0d9", "#933629"], // brick red
+      sky: ["#d8e6e3", "#2d5d5e"], // dusty teal
+      lavender: ["#ebdfe6", "#674562"], // faded plum
+      butter: ["#f1e6c6", "#63490f"] // harvest gold, dark mustard ink
     }
   );
   // The text on a strong fill and the Splits panel keep the shipped white
@@ -122,7 +123,7 @@ for (const preset of PRESETS) {
   // Small accent text that sits straight on the tinted page or on the bare
   // chrome (the text actions, the phone's month carets and steppers, the
   // Splits strip's New and All, the phone tab pill) uses --accent. The strong
-  // accent on the page is 3.6:1 in 70s Warm Light, short of 4.5:1 for small
+  // accent on the page is 3.7:1 in 70s Warm Light, short of 4.5:1 for small
   // text; the phone tab pill is the strong accent at 12% over the tab bar.
   test(`${id}: small accent text on the page, the chrome and the phone tab pill reads AA`, () => {
     const CHROME = rgb("--chrome-surface");
@@ -278,7 +279,7 @@ for (const preset of PRESETS) {
 }
 
 // The small accent text found on --page in 70s Warm Light (4.5:1 needed, the
-// strong accent is 3.57:1 there) is written with --accent, not --accent-strong.
+// strong accent is 3.67:1 there) is written with --accent, not --accent-strong.
 test("small accent text on the page is written with the darker accent", () => {
   const rule = (file, selector) => {
     const css = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
