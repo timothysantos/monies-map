@@ -190,7 +190,10 @@ function outcomeOf(facts: MonthFacts): NonNullable<AskAnswerCardDto["outcome"]> 
     savingsTargetMinor: facts.savingsTargetMinor,
     investedMinor: facts.investedMinor,
     savedMovedMinor: facts.savedMovedMinor,
-    plannedInvestMinor: facts.plannedInvestMinor
+    plannedInvestMinor: facts.plannedInvestMinor,
+    // Transfers into and out of investment accounts, only when there were any.
+    ...(facts.movedIntoInvestmentsMinor ? { movedIntoInvestmentsMinor: facts.movedIntoInvestmentsMinor } : {}),
+    ...(facts.takenFromInvestmentsMinor ? { takenFromInvestmentsMinor: facts.takenFromInvestmentsMinor } : {})
   };
 }
 
@@ -239,7 +242,14 @@ function moneyJobCard(facts: MoneyJobFacts, today: string): AskAnswerCardDto {
         ...(use.investPlan > 0 ? { planMinor: use.investPlan, overIsShort: false } : {})
       },
       support,
-      lines: movedLines(current.investments),
+      // A period that took more out of investments than it put in says so
+      // as its own line (invested is then zero, never below it).
+      lines: [
+        ...movedLines(current.investments),
+        ...(use.takenFromInvestments > 0
+          ? [{ label: "Took out of investments", amountMinor: use.takenFromInvestments, currency: "SGD", tone: "neutral" } satisfies AskAnswerLineDto]
+          : [])
+      ],
       links: answerLinks(facts, use.invested > 0 ? entriesLink(current, { categories: [categoryName(current, isInvestmentsCategoryName, "Investments")] }) : null),
       outcome
     };
@@ -305,7 +315,9 @@ function moneyJobSentences(facts: MoneyJobFacts, today: string): string[] {
     const phrase = periodPhrase(facts, today);
     sentences.push(use.invested > 0
       ? `You put ${money(use.invested)} into Investments ${phrase}.`
-      : `You didn't put any money into Investments ${phrase}.`);
+      : use.takenFromInvestments > 0
+        ? `You took ${money(use.takenFromInvestments)} more out of investments ${phrase} than you put in.`
+        : `You didn't put any money into Investments ${phrase}.`);
     if (use.investPlan > 0) {
       const gap = use.investPlan - use.invested;
       sentences.push(use.invested <= 0
@@ -359,6 +371,7 @@ function moneyJobPromptFacts(facts: MoneyJobFacts, today: string): string[] {
   const lines: string[] = [];
   if (facts.kind === "invested") {
     lines.push(`Invested in ${label}: ${money(use.invested)}`);
+    if (use.takenFromInvestments > 0) lines.push(`Took out of investments in ${label}: ${money(use.takenFromInvestments)}`);
     if (use.investPlan > 0) {
       lines.push(`Planned to invest: ${money(use.investPlan)}`);
       const gap = use.investPlan - use.invested;

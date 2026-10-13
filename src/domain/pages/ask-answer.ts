@@ -53,6 +53,7 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
   const scope = effectiveScopeForView(viewId, request.scope);
   const accounts = await loadAccountReferences(db);
   const people = household.people.map((person) => ({ id: person.id, name: person.name }));
+  const investmentAccountIds = new Set(accounts.filter((account) => account.kind === "investment").map((account) => account.id));
   const intent = readAnswerIntent(request.text, {
     today,
     month: /^\d{4}-\d{2}$/.test(request.month) ? request.month : today.slice(0, 7),
@@ -69,7 +70,7 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
     if (!trackedMonths.includes(month)) {
       return emptyMonthFacts(month, viewId, scope);
     }
-    return buildMonthFacts(await buildMonthPageDto(db, viewId, month, scope), scope);
+    return buildMonthFacts(await buildMonthPageDto(db, viewId, month, scope), scope, { investmentAccountIds });
   };
   const previousIfTracked = async (month: string) => {
     const previous = addMonths(month, -1);
@@ -206,6 +207,8 @@ function emptyMonthFacts(month: string, viewId: string, scope: PersonScope): Mon
     investedMinor: 0,
     savedMovedMinor: 0,
     plannedInvestMinor: 0,
+    movedIntoInvestmentsMinor: 0,
+    takenFromInvestmentsMinor: 0,
     entryCount: 0,
     expenseCount: 0,
     categories: [],

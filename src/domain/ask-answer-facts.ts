@@ -14,6 +14,7 @@
 
 import { incomeMinor } from "./category-offset";
 import { plannedInvestMinor } from "./money-job-plan";
+import { findInvestmentMoves } from "./investment-moves";
 import { isInvestmentsCategoryName, isSavingsCategoryName, splitMoneyUse } from "./money-jobs";
 import { effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
 import type {
@@ -82,6 +83,10 @@ export interface MonthFacts {
   investedMinor: number;
   savedMovedMinor: number;
   plannedInvestMinor: number;
+  // Transfers into and out of investment accounts (the Month page's
+  // investmentMoves, investment-moves.ts), netted into invested.
+  movedIntoInvestmentsMinor: number;
+  takenFromInvestmentsMinor: number;
   // Every entry the view counts this month, and the expenses among them
   // (the rows Open in Entries shows for spending).
   entryCount: number;
@@ -90,8 +95,9 @@ export interface MonthFacts {
   // Every category in the Spending Mix (for a comparison), largest first.
   allCategories: CategoryFact[];
   biggest: EntryFact[];
-  // The largest entries filed under Investments and under Savings (the
-  // money the jobs count as invested, and as moved to savings).
+  // The largest entries filed under Investments or moved into an
+  // investment account, and those filed under Savings (the money the jobs
+  // count as invested, and as moved to savings).
   investments: EntryFact[];
   savingsMoves: EntryFact[];
   planRows: PlanRowFact[];
@@ -169,8 +175,14 @@ function byLargest(left: Pick<EntryFact, "amountMinor" | "date" | "id">, right: 
   return right.amountMinor - left.amountMinor || left.date.localeCompare(right.date) || left.id.localeCompare(right.id);
 }
 
-// One month in one view, from its Month page DTO.
-export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: PersonScope | string | null | undefined): MonthFacts {
+// One month in one view, from its Month page DTO. `investmentAccountIds`
+// names the investment accounts, so the transfers into them can be listed
+// with the money filed under Investments; the totals are the page's own.
+export function buildMonthFacts(
+  input: MonthPageFactsInput,
+  selectedScope: PersonScope | string | null | undefined,
+  { investmentAccountIds = new Set<string>() }: { investmentAccountIds?: ReadonlySet<string> } = {}
+): MonthFacts {
   const { monthPage } = input;
   const viewId = input.viewId;
   const scope = effectiveScopeForView(viewId, selectedScope ?? monthPage.selectedScope);
@@ -213,12 +225,17 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
     investedMinor: (monthPage.categoryShareChart ?? []).filter((datum) => isInvestmentsCategoryName(datum.label)).reduce((sum, datum) => sum + datum.valueMinor, 0),
     savedMovedMinor: (monthPage.categoryShareChart ?? []).filter((datum) => isSavingsCategoryName(datum.label)).reduce((sum, datum) => sum + datum.valueMinor, 0),
     plannedInvestMinor: plannedInvestMinor((monthPage.planSections ?? []).flatMap((section) => section.rows)),
+    movedIntoInvestmentsMinor: monthPage.investmentMoves?.intoMinor ?? 0,
+    takenFromInvestmentsMinor: monthPage.investmentMoves?.outOfMinor ?? 0,
     entryCount: visible.length,
     expenseCount: visible.filter((entry) => entry.entryType === "expense").length,
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
     allCategories,
     biggest,
-    investments: largest(expenses.filter((entry) => isInvestmentsCategoryName(entry.categoryName))),
+    investments: largest([
+      ...expenses.filter((entry) => isInvestmentsCategoryName(entry.categoryName)),
+      ...findInvestmentMoves(visible, monthPage.entries ?? [], investmentAccountIds).into
+    ]),
     savingsMoves: largest(expenses.filter((entry) => isSavingsCategoryName(entry.categoryName))),
     planRows,
     incomeSources: [...sources.values()]
@@ -265,6 +282,8 @@ export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
     investedMinor: total((facts) => facts.investedMinor),
     savedMovedMinor: total((facts) => facts.savedMovedMinor),
     plannedInvestMinor: total((facts) => facts.plannedInvestMinor),
+    movedIntoInvestmentsMinor: total((facts) => facts.movedIntoInvestmentsMinor),
+    takenFromInvestmentsMinor: total((facts) => facts.takenFromInvestmentsMinor),
     entryCount: total((facts) => facts.entryCount),
     expenseCount: total((facts) => facts.expenseCount),
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
@@ -289,7 +308,8 @@ export function spendJobFacts(facts: MonthFacts): MonthFacts {
 
 // A month's (or period's) money as the Month and Summary lead split it
 // (splitMoneyUse, money-jobs.ts): income, spending without the money moved
-// to Investments or Savings, invested, kept, and each job's plan. The
+// to Investments or Savings, invested (with the transfers into and out of
+// investment accounts), kept, and each job's plan. The
 // money-job answers read every figure from here.
 export function moneyUseOf(facts: MonthFacts) {
   return splitMoneyUse({
@@ -297,6 +317,8 @@ export function moneyUseOf(facts: MonthFacts) {
     spentMinor: facts.spentMinor,
     investedMinor: facts.investedMinor,
     savedMovedMinor: facts.savedMovedMinor,
+    movedIntoInvestmentsMinor: facts.movedIntoInvestmentsMinor,
+    takenFromInvestmentsMinor: facts.takenFromInvestmentsMinor,
     plannedSpendMinor: facts.plannedMinor,
     savingsTargetMinor: facts.savingsTargetMinor,
     plannedInvestMinor: facts.plannedInvestMinor

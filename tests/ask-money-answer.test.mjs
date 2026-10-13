@@ -161,7 +161,7 @@ test("the money jobs' answers are read, and their savings bar keeps what was inv
     });
     assert.equal(read.intent, intent);
     // Before, the adapter dropped the last three, so the bar showed nothing invested.
-    assert.deepEqual(read.answer.outcome, outcome, intent);
+    assert.deepEqual(read.answer.outcome, { ...outcome, movedIntoInvestmentsMinor: 0, takenFromInvestmentsMinor: 0 }, intent);
   }
   // An older answer without the money jobs' figures reads them as zero; a
   // bad one is dropped.
@@ -171,7 +171,7 @@ test("the money jobs' answers are read, and their savings bar keeps what was inv
     answer: { title: "May", lead: { label: "Spent", amountMinor: 1, currency: "SGD", tone: "neutral" }, outcome: monthCards },
     wording: { text: "x" }
   });
-  assert.deepEqual(older.answer.outcome, { ...monthCards, investedMinor: 0, savedMovedMinor: 0, plannedInvestMinor: 0 });
+  assert.deepEqual(older.answer.outcome, { ...monthCards, investedMinor: 0, savedMovedMinor: 0, plannedInvestMinor: 0, movedIntoInvestmentsMinor: 0, takenFromInvestmentsMinor: 0 });
   const bad = readMoneyAnswerResponse({
     ok: true, supported: true, intent: "saved", needsConfirmation: false,
     answer: { title: "May", lead: { label: "Saved", amountMinor: 1, currency: "SGD", tone: "in" }, outcome: { ...outcome, incomeMinor: "lots" } },
