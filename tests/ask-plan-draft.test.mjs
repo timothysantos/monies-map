@@ -69,14 +69,16 @@ test("the page keeps a draft only whole, a question with options, or a known not
   }
 });
 
-test("the plan answer keeps its savings-bar figures only when all four are numbers", () => {
+test("the plan answer keeps its savings-bar figures only when the four Month figures are numbers; the money jobs' three default to zero", () => {
   const body = (outcome) => ({
     ok: true, supported: true, intent: "plan", viewId: "household", scope: "direct_plus_shared", months: ["2026-09"], needsConfirmation: false,
     answer: { title: "September against plan", lead: { label: "Spent", amountMinor: 1, currency: "SGD", tone: "neutral" }, support: [], lines: [], links: [], outcome },
     wording: { text: "x", source: "template" }
   });
   const outcome = { incomeMinor: 830_000, spentMinor: 136_901, plannedSpendMinor: 300_896, savingsTargetMinor: 150_000 };
-  assert.deepEqual(readMoneyAnswerResponse(body(outcome)).answer.outcome, outcome);
+  assert.deepEqual(readMoneyAnswerResponse(body(outcome)).answer.outcome, { ...outcome, investedMinor: 0, savedMovedMinor: 0, plannedInvestMinor: 0 });
+  const withJobs = { ...outcome, investedMinor: 120_000, savedMovedMinor: 50_000, plannedInvestMinor: 150_000 };
+  assert.deepEqual(readMoneyAnswerResponse(body(withJobs)).answer.outcome, withJobs);
   assert.equal("outcome" in readMoneyAnswerResponse(body({ ...outcome, spentMinor: null })).answer, false);
 });
 
