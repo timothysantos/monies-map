@@ -314,11 +314,6 @@ export function spendingCategories(facts: MonthFacts): CategoryFact[] {
     .map((category) => ({ ...category, sharePercent: total > 0 ? Math.round((category.amountMinor * 100) / total) : 0 }));
 }
 
-// How many entries the Spending Mix counts under a category name test.
-export function categoryEntryCount(facts: MonthFacts, isCategory: (name: string) => boolean) {
-  return facts.allCategories.filter((category) => isCategory(category.name)).reduce((sum, category) => sum + category.entryCount, 0);
-}
-
 // The plan rows that went furthest over, else the largest rows by spend.
 export function selectPlanRows(facts: MonthFacts): PlanRowFact[] {
   const over = facts.planRows

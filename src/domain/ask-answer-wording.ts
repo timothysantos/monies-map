@@ -13,7 +13,6 @@
 // while money is hidden.
 
 import {
-  categoryEntryCount,
   moneyUseOf,
   selectPlanRows,
   spendingCategories,
