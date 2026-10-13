@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { getPersonColour } from "../../src/client/person-colour.js";
+import { getPersonColourVars } from "../../src/client/person-colour.js";
 import { reseedDemo } from "./helpers";
 
 // The phone chrome in the Lead · Support · Detail hierarchy (design.md,
@@ -136,7 +136,7 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
       // the household gets a neutral chip.
       if (person) {
         await expect(chip, url).toHaveText(person);
-        expect(await chip.evaluate((element) => element.style.getPropertyValue("--person-colour")), url).toBe(getPersonColour(person));
+        expect(await chip.evaluate((element) => element.style.getPropertyValue("--person-colour")), url).toBe(getPersonColourVars(person)["--person-colour"]);
         await expect(trigger.locator(".mobile-context-scope"), url).toHaveText(scope);
         // A screen reader hears what it heard before.
         await expect(trigger, url).toHaveAccessibleName(`${person} · ${scope} View and scope`);
@@ -191,7 +191,7 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
     const lead = sheet.locator(".mobile-context-lead");
     const leadChip = lead.locator(".mobile-context-person-chip");
     await expect(leadChip).toHaveText("Tim");
-    expect(await leadChip.evaluate((element) => element.style.getPropertyValue("--person-colour"))).toBe(getPersonColour("Tim"));
+    expect(await leadChip.evaluate((element) => element.style.getPropertyValue("--person-colour"))).toBe(getPersonColourVars("Tim")["--person-colour"]);
     await expect(lead).toContainText("Direct + Shared");
     await expect(lead).toContainText("Tim's entries plus their share of split expenses.");
     const islandChipSize = Number.parseFloat(await style(page.locator(".mobile-context-sticky-bar .mobile-context-person-chip"), "fontSize"));
