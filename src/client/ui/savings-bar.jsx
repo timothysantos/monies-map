@@ -34,7 +34,10 @@ export function SavingsBar({ figures, hidden, period = null }) {
   // Start the menu's code on the first sign of interest, so a tap finds it.
   const warm = () => { void loadMoneyJobsDetail().catch(() => {}); };
 
-  // A tap or press outside, or Escape, closes the open menu.
+  // A tap or click outside, or Escape, closes the open menu. It closes on the
+  // click, not the press: the menu is in the page flow, so closing on the press
+  // would move the rows below it before the tap lands and the tap would hit
+  // the wrong row.
   useEffect(() => {
     if (!menuKey) {
       return undefined;
@@ -44,10 +47,10 @@ export function SavingsBar({ figures, hidden, period = null }) {
         setMenuKey(null);
       }
     };
-    document.addEventListener("pointerdown", close);
+    document.addEventListener("click", close);
     document.addEventListener("keydown", close);
     return () => {
-      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("click", close);
       document.removeEventListener("keydown", close);
     };
   }, [menuKey]);
