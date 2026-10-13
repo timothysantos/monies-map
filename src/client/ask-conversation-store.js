@@ -14,9 +14,9 @@
 // Mirror: sessionStorage only (this browser tab, gone when the tab closes),
 // never localStorage and never the server. Versioned key, size-capped, and
 // anything it cannot read is dropped. Only text, the card's fields,
-// filters and money answers (the figures and words the server sent) are
-// kept: photos (and any blob: or data: value), audio and status lines
-// never are.
+// filters, money answers and plan drafts (the figures and words the server
+// sent) are kept: photos (and any blob: or data: value), audio and status
+// lines never are.
 //
 // One conversation per way in (chat, the Entries +, the Splits receipt
 // button, a Shortcut link), at most three, the oldest finished one going
@@ -28,7 +28,10 @@ const MAX_SLOTS = 3;
 const MAX_THREAD_ITEMS = 60;
 const MAX_TEXT = 1000;
 const DEFAULT_MAX_STORED_CHARS = 60_000;
-const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check"]);
+const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check", "plan-draft"]);
+// A plan draft caught mid-save or mid-undo comes back as it was before: a
+// save that did land is then refused as stale, never written twice.
+const SETTLED_PLAN_STATUS = { saving: "draft", undoing: "saved" };
 const DROPPED_KEYS = new Set(["url", "image", "photo", "blob", "file", "audio", "clip", "dataUrl", "receiptImage", "thumbUrl"]);
 
 function isObject(value) {
@@ -90,7 +93,9 @@ function withoutMedia(value) {
 
 function toStored(conversation) {
   const kept = filterThread(conversation, (item) => STORED_KINDS.has(item.kind));
-  const thread = kept.thread.map((item) => (item.text === undefined ? item : { ...item, text: clampText(item.text) }));
+  const thread = kept.thread
+    .map((item) => (item.kind === "plan-draft" && SETTLED_PLAN_STATUS[item.status] ? { ...item, status: SETTLED_PLAN_STATUS[item.status] } : item))
+    .map((item) => (item.text === undefined ? item : { ...item, text: clampText(item.text) }));
   const overflow = Math.max(0, thread.length - MAX_THREAD_ITEMS);
   const card = isObject(conversation.card)
     ? { ...conversation.card, status: conversation.card.status === "saving" ? "draft" : conversation.card.status }
@@ -132,6 +137,11 @@ function readThreadItem(item) {
   // the check before one keeps its candidate and the question to ask again.
   if (item.kind === "money-answer") return isObject(item.answer) && isObject(item.answer.lead) && isObject(item.wording) ? item : null;
   if (item.kind === "money-check") return isObject(item.candidate) && isObject(item.request) && typeof item.text === "string" ? item : null;
+  // A plan draft keeps the server's draft (its lines, totals and Save list)
+  // and, once saved, the changes that undo it.
+  if (item.kind === "plan-draft") {
+    return isObject(item.draft) && Array.isArray(item.draft.apply) && isObject(item.draft.totals) && ["draft", "saved", "discarded"].includes(item.status) ? item : null;
+  }
   return typeof item.text === "string" ? { ...item, text: clampText(item.text) } : null;
 }
 

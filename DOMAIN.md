@@ -1047,7 +1047,9 @@ categories and the biggest single costs, and chips to Entries and Month.
 Canonical terms:
 - `money question`: read by rules (`src/domain/ask-answer-intent.ts`) into
   one of six `answer intents`: `spending` (why, or where the money went),
-  `plan` (how the month stands against its plan), `compare` (two months),
+  `plan` (intent against outcome: how a month, or a quarter's months, went
+  against the plan, "how did September go?", "did we stick to the plan in
+  Q3?"), `compare` (two months),
   `biggest` (the largest expenses), `income`, `owed` (who owes whom on
   Splits). Anything else is unsupported and gets the "not answered" note;
   a question with an amount, or a biggest or income question naming a
@@ -1079,7 +1081,52 @@ Rules:
   person's tap; It's real spending writes nothing and is kept only in the
   conversation
 - nothing about a question, its facts or its answer is stored on the server
+- the plan answer also carries its `outcome`: income received, Actual
+  spend, Planned spend and the Savings target, the figures the Month and
+  Summary savings bar draws
 
+### Plan Draft
+
+A typed change to one month's plan, made on the Ask page and not saved
+until the person taps Save plan (`POST /api/ai-assist/plan-draft`, saved
+through `POST /api/month-plan/apply-changes`; `docs/flows/ask-flow.md`
+"Planning by chat"). Example: "move $50 from Shopping to Groceries in
+October" drafts both month plan rows before and after and the view's plan
+totals.
+
+Canonical terms:
+- `plan request`: the typed text read by rules
+  (`src/domain/plan-draft-reader.ts`) into a month, an optional month to
+  copy, and operations: `set` a line, `change` a line by an amount, `move`
+  an amount between two lines, `add` a line. A plan request the rules
+  cannot read may be read by the optional AI into the same structure,
+  kept only when its names, amounts and months are the request's own
+- `plan line`: a `month plan row` the view can change (the rows Month
+  shows for the view), named by its label; the user-facing word for one
+  row of a month's plan
+- `plan draft`: the request resolved against the month's rows
+  (`src/domain/plan-draft.ts`): each changed line before and after, the
+  view's `plan totals` (Planned income, Planned spend, Remaining budget, as
+  the Month cards add them) before and after, the plan-balance warning, and
+  the `plan changes` Save posts
+- `plan changes`: updates (with the amount the line held when drafted),
+  new lines and deletes for one month, written all or nothing
+  (`applyMonthPlanChanges`); the save returns the changes that undo it
+- `plan question`: which month, which line (a name that fits two lines) or
+  whose new line; asked with chips, answered by sending the same request
+  again with the answer
+
+Rules:
+- nothing is written until Save plan; Discard writes nothing; AI never
+  writes and never supplies a figure
+- a plan draft is saved with the Month editor's own row and split
+  statements, all its lines in one batch; a line changed since the draft
+  refuses the whole save
+- no month named means a question, never a guess; a line never goes below
+  zero
+- copying a month copies the view's lines; a line the target month already
+  has takes the copied amount, the target month's other lines stay
+- nothing about a plan request or draft is stored on the server
 
 ### Entry Card
 
@@ -2031,7 +2078,8 @@ Use these terms consistently in future work:
 - Say `shared ownership` when you mean the ledger-entry ownership state.
 - Do not describe `shared` as a person or virtual household user.
 - Say `month plan row`, not `budget row`, unless you specifically mean the
-  `budget_buckets` section.
+  `budget_buckets` section. `plan line` is the user-facing word for one in
+  Ask's plan drafts, not a separate entity.
 - Say `month snapshot`, not `monthly plan summary`, for generated dashboard
   rollups.
 - Say `statement fix` for an approved correction from the statement check,

@@ -7,7 +7,8 @@ export type AiAssistCapability =
   | "entry_draft"
   | "receipt_read"
   | "speech_transcribe"
-  | "ask_answer";
+  | "ask_answer"
+  | "plan_draft";
 
 export interface AiAssistEnv {
   AI?: Ai;

@@ -56,6 +56,7 @@ import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
+import { getPersonColourVars } from "./person-colour";
 import {
   buildAppShellErrorMessage,
   buildRequestFailureMessage,
@@ -2431,11 +2432,13 @@ export function App() {
         return;
       }
 
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        next.set("month", routeMonth);
-        return next;
-      }, { replace: true });
+      // Built from the address bar as it is now: a page that consumed its own
+      // link parameters (Entries clearing a quick-entry link) in this same
+      // commit has already replaced the URL, and this render's snapshot of
+      // it would put them back.
+      const next = new URLSearchParams(window.location.search);
+      next.set("month", routeMonth);
+      navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
       return;
     }
 
@@ -2445,12 +2448,12 @@ export function App() {
 
     // Keep a #section anchor (an FAQ guide deep link) while the month is
     // corrected; setSearchParams would drop it.
-    const next = new URLSearchParams(location.search);
+    const next = new URLSearchParams(window.location.search);
     next.set("month", availableMonths[availableMonths.length - 1]);
     navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
-  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, selectedTabId, setSearchParams]);
+  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, selectedTabId]);
 
-  // Repair an explicit Summary range the data does not have (both tabs of the
+  //Repair an explicit Summary range the data does not have (both tabs of the
   // Summary tab carry it), so the pickers and the URL agree.
   useEffect(() => {
     if (!isSummaryTab || !summaryRangePage?.availableMonths?.length) {
@@ -3034,6 +3037,8 @@ export function App() {
                 type="button"
                 onClick={() => handleViewChange(person.id)}
                 title={person.name}
+                // Their colour (the Entries row edge) marks a person's view while it is active.
+                style={/** @type {import("react").CSSProperties} */ (getPersonColourVars(person.name))}
               >
                 {selectedViewId === person.id ? person.name : getInactivePersonViewLabel(person.name)}
               </button>

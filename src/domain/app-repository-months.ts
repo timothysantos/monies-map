@@ -5,6 +5,7 @@ import {
   weekdayLabel
 } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
+import type { PlanRowInput } from "./plan-draft";
 import type {
   MonthIncomeRowDto,
   MonthPlanRowDto,
@@ -99,6 +100,79 @@ export async function loadSummaryMonthsForScopes(
   }
 
   return monthsByScope;
+}
+
+// Every month plan row of one month, income included, with who shares it:
+// what a plan draft (plan-draft.ts) resolves names against and copies from.
+export async function loadMonthPlanRowsForDraft(db: D1Database, month: string): Promise<PlanRowInput[]> {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const [rows, splits] = await Promise.all([
+    db
+      .prepare(`
+        SELECT
+          monthly_plan_rows.id,
+          monthly_plan_rows.section_key,
+          monthly_plan_rows.label,
+          monthly_plan_rows.plan_date,
+          monthly_plan_rows.planned_amount_minor,
+          monthly_plan_rows.notes,
+          monthly_plan_rows.ownership_type,
+          monthly_plan_rows.person_id,
+          people.display_name AS owner_name,
+          categories.name AS category_name,
+          accounts.account_name AS account_name
+        FROM monthly_plan_rows
+        LEFT JOIN people ON people.id = monthly_plan_rows.person_id
+        LEFT JOIN categories ON categories.id = monthly_plan_rows.category_id
+        LEFT JOIN accounts ON accounts.id = monthly_plan_rows.account_id
+        WHERE monthly_plan_rows.household_id = ? AND monthly_plan_rows.year = ? AND monthly_plan_rows.month = ?
+        ORDER BY monthly_plan_rows.created_at, monthly_plan_rows.id
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
+      .all<{
+        id: string;
+        section_key: "income" | "planned_items" | "budget_buckets";
+        label: string;
+        plan_date: string | null;
+        planned_amount_minor: number;
+        notes: string | null;
+        ownership_type: "direct" | "shared";
+        person_id: string | null;
+        owner_name: string | null;
+        category_name: string | null;
+        account_name: string | null;
+      }>(),
+    db
+      .prepare(`
+        SELECT monthly_plan_row_splits.monthly_plan_row_id, monthly_plan_row_splits.person_id, monthly_plan_row_splits.ratio_basis_points
+        FROM monthly_plan_row_splits
+        INNER JOIN monthly_plan_rows ON monthly_plan_rows.id = monthly_plan_row_splits.monthly_plan_row_id
+        WHERE monthly_plan_rows.household_id = ? AND monthly_plan_rows.year = ? AND monthly_plan_rows.month = ?
+        ORDER BY monthly_plan_row_splits.created_at, monthly_plan_row_splits.id
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
+      .all<{ monthly_plan_row_id: string; person_id: string; ratio_basis_points: number }>()
+  ]);
+  const splitsByRow = new Map<string, Array<{ personId: string; ratioBasisPoints: number }>>();
+  for (const split of splits.results) {
+    const list = splitsByRow.get(split.monthly_plan_row_id) ?? [];
+    list.push({ personId: split.person_id, ratioBasisPoints: split.ratio_basis_points });
+    splitsByRow.set(split.monthly_plan_row_id, list);
+  }
+  return rows.results.map((row) => ({
+    id: row.id,
+    section: row.section_key,
+    categoryName: row.category_name ?? "Other",
+    label: row.label,
+    plannedMinor: row.planned_amount_minor,
+    ownershipType: row.ownership_type,
+    personId: row.person_id,
+    ownerName: row.owner_name,
+    splits: splitsByRow.get(row.id) ?? [],
+    planDate: row.plan_date,
+    accountName: row.account_name,
+    note: row.notes
+  }));
 }
 
 export async function loadTrackedMonths(db: D1Database): Promise<string[]> {

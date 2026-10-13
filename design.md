@@ -366,11 +366,53 @@ question (docs/flows/ask-flow.md "Money questions"):
   plan or the other month small under it). Hidden money replaces the words
   and rows with "Reveal money totals to read these insights."
 
+The plan answer is Intent vs Outcome (round-2 mockups `chat-intent-*`):
+under its lead bar it draws the Month and Summary lead's `SavingsBar`
+(ui/savings-bar.jsx) from the answer's `outcome` (income received, Actual
+spend, Planned spend, Savings target), so the card and Month show one
+picture. A quarter's answer ("did we stick to the plan in Q3?") is titled
+"July to September against plan" and lists each month against its plan
+before the plan rows.
+
 The check before an answer is the same card with the butter "Check this
 first" tag over the head ("Serene → Ethan" or the two accounts, the bank
 description muted, the amount in plain ink) and one plain paragraph; its
 chips are Mark as settlement or Link as transfer (filled) and It's real
 spending. Once answered it stays in the thread, faded.
+
+### Plan draft
+
+`ask-plan-draft-card.jsx` (round-2 mockups `chat-plan*`; docs/flows/
+ask-flow.md "Planning by chat"): a draft of a change to a month's plan, on
+the shared blocks, with its own actions under it rather than in the chip
+row (the composer stays free for the next request):
+
+- Tag: butter "Draft" (mint "Saved" once saved); "Read by AI" with the
+  sparkle beside it when the optional AI read the request.
+- Lead: the category's bubble and "Groceries plan" with the month in the
+  category colour, the new amount in sky and "was $650.00" (or "New
+  line") under it; a move is a neutral arrows bubble, "Move $50.00" and
+  "Shopping to Groceries"; a copy a neutral copy bubble, "November 2026
+  plan", "Like September 2026" and the planned spend.
+- Support: the view's person chip (or Household) and the month; a move
+  that keeps planned spend says so in a sky chip.
+- Detail: read-only rows, each changed line "$650.00 → $700.00" (the old
+  figure muted, the new one sky; six rows, then "N more lines" folding the
+  rest), then Planned income, Planned spend and Remaining budget the same
+  way, Remaining rose below zero. The plan-balance warning, when there is
+  one, is a rose attention line under the rows.
+- Actions: `BottomActions` with Discard (quiet) and Save plan (primary).
+  Saved, the rows become See it on Month and Undo this change.
+- Hidden money: dots for every amount, no "was" figure, no warning, no
+  tones.
+
+Its logic lives in plain modules: `plan-draft-reader.ts` (rules, shared
+with the route), `plan-draft.ts` (resolution, server), `ask-api.js`
+(`requestPlanDraft`, `applyPlanChanges`, `readPlanDraftResponse`),
+`ask-chips.js` (`buildPlanQuestionChips` for its questions) and
+`copy/ask-plan-copy.js` (its words, kept out of `ask-copy.js`, which
+Entries and Splits also load). The draft lives in the Ask conversation
+store as a `plan-draft` thread item.
 
 ### Bottom chips
 
@@ -408,7 +450,11 @@ while the card is active.
 - after a money answer (`buildMoneyChips`): its links (Open in Entries,
   Open Month or Open Splits, the first filled), then the same as after an
   answer; an open check before an answer: only Mark as settlement (or Link
-  as transfer, filled) and It's real spending.
+  as transfer, filled) and It's real spending;
+- while a plan draft asks something (`buildPlanQuestionChips`): only its
+  options (months as "November 2026", lines by name, with whose when two
+  share a name, or the people and Shared), with the question above the
+  row. A plan draft itself leaves the usual chips.
 
 ### Ask origin
 
@@ -1484,7 +1530,8 @@ A person view's figures follow the route's `scope`. Each layout has one
 scope control:
 
 - Desktop and tablet (wider than the phone layout in `use-viewport.js`):
-  Month shows the scope pills in its header. Summary shows
+  Month shows the scope pills in its header, and Entries its scope switch; both
+  are a grey track with a raised white selection ("Desktop Chrome"). Summary shows
   `SummaryScopeSwitch`: a compact one-click `Direct` / `Shared` / `Both`
   switch (`messages.summary.scopeSwitchLabel`) in the empty space under the
   `Summary` title, with `aria-pressed` on the active option and what each
@@ -1574,9 +1621,10 @@ picking the range on both routes; the months offered are the range's months
   and, on a tile, a tick. Hidden money shows dots, no tone, no bold and no
   `over`.
 - Desktop and tablet (`SummaryMonthSelector`): one compact row under the
-  header, `All months` then the range's months newest first, in the pill
-  style the Spending Mix month chips used (`.summary-focus-button`), with
-  `aria-pressed`. Hidden on a phone.
+  header, `All months` then the range's months newest first, as grey track
+  chips with a raised white selected one (`.summary-focus-button`, "Desktop
+  Chrome"), with `aria-pressed`. The row wraps rather than clip at the page
+  edge. Hidden on a phone.
 - Spending Mix has no month chips of its own; the month choice drives it.
   All months shows the whole range (`categoryShareChart`). A picked month
   shows that month in the Month content, full width after the money
@@ -2083,6 +2131,52 @@ card change only after the save succeeds), and duplicate, reset and delete
 month (a failure keeps the Actions popover or confirmation dialog open).
 The reset and delete confirmation dialogs render beside the Actions popover,
 not inside it, because closing the popover unmounts its content.
+
+## Desktop Chrome
+
+The desktop (761 px and wider) header, scope switches and totals follow
+Lead · Support · Detail with one set of tokens in `:root` of
+`public/styles.css`, next to the phone's `--chrome-*` tokens: `--radius-control`
+(10 px: tabs, period buttons, period box, eye, pills inside a group),
+`--radius-group` (14 px: a segmented group),
+`--track` (the grey a group sits on, the text ink at 6%), `--shadow-raised`
+(a selected segment), `--shadow-pop` (the period picker; both shadows are
+colour tokens every colour preset sets, and the radii and type sizes are
+layout tokens the same in every preset),
+`--type-title` (1.7 rem), `--type-control` (0.875 rem) and `--type-small`
+(0.78 rem). The block is "Desktop chrome" in `styles.css`, after
+`.pill-disabled`, so the page-width header tightening below it still wins.
+
+- Lead: the page title (`.panel-head h2`, and Month's month name, in ink) is
+  the same 1.7 rem on every page. The controls around it are Support and stay
+  quiet.
+- One control height: the view pills' group, the tabs, the period buttons, the
+  period box and the eye are all 36 px, so the header is 57 px tall and stays
+  one row at 1,440 px, at 1,280 px with the Ask panel docked (a page 920 px
+  wide) and at 1,024 px.
+- Segmented groups (view pills, Entries and Month scope, Summary's scope
+  switch) are a grey track; the selected segment is raised white at weight
+  600, never terracotta. The active person's pill takes that person's colour
+  (`getPersonColourVars`, set inline in `App.jsx`, read only while the pill is
+  active), the same colour as the Entries row edge. Household is raised
+  white. The Summary month row (`.summary-focus-button`) uses the same track
+  chips with a raised white selected one, and wraps to a second line instead
+  of clipping at the page edge.
+- A period that does not apply to the page (Splits, Settings, Imports, FAQ;
+  `.period-nav-cluster.is-passive`) reads as a plain label with dimmed,
+  inert arrows, not as a disabled box. A page that uses the period keeps the
+  bordered box and live arrows.
+- Totals: the Entries top and its search bar are "Entries top"'s
+  (`entries-overview.jsx`, `entries-route.css`); this block does not restyle
+  them. Month's totals are the Month lead card's (see "Lead · Support ·
+  Detail").
+- Bundle: the Entries-only date and empty-state base rules live in
+  `entries-route.css`, and rules for classes no component renders were
+  removed from `styles.css`, so the block adds few first-screen bytes.
+- Proof: `tests/e2e/visual-structure.spec.js` (computed heights, radii, person
+  colour, title size, quiet selected states, narrow-page clipping and passive
+  period at 1,440, 1,280 docked and 1,024 px) and
+  `tests/e2e/header-tab-fit.spec.js`.
 
 ## Phone Chrome
 

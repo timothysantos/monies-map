@@ -10,6 +10,8 @@
   --card-shadow: 0 1px 2px rgba(17, 24, 39, 0.06), 0 6px 18px rgba(17, 24, 39, 0.07);
   --chrome-surface: rgba(238, 243, 250, 0.97);
   --chrome-shadow: 0 12px 30px rgba(17, 24, 39, 0.12);
+  --shadow-raised: 0 1px 3px rgba(17, 24, 39, 0.12);
+  --shadow-pop: 0 18px 40px rgba(17, 24, 39, 0.12);
   --panel-strong: #111827;
   --text: #111827;
   --muted: #4b5563;
