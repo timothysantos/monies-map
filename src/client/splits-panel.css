@@ -26,6 +26,13 @@
   color: rgb(var(--on-strong-tint-rgb, 255 248 243) / 0.86);
 }
 
+/* "Ask about this" is the accent everywhere else, which is the Splits
+   colour itself here: on the orange it takes the strong-fill ink. */
+.panel-splits .checkin-ask {
+  color: rgb(var(--on-strong-rgb));
+  text-decoration-color: rgb(var(--on-strong-rgb) / 0.55);
+}
+
 .panel-splits .checkin-chip {
   --chip-colour: rgb(var(--on-strong-tint-rgb, 255 248 243));
 }
