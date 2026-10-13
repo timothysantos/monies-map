@@ -122,7 +122,10 @@ colour), and that day's rows share one rounded white group with hairlines. A
 day reads as one unit, the same shape as an Entries day (an unboxed label over
 its rounded group): the Splits panel, the page behind it on a phone and the
 sticky date label all paint `--splits-surface` (`:root`, halfway between the
-two Splits colours), so no band shows behind the label.
+two Splits colours), so no band shows behind the label. Stuck at the top, the
+label fades out at its foot exactly as an Entries day label does (a gradient,
+no blur, so no rectangle shows over the rows;
+`tests/e2e/date-row-flat.spec.js`).
 `tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
 against Entries' and that no band shows. The viewer's words and
 figure sit at the row's right in their money tone as text only. An open inline
@@ -1128,7 +1131,16 @@ Where it is used:
   plain muted text (an unmatched one keeps its pill). The person's colour edge
   stays on every row. The day header is a hairline divider (small caps date,
   rule, "Daily net" and the refresh button at the right) and a day's rows sit
-  in one rounded white group. A phone row is 68 px or more (icon, category,
+  in one rounded white group. The day header is not a box: it is sticky and
+  paints `--page` (the panel behind the list), so at rest no lighter band or
+  square corner shows above the group in any colour preset or mode. Stuck at
+  the top of the screen, the last 12 px of its padding fade to transparent
+  (a linear gradient from the same colour, no blur, no border or shadow), so
+  rows slide away softly instead of under a hard rectangle; this is CSS only,
+  with no scroll listener. A fade was chosen over an inset translucent bar
+  because it adds no second shape to line up with the group's radius.
+  `tests/e2e/date-row-flat.spec.js` samples pixels at rest in every preset and
+  mode, on Entries and Splits, desktop and phone. A phone row is 68 px or more (icon, category,
   merchant and amount, wallet, chips), a wide row keeps the three columns.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
   dialog in the phone sheet and the wide dialog, and in the list). Selecting a

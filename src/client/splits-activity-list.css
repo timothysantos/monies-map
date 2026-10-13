@@ -24,11 +24,21 @@
 
 .panel-splits .split-list-section .split-date-header {
   gap: 10px;
+  --date-fade: 12px;
   margin: 0;
-  padding: 14px 2px 8px;
+  padding: 14px 2px var(--date-fade);
   border: 0;
   border-radius: 0;
-  background: var(--splits-surface);
+  /* The panel's own flat colour, so no band shows at rest; stuck under the
+     top of the screen the foot fades out (as on an Entries day label). No
+     blur, which would draw a rectangle again. */
+  background: linear-gradient(
+    to bottom,
+    var(--splits-surface) calc(100% - var(--date-fade)),
+    color-mix(in srgb, var(--splits-surface) 55%, transparent) calc(100% - var(--date-fade) / 2),
+    transparent
+  );
+  backdrop-filter: none;
   color: rgb(var(--on-strong-rgb) / 0.88);
   font-size: 0.8rem;
 }
@@ -132,7 +142,7 @@
 
   .panel-splits .split-list-section .split-date-header {
     margin-inline: 0;
-    padding: 14px 2px 8px;
+    padding: 14px 2px var(--date-fade);
     /* Paint containment would clip the refresh button's 44 px hit area at
        the header's 2px side padding; the header is still its own layer
        through the translate3d set in splits-route.css. */

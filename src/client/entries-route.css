@@ -437,14 +437,26 @@
   overflow: visible;
 }
 
+/* The day label is not a box: it paints the page's own colour (--page, the
+   panel behind the list), so at rest no band shows above the rounded group.
+   Stuck under the top of the screen, the last --date-fade of its padding
+   fades to nothing, so the rows slide away softly instead of being cut by
+   a hard edge. No blur: a blurred layer would draw a rectangle again. */
 .entries-date-head {
+  --date-fade: 12px;
   align-items: center;
   gap: 10px;
   margin: 0;
-  padding: 18px 2px 8px;
+  padding: 18px 2px var(--date-fade);
   border: 0;
   border-radius: 0;
-  background: rgb(var(--paper-rgb) / 0.9);
+  background: linear-gradient(
+    to bottom,
+    var(--page) calc(100% - var(--date-fade)),
+    color-mix(in srgb, var(--page) 55%, transparent) calc(100% - var(--date-fade) / 2),
+    transparent
+  );
+  backdrop-filter: none;
 }
 
 .entries-date-head > strong {
@@ -544,7 +556,7 @@
     width: auto;
     max-width: 100%;
     margin: 0;
-    padding: 16px 2px 8px;
+    padding: 16px 2px var(--date-fade);
     transform: none;
     backface-visibility: visible;
     contain: none;
