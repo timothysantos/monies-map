@@ -29,7 +29,7 @@ provider-status; no write was sent to production).
 | F3 | Medium | AI wording check accepted a made-up dollar amount that shared digits with a day or a percentage, and amounts written in words | Fixed |
 | F4 | Medium | Request bodies were only bounded when the client declared a length; chunked uploads were read whole | Fixed |
 | F5 | Low | `/api/entries/create` stored any date, fractional or huge amount and unbounded text | Fixed |
-| F6 | Medium | The Worker trusts the Access identity header and has no Access token check of its own; `AI_ALERT_EMAILS="*"` then means anyone who reaches the Worker | Open: owner decision (needs Access settings) |
+| F6 | Medium | The Worker trusts the Access identity header and has no Access token check of its own; `AI_ALERT_EMAILS="*"` then means anyone who reaches the Worker | In progress: token check shipped in report mode; enforce after the owner confirms the logs |
 | F7 | Low | The remaining write routes in `src/index.ts` (about 70 `request.json()` calls) read unbounded bodies | Open |
 | F8 | Low | Error messages return internal text (`message` on 500s, `error.message` on 400s) | Open |
 | F9 | Low | AI wording is checked for numbers, sums, names and banned phrases but not for other lower-case text | Open (accepted) |
@@ -143,6 +143,33 @@ domain): verify the Access JWT in the Worker (RS256 against the team's
 JWKS), take the email from it, and answer 401 without it in production. Not
 done here because it needs configuration only the owner has and a wrong
 setting would lock the app out.
+
+Fix (2026-10-13, `src/server/access-jwt.ts`, called first in `fetch` after
+the shortcut gateway checks): the Worker verifies `Cf-Access-Jwt-Assertion`
+(or the `CF_Authorization` cookie) with WebCrypto RS256 against
+`https://<team>/cdn-cgi/access/certs` (keys cached per isolate for 10
+minutes; a token with an unknown key id refetches once, at most once a
+minute; a failed refresh keeps the last keys), and checks `aud` contains
+`ACCESS_AUD`, `iss` is `https://<team>`, and `exp`/`nbf` within 60 seconds of
+clock difference. A verified token's email is the viewer
+(`getAuthenticatedEmail`); the plain identity header is ignored. Mode
+`ACCESS_JWT_MODE`: unset/`off` (demo, test, the shortcuts Worker, local
+`npm run dev:api`), `report` (log one line per request, `access-jwt
+mode=report result=ok|fail reason=...`, with running counts, and serve as
+before; a failed token falls back to the header so nothing changes for the
+household), `enforce` (401 JSON for `/api/`, a plain 403 page otherwise).
+Production ships `report` with the team domain and AUD tag in
+`wrangler.jsonc`; switching to `enforce` is the owner's call after real
+requests verify in `wrangler tail`.
+
+Exemptions: `POST /api/shortcuts/entries/create` keeps its own signed-token
+check (`authenticateShortcutRequest`) and is not asked for an Access token.
+The `monies-map-shortcuts` Worker runs the same code with no Access vars, so
+its mode is off. Static files and page navigations are answered by the
+assets layer without running the Worker (no `run_worker_first`, and
+navigations prefer assets since the 2025-04-01 compatibility date), so they
+stay protected by Access at the edge only, and hold no data. Tests:
+`tests/access-jwt.test.mjs`, `tests/deploy-config.test.mjs`.
 
 ### F7 to F18 Notes
 

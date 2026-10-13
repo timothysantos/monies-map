@@ -25,7 +25,7 @@
     "pretest:e2e:smoke": "node ./scripts/ensure-node-major.mjs 22.23.0",
     "pretest:e2e:smoke:serial": "node ./scripts/ensure-node-major.mjs 22.23.0 && npm run db:migrate:test",
     "dev": "concurrently -k -n API,UI \"npm:dev:api\" \"npm:dev:ui\"",
-    "dev:api": "wrangler dev --port 8787",
+    "dev:api": "wrangler dev --port 8787 --var ACCESS_JWT_MODE:off",
     "dev:api:test": "wrangler dev --config wrangler.test.jsonc --port 8787",
     "dev:test": "npm run db:migrate:test && npm run dev:test:servers",
     "dev:test:servers": "concurrently -k -n API,UI \"npm:dev:api:test\" \"npm:dev:ui\"",

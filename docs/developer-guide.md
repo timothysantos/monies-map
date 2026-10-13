@@ -226,8 +226,20 @@ The Worker is configured as a single-page app, so refreshing nested routes such
 as `/entries` should reload the React app instead of returning a Cloudflare 404.
 
 Before using real household data, protect the Worker with Cloudflare Access. The
-app reads Cloudflare Access identity headers and can link a signed-in email to a
+app reads the signed-in email from Cloudflare Access and can link it to a
 household member, but it does not implement standalone OAuth itself.
+
+Production also checks the Access token itself (`src/server/access-jwt.ts`):
+`ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` (the Access application's AUD tag) in
+`wrangler.jsonc`, and `ACCESS_JWT_MODE`. `report` verifies every API request
+and logs one `access-jwt` line per request without refusing anything (watch
+it with `npx wrangler tail monies-map --format pretty`); `enforce` refuses a
+request without a valid token (401 JSON for `/api/`). With verification on,
+the viewer's email comes only from the verified token. Demo, test, the
+shortcuts Worker and local `npm run dev:api` (which passes
+`--var ACCESS_JWT_MODE:off`) leave it off. If Access is ever reconfigured
+(a new application or team), update both values before deploying, or a
+switch to `enforce` would lock everyone out.
 
 The fastest Access setup is one-time PIN email auth, restricted to:
 
