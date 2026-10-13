@@ -1080,6 +1080,40 @@ Rules:
   conversation
 - nothing about a question, its facts or its answer is stored on the server
 
+### Insight Question
+
+"Ask about this" on a Money insights line: Ask is asked "Explain: <the
+line>" and answers with the insight's own facts (`docs/flows/ask-flow.md`
+"Insight questions"; `src/client/ask-insight-answer.js`).
+
+Canonical terms:
+- `basis` (`SignalBasis`, `src/domain/money-signals/types.ts`): what a
+  signal is based on, given by its builder: `lines` (a plain label with an
+  amount the signal already worked out, or a short text value such as a
+  wallet, a month or a date), the `entries` behind it (their ids, or a
+  month with a category, a wallet or an entry type), and the `month` or
+  Splits `groupId` it is about. Every signal that can lead the check-in or
+  sit under Also has one; trivia and the long view do not
+- `insight question`: the line as it was shown, its think line, the
+  signal's primary figure and its basis, with the view, scope and month
+  the page was showing
+- `insight answer`: the card built from that alone (no request): the line,
+  the figure it is about, the think line, the basis lines, the entries
+  (through the Entries page's own filter) and `links`: Open in Entries,
+  then the kind's follow-ups
+- `insight explanation`: optional AI words (`POST
+  /api/ai-assist/insight-explain`), one to three sentences from the
+  insight's own facts only, shown only when they pass the Ask answer check
+
+Rules:
+- a basis line is a figure the signal already computed, never a new one;
+  the card never shows a figure the line's page could not
+- no forecast and no safe-to-spend: the follow-ups are pages and the money
+  questions Ask already answers (with their check before an answer)
+- AI only on the person's tap; personal numbers (six or more digits,
+  NRIC / FIN shapes) are removed before the prompt; nothing is stored but
+  the allowance counter
+
 
 ### Entry Card
 

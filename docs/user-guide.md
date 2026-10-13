@@ -719,6 +719,10 @@ mark. Nothing you ask is kept once you close the tab.
 Other questions, such as "should I buy a car?", aren't answered; Ask says
 so.
 
+To have a Money insights line explained, select **Ask about this** under it
+([Use Money insights](#use-money-insights)). On a phone Ask opens; on a
+computer it opens beside the page you are on.
+
 ### Ask on a computer
 
 On a computer there is no Ask tab. Every screen has a box at the bottom
@@ -1801,6 +1805,18 @@ back a shared balance ("settling up").
    shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
+4. Select **Ask about this** under a line (or, on the folded card, at the
+   right of its title) to have it explained on [Ask](#ask): the question
+   "Explain: …" and a card with what the line is based on (the amounts,
+   wallets, months and dates it used), the entries behind it, and the
+   line under it. Its buttons open the right place: **Open in Entries**
+   for exactly those entries, and, depending on the line, **Compare with
+   the statement**, **Open Month**, **Open Splits** or a question Ask
+   already answers, such as "How am I doing against the plan?". When
+   Claude is set up it may add a sentence or two in its own words, using
+   only those figures, marked **Worded by AI**. With money totals hidden
+   there is no **Ask about this**, and an answer already on Ask hides its
+   figures and words.
 
 Money insights can be folded. Under the title, a card shows the
 first thing worth knowing (a **To do** comes first): its label, its headline

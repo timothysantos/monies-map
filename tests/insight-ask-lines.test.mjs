@@ -169,3 +169,15 @@ test("an insight's entries by id ride the Entries URL, show the From Ask chip, a
   // A check-in link's entry ids without from_ask are not "from Ask".
   assert.equal(hasAskFilterChip(new URLSearchParams("entry_id=txn-1")), false);
 });
+
+// The first screen keeps no Ask code: the insights only send an event, and
+// the shell's launcher opens Ask through the dock it already has.
+test("the insights and the shell's launcher import no Ask page code", async () => {
+  const { readFileSync } = await import("node:fs");
+  const importsOf = (file) => [...readFileSync(new URL(`../src/client/${file}`, import.meta.url), "utf8").matchAll(/^import[^;]*?from "([^"]+)"/gms)].map((match) => match[1]);
+  for (const file of ["financial-insight.jsx", "insight-ask-event.js", "use-insight-ask-launcher.js"]) {
+    const imports = importsOf(file);
+    assert.deepEqual(imports.filter((path) => /ask-(panel|insight|api|chips|conversation|dock-panel|dock-state)/.test(path)), [], file);
+  }
+  assert.deepEqual(importsOf("use-insight-ask-launcher.js"), ["react", "./app-routing", "./ask-dock", "./insight-ask-event", "./use-viewport"]);
+});
