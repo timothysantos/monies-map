@@ -12,13 +12,13 @@ test("person splits view tones lent and borrowed amounts with income and expense
   await expect(page.locator("article.panel-splits")).toBeVisible();
   const lentCard = page.locator(".split-activity-card").filter({ hasText: "Family support" }).first();
   await expect(lentCard.getByText("you lent")).toBeVisible();
-  await expect(lentCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(76, 94, 26)"); // --pastel-mint-ink
+  await expect(lentCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(74, 92, 34)"); // --pastel-mint-ink
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
   await expect(page.locator("article.panel-splits")).toBeVisible();
   const borrowedCard = page.locator(".split-activity-card").filter({ hasText: "Family support" }).first();
   await expect(borrowedCard.getByText("you borrowed")).toBeVisible();
-  await expect(borrowedCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(151, 50, 35)"); // --pastel-rose-ink
+  await expect(borrowedCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(147, 54, 41)"); // --pastel-rose-ink
 });
 
 test("split editor can choose the odd-cent recipient explicitly", async ({ page }) => {

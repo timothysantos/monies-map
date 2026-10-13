@@ -73,9 +73,9 @@ test("status surfaces use the pastel fills and inks at AA", async ({ page }) => 
       return [name, { color: style.color, background: style.backgroundColor }];
     }));
   });
-  const MINT = { background: "rgb(232, 235, 208)", color: "rgb(76, 94, 26)" };
-  const ROSE = { background: "rgb(245, 222, 212)", color: "rgb(151, 50, 35)" };
-  const SKY = { background: "rgb(214, 231, 226)", color: "rgb(44, 95, 95)" };
+  const MINT = { background: "rgb(229, 233, 213)", color: "rgb(74, 92, 34)" };
+  const ROSE = { background: "rgb(243, 224, 217)", color: "rgb(147, 54, 41)" };
+  const SKY = { background: "rgb(216, 230, 227)", color: "rgb(45, 93, 94)" };
   expect(looks.demoBanner).toEqual(SKY);
   expect(looks.localBanner).toEqual(MINT);
   expect(looks.tabBadge).toEqual(ROSE);

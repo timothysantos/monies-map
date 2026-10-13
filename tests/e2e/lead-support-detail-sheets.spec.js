@@ -14,7 +14,7 @@ import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers
 
 const PHONE = { width: 390, height: 664 };
 const MONTH = "2026-05";
-const INK = { text: "rgb(59, 42, 31)", rose: "rgb(151, 50, 35)" };
+const INK = { text: "rgb(53, 43, 36)", rose: "rgb(147, 54, 41)" };
 
 async function phone(page, { hidden = false } = {}) {
   await page.addInitScript((value) => window.localStorage.setItem("monies-map:money-totals-visible", value), hidden ? "false" : "true");

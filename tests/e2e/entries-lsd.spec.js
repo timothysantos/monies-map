@@ -17,10 +17,10 @@ import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
 
 const MONTH = "2026-05";
 const INK = {
-  in: "rgb(76, 94, 26)",
-  short: "rgb(151, 50, 35)",
-  text: "rgb(59, 42, 31)",
-  muted: "rgb(110, 95, 84)"
+  in: "rgb(74, 92, 34)",
+  short: "rgb(147, 54, 41)",
+  text: "rgb(53, 43, 36)",
+  muted: "rgb(106, 95, 87)"
 };
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
 const PHONE = { width: 390, height: 664 };

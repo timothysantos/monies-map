@@ -11,7 +11,7 @@ const MONTH = "2026-05";
 const MONTH_URL = `/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`;
 const SUMMARY_RANGE = { view: "person-tim", month: MONTH, summaryStart: "2025-06", summaryEnd: MONTH };
 const SUMMARY_URL = `/summary?view=person-tim&month=${MONTH}&scope=direct_plus_shared&summary_start=2025-06&summary_end=${MONTH}`;
-const INK = { in: "rgb(76, 94, 26)", short: "rgb(151, 50, 35)", plan: "rgb(44, 95, 95)", text: "rgb(59, 42, 31)" };
+const INK = { in: "rgb(74, 92, 34)", short: "rgb(147, 54, 41)", plan: "rgb(45, 93, 94)", text: "rgb(53, 43, 36)" };
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 // The phone the owner tests on; the WebKit run (npm run test:e2e:webkit)
 // uses the same profile in WebKit.

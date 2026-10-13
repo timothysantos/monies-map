@@ -86,7 +86,7 @@ test.describe("the Claude credit notice on a phone @webkit", () => {
     const box = notice(page);
     await expect(box).toHaveText(/Claude credits are running low: about \$16\.40 of \$20 used\. Ask still works\./);
     await expect(box).toHaveAttribute("data-credit-state", "low");
-    await expect(box).toHaveCSS("background-color", "rgb(245, 228, 184)");
+    await expect(box).toHaveCSS("background-color", "rgb(241, 230, 198)");
     // At the top of the conversation, before anything else in it.
     const firstInThread = await page.locator(".ask-thread > *").first().getAttribute("class");
     expect(firstInThread).toContain("claude-credit-notice");
@@ -116,7 +116,7 @@ test.describe("the Claude credit notice on a phone @webkit", () => {
     stub.state = "exhausted";
     await openAsk(page);
     await expect(notice(page)).toHaveText(/Claude credits are used up, so Ask is using the basic model for now\./);
-    await expect(notice(page)).toHaveCSS("background-color", "rgb(245, 222, 212)");
+    await expect(notice(page)).toHaveCSS("background-color", "rgb(243, 224, 217)");
   });
 
   test("I've topped up opens the app's own sheet with the number keypad; a bad amount is refused, a good one is posted and the notice clears", async ({ page }) => {

@@ -17,7 +17,7 @@ const MONTH = "2026-05";
 const RANGE = { start: "2025-06", end: MONTH };
 const MONTH_URL = `/month?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
 const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
-const INK = { in: "rgb(76, 94, 26)", short: "rgb(151, 50, 35)", plan: "rgb(44, 95, 95)", text: "rgb(59, 42, 31)", muted: "rgb(110, 95, 84)" };
+const INK = { in: "rgb(74, 92, 34)", short: "rgb(147, 54, 41)", plan: "rgb(45, 93, 94)", text: "rgb(53, 43, 36)", muted: "rgb(106, 95, 87)" };
 const SIGN_WORDING = /\b(To allocate|Overplanned|over plan|under plan|% of plan)\b|[-−]\s?••••/;
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 const monthLabel = (month) => new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`)).replace(/\bSept\b/, "Sep");
