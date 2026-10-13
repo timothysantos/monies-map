@@ -115,6 +115,10 @@ a doc here in the same change.
   Ask's answers to money questions: rules, the skew check first, facts from
   the screens' DTOs, and the validated optional AI wording (privacy, cost,
   writes, no-AI behaviour).
+- [`audits/ask-planning-audit.md`](audits/ask-planning-audit.md):
+  planning by chat (plan drafts saved in one batch) and Intent vs Outcome
+  answers on Ask: rules first, the optional AI reading only into the same
+  draft (privacy, cost, writes, no-AI behaviour).
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):

@@ -366,11 +366,53 @@ question (docs/flows/ask-flow.md "Money questions"):
   plan or the other month small under it). Hidden money replaces the words
   and rows with "Reveal money totals to read these insights."
 
+The plan answer is Intent vs Outcome (round-2 mockups `chat-intent-*`):
+under its lead bar it draws the Month and Summary lead's `SavingsBar`
+(ui/savings-bar.jsx) from the answer's `outcome` (income received, Actual
+spend, Planned spend, Savings target), so the card and Month show one
+picture. A quarter's answer ("did we stick to the plan in Q3?") is titled
+"July to September against plan" and lists each month against its plan
+before the plan rows.
+
 The check before an answer is the same card with the butter "Check this
 first" tag over the head ("Serene → Ethan" or the two accounts, the bank
 description muted, the amount in plain ink) and one plain paragraph; its
 chips are Mark as settlement or Link as transfer (filled) and It's real
 spending. Once answered it stays in the thread, faded.
+
+### Plan draft
+
+`ask-plan-draft-card.jsx` (round-2 mockups `chat-plan*`; docs/flows/
+ask-flow.md "Planning by chat"): a draft of a change to a month's plan, on
+the shared blocks, with its own actions under it rather than in the chip
+row (the composer stays free for the next request):
+
+- Tag: butter "Draft" (mint "Saved" once saved); "Read by AI" with the
+  sparkle beside it when the optional AI read the request.
+- Lead: the category's bubble and "Groceries plan" with the month in the
+  category colour, the new amount in sky and "was $650.00" (or "New
+  line") under it; a move is a neutral arrows bubble, "Move $50.00" and
+  "Shopping to Groceries"; a copy a neutral copy bubble, "November 2026
+  plan", "Like September 2026" and the planned spend.
+- Support: the view's person chip (or Household) and the month; a move
+  that keeps planned spend says so in a sky chip.
+- Detail: read-only rows, each changed line "$650.00 → $700.00" (the old
+  figure muted, the new one sky; six rows, then "N more lines" folding the
+  rest), then Planned income, Planned spend and Remaining budget the same
+  way, Remaining rose below zero. The plan-balance warning, when there is
+  one, is a rose attention line under the rows.
+- Actions: `BottomActions` with Discard (quiet) and Save plan (primary).
+  Saved, the rows become See it on Month and Undo this change.
+- Hidden money: dots for every amount, no "was" figure, no warning, no
+  tones.
+
+Its logic lives in plain modules: `plan-draft-reader.ts` (rules, shared
+with the route), `plan-draft.ts` (resolution, server), `ask-api.js`
+(`requestPlanDraft`, `applyPlanChanges`, `readPlanDraftResponse`),
+`ask-chips.js` (`buildPlanQuestionChips` for its questions) and
+`copy/ask-plan-copy.js` (its words, kept out of `ask-copy.js`, which
+Entries and Splits also load). The draft lives in the Ask conversation
+store as a `plan-draft` thread item.
 
 ### Bottom chips
 
@@ -408,7 +450,11 @@ while the card is active.
 - after a money answer (`buildMoneyChips`): its links (Open in Entries,
   Open Month or Open Splits, the first filled), then the same as after an
   answer; an open check before an answer: only Mark as settlement (or Link
-  as transfer, filled) and It's real spending.
+  as transfer, filled) and It's real spending;
+- while a plan draft asks something (`buildPlanQuestionChips`): only its
+  options (months as "November 2026", lines by name, with whose when two
+  share a name, or the people and Shared), with the question above the
+  row. A plan draft itself leaves the usual chips.
 
 ### Ask origin
 

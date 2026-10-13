@@ -41,6 +41,7 @@ import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../ty
 import { json } from "./json";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleAskAnswer } from "./ask-answer-route";
+import { handlePlanDraft } from "./plan-draft-route";
 import { handleReceiptRead } from "./receipt-read-route";
 import { handleTranscribe } from "./transcribe-route";
 
@@ -103,6 +104,15 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
       return json({ ok: false, error: "The answer route only answers POST." }, 405, { Allow: "POST" });
     }
     return handleAskAnswer(request, env);
+  }
+
+  // Ask's plan draft: rules first; AI only reads a request the rules could
+  // not, into the same structure; nothing is written (plan-draft-route.ts).
+  if (url.pathname === "/api/ai-assist/plan-draft") {
+    if (request.method !== "POST") {
+      return json({ ok: false, error: "The plan draft route only answers POST." }, 405, { Allow: "POST" });
+    }
+    return handlePlanDraft(request, env);
   }
 
   if (url.pathname === "/api/ai-assist/receipt-read" && request.method === "POST") {

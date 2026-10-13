@@ -115,6 +115,56 @@ test("how am I doing against the plan: Month's cards and the plan rows that went
   assert.equal(payload.wording.text, "May came to $4,697.36, $2,565.73 under the $7,263.09 you planned. Groceries went furthest over, at $723.41 against $620.00 planned. Income was $14,669.48 against $13,500.00 planned.");
 });
 
+test("how did April go: intent against outcome with the Month lead's figures and the savings bar's", async (t) => {
+  const { api } = await openSeededDatabase(t, showcase);
+  const payload = await ask(api, "how did April go?", { viewId: ETHAN });
+  const april = await get(api, `/api/month-page?view=${ETHAN}&month=2026-04&scope=direct_plus_shared`);
+  assert.equal(payload.intent, "plan");
+  assert.deepEqual(payload.months, ["2026-04"]);
+  assert.equal(payload.answer.title, "April against plan");
+  assert.equal(payload.answer.lead.amountMinor, card(april.monthPage.metricCards, "Actual spend"));
+  assert.equal(payload.answer.lead.planMinor, card(april.monthPage.metricCards, "Planned spend"));
+  // The figures the Month lead's savings bar draws, each the page's own.
+  assert.deepEqual(payload.answer.outcome, {
+    incomeMinor: april.summaryPage.months[0].actualIncomeMinor,
+    spentMinor: card(april.monthPage.metricCards, "Actual spend"),
+    plannedSpendMinor: card(april.monthPage.metricCards, "Planned spend"),
+    savingsTargetMinor: card(april.monthPage.metricCards, "Savings target")
+  });
+  assert.deepEqual(payload.answer.links.map((link) => [link.kind, link.label, link.month ?? link.filter?.month]), [["month", "Open Month", "2026-04"], ["entries", "Open in Entries", "2026-04"]]);
+  assert.equal(payload.wording.source, "template");
+});
+
+test("did we stick to the plan in Q2: each month against its plan, their sum, and Month for the last month", async (t) => {
+  const { api, db } = await openSeededDatabase(t, showcase);
+  const before = await dumpDatabase(db);
+  const payload = await ask(api, "did we stick to the plan in Q2 2026?");
+  // June is not in the showcase yet (Month would show May for it): it adds nothing.
+  const tracked = await Promise.all(["2026-04", "2026-05"].map((month) => get(api, `/api/month-page?view=household&month=${month}&scope=direct_plus_shared`)));
+  assert.deepEqual(tracked.map((page) => page.monthPage.month), ["2026-04", "2026-05"]);
+  const sum = (label) => tracked.reduce((total, page) => total + card(page.monthPage.metricCards, label), 0);
+  assert.equal(payload.intent, "plan");
+  assert.deepEqual(payload.months, ["2026-04", "2026-05", "2026-06"]);
+  assert.equal(payload.answer.title, "April to June against plan");
+  assert.equal(payload.answer.lead.amountMinor, sum("Actual spend"));
+  assert.equal(payload.answer.lead.planMinor, sum("Planned spend"));
+  assert.deepEqual(payload.answer.outcome, {
+    incomeMinor: tracked.reduce((total, page) => total + page.summaryPage.months[0].actualIncomeMinor, 0),
+    spentMinor: sum("Actual spend"),
+    plannedSpendMinor: sum("Planned spend"),
+    savingsTargetMinor: sum("Savings target")
+  });
+  // June has nothing yet, so only April and May are lines, then plan rows.
+  assert.deepEqual(payload.answer.lines.slice(0, 2).map((line) => [line.label, line.amountMinor, line.secondary.amountMinor]), tracked.map((page, index) => [
+    ["April", "May"][index],
+    card(page.monthPage.metricCards, "Actual spend"),
+    card(page.monthPage.metricCards, "Planned spend")
+  ]));
+  assert.deepEqual(payload.answer.links, [{ kind: "month", label: "Open Month", month: "2026-06", viewId: "household", scope: "direct_plus_shared" }]);
+  assert.match(payload.wording.text, /^April to June came to \$[\d,]+\.\d\d, \$[\d,]+\.\d\d (more than|under) the \$[\d,]+\.\d\d you planned\./);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
 test("compare March with February: both months' spend and the categories that moved most", async (t) => {
   const { api } = await openSeededDatabase(t, showcase);
   const payload = await ask(api, "compare March with February");
