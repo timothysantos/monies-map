@@ -29,7 +29,7 @@ provider-status; no write was sent to production).
 | F3 | Medium | AI wording check accepted a made-up dollar amount that shared digits with a day or a percentage, and amounts written in words | Fixed |
 | F4 | Medium | Request bodies were only bounded when the client declared a length; chunked uploads were read whole | Fixed |
 | F5 | Low | `/api/entries/create` stored any date, fractional or huge amount and unbounded text | Fixed |
-| F6 | Medium | The Worker trusts the Access identity header and has no Access token check of its own; `AI_ALERT_EMAILS="*"` then means anyone who reaches the Worker | In progress: token check shipped in report mode; enforce after the owner confirms the logs |
+| F6 | Medium | The Worker trusts the Access identity header and has no Access token check of its own; `AI_ALERT_EMAILS="*"` then means anyone who reaches the Worker | Fixed: token check enforced in production since 2026-10-13 (ran in report mode first; owner requests verified) |
 | F7 | Low | The remaining write routes in `src/index.ts` (about 70 `request.json()` calls) read unbounded bodies | Open |
 | F8 | Low | Error messages return internal text (`message` on 500s, `error.message` on 400s) | Open |
 | F9 | Low | AI wording is checked for numbers, sums, names and banned phrases but not for other lower-case text | Open (accepted) |
@@ -123,7 +123,7 @@ so it is the last gate. Fix: `src/domain/entry-create-validation.ts`
 2,000 characters, the Shortcut's limits). Test F5 fails on the old code and
 also proves a real entry with an `ask:` reference still saves.
 
-### F6 Access is trusted, not verified (Medium, open)
+### F6 Access is trusted, not verified (Medium, fixed)
 
 Evidence: `getAuthenticatedEmail` reads `CF-Access-Authenticated-User-Email`
 and nothing checks the `Cf-Access-Jwt-Assertion` token. Live check, three
@@ -158,9 +158,10 @@ clock difference. A verified token's email is the viewer
 mode=report result=ok|fail reason=...`, with running counts, and serve as
 before; a failed token falls back to the header so nothing changes for the
 household), `enforce` (401 JSON for `/api/`, a plain 403 page otherwise).
-Production ships `report` with the team domain and AUD tag in
-`wrangler.jsonc`; switching to `enforce` is the owner's call after real
-requests verify in `wrangler tail`.
+Production ships `enforce` with the team domain and AUD tag in
+`wrangler.jsonc` (it ran in `report` first and every real owner request
+verified in `wrangler tail`). To roll back, set `ACCESS_JWT_MODE` to
+`report` and redeploy.
 
 Exemptions: `POST /api/shortcuts/entries/create` keeps its own signed-token
 check (`authenticateShortcutRequest`) and is not asked for an Access token.

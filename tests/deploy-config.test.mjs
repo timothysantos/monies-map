@@ -57,13 +57,13 @@ test("production configures 100 daily AI allowance units and the Worker honours 
 });
 
 // Security review F6: production checks the Access token itself
-// (src/server/access-jwt.ts), in report mode until the owner has seen real
-// requests verify. The demo, test and shortcuts Workers have no Access in
+// (src/server/access-jwt.ts), in enforce mode (it ran in report mode until
+// real owner requests verified). The demo, test and shortcuts Workers have no Access in
 // front and leave it off, and so does local `npm run dev:api`.
 test("only production checks the Access token, against its own team and app tag", async () => {
   const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8").then(JSON.parse);
   const appConfig = await read("wrangler.jsonc");
-  assert.equal(appConfig.vars.ACCESS_JWT_MODE, "report");
+  assert.equal(appConfig.vars.ACCESS_JWT_MODE, "enforce");
   assert.equal(appConfig.vars.ACCESS_TEAM_DOMAIN, "monies-map.cloudflareaccess.com");
   assert.match(appConfig.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
   for (const name of ["wrangler.demo.jsonc", "wrangler.test.jsonc", "wrangler.shortcuts.jsonc"]) {

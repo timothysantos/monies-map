@@ -231,15 +231,17 @@ household member, but it does not implement standalone OAuth itself.
 
 Production also checks the Access token itself (`src/server/access-jwt.ts`):
 `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` (the Access application's AUD tag) in
-`wrangler.jsonc`, and `ACCESS_JWT_MODE`. `report` verifies every API request
-and logs one `access-jwt` line per request without refusing anything (watch
-it with `npx wrangler tail monies-map --format pretty`); `enforce` refuses a
-request without a valid token (401 JSON for `/api/`). With verification on,
+`wrangler.jsonc`, and `ACCESS_JWT_MODE`. Production runs `enforce`: a request without a valid token is refused (401
+JSON for `/api/`). `report` verifies every API request and logs one
+`access-jwt` line per request without refusing anything (watch it with
+`npx wrangler tail monies-map --format pretty`). To roll back if the check
+ever locks the household out, set `ACCESS_JWT_MODE` to `"report"` in
+`wrangler.jsonc` and redeploy. With verification on,
 the viewer's email comes only from the verified token. Demo, test, the
 shortcuts Worker and local `npm run dev:api` (which passes
 `--var ACCESS_JWT_MODE:off`) leave it off. If Access is ever reconfigured
-(a new application or team), update both values before deploying, or a
-switch to `enforce` would lock everyone out.
+(a new application or team), update both values before deploying, or
+`enforce` would lock everyone out.
 
 The fastest Access setup is one-time PIN email auth, restricted to:
 

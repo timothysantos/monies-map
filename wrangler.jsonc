@@ -12,7 +12,7 @@
     "AI_GATEWAY_ID": "monies-map",
     "AI_GATEWAY_BYOK_ALIAS": "monies-map-claude-api-key",
     "AI_ALERT_EMAILS": "*",
-    "ACCESS_JWT_MODE": "report",
+    "ACCESS_JWT_MODE": "enforce",
     "ACCESS_TEAM_DOMAIN": "monies-map.cloudflareaccess.com",
     "ACCESS_AUD": "ba1c793a22b98b1c6f443294bd369b69d3f32a934d42556ded11053002e36364"
   },
