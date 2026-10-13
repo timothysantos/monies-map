@@ -1577,8 +1577,18 @@ export interface AskAnswerCardDto {
   links: AskAnswerLinkDto[];
   // Intent against outcome (the plan answer): the figures the Month and
   // Summary savings bar draws, the Month cards' own (income received,
-  // Actual spend, Planned spend, Savings target).
-  outcome?: { incomeMinor: number; spentMinor: number; plannedSpendMinor: number; savingsTargetMinor: number };
+  // Actual spend, Planned spend, Savings target) and the money jobs' (money
+  // moved to Investments and Savings, the plan's Investments rows), split by
+  // the shared splitMoneyUse as the Month lead splits them.
+  outcome?: {
+    incomeMinor: number;
+    spentMinor: number;
+    plannedSpendMinor: number;
+    savingsTargetMinor: number;
+    investedMinor: number;
+    savedMovedMinor: number;
+    plannedInvestMinor: number;
+  };
 }
 
 export interface AskAnswerResponseDto {
@@ -1595,6 +1605,16 @@ export interface AskAnswerResponseDto {
   answer?: AskAnswerCardDto;
   wording?: { text: string; source: "template" | "ai" };
   ai?: { requested: boolean; available: boolean; reason?: string; remaining?: number };
+}
+
+// The optional AI explanation on an insight question (POST
+// /api/ai-assist/insight-explain): null when AI is off, out of allowance or
+// its phrasing failed the check. The insight card's facts never come from
+// here.
+export interface InsightExplainResponseDto {
+  ok: true;
+  explanation: { text: string; source: "ai" } | null;
+  ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
 }
 
 // A plan draft (DOMAIN.md "Plan Draft", POST /api/ai-assist/plan-draft):

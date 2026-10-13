@@ -310,6 +310,54 @@
   justify-self: start;
 }
 
+/* The insight answer (ask-insight-answer-card.jsx): the kind chip and any
+   "Worded by AI" tag in one row, the think line, then what it's based on
+   and the entries behind it, as the money answer's lines. */
+.ask-insight-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ask-insight-answer .ask-answer-title {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.ask-insight-answer p.ask-insight-fact {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.ask-insight-think {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.ask-insight-k {
+  margin-top: 4px;
+}
+
+.ask-insight-basis strong {
+  font-weight: 600;
+  white-space: normal;
+}
+
+.ask-insight-basis .ask-money-line-figures {
+  max-width: 55%;
+}
+
+.ask-insight-status,
+.ask-insight-more {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
 .ask-skew-check[data-skew-check="resolved"],
 .ask-skew-check[data-skew-check="kept"] {
   opacity: 0.72;

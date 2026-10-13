@@ -31,6 +31,11 @@ const ANSWER = { timeout: 30_000 };
 
 const suggestions = (page) => page.getByRole("group", { name: "Suggestions" }).getByRole("button");
 const actualSpend = (monthPage) => monthPage.monthPage.metricCards.find((card) => card.label === "Actual spend").amountMinor;
+// The plan answer reads as the Month lead: its "Spent" leaves out money filed
+// under Investments or Savings (splitMoneyUse), and its plan the savings target.
+const leadSpent = (monthPage) => actualSpend(monthPage) - (monthPage.monthPage.categoryShareChart ?? [])
+  .filter((datum) => /^(investments|savings)$/i.test(String(datum.label).trim()))
+  .reduce((sum, datum) => sum + datum.valueMinor, 0);
 
 // An open settlement between Tim and Joyce, paid by PayNow and filed as
 // spending and income: a high-confidence settle-up skew candidate in May.
@@ -86,7 +91,7 @@ test.describe("money questions on Ask on a phone", () => {
     await send(page, "how am I doing against the plan?");
     const plan = page.locator('[data-ask-money-answer="plan"]');
     await expect(plan).toBeVisible(ANSWER);
-    await expect(plan.locator(".ask-answer-amount")).toHaveText(money(actualSpend(may)));
+    await expect(plan.locator(".ask-answer-amount")).toHaveText(money(leadSpent(may)));
     await expect(plan.locator(".lsd-progress")).toBeVisible();
     await expect(suggestions(page).first()).toHaveText("Open Month");
 
@@ -123,9 +128,10 @@ test.describe("money questions on Ask on a phone", () => {
     await expect(plan).toBeVisible(ANSWER);
     await expect(page.locator('[data-skew-check="resolved"]')).toBeVisible();
 
-    const after = actualSpend(await loadMonthPage(page, { view: "household", month: MONTH }));
+    const afterPage = await loadMonthPage(page, { view: "household", month: MONTH });
+    const after = actualSpend(afterPage);
     expect(after).toBe(before - settle.amountMinor);
-    await expect(plan.locator(".ask-answer-amount")).toHaveText(money(after));
+    await expect(plan.locator(".ask-answer-amount")).toHaveText(money(leadSpent(afterPage)));
     const splits = await loadSplitsPage(page, { view: "person-tim", month: MONTH });
     expect(splits.splitsPage.settlementCheckpoints.find((item) => item.id === settle.checkpointId).status).toBe("matched");
   });

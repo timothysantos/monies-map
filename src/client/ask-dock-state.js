@@ -67,6 +67,8 @@ export function createAskDockStore({ storage = null } = {}) {
     visit: 0
   };
   let handoffFile = null;
+  // An insight question from "Ask about this" (memory only, taken once).
+  let handoffInsight = null;
   let focusPending = false;
   let returnFocusPending = false;
   const listeners = new Set();
@@ -92,11 +94,12 @@ export function createAskDockStore({ storage = null } = {}) {
     getSnapshot() {
       return snapshot;
     },
-    /** A person opened Ask (the field, "/", a dropped photo). */
-    open({ mode = "docked", intent = undefined, focus = true, file = null } = {}) {
+    /** A person opened Ask (the field, "/", a dropped photo, "Ask about this"). */
+    open({ mode = "docked", intent = undefined, focus = true, file = null, insight = null } = {}) {
       focusPending = focus || focusPending;
       returnFocusPending = false;
       if (file) handoffFile = file;
+      if (insight) handoffInsight = insight;
       set({
         open: true,
         openedByHand: true,
@@ -115,6 +118,7 @@ export function createAskDockStore({ storage = null } = {}) {
       focusPending = false;
       returnFocusPending = returnFocus;
       handoffFile = null;
+      handoffInsight = null;
       set({ open: false, ready: false }, { save: true });
     },
     setDraftText(text) {
@@ -123,10 +127,11 @@ export function createAskDockStore({ storage = null } = {}) {
     setReady(ready) {
       if (snapshot.ready !== Boolean(ready)) set({ ready: Boolean(ready) });
     },
-    /** The field's words and a dropped photo, once. */
+    /** The field's words, a dropped photo and an insight question, once. */
     takeHandoff() {
-      const handoff = { text: snapshot.draftText, file: handoffFile };
+      const handoff = { text: snapshot.draftText, file: handoffFile, insight: handoffInsight };
       handoffFile = null;
+      handoffInsight = null;
       if (snapshot.draftText) set({ draftText: "" });
       return handoff;
     },

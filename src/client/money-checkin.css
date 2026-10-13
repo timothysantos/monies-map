@@ -66,6 +66,64 @@
   outline-offset: 3px;
 }
 
+/* "Ask about this" (insight-ask-event.js): a quiet link after the
+   headline (beside its action), at the end of each Also line, and on the
+   folded teaser at the right of the eyebrow row, apart from the fold's
+   own tap. */
+.checkin-ask {
+  min-height: 32px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--accent-strong-rgb) / 0.45);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.checkin-action + .checkin-ask {
+  margin-left: 18px;
+}
+
+.checkin-ask:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.checkin-ask.is-line {
+  min-height: 0;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.financial-insight:has(> .checkin-ask.is-teaser) {
+  position: relative;
+}
+
+.financial-insight:has(> .checkin-ask.is-teaser) > .financial-insight-label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 128px 0 0;
+}
+
+.checkin-ask.is-teaser {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 2px 0 12px;
+  font-size: 0.8rem;
+}
+
 .financial-insight .checkin-fun,
 .financial-insight .checkin-long-view {
   margin-top: 8px;

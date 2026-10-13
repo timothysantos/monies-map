@@ -42,6 +42,7 @@ import { json } from "./json";
 import { readJsonBody, readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleAskAnswer } from "./ask-answer-route";
+import { handleInsightExplain } from "./ask-insight-route";
 import { handlePlanDraft } from "./plan-draft-route";
 import { handleReceiptRead } from "./receipt-read-route";
 import { handleTranscribe } from "./transcribe-route";
@@ -127,6 +128,15 @@ async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv):
       return json({ ok: false, error: "The answer route only answers POST." }, 405, { Allow: "POST" });
     }
     return handleAskAnswer(request, env);
+  }
+
+  // "Ask about this" on a Money insights line: AI may only add a checked
+  // explanation of the insight's own facts (src/server/ask-insight-route.ts).
+  if (url.pathname === "/api/ai-assist/insight-explain") {
+    if (request.method !== "POST") {
+      return json({ ok: false, error: "The insight route only answers POST." }, 405, { Allow: "POST" });
+    }
+    return handleInsightExplain(request, env);
   }
 
   // Ask's plan draft: rules first; AI only reads a request the rules could

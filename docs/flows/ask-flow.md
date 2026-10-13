@@ -26,6 +26,10 @@ Route entry:
   wide screen, in the Ask panel).
 - `/ask?mode=add&from=ask` and `/ask?mode=expense&from=ask`: add mode from the
   chat mode's Add entry and Add expense chips.
+- `/ask?view&month&scope` with `state.askInsight`: a Money insights
+  line's "Ask about this" on a phone (see "Insight questions"). The
+  insight rides in history state, never in the URL, and is dropped from
+  the entry once asked.
 - `/ask?saved_entry=<id>&month=<YYYY-MM>&view=<view>&from=shortcut`: the
   Apple Pay Shortcut's `openUrl` (`buildShortcutEntryOpenUrl` in
   `src/server/shortcut-gateway.ts`). Shortcuts installed earlier keep working:
@@ -384,10 +388,16 @@ through `buildEntriesFilterSearch`, with the From Ask chip), `Open Month`
 (`/splits` with the group of the largest balance), then the usual chips.
 
 The plan answer is Intent vs Outcome (mockups `chat-intent-*`): its lead
-is Actual spend against Planned spend with the plan bar, and under it the
-Month and Summary lead's savings bar (`SavingsBar`, from the answer's
-`outcome`: income received, Actual spend, Planned spend and the Savings
-target, the Month cards' own), then Plan and Income chips, the wording and
+is the Month and Summary lead's own "Spent" and "of $X plan", the spend
+job's figures (`spendJobFacts`, through the shared `splitMoneyUse` in
+`src/domain/money-jobs.ts`: Actual spend less money filed under Investments
+or Savings, against Planned spend less the Savings target and the
+Investments plan rows), with the plan bar; its Plan chip, wording and
+prompt facts use the same two figures. Under it the Month and Summary
+lead's savings bar (`SavingsBar`, from the answer's `outcome`: income
+received, Actual spend, Planned spend, the Savings target, money moved to
+Investments and Savings, and the Investments plan rows, the Month page's
+own, split the same way), then Plan and Income chips, the wording and
 the plan rows that went furthest over. Its links are Open Month and Open in
 Entries. A quarter's answer adds the months up (`combineMonthFacts`), lists
 each month against its plan first, and links Open Month for its last month
@@ -426,6 +436,73 @@ phrasing passes validation (see "Data Flow"). AI words (`source: "ai"`)
 carry the entry card's butter tag, "Worded by AI", above the card's head
 line; the computed wording has no tag, and with money hidden the tag goes
 with the words.
+
+### Insight questions
+
+Each Money insights line with a signal behind it (the headline, each Also
+line, and the folded teaser's top line) has "Ask about this"
+(`financial-insight.jsx`; design.md "Money insights fold", DOMAIN.md
+"Insight Question"). The tap sends the `monies:ask-insight` window event
+(`insight-ask-event.js`) with the line as shown, its think line, the
+signal's primary figure and its `basis` (the figures the signal already
+worked out, with plain labels, and the entries behind it). The shell
+(`use-insight-ask-launcher.js`, App.jsx) adds the view, scope and month
+the page was showing and opens:
+
+- on a phone, `/ask` (chat) as a new history entry with the insight in
+  `state.askInsight`. The page asks it once and replaces the entry without
+  it (a module WeakSet guards StrictMode's second run), so Back, Forward
+  and a reload never ask it again;
+- on a wider screen, the Ask panel beside the page (`openAskDock` with the
+  chat way in and `insight`; the dock store hands it over once, in memory,
+  and the new visit remounts the chat, which takes it). The page stays.
+
+Ask then (`askAboutInsight` in `ask-panel.jsx`), at once and with no
+request: the person's message "Explain: <the line>" (no closing full stop)
+and the insight answer card (`ask-insight-answer.js` builds it,
+`ask-insight-answer-card.jsx` shows it; design.md "Insight answer"): the
+line, the figure it is about (the basis line holding the primary amount),
+the think line, "What it's based on" (the basis lines) and, when entries
+are behind it, "The entries", read from the Entries page DTO of that view
+and month (borrowed from the cache or read through the shell's lease) and
+the Entries page's own filter, so Open in Entries shows the same rows.
+
+The chip row (`findActiveItem` treats it as a money answer): Open in
+Entries first when entries are behind it (`buildEntriesFilterSearch` with
+the entry ids, or a category, wallet or type, and `from_ask=1`; entry ids
+count for the From Ask chip, "2 entries", and its ✕ clears them), then the
+kind's follow-ups:
+
+- statement mismatch: Compare with the statement (`/imports`);
+- plan doesn't add up: Change my plan (planning by chat: " in <Month
+  Year>" goes in the message box with the caret before it, for the person
+  to type the change, "cut shopping by $100", and send; the draft card
+  saves nothing until Save plan), then Open Month;
+- bills not matched or coming up, savings on plan: Open Month;
+- over plan, plan left, pace: Open Month and "How am I doing against the
+  plan?";
+- income above plan or arrived: "How much income came in?";
+- Splits balance, settlement payment: Open Splits (the group) and "Who
+  owes who?"; bank matches: Open Splits;
+- spending above income: Open Month and "Why was <month> so expensive?";
+  a category rising: that question; months under plan: the plan question;
+  the five largest: "What were the biggest expenses?".
+
+A question chip is asked as if typed, through the answer route with its
+check before any figure (see "Money questions"), for the insight's view,
+scope and month.
+
+Then, with the status line "Working that out…", one `POST
+/api/ai-assist/insight-explain` (see "Data Flow"). Only an explanation that
+passed the check is added under the think line, with the "Worded by AI"
+tag; AI off, out of allowance, failing or a phrasing that fails the check
+changes nothing, and the card is complete without it. No forecast and no
+safe-to-spend: the card holds only the insight's own figures.
+
+Hidden money: no "Ask about this" shows. An insight already in the
+conversation reads "Explain this money insight", its title "A money
+insight", its amount masked and its Detail "Reveal money totals to read
+these insights."
 
 ### Planning by chat
 
@@ -549,6 +626,23 @@ Readers (`ask-api.js`, the one module to adjust when their branches land):
   turns the text into the same `ReceiptReadDto`, reading a receipt with no
   printed currency as SGD.
 
+- `POST /api/ai-assist/insight-explain` `{ kind, fact, think, lines }` →
+  `InsightExplainResponseDto` (`{ ok, explanation: { text, source: "ai" } |
+  null, ai }`), see "Insight questions". The body is read through
+  `readJsonBody` (64 KiB, `limited-body.ts`, the same file as PR #54) and
+  bounded (`readInsightExplainRequest`: a headline kind, the line and think
+  line up to 400 characters, at most 12 basis lines with safe integer
+  amounts and short labels; anything else is a 400 before any AI). With AI
+  off it answers at once with `explanation: null` and spends nothing. With
+  AI on, one allowance unit (`ask_answer`) asks the provider with the
+  answer prompt (`buildAnswerPrompt`) over the insight's fact lines
+  (`buildInsightPromptFacts`: the line, its think line and each basis line
+  with its amount as the card writes it; every run of six or more digits
+  and every NRIC / FIN shape removed first), checked by `validateAiWording`
+  against those lines and the household's category, wallet and people
+  names. Privacy: only those lines and the household's names (for the
+  check) are read; no entry, account id or note. Cost: one unit per tap,
+  never automatic. Writes: the allowance counter only.
 - `POST /api/ai-assist/answer` `{ text, viewId, scope, month,
   keepCandidateIds }` → `AskAnswerResponseDto` (`{ ok, supported, intent,
   viewId, scope, months, needsConfirmation?, candidates?, answer?, wording?:
@@ -712,6 +806,8 @@ Ask owns:
 - the filter reader and the answer card;
 - the money answer card, the check before it and the chips that resolve it
   (the answer, its facts and the skew candidates are the server's);
+- the insight answer card and its chips (the insight's facts are its
+  signal's, computed by the page that showed it);
 - the plan draft card and its questions (the draft, its figures and its
   Save list are the server's);
 - the chip row and the question wording (the readers send structured
@@ -761,6 +857,10 @@ Ask does not own:
   view and month; a likely settle-up or own-account move is asked about
   before any answer, and nothing changes until Mark as settlement or Link
   as transfer is tapped.
+- "Ask about this" opens Ask with "Explain: <the line>" and the card of
+  the insight's own facts at once, asked once (not again on Back, Forward
+  or a reload); its entries equal the Entries page Open in Entries opens;
+  with AI off the card is complete; hidden money shows no figure.
 - A plan request shows a draft with each line and the view's Planned
   income, Planned spend and Remaining budget before → after, equal to the
   Month page; nothing changes until Save plan; Discard writes nothing; a
@@ -792,15 +892,15 @@ Ask does not own:
   with AI on, writes the allowance counter); resolving a check uses the
   existing transfer, classification and Splits routes. A saved entry is an ordinary manual
   entry, with `external_reference` = `ask:<client id>` (the existing unique
-  index per household makes a repeat create return the same entry). The one
-  new route, `/api/ai-assist/transcribe`, only writes the shared AI allowance
+  index per household makes a repeat create return the same entry). The new
+  routes, `/api/ai-assist/transcribe` and `/api/ai-assist/insight-explain`, only write the shared AI allowance
   counter. The Claude credit notice uses the existing provider-status routes;
   I've topped up writes only that aggregate row.
 - A transfer card posts one row: the From wallet's side (or the To wallet's
   when turned round); the other wallet is shown but not posted, for the
   later transfer match, as the entry draft defines.
 - The conversation is kept only in this browser tab's sessionStorage (text,
-  the card's fields, filters, money answers, open checks and plan drafts
+  the card's fields, filters, money and insight answers, open checks and plan drafts
   (one caught saving comes back a draft; never photos,
   audio or status lines) and is
   gone when the tab closes. Nothing about it, the sentences, photos, voice
@@ -823,7 +923,9 @@ Current status: aligned with tests (`tests/ask-origin.test.mjs`,
 `tests/claude-credit-notice.test.mjs`, `tests/ask-answer-intent.test.mjs`,
 `tests/ask-answer-route.test.mjs`, `tests/ask-answer-skew.test.mjs`,
 `tests/ask-answer-ai.test.mjs`, `tests/ask-money-answer.test.mjs`,
-`tests/ask-money-answer-card.test.mjs`,
+`tests/ask-money-answer-card.test.mjs`, `tests/ask-insight.test.mjs`,
+`tests/ask-insight-route.test.mjs`, `tests/insight-ask-lines.test.mjs`,
+`tests/e2e/ask-insight.spec.js`,
 `tests/e2e/ask-money-answers.spec.js`,
 `tests/plan-draft-reader.test.mjs`, `tests/plan-draft.test.mjs`,
 `tests/plan-draft-route.test.mjs`, `tests/atomic-writes-plan-draft.test.mjs`,
@@ -859,6 +961,15 @@ iPhone 13 profile) and runtime behaviour on a phone.
   action with a strict schema (AGENTS.md "Optional AI Assistance").
 - A money answer is kept in the conversation as it was answered; after an
   edit elsewhere it is not recomputed until the question is asked again.
+  An insight answer likewise keeps the insight as the page showed it; its
+  entries are read again each time it shows.
+- An insight's basis comes from the page in the browser, so the explanation
+  route checks AI words against facts the page sent: it can never add a
+  figure the page did not compute, and the card's figures never come from
+  it.
+- "Change my plan" does not draft a change itself: which line to raise or
+  trim is the person's choice, so it only puts the month in the message
+  box.
 - The AI wording path is proved with a stubbed Workers AI binding; a real
   Claude or Gemma phrasing on the deployed Worker is still to be checked
   (the validation will reject many phrasings, which then show the computed

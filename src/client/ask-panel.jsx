@@ -8,6 +8,7 @@ import {
   addSavedEntryToSplits,
   applyPlanChanges,
   requestEntryDraft,
+  requestInsightExplanation,
   requestMoneyAnswer,
   requestPlanDraft,
   requestReceiptRead,
@@ -37,6 +38,8 @@ import {
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
+import { AskInsightAnswerCard } from "./ask-insight-answer-card";
+import { buildInsightAnswer, insightExplainBody, readInsightHandoff } from "./ask-insight-answer";
 import { skewCheckLabels } from "./ask-skew-check";
 import { readAnswerIntent } from "../domain/ask-answer-intent";
 import { mentionsPlanOrMonth, readPlanRequest } from "../domain/plan-draft-reader";
@@ -143,6 +146,10 @@ function useAskConversation(store, key, create) {
   const conversation = useSyncExternalStore(store.subscribe, read, read);
   return { conversation, restored: initial.restored };
 }
+
+// Insight questions already asked from history state (a phone's "Ask about
+// this"): StrictMode runs the effect twice before the state is replaced.
+const askedInsightHandoffs = new WeakSet();
 
 // A typed line that reads as a question rather than something to add.
 function looksLikeQuestion(text) {
@@ -401,7 +408,7 @@ function AskConversation({
     // is often taller than the screen: the question right above it (else
     // the card itself, after a check) goes to the top, so its lead shows.
     // A plan draft too: the question, its intro note, then the card.
-    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check" || (item.kind === "plan-draft" && item.status === "draft"));
+    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check" || item.kind === "insight-answer" || (item.kind === "plan-draft" && item.status === "draft"));
     if (money) {
       const index = settled.indexOf(money);
       const asked = settled.slice(Math.max(0, index - 2), index).reverse().find((item) => item.kind === "me");
@@ -618,6 +625,37 @@ function AskConversation({
     }
   }
 
+  // "Ask about this" on a Money insights line (ask-insight-answer.js): the
+  // question and the card built from the insight's own facts show at once,
+  // with no request. Then, only with AI on, the server may add a short
+  // explanation checked against those facts; a failure changes nothing.
+  async function askAboutInsight(value) {
+    const insight = readInsightHandoff(value);
+    if (!insight) {
+      return;
+    }
+    const answer = buildInsightAnswer(insight, { today });
+    const item = threadItem("insight-answer", { answer, explanation: null });
+    if ((store.read(conversationKey) ?? conversation).pending) {
+      setPending(null);
+    }
+    appendThread(threadItem("me", { text: answer.question, hiddenText: askCopy.insight.hiddenQuestion }), item);
+    setWorking("insight");
+    setStatus(askCopy.money.reading);
+    try {
+      const result = await requestInsightExplanation(insightExplainBody(insight));
+      if (result.ok && result.explanation) {
+        updateConversation((current) => ({
+          ...current,
+          thread: current.thread.map((entry) => (entry.id === item.id ? { ...entry, explanation: result.explanation } : entry))
+        }));
+      }
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+  }
+
   // Planning by chat (docs/flows/ask-flow.md "Planning by chat"): the
   // plan-draft route answers with a draft card, a question (chips), a note,
   // or "not a plan request" (false: the caller reads the text as before).
@@ -651,6 +689,13 @@ function AskConversation({
       setStatus("");
       setWorking("");
     }
+  }
+
+  // A follow-up chip that is a money question Ask already answers: asked
+  // as if typed, through the answer route and its check before any figure.
+  async function askFollowUpQuestion(link) {
+    appendThread(threadItem("me", { text: link.text }));
+    await askMoneyQuestion(link.text, link.request);
   }
 
   function answerPlanQuestion(option) {
@@ -807,6 +852,17 @@ function AskConversation({
       goTo("/month", {}, buildContextParams(new URLSearchParams(), link.viewId, link.month, link.scope));
     } else if (link.kind === "splits") {
       goTo("/splits", { split_group: link.groupId && link.groupId !== "split-group-none" ? link.groupId : undefined }, buildContextParams(new URLSearchParams(), link.viewId, link.month, selectedScope));
+    } else if (link.kind === "imports") {
+      goTo("/imports");
+    } else if (link.kind === "compose" && link.text) {
+      // Change my plan: the month in the message box, the caret before it.
+      setComposerText(link.text);
+      window.requestAnimationFrame(() => {
+        composerRef.current?.focus();
+        composerRef.current?.setSelectionRange?.(0, 0);
+      });
+    } else if (link.kind === "question" && link.text && link.request && !working) {
+      void askFollowUpQuestion(link);
     }
   }
 
@@ -1233,6 +1289,9 @@ function AskConversation({
       setComposerText(before && !/\s$/.test(before) ? `${before} ${text}` : `${before}${text}`);
     };
     const handoff = dock.takeHandoff();
+    if (handoff.insight) {
+      void askAboutInsight(handoff.insight);
+    }
     if (handoff.text) {
       takeText(handoff.text);
     }
@@ -1249,6 +1308,7 @@ function AskConversation({
         const next = dock.takeHandoff();
         takeText(next.text);
         if (next.file) void readReceipt(next.file);
+        if (next.insight) void askAboutInsight(next.insight);
       }
       if (dock.takeFocusRequest()) composerRef.current?.focus();
     };
@@ -1261,6 +1321,22 @@ function AskConversation({
     // Once per conversation shown in the dock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inDock, conversationKey]);
+
+  // On a phone, "Ask about this" opens /ask with the insight in history
+  // state (App.jsx): asked once, then dropped from the entry, so a reload
+  // or going back and forward does not ask it again.
+  const stateInsight = inDock ? null : location.state?.askInsight ?? null;
+  useEffect(() => {
+    if (!stateInsight || typeof stateInsight !== "object" || askedInsightHandoffs.has(stateInsight)) {
+      return;
+    }
+    askedInsightHandoffs.add(stateInsight);
+    const { askInsight: _asked, ...restState } = location.state ?? {};
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: Object.keys(restState).length ? restState : null });
+    void askAboutInsight(stateInsight);
+    // Once per insight handed over.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateInsight]);
 
   // On the Ask page, a lead's "Ask about this" (ui/money-actions.jsx) brings
   // its question as `ask_text`: it goes into the message box once, for the
@@ -1681,8 +1757,22 @@ function ThreadItem({ item, settled = false, answerProps }) {
   if (item.kind === "money-check") {
     return <AskSkewCheckCard id={item.id} candidate={item.candidate} status={item.status} today={answerProps.today} settled={settled} />;
   }
+  if (item.kind === "insight-answer") {
+    return (
+      <AskInsightAnswerCard
+        id={item.id}
+        answer={item.answer}
+        explanation={item.explanation}
+        settled={settled}
+        queryClient={answerProps.queryClient}
+        fetchEntriesPage={answerProps.fetchEntriesPage}
+        trackedMonths={answerProps.trackedMonths}
+        today={answerProps.today}
+      />
+    );
+  }
   if (item.kind === "me") {
-    return <p className={`ask-me${settledClass}`} id={item.id}>{item.text}</p>;
+    return item.hiddenText ? <MoneyMessage item={item} settledClass={settledClass} /> : <p className={`ask-me${settledClass}`} id={item.id}>{item.text}</p>;
   }
   if (item.kind === "photo") {
     return (
@@ -1695,6 +1785,13 @@ function ThreadItem({ item, settled = false, answerProps }) {
     return <p className="ask-note is-status" aria-busy="true">{item.text}</p>;
   }
   return <p className={`ask-note${item.tone === "calm" ? " is-calm" : ""}${settledClass}`}>{item.text}</p>;
+}
+
+// A message that carries amounts (an insight question): with money hidden it
+// reads as its hidden words instead, so no figure or sign shows.
+function MoneyMessage({ item, settledClass }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  return <p className={`ask-me${settledClass}`} id={item.id}>{areTotalsVisible ? item.text : item.hiddenText}</p>;
 }
 
 // Why a plan request drew no draft, in plain words. A line that is short

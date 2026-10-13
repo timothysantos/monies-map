@@ -4,7 +4,7 @@
 // never compares partners. The group's activity often stays the same for
 // months (a finished trip), so its Just for fun types each read a different
 // side of it, one per month.
-import { addMonths, approxMoney, daysBetween, joinWithAnd, monthYear, phrase, shortDay, sortedLine, sum, tidyName, timesWord, weekdayIndex, weekdayNameOf, type CopyCatalogue, type FormatMoney } from "./format";
+import { addMonths, amountLine, approxMoney, daysBetween, joinWithAnd, monthYear, phrase, shortDay, sortedLine, sum, textLine, tidyName, timesWord, weekdayIndex, weekdayNameOf, type CopyCatalogue, type FormatMoney } from "./format";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
 import { triviaSignal } from "./shared-signals";
@@ -372,6 +372,16 @@ export function splitBalanceSignal(input: SplitsSignalInput): MoneySignal | null
     sorted: sortedLine(copy.sorted, values),
     // Settle group is a person view's control; the household view has none.
     action: input.audience === "person" ? { id: "settle-group", label: copy.action } : undefined,
+    basis: {
+      lines: [
+        textLine("Group", isNonGroup(group) ? "Shared costs outside a group" : group.name),
+        amountLine("Open balance", amountMinor, group.currency),
+        ...(input.audience === "person"
+          ? [textLine("Who owes whom", group.balanceMinor > 0 ? `${other} owes ${input.viewLabel}` : `${input.viewLabel} owes ${other}`)]
+          : [])
+      ],
+      groupId: group.id
+    },
     topic: "settle"
   };
 }
@@ -391,6 +401,10 @@ export function bankMatchSignal(input: SplitsSignalInput): MoneySignal | null {
     phrasings: phrase(copy, { count }, { one: count === 1 }),
     sorted: copy.sorted,
     action: { id: "review-matches", label: copy.action },
+    basis: {
+      lines: [textLine("Bank payments that may be shared costs already added", count)],
+      ...(input.group ? { groupId: input.group.id } : {})
+    },
     topic: "settle"
   };
 }
@@ -427,6 +441,15 @@ export function settlementPaymentSignal(input: SplitsSignalInput): MoneySignal |
     phrasings: phrase(copy, values),
     sorted: sortedLine(copy.sorted, values),
     action: { id: "show-entries", label: copy.action, entryIds: candidate.entryIds, month: candidate.date.slice(0, 7) },
+    basis: {
+      lines: [
+        amountLine(`Payment from ${fromName} to ${toName} on ${shortDay(candidate.date)}`, candidate.amountMinor),
+        textLine("Settle-up worked out on", shortDay(checkpoint.settlementDate)),
+        textLine("Counted as spending", candidate.countedAsSpending ? "Yes" : "No")
+      ],
+      entries: { entryIds: candidate.entryIds, month: candidate.date.slice(0, 7) },
+      ...(input.group ? { groupId: input.group.id } : {})
+    },
     topic: "settle"
   };
 }

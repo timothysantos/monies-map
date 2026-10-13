@@ -67,15 +67,19 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
     >
       {answer.outcome ? (
         // Intent against outcome: the Month and Summary lead's savings bar,
-        // from the same four figures (it keeps only percentages when money
-        // is hidden). No period is given, so its parts show the percentage
-        // popover without the View entries / Ask menu.
+        // from the same figures through the same split (it keeps only
+        // percentages when money is hidden). No period is given, so its
+        // parts show the percentage popover without the View entries / Ask
+        // menu.
         <SavingsBar
           figures={splitMoneyUse({
             incomeMinor: answer.outcome.incomeMinor,
             spentMinor: answer.outcome.spentMinor,
             plannedSpendMinor: answer.outcome.plannedSpendMinor,
-            savingsTargetMinor: answer.outcome.savingsTargetMinor
+            savingsTargetMinor: answer.outcome.savingsTargetMinor,
+            investedMinor: answer.outcome.investedMinor ?? 0,
+            savedMovedMinor: answer.outcome.savedMovedMinor ?? 0,
+            plannedInvestMinor: answer.outcome.plannedInvestMinor ?? 0
           })}
           hidden={!areTotalsVisible}
         />

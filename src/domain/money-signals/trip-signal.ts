@@ -1,7 +1,7 @@
 // A trip still filed as Other: a run of purchases abroad on nearby days that
 // nobody has given a category yet. Month and Entries show it, so moving them
 // to Travel makes the trip's cost easy to find next time.
-import { phrase, shortDay, sortedLine, type CopyCatalogue, type FormatMoney } from "./format";
+import { amountLine, phrase, shortDay, sortedLine, textLine, type CopyCatalogue, type FormatMoney } from "./format";
 import type { MoneySignal } from "./types";
 
 export interface TripSignalEntry {
@@ -131,6 +131,15 @@ export function tripInOtherSignal(input: { entries: TripSignalEntry[]; formatMon
     phrasings: phrase(TRIP_COPY.tripInOther, values),
     sorted: sortedLine(TRIP_COPY.tripInOther.sorted, values),
     action: { id: "show-entries", label: TRIP_COPY.tripInOther.action, entryIds: trip.entries.map((entry) => entry.id) },
+    basis: {
+      lines: [
+        textLine("Purchases still in Other", trip.entries.length),
+        textLine("Dates", values.range),
+        ...(place ? [textLine("Place", place)] : []),
+        amountLine("Their total", trip.totalMinor)
+      ],
+      entries: { entryIds: trip.entries.map((entry) => entry.id), month: first.slice(0, 7) }
+    },
     topic: "plan"
   };
 }

@@ -54,6 +54,36 @@ export type QuoteTopic =
   | "calm"
   | "change";
 
+// What a signal is based on (DOMAIN.md "Insight Question"): the figures it
+// already worked out, each with a plain label, for "Ask about this". Never a
+// new number, and nothing a page has not loaded. A line holds an amount (in
+// minor units of `currency`, SGD when absent) or a short text value.
+export interface SignalBasisLine {
+  label: string;
+  amountMinor?: number;
+  currency?: string;
+  text?: string;
+}
+
+// The Entries rows behind a signal: its own entries by id, or the filter
+// that shows them (a month with a category, a wallet or an entry type).
+export interface SignalEntries {
+  month?: string;
+  entryIds?: string[];
+  categoryName?: string;
+  accountId?: string;
+  type?: "expense" | "income";
+}
+
+export interface SignalBasis {
+  lines: SignalBasisLine[];
+  entries?: SignalEntries;
+  // The month the signal is about (Open Month), when it is one month.
+  month?: string;
+  // The Splits group it is about (Open Splits).
+  groupId?: string;
+}
+
 export interface SignalPhrasing {
   fact: string;
   // A phrasing that already carries part of the thought gets a shorter
@@ -82,6 +112,10 @@ export interface MoneySignal {
   // schedules (rotation.ts), e.g. "smallest".
   triviaType?: string;
   action?: CheckInAction;
+  // What the signal is based on, for "Ask about this". Every signal that can
+  // lead the check-in or sit under Also has one; trivia and the long view
+  // do not.
+  basis?: SignalBasis;
   // What a quick fix says once when it clears.
   sorted?: { fact: string; think: string };
   topic?: QuoteTopic;

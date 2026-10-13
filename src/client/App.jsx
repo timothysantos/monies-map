@@ -114,6 +114,7 @@ import { ContextPersonChip } from "./mobile-context-chip";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
+import { useInsightAskLauncher } from "./use-insight-ask-launcher";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -254,6 +255,8 @@ export function App() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
+  // "Ask about this" on a Money insights line opens Ask with it.
+  useInsightAskLauncher({ navigate, searchParams });
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
   // Route identity is derived from the browser location and query string, and

@@ -208,6 +208,20 @@ as is and the code is kept small (`composeCheckInHeadline` moved to
 `check-in-headline.js` for that); its CSS is in `money-checkin.css` and
 `splits-panel.css`.
 
+Insight questions: "Ask about this" (docs/flows/ask-flow.md "Insight
+questions"). A quiet underlined link in the accent ink: after the headline
+(beside its action, 18px apart), at the end of each Also line (smaller),
+and on the folded teaser at the right of the eyebrow row, a 44px-tall
+target above the card, never on it, so the fold's own tap stays whole
+(the eyebrow row grows to 44px when it is there). Its name for a screen
+reader is "Ask about this: <the line>". Only a line with a signal behind
+it has one (not the calm, quiet or Sorted line, the Fun fact or the Big
+picture), and none shows while money is hidden. The tap sends a window
+event (`insight-ask-event.js`, `monies:ask-insight`) with the line, its
+think line and the signal's `basis`; the shell (`use-insight-ask-launcher.js`)
+opens the Ask page on a phone (the insight rides in history state) or the
+Ask panel on a wider screen, so no Ask code is in the first screen.
+
 The Splits workspace uses a dark surface but paid-settlement follow-ups use a
 light proof card. Controls on that card must use an explicit light-card theme:
 readable dark secondary actions, a distinct caution treatment for `Undo paid`,
@@ -373,9 +387,12 @@ question (docs/flows/ask-flow.md "Money questions"):
   and rows with "Reveal money totals to read these insights."
 
 The plan answer is Intent vs Outcome (round-2 mockups `chat-intent-*`):
-under its lead bar it draws the Month and Summary lead's `SavingsBar`
-(ui/savings-bar.jsx) from the answer's `outcome` (income received, Actual
-spend, Planned spend, Savings target), so the card and Month show one
+its lead reads the Month lead's "Spent" and "of $X plan" (the spend job:
+the shared `splitMoneyUse`, `src/domain/money-jobs.ts`), and under its lead
+bar it draws the Month and Summary lead's `SavingsBar` (ui/savings-bar.jsx)
+from the answer's `outcome` (income received, Actual spend, Planned spend,
+Savings target, money moved to Investments and Savings, the Investments
+plan rows) through the same split, so the card and Month show one
 picture. A quarter's answer ("did we stick to the plan in Q3?") is titled
 "July to September against plan" and lists each month against its plan
 before the plan rows.
@@ -385,6 +402,33 @@ first" tag over the head ("Serene → Ethan" or the two accounts, the bank
 description muted, the amount in plain ink) and one plain paragraph; its
 chips are Mark as settlement or Link as transfer (filled) and It's real
 spending. Once answered it stays in the thread, faded.
+
+### Insight answer
+
+`ask-insight-answer-card.jsx`, the same `LeadCard` for an insight question
+("Explain: <the line>", from a Money insights line's "Ask about this"):
+
+- Tag row: the line's own kind chip (`CheckInChip`: To do, Something to
+  think about, Worth knowing, Going well) and, when the optional AI added
+  words, the butter "Worded by AI" tag.
+- Head: a neutral bubble with a lightbulb, the label of the figure the line
+  is about and that figure on the right in plain ink (the basis line
+  holding the signal's primary amount). A line about a count has no figure:
+  the line itself is the head.
+- Detail: the line as the page showed it, bold and wrapping (so a long line
+  never squeezes the head), the line's think line in muted ink, the AI's words (only when
+  they passed the check), "What it's based on" with the signal's basis
+  lines as quiet rows (label left, amount or value right, plain ink), and,
+  when entries are behind it, "The entries": at most five rows, largest
+  first, from the Entries page DTO through the Entries page's own filter
+  (expense rows rose text, income mint, transfers plain), then "N more in
+  Entries".
+- Chips: Open in Entries first and filled when entries are behind it,
+  then the kind's follow-ups (Compare with the statement, Open Month, Open
+  Splits, or a money question Ask already answers), then the usual chips.
+- Hidden money: the title reads "A money insight", the question "Explain
+  this money insight", amounts are masked and the Detail gives way to
+  "Reveal money totals to read these insights."
 
 ### Plan draft
 

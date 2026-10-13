@@ -7,6 +7,7 @@
 // Entries' are about the list, so the two never say the same thing.
 import {
   addDays,
+  amountLine,
   approxMoney,
   compactMoney,
   daysInMonth,
@@ -14,11 +15,13 @@ import {
   lowerLabel,
   monthName,
   monthPhase,
+  monthYear,
   numberWord,
   phrase,
   plural,
   shortDay,
   sum,
+  textLine,
   tidyName,
   weekdayIndex,
   weekdayNameOf,
@@ -401,6 +404,8 @@ export const CATEGORY_OVER_MINOR = 2_000;
 // income and this much money, whichever is larger.
 export const PLAN_SHORTFALL_RATIO = 0.02;
 export const PLAN_SHORTFALL_MINOR = 5_000;
+// At most this many rows of a list (bills, savings lines) as basis lines.
+const BASIS_ROWS = 6;
 
 function expenses(input: MonthSignalInput) {
   return input.entries.filter((entry) => entry.entryType === "expense" && Math.abs(entry.amountMinor) > 0);
@@ -501,6 +506,13 @@ export function unlinkedBillsSignal(input: MonthSignalInput): MoneySignal | null
     numbers: { primaryMinor: totalMinor, count: due.length },
     phrasings: phrase(MONTH_COPY.unlinkedBills, { count: due.length, total, month: monthName(input.month), label: due[0].label || due[0].categoryName || "a planned bill" }, { one: due.length === 1 }),
     sorted: MONTH_COPY.unlinkedBills.sorted,
+    basis: {
+      lines: [
+        ...due.slice(0, BASIS_ROWS).map((row) => amountLine(`${row.label || row.categoryName || "Planned bill"}, planned for ${shortDay(String(row.planDate))}`, row.plannedMinor)),
+        amountLine("Planned bills not matched to a payment yet", totalMinor)
+      ],
+      month: input.month
+    },
     topic: "later"
   };
 }
@@ -540,6 +552,16 @@ export function planShortfallSignal(input: MonthSignalInput): MoneySignal | null
       goal: input.formatMoney(goalMinor)
     }),
     sorted: MONTH_COPY.planShortfall.sorted,
+    basis: {
+      lines: [
+        textLine("Month", monthYear(input.month)),
+        amountLine("Planned spending, savings included", plannedMinor),
+        amountLine("Income you expect", incomeMinor),
+        amountLine("Plan spends more than it expects by", shortMinor),
+        ...(goalMinor > 0 ? [amountLine("Savings goal in the plan", goalMinor)] : [])
+      ],
+      month: input.month
+    },
     topic: "plan"
   };
 }
@@ -573,7 +595,17 @@ export function oneOffOverPlanSignal(input: MonthSignalInput): MoneySignal | nul
     numbers: { primaryMinor: overMinor },
     primaryText: over,
     phrasings: phrase(copy, { items: joinWithAnd(items.map((entry) => tidyName(entry.description) || "one entry")), month: monthName(input.month), over }),
-    action: { id: "show-entries", label: copy.action, entryIds: items.map((entry) => entry.id) }
+    action: { id: "show-entries", label: copy.action, entryIds: items.map((entry) => entry.id) },
+    basis: {
+      lines: [
+        amountLine(`Spent in ${monthYear(input.month)}`, spend(input)),
+        amountLine("Planned spending", plan(input)),
+        amountLine("Over the plan by", overMinor),
+        ...items.map((entry) => amountLine(`${tidyName(entry.description) || "One entry"} on ${shortDay(entry.date)}`, amountOf(entry)))
+      ],
+      entries: { entryIds: items.map((entry) => entry.id), month: input.month },
+      month: input.month
+    }
   };
 }
 
@@ -600,6 +632,16 @@ export function categoryOverPlanSignal(input: MonthSignalInput): MoneySignal | n
     primaryText: over,
     phrasings: phrase(copy, { label, over, plan: compactMoney(input.formatMoney, row.plannedMinor), actual: input.formatMoney(row.actualMinor) }),
     action: { id: "open-category", label: copy.action.replace("{category}", categoryName), categoryName },
+    basis: {
+      lines: [
+        textLine("Plan line", label),
+        amountLine(`Planned for ${monthYear(input.month)}`, row.plannedMinor),
+        amountLine("Spent", row.actualMinor),
+        amountLine("Over the plan by", overMinor)
+      ],
+      entries: { categoryName, month: input.month, type: "expense" },
+      month: input.month
+    },
     topic: "plan"
   };
 }
@@ -621,6 +663,15 @@ export function incomeAbovePlanSignal(input: MonthSignalInput): MoneySignal | nu
     numbers: { primaryMinor: extraMinor },
     primaryText: extra,
     phrasings: phrase(MONTH_COPY.incomeAbovePlan, { extra, when: whenPhrase(input) }),
+    basis: {
+      lines: [
+        amountLine(`Income planned for ${monthYear(input.month)}`, plannedMinor),
+        amountLine("Income that came in", actualMinor),
+        amountLine("More than planned by", extraMinor)
+      ],
+      entries: { type: "income", month: input.month },
+      month: input.month
+    },
     topic: "later",
     moment: true
   };
@@ -646,6 +697,11 @@ export function incomeArrivedSignal(input: MonthSignalInput): MoneySignal | null
     weight: arrived.amountMinor,
     numbers: { primaryMinor: arrived.amountMinor },
     phrasings: phrase(MONTH_COPY.incomeArrived, { amount, day: shortDay(arrived.date) }),
+    basis: {
+      lines: [amountLine(`${tidyName(arrived.description) || arrived.categoryName || "Income"} on ${shortDay(arrived.date)}`, arrived.amountMinor)],
+      entries: { entryIds: [arrived.id], month: input.month },
+      month: input.month
+    },
     topic: "later",
     moment: true
   };
@@ -670,6 +726,14 @@ export function planLeftSignal(input: MonthSignalInput): MoneySignal | null {
     turn: 1,
     primaryText: left,
     phrasings: phrase(isPast ? MONTH_COPY.planLeftPast : MONTH_COPY.planLeft, { left, month: monthName(input.month) }),
+    basis: {
+      lines: [
+        amountLine(`Planned spending for ${monthYear(input.month)}`, plan(input)),
+        amountLine("Spent", spend(input)),
+        amountLine("Plan not spent", leftMinor)
+      ],
+      month: input.month
+    },
     topic: "enjoy"
   };
 }
@@ -695,6 +759,14 @@ export function savingsOnPlanSignal(input: MonthSignalInput): MoneySignal | null
       saved: compactMoney(input.formatMoney, savedMinor),
       planned: compactMoney(input.formatMoney, plannedMinor)
     }),
+    basis: {
+      lines: [
+        ...savingsRows.slice(0, BASIS_ROWS).map((row) => amountLine(`${row.label || row.categoryName || "Savings"}, planned ${compactMoney(input.formatMoney, row.plannedMinor)}`, row.actualMinor)),
+        amountLine(`Saved in ${monthYear(input.month)}`, savedMinor),
+        amountLine("Planned to save", plannedMinor)
+      ],
+      month: input.month
+    },
     topic: "enjoy"
   };
 }
@@ -724,6 +796,13 @@ export function upcomingBillsSignal(input: MonthSignalInput): MoneySignal | null
     numbers: { primaryMinor: totalMinor, count: due.length },
     primaryText: total,
     phrasings: phrase(MONTH_COPY.upcomingBills, { count: due.length, total, label: due[0].label || due[0].categoryName || "a planned bill" }, { one: due.length === 1 }),
+    basis: {
+      lines: [
+        ...due.slice(0, BASIS_ROWS).map((row) => amountLine(`${row.label || row.categoryName || "Planned bill"}, planned for ${shortDay(String(row.planDate))}`, row.plannedMinor)),
+        amountLine("Planned bills in the next 10 days", totalMinor)
+      ],
+      month: input.month
+    },
     topic: "plan",
     moment: true
   };
@@ -755,6 +834,16 @@ export function planPaceSignal(input: MonthSignalInput): MoneySignal | null {
       days: total - day,
       month: monthName(input.month)
     }),
+    basis: {
+      lines: [
+        amountLine(`Spent so far in ${monthYear(input.month)}`, spentMinor),
+        amountLine("Planned spending", plan(input)),
+        amountLine("Plan left", leftMinor),
+        textLine("Days left in the month", total - day)
+      ],
+      entries: { type: "expense", month: input.month },
+      month: input.month
+    },
     topic: steady ? "steady" : "plan",
     moment: true
   };

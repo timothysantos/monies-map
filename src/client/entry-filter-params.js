@@ -12,7 +12,8 @@
 // - entry_type: expense | income | transfer
 // - entry_min, entry_max: amounts in dollars ("50" or "50.00"), compared with
 //   the amount the row shows for the view; only an Ask answer sets them
-// - entry_id: entry ids (the check-in's links)
+// - entry_id: entry ids (the check-in's links, and an insight answer's
+//   Open in Entries)
 // - entries_scope: direct | shared | direct_plus_shared
 // - from_ask=1: the filters came from an Ask answer, so the page shows the
 //   "From Ask" chip that clears them or goes back to Ask
@@ -32,6 +33,7 @@ export const ASK_FILTER_PARAM_KEYS = Object.freeze([
   "entry_type",
   "entry_min",
   "entry_max",
+  "entry_id",
   "from_ask"
 ]);
 
@@ -76,7 +78,7 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
 /**
  * An Ask answer's filter (ask-filter-reader.js) as the Entries URL that
  * shows the same rows.
- * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null }} filter
+ * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[] }} filter
  */
 export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   const params = new URLSearchParams();
@@ -92,6 +94,7 @@ export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   if (filter.type && ENTRY_TYPES.includes(filter.type)) params.set("entry_type", filter.type);
   if (Number.isFinite(filter.minAmountMinor)) params.set("entry_min", formatAmountParam(filter.minAmountMinor));
   if (Number.isFinite(filter.maxAmountMinor)) params.set("entry_max", formatAmountParam(filter.maxAmountMinor));
+  for (const entryId of filter.entryIds ?? []) params.append("entry_id", entryId);
   if (fromAsk) params.set("from_ask", "1");
   return params;
 }
@@ -106,7 +109,8 @@ export function readAskFilterFromParams(searchParams) {
     categories: entryFilters.categories,
     type: ENTRY_TYPES.includes(entryFilters.type) ? entryFilters.type : "",
     minAmountMinor: entryFilters.minAmountMinor,
-    maxAmountMinor: entryFilters.maxAmountMinor
+    maxAmountMinor: entryFilters.maxAmountMinor,
+    entryIds: entryFilters.entryIds
   };
 }
 
@@ -116,7 +120,7 @@ export function hasAskFilterChip(searchParams) {
   }
   const filter = readAskFilterFromParams(searchParams);
   return Boolean(filter.search || filter.wallets.length || filter.categories.length || filter.type
-    || filter.minAmountMinor !== null || filter.maxAmountMinor !== null);
+    || filter.minAmountMinor !== null || filter.maxAmountMinor !== null || filter.entryIds.length);
 }
 
 export function clearAskFilterParams(searchParams) {

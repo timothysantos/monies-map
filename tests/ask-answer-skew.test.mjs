@@ -10,6 +10,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { assertSameDatabase, createEntry, createSeededTemplate, dumpDatabase, openSeededDatabase, rows } from "./support/d1-workspace.mjs";
+import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
+import { buildMonthMetricCards } from "../src/client/month-helpers.js";
 
 let template;
 test.before(async () => {
@@ -88,6 +90,17 @@ async function actualSpend(api, month = MONTH) {
   return payload.monthPage.metricCards.find((card) => card.label === "Actual spend").amountMinor;
 }
 
+// The Month lead's "Spent" (month-lead-model.js): the spend job's, which
+// the plan answer reads (money moved to Investments or Savings left out).
+async function monthLeadSpend(api, month = MONTH) {
+  const { payload } = await api(`/api/month-page?view=household&month=${month}&scope=direct_plus_shared`);
+  const cards = buildMonthMetricCards({ planSections: payload.monthPage.planSections, incomeRows: payload.monthPage.incomeRows, currentMonthSummary: payload.summaryPage.months[0] });
+  return buildMonthLeadModel(cards, payload.summaryPage.months[0], {
+    planRows: payload.monthPage.planSections.flatMap((section) => section.rows),
+    categoryShare: payload.monthPage.categoryShareChart
+  }).spent.amountMinor;
+}
+
 test("a settle-up counted as spending stops the answer until it is resolved, then the answer has it fixed", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   await setUpHousehold(api);
@@ -136,7 +149,7 @@ test("It's real spending: a kept candidate is not asked about again, and the fig
   const kept = await ask(api, "how am I doing against the plan?", { keepCandidateIds: [asked.candidates[0].id] });
   assert.equal(kept.needsConfirmation, false);
   assert.equal(kept.intent, "plan");
-  assert.equal(kept.answer.lead.amountMinor, await actualSpend(api));
+  assert.equal(kept.answer.lead.amountMinor, await monthLeadSpend(api));
   // Nothing was written for "It's real spending".
   const [checkpoint] = await rows(db, "SELECT status FROM split_settlement_checkpoints WHERE id = ?", asked.candidates[0].settlement.checkpointId);
   assert.equal(checkpoint.status, "open");

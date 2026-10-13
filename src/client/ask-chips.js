@@ -280,8 +280,8 @@ export function buildFilterChips({ focus, base, viewLabel = "", actions }) {
 // Which thread item owns the chip row and the composer's primary button
 // (docs/flows/ask-flow.md "State Flow"): always the newest one.
 // - an open follow-up question or view change;
-// - else an answer, a money answer or an open check before one that is the
-//   newest settled item and sits below the card;
+// - else an answer, a money answer, an insight answer or an open check
+//   before one that is the newest settled item and sits below the card;
 // - else the card, while the person has said nothing since it (a message
 //   that changes the card moves it below that message; notes such as
 //   "Saved to Entries." do not count);
@@ -302,6 +302,10 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
   }
   if (last?.kind === "money-check" && last.status === "open" && (!card || cardSlot < settled.length)) {
     return { kind: "money-check", itemId: last.id, candidate: last.candidate };
+  }
+  // An insight answer: its links and follow-up questions, as a money answer's.
+  if (last?.kind === "insight-answer" && (!card || cardSlot < settled.length)) {
+    return { kind: "insight-answer", itemId: last.id, links: last.answer?.links ?? [] };
   }
   if (card && !settled.slice(cardSlot).some((item) => item.kind === "me")) {
     return { kind: "card" };
@@ -324,7 +328,7 @@ export function buildChipRow({ active, intent, card, context, splitGroups = [], 
   if (!active || (active.kind === "answer" && !canOpenAnswer)) {
     return rest;
   }
-  if (active.kind === "money-answer" || active.kind === "money-check") {
+  if (active.kind === "money-answer" || active.kind === "insight-answer" || active.kind === "money-check") {
     return buildMoneyChips({ focus: active, base: rest, labels: moneyLabels, actions });
   }
   if (active.kind === "plan-question") {

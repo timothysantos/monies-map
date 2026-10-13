@@ -273,6 +273,36 @@ export const askCopy = {
       keptIncome: "Kept as income."
     }
   },
+  // An insight question: "Ask about this" on a Money insights line
+  // (ask-insight-answer.js, ask-insight-answer-card.jsx).
+  insight: {
+    // The card's title and the question with money hidden (the line itself
+    // carries amounts).
+    hiddenTitle: "A money insight",
+    hiddenQuestion: "Explain this money insight",
+    basedOn: "What it's based on",
+    entries: "The entries",
+    moreEntries: (count) => `${count} more in Entries`,
+    noEntries: "No entries match this any more.",
+    loading: "Loading the entries…",
+    loadFailed: "The entries couldn't be loaded. Open in Entries to see them.",
+    openInEntries: "Open in Entries",
+    openMonth: "Open Month",
+    openSplits: "Open Splits",
+    compareStatement: "Compare with the statement",
+    // Planning by chat: the month goes in the message box after the caret,
+    // so the person types the change before it ("cut shopping by $100").
+    changePlan: "Change my plan",
+    changePlanText: (monthLabel) => ` in ${monthLabel}`,
+    // Money questions Ask already answers, as follow-up chips.
+    questions: {
+      plan: "How am I doing against the plan?",
+      income: "How much income came in?",
+      owed: "Who owes who?",
+      biggest: "What were the biggest expenses?",
+      spending: (monthKey) => `Why was ${formatLongMonth(monthKey)} so expensive?`
+    }
+  },
   // Follow-ups when a request could mean more than one thing, and view
   // changes, which always wait for a tap.
   filter: {
