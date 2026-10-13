@@ -21,10 +21,11 @@ import { finalizeReceiptRead, RECEIPT_READ_JSON_SCHEMA, RECEIPT_READ_PROMPT } fr
 import type { ReceiptReadDto } from "../types/dto";
 import { json } from "./json";
 import { readFormBody, readJsonBody, RequestBodyTooLargeError } from "./limited-body";
+import { RECEIPT_IMAGE_MAX_BYTES } from "../domain/request-limits";
 
 // 1.5 MiB after the client downscales; a phone photo resized to about
 // 1600 px on the long side is well under this.
-export const RECEIPT_IMAGE_MAX_BYTES = 1_572_864;
+export { RECEIPT_IMAGE_MAX_BYTES };
 // Base64 grows by a third; allow for the JSON or multipart wrapper.
 const MAX_REQUEST_BYTES = Math.ceil(RECEIPT_IMAGE_MAX_BYTES * 4 / 3) + 16 * 1024;
 // Enough for 30 line items plus the fields; Claude adds thinking headroom.

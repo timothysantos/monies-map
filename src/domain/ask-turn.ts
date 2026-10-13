@@ -23,6 +23,7 @@ import { readAnswerIntent, type AskAnswerIntentKind } from "./ask-answer-intent"
 import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
 import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
+import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
 
 export const ASK_TURN_ACTIONS = [
@@ -58,7 +59,7 @@ export const ASK_TURN_PAGES = ["summary", "month", "entries", "splits", "imports
 export type AskTurnPage = typeof ASK_TURN_PAGES[number];
 
 // Bounds on what goes to the model and what comes back.
-export const ASK_TURN_MAX_TEXT = 300;
+export const ASK_TURN_MAX_TEXT = ASK_MESSAGE_MAX_LENGTH;
 export const ASK_TURN_MAX_HISTORY = 8;
 const HISTORY_TEXT_MAX = 200;
 const MAX_CHIPS = 4;

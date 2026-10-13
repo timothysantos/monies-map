@@ -28,6 +28,8 @@
 // rules could not read; the route may ask the optional AI to read it into
 // the same structure.
 
+import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
+
 export type PlanLineOp =
   | { kind: "set"; line: string; amountMinor: number }
   | { kind: "change"; line: string; deltaMinor: number }
@@ -55,7 +57,7 @@ export interface PlanReaderContext {
   walletNames?: string[];
 }
 
-export const PLAN_REQUEST_MAX_TEXT = 300;
+export const PLAN_REQUEST_MAX_TEXT = ASK_MESSAGE_MAX_LENGTH;
 export const PLAN_REQUEST_MAX_OPS = 6;
 // A plan line holds at most this (S$10m): anything larger is a typo.
 export const PLAN_AMOUNT_MAX_MINOR = 1_000_000_000;
