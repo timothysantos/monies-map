@@ -253,8 +253,13 @@ over plan.
   with the "Spend within" money job below.
 - **Earned, spent and kept**: under the Spent figure, one bar stands for all
   the money you earned over the range. The red part is what you spent, the
-  plum part is what you invested (entries in the **Investments** category)
-  and the green part is what you kept. Money you filed under **Savings** is
+  plum part is what you invested (entries in the **Investments** category,
+  and money you moved into an investment account, less what you took back
+  out of one) and the green part is what you kept. A transfer between two
+  of your investment accounts, or between two bank accounts, changes
+  nothing here. If you took more out of your investments than you put in,
+  invested shows nothing and the key adds a line such as **Took out of
+  investments $2,500**: that money is not counted as income or as kept. Money you filed under **Savings** is
   counted as kept, not spent. If more went out than you earned, the bar
   runs to a small **All you earned** mark (with the amount, on a wider
   screen) and the striped part after it is the money that came out of your
@@ -739,8 +744,9 @@ Ask also answers questions about your money in plain words:
   where it came from.
 - "What do I owe Serene?" or "Who owes who?": what is still open between
   you on Splits.
-- "How much did I invest in September?": what went into Investments,
-  against what you planned to invest, and the entries behind it.
+- "How much did I invest in September?": what went into Investments and
+  into your investment accounts, against what you planned to invest, and
+  the entries behind it (or how much more you took out than you put in).
 - "How much did we save last month?" or "Did I hit my savings target?":
   what you kept of what you earned, against your savings target.
 - "Why did I spend more than I earned in August?" or "How did my spending

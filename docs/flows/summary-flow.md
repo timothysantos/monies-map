@@ -59,7 +59,10 @@ plan with a bar, the percent of plan and how far under or over, then Income
 (with planned income) and Saved (with the savings target). They read the
 DTO's six metric cards (`buildSummaryLeadModel`), so the figures are the
 cards' own; `tests/e2e/lead-support-detail.spec.js` compares them with the
-API on a phone and a desktop. It uses the account-pill DTO for account health and drilldown.
+API on a phone and a desktop. The savings bar's invested also reads the
+DTO's optional `investmentMoves` (transfers into and out of investment
+accounts over the range, DOMAIN.md "Money job";
+`tests/e2e/investment-transfers.spec.js`). It uses the account-pill DTO for account health and drilldown.
 Intent vs Outcome is one compact card per month, newest first
 (`summary-intent-outcome.jsx`): the lead is the month's spend against its
 plan with the bar, the percent of plan and how far under or over; planned and

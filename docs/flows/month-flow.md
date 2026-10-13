@@ -161,6 +161,10 @@ Month data comes from:
   the URL's range and the month controls wait. After a Month save clears
   the Summary cache, opening the month sheet reads it again.
 
+The Month lead's savings bar and money jobs read the month's transfers
+into and out of investment accounts from `monthPage.investmentMoves`
+(optional, left out when both are zero; DOMAIN.md "Money job").
+
 Spending Mix for the picked month (below the money insights, above the
 plan tables) reads `monthPage.categoryShareChart` from this DTO
 (`selectMonthSpendingMix` in `month-spending-mix.js`): no request of its
