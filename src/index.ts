@@ -127,6 +127,7 @@ import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
 import { SplitSettlementLockedError } from "./domain/split-settlement-lock";
 import { getAuthenticatedEmail } from "./server/access-identity";
+import { checkAccess } from "./server/access-jwt";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
@@ -184,6 +185,12 @@ export interface Env {
   AI_CLAUDE_WARN_AT_USD?: string;
   // Monthly Claude budget target (US$, default 8) for auto-balance.
   AI_CLAUDE_MONTHLY_TARGET_USD?: string;
+  // Cloudflare Access token check (src/server/access-jwt.ts): "off" (unset),
+  // "report" or "enforce", the team domain and the Access application's AUD
+  // tag. Set for production only.
+  ACCESS_JWT_MODE?: string;
+  ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_AUD?: string;
 }
 
 const API_PAGE_SLOW_MS = 750;
@@ -201,6 +208,13 @@ export default {
 
     if (!isShortcutCreateRequestAllowed(url.pathname, request.method, SHORTCUT_ENDPOINT_PATH)) {
       return json({ ok: false, error: "Shortcut direct-create endpoint only accepts POST." }, 405, { Allow: "POST" });
+    }
+
+    // The Cloudflare Access token, when ACCESS_JWT_MODE asks for it
+    // (src/server/access-jwt.ts): enforce refuses here, before any data work.
+    const accessRefusal = await checkAccess(request, env);
+    if (accessRefusal) {
+      return accessRefusal;
     }
 
     // A write that another site's page triggered in a signed-in browser is

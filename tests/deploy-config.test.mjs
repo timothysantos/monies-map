@@ -55,3 +55,23 @@ test("production configures 100 daily AI allowance units and the Worker honours 
   assert.deepEqual(result, { available: true, remaining: 99 });
   assert.equal(bound[0].at(-1), 100, "the upsert caps usage at the configured limit");
 });
+
+// Security review F6: production checks the Access token itself
+// (src/server/access-jwt.ts), in report mode until the owner has seen real
+// requests verify. The demo, test and shortcuts Workers have no Access in
+// front and leave it off, and so does local `npm run dev:api`.
+test("only production checks the Access token, against its own team and app tag", async () => {
+  const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8").then(JSON.parse);
+  const appConfig = await read("wrangler.jsonc");
+  assert.equal(appConfig.vars.ACCESS_JWT_MODE, "report");
+  assert.equal(appConfig.vars.ACCESS_TEAM_DOMAIN, "monies-map.cloudflareaccess.com");
+  assert.match(appConfig.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
+  for (const name of ["wrangler.demo.jsonc", "wrangler.test.jsonc", "wrangler.shortcuts.jsonc"]) {
+    const vars = (await read(name)).vars ?? {};
+    for (const key of ["ACCESS_JWT_MODE", "ACCESS_TEAM_DOMAIN", "ACCESS_AUD"]) {
+      assert.equal(vars[key], undefined, `${name} ${key}`);
+    }
+  }
+  const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.match(manifest.scripts["dev:api"], /--var ACCESS_JWT_MODE:off/);
+});
