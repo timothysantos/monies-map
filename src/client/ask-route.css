@@ -666,8 +666,12 @@
 
 .ask-add-menu-list button:hover,
 .ask-add-menu-list button:focus-visible {
-  outline: none;
   background: color-mix(in srgb, var(--accent-strong) 9%, transparent);
+}
+
+.ask-add-menu-list button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .ask-send {
@@ -879,6 +883,11 @@
   background: none;
   color: var(--accent);
   cursor: pointer;
+}
+
+.ask-dock-expand:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
 }
 
 /* A phone: Ask is a full page above the tab bar, with no header bar. The

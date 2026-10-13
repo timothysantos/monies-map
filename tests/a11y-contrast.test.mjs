@@ -115,6 +115,74 @@ for (const preset of PRESETS) {
   });
 }
 
+// A rule that removes the focus outline must put something as visible in its
+// place. These are the ones that may: a wrapper that draws the ring around
+// the field (:focus-within), a row or chip that outlines itself, and
+// containers that only take programmatic focus (a sheet, dialog or popover
+// the page moved focus to, which is not a stop the eye follows).
+const OUTLINE_REMOVED_OK = [
+  ".ask-dock-field-input:focus-visible", ".ask-input:focus-visible",
+  ".lsd-chip-native:focus-visible", ".lsd-row-input:focus", ".lsd-row.has-control > :is(input, textarea, select):not(.lsd-row-native, .lsd-row-input):focus-visible",
+  ".lsd-row.has-control > .responsive-select-trigger:focus-visible",
+  ".import-inbox-file-row:focus", ".import-row-sheet:focus-visible", ".mobile-context-dialog:focus", ".month-plan-sheet-dialog:focus-visible",
+  ".lsd-chip-hit:focus-visible", ".entry-mobile-sheet.is-dialog-sheet:focus",
+  ".note-dialog-content.sheet-dialog:focus", ".splits-groups-sheet:focus", ".split-list-sheet:focus", ".summary-month-sheet:focus"
+];
+
+// Splits a selector list on the commas outside parentheses.
+function splitSelectors(selector) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const character of selector) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (character === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+    } else current += character;
+  }
+  return [...parts, current.trim()].filter(Boolean);
+}
+
+function allStylesheets() {
+  const files = ["public/styles.css"];
+  const walk = (dir) => {
+    for (const entry of readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+      const relative = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(relative);
+      else if (entry.name.endsWith(".css")) files.push(relative);
+    }
+  };
+  walk("src/client");
+  return files;
+}
+
+const rulesOf = (file) => [...read(file).replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selector, body]) => ({ selector, body }));
+
+test("no control loses its focus outline without a replacement that shows", () => {
+  const offenders = [];
+  for (const file of allStylesheets()) {
+    for (const { selector, body } of rulesOf(file)) {
+      if (!/outline:\s*(none|0)\s*(;|$)/.test(body)) continue;
+      for (const part of splitSelectors(selector)) {
+        if (!/:focus(?!-within)/.test(part)) continue;
+        if (OUTLINE_REMOVED_OK.includes(part)) continue;
+        offenders.push(`${file}: ${part}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test("the Ask dock's field buttons and the Entries refresh button show a ring on keyboard focus", () => {
+  const rules = ["public/styles.css", "src/client/ask-route.css"].flatMap(rulesOf);
+  for (const selector of [".ask-dock-field-attach", ".ask-dock-close", ".ask-dock-expand", ".entries-date-refresh-button"]) {
+    const rule = rules.find(({ selector: sel, body }) => sel.includes(`${selector}:focus-visible`) && /outline:\s*\d+px solid var\(--focus-ring\)/.test(body));
+    assert.ok(rule, `${selector}:focus-visible draws the focus ring`);
+  }
+});
+
 test("the guard catches a failing pair: the accent-strong terracotta on the selected tab tint is under AA", () => {
   const default70s = PRESETS[0];
   const tint = mix(default70s.rgb("--accent-strong"), 0.08, default70s.rgb("--bg"));

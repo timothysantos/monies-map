@@ -17,7 +17,11 @@
 .info-icon-button:focus-visible {
   border-color: rgb(var(--accent-deep-rgb, 142 81 39) / 0.48);
   background: rgb(var(--paper-rgb) / 0.95);
-  outline: none;
+}
+
+.info-icon-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .duplicate-row-badges {

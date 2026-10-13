@@ -2296,6 +2296,12 @@ body[data-split-inline-editor] .ask-dock-field {
   cursor: pointer;
 }
 
+.ask-dock-field-attach:focus-visible,
+.ask-dock-close:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
 .ask-dock {
   --ask-dock-gutter: 16px;
   position: fixed;
@@ -5378,7 +5384,11 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 .statement-reconciliation-help-trigger:focus-visible {
   border-color: rgb(var(--accent-deep-rgb, 142 81 39) / 0.46);
   background: var(--paper);
-  outline: none;
+}
+
+.statement-reconciliation-help-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .statement-reconciliation-help-popover {
@@ -5950,7 +5960,11 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 .entries-date-refresh-button:focus-visible {
   border-color: rgb(var(--accent-strong-rgb) / 0.28);
   background: rgb(var(--cream-rgb, 255 245 237) / 0.98);
-  outline: none;
+}
+
+.entries-date-refresh-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .entries-date-refresh-button:disabled {
