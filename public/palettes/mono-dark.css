@@ -20,6 +20,8 @@
   --accent-rgb: 255 255 255;
   --accent-strong-rgb: 240 240 240;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.6);
   --paper-rgb: 34 34 34;
   --on-strong-rgb: 0 0 0;
   --splits-rgb: 235 235 235;
