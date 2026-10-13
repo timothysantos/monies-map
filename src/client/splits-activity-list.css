@@ -30,17 +30,20 @@
   border: 0;
   border-radius: 0;
   /* The panel's own flat colour, so no band shows at rest; stuck under the
-     top of the screen the foot fades out (as on an Entries day label). No
-     blur, which would draw a rectangle again. */
-  background: linear-gradient(
-    to bottom,
-    var(--splits-surface) calc(100% - var(--date-fade)),
-    color-mix(in srgb, var(--splits-surface) 55%, transparent) calc(100% - var(--date-fade) / 2),
-    transparent
-  );
+     top of the screen it is a rounded bar the width of the day's group, as
+     an Entries day label is. */
+  background: var(--splits-surface);
   backdrop-filter: none;
   color: rgb(var(--on-strong-rgb) / 0.88);
   font-size: 0.8rem;
+}
+
+.panel-splits .split-list-section .split-date-header[data-stuck] {
+  padding: 13px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--splits-surface) 84%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .panel-splits .split-list-section .split-date-header > strong {

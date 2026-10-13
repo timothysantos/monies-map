@@ -437,11 +437,13 @@
   overflow: visible;
 }
 
-/* The day label is not a box: it paints the page's own colour (--page, the
-   panel behind the list), so at rest no band shows above the rounded group.
-   Stuck under the top of the screen, the last --date-fade of its padding
-   fades to nothing, so the rows slide away softly instead of being cut by
-   a hard edge. No blur: a blurred layer would draw a rectangle again. */
+/* The day label is not a box: at rest it paints the page's own colour
+   (--page, the panel behind the list), so no band shows above the rounded
+   group. Stuck under the top of the screen (data-stuck, stuck-date-row.js)
+   it becomes a rounded bar: the day card's width and 16px radius, --page
+   slightly see-through with a blur inside the rounded shape only, its
+   text inset from the curve. The height does not change, so nothing
+   below it moves. */
 .entries-date-head {
   --date-fade: 12px;
   align-items: center;
@@ -450,13 +452,16 @@
   padding: 18px 2px var(--date-fade);
   border: 0;
   border-radius: 0;
-  background: linear-gradient(
-    to bottom,
-    var(--page) calc(100% - var(--date-fade)),
-    color-mix(in srgb, var(--page) 55%, transparent) calc(100% - var(--date-fade) / 2),
-    transparent
-  );
+  background: var(--page);
   backdrop-filter: none;
+}
+
+.entries-date-head[data-stuck] {
+  padding: 15px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--page) 84%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .entries-date-head > strong {
@@ -560,6 +565,10 @@
     transform: none;
     backface-visibility: visible;
     contain: none;
+  }
+
+  .entries-date-head[data-stuck] {
+    padding: 14px 12px;
   }
 
   .entries-date-head > strong {

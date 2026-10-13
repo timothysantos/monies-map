@@ -15,6 +15,7 @@ import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import { paletteColour } from "./palette-colour";
+import { trackStuckDateRow } from "./stuck-date-row";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -197,7 +198,7 @@ export function SplitActivityGroups({
 
     return (
       <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
-        <header className="split-date-header">
+        <header className="split-date-header" ref={archived ? undefined : trackStuckDateRow}>
           <strong>{formattedDate}</strong>
           <div className="split-date-actions">
             <span>{messages.splits.entryCount(group.items.length)}</span>

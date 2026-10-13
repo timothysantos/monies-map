@@ -8,8 +8,10 @@ import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 // rest it paints the exact surface behind it (--page on Entries, the Splits
 // surface on Splits), so no lighter band or square corner shows above the
 // day's rounded group, in every colour preset and in light and dark. Stuck
-// under the top of the screen it keeps that colour and fades out at its
-// bottom edge instead of cutting the rows off with a hard rectangle.
+// under the top of the screen it becomes a rounded bar: inset to the day
+// card's width with the card's radius, its left and right edges on the
+// card's, the surface colour slightly see-through with a blur inside the
+// rounded shape only.
 
 const PRESETS = ["70s", "60s", "80s", "modern", "mono", "code"];
 const MODES = ["light", "dark"];
@@ -26,6 +28,7 @@ const TOLERANCE = 2;
 const PAGES = {
   entries: {
     head: ".entries-date-head",
+    card: ".entries-rows",
     headText: "24 May 2026",
     surfaceToken: "--page",
     async seed(page, marker) {
@@ -53,6 +56,7 @@ const PAGES = {
   },
   splits: {
     head: ".split-date-header",
+    card: ".split-date-items",
     headText: "12 Jun 2026",
     surfaceToken: "--splits-surface",
     async seed(page, marker) {
@@ -144,7 +148,7 @@ async function placeHeader(page, header, fromTop) {
 
 for (const [pageName, config] of Object.entries(PAGES)) {
   for (const [viewportName, viewport] of VIEWPORTS) {
-    test(`${pageName} ${viewportName}: the date row is not a box at rest in any colour scheme, and fades when stuck`, async ({ page }) => {
+    test(`${pageName} ${viewportName}: the date row is not a box at rest in any colour scheme, and a rounded bar when stuck`, async ({ page }) => {
       test.setTimeout(240_000);
       const marker = `Playwright date row ${pageName} ${viewportName} ${Date.now()}`;
       await page.setViewportSize(viewport);
@@ -178,14 +182,18 @@ for (const [pageName, config] of Object.entries(PAGES)) {
         // No rounded, bordered, shadowed or blurred box of its own.
         const looks = await header.evaluate((element) => {
           const style = getComputedStyle(element);
-          return { radius: style.borderTopLeftRadius, bottom: style.borderBottomWidth, shadow: style.boxShadow, blur: style.backdropFilter };
+          return { radius: style.borderTopLeftRadius, bottom: style.borderBottomWidth, shadow: style.boxShadow, blur: style.backdropFilter, stuck: element.hasAttribute("data-stuck") };
         });
-        expect(looks, label).toEqual({ radius: "0px", bottom: "0px", shadow: "none", blur: "none" });
+        expect(looks, label).toEqual({ radius: "0px", bottom: "0px", shadow: "none", blur: "none", stuck: false });
       }
 
       // Stuck under the top of the screen, in 70s Light and in a dark preset:
-      // still sticky and the surface colour behind the label, with a fade at
-      // its foot rather than a hard rectangle.
+      // a rounded bar the width of the day card below it, with the card's
+      // radius, the surface colour slightly see-through and a blur inside
+      // it; the rows show past its rounded corners, not a square band.
+      const cardLooks = await header.evaluate((element, selector) => ({
+        radius: getComputedStyle(element.closest("section").querySelector(selector)).borderTopLeftRadius
+      }), config.card);
       for (const scheme of [{ palette: "70s", mode: "light" }, { palette: "modern", mode: "dark" }]) {
         const label = `stuck ${scheme.palette} ${scheme.mode}`;
         await applyScheme(page, scheme);
@@ -193,18 +201,44 @@ for (const [pageName, config] of Object.entries(PAGES)) {
         const box = await header.boundingBox();
         expect(Math.abs(box.y), `${label}: header holds the top of the screen`).toBeLessThanOrEqual(1);
         expect(await page.evaluate(() => window.scrollY), label).toBeGreaterThan(200);
-        const surface = await readToken(page, config.surfaceToken);
-        const at = await readPixels(page);
-        expectSame(at(box.x + box.width * 0.5, 3), surface, `${label}: top of the date row`);
+        await expect(header, label).toHaveAttribute("data-stuck", "");
         const stuck = await header.evaluate((element) => {
           const style = getComputedStyle(element);
-          return { image: style.backgroundImage, blur: style.backdropFilter, radius: style.borderTopLeftRadius };
+          return {
+            image: style.backgroundImage,
+            colour: style.backgroundColor,
+            blur: style.backdropFilter || style.webkitBackdropFilter,
+            radii: [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomLeftRadius, style.borderBottomRightRadius]
+          };
         });
-        expect(stuck.blur, label).toBe("none");
-        expect(stuck.radius, label).toBe("0px");
-        expect(stuck.image, label).toMatch(/linear-gradient/);
-        expect(stuck.image, label).toMatch(/, 0\)/);
+        expect(stuck.radii, `${label}: the card's radius on every corner`).toEqual(Array(4).fill(cardLooks.radius));
+        expect(cardLooks.radius).not.toBe("0px");
+        expect(stuck.blur, label).toMatch(/blur\(/);
+        expect(stuck.image, `${label}: one flat colour, no fade`).toBe("none");
+        // Slightly see-through: the surface colour with alpha under 1.
+        const alpha = Number(/rgba?\([^)]*,\s*([\d.]+)\)$/.exec(stuck.colour)?.[1] ?? /\/\s*([\d.]+)\)$/.exec(stuck.colour)?.[1] ?? 1);
+        expect(alpha, `${label}: ${stuck.colour}`).toBeLessThan(1);
+        expect(alpha, `${label}: ${stuck.colour}`).toBeGreaterThan(0.6);
+        // Its left and right edges sit on the day card's edges below it.
+        const cardBox = await header.evaluate((element, selector) => {
+          const rect = element.closest("section").querySelector(selector).getBoundingClientRect();
+          return { x: rect.x, right: rect.right };
+        }, config.card);
+        expect(Math.abs(box.x - cardBox.x), `${label}: left edge on the card's`).toBeLessThanOrEqual(1);
+        expect(Math.abs(box.x + box.width - cardBox.right), `${label}: right edge on the card's`).toBeLessThanOrEqual(1);
+        // Inside the bar, clear of the label: the surface colour, give or take the see-through.
+        const surface = await readToken(page, config.surfaceToken);
+        const at = await readPixels(page);
+        const inside = at(box.x + box.width * 0.5, 3);
+        for (let channel = 0; channel < 3; channel += 1) {
+          expect(Math.abs(inside[channel] - surface[channel]), `${label}: inside the bar ${inside} vs ${surface}`).toBeLessThanOrEqual(40);
+        }
       }
+
+      // Scrolled back so the row rests again: flat, no bar.
+      await placeHeader(page, header, 220);
+      await expect(header).not.toHaveAttribute("data-stuck", "");
+      expect(await header.evaluate((element) => getComputedStyle(element).borderTopLeftRadius)).toBe("0px");
     });
   }
 }

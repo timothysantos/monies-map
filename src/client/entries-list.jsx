@@ -18,6 +18,7 @@ import { isMobileLayout } from "./use-viewport";
 import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
 import { flowTone } from "../domain/money-tone";
+import { trackStuckDateRow } from "./stuck-date-row";
 
 const {
   categories: categoryService,
@@ -264,7 +265,7 @@ export function EntriesDateGroups({
     <div className="entries-date-groups">
       {groupedEntries.map((group) => (
         <section key={group.date} className="entries-date-group">
-          <div className="entries-date-head">
+          <div className="entries-date-head" ref={trackStuckDateRow}>
             <strong>{formatService.formatDateOnly(group.date)}</strong>
             <div className="entries-date-actions">
               <span>{messages.entries.dateNet}: <PrivateMoney className={moneyToneClass(flowTone(group.netMinor))}>{formatService.money(group.netMinor)}</PrivateMoney></span>
