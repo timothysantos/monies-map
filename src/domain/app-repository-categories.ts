@@ -1,6 +1,6 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { slugify } from "./app-repository-helpers";
-import { recordAuditEvent } from "./app-repository-audit";
+import { buildAuditEventStatement, recordAuditEvent } from "./app-repository-audit";
 import { categoryDisplayColour } from "./category-palette";
 import type { CategoryDto } from "../types/dto";
 
@@ -107,31 +107,33 @@ export async function createCategoryRecord(
     .first<{ max_sort_order: number }>();
 
   const categoryId = `cat-${slug}-${crypto.randomUUID().slice(0, 8)}`;
-  await db
-    .prepare(`
-      INSERT INTO categories (
-        id, household_id, name, slug, reporting_group,
-        icon_key, color_hex, sort_order, is_system
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-    `)
-    .bind(
-      categoryId,
-      DEFAULT_HOUSEHOLD_ID,
-      name,
-      slug,
-      slug,
-      iconKey,
-      colorHex,
-      (sortOrderResult?.max_sort_order ?? 0) + 10
-    )
-    .run();
-
-  await recordAuditEvent(db, {
-    entityType: "category",
-    entityId: categoryId,
-    action: "category_created",
-    detail: `Created category ${name}.`
-  });
+  // The category and its audit event commit together (Persistence
+  // Atomicity Contract).
+  await db.batch([
+    db
+      .prepare(`
+        INSERT INTO categories (
+          id, household_id, name, slug, reporting_group,
+          icon_key, color_hex, sort_order, is_system
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `)
+      .bind(
+        categoryId,
+        DEFAULT_HOUSEHOLD_ID,
+        name,
+        slug,
+        slug,
+        iconKey,
+        colorHex,
+        (sortOrderResult?.max_sort_order ?? 0) + 10
+      ),
+    buildAuditEventStatement(db, {
+      entityType: "category",
+      entityId: categoryId,
+      action: "category_created",
+      detail: `Created category ${name}.`
+    })
+  ]);
 
   return { categoryId, created: true };
 }

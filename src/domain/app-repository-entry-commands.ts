@@ -16,6 +16,7 @@ import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildLinkedSplitMirrorStatements, buildLinkedSplitUpsertStatements, isActiveSplitLinkConflict } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
 
 async function assertUnlockedBankFactsForEntryUpdate(
   db: D1Database,
@@ -78,7 +79,9 @@ async function assertUnlockedBankFactsForEntryUpdate(
   );
 }
 
-async function findClosedStatementCheckpointForTransaction(
+// Read only; Ask's turn context reads it too, to say a certified entry's
+// bank facts are locked before the person asks to change them.
+export async function findClosedStatementCheckpointForTransaction(
   db: D1Database,
   input: {
     accountId: string;
@@ -499,6 +502,153 @@ export async function updateEntryCategoryRecord(
   }
 
   return { entryId: input.entryId, updated: true };
+}
+
+// Many entries' categories at once (Ask's "make all Grab rides Transport",
+// and its Undo): each change names the category the entry was in when the
+// person saw it (fromCategoryName) and the one it moves to. All checks run
+// first; every move, one audit event and the month refresh markers then
+// commit in one batch, behind guards that fail the whole batch when an
+// entry was moved meanwhile. More than BULK_RECATEGORISE_CONFIRM_ABOVE rows
+// need confirmedCount equal to the number of rows (the person tapped
+// "Change all N"); more than BULK_RECATEGORISE_MAX are refused. Transfers
+// keep their Transfer category and are refused.
+export async function updateEntryCategoriesRecord(
+  db: D1Database,
+  input: {
+    changes: Array<{ entryId: string; fromCategoryName: string; categoryName: string }>;
+    confirmedCount?: number;
+  }
+) {
+  const changes = Array.isArray(input.changes) ? input.changes : [];
+  if (!changes.length) {
+    throw new Error("Choose at least one entry to change.");
+  }
+  if (changes.length > BULK_RECATEGORISE_MAX) {
+    throw new Error(`At most ${BULK_RECATEGORISE_MAX} entries can change category at once. Use Entries for more.`);
+  }
+  if (changes.length > BULK_RECATEGORISE_CONFIRM_ABOVE && input.confirmedCount !== changes.length) {
+    throw new Error(`Confirm changing all ${changes.length} entries first.`);
+  }
+  const ids = changes.map((change) => String(change?.entryId ?? ""));
+  if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
+    throw new Error("Each entry can change only once.");
+  }
+
+  const categories = await db
+    .prepare("SELECT id, name FROM categories WHERE household_id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string; name: string }>();
+  const categoryIdByName = new Map(categories.results.map((category) => [category.name, category.id]));
+  for (const change of changes) {
+    if (!categoryIdByName.has(change.categoryName) || !categoryIdByName.has(change.fromCategoryName)) {
+      throw new Error(`Unknown category: ${categoryIdByName.has(change.categoryName) ? change.fromCategoryName : change.categoryName}`);
+    }
+    if (change.categoryName === "Transfer") {
+      throw new Error("Link a transfer to move an entry to Transfer.");
+    }
+  }
+
+  type BulkEntry = { id: string; transaction_date: string; post_date: string | null; entry_type: string; category_name: string | null };
+  const entries: BulkEntry[] = [];
+  for (const chunk of chunked(ids, BULK_ID_CHUNK)) {
+    const result = await db
+      .prepare(`
+        SELECT transactions.id, transactions.transaction_date, transactions.post_date, transactions.entry_type, categories.name AS category_name
+        FROM transactions
+        LEFT JOIN categories ON categories.id = transactions.category_id
+        WHERE transactions.household_id = ? AND transactions.id IN (${chunk.map(() => "?").join(", ")})
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<BulkEntry>();
+    entries.push(...result.results);
+  }
+  const entryById = new Map(entries.map((entry) => [entry.id, entry]));
+  for (const change of changes) {
+    const entry = entryById.get(change.entryId);
+    if (!entry) {
+      throw new Error("Entry not found.");
+    }
+    if (entry.entry_type === "transfer") {
+      throw new Error("A transfer keeps its Transfer category.");
+    }
+    if (entry.category_name !== change.fromCategoryName) {
+      throw new Error(BULK_STALE_MESSAGE);
+    }
+  }
+
+  const months = [...new Set(entries.flatMap((entry) => [entry.transaction_date, entry.post_date ?? entry.transaction_date].map((date) => date.slice(0, 7))))].sort();
+  const moving = changes.filter((change) => change.categoryName !== change.fromCategoryName);
+  const targets = [...new Set(changes.map((change) => change.categoryName))];
+  const statements = [
+    ...buildCategoryGuards(db, changes, categoryIdByName),
+    ...moving.map((change) => db
+      .prepare("UPDATE transactions SET category_id = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
+      .bind(categoryIdByName.get(change.categoryName), DEFAULT_HOUSEHOLD_ID, change.entryId)),
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: ids[0],
+      action: "entries_category_updated",
+      detail: targets.length === 1
+        ? `Moved ${moving.length} ${moving.length === 1 ? "entry" : "entries"} to ${targets[0]}.`
+        : `Changed the category of ${moving.length} ${moving.length === 1 ? "entry" : "entries"}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ];
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    if (await anyCategoryChanged(db, changes, categoryIdByName)) {
+      throw new Error(BULK_STALE_MESSAGE);
+    }
+    throw error;
+  }
+  await refreshMonthlySnapshotsAfterWrite(db, months);
+
+  return { updatedCount: moving.length, months };
+}
+
+const BULK_STALE_MESSAGE = "Some of these entries were changed meanwhile. Ask again to see them as they are now.";
+// D1 binds at most 100 values per statement.
+const BULK_ID_CHUNK = 90;
+
+function chunked<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+// The entries among `count` ids that are no longer in one expected category.
+function staleCategorySql(count: number) {
+  return `
+    SELECT id FROM transactions
+    WHERE household_id = ? AND id IN (${Array(count).fill("?").join(", ")})
+      AND (category_id IS NULL OR category_id != ?)
+  `;
+}
+
+// The batch's first statements: each fails the whole batch (malformed JSON
+// for any stale row) when an entry left the category it was read in.
+function buildCategoryGuards(db: D1Database, changes: Array<{ entryId: string; fromCategoryName: string }>, categoryIdByName: Map<string, string>) {
+  const byFrom = new Map<string, string[]>();
+  for (const change of changes) {
+    byFrom.set(change.fromCategoryName, [...(byFrom.get(change.fromCategoryName) ?? []), change.entryId]);
+  }
+  return [...byFrom].flatMap(([fromName, entryIds]) => chunked(entryIds, BULK_ID_CHUNK).map((chunk) => db
+    .prepare(`SELECT json('{' || id) AS stale FROM (${staleCategorySql(chunk.length)})`)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...chunk, categoryIdByName.get(fromName))));
+}
+
+async function anyCategoryChanged(db: D1Database, changes: Array<{ entryId: string; fromCategoryName: string }>, categoryIdByName: Map<string, string>) {
+  for (const change of changes) {
+    const stale = await db.prepare(staleCategorySql(1)).bind(DEFAULT_HOUSEHOLD_ID, change.entryId, categoryIdByName.get(change.fromCategoryName)).first();
+    if (stale) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function updateEntryPostDateRecord(

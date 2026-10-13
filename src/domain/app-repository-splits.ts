@@ -1,4 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { buildAuditEventStatement } from "./app-repository-audit";
 import {
   groupSplits,
   newSplitRecordId,
@@ -436,9 +437,12 @@ async function loadCheckpointedRecordIds(db: D1Database) {
   return new Set(rows.results.map((row) => `${row.record_kind}:${row.record_id}`));
 }
 
-export async function createSplitSettlementCheckpoint(
+// What Simplify would record, read only: the open records it would cover
+// and the one payment they net to (Ask's Simplify card shows exactly this
+// before the person saves). Throws what the command would refuse.
+export async function planSplitSettlementCheckpoint(
   db: D1Database,
-  input: { viewerPersonId: string; date: string; note?: string; currency?: string }
+  input: { viewerPersonId: string; currency?: string }
 ) {
   const people = await db.prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at, id LIMIT 2")
     .bind(DEFAULT_HOUSEHOLD_ID).all<{ id: string; display_name: string }>();
@@ -477,17 +481,36 @@ export async function createSplitSettlementCheckpoint(
     balances.set(groupId, (balances.get(groupId) ?? 0) + amount);
   }
   const net = calculateNetSettlement([...balances].map(([groupId, amountMinor]) => ({ groupId, amountMinor })), viewer.display_name, other.display_name);
+  return { viewer, other, currency, openExpenses, openSettlements, net };
+}
+
+export async function createSplitSettlementCheckpoint(
+  db: D1Database,
+  input: { viewerPersonId: string; date: string; note?: string; currency?: string }
+) {
+  const { viewer, other, currency, openExpenses, openSettlements, net } = await planSplitSettlementCheckpoint(db, input);
   const id = newSplitRecordId("split-checkpoint");
   const status = net.amountMinor === 0 ? "internally_offset" : "open";
-  await db.prepare(`
-    INSERT INTO split_settlement_checkpoints
-      (id, household_id, from_person_id, to_person_id, amount_minor, currency, settlement_date, status, note)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, DEFAULT_HOUSEHOLD_ID, net.fromPersonName ? (net.fromPersonName === viewer.display_name ? viewer.id : other.id) : null,
-    net.toPersonName ? (net.toPersonName === viewer.display_name ? viewer.id : other.id) : null,
-    net.amountMinor, currency, input.date, status, input.note ?? null).run();
-  for (const row of openExpenses) await db.prepare("INSERT INTO split_settlement_checkpoint_items (id, checkpoint_id, record_kind, record_id) VALUES (?, ?, 'expense', ?)").bind(`${id}-expense-${row.id}`, id, row.id).run();
-  for (const row of openSettlements) await db.prepare("INSERT INTO split_settlement_checkpoint_items (id, checkpoint_id, record_kind, record_id) VALUES (?, ?, 'settlement', ?)").bind(`${id}-settlement-${row.id}`, id, row.id).run();
+  // The checkpoint, every record it covers and its audit event commit
+  // together (Persistence Atomicity Contract): a failure part way leaves no
+  // checkpoint covering only some of the open records.
+  await db.batch([
+    db.prepare(`
+      INSERT INTO split_settlement_checkpoints
+        (id, household_id, from_person_id, to_person_id, amount_minor, currency, settlement_date, status, note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(id, DEFAULT_HOUSEHOLD_ID, net.fromPersonName ? (net.fromPersonName === viewer.display_name ? viewer.id : other.id) : null,
+      net.toPersonName ? (net.toPersonName === viewer.display_name ? viewer.id : other.id) : null,
+      net.amountMinor, currency, input.date, status, input.note ?? null),
+    ...openExpenses.map((row) => db.prepare("INSERT INTO split_settlement_checkpoint_items (id, checkpoint_id, record_kind, record_id) VALUES (?, ?, 'expense', ?)").bind(`${id}-expense-${row.id}`, id, row.id)),
+    ...openSettlements.map((row) => db.prepare("INSERT INTO split_settlement_checkpoint_items (id, checkpoint_id, record_kind, record_id) VALUES (?, ?, 'settlement', ?)").bind(`${id}-settlement-${row.id}`, id, row.id)),
+    buildAuditEventStatement(db, {
+      entityType: "split_settlement_checkpoint",
+      entityId: id,
+      action: "split_checkpoint_created",
+      detail: `Simplified ${openExpenses.length + openSettlements.length} open split records in ${currency} into one settlement.`
+    })
+  ]);
   return { checkpointId: id, amountMinor: net.amountMinor, currency, status };
 }
 
