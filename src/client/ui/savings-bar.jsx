@@ -7,27 +7,26 @@ import { useIsMobileLayout } from "../use-viewport";
 
 const copy = messages.summary.lead.savingsBar;
 
-// The savings bar under the lead figure (design.md, "Lead · Support ·
-// Detail"; model in savings-bar-model.js): money earned is the bar, spent is
-// rose, invested plum and kept mint, with a thin plan bar under it and one
-// plain line. Each segment is a button. Its popover has the percentage of
-// income: hover (mouse) shows it; a click, a tap or Enter shows it with the
-// segment's menu (View entries, Ask about this; money-jobs-detail.js, which
-// loads on the first hover, focus or press). Screen
-// readers read the popover through aria-describedby, which is always in the
-// page. Hidden money keeps the percentages and neutral colours, and shows no
-// amount anywhere.
+// The savings bar under the lead (design.md, "Lead · Support · Detail"; model
+// in savings-bar-model.js): money earned is the bar, spent is rose, invested
+// plum and kept mint, with a thin plan bar under it, a legend and one plain
+// line. The legend is always in the page, with no popover: a swatch, the
+// part's short name and its figure (and its share of income where there is
+// room; hidden money shows the share alone), then the plan bar's name. Each
+// part is a button: a click, a tap or Enter opens its menu (View entries,
+// Ask about this; money-jobs-detail.js, which loads on the first hover, focus
+// or press) in the page flow under the legend. A part's accessible
+// description is its legend item. Hidden money keeps the percentages and
+// neutral colours, and shows no amount anywhere.
 /**
  * @param {{ figures: any, hidden: boolean, period?: any }} props `period` is
- * optional: without it (an Ask answer's bar) the parts have no menu.
+ * optional: without it (an Ask answer's bar) the parts have no menu and are
+ * plain images.
  */
 export function SavingsBar({ figures, hidden, period = null }) {
   const baseId = useId();
   const rootRef = useRef(null);
-  const lastPointer = useRef("");
-  const [openKey, setOpenKey] = useState(null);
-  // The segment whose menu is open (a click, tap or Enter); hover alone
-  // shows only the popover.
+  // The part whose menu is open (a click, tap or Enter).
   const [menuKey, setMenuKey] = useState(null);
   const model = buildSavingsBarModel({ figures, hidden });
   const phone = useIsMobileLayout();
@@ -35,14 +34,13 @@ export function SavingsBar({ figures, hidden, period = null }) {
   // Start the menu's code on the first sign of interest, so a tap finds it.
   const warm = () => { void loadMoneyJobsDetail().catch(() => {}); };
 
-  // A tap or press outside, or Escape, closes the open popover and menu.
+  // A tap or press outside, or Escape, closes the open menu.
   useEffect(() => {
-    if (!openKey) {
+    if (!menuKey) {
       return undefined;
     }
     const close = (event) => {
       if (event.type === "keydown" ? event.key === "Escape" : !rootRef.current?.contains(event.target)) {
-        setOpenKey(null);
         setMenuKey(null);
       }
     };
@@ -52,79 +50,52 @@ export function SavingsBar({ figures, hidden, period = null }) {
       document.removeEventListener("pointerdown", close);
       document.removeEventListener("keydown", close);
     };
-  }, [openKey]);
+  }, [menuKey]);
 
   if (!model) {
     return null;
   }
 
-  let start = 0;
-  const placed = model.segments.map((segment) => {
-    const placement = { ...segment, centre: start + segment.widthPercent / 2 };
-    start += segment.widthPercent;
-    return placement;
-  });
-
-  // A mouse click opens the menu under the hover popover and keeps it open;
-  // a tap or Enter toggles both.
-  const press = (key) => {
-    const opening = lastPointer.current === "mouse" || openKey !== key || menuKey !== key;
-    setOpenKey(opening ? key : null);
-    // Without a period (an Ask answer's bar) there is no menu to open.
-    setMenuKey(opening && period ? key : null);
-  };
+  const lastIndex = model.segments.length - 1;
+  const openSegment = model.segments.find((segment) => segment.key === menuKey);
+  // The legend's words: "Spent $209,000" and, muted, " · 85%". A phone has no
+  // room for the share beside the figure, so it shows the share only when
+  // there is no figure (hidden money); the plan bar is named "Plan" there and
+  // with its figures on a wider screen.
+  const legendText = ({ name, amount, percent }) => [
+    amount === null ? name : `${name} ${amount}`,
+    percent !== null && (amount === null || !phone) ? <span className="savings-bar-legend-share" key="share">{` · ${percent}%`}</span> : null
+  ];
 
   return (
     <div className="savings-bar" ref={rootRef} data-savings-bar>
       <div className="savings-bar-track" role="group" aria-label={copy.label}>
-        {placed.map((segment) => (
-          <button
-            key={segment.key}
-            type="button"
-            className={`savings-bar-segment money-${segment.tone} ${segment.hatched ? "is-hatched" : ""}`}
-            data-segment={segment.key}
-            style={{ width: `${segment.widthPercent}%` }}
-            aria-label={segment.name}
-            aria-describedby={`${baseId}-${segment.key}`}
-            aria-expanded={menuKey === segment.key}
-            onPointerEnter={(event) => {
-              warm();
-              if (event.pointerType === "mouse" && menuKey === null) setOpenKey(segment.key);
-            }}
-            onFocus={warm}
-            onPointerLeave={(event) => {
-              if (event.pointerType === "mouse" && menuKey === null) setOpenKey((current) => (current === segment.key ? null : current));
-            }}
-            onPointerDown={(event) => {
-              warm();
-              lastPointer.current = event.pointerType;
-            }}
-            onKeyDown={() => { lastPointer.current = "keyboard"; }}
-            onClick={() => press(segment.key)}
-          />
-        ))}
+        {model.segments.map((segment, index) => {
+          const props = {
+            className: `savings-bar-segment money-${segment.tone} ${segment.hatched ? "is-hatched" : ""} ${index === 0 ? "is-first" : ""} ${index === lastIndex ? "is-last" : ""}`,
+            "data-segment": segment.key,
+            style: { width: `${segment.widthPercent}%` },
+            "aria-label": segment.name,
+            "aria-describedby": `${baseId}-${segment.key}`
+          };
+          return period ? (
+            <button
+              key={segment.key}
+              type="button"
+              {...props}
+              aria-expanded={menuKey === segment.key}
+              onPointerEnter={warm}
+              onFocus={warm}
+              onPointerDown={warm}
+              onClick={() => setMenuKey((current) => (current === segment.key ? null : segment.key))}
+            />
+          ) : <span key={segment.key} role="img" {...props} />;
+        })}
         {model.tickPercent !== null ? (
           <span className={`savings-bar-tick ${model.tickPercent > 75 ? "is-late" : ""}`} style={{ left: `${model.tickPercent}%` }} aria-hidden="true">
-            <span className="savings-bar-tick-label">{copy.incomeTick}</span>
+            <span className="savings-bar-tick-label">{phone ? model.tickLabel : model.tickLabelWithAmount}</span>
           </span>
         ) : null}
-        {placed.map((segment) => (
-          <span
-            key={segment.key}
-            className="savings-bar-float"
-            hidden={openKey !== segment.key}
-            style={{ left: `${segment.centre}%`, transform: `translateX(-${segment.centre}%)` }}
-          >
-            <span id={`${baseId}-${segment.key}`} role="tooltip" className="savings-bar-popover" data-popover={segment.key}>
-              {segment.popover}
-            </span>
-            {menuKey === segment.key && detail ? detail.renderMoneyActions(createElement, {
-              actionKey: segment.key,
-              view: detail.moneyActionView(segment.key, { name: segment.name, figures, hidden, period, search: window.location.search }),
-              onDone: () => { setOpenKey(null); setMenuKey(null); }
-            }) : null}
-          </span>
-        ))}
       </div>
       {model.plan ? (
         <span className="savings-bar-plan" aria-hidden="true">
@@ -132,6 +103,30 @@ export function SavingsBar({ figures, hidden, period = null }) {
           <span className="savings-bar-plan-invest" style={{ width: `${model.plan.investPercent}%` }} />
           <span className="savings-bar-plan-save" style={{ width: `${model.plan.savePercent}%` }} />
         </span>
+      ) : null}
+      <ul className="savings-bar-legend" data-savings-legend>
+        {model.segments.map((segment) => (
+          <li key={segment.key} id={`${baseId}-${segment.key}`} data-legend={segment.key}>
+            <span className={`savings-bar-swatch money-${segment.tone} ${segment.hatched ? "is-hatched" : ""}`} data-swatch={segment.key} aria-hidden="true" />
+            {legendText(segment.legend)}
+          </li>
+        ))}
+        {model.planLegend ? (
+          <li data-legend="plan">
+            <span className="savings-bar-swatch is-plan" aria-hidden="true" />
+            {phone ? copy.planName : model.planLegend}
+          </li>
+        ) : null}
+      </ul>
+      {/* The open part's menu, in the page flow under the legend. */}
+      {openSegment && detail ? (
+        <div className="savings-bar-menu" data-savings-menu>
+          {detail.renderMoneyActions(createElement, {
+            actionKey: openSegment.key,
+            view: detail.moneyActionView(openSegment.key, { name: openSegment.name, figures, hidden, period, search: window.location.search }),
+            onDone: () => setMenuKey(null)
+          })}
+        </div>
       ) : null}
       {/* One line on a phone: the sentences that name investing are shortened there. */}
       <p className="savings-bar-sentence" data-savings-sentence>{phone ? model.shortSentence : model.sentence}</p>

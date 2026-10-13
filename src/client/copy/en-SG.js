@@ -155,11 +155,18 @@ export const messages = {
         keptName: "Kept",
         investedName: "Invested",
         savingsName: "Came out of savings",
-        incomeTick: "income",
-        popover: (name, amount, percentOfIncome) => {
-          const share = percentOfIncome === null ? "" : ` · ${percentOfIncome}% of income`;
-          return amount === null ? `${name}${share}` : `${name} ${amount}${share}`;
-        },
+        // The tick where the income ends on an overspent bar: all the money
+        // earned in the period (the amount joins it where there is room).
+        tick: "All you earned",
+        tickWithAmount: (amount) => `All you earned ${amount}`,
+        // The always-visible legend under the bars, one short label per part
+        // (the striped part is what came out of savings), and the thin plan bar.
+        legend: { spent: "Spent", invested: "Invested", kept: "Kept", savings: "From savings" },
+        planName: "Plan",
+        planSpend: "spend",
+        planInvest: "invest",
+        planKeep: "keep",
+        planLegend: (parts) => `Plan: ${parts.join(" · ")}`,
         kept: (kept, earned, percent) => `You kept ${kept} of the ${earned} you earned (${percent}%)`,
         keptAndInvested: (kept, invested, earned) => `You kept ${kept} and invested ${invested} of the ${earned} you earned`,
         spentMore: (more) => `You spent ${more} more than you earned`,

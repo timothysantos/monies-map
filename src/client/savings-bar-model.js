@@ -7,10 +7,12 @@ const copy = messages.summary.lead.savingsBar;
 // design.md "Lead · Support · Detail"): all the money earned in the period is
 // one bar (income = 100%). Spent is the rose part, invested the plum part
 // and kept (what is left) the mint part. When more went out than came in,
-// the bar is as long as what went out: an income tick marks where the income
-// ended, and spending past the tick is hatched (still rose) because it came
-// out of savings. A thin plan bar under it, on the same scale, is the
-// planned spend, the investment goal and the savings goal.
+// the bar is as long as what went out: a tick, "All you earned", marks where
+// the income ended, and spending past the tick is hatched (still rose) because
+// it came out of savings. A thin plan bar under it, on the same scale, is the
+// planned spend, the investment goal and the savings goal. A legend under the
+// bars (each part's name, figure and share; the plan's figures) is always
+// shown, so nothing needs a hover or a tap to be read.
 //
 // `figures` is splitMoneyUse's (money-jobs-model.js): every figure is one
 // the lead already has, with money filed under Investments and Savings
@@ -31,12 +33,14 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
   // The bar is the income, or what went out when that is longer.
   const scaleMinor = isOver ? outMinor : income;
   const width = (minor) => (minor / scaleMinor) * 100;
+  // `name` is the part's full name for screen readers; the legend's short
+  // `legend.name` is what sighted users read under the bar.
   const segment = (key, tone, minor, name, percent, extra = {}) => ({
     key,
     tone,
     widthPercent: width(minor),
     name,
-    popover: copy.popover(name, amount(minor), percent),
+    legend: { name: copy.legend[key], amount: amount(minor), percent },
     hatched: false,
     ...extra
   });
@@ -91,14 +95,30 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     }
   }
 
+  const hasTick = isOver && income > 0;
   return {
     segments,
-    // Where the income ends on a bar that is longer than it.
-    tickPercent: isOver && income > 0 ? width(income) : null,
+    // Where the income ends on a bar that is longer than it, and what to
+    // call it (the figure goes with it when money is shown).
+    tickPercent: hasTick ? width(income) : null,
+    tickLabel: hasTick ? copy.tick : null,
+    tickLabelWithAmount: hasTick ? (hidden ? copy.tick : copy.tickWithAmount(formatMoney(income))) : null,
     sentence,
     shortSentence: shortSentence ?? sentence,
-    plan: hidden ? null : buildPlan(scaleMinor, figures)
+    plan: hidden ? null : buildPlan(scaleMinor, figures),
+    // The legend's wording for the thin plan bar: the plan's own figures,
+    // not cut to the bar, and only the goals that exist.
+    planLegend: hidden ? null : buildPlanLegend(figures, formatMoney)
   };
+}
+
+function buildPlanLegend({ spendPlan, investPlan, savePlan }, formatMoney) {
+  const parts = [
+    [copy.planSpend, spendPlan],
+    [copy.planInvest, investPlan],
+    [copy.planKeep, savePlan]
+  ].filter(([, minor]) => minor > 0);
+  return parts.length === 0 ? null : copy.planLegend(parts.map(([word, minor]) => `${word} ${formatMoney(minor)}`));
 }
 
 // The plan bar shares the income bar's scale: the planned spend, then the

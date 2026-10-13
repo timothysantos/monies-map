@@ -123,7 +123,11 @@ test.describe("phone", () => {
     await expect(bar.locator("[data-segment]")).toHaveCount(3);
     await expect(bar.locator("[data-segment]").nth(1)).toHaveAttribute("data-segment", "invested");
     await expect(bar.locator('[data-segment="invested"]')).toHaveAccessibleName("Invested");
-    await expect(bar.locator('[data-popover="invested"]')).toHaveText(`Invested ${dollars(figures.invested)} · ${Math.round((figures.invested * 100) / figures.income)}% of income`);
+    // The legend names it without a tap: the figure on a phone (the share needs the room of a wider screen), then the plan bar.
+    await expect(bar.locator('[data-legend="invested"]')).toHaveText(`Invested ${dollars(figures.invested)}`);
+    await expect(bar.locator("[data-savings-legend] [data-legend]")).toHaveCount(4);
+    await expect(bar.locator('[data-legend="plan"]')).toHaveText("Plan");
+    expect((await bar.locator("[data-savings-legend]").boundingBox()).height, "legend on one line with investing too").toBeLessThan(18);
     // On a phone the sentence is its one-line form; Saved is the same kept.
     await expect(bar.locator("[data-savings-sentence]")).toHaveText(`Kept ${dollars(figures.kept)} · invested ${dollars(figures.invested)} of ${dollars(figures.income)}`);
     expect((await bar.locator("[data-savings-sentence]").boundingBox()).height, "sentence on one line").toBeLessThan(22);
@@ -141,7 +145,7 @@ test.describe("phone", () => {
     await expect(jobs).not.toHaveAttribute("open", "");
     await expect(jobs.locator("[data-job]").first()).toBeHidden();
     // The jobs line takes the old plan line's place: the card stays compact.
-    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(205);
+    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(215);
     expect((await page.locator(".financial-insight").first().boundingBox()).y, "Money insights above the fold").toBeLessThan(664);
     // The rows' and the menu's words are not in the first screen: they load on the first open.
     const detailLoaded = () => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("money-jobs-detail")));
@@ -164,7 +168,6 @@ test.describe("phone", () => {
     const bar = lead.locator("[data-savings-bar]");
 
     await bar.locator('[data-segment="invested"]').tap();
-    await expect(bar.locator('[data-popover="invested"]')).toBeVisible();
     const menu = bar.locator('[data-money-actions="invested"]');
     await expect(menu.getByRole("button")).toHaveText(["View entries", "Ask about this"]);
     await menu.getByRole("button", { name: "View entries" }).tap();
@@ -217,7 +220,7 @@ test.describe("phone", () => {
     const figures = await monthFigures(page);
     await expect(lead.locator(".summary-lead-spent")).toHaveText("••••");
     await expect(lead.locator("[data-savings-sentence]")).toHaveText("Spent, invested and kept, as shares of income");
-    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(205);
+    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(215);
     const rows = jobRows(figures);
     const done = rows.filter(([, status]) => status === "✓ done").length;
     await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} money jobs done`);
@@ -235,8 +238,8 @@ test.describe("phone", () => {
 
     await lead.locator('[data-job="spend"] .money-job-row').tap();
     await expect(lead.locator('[data-job="spend"] [data-action="ask"]')).toHaveAttribute("data-question", `How did my spending compare with the plan in ${MONTH_WORDS}?`);
+    await expect(lead.locator('[data-legend="invested"]')).toHaveText(/^Invested · \d+%$/);
     await lead.locator('[data-segment="invested"]').tap();
-    await expect(lead.locator('[data-popover="invested"]')).toHaveText(/^Invested · \d+% of income$/);
     const text = await lead.locator("[data-savings-bar], [data-money-jobs]").evaluateAll((items) => items.map((item) => item.textContent).join(" "));
     expect(text).not.toMatch(/\$|short|over by|under|more than/i);
   });
@@ -252,7 +255,7 @@ test.describe("desktop", () => {
     await seedInvesting(page);
   });
 
-  test("Summary lead: the jobs are open, hover shows a part's popover, a click its menu, and Ask opens beside the page", async ({ page }) => {
+  test("Summary lead: the jobs are open, the legend names the parts, a click opens a part's menu, and Ask opens beside the page", async ({ page }) => {
     await revealMoney(page);
     const summary = await loadSummaryPage(page, { view: VIEW, month: MONTH, summaryStart: MONTH, summaryEnd: MONTH });
     const card = (label) => summary.summaryPage.metricCards.find((item) => item.label === label).amountMinor;
@@ -264,8 +267,9 @@ test.describe("desktop", () => {
     await expect(jobs.locator('[data-job="invest"] [data-job-status]')).toHaveText("short by $300");
 
     const invested = lead.locator('[data-segment="invested"]');
+    // The legend has the figure and the share without a hover; a hover opens nothing.
+    await expect(lead.locator('[data-legend="invested"]')).toHaveText(/^Invested \$[\d,]+ · \d+%$/);
     await invested.hover();
-    await expect(lead.locator('[data-popover="invested"]')).toBeVisible();
     await expect(lead.locator('[data-money-actions="invested"]')).toHaveCount(0);
     await invested.click();
     const ask = lead.locator('[data-money-actions="invested"] [data-action="ask"]');

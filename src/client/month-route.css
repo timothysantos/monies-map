@@ -213,18 +213,22 @@
 }
 
 .month-lead.lsd-card {
-  gap: 5px;
+  gap: 4px;
   padding: 10px 16px 5px;
 }
 
-/* The savings bar adds two bars and two lines to this card, so the card's
-   other gaps are tight to keep it near 200px on a phone. */
+/* The savings bar adds two bars, a legend and a line to this card, so the
+   card's other gaps are tight to keep it at most 215px on a phone. */
 .month-lead .lsd-progress-line {
   line-height: 1.15;
 }
 
 .month-lead .savings-bar {
-  gap: 3px;
+  gap: 2px;
+}
+
+.month-lead .savings-bar .savings-bar-legend {
+  line-height: 1.15;
 }
 
 .month-lead .savings-bar .savings-bar-sentence {
@@ -232,9 +236,9 @@
 }
 
 /* The money jobs line sits where the plan line was, as close to the
-   sentence as the bar's own lines (3 px, not the card's 5 px). */
+   sentence as the bar's own lines (3 px, not the card's 4 px). */
 .month-lead .money-jobs {
-  margin-top: -2px;
+  margin-top: -1px;
 }
 
 .month-lead .lead-column {
