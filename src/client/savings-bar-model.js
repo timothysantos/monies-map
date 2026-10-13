@@ -20,6 +20,12 @@ const copy = messages.summary.lead.savingsBar;
 // household's own plan: no forecast, no limit. Hidden money keeps the
 // percentages and drops every amount.
 //
+// Invested is net of money taken back out of investment accounts and never
+// below zero (splitMoneyUse). A period that took more out than it put in
+// says so as one more legend line, "Took out of investments $X", with no
+// part on the bar: it is not income and not kept. Hidden money leaves the
+// line out (it has no share of income to show instead).
+//
 // Returns null when there is nothing to draw (no income and nothing out).
 export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wholeMoney }) {
   const { income, spending, invested, kept } = figures;
@@ -105,6 +111,9 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     tickLabelWithAmount: hasTick ? (hidden ? copy.tick : copy.tickWithAmount(formatMoney(income))) : null,
     sentence,
     shortSentence: shortSentence ?? sentence,
+    takenOut: hidden || !(figures.takenFromInvestments > 0)
+      ? null
+      : { name: copy.legend.takenOut, amount: formatMoney(figures.takenFromInvestments) },
     plan: hidden ? null : buildPlan(scaleMinor, figures),
     // The legend's wording for the thin plan bar: the plan's own figures,
     // not cut to the bar, and only the goals that exist.

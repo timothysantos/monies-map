@@ -321,9 +321,10 @@ export function readMoneyAnswerResponse(body) {
 }
 
 // The savings-bar figures (the plan and money-job answers), only when the
-// four Month cards' figures are numbers. The money jobs' three (invested,
-// moved to Savings, the Investments plan) are kept too, or zero, so the bar
-// splits the money exactly as the lead does.
+// four Month cards' figures are numbers. The money jobs' others (invested,
+// moved to Savings, the Investments plan, and the transfers into and out of
+// investment accounts) are kept too, or zero, so the bar splits the money
+// exactly as the lead does.
 function readOutcome(value) {
   if (!value || typeof value !== "object") {
     return null;
@@ -332,7 +333,7 @@ function readOutcome(value) {
   if (!keys.every((key) => Number.isFinite(value[key]))) {
     return null;
   }
-  const optional = ["investedMinor", "savedMovedMinor", "plannedInvestMinor"];
+  const optional = ["investedMinor", "savedMovedMinor", "plannedInvestMinor", "movedIntoInvestmentsMinor", "takenFromInvestmentsMinor"];
   return Object.fromEntries([
     ...keys.map((key) => [key, value[key]]),
     ...optional.map((key) => [key, Number.isFinite(value[key]) ? value[key] : 0])

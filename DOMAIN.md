@@ -171,7 +171,8 @@ Recommended relationship:
 - the `savings bar` (Summary and Month lead) draws actual income as 100%,
   with spent, invested and kept as its parts. Money filed under the
   `Investments` category is invested and money filed under `Savings` is
-  kept: both were moved, not spent, so they come out of the spend. The
+  kept: both were moved, not spent, so they come out of the spend. Money
+  moved into an investment account is invested too (see "Money job"). The
   lead's Spent figure and its Saved figure use the same split (see "Money
   job"); the stored realized savings still counts them as spend.
   When more went out than came in, spending past the income is shown as
@@ -195,7 +196,9 @@ What one line of a month plan is for, and whether it was done
   income minus that spending minus what was invested, so money moved under
   `Savings` counts as saved;
 - invest the investment goal (planned rows in the `Investments` category,
-  not labelled `Savings`), against expense entries in `Investments`;
+  not labelled `Savings`), against what was invested: expense entries in
+  `Investments`, plus transfers into investment accounts, less transfers out
+  of them back to cash accounts;
 - planned income, against actual income.
 
 Canonical term:
@@ -206,9 +209,32 @@ Important distinctions:
   recorded entries and the household's own plan. While the month is still
   going it says "so far"; it never forecasts.
 - A job exists only when its plan line is more than zero.
-- Investing is detected by category name (`Investments`), as category
-  offsets are. A transfer into an investment account is not counted as
-  invested: transfers stay neutral and the money stays in kept.
+- Invested (owner decision d34, `src/domain/investment-moves.ts`) is money
+  filed under the `Investments` category (by name, as category offsets
+  are), plus transfers into an account of kind `investment`, less transfers
+  out of one back to a cash account (a withdrawal). The investment
+  account's own entry decides, so a linked pair counts once:
+  - a transfer in on an investment account is `moved into investments`,
+    and a transfer out on one is `taken out of investments`;
+  - a pair between two investment accounts moves nothing;
+  - a transfer in whose linked other side is an expense filed under
+    `Investments` is already counted as that expense (a GIRO filed under
+    Investments and linked to the investment account counts once);
+  - the cash side of a pair, and transfers between cash accounts, stay
+    neutral; an expense or income on an investment account (a fee, a
+    dividend) is spending or income as before.
+  An entry's other side is known only when the pair is linked and both are
+  in the loaded range; an unlinked transfer out of a bank account says
+  nothing about where the money went, so it stays neutral.
+- Invested never goes below zero. A period that took more out of
+  investments than it put in shows invested as zero and the difference as
+  its own line, "Took out of investments $x" (the savings bar's legend, the
+  invested answer on Ask). That money is not income and not kept: kept is
+  still income minus spending minus invested.
+- The Month and Summary page DTOs carry the period's two totals as
+  `investmentMoves` (`{ intoMinor, outOfMinor }`, left out when both are
+  zero) for the view's own entries; the client nets them in
+  `splitMoneyUse`. The Summary range nets its months' totals.
 - The Summary and Month lead are one split of the period's money
   (`splitMoneyUse`): the lead's "Spent" is the spend job's spending, its
   plan ("of $x plan", "% of plan", "under / over plan") is the spend job's
@@ -218,8 +244,8 @@ Important distinctions:
   rollup field, and Intent vs Outcome's per-month detail) is unchanged and
   still counts money filed under `Savings` and `Investments` as spend.
 - The Summary page's `Planned investments` metric card carries the range's
-  investment goal; the Month page derives it from its plan rows. No other
-  field was added.
+  investment goal; the Month page derives it from its plan rows. The only
+  other field is `investmentMoves` (above).
 
 ### Statement Checkpoint
 
@@ -1171,11 +1197,16 @@ Rules:
   Summary lead do: spend without money moved to Investments or Savings,
   against the plan without the Savings target and the Investments rows
   (`splitMoneyUse`, `src/domain/money-jobs.ts`); the money-job answers
-  read invested, kept, spending and each job's plan from the same split
+  read invested, kept, spending and each job's plan from the same split,
+  with the Month page's `investmentMoves`. The invested answer lists the
+  transfers into investment accounts with the entries filed under
+  Investments, and says "Took out of investments" as its own line in a
+  period that took more out than it put in
 - the plan answer also carries its `outcome`: income received, Actual
   spend, Planned spend, the Savings target, money moved to Investments and
-  Savings and the Investments plan rows, the figures the Month and Summary
-  savings bar splits and draws
+  Savings, the Investments plan rows and the transfers into and out of
+  investment accounts (when there were any), the figures the Month and
+  Summary savings bar splits and draws
 
 ### Insight Question
 

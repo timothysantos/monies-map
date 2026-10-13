@@ -9,6 +9,7 @@ import { buildPersonScopes, effectiveScopeForView, filterEntriesForView } from "
 import type {
   CategoryDto,
   EntryDto,
+  InvestmentMovesDto,
   MonthPageDto,
   MonthIncomeRowDto,
   MonthPlanRowDto,
@@ -24,7 +25,10 @@ export function buildMonthPage(
   monthPlanRows: MonthPlanRowDto[],
   categories: CategoryDto[],
   selectedMonth: string,
-  currentSummaryMonth: SummaryMonthDto | null
+  currentSummaryMonth: SummaryMonthDto | null,
+  // The view's transfers into and out of investment accounts
+  // (investment-moves.ts), left out when nothing moved.
+  investmentMoves?: InvestmentMovesDto
 ): MonthPageDto {
   const effectiveScope = effectiveScopeForView(selectedPersonId, selectedScope);
   const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, effectiveScope);
@@ -87,6 +91,7 @@ export function buildMonthPage(
       }
     ],
     categoryShareChart: buildDonutChart(visibleEntries, categories),
+    ...(investmentMoves ? { investmentMoves } : {}),
     entries: monthEntries
   };
 }

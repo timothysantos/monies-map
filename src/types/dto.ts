@@ -1114,6 +1114,15 @@ export interface ReconciliationExceptionDto {
   resolvedAt?: string;
 }
 
+// Money moved into and out of investment accounts in a period (DOMAIN.md
+// "Money job", investment-moves.ts): transfers into an account of kind
+// `investment`, and transfers out of one back to a cash account. Left out
+// of a page when both are zero.
+export interface InvestmentMovesDto {
+  intoMinor: number;
+  outOfMinor: number;
+}
+
 export interface SummaryPageDto {
   metricCards: MetricCardDto[];
   availableMonths: string[];
@@ -1123,6 +1132,7 @@ export interface SummaryPageDto {
   months: SummaryMonthDto[];
   categoryShareChart: DonutChartDatumDto[];
   categoryShareByMonth: SummaryDonutMonthDto[];
+  investmentMoves?: InvestmentMovesDto;
   notes: string[];
 }
 
@@ -1136,6 +1146,7 @@ export interface MonthPageDto {
   incomeRows: MonthIncomeRowDto[];
   planSections: MonthPlanSectionDto[];
   categoryShareChart: DonutChartDatumDto[];
+  investmentMoves?: InvestmentMovesDto;
   entries: EntryDto[];
 }
 
@@ -1588,6 +1599,10 @@ export interface AskAnswerCardDto {
     investedMinor: number;
     savedMovedMinor: number;
     plannedInvestMinor: number;
+    // Transfers into and out of investment accounts (InvestmentMovesDto),
+    // left out when zero.
+    movedIntoInvestmentsMinor?: number;
+    takenFromInvestmentsMinor?: number;
   };
 }
 

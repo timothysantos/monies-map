@@ -76,8 +76,8 @@ test("the plan answer keeps its savings-bar figures only when the four Month fig
     wording: { text: "x", source: "template" }
   });
   const outcome = { incomeMinor: 830_000, spentMinor: 136_901, plannedSpendMinor: 300_896, savingsTargetMinor: 150_000 };
-  assert.deepEqual(readMoneyAnswerResponse(body(outcome)).answer.outcome, { ...outcome, investedMinor: 0, savedMovedMinor: 0, plannedInvestMinor: 0 });
-  const withJobs = { ...outcome, investedMinor: 120_000, savedMovedMinor: 50_000, plannedInvestMinor: 150_000 };
+  assert.deepEqual(readMoneyAnswerResponse(body(outcome)).answer.outcome, { ...outcome, investedMinor: 0, savedMovedMinor: 0, plannedInvestMinor: 0, movedIntoInvestmentsMinor: 0, takenFromInvestmentsMinor: 0 });
+  const withJobs = { ...outcome, investedMinor: 120_000, savedMovedMinor: 50_000, plannedInvestMinor: 150_000, movedIntoInvestmentsMinor: 40_000, takenFromInvestmentsMinor: 10_000 };
   assert.deepEqual(readMoneyAnswerResponse(body(withJobs)).answer.outcome, withJobs);
   assert.equal("outcome" in readMoneyAnswerResponse(body({ ...outcome, spentMinor: null })).answer, false);
 });

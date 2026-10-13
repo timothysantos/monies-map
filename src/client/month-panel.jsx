@@ -1500,6 +1500,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         month={view.monthPage.month}
         planSections={planSections}
         categoryShare={view.monthPage.categoryShareChart}
+        investmentMoves={view.monthPage.investmentMoves ?? null}
         isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
       />
 

@@ -66,7 +66,8 @@ async function monthLead(api, month = MAY) {
   const cards = buildMonthMetricCards({ planSections: page.monthPage.planSections, incomeRows: page.monthPage.incomeRows, currentMonthSummary: page.summaryPage.months[0] });
   const lead = buildMonthLeadModel(cards, page.summaryPage.months[0], {
     planRows: page.monthPage.planSections.flatMap((section) => section.rows),
-    categoryShare: page.monthPage.categoryShareChart
+    categoryShare: page.monthPage.categoryShareChart,
+    investmentMoves: page.monthPage.investmentMoves
   });
   return { page, lead, figures: lead.figures };
 }
@@ -230,4 +231,83 @@ test("a search that only mentions investing is not answered here", async (t) => 
   const response = await api("/api/ai-assist/answer", { text: "show invest in a new phone case", viewId: TIM, month: MAY, scope: "direct_plus_shared" });
   assert.equal(response.status, 200);
   assert.deepEqual(response.payload, { ok: true, supported: false });
+});
+
+// Owner decision d34: money moved into an investment account (kind
+// Investment) is invested, not kept. Tim's Endowus and IBKR accounts; in May
+// $2,000 goes from UOB One to Endowus (a linked pair) and $300 from Endowus
+// to IBKR (between investment accounts: nothing); in April $5,000 comes back
+// from Endowus to UOB One.
+async function seedInvestmentAccountMoves(api) {
+  for (const name of ["Endowus", "IBKR"]) {
+    const created = await api("/api/accounts/create", { name, institution: name, kind: "investment", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: TIM });
+    assert.equal(created.status, 200, JSON.stringify(created.payload));
+  }
+  const linkedTransfer = async ({ date, amountMinor, from, to, description }) => {
+    const fromEntryId = await createEntry(api, { date, description, accountName: from, categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor });
+    const toEntryId = await createEntry(api, { date, description, accountName: to, categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor });
+    const linked = await api("/api/transfers/link", { fromEntryId, toEntryId });
+    assert.equal(linked.status, 200, JSON.stringify(linked.payload));
+  };
+  await linkedTransfer({ date: "2026-05-12", amountMinor: 200_000, from: "UOB One", to: "Endowus", description: "Endowus top-up" });
+  await linkedTransfer({ date: "2026-05-14", amountMinor: 30_000, from: "Endowus", to: "IBKR", description: "Endowus to IBKR" });
+  await linkedTransfer({ date: "2026-04-20", amountMinor: 500_000, from: "Endowus", to: "UOB One", description: "Endowus withdrawal" });
+}
+
+test("money moved into an investment account is invested on the Month lead and in How much did I invest, counted once", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  await seedMoneyJobs(api);
+  const { figures: without } = await monthLead(api);
+  await seedInvestmentAccountMoves(api);
+  const { page, figures } = await monthLead(api);
+
+  // The page sends the two totals; the IBKR move between investment accounts is not one.
+  assert.deepEqual(page.monthPage.investmentMoves, { intoMinor: 200_000, outOfMinor: 0 });
+  // $1,200 filed under Investments plus the $2,000 to Endowus; spending is
+  // unchanged and the $2,000 comes out of kept.
+  assert.deepEqual([figures.invested, figures.spending, figures.takenFromInvestments], [320_000, without.spending, 0]);
+  assert.equal(figures.kept, without.kept - 200_000);
+
+  const payload = await ask(api, "How much did I invest in May 2026?");
+  const { answer } = payload;
+  assert.deepEqual([answer.lead.label, answer.lead.amountMinor, answer.lead.planMinor], ["Invested", 320_000, 150_000]);
+  assert.deepEqual(answer.lines.map((line) => [line.label, line.amountMinor, line.tone]), [["Endowus top-up", 200_000, "neutral"], ["iFAST GIRO", 120_000, "neutral"]]);
+  assert.deepEqual([answer.outcome.investedMinor, answer.outcome.movedIntoInvestmentsMinor, answer.outcome.takenFromInvestmentsMinor], [120_000, 200_000, undefined]);
+  assert.equal(payload.wording.text.split(". ").slice(0, 2).join(". "), "You put $3,200.00 into Investments in May. That's $1,700.00 more than the $1,500.00 you planned to invest");
+
+  // Saved (kept) agrees with the lead.
+  const saved = await ask(api, "How much did I save in May 2026?");
+  assert.equal(saved.answer.lead.amountMinor, figures.kept);
+  assert.deepEqual(saved.answer.support.find((chip) => chip.label === "Invested"), { label: "Invested", amountMinor: 320_000, currency: "SGD" });
+});
+
+test("a month that took more out of investments than it put in shows Took out of investments, never negative invested", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  await seedMoneyJobs(api);
+  await seedInvestmentAccountMoves(api);
+  // April: a $4,000 salary and a $1,200 GIRO filed under Investments, then
+  // the $5,000 back from Endowus.
+  await createEntry(api, { date: "2026-04-25", description: "April salary", categoryName: "Salary", entryType: "income", amountMinor: 400_000 });
+  await createEntry(api, { date: "2026-04-03", description: "April GIRO", categoryName: "Investments", amountMinor: 120_000 });
+  const { page, figures } = await monthLead(api, "2026-04");
+  assert.deepEqual(page.monthPage.investmentMoves, { intoMinor: 0, outOfMinor: 500_000 });
+  assert.deepEqual(
+    { income: figures.income, spending: figures.spending, invested: figures.invested, takenFromInvestments: figures.takenFromInvestments, kept: figures.kept },
+    // Not income and not kept: kept is income less spending.
+    { income: 400_000, spending: 0, invested: 0, takenFromInvestments: 380_000, kept: 400_000 }
+  );
+
+  const payload = await ask(api, "How much did I invest in April 2026?");
+  const { answer } = payload;
+  assert.equal(answer.lead.amountMinor, 0);
+  assert.deepEqual(answer.lines.map((line) => [line.label, line.amountMinor]), [["April GIRO", 120_000], ["Took out of investments", 380_000]]);
+  assert.deepEqual([answer.outcome.investedMinor, answer.outcome.movedIntoInvestmentsMinor, answer.outcome.takenFromInvestmentsMinor], [120_000, undefined, 500_000]);
+  assert.equal(payload.wording.text, "You took $3,800.00 more out of investments in April than you put in.");
+
+  // The Summary over April and May nets the two months: $2,400 filed under
+  // Investments and $2,000 moved in, against $5,000 taken out.
+  const summary = await get(api, `/api/summary-page?view=${TIM}&month=${MAY}&scope=direct_plus_shared&summary_start=2026-04&summary_end=${MAY}`);
+  assert.deepEqual(summary.summaryPage.investmentMoves, { intoMinor: 200_000, outOfMinor: 500_000 });
+  const lead = buildSummaryLeadModel(summary.summaryPage.metricCards, { categoryShare: summary.summaryPage.categoryShareChart, investmentMoves: summary.summaryPage.investmentMoves });
+  assert.deepEqual([lead.figures.invested, lead.figures.takenFromInvestments], [0, 60_000]);
 });

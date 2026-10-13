@@ -35,9 +35,11 @@ function movedMoney(categoryShare) {
 }
 
 // Null when any of the six cards is missing (the page is still loading): the
-// panel then shows the cards as they come. "Planned investments" and the
-// category share are optional: without them nothing is invested or moved.
-export function buildSummaryLeadModel(metricCards = [], { categoryShare = [] } = {}) {
+// panel then shows the cards as they come. "Planned investments", the
+// category share and the investment moves (the page's `investmentMoves`:
+// transfers into and out of investment accounts, investment-moves.ts) are
+// optional: without them nothing is invested or moved.
+export function buildSummaryLeadModel(metricCards = [], { categoryShare = [], investmentMoves = null } = {}) {
   const byLabel = new Map(metricCards.map((card) => [card.label, card]));
   const card = {};
   for (const [key, label] of Object.entries(CARD_LABELS)) {
@@ -52,6 +54,8 @@ export function buildSummaryLeadModel(metricCards = [], { categoryShare = [] } =
     incomeMinor: card.actualIncome.amountMinor,
     spentMinor: card.actualSpend.amountMinor,
     ...movedMoney(categoryShare),
+    movedIntoInvestmentsMinor: investmentMoves?.intoMinor ?? 0,
+    takenFromInvestmentsMinor: investmentMoves?.outOfMinor ?? 0,
     plannedSpendMinor: card.plannedSpend.amountMinor,
     savingsTargetMinor: card.savingsTarget.amountMinor,
     plannedInvestMinor: byLabel.get("Planned investments")?.amountMinor ?? 0

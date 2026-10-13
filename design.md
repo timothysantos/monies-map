@@ -891,7 +891,13 @@ Where it is used:
   invested and mint is kept. The split is `splitMoneyUse`
   (`money-jobs-model.js`, see "Money jobs" below): money filed under the
   Investments category is invested and money filed under Savings is kept,
-  both out of the lead's spend. If more went out than came in there is no
+  both out of the lead's spend. Transfers into investment accounts are
+  invested too, less transfers out of them (the page's `investmentMoves`,
+  worked out on the server by `investment-moves.ts`; DOMAIN.md "Money
+  job"). Invested never goes below zero: a period that took more out of
+  investments than it put in adds one legend line with no swatch and no
+  part on the bar, "Took out of investments $x" (`data-legend="taken-out"`),
+  left out when money is hidden. If more went out than came in there is no
   mint: the bar is as long as what went out (spent, then invested), with a
   small "All you earned" tick where the income ends (the label carries the
   amount from 761 px, "All you earned $247,007"; the word "income" was
@@ -908,7 +914,8 @@ Where it is used:
   savings"), then the money jobs line, which took the old muted "Plan: spend
   $x and save $y." line's place. Amounts here are whole dollars. Every figure
   is one the lead already has (income, spend, planned spend, savings target,
-  the category share) plus the Summary's "Planned investments" card. It
+  the category share, the page's `investmentMoves`) plus the Summary's
+  "Planned investments" card. It
   never forecasts and never says what to spend: only what happened and the
   household's own plan. Under the bars is an always-visible legend (`<ul data-savings-legend>`, no
   popover, hover or tap needed): a swatch in the part's own colour (the stripes

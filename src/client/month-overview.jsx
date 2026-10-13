@@ -256,10 +256,11 @@ export function MonthPanelHeader({
 // percent of plan and the spend gap as "under/over plan"), with Income,
 // Saved and Remaining budget as Support pills. It replaced six tiles that
 // scrolled sideways on a phone; every figure they showed is here.
-export function MonthLead({ cards, monthSummary, month, planSections = [], categoryShare = [], isRefreshing = false }) {
+export function MonthLead({ cards, monthSummary, month, planSections = [], categoryShare = [], investmentMoves = null, isRefreshing = false }) {
   const model = buildMonthLeadModel(cards, monthSummary, {
     planRows: planSections.flatMap((section) => section.rows ?? []),
-    categoryShare
+    categoryShare,
+    investmentMoves
   });
   return (
     <>

@@ -84,6 +84,8 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
             savingsTargetMinor: answer.outcome.savingsTargetMinor,
             investedMinor: answer.outcome.investedMinor ?? 0,
             savedMovedMinor: answer.outcome.savedMovedMinor ?? 0,
+            movedIntoInvestmentsMinor: answer.outcome.movedIntoInvestmentsMinor ?? 0,
+            takenFromInvestmentsMinor: answer.outcome.takenFromInvestmentsMinor ?? 0,
             plannedInvestMinor: answer.outcome.plannedInvestMinor ?? 0
           })}
           hidden={!areTotalsVisible}

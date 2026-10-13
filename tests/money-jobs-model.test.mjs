@@ -43,6 +43,7 @@ test("splitMoneyUse takes invested and moved-to-savings money out of the spend, 
     income: 24_700_000,
     spending: 22_550_000,
     invested: 800_000,
+    takenFromInvestments: 0,
     movedToSavings: 150_000,
     kept: 1_350_000,
     spendPlan: 22_000_000,
@@ -51,7 +52,7 @@ test("splitMoneyUse takes invested and moved-to-savings money out of the spend, 
   });
   // Nothing goes below zero except what was kept.
   assert.deepEqual(splitMoneyUse({ incomeMinor: 0, spentMinor: 10_000, investedMinor: 20_000, plannedSpendMinor: 5_000, savingsTargetMinor: 9_000 }), {
-    income: 0, spending: 0, invested: 20_000, movedToSavings: 0, kept: -20_000, spendPlan: 0, savePlan: 9_000, investPlan: 0
+    income: 0, spending: 0, invested: 20_000, takenFromInvestments: 0, movedToSavings: 0, kept: -20_000, spendPlan: 0, savePlan: 9_000, investPlan: 0
   });
 });
 
@@ -179,7 +180,7 @@ test("the Month lead takes the investment goal from its Investments plan rows, n
     planRows,
     categoryShare: [{ key: "Investments", label: "Investments", valueMinor: 150_000 }]
   });
-  assert.deepEqual(model.figures, { income: 900_000, spending: 350_000, invested: 150_000, movedToSavings: 0, kept: 400_000, spendPlan: 225_000, savePlan: 180_000, investPlan: 195_000 });
+  assert.deepEqual(model.figures, { income: 900_000, spending: 350_000, invested: 150_000, takenFromInvestments: 0, movedToSavings: 0, kept: 400_000, spendPlan: 225_000, savePlan: 180_000, investPlan: 195_000 });
   // The headline is the spending against the spend plan.
   assert.deepEqual([model.spent.amountMinor, model.plannedSpendMinor], [350_000, 225_000]);
   assert.deepEqual(model.headroom, { amountMinor: 125_000, isOver: true, tone: "short" });

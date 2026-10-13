@@ -36,6 +36,7 @@ test("Month lead: spend against the spend plan, the savings target, remaining bu
       income: 650_000,
       spending: 420_000,
       invested: 0,
+      takenFromInvestments: 0,
       movedToSavings: 0,
       kept: 230_000,
       spendPlan: 320_000,
