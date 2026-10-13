@@ -3,8 +3,10 @@
    (the count and refresh at its right), and that day's rows sit in one
    rounded white group with hairlines between them; the viewer's balance
    words are aligned at the right in their money tone (text only). The
-   header stays sticky and takes a faint orange band so rows never read
-   under it. Imported by splits-activity-section.jsx, so it ships with the
+   date is a quiet label above its group, like an Entries day: it stays
+   sticky and paints the page's own flat colour (--splits-surface, which
+   the panel and the page behind it use too), so rows never read under it
+   and no band shows. Imported by splits-activity-section.jsx, so it ships with the
    lazy Splits route. Scoped to .split-list-section: the archive dialog
    keeps its own look (splits-dialogs.css). */
 .panel-splits .split-list-section .split-date-group {
@@ -26,7 +28,7 @@
   padding: 14px 2px 8px;
   border: 0;
   border-radius: 0;
-  background: color-mix(in srgb, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96));
+  background: var(--splits-surface);
   color: rgb(var(--on-strong-rgb) / 0.88);
   font-size: 0.8rem;
 }
