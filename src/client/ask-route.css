@@ -395,6 +395,45 @@
   font-weight: 500;
 }
 
+/* A change card (ask-turn-cards.jsx AskChangeCard) and the matches card:
+   an entry it touches as a name over its day and wallet, and a category
+   colour as a swatch. */
+.ask-change-entry {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ask-change-entry-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.ask-change-entry-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.ask-change-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  vertical-align: middle;
+}
+
+.ask-match {
+  display: grid;
+  gap: 6px;
+}
+
+.ask-match[data-match-state="skipped"] {
+  opacity: 0.72;
+}
+
 .ask-plan-before {
   color: var(--muted);
   font-weight: 500;

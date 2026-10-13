@@ -1257,6 +1257,10 @@ export function App() {
     runBackgroundRefresh,
     selectedTabId
   ]);
+  // A change Ask saved to settings data (payment ways, categories, a rule).
+  const onAskSettingsMutation = useCallback((plan) => {
+    void refreshCurrentSettingsPage({ ...plan, broadcast: true });
+  }, [refreshCurrentSettingsPage]);
 
   // Refresh the current route page in the background without switching tabs or
   // interrupting the visible workflow.
@@ -2211,6 +2215,7 @@ export function App() {
           fetchEntriesPage={fetchAskEntriesPage}
           onEntryMutation={broadcastEntryMutation}
           onSplitMutation={broadcastSplitMutation}
+          onSettingsMutation={onAskSettingsMutation}
           runBackgroundRefresh={runBackgroundRefresh}
           fetchRequiredQuery={fetchRequiredQuery}
           routeUsable={creditStatusRouteUsable}
@@ -2228,6 +2233,7 @@ export function App() {
     appShell?.viewerIdentity,
     broadcastEntryMutation,
     broadcastSplitMutation,
+    onAskSettingsMutation,
     categories,
     creditStatusRouteUsable,
     fetchAskEntriesPage,
@@ -2295,6 +2301,7 @@ export function App() {
         fetchEntriesPage={fetchAskEntriesPage}
         onEntryMutation={onAskDockEntryMutation}
         onSplitMutation={onAskDockSplitMutation}
+        onSettingsMutation={onAskSettingsMutation}
         runBackgroundRefresh={runBackgroundRefresh}
         fetchRequiredQuery={fetchRequiredQuery}
         routeUsable={routeWork.usable}
@@ -2311,6 +2318,7 @@ export function App() {
     fetchRequiredQuery,
     onAskDockEntryMutation,
     onAskDockSplitMutation,
+    onAskSettingsMutation,
     routeWork.usable,
     routeWorkRegistry,
     runBackgroundRefresh,
