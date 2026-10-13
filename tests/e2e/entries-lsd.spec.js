@@ -140,17 +140,19 @@ test.describe("Entries totals: the lead and four pills", () => {
     await expect(totals.locator(".entries-totals-pill strong")).toHaveText(["••••", "••••", "••••", "••••"]);
     expect(await totals.innerText()).not.toMatch(/[-−]\s?••••|\$\d/);
     for (const pill of await totals.locator(".entries-totals-pill").all()) {
-      // No mint or rose tint: the palette's cream neutral.
+      // No mint or rose tint: a hidden figure's pill is the plain card, or the
+      // palette's cream neutral at 60% over the card (.money-soft).
       const surface = toRgb((await looks(pill)).background);
-      const neutral = toRgb(await page.evaluate(() => {
+      const [neutral, card] = (await page.evaluate(() => ["--pastel-neutral", "--card"].map((token) => {
         const probe = document.createElement("span");
-        probe.style.color = "var(--pastel-neutral)";
+        probe.style.color = `var(${token})`;
         document.body.append(probe);
         const colour = getComputedStyle(probe).color;
         probe.remove();
         return colour;
-      }));
-      surface.forEach((channel, index) => expect(Math.abs(channel - neutral[index])).toBeLessThan(3));
+      }))).map(toRgb);
+      const near = (expected) => surface.every((channel, index) => Math.abs(channel - expected[index]) < 1.5);
+      expect(near(card) || near(neutral.map((channel, index) => channel * 0.6 + card[index] * 0.4)), `${surface} is neither the card nor the neutral over it`).toBe(true);
       expect((await looks(pill.locator("strong"))).color).toBe(INK.text);
     }
   });
