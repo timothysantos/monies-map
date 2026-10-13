@@ -576,7 +576,15 @@ function AskConversation({
         scope: filterContext.scope,
         month: selectedMonth,
         page: inDock ? pageOf(location.pathname) : "ask",
-        focus: buildTurnFocus({ card: before.card, intent })
+        // A follow-up to "Ask about this" on a Money insights line names
+        // that insight's kind (never its figures).
+        focus: buildTurnFocus({
+          card: before.card,
+          intent,
+          insightTopic: before.thread.filter((item) => item.kind !== "status").at(-1)?.kind === "insight-answer"
+            ? String(before.thread.filter((item) => item.kind !== "status").at(-1).answer?.kind ?? "")
+            : ""
+        })
       });
     } finally {
       setStatus("");
