@@ -119,6 +119,9 @@ test.describe("summary workflow", () => {
       );
       const scope = page.getByRole("group", { name: "Scope" });
       await expect(scope.getByRole("button", { name: "Both", exact: true })).toHaveAttribute("aria-pressed", "true");
+      // The lead shows once the range's cards arrive; measure the header with it.
+      await expect(page.locator(".summary-lead .summary-lead-spent")).toBeVisible();
+      await expect(page.locator(".financial-insight-summary")).toBeVisible();
       const withSwitch = await measure();
       const switchBox = await scope.boundingBox();
       const titleBox = await page.locator(".summary-head h2").boundingBox();

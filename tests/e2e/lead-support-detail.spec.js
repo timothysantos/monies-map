@@ -80,11 +80,12 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     await expect(lead.locator(".lsd-title")).toHaveText("Savings");
     await expect(lead.locator(".lsd-subtitle")).toHaveText("Planned item");
     await expect(lead.locator(".lsd-amount-caption")).toHaveText("planned");
-    // Support: month and owner chips; the owner chip is Tim's colour.
+    // Support: month and owner chips; the owner chip is Tim's colour, handed
+    // to the page as its palette token (paletteColour) so a preset re-colours it.
     await expect(lead.locator(".lsd-chip").first()).toHaveText("May 2026");
     const owner = lead.locator(".lsd-chip.is-person");
     await expect(owner).toHaveText("Tim");
-    expect(await owner.evaluate((chip) => chip.style.getPropertyValue("--person-colour"))).toBe("#46788E");
+    expect(await owner.evaluate((chip) => chip.style.getPropertyValue("--person-colour"))).toBe("var(--cat-46788e, #46788E)");
     await expect(sheet.locator(".entry-composer-copy p")).toHaveText("Tim · May 2026");
 
     // Detail rows hold every field the sheet had: actual, item, category,
@@ -257,8 +258,19 @@ test.describe("Summary lead", () => {
     const card = (label) => data.summaryPage.metricCards.find((item) => item.label === label).amountMinor;
     await gotoPageAfterApi(page, SUMMARY_URL, "/api/summary-page", () => page.locator(".summary-lead"));
 
-    const actual = card("Actual spend");
-    const planned = card("Planned spend");
+    // The lead splits the cards' money as the money jobs do (DOMAIN.md "Money
+    // job", splitMoneyUse), worked out here by hand: money filed under
+    // Investments or Savings was moved, not spent; the savings target and the
+    // Investments plan are not spend plan; Saved is what was kept.
+    const slice = (label) => data.summaryPage.categoryShareChart.filter((item) => item.label === label).reduce((sum, item) => sum + item.valueMinor, 0);
+    const optionalCard = (label) => data.summaryPage.metricCards.find((item) => item.label === label)?.amountMinor ?? 0;
+    const moves = data.summaryPage.investmentMoves ?? { intoMinor: 0, outOfMinor: 0 };
+    const actual = card("Actual spend") - slice("Investments") - slice("Savings");
+    const planned = card("Planned spend") - card("Savings target") - optionalCard("Planned investments");
+    const invested = Math.max(0, slice("Investments") + moves.intoMinor - moves.outOfMinor);
+    const kept = card("Actual income") - actual - invested;
+    // The demo range files money under Investments, so the split is not the raw card.
+    expect(actual).toBeLessThan(card("Actual spend"));
     await expect(page.locator(".summary-lead .lsd-eyebrow")).toHaveText("Spent · Jun 2025 – May 2026");
     await expect(page.locator(".summary-lead-spent")).toHaveText(money(actual));
     await expect(page.locator(".summary-lead-plan")).toHaveText(`of ${money(planned)} plan`);
@@ -270,7 +282,7 @@ test.describe("Summary lead", () => {
     await expect(income.locator("strong")).toHaveText(money(card("Actual income")));
     await expect(income.locator("small")).toHaveText(`plan ${money(card("Planned income"))}`);
     const saved = page.locator('.summary-support-pill[data-metric="saved"]');
-    await expect(saved.locator("strong")).toHaveText(money(card("Realized savings")));
+    await expect(saved.locator("strong")).toHaveText(money(kept));
     await expect(saved.locator("small")).toHaveText(`target ${money(card("Savings target"))}`);
     // The six cards are gone from Summary; their figures are all above.
     await expect(page.locator(".panel-head .metric")).toHaveCount(0);
