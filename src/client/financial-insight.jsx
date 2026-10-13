@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/checkin";
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { checkInMemoryKey, readVisitMemory, useCheckInClock, writeVisitMemory } from "./checkin-visit-memory";
+import { askAboutInsight } from "./insight-ask-event";
 import { useMoneyPrivacy } from "./money-privacy";
 import { useIsMobileLayout } from "./use-viewport";
 // The check-in's own styles ship with the route that shows it, not with
@@ -36,6 +37,11 @@ import "./money-checkin.css";
 // `isCheckInActionShown(action)` lets a page hide the headline's link when
 // pressing it would change nothing (Entries, already filtered to those
 // records).
+//
+// "Ask about this" (the headline, each Also line, and on the folded teaser a
+// link on the eyebrow row, away from the fold's own tap) opens Ask with the
+// line and what its signal is based on (insight-ask-event.js). Only a line
+// with a signal behind it has one, and none shows while money is hidden.
 export function FinancialInsight(props) {
   return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
 }
@@ -114,6 +120,19 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   const isPhone = useIsMobileLayout();
   const [isOpenNow, toggleOpen] = useInsightsOpen(isPhone ? "phone" : "desktop");
   const moreCount = view.also.length;
+  const signalByKey = useMemo(() => new Map(signals.map((signal) => [signal.key, signal])), [signals]);
+  // The headline's signal: none for a sorted, quiet or calm line.
+  const headlineSignal = view.mode === "signal" ? signalByKey.get(headline.key) : undefined;
+  const askButton = (signal, line, className = "") => (signal?.basis && areTotalsVisible ? (
+    <button
+      type="button"
+      className={`checkin-ask${className ? ` ${className}` : ""}`}
+      aria-label={`Ask about this: ${line.fact}`}
+      onClick={() => askAboutInsight(signal, line)}
+    >
+      Ask about this
+    </button>
+  ) : null);
   const label = <span className="financial-insight-label">{insightLabel}</span>;
   const foldRow = (
     <>
@@ -129,6 +148,7 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
         </>}
         <ChevronDown />
       </button>
+      {isOpenNow ? null : askButton(headlineSignal, headline, "is-teaser")}
     </>
   );
 
@@ -185,6 +205,7 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
             {headline.action.label}
           </button>
         ) : null}
+        {askButton(headlineSignal, headline)}
         <div id={alsoId} hidden={!isExpanded || !view.also.length}>
           {isExpanded && view.also.length ? (
             <div className="checkin-also">
@@ -194,6 +215,7 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
                   <li key={line.key}>
                     <CheckInChip kind={line.kind} />
                     <span>{line.fact}</span>
+                    {askButton(signalByKey.get(line.key), line, "is-line")}
                   </li>
                 ))}
               </ul>
