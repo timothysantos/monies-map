@@ -334,6 +334,9 @@ export function buildChipRow({ active, intent, card, context, splitGroups = [], 
   if (active.kind === "plan-question") {
     return buildPlanQuestionChips({ focus: active, actions });
   }
+  if (active.kind === "turn-question") {
+    return buildTurnQuestionChips({ focus: active, actions });
+  }
   return buildFilterChips({ focus: active, base: rest, viewLabel, actions });
 }
 
@@ -359,6 +362,20 @@ export function buildPlanQuestionChips({ focus, actions }) {
       key: `plan-${question.field}-${typeof option === "string" ? option : option.rowId ?? option.key ?? index}`,
       label: optionLabel(option),
       onClick: () => actions.answerPlanQuestion(option)
+    })))
+  };
+}
+
+// The chip row while Ask asks something back after a turn (docs/flows/
+// ask-flow.md "AI first"): the question, and one chip per answer; a tap
+// sends the answer as the next message.
+export function buildTurnQuestionChips({ focus, actions }) {
+  return {
+    prompt: focus.question,
+    items: /** @type {AskChip[]} */ (focus.options.slice(0, MAX_OPTION_CHIPS).map((option, index) => ({
+      key: `turn-${index}-${option}`,
+      label: option,
+      onClick: () => actions.answerTurnQuestion(option)
     })))
   };
 }

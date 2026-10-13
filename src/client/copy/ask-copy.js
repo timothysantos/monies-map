@@ -210,6 +210,48 @@ export const askCopy = {
     addedToSplits: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
     askNotReady: "I can find entries and add new ones. Other questions aren't answered yet."
   },
+  // Ask's turn (docs/flows/ask-flow.md "AI first"): the one-line note when
+  // AI can't read a message and the built-in rules do, and the two draft
+  // cards a turn can add (an entry onto Splits, a settle-up payment).
+  turn: {
+    rulesNote: "AI isn't available right now, so Ask read this with its built-in rules.",
+    opened: (page) => `Opened ${page}.`,
+    pages: { summary: "Summary", month: "Month", entries: "Entries", splits: "Splits", imports: "Imports", settings: "Settings", help: "Help" },
+    draftTag: "Draft",
+    split: {
+      label: "Add to Splits",
+      title: "Add to Splits",
+      paidBy: (name) => `${name} paid`,
+      share: (name) => `${name}'s share`,
+      group: "Split group",
+      noGroup: "No group",
+      save: "Add to Splits",
+      saving: "Adding…",
+      discard: "Not now",
+      savedTag: "On Splits",
+      saved: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
+      discarded: "Not added. The entry is unchanged.",
+      openOnSplits: "Open on Splits",
+      undo: "Undo",
+      undoing: "Removing…",
+      undone: "Removed from Splits. The entry is unchanged."
+    },
+    settlement: {
+      label: "Settle-up payment",
+      title: (from, to) => `${from} paid ${to} back`,
+      date: "Date",
+      group: "Split group",
+      noGroup: "No group",
+      save: "Record payment",
+      saving: "Recording…",
+      discard: "Not now",
+      savedTag: "Recorded",
+      saved: "Recorded on Splits.",
+      discarded: "Not recorded.",
+      unsure: "This may have been recorded before the page closed. Check Splits before recording it again.",
+      openSplits: "Open Splits"
+    }
+  },
   questions: {
     description: "What was it for?",
     amountMinor: "How much was it?",

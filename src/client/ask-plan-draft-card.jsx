@@ -9,7 +9,7 @@ import { moneyToneClass } from "./money-tone-class";
 import { headroomTone } from "../domain/money-tone";
 import { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 
-const NEUTRAL_BUBBLE_COLOUR = "#7C8791";
+export const NEUTRAL_BUBBLE_COLOUR = "#7C8791";
 // A long copy shows this many lines, the rest behind "N more lines".
 const SHOWN_LINES = 6;
 

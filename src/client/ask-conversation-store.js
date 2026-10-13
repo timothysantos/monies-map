@@ -28,10 +28,18 @@ const MAX_SLOTS = 3;
 const MAX_THREAD_ITEMS = 60;
 const MAX_TEXT = 1000;
 const DEFAULT_MAX_STORED_CHARS = 60_000;
-const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check", "plan-draft", "insight-answer"]);
+const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check", "plan-draft", "insight-answer", "split-proposal", "settlement-draft"]);
 // A plan draft caught mid-save or mid-undo comes back as it was before: a
 // save that did land is then refused as stale, never written twice.
 const SETTLED_PLAN_STATUS = { saving: "draft", undoing: "saved" };
+// An add to Splits caught mid-save is a draft again (a second Save is
+// refused: the entry is already on Splits). A settle-up payment caught
+// mid-save may have landed and a second one would count twice, so it asks
+// the person to check Splits instead.
+const SETTLED_TURN_STATUS = {
+  "split-proposal": { saving: "draft", undoing: "saved" },
+  "settlement-draft": { saving: "unsure" }
+};
 const DROPPED_KEYS = new Set(["url", "image", "photo", "blob", "file", "audio", "clip", "dataUrl", "receiptImage", "thumbUrl"]);
 
 function isObject(value) {
@@ -95,6 +103,7 @@ function toStored(conversation) {
   const kept = filterThread(conversation, (item) => STORED_KINDS.has(item.kind));
   const thread = kept.thread
     .map((item) => (item.kind === "plan-draft" && SETTLED_PLAN_STATUS[item.status] ? { ...item, status: SETTLED_PLAN_STATUS[item.status] } : item))
+    .map((item) => (SETTLED_TURN_STATUS[item.kind]?.[item.status] ? { ...item, status: SETTLED_TURN_STATUS[item.kind][item.status] } : item))
     .map((item) => (item.text === undefined ? item : { ...item, text: clampText(item.text) }));
   const overflow = Math.max(0, thread.length - MAX_THREAD_ITEMS);
   const card = isObject(conversation.card)
@@ -108,6 +117,7 @@ function toStored(conversation) {
     cardSlot: Math.max(0, kept.cardSlot - overflow),
     composerText: clampText(conversation.composerText),
     pending: conversation.pending ?? null,
+    ...(conversation.rulesNoted ? { rulesNoted: true } : {}),
     scrollFromBottom: Number.isFinite(conversation.scrollFromBottom) ? conversation.scrollFromBottom : 0
   });
 }
@@ -145,6 +155,13 @@ function readThreadItem(item) {
   if (item.kind === "plan-draft") {
     return isObject(item.draft) && Array.isArray(item.draft.apply) && isObject(item.draft.totals) && ["draft", "saved", "discarded"].includes(item.status) ? item : null;
   }
+  // Turn drafts keep the server's checked proposal or payment.
+  if (item.kind === "split-proposal") {
+    return isObject(item.proposal) && Array.isArray(item.proposal.shares) && ["draft", "saved", "discarded"].includes(item.status) ? item : null;
+  }
+  if (item.kind === "settlement-draft") {
+    return isObject(item.settlement) && ["draft", "saved", "discarded", "unsure"].includes(item.status) ? item : null;
+  }
   return typeof item.text === "string" ? { ...item, text: clampText(item.text) } : null;
 }
 
@@ -167,6 +184,7 @@ export function parseStoredConversations(text) {
           cardSlot: Math.min(thread.length, Math.max(0, Number(slot.cardSlot) || 0)),
           composerText: typeof slot.composerText === "string" ? slot.composerText : "",
           pending: isObject(slot.pending) ? slot.pending : null,
+          ...(slot.rulesNoted === true ? { rulesNoted: true } : {}),
           scrollFromBottom: Number.isFinite(slot.scrollFromBottom) ? slot.scrollFromBottom : 0
         };
       });

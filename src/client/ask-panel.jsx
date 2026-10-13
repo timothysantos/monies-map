@@ -37,6 +37,8 @@ import {
   validateCard
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
+import { buildTurnFocus, buildTurnHistory, removeSplitExpense, requestAskTurn, saveSettlementDraft, saveSplitProposal } from "./ask-turn-api";
+import { AskSettlementDraftCard, AskSplitProposalCard } from "./ask-turn-cards";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
 import { AskInsightAnswerCard } from "./ask-insight-answer-card";
 import { buildInsightAnswer, insightExplainBody, readInsightHandoff } from "./ask-insight-answer";
@@ -550,11 +552,217 @@ function AskConversation({
     navigate({ pathname: inDock ? location.pathname : "/ask", search: `?${next.toString()}` });
   }
 
+  // Every message (typed, spoken, a chip's question, the money jobs menu,
+  // the Splits and Entries ways in): AI understands, the app validates,
+  // rules are the offline backup (docs/flows/ask-flow.md "AI first"). The
+  // turn route reads it with the conversation and what is in focus (the
+  // saved entry, the card being filled, the split group). AI off, over its
+  // allowance or failing: the rules read it as before, with a one-line note
+  // once per conversation.
   async function readSentence(text) {
+    const before = store.read(conversationKey) ?? conversation;
     appendThread(threadItem("me", { text }));
     if (pending) {
       setPending(null);
     }
+    setWorking("turn");
+    setStatus(askCopy.notes.readingSentence);
+    let turn;
+    try {
+      turn = await requestAskTurn({
+        text,
+        history: buildTurnHistory(before.thread),
+        viewId: view.id,
+        scope: filterContext.scope,
+        month: selectedMonth,
+        page: inDock ? pageOf(location.pathname) : "ask",
+        focus: buildTurnFocus({ card: before.card, intent })
+      });
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+    if (turn.ok && turn.mode === "ai") {
+      await applyTurnReply(text, turn.reply);
+      return;
+    }
+    if (!before.rulesNoted) {
+      updateConversation((current) => ({ ...current, rulesNoted: true }));
+      appendThread(threadItem("note", { text: askCopy.turn.rulesNote, tone: "calm" }));
+    }
+    await readSentenceByRules(text);
+  }
+
+  // What the turn route sent back, shown with the cards the page already
+  // has. Nothing here writes: every draft waits for its Save.
+  async function applyTurnReply(text, reply) {
+    if (reply.kind === "entry_draft") {
+      let next = applyEntryDraft(workingCard(), reply.draft, context);
+      if (reply.share?.on) {
+        next = setShare(next, { on: true, splitGroupId: reply.share.groupId });
+      }
+      setCard(next);
+    } else if (reply.kind === "draft_patch") {
+      let next = workingCard();
+      const { variant, ...fields } = reply.patch;
+      if (variant) {
+        next = setCardVariant(next, variant, context);
+      }
+      if (Object.keys(fields).length) {
+        next = setCardField(next, fields, context);
+      }
+      if (reply.share?.on) {
+        next = setShare(next, { on: true, splitGroupId: reply.share.groupId });
+      }
+      setCard(next);
+    } else if (reply.kind === "split_proposal") {
+      appendThread(threadItem("split-proposal", { proposal: reply.proposal, status: "draft" }));
+    } else if (reply.kind === "settlement_draft") {
+      appendThread(threadItem("settlement-draft", { settlement: reply.settlement, status: "draft" }));
+    } else if (reply.kind === "plan") {
+      showPlanReading(reply.text, reply.request, reply.reading);
+    } else if (reply.kind === "question") {
+      await askMoneyQuestion(reply.text, reply.request);
+    } else if (reply.kind === "search") {
+      answerFilterRequest({ kind: "filter", filter: reply.filter });
+    } else if (reply.kind === "open_page") {
+      appendThread(threadItem("note", { text: askCopy.turn.opened(askCopy.turn.pages[reply.page]) }));
+      goTo(reply.page === "help" ? "/faq" : `/${reply.page}`, {}, new URLSearchParams(reply.params));
+    } else if (reply.kind === "clarify") {
+      if (reply.options.length) {
+        setPending({ kind: "turn-question", question: reply.question, options: reply.options });
+      } else {
+        appendThread(threadItem("note", { text: reply.question }));
+      }
+    } else {
+      appendThread(threadItem("note", { text: reply.text }));
+    }
+  }
+
+  function answerTurnQuestion(option) {
+    if (pending?.kind !== "turn-question" || working) {
+      return;
+    }
+    void readSentence(option);
+  }
+
+  function turnItem(itemId, kind) {
+    return (store.read(conversationKey) ?? conversation).thread.find((item) => item.id === itemId && item.kind === kind) ?? null;
+  }
+
+  // Add to Splits: the existing command with the proposal's share. The saved
+  // card for that entry (the Apple Pay card) shows it is on Splits too.
+  async function saveTurnSplit(itemId) {
+    const item = turnItem(itemId, "split-proposal");
+    if (!item || item.status !== "draft" || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "saving" });
+    setWorking("split-save");
+    try {
+      const result = await saveSplitProposal(item.proposal);
+      if (!result.ok) {
+        updateThreadItem(itemId, { status: "draft" });
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      const { proposal } = item;
+      updateThreadItem(itemId, { status: "saved", splitExpenseId: result.splitExpenseId ?? null, splitExpenseMonth: result.splitExpenseMonth ?? proposal.date.slice(0, 7) });
+      setCard((current) => (current?.saved?.entryId === proposal.entryId
+        ? {
+          ...current,
+          share: { on: true, splitGroupId: proposal.groupId ?? "" },
+          saved: { ...current.saved, splitExpenseId: result.splitExpenseId ?? null, splitExpenseMonth: result.splitExpenseMonth ?? null, splitGroupId: proposal.groupId ?? "", splitGroupName: proposal.groupName }
+        }
+        : current));
+      const month = result.splitExpenseMonth ?? proposal.date.slice(0, 7);
+      onSplitMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askCopy.turn.split.saved(proposal.groupName) }));
+      void runBackgroundRefresh(entriesPage.refresh);
+    } finally {
+      setWorking("");
+    }
+  }
+
+  async function undoTurnSplit(itemId) {
+    const item = turnItem(itemId, "split-proposal");
+    if (!item || item.status !== "saved" || !item.splitExpenseId || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "undoing" });
+    setWorking("split-undo");
+    try {
+      const result = await removeSplitExpense(item.splitExpenseId);
+      if (!result.ok) {
+        updateThreadItem(itemId, { status: "saved" });
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      updateThreadItem(itemId, { status: "draft", splitExpenseId: null });
+      setCard((current) => (current?.saved?.entryId === item.proposal.entryId
+        ? { ...current, share: { on: false, splitGroupId: "" }, saved: { ...current.saved, splitExpenseId: null, splitGroupId: "", splitGroupName: "" } }
+        : current));
+      onSplitMutation?.({ month: item.splitExpenseMonth ?? item.proposal.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askCopy.turn.split.undone }));
+      void runBackgroundRefresh(entriesPage.refresh);
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function openTurnSplit(itemId) {
+    const item = turnItem(itemId, "split-proposal");
+    if (item) {
+      goTo("/splits", {
+        month: item.splitExpenseMonth ?? item.proposal.date.slice(0, 7),
+        split_group: item.proposal.groupId || undefined,
+        editing_split_expense: item.splitExpenseId || undefined
+      });
+    }
+  }
+
+  function discardTurnItem(itemId, kind, note) {
+    const item = turnItem(itemId, kind);
+    if (!item || item.status !== "draft" || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "discarded" });
+    appendThread(threadItem("note", { text: note }));
+  }
+
+  // Record payment: the existing settlement command.
+  async function saveTurnSettlement(itemId) {
+    const item = turnItem(itemId, "settlement-draft");
+    if (!item || item.status !== "draft" || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "saving" });
+    setWorking("settlement-save");
+    try {
+      const result = await saveSettlementDraft(item.settlement);
+      if (!result.ok) {
+        updateThreadItem(itemId, { status: "draft" });
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      updateThreadItem(itemId, { status: "saved" });
+      onSplitMutation?.({ month: item.settlement.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askCopy.turn.settlement.saved }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function openTurnSettlement(itemId) {
+    const item = turnItem(itemId, "settlement-draft");
+    if (item) {
+      goTo("/splits", { month: item.settlement.date.slice(0, 7), split_group: item.settlement.groupId || undefined });
+    }
+  }
+
+  // The rules' reading (the offline backup): plan request, money question,
+  // filter, then an entry draft, exactly as Ask read every message before.
+  async function readSentenceByRules(text) {
     // A search or filter request. While a card is being filled, a plain
     // sentence is a change to it; a question, or a request naming a month,
     // someone's ("Serene's") or an amount limit, is still a search.
@@ -671,24 +879,29 @@ function AskConversation({
         appendThread(threadItem("note", { text: askPlanCopy.notes.failed, tone: "calm" }));
         return true;
       }
-      const { reading } = result;
-      if (!reading.supported) {
+      if (!result.reading.supported) {
         return false;
       }
-      if (reading.question) {
-        setPending({ kind: "plan-question", text, request, answers, question: reading.question });
-      } else if (reading.note) {
-        appendThread(threadItem("note", { text: describePlanNote(reading.note, areTotalsVisible) }));
-      } else {
-        appendThread(
-          threadItem("note", { text: askPlanCopy.intro }),
-          threadItem("plan-draft", { text, request, draft: reading.draft, source: reading.source, status: "draft" })
-        );
-      }
+      showPlanReading(text, request, result.reading, answers);
       return true;
     } finally {
       setStatus("");
       setWorking("");
+    }
+  }
+
+  // A plan reading (from the plan-draft route or a turn): its question as
+  // chips, its note, or the draft card.
+  function showPlanReading(text, request, reading, answers = {}) {
+    if (reading.question) {
+      setPending({ kind: "plan-question", text, request, answers, question: reading.question });
+    } else if (reading.note) {
+      appendThread(threadItem("note", { text: describePlanNote(reading.note, areTotalsVisible) }));
+    } else if (reading.draft) {
+      appendThread(
+        threadItem("note", { text: askPlanCopy.intro }),
+        threadItem("plan-draft", { text, request, draft: reading.draft, source: reading.source, status: "draft" })
+      );
     }
   }
 
@@ -1189,6 +1402,7 @@ function AskConversation({
     declineSplitSuggestion: () => setCard((current) => declineSplitSuggestion(current)),
     chooseFilterOption,
     answerPlanQuestion,
+    answerTurnQuestion,
     switchView,
     resolveCheck: () => void resolveMoneyCheck(),
     keepCheck: () => void keepMoneyCheck(),
@@ -1268,6 +1482,16 @@ function AskConversation({
     people,
     trackedMonths,
     today,
+    turn: {
+      busy: Boolean(working),
+      onSaveSplit: (itemId) => void saveTurnSplit(itemId),
+      onDiscardSplit: (itemId) => discardTurnItem(itemId, "split-proposal", askCopy.turn.split.discarded),
+      onUndoSplit: (itemId) => void undoTurnSplit(itemId),
+      onOpenSplit: openTurnSplit,
+      onSaveSettlement: (itemId) => void saveTurnSettlement(itemId),
+      onDiscardSettlement: (itemId) => discardTurnItem(itemId, "settlement-draft", askCopy.turn.settlement.discarded),
+      onOpenSettlement: openTurnSettlement
+    },
     plan: {
       busy: Boolean(working),
       onSave: (itemId) => void savePlanDraft(itemId),
@@ -1756,6 +1980,39 @@ function ThreadItem({ item, settled = false, answerProps }) {
       />
     );
   }
+  if (item.kind === "split-proposal") {
+    if (item.status === "discarded") {
+      return null;
+    }
+    const { turn } = answerProps;
+    return (
+      <AskSplitProposalCard
+        item={item}
+        busy={turn.busy}
+        settled={settled}
+        onSave={() => turn.onSaveSplit(item.id)}
+        onDiscard={() => turn.onDiscardSplit(item.id)}
+        onUndo={() => turn.onUndoSplit(item.id)}
+        onOpen={() => turn.onOpenSplit(item.id)}
+      />
+    );
+  }
+  if (item.kind === "settlement-draft") {
+    if (item.status === "discarded") {
+      return null;
+    }
+    const { turn } = answerProps;
+    return (
+      <AskSettlementDraftCard
+        item={item}
+        busy={turn.busy}
+        settled={settled}
+        onSave={() => turn.onSaveSettlement(item.id)}
+        onDiscard={() => turn.onDiscardSettlement(item.id)}
+        onOpen={() => turn.onOpenSettlement(item.id)}
+      />
+    );
+  }
   if (item.kind === "money-answer") {
     return <AskMoneyAnswerCard id={item.id} answer={item.answer} wording={item.wording} intent={item.intent} settled={settled} />;
   }
@@ -1810,6 +2067,12 @@ function describePlanNote(note, totalsVisible) {
   if (note.reason === "nothing_changes") return notes.nothingChanges(month(note.month));
   if (note.reason === "not_enough") return totalsVisible ? notes.notEnough(note.label, moneyWithCurrency(note.plannedMinor)) : notes.notEnoughHidden(note.label);
   return notes.moveMixed;
+}
+
+// The page beside the desktop panel, for the turn's context.
+function pageOf(pathname) {
+  const page = String(pathname ?? "").split("/")[1] ?? "";
+  return ["summary", "month", "entries", "splits", "imports", "settings", "faq"].includes(page) ? page : "ask";
 }
 
 // The view, month and scope the person is looking at, carried to whichever
