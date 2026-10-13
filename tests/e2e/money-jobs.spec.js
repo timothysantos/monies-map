@@ -219,6 +219,33 @@ test.describe("phone", () => {
     await expect(page.locator("[data-ask-money-answer]")).toHaveCount(1);
   });
 
+  test("the kept part asks how much was saved and gets the lead's Saved; Open in Entries from the invested answer lists the GIRO", async ({ page }) => {
+    await revealMoney(page);
+    const lead = await openLead(page, MONTH_URL, ".month-lead");
+    const figures = await monthFigures(page);
+    expect(figures.kept, "something was kept").toBeGreaterThan(0);
+    const bar = lead.locator("[data-savings-bar]");
+    await bar.locator('[data-segment="kept"]').tap();
+    const ask = bar.locator('[data-money-actions="kept"] [data-action="ask"]');
+    await expect(ask).toHaveAttribute("data-question", `How much did I save in ${MONTH_WORDS}?`);
+    await ask.tap();
+    await expect(page).toHaveURL(/\/ask\?/);
+    const saved = page.locator('[data-ask-money-answer="saved"]');
+    await expect(saved.locator(".ask-answer-amount")).toHaveText(cents.format(figures.kept / 100), { timeout: 30_000 });
+    await expect(saved.locator(".ask-answer-detail")).toHaveText("Saved");
+    await expect(saved.locator(".ask-money-wording")).toContainText(`so you kept ${cents.format(figures.kept / 100)}`);
+
+    // Typed by hand, the invested question gets its card and its Entries link.
+    await message(page).fill(`how much did we invest in ${MONTH_WORDS}?`);
+    await message(page).press("Enter");
+    const invested = page.locator('[data-ask-money-answer="invested"]');
+    await expect(invested.locator(".ask-answer-amount")).toHaveText(cents.format(figures.invested / 100), { timeout: 30_000 });
+    await page.getByRole("button", { name: "Open in Entries" }).first().tap();
+    await expect(page).toHaveURL(/\/entries\?/);
+    expect(Object.fromEntries(new URL(page.url()).searchParams)).toMatchObject({ view: VIEW, month: MONTH, entry_category: "Investments" });
+    await expect(page.locator(".entry-row").filter({ hasText: "Money jobs iFAST GIRO" })).toHaveCount(1, { timeout: 30_000 });
+  });
+
   test("hidden money: the jobs say ✓ or a percentage, the menu and question carry no amount", async ({ page }) => {
     const lead = await openLead(page, MONTH_URL, ".month-lead");
     const figures = await monthFigures(page);
@@ -246,6 +273,18 @@ test.describe("phone", () => {
     await expect(lead.locator('[data-popover="invested"]')).toHaveText(/^Invested · \d+% of income$/);
     const text = await lead.locator("[data-savings-bar], [data-money-jobs]").evaluateAll((items) => items.map((item) => item.textContent).join(" "));
     expect(text).not.toMatch(/\$|short|over by|under|more than/i);
+
+    // Its question gets the plan answer (not this month against last), with
+    // every amount masked and no words that say which side of the plan.
+    const spendAsk = lead.locator('[data-job="spend"] [data-action="ask"]');
+    if (!(await spendAsk.isVisible())) await lead.locator('[data-job="spend"] .money-job-row').tap();
+    await spendAsk.tap();
+    await expect(page).toHaveURL(/\/ask\?/);
+    const answer = page.locator('[data-ask-money-answer="plan"]');
+    await expect(answer.locator(".ask-answer-title")).toHaveText("May against plan", { timeout: 30_000 });
+    await expect(answer.locator(".ask-answer-amount")).toHaveText("••••");
+    await expect(answer.locator(".ask-brief-hidden")).toHaveText("Reveal money totals to read these insights.");
+    await expect(answer).not.toContainText(/\$\d|more than|under the/);
   });
 });
 
@@ -282,7 +321,15 @@ test.describe("desktop", () => {
     await expect(page).toHaveURL(/\/summary\?/);
     const dock = page.locator(".ask-dock");
     await expect(dock.locator(".ask-thread .ask-me")).toHaveText(`How much did I invest in ${MONTH_WORDS}?`, { timeout: 30_000 });
-    await expect(dock.locator(".ask-thread .ask-answer").first()).toBeVisible({ timeout: 30_000 });
+    // The invested answer, not a search for "invest": the lead's invested
+    // against the invest job, and the GIRO behind it.
+    const investedAnswer = dock.locator('[data-ask-money-answer="invested"]');
+    await expect(investedAnswer.locator(".ask-answer-amount")).toHaveText(cents.format(120_000 / 100), { timeout: 30_000 });
+    await expect(investedAnswer.locator(".ask-answer-title")).toHaveText("May investing");
+    await expect(investedAnswer.locator(".money-plan").first()).toHaveText(`of ${cents.format(1_500)} plan`);
+    await expect(investedAnswer.locator(".ask-money-lines li")).toHaveCount(1);
+    await expect(investedAnswer.locator(".ask-money-lines li")).toContainText("Money jobs iFAST GIRO");
+    await expect(investedAnswer.locator("[data-savings-bar] [data-segment='invested']")).toHaveCount(1);
     await expect(dock.getByRole("textbox", { name: "Message" })).toHaveValue("");
 
     // A second question while the panel is open is asked in the same conversation.

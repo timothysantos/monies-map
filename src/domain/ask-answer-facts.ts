@@ -90,6 +90,10 @@ export interface MonthFacts {
   // Every category in the Spending Mix (for a comparison), largest first.
   allCategories: CategoryFact[];
   biggest: EntryFact[];
+  // The largest entries filed under Investments and under Savings (the
+  // money the jobs count as invested, and as moved to savings).
+  investments: EntryFact[];
+  savingsMoves: EntryFact[];
   planRows: PlanRowFact[];
   incomeSources: IncomeSourceFact[];
 }
@@ -117,14 +121,21 @@ export interface OpenSettlementFact {
   date: string;
 }
 
+// `months`: a period's months (a quarter, or a range such as the Summary's
+// twelve), oldest first; `current` is then their sum (combineMonthFacts),
+// dated by the last, and there is no previous month beside it.
 export type AskAnswerFacts =
-  | { kind: "spending"; focus: "why" | "where"; current: MonthFacts; previous: MonthFacts | null }
-  // `months`: a quarter's months, oldest first; `current` is then their sum
-  // (combineMonthFacts), dated by the last.
+  | { kind: "spending"; focus: "why" | "where"; current: MonthFacts; previous: MonthFacts | null; months?: MonthFacts[] }
   | { kind: "plan"; current: MonthFacts; isCurrentMonth: boolean; months?: MonthFacts[] }
   | { kind: "compare"; current: MonthFacts; other: MonthFacts; categoryChanges: CategoryChangeFact[] }
   | { kind: "biggest"; current: MonthFacts }
-  | { kind: "income"; current: MonthFacts; previous: MonthFacts | null }
+  | { kind: "income"; current: MonthFacts; previous: MonthFacts | null; months?: MonthFacts[] }
+  // The money jobs (DOMAIN.md "Money job"), each read through the Month and
+  // Summary lead's own split (moneyUseOf): what went into Investments, what
+  // was kept, and spending against what came in.
+  | { kind: "invested"; current: MonthFacts; months?: MonthFacts[] }
+  | { kind: "saved"; current: MonthFacts; months?: MonthFacts[] }
+  | { kind: "spentVsEarned"; current: MonthFacts; months?: MonthFacts[] }
   | {
     kind: "owed";
     month: string;
@@ -153,6 +164,11 @@ function categoryFacts(chart: DonutChartDatumDto[]): CategoryFact[] {
   }));
 }
 
+// Largest first; the earlier, then the id, on a tie.
+function byLargest(left: Pick<EntryFact, "amountMinor" | "date" | "id">, right: Pick<EntryFact, "amountMinor" | "date" | "id">) {
+  return right.amountMinor - left.amountMinor || left.date.localeCompare(right.date) || left.id.localeCompare(right.id);
+}
+
 // One month in one view, from its Month page DTO.
 export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: PersonScope | string | null | undefined): MonthFacts {
   const { monthPage } = input;
@@ -164,11 +180,12 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
   const visible: EntryDto[] = filterEntriesForView(monthPage.entries ?? [], viewId, scope);
   const allCategories = categoryFacts(monthPage.categoryShareChart ?? []);
 
-  const biggest = visible
-    .filter((entry) => entry.entryType === "expense" && entry.amountMinor > 0)
-    .sort((left, right) => right.amountMinor - left.amountMinor || left.date.localeCompare(right.date) || left.id.localeCompare(right.id))
+  const expenses = visible.filter((entry) => entry.entryType === "expense" && entry.amountMinor > 0);
+  const largest = (list: EntryDto[]) => list
+    .sort(byLargest)
     .slice(0, BIGGEST_ENTRY_COUNT)
     .map((entry) => ({ id: entry.id, description: entry.description, date: entry.date, categoryName: entry.categoryName, amountMinor: entry.amountMinor }));
+  const biggest = largest([...expenses]);
 
   const sources = new Map<string, IncomeSourceFact>();
   for (const entry of visible) {
@@ -201,6 +218,8 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
     allCategories,
     biggest,
+    investments: largest(expenses.filter((entry) => isInvestmentsCategoryName(entry.categoryName))),
+    savingsMoves: largest(expenses.filter((entry) => isSavingsCategoryName(entry.categoryName))),
     planRows,
     incomeSources: [...sources.values()]
       .sort((left, right) => right.amountMinor - left.amountMinor || left.name.localeCompare(right.name))
@@ -250,10 +269,9 @@ export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
     expenseCount: total((facts) => facts.expenseCount),
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
     allCategories,
-    biggest: months
-      .flatMap((facts) => facts.biggest)
-      .sort((left, right) => right.amountMinor - left.amountMinor || left.date.localeCompare(right.date) || left.id.localeCompare(right.id))
-      .slice(0, BIGGEST_ENTRY_COUNT),
+    biggest: months.flatMap((facts) => facts.biggest).sort(byLargest).slice(0, BIGGEST_ENTRY_COUNT),
+    investments: months.flatMap((facts) => facts.investments).sort(byLargest).slice(0, BIGGEST_ENTRY_COUNT),
+    savingsMoves: months.flatMap((facts) => facts.savingsMoves).sort(byLargest).slice(0, BIGGEST_ENTRY_COUNT),
     planRows: [...planRows.values()],
     incomeSources: byName(months.map((facts) => facts.incomeSources)).slice(0, INCOME_SOURCE_COUNT)
   };
@@ -265,7 +283,16 @@ export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
 // (splitMoneyUse, money-jobs.ts). The plan answer speaks in these, so its
 // "of $X plan" is the lead's.
 export function spendJobFacts(facts: MonthFacts): MonthFacts {
-  const figures = splitMoneyUse({
+  const figures = moneyUseOf(facts);
+  return { ...facts, spentMinor: figures.spending, plannedMinor: figures.spendPlan };
+}
+
+// A month's (or period's) money as the Month and Summary lead split it
+// (splitMoneyUse, money-jobs.ts): income, spending without the money moved
+// to Investments or Savings, invested, kept, and each job's plan. The
+// money-job answers read every figure from here.
+export function moneyUseOf(facts: MonthFacts) {
+  return splitMoneyUse({
     incomeMinor: facts.incomeMinor,
     spentMinor: facts.spentMinor,
     investedMinor: facts.investedMinor,
@@ -274,7 +301,22 @@ export function spendJobFacts(facts: MonthFacts): MonthFacts {
     savingsTargetMinor: facts.savingsTargetMinor,
     plannedInvestMinor: facts.plannedInvestMinor
   });
-  return { ...facts, spentMinor: figures.spending, plannedMinor: figures.spendPlan };
+}
+
+// The spending categories (the Spending Mix without Investments and
+// Savings, which were moved, not spent), largest first, each with its share
+// of that spending.
+export function spendingCategories(facts: MonthFacts): CategoryFact[] {
+  const spent = facts.allCategories.filter((category) => !isInvestmentsCategoryName(category.name) && !isSavingsCategoryName(category.name));
+  const total = spent.reduce((sum, category) => sum + category.amountMinor, 0);
+  return spent
+    .slice(0, TOP_CATEGORY_COUNT)
+    .map((category) => ({ ...category, sharePercent: total > 0 ? Math.round((category.amountMinor * 100) / total) : 0 }));
+}
+
+// How many entries the Spending Mix counts under a category name test.
+export function categoryEntryCount(facts: MonthFacts, isCategory: (name: string) => boolean) {
+  return facts.allCategories.filter((category) => isCategory(category.name)).reduce((sum, category) => sum + category.entryCount, 0);
 }
 
 // The plan rows that went furthest over, else the largest rows by spend.

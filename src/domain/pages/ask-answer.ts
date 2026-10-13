@@ -75,18 +75,30 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
     const previous = addMonths(month, -1);
     return trackedMonths.includes(previous) ? monthFacts(previous) : null;
   };
+  // A period's months, each as Month shows it, and their sum.
+  const periodFacts = async (periodMonths: string[]) => {
+    const each = await Promise.all(periodMonths.map((month) => monthFacts(month)));
+    return { current: combineMonthFacts(each), months: each };
+  };
   const readFacts = async (): Promise<AskAnswerFacts> => {
-    if (intent.kind === "spending") {
+    if (intent.kind === "spending" || intent.kind === "income") {
+      if (intent.months?.length) {
+        const period = await periodFacts(intent.months);
+        return intent.kind === "spending"
+          ? { kind: "spending", focus: intent.focus, previous: null, ...period }
+          : { kind: "income", previous: null, ...period };
+      }
       const [current, previous] = await Promise.all([monthFacts(intent.month), previousIfTracked(intent.month)]);
-      return { kind: "spending", focus: intent.focus, current, previous };
+      return intent.kind === "spending" ? { kind: "spending", focus: intent.focus, current, previous } : { kind: "income", current, previous };
     }
     if (intent.kind === "plan" && intent.months && intent.months.length > 1) {
-      // A quarter: each month as Month shows it, and their sum.
-      const months = await Promise.all(intent.months.map((month) => monthFacts(month)));
-      return { kind: "plan", current: combineMonthFacts(months), isCurrentMonth: false, months };
+      return { kind: "plan", isCurrentMonth: false, ...(await periodFacts(intent.months)) };
     }
     if (intent.kind === "plan") {
       return { kind: "plan", current: await monthFacts(intent.month), isCurrentMonth: intent.month === today.slice(0, 7) };
+    }
+    if (intent.kind === "invested" || intent.kind === "saved" || intent.kind === "spentVsEarned") {
+      return intent.months?.length ? { kind: intent.kind, ...(await periodFacts(intent.months)) } : { kind: intent.kind, current: await monthFacts(intent.month) };
     }
     if (intent.kind === "compare") {
       const [current, other] = await Promise.all([monthFacts(intent.month), monthFacts(intent.otherMonth)]);
@@ -94,10 +106,6 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
     }
     if (intent.kind === "biggest") {
       return { kind: "biggest", current: await monthFacts(intent.month) };
-    }
-    if (intent.kind === "income") {
-      const [current, previous] = await Promise.all([monthFacts(intent.month), previousIfTracked(intent.month)]);
-      return { kind: "income", current, previous };
     }
     return owedFacts(db, intent, { viewId, people, month: months[0] });
   };
@@ -133,17 +141,19 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
 
 function intentMonths(intent: AskAnswerIntent, requestMonth: string, today: string) {
   if (intent.kind === "compare") return [intent.month, intent.otherMonth];
-  if (intent.kind === "plan" && intent.months?.length) return intent.months;
   if (intent.kind === "owed") return [/^\d{4}-\d{2}$/.test(requestMonth) ? requestMonth : today.slice(0, 7)];
+  if ("months" in intent && intent.months?.length) return intent.months;
   return [intent.month];
 }
 
 // Which candidates would change the answer: a settle-up changes who owes
-// whom; spending answers change with any spending skew, income answers
-// with any income skew.
+// whom; spending answers (and what was invested) change with any spending
+// skew, income answers with any income skew, and what was kept, or
+// spending against income, with either.
 function changesFacts(candidate: SkewCandidateDto, kind: AskAnswerIntentKind) {
   if (kind === "owed") return candidate.kind === "settlement";
   if (kind === "income") return candidate.skew.incomeMinor !== 0;
+  if (kind === "saved" || kind === "spentVsEarned") return candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0;
   return candidate.skew.spendingMinor !== 0;
 }
 
@@ -201,6 +211,8 @@ function emptyMonthFacts(month: string, viewId: string, scope: PersonScope): Mon
     categories: [],
     allCategories: [],
     biggest: [],
+    investments: [],
+    savingsMoves: [],
     planRows: [],
     incomeSources: []
   };
