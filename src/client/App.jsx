@@ -112,7 +112,7 @@ import {
 import { ContextPersonChip } from "./mobile-context-chip";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
-import { isMobileLayout } from "./use-viewport";
+import { isMobileLayout, useIsMobileLayout } from "./use-viewport";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -279,6 +279,7 @@ export function App() {
   // loaded with Ask); the shell only reads whether one is in progress, for
   // the Ask tab's dot and the way back in.
   const askConversation = useSyncExternalStore(askConversationPresence.subscribe, askConversationPresence.getSnapshot, askConversationPresence.getSnapshot);
+  const isPhoneLayout = useIsMobileLayout();
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
@@ -3010,7 +3011,12 @@ export function App() {
       <EnvironmentBanner environment={appEnvironment} />
       {/* Top chrome keeps the route tabs, view pills, and period controls in one visible block. */}
       <section className="control-bar">
-        <div className={`context-block ${showMobileContextSticky ? "has-mobile-sticky-context" : ""}`}>
+        <div
+          className={`context-block ${showMobileContextSticky ? "has-mobile-sticky-context" : ""}`}
+          // On a phone the full-height Ask page covers the view pills: nothing to
+          // reach by keyboard or screen reader behind it.
+          inert={isPhoneLayout && selectedTabId === "ask" ? true : undefined}
+        >
           <div className="pill-row">
             {selectedTabId !== "splits"
               ? (

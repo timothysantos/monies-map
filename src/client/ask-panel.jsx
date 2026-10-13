@@ -61,6 +61,16 @@ import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
+// Focus that was inside Ask when the page was replaced by another Ask page (a
+// chip that opens a new entry card mounts a fresh page), so the new page can
+// take it. Stale after two seconds.
+let focusHandoffAt = -Infinity;
+const takeFocusHandoff = () => {
+  const fresh = performance.now() - focusHandoffAt < 2000;
+  focusHandoffAt = -Infinity;
+  return fresh;
+};
+
 // The desktop dock around this conversation loads in this chunk (ask-dock.jsx).
 export { default as AskDockPanel } from "./ask-dock-panel";
 
@@ -233,6 +243,7 @@ function AskConversation({
   const objectUrlsRef = useRef([]);
   const chipsRef = useRef(null);
   const threadBoxRef = useRef(null);
+  const lastFocusedRef = useRef(/** @type {EventTarget | null} */ (null));
   const threadEndRef = useRef(null);
   const descriptionRef = useRef(null);
   const amountRef = useRef(null);
@@ -1110,6 +1121,28 @@ function AskConversation({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [inDock, placement]);
 
+  // Focus that was on something the page then removed (a chip that opened a
+  // card, New chat when the chat is empty again) would fall to <body>, and a
+  // keyboard or screen reader would start over from the top. It goes to the
+  // conversation instead, which takes no keyboard on a phone.
+  useLayoutEffect(() => {
+    const article = articleRef.current;
+    if (takeFocusHandoff() && (!document.activeElement || document.activeElement === document.body)) {
+      threadBoxRef.current?.focus({ preventScroll: true });
+    }
+    return () => {
+      if (article && document.activeElement && article.contains(document.activeElement)) focusHandoffAt = performance.now();
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const last = lastFocusedRef.current;
+    if (last instanceof Node && !last.isConnected && (!document.activeElement || document.activeElement === document.body)) {
+      lastFocusedRef.current = null;
+      threadBoxRef.current?.focus({ preventScroll: true });
+    }
+  });
+
   // A new set of chips starts scrolled to its first chip (focus stays put).
   useLayoutEffect(() => {
     if (chipsRef.current) {
@@ -1207,6 +1240,7 @@ function AskConversation({
       ref={articleRef}
       className={`panel ask-page${isAddMode ? " is-add-mode" : ""}${inDock ? ` is-in-dock is-${placement}` : ""}`}
       aria-labelledby="ask-page-title"
+      onFocus={(event) => { lastFocusedRef.current = event.target; }}
       onDragOver={(event) => {
         if ([...(event.dataTransfer?.types ?? [])].includes("Files")) {
           event.preventDefault();
@@ -1248,7 +1282,7 @@ function AskConversation({
         ) : newChatButton}
       </header>
 
-      <div ref={threadBoxRef} className="ask-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>
+      <div ref={threadBoxRef} className="ask-thread" role="log" tabIndex={0} aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>
         <AskClaudeCreditNotice queryClient={queryClient} enabled={creditStatusEnabled} fetchRequiredQuery={fetchRequiredQuery} />
         {!isAddMode && !isShortcut ? (
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
@@ -1339,6 +1373,7 @@ function AskConversation({
               <Popover.Portal>
                 <Popover.Content
                   className="ask-add-menu"
+                  aria-label={askCopy.composer.add}
                   side="top"
                   align="start"
                   sideOffset={6}

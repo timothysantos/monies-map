@@ -120,6 +120,13 @@
   flex: 0 0 auto;
 }
 
+/* The conversation scrolls from the keyboard, so it is a stop; the ring sits
+   inside it because its own overflow would clip one outside. */
+.ask-thread:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .ask-k {
   margin: 4px 0 -2px;
   color: var(--muted);

@@ -32,6 +32,8 @@ export function AskDockField({ besideFab, intentProps = undefined, inputRef, qui
   return (
     <div
       className={`ask-dock-field${besideFab ? " is-beside-fab" : ""}`}
+      role="region"
+      aria-label={messages.askDock.fieldLabel}
       onDragOver={(event) => {
         if ([...(event.dataTransfer?.types ?? [])].includes("Files")) event.preventDefault();
       }}

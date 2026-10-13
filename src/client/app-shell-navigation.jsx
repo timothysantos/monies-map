@@ -26,6 +26,7 @@ export function ShellRouteTabs({
   pendingCategorySuggestionCount,
   askInProgress = false
 }) {
+  const MORE_PAGES = "More pages";
   const titleFor = (tab) => (
     tab.id === "settings" && pendingCategorySuggestionCount
       ? messages.shell.categorySuggestionBadgeTitle(pendingCategorySuggestionCount)
@@ -74,12 +75,12 @@ export function ShellRouteTabs({
       {secondaryTabs.map((tab) => renderTabLink(tab, "tab tab-secondary"))}
       <Popover.Root>
         <Popover.Trigger asChild>
-          <button type="button" className={`tab tab-overflow-trigger ${secondaryTabs.some((tab) => isRouteTabActive(tab, selectedTabId)) ? "is-active" : ""}`} aria-label="More pages">
+          <button type="button" className={`tab tab-overflow-trigger ${secondaryTabs.some((tab) => isRouteTabActive(tab, selectedTabId)) ? "is-active" : ""}`} aria-label={MORE_PAGES}>
             <Ellipsis size={18} />
           </button>
         </Popover.Trigger>
         <Popover.Portal>
-          <Popover.Content className="tab-overflow-popover" sideOffset={10} align="end">
+          <Popover.Content className="tab-overflow-popover" sideOffset={10} align="end" aria-label={MORE_PAGES}>
             <div className="tab-overflow-list">
               {secondaryTabs.map((tab) => renderTabLink(tab, "tab-overflow-link"))}
             </div>

@@ -171,7 +171,21 @@ export function AskClaudeCreditNotice({ queryClient, enabled, fetchRequiredQuery
       {shown ? (
         <section className={`claude-credit-notice is-${notice.tone}`} data-credit-state={notice.state} aria-label={copy.regionLabel}>
           <p>{notice.text}</p>
-          <button type="button" className="claude-credit-dismiss" aria-label={notice.dismissLabel} onClick={() => dismiss(notice.state)}>
+          <button
+            type="button"
+            className="claude-credit-dismiss"
+            aria-label={notice.dismissLabel}
+            onClick={(event) => {
+              // The button goes with the notice: keep focus on the conversation.
+              const log = event.currentTarget.closest('[role="log"]');
+              dismiss(notice.state);
+              if (log instanceof HTMLElement) {
+                window.requestAnimationFrame(() => {
+                  if (!document.activeElement || document.activeElement === document.body) log.focus({ preventScroll: true });
+                });
+              }
+            }}
+          >
             <X size={16} aria-hidden="true" />
           </button>
           <ClaudeCreditActions actions={notice.actions} onToppedUp={() => setFormOpen(true)} />
