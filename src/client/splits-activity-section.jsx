@@ -1,3 +1,6 @@
+import "./splits-activity-list.css";
+import { Receipt, SearchX } from "lucide-react";
+
 import { messages } from "./copy/en-SG";
 import { EmptyState } from "./ui-states";
 import { SplitActivityGroups } from "./splits-activity";
@@ -13,11 +16,13 @@ export function SplitsActivitySection({
   inlineSplitDraft,
   inlineSplitError,
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
   onAddExpense,
+  onClearSearch = undefined,
   activeGroupId = "",
   onOpenArchive,
   onEditExpense,
@@ -57,6 +62,7 @@ export function SplitsActivitySection({
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
+            inlineReadOnly={inlineReadOnly}
             isUndoingSettlementLock={isUndoingSettlementLock}
             onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}
@@ -73,8 +79,24 @@ export function SplitsActivitySection({
             readOnly={readOnly}
           />
         ) : null}
-        {!groupedCurrentActivity.length && searchQuery ? <EmptyState>{messages.splits.noSearchResults}</EmptyState> : null}
-        {!groupedCurrentActivity.length && !searchQuery && !archivedBatches.length ? <EmptyState>{messages.splits.noEntries}</EmptyState> : null}
+        {!groupedCurrentActivity.length && searchQuery ? (
+          <EmptyState
+            icon={<SearchX />}
+            title={messages.splits.noSearchResults}
+            action={onClearSearch ? { label: messages.splits.clearSearch, onClick: onClearSearch } : null}
+          >
+            {messages.splits.noSearchResultsDetail}
+          </EmptyState>
+        ) : null}
+        {!groupedCurrentActivity.length && !searchQuery && !archivedBatches.length ? (
+          <EmptyState
+            icon={<Receipt />}
+            title={messages.splits.noEntries}
+            action={readOnly ? null : { label: messages.splits.addExpense, onClick: onAddExpense }}
+          >
+            {messages.splits.noEntriesDetail}
+          </EmptyState>
+        ) : null}
       </div>
     </section>
   );

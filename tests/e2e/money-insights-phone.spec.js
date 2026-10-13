@@ -86,7 +86,11 @@ async function expectLineClearOfButton(page, pick, label) {
 
 test.describe("money insights on a phone", { tag: "@webkit" }, () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.addInitScript(() => {
+      window.localStorage.setItem("monies-map:money-totals-visible", "true");
+      // Open: this spec measures the insights' text lines, not the fold row.
+      window.localStorage.setItem("monies-map:money-insights-phone", "true");
+    });
     await page.setViewportSize(IPHONE_13);
     await reseedDemo(page);
   });

@@ -7,6 +7,8 @@ import { getPersonColourVars } from "./person-colour";
 import { ImportAskFirst } from "./import-batch-bar";
 import { useFollowingFold } from "./use-following-fold";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
+import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { addDaysToIsoDate, todayInAppTimeZone } from "./app-dates";
 import "./import-bring-files.css";
@@ -50,7 +52,7 @@ export function ImportInboxSection({
     <section className={`panel-subsection import-inbox-section ${hasRequiredFiles ? "has-work" : "is-current"} ${isOpen ? "is-open" : "is-folded"}`}>
       <div className="import-inbox-header">
         <div className="section-head">
-          <h3>{messages.imports.inboxTitle}</h3>
+          <h3>{importMessages.inboxTitle}</h3>
           <span className="panel-context import-inbox-fold-summary">{describeInboxProgress(inbox, progress)}</span>
         </div>
         <button
@@ -60,45 +62,45 @@ export function ImportInboxSection({
           aria-controls={bodyId}
           onClick={() => setIsOpen((current) => !current)}
         >
-          {isOpen ? messages.imports.inboxHide : messages.imports.inboxShow}
+          {isOpen ? importMessages.inboxHide : importMessages.inboxShow}
         </button>
       </div>
 
       {isOpen ? (
         <div id={bodyId} className="import-inbox-body">
-          <p className="lede compact">{messages.imports.inboxDetail}</p>
-          <div className="import-inbox-summary" aria-label={messages.imports.inboxSummaryLabel}>
+          <p className="lede compact">{importMessages.inboxDetail}</p>
+          <div className="import-inbox-summary" aria-label={importMessages.inboxSummaryLabel}>
             <ImportInboxMetric
               icon={<Landmark size={18} />}
-              label={messages.imports.inboxMetricBankSessions}
-              value={messages.imports.inboxMetricBankSessionsValue(inbox.summary.institutionCount)}
+              label={importMessages.inboxMetricBankSessions}
+              value={importMessages.inboxMetricBankSessionsValue(inbox.summary.institutionCount)}
             />
             <ImportInboxMetric
               icon={<FileText size={18} />}
-              label={messages.imports.inboxMetricRequiredFiles}
-              value={messages.imports.inboxMetricRequiredFilesValue(inbox.summary.requiredFileCount)}
+              label={importMessages.inboxMetricRequiredFiles}
+              value={importMessages.inboxMetricRequiredFilesValue(inbox.summary.requiredFileCount)}
             />
             <ImportInboxMetric
               icon={<ListChecks size={18} />}
-              label={messages.imports.inboxMetricAccounts}
-              value={messages.imports.inboxMetricAccountsValue(inbox.summary.currentAccountCount, inbox.summary.activeAccountCount)}
+              label={importMessages.inboxMetricAccounts}
+              value={importMessages.inboxMetricAccountsValue(inbox.summary.currentAccountCount, inbox.summary.activeAccountCount)}
             />
             <ImportInboxMetric
               icon={<Clock3 size={18} />}
-              label={messages.imports.inboxMetricCleanup}
-              value={messages.imports.inboxMetricCleanupValue(inbox.cleanup.pendingSplitMatchCount)}
+              label={importMessages.inboxMetricCleanup}
+              value={importMessages.inboxMetricCleanupValue(inbox.cleanup.pendingSplitMatchCount)}
             />
           </div>
 
           {hasRequiredFiles ? (
             <div className="import-inbox-guidance">
               <CircleAlert size={18} aria-hidden="true" />
-              <span>{messages.imports.inboxGuidance(inbox.summary.requiredFileCount, inbox.summary.institutionCount)}</span>
+              <span>{importMessages.inboxGuidance(inbox.summary.requiredFileCount, inbox.summary.institutionCount)}</span>
             </div>
           ) : (
             <div className="import-inbox-guidance is-current">
               <CheckCircle2 size={18} aria-hidden="true" />
-              <span>{messages.imports.inboxCurrentGuidance}</span>
+              <span>{importMessages.inboxCurrentGuidance}</span>
             </div>
           )}
 
@@ -121,14 +123,14 @@ export function ImportInboxSection({
           {inbox.reviewQueue.length ? (
             <div className="import-inbox-review-order">
               <div>
-                <strong>{messages.imports.inboxReviewOrderTitle}</strong>
-                <span>{messages.imports.inboxReviewOrderDetail}</span>
+                <strong>{importMessages.inboxReviewOrderTitle}</strong>
+                <span>{importMessages.inboxReviewOrderDetail}</span>
               </div>
               <ol>
                 {inbox.reviewQueue.slice(0, 6).map((file) => (
                   <li key={file.id}>
                     <strong>{`${formatService.formatMonthLabel(file.periodMonth)} (${file.periodMonth})`}</strong>
-                    <span>{messages.imports.inboxReviewOrderItemBody(
+                    <span>{importMessages.inboxReviewOrderItemBody(
                       file.accountName,
                       file.ownerLabel,
                       file.priority
@@ -141,14 +143,14 @@ export function ImportInboxSection({
 
           {inbox.cleanup.status === "needs_review" ? (
             <div className="import-inbox-cleanup">
-              <strong>{messages.imports.inboxCleanupTitle}</strong>
+              <strong>{importMessages.inboxCleanupTitle}</strong>
               <span>{inbox.cleanup.detail}</span>
             </div>
           ) : null}
 
           {currentSessions.length ? (
             <details className="import-inbox-current">
-              <summary>{messages.imports.inboxCurrentAccounts(currentSessions.length)}</summary>
+              <summary>{importMessages.inboxCurrentAccounts(currentSessions.length)}</summary>
               <div className="import-inbox-current-list">
                 {currentSessions.flatMap((session) => session.accounts).map((account) => (
                   <span key={account.accountId}>{messages.common.triplet(account.accountName, account.ownerLabel)}</span>
@@ -166,11 +168,11 @@ export function ImportInboxSection({
 // inbox's own status.
 function describeInboxProgress(inbox, progress) {
   if (progress.requiredCount > 0) {
-    return messages.imports.inboxStillMissing(progress.missingCount, progress.requiredCount);
+    return importMessages.inboxStillMissing(progress.missingCount, progress.requiredCount);
   }
   return inbox.summary.optionalFileCount > 0
-    ? messages.imports.inboxOptionalFiles(inbox.summary.optionalFileCount)
-    : messages.imports.inboxAllCurrent;
+    ? importMessages.inboxOptionalFiles(inbox.summary.optionalFileCount)
+    : importMessages.inboxAllCurrent;
 }
 
 export function ImportIntakeQueueSection({
@@ -180,18 +182,19 @@ export function ImportIntakeQueueSection({
   hasUnsavedReviewWork = false,
   onLoadItem,
   onRemoveItem,
-  onClear
+  onClear,
+  onChooseFiles = undefined
 }) {
   return (
     <section className="panel-subsection import-intake-section" data-import-target="intake-queue">
       <div className="import-inbox-header">
         <div className="section-head">
-          <h3>{messages.imports.intakeTitle}</h3>
-          <span className="panel-context">{messages.imports.intakeDetail}</span>
+          <h3>{importMessages.intakeTitle}</h3>
+          <span className="panel-context">{importMessages.intakeDetail}</span>
         </div>
         {items.length ? (
           <button type="button" className="subtle-action" onClick={onClear}>
-            {messages.imports.intakeClear}
+            {importMessages.intakeClear}
           </button>
         ) : null}
       </div>
@@ -199,7 +202,7 @@ export function ImportIntakeQueueSection({
       {items.length ? (
         <>
           <div className="import-intake-summary">
-            <span>{messages.imports.intakeSummary(summary)}</span>
+            <span>{importMessages.intakeSummary(summary)}</span>
           </div>
           <div className="import-intake-list">
             {orderIntakeQueue(items).map((item, index) => {
@@ -209,7 +212,7 @@ export function ImportIntakeQueueSection({
               <div key={item.id} className={`import-intake-row is-${item.matchStatus}${item.duplicate ? " is-duplicate" : ""}${item.id === activeItemId ? " is-active" : ""}`}>
                 <div className="import-intake-main">
                   <strong>{item.fileName}</strong>
-                  <span>{messages.imports.intakeRowDetail({
+                  <span>{importMessages.intakeRowDetail({
                     sourceKind: describeIntakeSourceLabel(item),
                     month: item.parsed?.checkpoints?.[0]?.checkpointMonth
                       ? formatService.formatMonthLabel(item.parsed.checkpoints[0].checkpointMonth)
@@ -217,14 +220,14 @@ export function ImportIntakeQueueSection({
                     cardCount: item.checkpointCount,
                     rowCount: item.rowCount
                   })}</span>
-                  <span>{item.id === activeItemId ? messages.imports.intakeInReview : isNext ? messages.imports.intakeReviewFirst : getIntakeStatusLabel(item)}</span>
-                  {coverage ? <span className="import-intake-coverage">{messages.imports.intakeCoverage(coverage)}</span> : null}
+                  <span>{item.id === activeItemId ? importMessages.intakeInReview : isNext ? importMessages.intakeReviewFirst : getIntakeStatusLabel(item)}</span>
+                  {coverage ? <span className="import-intake-coverage">{importMessages.intakeCoverage(coverage)}</span> : null}
                 </div>
                 <div className="import-intake-actions">
                   {/* Opening it drops the changes to the file in review, so
                       it asks first, like the file chips. */}
                   <ImportAskFirst
-                    question={hasUnsavedReviewWork ? messages.imports.batchSwitchWarning(item.fileName) : null}
+                    question={hasUnsavedReviewWork ? importMessages.batchSwitchWarning(item.fileName) : null}
                     onConfirm={() => onLoadItem(item)}
                   >
                     {({ onClick }) => (
@@ -234,12 +237,12 @@ export function ImportIntakeQueueSection({
                         onClick={onClick}
                         disabled={item.duplicate || item.id === activeItemId}
                       >
-                        {messages.imports.intakeLoad}
+                        {importMessages.intakeLoad}
                       </button>
                     )}
                   </ImportAskFirst>
                   <button type="button" className="subtle-action" onClick={() => onRemoveItem(item.id)}>
-                    {messages.imports.intakeRemove}
+                    {importMessages.intakeRemove}
                   </button>
                 </div>
               </div>
@@ -248,10 +251,13 @@ export function ImportIntakeQueueSection({
           </div>
         </>
       ) : (
-        <div className="import-intake-empty">
-          <strong>{messages.imports.intakeEmptyTitle}</strong>
-          <span>{messages.imports.intakeEmptyDetail}</span>
-        </div>
+        <EmptyState
+          icon={<FileText />}
+          title={importMessages.intakeEmptyTitle}
+          action={onChooseFiles ? { label: importMessages.selectFileTitle, onClick: onChooseFiles } : null}
+        >
+          {importMessages.intakeEmptyDetail}
+        </EmptyState>
       )}
     </section>
   );
@@ -259,23 +265,23 @@ export function ImportIntakeQueueSection({
 
 function describeIntakeSourceLabel(item) {
   const source = describeIntakeSource(item);
-  return messages.imports.intakeSourceKind[source.kind](source.bank);
+  return importMessages.intakeSourceKind[source.kind](source.bank);
 }
 
 function getIntakeStatusLabel(item) {
   if (item.duplicate) {
-    return messages.imports.intakeDuplicate;
+    return importMessages.intakeDuplicate;
   }
   if (item.matchStatus === "matched") {
-    return messages.imports.intakeMatched;
+    return importMessages.intakeMatched;
   }
   if (item.matchStatus === "ambiguous") {
-    return messages.imports.intakeAmbiguous;
+    return importMessages.intakeAmbiguous;
   }
   if (item.matchStatus === "unexpected") {
-    return messages.imports.intakeUnexpected;
+    return importMessages.intakeUnexpected;
   }
-  return messages.imports.intakeUnknown;
+  return importMessages.intakeUnknown;
 }
 
 function ImportInboxMetric({ icon, label, value }) {
@@ -312,21 +318,21 @@ function ImportInboxSession({ session, sessionProgress, tickedFileIds, snoozedFi
           <strong>{session.institution}</strong>
           <span>
             {sessionProgress?.requiredCount
-              ? messages.imports.inboxStillMissing(sessionProgress.missingCount, sessionProgress.requiredCount)
-              : messages.imports.inboxSessionDetail(0, session.optionalFileCount)}
+              ? importMessages.inboxStillMissing(sessionProgress.missingCount, sessionProgress.requiredCount)
+              : importMessages.inboxSessionDetail(0, session.optionalFileCount)}
           </span>
         </div>
         <span className={`pill ${session.status === "needs_files" ? "warning" : "neutral"}`}>
-          {session.status === "needs_files" ? messages.imports.inboxSessionNeedsFiles : messages.imports.inboxSessionOptional}
+          {session.status === "needs_files" ? importMessages.inboxSessionNeedsFiles : importMessages.inboxSessionOptional}
         </span>
       </summary>
 
       <div className="import-inbox-session-body">
         <div className="import-inbox-session-meta">
-          <span>{messages.imports.inboxSessionDetail(session.requiredFileCount, session.optionalFileCount)}</span>
+          <span>{importMessages.inboxSessionDetail(session.requiredFileCount, session.optionalFileCount)}</span>
           {session.portalUrl ? (
             <a className="subtle-action" href={session.portalUrl} target="_blank" rel="noreferrer">
-              {messages.imports.inboxOpenPortal}
+              {importMessages.inboxOpenPortal}
             </a>
           ) : null}
         </div>
@@ -357,7 +363,7 @@ function ImportInboxSession({ session, sessionProgress, tickedFileIds, snoozedFi
           ))}
           {optionalFiles.length ? (
             <details className="import-inbox-optional-files">
-              <summary>{messages.imports.inboxOptionalSection(optionalFiles.length)}</summary>
+              <summary>{importMessages.inboxOptionalSection(optionalFiles.length)}</summary>
               {optionalFiles.map(renderFile)}
             </details>
           ) : null}
@@ -374,7 +380,7 @@ function ImportInboxAccountGroup({ group, children }) {
     <div className="import-inbox-account-group">
       <div className="import-inbox-file-main">
         <strong>{group.accountName}</strong>
-        <span>{messages.imports.inboxAccountGroupDetail({
+        <span>{importMessages.inboxAccountGroupDetail({
           institution: group.institution,
           coveredAccountNames: group.coveredAccountNames,
           fileCount: group.files.length,
@@ -400,22 +406,22 @@ function ImportInboxFileRow({ file, inGroup = false, isTicked, isSnoozed, onSele
           <>
             <strong>{file.accountName}</strong>
             <strong>{monthLabel}</strong>
-            <span>{messages.imports.inboxFileOwner(file.ownerLabel)}</span>
-            <span>{messages.imports.inboxFileDetail(
+            <span>{importMessages.inboxFileOwner(file.ownerLabel)}</span>
+            <span>{importMessages.inboxFileDetail(
               file.detail,
               file.supportedFileTypes.join(", ")
             )}</span>
           </>
         )}
-        {isSnoozed ? <span>{messages.imports.inboxSnoozed}</span> : null}
+        {isSnoozed ? <span>{importMessages.inboxSnoozed}</span> : null}
       </div>
       <div className="import-inbox-file-actions">
         <button type="button" className="subtle-action" onClick={() => onSelectExpectedFile(file)}>
-          {messages.imports.inboxUseFile}
+          {importMessages.inboxUseFile}
         </button>
         {!isSnoozed ? (
           <button type="button" className="subtle-action" onClick={() => onSnoozeFile(file.id)}>
-            {messages.imports.inboxNotAvailable}
+            {importMessages.inboxNotAvailable}
           </button>
         ) : null}
       </div>

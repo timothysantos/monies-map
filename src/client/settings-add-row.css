@@ -1,0 +1,12 @@
+/* The "+ Add ..." row (settings-add-row.jsx). Ships with the lazy routes that
+   use it, never with the first screen. */
+.settings-add-row .lsd-row-label {
+  max-width: none;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.settings-add-row:disabled {
+  cursor: default;
+  opacity: 0.55;
+}

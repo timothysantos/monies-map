@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { postJson, reseedDemo } from "./helpers";
+import { openEntryComposer, postJson, reseedDemo } from "./helpers";
 
 // H12d: cross-tab sync lives in useAppSyncSubscription. Both transports reach
 // the same handlers: a BroadcastChannel shell refresh and a storage-event
@@ -18,7 +18,7 @@ test("a shell refresh sent over BroadcastChannel updates reference data in the o
   await page.goto(ENTRIES_URL);
   await other.goto(ENTRIES_URL);
   await waitUsable(other);
-  await other.getByRole("button", { name: "+ Add entry" }).first().click();
+  await openEntryComposer(other);
   const marker = await other.evaluate(() => { window.__notReloaded = true; return true; });
   expect(marker).toBe(true);
 

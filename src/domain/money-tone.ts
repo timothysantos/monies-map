@@ -3,14 +3,16 @@
 // these functions and renders the answer with the shared .money-<tone>
 // classes, so a colour means the same thing everywhere:
 // - in: money in or a good outcome (income, a refund, received, owed to you,
-//   under plan, savings made, a matched statement) -> mint
+//   under plan, savings made, a matched statement) -> avocado (--pastel-mint)
 // - short: a deficit, over plan, money short, a debt you owe, a statement
-//   that is off -> rose
-// - plan: an intention (planned income, planned spend, a savings target) -> sky
-// - caution: something needs a check -> butter
+//   that is off -> brick red (--pastel-rose)
+// - plan: an intention (planned income, planned spend, a savings target)
+//   -> dusty teal (--pastel-sky)
+// - caution: something needs a check -> harvest gold with a dark mustard ink
+//   (--pastel-butter)
 // - out: money out in a list (an expense row, a negative day, a settle-up
-//   paid) -> rose text with its minus sign; summary figures use spendTone,
-//   which is rose only over plan
+//   paid) -> brick red text with its minus sign; summary figures use
+//   spendTone, which is brick red only over plan
 // - neutral: transfers, zero, counts
 // Hiding money totals turns every money tone neutral in the stylesheet, so a
 // hidden value never shows its sign through colour.
@@ -58,17 +60,18 @@ export function entryAmountTone(entryType: string, signedAmountMinor: number): M
 }
 
 /**
- * The Entries totals strip has no plan to compare with: spend and outflow are
- * plain outflows, transfers are neutral, income and the difference carry
+ * The Entries totals (the "Spent" lead and its four pills) have no plan to
+ * compare with, and spending is not bad for being spending: spend, outflow
+ * and transfers stay plain ink, and only income and the difference carry
  * their direction (a negative difference is a deficit).
  */
 export function entryTotalsTones({ incomeMinor, netMinor }: { incomeMinor: number; netMinor: number }) {
   return {
-    spend: "out",
+    spend: "neutral",
     income: flowTone(incomeMinor),
     difference: signTone(netMinor),
     transfers: "neutral",
-    outflow: "out"
+    outflow: "neutral"
   } satisfies Record<string, MoneyTone>;
 }
 

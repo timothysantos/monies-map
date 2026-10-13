@@ -12,7 +12,10 @@ export const QUICK_EXPENSE_PARAMS = [
   "category",
   "note",
   "owner",
-  "shared"
+  "shared",
+  // source=ask: Ask's "Edit in form" opened the link, not the Apple Pay
+  // Shortcut, so a missing amount or merchant is a person starting by hand.
+  "source"
 ];
 
 export function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOptions, ownerOptions, defaultAccountPriorityIds = [], fallbackOwnerName }) {
@@ -33,13 +36,15 @@ export function buildQuickExpenseDraftPatch({ searchParams, accountOptions, cate
   const description = isQuickExpensePlaceholder(rawDescription) ? "" : rawDescription ?? "";
   const date = normalizeQuickExpenseDate(searchParams.get("date")) || todayInAppTimeZone();
 
-  if (!hasQuickExpenseAmount(rawAmount)) {
+  // The "Shortcut did not pass" warnings are only for a Shortcut link.
+  const fromShortcut = searchParams.get("source") !== "ask";
+  if (fromShortcut && !hasQuickExpenseAmount(rawAmount)) {
     warnings.push("Shortcut did not pass an amount. Check that the URL uses the real Amount variable, not placeholder text.");
   }
-  if (isQuickExpensePlaceholder(rawDescription)) {
+  if (fromShortcut && isQuickExpensePlaceholder(rawDescription)) {
     warnings.push("Shortcut did not pass a merchant or description.");
   }
-  if (rawAccount && !account && isQuickExpensePlaceholder(rawAccount)) {
+  if (fromShortcut && rawAccount && !account && isQuickExpensePlaceholder(rawAccount)) {
     warnings.push("Shortcut did not pass a card or account.");
   }
 

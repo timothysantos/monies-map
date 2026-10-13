@@ -1,18 +1,14 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, Receipt, X } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Receipt } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 
-import { messages } from "./copy/en-SG";
-import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
-import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
-import { metricCardToneClass, moneyToneClass } from "./money-tone-class";
 import { useIsMobileLayout } from "./use-viewport";
-import { InlineError } from "./ui-states";
 
-const { format: formatService } = moniesClient;
+// The phone picker sheet loads when a picker opens (this is first-screen code).
+const PickerSheet = lazy(() => import("./picker-sheet"));
 
 export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
   const normalizedOptions = [
@@ -84,60 +80,21 @@ export function FilterMultiSelect({
           <ChevronDown size={18} />
         </button>
         <Dialog.Root open={open} onOpenChange={setOpen}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content mobile-select-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-              <div className="note-dialog-head mobile-select-head">
-                <Dialog.Title>{label}</Dialog.Title>
-                <Dialog.Description className="sr-only">
-                  Choose one or more values for {label.toLowerCase()}.
-                </Dialog.Description>
-                <button
-                  type="button"
-                  className="icon-action subtle-cancel mobile-select-close"
-                  aria-label={`Close ${label.toLowerCase()}`}
-                  onClick={() => setOpen(false)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="mobile-select-options">
-                {normalizedOptions.map((option) => {
-                  const checked = selectedValues.includes(option.value);
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`mobile-select-option ${checked ? "is-selected" : ""}`}
-                      aria-pressed={checked}
-                      onClick={() => toggleValue(option.value)}
-                    >
-                      <span className="mobile-select-option-main">
-                        <span>{option.label}</span>
-                      </span>
-                      {checked ? <Check size={18} /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="entries-filter-multiselect-actions mobile-select-actions">
-                <button
-                  type="button"
-                  className="subtle-action"
-                  onClick={() => onChange([])}
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  className="subtle-action"
-                  onClick={() => setOpen(false)}
-                >
-                  Done
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
+          {open ? (
+            <Suspense fallback={null}>
+              <PickerSheet
+                multiple
+                title={label}
+                description={`Choose one or more values for ${label.toLowerCase()}.`}
+                closeLabel={`Close ${label.toLowerCase()}`}
+                options={normalizedOptions}
+                selectedValues={selectedValues}
+                onChoose={toggleValue}
+                onClear={() => onChange([])}
+                onClose={() => setOpen(false)}
+              />
+            </Suspense>
+          ) : null}
         </Dialog.Root>
       </label>
     );
@@ -197,125 +154,12 @@ export function FilterMultiSelect({
   );
 }
 
-export function DeleteRowButton({
-  label,
-  onConfirm,
-  triggerLabel,
-  confirmLabel = "Confirm",
-  destructive = true,
-  prompt = undefined,
-  buttonClassName = "",
-  children = null
-}) {
-  const [open, setOpen] = useState(false);
-  const [isWorking, setIsWorking] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleConfirm() {
-    setIsWorking(true);
-    setError("");
-    try {
-      await onConfirm?.();
-      setOpen(false);
-    } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "The action could not finish.");
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  return (
-    <Popover.Root
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (isWorking) {
-          return;
-        }
-        setOpen(nextOpen);
-        if (!nextOpen) {
-          setError("");
-        }
-      }}
-    >
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={destructive ? `subtle-remove ${buttonClassName}`.trim() : `icon-action ${buttonClassName}`.trim()}
-          aria-label={triggerLabel ?? `Delete ${label}`}
-          disabled={isWorking}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {children ?? (destructive ? <span aria-hidden="true">&times;</span> : <X size={16} />)}
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className="delete-popover"
-          sideOffset={8}
-          align="end"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <p>
-            {prompt ?? <>You are deleting <strong>{label}</strong>. Confirm?</>}
-          </p>
-          <InlineError message={error} />
-          <div className="delete-popover-actions">
-            <Popover.Close asChild>
-              <button type="button" className="subtle-action" disabled={isWorking}>
-                Cancel
-              </button>
-            </Popover.Close>
-            <button
-              type="button"
-              className={`subtle-action ${destructive ? "subtle-danger" : ""}`}
-              disabled={isWorking}
-              onClick={() => void handleConfirm()}
-            >
-              {isWorking ? messages.common.working : confirmLabel}
-            </button>
-          </div>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-export function MetricCard({ card }) {
-  const { areTotalsVisible } = useMoneyPrivacy();
-  const value = card.amountMinor == null ? card.value : formatService.money(card.amountMinor);
-  // A detail that names the figure's sign ("Overplanned") hides with it.
-  const detail = !areTotalsVisible && card.detailFollowsAmount ? null : card.detail;
-  return (
-    <div className={`metric ${metricCardToneClass(card.tone)}`}>
-      <span>{card.label}</span>
-      <strong>{card.amountMinor == null ? value : <PrivateMoney>{value}</PrivateMoney>}</strong>
-      {detail ? (
-        card.detailPopover ? (
-          <Popover.Root>
-            <Popover.Trigger asChild>
-              <button type="button" className="metric-detail-trigger">
-                {detail}
-              </button>
-            </Popover.Trigger>
-            <Popover.Portal>
-              <Popover.Content className="metric-detail-popover" sideOffset={8} align="start">
-                <p>{card.detailPopover}</p>
-                <Popover.Arrow className="category-popover-arrow" />
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
-        ) : <p>{detail}</p>
-      ) : null}
-    </div>
-  );
-}
-
 export function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
   const isActive = sort?.key === columnKey;
   const marker = !isActive ? "" : sort.direction === "asc" ? " ↑" : " ↓";
 
   return (
-    <th>
+    <th data-column={columnKey}>
       <button
         type="button"
         className={`table-sort-button ${isActive ? "is-active" : ""}`}
@@ -324,19 +168,6 @@ export function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
         {label}{marker}
       </button>
     </th>
-  );
-}
-
-export function BarLine({ label, valueMinor, maxMinor, tone }) {
-  const percent = Math.max((valueMinor / Math.max(maxMinor, 1)) * 100, 6);
-  return (
-    <div className="plan-bar-line">
-      <span>{label}</span>
-      <div className="plan-bar-track">
-        <span className={`plan-bar-fill ${moneyToneClass(tone)}`} style={{ width: `${percent}%` }} />
-      </div>
-      <strong><PrivateMoney>{formatService.money(valueMinor)}</PrivateMoney></strong>
-    </div>
   );
 }
 
@@ -354,3 +185,4 @@ export function CategoryGlyph({ iconKey }) {
 // plan sheet both use them, and on their own they were two more files on the
 // first screen (check:bundle counts files).
 export { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
+export { SpendLeadGroup } from "./ui/spend-lead-group";

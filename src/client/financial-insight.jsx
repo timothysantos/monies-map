@@ -5,6 +5,7 @@ import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { checkInMemoryKey, readVisitMemory, useCheckInClock, writeVisitMemory } from "./checkin-visit-memory";
 import { useMoneyPrivacy } from "./money-privacy";
+import { useIsMobileLayout } from "./use-viewport";
 // The check-in's own styles ship with the route that shows it, not with
 // the first-screen stylesheet.
 import "./money-checkin.css";
@@ -37,6 +38,31 @@ import "./money-checkin.css";
 // records).
 export function FinancialInsight(props) {
   return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
+}
+
+// The block folds to a teaser card (design.md, "Money insights fold"): the
+// top insight's chip and headline, a "+N more" pill and a chevron, one
+// button under the eyebrow. It starts folded on a phone and open on desktop;
+// the choice is this viewer's, kept in this browser per layout. Hidden money
+// shows only the count: a headline carries amounts.
+function useInsightsOpen(layout) {
+  const [chosen, setChosen] = useState({});
+  const key = `monies-map:money-insights-${layout}`;
+  let saved;
+  try {
+    saved = window.localStorage.getItem(key);
+  } catch {
+    // Blocked storage: the default holds and a choice lasts this visit.
+  }
+  const isOpen = chosen[layout] ?? (saved == null ? layout === "desktop" : saved === "true");
+  return [isOpen, () => {
+    setChosen({ ...chosen, [layout]: !isOpen });
+    try {
+      window.localStorage.setItem(key, String(!isOpen));
+    } catch {
+      // Blocked storage, as above.
+    }
+  }];
 }
 
 function insightLabelFor(audienceName) {
@@ -84,6 +110,27 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   const [quote, setQuote] = useState(null);
   const alsoId = useId();
   const detailsId = useId();
+  const contentId = useId();
+  const isPhone = useIsMobileLayout();
+  const [isOpenNow, toggleOpen] = useInsightsOpen(isPhone ? "phone" : "desktop");
+  const moreCount = view.also.length;
+  const label = <span className="financial-insight-label">{insightLabel}</span>;
+  const foldRow = (
+    <>
+      {isOpenNow ? null : label}
+      <button type="button" className="financial-insight-fold" data-kind={headline.kind} data-more={moreCount} aria-expanded={isOpenNow} aria-controls={contentId} onClick={toggleOpen}>
+        {isOpenNow ? label : <>
+          {areTotalsVisible ? <>
+            {headline.kind && <CheckInChip kind={headline.kind} />}
+            <strong>{headline.fact}</strong>
+            {headline.think && <span className="financial-insight-think">{headline.think}</span>}
+            {moreCount > 0 && <span className="financial-insight-more">+{moreCount} more</span>}
+          </> : <span className="financial-insight-count">{`${moreCount + 1} insight${moreCount ? "s" : ""} · tap to see`}</span>}
+        </>}
+        <ChevronDown />
+      </button>
+    </>
+  );
 
   // A new headline or context closes "See all insights".
   useEffect(() => {
@@ -123,21 +170,11 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
     };
   }, [areTotalsVisible, isExpanded, page, period, view.quoteTopic]);
 
-  if (!areTotalsVisible) {
-    return (
-      <section className={`financial-insight ${className}`.trim()} aria-label="Money insights">
-        <span className="financial-insight-label">{insightLabel}</span>
-        <div className="financial-insight-content">
-          <p className="financial-insight-private-copy">Reveal money totals to read these insights.</p>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" data-checkin-mode={view.mode}>
-      <span className="financial-insight-label">{insightLabel}</span>
-      <div className="financial-insight-content">
+    <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" data-checkin-mode={areTotalsVisible ? view.mode : undefined}>
+      {foldRow}
+      <div id={contentId} className="financial-insight-content" hidden={!isOpenNow}>
+        {areTotalsVisible ? <>
         {headline.kind ? <CheckInChip kind={headline.kind} /> : null}
         <p className="financial-insight-narrative" aria-live="polite">
           <strong className="checkin-fact">{headline.fact}</strong>
@@ -202,29 +239,10 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
             </div>
           ) : null}
         </div>
+        </> : <p className="financial-insight-private-copy">Reveal money totals to read these insights.</p>}
       </div>
     </section>
   );
-}
-
-// The check-in's headline alone, composed exactly as the insights compose
-// it (the same signals, visit memory, rotation and calm lines) but without
-// recording a visit: the Ask page's "since you last looked" card shows it
-// and leaves the visit to the page that owns the insights.
-export function composeCheckInHeadline(checkIn) {
-  const { memoryKey, contextKey, signals, period, triviaRotation, calmLines, clock, ready = true } = checkIn;
-  return composeCheckIn({
-    signals,
-    memory: readVisitMemory(memoryKey),
-    nowMs: clock.nowMs,
-    today: clock.today,
-    seed: `${memoryKey}|${contextKey}`,
-    contextKey,
-    period,
-    triviaRotation,
-    calmLines,
-    ready
-  }).headline;
 }
 
 export { checkInMemoryKey, useCheckInClock };

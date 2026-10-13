@@ -8,10 +8,11 @@ import { formatMonthLabel } from "./formatters";
 // it out (summary-month-choice.js holds the rules).
 const copy = messages.summary.monthChoice;
 
-// Phone: beside the View and scope trigger in the floating island. "All
-// months ▾" opens the sheet; with a month picked it reads "‹ Sep 2026 ›",
-// where the arrows step through the range's months and the middle opens the
-// sheet. Disabled until the range's months are known.
+// Phone: a chip in the floating Support bar beside the View and scope
+// trigger, on one line. "All months ▾" opens the sheet; with a month picked
+// it reads "‹ Sep 2026 ›", where the arrows step through the range's
+// months and the middle opens the sheet. "Pick a month" is heard, not shown.
+// Disabled until the range's months are known.
 export function SummaryMonthIslandControl({
   pickedMonth,
   previousMonth,
@@ -31,11 +32,11 @@ export function SummaryMonthIslandControl({
         onClick={onOpen}
         {...intentProps}
       >
-        <span className="mobile-month-choice-copy">
+        <span className="mobile-month-chip">
           <strong>{copy.allMonths}</strong>
-          <span>{copy.label}</span>
+          <span className="sr-only">{copy.label}</span>
+          <span className="mobile-month-choice-caret" aria-hidden="true">▾</span>
         </span>
-        <span className="mobile-month-choice-caret" aria-hidden="true">▾</span>
       </button>
     );
   }
@@ -58,8 +59,10 @@ export function SummaryMonthIslandControl({
         disabled={disabled}
         onClick={onOpen}
       >
-        <strong>{formatMonthLabel(pickedMonth)}</strong>
-        <span>{copy.label} <span aria-hidden="true">▾</span></span>
+        <span className="mobile-month-chip">
+          <strong>{formatMonthLabel(pickedMonth)}</strong>
+          <span className="sr-only">{copy.label}</span>
+        </span>
       </button>
       <button
         type="button"

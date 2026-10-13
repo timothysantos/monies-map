@@ -1,0 +1,142 @@
+/* The bank-match review on the Splits orange (design.md, "Lead · Support ·
+   Detail"): a white lead, then a white card per candidate with its two
+   records as Detail rows. Imported by splits-matches.jsx, so it ships with
+   the lazy Splits route; it replaces the old cream card's rules
+   (public/styles.css, splits-route.css) and loads after them. */
+.panel-splits .split-match-review-section {
+  gap: 12px;
+}
+
+.panel-splits .split-match-lead {
+  color: var(--text);
+}
+
+.panel-splits .split-match-lead .lsd-title {
+  color: var(--text);
+}
+
+.panel-splits .split-match-lead .lsd-subtitle {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.panel-splits .split-match-lead .lsd-note {
+  color: var(--muted);
+}
+
+.split-match-lead-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.split-match-lead-actions .split-match-back-action {
+  padding-left: 4px;
+}
+
+.panel-splits .split-match-list {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-splits .split-match-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 0 6px 18px rgba(27, 24, 21, 0.08);
+  color: var(--text);
+}
+
+.panel-splits .split-match-card strong {
+  color: var(--text);
+}
+
+.panel-splits .split-match-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.panel-splits .split-match-headline {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-splits .split-match-compare {
+  display: block;
+}
+
+.panel-splits .split-match-record {
+  align-items: flex-start;
+}
+
+.panel-splits .split-match-record .lsd-row-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.split-match-record-value {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-align: right;
+}
+
+.split-match-record-value strong {
+  overflow-wrap: anywhere;
+}
+
+.split-match-record-value small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.panel-splits .split-match-deltas {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.panel-splits .split-match-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-splits .split-match-actions .lsd-primary {
+  min-height: 46px;
+}
+
+@media (max-width: 760px) {
+  .panel-splits .split-match-card {
+    gap: 12px;
+    margin-right: 0;
+    margin-left: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+  }
+
+  .panel-splits .split-match-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .panel-splits .split-match-actions .lsd-primary {
+    flex: 1 1 auto;
+    max-width: 62%;
+  }
+}

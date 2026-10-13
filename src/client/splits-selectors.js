@@ -65,7 +65,6 @@ export function buildSplitsPanelModel({
     groupedCurrentActivity,
     groups,
     groupOptions,
-    groupSummaryLabel: view.id === "household" ? "" : getGroupSummaryLabel(groupBalanceMinor),
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,
@@ -88,11 +87,4 @@ function buildDonutRows(donutChart, categories) {
     ...item,
     theme: categoryService.getTheme(categories, { categoryName: item.label }, index)
   }));
-}
-
-function getGroupSummaryLabel(groupBalanceMinor) {
-  if (groupBalanceMinor === 0) {
-    return messages.splits.settledUp;
-  }
-  return groupBalanceMinor > 0 ? messages.splits.youAreOwed : messages.splits.youOwe;
 }

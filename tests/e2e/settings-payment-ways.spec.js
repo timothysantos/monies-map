@@ -74,8 +74,8 @@ test("negative: a refused choice shows the reason and puts the select back", asy
 });
 
 for (const viewport of [
-  { name: "phone", size: { width: 390, height: 844 }, sideBySide: false },
-  { name: "desktop", size: { width: 1280, height: 900 }, sideBySide: true }
+  { name: "phone", size: { width: 390, height: 844 } },
+  { name: "desktop", size: { width: 1280, height: 900 } }
 ]) {
   test(`the payment ways section fits a ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport.size);
@@ -83,15 +83,13 @@ for (const viewport of [
     await createAccount(page, { name: "Tim Wallet", institution: "Pocket", kind: "cash", ownerPersonId: "person-tim" });
     const section = await openPaymentWays(page);
     const tim = section.person("Tim");
+    // Two Detail rows, one under the other, on a phone and on a computer.
     const bank = await tim.getByLabel("PayNow and bank transfers").boundingBox();
     const cash = await tim.getByLabel("Cash").boundingBox();
-    if (viewport.sideBySide) {
-      expect(Math.abs(bank.y - cash.y)).toBeLessThan(2);
-      expect(cash.x).toBeGreaterThan(bank.x + bank.width);
-    } else {
-      expect(cash.y).toBeGreaterThan(bank.y + bank.height);
-      expect(cash.x + cash.width).toBeLessThanOrEqual(viewport.size.width);
-    }
+    expect(cash.y).toBeGreaterThan(bank.y + bank.height - 1);
+    expect(bank.height).toBeGreaterThanOrEqual(44);
+    expect(cash.height).toBeGreaterThanOrEqual(44);
+    expect(cash.x + cash.width).toBeLessThanOrEqual(viewport.size.width);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 

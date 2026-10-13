@@ -223,7 +223,7 @@ button.import-upload-status.is-waiting {
   border: 1px solid var(--person-chip-border);
   border-left: 5px solid var(--person-colour);
   border-radius: 8px;
-  background: #fff;
+  background: var(--paper);
 }
 
 .import-inbox-account-group > .import-inbox-file-main {
@@ -344,5 +344,111 @@ button.import-upload-status.is-waiting {
 
   .import-drop-grid .import-dropzone {
     min-height: 0;
+  }
+}
+
+/* Lead · Support · Detail on the inbox and the intake queue (design.md,
+   "Imports"): quiet white sections with a 44 px header row, pastel pairs for
+   what needs attention, rows of at least 44 px, and no wash behind the
+   section as a whole. */
+.import-inbox-section,
+.import-inbox-section.has-work,
+.import-inbox-section.is-current,
+.import-intake-section {
+  gap: 12px;
+  padding: 14px;
+  border-color: var(--line);
+  border-radius: 18px;
+  background: rgb(var(--paper-rgb) / 0.72);
+}
+
+.import-inbox-section.is-folded {
+  gap: 0;
+}
+
+.import-inbox-header,
+.import-intake-section > .import-inbox-header {
+  min-height: 44px;
+}
+
+.import-inbox-section .section-head h3,
+.import-intake-section .section-head h3 {
+  font-size: 0.98rem;
+}
+
+.import-inbox-fold-toggle,
+.import-intake-section .import-inbox-header .subtle-action,
+.import-inbox-file-actions .subtle-action,
+.import-intake-actions .subtle-action,
+.import-inbox-session-meta .subtle-action {
+  min-height: 44px;
+  padding: 0 10px;
+  font-weight: 600;
+}
+
+.import-inbox-body > .lede {
+  font-size: 0.88rem;
+}
+
+.import-inbox-metric {
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.import-inbox-guidance,
+.import-inbox-cleanup {
+  border-color: var(--pastel-butter-line);
+  border-radius: 14px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+  font-weight: 600;
+}
+
+.import-inbox-guidance.is-current {
+  border-color: var(--pastel-mint-line);
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+}
+
+.import-inbox-session {
+  border-radius: 14px;
+}
+
+.import-inbox-session > summary {
+  min-height: 44px;
+}
+
+.import-intake-row {
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.import-intake-row.is-ambiguous {
+  border-color: var(--pastel-butter-line);
+  background: var(--pastel-butter);
+}
+
+.import-intake-empty {
+  border-radius: 14px;
+}
+
+@media (max-width: 620px) {
+  .import-inbox-section {
+    padding: 14px;
+  }
+
+  /* Four small facts in two columns, not four tall boxes. */
+  .import-inbox-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .import-inbox-metric {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .import-inbox-metric-icon {
+    display: none;
   }
 }

@@ -31,7 +31,7 @@ test("category-filtered entry remains visible until the category edit is explici
   await entryRow.first().click();
   const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
-  await entryEditor.locator("select").first().selectOption("Groceries");
+  await entryEditor.locator("[data-row='category'] select").selectOption("Groceries");
 
   await expect(page.getByText("Save this category?")).toBeVisible();
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(1);
@@ -78,7 +78,7 @@ test("category quick-save keeps the collapsed row on the saved category without 
   await entryRow.first().click();
   const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
-  await entryEditor.locator("select").first().selectOption("Travel");
+  await entryEditor.locator("[data-row='category'] select").selectOption("Travel");
 
   await expect(page.getByText("Save this category?")).toBeVisible();
   const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
@@ -162,7 +162,7 @@ test("entries breakdown category rows hide chart slices separately from multi-ca
   await expect(page.locator(".entry-row").filter({ hasText: taxiDescription })).toHaveCount(1);
   await expect(page.locator(".entries-filter").filter({ hasText: "By category" })).toContainText("2 categories");
 
-  await page.getByRole("button", { name: "Show expense breakdown" }).click();
+  await page.getByRole("button", { name: "Spending by category" }).click();
   const foodRow = page.locator(".entries-breakdown-list .category-row").filter({ hasText: "Food & Drinks" });
   await expect(foodRow).toBeVisible();
   const firstBreakdownRowLayout = await page.locator(".entries-breakdown-list .category-row").first().evaluate((row) => {
@@ -351,9 +351,11 @@ test("entry date headers stick on mobile while scrolling through a date group", 
   expect(viewport).not.toBeNull();
   const initialBox = await dateHeader.boundingBox();
   expect(initialBox).not.toBeNull();
-  expect(initialBox.x).toBeGreaterThanOrEqual(-1);
-  expect(initialBox.x).toBeLessThanOrEqual(1);
-  expect(initialBox.width).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 1);
+  // The day header spans the list (inside the page's side padding, as the
+  // rows do), not the screen edge to edge.
+  expect(initialBox.x).toBeGreaterThanOrEqual(0);
+  expect(initialBox.x).toBeLessThanOrEqual(16);
+  expect(initialBox.width).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 2 * 16 - 1);
 
   await page.evaluate((element) => {
     document.documentElement.style.scrollBehavior = "auto";

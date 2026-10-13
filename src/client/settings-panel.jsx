@@ -1,12 +1,12 @@
 // First, so these rules load before the stylesheets the modules below import.
 import "./settings-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { LogOut } from "lucide-react";
+import { ArrowLeftRight, LogOut } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
 import {
   archiveAccount,
@@ -38,8 +38,10 @@ import {
   updateSettingsPerson
 } from "./settings-api";
 import { AccountDialog } from "./account-dialog";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
+import { SettingsColoursSection } from "./settings-colours-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import { EntryTransferTools } from "./entry-editor";
@@ -56,9 +58,10 @@ import {
   SettingsTransfersSection,
   SettingsTrustSection
 } from "./settings-sections";
-import { DeleteRowButton } from "./ui-components";
+import { DeleteRowButton } from "./delete-row-button";
 import { FALLBACK_THEME } from "./ui-options";
 import { buildSettingsRefreshPlan } from "./settings-refresh-plan";
+import { buildSettingsSummaries } from "./settings-summary-model";
 import {
   buildCheckpointHistoryYears,
   buildCreateAccountDialog,
@@ -113,7 +116,7 @@ async function copyShortcutConnection(value) {
   const copied = document.execCommand("copy");
   field.remove();
   if (!copied) {
-    throw new Error(messages.settings.shortcutCopyFailed);
+    throw new Error(settingsMessages.shortcutCopyFailed);
   }
 }
 
@@ -159,6 +162,7 @@ export function SettingsPanel({
     paymentWays: false,
     categories: false,
     categoryRules: false,
+    colours: false,
     trust: false,
     transfers: false,
     errorDiagnostics: false,
@@ -330,7 +334,7 @@ export function SettingsPanel({
         broadcast: true
       });
       if (refreshedAppShell?.accounts?.length) {
-        throw new Error(messages.settings.emptyStateStillHasAccounts);
+        throw new Error(settingsMessages.emptyStateStillHasAccounts);
       }
       setEmptyStateText("");
       setEmptyStateDialogOpen(false);
@@ -407,7 +411,7 @@ export function SettingsPanel({
     setCategoryRuleDialog(
       buildSuggestionCategoryRuleDialog(
         suggestion,
-        messages.settings.categoryRuleSuggestionNote
+        settingsMessages.categoryRuleSuggestionNote
       )
     );
   }
@@ -540,7 +544,7 @@ export function SettingsPanel({
     setStatementCompareResult(null);
     setStatementCorrection(null);
     setDismissedCorrectionFindingIds([]);
-    setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareReading(file.name) });
+    setStatementCompareStatus({ tone: "active", message: settingsMessages.statementCompareReading(file.name) });
     try {
       const request = {
         accountId: target.accountId,
@@ -563,10 +567,10 @@ export function SettingsPanel({
         request.rows = inspectCsv(await file.text()).rows;
       }
 
-      setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareChecking(request.rows.length) });
+      setStatementCompareStatus({ tone: "active", message: settingsMessages.statementCompareChecking(request.rows.length) });
       statementCompareRequestRef.current = request;
       const comparison = await runStatementCompare(request);
-      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareReady(comparison) });
+      setStatementCompareStatus({ tone: "success", message: settingsMessages.statementCompareReady(comparison) });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Statement compare failed.";
       setStatementCompareStatus({ tone: "error", message });
@@ -620,7 +624,7 @@ export function SettingsPanel({
     try {
       await undoStatementCorrections({ correctionIds: statementCorrection.correctionIds });
       setStatementCorrection(null);
-      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCorrectionUndone });
+      setStatementCompareStatus({ tone: "success", message: settingsMessages.statementCorrectionUndone });
       await runStatementCompare(request);
       await onRefresh(buildSettingsRefreshPlan("statement_correction_undone"));
     } catch (error) {
@@ -735,7 +739,7 @@ export function SettingsPanel({
         categoryId: suggestion.categoryId,
         priority: 100,
         isActive: true,
-        note: messages.settings.categoryRuleSuggestionNote(suggestion.sourceCount)
+        note: settingsMessages.categoryRuleSuggestionNote(suggestion.sourceCount)
       });
       await onRefresh(buildSettingsRefreshPlan("category_rule_suggestion_accepted"));
     } catch (error) {
@@ -1092,7 +1096,7 @@ export function SettingsPanel({
         ? current.deltaMinor + statementRow.signedAmountMinor - ledgerRow.signedAmountMinor
         : current.deltaMinor
     } : current);
-    setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareDirectionFixed });
+    setStatementCompareStatus({ tone: "success", message: settingsMessages.statementCompareDirectionFixed });
     void onRefresh(buildSettingsRefreshPlan("statement_compare_linked"));
   }
 
@@ -1102,7 +1106,7 @@ export function SettingsPanel({
       ledgerRowCount: current.ledgerRowCount + 1,
       unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== rowId)
     } : current);
-    setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareEntryAdded });
+    setStatementCompareStatus({ tone: "success", message: settingsMessages.statementCompareEntryAdded });
     void onRefresh(buildSettingsRefreshPlan("statement_compare_entry_added"));
   }
 
@@ -1119,15 +1123,15 @@ export function SettingsPanel({
 
     setShortcutSettingsDraft(nextDraft);
     setShortcutSettingsError("");
-    setShortcutSettingsStatus(messages.settings.shortcutPreparingInstall);
+    setShortcutSettingsStatus(settingsMessages.shortcutPreparingInstall);
     setIsSubmitting(true);
     try {
       await copyShortcutConnection(connectionUrl.toString());
       await saveShortcutSettings(nextDraft);
-      setShortcutSettingsStatus(messages.settings.shortcutConnectionCopied);
+      setShortcutSettingsStatus(settingsMessages.shortcutConnectionCopied);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
-      setShortcutSettingsError(error instanceof Error ? error.message : messages.settings.shortcutInstallFailed);
+      setShortcutSettingsError(error instanceof Error ? error.message : settingsMessages.shortcutInstallFailed);
       setShortcutSettingsStatus("");
       throw error;
     } finally {
@@ -1153,15 +1157,15 @@ export function SettingsPanel({
     setShortcutSettingsError("");
 
     if (!nextDraft.apiKey.trim()) {
-      setShortcutSettingsStatus(messages.settings.shortcutPriorityNeedsKey);
+      setShortcutSettingsStatus(settingsMessages.shortcutPriorityNeedsKey);
       return;
     }
 
     setIsSubmitting(true);
-    setShortcutSettingsStatus(messages.settings.shortcutPrioritySaving);
+    setShortcutSettingsStatus(settingsMessages.shortcutPrioritySaving);
     try {
       await saveShortcutSettings(nextDraft);
-      setShortcutSettingsStatus(messages.settings.shortcutPrioritySaved);
+      setShortcutSettingsStatus(settingsMessages.shortcutPrioritySaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
       setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
@@ -1177,14 +1181,14 @@ export function SettingsPanel({
     setShortcutSettingsDraft(nextDraft);
     setShortcutSettingsError("");
     if (!nextDraft.apiKey.trim()) {
-      setShortcutSettingsStatus(messages.settings.shortcutPriorityNeedsKey);
+      setShortcutSettingsStatus(settingsMessages.shortcutPriorityNeedsKey);
       return;
     }
     setIsSubmitting(true);
-    setShortcutSettingsStatus(messages.settings.shortcutPrioritySaving);
+    setShortcutSettingsStatus(settingsMessages.shortcutPrioritySaving);
     try {
       await saveShortcutSettings(nextDraft);
-      setShortcutSettingsStatus(messages.settings.shortcutForeignCurrencySaved);
+      setShortcutSettingsStatus(settingsMessages.shortcutForeignCurrencySaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
       setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
@@ -1204,15 +1208,15 @@ export function SettingsPanel({
     const next = { ...current, ...change };
     setPaymentWaysDraft((ways) => ways.map((way) => (way.personId === personId ? next : way)));
     setPaymentWaysError("");
-    setPaymentWaysStatus(messages.settings.paymentWaysSaving);
+    setPaymentWaysStatus(settingsMessages.paymentWaysSaving);
     setIsSubmitting(true);
     try {
       await savePaymentWay(next);
-      setPaymentWaysStatus(messages.settings.paymentWaysSaved(next.personName));
+      setPaymentWaysStatus(settingsMessages.paymentWaysSaved(next.personName));
       await onRefresh(buildSettingsRefreshPlan("payment_way_saved"));
     } catch (error) {
       setPaymentWaysDraft((ways) => ways.map((way) => (way.personId === personId ? current : way)));
-      setPaymentWaysError(error instanceof Error ? error.message : messages.settings.paymentWaysSaveFailed);
+      setPaymentWaysError(error instanceof Error ? error.message : settingsMessages.paymentWaysSaveFailed);
       setPaymentWaysStatus("");
     } finally {
       setIsSubmitting(false);
@@ -1224,7 +1228,7 @@ export function SettingsPanel({
     setShortcutSettingsError("");
     try {
       await saveShortcutSettings(shortcutSettingsDraft);
-      setShortcutSettingsStatus(messages.settings.shortcutSettingsSaved);
+      setShortcutSettingsStatus(settingsMessages.shortcutSettingsSaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
       setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
@@ -1233,6 +1237,17 @@ export function SettingsPanel({
       setIsSubmitting(false);
     }
   }
+
+  // The status word on each closed row of the Settings list.
+  const summaries = buildSettingsSummaries({
+    people,
+    accounts: visibleAccounts,
+    shortcutIsSetUp: Boolean(shortcutSettingsDraft.apiKey?.trim()),
+    claudeStatus: claudeCredit.status,
+    categories: visibleCategories,
+    exceptions: safeSettingsPage.reconciliationExceptions ?? [],
+    unresolvedTransfers: safeSettingsPage.unresolvedTransfers ?? []
+  });
 
   function toggleSettingsSection(sectionKey) {
     setSettingsSectionsOpen((current) => ({
@@ -1247,7 +1262,7 @@ export function SettingsPanel({
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.settings}</h2>
-          <span className="panel-context">{messages.settings.viewing(viewLabel)}</span>
+          <span className="panel-context">{settingsMessages.viewing(viewLabel)}</span>
         </div>
       </div>
 
@@ -1274,7 +1289,9 @@ export function SettingsPanel({
         </section>
       ) : null}
 
+      <div className="settings-list">
       <SettingsPeopleSection
+        summary={summaries.people}
         people={people}
         isOpen={settingsSectionsOpen.people}
         onToggle={() => toggleSettingsSection("people")}
@@ -1282,6 +1299,7 @@ export function SettingsPanel({
       />
 
       <SettingsAccountsSection
+        summary={summaries.accounts}
         accounts={visibleAccounts}
         categories={categories}
         people={people}
@@ -1308,6 +1326,7 @@ export function SettingsPanel({
       />
 
       <SettingsShortcutApiSection
+        summary={summaries.shortcutApi}
         accounts={accounts}
         draft={shortcutSettingsDraft}
         error={shortcutSettingsError}
@@ -1340,6 +1359,7 @@ export function SettingsPanel({
       />
 
       <SettingsPaymentWaysSection
+        summary={summaries.paymentWays}
         accounts={accounts}
         draft={paymentWaysDraft}
         error={paymentWaysError}
@@ -1351,6 +1371,7 @@ export function SettingsPanel({
       />
 
       <SettingsCategoriesSection
+        summary={summaries.categories}
         categories={visibleCategories}
         isOpen={settingsSectionsOpen.categories}
         onToggle={() => toggleSettingsSection("categories")}
@@ -1361,6 +1382,7 @@ export function SettingsPanel({
 
       <SettingsCategoryMatchRulesSection
         id="settings-category-rules"
+        summary={summaries.categoryRules}
         rules={safeSettingsPage.categoryMatchRules ?? []}
         categories={categories}
         suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
@@ -1381,7 +1403,13 @@ export function SettingsPanel({
         onRequestAiSuggestions={() => void handleRequestAiCategoryRules()}
       />
 
+      <SettingsColoursSection
+        isOpen={settingsSectionsOpen.colours}
+        onToggle={() => toggleSettingsSection("colours")}
+      />
+
       <SettingsTrustSection
+        summary={summaries.trust}
         accounts={visibleAccounts}
         exceptions={safeSettingsPage.reconciliationExceptions ?? []}
         isOpen={settingsSectionsOpen.trust}
@@ -1392,6 +1420,7 @@ export function SettingsPanel({
       />
 
       <SettingsTransfersSection
+        summary={summaries.transfers}
         transfers={safeSettingsPage.unresolvedTransfers}
         isOpen={settingsSectionsOpen.transfers}
         isSubmitting={isSubmitting}
@@ -1403,6 +1432,45 @@ export function SettingsPanel({
         onManageTransfer={openTransferManager}
         isRefreshing={isRefreshingTransfers}
       />
+
+      <SettingsErrorDiagnosticsSection
+        summary={summaries.errorDiagnostics}
+        diagnostics={safeSettingsPage.errorDiagnostics ?? []}
+        isOpen={settingsSectionsOpen.errorDiagnostics}
+        isSubmitting={isSubmitting}
+        onToggle={() => toggleSettingsSection("errorDiagnostics")}
+        onRetainLatest={handleRetainLatestErrorDiagnostics}
+      />
+
+      <SettingsActivitySection
+        summary={summaries.activity}
+        activityGroups={recentActivityGroups}
+        isOpen={settingsSectionsOpen.activity}
+        onToggle={() => toggleSettingsSection("activity")}
+      />
+
+      {canUseDemoControls ? (
+        <SettingsDemoSection
+          demo={safeSettingsPage.demo}
+          error={demoActionError}
+          emptyStateDialogOpen={emptyStateDialogOpen}
+          emptyStateText={emptyStateText}
+          isOpen={demoStateOpen}
+          isSubmitting={isSubmitting}
+          reloadDialogOpen={reloadDialogOpen}
+          reloadText={reloadText}
+          onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
+          onReloadDialogOpenChange={setReloadDialogOpen}
+          onToggle={() => setDemoStateOpen((current) => !current)}
+          onEmptyStateTextChange={setEmptyStateText}
+          onReloadTextChange={setReloadText}
+          onReseed={handleReseed}
+          onRefresh={handleRefresh}
+          onEmptyState={handleEmptyState}
+        />
+      ) : null}
+
+      </div>
 
       {transferDialogEntry ? (
         <EntryTransferTools
@@ -1435,44 +1503,9 @@ export function SettingsPanel({
           showLabel={false}
           trigger={(
             <button type="button" hidden aria-hidden="true" tabIndex={-1}>
-              {messages.settings.manageTransferReview}
+              {settingsMessages.manageTransferReview}
             </button>
           )}
-        />
-      ) : null}
-
-      <SettingsErrorDiagnosticsSection
-        diagnostics={safeSettingsPage.errorDiagnostics ?? []}
-        isOpen={settingsSectionsOpen.errorDiagnostics}
-        isSubmitting={isSubmitting}
-        onToggle={() => toggleSettingsSection("errorDiagnostics")}
-        onRetainLatest={handleRetainLatestErrorDiagnostics}
-      />
-
-      <SettingsActivitySection
-        activityGroups={recentActivityGroups}
-        isOpen={settingsSectionsOpen.activity}
-        onToggle={() => toggleSettingsSection("activity")}
-      />
-
-      {canUseDemoControls ? (
-        <SettingsDemoSection
-          demo={safeSettingsPage.demo}
-          error={demoActionError}
-          emptyStateDialogOpen={emptyStateDialogOpen}
-          emptyStateText={emptyStateText}
-          isOpen={demoStateOpen}
-          isSubmitting={isSubmitting}
-          reloadDialogOpen={reloadDialogOpen}
-          reloadText={reloadText}
-          onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
-          onReloadDialogOpenChange={setReloadDialogOpen}
-          onToggle={() => setDemoStateOpen((current) => !current)}
-          onEmptyStateTextChange={setEmptyStateText}
-          onReloadTextChange={setReloadText}
-          onReseed={handleReseed}
-          onRefresh={handleRefresh}
-          onEmptyState={handleEmptyState}
         />
       ) : null}
 
@@ -1534,10 +1567,10 @@ export function SettingsPanel({
         renderCheckpointDeleteAction={(item) => (
           <DeleteRowButton
             label={formatService.formatMonthLabel(item.month)}
-            triggerLabel={messages.settings.checkpointDelete}
-            confirmLabel={messages.settings.checkpointDelete}
+            triggerLabel={settingsMessages.checkpointDelete}
+            confirmLabel={settingsMessages.checkpointDelete}
             destructive={false}
-            prompt={messages.settings.checkpointDeleteDetail(formatService.formatMonthLabel(item.month))}
+            prompt={settingsMessages.checkpointDeleteDetail(formatService.formatMonthLabel(item.month))}
             onConfirm={() => handleDeleteCheckpoint(item)}
           />
         )}
@@ -1547,30 +1580,29 @@ export function SettingsPanel({
         formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${formatService.money(Math.abs(item.deltaMinor))}`)}
       />
 
-      <Dialog.Root open={dismissTransfersConfirmOpen} onOpenChange={(open) => { if (!open && !isSubmitting) setDismissTransfersConfirmOpen(false); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>Clear unresolved transfers?</Dialog.Title>
-                <Dialog.Description>
-                  This hides {safeSettingsPage.unresolvedTransfers.length} unresolved transfer review{safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"} from the review list.
-                </Dialog.Description>
-              </div>
-              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">
-                ×
-              </Dialog.Close>
-            </div>
-            <div className="note-dialog-actions">
-              <Dialog.Close className="subtle-action" disabled={isSubmitting}>Cancel</Dialog.Close>
-              <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void confirmDismissAllUnresolvedTransfers()}>
-                {isSubmitting ? messages.common.saving : "Clear transfers"}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {dismissTransfersConfirmOpen ? (
+        <SheetDialog
+          tone="danger"
+          className="settings-account-dialog"
+          title="Clear unresolved transfers?"
+          description={`This hides ${safeSettingsPage.unresolvedTransfers.length} unresolved transfer review${safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"} from the review list.`}
+          descriptionHidden
+          closeLabel="Close confirmation dialog"
+          lead={(
+            <ConfirmLead
+              icon={ArrowLeftRight}
+              title={`${safeSettingsPage.unresolvedTransfers.length} unresolved transfer review${safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"}`}
+            >
+              <p className="lsd-note">They are hidden from the review list.</p>
+            </ConfirmLead>
+          )}
+          primaryLabel={isSubmitting ? messages.common.saving : "Clear transfers"}
+          primaryDisabled={isSubmitting}
+          isSubmitting={isSubmitting}
+          onSubmit={confirmDismissAllUnresolvedTransfers}
+          onClose={() => setDismissTransfersConfirmOpen(false)}
+        />
+      ) : null}
 
     </article>
   );

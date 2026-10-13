@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -24,6 +24,7 @@ export function lightningcssTargets(cssTarget) {
 // public/ is copied into the build as-is, so the first-screen stylesheet
 // would ship unminified. Minify the copy with the minifier, options and
 // browser targets Vite uses for route CSS; it keeps its /styles.css URL.
+// The colour preset sheets (public/palettes/*.css) are minified the same way.
 // For those targets lightningcss adds the prefixes Safari 16.4 needs
 // (-webkit-backdrop-filter, unprefixed only from Safari 18) and drops ones
 // no target needs, exactly as it does for route CSS.
@@ -36,16 +37,22 @@ export function minifyPublicStylesheet() {
       config = resolved;
     },
     async writeBundle() {
-      const file = path.resolve(config.root, config.build.outDir, "styles.css");
-      const { code, warnings } = transform({
-        ...config.css.lightningcss,
-        filename: "styles.css",
-        code: await readFile(file),
-        minify: true,
-        targets: lightningcssTargets(config.build.cssTarget)
-      });
-      for (const warning of warnings) config.logger.warn(`[styles.css minify] ${warning.message}`);
-      await writeFile(file, code);
+      const outDir = path.resolve(config.root, config.build.outDir);
+      const palettes = (await readdir(path.join(outDir, "palettes")).catch(() => []))
+        .filter((name) => name.endsWith(".css"))
+        .map((name) => path.join("palettes", name));
+      for (const name of ["styles.css", ...palettes]) {
+        const file = path.join(outDir, name);
+        const { code, warnings } = transform({
+          ...config.css.lightningcss,
+          filename: name,
+          code: await readFile(file),
+          minify: true,
+          targets: lightningcssTargets(config.build.cssTarget)
+        });
+        for (const warning of warnings) config.logger.warn(`[${name} minify] ${warning.message}`);
+        await writeFile(file, code);
+      }
     }
   };
 }

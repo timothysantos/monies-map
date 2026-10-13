@@ -470,11 +470,11 @@ function EntryRow({
               <strong>{category?.name ?? entry.categoryName}</strong>
             </div>
             <strong>{entry.description}</strong>
-            <p>{entry.note || messages.common.emptyValue}</p>
+            {entry.note ? <p>{entry.note}</p> : null}
           </div>
           <div className="entry-row-transfer">
             <strong>{display.transferDetail}</strong>
-            <p>{display.accountDetail || messages.common.emptyValue}</p>
+            {display.accountDetail ? <p>{display.accountDetail}</p> : null}
           </div>
           <div className="entry-row-right">
             <MemoizedEntryRowAmount
@@ -485,7 +485,9 @@ function EntryRow({
             />
             <div className="entry-pills">
               {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
-              {display.transferLabel ? <span className="entry-chip entry-chip-transfer">{display.transferLabel}</span> : null}
+              {display.transferLabel ? (
+                <span className={`entry-chip entry-chip-transfer${display.isTransferMatched ? " is-matched" : ""}`}>{display.transferLabel}</span>
+              ) : null}
               <span
                 className={`entry-chip entry-chip-bank-state ${bankState.className} entry-status-dot`}
                 aria-label={bankState.label}

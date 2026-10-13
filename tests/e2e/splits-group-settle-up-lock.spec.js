@@ -89,35 +89,33 @@ test.beforeEach(async ({ page }) => {
   await reseedDemo(page);
 });
 
-test("editing an expense in a settled group batch is refused in place, and saves after Undo settle-up", async ({ page }) => {
+test("an expense in a settled group batch opens read-only with the reason and Undo, and saves after Undo settle-up", async ({ page }) => {
   const settled = await createSettledGroup(page, Date.now());
   const batch = await openSettledBatch(page, settled);
   await batch.locator(".split-activity-card").filter({ hasText: settled.expenseDescription }).getByRole("button", { name: "Edit split" }).click();
 
-  const editor = page.getByRole("dialog", { name: "Edit split" });
-  await editor.getByRole("textbox", { name: /Expense total/ }).fill("80");
-  await editor.getByRole("textbox", { name: /Tim share amount/ }).fill("40");
-  const refused = page.waitForResponse((response) => isLockResponse(response, "/api/splits/expenses/update"));
-  await editor.getByRole("button", { name: "Save expense" }).click();
-  const refusal = await (await refused).json();
-  expect(refusal).toMatchObject({ ok: false, code: "split_settlement_locked", batchId: settled.batchId });
-  expect(refusal.checkpointId).toBeUndefined();
-
-  // The person sees why, and the one way forward, inside the editor.
-  const lock = editor.locator(".settlement-lock-error");
-  await expect(lock).toContainText(`This split expense is part of the ${settled.groupName} settle-up of ${month}-17`);
-  await expect(lock).toContainText("Undo the settle-up before changing its amount and shares");
+  const view = page.getByRole("dialog", { name: "View split" });
+  await expect(view).toBeVisible();
+  const lock = view.locator(".settlement-lock-error");
+  await expect(lock).toContainText("Settled on 17 May 2026. Undo the settle-up to change it.");
   await expect(lock).not.toContainText("$");
   await expect(lock.getByRole("button", { name: "Undo simplification" })).toHaveCount(0);
+  await expect(view.getByRole("textbox")).toHaveCount(0);
+  await expect(view.getByRole("button", { name: "Save expense" })).toHaveCount(0);
   // Nothing was saved: the expense is still settled at its old amount.
   const before = await splitRow(page, settled.expenseId);
   expect(before.totalAmountMinor).toBe(6000);
   expect(before.batchClosedAt).toBe(`${month}-17`);
 
   await lock.getByRole("button", { name: "Undo settle-up" }).click();
-  await expect(editor.locator(".settlement-lock-undone")).toContainText("Settle-up undone. Its activity is open again");
   await expect.poll(async () => (await splitRow(page, settled.expenseId)).batchClosedAt ?? null).toBeNull();
 
+  // The archive behind the card closed; the same card is now editable.
+  const editor = page.getByRole("dialog", { name: "Edit split" });
+  await expect(editor).toBeVisible();
+  await expect(editor.locator(".settlement-lock-undone")).toContainText("Settle-up undone. Its activity is open again");
+  await editor.getByRole("textbox", { name: /Expense total/ }).fill("80");
+  await editor.getByRole("textbox", { name: /Tim share amount/ }).fill("40");
   const saved = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/update") && response.ok());
   await editor.getByRole("button", { name: "Save expense" }).click();
   await saved;

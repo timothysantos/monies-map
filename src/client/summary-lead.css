@@ -97,3 +97,261 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
     font-size: 1.02rem;
   }
 }
+
+/* The Month top's support row (ui/spend-lead-group.jsx, `inline`): Income,
+   Saved and Remaining budget as three equal columns under the bar, split by
+   a hairline, in text colour only. */
+.summary-lead-group.is-inline {
+  display: block;
+}
+
+.lead-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.lead-column {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.lead-column:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.lead-column.is-button {
+  cursor: pointer;
+}
+
+.lead-column.is-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.lead-column-label {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-column strong {
+  overflow: hidden;
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-column small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The savings bar under the lead (ui/savings-bar.jsx): money earned is the
+   bar, spent rose and kept mint, a thin sky plan bar under it on the same
+   scale, then one plain line and a muted plan line. Colour comes from the
+   money tones only; hidden money turns them to neutral greys (the tone
+   classes drop --money-ink), keeping just the percentages. The money-tone
+   `span` rules above and the panel head's muted `span` rule are beaten with
+   a class pair. */
+.savings-bar {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.savings-bar-track {
+  position: relative;
+  display: flex;
+  height: 10px;
+}
+
+.savings-bar-segment {
+  position: relative;
+  flex: 0 0 auto;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper));
+  box-shadow: inset -1px 0 0 var(--paper);
+  cursor: pointer;
+}
+
+.savings-bar-segment:first-of-type {
+  border-radius: 6px 0 0 6px;
+}
+
+.savings-bar-segment:last-of-type {
+  border-radius: 0 6px 6px 0;
+  box-shadow: none;
+}
+
+.savings-bar-segment:only-of-type {
+  border-radius: 6px;
+}
+
+/* The bar is 10 px tall, the touch target is 44 px: it reaches up and down
+   into the gaps around the bar. */
+.savings-bar-segment::after {
+  content: "";
+  position: absolute;
+  inset: -17px 0;
+}
+
+.savings-bar-segment:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Spending past the income: rose stripes, still rose, for the part that
+   came out of savings. */
+.savings-bar-segment.is-hatched {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper)) 0 3px,
+    var(--pastel-rose) 3px 6px
+  );
+}
+
+html[data-money-privacy="hidden"] .savings-bar-segment.is-hatched {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--text) 50%, var(--paper)) 0 3px,
+    var(--pastel-neutral) 3px 6px
+  );
+}
+
+html[data-money-privacy="hidden"] .savings-bar-segment {
+  --money-ink: var(--text);
+}
+
+html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="kept"] {
+  background: color-mix(in srgb, var(--text) 18%, var(--paper));
+}
+
+html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
+  background: color-mix(in srgb, var(--text) 50%, var(--paper));
+}
+
+.savings-bar .savings-bar-tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text);
+  pointer-events: none;
+}
+
+/* The "income" label sits on the bar, right of the tick (left of it when the
+   tick is near the end), on a white chip so the stripes do not run under it. */
+.savings-bar .savings-bar-tick-label {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.savings-bar .savings-bar-tick.is-late .savings-bar-tick-label {
+  right: 4px;
+  left: auto;
+}
+
+.savings-bar .savings-bar-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  z-index: 5;
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 10px 24px rgba(24, 18, 12, 0.14);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.savings-bar .savings-bar-popover[hidden] {
+  display: none;
+}
+
+.savings-bar-plan {
+  display: flex;
+  height: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pastel-sky) 85%, var(--paper));
+}
+
+.savings-bar-plan-spend,
+.savings-bar-plan-save {
+  display: block;
+  height: 100%;
+}
+
+.savings-bar-plan-spend {
+  border-radius: 3px 0 0 3px;
+  background: color-mix(in srgb, var(--pastel-sky-ink) 60%, var(--paper));
+}
+
+.savings-bar-plan-save {
+  background: color-mix(in srgb, var(--pastel-sky-ink) 28%, var(--paper));
+}
+
+.savings-bar .savings-bar-sentence,
+.savings-bar .savings-bar-plan-line {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-bar .savings-bar-sentence {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.savings-bar .savings-bar-plan-line {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+}

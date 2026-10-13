@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { shortMonthText } from "../lib/short-month";
 
 export function sortRows(rows, sort, monthKey = "") {
   if (!sort) {
@@ -56,8 +57,8 @@ export function formatRowDateLabel(row, fallbackMonth) {
   }
 
   const [year, month, day] = value.split("-");
-  return new Intl.DateTimeFormat("en-SG", {
+  return shortMonthText(new Intl.DateTimeFormat("en-SG", {
     month: "short",
     day: "numeric"
-  }).format(new Date(Number(year), Number(month) - 1, Number(day)));
+  }).format(new Date(Number(year), Number(month) - 1, Number(day))));
 }

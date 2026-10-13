@@ -1,16 +1,19 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 
-import { CategoryEditDialog } from "./category-edit-dialog";
 import { messages } from "./copy/en-SG";
-import { moniesClient } from "./monies-client-service";
+import { getCategoryTheme, slugify } from "./category-utils";
+import { money, moneyWithCurrency } from "./formatters";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
+import { paletteColour } from "./palette-colour";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
-const { categories: categoryService, format: formatService } = moniesClient;
-
+// The category edit dialog loads when it is first opened, so the first
+// screen (Summary's Spending Mix) does not carry it or the Settings copy it
+// shows.
+const LazyCategoryEditDialog = lazy(() => import("./category-edit-dialog.jsx").then((module) => ({ default: module.CategoryEditDialog })));
 export function SpendingMixChart({
   data,
   categories,
@@ -21,7 +24,11 @@ export function SpendingMixChart({
   innerRadius = 70,
   outerRadius = 120,
   // A Splits chart passes its split currency; other charts are SGD.
-  currency = ""
+  currency = "",
+  // Percent labels and category badges around the ring. Spending Mix turns
+  // them off: its ranked list beside the donut carries them, and they
+  // collided with each other when many categories had small slices.
+  callouts = true
 }) {
   const total = typeof totalMinor === "number"
     ? totalMinor
@@ -32,7 +39,7 @@ export function SpendingMixChart({
   const resolvedOuterRadius = isNarrowViewport ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
   const chartData = data.map((item, index) => ({
     ...item,
-    ...categoryService.getTheme(categories, item, index)
+    ...getCategoryTheme(categories, item, index)
   }));
 
   return (
@@ -44,6 +51,7 @@ export function SpendingMixChart({
           currency={currency}
           totalLabel={totalLabel}
           compact={compact}
+          callouts={callouts}
           isNarrowViewport={isNarrowViewport}
           resolvedHeight={resolvedHeight}
           resolvedInnerRadius={resolvedInnerRadius}
@@ -64,7 +72,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight, 
       <span className="chart-spinner" />
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong><PrivateMoney>{currency ? formatService.moneyWithCurrency(total, currency) : formatService.money(total)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{currency ? moneyWithCurrency(total, currency) : money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );
@@ -100,7 +108,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
     try {
       await onChange(category.id, {
         name: categoryDialog.name.trim(),
-        slug: (categoryDialog.slug || categoryService.slugify(categoryDialog.name)).trim(),
+        slug: (categoryDialog.slug || slugify(categoryDialog.name)).trim(),
         iconKey: categoryDialog.iconKey,
         colorHex: categoryDialog.colorHex
       });
@@ -115,7 +123,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
       <button
         type="button"
         className="category-icon category-icon-button"
-        style={{ "--category-color": category.colorHex }}
+        style={{ "--category-color": paletteColour(category.colorHex) }}
         aria-label={`Edit ${category.name}`}
         onClick={(event) => {
           event.preventDefault();
@@ -124,7 +132,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
             mode: "edit",
             categoryId: category.id,
             name: category.name,
-            slug: category.slug ?? categoryService.slugify(category.name),
+            slug: category.slug ?? slugify(category.name),
             iconKey: category.iconKey,
             colorHex: category.colorHex
           });
@@ -134,13 +142,15 @@ export function CategoryAppearancePopover({ category, onChange }) {
       </button>
       {/* Mounted only while open: long lists render one of these per row. */}
       {categoryDialog ? (
-        <CategoryEditDialog
-          dialog={categoryDialog}
-          isSubmitting={isSubmitting}
-          onChange={setDialog}
-          onClose={() => setDialog(null)}
-          onSave={handleSave}
-        />
+        <Suspense fallback={null}>
+          <LazyCategoryEditDialog
+            dialog={categoryDialog}
+            isSubmitting={isSubmitting}
+            onChange={setDialog}
+            onClose={() => setDialog(null)}
+            onSave={handleSave}
+          />
+        </Suspense>
       ) : null}
     </>
   );

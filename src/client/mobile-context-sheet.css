@@ -1,0 +1,167 @@
+/* The phone's View and scope sheet (mobile-context-sheet.jsx), in Lead ·
+   Support · Detail: the lead is who you are viewing, the support is the view
+   and scope as segmented chips, the detail is the Entries filters as quiet
+   rows, and Reset filters and Done are the bottom bar. It loads with the
+   sheet, not with the first screen. Colours are tokens only; the person's
+   chip uses their colour (person-colour.js). */
+@media (max-width: 760px) {
+  /* Its own bottom bar carries the safe area, so the sheet adds none. */
+  .mobile-context-dialog.mobile-context-dialog {
+    padding-bottom: 0;
+  }
+
+  .mobile-context-dialog:focus {
+    outline: none;
+  }
+
+  .mobile-context-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    align-content: start;
+    gap: 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0 -16px;
+    padding: 2px 16px 18px;
+  }
+
+  .mobile-context-lead {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+  }
+
+  .mobile-context-lead .mobile-context-person-chip {
+    height: 40px;
+    padding: 0 18px;
+    font-size: 1.25rem;
+  }
+
+  .mobile-context-lead-scope {
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .mobile-context-lead-hint {
+    color: var(--muted);
+    font-size: 0.86rem;
+    line-height: 1.35;
+  }
+
+  .mobile-context-support {
+    display: grid;
+    gap: 14px;
+  }
+
+  .mobile-context-group {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-context-group-title {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .mobile-context-segments {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgb(var(--ink-rgb, 38 35 31) / 0.04);
+  }
+
+  .mobile-context-segment {
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+  }
+
+  .mobile-context-segment[aria-pressed="true"] {
+    background: var(--paper);
+    color: var(--accent-strong);
+    box-shadow: 0 1px 3px rgba(27, 24, 21, 0.14);
+    font-weight: 700;
+  }
+
+  /* Detail: the filters as quiet rows, each opening the existing picker. */
+  .mobile-context-filters .entries-filter-stack,
+  .mobile-context-filters .entries-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .mobile-context-filters .entries-filter-bar,
+  .mobile-context-filters .entries-filter,
+  .mobile-context-filters .entries-filter > * {
+    min-width: 0;
+  }
+
+  .mobile-context-filters .entries-filter {
+    grid-template-columns: minmax(88px, 0.34fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    border-top: 1px solid var(--line);
+  }
+
+  .mobile-context-filters .entries-filter-label {
+    font-size: 0.84rem;
+  }
+
+  .mobile-context-filters .entries-filter .table-edit-input {
+    min-height: 44px;
+    padding: 0 2px 0 8px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text);
+    font-size: 0.92rem;
+    text-align: right;
+  }
+
+  .mobile-context-filters .entries-filter .responsive-select-trigger,
+  .mobile-context-filters .entries-filter .entries-filter-multiselect-trigger {
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .mobile-context-filters .search-filter-input {
+    padding-right: 44px !important;
+    text-align: left;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-context-filters .search-filter-clear {
+    right: 0;
+    width: 44px;
+    height: 44px;
+  }
+
+  .mobile-context-actions.lsd-bottom.is-sheet-bar {
+    --bottom-actions-bleed: 16px;
+  }
+}

@@ -7,6 +7,7 @@ import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { moneyToneClass } from "../money-tone-class";
 import { getPersonColourVars } from "../person-colour";
 import { ICON_REGISTRY } from "../ui-options";
+import { paletteColour } from "../palette-colour";
 
 // Lead · Support · Detail (design.md): each sheet or screen top has one thing
 // you look at first (the Lead card), a few facts that explain it (Support
@@ -120,7 +121,7 @@ export function LeadCard({
           <LeadBubble bubble={bubble ?? category?.bubble ?? null} category={category} colour={colour} />
           <div className="lsd-heading">
             {typeof title === "string" ? <strong className="lsd-title">{title}</strong> : title}
-            {subtitle ? <span className="lsd-subtitle" style={{ "--cat": colour }}>{subtitle}</span> : null}
+            {subtitle ? <span className="lsd-subtitle" style={{ "--cat": paletteColour(colour) }}>{subtitle}</span> : null}
           </div>
           {amountNode && amountCaption ? (
             <AmountColumn className="lsd-amount-column">
@@ -167,7 +168,7 @@ function LeadBubble({ bubble, category, colour }) {
   }
   const Icon = category?.icon ?? (category?.iconKey ? ICON_REGISTRY[category.iconKey] ?? Receipt : null);
   return (
-    <span className="lsd-bubble" style={{ "--cat": colour }} aria-hidden="true">
+    <span className="lsd-bubble" style={{ "--cat": paletteColour(colour) }} aria-hidden="true">
       {Icon ? <Icon size={26} strokeWidth={2} /> : null}
     </span>
   );
@@ -261,6 +262,20 @@ export function ChipDateField({ value = "", label, onValueChange }) {
         }
       }}
     />
+  );
+}
+
+/**
+ * The select a tappable chip lays over itself, for a chip whose field has no
+ * Detail row (the inline card on a wide screen): invisible, it takes the
+ * tap and opens the browser's list.
+ * @param {{ value?: string, label: string, options: Array<{ value: string, label: string }>, onValueChange: (value: string) => void }} props
+ */
+export function ChipSelectField({ value = "", label, options, onValueChange }) {
+  return (
+    <select className="lsd-chip-native" aria-label={label} value={value} onChange={(event) => onValueChange(event.target.value)}>
+      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
   );
 }
 

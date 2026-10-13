@@ -156,7 +156,8 @@ for (const layout of layouts) {
     const context = await browser.newContext(layout.context);
     const page = await context.newPage();
     await openMonth(page);
-    const label = await seedPlanRow(page, `note-${layout.name}-${Date.now()}`);
+    // A row with a note: an empty note shows nothing on the phone card.
+    const label = await seedPlanRow(page, `note-${layout.name}-${Date.now()}`, "planned_items", "Old row note");
     await page.goto(MONTH_URL);
     const draft = `Playwright row note ${layout.name}`;
     const row = page.locator("tr").filter({ hasText: label }).first();
@@ -175,7 +176,7 @@ for (const layout of layouts) {
     await expect(dialog.locator("textarea")).toHaveValue(draft);
     await expect(row.locator(".note-trigger")).not.toContainText(draft);
     expect(state.count).toBe(1);
-    expect((await findRow(page, label))?.note ?? "").toBe("");
+    expect((await findRow(page, label))?.note ?? "").toBe("Old row note");
 
     state.fail = false;
     await save.click();

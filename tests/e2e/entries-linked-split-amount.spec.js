@@ -54,7 +54,7 @@ test("editing a linked entry's amount in a person view moves the viewer's split 
   await expect(row).toBeVisible({ timeout: 60_000 });
   await expect(row).toContainText("$30.00");
 
-  await row.click();
+  await row.locator(".entry-row-main").click();
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
   const amountInput = editor.getByRole("textbox", { name: /^Amount/ });

@@ -1,9 +1,13 @@
-import { ChevronRight, SquarePen } from "lucide-react";
+import { SquarePen } from "lucide-react";
 
-import { messages } from "./copy/en-SG";
+import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
-import { DeleteRowButton } from "./ui-components";
+import { describeAccountLine } from "./settings-account-line";
+import { AddRow } from "./settings-add-row";
+import { SettingsSection } from "./settings-section";
+import { DeleteRowButton } from "./delete-row-button";
+import { DetailRows } from "./ui-components";
 import { moneyToneClass } from "./money-tone-class";
 import { useMoneyPrivacy } from "./money-privacy";
 import { reconciliationTone } from "../domain/money-tone";
@@ -17,6 +21,7 @@ export function SettingsAccountsSection({
   people,
   isOpen,
   isSubmitting,
+  summary,
   statementComparePanel,
   statementCompareResult,
   statementCompareStatus,
@@ -38,96 +43,86 @@ export function SettingsAccountsSection({
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   return (
-    <section className="chart-card settings-card">
-      <button
-        type="button"
-        className="settings-section-toggle"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-      >
-        <div className="settings-section-toggle-copy">
-          <div className="chart-head">
-            <h3>{messages.settings.accountsTitle}</h3>
-            <p>{messages.settings.accountsDetail}</p>
-          </div>
-        </div>
-        <span className={`settings-section-toggle-icon ${isOpen ? "is-open" : ""}`}>
-          <ChevronRight size={18} />
-        </span>
-      </button>
-      {isOpen ? (
-        <>
-          <div className="settings-actions">
-            <button type="button" className="subtle-action" onClick={onCreateAccount}>
-              {messages.settings.addAccount}
-            </button>
-          </div>
-          <p className="lede compact">{messages.settings.accountBalanceHint}</p>
-          <div className="settings-accounts-grid">
-            {accounts.map((account) => {
-              const latestCheckpoint = account.latestCheckpointMonth
-                ? account.checkpointHistory?.find((item) => item.month === account.latestCheckpointMonth)
-                : null;
-              return (
-                <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
-                  <div className="settings-account-main">
-                    <strong>{account.name}</strong>
-                    <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
-                    <p>{`Balance ${formatService.money(account.balanceMinor ?? 0)} • Opening ${formatService.money(account.openingBalanceMinor ?? 0)}`}</p>
-                    {areTotalsVisible ? (
-                      <p className={`settings-account-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
-                        {accountService.describeHealth(account)}
-                      </p>
-                    ) : null}
-                    <p className="settings-account-meta">
-                      {account.latestImportAt
-                        ? messages.settings.accountHealthLastImport(formatService.formatDate(account.latestImportAt))
-                        : messages.settings.accountHealthNoImports}
-                      {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
-                    </p>
-                  </div>
-                  <div className="settings-account-actions">
-                    {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
-                    <button type="button" className="subtle-action" onClick={() => onReconcileAccount(account)}>
-                      {messages.settings.reconcileAccount}
-                    </button>
-                    {latestCheckpoint && account.latestCheckpointDeltaMinor != null && account.latestCheckpointDeltaMinor !== 0 ? (
-                      <button type="button" className="settings-text-link" onClick={() => onOpenStatementCompare(account, latestCheckpoint)}>
-                        {messages.settings.statementCompareOpen}
-                      </button>
-                    ) : null}
-                    <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => onEditAccount(account)}>
-                      <SquarePen size={16} />
-                    </button>
-                    {account.isActive ? (
-                      <DeleteRowButton
-                        label={account.name}
-                        triggerLabel={messages.settings.archiveAccount}
-                        confirmLabel={messages.settings.archiveAccount}
-                        destructive={false}
-                        prompt={messages.settings.archiveAccountDetail(account.name)}
-                        onConfirm={() => onArchiveAccount(account.id)}
-                      />
-                    ) : null}
-                  </div>
+    <SettingsSection title={settingsMessages.accountsTitle} value={summary?.text} isOpen={isOpen} onToggle={onToggle}>
+      <p className="settings-hint">{settingsMessages.accountBalanceHint}</p>
+      <div className="settings-accounts-grid">
+        {accounts.map((account) => {
+          const latestCheckpoint = account.latestCheckpointMonth
+            ? account.checkpointHistory?.find((item) => item.month === account.latestCheckpointMonth)
+            : null;
+          return (
+            <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
+              <div className="settings-account-top">
+                <div className="settings-account-main">
+                  <strong>{account.name}</strong>
+                  <p>{describeAccountLine(account)}</p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="settings-account-balance">
+                  <strong>{formatService.money(account.balanceMinor ?? 0)}</strong>
+                  <small>{settingsMessages.accountOpening(formatService.money(account.openingBalanceMinor ?? 0))}</small>
+                </div>
+              </div>
+              <div className="settings-account-facts">
+                {areTotalsVisible ? (
+                  <p className={`settings-account-health ${moneyToneClass(reconciliationTone(account.reconciliationStatus))}`}>
+                    {accountService.describeHealth(account)}
+                  </p>
+                ) : null}
+                <p className="settings-account-meta">
+                  {account.latestImportAt
+                    ? settingsMessages.accountHealthLastImport(formatService.formatDate(account.latestImportAt))
+                    : settingsMessages.accountHealthNoImports}
+                  {account.unresolvedTransferCount ? ` • ${settingsMessages.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
+                </p>
+              </div>
+              <div className="settings-account-actions">
+                {!account.isActive ? <span className="account-badge">{settingsMessages.archived}</span> : null}
+                <button type="button" className="subtle-action" onClick={() => onReconcileAccount(account)}>
+                  {settingsMessages.reconcileAccount}
+                </button>
+                {latestCheckpoint && account.latestCheckpointDeltaMinor != null && account.latestCheckpointDeltaMinor !== 0 ? (
+                  <button type="button" className="subtle-action" onClick={() => onOpenStatementCompare(account, latestCheckpoint)}>
+                    {settingsMessages.statementCompareOpen}
+                  </button>
+                ) : null}
+                <span className="settings-account-icons">
+                  <button type="button" className="icon-action settings-row-icon" aria-label={settingsMessages.editAccount} onClick={() => onEditAccount(account)}>
+                    <SquarePen size={16} />
+                  </button>
+                  {account.isActive ? (
+                    <DeleteRowButton
+                      label={account.name}
+                      triggerLabel={settingsMessages.archiveAccount}
+                      confirmLabel={settingsMessages.archiveAccount}
+                      destructive={false}
+                      buttonClassName="settings-row-icon"
+                      prompt={settingsMessages.archiveAccountDetail(account.name)}
+                      onConfirm={() => onArchiveAccount(account.id)}
+                    />
+                  ) : null}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <DetailRows>
+        <AddRow onClick={onCreateAccount}>{settingsMessages.addAccount}</AddRow>
+      </DetailRows>
           {statementComparePanel ? (
             <div className="settings-statement-compare-inline">
               <div className="settings-statement-compare-head">
                 <div>
-                  <strong>{messages.settings.statementComparePanelTitle(
+                  <strong>{settingsMessages.statementComparePanelTitle(
                     statementComparePanel.accountName,
                     formatService.formatMonthLabel(statementComparePanel.checkpointMonth)
                   )}</strong>
-                  <p>{messages.settings.statementComparePanelDetail}</p>
+                  <p>{settingsMessages.statementComparePanelDetail}</p>
                   {statementComparePanel.deltaMinor != null ? (
-                    <p className="settings-account-health money-short">{messages.settings.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
+                    <p className="settings-account-health money-short">{settingsMessages.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
                   ) : null}
                   {statementComparePanel.statementStartDate && statementComparePanel.statementEndDate ? (
-                    <p>{messages.settings.statementCompareCheckpointPeriod(
+                    <p>{settingsMessages.statementCompareCheckpointPeriod(
                       formatService.formatDateOnly(statementComparePanel.statementStartDate),
                       formatService.formatDateOnly(statementComparePanel.statementEndDate)
                     )}</p>
@@ -150,11 +145,11 @@ export function SettingsAccountsSection({
                 disabled={isSubmitting}
                 onClick={() => document.getElementById("statement-compare-account-upload")?.click()}
               >
-                {messages.settings.statementCompareUpload}
+                {settingsMessages.statementCompareUpload}
               </button>
               {statementCompareStatus ? (
                 <section className={`settings-statement-compare is-${statementCompareStatus.tone}`}>
-                  <strong>{messages.settings.statementCompareTitle}</strong>
+                  <strong>{settingsMessages.statementCompareTitle}</strong>
                   <p>{statementCompareStatus.message}</p>
                 </section>
               ) : null}
@@ -177,8 +172,6 @@ export function SettingsAccountsSection({
               ) : null}
             </div>
           ) : null}
-        </>
-      ) : null}
-    </section>
+    </SettingsSection>
   );
 }

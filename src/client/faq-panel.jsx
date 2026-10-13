@@ -1,11 +1,16 @@
+import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
+import { categoryRowDetail } from "./category-utils";
 import { CategoryGlyph } from "./ui-components";
 import { categories as defaultCategories } from "../domain/demo-data";
 import { GUIDE_TABS, classifyGuideHref, parseGuideMarkdown, tokenizeInline } from "./guide-markdown";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
+import { ErrorPanel } from "./ui-states";
 import "./faq-panel.css";
+import { paletteColour } from "./palette-colour";
 
 // Each guide is its own lazy chunk: the user guide loads with this page, the
 // developer guide only when its tab opens, so readers never download it.
@@ -155,14 +160,18 @@ export function FaqPanel({ viewLabel }) {
         {doc ? (
           <GuideDocument doc={doc} onLinkClick={handleLinkClick} />
         ) : loadError ? (
-          <div className="faq-guide-status" role="alert">
-            <p>{messages.faq.loadFailed}</p>
-            <button type="button" className="ghost-button" onClick={() => setAttempt((count) => count + 1)}>
-              {messages.faq.retry}
-            </button>
-          </div>
+          <ErrorPanel
+            className="faq-guide-error"
+            title={messages.faq.loadFailed}
+            actions={[{ label: messages.faq.retry, onClick: () => setAttempt((count) => count + 1), primary: true }]}
+          />
         ) : (
-          <p className="faq-guide-status" role="status">{messages.faq.loading}</p>
+          <div className="faq-guide-status state-skeleton" role="status" aria-busy="true">
+            <p className="state-detail">{messages.faq.loading}</p>
+            <div className="sk sk-lines" />
+            <div className="sk sk-row" />
+            <div className="sk sk-row" />
+          </div>
         )}
       </div>
     </article>
@@ -196,27 +205,40 @@ function GuideDocument({ doc, onLinkClick }) {
   );
 }
 
+// The contents are quiet Support: open beside the guide on a wide screen, and
+// one 48px row on a phone, so the guide's first section starts on screen.
 function GuideContents({ toc, onLinkClick }) {
+  const isMobile = useIsMobileLayout();
+  const [isOpen, setIsOpen] = useState(false);
+  const isExpanded = !isMobile || isOpen;
   return (
-    <nav className="faq-toc" aria-label={messages.faq.contents}>
-      <h3>{messages.faq.contents}</h3>
-      <ol>
-        {toc.map((part) => (
-          <li key={part.id}>
-            <a href={`#${part.id}`} onClick={(event) => onLinkClick(event, `#${part.id}`)}>{part.title}</a>
-            {part.sections.length ? (
-              <ol>
-                {part.sections.map((section) => (
-                  <li key={section.id}>
-                    <a href={`#${section.id}`} onClick={(event) => onLinkClick(event, `#${section.id}`)}>{section.title}</a>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-    </nav>
+    <div className="faq-contents">
+      {isMobile ? (
+        <button type="button" className="faq-contents-toggle" aria-expanded={isExpanded} aria-controls="faq-toc" onClick={() => setIsOpen((open) => !open)}>
+          <span>{messages.faq.contents}</span>
+          <ChevronRight size={18} aria-hidden="true" className={isExpanded ? "is-open" : ""} />
+        </button>
+      ) : null}
+      <nav id="faq-toc" className="faq-toc" aria-label={messages.faq.contents} hidden={!isExpanded}>
+        {isMobile ? null : <h3>{messages.faq.contents}</h3>}
+        <ol>
+          {toc.map((part) => (
+            <li key={part.id}>
+              <a href={`#${part.id}`} onClick={(event) => onLinkClick(event, `#${part.id}`)}>{part.title}</a>
+              {part.sections.length ? (
+                <ol>
+                  {part.sections.map((section) => (
+                    <li key={section.id}>
+                      <a href={`#${section.id}`} onClick={(event) => onLinkClick(event, `#${section.id}`)}>{section.title}</a>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </div>
   );
 }
 
@@ -264,13 +286,13 @@ function GuideBlocks({ blocks, entryKey, onLinkClick }) {
             <div key={category.id} className="faq-category-row">
               <span
                 className="category-icon category-icon-static faq-category-icon"
-                style={{ "--category-color": category.colorHex }}
+                style={{ "--category-color": paletteColour(category.colorHex) }}
               >
                 <CategoryGlyph iconKey={category.iconKey} />
               </span>
               <div className="faq-category-copy">
                 <strong>{category.name}</strong>
-                <p>{messages.common.triplet(category.iconKey, category.colorHex, category.slug)}</p>
+                {categoryRowDetail(category) ? <p>{categoryRowDetail(category)}</p> : null}
               </div>
             </div>
           ))}

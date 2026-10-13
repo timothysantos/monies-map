@@ -170,7 +170,7 @@ test.describe("summary workflow", () => {
     const inlineScope = page.getByRole("group", { name: "Scope" });
     const stickyBar = page.locator(".mobile-context-sticky-wrap");
     const trigger = stickyBar.locator(".mobile-context-trigger");
-    const triggerLabel = trigger.locator(".mobile-context-trigger-label");
+    const triggerScope = trigger.locator(".mobile-context-scope");
     const actualSpend = page.locator(".summary-lead-spent");
     await expect(inlineScope).toBeVisible();
 
@@ -179,30 +179,30 @@ test.describe("summary workflow", () => {
     await expect(stickyBar).toBeVisible();
     await expect(inlineScope).toHaveCount(0);
     await expect(page.locator(".summary-scope-switch")).toHaveCount(0);
-    await expect(triggerLabel).toHaveText("Joyce · Shared");
-    await expect(trigger).toContainText("View and scope");
+    await expect(trigger.locator(".mobile-context-person-chip")).toHaveText("Joyce");
+    await expect(triggerScope).toHaveText("Shared");
     // A screen reader hears the same view and scope the bar shows.
     await expect(trigger).toHaveAccessibleName("Joyce · Shared View and scope");
     await expect(actualSpend).toHaveText(money(actualSpendMinor(sharedPage)));
 
     await trigger.click();
     const dialog = page.locator(".mobile-context-dialog");
-    const scopeSection = dialog.locator('section[aria-label="Scope"]');
+    const scopeSection = dialog.getByRole("group", { name: "Scope" });
     await expect(scopeSection).toBeVisible();
-    await expect(scopeSection.getByRole("button", { name: "Shared", exact: true })).toHaveClass(/is-active/);
-    await expect(scopeSection).toContainText("Joyce's share of split expenses.");
+    await expect(scopeSection.getByRole("button", { name: "Shared", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(dialog.locator(".mobile-context-lead")).toContainText("Joyce's share of split expenses.");
 
     await scopeSection.getByRole("button", { name: "Direct ownership", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(/scope=direct(&|$)/);
     await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
-    await expect(triggerLabel).toHaveText("Joyce · Direct");
+    await expect(triggerScope).toHaveText("Direct");
     await expect(page.locator(".financial-insight-summary")).toHaveAttribute("data-checkin-mode", "calm");
     await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText(SUMMARY_CALM);
 
     await trigger.click();
-    await expect(scopeSection.getByRole("button", { name: "Direct ownership", exact: true })).toHaveClass(/is-active/);
-    await expect(scopeSection).toContainText("Joyce's entries that are not part of a split.");
+    await expect(scopeSection.getByRole("button", { name: "Direct ownership", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(dialog.locator(".mobile-context-lead")).toContainText("Joyce's entries that are not part of a split.");
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toHaveCount(0);
     const widths = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
@@ -211,7 +211,7 @@ test.describe("summary workflow", () => {
     // The household counts every entry: the bar switches the view only.
     await page.goto("/summary?view=household&month=2025-10&scope=shared&summary_start=2025-10&summary_end=2025-10");
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
-    await expect(triggerLabel).toHaveText("Household");
+    await expect(trigger.locator(".mobile-context-person-chip")).toHaveText("Household");
     await expect(trigger).not.toContainText("Shared");
     await trigger.click();
     await expect(dialog).toBeVisible();
@@ -221,19 +221,19 @@ test.describe("summary workflow", () => {
     await expect(scopeSection).toBeVisible();
   });
 
-  test("summary spending mix cards keep readable text columns on desktop", async ({ page }) => {
+  test("summary spending mix rows keep readable text columns on desktop", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
 
     await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05");
     await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible();
     await page.getByRole("button", { name: "Show money totals" }).click();
-    const firstCard = page.locator(".share-list .share-row").first();
+    const firstCard = page.locator(".summary-mix-list .summary-mix-row").first();
     await expect(firstCard).toBeVisible();
 
     const layout = await firstCard.evaluate((card) => {
-      const textButton = card.querySelector(".share-row-button");
+      const textButton = card.querySelector(".summary-mix-main");
       const title = textButton?.querySelector("strong");
-      const amount = textButton?.querySelector("p");
+      const amount = textButton?.querySelector(".summary-mix-amount");
       const cardBox = card.getBoundingClientRect();
       const textBox = textButton?.getBoundingClientRect();
       const titleStyle = title ? getComputedStyle(title) : null;
@@ -241,7 +241,7 @@ test.describe("summary workflow", () => {
       return {
         cardWidth: cardBox.width,
         textWidth: textBox?.width ?? 0,
-        titleLines: title && titleLineHeight ? title.getBoundingClientRect().height / titleLineHeight : 0,
+        titleLines: title && titleLineHeight ? Math.round(title.getBoundingClientRect().height / titleLineHeight) : 0,
         amountText: amount?.textContent ?? "",
         overflows: card.scrollWidth > card.clientWidth + 1 || card.scrollHeight > card.clientHeight + 1
       };
@@ -249,7 +249,7 @@ test.describe("summary workflow", () => {
 
     expect(layout.cardWidth).toBeGreaterThan(300);
     expect(layout.textWidth).toBeGreaterThan(170);
-    expect(layout.titleLines).toBeLessThanOrEqual(2);
+    expect(layout.titleLines).toBeLessThanOrEqual(1);
     expect(layout.amountText).toMatch(/^\$/);
     expect(layout.overflows).toBe(false);
   });

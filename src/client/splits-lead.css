@@ -1,0 +1,153 @@
+/* The Splits lead card, search field and match banner on the Splits orange
+   (design.md, "Lead · Support · Detail"). Imported by splits-lead-card.jsx,
+   so it ships with the lazy Splits route and never in public/styles.css.
+   The card is white: its figures take the money tones as text (mint when
+   owed to you, rose when you owe) and hidden money keeps plain ink. */
+.panel-splits .splits-lead {
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.panel-splits .splits-lead .lsd-title {
+  color: var(--text);
+}
+
+.panel-splits .splits-lead .lsd-subtitle {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.panel-splits .splits-lead .lsd-amount-caption {
+  color: var(--muted);
+}
+
+.panel-splits .splits-lead .lsd-amount.money-neutral,
+.panel-splits .splits-lead .private-money {
+  color: inherit;
+}
+
+.panel-splits .splits-lead .lsd-amount.money-in {
+  color: var(--pastel-mint-ink);
+}
+
+.panel-splits .splits-lead .lsd-amount.money-short {
+  color: var(--pastel-rose-ink);
+}
+
+html[data-money-privacy="hidden"] .panel-splits .splits-lead .lsd-amount {
+  color: var(--text);
+}
+
+.splits-lead-spend {
+  font-variant-numeric: tabular-nums;
+}
+
+.splits-lead-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  margin-top: -2px;
+}
+
+.splits-lead-actions .lsd-primary {
+  min-height: 46px;
+  margin-left: auto;
+}
+
+/* Phone: Simplify settlement is a Detail row between the chips and the
+   actions, so the actions stay History and the one primary. */
+.splits-lead-simplify-row .lsd-row-label {
+  flex: 1 1 auto;
+  max-width: none;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.splits-lead-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--pastel-neutral);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.splits-lead-add:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* A wide screen puts the three actions in a column beside the balance. */
+@media (min-width: 761px) {
+  .panel-splits .splits-lead {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 24px;
+  }
+
+  .panel-splits .splits-lead > .lsd-hero,
+  .panel-splits .splits-lead > .lsd-chips {
+    grid-column: 1;
+  }
+
+  .panel-splits .splits-lead > .splits-lead-actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    flex-direction: column;
+    align-items: stretch;
+    margin: 0;
+  }
+
+  .panel-splits .splits-lead .splits-lead-actions .lsd-primary {
+    margin-left: 0;
+  }
+}
+
+/* Search: its own field under the card, the label kept for assistive tech. */
+.panel-splits .splits-search {
+  display: block;
+  margin: 0 0 12px;
+}
+
+.panel-splits .splits-search .entries-filter-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.panel-splits .splits-search .search-filter-control {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgb(var(--paper-rgb) / 0.92);
+}
+
+.panel-splits .splits-search .search-filter-control > svg,
+.panel-splits .splits-search .search-filter-clear {
+  color: var(--muted);
+}
+
+.panel-splits .splits-search .search-filter-input {
+  min-height: 46px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.panel-splits .splits-search .search-filter-input::placeholder {
+  color: var(--muted);
+}

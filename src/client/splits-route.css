@@ -5,6 +5,320 @@
    rule of the same specificity sets the same properties on these elements,
    so the cascade result is unchanged. */
 
+.split-dialog-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 2px 8px 0;
+  scrollbar-gutter: stable;
+}
+
+.split-dialog-section {
+  padding: 0;
+  margin-bottom: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.split-dialog-section-compact {
+  padding: 0;
+}
+
+.split-odd-cent-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgb(var(--accent-strong-rgb) / 0.16);
+  border-radius: 14px;
+  background: rgb(var(--cream-rgb, 250 244 238) / 0.78);
+}
+
+.split-dialog-help {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted-text, rgb(var(--muted-rgb, 113 115 121)));
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.split-donut-panel {
+  margin-bottom: 18px;
+}
+
+.split-refresh-status,
+.split-derived-refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: rgb(var(--on-strong-rgb) / 0.82);
+  font-size: 0.84rem;
+}
+
+.split-derived-refreshing {
+  margin-top: 10px;
+}
+
+.split-activity-list,
+.split-match-list {
+  display: grid;
+  gap: 12px;
+}
+
+.split-checkpoint-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.split-checkpoint-transfer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.split-date-group {
+  display: grid;
+  gap: 10px;
+  overflow: visible;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgb(var(--cream-rgb, 250 241 234) / 0.96);
+  color: var(--text);
+}
+
+.split-date-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -12px -16px 2px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgb(var(--muted-rgb, 217 207 194) / 0.5);
+  border-radius: 12px 12px 0 0;
+  background: rgb(var(--cream-rgb, 251 242 236) / 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.split-date-items .split-activity-card:first-child {
+  border-top: 0;
+}
+
+.split-inline-editor-card {
+  display: grid;
+  gap: 14px;
+  scroll-margin-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding: 16px;
+  border: 1px solid rgb(var(--accent-strong-rgb) / 0.3);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgb(var(--cream-rgb, 255 246 238) / 0.98), rgb(var(--cream-rgb, 255 251 247) / 0.96) 52%, rgb(var(--blush-rgb, 255 242 230) / 0.94)),
+    linear-gradient(0deg, rgb(var(--accent-strong-rgb) / 0.14), rgb(var(--accent-strong-rgb) / 0.02) 76%),
+    radial-gradient(circle at top right, rgb(var(--accent-strong-rgb) / 0.12), transparent 48%);
+  box-shadow: 0 10px 24px rgba(56, 40, 28, 0.1);
+}
+
+.split-delete-action {
+  color: var(--negative);
+}
+
+.split-activity-leading {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.split-match-deltas {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.split-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.split-dialog-delete-action {
+  margin-right: auto;
+}
+
+.panel-splits .split-date-group {
+  background: rgb(var(--cream-rgb, 251 242 236) / 0.95);
+  border-color: rgb(var(--blush-rgb, 255 230 216) / 0.72);
+  color: var(--text);
+}
+
+.split-archive-trigger,
+.split-archive-row {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.split-archive-row-date {
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.panel-splits .split-breakdown-panel {
+  border-color: rgb(var(--blush-rgb, 255 230 216) / 0.72);
+  background: rgb(var(--cream-rgb, 251 242 236) / 0.95);
+}
+
+.split-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.split-matches-link {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--on-strong);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color 140ms ease, opacity 140ms ease;
+}
+
+.panel-splits .split-checkpoint-panel.is-matched {
+  border-color: rgb(var(--cream-rgb, 205 238 220) / 0.95);
+  background: var(--pastel-mint);
+  color: var(--positive);
+}
+
+.split-checkpoint-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.split-checkpoint-kicker {
+  color: currentColor;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+  text-transform: uppercase;
+}
+
+.split-checkpoint-navigation {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 7px;
+}
+
+.split-checkpoint-navigation-hint {
+  color: currentColor;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  max-width: 230px;
+  text-align: right;
+  opacity: 0.78;
+}
+
+.panel-splits .split-settlement-follow-ups {
+  margin: 12px 0 10px;
+  border: 1px solid rgb(var(--cream-rgb, 255 244 236) / 0.52);
+  border-radius: 12px;
+  background: rgb(var(--accent-deep-rgb, 101 57 31) / 0.2);
+  overflow: hidden;
+}
+
+.split-settlement-follow-up-list {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid rgb(var(--cream-rgb, 255 244 236) / 0.3);
+}
+
+.split-settlement-follow-up {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: rgb(var(--cream-rgb, 255 248 243) / 0.96);
+  color: rgb(var(--accent-ink-rgb, 101 57 31));
+}
+
+.split-settlement-follow-up-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-splits .split-checkpoint-transfer {
+  border-color: rgb(var(--splits-deep-rgb) / 0.22);
+  background: rgb(var(--paper-rgb) / 0.46);
+}
+
+.panel-splits .split-activity-card.is-settlement-included {
+  border-left: 5px solid var(--accent-strong);
+  border-radius: 8px 0 0 8px;
+  padding-left: 9px;
+}
+
+.panel-splits .split-settlement-marker {
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.panel-splits .split-payment-marker {
+  color: rgb(var(--accent-ink-rgb, 138 77 44));
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.panel-splits .split-payment-marker.is-certified {
+  color: var(--positive);
+}
+
+.category-row-button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-row-button:hover,
+.category-row-button:focus-visible {
+  border-color: rgb(var(--muted-rgb, 62 91 70) / 0.42);
+  box-shadow: 0 12px 26px rgba(53, 72, 55, 0.08);
+}
+
 .split-odd-cent-actions {
   display: flex;
   flex-wrap: wrap;
@@ -15,36 +329,14 @@
 .split-odd-cent-actions button {
   min-height: 34px;
   padding: 6px 10px;
-  border: 1px solid rgba(177, 94, 47, 0.18);
+  border: 1px solid rgb(var(--accent-strong-rgb) / 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgb(var(--paper-rgb) / 0.92);
   color: var(--accent-strong);
   font: inherit;
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
-}
-
-.splits-groups-row {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 18px;
-}
-
-.splits-groups-row-floating {
-  display: none;
-}
-
-.splits-group-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.summary-chevron svg {
-  transition: transform 160ms ease;
 }
 
 .split-list-section {
@@ -83,7 +375,7 @@ button.split-activity-card {
 }
 
 button.split-activity-card:hover {
-  border-color: rgba(191, 103, 45, 0.18);
+  border-color: rgb(var(--accent-strong-rgb) / 0.18);
 }
 
 .split-activity-trailing {
@@ -127,7 +419,7 @@ button.split-activity-card:hover {
   gap: 4px;
   margin-top: 2px;
   padding: 14px 0 2px;
-  color: rgba(255, 255, 255, 0.64);
+  color: rgb(var(--on-strong-rgb) / 0.64);
 }
 
 .split-archive-dialog .dialog-actions {
@@ -151,8 +443,8 @@ button.split-activity-card:hover {
   width: 100%;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(250, 241, 234, 0.9);
-  border: 1px solid rgba(233, 204, 187, 0.72);
+  background: rgb(var(--cream-rgb, 250 241 234) / 0.9);
+  border: 1px solid rgb(var(--muted-rgb, 233 204 187) / 0.72);
   text-align: left;
 }
 
@@ -169,21 +461,9 @@ button.split-activity-card:hover {
   gap: 10px;
 }
 
-.split-settle-header {
-  flex: 0 0 auto;
-}
-
 .split-matches-link:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.62);
+  outline: 2px solid rgb(var(--paper-rgb) / 0.62);
   outline-offset: 3px;
-}
-
-.panel-splits .split-summary-search .search-filter-input::placeholder {
-  color: rgba(83, 72, 64, 0.58);
-}
-
-.split-checkpoint-view-action:hover {
-  background: #9b4a21;
 }
 
 .panel-splits .split-checkpoint-panel .split-checkpoint-actions,
@@ -198,13 +478,13 @@ button.split-activity-card:hover {
 }
 
 .panel-splits .split-settlement-follow-up .subtle-action:hover:not(:disabled) {
-  border-color: #8f401e;
-  background: #f7e4d7;
-  color: #5a2b15;
+  border-color: rgb(var(--accent-deep-rgb, 143 64 30));
+  background: rgb(var(--blush-rgb, 247 228 215));
+  color: rgb(var(--accent-ink-rgb, 90 43 21));
 }
 
 .panel-splits .split-settlement-follow-up .subtle-action:focus-visible {
-  outline: 2px solid #8f401e;
+  outline: 2px solid rgb(var(--accent-deep-rgb, 143 64 30));
   outline-offset: 2px;
 }
 
@@ -215,9 +495,9 @@ button.split-activity-card:hover {
 }
 
 .panel-splits .split-settlement-follow-up .split-settlement-follow-up-match-action:hover:not(:disabled) {
-  border-color: #843716;
-  background: #843716;
-  color: #fffaf6;
+  border-color: rgb(var(--accent-deep-rgb, 132 55 22));
+  background: rgb(var(--accent-deep-rgb, 132 55 22));
+  color: rgb(var(--on-strong-tint-rgb, 255 250 246));
 }
 
 .panel-splits .split-archive-trigger {
@@ -228,29 +508,21 @@ button.split-activity-card:hover {
   width: 100%;
   margin: 0 0 2px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 244, 236, 0.34);
+  border: 1px solid rgb(var(--cream-rgb, 255 244 236) / 0.34);
   border-radius: 12px;
-  background: rgba(101, 57, 31, 0.3);
-  color: rgba(255, 248, 243, 0.96);
+  background: rgb(var(--accent-deep-rgb, 101 57 31) / 0.3);
+  color: rgb(var(--on-strong-tint-rgb, 255 248 243) / 0.96);
   text-align: left;
 }
 
 .panel-splits .split-archive-trigger:hover:not(:disabled) {
-  background: rgba(101, 57, 31, 0.5);
-  border-color: rgba(255, 244, 236, 0.58);
+  background: rgb(var(--accent-deep-rgb, 101 57 31) / 0.5);
+  border-color: rgb(var(--cream-rgb, 255 244 236) / 0.58);
 }
-
-.panel-splits .split-history-trigger { margin-left: auto; }
-
-.split-history-row button { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 
 @media (max-width: 760px) {
   .split-checkpoint-navigation {
     justify-items: stretch;
-  }
-
-  .split-checkpoint-view-action {
-    width: 100%;
   }
 
   .split-checkpoint-navigation-hint {
@@ -269,9 +541,6 @@ button.split-activity-card:hover {
 }
 
 @media (max-width: 860px) {
-  .splits-groups-row {
-    display: grid;
-  }
 
   .split-activity-trailing {
     justify-items: start;
@@ -291,9 +560,9 @@ button.split-activity-card:hover {
 @media (max-width: 760px) {
   .panel-splits {
     background:
-      linear-gradient(180deg, rgba(177, 94, 47, 0.96), rgba(155, 74, 33, 0.96)),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 45%);
-    color: white;
+      linear-gradient(180deg, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96)),
+      linear-gradient(135deg, rgb(var(--paper-rgb) / 0.12), transparent 45%);
+    color: var(--on-strong);
     min-height: calc(100dvh - 104px - env(safe-area-inset-bottom, 0px));
     padding-top: 8px;
     padding-bottom: calc(174px + env(safe-area-inset-bottom, 0px));
@@ -315,26 +584,9 @@ button.split-activity-card:hover {
     box-shadow: inset 0 -16px 18px -22px rgba(71, 45, 30, 0.7);
   }
 
-  .split-dialog-scroll-cue {
-    display: flex;
-  }
-
-  .split-dialog-content .split-dialog-actions-divider {
-    display: none;
-  }
-
-  .split-dialog-inline .split-dialog-field-exact-amount {
-    grid-column: 2;
-  }
-
-  .split-share-preview,
   .split-odd-cent-actions {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .split-share-preview > span {
-    justify-content: space-between;
   }
 
   .split-odd-cent-control {
@@ -350,48 +602,8 @@ button.split-activity-card:hover {
     padding: 12px;
   }
 
-  .split-inline-editor-card .split-dialog-grid,
-  .split-inline-editor-card .entry-writing-grid {
+  .split-inline-editor-card .split-dialog-grid {
     grid-template-columns: 1fr;
-  }
-
-  .split-inline-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    align-items: stretch;
-    justify-content: stretch;
-  }
-
-  .split-inline-actions .inline-action-button,
-  .panel-splits .split-inline-actions .subtle-action {
-    width: auto;
-    height: auto;
-    justify-content: center;
-    min-height: 40px;
-    padding: 0 10px;
-    font-size: 0.86rem;
-  }
-
-  .split-inline-actions .split-linked-entry-action {
-    grid-column: 1 / -1;
-    min-height: 42px;
-  }
-
-  .splits-groups-row {
-    position: fixed;
-    right: 12px;
-    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    z-index: 56;
-    display: block;
-    margin-bottom: 0;
-    padding: 8px;
-    border: 1px solid rgba(255, 244, 236, 0.3);
-    border-radius: 18px;
-    background: rgba(177, 94, 47, 0.96);
-    box-shadow: 0 12px 30px rgba(27, 24, 21, 0.18);
-    backdrop-filter: blur(10px);
   }
 
   .split-list-section {
@@ -407,7 +619,7 @@ button.split-activity-card:hover {
   .split-date-header {
     margin-bottom: 0;
     margin-inline: -12px;
-    padding: 10px 12px 6px;
+    padding: 9px 12px;
     border-radius: 0;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
@@ -480,176 +692,9 @@ button.split-activity-card:hover {
     font-size: 0.76rem;
   }
 
-  .panel-splits .split-match-list {
-    gap: 10px;
-  }
-
-  .panel-splits .split-match-card {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    align-items: start;
-    margin-right: -12px;
-    margin-left: -12px;
-    padding: 12px;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-  }
-
-  .panel-splits .split-match-actions {
-    width: 100%;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .splits-groups-row {
-    position: fixed;
-    right: 12px;
-    bottom: calc(94px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    z-index: 58;
-    display: block;
-    margin: 0;
-    padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 18px;
-    background: rgba(132, 60, 26, 0.9);
-    box-shadow: 0 16px 38px rgba(72, 37, 19, 0.2);
-    backdrop-filter: blur(12px);
-    overflow: hidden;
-  }
-
-  .splits-group-pills {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding: 0;
-    gap: 6px;
-    scrollbar-width: none;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .splits-group-pills::-webkit-scrollbar {
-    display: none;
-  }
-
-  .panel-splits .splits-groups-row:not(.splits-groups-row-floating) {
-    display: none;
-  }
-
-  .splits-groups-row-floating {
-    position: fixed;
-    right: 12px;
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    z-index: 62;
-    display: block;
-    margin: 0;
-    padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.24);
-    border-radius: 18px;
-    background: rgba(132, 60, 26, 0.92);
-    box-shadow: 0 16px 38px rgba(72, 37, 19, 0.22);
-    backdrop-filter: blur(12px);
-    overflow: hidden;
-  }
-
-  .splits-groups-row-floating .split-group-pill:focus{
-    outline: 0;
-  }
-
-  .splits-groups-row-floating .split-group-pill:not(.is-active):focus{
-    box-shadow: none;
-  }
-
-  .splits-groups-row-floating .split-group-pill:focus-visible{
-    outline: 2px solid rgba(255, 255, 255, 0.56);
-    outline-offset: 2px;
-  }
-
-  .splits-summary-strip {
-    gap: 8px;
-    margin-right: -12px;
-    margin-left: -12px;
-    padding: 6px 12px;
-    width: calc(100% + 24px);
-    max-width: calc(100% + 24px);
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex-wrap: nowrap;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-  }
-
-  .splits-summary-strip .summary-chevron {
-    width: 32px;
-    height: 32px;
-  }
-
-  .splits-summary-strip .split-summary-search {
-    grid-template-columns: auto minmax(170px, 1fr);
-    flex: 0 0 min(320px, calc(100vw - 72px));
-    min-width: min(320px, calc(100vw - 72px));
-    gap: 8px;
-    margin-left: 0;
-  }
-
-  .splits-summary-strip .split-summary-search .entries-filter-label {
-    font-size: 0.82rem;
-  }
-
-  .splits-summary-strip .split-summary-search .search-filter-input {
-    min-height: 34px;
-    font-size: 0.9rem;
-  }
-
-  .splits-summary-strip .entries-summary-metrics {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    font-size: 0.82rem;
-  }
-
-  .splits-summary-actions {
-    display: none;
-  }
-
-  .entries-summary-metrics {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 8px 14px;
-    font-size: 0.94rem;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
-  .entries-summary-metrics > span {
-    flex: 0 0 auto;
-  }
-
-  .splits-summary-actions {
-    width: auto;
-    justify-content: flex-start;
-    margin-left: 0;
-    flex: 0 0 auto;
-  }
-
   .panel-splits {
     overflow-x: clip;
     padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .split-settle-header {
-    min-height: 34px;
-    padding: 0 12px;
-    font-size: 0.82rem;
   }
 
   .split-head-actions {
@@ -658,18 +703,12 @@ button.split-activity-card:hover {
     width: auto;
   }
 
-  .splits-summary-strip .split-summary-toolbar {
-    display: flex;
-    margin-left: auto;
-    flex-wrap: nowrap;
-  }
-
   .split-matches-link {
     min-height: 0;
     padding: 0;
     border: 0;
     background: transparent;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgb(var(--on-strong-rgb) / 0.9);
     font-size: 0.82rem;
   }
 }
@@ -715,7 +754,7 @@ button.split-activity-card:hover {
    and amount, linked, and the odd cent choice. */
 .split-share-editor {
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 248, 241, 0.7);
+  background: rgb(var(--cream-rgb, 255 248 241) / 0.7);
 }
 
 .split-share-editor .split-share-field {
@@ -764,7 +803,7 @@ button.split-activity-card:hover {
   height: 44px;
   border: 0;
   border-radius: 50%;
-  background: rgba(38, 35, 31, 0.06);
+  background: rgb(var(--ink-rgb, 38 35 31) / 0.06);
   color: var(--text);
 }
 
@@ -795,5 +834,98 @@ button.split-activity-card:hover {
   .split-expense-card-head h2 {
     font-size: 1.45rem;
     line-height: 1.1;
+  }
+}
+
+/* A settled split's card (read-only): the reason on top, the Undo button
+   directly under it, then the card. */
+.split-expense-card-dialog .split-dialog-scroll > .settlement-lock-error {
+  margin: 0 0 12px;
+}
+
+.split-expense-card-dialog .settlement-lock-error > span {
+  flex: 1 1 100%;
+}
+
+/* The split expense card in the list on a wide screen (like the Entries
+   inline editor): the reason and Undo of a settled split on top, the card,
+   then the bottom bar at the end. */
+.split-inline-expense-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.split-inline-expense-card > .settlement-lock-error,
+.split-inline-expense-card > .settlement-lock-undone {
+  margin: 0;
+}
+
+.split-inline-expense-card .settlement-lock-error > span {
+  flex: 1 1 100%;
+}
+
+.split-inline-expense-actions.lsd-bottom {
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.split-inline-expense-actions .lsd-bottom-end {
+  flex: 0 0 auto;
+}
+
+/* Inline: the lead card across the top, the Detail rows in two balanced
+   columns under it (the Entries inline editor does the same). */
+.split-expense-card.is-inline .split-expense-rows {
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--line);
+}
+
+.split-expense-card.is-inline .split-expense-rows .lsd-row {
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding-block: 8px;
+  break-inside: avoid;
+}
+
+.split-expense-card.is-inline .split-share-rows,
+.split-expense-card.is-inline .split-share-editor {
+  break-inside: avoid;
+}
+
+@media (max-width: 760px) {
+  .split-expense-card.is-inline .split-expense-rows {
+    column-count: 1;
+  }
+}
+
+/* The total with the money visibility toggle beside it (inline card). */
+.split-expense-card .split-lead-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The settlement card lead (split-settlement-card.jsx): who paid whom is a
+   long title, so in the phone sheet and the wide dialog the amount sits on
+   its own line under the bubble and title instead of squeezing them. */
+.split-settlement-card:is(.is-sheet, .is-dialog) .lsd-hero {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.split-settlement-card:is(.is-sheet, .is-dialog) .lsd-hero > .lsd-amount {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/* Create group is one stacked card, so it takes a narrower dialog. */
+.split-group-dialog {
+  width: min(520px, calc(100vw - 40px));
+}
+
+@media (max-width: 760px) {
+  .note-dialog-content.split-group-dialog {
+    width: 100%;
   }
 }

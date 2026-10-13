@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 
 const IMPORT_FIELD_OPTIONS = [
   { value: "ignore", label: "Don't import" },
@@ -38,31 +39,31 @@ export function ImportMappingStage({
     <div ref={mappingSectionRef} className={`import-stage-card ${stageClassName}`}>
       <div className="import-stage-head">
         <div className="section-head">
-          <h3>{messages.imports.mappingTitle}</h3>
-          <span className="panel-context">{messages.imports.mappingDetail(csvInspection.rows.length)}</span>
+          <h3>{importMessages.mappingTitle}</h3>
+          <span className="panel-context">{importMessages.mappingDetail(csvInspection.rows.length)}</span>
         </div>
         <span className={`import-stage-label ${stageClassName}`}>
-          {messages.imports.steps[1]}
+          {importMessages.steps[1]}
         </span>
       </div>
 
       <div className="import-mapping-topline">
         <label className="entries-filter">
-          <span className="entries-filter-label">{messages.imports.nonExistingCategories}</span>
+          <span className="entries-filter-label">{importMessages.nonExistingCategories}</span>
           <select className="table-edit-input" value={unknownCategoryMode} onChange={(event) => onUnknownCategoryModeChange(event.target.value)}>
-            <option value="other">{messages.imports.categoryFallbackOther}</option>
-            <option value="block">{messages.imports.categoryFallbackBlock}</option>
+            <option value="other">{importMessages.categoryFallbackOther}</option>
+            <option value="block">{importMessages.categoryFallbackBlock}</option>
           </select>
         </label>
         <div className="import-mapping-state">
           {missingRequiredFields.length ? (
-            <span className="pill warning">{messages.imports.missingRequired(missingRequiredFields.join(", "))}</span>
+            <span className="pill warning">{importMessages.missingRequired(missingRequiredFields.join(", "))}</span>
           ) : null}
           {duplicateMappings.length ? (
-            <span className="pill warning">{messages.imports.duplicateMappings(duplicateMappings.join(", "))}</span>
+            <span className="pill warning">{importMessages.duplicateMappings(duplicateMappings.join(", "))}</span>
           ) : null}
           {!missingRequiredFields.length && !duplicateMappings.length ? (
-            <span className="pill is-active">{messages.imports.mappingReady}</span>
+            <span className="pill is-active">{importMessages.mappingReady}</span>
           ) : null}
         </div>
       </div>
@@ -72,7 +73,7 @@ export function ImportMappingStage({
           <article key={header} className="import-column-card">
             <div className="import-column-head">
               <strong>{header}</strong>
-              <span>{messages.imports.sampleRows}</span>
+              <span>{importMessages.sampleRows}</span>
             </div>
             <select
               className="table-edit-input"
@@ -94,16 +95,16 @@ export function ImportMappingStage({
 
       <div className="import-actions">
         <button type="button" className="subtle-action is-primary" disabled={isSubmitting || isParsingStatement || !readyForPreview} onClick={onPreview}>
-          {messages.imports.preview}
+          {importMessages.preview}
         </button>
       </div>
-      {readyForPreview ? <p className="import-stage-note">{messages.imports.mappingNext}</p> : null}
+      {readyForPreview ? <p className="import-stage-note">{importMessages.mappingNext}</p> : null}
       {previewErrorMessage ? (
         <div className="import-warning">
           <strong>{previewErrorMessage}</strong>
           {previewErrorHref ? (
             <a href={previewErrorHref} className="inline-link">
-              {messages.imports.openErrorDiagnostics}
+              {importMessages.openErrorDiagnostics}
             </a>
           ) : null}
         </div>
