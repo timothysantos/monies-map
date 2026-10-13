@@ -24,6 +24,12 @@ const card = (monthPage, label) => monthPage.monthPage.metricCards.find((item) =
 // The Month lead's "of $X plan" is the spend job's plan: the planned spend
 // less the savings target (the demo plans no investments), not the card's total.
 const leadPlan = (monthPage) => card(monthPage, "Planned spend") - card(monthPage, "Savings target");
+// Its "Spent" leaves out money filed under Investments or Savings (moved, not
+// spent). The plan answer reads both through the same splitMoneyUse.
+const movedMinor = (monthPage) => (monthPage.monthPage.categoryShareChart ?? [])
+  .filter((datum) => /^(investments|savings)$/i.test(String(datum.label).trim()))
+  .reduce((sum, datum) => sum + datum.valueMinor, 0);
+const leadSpent = (monthPage) => card(monthPage, "Actual spend") - movedMinor(monthPage);
 const planRow = (monthPage, id) => monthPage.monthPage.planSections.flatMap((section) => section.rows).find((row) => row.id === id);
 // A draft or an answer reads the month's plan rows on the server.
 const READ = { timeout: 30_000 };
@@ -160,8 +166,9 @@ test.describe("planning by chat on a phone", () => {
     const answer = page.locator('[data-ask-money-answer="plan"]');
     await expect(answer).toBeVisible(READ);
     await expect(answer.locator(".ask-answer-title")).toHaveText("May against plan");
-    await expect(answer.locator(".ask-answer-amount")).toHaveText(money(card(may, "Actual spend")));
-    await expect(answer.locator(".money-plan").first()).toHaveText(`of ${money(card(may, "Planned spend"))} plan`);
+    // The Month lead's own figures: its "Spent" and its "of $X plan".
+    await expect(answer.locator(".ask-answer-amount")).toHaveText(money(leadSpent(may)));
+    await expect(answer.locator(".money-plan").first()).toHaveText(`of ${money(leadPlan(may))} plan`);
     await expect(answer.locator("[data-savings-bar]")).toBeVisible();
     await expect(answer).toHaveAttribute("data-wording-source", "template");
     await expect(suggestions(page).first()).toHaveText("Open Month");

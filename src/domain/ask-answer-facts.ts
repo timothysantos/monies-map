@@ -13,6 +13,9 @@
 // does), and nothing is AI.
 
 import { incomeMinor } from "./category-offset";
+import { plannedInvestMinor } from "./money-job-plan";
+import { isInvestmentsCategoryName, isSavingsCategoryName } from "./money-jobs";
+import { splitMoneyUse } from "./money-use";
 import { effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
 import type {
   DonutChartDatumDto,
@@ -74,6 +77,12 @@ export interface MonthFacts {
   plannedIncomeMinor: number;
   // The Month "Savings target" card (the plan's Savings lines).
   savingsTargetMinor: number;
+  // The money jobs' other figures, as the Month lead reads them: money
+  // filed under Investments and Savings (moved, not spent) from the Spending
+  // Mix, and the plan's Investments rows (DOMAIN.md "Money job").
+  investedMinor: number;
+  savedMovedMinor: number;
+  plannedInvestMinor: number;
   // Every entry the view counts this month, and the expenses among them
   // (the rows Open in Entries shows for spending).
   entryCount: number;
@@ -185,6 +194,9 @@ export function buildMonthFacts(input: MonthPageFactsInput, selectedScope: Perso
     incomeMinor: summaryMonth?.actualIncomeMinor ?? 0,
     plannedIncomeMinor: summaryMonth?.plannedIncomeMinor ?? 0,
     savingsTargetMinor: metric(monthPage.metricCards, "Savings target"),
+    investedMinor: (monthPage.categoryShareChart ?? []).filter((datum) => isInvestmentsCategoryName(datum.label)).reduce((sum, datum) => sum + datum.valueMinor, 0),
+    savedMovedMinor: (monthPage.categoryShareChart ?? []).filter((datum) => isSavingsCategoryName(datum.label)).reduce((sum, datum) => sum + datum.valueMinor, 0),
+    plannedInvestMinor: plannedInvestMinor((monthPage.planSections ?? []).flatMap((section) => section.rows)),
     entryCount: visible.length,
     expenseCount: visible.filter((entry) => entry.entryType === "expense").length,
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
@@ -232,6 +244,9 @@ export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
     incomeMinor: total((facts) => facts.incomeMinor),
     plannedIncomeMinor: total((facts) => facts.plannedIncomeMinor),
     savingsTargetMinor: total((facts) => facts.savingsTargetMinor),
+    investedMinor: total((facts) => facts.investedMinor),
+    savedMovedMinor: total((facts) => facts.savedMovedMinor),
+    plannedInvestMinor: total((facts) => facts.plannedInvestMinor),
     entryCount: total((facts) => facts.entryCount),
     expenseCount: total((facts) => facts.expenseCount),
     categories: allCategories.slice(0, TOP_CATEGORY_COUNT),
@@ -243,6 +258,24 @@ export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
     planRows: [...planRows.values()],
     incomeSources: byName(months.map((facts) => facts.incomeSources)).slice(0, INCOME_SOURCE_COUNT)
   };
+}
+
+// A month (or quarter) as its spend job reads it, the Month and Summary
+// lead's figures: the spend without money moved to Investments or Savings,
+// against the plan without the savings target and the Investments rows
+// (splitMoneyUse, money-use.ts). The plan answer speaks in these, so its
+// "of $X plan" is the lead's.
+export function spendJobFacts(facts: MonthFacts): MonthFacts {
+  const figures = splitMoneyUse({
+    incomeMinor: facts.incomeMinor,
+    spentMinor: facts.spentMinor,
+    investedMinor: facts.investedMinor,
+    savedMovedMinor: facts.savedMovedMinor,
+    plannedSpendMinor: facts.plannedMinor,
+    savingsTargetMinor: facts.savingsTargetMinor,
+    plannedInvestMinor: facts.plannedInvestMinor
+  });
+  return { ...facts, spentMinor: figures.spending, plannedMinor: figures.spendPlan };
 }
 
 // The plan rows that went furthest over, else the largest rows by spend.

@@ -5,41 +5,9 @@ export const wholeMoney = (minor) => wholeMoneyFormatter.format(minor / 100);
 
 const atLeastZero = (minor) => Math.max(0, minor ?? 0);
 
-// What the period's income went to, from figures the lead already has
-// (design.md "Money jobs"; DOMAIN.md "Money job"). The lead's spend counts
-// every expense entry, including money filed under the Investments and
-// Savings categories; that money was moved, not spent, so it comes out of
-// the spend here: invested is the Investments category's share, and the
-// Savings category's share is kept with whatever income was left over.
-// The plan splits the same way: the savings target and the Investments
-// plan rows come out of the planned spend.
-export function splitMoneyUse({
-  incomeMinor,
-  spentMinor,
-  investedMinor = 0,
-  savedMovedMinor = 0,
-  plannedSpendMinor = 0,
-  savingsTargetMinor = 0,
-  plannedInvestMinor = 0
-}) {
-  const income = atLeastZero(incomeMinor);
-  const invested = atLeastZero(investedMinor);
-  const movedToSavings = atLeastZero(savedMovedMinor);
-  const spending = atLeastZero((spentMinor ?? 0) - invested - movedToSavings);
-  const savePlan = atLeastZero(savingsTargetMinor);
-  const investPlan = atLeastZero(plannedInvestMinor);
-  return {
-    income,
-    spending,
-    invested,
-    movedToSavings,
-    // Can be below zero: more went out than came in.
-    kept: income - spending - invested,
-    spendPlan: atLeastZero((plannedSpendMinor ?? 0) - savePlan - investPlan),
-    savePlan,
-    investPlan
-  };
-}
+// What the period's income went to: one calculation for every screen and
+// Ask's plan answer (src/domain/money-use.ts).
+export { splitMoneyUse } from "../domain/money-use";
 
 // The jobs the plan gives the money, as plain numbers (labels and statuses
 // are worded by money-jobs-detail.js, which loads with the opened

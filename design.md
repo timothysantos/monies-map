@@ -381,9 +381,12 @@ question (docs/flows/ask-flow.md "Money questions"):
   and rows with "Reveal money totals to read these insights."
 
 The plan answer is Intent vs Outcome (round-2 mockups `chat-intent-*`):
-under its lead bar it draws the Month and Summary lead's `SavingsBar`
-(ui/savings-bar.jsx) from the answer's `outcome` (income received, Actual
-spend, Planned spend, Savings target), so the card and Month show one
+its lead reads the Month lead's "Spent" and "of $X plan" (the spend job:
+the shared `splitMoneyUse`, `src/domain/money-use.ts`), and under its lead
+bar it draws the Month and Summary lead's `SavingsBar` (ui/savings-bar.jsx)
+from the answer's `outcome` (income received, Actual spend, Planned spend,
+Savings target, money moved to Investments and Savings, the Investments
+plan rows) through the same split, so the card and Month show one
 picture. A quarter's answer ("did we stick to the plan in Q3?") is titled
 "July to September against plan" and lists each month against its plan
 before the plan rows.

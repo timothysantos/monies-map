@@ -388,10 +388,16 @@ through `buildEntriesFilterSearch`, with the From Ask chip), `Open Month`
 (`/splits` with the group of the largest balance), then the usual chips.
 
 The plan answer is Intent vs Outcome (mockups `chat-intent-*`): its lead
-is Actual spend against Planned spend with the plan bar, and under it the
-Month and Summary lead's savings bar (`SavingsBar`, from the answer's
-`outcome`: income received, Actual spend, Planned spend and the Savings
-target, the Month cards' own), then Plan and Income chips, the wording and
+is the Month and Summary lead's own "Spent" and "of $X plan", the spend
+job's figures (`spendJobFacts`, through the shared `splitMoneyUse` in
+`src/domain/money-use.ts`: Actual spend less money filed under Investments
+or Savings, against Planned spend less the Savings target and the
+Investments plan rows), with the plan bar; its Plan chip, wording and
+prompt facts use the same two figures. Under it the Month and Summary
+lead's savings bar (`SavingsBar`, from the answer's `outcome`: income
+received, Actual spend, Planned spend, the Savings target, money moved to
+Investments and Savings, and the Investments plan rows, the Month page's
+own, split the same way), then Plan and Income chips, the wording and
 the plan rows that went furthest over. Its links are Open Month and Open in
 Entries. A quarter's answer adds the months up (`combineMonthFacts`), lists
 each month against its plan first, and links Open Month for its last month

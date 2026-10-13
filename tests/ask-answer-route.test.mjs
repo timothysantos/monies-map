@@ -10,6 +10,8 @@ import test from "node:test";
 
 import { assertSameDatabase, createSeededTemplate, dumpDatabase, openSeededDatabase } from "./support/d1-workspace.mjs";
 import { summarizeFilterAnswer } from "../src/client/ask-filter-answer.js";
+import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
+import { buildMonthMetricCards } from "../src/client/month-helpers.js";
 
 const SHOWCASE_VARS = { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: "2026-05" };
 const ETHAN = "person-ethan";
@@ -36,6 +38,17 @@ async function get(api, path) {
 }
 
 const card = (cards, label) => cards.find((item) => item.label === label)?.amountMinor;
+
+// The Month lead for a Month page (month-lead-model.js): its "Spent" and its
+// "of $X plan" are the spend job's (splitMoneyUse), which the plan answer
+// reads too.
+function monthLead(page) {
+  const cards = buildMonthMetricCards({ planSections: page.monthPage.planSections, incomeRows: page.monthPage.incomeRows, currentMonthSummary: page.summaryPage.months[0] });
+  return buildMonthLeadModel(cards, page.summaryPage.months[0], {
+    planRows: page.monthPage.planSections.flatMap((section) => section.rows),
+    categoryShare: page.monthPage.categoryShareChart
+  });
+}
 
 test("why was March so expensive: the Month page's figures, plan, Spending Mix and biggest costs", async (t) => {
   const { api } = await openSeededDatabase(t, showcase);
@@ -99,8 +112,10 @@ test("how am I doing against the plan: Month's cards and the plan rows that went
   const may = await get(api, "/api/month-page?view=household&month=2026-05&scope=direct_plus_shared");
   assert.equal(payload.intent, "plan");
   assert.equal(payload.answer.title, "May against plan");
-  assert.equal(payload.answer.lead.amountMinor, card(may.monthPage.metricCards, "Actual spend"));
-  assert.equal(payload.answer.lead.planMinor, card(may.monthPage.metricCards, "Planned spend"));
+  // The Month lead's figures: the spend plan leaves out the savings target.
+  assert.equal(payload.answer.lead.amountMinor, monthLead(may).spent.amountMinor);
+  assert.equal(payload.answer.lead.planMinor, monthLead(may).plannedSpendMinor);
+  assert.equal(monthLead(may).plannedSpendMinor, card(may.monthPage.metricCards, "Planned spend") - card(may.monthPage.metricCards, "Savings target"));
   const rows = may.monthPage.planSections.flatMap((section) => section.rows);
   for (const line of payload.answer.lines) {
     const row = rows.find((item) => item.label === line.label);
@@ -109,10 +124,10 @@ test("how am I doing against the plan: Month's cards and the plan rows that went
   }
   assert.deepEqual(payload.answer.lines.map((line) => [line.label, line.amountMinor, line.secondary.amountMinor]), [["Groceries", 72341, 62000], ["Beauty", 8800, 4500]]);
   assert.deepEqual(payload.answer.support, [
-    { label: "Plan", amountMinor: 726309, currency: "SGD" },
+    { label: "Plan", amountMinor: 476309, currency: "SGD" },
     { label: "Income", amountMinor: may.summaryPage.months[0].actualIncomeMinor, currency: "SGD" }
   ]);
-  assert.equal(payload.wording.text, "May came to $4,697.36, $2,565.73 under the $7,263.09 you planned. Groceries went furthest over, at $723.41 against $620.00 planned. Income was $14,669.48 against $13,500.00 planned.");
+  assert.equal(payload.wording.text, "May came to $4,697.36, $65.73 under the $4,763.09 you planned. Groceries went furthest over, at $723.41 against $620.00 planned. Income was $14,669.48 against $13,500.00 planned.");
 });
 
 test("how did April go: intent against outcome with the Month lead's figures and the savings bar's", async (t) => {
@@ -122,14 +137,19 @@ test("how did April go: intent against outcome with the Month lead's figures and
   assert.equal(payload.intent, "plan");
   assert.deepEqual(payload.months, ["2026-04"]);
   assert.equal(payload.answer.title, "April against plan");
-  assert.equal(payload.answer.lead.amountMinor, card(april.monthPage.metricCards, "Actual spend"));
-  assert.equal(payload.answer.lead.planMinor, card(april.monthPage.metricCards, "Planned spend"));
-  // The figures the Month lead's savings bar draws, each the page's own.
+  // The lead reads exactly as the Month lead: "Spent" and "of $X plan".
+  assert.equal(payload.answer.lead.amountMinor, monthLead(april).spent.amountMinor);
+  assert.equal(payload.answer.lead.planMinor, monthLead(april).plannedSpendMinor);
+  // The figures the Month lead's savings bar draws, each the page's own,
+  // which the card splits with the same splitMoneyUse.
   assert.deepEqual(payload.answer.outcome, {
     incomeMinor: april.summaryPage.months[0].actualIncomeMinor,
     spentMinor: card(april.monthPage.metricCards, "Actual spend"),
     plannedSpendMinor: card(april.monthPage.metricCards, "Planned spend"),
-    savingsTargetMinor: card(april.monthPage.metricCards, "Savings target")
+    savingsTargetMinor: card(april.monthPage.metricCards, "Savings target"),
+    investedMinor: 0,
+    savedMovedMinor: 0,
+    plannedInvestMinor: 0
   });
   assert.deepEqual(payload.answer.links.map((link) => [link.kind, link.label, link.month ?? link.filter?.month]), [["month", "Open Month", "2026-04"], ["entries", "Open in Entries", "2026-04"]]);
   assert.equal(payload.wording.source, "template");
@@ -146,19 +166,24 @@ test("did we stick to the plan in Q2: each month against its plan, their sum, an
   assert.equal(payload.intent, "plan");
   assert.deepEqual(payload.months, ["2026-04", "2026-05", "2026-06"]);
   assert.equal(payload.answer.title, "April to June against plan");
-  assert.equal(payload.answer.lead.amountMinor, sum("Actual spend"));
-  assert.equal(payload.answer.lead.planMinor, sum("Planned spend"));
+  const leadSum = (pick) => tracked.reduce((total, page) => total + pick(monthLead(page)), 0);
+  assert.equal(payload.answer.lead.amountMinor, leadSum((lead) => lead.spent.amountMinor));
+  assert.equal(payload.answer.lead.planMinor, leadSum((lead) => lead.plannedSpendMinor));
   assert.deepEqual(payload.answer.outcome, {
     incomeMinor: tracked.reduce((total, page) => total + page.summaryPage.months[0].actualIncomeMinor, 0),
     spentMinor: sum("Actual spend"),
     plannedSpendMinor: sum("Planned spend"),
-    savingsTargetMinor: sum("Savings target")
+    savingsTargetMinor: sum("Savings target"),
+    investedMinor: 0,
+    savedMovedMinor: 0,
+    plannedInvestMinor: 0
   });
-  // June has nothing yet, so only April and May are lines, then plan rows.
+  // June has nothing yet, so only April and May are lines, then plan rows:
+  // each month as its Month lead reads it.
   assert.deepEqual(payload.answer.lines.slice(0, 2).map((line) => [line.label, line.amountMinor, line.secondary.amountMinor]), tracked.map((page, index) => [
     ["April", "May"][index],
-    card(page.monthPage.metricCards, "Actual spend"),
-    card(page.monthPage.metricCards, "Planned spend")
+    monthLead(page).spent.amountMinor,
+    monthLead(page).plannedSpendMinor
   ]));
   assert.deepEqual(payload.answer.links, [{ kind: "month", label: "Open Month", month: "2026-06", viewId: "household", scope: "direct_plus_shared" }]);
   assert.match(payload.wording.text, /^April to June came to \$[\d,]+\.\d\d, \$[\d,]+\.\d\d (more than|under) the \$[\d,]+\.\d\d you planned\./);

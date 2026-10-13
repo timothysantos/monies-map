@@ -1577,8 +1577,18 @@ export interface AskAnswerCardDto {
   links: AskAnswerLinkDto[];
   // Intent against outcome (the plan answer): the figures the Month and
   // Summary savings bar draws, the Month cards' own (income received,
-  // Actual spend, Planned spend, Savings target).
-  outcome?: { incomeMinor: number; spentMinor: number; plannedSpendMinor: number; savingsTargetMinor: number };
+  // Actual spend, Planned spend, Savings target) and the money jobs' (money
+  // moved to Investments and Savings, the plan's Investments rows), split by
+  // the shared splitMoneyUse as the Month lead splits them.
+  outcome?: {
+    incomeMinor: number;
+    spentMinor: number;
+    plannedSpendMinor: number;
+    savingsTargetMinor: number;
+    investedMinor: number;
+    savedMovedMinor: number;
+    plannedInvestMinor: number;
+  };
 }
 
 export interface AskAnswerResponseDto {

@@ -12,7 +12,7 @@
 // the lines may say over, under or who owes whom: the page hides them
 // while money is hidden.
 
-import { selectPlanRows, type AskAnswerFacts, type EntryFact, type MonthFacts } from "./ask-answer-facts";
+import { selectPlanRows, spendJobFacts, type AskAnswerFacts, type EntryFact, type MonthFacts } from "./ask-answer-facts";
 import { joinWithAnd, lowerLabel, monthName, plural, tidyName } from "./money-signals/format";
 import { flowTone, signTone, spendTone } from "./money-tone";
 import { formatCurrencyMinor } from "./split-currency";
@@ -151,9 +151,19 @@ function spentLead(facts: MonthFacts) {
   };
 }
 
+// The plan answer speaks in the spend job's figures, as the Month and
+// Summary lead do (spendJobFacts): its spend and its "of $X plan" leave out
+// money moved to Investments or Savings and the savings and investment
+// plan. Every other answer keeps the Month cards' own figures.
+function inSpendJob(facts: AskAnswerFacts): AskAnswerFacts {
+  if (facts.kind !== "plan") return facts;
+  return { ...facts, current: spendJobFacts(facts.current), ...(facts.months ? { months: facts.months.map(spendJobFacts) } : {}) };
+}
+
 /** The answer card: Lead, Support, Detail and the links to the screens. */
-export function buildAnswerCard(facts: AskAnswerFacts, context: WordingContext): AskAnswerCardDto {
+export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContext): AskAnswerCardDto {
   const { today } = context;
+  const facts = inSpendJob(rawFacts);
   if (facts.kind === "spending") {
     const { current, previous } = facts;
     const support: AskAnswerChipDto[] = [];
@@ -199,12 +209,17 @@ export function buildAnswerCard(facts: AskAnswerFacts, context: WordingContext):
       lines: monthLines.length ? [...monthLines, ...planLines.slice(0, 2)] : planLines,
       // A quarter has no one Entries page: Month opens its last month.
       links: facts.months?.length ? [monthLink(current)] : [monthLink(current), entriesLink(current, { type: "expense" })],
-      outcome: {
-        incomeMinor: current.incomeMinor,
-        spentMinor: current.spentMinor,
-        plannedSpendMinor: current.plannedMinor,
-        savingsTargetMinor: current.savingsTargetMinor
-      }
+      // The Month cards' own figures: the savings bar splits them itself
+      // (splitMoneyUse), into the same spend and plan as the lead above.
+      outcome: rawFacts.kind === "plan" ? {
+        incomeMinor: rawFacts.current.incomeMinor,
+        spentMinor: rawFacts.current.spentMinor,
+        plannedSpendMinor: rawFacts.current.plannedMinor,
+        savingsTargetMinor: rawFacts.current.savingsTargetMinor,
+        investedMinor: rawFacts.current.investedMinor,
+        savedMovedMinor: rawFacts.current.savedMovedMinor,
+        plannedInvestMinor: rawFacts.current.plannedInvestMinor
+      } : undefined
     };
   }
   if (facts.kind === "compare") {
@@ -330,8 +345,9 @@ function categoryList(facts: MonthFacts) {
 }
 
 /** The computed wording: 1 to 3 plain sentences from the facts. */
-export function buildTemplateWording(facts: AskAnswerFacts, context: WordingContext): string {
+export function buildTemplateWording(rawFacts: AskAnswerFacts, context: WordingContext): string {
   const { today } = context;
+  const facts = inSpendJob(rawFacts);
   const sentences: string[] = [];
   if (facts.kind === "spending" || facts.kind === "plan" || facts.kind === "biggest" || facts.kind === "income" || facts.kind === "compare") {
     if (facts.current.entryCount === 0) {
@@ -497,8 +513,9 @@ function capitalizeFirst(text: string) {
 // The facts an optional AI may phrase from, as short lines: amounts as the
 // card shows them, names tidied and cut short (no reference numbers, no
 // account or card numbers), never a raw ledger row. Bounded to 16 lines.
-export function buildPromptFacts(facts: AskAnswerFacts, context: WordingContext): string[] {
+export function buildPromptFacts(rawFacts: AskAnswerFacts, context: WordingContext): string[] {
   const { today } = context;
+  const facts = inSpendJob(rawFacts);
   const lines: string[] = [];
   const monthLines = (current: MonthFacts, label: string, { categories = true, entries = 0 } = {}) => {
     lines.push(`Spent in ${label}: ${money(current.spentMinor)}`);

@@ -1124,9 +1124,14 @@ Rules:
   person's tap; It's real spending writes nothing and is kept only in the
   conversation
 - nothing about a question, its facts or its answer is stored on the server
+- the plan answer speaks in the spend job's figures, as the Month and
+  Summary lead do: spend without money moved to Investments or Savings,
+  against the plan without the Savings target and the Investments rows
+  (`splitMoneyUse`, `src/domain/money-use.ts`)
 - the plan answer also carries its `outcome`: income received, Actual
-  spend, Planned spend and the Savings target, the figures the Month and
-  Summary savings bar draws
+  spend, Planned spend, the Savings target, money moved to Investments and
+  Savings and the Investments plan rows, the figures the Month and Summary
+  savings bar splits and draws
 
 ### Insight Question
 
