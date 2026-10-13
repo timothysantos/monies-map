@@ -1,5 +1,7 @@
 import { devices, expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 
 import { gotoPageAfterApi, loadEntriesPage, loadReferenceData, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
@@ -399,5 +401,82 @@ test.describe("the Ask page on a phone", () => {
     const colour = await page.locator(".ask-card-amount strong").evaluate((element) => getComputedStyle(element).color);
     const textColour = await page.locator(".ask-card-merchant").evaluate((element) => getComputedStyle(element).color);
     expect(colour).toBe(textColour);
+  });
+
+  // Size limits (design.md, "Size limits"): near a cap a quiet count shows,
+  // past it the page says so in plain words and sends nothing.
+  test("size limits: the message box counts from 240 of 300 and refuses past it; a long note counts and is refused before any request", async ({ page }) => {
+    const sent = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST" && (request.url().includes("/api/ai-assist/") || request.url().includes("/api/entries/create"))) sent.push(request.url());
+    });
+    await openAskAdd(page);
+    const message = page.getByRole("textbox", { name: "Message" });
+    const hint = page.locator(".ask-limit-hint");
+    const send = page.getByRole("button", { name: "Send" });
+
+    await message.fill("x".repeat(200));
+    await expect(hint).toHaveCount(0);
+    // Measured as the Worker measures it: runs of spaces count once.
+    await message.fill(`${"word ".repeat(52)}  `);
+    await expect(hint).toHaveText("Message is getting long · 259 / 300");
+    await expect(hint).not.toHaveClass(/is-over/);
+    await message.fill("y".repeat(301));
+    await expect(hint).toHaveText("This message is too long to send. Keep it to 300 characters or fewer.");
+    await expect(hint).toHaveClass(/is-over/);
+    await expect(send).toBeDisabled();
+    await message.press("Enter");
+    await expect(message).toHaveValue("y".repeat(301));
+    await message.fill("");
+    await expect(hint).toHaveCount(0);
+
+    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
+    await page.getByRole("textbox", { name: "What it was" }).fill(`Ask long note ${Date.now()}`);
+    await page.getByLabel("Date", { exact: true }).fill("2026-04-20");
+    await page.getByRole("button", { name: /More details/ }).click();
+    const note = page.getByPlaceholder("Add a note");
+    const noteHint = page.locator(".lsd-row-note .limit-hint");
+    await note.fill("n".repeat(1500));
+    await expect(noteHint).toHaveCount(0);
+    await note.fill("n".repeat(1700));
+    await expect(noteHint).toHaveText("1,700 / 2,000");
+    await note.fill("n".repeat(2001));
+    await expect(noteHint).toHaveText("This note is too long to save. Keep it to 2,000 characters or fewer.");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.locator(".ask-note.is-error")).toHaveText("This note is too long to save. Keep it to 2,000 characters or fewer.");
+    await expect(page.locator('[data-ask-card="saved"]')).toHaveCount(0);
+    expect(sent).toEqual([]);
+
+    // Back under the cap it saves.
+    await note.fill("n".repeat(2000));
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();
+    expect(sent.filter((url) => url.includes("/api/entries/create"))).toHaveLength(1);
+  });
+
+  test("size limits: a large receipt photo is noted and still sent small; one too big even made smaller is read on the device, not sent", async ({ page }) => {
+    let reads = 0;
+    await page.route("**/api/ai-assist/receipt-read", async (route) => {
+      reads += 1;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
+    });
+    // No on-device reader in this test: it fails at once, so the card stays manual.
+    await page.route("**/vendor/tesseract/tesseract.esm.min.js", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: "export default {};" }));
+    await openAskAdd(page);
+    const notes = page.locator(".ask-note");
+
+    // The sample receipt padded past 80% of 1.5 MB: a browser still opens it.
+    const padded = Buffer.concat([readFileSync(RECEIPT_FIXTURE), Buffer.alloc(1_400_000)]);
+    await page.locator(".ask-file-input").nth(1).setInputFiles({ name: "big-receipt.png", mimeType: "image/png", buffer: padded });
+    await expect(notes.filter({ hasText: "This photo is large, so it's made smaller before it's read." })).toBeVisible();
+    await expect(notes.filter({ hasText: "The receipt couldn't be read." })).toHaveCount(1);
+    expect(reads).toBe(1);
+
+    // Noise does not shrink: 1,600 px of it is still past 1.5 MB as a JPEG.
+    const noise = await sharp(Buffer.from(Array.from({ length: 1600 * 1600 * 3 }, () => Math.floor(Math.random() * 256))), { raw: { width: 1600, height: 1600, channels: 3 } }).png({ compressionLevel: 1 }).toBuffer();
+    await page.locator(".ask-file-input").nth(1).setInputFiles({ name: "noise.png", mimeType: "image/png", buffer: noise });
+    await expect(notes.filter({ hasText: "This photo is too big to send, even made smaller (max 1.5 MB), so it's read on this device instead." })).toBeVisible();
+    await expect(notes.filter({ hasText: "The receipt couldn't be read." })).toHaveCount(2);
+    expect(reads, "the too-big photo was never sent").toBe(1);
   });
 });

@@ -14,6 +14,9 @@ import { messages } from "./copy/en-SG";
 import { ChipDateField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
 import { paletteColour } from "./palette-colour";
+import { LimitHint } from "./limit-hint";
+import { ENTRY_DESCRIPTION_MAX, ENTRY_NOTE_MAX } from "./input-limits";
+import { limitsCopy } from "./copy/limits-copy";
 
 // The Ask page's entry card (design.md "Ask page"): the hero card with the
 // category bubble, what it was, the amount and its date, wallet and person
@@ -109,14 +112,17 @@ export function AskEntryCard({
   const title = isTransfer ? (
     <strong className="lsd-title ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
   ) : isEditable ? (
-    <GrowingTextField
-      inputRef={descriptionRef}
-      className="lsd-title ask-card-merchant ask-card-merchant-input"
-      aria-label={askCopy.card.descriptionLabel}
-      placeholder={askCopy.card.whatWasIt}
-      value={card.fields.description}
-      onChange={(value) => onChange({ description: value })}
-    />
+    <>
+      <GrowingTextField
+        inputRef={descriptionRef}
+        className="lsd-title ask-card-merchant ask-card-merchant-input"
+        aria-label={askCopy.card.descriptionLabel}
+        placeholder={askCopy.card.whatWasIt}
+        value={card.fields.description}
+        onChange={(value) => onChange({ description: value })}
+      />
+      <LimitHint size={card.fields.description.length} max={ENTRY_DESCRIPTION_MAX} over={limitsCopy.descriptionTooLong} />
+    </>
   ) : (
     <strong className="lsd-title ask-card-merchant">{card.fields.description}</strong>
   );
@@ -508,6 +514,7 @@ export function AskCardRows({
               value={card.fields.note}
               onChange={(event) => onChange({ note: event.target.value })}
             />
+            <LimitHint size={card.fields.note.length} max={ENTRY_NOTE_MAX} over={limitsCopy.noteTooLong} />
           </DetailRow>
         </MoreDetails>
       </DetailRows>

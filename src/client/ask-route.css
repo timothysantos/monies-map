@@ -615,6 +615,12 @@
   background: var(--bg);
 }
 
+/* "Message is getting long · 260 / 300" over the message box (limit-hint.jsx). */
+.ask-bottom > .ask-limit-hint {
+  margin: 0;
+  padding-inline: 4px;
+}
+
 .ask-chips {
   display: flex;
   gap: 8px;

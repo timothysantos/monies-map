@@ -1,0 +1,28 @@
+/* The near-the-cap count under a field (limit-hint.jsx): muted and small,
+   tabular so the count does not jitter; past the cap the refusal reads in
+   the error ink, as an Ask error note does. Ships with the screens that
+   use it, never in public/styles.css. */
+.limit-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.limit-hint.is-over {
+  color: var(--pastel-rose-ink);
+  text-align: left;
+}
+
+/* Under a field inside a detail row (the Ask card's note): its own line. */
+.lsd-row:has(> .limit-hint) {
+  flex-wrap: wrap;
+}
+
+.lsd-row > .limit-hint {
+  flex: 1 0 100%;
+  margin-top: 0;
+}
