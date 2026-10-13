@@ -56,14 +56,14 @@
   margin: -10px 0 -6px -8px;
   padding: 0 8px;
   border-radius: 10px;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 1rem;
   font-weight: 700;
   text-decoration: none;
 }
 
 .ask-back:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -89,7 +89,7 @@
   padding: 0 4px 0 10px;
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   font-size: 0.92rem;
   font-weight: 700;
@@ -102,7 +102,7 @@
 }
 
 .ask-new-chat:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 10px;
 }
@@ -387,7 +387,7 @@
 
 .ask-card-merchant-input:focus-visible,
 .ask-card-amount-input:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -485,7 +485,7 @@
 }
 
 .ask-switch:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -538,7 +538,7 @@
 }
 
 .ask-chip.is-back {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -550,7 +550,7 @@
 .ask-chip:focus-visible,
 .ask-send:focus-visible,
 .ask-save:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -576,7 +576,7 @@
 }
 
 .ask-field:has(> .ask-input:focus-visible) {
-  box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px color-mix(in srgb, var(--accent-strong) 45%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--focus-ring);
 }
 
 /* Grows to three lines, then scrolls. */
@@ -618,7 +618,7 @@
 }
 
 .ask-glyph:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -4px;
 }
 
@@ -661,7 +661,7 @@
 }
 
 .ask-add-menu-list button svg {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .ask-add-menu-list button:hover,
@@ -721,7 +721,7 @@
 /* Listening: the glyph turns accent with a subtle accent ring around it,
    which pulses only when motion is allowed. */
 .ask-mic.is-listening {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .ask-mic.is-listening::before {
@@ -790,7 +790,7 @@
 
 @keyframes ask-mic-pulse {
   0% {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 45%, transparent);
+    box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
   70%,
@@ -877,7 +877,7 @@
   border: 0;
   border-radius: 12px;
   background: none;
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
 }
 

@@ -229,7 +229,7 @@
 
 .lsd-title-input:focus-visible,
 .lsd-amount-input:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -374,7 +374,7 @@
 
 .lsd-chip-hit:focus-visible .lsd-chip,
 .lsd-chip-hit.has-control:focus-within .lsd-chip {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -469,7 +469,7 @@
 
 .lsd-row:focus-visible,
 .lsd-row:focus-within {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -515,7 +515,7 @@
 }
 
 .lsd-row-value.is-action {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .lsd-row-text {
@@ -640,7 +640,7 @@
 }
 
 .lsd-row-more .lsd-row-label {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -727,7 +727,7 @@
 .lsd-quiet {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -756,7 +756,7 @@
 
 .lsd-quiet:focus-visible,
 .lsd-primary:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

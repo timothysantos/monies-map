@@ -153,14 +153,14 @@
 .summary-mix-arrow:hover,
 .summary-mix-arrow:focus-visible,
 .summary-mix-main:focus-visible {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 /* "Show all N" / "Show fewer": the last row of the group. */
 .summary-mix-more.lsd-row {
   justify-content: center;
   gap: 6px;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 700;
 }
 

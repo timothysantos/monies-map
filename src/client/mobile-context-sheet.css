@@ -94,7 +94,7 @@
 
   .mobile-context-segment[aria-pressed="true"] {
     background: var(--paper);
-    color: var(--accent-strong);
+    color: var(--accent);
     box-shadow: 0 1px 3px rgba(27, 24, 21, 0.14);
     font-weight: 700;
   }

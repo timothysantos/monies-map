@@ -198,7 +198,7 @@
 .import-commit-bar .import-commit-secondary {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   box-shadow: none;
   font-weight: 600;
   padding: 0;
@@ -970,7 +970,7 @@
 }
 
 .import-account-map-copy strong.is-action {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .import-account-map-copy p {

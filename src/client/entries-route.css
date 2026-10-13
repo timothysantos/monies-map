@@ -256,7 +256,7 @@
 
 .entry-chip-shared {
   background: rgb(var(--accent-strong-rgb) / 0.1);
-  color: var(--accent-strong);
+  color: var(--accent);
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
 }
 
@@ -303,7 +303,7 @@
 .entry-chip-pending {
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
   background: rgb(var(--cream-rgb, 255 247 240) / 0.96);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .entry-inline-actions-divider {
@@ -318,7 +318,7 @@
 }
 
 .entry-inline-status-separator {
-  color: var(--line-strong);
+  color: inherit;
 }
 
 @media (max-width: 960px) {
@@ -632,7 +632,7 @@
   min-height: 44px;
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   cursor: pointer;
 }
@@ -658,7 +658,7 @@
 }
 
 .entries-ask-chip-text strong {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .entries-ask-chip-clear {
@@ -671,7 +671,7 @@
 
 .entries-ask-chip-back:focus-visible,
 .entries-ask-chip-clear:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   border-radius: 12px;
 }

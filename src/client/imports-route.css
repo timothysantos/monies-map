@@ -75,7 +75,7 @@
 }
 
 .duplicate-match-dates dd {
-  color: var(--ink);
+  color: inherit;
   font-size: 0.8rem;
   font-weight: 800;
   text-align: right;
@@ -83,14 +83,14 @@
 
 .duplicate-match-arrow {
   align-self: center;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 800;
 }
 
 .duplicate-match-open-link {
   display: inline-flex;
   margin-top: 18px;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.86rem;
   font-weight: 800;
   text-decoration: underline;

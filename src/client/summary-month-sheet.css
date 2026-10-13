@@ -24,7 +24,7 @@
   border: 0;
   padding: 0 4px;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;

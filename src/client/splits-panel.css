@@ -59,7 +59,7 @@
 }
 
 .panel-splits .financial-insight-fold[aria-expanded="false"] {
-  --fold-fill: color-mix(in srgb, rgb(var(--cream-rgb, 255 248 243)) 18%, var(--accent-strong));
+  --fold-fill: rgb(var(--splits-deep-rgb));
   --fold-ink: rgb(var(--on-strong-tint-rgb, 255 248 243));
   border-color: rgb(var(--cream-rgb, 255 248 243) / 0.28);
 }

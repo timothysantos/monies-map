@@ -206,7 +206,7 @@
 
 .settings-diagnostic-row summary strong {
   display: block;
-  color: var(--ink);
+  color: inherit;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -262,7 +262,7 @@
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   font-size: 0.9rem;
   font: inherit;
@@ -471,7 +471,7 @@
 }
 
 .settings-section-toggle:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -535,7 +535,7 @@
 }
 
 .settings-hint-action {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 /* Text that belongs to a group of rows but is not a row (a list of steps, a
@@ -586,7 +586,7 @@
 }
 
 .settings-row-main:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   border-radius: 12px;
 }
@@ -1039,7 +1039,7 @@
 }
 
 .settings-colour-preset:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

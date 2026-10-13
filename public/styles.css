@@ -20,6 +20,8 @@
   --negative: var(--pastel-rose-ink);
   --accent: #934923;
   --accent-strong: #b15e2f;
+  /* The keyboard focus ring: the solid accent, 3:1 on every surface (tests/a11y-contrast.test.mjs). */
+  --focus-ring: var(--accent);
   /* Colour presets (design.md, "Colour presets") override these in
      public/palettes/<preset>.css. The -rgb channels feed the translucent
      tints; paper is every white surface, on-strong the text on a strong
@@ -189,7 +191,7 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgb(var(--paper-rgb) / 0.76);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .totals-visibility-toggle[aria-pressed="false"] {
@@ -270,7 +272,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .period-picker-month.is-active {
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
   background: rgb(var(--accent-strong-rgb) / 0.08);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .period-picker-months {
@@ -290,7 +292,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgb(var(--paper-rgb) / 0.76);
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 1.35rem;
   line-height: 1;
 }
@@ -338,12 +340,12 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .period-range-segment:hover {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .period-range-segment[data-state="open"] {
   background: rgb(var(--accent-strong-rgb) / 0.12);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .period-range-separator {
@@ -452,7 +454,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .tab-overflow-link.is-active {
   background: rgb(var(--accent-strong-rgb) / 0.1);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .panel-context {
@@ -480,7 +482,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .pill.is-active {
   border-color: color-mix(in srgb, var(--accent-strong) 60%, var(--paper));
   background: rgb(var(--accent-strong-rgb) / 0.12);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .pill.is-active {
@@ -570,7 +572,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .panel-head .month-label-period {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .pill-row,
@@ -630,7 +632,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .month-actions-trigger {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   cursor: pointer;
   padding: 8px 0;
@@ -742,7 +744,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .financial-insight-label {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -772,7 +774,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   font-size: 0.86rem;
   font-weight: 700;
@@ -849,7 +851,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgb(var(--accent-strong-rgb) / 0.08);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .settings-section-toggle {
@@ -898,7 +900,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .settings-demo-meta-item p {
   margin: 2px 0 0;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.82rem;
   line-height: 1.3;
 }
@@ -919,7 +921,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .settings-section-toggle-icon.is-open {
   transform: rotate(90deg);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .settings-account-list {
@@ -1157,7 +1159,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .settings-transfer-month.active {
   border-color: rgb(var(--accent-strong-rgb) / 0.32);
   background: rgb(var(--cream-rgb, 246 236 228) / 0.7);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .settings-warning {
@@ -1173,7 +1175,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   font: inherit;
 }
@@ -1250,7 +1252,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .month-actual-drilldown:not(:disabled):hover,
 .month-actual-drilldown:not(:disabled):focus-visible {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .month-actual-drilldown.is-pending {
@@ -1279,7 +1281,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .planned-link-filter-chip.is-active {
   border-color: rgb(var(--accent-strong-rgb) / 0.34);
   background: rgb(var(--accent-strong-rgb) / 0.14);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .planned-link-search span {
@@ -1380,7 +1382,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .planned-link-row-main em {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.72rem;
   font-style: normal;
 }
@@ -1510,7 +1512,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .settings-shortcut-advanced summary {
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   font-weight: 700;
 }
@@ -1648,7 +1650,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .settings-transfer-amount {
-  color: var(--ink);
+  color: inherit;
   font-size: 0.96rem;
   line-height: 1;
   white-space: nowrap;
@@ -1720,7 +1722,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .settings-diagnostic-grid dd,
 .settings-diagnostic-block p {
   margin: 4px 0 0;
-  color: var(--ink);
+  color: inherit;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -1784,7 +1786,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .month-section-toggle.is-open {
   transform: rotate(90deg);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .month-category-cell {
@@ -1832,7 +1834,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .subtle-cancel {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   font: inherit;
   padding: 0;
@@ -1851,7 +1853,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   padding: 0;
 }
@@ -1871,7 +1873,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 1px solid rgb(var(--accent-strong-rgb) / 0.18);
   border-radius: 8px;
   background: rgb(var(--cream-rgb, 255 250 246) / 0.96);
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   font: inherit;
   line-height: 1;
@@ -1992,7 +1994,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .summary-focus-button.is-active {
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
   background: rgb(var(--accent-strong-rgb) / 0.08);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 /* Desktop and tablet: the Summary tab's month row under the header (All
@@ -2076,7 +2078,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgb(var(--paper-rgb) / 0.9);
-  color: var(--ink);
+  color: inherit;
   font: inherit;
 }
 
@@ -2258,12 +2260,12 @@ body[data-split-inline-editor] .ask-dock-field {
 }
 
 .ask-dock-field:focus-within {
-  box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px color-mix(in srgb, var(--accent-strong) 45%, transparent), 0 12px 30px rgba(27, 24, 21, 0.14);
+  box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--focus-ring), 0 12px 30px rgba(27, 24, 21, 0.14);
 }
 
 .ask-dock-field-icon {
   flex: none;
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .ask-dock-field-input {
@@ -2355,7 +2357,7 @@ body[data-ask-dock="docked"] .environment-banner {
   padding: 0 4px 0 8px;
   border: 0;
   background: none;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -2452,7 +2454,7 @@ body[data-ask-dock="docked"] .environment-banner {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgb(var(--paper-rgb) / 0.98);
-  color: var(--ink);
+  color: inherit;
   font: inherit;
   box-shadow: 0 1px 0 rgba(25, 64, 53, 0.04);
 }
@@ -2572,7 +2574,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .linked-entry-notice strong {
   display: block;
   margin-bottom: 4px;
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .linked-entry-notice p {
@@ -2656,7 +2658,7 @@ body[data-ask-dock="docked"] .environment-banner {
   border: 1px solid rgb(var(--accent-strong-rgb) / 0.12);
   border-radius: 12px;
   background: rgb(var(--paper-rgb) / 0.96);
-  color: var(--ink);
+  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -2690,7 +2692,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .mobile-select-option.is-selected {
   border-color: rgb(var(--accent-strong-rgb) / 0.24);
   background: rgb(var(--blush-rgb, 250 239 230) / 0.72);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .note-dialog-textarea {
@@ -2700,7 +2702,7 @@ body[data-ask-dock="docked"] .environment-banner {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgb(var(--paper-rgb) / 0.82);
-  color: var(--ink);
+  color: inherit;
   font: inherit;
   resize: vertical;
 }
@@ -2938,7 +2940,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .split-activity-card.is-pending .share-row-meta {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .split-activity-date {
@@ -3136,7 +3138,7 @@ body[data-ask-dock="docked"] .environment-banner {
   padding: 0 12px;
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
   background: rgb(var(--cream-rgb, 255 250 246) / 0.96);
-  color: var(--accent-strong);
+  color: var(--accent);
   box-shadow: 0 1px 0 rgb(var(--accent-strong-rgb) / 0.04);
 }
 
@@ -3476,7 +3478,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .table-sort-button.is-active {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .donut-center {
@@ -3617,7 +3619,7 @@ body[data-ask-dock="docked"] .environment-banner {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgb(var(--paper-rgb) / 0.82);
-  color: var(--ink);
+  color: inherit;
   font: inherit;
   cursor: pointer;
 }
@@ -3684,7 +3686,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .category-picker-title {
   display: block;
   margin-bottom: 10px;
-  color: var(--ink);
+  color: inherit;
   font-size: 0.92rem;
 }
 
@@ -3704,7 +3706,7 @@ body[data-ask-dock="docked"] .environment-banner {
 
 .category-picker-popover .icon-choice {
   background: rgb(var(--cream-rgb, 244 246 248) / 0.96);
-  color: var(--ink);
+  color: inherit;
 }
 
 .category-picker-popover .color-choice::before {
@@ -3744,7 +3746,7 @@ body[data-ask-dock="docked"] .environment-banner {
   border-radius: 8px;
   border: 1px solid var(--line);
   background: rgb(var(--paper-rgb) / 0.76);
-  color: var(--ink);
+  color: inherit;
   cursor: pointer;
 }
 
@@ -3904,7 +3906,7 @@ body[data-ask-dock="docked"] .environment-banner {
 
 .chart-toggle-action.is-active,
 .filter-toggle-action.is-active {
-  color: var(--accent-strong);
+  color: var(--accent);
   background: rgb(var(--accent-strong-rgb) / 0.08);
   border-color: rgb(var(--accent-strong-rgb) / 0.2);
 }
@@ -4132,7 +4134,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .transfer-match-detail-toggle {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.92rem;
 }
 
@@ -4362,7 +4364,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .splits-fab {
   border: 1px solid rgb(var(--paper-rgb) / 0.78);
   background: rgb(var(--cream-rgb, 255 250 246) / 0.96);
-  color: var(--accent-strong);
+  color: var(--accent);
   box-shadow:
     0 18px 44px rgba(74, 36, 18, 0.28),
     0 0 0 8px rgb(var(--paper-rgb) / 0.12);
@@ -4522,7 +4524,7 @@ body[data-ask-dock="docked"] .environment-banner {
 
 .import-inbox-metric strong {
   min-width: 0;
-  color: var(--ink);
+  color: inherit;
   font-size: 1rem;
   overflow-wrap: anywhere;
 }
@@ -4536,7 +4538,7 @@ body[data-ask-dock="docked"] .environment-banner {
   border: 1px solid rgb(var(--accent-strong-rgb) / 0.18);
   border-radius: 8px;
   background: rgb(var(--cream-rgb, 255 250 246) / 0.9);
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -4564,7 +4566,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .import-inbox-session-head strong,
 .import-inbox-file-main strong {
   display: block;
-  color: var(--ink);
+  color: inherit;
 }
 
 .import-inbox-session-actions {
@@ -4659,13 +4661,13 @@ body[data-ask-dock="docked"] .environment-banner {
   max-width: 520px;
   margin: 0;
   padding-left: 20px;
-  color: var(--ink);
+  color: inherit;
   font-size: 0.9rem;
 }
 
 .import-inbox-cleanup {
   align-items: flex-start;
-  color: var(--ink);
+  color: inherit;
 }
 
 .import-inbox-cleanup strong {
@@ -4753,7 +4755,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .import-intake-main strong {
-  color: var(--ink);
+  color: inherit;
 }
 
 .import-intake-main span {
@@ -4892,7 +4894,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .import-stage-label.is-current {
   border-color: rgb(var(--accent-strong-rgb) / 0.2);
   background: rgb(var(--cream-rgb, 246 236 228) / 0.86);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .import-stage-label.is-complete {
@@ -4962,7 +4964,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .import-dropzone strong {
-  color: var(--ink);
+  color: inherit;
   font-size: 0.96rem;
 }
 
@@ -4982,7 +4984,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .import-upload-status strong {
-  color: var(--ink);
+  color: inherit;
   font-size: 0.82rem;
 }
 
@@ -5017,7 +5019,7 @@ body[data-ask-dock="docked"] .environment-banner {
 }
 
 .import-step-hint strong {
-  color: var(--ink);
+  color: inherit;
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -5045,7 +5047,7 @@ html[data-money-privacy="hidden"] .import-textarea.is-screened,
 html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   -webkit-text-security: disc;
   color: var(--muted);
-  caret-color: var(--ink);
+  caret-color: inherit;
 }
 
 .import-mapping-topline {
@@ -5237,7 +5239,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 
 .import-overlap-entry-date,
 .import-overlap-entry-amount {
-  color: var(--ink);
+  color: inherit;
 }
 
 .import-warning-review {
@@ -5400,7 +5402,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 
 .statement-reconciliation-movement strong {
   min-width: 0;
-  color: var(--ink);
+  color: inherit;
   overflow-wrap: anywhere;
 }
 
@@ -5789,7 +5791,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: underline;
@@ -5814,7 +5816,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .duplicate-match-head strong {
-  color: var(--ink);
+  color: inherit;
   font-size: 1.06rem;
 }
 
@@ -5844,7 +5846,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .duplicate-match-card strong {
-  color: var(--ink);
+  color: inherit;
   font-size: 1rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -5940,7 +5942,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   border: 1px solid rgb(var(--accent-strong-rgb) / 0.14);
   border-radius: 999px;
   background: rgb(var(--cream-rgb, 255 250 246) / 0.92);
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
 }
 
@@ -6110,7 +6112,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 .entry-chip-exception-status.is-open {
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
   background: rgb(var(--cream-rgb, 255 243 236) / 0.96);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .entry-row-category .category-icon-button,
@@ -6275,7 +6277,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgb(var(--paper-rgb) / 0.9);
-  color: var(--ink);
+  color: inherit;
   font: inherit;
   box-shadow: 0 1px 0 rgba(25, 64, 53, 0.04);
 }
@@ -6319,7 +6321,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   border: 1px solid rgb(var(--accent-strong-rgb) / 0.22);
   border-radius: 10px;
   background: rgb(var(--cream-rgb, 255 250 246) / 0.92);
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -6454,7 +6456,7 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
 }
 
 .import-status.is-complete {
-  color: var(--accent-strong);
+  color: var(--accent);
   border-color: rgb(var(--accent-strong-rgb) / 0.18);
   background: rgb(var(--cream-rgb, 246 236 228) / 0.72);
 }
@@ -7594,7 +7596,7 @@ th {
   .tab.is-active {
     border-color: rgb(var(--accent-strong-rgb) / 0.2);
     background: rgb(var(--accent-strong-rgb) / 0.12);
-    color: var(--accent-strong);
+    color: var(--accent);
   }
 
   .period-display {
@@ -7804,7 +7806,7 @@ th {
 
   .mobile-context-trigger-caret {
     margin-left: auto;
-    color: var(--accent-strong);
+    color: var(--accent);
     font-size: 0.92rem;
     flex: 0 0 auto;
   }
@@ -7869,7 +7871,7 @@ th {
   }
 
   .mobile-month-choice-caret {
-    color: var(--accent-strong);
+    color: var(--accent);
     font-size: 0.8rem;
   }
 
@@ -7879,7 +7881,7 @@ th {
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--accent-strong);
+    color: var(--accent);
     font-size: 1.35rem;
     cursor: pointer;
   }

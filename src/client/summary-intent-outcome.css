@@ -40,7 +40,7 @@
 
 .summary-month-link:hover,
 .summary-month-link:focus-visible {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .summary-intent-month .lsd-figure .lsd-amount {

@@ -2,7 +2,7 @@
    use it, never with the first screen. */
 .settings-add-row .lsd-row-label {
   max-width: none;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 600;
 }
 

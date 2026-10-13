@@ -52,7 +52,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   font-size: 0.86rem;
   font-weight: 700;
@@ -77,7 +77,7 @@
 .checkin-line-label {
   display: inline-block;
   margin-right: 7px;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -175,7 +175,7 @@
 .financial-insight-fold > svg {
   width: 18px;
   height: 18px;
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .financial-insight-fold[aria-expanded="true"] > svg {
@@ -260,7 +260,7 @@
 
 .financial-insight-think {
   grid-row: 3;
-  color: color-mix(in srgb, var(--fold-ink) 85%, var(--fold-fill));
+  color: color-mix(in srgb, var(--fold-ink) 94%, var(--fold-fill));
   font-size: 0.84rem;
 }
 

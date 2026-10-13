@@ -290,7 +290,7 @@
 }
 
 .panel-splits .split-settlement-marker {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -332,7 +332,7 @@
   border: 1px solid rgb(var(--accent-strong-rgb) / 0.18);
   border-radius: 999px;
   background: rgb(var(--paper-rgb) / 0.92);
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   font-size: 0.84rem;
   font-weight: 700;

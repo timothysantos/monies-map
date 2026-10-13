@@ -77,7 +77,7 @@
 }
 
 .faq-toc a {
-  color: var(--accent-strong);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -163,7 +163,7 @@
 }
 
 .faq-item a {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .faq-callout {
