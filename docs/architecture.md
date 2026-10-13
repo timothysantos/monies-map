@@ -690,9 +690,11 @@ evidence of likely unlinked settlements and own-account moves; AI may phrase
 them but never decides or links them.
 
 Ask's money answers follow that order (`POST /api/ai-assist/answer`,
-`src/server/ask-answer-route.ts`): rules read the question into one of six
+`src/server/ask-answer-route.ts`): rules read the question into one of nine
 intents (where and why the money went, the plan, two months compared, the
-biggest expenses, income, who owes whom on Splits); a high-confidence skew
+biggest expenses, income, who owes whom on Splits, and the money jobs'
+invested, saved and spending against income, read through the lead's own
+`splitMoneyUse`), over one month or a period of up to 12; a high-confidence skew
 candidate that would change the facts is asked about first, with Mark as
 settlement or Link as transfer (the candidate's suggested routes, run by
 the person's tap) and It's real spending; the facts are read from the Month

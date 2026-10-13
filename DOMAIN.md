@@ -1089,14 +1089,19 @@ categories and the biggest single costs, and chips to Entries and Month.
 
 Canonical terms:
 - `money question`: read by rules (`src/domain/ask-answer-intent.ts`) into
-  one of six `answer intents`: `spending` (why, or where the money went),
-  `plan` (intent against outcome: how a month, or a quarter's months, went
+  one of nine `answer intents`: `spending` (why, or where the money went),
+  `plan` (intent against outcome: how a month, or a period's months, went
   against the plan, "how did September go?", "did we stick to the plan in
   Q3?"), `compare` (two months),
   `biggest` (the largest expenses), `income`, `owed` (who owes whom on
-  Splits). Anything else is unsupported and gets the "not answered" note;
-  a question with an amount, or a biggest or income question naming a
-  category or wallet, stays a filter request
+  Splits), and the three `money job` answers: `invested`, `saved` (what
+  was kept) and `spentVsEarned` (spending against what came in). Anything
+  else is unsupported and gets the "not answered" note; a question with an
+  amount, or a biggest or income question naming a category or wallet,
+  stays a filter request
+- `period`: a quarter ("Q3") or a range of months ("from Oct 2025 to Sep
+  2026", at most 12) that the plan, spending, income and money-job answers
+  add up month by month
 - `money answer`: the answer card. Lead (the figure asked about, with the
   plan bar when there is a plan), Support chips (the plan, the other month,
   the largest shares), the `wording` (one to three sentences) and Detail
@@ -1116,9 +1121,10 @@ Canonical terms:
 
 Rules:
 - the figures always come from the facts, never from AI
-- skew first: spending, plan, compare and biggest answers check spending
-  skew, income answers income skew, and who owes whom any settlement
-  candidate, for every month the answer covers
+- skew first: spending, plan, compare, biggest and invested answers check
+  spending skew, income answers income skew, saved and spentVsEarned
+  either, and who owes whom any settlement candidate, for every month the
+  answer covers
 - a month with no entries is answered as such, never with another month
 - resolving a check runs the candidate's suggested routes in order, from the
   person's tap; It's real spending writes nothing and is kept only in the
@@ -1127,7 +1133,8 @@ Rules:
 - the plan answer speaks in the spend job's figures, as the Month and
   Summary lead do: spend without money moved to Investments or Savings,
   against the plan without the Savings target and the Investments rows
-  (`splitMoneyUse`, `src/domain/money-jobs.ts`)
+  (`splitMoneyUse`, `src/domain/money-jobs.ts`); the money-job answers
+  read invested, kept, spending and each job's plan from the same split
 - the plan answer also carries its `outcome`: income received, Actual
   spend, Planned spend, the Savings target, money moved to Investments and
   Savings and the Investments plan rows, the figures the Month and Summary

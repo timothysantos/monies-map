@@ -2058,7 +2058,9 @@ phrase the wording, kept only if `validateAiWording` passes. The page shows
 candidate's suggested actions through `resolveSkewCandidate` (an allowlist
 of the existing routes) and ask again. Tests: `tests/ask-answer-*.test.mjs`
 (intent table, showcase figures against the page DTOs, skew first, AI
-validation and fallbacks), `tests/ask-money-answer.test.mjs` and
+validation and fallbacks), `tests/ask-money-jobs-answers.test.mjs` (the
+money jobs' questions against the Month and Summary lead's own split),
+`tests/ask-money-answer.test.mjs` and
 `tests/e2e/ask-money-answers.spec.js`; audit
 `docs/audits/ask-answers-audit.md`.
 
