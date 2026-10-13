@@ -1631,14 +1631,19 @@ CPU/resource headroom if the production data size now requires it.
 
 ## How do the colour presets load?
 
-The 70s default is the only scheme in the first-screen `styles.css`. Each
-other preset (Settings → Colours) is a small stylesheet in
-`public/palettes/<id>.css` that overrides the colour tokens under
-`:root[data-palette="<id>"]`; the build minifies it like `styles.css`. A
-short inline script in `index.html` reads the stored choice
-(`localStorage["monies-map:palette"]`) and writes that sheet's `<link>`
-into the head before the page paints, so a reload never flashes the
-default. To change a preset, edit its sheet and run
+The 70s Warm light default is the only scheme in the first-screen
+`styles.css`. Every other preset and mode (Settings → Colours: six presets,
+each Light or Dark, or Auto to follow the phone) is a small stylesheet in
+`public/palettes/<id>-<light|dark>.css` (eleven sheets, including
+`70s-dark.css`) that overrides the colour tokens under
+`:root[data-palette="<id>"]` and `data-mode`; the build minifies them like
+`styles.css`. A short inline script in `index.html` reads the stored
+choice (`localStorage["monies-map:palette"]` and
+`["monies-map:colour-mode"]`, nothing stored meaning 70s Warm and Auto),
+resolves Auto with `prefers-color-scheme`, and writes that sheet's
+`<link>` into the head before the page paints, so a reload never flashes
+the default. In Auto it also listens for the phone switching and loads the
+other sheet before flipping `data-mode`. To change a preset, edit its sheet and run
 `tests/colour-contrast.test.mjs` and `tests/colour-presets.test.mjs`: they
 fail on any unreadable pair or missing token. design.md, "Colour presets",
 has the token list.

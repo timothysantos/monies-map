@@ -310,8 +310,11 @@ Details and the reasons are in `docs/code-spec.md` and
   `src/domain/category-palette.ts`. Don't introduce saturated fills or new
   hex colours outside the tokens: write white surfaces as `--paper`, text
   on a strong fill as `--on-strong` and accent tints as
-  `rgb(var(--accent-strong-rgb) / a)`, so every colour preset
-  (`public/palettes/*.css`, design.md "Colour presets") re-colours them; a
+  `rgb(var(--accent-strong-rgb) / a)`, so every colour preset in both
+  modes (`public/palettes/<id>-<light|dark>.css`, design.md "Colour
+  presets") re-colours them. The page a route sits on is `--page`; a card
+  on it is `--card` with `--card-border` and `--card-shadow`; a
+  section eyebrow is `--eyebrow` and a plain chip `--chip`. A
   raw colour may only be a neutral shadow or scrim. Hand category, person
   or group colours to the page through `paletteColour`
   (`src/client/palette-colour.js`).
