@@ -1205,7 +1205,6 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 // to the person's money, and app terms explained where a line needs one.
 export const COPY = {
   cannotHelp: "Ask can't do that one yet. Try the page it lives on.",
-  savedCannotEdit: "That entry is already saved. Open it to change it.",
   whichEntry: "Which entry should go on Splits? Open it from Entries, then ask again.",
   onlyExpenses: "Only an expense can go on Splits.",
   alreadyOnSplits: "This entry is already on Splits.",
