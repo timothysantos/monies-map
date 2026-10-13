@@ -225,5 +225,9 @@ household (never trusted from the draft).
 
 ## Gates
 
-See the pull request for the run of `typecheck`, `typecheck:client`, `lint`,
-`test:unit`, `build` and the targeted browser specs.
+On this branch (merged with `origin/master` `cce1c6dc`): `typecheck`,
+`typecheck:client`, `lint`, `test:unit` (all tests) and `npm audit --omit=dev`
+pass with zero errors; `build` passes; the targeted browser specs
+`ask-page`, `settings-payment-ways` and `ask-split-suggestion` pass. The
+`ask-page` run is what found the first version of the F1 guard refusing a
+replayed request (see F1).
