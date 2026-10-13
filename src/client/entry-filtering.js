@@ -9,8 +9,25 @@ import { entryMatchesScope, getVisibleAmountMinor, groupEntriesByDate } from "./
 import { entryMatchesSearch } from "./entry-search";
 import { projectEntriesForView } from "./entry-row-projection";
 import { getEntryTotals, getExpenseBreakdown } from "./entry-totals";
+import { findInvestmentMoves } from "../domain/investment-moves";
 
-export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [] }) {
+// The transfers into investment accounts (the same rule as the invested
+// totals, investment-moves.ts), when the filter asks for them
+// (entry_invest_moves) and the investment accounts are known.
+function investmentMoveIds(entries, entryFilters, investmentAccountIds) {
+  if (!entryFilters.investmentMovesIn || !investmentAccountIds?.size) {
+    return null;
+  }
+  return new Set(findInvestmentMoves(entries, entries, investmentAccountIds).into.map((entry) => entry.id));
+}
+
+/** The ids of the accounts of kind Investment. */
+export function getInvestmentAccountIds(accounts = []) {
+  return new Set(accounts.filter((account) => account.kind === "investment").map((account) => account.id));
+}
+
+export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [], investmentAccountIds = undefined }) {
+  const movesIn = investmentMoveIds(entries, entryFilters, investmentAccountIds);
   return entries.filter((entry) => {
     // Scope is the first gate because it is the page-level visibility rule.
     if (!entryMatchesScope(entry, viewId, selectedScope)) {
@@ -31,7 +48,9 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     ) {
       return false;
     }
-    if (!categoryMatchesEntryFilter(entry.categoryName, entryFilters.categories)) {
+    // A transfer into an investment account counts with the Investments
+    // category (invested), whatever its own category.
+    if (!categoryMatchesEntryFilter(entry.categoryName, entryFilters.categories) && !movesIn?.has(entry.id)) {
       return false;
     }
     if (entryFilters.type && entry.entryType !== entryFilters.type) {
@@ -61,8 +80,8 @@ function entryMatchesAmountRange(entry, viewId, { minAmountMinor = null, maxAmou
   return !(Number.isFinite(maxAmountMinor) && amountMinor > maxAmountMinor);
 }
 
-export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds }) {
-  const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds });
+export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds, investmentAccountIds = undefined }) {
+  const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds, investmentAccountIds });
   const { aggregateEntries, rowEntries } = projectEntriesForView(filteredEntries, viewId);
   const groupedEntries = groupEntriesByDate(rowEntries);
   const entryTotals = getEntryTotals(aggregateEntries);

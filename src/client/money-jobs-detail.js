@@ -57,7 +57,9 @@ export function moneyActionTarget(key, { figures, hidden = false }) {
       return { entries: { type: "expense" }, question: hidden ? "spentVsIncome" : "spentMore" };
     case "invested":
     case "invest":
-      return { entries: figures.invested > 0 ? { categories: ["Investments"] } : null, question: "invested" };
+      // Invested counts the transfers into investment accounts too, so
+      // Entries lists them with the Investments category's entries.
+      return { entries: figures.invested > 0 ? { categories: ["Investments"], investmentMovesIn: true } : null, question: "invested" };
     case "kept":
     case "save":
       return { entries: figures.movedToSavings ? { categories: ["Savings"] } : null, question: "saved" };

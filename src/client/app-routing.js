@@ -17,6 +17,7 @@ export function sanitizeTabParams(params, tabId) {
       "editing_entry",
       "entries_scope",
       "entry_id",
+      "entry_invest_moves",
       "entry_wallet",
       "entry_category",
       "entry_person",

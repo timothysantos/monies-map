@@ -273,7 +273,26 @@ test("money moved into an investment account is invested on the Month lead and i
   assert.deepEqual([answer.lead.label, answer.lead.amountMinor, answer.lead.planMinor], ["Invested", 320_000, 150_000]);
   assert.deepEqual(answer.lines.map((line) => [line.label, line.amountMinor, line.tone]), [["Endowus top-up", 200_000, "neutral"], ["iFAST GIRO", 120_000, "neutral"]]);
   assert.deepEqual([answer.outcome.investedMinor, answer.outcome.movedIntoInvestmentsMinor, answer.outcome.takenFromInvestmentsMinor], [120_000, 200_000, undefined]);
-  assert.equal(payload.wording.text.split(". ").slice(0, 2).join(". "), "You put $3,200.00 into Investments in May. That's $1,700.00 more than the $1,500.00 you planned to invest");
+  // With money moved into an investment account it is no longer only the
+  // Investments category: the words say invested.
+  assert.equal(payload.wording.text.split(". ").slice(0, 2).join(". "), "You invested $3,200.00 in May. That's $1,700.00 more than the $1,500.00 you planned to invest");
+  assert.doesNotMatch(payload.wording.text, /into Investments/);
+
+  // Open in Entries lists the Investments entries and the transfer into
+  // Endowus, never the cash side, the IBKR move between investment accounts
+  // or April's withdrawal.
+  const entriesLink = answer.links.find((link) => link.kind === "entries");
+  assert.deepEqual(entriesLink.filter, {
+    month: MAY, viewId: TIM, scope: "direct_plus_shared", search: "", categories: ["Investments"], wallets: [], type: "", minAmountMinor: null, maxAmountMinor: null, investmentMovesIn: true
+  });
+  const { accounts } = await get(api, "/api/reference-data");
+  const entriesPage = await get(api, `/api/entries-page?view=${TIM}&month=${MAY}`);
+  const opened = summarizeFilterAnswer(entriesPage, entriesLink.filter, { accounts });
+  const byId = new Map(entriesPage.monthPage.entries.map((entry) => [entry.id, entry]));
+  assert.deepEqual(opened.entryIds.map((id) => [byId.get(id).description, byId.get(id).accountName]).sort(), [["Endowus top-up", "Endowus"], ["iFAST GIRO", "UOB One"]]);
+  // Without the accounts' kinds, or without the flag, only the category's entries show.
+  assert.deepEqual(summarizeFilterAnswer(entriesPage, entriesLink.filter).entryIds.map((id) => byId.get(id).description), ["iFAST GIRO"]);
+  assert.deepEqual(summarizeFilterAnswer(entriesPage, { ...entriesLink.filter, investmentMovesIn: false }, { accounts }).entryIds.map((id) => byId.get(id).description), ["iFAST GIRO"]);
 
   // Saved (kept) agrees with the lead.
   const saved = await ask(api, "How much did I save in May 2026?");

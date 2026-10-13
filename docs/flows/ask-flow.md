@@ -510,10 +510,13 @@ Summary lead (`moneyUseOf` in `ask-answer-facts.ts`, the shared
   share of the Spending Mix, against the invest job's plan (the plan's
   Investments rows; more is fine); chips Plan and Income; lines the largest
   Investments entries in plain ink (moved, not spent); links Open in Entries
-  filtered to the Investments category (when anything was invested), then
+  filtered to the Investments category (when anything was invested; with
+  `investmentMovesIn` / `entry_invest_moves=1` when money was moved into an
+  investment account, so the transfers into those accounts list too), then
   Open Month. Wording: "You put $1,200.00 into Investments in May. That's
   $300.00 short of the $1,500.00 you planned to invest. The largest was
-  iFAST GIRO at $1,200.00 on 3 May."
+  iFAST GIRO at $1,200.00 on 3 May." When the amount includes money moved
+  into an investment account it reads "You invested $3,200.00 in May."
 - saved: title "<period> savings"; Lead "Saved", the lead's kept (income
   less spending less invested; below zero when more went out), against the
   savings target; chips Income, Spent, Invested; lines the largest moves

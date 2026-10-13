@@ -12,6 +12,9 @@
 // - entry_type: expense | income | transfer
 // - entry_min, entry_max: amounts in dollars ("50" or "50.00"), compared with
 //   the amount the row shows for the view; only an Ask answer sets them
+// - entry_invest_moves=1: with entry_category Investments, also the transfers
+//   into investment accounts (the invested part's View entries and the
+//   invested answer's Open in Entries; src/domain/investment-moves.ts)
 // - entry_id: entry ids (the check-in's links, and an insight answer's
 //   Open in Entries)
 // - entries_scope: direct | shared | direct_plus_shared
@@ -34,6 +37,7 @@ export const ASK_FILTER_PARAM_KEYS = Object.freeze([
   "entry_min",
   "entry_max",
   "entry_id",
+  "entry_invest_moves",
   "from_ask"
 ]);
 
@@ -70,7 +74,8 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
       type,
       search: searchParams.get("entry_search") ?? "",
       minAmountMinor: readAmountParam(searchParams.get("entry_min")),
-      maxAmountMinor: readAmountParam(searchParams.get("entry_max"))
+      maxAmountMinor: readAmountParam(searchParams.get("entry_max")),
+      investmentMovesIn: searchParams.get("entry_invest_moves") === "1"
     }
   };
 }
@@ -78,7 +83,7 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
 /**
  * An Ask answer's filter (ask-filter-reader.js) as the Entries URL that
  * shows the same rows.
- * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[] }} filter
+ * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean }} filter
  */
 export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   const params = new URLSearchParams();
@@ -91,6 +96,7 @@ export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   if (filter.search) params.set("entry_search", filter.search);
   for (const wallet of normalizeEntryFilterValues(filter.wallets ?? [])) params.append("entry_wallet", wallet);
   for (const category of normalizeEntryFilterValues(filter.categories ?? [])) params.append("entry_category", category);
+  if (filter.investmentMovesIn) params.set("entry_invest_moves", "1");
   if (filter.type && ENTRY_TYPES.includes(filter.type)) params.set("entry_type", filter.type);
   if (Number.isFinite(filter.minAmountMinor)) params.set("entry_min", formatAmountParam(filter.minAmountMinor));
   if (Number.isFinite(filter.maxAmountMinor)) params.set("entry_max", formatAmountParam(filter.maxAmountMinor));

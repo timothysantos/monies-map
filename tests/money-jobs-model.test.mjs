@@ -121,7 +121,8 @@ test("each part opens the entries behind it and a question with no amount in it"
   const figures = splitMoneyUse({ ...PERIOD, savedMovedMinor: 0 });
   assert.deepEqual(moneyActionTarget("spent", { figures }), { entries: { type: "expense" }, question: "spentOverPlan" });
   assert.deepEqual(moneyActionTarget("spend", { figures, hidden: true }), { entries: { type: "expense" }, question: "spentVsPlan" });
-  assert.deepEqual(moneyActionTarget("invested", { figures }), { entries: { categories: ["Investments"] }, question: "invested" });
+  // Invested is the Investments entries and the transfers into investment accounts.
+  assert.deepEqual(moneyActionTarget("invested", { figures }), { entries: { categories: ["Investments"], investmentMovesIn: true }, question: "invested" });
   assert.deepEqual(moneyActionTarget("savings", { figures }), { entries: { type: "expense" }, question: "spentMore" });
   assert.deepEqual(moneyActionTarget("income", { figures }), { entries: { type: "income" }, question: "income" });
   // Money left in the bank has no entry: Kept offers only the question.
@@ -200,7 +201,7 @@ test("a part's menu: the Entries location for the period's last month in the pag
     label: "Invested: what next",
     entries: {
       label: "View entries",
-      location: { pathname: "/entries", search: "?view=person-tim&month=2026-05&scope=direct&entries_scope=direct&entry_category=Investments" }
+      location: { pathname: "/entries", search: "?view=person-tim&month=2026-05&scope=direct&entries_scope=direct&entry_category=Investments&entry_invest_moves=1" }
     },
     ask: { label: "Ask about this", question: "How much did I invest in May 2026?" }
   });

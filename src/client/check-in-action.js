@@ -2,7 +2,7 @@
 // entry filters with the records the insight names, and leaves the rest
 // (view, month, wallets) alone.
 
-const ENTRY_FILTER_KEYS = ["entry_id", "entry_category", "entry_search", "entry_type"];
+const ENTRY_FILTER_KEYS = ["entry_id", "entry_category", "entry_invest_moves", "entry_search", "entry_type"];
 
 export function applyCheckInAction(current, action) {
   const next = new URLSearchParams(current);

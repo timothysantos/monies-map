@@ -54,6 +54,7 @@ import {
   getEntrySearchSuggestions,
   getEntryWalletFilterOptions
 } from "./entry-selectors";
+import { getInvestmentAccountIds } from "./entry-filtering";
 import { moniesClient } from "./monies-client-service";
 import { queryKeys } from "./query-keys";
 import {
@@ -512,6 +513,9 @@ export function EntriesPanel({
     () => getActiveEntryFilterCount(entryFilters),
     [entryFilters]
   );
+  // The investment accounts, for the invested part's View entries
+  // (entry_invest_moves lists the transfers into them too).
+  const investmentAccountIds = useMemo(() => getInvestmentAccountIds(accounts), [accounts]);
   const {
     filteredEntries,
     groupedEntries,
@@ -526,9 +530,10 @@ export function EntriesPanel({
       entryFilters,
       selectedScope,
       viewId: entryView.id,
-      pinnedEntryIds: editingEntryId ? [editingEntryId] : []
+      pinnedEntryIds: editingEntryId ? [editingEntryId] : [],
+      investmentAccountIds
     }),
-    [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
+    [editingEntryId, entries, entryFilters, selectedScope, entryView.id, investmentAccountIds]
   );
   const totalsModel = useMemo(
     () => buildEntriesTotalsModel({
@@ -993,6 +998,9 @@ export function EntriesPanel({
       }
       if (key === "category") {
         next.delete(paramKey);
+        // The transfers into investment accounts go with the Investments
+        // category the invested link set, not with a category picked here.
+        next.delete("entry_invest_moves");
         normalizeEntryFilterValues(value).forEach((category) => next.append(paramKey, category));
         return next;
       }
@@ -1022,6 +1030,7 @@ export function EntriesPanel({
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete("entry_id");
+      next.delete("entry_invest_moves");
       next.delete("entry_wallet");
       next.delete("entry_category");
       next.delete("entry_type");
@@ -1726,11 +1735,11 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
   const walletFilterKey = read.entryFilters.wallets.join("\u0000");
   const categoryFilterKey = read.entryFilters.categories.join("\u0000");
   const entryIdFilterKey = read.entryFilters.entryIds.join("\u0000");
-  const { type, search: searchQuery, minAmountMinor, maxAmountMinor } = read.entryFilters;
+  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn } = read.entryFilters;
   const entryFilters = useMemo(
     () => read.entryFilters,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categoryFilterKey, entryIdFilterKey, maxAmountMinor, minAmountMinor, searchQuery, type, walletFilterKey]
+    [categoryFilterKey, entryIdFilterKey, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, type, walletFilterKey]
   );
 
   return {

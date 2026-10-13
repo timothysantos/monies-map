@@ -6,7 +6,7 @@
 // by construction (tests/ask-filter-answer.test.mjs proves it).
 
 import { buildEntriesFilterSearch, readEntriesFilterParams } from "./entry-filter-params";
-import { getEntryDerivedData } from "./entry-filtering";
+import { getEntryDerivedData, getInvestmentAccountIds } from "./entry-filtering";
 
 /**
  * @typedef {{ kind: "spend" | "income" | "transfersOut" | "transfersIn", amountMinor: number, shareMinor: number | null }} AnswerLead
@@ -14,9 +14,10 @@ import { getEntryDerivedData } from "./entry-filtering";
 
 /**
  * @param {{ viewId?: string, monthPage: { selectedScope?: string, entries: any[] } }} page The Entries page DTO for the filter's view and month.
- * @param {import("./ask-filter-reader").EntriesFilter} filter
+ * @param {import("./ask-filter-reader").EntriesFilter & { investmentMovesIn?: boolean }} filter
+ * @param {{ accounts?: Array<{ id: string, kind: string }> }} [reference] The accounts, whose kinds name the investment accounts (entry_invest_moves).
  */
-export function summarizeFilterAnswer(page, filter) {
+export function summarizeFilterAnswer(page, filter, { accounts = [] } = {}) {
   const params = buildEntriesFilterSearch(filter);
   const { selectedScope, entryFilters } = readEntriesFilterParams(params, page.monthPage.selectedScope ?? "direct_plus_shared");
   const viewId = params.get("view") ?? page.viewId ?? "household";
@@ -25,7 +26,8 @@ export function summarizeFilterAnswer(page, filter) {
     entryFilters,
     selectedScope,
     viewId,
-    pinnedEntryIds: []
+    pinnedEntryIds: [],
+    investmentAccountIds: getInvestmentAccountIds(accounts)
   });
   return {
     count: derived.filteredEntries.length,

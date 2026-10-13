@@ -930,7 +930,10 @@ Where it is used:
   the goals that exist). Each segment is a `button` (aria-label "Spent",
   "Invested", "Kept" or "Came out of savings") whose `aria-describedby`
   points at its legend item. A click, a tap or Enter opens the segment's menu
-  (`renderMoneyActions`: View entries, Ask about this) in the page flow
+  (`renderMoneyActions`: View entries, Ask about this; the invested part's
+  View entries is the Investments category plus the transfers into
+  investment accounts, `entry_invest_moves=1`, which Entries resolves with
+  `findInvestmentMoves` over its accounts' kinds) in the page flow
   under the legend (`.savings-bar-menu`, not floating; the money jobs and
   columns move down while it is open); a second press on the same segment, a
   press on another segment (which moves the menu), Escape or a press outside

@@ -1573,6 +1573,10 @@ export interface AskAnswerEntriesFilterDto {
   type: "" | "expense" | "income" | "transfer";
   minAmountMinor: number | null;
   maxAmountMinor: number | null;
+  // With `categories` ["Investments"]: also list the transfers into
+  // investment accounts (investment-moves.ts), so the invested answer's
+  // Entries shows every entry its amount counts. Only when there were any.
+  investmentMovesIn?: boolean;
 }
 
 export type AskAnswerLinkDto =

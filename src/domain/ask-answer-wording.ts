@@ -250,7 +250,15 @@ function moneyJobCard(facts: MoneyJobFacts, today: string): AskAnswerCardDto {
           ? [{ label: "Took out of investments", amountMinor: use.takenFromInvestments, currency: "SGD", tone: "neutral" } satisfies AskAnswerLineDto]
           : [])
       ],
-      links: answerLinks(facts, use.invested > 0 ? entriesLink(current, { categories: [categoryName(current, isInvestmentsCategoryName, "Investments")] }) : null),
+      // Entries lists every entry the amount counts: the Investments
+      // category's and, when there were any, the transfers into investment
+      // accounts.
+      links: answerLinks(facts, use.invested > 0
+        ? entriesLink(current, {
+          categories: [categoryName(current, isInvestmentsCategoryName, "Investments")],
+          ...(current.movedIntoInvestmentsMinor > 0 ? { investmentMovesIn: true } : {})
+        })
+        : null),
       outcome
     };
   }
@@ -313,8 +321,12 @@ function moneyJobSentences(facts: MoneyJobFacts, today: string): string[] {
   const sentences: string[] = [];
   if (facts.kind === "invested") {
     const phrase = periodPhrase(facts, today);
+    // Money moved into an investment account is invested but not filed
+    // under the Investments category, so then the words say invested.
     sentences.push(use.invested > 0
-      ? `You put ${money(use.invested)} into Investments ${phrase}.`
+      ? current.movedIntoInvestmentsMinor > 0
+        ? `You invested ${money(use.invested)} ${phrase}.`
+        : `You put ${money(use.invested)} into Investments ${phrase}.`
       : use.takenFromInvestments > 0
         ? `You took ${money(use.takenFromInvestments)} more out of investments ${phrase} than you put in.`
         : `You didn't put any money into Investments ${phrase}.`);

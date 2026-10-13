@@ -41,6 +41,7 @@ export function buildSummaryEntriesLocation(search, nextFilters) {
   next.delete("entry_person");
   next.delete("entry_type");
   next.delete("entry_category");
+  next.delete("entry_invest_moves");
 
   for (const [key, value] of Object.entries(nextFilters)) {
     if (value) {

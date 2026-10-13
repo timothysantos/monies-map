@@ -124,10 +124,26 @@ test.describe("money moved into and out of investment accounts", () => {
     const answer = page.locator('[data-ask-money-answer="invested"]');
     await expect(answer).toBeVisible({ timeout: 30_000 });
     await expect(answer.locator(".ask-answer-amount")).toHaveText(cents(figures.invested));
-    await expect(answer.locator(".ask-money-wording")).toContainText(`You put ${cents(figures.invested)} into Investments in May.`);
+    await expect(answer.locator(".ask-money-wording")).toContainText(`You invested ${cents(figures.invested)} in May.`);
     await expect(answer.locator(".ask-money-lines")).toContainText("Endowus top-up");
     // The answer's savings bar is the lead's.
     await expect(answer.locator('[data-legend="invested"]')).toContainText(`Invested ${dollars(figures.invested)}`);
     await keepShot(page, answer, "ask-invested-may");
+
+    // Open in Entries lists the transfer into Endowus with the Investments entries.
+    await page.getByRole("group", { name: "Suggestions" }).getByRole("button").getByText("Open in Entries", { exact: true }).click();
+    await expect(page).toHaveURL(/entry_invest_moves=1/);
+    const rows = page.locator(".entry-row");
+    // One row: the Endowus side; the UOB One (cash) side is not invested.
+    await expect(rows.filter({ hasText: "Endowus top-up" })).toHaveCount(1, { timeout: 30_000 });
+    await expect(rows.filter({ hasText: "Endowus withdrawal" })).toHaveCount(0);
+  });
+
+  test("Month lead: the invested part's View entries lists the transfer into Endowus", async ({ page }) => {
+    const bar = await openMonthLead(page, MAY);
+    await bar.locator('[data-segment="invested"]').click();
+    await page.locator('[data-money-actions="invested"] [data-action="entries"]').click();
+    await expect(page).toHaveURL(/\/entries\?.*entry_category=Investments.*entry_invest_moves=1/);
+    await expect(page.locator(".entry-row").filter({ hasText: "Endowus top-up" })).toHaveCount(1, { timeout: 30_000 });
   });
 });

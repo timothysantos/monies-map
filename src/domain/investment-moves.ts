@@ -3,8 +3,9 @@
 // invested, not kept, and a transfer out of one back to a cash account is
 // taken out of investments. The money jobs' split (splitMoneyUse,
 // money-jobs.ts) nets these against the money filed under the Investments
-// category. Server only: the Month and Summary projections send the two
-// totals (`investmentMoves`) and Ask reads the same entries for its lines.
+// category. The Month and Summary projections send the two
+// totals (`investmentMoves`), Ask reads the same entries for its lines, and
+// the Entries filter entry_invest_moves lists them (entry-filtering.js).
 //
 // The investment account's own entry decides, so a linked pair counts once:
 // - a transfer in on an investment account is money moved in, and a

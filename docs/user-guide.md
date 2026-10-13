@@ -273,7 +273,8 @@ over plan.
   of the $247,000 you earned"; on a phone, "Kept $12,000 · invested $8,000 of
   $247,000"). Click a part of the bar (on a phone, tap it) for **View
   entries**, which opens Entries filtered to that money for the last month
-  shown, and **Ask about this**, which opens Ask, asks a question about it
+  shown (for the plum part: your **Investments** entries and the money you
+  moved into an investment account), and **Ask about this**, which opens Ask, asks a question about it
   for you and shows the answer; the two buttons open under the key.
 - **Money jobs**: each line of your plan has a job: spend within the
   budget, save the savings target, invest what you planned to invest, and
