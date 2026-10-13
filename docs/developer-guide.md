@@ -2464,3 +2464,19 @@ into the app.
 The app does not currently treat children, babies, or guests as separate
 settlement people. Keep those labels in notes and shares until dependent
 participant roles are introduced, so they cannot accidentally become debtors.
+
+## Ask turn (AI first)
+
+Every Ask message goes to `POST /api/ask/turn` (`src/server/ask-turn-route.ts`,
+`src/domain/ask-turn.ts`): the model picks one action, the server checks it
+against the household, and the page shows the existing draft or answer
+card. With AI off (local and the e2e stack) the route answers
+`mode: "rules"` and Ask reads the message with its rule readers.
+
+- Browser tests stand in for the model with the `X-Ask-Turn-Test-Reply`
+  header (read only when `APP_ENVIRONMENT` is `test`); see
+  `tests/e2e/ask-ai-turn.spec.js`.
+- `npx tsx scripts/ask-turn-eval.mjs` runs about 30 messages, the owner's
+  among them, through the real model on a seeded local D1 when
+  `AI_GATEWAY_TOKEN` or `ANTHROPIC_API_KEY` (and the gateway ids) are in
+  the environment; without them it prints only the prompt size. Not in CI.

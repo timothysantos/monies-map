@@ -653,6 +653,29 @@ Anything filled in for you is marked **Filled in from your message** or
 before you save. If the app can't read a sentence or a receipt, it says so
 and you fill in the card yourself.
 
+### Say it your way
+
+Ask reads what you type the way a person would, including follow-ups. After
+an Apple Pay purchase is saved, for example, you can type "Add to splits,
+all Joyce" (or "I meant Joyce pays all of it, I paid"). Ask shows a draft:
+who paid, each person's share and the amount, worked out from the entry
+itself. Nothing changes until you tap **Add to Splits**; **Not now** leaves
+the entry as it was, and **Undo** takes it off Splits again.
+
+The same works for the rest of Ask: "make it $15" or "it was yesterday"
+changes the card you are filling in, "Joyce paid me back $80" drafts a
+settle-up payment (saved only with **Record payment**), and "move $50 from
+Food to Groceries" drafts a plan change. When Ask isn't sure what you mean
+(who, which card, how to split it), it asks, with buttons to tap. It never
+uses an amount you didn't type, and it never saves anything by itself.
+
+To understand you, Ask sends your message and the last few lines of the
+conversation to the AI it uses, with the names of your people, wallets,
+categories and split groups. It never sends account or card numbers, phone
+numbers, or your balances and amounts from your records. When the AI isn't
+available, Ask says so once and reads your message the simpler way it
+always has.
+
 ### After you save
 
 The card is marked **Saved** and the suggestions change:
@@ -694,9 +717,8 @@ exactly that list; the **From Ask** chip there brings you back.
 If what you typed could mean more than one thing (two cards both called
 "Citi", two months), Ask asks which and gives you buttons to choose; it
 never guesses. Asking to "switch to Serene" or for "shared only" gives you a
-**Switch to …** button; nothing changes until you tap it. Ask works these
-answers out on your phone from the entries it already has; nothing you type
-is sent anywhere for this.
+**Switch to …** button; nothing changes until you tap it. The total is
+worked out on your phone from the entries it already has.
 
 ### Ask about your money
 

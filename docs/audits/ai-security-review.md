@@ -207,6 +207,55 @@ stay protected by Access at the edge only, and hold no data. Tests:
   `wrangler.jsonc` would make that explicit.
 - F16, F18: by design for a two-person household with one Access policy.
 
+## Ask turn audit note (2026-10-13, branch `ask-ai-first`)
+
+Ask moved to "AI understands, the app validates, rules are the offline
+backup": every message goes to `POST /api/ask/turn` first.
+
+Privacy. The prompt (`buildAskTurnPrompt`) carries the message, at most 8
+recent conversation lines (each at most 200 characters), and names: people,
+active wallets (owner, kind, currency), categories, split groups (and
+currency) and the month's plan line names, each through `scrubName` (any
+run of 4 or more digits and NRIC/FIN shapes removed), the focus entry's
+description through `promptEntryName`. No balance, no amount from the
+household's records (the card in focus says only whether it has an amount),
+no account, card, phone or ID number. The person's own text is sent as
+written except digit runs of 8 or more, even in groups ("4417 1234 …"),
+which become `[number]`. The focus entry is sent by id from the page and
+loaded from the household's own rows; an unknown id is no focus and never
+reaches the prompt. Nothing is stored or logged: no message, prompt,
+context or answer; Claude goes through AI Gateway with logging and caching
+off. Tests: `tests/ask-turn.test.mjs` ("the prompt names … but no account,
+phone or ID number and no amount"), `tests/ask-turn-route.test.mjs`.
+
+Write boundaries. The route writes only the allowance counter (and the
+Claude status row). The model's one action is checked by
+`validateAskTurnAction`: people, wallets (active), categories, groups and
+the focus entry must be the household's; amounts must be written by the
+person; dates not in the future nor older than 400 days; shares add up to
+100% and stay within the entry's amount; the group's currency matches; a
+plan change passes `parsePlanAiReading` and is drafted against the real
+rows; model prose with a number nobody said is replaced. Saves are only the
+person's taps through existing all-or-nothing commands
+(`/api/entries/create`, `/api/splits/expenses/from-entry` now taking
+`splitBasisPoints`/`splitAmountMinor`, proved by a `failingStatement` test,
+`/api/splits/settlements/create`, `/api/month-plan/apply-changes`). The body
+goes through `readJsonObject` (64 KiB, 413), the CSRF guard applies, the
+text is capped at 300 characters. The `X-Ask-Turn-Test-Reply` header is read
+only when `APP_ENVIRONMENT` is exactly `test` (set only in
+`wrangler.test.jsonc`); even then it only stands in for the model's choice
+and goes through the same checks.
+
+Cost. One allowance unit per turn (production allows 100 a day). Measured
+on the demo household the prompt is about 2,650 characters (about 660
+tokens); a real household with more wallets and categories should stay
+near 1,200 to 1,500 input tokens, under the 2k target. With Claude Haiku
+5.5 at US$0.10 per million input and US$0.50 per million output tokens, and
+about 150 output tokens plus low-effort thinking (up to about 300), a turn
+costs about US$0.0004, so the 100-turn daily allowance caps Ask turns at
+about US$0.04 a day (about US$1.20 a month), well inside the US$10 gateway
+cap. A message the rules answer with AI off costs nothing.
+
 ## Controls checked and found sound
 
 | Area | Evidence |

@@ -1623,6 +1623,32 @@ Rules:
   code beyond the existing page reader stays off the first screen
 - keep split cleanup separate from required bank-file collection
 
+## Ask Turn Boundary
+
+Ask is AI first (owner decision 2026-10-13; docs/flows/ask-flow.md "AI
+first"): AI understands, the app validates, rules are the offline backup.
+
+- Client: `ask-turn-api.js` (pure builders `buildTurnHistory`,
+  `buildTurnFocus`, the reply reader `readAskTurnResponse`, and the two new
+  saves, both existing commands: `saveSplitProposal` →
+  `/api/splits/expenses/from-entry`, `saveSettlementDraft` →
+  `/api/splits/settlements/create`). `ask-panel.jsx` `readSentence` sends
+  every message first and shows the reply with the cards it already has
+  (`applyTurnReply`); `readSentenceByRules` is the unchanged rule path.
+  `ask-turn-cards.jsx` holds the two new draft cards (Add to Splits,
+  settle-up payment), built from `LeadCard`, `DetailRows` and
+  `BottomActions` like the plan draft card. All of it ships in the Ask
+  chunk.
+- Server: `ask-turn-route.ts` (body through `readJsonObject`, AI off
+  answers before any data work), `ask-turn-context.ts` (read-only context,
+  the focus entry loaded by id from the household's rows),
+  `ask-turn.ts` (pure: schema, prompt, validator). A plan change is drafted
+  by the plan-draft route's own `draftPlanRequest`; a money question is a
+  sentence the answer route's reader reads.
+- The model never writes and never supplies a figure the page shows: an
+  amount must be one the person wrote, shares come from the entry's own
+  amount, answers from the answer route's facts.
+
 ## Optional AI Assistance Boundary
 
 The optional Workers AI surface is a small client-to-Worker boundary. It is

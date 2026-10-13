@@ -29,6 +29,9 @@ a doc here in the same change.
 - [`code-spec.md`](code-spec.md): compact implementation spec, query budgets,
   and invalidation contracts.
 - [`../design.md`](../design.md): client-side boundaries and helper services.
+- [`proposals/ask-ai-first/inventory.md`](proposals/ask-ai-first/inventory.md):
+  every user-facing capability with its Ask action, reused command, risk
+  and phase (Ask, AI first).
 - [`proposals/colour-directions/README.md`](proposals/colour-directions/README.md):
   the shipped 1970s colour tokens beside the 60s mod and 80s pop
   alternatives, as tables with their contrast.
