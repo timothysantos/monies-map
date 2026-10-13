@@ -71,10 +71,23 @@ test("words typed and a photo dropped before Ask loads are handed over once and 
   assert.equal(stored.includes("grab"), false);
   assert.equal(stored.includes("receipt"), false);
 
-  assert.deepEqual(store.takeHandoff(), { text: "grab rides in sep", file: photo });
+  assert.deepEqual(store.takeHandoff(), { text: "grab rides in sep", file: photo, insight: null });
   assert.equal(store.getSnapshot().draftText, "");
   // Taken once: a second read (React StrictMode runs effects twice) is empty.
-  assert.deepEqual(store.takeHandoff(), { text: "", file: null });
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null });
+});
+
+test("an insight question from Ask about this is handed over once, in memory, and Close drops it", () => {
+  const storage = memoryStorage();
+  const store = createAskDockStore({ storage });
+  const insight = { key: "statement-gap:acct-ocbc", kind: "quick_fix", fact: "Serene's OCBC 365 statement differs by $42.80." };
+  store.open({ mode: "docked", intent: { mode: "chat" }, insight });
+  assert.equal(storage.values.get(ASK_DOCK_STORAGE_KEY).includes("OCBC"), false);
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight });
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null });
+  store.open({ mode: "docked", insight });
+  store.close();
+  assert.equal(store.takeHandoff().insight, null);
 });
 
 test("a person's open asks for the composer's focus once; a restored panel does not take it", () => {
