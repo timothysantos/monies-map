@@ -857,7 +857,7 @@ Where it is used:
   hidden), its short name and its figure, "Spent $209,000", "Invested
   $8,000", "Kept $38,000", "From savings $54,871", in bar order, then the
   thin plan bar's name with a sky swatch. On a phone it is one line
-  (11.5 px; it wraps only if it must): amounts without the share, and the
+  (11.2 px; it wraps only if it must): amounts without the share, and the
   plan item is just "Plan". From 761 px each part adds its share of income in
   muted text ("Spent $209,000 · 85%") and the plan item reads "Plan: spend
   $247,673 · keep $41,300" (the plan's own figures, not cut to the bar, only

@@ -312,12 +312,12 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
 .savings-bar .savings-bar-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 12px;
+  gap: 0 9px;
   margin: 0;
   padding: 0;
   list-style: none;
   color: var(--text);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
@@ -326,7 +326,7 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
 .savings-bar .savings-bar-legend li {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   white-space: nowrap;
 }
