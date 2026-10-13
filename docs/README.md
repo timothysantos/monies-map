@@ -122,6 +122,10 @@ a doc here in the same change.
   planning by chat (plan drafts saved in one batch) and Intent vs Outcome
   answers on Ask: rules first, the optional AI reading only into the same
   draft (privacy, cost, writes, no-AI behaviour).
+- [`audits/insight-questions-audit.md`](audits/insight-questions-audit.md):
+  "Ask about this" on Money insights: the insight's own facts on Ask and
+  the optional checked AI explanation (privacy, cost, writes, no-AI
+  behaviour, hidden money, first screen).
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):

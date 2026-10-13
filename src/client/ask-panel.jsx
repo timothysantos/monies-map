@@ -854,6 +854,13 @@ function AskConversation({
       goTo("/splits", { split_group: link.groupId && link.groupId !== "split-group-none" ? link.groupId : undefined }, buildContextParams(new URLSearchParams(), link.viewId, link.month, selectedScope));
     } else if (link.kind === "imports") {
       goTo("/imports");
+    } else if (link.kind === "compose" && link.text) {
+      // Change my plan: the month in the message box, the caret before it.
+      setComposerText(link.text);
+      window.requestAnimationFrame(() => {
+        composerRef.current?.focus();
+        composerRef.current?.setSelectionRange?.(0, 0);
+      });
     } else if (link.kind === "question" && link.text && link.request && !working) {
       void askFollowUpQuestion(link);
     }

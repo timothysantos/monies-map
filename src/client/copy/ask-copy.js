@@ -290,6 +290,10 @@ export const askCopy = {
     openMonth: "Open Month",
     openSplits: "Open Splits",
     compareStatement: "Compare with the statement",
+    // Planning by chat: the month goes in the message box after the caret,
+    // so the person types the change before it ("cut shopping by $100").
+    changePlan: "Change my plan",
+    changePlanText: (monthLabel) => ` in ${monthLabel}`,
     // Money questions Ask already answers, as follow-up chips.
     questions: {
       plan: "How am I doing against the plan?",

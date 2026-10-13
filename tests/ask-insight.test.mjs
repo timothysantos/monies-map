@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { readAnswerIntent } from "../src/domain/ask-answer-intent.ts";
+import { readPlanRequest } from "../src/domain/plan-draft-reader.ts";
 import {
   buildInsightPromptFacts,
   insightPromptQuestion,
@@ -79,7 +80,7 @@ test("statement mismatch: the wallet, the statement and the gap; Open in Entries
   ]);
 });
 
-test("plan doesn't add up: planned spending against the income expected; Open Month for that month, nothing in Entries", () => {
+test("plan doesn't add up: planned spending against the income expected; Change my plan and Open Month for that month, nothing in Entries", () => {
   const row = (id, label, plannedMinor, section = "budget_buckets") => ({ id, label, categoryName: label, plannedMinor, actualMinor: 0 });
   const signal = planShortfallSignal({
     audience: "household",
@@ -110,7 +111,16 @@ test("plan doesn't add up: planned spending against the income expected; Open Mo
   assert.equal(answer.question, `Explain: ${signal.phrasings[0].fact.replace(/\.$/, "")}`);
   assert.deepEqual(answer.lead, { label: "Plan spends more than it expects by", amountMinor: 120_000, currency: "SGD" });
   assert.equal(answer.entries, null);
-  assert.deepEqual(answer.links, [{ kind: "month", label: "Open Month", month: "2026-10", viewId: "person-tim", scope: "direct" }]);
+  // Change my plan: planning by chat, with the month for the person to
+  // finish; then Open Month.
+  assert.deepEqual(answer.links, [
+    { kind: "compose", label: "Change my plan", text: " in October 2026" },
+    { kind: "month", label: "Open Month", month: "2026-10", viewId: "person-tim", scope: "direct" }
+  ]);
+  // What the person then types reads as a plan request for that month.
+  const reading = readPlanRequest(`cut shopping by 100${answer.links[0].text}`, { today: TODAY });
+  assert.equal(reading.kind, "request");
+  assert.equal(reading.request.month, "2026-10");
 });
 
 test("one big cost over plan: the month, the plan, the gap and the entries by id; Open in Entries shows exactly them", () => {

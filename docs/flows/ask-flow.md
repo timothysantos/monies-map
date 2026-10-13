@@ -474,9 +474,11 @@ count for the From Ask chip, "2 entries", and its ✕ clears them), then the
 kind's follow-ups:
 
 - statement mismatch: Compare with the statement (`/imports`);
-- plan doesn't add up, bills not matched or coming up, savings on plan:
-  Open Month (Change my plan joins this once planning by chat, PR #53, is
-  on master);
+- plan doesn't add up: Change my plan (planning by chat: " in <Month
+  Year>" goes in the message box with the caret before it, for the person
+  to type the change, "cut shopping by $100", and send; the draft card
+  saves nothing until Save plan), then Open Month;
+- bills not matched or coming up, savings on plan: Open Month;
 - over plan, plan left, pace: Open Month and "How am I doing against the
   plan?";
 - income above plan or arrived: "How much income came in?";
@@ -964,8 +966,10 @@ iPhone 13 profile) and runtime behaviour on a phone.
 - An insight's basis comes from the page in the browser, so the explanation
   route checks AI words against facts the page sent: it can never add a
   figure the page did not compute, and the card's figures never come from
-  it. "Change my plan" (planning by chat, PR #53) is not on master yet; plan
-  lines offer Open Month until it is.
+  it.
+- "Change my plan" does not draft a change itself: which line to raise or
+  trim is the person's choice, so it only puts the month in the message
+  box.
 - The AI wording path is proved with a stubbed Workers AI binding; a real
   Claude or Gemma phrasing on the deployed Worker is still to be checked
   (the validation will reject many phrasings, which then show the computed

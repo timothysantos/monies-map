@@ -9,6 +9,7 @@
 
 import { insightQuestionText } from "../domain/ask-insight";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
+import { formatMonthYear } from "./copy/ask-plan-copy";
 
 const KINDS = new Set(["quick_fix", "bigger_question", "worth_a_look", "going_well"]);
 const MAX_LINES = 12;
@@ -90,11 +91,14 @@ export function insightType(key) {
 
 // The follow-ups each kind of insight offers after Open in Entries: a page
 // that shows more ("Open Month", "Open Splits", the statement) or a money
-// question Ask already answers (with its own check before any figure).
-// "Change my plan" joins the plan lines once planning by chat is on master.
+// question Ask already answers (with its own check before any figure), or
+// "Change my plan" for a plan that doesn't add up: planning by chat, with
+// the month already in the message box for the person to finish ("cut
+// shopping by $100 in October 2026") and send; nothing changes until Save
+// plan on the draft.
 const FOLLOW_UPS = {
   "statement-gap": ["statement"],
-  "plan-shortfall": ["month"],
+  "plan-shortfall": ["change-plan", "month"],
   "unlinked-bills": ["month"],
   "upcoming-bills": ["month"],
   "savings-on-plan": ["month"],
@@ -120,6 +124,8 @@ function followUp(name, { insight, viewId, scope, month: answerMonth }) {
       return { kind: "imports", label: askCopy.insight.compareStatement };
     case "month":
       return { kind: "month", label: askCopy.insight.openMonth, month: answerMonth, viewId, scope };
+    case "change-plan":
+      return { kind: "compose", label: askCopy.insight.changePlan, text: askCopy.insight.changePlanText(formatMonthYear(answerMonth)) };
     case "splits":
       return { kind: "splits", label: askCopy.insight.openSplits, month: answerMonth, viewId, groupId: insight.basis.groupId || null };
     case "plan":
