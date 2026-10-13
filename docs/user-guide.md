@@ -172,7 +172,8 @@ These buttons are not shown on the real (private) app.
 The app is designed for phones as well as desktops. The differences:
 
 - **Bottom navigation.** Summary, Entries, Splits and Ask sit at the
-  bottom. The **•••** button opens Imports, Settings and FAQ.
+  bottom, with Ask in your accent colour and bolder so it is easy to find.
+  The **•••** button opens Imports, Settings and FAQ.
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example

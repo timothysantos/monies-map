@@ -117,8 +117,14 @@ placeholder naming the group.
 
 The activity list stays flat (design.md, Lead · Support · Detail: lists are not
 cards): each date is a quiet divider (small mono caps, a hairline, the count
-and refresh at the right; it stays sticky on a faint orange band), and that
-day's rows share one rounded white group with hairlines. The viewer's words and
+and refresh at the right; it stays sticky, painting the page's own flat
+colour), and that day's rows share one rounded white group with hairlines. A
+day reads as one unit, the same shape as an Entries day (an unboxed label over
+its rounded group): the Splits panel, the page behind it on a phone and the
+sticky date label all paint `--splits-surface` (`:root`, halfway between the
+two Splits colours), so no band shows behind the label.
+`tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
+against Entries' and that no band shows. The viewer's words and
 figure sit at the row's right in their money tone as text only. An open inline
 split card fills its group as the row opened up. Archived batches is a dashed
 outline row.
@@ -492,10 +498,12 @@ first way in), `ask-dock-layout.js` (pure layout rules), `ask-dock-state.js`
 - The field: one white pill, 340 × 48 px, 24 px radius, the inset hairline
   and a soft shadow, fixed 22 px from the right and 29 px from the bottom
   (on the vertical centre of the 58 px + button, 12 px to its left on
-  Entries and Splits). An accent ✦ glyph, the placeholder "Ask, or drop a
-  receipt…" in muted ink, and a muted paperclip in a 44 px hit area ("Add
-  a receipt photo"). The accent focus ring shows on the pill while it has
-  focus. It hides under a dialog or an inline editor (as the + does), while
+  Entries and Splits). An accent ✦ glyph (`--accent`), the placeholder "Ask,
+  or drop a receipt…" in muted ink, and a muted paperclip in a 44 px hit area
+  ("Add a receipt photo"). The pill's edge is accent-tinted
+  (`--ask-dock-edge`, 38% `--accent-strong` over the hairline) and the accent
+  focus ring shows on it while it has focus. This is the desktop twin of the
+  phone's accent Ask tab (see "Phone Chrome"); the wide header has no Ask tab. It hides under a dialog or an inline editor (as the + does), while
   any menu or popover is open (one near the bottom right, such as Confirm
   rollback, would otherwise sit under it), and once the panel's
   conversation is showing. Page content gets 96 px of
@@ -2067,6 +2075,12 @@ the plan-table redesign.
   code and the filter stack). The lazy module must not import modules App
   imports (it receives the person chip as an element): doing so makes Rollup
   split the entry chunk and `check:bundle` fails on file count.
+- The Ask tab has an identity of its own: its icon and label are `--accent`
+  in semibold (600) even while another page is open, and open it is the same
+  pill as the others with a stronger accent tint (18% `--accent-strong`, a 40%
+  edge, label 700; the others' open pill is 12%). Only tokens, so every colour
+  preset follows; `tests/colour-contrast.test.mjs` checks the label on the bar
+  and on the open pill for every preset.
 - The round buttons: the money toggle (44 px, above the Support bar, higher on
   Entries and Splits to clear the + button) and the + button (54 px, accent
   fill with the same lift in the accent's shade) share the tab bar's right

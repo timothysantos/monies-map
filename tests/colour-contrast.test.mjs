@@ -113,6 +113,33 @@ for (const preset of PRESETS) {
     }
   });
 
+  // The phone's Ask tab (accent icon and label, semibold) reads on the tab
+  // bar and on its open pill, the strong accent at 18% over the bar. The text
+  // is the deeper --accent (the accent's text token); the pill is
+  // --accent-strong. The dock field on desktop carries the same --accent icon
+  // on the paper.
+  test(`${id}: the Ask tab's accent reads AA on the tab bar, on its open pill and on the dock field`, () => {
+    const INK = rgb("--accent");
+    const CHROME = rgb("--chrome-surface");
+    assertAA(INK, CHROME, "accent on the tab bar");
+    assertAA(INK, mix(rgb("--accent-strong"), 0.18, CHROME), "accent on the open Ask pill");
+    assertAA(INK, PAPER, "accent on the dock field");
+  });
+
+  // The Splits page is one flat colour halfway between its two ends
+  // (--splits-surface): the text on a strong fill reads AA on it, and its
+  // secondary lines (78%) read no worse than they did on the lighter end of
+  // the wash it replaces.
+  test(`${id}: text on a strong fill reads on the flat Splits colour as well as on the wash it replaces`, () => {
+    const ON = rgb("--on-strong-rgb");
+    const light = rgb("--splits-rgb");
+    const flat = mix(light, 0.5, SPLITS_DEEP);
+    assertAA(ON, flat, "on-strong on the flat Splits colour");
+    const secondary = (surface) => contrast(mix(ON, 0.78, surface), surface);
+    const worstEnd = Math.min(secondary(light), secondary(SPLITS_DEEP));
+    assert.ok(secondary(flat) >= worstEnd - 0.001, `78% on-strong is ${secondary(flat).toFixed(2)}:1 on the flat colour, ${worstEnd.toFixed(2)}:1 at the wash's worst end`);
+  });
+
   test(`${id}: fills stay ${isDark ? "dark" : "soft"}`, () => {
     for (const name of [...HUES.map((hue) => `--pastel-${hue}`), "--pastel-neutral", "--bg"]) {
       const [lightness, a, b] = lab(rgb(name));
