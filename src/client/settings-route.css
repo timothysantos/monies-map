@@ -1008,8 +1008,49 @@
   min-height: 56px;
 }
 
-/* Settings > Colours (design.md, "Colour presets"): a chip per preset,
-   its four colour dots and its name; the chosen one takes the accent ring. */
+/* Settings > Colours (design.md, "Colour presets"): Light / Dark / Auto as
+   segmented chips (the View and scope sheet's pattern), then a chip per
+   preset, its four colour dots and its name; the chosen one takes the
+   accent ring. */
+.settings-colour-modes {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  max-width: 360px;
+  margin-bottom: 10px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(var(--ink-rgb, 38 35 31) / 0.04);
+}
+
+.settings-colour-mode {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-colour-mode[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: var(--card-shadow);
+  font-weight: 700;
+}
+
+.settings-colour-mode:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
 .settings-colour-presets {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

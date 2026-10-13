@@ -41,7 +41,9 @@ export const settingsMessages = {
   // with the presets in src/client/colour-presets.js.
   coloursTitle: "Colours",
   coloursChoiceLabel: "Colour scheme",
-  coloursDeviceHint: "Saved on this device only.",
+  coloursModeLabel: "Light or dark",
+  coloursModes: { light: "Light", dark: "Dark", auto: "Auto" },
+  coloursDeviceHint: "Auto follows your phone's light or dark setting. Saved on this device only.",
   accountsTitle: "Accounts",
   accountsDetail: "Reference finance accounts used by imports, entries, and planning.",
   addAccount: "+ Add account",
