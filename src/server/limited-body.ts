@@ -58,6 +58,13 @@ export async function readJsonBody(request: Request, maxBytes: number): Promise<
   }
 }
 
+// The parsed JSON body as an object: {} when it is not valid JSON or not an
+// object, so a route reads its fields from it without a null check.
+export async function readJsonObject<T extends object>(request: Request, maxBytes: number): Promise<Partial<T>> {
+  const parsed = await readJsonBody(request, maxBytes);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Partial<T> : {};
+}
+
 // The multipart form body, parsed after its size is known to be within the limit.
 export async function readFormBody(request: Request, maxBytes: number): Promise<FormData> {
   const bytes = await readBodyBytes(request, maxBytes);

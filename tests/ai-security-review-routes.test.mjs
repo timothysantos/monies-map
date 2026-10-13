@@ -186,3 +186,33 @@ test("F5: /api/entries/create refuses a date, amount or text the editors never s
   assert.equal(saved.status, 200, JSON.stringify(saved.payload));
   assert.equal(saved.payload.created, true);
 });
+
+test("F4: the older AI routes are bounded the same way, and an oversized body is a 413 whichever route read it", async () => {
+  const limits = {
+    "/api/ai-assist/monthly-narrative": 64 * 1024,
+    "/api/ai-assist/statement-text-fallback": 64 * 1024,
+    "/api/ai-assist/transfer-match-ranking": 64 * 1024,
+    "/api/ai-assist/import-match-ranking": 256 * 1024,
+    "/api/ai-assist/import-explanation": 4 * 1024 * 1024
+  };
+  for (const [path, limit] of Object.entries(limits)) {
+    const { env } = aiEnv();
+    const state = { pulled: 0 };
+    const response = await handleAiAssistRoute(chunkedRequest(path, "application/json", limit * 3 + 1024 * 1024, state), new URL(`http://127.0.0.1${path}`), env);
+    assert.equal(response.status, 413, path);
+    assert.deepEqual(await response.json(), { ok: false, error: "The request is too large." });
+    assert.ok(state.pulled <= limit + 128 * 1024, `${path} read ${state.pulled} bytes`);
+  }
+});
+
+test("F4: no server route reads a body without a limit (a new route must use limited-body.ts)", async () => {
+  const { readdir, readFile } = await import("node:fs/promises");
+  const dir = new URL("../src/server/", import.meta.url);
+  const offenders = [];
+  for (const name of await readdir(dir)) {
+    if (!name.endsWith(".ts") || name === "limited-body.ts") continue;
+    const source = await readFile(new URL(name, dir), "utf8");
+    if (/request\.(json|formData|text|arrayBuffer|blob)\s*[<(]/.test(source)) offenders.push(name);
+  }
+  assert.deepEqual(offenders, []);
+});
