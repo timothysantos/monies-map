@@ -1,5 +1,6 @@
 import "./ui/lead-support-detail.css";
 import "./sheet-swipe.css";
+import { FocusScope } from "@radix-ui/react-focus-scope";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { sheetSwipeCopy as copy } from "./copy/sheet-swipe-copy";
@@ -333,13 +334,22 @@ export function SheetDiscardConfirm({ open, onKeepEditing, onDiscard }) {
   return (
     <>
       <div className="sheet-discard-scrim" aria-hidden="true" onClick={onKeepEditing} />
-      <div className="sheet-discard-confirm" role="alertdialog" aria-modal="true" aria-labelledby={titleId}>
-        <strong id={titleId} className="sheet-discard-title">{copy.discardTitle}</strong>
-        <div className="sheet-discard-actions">
-          <button type="button" className="lsd-quiet is-danger" onClick={onDiscard}>{copy.discard}</button>
-          <button type="button" ref={keepRef} className="lsd-primary" onClick={onKeepEditing}>{copy.keepEditing}</button>
+      {/* Its own looping focus scope: the form behind is inert, and a loop over the sheet would end on a control that cannot take focus. */}
+      <FocusScope
+        asChild
+        loop
+        trapped
+        onMountAutoFocus={(event) => event.preventDefault()}
+        onUnmountAutoFocus={(event) => event.preventDefault()}
+      >
+        <div className="sheet-discard-confirm" role="alertdialog" aria-modal="true" aria-labelledby={titleId}>
+          <strong id={titleId} className="sheet-discard-title">{copy.discardTitle}</strong>
+          <div className="sheet-discard-actions">
+            <button type="button" className="lsd-quiet is-danger" onClick={onDiscard}>{copy.discard}</button>
+            <button type="button" ref={keepRef} className="lsd-primary" onClick={onKeepEditing}>{copy.keepEditing}</button>
+          </div>
         </div>
-      </div>
+      </FocusScope>
     </>
   );
 }

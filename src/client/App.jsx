@@ -55,6 +55,8 @@ import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
+import { focusDialogOnOpen } from "./focus-utils";
+import { installDialogFocusReturn } from "./sheet-focus-return";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import {
   buildAppShellErrorMessage,
@@ -280,6 +282,9 @@ export function App() {
   // the Ask tab's dot and the way back in.
   const askConversation = useSyncExternalStore(askConversationPresence.subscribe, askConversationPresence.getSnapshot, askConversationPresence.getSnapshot);
   const isPhoneLayout = useIsMobileLayout();
+  useEffect(() => {
+    installDialogFocusReturn();
+  }, []);
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
@@ -3143,7 +3148,7 @@ export function App() {
                 <Dialog.Overlay className="note-dialog-overlay" />
                 <Dialog.Content
                   className="note-dialog-content split-dialog-content mobile-context-dialog"
-                  onOpenAutoFocus={(event) => event.preventDefault()}
+                  onOpenAutoFocus={focusDialogOnOpen}
                 >
                   <div className="note-dialog-head mobile-context-dialog-head">
                     <div>

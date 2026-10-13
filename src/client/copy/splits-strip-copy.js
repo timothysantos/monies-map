@@ -5,6 +5,7 @@ export const splitsStripCopy = {
   newTile: "New",
   allTile: "All",
   allGroups: "All groups",
+  groupTiles: "Split groups",
   createGroup: "Create group",
   close: "Close",
   allMore: (count) => `All · ${count} more`,

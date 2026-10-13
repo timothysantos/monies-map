@@ -2,6 +2,7 @@ import "./picker-sheet.css";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X } from "lucide-react";
 
+import { focusDialogOnOpen } from "./focus-utils";
 import { paletteColour } from "./palette-colour";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { BottomActions } from "./ui-components";
@@ -32,7 +33,7 @@ export default function PickerSheet({
       <Dialog.Overlay className="note-dialog-overlay" />
       <Dialog.Content
         className="note-dialog-content split-dialog-content mobile-select-dialog is-picker-sheet"
-        onOpenAutoFocus={(event) => event.preventDefault()}
+        onOpenAutoFocus={focusDialogOnOpen}
       >
         <SheetSwipeDismiss onClose={onClose} />
         <div className="note-dialog-head mobile-select-head">

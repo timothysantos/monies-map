@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { splitsStripCopy as copy } from "./copy/splits-strip-copy";
+import { focusDialogOnOpen } from "./focus-utils";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { useKeyboardInset } from "./use-keyboard-inset";
 import { BottomActions, getIconComponent } from "./ui-components";
@@ -42,7 +43,7 @@ export function SplitsGroupsSheet({ open, rows, readOnly = false, onChoose, onCr
         <Dialog.Content
           ref={setContent}
           className="note-dialog-content split-dialog-content splits-groups-sheet"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          onOpenAutoFocus={focusDialogOnOpen}
         >
           <SheetSwipeDismiss onClose={onClose} />
           <div className="note-dialog-head splits-sheet-head">

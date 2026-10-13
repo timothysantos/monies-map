@@ -23,6 +23,7 @@ const FOCUSABLE_OPENER = [
 /** @type {HTMLElement | null} */
 let lastActivated = null;
 let isWatching = false;
+let dialogReturnInstalled = false;
 
 function watchActivations() {
   if (isWatching || typeof document === "undefined") {
@@ -73,6 +74,49 @@ export function findSheetOpener() {
   }
   const active = document.activeElement;
   return active instanceof HTMLElement && !isPageRoot(active) ? active : null;
+}
+
+const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"]';
+
+/**
+ * A safety net for every dialog, sheet and popover opened from a control
+ * without a Radix trigger (most of them are): when one leaves the page and
+ * focus has fallen to <body> (a field that took focus on open is what Radix
+ * remembers, and it is gone), focus goes back to the control that opened
+ * it, else to <main>. It never moves focus a dialog already returned. Call
+ * once; it watches only the direct children of <body>, where portals attach.
+ */
+export function installDialogFocusReturn() {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined" || dialogReturnInstalled) {
+    return;
+  }
+  dialogReturnInstalled = true;
+  /** @type {{ node: Node, opener: HTMLElement | null }[]} */
+  const open = [];
+  const hasDialog = (/** @type {Node} */ node) => node instanceof Element && (node.matches(DIALOG_SELECTOR) || node.querySelector(DIALOG_SELECTOR) !== null);
+  new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (hasDialog(node)) {
+          open.push({ node, opener: findSheetOpener() });
+        }
+      }
+      for (const node of record.removedNodes) {
+        const index = open.findIndex((item) => item.node === node);
+        if (index === -1) {
+          continue;
+        }
+        const [{ opener }] = open.splice(index, 1);
+        // After Radix has had its own turn at returning focus.
+        window.setTimeout(() => {
+          const active = document.activeElement;
+          if (!active || isPageRoot(active)) {
+            returnFocusFromSheet(opener);
+          }
+        }, 60);
+      }
+    }
+  }).observe(document.body, { childList: true });
 }
 
 /**

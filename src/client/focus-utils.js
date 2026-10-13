@@ -25,3 +25,15 @@ export function selectAllOnFocus(event) {
     }
   });
 }
+
+// A dialog or sheet that must not raise the phone keyboard (so no field takes
+// focus when it opens) still has to take focus itself: otherwise it stays on
+// the control behind the dimmed page and Tab, Enter or a screen reader act on
+// the page. Pass as `onOpenAutoFocus`; the dialog content takes the focus.
+export function focusDialogOnOpen(event) {
+  event.preventDefault();
+  const content = event.currentTarget;
+  if (content instanceof HTMLElement) {
+    content.focus({ preventScroll: true });
+  }
+}

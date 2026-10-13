@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { Trash2, X } from "lucide-react";
+import { focusDialogOnOpen } from "./focus-utils";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -106,7 +107,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
         <Dialog.Content
           ref={setContent}
           className={`note-dialog-content split-dialog-content split-expense-card-dialog${dialog?.id ? "" : " split-expense-create"}`}
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          onOpenAutoFocus={focusDialogOnOpen}
           onCloseAutoFocus={onCloseAutoFocus}
           {...swipe.contentProps}
         >
@@ -208,7 +209,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
         <Dialog.Content
           ref={setContent}
           className="note-dialog-content split-dialog-content split-settlement-dialog split-expense-card-dialog"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          onOpenAutoFocus={focusDialogOnOpen}
           {...swipe.contentProps}
         >
           {isMobileLayout ? <SheetDragHandle /> : null}

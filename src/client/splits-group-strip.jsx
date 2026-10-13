@@ -147,7 +147,7 @@ export function SplitsGroupStrip({
             <span>{allLabel}</span>
           </button>
         </div>
-        <div ref={setScroller} className="splits-strip-scroll">
+        <div ref={setScroller} className="splits-strip-scroll" role="group" aria-label={copy.groupTiles}>
           {shownTiles.map((tile) => (
             <button
               key={tile.id}
@@ -169,7 +169,6 @@ export function SplitsGroupStrip({
         <button
           type="button"
           className="splits-group-bar"
-          aria-label={copy.allGroups}
           aria-haspopup="dialog"
           onClick={() => setIsSheetOpen(true)}
         >
@@ -178,6 +177,7 @@ export function SplitsGroupStrip({
             <strong>{activeGroup.name}</strong>
             <span>{activeTile?.balanceLine}</span>
           </span>
+          <span className="sr-only">, {copy.allGroups}</span>
           <ChevronDown size={18} aria-hidden="true" />
         </button>,
         document.body
