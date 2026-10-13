@@ -834,7 +834,13 @@ function mergeEntryDraftPatch(baseDraft, patch) {
     Object.prototype.hasOwnProperty.call(patch, "amountMinor")
     && !Object.prototype.hasOwnProperty.call(patch, "amountInput")
   ) {
-    delete nextDraft.amountInput;
+    if (Number(patch.amountMinor) > 0) {
+      delete nextDraft.amountInput;
+    } else {
+      // No amount in the link (a blank card): the field stays empty rather
+      // than showing "0".
+      nextDraft.amountInput = "";
+    }
   }
   return nextDraft;
 }

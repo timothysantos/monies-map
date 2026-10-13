@@ -65,6 +65,12 @@ values, or the Splits expense dialog through `?split_action=add-expense`).
 `source=ask` keeps the Apple Pay Shortcut's "Shortcut did not pass …"
 warnings off a card opened by hand: a blank card is not a Shortcut that
 lost its Amount variable (`tests/e2e/entry-form-shortcut-warning.spec.js`).
+Once the form has the values the link parameters are cleared from the URL
+(and the reload copy in session storage is dropped), so a reload or back
+step does not reopen the form; the month correction in `App.jsx` builds from
+the live address bar so it cannot put them back. A blank card's Amount is
+empty (placeholder `0.00`), and saving it empty is still refused by the
+server's "Amount must be greater than zero".
 
 ## Back to where you were
 

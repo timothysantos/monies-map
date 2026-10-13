@@ -423,6 +423,9 @@ export function EntriesPanel({
     pendingQuickExpenseDraftRef.current = null;
     setQuickExpensePendingKey("");
     openEntryComposerRef.current(draftPatch);
+    // The form now holds the draft, so the reload safety net has done its
+    // job: keeping it would reopen the form on every reload.
+    clearStoredQuickExpenseDraft();
     return undefined;
   }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
 
