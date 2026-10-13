@@ -341,7 +341,8 @@ Details and the reasons are in `docs/code-spec.md` and
   (Other, linking, settle up) is explained once in the same sentence.
   Money insights copy is linted for this (`findAppJargon`,
   `docs/money-insights-copy.md`, "Tone").
-- Colour is a faded 1970s print (cream paper, chocolate ink; the token
+- Colour is a calm 1970s print (an oat page, near-neutral cards, soft
+  chocolate ink; the token
   names stay `--pastel-*`: mint is avocado, rose brick red, sky dusty teal,
   lavender faded plum, butter harvest gold): state and category surfaces
   use the pastel tokens in `:root` of `public/styles.css`; text on a pastel

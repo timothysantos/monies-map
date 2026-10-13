@@ -1863,10 +1863,12 @@ reads the hidden pages for any such word.
 
 ## Pastel Palette
 
-Colour in the app is a faded 1970s print: warm cream paper, chocolate-brown
-ink, warm grey hairlines and soft tints of avocado, brick red, dusty teal,
-faded plum and harvest gold, with the terracotta accent and the Splits
-orange panel kept as they were. The palette lives once, in `:root` of
+Colour in the app is a calm 1970s print: an oat page with a hint of
+warmth, near-neutral cards, soft chocolate ink, warm grey hairlines and
+soft tints of avocado, brick red, dusty teal, faded plum and harvest gold,
+with the terracotta accent and the Splits orange panel kept as they were.
+(The first print's cream-tan page read too warm and creamy; 2026-10-13 it
+moved to oat and its hues were eased a little.) The palette lives once, in `:root` of
 `public/styles.css`; a state or category surface uses a fill token, and text
 on it uses the same hue's `-ink` token, which meets WCAG AA on that fill.
 Do not add saturated fills or new hex colours outside these tokens: a colour
@@ -1878,20 +1880,23 @@ mean these colours:
 
 | Token | Fill | Ink | Ink on the panel | Ink on a soft tint | Ink on the full fill | Ink on the Splits wash |
 | --- | --- | --- | --- | --- | --- | --- |
-| mint (avocado) | `--pastel-mint` #e8ebd0 | `--pastel-mint-ink` #4c5e1a | 6.95 | 6.30 | 5.89 | 5.44 |
-| rose (brick red) | `--pastel-rose` #f5ded4 | `--pastel-rose-ink` #973223 | 7.26 | 6.37 | 5.82 | 5.39 |
-| sky (dusty teal) | `--pastel-sky` #d6e7e2 | `--pastel-sky-ink` #2c5f5f | 6.98 | 6.15 | 5.63 | 5.20 |
-| lavender (faded plum) | `--pastel-lavender` #eedce6 | `--pastel-lavender-ink` #6b4360 | 7.82 | 6.80 | 6.17 | 5.71 |
-| butter (harvest gold) | `--pastel-butter` #f5e4b8 | `--pastel-butter-ink` #664a0b | 7.97 | 7.08 | 6.54 | 6.05 |
-| neutral (cream) | `--pastel-neutral` #faf4e6 | `--text` #3b2a1f | 13.22 | 12.76 | 12.46 | 11.46 |
+| mint (avocado) | `--pastel-mint` #e5e9d5 | `--pastel-mint-ink` #4a5c22 | 7.16 | 6.42 | 5.96 | 5.50 |
+| rose (brick red) | `--pastel-rose` #f3e0d9 | `--pastel-rose-ink` #933629 | 7.28 | 6.42 | 5.88 | 5.44 |
+| sky (dusty teal) | `--pastel-sky` #d8e6e3 | `--pastel-sky-ink` #2d5d5e | 7.18 | 6.30 | 5.76 | 5.32 |
+| lavender (faded plum) | `--pastel-lavender` #ebdfe6 | `--pastel-lavender-ink` #674562 | 7.83 | 6.84 | 6.23 | 5.76 |
+| butter (harvest gold) | `--pastel-butter` #f1e6c6 | `--pastel-butter-ink` #63490f | 8.19 | 7.32 | 6.78 | 6.26 |
+| neutral (oat) | `--pastel-neutral` #f7f4ee | `--text` #352b24 | 13.39 | 12.89 | 12.57 | 11.56 |
 
-The surfaces: `--bg` #ebdec5 (the body behind the header), `--page`
-#ede0c8 (cream-tan, the page every route sits on), `--card` #fffbf4 (the
-lead and metric cards, a soft step lighter, with `--card-border` and
-`--card-shadow`), `--panel` rgba(255, 253, 248, 0.95) (a warm paper card),
-`--text` #3b2a1f (chocolate), `--muted` #6e5f54 (warm grey-brown, 4.70 on
-the page) and `--line` rgba(110, 95, 84, 0.2) (a warm grey
-hairline). `--accent` #934923 and `--accent-strong` #b15e2f did not change.
+The surfaces: `--bg` #e5dfd4 (the body behind the header), `--page`
+#e9e4da (oat, the page every route sits on), `--card` #fefdfb (the lead
+and metric cards, near-neutral and a soft step lighter, with
+`--card-border` and `--card-shadow`), `--panel` rgba(254, 253, 250, 0.95)
+(a paper card), `--text` #352b24 (soft chocolate), `--muted` #6a5f57 (warm
+grey-brown) and `--line` rgba(105, 95, 86, 0.2) (a warm grey hairline).
+`tests/colour-presets.test.mjs` keeps it calm: the page and body carry a
+hint of warmth (Lab chroma 3 to 7), the card and neutral fill stay
+near-neutral, the chip half the old cream, and 70s Warm Dark's surfaces
+are an espresso charcoal (chroma 5 or less), not brown-orange. `--accent` #934923 and `--accent-strong` #b15e2f did not change.
 Harvest gold's ink is a dark mustard: a mid gold such as #b48639 is only
 3.2:1 as text on the cream, so gold is a surface, never text.
 
@@ -1916,7 +1921,7 @@ other tint, text uses that tint's ink instead.
 ## Colour Presets
 
 The 70s Warm palette above is the default. **Settings → Colours** offers
-five more whole schemes, each with its own accent, Splits panel, money
+eight more whole schemes, each with its own accent, Splits panel, money
 tones, surfaces, category and person colours, and every scheme comes in a
 **Light** and a **Dark** mode. Above the preset chips a Light / Dark / Auto
 switch (the View and scope sheet's segmented pattern) picks the mode; Auto,
@@ -1927,12 +1932,24 @@ lavender "think about").
 
 | Preset | Id | Light | Dark | Accent / Splits panel (light; dark) |
 | --- | --- | --- | --- | --- |
-| 70s Warm | `70s` | cream-tan page, cream cards, chocolate ink (the default) | chocolate night, warm cream ink | terracotta #b15e2f / terracotta; lifted terracotta #e8996a / soft terracotta |
-| 60s Mod | `60s` | pale teal-cream page, cream cards, charcoal | deep teal charcoal | teal #127a74 / teal; bright teal #4cc3b8 / soft teal |
-| 80s Pop | `80s` | lilac page, lilac-white cards, deep indigo | deep indigo night | magenta #b0198a / magenta into purple; neon pink #f07ad0 / orchid into lilac |
+| 70s Warm | `70s` | oat page, near-neutral cards, soft chocolate ink (the default) | espresso charcoal, warm off-white ink | terracotta #b15e2f / terracotta; lifted terracotta #e8996a / soft terracotta |
+| 60s Mod | `60s` | cool off-white page, teal-grey ink; mustard eyebrows, tangerine chips | deep teal | teal #0f7d74 / teal; bright teal #5dd3c5 / soft teal |
+| 80s Pop | `80s` | lilac-white page, deep indigo ink; electric violet eyebrows, aqua chips | near-black indigo, neon accents | hot magenta #c2108f / magenta into electric violet; neon magenta #ff7ad8 / neon pink into lilac |
 | Modern | `modern` | cool grey-blue page, white cards, crisp fintech | slate blue | indigo #4f46e5 / indigo; soft indigo #a9a5ff / periwinkle |
 | Black & White | `mono` | grey page, white cards, black ink | white on black | near-black #1a1a1a / black; near-white #f0f0f0 / light grey |
 | Code | `code` | Solarized-style base2 page, base3 cards (Code Light) | the terminal look it always had (Code Dark) | blue #1f6aa5 / Solarized orange; cyan #56d4dd / amber #e3b341 |
+| Midnight Calm | `midnight` | dusky moonlight-blue page, navy ink, sage eyebrows, low-contrast cards | deep navy ink, moonlight-blue text, sage eyebrows | slate blue #3a5f8f / slate navy; moonlight blue #a6c4ea / moonlight blue |
+| Gen Z 2026 | `genz` | soft pink-grey page, digital lavender, bubblegum eyebrows, acid-lime chips | near-black page, lavender, bubblegum eyebrows | digital lavender #7652e0 / lavender; light lavender #c4adff / acid lime |
+| Futuristic | `future` | chrome-grey page, graphite ink, steel-blue eyebrows, ice-blue chips | obsidian page, chrome-grey cards, ice-blue eyebrows | deep cyan #00788f / graphite into obsidian; cyan glow #6ae0f7 / chrome silver |
+
+60s Mod (teal, mustard, tangerine) and 80s Pop (hot magenta, electric
+violet, aqua) used to share a teal; since 2026-10-13 they differ at a
+glance in page, accent, eyebrow, chip and Splits panel, which
+`tests/colour-presets.test.mjs` checks by Lab distance and hue, along with
+each newer preset's own hues (Midnight's navy and sage, Gen Z's lavender,
+bubblegum and lime, Futuristic's cyan and grey Splits panel). The newer
+sheets were tuned with the contrast rules below; their light pages sit at
+different lightness so no two presets share a page.
 
 Each preset's identity shows beyond the accent, the same way in every
 preset and mode:
@@ -1951,8 +1968,9 @@ preset and mode:
   floating buttons and the header's period controls) is a light tint of the
   preset in light modes and a lifted surface in dark ones.
 - **Second colour.** `--eyebrow` is the preset's second colour (70s mustard,
-  60s burnt orange, 80s electric teal, Modern cyan, Code magenta in light
-  and violet in dark; Black & White a grey). Section eyebrows
+  60s mustard, 80s electric violet, Modern cyan, Code magenta in light
+  and violet in dark, Midnight sage, Gen Z bubblegum, Futuristic steel
+  and ice blue; Black & White a grey). Section eyebrows
   (`.financial-insight-label`, "Ethan's money insights") and the lead
   card's eyebrow (`.lsd-eyebrow`) use it. Plain chips (`.lsd-chip`) take
   `--chip`, a soft tint of a preset hue.
@@ -1972,14 +1990,14 @@ How it works:
   neutral dark in every preset. New CSS uses these tokens, never a raw
   colour. On the tinted page the strong accent is a mark (a ring, an icon,
   large text, 3:1); small accent text on the page uses `--accent` (70s Warm
-  Light's strong accent is 3.57:1 on the page): the text actions
+  Light's strong accent is 3.67:1 on the page): the text actions
   (`.subtle-action`, `.lsd-quiet`, the Show more rows), the phone's month
   carets and steppers and the Splits strip's New and All. The label on an open
   phone tab pill is `--tab-pill-ink`, `--accent` in a light mode and
   `--accent-strong` in a dark one (the dark sheets set it).
 - **Sheets.** A preset in a mode is one small stylesheet,
   `public/palettes/<id>-<light|dark>.css` (about 2.5 kB, minified by the
-  build like `styles.css`): eleven sheets, every pair but the 70s Warm
+  build like `styles.css`): seventeen sheets, every pair but the 70s Warm
   light default, which is `:root` of the first-screen CSS. A sheet
   overrides the tokens under `:root[data-palette="<id>"]` with
   `:not([data-mode="dark"])` (light) or `[data-mode="dark"]` (dark); 70s
@@ -2016,7 +2034,7 @@ How it works:
   4.5:1 on a light panel; light text on a dark accent could not also read
   as accent text on the dark page).
 
-`tests/colour-contrast.test.mjs` runs every check against all twelve
+`tests/colour-contrast.test.mjs` runs every check against all eighteen
 preset and mode pairs: money inks on the page, cards, panel, paper, chips,
 soft tint (over the page, a card and the panel), full fill and Splits wash;
 text, muted and eyebrow on every neutral surface; the accent; text on a

@@ -1646,9 +1646,9 @@ CPU/resource headroom if the production data size now requires it.
 ## How do the colour presets load?
 
 The 70s Warm light default is the only scheme in the first-screen
-`styles.css`. Every other preset and mode (Settings → Colours: six presets,
+`styles.css`. Every other preset and mode (Settings → Colours: nine presets,
 each Light or Dark, or Auto to follow the phone) is a small stylesheet in
-`public/palettes/<id>-<light|dark>.css` (eleven sheets, including
+`public/palettes/<id>-<light|dark>.css` (seventeen sheets, including
 `70s-dark.css`) that overrides the colour tokens under
 `:root[data-palette="<id>"]` and `data-mode`; the build minifies them like
 `styles.css`. A short inline script in `index.html` reads the stored
