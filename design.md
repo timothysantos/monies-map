@@ -394,11 +394,12 @@ spending. Once answered it stays in the thread, faded.
 - Tag row: the line's own kind chip (`CheckInChip`: To do, Something to
   think about, Worth knowing, Going well) and, when the optional AI added
   words, the butter "Worded by AI" tag.
-- Head: a neutral bubble with a lightbulb, the line as the page showed it
-  (wrapping, not cut) and, muted under it, the label of the figure it is
-  about; that figure on the right in plain ink (the basis line holding the
-  signal's primary amount). No figure when the line is about a count.
-- Detail: the line's think line in muted ink, the AI's words (only when
+- Head: a neutral bubble with a lightbulb, the label of the figure the line
+  is about and that figure on the right in plain ink (the basis line
+  holding the signal's primary amount). A line about a count has no figure:
+  the line itself is the head.
+- Detail: the line as the page showed it, bold and wrapping (so a long line
+  never squeezes the head), the line's think line in muted ink, the AI's words (only when
   they passed the check), "What it's based on" with the signal's basis
   lines as quiet rows (label left, amount or value right, plain ink), and,
   when entries are behind it, "The entries": at most five rows, largest

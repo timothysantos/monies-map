@@ -12,7 +12,6 @@ import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 const iPhone = devices["iPhone 12 Pro"].viewport;
 const MONTH_PATH = "/month?view=person-tim&month=2026-05&scope=direct_plus_shared";
-const SUMMARY_PATH = "/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05";
 
 const suggestions = (page) => page.getByRole("group", { name: "Suggestions" }).getByRole("button");
 const card = (page) => page.locator("[data-ask-insight]");
@@ -26,7 +25,12 @@ test.describe("Ask about this on a phone", () => {
   test.use({ viewport: iPhone });
 
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    // Shown at first; a test may hide them, and a reload keeps its choice.
+    await page.addInitScript(() => {
+      if (window.localStorage.getItem("monies-map:money-totals-visible") === null) {
+        window.localStorage.setItem("monies-map:money-totals-visible", "true");
+      }
+    });
     await page.goto("/");
     await reseedDemo(page);
   });
@@ -44,11 +48,13 @@ test.describe("Ask about this on a phone", () => {
     expect(askBox.y + askBox.height).toBeLessThanOrEqual(foldBox.y + 1);
     expect(askBox.height).toBeGreaterThanOrEqual(44);
 
+    // Ask opens for the view, month and scope the page was showing.
+    const shown = new URL(page.url()).searchParams;
     await ask.click();
-    await expect(page).toHaveURL(/\/ask\?view=person-tim&month=2026-05&scope=direct_plus_shared$/);
+    await expect(page).toHaveURL(new RegExp(`/ask\\?view=${shown.get("view")}&month=${shown.get("month")}&scope=${shown.get("scope")}$`));
     await expect(page.locator(".ask-me").last()).toHaveText(question(fact));
     await expect(card(page)).toBeVisible();
-    await expect(card(page).locator(".ask-answer-title")).toHaveText(fact);
+    await expect(card(page).locator(".ask-insight-fact")).toHaveText(fact);
     await expect(card(page).locator(".ask-insight-think")).toHaveText(think);
     await expect(card(page)).toHaveAttribute("data-wording-source", "facts");
     await expect(card(page).getByText("Worded by AI")).toHaveCount(0);
@@ -103,6 +109,7 @@ test.describe("Ask about this on a phone", () => {
     await expect(page.locator(".ask-me").last()).toHaveText("Explain this money insight");
     await expect(card(page).last().locator(".ask-answer-title")).toHaveText("A money insight");
     await expect(card(page).last().locator(".ask-brief-hidden")).toHaveText("Reveal money totals to read these insights.");
+    await expect(card(page).last().locator(".ask-insight-fact")).toHaveCount(0);
     await expect(card(page).last()).not.toContainText("$");
     await expect(card(page).last().locator(".ask-insight-basis")).toHaveCount(0);
 
@@ -124,13 +131,13 @@ test.describe("Ask about this on a wide screen", () => {
     await reseedDemo(page);
   });
 
-  test("the headline opens the Ask panel beside Summary; a checked AI explanation carries Worded by AI", async ({ page }) => {
+  test("the headline opens the Ask panel beside Month; a checked AI explanation carries Worded by AI", async ({ page }) => {
     let sent = null;
     await page.route("**/api/ai-assist/insight-explain", async (route) => {
       sent = route.request().postDataJSON();
       await route.fulfill({ json: { ok: true, explanation: { text: "This is what the line above says, in short.", source: "ai" }, ai: { requested: true, available: true } } });
     });
-    await gotoPageAfterApi(page, SUMMARY_PATH, "/api/summary-page", () => page.locator(".financial-insight").first());
+    await openMonth(page);
     const headline = page.locator(".financial-insight-content .checkin-fact");
     await expect(headline).toBeVisible();
     const fact = (await headline.textContent()).trim();
@@ -138,9 +145,9 @@ test.describe("Ask about this on a wide screen", () => {
 
     const dock = page.locator(".ask-dock");
     await expect(dock).toBeVisible();
-    await expect(page).toHaveURL(/\/summary\?/);
+    await expect(page).toHaveURL(/\/month\?/);
     await expect(dock.locator(".ask-me").last()).toHaveText(question(fact));
-    await expect(dock.locator("[data-ask-insight] .ask-answer-title")).toHaveText(fact);
+    await expect(dock.locator("[data-ask-insight] .ask-insight-fact")).toHaveText(fact);
     await expect(dock.locator("[data-ask-insight]")).toHaveAttribute("data-wording-source", "ai");
     await expect(dock.locator("[data-ask-insight]").getByText("Worded by AI")).toBeVisible();
     await expect(dock.locator(".ask-insight-explanation")).toHaveText("This is what the line above says, in short.");

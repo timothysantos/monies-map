@@ -17,7 +17,10 @@ const ENTRY_ROWS = 5;
 // The answer to an insight question (design.md "Insight answer";
 // docs/flows/ask-flow.md "Insight questions"): the shared LeadCard. Lead:
 // the insight's kind chip, the line as the page showed it and the figure it
-// is about; Detail: its think line, the optional AI explanation (tagged
+// is about (the head is that figure's label and amount, and the line
+// itself opens the Detail, so a long line never squeezes the head; a line
+// about a count is the head itself); Detail: its think line, the optional
+// AI explanation (tagged
 // "Worded by AI"), what it is based on (the signal's own figures) and the
 // entries behind it, read from the Entries page DTO through the Entries
 // page's own filtering (ask-filter-answer.js), so Open in Entries shows the
@@ -27,6 +30,8 @@ const ENTRY_ROWS = 5;
 export function AskInsightAnswerCard({ id = undefined, answer, explanation = null, settled = false, queryClient, fetchEntriesPage, trackedMonths = undefined, today }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const aiWorded = Boolean(explanation?.text) && explanation.source === "ai" && areTotalsVisible;
+  const factInHead = !answer.lead;
+  const title = !areTotalsVisible ? askCopy.insight.hiddenTitle : factInHead ? answer.fact : answer.lead.label;
   return (
     <LeadCard
       id={id}
@@ -46,13 +51,13 @@ export function AskInsightAnswerCard({ id = undefined, answer, explanation = nul
         </span>
       )}
       category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: Lightbulb }}
-      title={<strong className="lsd-title ask-answer-title">{areTotalsVisible ? answer.fact : askCopy.insight.hiddenTitle}</strong>}
-      subtitle={answer.lead ? <span className="ask-answer-detail">{answer.lead.label}</span> : null}
+      title={<strong className={`lsd-title ask-answer-title${factInHead && areTotalsVisible ? " ask-insight-fact" : ""}`}>{title}</strong>}
       amount={answer.lead ? <span className="ask-answer-amount"><PrivateMoney>{moneyWithCurrency(answer.lead.amountMinor, answer.lead.currency)}</PrivateMoney></span> : null}
       tone="neutral"
     >
       {areTotalsVisible ? (
         <>
+          {factInHead ? null : <p className="ask-insight-fact">{answer.fact}</p>}
           {answer.think ? <p className="ask-insight-think">{answer.think}</p> : null}
           {aiWorded ? <p className="ask-money-wording ask-insight-explanation">{explanation.text}</p> : null}
           {answer.lines.length ? (
