@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { getPersonColour } from "../../src/client/person-colour.js";
+import { getPersonColourVars } from "../../src/client/person-colour.js";
 import { reseedDemo } from "./helpers";
 
 // The phone chrome in the Lead · Support · Detail hierarchy (design.md,
@@ -136,7 +136,7 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
       // the household gets a neutral chip.
       if (person) {
         await expect(chip, url).toHaveText(person);
-        expect(await chip.evaluate((element) => element.style.getPropertyValue("--person-colour")), url).toBe(getPersonColour(person));
+        expect(await chip.evaluate((element) => element.style.getPropertyValue("--person-colour")), url).toBe(getPersonColourVars(person)["--person-colour"]);
         await expect(trigger.locator(".mobile-context-scope"), url).toHaveText(scope);
         // A screen reader hears what it heard before.
         await expect(trigger, url).toHaveAccessibleName(`${person} · ${scope} View and scope`);
@@ -191,7 +191,7 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
     const lead = sheet.locator(".mobile-context-lead");
     const leadChip = lead.locator(".mobile-context-person-chip");
     await expect(leadChip).toHaveText("Tim");
-    expect(await leadChip.evaluate((element) => element.style.getPropertyValue("--person-colour"))).toBe(getPersonColour("Tim"));
+    expect(await leadChip.evaluate((element) => element.style.getPropertyValue("--person-colour"))).toBe(getPersonColourVars("Tim")["--person-colour"]);
     await expect(lead).toContainText("Direct + Shared");
     await expect(lead).toContainText("Tim's entries plus their share of split expenses.");
     const islandChipSize = Number.parseFloat(await style(page.locator(".mobile-context-sticky-bar .mobile-context-person-chip"), "fontSize"));
@@ -397,5 +397,56 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
     expect(await style(monthSheet, "borderTopLeftRadius")).toBe(await chromeToken(page, "--sheet-radius"));
     expect(await style(monthSheet.getByRole("heading", { name: "Pick a month" }), "fontSize")).toBe(scopeTitle);
     expect(await smallTargets(monthSheet.locator(".mobile-context-dialog-head"))).toEqual([]);
+  });
+
+  // The Ask tab has an identity of its own (design.md, "Phone Chrome"): its
+  // icon and label are the preset's accent in semibold even when it is not
+  // the open page, and open it is the same pill as the other tabs with a
+  // stronger accent tint. Every colour comes from the --accent (text) and
+  // --accent-strong (pill) tokens, so it follows each colour preset.
+  test("the Ask tab is the accent in semibold, open or not, and its open pill is tinted stronger than the others'", async ({ page }) => {
+    await phone(page);
+    await openUsable(page, `/entries?view=person-tim&month=${MONTH}`);
+    const resolveColour = (css) => page.evaluate((value) => {
+      const probe = document.createElement("span");
+      probe.style.color = value;
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).color;
+      probe.remove();
+      return colour;
+    }, css);
+    const accent = await resolveColour("var(--accent)");
+    const strong = await resolveColour("var(--accent-strong)");
+    const muted = await resolveColour("var(--muted)");
+    expect(accent).toMatch(/^rgb\(/);
+    expect(strong).not.toBe(accent);
+    const tabs = page.locator("nav.tab-strip");
+    const ask = tabs.getByRole("link", { name: "Ask", exact: true });
+    const alpha = (value) => Number(value.match(/,\s*([\d.]+)\)$/)?.[1] ?? 1);
+
+    // Not open (Entries is): accent icon and label, semibold; Splits stays quiet.
+    await expect(ask).not.toHaveClass(/is-active/);
+    expect(await style(ask.locator(".tab-label-with-badge > span"), "color")).toBe(accent);
+    expect(Number(await style(ask.locator(".tab-label-with-badge > span"), "fontWeight"))).toBeGreaterThanOrEqual(600);
+    expect(await style(ask.locator(".tab-icon"), "color")).toBe(accent);
+    const splitsTab = tabs.getByRole("link", { name: "Splits", exact: true });
+    expect(await style(splitsTab, "color")).toBe(muted);
+    expect(Number(await style(splitsTab, "fontWeight"))).toBeLessThan(600);
+    const entriesTab = tabs.getByRole("link", { name: "Entries", exact: true });
+    await expect(entriesTab).toHaveClass(/is-active/);
+    const openTint = alpha(await style(entriesTab, "backgroundColor"));
+    expect(await style(ask, "backgroundColor")).toBe("rgba(0, 0, 0, 0)");
+
+    // Open: still the accent in semibold, on a pill tinted stronger than the
+    // other open tabs', in the accent's own channels.
+    await ask.click();
+    await expect(ask).toHaveClass(/is-active/);
+    expect(await style(ask.locator(".tab-label-with-badge > span"), "color")).toBe(accent);
+    expect(Number(await style(ask.locator(".tab-label-with-badge > span"), "fontWeight"))).toBeGreaterThanOrEqual(600);
+    const askBackground = await style(ask, "backgroundColor");
+    expect(askBackground.replace(/,\s*[\d.]+\)$/, ")").replace("rgba", "rgb")).toBe(strong);
+    expect(alpha(askBackground)).toBeGreaterThan(openTint);
+    // Still a 44px target in the same bar.
+    expect((await ask.boundingBox()).height).toBeGreaterThanOrEqual(44);
   });
 });

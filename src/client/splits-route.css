@@ -559,9 +559,7 @@ button.split-activity-card:hover {
 
 @media (max-width: 760px) {
   .panel-splits {
-    background:
-      linear-gradient(180deg, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96)),
-      linear-gradient(135deg, rgb(var(--paper-rgb) / 0.12), transparent 45%);
+    background: var(--splits-surface);
     color: var(--on-strong);
     min-height: calc(100dvh - 104px - env(safe-area-inset-bottom, 0px));
     padding-top: 8px;

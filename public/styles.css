@@ -46,6 +46,9 @@
   --splits-deep-rgb: 155 74 33;
   --splits: rgb(var(--splits-rgb));
   --splits-deep: rgb(var(--splits-deep-rgb));
+  /* The Splits page's one flat colour (panel, page behind it and the sticky
+     date label), halfway between the two. */
+  --splits-surface: color-mix(in srgb, var(--splits) 50%, var(--splits-deep));
   --shadow: 0 10px 30px rgba(59, 42, 31, 0.06);
   /* Pastel palette, 1970s warm direction: design.md "Pastel palette".
      The names stay; mint is avocado, rose brick red, sky dusty teal,
@@ -2347,7 +2350,9 @@ body[data-split-inline-editor] .ask-dock-field {
   padding-left: 14px;
   border-radius: 24px;
   background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line), 0 12px 30px rgba(27, 24, 21, 0.14);
+  /* The accent-tinted edge is the desktop twin of the phone's accent Ask tab. */
+  --ask-dock-edge: color-mix(in srgb, var(--accent-strong) 38%, var(--line));
+  box-shadow: inset 0 0 0 1px var(--ask-dock-edge), 0 12px 30px rgba(27, 24, 21, 0.14);
 }
 
 /* The field is fixed over the page's bottom right. The shell's bottom padding
@@ -2365,12 +2370,12 @@ body[data-split-inline-editor] .ask-dock-field {
 }
 
 .ask-dock-field:focus-within {
-  box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px color-mix(in srgb, var(--accent-strong) 45%, transparent), 0 12px 30px rgba(27, 24, 21, 0.14);
+  box-shadow: inset 0 0 0 1px var(--ask-dock-edge), 0 0 0 2px color-mix(in srgb, var(--accent-strong) 55%, transparent), 0 12px 30px rgba(27, 24, 21, 0.14);
 }
 
 .ask-dock-field-icon {
   flex: none;
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .ask-dock-field-input {
@@ -3080,10 +3085,11 @@ body[data-ask-dock="docked"] .environment-banner {
   overflow-wrap: anywhere;
 }
 
+/* One flat colour, not a wash: the sticky date label
+   (splits-activity-list.css) paints the same colour, so no band shows
+   behind it. */
 .panel-splits {
-  background:
-    linear-gradient(180deg, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96)),
-    linear-gradient(135deg, rgb(var(--paper-rgb) / 0.12), transparent 45%);
+  background: var(--splits-surface);
   color: var(--on-strong);
   min-height: calc(100dvh - 190px);
 }
@@ -6753,9 +6759,7 @@ th {
   }
 
   body[data-splits-panel] {
-    background:
-      linear-gradient(180deg, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96)),
-      linear-gradient(135deg, rgb(var(--paper-rgb) / 0.12), transparent 45%);
+    background: var(--splits-surface);
   }
 
   .shell {
@@ -6816,9 +6820,7 @@ th {
   }
 
   body[data-splits-panel] .shell {
-    background:
-      linear-gradient(180deg, rgb(var(--splits-rgb) / 0.96), rgb(var(--splits-deep-rgb) / 0.96)),
-      linear-gradient(135deg, rgb(var(--paper-rgb) / 0.12), transparent 45%);
+    background: var(--splits-surface);
   }
 
   .panel,
@@ -7551,6 +7553,22 @@ th {
     border-color: rgb(var(--accent-strong-rgb) / 0.2);
     background: rgb(var(--accent-strong-rgb) / 0.12);
     color: var(--accent-strong);
+  }
+
+  /* The Ask tab has an identity of its own: its icon and label are the
+     accent's text colour in semibold even when another page is open, and
+     open it is the same pill with a stronger accent tint
+     (tests/colour-contrast.test.mjs checks both for every preset). */
+  .tab.tab-phone-only {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .tab.tab-phone-only.is-active {
+    border-color: rgb(var(--accent-strong-rgb) / 0.4);
+    background: rgb(var(--accent-strong-rgb) / 0.18);
+    color: var(--accent);
+    font-weight: 700;
   }
 
   .period-display {

@@ -427,4 +427,36 @@ test.describe("desktop Ask", () => {
     await expect(page.locator(".ask-dock .ask-me")).toHaveText(["how much on bills?"]);
     await expect(message(page)).toHaveValue("and a kopi, and a bun");
   });
+
+  // The phone's Ask tab is the accent; its desktop equivalent is this field
+  // (the wide header has no Ask tab). Icon, edge and focus ring are all the
+  // --accent-strong token, so they follow every colour preset.
+  test("the Ask field wears the accent: an accent icon and an accent-tinted edge, and the header has no Ask tab", async ({ page }) => {
+    const month = await trackedMonth(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openUsable(page, `/entries?view=person-tim&month=${month}`);
+    const resolve = (value) => page.evaluate((css) => {
+      const probe = document.createElement("span");
+      probe.style.color = css;
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).color;
+      probe.remove();
+      return colour;
+    }, value);
+    const accent = await resolve("var(--accent)");
+    const edge = await resolve("color-mix(in srgb, var(--accent-strong) 38%, var(--line))");
+    const line = await resolve("var(--line)");
+    const dock = page.locator(".ask-dock-field");
+    await expect(dock).toBeVisible();
+    expect(await dock.locator(".ask-dock-field-icon").evaluate((icon) => getComputedStyle(icon).color)).toBe(accent);
+    const shadow = await dock.evaluate((element) => getComputedStyle(element).boxShadow);
+    // The 1px inset edge is the accent-tinted colour, not the plain hairline.
+    expect(shadow).toContain(`${edge} 0px 0px 0px 1px inset`);
+    expect(shadow).not.toContain(`${line} 0px 0px 0px 1px inset`);
+    // The attach button stays a quiet 44px target.
+    expect((await dock.getByRole("button", { name: /photo|receipt|attach/i }).boundingBox()).width).toBe(44);
+    // The wide header has no Ask tab: the field is its desktop entry point.
+    const names = await page.locator("nav.tab-strip > .tab").evaluateAll((tabs) => tabs.filter((tab) => tab.offsetParent).map((tab) => tab.getAttribute("aria-label") ?? tab.textContent.trim()));
+    expect(names).not.toContain("Ask");
+  });
 });
