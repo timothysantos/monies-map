@@ -213,6 +213,70 @@ popup unless a menu or picker inside handled it or the person is typing in
 a field on the page; the docked panel, a fixture beside the page, closes
 only when focus is inside it.
 
+## AI first
+
+Owner decision, 2026-10-13: AI understands, the app validates, rules are
+the offline backup. Every message (typed, spoken, a chip's answer, the
+money jobs menu's question, a message on the Apple Pay card, the Entries +
+card or the Splits receipt card) goes first to `POST /api/ask/turn`
+(`src/server/ask-turn-route.ts`) with:
+
+- `text`, and `history`: the last 8 lines of the conversation
+  (`buildTurnHistory` in `ask-turn-api.js`: the person's messages as
+  written, and a short line for each thing Ask showed back);
+- `viewId`, `scope`, `month`, and `page` (`ask`, or the page beside the
+  desktop panel);
+- `focus` (`buildTurnFocus`): the saved entry by id (the Apple Pay card, a
+  card saved in this conversation), else the card being filled (its
+  fields), else the split group Ask was opened for. The server loads the
+  saved entry itself from the household's rows; an id that is not one is
+  no focus.
+
+The route (`src/domain/ask-turn.ts`) sends Claude Haiku (through AI
+Gateway, logging and caching off; Workers AI as its fallback; one
+allowance unit) the conversation, a compact context (people, wallet,
+category, split group and plan line names; the focus described without
+any amount or account number) and one JSON schema. The model answers with
+exactly one action, and the server checks it before anything shows:
+
+| Action | Checked | Page shows | Save |
+| --- | --- | --- | --- |
+| `draft_entry` | wallet active, category and person exist, amount written by the person, date not in the future, description words the person wrote | the entry card, filled (fields marked AI) | the card's Save, `/api/entries/create` |
+| `edit_draft` | the same, field by field; a saved card is not edited | the card being filled, changed | the card's Save |
+| `draft_split_expense` | as `draft_entry`, plus payer, shares adding up to 100%, group | the card with Shared and the Splits switch on | the card's Save, with `addToSplits` |
+| `add_entry_to_splits` | the saved entry in focus is the household's, an expense, not on Splits yet; the payer is the entry's own; shares add up to 100% (percent, a written amount, or "all"); the group exists and has the entry's currency | the Add to Splits draft card (each share computed from the entry's amount) | Add to Splits, `/api/splits/expenses/from-entry` with `splitBasisPoints` (or `splitAmountMinor`) |
+| `draft_settlement` | two different people, an amount the person wrote, a date not in the future | the settle-up payment draft card | Record payment, `/api/splits/settlements/create` |
+| `plan_change` | line names and amounts the person wrote (`parsePlanAiReading`), drafted against the real plan rows | the plan draft card, its question or note | Save plan, `/api/month-plan/apply-changes` |
+| `answer_question` | the topic, months and person, written as one sentence the answer route's own reader reads as the same topic | the money answer (or the check before one) | none |
+| `search_entries` | categories and wallets exist, amounts written, words the person wrote | the Entries answer card | none |
+| `open_page` | a known page; the view and month carried | a note, and the page opens | none |
+| `ask_clarification` | the question and up to 4 chips, without a figure the person or context never said | the question above its chips; a chip is sent as the next message | none |
+| `cannot_help` | the same | a note | none |
+
+Anything that does not check out becomes a question back (with the
+household's own people, wallets or groups as chips), never a guess: an
+unknown person, shares that do not add up, an amount the person never
+wrote, a foreign or missing entry, a group in another currency.
+
+The owner's example: on the Apple Pay card, "Add to splits, all Joyce" (or
+"I meant all splits share is Joyce, I'm the owner") reads as
+`add_entry_to_splits` with Joyce's share 100%; the draft card shows Tim
+paid, Tim 0%, Joyce 100% of the entry's amount; Add to Splits saves it and
+the saved card shows it is on Splits.
+
+AI off, over its allowance, failing or unusable: the route answers `{ mode:
+"rules", reason }` at once (with AI off, before any data work or
+allowance use), and the page reads the message with its rule readers
+exactly as before (`readSentenceByRules`: plan request, money question,
+filter, then the entry draft), with the one-line note "AI isn't available
+right now, so Ask read this with its built-in rules." once per
+conversation (`rulesNoted`).
+
+Tests stand in for the model with the `X-Ask-Turn-Test-Reply` header, read
+only when `APP_ENVIRONMENT` is `test` (`tests/e2e/ask-ai-turn.spec.js`).
+`scripts/ask-turn-eval.mjs` runs about 30 messages through the real model
+when provider credentials are in the environment (not in CI).
+
 ## State Flow
 
 Ask state is split between:
@@ -223,6 +287,12 @@ Ask state is split between:
   receipt thumbnails (memory only), the page's notes, answers, the one
   entry card and where it sits in the thread, the words typed but not sent,
   and an open follow-up (a filter question or a view change);
+- the turn drafts in the thread: `split-proposal` and `settlement-draft`
+  items (`draft` → `saving` → `saved`, or `discarded`; an add to Splits
+  can be undone back to `draft`), kept in the conversation store; a
+  settle-up payment caught mid-save comes back `unsure` (check Splits)
+  rather than a second Save; and a `turn-question` follow-up (a question
+  with its chips) as the open follow-up;
 - workflow state in `AskConversation` (`ask-panel.jsx`): what is being read
   or saved, which picker or detail fold is open;
 - the card itself, a pure state machine (`ask-card-model.js`): `draft` →

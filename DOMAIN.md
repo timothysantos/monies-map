@@ -1078,6 +1078,43 @@ Canonical terms:
 - `money question`, `money answer` and `check before an answer`: see
   "Money Question"
 
+### Ask Turn
+
+One message in the Ask conversation read into exactly one `turn action`
+(`POST /api/ask/turn`; `src/domain/ask-turn.ts`; `docs/flows/ask-flow.md`
+"AI first"). AI understands, the app validates, rules are the offline
+backup.
+
+Canonical terms:
+- `turn action`: what the model chose, one of `draft_entry`, `edit_draft`,
+  `add_entry_to_splits`, `draft_split_expense`, `draft_settlement`,
+  `plan_change`, `answer_question`, `search_entries`, `open_page`,
+  `ask_clarification`, `cannot_help`
+- `turn context`: what the model reads with the message: the page, view,
+  scope and month, the people in household order, wallet, category, split
+  group and plan line names, and the `focus`. Names only: no account, card,
+  phone or ID number and no amount from the household's records
+- `focus`: what the message is about: the saved entry (the Apple Pay card,
+  a card saved in this conversation; loaded by id from the household's own
+  rows), the card being filled, the split group Ask was opened for, or a
+  Money insights line
+- `turn reply`: the validated action as the page shows it: an `Entry
+  Draft`, a change to the card, a `split proposal`, a `settlement draft`, a
+  `Plan Draft`, a `Money Question` (as one sentence the answer reader
+  reads), an Entries filter, a page to open, a question back with at most
+  4 chips, or a note
+- `split proposal`: a saved expense onto Splits with its payer (the
+  entry's own) and each person's share (percent, amount or all), every
+  figure from the entry's amount; saved only by Add to Splits through
+  `POST /api/splits/expenses/from-entry`
+- `settlement draft`: a settle-up payment from one person to the other
+  with the amount the person wrote; saved only by Record payment through
+  `POST /api/splits/settlements/create`
+- `rules backup`: AI off, over its allowance, failing or unusable: the
+  page reads the message with the rule readers (plan request, money
+  question, filter, entry draft), with a one-line note once per
+  conversation
+
 ### Money Question
 
 A free-form question about the household's money that is not a filter

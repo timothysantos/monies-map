@@ -208,6 +208,36 @@ Details and the reasons are in `docs/code-spec.md` and
   real browser or Worker, then review and gates. A bug-fix test must fail on
   the old code before the fix counts.
 
+## AI in Ask: AI understands, the app validates, rules are the offline backup
+
+- Ask (owner decision, 2026-10-13) reads every message through one turn
+  route, `POST /api/ask/turn` (`src/server/ask-turn-route.ts`): the model
+  gets the bounded recent conversation, a compact context and the action
+  schema (`src/domain/ask-turn.ts`) and answers with exactly one action
+  (draft an entry, change the card, add an entry to Splits, a shared
+  expense, a settle-up payment, a plan change, a money question, a search,
+  open a page, ask back, or cannot help). The server checks that action
+  against the household's real data (people, wallets, categories, groups,
+  plan lines, the entry in focus, amounts the person wrote, shares adding
+  up to 100%); anything that does not check out becomes a question back
+  with at most 4 chips, never a guess.
+- The model never writes. It only chooses the action; the page shows the
+  existing draft or answer card, and nothing is saved without the
+  person's Save tap, through the existing all-or-nothing command. Figures
+  come from the app (the entry's amount, a share computed from it, the
+  answer route's facts) or from what the person wrote; an amount the model
+  names that the person never wrote is refused, and model prose with a
+  number not in the conversation or context is replaced.
+- The rules are the offline backup and stay tested: with AI off, over the
+  allowance, failing or unusable, the turn route answers `mode: "rules"`
+  and Ask reads the message with its rule readers as before, with a
+  one-line note once per conversation. Every new Ask capability needs its
+  action, its validator negatives and its no-AI behaviour.
+- The turn's context carries names, never numbers: no account, card,
+  phone or ID number (`scrubName`, `promptEntryName`), and no balance or
+  amount from the household's records. One allowance unit per turn; keep a
+  typical prompt under 2k input tokens.
+
 ## Optional AI Assistance
 
 - Treat AI as a separate, optional assistance layer, never as part of the
