@@ -1593,6 +1593,16 @@ export interface AskAnswerResponseDto {
   ai?: { requested: boolean; available: boolean; reason?: string; remaining?: number };
 }
 
+// The optional AI explanation on an insight question (POST
+// /api/ai-assist/insight-explain): null when AI is off, out of allowance or
+// its phrasing failed the check. The insight card's facts never come from
+// here.
+export interface InsightExplainResponseDto {
+  ok: true;
+  explanation: { text: string; source: "ai" } | null;
+  ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
+}
+
 // What one receipt says, read either by the optional AI provider from an
 // image the user explicitly supplied, or by in-browser OCR when AI is off.
 // It is a draft only: nothing is saved until the user taps save in the
