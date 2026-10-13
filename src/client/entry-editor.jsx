@@ -19,6 +19,9 @@ import { moneyToneClass } from "./money-tone-class";
 import { entryAmountTone } from "../domain/money-tone";
 import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { paletteColour } from "./palette-colour";
+import { LimitHint } from "./limit-hint";
+import { ENTRY_DESCRIPTION_MAX, ENTRY_NOTE_MAX } from "./input-limits";
+import { limitsCopy } from "./copy/limits-copy";
 
 const {
   categories: categoryService,
@@ -341,6 +344,7 @@ export function EntryEditorFields({
             onChange={(event) => onChange({ description: event.target.value })}
             rows={3}
           />
+          <LimitHint size={entry.description.length} max={ENTRY_DESCRIPTION_MAX} over={limitsCopy.descriptionTooLong} />
         </label>
         <label>
           <span>{messages.entries.editNote}</span>
@@ -351,6 +355,7 @@ export function EntryEditorFields({
             onChange={(event) => onChange({ note: event.target.value })}
             rows={3}
           />
+          <LimitHint size={(entry.note ?? "").length} max={ENTRY_NOTE_MAX} over={limitsCopy.noteTooLong} />
         </label>
       </div>
     </>

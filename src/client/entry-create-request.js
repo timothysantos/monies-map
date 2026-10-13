@@ -4,6 +4,8 @@
 // Ask page's entry card (ask-api.js) save through the same code.
 
 import { getTotalAmountMinor } from "./entry-helpers";
+import { ENTRY_DESCRIPTION_MAX, ENTRY_NOTE_MAX, entryTextOverLimit } from "./input-limits";
+import { limitsCopy } from "./copy/limits-copy";
 
 // The one create path for a new entry: POST /api/entries/create, then, when
 // the draft asks for it, the linked split expense through
@@ -18,6 +20,13 @@ import { getTotalAmountMinor } from "./entry-helpers";
 // (created: false) with the split linked to it, so a repeat never adds a
 // second entry or a second split.
 export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {}) {
+  // Past the route's text caps the create would be refused: say so in plain
+  // words without sending it.
+  const tooLong = entryTextOverLimit(entryDraft);
+  if (tooLong) {
+    const error = tooLong === "note" ? limitsCopy.noteTooLong(ENTRY_NOTE_MAX) : limitsCopy.descriptionTooLong(ENTRY_DESCRIPTION_MAX);
+    return { ok: false, error, entryId: null, splitExpenseId: null, splitExpenseMonth: null, splitAddError: "" };
+  }
   const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits?.[0] : undefined;
   const response = await fetchImpl("/api/entries/create", {
     method: "POST",

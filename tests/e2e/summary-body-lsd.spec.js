@@ -1,11 +1,13 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadSummaryAccountPills, loadSummaryPage, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadSummaryAccountPills, loadSummaryPage, postJson, reseedDemo } from "./helpers";
 
 // The Summary body under the lead in the Lead · Support · Detail language
-// (design.md, "Summary body"): Spending Mix is a donut with no labels on it
-// and a ranked category list beside or under it (bubble, name, amount, share
-// and a thin bar; the top 5, then "Show all N"); Wallets in view is one
+// (design.md, "Summary body"): Spending Mix is a donut whose bigger slices
+// carry a label just outside the ring ("Name 32.1%", or the share alone)
+// where there is room, small slices none, and a ranked category list beside
+// or under it (bubble, name, amount, share and a thin bar; the top 5, then
+// "Show all N"); Wallets in view is one
 // group of compact rows (wallet, balance, how fresh its statement is);
 // everything tappable is at least 44px each way; nothing scrolls sideways.
 // Hidden money shows no amounts and no wallet health, but keeps the shares.
@@ -15,6 +17,10 @@ const RANGE = { summaryStart: "2025-06", summaryEnd: "2025-10" };
 const SUMMARY_URL = `/summary?view=${VIEW}&month=2025-10&summary_start=${RANGE.summaryStart}&summary_end=${RANGE.summaryEnd}`;
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 const TOP = 5;
+// The ring's outer radius on each layout (spending-mix-section.jsx) and the
+// shortest slice edge that may carry a label (donut-label-layout.js).
+const OUTER_RADIUS = { phone: 92, desktop: 128 };
+const MIN_LABEL_ARC = 18;
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const money = (minor) => moneyFormatter.format(minor / 100);
@@ -33,6 +39,23 @@ function box(locator) {
 
 async function setMoney(page, visible) {
   await page.addInitScript((value) => window.localStorage.setItem("monies-map:money-totals-visible", value), String(visible));
+}
+
+// Two small spends in categories the range does not have yet, so the donut
+// has slices too thin for a label.
+async function addThinSlices(page) {
+  for (const categoryName of ["Gifts", "Healthcare"]) {
+    await postJson(page, "/api/entries/create", {
+      date: "2025-10-15",
+      description: `Playwright thin slice ${categoryName}`,
+      accountName: "UOB One",
+      categoryName,
+      amountMinor: 150,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+  }
 }
 
 async function openSummary(page) {
@@ -86,7 +109,78 @@ async function expectNoOverlappingLabels(page) {
     }
   }
   expect(overlaps, "overlapping labels").toEqual([]);
-  await expect(mixCard(page).locator(".recharts-pie-labels, .donut-callout-badge")).toHaveCount(0);
+  // The old icon badges around the ring do not come back.
+  await expect(mixCard(page).locator(".donut-callout-badge")).toHaveCount(0);
+}
+
+// The slice labels: the biggest slice has one, a slice too thin for a label
+// has none, every label is clear of the ring and of every other label, inside
+// the chart, in plain page ink, and shows a share, never an amount.
+async function expectSliceLabels(page, share, deviceName) {
+  const chart = mixCard(page).locator(".spending-mix-chart");
+  await expect(chart.locator(".donut-slice-label").first()).toBeVisible();
+  const measured = await chart.evaluate((element) => {
+    const pie = element.querySelector(".recharts-pie-sector")?.closest(".recharts-pie") ?? element.querySelector(".recharts-pie");
+    const sectors = [...element.querySelectorAll(".recharts-pie-sector path, path.recharts-sector")].map((path) => path.getBoundingClientRect());
+    const ring = {
+      left: Math.min(...sectors.map((rect) => rect.left)),
+      right: Math.max(...sectors.map((rect) => rect.right)),
+      top: Math.min(...sectors.map((rect) => rect.top)),
+      bottom: Math.max(...sectors.map((rect) => rect.bottom))
+    };
+    const outer = element.getBoundingClientRect();
+    return {
+      pie: Boolean(pie),
+      ring: { cx: (ring.left + ring.right) / 2, cy: (ring.top + ring.bottom) / 2, radius: (ring.right - ring.left) / 2 },
+      chart: { left: outer.left, right: outer.right, top: outer.top, bottom: outer.bottom },
+      labels: [...element.querySelectorAll(".donut-slice-label")].map((label) => {
+        const rect = label.getBoundingClientRect();
+        return {
+          key: label.getAttribute("data-slice-key"),
+          text: label.textContent,
+          fill: getComputedStyle(label).fill,
+          ink: getComputedStyle(document.body).color,
+          hidden: label.getAttribute("aria-hidden"),
+          x: rect.x, y: rect.y, right: rect.right, bottom: rect.bottom
+        };
+      })
+    };
+  });
+  const { ring, labels } = measured;
+  expect(ring.radius).toBeCloseTo(OUTER_RADIUS[deviceName], -1);
+  const total = sumMinor(share);
+  const byKey = new Map(labels.map((label) => [label.key, label]));
+  expect(byKey.get(share[0].key)?.text, "the biggest slice is labelled").toContain(percentOf(share[0], share));
+  const thin = share.filter((item) => (item.valueMinor / total) * Math.PI * 2 * OUTER_RADIUS[deviceName] < MIN_LABEL_ARC);
+  expect(thin.length, "the fixture has slices too thin for a label").toBeGreaterThan(0);
+  for (const item of thin) {
+    expect(byKey.has(item.key), `${item.label} is too thin for a label`).toBe(false);
+  }
+  for (const label of labels) {
+    const item = share.find((entry) => entry.key === label.key);
+    expect(item, `label ${label.text} names a slice`).toBeTruthy();
+    expect(label.text.endsWith(percentOf(item, share)), `${label.text} ends in its share`).toBe(true);
+    expect(label.text).not.toMatch(/\$/);
+    expect(label.hidden).toBe("true");
+    expect(label.fill, `${label.text} in the page ink`).toBe(label.ink);
+    for (const [x, y] of [[label.x, label.y], [label.right, label.y], [label.x, label.bottom], [label.right, label.bottom]]) {
+      expect(Math.hypot(x - ring.cx, y - ring.cy), `${label.text} clear of the ring`).toBeGreaterThanOrEqual(ring.radius);
+    }
+    expect(label.x).toBeGreaterThanOrEqual(measured.chart.left - 1);
+    expect(label.right).toBeLessThanOrEqual(measured.chart.right + 1);
+    expect(label.y).toBeGreaterThanOrEqual(measured.chart.top - 1);
+    expect(label.bottom).toBeLessThanOrEqual(measured.chart.bottom + 1);
+  }
+  for (let i = 0; i < labels.length; i += 1) {
+    for (let j = i + 1; j < labels.length; j += 1) {
+      const a = labels[i];
+      const b = labels[j];
+      const across = Math.min(a.right, b.right) - Math.max(a.x, b.x);
+      const down = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y);
+      expect(across > 0 && down > 0, `${a.text} / ${b.text} overlap`).toBe(false);
+    }
+  }
+  return labels;
 }
 
 // Everything tappable inside `selector` is at least 44px tall and wide.
@@ -153,11 +247,13 @@ for (const device of [
       await reseedDemo(page);
     });
 
-    test("Spending Mix: a donut with no labels on it, no overlapping text, the ranked top 5 and Show all", async ({ page }) => {
+    test("Spending Mix: labels on the big slices only, no overlapping text, the ranked top 5 and Show all", async ({ page }) => {
       await setMoney(page, true);
+      await addThinSlices(page);
       await openSummary(page);
       const share = await rangeShare(page);
       await expect(mixCard(page).locator(".donut-center strong")).toHaveText(money(sumMinor(share)));
+      await expectSliceLabels(page, share, device.name);
       await expectNoOverlappingLabels(page);
       await expectRankedList(page, share);
       await expectShowAll(page, share);
@@ -249,6 +345,7 @@ for (const device of [
 
     test("hidden money: no amounts in Spending Mix or Wallets, shares kept, no wallet health", async ({ page }) => {
       await setMoney(page, false);
+      await addThinSlices(page);
       await openSummary(page);
       const share = await rangeShare(page);
       const mix = mixCard(page);
@@ -258,6 +355,8 @@ for (const device of [
       await expect(mix.locator(".donut-center strong")).not.toContainText("$");
       await expect(mix.locator(".summary-mix-percent").first()).toHaveText(percentOf(share[0], share));
       await expect(mix.locator(".summary-mix-amount").first()).not.toContainText("$");
+      // The slice labels keep their shares: a share is not an amount.
+      expect((await expectSliceLabels(page, share, device.name)).length).toBeGreaterThan(0);
       await expectNoOverlappingLabels(page);
 
       const wallets = walletsCard(page);

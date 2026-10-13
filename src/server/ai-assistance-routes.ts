@@ -40,6 +40,7 @@ import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
 import { readJsonBody, readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
+import { IMPORT_PREVIEW_MAX_BYTES, MATCH_PAIRS_MAX_BYTES, STATEMENT_TEXT_MAX_BYTES } from "../domain/request-limits";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleAskAnswer } from "./ask-answer-route";
 import { handleInsightExplain } from "./ask-insight-route";
@@ -51,11 +52,9 @@ export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database };
 
 // Each route reads its body through limited-body.ts, which stops at a byte
 // limit as the bytes arrive (a chunked upload has no Content-Length to check).
-// A body past the limit is a 413 here, whichever route read it.
-const IMPORT_PREVIEW_MAX_BYTES = 4 * 1024 * 1024;
-// 12,000 characters of statement text, up to four bytes each, plus the wrapper.
-const STATEMENT_TEXT_MAX_BYTES = 64 * 1024;
-const MATCH_PAIRS_MAX_BYTES = 256 * 1024;
+// A body past the limit is a 413 here, whichever route read it. The byte
+// limits live in domain/request-limits.ts, which the page reads too, so it
+// can say a request is too big before sending it.
 
 export async function handleAiAssistRoute(request: Request, url: URL, env: AiAssistRouteEnv): Promise<Response | null> {
   try {

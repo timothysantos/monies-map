@@ -70,6 +70,8 @@ import {
   statementRowsToCsv
 } from "../lib/statement-import";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { IMPORT_EXPLAIN_MAX_BYTES, fitStatementText, jsonBodyBytes } from "./input-limits";
+import { limitsCopy } from "./copy/limits-copy";
 
 const DEFAULT_SOURCE_LABEL = "Imported CSV";
 const DEFAULT_STATEMENT_IMPORT_META = { sourceType: "csv", parserKey: "generic_csv" };
@@ -979,10 +981,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       throw parseError;
     }
     setUploadStatus({ tone: "active", message: "Preparing optional review rows from extracted statement text..." });
+    // The reader looks only at the start of the text, so a statement past
+    // the route's cap is cut to fit rather than refused.
+    const fitted = fitStatementText(fileName, text);
     const response = await fetch("/api/ai-assist/statement-text-fallback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName, text })
+      body: JSON.stringify({ fileName, text: fitted.text })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.available || !Array.isArray(data.rows)) {
@@ -1388,6 +1393,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   async function handleExplainMismatch() {
     if (!preview || isExplainingMismatch) {
+      return;
+    }
+    // Past the explanation route's cap: say so instead of sending it.
+    if (jsonBodyBytes({ preview }) > IMPORT_EXPLAIN_MAX_BYTES) {
+      setPreviewError({ message: limitsCopy.explainTooBig });
       return;
     }
     setIsExplainingMismatch(true);

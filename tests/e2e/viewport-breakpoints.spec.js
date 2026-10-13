@@ -152,16 +152,16 @@ test.describe("layout breakpoint switching", () => {
     await markPage(page);
     const chartHeight = () => chart.evaluate((element) => Math.round(element.getBoundingClientRect().height));
 
-    // 300px is Spending Mix's desktop height (it has no labels around it, so
-    // no margin); the phone layout is 216px.
-    await expect.poll(chartHeight).toBe(300);
+    // 310px is Spending Mix's desktop height (room for one line of slice label
+    // above and below the ring); the phone layout is 236px.
+    await expect.poll(chartHeight).toBe(310);
     await page.setViewportSize(PHONE);
-    await expect.poll(chartHeight).toBe(216);
+    await expect.poll(chartHeight).toBe(236);
     // The chart follows the phone breakpoint, not Month's portrait-tablet one.
     await page.setViewportSize(PORTRAIT_TABLET);
-    await expect.poll(chartHeight).toBe(300);
+    await expect.poll(chartHeight).toBe(310);
     await page.setViewportSize(PHONE);
-    await expect.poll(chartHeight).toBe(216);
+    await expect.poll(chartHeight).toBe(236);
     await expectSamePage(page);
   });
 });

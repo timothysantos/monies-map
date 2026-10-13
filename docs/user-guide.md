@@ -291,7 +291,8 @@ over plan.
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its
-  amount, its share and a thin bar. The top five show; **Show all** lists
+  amount, its share and a thin bar. The bigger slices are named on the donut
+  with their share where there is room; small slices are only in the list. The top five show; **Show all** lists
   the rest. Pick a month to see that month's ([Month](#month)).
 - **Intent vs Outcome**: one card per month, newest first. Each leads with
   what you spent against what you planned, with a bar, the percent of plan
@@ -609,7 +610,8 @@ bottom right ([Ask on a computer](#ask-on-a-computer)).
 - **The message box**: type a sentence such as "Koufu lunch $12.50, Citi",
   say it with the mic inside the box, or use the **+** inside the box for a
   receipt photo. Ask for entries the same way: "income in August", "food
-  over $50 this month".
+  over $50 this month". A message can be up to 300 characters: a small count
+  shows above the box when you get close, and a longer one is not sent.
 - **New chat**: at the top right once you have said something. It clears
   the conversation and starts again.
 
@@ -618,14 +620,17 @@ category, what it was, the amount (red for spending, green for money in,
 plain for a transfer), the date, the wallet and whose it is. Under it are
 **Date**, **Category**, **Wallet** and **Type**; **More details** adds the
 posted date, the owner and a note. Tap any of them to change it, or tap the
-date, wallet or person label on the card itself.
+date, wallet or person label on the card itself. What it was can be up to
+500 characters and a note up to 2,000; a small count shows under the field
+when you get close, and **Save** tells you if one is too long.
 
 ### What each control does
 
 - **Scan receipt**, or **+** then **Take a photo** or **Choose a photo**:
   take or pick a photo of a receipt. The app reads the shop, the total and
   the date into the card. The photo is made smaller on your phone first and
-  is not kept.
+  is not kept. A very large photo says so; one that is still over 1.5 MB
+  after that is read on your phone instead of being sent.
 - **Paste** (a suggestion, or in the **+** menu): paste a copied receipt
   photo or sentence.
 - **The mic** (at the right of the message box): tap and hold the mic and

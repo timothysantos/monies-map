@@ -29,9 +29,10 @@ import { buildAskAnswer } from "../domain/pages/ask-answer";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import type { AskAnswerResponseDto } from "../types/dto";
 import { json } from "./json";
+import { ASK_MESSAGE_MAX_LENGTH } from "../domain/request-limits";
 import { readJsonBody, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 
-export const ASK_ANSWER_MAX_TEXT = 300;
+export const ASK_ANSWER_MAX_TEXT = ASK_MESSAGE_MAX_LENGTH;
 const ASK_ANSWER_AI_UNITS = 1;
 const ASK_ANSWER_MAX_TOKENS = 220;
 const ASK_ANSWER_TIMEOUT_MS = 8_000;

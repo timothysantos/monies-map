@@ -60,6 +60,9 @@ import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
 import { buildChipRow, findActiveItem } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
+import { LimitHint } from "./limit-hint";
+import { ASK_MESSAGE_MAX, askMessageLength, limitState, receiptSizePlan } from "./input-limits";
+import { limitsCopy } from "./copy/limits-copy";
 import { createPressGesture, createVoiceController, joinSpokenText } from "./ask-voice";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
 import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
@@ -1101,11 +1104,19 @@ function AskConversation({
     }
     const url = URL.createObjectURL(prepared.blob);
     objectUrlsRef.current.push(url);
-    appendThread(threadItem("me", { text: askCopy.you.photo }), threadItem("photo", { url }));
+    // A large photo is always made smaller here; one still past the
+    // reader's cap is not sent, and is read on this device instead.
+    const size = receiptSizePlan(file.size ?? 0, prepared.blob.size);
+    const sizeNote = size.tooBig ? limitsCopy.photoTooBig : size.large ? limitsCopy.photoLarge : "";
+    appendThread(
+      threadItem("me", { text: askCopy.you.photo }),
+      threadItem("photo", { url }),
+      ...(sizeNote ? [threadItem("note", { text: sizeNote })] : [])
+    );
     setWorking("receipt");
     setStatus(askCopy.notes.readingReceipt);
     try {
-      const result = await requestReceiptRead({ image: prepared.blob });
+      const result = size.tooBig ? { ok: false } : await requestReceiptRead({ image: prepared.blob });
       let receipt = result.ok ? result.receipt : null;
       // A receipt the reader read needs no note: the card's tag says so.
       let note = "";
@@ -1692,12 +1703,17 @@ function AskConversation({
       void saveCard();
       return;
     }
-    if (working) {
+    // Past the Ask routes' cap the message stays in the box with the hint
+    // under it saying so; nothing is sent.
+    if (working || messageTooLong) {
       return;
     }
     setComposerText("");
     void readSentence(text);
   }
+
+  const messageLength = askMessageLength(composerText);
+  const messageTooLong = limitState(messageLength, ASK_MESSAGE_MAX).over;
 
   const newChatButton = showNewChat ? (
     <button type="button" className="ask-new-chat" onClick={onNewChat} disabled={Boolean(working)}>
@@ -1827,6 +1843,13 @@ function AskConversation({
             ))}
           </div>
         ) : null}
+        <LimitHint
+          className="ask-limit-hint"
+          size={messageLength}
+          max={ASK_MESSAGE_MAX}
+          near={limitsCopy.messageLong}
+          over={limitsCopy.messageTooLong}
+        />
         <form className="ask-composer" onSubmit={submitComposer}>
           <span className="ask-sr-only" role="status" aria-live="polite">{voiceAnnouncement}</span>
           <input ref={cameraInputRef} className="ask-file-input" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
@@ -1912,7 +1935,7 @@ function AskConversation({
               {card?.status === "saving" ? askCopy.composer.saving : askCopy.composer.save}
             </button>
           ) : (
-            <button type="submit" className="ask-send" aria-label={askCopy.composer.send} disabled={Boolean(working)}>
+            <button type="submit" className="ask-send" aria-label={askCopy.composer.send} disabled={Boolean(working) || messageTooLong}>
               <ArrowUp size={20} aria-hidden="true" />
             </button>
           )}

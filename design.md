@@ -123,8 +123,8 @@ day reads as one unit, the same shape as an Entries day (an unboxed label over
 its rounded group): the Splits panel, the page behind it on a phone and the
 sticky date label all paint `--splits-surface` (`:root`, halfway between the
 two Splits colours), so no band shows behind the label. Stuck at the top, the
-label fades out at its foot exactly as an Entries day label does (a gradient,
-no blur, so no rectangle shows over the rows;
+label becomes the same rounded bar an Entries day label does (the group's
+width and 16 px radius, `--splits-surface` at 84% with a blur inside it;
 `tests/e2e/date-row-flat.spec.js`).
 `tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
 against Entries' and that no band shows. The viewer's words and
@@ -1039,11 +1039,20 @@ Where it is used:
   sideways scroll.
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
-  chunks; no `styles.css` growth). The Spending Mix donut has no labels on it
-  (`SpendingMixChart callouts={false}`; the percent labels and category
-  badges around the ring collided when many categories had thin slices, and
-  Entries and Splits keep theirs) and is small: 216 px on a phone, 300 px
-  from 761 px. Under it (beside it from 1,024 px, where the card has the full
+  chunks; no `styles.css` growth). The Spending Mix donut labels only the
+  slices with room for a label (`SpendingMixChart sliceLabels`, laid out by
+  `donut-label-layout.js` in the lazy Recharts chunk; the old percent labels
+  and category badges collided when many categories had thin slices, and
+  Entries and Splits keep those). Biggest slice first, a slice whose ring
+  edge is at least 18 px long gets "Name 32.1%" just outside the ring, or
+  "32.1%" alone when the name does not fit, or nothing: each label must stay
+  inside the chart, off the ring and 4 px clear of every label already
+  placed (text measured on a canvas). Small slices have no label; the ranked
+  list names every category. Labels are plain page ink (`--text`), so they
+  read in every colour preset, are `aria-hidden` (the list is what assistive
+  tech reads), show shares of all spending (as the list does) and never an
+  amount, so hidden money keeps them. The chart is 236 px on a phone and
+  310 px from 761 px, one label line above and below the ring. Under it (beside it from 1,024 px, where the card has the full
   row) a ranked list in one `DetailRows` group, biggest first: the 44 px
   category bubble (edits the category, as before), the name and amount on
   one line (the name is one line with an ellipsis), a 6 px bar in the
@@ -1138,16 +1147,19 @@ Where it is used:
   plain muted text (an unmatched one keeps its pill). The person's colour edge
   stays on every row. The day header is a hairline divider (small caps date,
   rule, "Daily net" and the refresh button at the right) and a day's rows sit
-  in one rounded white group. The day header is not a box: it is sticky and
-  paints `--page` (the panel behind the list), so at rest no lighter band or
-  square corner shows above the group in any colour preset or mode. Stuck at
-  the top of the screen, the last 12 px of its padding fade to transparent
-  (a linear gradient from the same colour, no blur, no border or shadow), so
-  rows slide away softly instead of under a hard rectangle; this is CSS only,
-  with no scroll listener. A fade was chosen over an inset translucent bar
-  because it adds no second shape to line up with the group's radius.
-  `tests/e2e/date-row-flat.spec.js` samples pixels at rest in every preset and
-  mode, on Entries and Splits, desktop and phone. A phone row is 68 px or more (icon, category,
+  in one rounded white group. The day header is not a box at rest: it is
+  sticky and paints `--page` (the panel behind the list), flat, so no lighter
+  band or square corner shows above the group in any colour preset or mode.
+  Stuck at the top of the screen it becomes a rounded bar (the owner's
+  choice over the earlier fade): the day group's width, so its left and
+  right edges sit on the group's, the group's 16 px radius, `--page` at 84%
+  with a 12 px backdrop blur inside the rounded shape only, and its text
+  inset 14 px (12 px on a phone) from the curve. Its height does not change,
+  so nothing under it moves. `stuck-date-row.js` sets `data-stuck` from one
+  shared IntersectionObserver (root top pulled in by 1 px), with no scroll
+  listener and no render. `tests/e2e/date-row-flat.spec.js` samples pixels
+  at rest in every preset and mode and checks the stuck bar's radius, blur,
+  alpha and edges, on Entries and Splits, desktop and phone. A phone row is 68 px or more (icon, category,
   merchant and amount, wallet, chips), a wide row keeps the three columns.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
   dialog in the phone sheet and the wide dialog, and in the list). Selecting a
@@ -1655,6 +1667,37 @@ first"): AI understands, the app validates, rules are the offline backup.
 - The model never writes and never supplies a figure the page shows: an
   amount must be one the person wrote, shares come from the entry's own
   amount, answers from the answer route's facts.
+
+## Size Limits
+
+The Worker caps what a person can type or send (`src/server/limited-body.ts`,
+`docs/audits/ai-security-review.md` F4 and F5). The caps live in
+`src/domain/request-limits.ts` and `src/domain/shortcut-entry-contract.ts`,
+which the routes and the page both read (`src/client/input-limits.js`), so
+a warning and a refusal always agree. From 80% of a cap the field shows a
+quiet line (`limit-hint.jsx`: muted, small, tabular), and past the cap it
+says so in plain words in the error ink and the request is not sent:
+
+- Entry description (500) and note (2,000 characters), on the Ask card and
+  the Entries composer: "1,640 / 2,000" under the field; past it, "This note
+  is too long to save. Keep it to 2,000 characters or fewer.", and
+  `createEntryFromDraft` refuses before posting `/api/entries/create`.
+- The Ask message (300 characters after spaces collapse, the turn, answer
+  and plan routes' cap): "Message is getting long · 259 / 300" above the
+  message box; past it, "This message is too long to send…", Send is off
+  and Enter keeps the text.
+- A receipt photo (1.5 MB as sent): every photo is made smaller on the
+  device; a chosen photo from 80% of the cap gets "This photo is large, so
+  it's made smaller before it's read."; one still past the cap once made
+  smaller is not sent, says so, and is read on the device instead.
+- Import help: the mismatch explanation (4 MB of preview) says "This import
+  is too big to explain (max 4 MB)…" instead of sending. The statement-text
+  fallback (64 KB) is cut to fit before sending, with no message: its reader
+  looks at the first 12,000 characters either way. The duplicate ranking
+  (256 KB) sends at most 12 pairs, far under its cap.
+- A voice clip stops itself at 30 seconds (`VOICE_MAX_RECORD_MS`), under
+  the transcribe route's 1 MB cap. Import files and the other write routes
+  have no cap yet (F7), so nothing is shown for them.
 
 ## Optional AI Assistance Boundary
 

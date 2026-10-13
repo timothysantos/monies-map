@@ -1,4 +1,7 @@
+import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+
+import { layoutDonutLabels } from "./donut-label-layout";
 
 import { money, moneyWithCurrency } from "./formatters";
 import { getIconComponent } from "./ui-components";
@@ -12,11 +15,17 @@ export default function SpendingMixRecharts({
   totalLabel,
   compact,
   callouts,
+  sliceLabels,
+  shareTotalMinor,
   isNarrowViewport,
   resolvedHeight,
   resolvedInnerRadius,
   resolvedOuterRadius
 }) {
+  const renderSliceLabel = useMemo(
+    () => (sliceLabels ? sliceLabelRenderer(chartData, shareTotalMinor, isNarrowViewport ? 11 : 12) : null),
+    [sliceLabels, chartData, shareTotalMinor, isNarrowViewport]
+  );
   return (
     <div className={`spending-mix-chart ${compact ? "is-compact" : ""}`}>
       <ResponsiveContainer width="100%" height={resolvedHeight}>
@@ -32,7 +41,7 @@ export default function SpendingMixRecharts({
             paddingAngle={0}
             isAnimationActive={false}
             labelLine={false}
-            label={callouts ? (props) => renderPieCallout(props, total, { compact: isNarrowViewport }) : false}
+            label={callouts ? (props) => renderPieCallout(props, total, { compact: isNarrowViewport }) : (renderSliceLabel ?? false)}
           >
             {chartData.map((entry) => (
               // The fill attribute keeps the plain colour; the style (which
@@ -48,6 +57,57 @@ export default function SpendingMixRecharts({
       </div>
     </div>
   );
+}
+
+// Slice labels (donut-label-layout.js): laid out once per chart size, the
+// first time Recharts asks for one, then read by slice key. The text is
+// plain ink on the page, so it reads in every colour preset; it is hidden
+// from assistive tech, which reads the ranked list instead.
+let measureContext = null;
+function measureText(text, font) {
+  measureContext ??= document.createElement("canvas").getContext("2d");
+  if (!measureContext) return text.length * 7;
+  measureContext.font = font;
+  return Math.ceil(measureContext.measureText(text).width) + 2;
+}
+
+function sliceLabelRenderer(chartData, shareTotalMinor, fontSize) {
+  let size = "";
+  let labels = new Map();
+  return (props) => {
+    const { cx, cy, outerRadius, payload } = props;
+    if (size !== `${cx},${cy},${outerRadius}`) {
+      size = `${cx},${cy},${outerRadius}`;
+      const font = `700 ${fontSize}px ${getComputedStyle(document.body).fontFamily}`;
+      const layout = layoutDonutLabels(chartData, {
+        width: cx * 2,
+        height: cy * 2,
+        outerRadius,
+        shareTotalMinor,
+        lineHeight: Math.round(fontSize * 1.3),
+        measure: (text) => measureText(text, font)
+      });
+      labels = new Map(chartData.map((item, index) => [item.key, layout[index]]));
+    }
+    const label = labels.get(payload?.key);
+    if (!label) return <g />;
+    return (
+      <text
+        className="donut-slice-label"
+        data-slice-key={payload.key}
+        aria-hidden="true"
+        x={label.x + label.width / 2}
+        y={label.y + label.height / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={fontSize}
+        style={{ fill: "var(--text)" }}
+      >
+        {label.name ? <tspan fontWeight="500">{`${label.name} `}</tspan> : null}
+        <tspan fontWeight="700">{label.percent}</tspan>
+      </text>
+    );
+  };
 }
 
 function renderPieCallout(props, total, options = {}) {
