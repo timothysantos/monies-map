@@ -955,16 +955,18 @@ Where it is used:
   to income, and Kept and the save job to the Savings category only when
   something was filed there (otherwise there is no entry to show, and only
   the Ask button is offered). It is a plain filter, not "From Ask". "Ask
-  about this" opens Ask with a question in the message box for the person
-  to send ("Why did I spend more than planned in May 2026?", "What did I
+  about this" opens Ask and asks the question at once, as if typed, so the
+  answer follows ("Why did I spend more than planned in May 2026?", "What did I
   spend the most on in …?", "How much did I invest in …?", "How much did I
   save in …?", "How much did I earn in …?", "Why did I spend more than I
-  earned in …?"): on a phone the Ask page (`/ask?…&ask_text=`, read once and
-  dropped from the URL), on a wider screen the Ask panel beside the page
-  (`openAskDock({ text })`, which the open conversation takes too). The
+  earned in …?"): on a phone the Ask page (history state `askQuestion`, asked once and
+  dropped from the entry), on a wider screen the Ask panel beside the page
+  (`openAskDock({ question })`, which the open conversation takes too). The
   question never holds an amount, and with hidden money never says which
   side of the plan the money fell ("How did my spending compare with the
-  plan in …?"). Nothing is sent by itself. The menu does not navigate
+  plan in …?"). The question goes through the same reader as a typed
+  message (`readSentence` in `ask-panel.jsx`), so the money-answer route and
+  its check before any figure apply. The menu does not navigate
   itself: it sends one window event, `monies:money-action` (`{ entries }` or
   `{ askText }`), and the shell (App.jsx) opens Entries or Ask. Importing the
   router or the Ask dock's launcher into the lead's chunk split Vite's

@@ -7,7 +7,7 @@ import { loadMonthPage, loadSummaryPage, postJson, reseedDemo } from "./helpers"
 // of the plan's jobs (spend within the budget, save the target, invest the
 // goal, the planned income) were done, and a bar part or a job opens a menu:
 // "View entries" (Entries filtered to the money behind it) and "Ask about
-// this" (Ask with a question in the message box). Every expected figure is
+// this" (Ask opens and answers the question straight away, as if typed). Every expected figure is
 // worked out here from the page DTOs, not by the model under test (its
 // exact numbers are in tests/money-jobs-model.test.mjs and
 // tests/savings-bar-model.test.mjs).
@@ -20,6 +20,7 @@ const MONTH_URL = `/month?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&s
 const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${MONTH}&summary_end=${MONTH}`;
 const wholeFormat = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", maximumFractionDigits: 0 });
 const dollars = (minor) => wholeFormat.format(minor / 100);
+const cents = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 const message = (page) => page.getByRole("textbox", { name: "Message" });
 
@@ -191,7 +192,7 @@ test.describe("phone", () => {
     await expect(page.locator(".entry-row").filter({ hasText: "Money jobs salary" })).toHaveCount(1, { timeout: 30_000 });
   });
 
-  test("Ask about this opens Ask with the question in the message box, for the person to send", async ({ page }) => {
+  test("Ask about this opens Ask and answers the question straight away", async ({ page }) => {
     await revealMoney(page);
     const lead = await openLead(page, MONTH_URL, ".month-lead");
     const figures = await monthFigures(page);
@@ -203,13 +204,19 @@ test.describe("phone", () => {
     await expect(ask).toHaveAttribute("data-question", question);
     await ask.tap();
     await expect(page).toHaveURL(/\/ask\?/);
-    await expect(message(page)).toHaveValue(question, { timeout: 30_000 });
-    // Read once: the question leaves the URL, and nothing was sent.
-    await expect(page).not.toHaveURL(/ask_text/);
+    // Sent as if typed: the question is the person's message, the answer
+    // follows it, and the message box is empty (nothing waits to be sent).
+    await expect(page.locator(".ask-thread .ask-me")).toHaveText(question, { timeout: 30_000 });
+    // The reader's own answer for that wording: the plan card or the spending card.
+    await expect(page.locator(`[data-ask-money-answer="${figures.spending > figures.spendPlan ? "plan" : "spending"}"]`)).toBeVisible({ timeout: 30_000 });
+    await expect(message(page)).toHaveValue("");
     expect(new URL(page.url()).searchParams.get("month")).toBe(MONTH);
-    await expect(page.locator(".ask-answer")).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.has("ask_text")).toBe(false);
+    // Asked once: the conversation is kept, and a reload does not send the question again.
     await page.reload();
-    await expect(message(page)).toHaveValue(question, { timeout: 30_000 });
+    await expect(message(page)).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".ask-thread .ask-me")).toHaveText([question]);
+    await expect(page.locator("[data-ask-money-answer]")).toHaveCount(1);
   });
 
   test("hidden money: the jobs say ✓ or a percentage, the menu and question carry no amount", async ({ page }) => {
@@ -252,7 +259,7 @@ test.describe("desktop", () => {
     await seedInvesting(page);
   });
 
-  test("Summary lead: the jobs are open, hover shows a part's popover, a click its menu, and Ask opens beside the page", async ({ page }) => {
+  test("Summary lead: the jobs are open, hover shows a part's popover, a click its menu, and Ask opens beside the page and answers", async ({ page }) => {
     await revealMoney(page);
     const summary = await loadSummaryPage(page, { view: VIEW, month: MONTH, summaryStart: MONTH, summaryEnd: MONTH });
     const card = (label) => summary.summaryPage.metricCards.find((item) => item.label === label).amountMinor;
@@ -271,14 +278,18 @@ test.describe("desktop", () => {
     const ask = lead.locator('[data-money-actions="invested"] [data-action="ask"]');
     await expect(ask).toBeVisible();
     await ask.click();
-    // The Ask panel beside Summary, which stays, with the question waiting.
+    // The Ask panel beside Summary, which stays, asks it at once.
     await expect(page).toHaveURL(/\/summary\?/);
-    await expect(page.locator(".ask-dock").getByRole("textbox", { name: "Message" })).toHaveValue(`How much did I invest in ${MONTH_WORDS}?`, { timeout: 30_000 });
-    await expect(page.locator(".ask-dock .ask-answer")).toHaveCount(0);
+    const dock = page.locator(".ask-dock");
+    await expect(dock.locator(".ask-thread .ask-me")).toHaveText(`How much did I invest in ${MONTH_WORDS}?`, { timeout: 30_000 });
+    await expect(dock.locator(".ask-thread .ask-answer").first()).toBeVisible({ timeout: 30_000 });
+    await expect(dock.getByRole("textbox", { name: "Message" })).toHaveValue("");
 
-    // A second question while the panel is open goes into the same message box.
+    // A second question while the panel is open is asked in the same conversation.
     await lead.locator('[data-job="income"] .money-job-row').click();
     await lead.locator('[data-job="income"] [data-action="ask"]').click();
-    await expect(page.locator(".ask-dock").getByRole("textbox", { name: "Message" })).toHaveValue(`How much did I invest in ${MONTH_WORDS}? How much did I earn in ${MONTH_WORDS}?`);
+    await expect(dock.locator(".ask-thread .ask-me")).toHaveText([`How much did I invest in ${MONTH_WORDS}?`, `How much did I earn in ${MONTH_WORDS}?`], { timeout: 30_000 });
+    await expect(dock.locator('[data-ask-money-answer="income"] .ask-answer-amount')).toHaveText(cents.format((await monthFigures(page)).income / 100), { timeout: 30_000 });
+    await expect(dock.getByRole("textbox", { name: "Message" })).toHaveValue("");
   });
 });

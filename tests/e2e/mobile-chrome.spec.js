@@ -287,6 +287,14 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
     await sheet.getByRole("button", { name: "Reset filters" }).click();
     await expect.poll(() => params(page)).toEqual(base);
     await expect(sheet).toBeVisible();
+    // The URL changes at once, but the page re-renders a moment later (about
+    // 120 ms here), and react-router's functional setSearchParams builds the
+    // next URL from the last render's params. Wait for the rendered filters to
+    // clear before the next tap, as a person's tap would; a tap in between
+    // brings the cleared filters back from that stale snapshot. This was
+    // mistaken for an order dependence: it fails alone when the machine is slow.
+    await expect(sheet.locator(".search-filter input")).toHaveValue("");
+    await expect(filter("By wallet")).not.toContainText(walletName);
 
     // A scope applies and closes the sheet.
     await sheet.getByRole("button", { name: "Shared", exact: true }).click();

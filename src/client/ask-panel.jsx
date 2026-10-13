@@ -149,6 +149,7 @@ function useAskConversation(store, key, create) {
 
 // Insight questions already asked from history state (a phone's "Ask about
 // this"): StrictMode runs the effect twice before the state is replaced.
+// The same for a lead's question (askQuestion in history state).
 const askedInsightHandoffs = new WeakSet();
 
 // A typed line that reads as a question rather than something to add.
@@ -1292,23 +1293,28 @@ function AskConversation({
     if (handoff.insight) {
       void askAboutInsight(handoff.insight);
     }
+    if (handoff.question) {
+      void readSentence(handoff.question);
+    }
     if (handoff.text) {
       takeText(handoff.text);
     }
     if (handoff.file) {
       void readReceipt(handoff.file);
     }
-    // While this conversation is open, a lead's "Ask about this" puts its
-    // question in the message box too (openAskDockNow's `text`).
+    // While this conversation is open, the field's words go into the
+    // message box, and an insight or a lead's "Ask about this" question is
+    // asked at once (openAskDockNow's `text`, `insight` and `question`).
     const onDockChange = () => {
       // Only the conversation the dock now shows takes it (opening with a
       // new way in tells this one first, before it gives way).
       const snapshot = dock.getSnapshot();
-      if (snapshot.draftText && askConversationKey(snapshot.intent) === conversationKey) {
+      if ((snapshot.draftText || dock.hasQuestionHandoff()) && askConversationKey(snapshot.intent) === conversationKey) {
         const next = dock.takeHandoff();
-        takeText(next.text);
+        if (next.text) takeText(next.text);
         if (next.file) void readReceipt(next.file);
         if (next.insight) void askAboutInsight(next.insight);
+        if (next.question) void readSentence(next.question);
       }
       if (dock.takeFocusRequest()) composerRef.current?.focus();
     };
@@ -1338,23 +1344,22 @@ function AskConversation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateInsight]);
 
-  // On the Ask page, a lead's "Ask about this" (ui/money-actions.jsx) brings
-  // its question as `ask_text`: it goes into the message box once, for the
-  // person to send, and leaves the URL so a reload does not add it again.
-  const askText = inDock || isAddMode ? "" : searchParams.get("ask_text") ?? "";
+  // On a phone, a lead's "Ask about this" (ui/money-actions.jsx) opens /ask
+  // with its question in history state (App.jsx): sent once as if typed,
+  // then dropped from the entry, so a reload or going back and forward does
+  // not ask it again.
+  const stateQuestion = inDock || isAddMode ? null : location.state?.askQuestion ?? null;
   useEffect(() => {
-    if (!askText) return;
-    const before = store.read(conversationKey)?.composerText ?? "";
-    if (!before.includes(askText)) {
-      setComposerText(before.trim() ? `${before.trimEnd()} ${askText}` : askText);
+    if (!stateQuestion || typeof stateQuestion !== "object" || typeof stateQuestion.text !== "string" || askedInsightHandoffs.has(stateQuestion)) {
+      return;
     }
-    const next = new URLSearchParams(searchParams);
-    next.delete("ask_text");
-    navigate({ pathname: location.pathname, search: `?${next.toString()}` }, { replace: true, state: location.state });
-    composerRef.current?.focus();
-    // Once per question brought in.
+    askedInsightHandoffs.add(stateQuestion);
+    const { askQuestion: _asked, ...restState } = location.state ?? {};
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: Object.keys(restState).length ? restState : null });
+    void readSentence(stateQuestion.text);
+    // Once per question handed over.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [askText]);
+  }, [stateQuestion]);
 
   // Escape closes the popup, unless something inside already handled it
   // (a menu or picker) or the person is typing in a field on the page

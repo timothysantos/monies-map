@@ -69,6 +69,8 @@ export function createAskDockStore({ storage = null } = {}) {
   let handoffFile = null;
   // An insight question from "Ask about this" (memory only, taken once).
   let handoffInsight = null;
+  // A lead's "Ask about this" question, sent as if typed (memory only, taken once).
+  let handoffQuestion = "";
   let focusPending = false;
   let returnFocusPending = false;
   const listeners = new Set();
@@ -95,11 +97,12 @@ export function createAskDockStore({ storage = null } = {}) {
       return snapshot;
     },
     /** A person opened Ask (the field, "/", a dropped photo, "Ask about this"). */
-    open({ mode = "docked", intent = undefined, focus = true, file = null, insight = null } = {}) {
+    open({ mode = "docked", intent = undefined, focus = true, file = null, insight = null, question = "" } = {}) {
       focusPending = focus || focusPending;
       returnFocusPending = false;
       if (file) handoffFile = file;
       if (insight) handoffInsight = insight;
+      if (question) handoffQuestion = question;
       set({
         open: true,
         openedByHand: true,
@@ -119,6 +122,7 @@ export function createAskDockStore({ storage = null } = {}) {
       returnFocusPending = returnFocus;
       handoffFile = null;
       handoffInsight = null;
+      handoffQuestion = "";
       set({ open: false, ready: false }, { save: true });
     },
     setDraftText(text) {
@@ -127,11 +131,16 @@ export function createAskDockStore({ storage = null } = {}) {
     setReady(ready) {
       if (snapshot.ready !== Boolean(ready)) set({ ready: Boolean(ready) });
     },
-    /** The field's words, a dropped photo and an insight question, once. */
+    /** Whether an insight or a lead's question waits for the conversation. */
+    hasQuestionHandoff() {
+      return Boolean(handoffInsight || handoffQuestion);
+    },
+    /** The field's words, a dropped photo, an insight and a lead's question, once. */
     takeHandoff() {
-      const handoff = { text: snapshot.draftText, file: handoffFile, insight: handoffInsight };
+      const handoff = { text: snapshot.draftText, file: handoffFile, insight: handoffInsight, question: handoffQuestion };
       handoffFile = null;
       handoffInsight = null;
+      handoffQuestion = "";
       if (snapshot.draftText) set({ draftText: "" });
       return handoff;
     },

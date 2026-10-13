@@ -48,17 +48,18 @@ newest one in progress (an add-mode card carries its `mode`, `from` and
 `split_group` in the tab's link).
 
 A lead's "Ask about this" (the savings bar and money jobs on Summary and
-Month, `money-jobs-detail.js`, design.md "Money jobs") opens the chat with a
-question in the message box for the person to send. The menu sends a
-`monies:money-action` window event and the shell (App.jsx) opens Ask. On a
-phone it is
-`/ask?view&month&scope&ask_text=<question>`: the chat reads `ask_text` once
-into the message box (after any words already there) and drops it from the
-URL with a replace, so a reload or Back does not add it again; it never
-leaks to another tab (`sanitizeTabParams`). On a wide screen it is
-`openAskDock({ intent: chat, text })`: the dock store's `draftText`, which
-the chat takes when it mounts, or at once when it is already the one open.
-The question never holds an amount.
+Month, `money-jobs-detail.js`, design.md "Money jobs") opens the chat and
+asks its question at once, as if the person had typed and sent it: the
+message shows, then the answer, check or note the same reader gives
+(`readSentence`: plan request, money answer, filter, entry draft). The menu
+sends a `monies:money-action` window event and the shell (App.jsx) opens
+Ask. On a phone it navigates to `/ask?view&month&scope` with history state
+`{ askQuestion: { text } }`: the chat sends it once and drops it from the
+entry with a replace, so a reload or Back does not ask it again. On a wide
+screen it is `openAskDock({ intent: chat, question })`: the dock store's
+one-shot `question` handoff, which the chat takes when it mounts, or at
+once when it is already the one open (a second question joins the same
+conversation). The question never holds an amount.
 
 On a phone the tab bar reads Summary, Entries, Splits, Ask, ··· (one grid
 column per primary tab; Month is not a tab, it is the Summary tab's month

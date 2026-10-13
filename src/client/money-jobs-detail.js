@@ -4,7 +4,7 @@ import { formatMonthLabel } from "./formatters";
 import { wholeMoney } from "./money-jobs-model";
 
 // The window event a bar part's or a job's menu sends: { entries: { pathname,
-// search } } to open Entries, or { askText } to open Ask with that question.
+// search } } to open Entries, or { askText } to open Ask and ask that question.
 // The shell (App.jsx, which names it as a literal so neither side imports
 // the other) navigates.
 export const MONEY_ACTION_EVENT = "monies:money-action";

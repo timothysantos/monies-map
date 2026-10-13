@@ -71,10 +71,10 @@ test("words typed and a photo dropped before Ask loads are handed over once and 
   assert.equal(stored.includes("grab"), false);
   assert.equal(stored.includes("receipt"), false);
 
-  assert.deepEqual(store.takeHandoff(), { text: "grab rides in sep", file: photo, insight: null });
+  assert.deepEqual(store.takeHandoff(), { text: "grab rides in sep", file: photo, insight: null, question: "" });
   assert.equal(store.getSnapshot().draftText, "");
   // Taken once: a second read (React StrictMode runs effects twice) is empty.
-  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null });
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null, question: "" });
 });
 
 test("an insight question from Ask about this is handed over once, in memory, and Close drops it", () => {
@@ -83,8 +83,8 @@ test("an insight question from Ask about this is handed over once, in memory, an
   const insight = { key: "statement-gap:acct-ocbc", kind: "quick_fix", fact: "Serene's OCBC 365 statement differs by $42.80." };
   store.open({ mode: "docked", intent: { mode: "chat" }, insight });
   assert.equal(storage.values.get(ASK_DOCK_STORAGE_KEY).includes("OCBC"), false);
-  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight });
-  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null });
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight, question: "" });
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null, question: "" });
   store.open({ mode: "docked", insight });
   store.close();
   assert.equal(store.takeHandoff().insight, null);
@@ -186,4 +186,23 @@ test("each open that names a way in is a new visit; reopening from the field is 
   assert.equal(store.getSnapshot().visit, start + 2);
   store.setIntent({ mode: "chat" });
   assert.equal(store.getSnapshot().visit, start + 3);
+});
+
+test("a lead's Ask about this question is handed over once, in memory, and Close drops it", () => {
+  const storage = memoryStorage();
+  const store = createAskDockStore({ storage });
+  const question = "How much did I invest in May 2026?";
+  assert.equal(store.hasQuestionHandoff(), false);
+  store.open({ mode: "docked", intent: { mode: "chat" }, question });
+  assert.equal(storage.values.get(ASK_DOCK_STORAGE_KEY).includes("invest"), false);
+  assert.equal(store.hasQuestionHandoff(), true);
+  assert.deepEqual(store.takeHandoff(), { text: "", file: null, insight: null, question });
+  assert.equal(store.hasQuestionHandoff(), false);
+  assert.equal(store.takeHandoff().question, "");
+  // Negative: an open without a question hands none over, and Close drops a waiting one.
+  store.open({ mode: "docked", intent: { mode: "chat" } });
+  assert.equal(store.takeHandoff().question, "");
+  store.open({ mode: "docked", question });
+  store.close();
+  assert.equal(store.takeHandoff().question, "");
 });
