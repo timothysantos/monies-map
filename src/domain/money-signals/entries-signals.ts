@@ -5,14 +5,17 @@
 // accounts, amounts and days); Month's are about the calendar and the
 // plan, so the two pages never show the same trivia for a month.
 import {
+  amountLine,
   dayPair,
   monthName,
+  monthYear,
   monthPhase,
   phrase,
   plural,
   shortDay,
   sortedLine,
   sum,
+  textLine,
   tidyName,
   timesWord,
   weekdayIndex,
@@ -289,6 +292,14 @@ export function uncategorizedSignal(input: EntriesSignalInput): MoneySignal | nu
     phrasings: phrase(copy, values, { one: other.length === 1 }),
     sorted: sortedLine(copy.sorted, values),
     action: { id: "open-category", label: copy.action, categoryName: String(other[0].categoryName || "Other") },
+    basis: {
+      lines: [
+        textLine(`Expenses in Other in ${monthYear(input.month)}`, other.length),
+        amountLine("Their total", totalMinor)
+      ],
+      entries: { categoryName: String(other[0].categoryName || "Other"), month: input.month, type: "expense" },
+      month: input.month
+    },
     topic: "later"
   };
 }
@@ -326,6 +337,11 @@ export function possibleDuplicateSignal(input: EntriesSignalInput): MoneySignal 
     numbers: { primaryMinor: amountMinor },
     phrasings: phrase(copy, { name: tidyName(first.description), amount: input.formatMoney(amountMinor), dates: dayPair(first.date, second.date) }),
     action: { id: "show-entries", label: copy.action, entryIds: [first.id, second.id] },
+    basis: {
+      lines: [first, second].map((entry) => amountLine(`${tidyName(entry.description)} on ${shortDay(entry.date)}`, amountOf(entry))),
+      entries: { entryIds: [first.id, second.id], month: input.month },
+      month: input.month
+    },
     topic: "small-costs"
   };
 }
@@ -356,6 +372,15 @@ export function topFiveSignal(input: EntriesSignalInput): MoneySignal | null {
     steady: oneOffMinor < totalMinor * TOP_FIVE_ONE_OFF_SHARE,
     phrasings: phrase(copy, { rate, top: input.formatMoney(topMinor), total: input.formatMoney(totalMinor), ...when(input) }),
     action: { id: "show-entries", label: copy.action, entryIds: top.map((entry) => entry.id) },
+    basis: {
+      lines: [
+        amountLine(`Five largest expenses in ${monthYear(input.month)}`, topMinor),
+        amountLine("All spending that month", totalMinor),
+        textLine("Their share", `${rate}%`)
+      ],
+      entries: { entryIds: top.map((entry) => entry.id), month: input.month },
+      month: input.month
+    },
     topic: "enjoy"
   };
 }

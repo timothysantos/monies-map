@@ -3,7 +3,7 @@
 // while payments stayed, a payment the bank could not make, the account's
 // own charges, money between the owner's own accounts counted as income,
 // and the scheduled check. Summary and Month show them.
-import { addDays, joinWithAnd, monthName, numberWord, phrase, shortDay, sortedLine, type CopyCatalogue, type FormatMoney } from "./format";
+import { addDays, amountLine, joinWithAnd, monthName, monthYear, numberWord, phrase, shortDay, sortedLine, textLine, walletText, type CopyCatalogue, type FormatMoney } from "./format";
 import { whoseAccount, type WalletHealthPill } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
@@ -182,6 +182,18 @@ export function incomeMovedSignal(input: AccountSignalInput): MoneySignal | null
     primaryText: input.formatMoney(pick.totalMinor),
     phrasings: phrase(ACCOUNT_COPY.incomeMoved, values),
     sorted: sortedLine(ACCOUNT_COPY.incomeMoved.sorted, values),
+    basis: {
+      lines: [
+        textLine("Income", moved.isSalary ? "Salary" : `Income from ${moved.payer}`),
+        textLine("Now paid into", `${moved.toAccountName} since ${shortDay(moved.movedSince)}`),
+        textLine("Payments still made from", walletText(pill.accountName, pill.ownerLabel)),
+        ...moved.payments.map((item) => amountLine(`Monthly payment to ${item.payee}`, item.amountMinor)),
+        ...(moved.statementEndDate && moved.statementBalanceMinor !== undefined
+          ? [amountLine(`Balance on ${shortDay(moved.statementEndDate)}`, moved.statementBalanceMinor)]
+          : [])
+      ],
+      entries: { accountId: pill.accountId, month: moved.movedSince.slice(0, 7) }
+    },
     topic: "plan"
   };
 }
@@ -221,6 +233,15 @@ export function missedPaymentsSignal(input: AccountSignalInput): MoneySignal | n
     primaryText: values.total,
     phrasings: phrase(ACCOUNT_COPY.missedPayments, values, { one: pick.items.length === 1 }),
     sorted: sortedLine(ACCOUNT_COPY.missedPayments.sorted, values),
+    basis: {
+      lines: [
+        textLine("Account", walletText(pick.pill.accountName, pick.pill.ownerLabel)),
+        ...pick.items.map((item) => amountLine(`Payment to ${item.payee} due ${shortDay(item.dueDate)}`, item.amountMinor)),
+        amountLine(pick.items.length === 1 ? "Bank charge for the failed payment" : "Bank charges for the failed payments", chargesMinor)
+      ],
+      entries: { accountId: pick.pill.accountId, month: pick.items[0].dueDate.slice(0, 7) },
+      month: pick.items[0].dueDate.slice(0, 7)
+    },
     topic: "later"
   };
 }
@@ -288,9 +309,26 @@ export function accountChargesSignal(input: AccountSignalInput): MoneySignal | n
     numbers: { primaryMinor: pick.totalMinor },
     primaryText: values.total,
     phrasings: phrase(copy, values, { think: thinks }),
+    basis: {
+      lines: [
+        textLine("Account", walletText(pick.pill.accountName, pick.pill.ownerLabel)),
+        ...[...pick.inMonth]
+          .sort((left, right) => left.date.localeCompare(right.date))
+          .map((charge) => amountLine(`${ACCOUNT_CHARGE_LABELS[charge.kind] ?? "Bank charge"} on ${shortDay(charge.date)}`, charge.amountMinor)),
+        amountLine(`Charges in ${monthYear(pick.month)}`, pick.totalMinor)
+      ],
+      entries: { accountId: pick.pill.accountId, month: pick.month },
+      month: pick.month
+    },
     topic: "small-costs"
   };
 }
+
+// A bank account's charge, as its basis line names it.
+const ACCOUNT_CHARGE_LABELS: Record<string, string> = {
+  failed_payment: "Charge for a failed payment",
+  account_fee: "Monthly fee"
+};
 
 function trailingRun(months: string[]) {
   let run = months.length ? 1 : 0;
@@ -344,6 +382,17 @@ export function ownTransferIncomeSignal(input: AccountSignalInput): MoneySignal 
       id: "show-entries",
       label: ACCOUNT_COPY.ownTransferIncome.action,
       entryIds: linked.flatMap((item) => [item.entryId, item.fromEntryId]),
+      month: linkMonth
+    },
+    basis: {
+      lines: [
+        textLine("Account", walletText(pick.pill.accountName, pick.pill.ownerLabel)),
+        textLine("Moved in from", values.from),
+        textLine("Moves counted as income", pick.items.length),
+        amountLine(`Largest, on ${shortDay(largest.date)}`, largest.amountMinor),
+        amountLine("Counted as income in all", pick.totalMinor)
+      ],
+      entries: { entryIds: linked.flatMap((item) => [item.entryId, item.fromEntryId]), month: linkMonth },
       month: linkMonth
     },
     topic: "steady"
@@ -408,6 +457,20 @@ export function upcomingShortfallSignal(input: AccountSignalInput): MoneySignal 
     primaryText: values.short,
     phrasings: phrase(ACCOUNT_COPY.upcomingShortfall, values),
     sorted: sortedLine(ACCOUNT_COPY.upcomingShortfall.sorted, values),
+    basis: {
+      lines: [
+        textLine("Account", walletText(pick.accountName, pick.ownerLabel)),
+        amountLine(sinceStatement
+          ? `Balance on the ${shortDay(shortfall.statementEndDate)} statement, plus what's recorded since`
+          : `Balance on the ${shortDay(shortfall.statementEndDate)} statement`, shortfall.balanceMinor),
+        ...[...shortfall.payments]
+          .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
+          .slice(0, 6)
+          .map((payment) => amountLine(`${payment.payee} due ${shortDay(payment.dueDate)}`, payment.amountMinor)),
+        amountLine("Short by", shortfall.shortMinor)
+      ],
+      entries: { accountId: pick.accountId, month: shortfall.statementEndDate.slice(0, 7) }
+    },
     topic: "plan"
   };
 }

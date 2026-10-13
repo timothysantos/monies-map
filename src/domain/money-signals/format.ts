@@ -1,7 +1,7 @@
 // Small shared helpers for the check-in signals: copy templates, money and
 // date wording, and calendar arithmetic on plain YYYY-MM-DD strings (never
 // Date.now: callers pass `today`, so every result is deterministic).
-import type { SignalPhrasing } from "./types";
+import type { SignalBasisLine, SignalPhrasing } from "./types";
 
 export type FormatMoney = (amountMinor: number) => string;
 
@@ -46,6 +46,22 @@ export function phrase(entry: CopyEntry, values: Record<string, string | number>
 // A quick fix's one-time "Sorted" line with its numbers filled in.
 export function sortedLine(sorted: { fact: string; think: string }, values: Record<string, string | number>) {
   return { fact: capitalize(fill(sorted.fact, values)), think: fill(sorted.think, values) };
+}
+
+// One line of what a signal is based on (types.ts, SignalBasis): an amount
+// it worked out, or a short text value such as a wallet or a date.
+export function amountLine(label: string, amountMinor: number, currency?: string): SignalBasisLine {
+  return currency && currency !== "SGD" ? { label, amountMinor, currency } : { label, amountMinor };
+}
+
+export function textLine(label: string, text: string | number): SignalBasisLine {
+  return { label, text: String(text) };
+}
+
+// A wallet as a basis line names it: "OCBC 365 (Serene)".
+export function walletText(accountName: string, ownerLabel?: string) {
+  const owner = String(ownerLabel ?? "").trim();
+  return owner && !/joint|shared|household/i.test(owner) ? `${accountName} (${owner})` : accountName;
 }
 
 export function capitalize(text: string) {

@@ -5,6 +5,7 @@
 // shows only when last year's month is already in the range.
 import {
   addMonths,
+  amountLine,
   approxMoney,
   compactMoney,
   daysInMonth,
@@ -15,6 +16,7 @@ import {
   numberWord,
   phrase,
   sum,
+  textLine,
   type CopyCatalogue,
   type FormatMoney
 } from "./format";
@@ -350,6 +352,7 @@ export function spendingAboveIncomeSignal(input: SummarySignalInput): MoneySigna
   }
   let count = 0;
   let gapMinor = 0;
+  const streak: Array<{ month: string; gapMinor: number }> = [];
   for (let index = months.length - 1; index >= 0; index -= 1) {
     const month = months[index];
     const gap = spendOf(month) - Math.max(0, month.actualIncomeMinor ?? 0);
@@ -358,6 +361,7 @@ export function spendingAboveIncomeSignal(input: SummarySignalInput): MoneySigna
     }
     count += 1;
     gapMinor += gap;
+    streak.unshift({ month: month.month, gapMinor: gap });
   }
   if (count < MIN_STREAK) {
     return null;
@@ -369,7 +373,15 @@ export function spendingAboveIncomeSignal(input: SummarySignalInput): MoneySigna
     weight: gapMinor,
     numbers: { primaryMinor: gapMinor, count },
     primaryText: gap,
-    phrasings: phrase(SUMMARY_COPY.spendingAboveIncome, { count, gap })
+    phrasings: phrase(SUMMARY_COPY.spendingAboveIncome, { count, gap }),
+    basis: {
+      lines: [
+        ...streak.slice(-6).map((item) => amountLine(`More went out than came in, ${monthYear(item.month)}`, item.gapMinor)),
+        textLine("Months in a row", count),
+        amountLine("More out than in, all those months", gapMinor)
+      ],
+      month: streak.at(-1)!.month
+    }
   };
 }
 
@@ -420,8 +432,24 @@ export function categoryCreepSignal(input: SummarySignalInput): MoneySignal | nu
       then: approxMoney(input.formatMoney, best.thenMinor),
       now: approxMoney(input.formatMoney, best.nowMinor)
     }),
+    basis: {
+      lines: [
+        textLine("Category", best.label),
+        textLine("Months it rose in a row", best.count),
+        amountLine(`Spent in ${monthYear(months[months.length - 1 - best.count])}`, best.thenMinor),
+        amountLine(`Spent in ${monthYear(months[months.length - 1])}`, best.nowMinor),
+        amountLine(`Above its average month (the ${best.window} months before) by`, best.aboveMinor)
+      ],
+      entries: { categoryName: best.label, month: months[months.length - 1], type: "expense" },
+      month: months[months.length - 1]
+    },
     topic: "change"
   };
+}
+
+// The month's subscriptions category, for its Entries link.
+function subscriptionCategory(input: SummarySignalInput, month: string) {
+  return categoryTotals(input, month).find((item) => /subscription/i.test(item.label))?.label ?? "";
 }
 
 function subscriptionsIn(input: SummarySignalInput, month: string) {
@@ -462,6 +490,19 @@ export function subscriptionsSignal(input: SummarySignalInput): MoneySignal | nu
       yearly: approxMoney(input.formatMoney, yearlyMinor),
       daily: input.formatMoney(Math.round(yearlyMinor / 365))
     }),
+    basis: {
+      lines: [
+        amountLine(`Subscriptions in ${monthYear(month)}`, amountMinor),
+        ...(previousMinor === null ? [] : [amountLine(`Subscriptions in ${monthYear(previousMonth)}`, previousMinor)]),
+        amountLine("A year at this month's amount", yearlyMinor)
+      ],
+      entries: {
+        month,
+        type: "expense",
+        ...(subscriptionCategory(input, month) ? { categoryName: subscriptionCategory(input, month) } : {})
+      },
+      month
+    },
     topic: "small-costs"
   };
 }
@@ -489,6 +530,15 @@ export function monthsUnderPlanSignal(input: SummarySignalInput): MoneySignal | 
     turn: 0,
     primaryText: saved,
     phrasings: phrase(SUMMARY_COPY.monthsUnderPlan, { under: under.length, total: planned.length, saved }),
+    basis: {
+      lines: [
+        textLine("Months with a spending plan", planned.length),
+        textLine("Months that came in under it", under.length),
+        amountLine("Plan left unspent in those months", savedMinor),
+        textLine("Months counted", `${monthYear(planned[0].month)} to ${monthYear(planned[planned.length - 1].month)}`)
+      ],
+      month: planned[planned.length - 1].month
+    },
     topic: "steady"
   };
 }

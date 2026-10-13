@@ -1,6 +1,6 @@
 // Signals and builders every page shares. The statement gap reads the
 // view's wallet health (the account pills Summary and Month already load).
-import { addDays, daysBetween, joinWithAnd, phrase, monthName, shortDay, sortedLine, type CopyCatalogue, type CopyEntry, type FormatMoney } from "./format";
+import { addDays, amountLine, daysBetween, joinWithAnd, phrase, monthName, monthYear, shortDay, sortedLine, textLine, walletText, type CopyCatalogue, type CopyEntry, type FormatMoney } from "./format";
 import type { Audience, MoneySignal } from "./types";
 import type { AccountChargeDto, IncomeMovedDto, MissedPaymentDto, OwnTransferIncomeDto, UpcomingShortfallDto } from "../../types/dto";
 
@@ -198,6 +198,15 @@ export function statementGapSignal(input: {
     phrasings: phrase(copy, values),
     sorted: sortedLine(copy.sorted, values),
     action: { id: "review-statement", label: copy.action },
+    basis: {
+      lines: [
+        textLine("Wallet", walletText(pill.accountName, pill.ownerLabel)),
+        textLine("Statement", pill.latestCheckpointMonth ? monthYear(pill.latestCheckpointMonth) : "The latest one"),
+        amountLine("Statement and entries differ by", gapMinor)
+      ],
+      entries: { accountId: pill.accountId, ...(pill.latestCheckpointMonth ? { month: pill.latestCheckpointMonth } : {}) },
+      ...(pill.latestCheckpointMonth ? { month: pill.latestCheckpointMonth } : {})
+    },
     topic: "later"
   };
 }
@@ -262,6 +271,18 @@ export function cardBillSignal(input: {
     primaryText: amount,
     phrasings: phrase(copy, values),
     sorted: sortedLine(copy.sorted, values),
+    basis: {
+      lines: [
+        textLine("Card", walletText(pick.pill.accountName, pick.pill.ownerLabel)),
+        textLine("Statement", monthYear(pick.bill.statementMonth)),
+        amountLine("Bill", pick.bill.owedMinor),
+        ...(pick.bill.minimumMinor ? [amountLine("Minimum payment", pick.bill.minimumMinor)] : []),
+        amountLine("Paid since the statement", pick.bill.paidSinceMinor),
+        amountLine("Still to pay", pick.leftMinor),
+        textLine("Due", shortDay(pick.bill.paymentDueDate))
+      ],
+      entries: { accountId: pick.pill.accountId, month: pick.bill.paymentDueDate.slice(0, 7) }
+    },
     topic: "later"
   };
 }
@@ -308,9 +329,27 @@ export function bankChargesSignal(input: {
     numbers: { primaryMinor: pick.totalMinor },
     primaryText: total,
     phrasings: phrase(SHARED_COPY.bankCharges, values, { one: pick.charges.length === 1 }),
+    basis: {
+      lines: [
+        textLine("Card", walletText(pick.pill.accountName, pick.pill.ownerLabel)),
+        ...[...pick.charges]
+          .sort((left, right) => left.date.localeCompare(right.date))
+          .map((charge) => amountLine(`${CHARGE_LABELS[charge.kind] ?? CHARGE_LABELS.other_fee} on ${shortDay(charge.date)}`, charge.amountMinor)),
+        amountLine("Charges in all", pick.totalMinor)
+      ],
+      entries: { accountId: pick.pill.accountId, month: [...pick.charges].map((charge) => charge.date).sort().at(-1)!.slice(0, 7) }
+    },
     topic: "small-costs"
   };
 }
+
+// A charge's kind, as its basis line names it.
+const CHARGE_LABELS: Record<string, string> = {
+  late_fee: "Late charge",
+  interest: "Interest",
+  annual_fee: "Annual fee",
+  other_fee: "Bank fee"
+};
 
 function describeCharge(kind: string, amount: string) {
   switch (kind) {
@@ -359,6 +398,16 @@ export function penaltyInterestSignal(input: {
     numbers: { primaryMinor: pick.owedMinor },
     primaryText: amount,
     phrasings: phrase(SHARED_COPY.penaltyInterest, values),
+    basis: {
+      lines: [
+        textLine("Card", walletText(pick.pill.accountName, pick.pill.ownerLabel)),
+        textLine("Statement", monthYear(pick.month)),
+        amountLine("Owed on that statement", pick.owedMinor),
+        textLine("Penalty interest rate", `${pick.rate}% a year`)
+      ],
+      entries: { accountId: pick.pill.accountId, month: pick.month },
+      month: pick.month
+    },
     topic: "small-costs"
   };
 }
