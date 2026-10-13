@@ -144,7 +144,7 @@ test.describe("phone", () => {
     expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(205);
     expect((await page.locator(".financial-insight").first().boundingBox()).y, "Money insights above the fold").toBeLessThan(664);
     // The rows' and the menu's words are not in the first screen: they load on the first open.
-    const detailLoaded = () => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("money-jobs-words")));
+    const detailLoaded = () => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("money-jobs-detail")));
     expect(await detailLoaded(), "rows' words before the first open").toBe(false);
     await lead.locator("[data-money-jobs-summary]").tap();
     await expect(jobs.locator("[data-job]")).toHaveCount(rows.length);

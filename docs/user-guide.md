@@ -246,7 +246,10 @@ over plan.
 
 - **Spent**: what you spent over the selected range against what you planned
   to spend, with the share of the plan used and how much you are under
-  (green) or over (red) plan.
+  (green) or over (red) plan. Money you put into **Investments** or
+  **Savings** is not counted as spending here, and your savings target and
+  investment plan are not part of the spending plan, so this always agrees
+  with the "Spend within" money job below.
 - **Earned, spent and kept**: under the Spent figure, one bar stands for all
   the money you earned over the range. The red part is what you spent, the
   plum part is what you invested (entries in the **Investments** category)
@@ -256,7 +259,8 @@ over plan.
   that came out of your savings. A thin blue bar under it shows your plan on
   the same scale: what you planned to spend, to invest and to save.
   One line says it in words ("You kept $12,000 and invested $8,000 of the
-  $247,000 you earned"). Hover over a part of the bar to see how much it is
+  $247,000 you earned"; on a phone, "Kept $12,000 · invested $8,000 of
+  $247,000"). Hover over a part of the bar to see how much it is
   and what share of your income that is; click it (on a phone, tap it) for
   **View entries**, which opens Entries filtered to that money for the last
   month shown, and **Ask about this**, which opens Ask with a question about
@@ -270,7 +274,9 @@ over plan.
   this**. It only looks back at what happened against your own plan; it
   never guesses what is still to come.
 - **Income** and **Saved**: the income that came in, with the planned income
-  under it, and what you kept, with your savings target under it.
+  under it, and what you kept (the same as the green part of the bar, so
+  money you filed under **Savings** counts as saved), with your savings
+  target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
@@ -359,7 +365,8 @@ stays highlighted, and the range at the top stays as it was.
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
 - **The top card**: what you have spent this month against what you
-  planned, with the percent of plan and how much you are under or over plan.
+  planned to spend, with the percent of plan and how much you are under or
+  over plan (investing and saving are not spending, as on Summary).
   Under that is the same earned, spent and kept bar as on
   [Summary](#summary), for this month, and its money jobs line ("2 of 3
   money jobs done", folded on a phone). Under it, in the same card, are **Income** (received, with

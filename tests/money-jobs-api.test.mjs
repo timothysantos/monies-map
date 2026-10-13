@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEntry, createSeededTemplate, openSeededDatabase } from "./support/d1-workspace.mjs";
-import { plannedInvestMinor } from "../src/domain/money-jobs.ts";
+import { plannedInvestMinor } from "../src/domain/money-job-plan.ts";
 
 let template;
 test.before(async () => {

@@ -3,13 +3,23 @@ import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatMonthLabel } from "./formatters";
 import { wholeMoney } from "./money-jobs-model";
 
-// The words of the opened money jobs and of the bar parts' menu (design.md
-// "Money jobs"): the rows' labels and statuses, the menu's Entries link and
-// its question for Ask. Plain functions with no React, loaded through
-// money-jobs-loader.js on the first open, tap, hover or focus, so neither
-// they nor their copy and the Entries filter code are in the first screen.
-// The lead's components (ui/money-jobs.jsx, ui/money-actions.jsx) render
-// what these return.
+// The window event a bar part's or a job's menu sends: { entries: { pathname,
+// search } } to open Entries, or { askText } to open Ask with that question.
+// The shell (App.jsx, which names it as a literal so neither side imports
+// the other) navigates.
+export const MONEY_ACTION_EVENT = "monies:money-action";
+
+// The opened money jobs and the bar parts' menu (design.md "Money jobs"):
+// the rows' labels and statuses, the menu's Entries link and its question
+// for Ask, and the two small pieces of UI that show them. Loaded through
+// money-jobs-loader.js on the first open, tap, hover or focus, so none of
+// it (nor its copy, nor the Entries filter code) is in the first screen.
+//
+// The UI is drawn with the caller's `h` (React's createElement), and its
+// state stays with the caller (ui/money-jobs.jsx, ui/savings-bar.jsx): this
+// chunk imports nothing from the first screen's shared React chunk, which
+// the bundler would otherwise split into one more first-screen file
+// (scripts/check-initial-bundle.mjs counts them).
 
 // One row per job (listMoneyJobs' numbers, money-jobs-model.js): the job and
 // its plan, then "✓ done" or short / over by the gap, with "so far" while
@@ -29,8 +39,6 @@ export function describeMoneyJobs(jobs, { inProgress = false, hidden = false, fo
     return { key, label: copy[key](hidden ? null : formatMoney(planMinor)), status, done, tone: done ? "in" : "short" };
   });
 }
-
-export const moneyJobsListLabel = moneyJobsCopy.listLabel;
 
 // What a bar part or a job opens: the Entries filter that lists the money
 // behind it (null when no entry holds it, such as income simply left in the
@@ -93,4 +101,62 @@ export function moneyActionView(actionKey, { name, figures, hidden = false, peri
     entries,
     ask: { label: copy.ask, question: copy.questions[target.question](periodWords) }
   };
+}
+
+// The menu: "View entries" and "Ask about this", two quiet pill buttons. The
+// shell does the navigating (App.jsx listens for MONEY_ACTION_EVENT): Entries,
+// or Ask (the page on a phone, the panel beside the page on a wider screen).
+// The menu closes as it goes, so Back finds the lead as it was.
+export function renderMoneyActions(h, { actionKey, view, onDone }) {
+  if (!view) {
+    return null;
+  }
+  const send = (detail) => {
+    onDone?.();
+    window.dispatchEvent(new CustomEvent(MONEY_ACTION_EVENT, { detail }));
+  };
+  const button = (action, label, detail, extra = {}) => h(
+    "button",
+    { type: "button", className: "money-action", "data-action": action, onClick: () => send(detail), ...extra },
+    label
+  );
+  return h(
+    "span",
+    { className: "money-actions", role: "group", "aria-label": view.label, "data-money-actions": actionKey },
+    view.entries ? button("entries", view.entries.label, { entries: view.entries.location }) : null,
+    button("ask", view.ask.label, { askText: view.ask.question }, { "data-question": view.ask.question })
+  );
+}
+
+// One quiet row per job: the job and its plan on the left, the status on the
+// right in its money tone (text only). A row is a button that opens its menu
+// under it (`openJob`, `setOpenJob` are the caller's state).
+export function renderMoneyJobRows(h, { jobs, figures, hidden, period, openJob, setOpenJob }) {
+  const rows = describeMoneyJobs(jobs, { inProgress: period.inProgress, hidden });
+  return h(
+    "ul",
+    { className: "money-jobs-list", "aria-label": moneyJobsCopy.listLabel },
+    rows.map((job) => h(
+      "li",
+      { key: job.key, className: "money-job", "data-job": job.key },
+      h(
+        "button",
+        {
+          type: "button",
+          className: "money-job-row",
+          "aria-expanded": openJob === job.key,
+          onClick: () => setOpenJob((current) => (current === job.key ? null : job.key))
+        },
+        h("span", { className: "money-job-label" }, job.label),
+        h("span", { className: `money-job-status money-${job.tone}`, "data-job-status": true }, job.status)
+      ),
+      openJob === job.key
+        ? renderMoneyActions(h, {
+          actionKey: job.key,
+          view: moneyActionView(job.key, { name: job.label, figures, hidden, period, search: window.location.search }),
+          onDone: () => setOpenJob(null)
+        })
+        : null
+    ))
+  );
 }

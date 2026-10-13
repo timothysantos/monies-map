@@ -1,5 +1,5 @@
 import { flowTone, signTone } from "../domain/money-tone";
-import { plannedInvestMinor } from "../domain/money-jobs";
+import { plannedInvestMinor } from "../domain/money-job-plan";
 import { buildSummaryLeadModel } from "./summary-lead-model";
 
 // The Month top in the Lead · Support · Detail language (design.md): the

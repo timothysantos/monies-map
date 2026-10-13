@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { messages } from "../src/client/copy/en-SG.js";
-import { describeMoneyJobs, moneyActionTarget, moneyActionView } from "../src/client/money-jobs-words.js";
+import { describeMoneyJobs, moneyActionTarget, moneyActionView } from "../src/client/money-jobs-detail.js";
 import { listMoneyJobs, splitMoneyUse } from "../src/client/money-jobs-model.js";
 import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
 import { buildSummaryLeadModel } from "../src/client/summary-lead-model.js";
@@ -186,7 +186,7 @@ test("the Month lead takes the investment goal from its Investments plan rows, n
 });
 
 test("the shell listens for the lead menu under the same event name", async () => {
-  const { MONEY_ACTION_EVENT } = await import("../src/client/money-jobs-model.js");
+  const { MONEY_ACTION_EVENT } = await import("../src/client/money-jobs-detail.js");
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("../src/client/App.jsx", import.meta.url), "utf8");
   assert.ok(app.includes(`window.addEventListener("${MONEY_ACTION_EVENT}"`), "App.jsx navigates for it");

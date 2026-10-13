@@ -729,12 +729,17 @@ Rules:
 Where it is used:
 
 - Summary top (`summary-lead.jsx`, `summary-lead-model.js`): "Spent ·
-  range", the range's actual spend "of" its planned spend, then one text line
+  range", the range's spending "of" its spend plan, then one text line
   (no bar) with the percent of plan and how far under (mint) or over (rose)
   plan, then the savings bar and the money jobs (below); Income and
-  Saved pills with planned income and the savings target. Every figure and
-  tone is the Summary DTO's own metric card (one card was added, "Planned
-  investments", for the invest job) or its category share. Phone
+  Saved pills with planned income and the savings target. The figures are
+  the Summary DTO's own metric cards (one card was added, "Planned
+  investments") and its category share, through one split
+  (`splitMoneyUse`, "Money jobs" below): the spend leaves out money filed
+  under Investments or Savings, the plan leaves out the savings target and
+  the Investments plan rows, so the "under / over plan" line always agrees
+  with the spend job, and Saved is the bar's kept (realized savings plus
+  money moved to Savings). The tones follow (`spendTone`, `signTone`). Phone
   stacks the pills under the lead; desktop and tablet put them in a column
   on its right. The group is `SpendLeadGroup` (`ui/spend-lead-group.jsx`,
   re-exported by `ui-components.jsx` so the Month top shares its chunk and
@@ -745,18 +750,21 @@ Where it is used:
   a phone).
 - Month top (`MonthLead` in `month-overview.jsx`, `month-lead-model.js`): the
   same `SpendLeadGroup` for one month, eyebrow "Spent · May 2026". The lead
-  is actual spend against planned spend with one text line (no bar), "x% of
+  is the spend job's spending against its plan (the same split as Summary)
+  with one text line (no bar), "x% of
   plan" and "$y under plan" (mint) or "$y over plan" (rose, the old Spend
   gap), then the savings bar and the money jobs line (below); Income
-  (received, with "plan $x"), Saved (realized, with "target $x") and
+  (received, with "plan $x"), Saved (kept, with "target $x") and
   Remaining budget are one row of three equal columns inside the lead
   card under the savings bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
   colour only, 52 px tall, at most 205 px for the whole card on an iPhone 13
   with the savings bar (about 203 px; the card's gaps and padding are tight
-  in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income and Saved are the month's own
+  in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income is the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
-  spend, plan, savings target and remaining budget are the Month metric
-  cards' own figures, so nothing is recomputed. Remaining budget is a
+  spend, plan and savings target start from the Month metric cards and go
+  through the split with the month's plan rows and category share, Saved
+  is the split's kept, and remaining budget (planned income minus the whole
+  plan) is the card's own figure. Remaining budget is a
   button: the whole column opens its explanation popover; its label is "To
   allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
   tiles are gone; nothing scrolls sideways at 390 px.
@@ -793,7 +801,7 @@ Where it is used:
   $38,000 · 15% of income"), so screen readers have them without opening
   anything. Sighted users get the same line as a popover: hover (mouse)
   shows it; a click, a tap (touch; a second tap or a tap elsewhere closes
-  it) or Enter shows it with the segment's menu under it (`MoneyActions`:
+  it) or Enter shows it with the segment's menu under it (`renderMoneyActions`:
   View entries, Ask about this); while the menu is open, hovering other
   segments does not move it, and Escape or a press outside closes it. The
   bar is 10 px tall and its hit area reaches 17 px above and below, so a
@@ -801,7 +809,8 @@ Where it is used:
   percentage widths. Hidden money: the shape and percentages stay (the
   popover reads "Kept · 15% of income"), the colours go neutral grey (three
   greys when invested is there), the sentence is "Spent and kept, as a share
-  of what you earned" (or "Spent, invested and kept, …"), and the plan bar
+  of what you earned" (or "Spent, invested and kept, as shares of income"),
+  and the plan bar
   is not drawn. The bar's colours are the money tones (rose spent, mint
   kept, sky plan) plus faded plum (`--pastel-lavender-ink`) for invested:
   money put to work, a good outcome like kept (its model tone is `in`), but
@@ -812,8 +821,10 @@ Where it is used:
   4 money jobs done" ("… so far" while the period's last month is the
   current month), folded on a phone (it takes the old plan line's place and
   height, 3 px under the sentence, so the Month card stays at most 205 px;
-  only the longer "kept and invested" sentence may wrap to a second line,
-  about 223 px) and open from 761 px. The line's tap target is 40 px: its
+  a phone shows the sentences that name investing in a one-line form, "Kept
+  $12,000 · invested $8,000 of $247,000" or "Spent $300 over income ·
+  invested $200", so the card stays at most 205 px with investments too;
+  wider screens keep the full sentence) and open from 761 px. The line's tap target is 40 px: its
   padding reaches into the gaps above and below and a negative margin gives
   the space back; the bar's segments sit above it where the two reach
   overlap (a pseudo-element target covered the bar in Chrome). Open, it
@@ -822,10 +833,22 @@ Where it is used:
   by $n" / "over by $n" in rose, text only ("✓ so far" and "… so far" for a
   month in progress). A job is listed only when its plan line is more than
   zero; a gap under 50 cents (which would read "$0") is done. Each row is a
-  button that opens the same `MoneyActions` menu under it. Hidden money: the
+  button that opens the same menu under it. Hidden money: the
   labels drop their amounts ("Spend within plan", "Save"), a done job is
   "✓" and any other the share of its plan reached ("80%"), all in plain ink.
-- `MoneyActions` (`ui/money-actions.jsx`): two quiet pill buttons. "View
+  Only the folded line is in the first screen (the jobs' numbers,
+  `listMoneyJobs`, and its one string). The rows, the menu, their words
+  (`copy/money-jobs-copy.js`), the questions and the Entries filter code are
+  `money-jobs-detail.js`, loaded by `money-jobs-loader.js` on the first
+  open of the jobs (at once where they start open, from 761 px) or the
+  first hover, focus or press on a bar part, the way Money insights load.
+  It draws its two small pieces of UI with the caller's `createElement`
+  and keeps no state (the open row and the open menu stay in
+  `ui/money-jobs.jsx` and `ui/savings-bar.jsx`): a lazy chunk that imports
+  React from the shared chunk made the bundler split that chunk into one
+  more first-screen file.
+- The bar parts' and jobs' menu (`renderMoneyActions` in
+  `money-jobs-detail.js`): two quiet pill buttons. "View
   entries" opens Entries for the period's last month (Entries shows one
   month; on a Summary range the button says "View Sep 2026 entries"), in the
   page's view and scope, filtered to the money behind the part: Spent, the

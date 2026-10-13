@@ -1,5 +1,5 @@
 // The opened money jobs list and the menu a bar part or a job opens
-// (money-jobs-words.js, design.md "Money jobs"). They load with that
+// (money-jobs-detail.js, design.md "Money jobs"). They load with that
 // module on the first open or tap, so none of this is in the first screen;
 // the folded "3 of 4 money jobs done" line is in en-SG.js.
 export const moneyJobsCopy = {

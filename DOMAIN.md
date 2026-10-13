@@ -171,8 +171,9 @@ Recommended relationship:
 - the `savings bar` (Summary and Month lead) draws actual income as 100%,
   with spent, invested and kept as its parts. Money filed under the
   `Investments` category is invested and money filed under `Savings` is
-  kept: both were moved, not spent, so they come out of the spend (the lead
-  figure and realized savings still count them as spend; see "Money job").
+  kept: both were moved, not spent, so they come out of the spend. The
+  lead's Spent figure and its Saved figure use the same split (see "Money
+  job"); the stored realized savings still counts them as spend.
   When more went out than came in, spending past the income is shown as
   money that "came out of savings".
 
@@ -184,8 +185,8 @@ Optional related concept:
 ### Money Job
 
 What one line of a month plan is for, and whether it was done
-(`src/domain/money-jobs.ts`, `src/client/money-jobs-model.js`). Each plan
-line has one of four jobs:
+(`src/domain/money-jobs.ts`, `src/domain/money-job-plan.ts`,
+`src/client/money-jobs-model.js`). Each plan line has one of four jobs:
 
 - spend within the budget: every planned row except the savings target
   rows and the Investments rows, against spending (expense entries outside
@@ -208,9 +209,14 @@ Important distinctions:
 - Investing is detected by category name (`Investments`), as category
   offsets are. A transfer into an investment account is not counted as
   invested: transfers stay neutral and the money stays in kept.
-- Realized savings (`income - spend`) is unchanged and still counts money
-  filed under `Savings` and `Investments` as spend, so the Saved figure can
-  be lower than the save job's kept figure when such entries exist.
+- The Summary and Month lead are one split of the period's money
+  (`splitMoneyUse`): the lead's "Spent" is the spend job's spending, its
+  plan ("of $x plan", "% of plan", "under / over plan") is the spend job's
+  plan, and its Saved figure is the save job's kept. So the lead never says
+  "under plan" beside a spend job that is over.
+- The stored `realized savings` (`income - spend`, the snapshot and month
+  rollup field, and Intent vs Outcome's per-month detail) is unchanged and
+  still counts money filed under `Savings` and `Investments` as spend.
 - The Summary page's `Planned investments` metric card carries the range's
   investment goal; the Month page derives it from its plan rows. No other
   field was added.

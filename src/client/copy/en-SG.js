@@ -166,13 +166,12 @@ export const messages = {
         spentMoreAndInvested: (more, invested) => `You spent ${more} more than you earned, and invested ${invested}`,
         investedFromSavings: (invested, fromSavings) => `You invested ${invested}, ${fromSavings} of it from savings`,
         hiddenSentence: "Spent and kept, as a share of what you earned",
-        hiddenSentenceInvested: "Spent, invested and kept, as a share of what you earned",
+        hiddenSentenceInvested: "Spent, invested and kept, as shares of income",
         // The same, short enough for one line on a phone (the Month card
         // stays at most 205 px). Only the sentences that name investing differ.
         short: {
           keptAndInvested: (kept, invested, earned) => `Kept ${kept} · invested ${invested} of ${earned}`,
-          spentMoreAndInvested: (more, invested) => `Spent ${more} over income · invested ${invested}`,
-          hiddenSentenceInvested: "Spent, invested and kept, as shares of income"
+          spentMoreAndInvested: (more, invested) => `Spent ${more} over income · invested ${invested}`
         }
       },
       // The money jobs line under the savings bar (ui/money-jobs.jsx,

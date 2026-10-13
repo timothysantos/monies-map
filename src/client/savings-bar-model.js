@@ -60,7 +60,6 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     }
     if (hidden) {
       sentence = invested > 0 ? copy.hiddenSentenceInvested : copy.hiddenSentence;
-      shortSentence = invested > 0 ? copy.short.hiddenSentenceInvested : null;
     } else if (spentPast > 0 && invested > 0) {
       sentence = copy.spentMoreAndInvested(formatMoney(spentPast), formatMoney(invested));
       shortSentence = copy.short.spentMoreAndInvested(formatMoney(spentPast), formatMoney(invested));
@@ -84,7 +83,6 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     }
     if (hidden) {
       sentence = invested > 0 ? copy.hiddenSentenceInvested : copy.hiddenSentence;
-      shortSentence = invested > 0 ? copy.short.hiddenSentenceInvested : null;
     } else if (invested > 0) {
       sentence = copy.keptAndInvested(formatMoney(kept), formatMoney(invested), formatMoney(income));
       shortSentence = copy.short.keptAndInvested(formatMoney(kept), formatMoney(invested), formatMoney(income));

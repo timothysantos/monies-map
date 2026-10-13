@@ -5,12 +5,6 @@ export const wholeMoney = (minor) => wholeMoneyFormatter.format(minor / 100);
 
 const atLeastZero = (minor) => Math.max(0, minor ?? 0);
 
-// The window event a bar part's or a job's menu sends (ui/money-actions.jsx):
-// { entries: { pathname, search } } to open Entries, or { askText } to open
-// Ask with that question. The shell (App.jsx, which names it as a literal so
-// neither side imports the other) navigates.
-export const MONEY_ACTION_EVENT = "monies:money-action";
-
 // What the period's income went to, from figures the lead already has
 // (design.md "Money jobs"; DOMAIN.md "Money job"). The lead's spend counts
 // every expense entry, including money filed under the Investments and
@@ -48,7 +42,7 @@ export function splitMoneyUse({
 }
 
 // The jobs the plan gives the money, as plain numbers (labels and statuses
-// are worded by money-jobs-words.js, which loads with the opened
+// are worded by money-jobs-detail.js, which loads with the opened
 // list): spend within the budget, save the savings target, invest the
 // investment goal, and the planned income coming in. A job is there only
 // when its plan line is (more than zero). `gapMinor` is how far it is from

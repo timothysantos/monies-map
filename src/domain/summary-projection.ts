@@ -6,7 +6,7 @@ import { buildPlanRowsForView } from "./month-projection";
 import { incomeMinor, spendingMinor } from "./category-offset";
 import { buildDonutChart } from "./donut-chart-projection";
 import { flowTone, signTone, spendTone } from "./money-tone";
-import { plannedInvestMinor } from "./money-jobs";
+import { plannedInvestMinor } from "./money-job-plan";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 import type {
   AccountDto,

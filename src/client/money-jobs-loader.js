@@ -1,22 +1,21 @@
 import { useEffect, useState } from "react";
 
-// The words of the opened money jobs and of the bar parts' menu
-// (money-jobs-words.js: labels, statuses, questions and the Entries filter)
-// are not part of the first screen: the lead shows the bar and the folded
-// "3 of 4 money jobs done" line at once, and the words load on the first
-// open, tap, hover or focus that needs them (or at once where the jobs start
-// open, on a wider screen). They are plain functions with no React, so the
-// chunk they load in leans only on the first screen's own chunks, the same
-// way Money insights load (money-insights-loader.js). The promise is shared,
-// so they download once; a failed load is forgotten and the next try loads
-// again.
-let words = null;
+// The opened money jobs and the bar parts' menu
+// (money-jobs-detail.js: labels, statuses, questions, the Entries filter
+// and the two small pieces of UI) are not part of the first screen: the lead
+// shows the bar and the folded "3 of 4 money jobs done" line at once, and
+// this loads on the first open, tap, hover or focus (or at once where the jobs
+// start open, on a wider screen). It imports no React, so the chunk it
+// loads in leans only on the first screen's own chunks, the same way Money
+// insights load (money-insights-loader.js). The promise is shared, so it
+// downloads once; a failed load is forgotten and the next try loads again.
+let detail = null;
 let pending = null;
 
-export function loadMoneyJobsWords() {
-  pending ??= import("./money-jobs-words").then(
+export function loadMoneyJobsDetail() {
+  pending ??= import("./money-jobs-detail").then(
     (module) => {
-      words = module;
+      detail = module;
       return module;
     },
     (error) => {
@@ -27,15 +26,15 @@ export function loadMoneyJobsWords() {
   return pending;
 }
 
-// The loaded words once `wanted` has been true, or null while they are on their way.
-export function useMoneyJobsWords(wanted) {
-  const [module, setModule] = useState(words);
+// The loaded module once `wanted` has been true, or null while it is on its way.
+export function useMoneyJobsDetail(wanted) {
+  const [module, setModule] = useState(detail);
   useEffect(() => {
     if (module || !wanted) {
       return undefined;
     }
     let active = true;
-    loadMoneyJobsWords()
+    loadMoneyJobsDetail()
       .then((loaded) => {
         if (active) setModule(loaded);
       })

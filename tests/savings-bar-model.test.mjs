@@ -173,7 +173,7 @@ test("hidden money keeps the percentages and drops every amount and every sign w
 
   const invested = build({ incomeMinor: 24_700_000, spentMinor: 23_500_000, investedMinor: 800_000 }, { hidden: true, formatMoney: noFormatting });
   assert.deepEqual(invested.segments.map((segment) => segment.popover), ["Spent · 92% of income", "Invested · 3% of income", "Kept · 5% of income"]);
-  assert.equal(invested.sentence, "Spent, invested and kept, as a share of what you earned");
-  assert.equal(invested.shortSentence, "Spent, invested and kept, as shares of income");
+  assert.equal(invested.sentence, "Spent, invested and kept, as shares of income");
+  assert.equal(invested.shortSentence, invested.sentence);
   assert.doesNotMatch(JSON.stringify(invested), /\$|more than|from savings/);
 });
