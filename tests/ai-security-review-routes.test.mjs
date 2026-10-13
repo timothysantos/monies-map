@@ -118,7 +118,7 @@ test("F4: a receipt image or voice clip with no declared length is cut off at it
 });
 
 test("F4: the small JSON routes refuse a body far bigger than any real request", async () => {
-  for (const path of ["/api/ai-assist/answer", "/api/ai-assist/entry-draft", "/api/ai-assist/provider-status/topped-up"]) {
+  for (const path of ["/api/ai-assist/answer", "/api/ai-assist/entry-draft", "/api/ai-assist/plan-draft", "/api/ai-assist/provider-status/topped-up"]) {
     const { env } = aiEnv();
     env.AI_ALERT_EMAILS = "*";
     const state = { pulled: 0 };
@@ -184,6 +184,22 @@ test("F5: /api/entries/create refuses a date, amount or text the editors never s
   const saved = await api("/api/entries/create", { ...valid, postDate: "2026-05-06", note: "weekly shop", externalReference: "ask:11111111-2222-3333-4444-555555555555" });
   assert.equal(saved.status, 200, JSON.stringify(saved.payload));
   assert.equal(saved.payload.created, true);
+});
+
+test("F4: the plan draft Save route refuses a body far bigger than any real draft, and a normal Save still reads", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const path = "/api/month-plan/apply-changes";
+  const state = { pulled: 0 };
+  const response = await worker.fetch(chunkedRequest(path, "application/json", 8 * 1024 * 1024, state), { DB: db, ...template.config.vars });
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { ok: false, error: "The request is too large." });
+  assert.ok(state.pulled <= 256 * 1024, `${path} read ${state.pulled} bytes`);
+  // A normal body is read: an empty draft reaches the route's own validation, not the size guard.
+  const small = await worker.fetch(
+    new Request(`http://127.0.0.1${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ month: "", changes: [] }) }),
+    { DB: db, ...template.config.vars }
+  );
+  assert.equal(small.status, 400);
 });
 
 test("F4: the older AI routes are bounded the same way, and an oversized body is a 413 whichever route read it", async () => {

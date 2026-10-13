@@ -17,7 +17,11 @@ const copy = messages.summary.lead.savingsBar;
 // readers read the popover through aria-describedby, which is always in the
 // page. Hidden money keeps the percentages and neutral colours, and shows no
 // amount anywhere.
-export function SavingsBar({ figures, hidden, period }) {
+/**
+ * @param {{ figures: any, hidden: boolean, period?: any }} props `period` is
+ * optional: without it (an Ask answer's bar) the parts have no menu.
+ */
+export function SavingsBar({ figures, hidden, period = null }) {
   const baseId = useId();
   const rootRef = useRef(null);
   const lastPointer = useRef("");
@@ -66,7 +70,8 @@ export function SavingsBar({ figures, hidden, period }) {
   const press = (key) => {
     const opening = lastPointer.current === "mouse" || openKey !== key || menuKey !== key;
     setOpenKey(opening ? key : null);
-    setMenuKey(opening ? key : null);
+    // Without a period (an Ask answer's bar) there is no menu to open.
+    setMenuKey(opening && period ? key : null);
   };
 
   return (

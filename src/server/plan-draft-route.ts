@@ -34,6 +34,7 @@ import { loadRoutePageContext } from "../domain/route-context";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import type { PlanDraftAnswersDto, PlanDraftResponseDto } from "../types/dto";
 import { json } from "./json";
+import { readJsonObject, SMALL_JSON_MAX_BYTES } from "./limited-body";
 
 const PLAN_AI_UNITS = 1;
 const PLAN_AI_MAX_TOKENS = 260;
@@ -41,14 +42,10 @@ const PLAN_AI_TIMEOUT_MS = 8_000;
 const MAX_ANSWER_LINES = 6;
 
 export async function handlePlanDraft(request: Request, env: AiProviderEnv & { DB: D1Database }): Promise<Response> {
-  let body: Record<string, unknown> | null = null;
-  try {
-    const parsed = await request.json();
-    body = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
-  } catch {
-    body = null;
-  }
-  const text = typeof body?.text === "string" ? body.text.replace(/\s+/g, " ").trim() : "";
+  // A body past the cap throws RequestBodyTooLargeError, which the AI route
+  // wrapper turns into a 413.
+  const body: Record<string, unknown> = await readJsonObject<Record<string, unknown>>(request, SMALL_JSON_MAX_BYTES);
+  const text = typeof body.text === "string" ? body.text.replace(/\s+/g, " ").trim() : "";
   if (!text) {
     return json({ ok: false, error: "Missing plan request text" }, 400);
   }
@@ -56,10 +53,10 @@ export async function handlePlanDraft(request: Request, env: AiProviderEnv & { D
     return json({ ok: false, error: "The request is too long." }, 400);
   }
   const today = todayInAppTimeZone();
-  const { household, categories, viewId } = await loadRoutePageContext(env.DB, typeof body?.viewId === "string" ? body.viewId : "household");
+  const { household, categories, viewId } = await loadRoutePageContext(env.DB, typeof body.viewId === "string" ? body.viewId : "household");
   const accounts = await loadAccountReferences(env.DB);
-  const monthInView = typeof body?.month === "string" && /^\d{4}-\d{2}$/.test(body.month) ? body.month : today.slice(0, 7);
-  const answers = readAnswers(body?.answers);
+  const monthInView = typeof body.month === "string" && /^\d{4}-\d{2}$/.test(body.month) ? body.month : today.slice(0, 7);
+  const answers = readAnswers(body.answers);
 
   const reading = readPlanRequest(text, { today, walletNames: accounts.map((account) => account.name) });
   if (reading.kind === "none") {
