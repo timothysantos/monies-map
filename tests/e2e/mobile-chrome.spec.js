@@ -287,12 +287,6 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
     await sheet.getByRole("button", { name: "Reset filters" }).click();
     await expect.poll(() => params(page)).toEqual(base);
     await expect(sheet).toBeVisible();
-    // The URL changes at once, but the page re-renders a moment later (about
-    // 120 ms here), and react-router's functional setSearchParams builds the
-    // next URL from the last render's params. Wait for the rendered filters to
-    // clear before the next tap, as a person's tap would; a tap in between
-    // brings the cleared filters back from that stale snapshot. This was
-    // mistaken for an order dependence: it fails alone when the machine is slow.
     await expect(sheet.locator(".search-filter input")).toHaveValue("");
     await expect(filter("By wallet")).not.toContainText(walletName);
 
@@ -319,6 +313,44 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
     await sheet.getByRole("button", { name: "Direct ownership", exact: true }).click();
     await expect(sheet).toHaveCount(0);
     await expect.poll(() => params(page)).toEqual({ view: "person-tim", month: MONTH, scope: "direct" });
+  });
+
+  // The URL changes at once on Reset filters, but the page re-renders a
+  // moment later (about 120 ms on a slow machine). A scope tapped in between
+  // used to build its URL from the last render's params (react-router's
+  // functional setSearchParams) and bring the cleared filters back. The
+  // setters now build on the URL as it is (use-live-search-params.js).
+  test("a scope tapped straight after Reset filters keeps the filters cleared", async ({ page }) => {
+    await phone(page);
+    const base = { view: "person-joyce", month: MONTH, entries_scope: "direct_plus_shared" };
+    const filtered = { ...base, entry_category: "Groceries", entry_type: "expense", entry_search: "fairprice" };
+    await openUsable(page, `/entries?${new URLSearchParams(filtered).toString()}`);
+    const sheet = page.locator(".mobile-context-dialog");
+    await page.locator(".mobile-context-trigger").click();
+    await expect(sheet.locator(".search-filter input")).toHaveValue("fairprice");
+
+    // Both taps in the same moment, with no render in between: the slowest
+    // phone's worst case, every time. The Reset tap writes the URL at once;
+    // the scope tap must build on that URL, not on the params the page last
+    // drew.
+    await expect(sheet.getByRole("button", { name: "Shared", exact: true })).toBeVisible();
+    const urlBetween = await page.evaluate(() => {
+      const dialog = document.querySelector(".mobile-context-dialog");
+      const button = (name) => [...dialog.querySelectorAll("button")].find((item) => item.textContent.trim() === name);
+      button("Reset filters").click();
+      const between = window.location.search;
+      button("Shared").click();
+      return between;
+    });
+    expect(Object.fromEntries(new URLSearchParams(urlBetween)), "Reset wrote the URL before any render").toEqual(base);
+
+    await expect(sheet).toHaveCount(0);
+    await expect.poll(() => params(page)).toEqual({ ...base, entries_scope: "shared" });
+    // And the page draws them cleared once it catches up.
+    await page.locator(".mobile-context-trigger").click();
+    await expect(sheet.locator(".search-filter input")).toHaveValue("");
+    await expect(sheet.locator(".entries-filter").filter({ hasText: "By category" })).not.toContainText("Groceries");
+    expect(params(page)).toEqual({ ...base, entries_scope: "shared" });
   });
 
   test("the sheet swipes down to close; a short drag springs back", async ({ page }) => {

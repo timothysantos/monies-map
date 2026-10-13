@@ -848,6 +848,15 @@ These are defaults, not excuses for clever golfing.
   wrong before 8 am, and the Worker runs in UTC; `tests/app-dates.test.mjs`
   fails on that pattern in client code. Calendar arithmetic on
   `T00:00:00Z` dates (`addDaysToIsoDate`) stays in UTC
+- a component that updates the URL's query with a functional setter
+  (`setSearchParams((current) => next)`) uses `useLiveSearchParams`
+  (`src/client/use-live-search-params.js`), as `App.jsx` and Entries do:
+  `current` is the URL as it is now, not react-router's last-render params.
+  The URL changes at once but the page re-renders a moment later, so a
+  second quick tap (a scope right after Reset filters) built on the stale
+  params and brought cleared filters back
+  (`tests/e2e/mobile-chrome.spec.js`, "a scope tapped straight after Reset
+  filters")
 - if several route modules repeat the same route-context or month-selection
   logic, extract that logic into `src/domain/route-context.ts` or another
   shared route fragment before the duplication spreads

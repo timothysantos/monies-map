@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { Inbox, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { AppLoadingOverlay } from "./app-shell-status";
@@ -70,6 +70,7 @@ import { createEntriesDataOwner } from "./entries-data-owner";
 import { buildEntriesPageParams } from "./app-routing";
 import { useIsMobileLayout } from "./use-viewport";
 import { useStableHandler } from "./use-stable-handler";
+import { useLiveSearchParams } from "./use-live-search-params";
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -110,7 +111,8 @@ export function EntriesPanel({
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  // Filter setters build on the URL as it is now (use-live-search-params.js).
+  const [searchParams, setSearchParams] = useLiveSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const useMobileEntrySheet = useIsMobileLayout();
