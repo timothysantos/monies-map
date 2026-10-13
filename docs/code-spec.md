@@ -673,7 +673,11 @@ split's edit carries its entry month's marker), the linked split's amount,
 date, description and payer follow-up inside an entry edit's batch, the
 linked split a Shared owner entry save or create writes
 (`buildLinkedSplitUpsertStatements`, in the entry's batch) and an import
-rollback's linked split amount follow-up. One active split record per ledger
+rollback's linked split amount follow-up; many entries' categories at once
+(`updateEntryCategoriesRecord`, guarded per expected category), Simplify
+(`createSplitSettlementCheckpoint`) and a new category
+(`createCategoryRecord`), 2026-10-13 for Ask Phase 2
+(`tests/atomic-writes-ask-phase2.test.mjs`). One active split record per ledger
 row is held by partial unique indexes (`schema.sql`, runtime schema), so a
 check before a linking batch is backed by the database when two writes race.
 Not yet converted, so still

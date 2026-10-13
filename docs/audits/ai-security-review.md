@@ -256,6 +256,50 @@ costs about US$0.0004, so the 100-turn daily allowance caps Ask turns at
 about US$0.04 a day (about US$1.20 a month), well inside the US$10 gateway
 cap. A message the rules answer with AI off costs nothing.
 
+## Ask turn Phase 2 audit note (2026-10-13, branch `ask-ai-first-p2`)
+
+Phase 2 lets a turn change data the household already has
+(`src/domain/ask-turn-actions.ts`): edit a saved entry, recategorise one
+entry or many, an entry's or a month's note, link a transfer, split groups
+(create, move a split, settle a whole group, Simplify), review matches,
+payment ways, categories (create, rename, colour) and plan links.
+
+Write boundaries. The model still only chooses; every change is a change
+card the server builds from the household's own rows and the person's own
+words, and nothing is written until the person taps its button. The card's
+steps may only post to `ASK_CHANGE_PATHS`, the existing commands (the page
+checks its own copy and never posts anything else; a mismatch drops the
+card). Validator rules: the entry, list or group in focus is loaded from
+the household by id (a foreign id is no focus, so nothing is drafted); a
+statement-certified entry's amount, date, description and wallet are
+refused before the card (the same checkpoint lookup the entry update
+uses); names, notes and words are the person's own (`groundedWords`,
+`groundedNote`); a new category colour is one of the palette's own. Bulk
+recategorise re-reads the matching entries on the server with the
+category rule matcher, lists the count and first eight, refuses more than
+200, and over 10 needs the person's "Yes, change all N" tap: the command
+(`updateEntryCategoriesRecord`) refuses the change unless `confirmedCount`
+equals the row count, and the server never puts that count in the save
+body. Commands touched: the bulk category change (one guarded batch),
+Simplify (`createSplitSettlementCheckpoint`, now one batch with an audit
+event) and new categories (`createCategoryRecord`, one batch), each proved
+by `failingStatement` tests in `tests/atomic-writes-ask-phase2.test.mjs`.
+Never from Ask: deleting entries, months or imports, importing or undoing
+an import, reconciling, accounts and people. The model can only name these
+as `cannot_help.blocked`, and the reply opens their page with the app's own
+reason; no action in the schema deletes anything.
+
+Privacy. Unchanged: the focus adds only whether a saved entry's bank facts
+are locked, and a list in focus sends its month, search words and
+category names, never its rows or amounts. Rows a change needs are read
+after the model answers and never reach the prompt.
+
+Cost. Still one allowance unit per turn. The Phase 2 action lines add about
+1,700 characters: the demo household's prompt is now about 4,400
+characters (about 1,100 tokens), so a real household should stay near
+1,600 to 1,900 input tokens, under the 2k target, at about US$0.0005 a
+turn.
+
 ## Controls checked and found sound
 
 | Area | Evidence |

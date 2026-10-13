@@ -34,9 +34,9 @@ tap posts to the command listed.
 | Money insights "Ask about this" | insight card built from the insight's own facts; follow-ups are turns with the insight in focus | R | `/api/ai-assist/insight-explain` | low | 1 |
 | Change a plan line (set, raise, lower, move, add, copy a month) | `plan_change` | W (draft) | plan-draft (`buildPlanDraft`), Save via `/api/month-plan/apply-changes` | medium | 1 |
 | Open Summary or Month for a month/view | `open_page` | R | router | low | 1 |
-| Link a plan line to entries | `open_page` (Month) | W on Month | `/api/month-plan/links` | medium | 2 |
-| Month note | `open_page` (Month) | W on Month | `/api/month-note/update` | low | 2 |
-| Duplicate, reset or delete a month | `cannot_help` + `open_page` (Month) | W | `/api/months/*` | high | stays on Month |
+| Link a plan line to entries | `link_plan` (line, month, the shop words): the month's matching expenses, its links kept | W (draft) | `/api/month-plan/links`, Undo restores the old links | medium | 2 (done) |
+| Month note | `edit_note` (target month) | W (draft) | `/api/month-note/update`, Undo restores the old note | low | 2 (done) |
+| Duplicate, reset or delete a month | `cannot_help` with `blocked: delete_month`: Ask says why and opens Month | W | `/api/months/*` | high | stays on Month |
 | Pick the Summary period, view, scope | `open_page` with view/scope | R | router | low | 1 |
 | Hide or show money | `cannot_help` (the eye button) | local | — | low | 2 |
 
@@ -48,12 +48,12 @@ tap posts to the command listed.
 | Change the card being filled ("make it $15", "on my Citi card", "yesterday") | `edit_draft` | W (draft) | ask-card-model `setCardField` | medium | 1 |
 | Shared expense with a split share, on Splits | `draft_split_expense` | W (draft) | the card's Shared owner + Splits switch, Save via `/api/entries/create` with `addToSplits` | medium | 1 |
 | Add a saved entry to Splits (payer, shares by %, $ or "all") | `add_entry_to_splits` | W (draft) | `/api/splits/expenses/from-entry` (now takes `splitBasisPoints`) | medium | 1 |
-| Change a saved entry's category | `edit_draft` on a saved card is refused; category chips on the saved card | W | `/api/entries/update-category` | medium | 2 |
-| Edit a saved entry (amount, date, wallet, owner) | `open_page` (`/entries?editing_entry=`) | W in editor | `/api/entries/update` | medium | 2 |
-| Delete an entry | `cannot_help` + `open_page` (editor) | W | `/api/entries/delete` | high | stays in editor |
-| Notes on an entry | `open_page` (editor) | W | `/api/entries/update-note` | low | 2 |
-| Mark as transfer / link a transfer | `open_page`; skew check chips already link | W | `/api/transfers/link`, `/api/entries/update-classification` | medium | 2 |
-| Owner, wallet, post date | `open_page` (editor) | W | `/api/entries/update`, `update-post-date` | medium | 2 |
+| Change a saved entry's category | `recategorise` on the saved entry in focus; `recategorise` with words for many ("make all Grab rides Transport": the server re-reads the matching entries, the card lists the count and first eight, over 10 needs "Yes, change all N", over 200 refused), then the optional category rule | W (draft) | `/api/entries/update-category` with `changes` (one guarded batch), Undo; rule `/api/category-match-rules/save` | medium | 2 (done) |
+| Edit a saved entry (amount, date, description, category, wallet, owner, note) | `edit_saved_entry` (and `edit_draft` on a saved card); a statement-certified entry keeps its amount, date, description and wallet and Ask says why | W (draft) | `/api/entries/update` with every other fact kept, Undo | medium | 2 (done) |
+| Delete an entry | `cannot_help` with `blocked: delete_entry`: Ask says why and opens Entries | W | `/api/entries/delete` | high | stays in editor |
+| Notes on an entry | `edit_note` (target entry) | W (draft) | `/api/entries/update-note`, Undo | low | 2 (done) |
+| Mark as transfer / link a transfer | `link_transfer`: the other side with the same amount in another wallet within a month (`loadTransferMatchCandidates`), narrowed by the wallet and day said; several are asked as chips | W (draft) | `/api/transfers/link` (no Undo: the editor unlinks) | medium | 2 (done) |
+| Owner, wallet | `edit_saved_entry`; post date stays in the editor | W (draft) | `/api/entries/update` | medium | 2 (done) |
 | Find entries ("grab rides in september", "food over $50") | `search_entries` | R | Entries filter (`EntriesFilter`, `summarizeFilterAnswer`) | low | 1 |
 | Open Entries with filters | `open_page` with filter | R | `buildEntriesFilterSearch` | low | 1 |
 
@@ -64,11 +64,11 @@ tap posts to the command listed.
 | Add a split expense (receipt, cash, no bank row) | `draft_split_expense` | W (draft) | Ask expense card, `/api/entries/create` with `addToSplits` | medium | 1 |
 | Add an existing entry to Splits | `add_entry_to_splits` | W (draft) | `/api/splits/expenses/from-entry` | medium | 1 |
 | Record a settle-up payment with an amount | `draft_settlement` | W (draft) | `/api/splits/settlements/create` | medium | 1 |
-| Settle a whole group ("settle up everything") | `open_page` (Splits group; its Settle up button) | W | `/api/splits/settlements/create` (Settle up flow) | medium | 2 |
+| Settle a whole group ("settle up everything") | `split_group` op settle: the group's balance as Splits shows it, as the settle-up payment draft | W (draft) | `/api/splits/settlements/create` | medium | 2 (done) |
 | Who owes whom | `answer_question` (`owed`) | R | answer route (Splits page DTO facts) | low | 1 |
-| Groups: create, archive | `open_page` (Splits) | W | `/api/splits/groups/create` | medium | 2 |
-| Simplify across groups | `open_page` (Splits) | W | settlement checkpoints | high | stays on Splits |
-| Review matches (link a bank row to a split) | `open_page` (Splits matches) | W | `/api/splits/matches/link-*` | medium | 2 |
+| Groups: create; move a split to a group | `split_group` op create, op move (the split of the saved entry in focus) | W (draft) | `/api/splits/groups/create`; `/api/splits/expenses/update` with every other fact kept, Undo | medium | 2 (done) |
+| Simplify across groups | `split_group` op simplify: the card shows the one payment the command records (`planSplitSettlementCheckpoint`) and how many open splits it covers | W (draft) | `/api/splits/checkpoints/create` (now one batch), Undo `/api/splits/checkpoints/reopen` | high | 2 (done, owner request) |
+| Review matches (link a bank row to a split) | `review_matches`: the month's matches as Splits lists them (at most 6); Match links one, Not this one hides it here; a match needing a rate check stays on Splits | W (per match) | `/api/splits/matches/link-*` | medium | 2 (done) |
 | Edit or delete a split expense | `open_page` (`editing_split_expense`) | W | `/api/splits/expenses/update`, `delete` | medium | 2 |
 | Restore a deleted split | `open_page` (Splits history) | W | `/api/splits/activity-history/restore` | medium | 2 |
 | Usual split suggestion | unchanged (rules over split history) | R | `/api/splits/suggestion` | low | 1 (kept) |
@@ -77,18 +77,18 @@ tap posts to the command listed.
 
 | Capability | Ask action | R/W | Reuses | Risk | Phase |
 | --- | --- | --- | --- | --- | --- |
-| Import a statement, preview, commit | `open_page` (Imports) | W | `/api/imports/preview`, `commit` | high | stays on Imports |
-| Undo an import | `open_page` (Imports history) | W | `/api/imports/rollback` | high | stays on Imports |
-| Reconcile, statement fixes, corrections | `open_page` (Settings / Imports) | W | `/api/accounts/reconcile`, statement-corrections | high | stays on its screen |
+| Import a statement, preview, commit | `cannot_help` with `blocked: import_statement` (opens Imports) | W | `/api/imports/preview`, `commit` | high | stays on Imports |
+| Undo an import | `cannot_help` with `blocked: undo_import` or `delete_import` (opens Imports) | W | `/api/imports/rollback` | high | stays on Imports |
+| Reconcile, statement fixes, corrections | `cannot_help` with `blocked: reconcile` (opens Settings) | W | `/api/accounts/reconcile`, statement-corrections | high | stays on its screen |
 | "Which file do I download from my bank?" | `answer_question` is not for this; `cannot_help` with the Help link | R | user guide | low | 2 |
 
 ## Settings
 
 | Capability | Ask action | R/W | Reuses | Risk | Phase |
 | --- | --- | --- | --- | --- | --- |
-| Payment ways (PayNow, cash per person) | `open_page` (Settings) | W | `/api/settings/payment-ways/save` | medium | 2 |
-| Categories, colours, category rules | `open_page` (Settings) | W | `/api/categories/*`, `/api/category-match-rules/*` | medium | 2 |
-| Accounts, opening balances, people | `open_page` (Settings) | W | `/api/accounts/*`, `/api/people/update` | high | stays on Settings |
+| Payment ways (PayNow, cash per person) | `set_payment_way`: an active bank wallet for PayNow, an active cash wallet for cash | W (draft) | `/api/settings/payment-ways/save`, Undo | medium | 2 (done) |
+| Categories, colours, category rules | `edit_category` op create, rename (not the built-in ones), colour (a palette colour; any other word opens Settings); rules after a bulk recategorise | W (draft) | `/api/categories/create` (now one batch), `/api/categories/update` with Undo, `/api/category-match-rules/save` | medium | 2 (done) |
+| Accounts, opening balances, people | `cannot_help` with `blocked: accounts` or `people` (opens Settings) | W | `/api/accounts/*`, `/api/people/update` | high | stays on Settings |
 | Apple Pay Shortcut settings | `open_page` (Settings) | W | `/api/settings/shortcuts/save` | medium | stays on Settings |
 | Unresolved transfers review | `open_page` (Settings) | W | `/api/transfers/*` | medium | 2 |
 
@@ -111,15 +111,27 @@ tap posts to the command listed.
 `draft_settlement`, `plan_change`, `answer_question`, `search_entries`,
 `open_page`, `ask_clarification`, `cannot_help`.
 
-## Phase 2 (later, each needs the owner's OK on its card)
+## Phase 2 actions (done, branch `ask-ai-first-p2`; owner authorised shipping)
 
-Editing or recategorising a saved entry from a sentence, notes, transfer
-linking, split groups, matches review, settle a whole group by its balance,
-payment ways and categories from Ask, plan links and month notes. Until
-then `open_page` takes the person to the screen that already does it.
+`edit_saved_entry`, `recategorise` (one entry, or many by the person's
+words with the optional category rule), `edit_note` (an entry or a month),
+`link_transfer`, `split_group` (create, move, settle, simplify),
+`review_matches`, `set_payment_way`, `edit_category` (create, rename,
+colour), `link_plan`, and `cannot_help.blocked` for the list below.
+
+Each is a change card (`AskChange`, `src/domain/ask-turn-actions.ts`) that
+names every row it changes before and after, the existing command it saves
+through (only `ASK_CHANGE_PATHS`) and its Undo where that command can take
+it back. Rows a change needs are read by the server after the model
+answers (`ask-turn-resolve.ts`), never from the model and never sent to it.
+Still in its own editor: an entry's post date, archiving a split group,
+editing or deleting a split expense, restoring a deleted split, and
+unresolved transfers review (`open_page`).
 
 ## Never from Ask
 
 Deleting entries, months or imports, committing or rolling back an import,
 certifying or reconciling a statement, accounts and people. These stay on
-their screens with their own confirmation; Ask can only open them.
+their screens with their own confirmation. The model can only name them
+(`cannot_help` with `blocked`); Ask then says why in the app's own words
+and opens the page that does it. No action in the schema deletes anything.

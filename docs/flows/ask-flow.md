@@ -272,8 +272,48 @@ filter, then the entry draft), with the one-line note "AI isn't available
 right now, so Ask read this with its built-in rules." once per
 conversation (`rulesNoted`).
 
+### Phase 2: changes to saved data
+
+The same turn can change what is already saved
+(`src/domain/ask-turn-actions.ts`, inventory in
+`docs/proposals/ask-ai-first/inventory.md`). Each change is checked in two
+pure stages: the action against the context (the entry, list or group in
+focus, people, wallets, categories, groups, plan lines, the person's own
+words), then, when it needs the household's rows, the route reads them
+(`src/domain/ask-turn-resolve.ts`) and the builder decides the card. The
+page shows a change card (`AskChangeCard`, `data-change-draft` draft,
+saving, saved, undoing, undone) listing each row that changes before and
+after and the entries it touches; its button posts the card's steps, each
+an existing command in `ASK_CHANGE_PATHS` (the page checks its own copy
+and drops a card naming anything else). Saved, it offers Undo where the
+command can take it back, and Open on the page that shows it.
+
+| Action | Checked | Card | Save (Undo) |
+| --- | --- | --- | --- |
+| `edit_saved_entry` (also `edit_draft` on a saved card) | the saved entry in focus; amount the person wrote, date not in the future, wallet active, person and category the household's, note in the person's words; a statement-certified entry keeps amount, date, description and wallet (a note says why) | each field before → after | `/api/entries/update` with every other fact kept (the old values) |
+| `recategorise` | the category exists and is not Transfer; one entry in focus, or the person's words (or the Entries answer in focus) | one: the category; many: the count, the first 8 entries, "Yes, change all N" over 10, refused over 200 | `/api/entries/update-category` with `changes` (each back); after a bulk save, the optional rule through `/api/category-match-rules/save` |
+| `edit_note` | entry in focus or a month; the person's words, at most 200 characters | note before → after | `/api/entries/update-note` or `/api/month-note/update` (the old note) |
+| `link_transfer` | the saved entry in focus, not already linked or on Splits; candidates with the same amount in another wallet within a month, narrowed by the wallet and day said; several are asked as chips | from, to, the two entries | `/api/transfers/link` (none) |
+| `split_group` create / move | a new name in the person's words; the split of the saved entry in focus, a group with its currency | name and currency; group before → after | `/api/splits/groups/create` (none); `/api/splits/expenses/update` (the old group) |
+| `split_group` settle | the group named or in focus; its balance as Splits shows it | the settle-up payment draft card | Record payment, `/api/splits/settlements/create` |
+| `split_group` simplify | the plan the command itself reads (`planSplitSettlementCheckpoint`) | who pays whom, the amount, how many open splits | `/api/splits/checkpoints/create` (`/api/splits/checkpoints/reopen` with the created id) |
+| `review_matches` | the month's matches as Splits lists them, at most 6 | `AskMatchesCard`: each split and bank row; Match, Not this one | `/api/splits/matches/link-expense` or `link-settlement` per match |
+| `set_payment_way` | an active bank wallet for PayNow, an active cash wallet for cash | PayNow and Cash before → after | `/api/settings/payment-ways/save` (the old choices) |
+| `edit_category` | create: a new name; rename: not a built-in category; colour: a palette colour (any other word opens Settings) | name or colour before → after | `/api/categories/create` (none), `/api/categories/update` (the old name or colour) |
+| `link_plan` | a planned item of the month; its expenses with the words, not yet linked | the line, the count and first 8 | `/api/month-plan/links` with the old links kept (the old links) |
+| `cannot_help` with `blocked` | one of: delete an entry, month or import, import a statement, undo an import, reconcile, accounts, people | a note with the app's reason, then the page opens | none |
+
+After a save the card's `refresh` list drives the owners: entries, month and
+summary through `onEntryMutation`, splits through `onSplitMutation`,
+settings data through `onSettingsMutation` (App.jsx
+`refreshCurrentSettingsPage` with reference data), and the saved card in
+focus shows the change. A message right after an Entries answer sends that
+list as the focus (`entry_list`: its month, words and categories, never
+its rows).
+
 Tests stand in for the model with the `X-Ask-Turn-Test-Reply` header, read
-only when `APP_ENVIRONMENT` is `test` (`tests/e2e/ask-ai-turn.spec.js`).
+only when `APP_ENVIRONMENT` is `test` (`tests/e2e/ask-ai-turn.spec.js`,
+`tests/e2e/ask-ai-turn-phase2.spec.js`).
 `scripts/ask-turn-eval.mjs` runs about 30 messages through the real model
 when provider credentials are in the environment (not in CI).
 
