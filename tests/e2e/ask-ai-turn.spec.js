@@ -69,6 +69,7 @@ test.describe("Ask, AI first", () => {
     let splits = await loadSplitsPage(page, { view: "person-joyce", month: MONTH });
     expect(splits.splitsPage.activity.some((item) => item.description === description)).toBe(false);
 
+    await page.screenshot({ path: "test-results/ask-ai-turn-split-draft.png", fullPage: false });
     await proposal.getByRole("button", { name: "Add to Splits" }).click();
     await expect(page.locator('[data-split-proposal="saved"]')).toBeVisible();
     await expect(page.locator(".ask-note").filter({ hasText: "Added to Splits." })).toBeVisible();
