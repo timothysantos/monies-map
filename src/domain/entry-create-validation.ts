@@ -21,10 +21,10 @@ function isRealIsoDate(value: unknown): value is string {
 }
 
 export function validateEntryCreateFields(input: {
-  date: unknown;
+  date?: unknown;
   postDate?: unknown;
-  description: unknown;
-  amountMinor: unknown;
+  description?: unknown;
+  amountMinor?: unknown;
   note?: unknown;
 }): string | null {
   if (!isRealIsoDate(input.date)) {

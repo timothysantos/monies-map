@@ -202,7 +202,7 @@ export default {
 
     // A write that another site's page triggered in a signed-in browser is
     // refused before any schema or data work (src/server/cross-site-guard.ts).
-    if (isCrossSiteWrite(request, url)) {
+    if (isCrossSiteWrite(request)) {
       return json({ ok: false, error: "Cross-site requests are not allowed." }, 403);
     }
 

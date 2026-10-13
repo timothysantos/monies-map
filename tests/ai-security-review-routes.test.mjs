@@ -21,8 +21,7 @@ test("F1: a write another site triggered in a signed-in browser is refused befor
   for (const headers of [
     { "Sec-Fetch-Site": "cross-site" },
     { "Sec-Fetch-Site": "same-site" },
-    { Origin: "https://evil.example" },
-    { Origin: "null" }
+    { "Sec-Fetch-Site": "cross-site", Origin: "http://127.0.0.1" } // an Origin that matches does not outvote the label
   ]) {
     const response = await worker.fetch(write(headers), {});
     assert.equal(response.status, 403, JSON.stringify(headers));
@@ -42,7 +41,7 @@ test("F1: this app's own pages, a typed address, and clients that are not browse
   for (const headers of [
     { "Sec-Fetch-Site": "same-origin" },
     { "Sec-Fetch-Site": "none" },
-    { Origin: "http://127.0.0.1" },
+    { Origin: "http://127.0.0.1:5173" }, // a replayed or proxied request: no label, its Origin host is not the Worker's
     {} // curl, the Apple Shortcut, test clients: neither header
   ]) {
     const response = await worker.fetch(new Request("http://127.0.0.1/api/health", { method: "POST", headers }), {});

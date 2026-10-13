@@ -76,7 +76,7 @@ async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv):
   if (url.pathname === "/api/ai-assist/entry-draft" && request.method === "POST") {
     let body: { text?: unknown; viewId?: unknown } | null = null;
     try {
-      body = await readJsonBody(request, SMALL_JSON_MAX_BYTES) as typeof body;
+      body = await readJsonBody(request, SMALL_JSON_MAX_BYTES) as { text?: unknown; viewId?: unknown } | null;
     } catch (error) {
       if (error instanceof RequestBodyTooLargeError) {
         return json({ ok: false, error: error.message }, 413);
