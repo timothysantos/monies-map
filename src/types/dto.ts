@@ -1575,6 +1575,10 @@ export interface AskAnswerCardDto {
   support: AskAnswerChipDto[];
   lines: AskAnswerLineDto[];
   links: AskAnswerLinkDto[];
+  // Intent against outcome (the plan answer): the figures the Month and
+  // Summary savings bar draws, the Month cards' own (income received,
+  // Actual spend, Planned spend, Savings target).
+  outcome?: { incomeMinor: number; spentMinor: number; plannedSpendMinor: number; savingsTargetMinor: number };
 }
 
 export interface AskAnswerResponseDto {
@@ -1601,6 +1605,112 @@ export interface InsightExplainResponseDto {
   ok: true;
   explanation: { text: string; source: "ai" } | null;
   ai: { requested: boolean; available: boolean; reason?: string; remaining?: number };
+}
+
+// A plan draft (DOMAIN.md "Plan Draft", POST /api/ai-assist/plan-draft):
+// a typed request to change a month's plan, read by rules (or, when the
+// rules cannot, by the optional AI into the same structure) and resolved
+// against that month's month plan rows. Nothing is written until the
+// person taps Save, which posts `apply` to POST /api/month-plan/apply-changes.
+export type PlanDraftKind = "set" | "change" | "move" | "add" | "copy";
+
+export type PlanSectionWithIncome = "income" | "planned_items" | "budget_buckets";
+
+export interface PlanDraftChangeDto {
+  rowId: string;
+  action: "update" | "create";
+  section: PlanSectionWithIncome;
+  label: string;
+  categoryName: string;
+  // The person the line belongs to, or "Shared".
+  ownerLabel: string;
+  beforeMinor: number;
+  afterMinor: number;
+}
+
+// The view's plan totals, as the Month cards add them up.
+export interface PlanTotalsDto {
+  plannedIncomeMinor: number;
+  plannedSpendMinor: number;
+  // Planned income minus planned spend (the Month "Remaining budget" card).
+  remainingMinor: number;
+}
+
+// One change to a month's plan, as POST /api/month-plan/apply-changes
+// takes it. `expectedMinor` is what the line held when the draft was
+// made: a line changed since then refuses the whole save.
+export type MonthPlanChangeDto =
+  | { action: "update"; rowId: string; expectedMinor: number; plannedMinor: number }
+  | { action: "delete"; rowId: string; expectedMinor: number }
+  | {
+    action: "create";
+    rowId: string;
+    sectionKey: PlanSectionWithIncome;
+    categoryName: string;
+    label: string;
+    plannedMinor: number;
+    ownershipType: "direct" | "shared";
+    ownerName?: string;
+    splitBasisPoints?: number;
+    planDate?: string | null;
+    accountName?: string | null;
+    note?: string | null;
+  };
+
+export interface PlanDraftDto {
+  month: string;
+  viewId: string;
+  kind: PlanDraftKind;
+  copyFrom: string | null;
+  // The lead: the line the request named (set, change, add), the amount
+  // moved and its two lines (move), or the month's planned spend (copy).
+  lead: {
+    label: string;
+    categoryName: string | null;
+    amountMinor: number;
+    beforeMinor: number | null;
+    fromLabel?: string;
+    toLabel?: string;
+  };
+  changes: PlanDraftChangeDto[];
+  totals: { before: PlanTotalsDto; after: PlanTotalsDto };
+  // The plan after the change spends more than it expects to earn (the
+  // Money insights plan-balance check, planShortfallSignal).
+  warning: { text: string; shortMinor: number } | null;
+  apply: MonthPlanChangeDto[];
+}
+
+export type PlanDraftQuestionDto =
+  | { field: "month"; options: string[] }
+  | { field: "line"; name: string; options: Array<{ rowId: string; label: string; ownerLabel: string; plannedMinor: number }> }
+  | { field: "owner"; line: string; options: Array<{ key: string; label: string }> };
+
+export type PlanDraftNoteDto =
+  | { reason: "no_plan_to_copy"; month: string }
+  | { reason: "same_month"; month: string }
+  | { reason: "unknown_line"; name: string; month: string }
+  | { reason: "nothing_changes"; month: string }
+  | { reason: "not_enough"; label: string; plannedMinor: number }
+  | { reason: "move_mixed" };
+
+// Answers to the questions a draft asked, sent back with the same text.
+export interface PlanDraftAnswersDto {
+  month?: string;
+  // Line name as said → the month plan row id chosen.
+  lines?: Record<string, string>;
+  // A person id, or "shared".
+  owner?: string;
+}
+
+export interface PlanDraftResponseDto {
+  ok: true;
+  // false: not a plan request after all; the page reads it as before.
+  supported: boolean;
+  source?: "rules" | "ai";
+  draft?: PlanDraftDto;
+  question?: PlanDraftQuestionDto;
+  note?: PlanDraftNoteDto;
+  ai?: { requested: boolean; available: boolean; reason?: string; remaining?: number };
 }
 
 // What one receipt says, read either by the optional AI provider from an

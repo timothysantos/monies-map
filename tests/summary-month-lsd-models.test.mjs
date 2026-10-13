@@ -21,15 +21,27 @@ function monthCards({ plannedIncome = 600_000, planned = 500_000, actual = 420_0
   });
 }
 
-test("Month lead: the cards' spend, plan, target and remaining budget, with income and savings from the month rollup", () => {
+// The spend line is spend against the spend plan: the $1,800 savings
+// target is not spend plan, so $4,200 spent against $3,200 is over.
+test("Month lead: spend against the spend plan, the savings target, remaining budget, and Saved as the bar's kept", () => {
   const model = buildMonthLeadModel(monthCards(), { actualIncomeMinor: 650_000, realizedSavingsMinor: 230_000 });
   assert.deepEqual(model, {
-    spent: { amountMinor: 420_000, tone: "neutral" },
-    plannedSpendMinor: 500_000,
-    percentOfPlan: 84,
-    headroom: { amountMinor: 80_000, isOver: false, tone: "in" },
+    spent: { amountMinor: 420_000, tone: "short" },
+    plannedSpendMinor: 320_000,
+    percentOfPlan: 131,
+    headroom: { amountMinor: 100_000, isOver: true, tone: "short" },
     income: { amountMinor: 650_000, tone: "in", planMinor: 600_000 },
     saved: { amountMinor: 230_000, tone: "in", planMinor: 180_000 },
+    figures: {
+      income: 650_000,
+      spending: 420_000,
+      invested: 0,
+      movedToSavings: 0,
+      kept: 230_000,
+      spendPlan: 320_000,
+      savePlan: 180_000,
+      investPlan: 0
+    },
     remaining: {
       label: "Remaining budget",
       amountMinor: 100_000,
@@ -43,8 +55,8 @@ test("Month lead: the cards' spend, plan, target and remaining budget, with inco
 test("Month lead over plan and overplanned: rose spend, over headroom, a rose Overplanned remaining budget", () => {
   const model = buildMonthLeadModel(monthCards({ plannedIncome: 0, actual: 610_000 }), { actualIncomeMinor: 0, realizedSavingsMinor: -610_000 });
   assert.equal(model.spent.tone, "short");
-  assert.deepEqual(model.headroom, { amountMinor: 110_000, isOver: true, tone: "short" });
-  assert.equal(model.percentOfPlan, 122);
+  assert.deepEqual(model.headroom, { amountMinor: 290_000, isOver: true, tone: "short" });
+  assert.equal(model.percentOfPlan, 191);
   assert.deepEqual(model.saved, { amountMinor: -610_000, tone: "short", planMinor: 180_000 });
   assert.equal(model.remaining.amountMinor, -500_000);
   assert.equal(model.remaining.tone, "short");

@@ -143,7 +143,7 @@ test.describe("leaving Ask back to where the person was, on a phone", { tag: "@w
   test("an edit sheet open when Ask opened comes back with its draft", async ({ page }) => {
     await openEntries(page);
     const before = page.url();
-    await page.locator(".entry-row").filter({ hasText: "Vivify" }).first().click();
+    await page.locator(".entry-row").filter({ hasText: "Vivify" }).first().locator(".entry-row-main").click();
     const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
     await expect(sheet).toBeVisible();
     const draft = `Sheet draft ${Date.now()}`;

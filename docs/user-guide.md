@@ -142,7 +142,8 @@ cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
 they appear with the real figures as soon as you reveal totals. The earned,
 spent and kept bar keeps its shape and shows only percentages (no amounts) while
-totals are hidden. Edit
+totals are hidden, and each money job shows only ✓ or the share of its plan
+reached. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -245,19 +246,37 @@ over plan.
 
 - **Spent**: what you spent over the selected range against what you planned
   to spend, with the share of the plan used and how much you are under
-  (green) or over (red) plan.
+  (green) or over (red) plan. Money you put into **Investments** or
+  **Savings** is not counted as spending here, and your savings target and
+  investment plan are not part of the spending plan, so this always agrees
+  with the "Spend within" money job below.
 - **Earned, spent and kept**: under the Spent figure, one bar stands for all
-  the money you earned over the range. The red part is what you spent and the
-  green part is what you kept. If you spent more than you earned, the bar
+  the money you earned over the range. The red part is what you spent, the
+  plum part is what you invested (entries in the **Investments** category)
+  and the green part is what you kept. Money you filed under **Savings** is
+  counted as kept, not spent. If more went out than you earned, the bar
   runs to a small **income** mark and the striped part after it is the money
   that came out of your savings. A thin blue bar under it shows your plan on
-  the same scale: what you planned to spend, then what you planned to save.
-  One line says it in words ("You kept $38,000 of the $247,000 you earned
-  (15%)"), with your plan in smaller print under it. Hover over a part of the
-  bar (on a phone, tap it) to see how much it is and what share of your
-  income that is.
+  the same scale: what you planned to spend, to invest and to save.
+  One line says it in words ("You kept $12,000 and invested $8,000 of the
+  $247,000 you earned"; on a phone, "Kept $12,000 · invested $8,000 of
+  $247,000"). Hover over a part of the bar to see how much it is
+  and what share of your income that is; click it (on a phone, tap it) for
+  **View entries**, which opens Entries filtered to that money for the last
+  month shown, and **Ask about this**, which opens Ask with a question about
+  it ready to send.
+- **Money jobs**: each line of your plan has a job: spend within the
+  budget, save the savings target, invest what you planned to invest, and
+  the income you expected. One line says how many were done ("3 of 4 money
+  jobs done"); open it (on a phone, tap it) to see each job with **✓ done**,
+  **short by** or **over by** an amount. While the month is still going it
+  says "so far". Select a job for the same **View entries** and **Ask about
+  this**. It only looks back at what happened against your own plan; it
+  never guesses what is still to come.
 - **Income** and **Saved**: the income that came in, with the planned income
-  under it, and what you kept, with your savings target under it.
+  under it, and what you kept (the same as the green part of the bar, so
+  money you filed under **Savings** counts as saved), with your savings
+  target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
@@ -346,9 +365,11 @@ stays highlighted, and the range at the top stays as it was.
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
 - **The top card**: what you have spent this month against what you
-  planned, with the percent of plan and how much you are under or over plan.
+  planned to spend, with the percent of plan and how much you are under or
+  over plan (investing and saving are not spending, as on Summary).
   Under that is the same earned, spent and kept bar as on
-  [Summary](#summary), for this month. Under it, in the same card, are **Income** (received, with
+  [Summary](#summary), for this month, and its money jobs line ("2 of 3
+  money jobs done", folded on a phone). Under it, in the same card, are **Income** (received, with
   the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
   Select it to see what it means.
@@ -679,8 +700,11 @@ Ask also answers questions about your money in plain words:
 - "Why was August so expensive?" or "Where did September go?": what was
   spent, against the plan and the month before, where most of it went and
   the biggest single costs.
-- "How am I doing against the plan?" or "Am I on track?": the month's
-  spending against its plan, and what went furthest over.
+- "How am I doing against the plan?", "Am I on track?" or "How did
+  September go?": the month's spending against its plan, the same bar
+  Month shows for what you earned, spent and kept, and what went furthest
+  over. "Did we stick to the plan in Q3?" does the same for the three
+  months of a quarter, month by month.
 - "Compare August with July": both months side by side and what changed
   most.
 - "What's my biggest expense this month?": the largest expenses.
@@ -722,6 +746,43 @@ so.
 To have a Money insights line explained, select **Ask about this** under it
 ([Use Money insights](#use-money-insights)). On a phone Ask opens; on a
 computer it opens beside the page you are on.
+
+### Change your plan by asking
+
+You can also change a month's plan by typing what you want:
+
+- "Set groceries plan to $700 for November", or "plan $700 for groceries
+  in November".
+- "Raise groceries by $50 for November", or "cut shopping by $100 this
+  month".
+- "Move $50 from Shopping to Groceries in October": one line goes down, the
+  other up, and what you plan to spend stays the same.
+- "Add a Travel line of $300 to November".
+- "Plan November like September", or "plan November like September but
+  Groceries $700": September's lines are copied into November, with your
+  changes on top. Lines November already has take September's amounts;
+  lines only November has stay.
+
+Ask shows a **Draft** card: each line that changes, from what it is now to
+what it would be, and the month's Planned income, Planned spend and
+Remaining budget before and after, the same figures Month shows for your
+view. If the plan would then spend more than it expects to earn, a line
+under the card says so. Nothing changes until you tap **Save plan**;
+**Discard** leaves the plan as it was.
+
+After saving, **See it on Month** opens that month, and **Undo this
+change** puts the plan back. If the plan was changed somewhere else in the
+meantime, Save doesn't go through and Ask tells you to ask again, so you
+never overwrite a change you haven't seen.
+
+If you don't name a month, or a word could mean two lines (say "sports"
+for both Sports & Hobbies and Tennis lesson), Ask asks which, with a button
+for each. A line name that isn't in the plan but is one of your categories
+starts a new line; on the Household view Ask asks whose line it is.
+
+When Claude is set up and Ask can't read a request on its own, Claude may
+read it into the same draft, marked **Read by AI**; the figures are still
+your plan's own, and nothing is saved until you tap Save plan.
 
 ### Ask on a computer
 
@@ -1061,7 +1122,9 @@ Good to know:
 > Tip: keep budget buckets broad. One Food bucket works better than a row for
 > every restaurant. Plan only what is stable as planned items.
 
-Next month, use **Actions → Duplicate month** to copy the plan and adjust it.
+Next month, use **Actions → Duplicate month** to copy the plan and adjust it,
+or type it on Ask: "plan November like October but Groceries $700"
+([Change your plan by asking](#change-your-plan-by-asking)).
 
 ## Link planned items to entries
 

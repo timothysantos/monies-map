@@ -363,6 +363,63 @@
   opacity: 0.72;
 }
 
+/* A plan draft (ask-plan-draft-card.jsx): the LeadCard, the lines and
+   totals as read-only Detail rows (before → after), the plan-balance
+   warning, and Discard and Save plan under them. */
+.ask-plan-draft {
+  display: grid;
+  gap: 10px;
+  align-self: stretch;
+}
+
+.ask-plan-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ask-plan-change {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-plan-before {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ask-plan-total .lsd-row-label {
+  font-weight: 600;
+}
+
+.ask-plan-warning {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.ask-plan-actions {
+  margin: 0;
+}
+
+.ask-plan-draft[data-plan-draft="saving"] .ask-plan-actions,
+.ask-plan-draft[data-plan-draft="undoing"] .lsd-rows {
+  opacity: 0.72;
+}
+
+/* The plan answer's savings bar sits under its lead, as on Month. */
+.ask-money-answer .savings-bar {
+  margin-top: 2px;
+}
+
 /* The entry card: the shared LeadCard (ui/lead-support-detail.css) plus
    the Ask tag, the typed title and amount, the coax and saved lines. */
 .ask-card-tag {
@@ -822,7 +879,8 @@
   .ask-thread > .ask-note,
   .ask-thread > .ask-card,
   .ask-thread > .ask-answer,
-  .ask-thread > .ask-money-answer {
+  .ask-thread > .ask-money-answer,
+  .ask-thread > .ask-plan-draft {
     animation: ask-arrive 180ms ease-out;
   }
 

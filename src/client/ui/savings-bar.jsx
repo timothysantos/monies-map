@@ -1,33 +1,41 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { createElement, useEffect, useId, useRef, useState } from "react";
 
 import { messages } from "../copy/en-SG";
-import { useMoneyPrivacy } from "../money-privacy";
+import { loadMoneyJobsDetail, useMoneyJobsDetail } from "../money-jobs-loader";
 import { buildSavingsBarModel } from "../savings-bar-model";
+import { useIsMobileLayout } from "../use-viewport";
 
 const copy = messages.summary.lead.savingsBar;
 
 // The savings bar under the lead figure (design.md, "Lead · Support ·
 // Detail"; model in savings-bar-model.js): money earned is the bar, spent is
-// rose and kept is mint, with a thin plan bar under it and one plain line.
-// Each segment is a button: hover (mouse), tap or Enter opens its popover
-// with the percentage of income; screen readers read the same text through
-// aria-describedby, which is always in the page. Hidden money keeps the
-// percentages and neutral colours, and shows no amount anywhere.
-export function SavingsBar({ income, spent, plannedSpend, savingsTarget }) {
-  const { areTotalsVisible } = useMoneyPrivacy();
+// rose, invested plum and kept mint, with a thin plan bar under it and one
+// plain line. Each segment is a button. Its popover has the percentage of
+// income: hover (mouse) shows it; a click, a tap or Enter shows it with the
+// segment's menu (View entries, Ask about this; money-jobs-detail.js, which
+// loads on the first hover, focus or press). Screen
+// readers read the popover through aria-describedby, which is always in the
+// page. Hidden money keeps the percentages and neutral colours, and shows no
+// amount anywhere.
+/**
+ * @param {{ figures: any, hidden: boolean, period?: any }} props `period` is
+ * optional: without it (an Ask answer's bar) the parts have no menu.
+ */
+export function SavingsBar({ figures, hidden, period = null }) {
   const baseId = useId();
   const rootRef = useRef(null);
   const lastPointer = useRef("");
   const [openKey, setOpenKey] = useState(null);
-  const model = buildSavingsBarModel({
-    incomeMinor: income,
-    spentMinor: spent,
-    plannedSpendMinor: plannedSpend,
-    savingsTargetMinor: savingsTarget,
-    hidden: !areTotalsVisible
-  });
+  // The segment whose menu is open (a click, tap or Enter); hover alone
+  // shows only the popover.
+  const [menuKey, setMenuKey] = useState(null);
+  const model = buildSavingsBarModel({ figures, hidden });
+  const phone = useIsMobileLayout();
+  const detail = useMoneyJobsDetail(menuKey !== null);
+  // Start the menu's code on the first sign of interest, so a tap finds it.
+  const warm = () => { void loadMoneyJobsDetail().catch(() => {}); };
 
-  // A tap or press outside, or Escape, closes the open popover.
+  // A tap or press outside, or Escape, closes the open popover and menu.
   useEffect(() => {
     if (!openKey) {
       return undefined;
@@ -35,6 +43,7 @@ export function SavingsBar({ income, spent, plannedSpend, savingsTarget }) {
     const close = (event) => {
       if (event.type === "keydown" ? event.key === "Escape" : !rootRef.current?.contains(event.target)) {
         setOpenKey(null);
+        setMenuKey(null);
       }
     };
     document.addEventListener("pointerdown", close);
@@ -56,6 +65,15 @@ export function SavingsBar({ income, spent, plannedSpend, savingsTarget }) {
     return placement;
   });
 
+  // A mouse click opens the menu under the hover popover and keeps it open;
+  // a tap or Enter toggles both.
+  const press = (key) => {
+    const opening = lastPointer.current === "mouse" || openKey !== key || menuKey !== key;
+    setOpenKey(opening ? key : null);
+    // Without a period (an Ask answer's bar) there is no menu to open.
+    setMenuKey(opening && period ? key : null);
+  };
+
   return (
     <div className="savings-bar" ref={rootRef} data-savings-bar>
       <div className="savings-bar-track" role="group" aria-label={copy.label}>
@@ -68,13 +86,21 @@ export function SavingsBar({ income, spent, plannedSpend, savingsTarget }) {
             style={{ width: `${segment.widthPercent}%` }}
             aria-label={segment.name}
             aria-describedby={`${baseId}-${segment.key}`}
-            aria-expanded={openKey === segment.key}
-            onPointerEnter={(event) => event.pointerType === "mouse" && setOpenKey(segment.key)}
-            onPointerLeave={(event) => event.pointerType === "mouse" && setOpenKey((current) => (current === segment.key ? null : current))}
-            onPointerDown={(event) => { lastPointer.current = event.pointerType; }}
+            aria-expanded={menuKey === segment.key}
+            onPointerEnter={(event) => {
+              warm();
+              if (event.pointerType === "mouse" && menuKey === null) setOpenKey(segment.key);
+            }}
+            onFocus={warm}
+            onPointerLeave={(event) => {
+              if (event.pointerType === "mouse" && menuKey === null) setOpenKey((current) => (current === segment.key ? null : current));
+            }}
+            onPointerDown={(event) => {
+              warm();
+              lastPointer.current = event.pointerType;
+            }}
             onKeyDown={() => { lastPointer.current = "keyboard"; }}
-            // A mouse click keeps the hover popover open; a tap or Enter toggles.
-            onClick={() => setOpenKey((current) => (lastPointer.current === "mouse" || current !== segment.key ? segment.key : null))}
+            onClick={() => press(segment.key)}
           />
         ))}
         {model.tickPercent !== null ? (
@@ -85,25 +111,30 @@ export function SavingsBar({ income, spent, plannedSpend, savingsTarget }) {
         {placed.map((segment) => (
           <span
             key={segment.key}
-            id={`${baseId}-${segment.key}`}
-            role="tooltip"
-            className="savings-bar-popover"
-            data-popover={segment.key}
+            className="savings-bar-float"
             hidden={openKey !== segment.key}
             style={{ left: `${segment.centre}%`, transform: `translateX(-${segment.centre}%)` }}
           >
-            {segment.popover}
+            <span id={`${baseId}-${segment.key}`} role="tooltip" className="savings-bar-popover" data-popover={segment.key}>
+              {segment.popover}
+            </span>
+            {menuKey === segment.key && detail ? detail.renderMoneyActions(createElement, {
+              actionKey: segment.key,
+              view: detail.moneyActionView(segment.key, { name: segment.name, figures, hidden, period, search: window.location.search }),
+              onDone: () => { setOpenKey(null); setMenuKey(null); }
+            }) : null}
           </span>
         ))}
       </div>
       {model.plan ? (
         <span className="savings-bar-plan" aria-hidden="true">
           <span className="savings-bar-plan-spend" style={{ width: `${model.plan.spendPercent}%` }} />
+          <span className="savings-bar-plan-invest" style={{ width: `${model.plan.investPercent}%` }} />
           <span className="savings-bar-plan-save" style={{ width: `${model.plan.savePercent}%` }} />
         </span>
       ) : null}
-      <p className="savings-bar-sentence" data-savings-sentence>{model.sentence}</p>
-      {model.plan ? <p className="savings-bar-plan-line" data-savings-plan>{model.plan.line}</p> : null}
+      {/* One line on a phone: the sentences that name investing are shortened there. */}
+      <p className="savings-bar-sentence" data-savings-sentence>{phone ? model.shortSentence : model.sentence}</p>
     </div>
   );
 }

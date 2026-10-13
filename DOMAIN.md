@@ -169,14 +169,57 @@ Recommended relationship:
 - `realized savings` is a derived month-level outcome
 - `savings variance` is `realized savings - savings target`
 - the `savings bar` (Summary and Month lead) draws actual income as 100%,
-  with spent and kept (income minus spent, the same as realized savings) as
-  its parts; when spent is more than income, the excess is shown as money
-  that "came out of savings". It reuses these figures and adds no field.
+  with spent, invested and kept as its parts. Money filed under the
+  `Investments` category is invested and money filed under `Savings` is
+  kept: both were moved, not spent, so they come out of the spend. The
+  lead's Spent figure and its Saved figure use the same split (see "Money
+  job"); the stored realized savings still counts them as spend.
+  When more went out than came in, spending past the income is shown as
+  money that "came out of savings".
 
 Optional related concept:
 - a `planned savings allocation` may exist as one or more `month plan rows`
   when the user wants to track a specific savings movement, but that is not the
   same domain concept as the top-level `savings target`
+
+### Money Job
+
+What one line of a month plan is for, and whether it was done
+(`src/domain/money-jobs.ts`, `src/domain/money-job-plan.ts`,
+`src/client/money-jobs-model.js`). Each plan line has one of four jobs:
+
+- spend within the budget: every planned row except the savings target
+  rows and the Investments rows, against spending (expense entries outside
+  the `Investments` and `Savings` categories);
+- save the `savings target` (rows labelled `Savings`), against what was kept:
+  income minus that spending minus what was invested, so money moved under
+  `Savings` counts as saved;
+- invest the investment goal (planned rows in the `Investments` category,
+  not labelled `Savings`), against expense entries in `Investments`;
+- planned income, against actual income.
+
+Canonical term:
+- `money job`
+
+Important distinctions:
+- A money job is retrospective: done, or short or over by an amount, from
+  recorded entries and the household's own plan. While the month is still
+  going it says "so far"; it never forecasts.
+- A job exists only when its plan line is more than zero.
+- Investing is detected by category name (`Investments`), as category
+  offsets are. A transfer into an investment account is not counted as
+  invested: transfers stay neutral and the money stays in kept.
+- The Summary and Month lead are one split of the period's money
+  (`splitMoneyUse`): the lead's "Spent" is the spend job's spending, its
+  plan ("of $x plan", "% of plan", "under / over plan") is the spend job's
+  plan, and its Saved figure is the save job's kept. So the lead never says
+  "under plan" beside a spend job that is over.
+- The stored `realized savings` (`income - spend`, the snapshot and month
+  rollup field, and Intent vs Outcome's per-month detail) is unchanged and
+  still counts money filed under `Savings` and `Investments` as spend.
+- The Summary page's `Planned investments` metric card carries the range's
+  investment goal; the Month page derives it from its plan rows. No other
+  field was added.
 
 ### Statement Checkpoint
 
@@ -1047,7 +1090,9 @@ categories and the biggest single costs, and chips to Entries and Month.
 Canonical terms:
 - `money question`: read by rules (`src/domain/ask-answer-intent.ts`) into
   one of six `answer intents`: `spending` (why, or where the money went),
-  `plan` (how the month stands against its plan), `compare` (two months),
+  `plan` (intent against outcome: how a month, or a quarter's months, went
+  against the plan, "how did September go?", "did we stick to the plan in
+  Q3?"), `compare` (two months),
   `biggest` (the largest expenses), `income`, `owed` (who owes whom on
   Splits). Anything else is unsupported and gets the "not answered" note;
   a question with an amount, or a biggest or income question naming a
@@ -1079,6 +1124,9 @@ Rules:
   person's tap; It's real spending writes nothing and is kept only in the
   conversation
 - nothing about a question, its facts or its answer is stored on the server
+- the plan answer also carries its `outcome`: income received, Actual
+  spend, Planned spend and the Savings target, the figures the Month and
+  Summary savings bar draws
 
 ### Insight Question
 
@@ -1114,6 +1162,48 @@ Rules:
   NRIC / FIN shapes) are removed before the prompt; nothing is stored but
   the allowance counter
 
+### Plan Draft
+
+A typed change to one month's plan, made on the Ask page and not saved
+until the person taps Save plan (`POST /api/ai-assist/plan-draft`, saved
+through `POST /api/month-plan/apply-changes`; `docs/flows/ask-flow.md`
+"Planning by chat"). Example: "move $50 from Shopping to Groceries in
+October" drafts both month plan rows before and after and the view's plan
+totals.
+
+Canonical terms:
+- `plan request`: the typed text read by rules
+  (`src/domain/plan-draft-reader.ts`) into a month, an optional month to
+  copy, and operations: `set` a line, `change` a line by an amount, `move`
+  an amount between two lines, `add` a line. A plan request the rules
+  cannot read may be read by the optional AI into the same structure,
+  kept only when its names, amounts and months are the request's own
+- `plan line`: a `month plan row` the view can change (the rows Month
+  shows for the view), named by its label; the user-facing word for one
+  row of a month's plan
+- `plan draft`: the request resolved against the month's rows
+  (`src/domain/plan-draft.ts`): each changed line before and after, the
+  view's `plan totals` (Planned income, Planned spend, Remaining budget, as
+  the Month cards add them) before and after, the plan-balance warning, and
+  the `plan changes` Save posts
+- `plan changes`: updates (with the amount the line held when drafted),
+  new lines and deletes for one month, written all or nothing
+  (`applyMonthPlanChanges`); the save returns the changes that undo it
+- `plan question`: which month, which line (a name that fits two lines) or
+  whose new line; asked with chips, answered by sending the same request
+  again with the answer
+
+Rules:
+- nothing is written until Save plan; Discard writes nothing; AI never
+  writes and never supplies a figure
+- a plan draft is saved with the Month editor's own row and split
+  statements, all its lines in one batch; a line changed since the draft
+  refuses the whole save
+- no month named means a question, never a guess; a line never goes below
+  zero
+- copying a month copies the view's lines; a line the target month already
+  has takes the copied amount, the target month's other lines stay
+- nothing about a plan request or draft is stored on the server
 
 ### Entry Card
 
@@ -2065,7 +2155,8 @@ Use these terms consistently in future work:
 - Say `shared ownership` when you mean the ledger-entry ownership state.
 - Do not describe `shared` as a person or virtual household user.
 - Say `month plan row`, not `budget row`, unless you specifically mean the
-  `budget_buckets` section.
+  `budget_buckets` section. `plan line` is the user-facing word for one in
+  Ask's plan drafts, not a separate entity.
 - Say `month snapshot`, not `monthly plan summary`, for generated dashboard
   rollups.
 - Say `statement fix` for an approved correction from the statement check,

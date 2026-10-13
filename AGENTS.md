@@ -264,6 +264,16 @@ Details and the reasons are in `docs/code-spec.md` and
   aggregate allowance state needed for cost control, never prompts, responses,
   images, files, or embeddings unless a separately reviewed design explicitly
   changes that rule.
+- Read every `src/server` request body through `src/server/limited-body.ts`
+  (`readJsonObject`, `readFormBody`): it counts bytes as they arrive, so a
+  chunked upload with no Content-Length is cut off at the limit (413).
+  `tests/ai-security-review-routes.test.mjs` fails on a bare
+  `request.json()` or `request.formData()` there.
+- Facts for an AI prompt carry no phone, account, card or ID number from a
+  ledger description (`promptEntryName`), and an AI phrasing shows only if
+  every sum in it is one of the facts' own (`validateAiWording`). The Worker
+  refuses a cross-site browser write (`src/server/cross-site-guard.ts`); do
+  not weaken it. Review: `docs/audits/ai-security-review.md`.
 - Keep the configured AI allowance conservative enough for the intended free
   tier. Each AI slice must include no-AI/failure coverage proving the normal
   workflow remains usable, plus an audit note of its privacy, cost, and write

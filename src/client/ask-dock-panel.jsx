@@ -22,12 +22,14 @@ import { isAskDockWide, useIsAskDockWide, useIsMobileLayout } from "./use-viewpo
 /**
  * Opens Ask beside the page (the field, or on a wide screen the Entries +
  * and Splits receipt buttons with their new entry's way in). An open panel
- * keeps its mode; otherwise the window's width picks it. `insight` (a
- * Money insights line's "Ask about this") is asked in the chat once the
+ * keeps its mode; otherwise the window's width picks it.
+ * `text` (a lead's "Ask about this" question) goes into the message box for
+ * the person to send; it is never sent by itself. `insight` (a Money
+ * insights line's "Ask about this") is asked in the chat once the
  * conversation takes it.
- * @param {{ intent?: object, file?: File | null, insight?: object | null }} [options]
+ * @param {{ intent?: object, file?: File | null, text?: string, insight?: object | null }} [options]
  */
-export function openAskDockNow({ intent = undefined, file = null, insight = null } = {}) {
+export function openAskDockNow({ intent = undefined, file = null, text = "", insight = null } = {}) {
   const store = getAskDockStore();
   const current = store.getSnapshot();
   store.open({
@@ -36,6 +38,8 @@ export function openAskDockNow({ intent = undefined, file = null, insight = null
     file,
     insight
   });
+  // After the way in is set, so only the conversation it names takes it.
+  if (text) store.setDraftText(text);
 }
 
 // A way in from the field: reopening goes back to the conversation in

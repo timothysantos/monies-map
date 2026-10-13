@@ -176,7 +176,7 @@ test.describe("desktop Ask", () => {
     expect(before.oneRow).toBe(true);
     expect(before.unreachable).toEqual([]);
     expect(before.tabNames).toEqual(["Summary", "Entries", "Splits", "More pages"]);
-    expect(before.headerHeight).toBe(70);
+    expect(before.headerHeight).toBe(57);
 
     await field(page).focus();
     await expect(panel(page)).toHaveClass(/is-popup/);

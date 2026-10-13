@@ -28,11 +28,13 @@
 import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
 import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
+import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
 import { moneyWithCurrency } from "./formatters";
 
 /** @typedef {{ key: string, label: string, onClick: () => void, primary?: boolean, back?: boolean, disabled?: boolean }} AskChip */
 
 const MAX_OPTION_CHIPS = 4;
+const MAX_PLAN_OPTION_CHIPS = 6;
 const NOT_A_SPEND_CATEGORY = new Set(["Other", "Transfer", "Income", "Salary", "Other - Income", "Extra Income", "Savings", "Investments"]);
 
 export function describeQuestion(question, context) {
@@ -329,7 +331,36 @@ export function buildChipRow({ active, intent, card, context, splitGroups = [], 
   if (active.kind === "money-answer" || active.kind === "insight-answer" || active.kind === "money-check") {
     return buildMoneyChips({ focus: active, base: rest, labels: moneyLabels, actions });
   }
+  if (active.kind === "plan-question") {
+    return buildPlanQuestionChips({ focus: active, actions });
+  }
   return buildFilterChips({ focus: active, base: rest, viewLabel, actions });
+}
+
+// The chip row while a plan draft asks something (docs/flows/ask-flow.md
+// "Planning by chat"): which month, which line or whose new line, one chip
+// per option and nothing else until one is tapped (or something new is
+// said). Two lines with the same name show whose each is.
+export function buildPlanQuestionChips({ focus, actions }) {
+  const { question } = focus;
+  const labels = question.options.map((option) => option.label ?? "");
+  const repeated = new Set(labels.filter((label, index) => labels.indexOf(label) !== index));
+  const optionLabel = (option) => {
+    if (question.field === "month") return formatMonthYear(option);
+    if (question.field === "line" && (repeated.has(option.label) || !option.label) && option.ownerLabel) return askPlanCopy.lineWithOwner(option.label, option.ownerLabel);
+    return option.label;
+  };
+  const prompt = question.field === "month"
+    ? askPlanCopy.questions.month
+    : question.field === "line" ? askPlanCopy.questions.line(question.name) : askPlanCopy.questions.owner(question.line);
+  return {
+    prompt,
+    items: /** @type {AskChip[]} */ (question.options.slice(0, MAX_PLAN_OPTION_CHIPS).map((option, index) => ({
+      key: `plan-${question.field}-${typeof option === "string" ? option : option.rowId ?? option.key ?? index}`,
+      label: optionLabel(option),
+      onClick: () => actions.answerPlanQuestion(option)
+    })))
+  };
 }
 
 // The chip row for a money answer: its links to the screens (the first

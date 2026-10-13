@@ -249,6 +249,7 @@ export function EntryEditorFields({
               type="text"
               inputMode="decimal"
               value={amountDraft}
+              placeholder="0.00"
               disabled={bankFactsLocked}
               enterKeyHint="next"
               onMouseDown={selectAllOnFocus}
@@ -257,7 +258,10 @@ export function EntryEditorFields({
               onChange={(event) => handleAmountDraftChange(event.target.value)}
               onBlur={(event) => {
                 const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
-                const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
+                // Leaving the field empty keeps it empty, not "0".
+                const formattedAmountInput = event.target.value.trim() === ""
+                  ? ""
+                  : formatService.formatEditableMinorInput(blurAmountMinor);
                 setAmountDraft(formattedAmountInput);
                 if (onAmountChange) {
                   onAmountChange({

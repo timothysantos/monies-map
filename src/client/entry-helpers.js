@@ -27,7 +27,9 @@ export function buildEntryDraft(view, accounts, categories, people) {
     ownershipType,
     ownerName: ownershipType === "direct" ? defaultOwnerName : undefined,
     amountMinor: 0,
-    amountInput: "0",
+    // A new entry has no amount yet: the field is empty so its placeholder
+    // shows. Saving it empty is still refused (amount must be above zero).
+    amountInput: "",
     totalAmountMinor: 0,
     viewerSplitRatioBasisPoints: view.id === "household" ? undefined : ownershipType === "shared" ? 5000 : 10000,
     offsetsCategory: false,

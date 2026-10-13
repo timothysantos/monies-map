@@ -13,6 +13,7 @@ import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
 import { reconciliationTone } from "../domain/money-tone";
+import { getCurrentMonthKey } from "../lib/month";
 import { moneyToneClass } from "./money-tone-class";
 
 const { accounts: accountService, format: formatService } = moniesClient;
@@ -255,8 +256,11 @@ export function MonthPanelHeader({
 // percent of plan and the spend gap as "under/over plan"), with Income,
 // Saved and Remaining budget as Support pills. It replaced six tiles that
 // scrolled sideways on a phone; every figure they showed is here.
-export function MonthLead({ cards, monthSummary, month, isRefreshing = false }) {
-  const model = buildMonthLeadModel(cards, monthSummary);
+export function MonthLead({ cards, monthSummary, month, planSections = [], categoryShare = [], isRefreshing = false }) {
+  const model = buildMonthLeadModel(cards, monthSummary, {
+    planRows: planSections.flatMap((section) => section.rows ?? []),
+    categoryShare
+  });
   return (
     <>
       {isRefreshing ? <p className="month-refresh-hint">Updating totals and actuals...</p> : null}
@@ -267,6 +271,7 @@ export function MonthLead({ cards, monthSummary, month, isRefreshing = false }) 
           leadClassName="month-lead"
           inline
           eyebrow={messages.summary.lead.spent(formatService.formatMonthLabel(month))}
+          period={{ startMonth: month, endMonth: month, inProgress: month === getCurrentMonthKey() }}
         >
           <RemainingColumn remaining={model.remaining} />
         </SpendLeadGroup>

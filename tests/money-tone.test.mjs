@@ -171,7 +171,8 @@ test("Summary pills: intentions are plan, outcomes follow the plan", () => {
     "Planned spend": "plan",
     "Actual spend": "neutral",
     "Savings target": "plan",
-    "Realized savings": "in"
+    "Realized savings": "in",
+    "Planned investments": "plan"
   });
   assert.equal(underPlan.find((card) => card.label === "Realized savings").amountMinor, 300_000);
 

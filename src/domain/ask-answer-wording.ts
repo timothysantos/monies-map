@@ -37,6 +37,15 @@ export function monthLabel(month: string, today: string) {
   return month.slice(0, 4) === today.slice(0, 4) ? monthName(month) : `${monthName(month)} ${month.slice(0, 4)}`;
 }
 
+// The month a plan answer covers, or its quarter's first and last month:
+// "July to September".
+function planLabel(facts: Extract<AskAnswerFacts, { kind: "plan" }>, today: string) {
+  const months = facts.months ?? [];
+  return months.length > 1
+    ? `${monthLabel(months[0].month, today)} to ${monthLabel(months[months.length - 1].month, today)}`
+    : monthLabel(facts.current.month, today);
+}
+
 // "12 Aug"
 function dayLabel(date: string) {
   const [, month, day] = date.split("-").map(Number);
@@ -52,6 +61,20 @@ export function entryName(entry: Pick<EntryFact, "description" | "categoryName">
     return entry.categoryName;
   }
   return name.length > ENTRY_NAME_MAX ? `${name.slice(0, ENTRY_NAME_MAX - 1).trimEnd()}…` : name;
+}
+
+// The name an optional AI is shown: the same words, with every long digit
+// run (phone, account, card or reference number) and any Singapore NRIC / FIN
+// shape removed first, so a PayNow to a person or a bare "FAST PAYMENT"
+// description never sends one (AGENTS.md "Optional AI Assistance").
+export function promptEntryName(entry: Pick<EntryFact, "description" | "categoryName">) {
+  const description = String(entry.description ?? "")
+    .replace(/\b[STFGM]\d{7}[A-Z]\b/gi, " ")
+    .replace(/\d[\d\s-]*\d/g, (run) => (run.replace(/\D/g, "").length >= 6 ? " " : run))
+    .replace(/\b\d{6,}\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return entryName({ description, categoryName: entry.categoryName });
 }
 
 // A shouted bank description ("HDB HOUSING LOAN GIRO") in the case a
@@ -154,18 +177,34 @@ export function buildAnswerCard(facts: AskAnswerFacts, context: WordingContext):
     if (current.plannedIncomeMinor > 0 || current.incomeMinor > 0) {
       support.push({ label: "Income", amountMinor: current.incomeMinor, currency: "SGD" });
     }
+    const planLines: AskAnswerLineDto[] = selectPlanRows(current).map((row) => ({
+      label: row.label,
+      amountMinor: row.actualMinor,
+      currency: "SGD",
+      tone: spendTone(row.actualMinor, row.plannedMinor),
+      secondary: { kind: "plan", label: "Plan", amountMinor: row.plannedMinor }
+    }));
+    // A quarter: each month against its plan first, then the plan rows.
+    const monthLines: AskAnswerLineDto[] = (facts.months ?? []).filter((month) => month.entryCount > 0 || month.plannedMinor > 0).map((month) => ({
+      label: monthLabel(month.month, today),
+      amountMinor: month.spentMinor,
+      currency: "SGD",
+      tone: spendTone(month.spentMinor, month.plannedMinor),
+      secondary: { kind: "plan", label: "Plan", amountMinor: month.plannedMinor }
+    }));
     return {
-      title: `${monthLabel(current.month, today)} against plan`,
+      title: `${planLabel(facts, today)} against plan`,
       lead: spentLead(current),
       support,
-      lines: selectPlanRows(current).map((row) => ({
-        label: row.label,
-        amountMinor: row.actualMinor,
-        currency: "SGD",
-        tone: spendTone(row.actualMinor, row.plannedMinor),
-        secondary: { kind: "plan", label: "Plan", amountMinor: row.plannedMinor }
-      })),
-      links: [monthLink(current), entriesLink(current, { type: "expense" })]
+      lines: monthLines.length ? [...monthLines, ...planLines.slice(0, 2)] : planLines,
+      // A quarter has no one Entries page: Month opens its last month.
+      links: facts.months?.length ? [monthLink(current)] : [monthLink(current), entriesLink(current, { type: "expense" })],
+      outcome: {
+        incomeMinor: current.incomeMinor,
+        spentMinor: current.spentMinor,
+        plannedSpendMinor: current.plannedMinor,
+        savingsTargetMinor: current.savingsTargetMinor
+      }
     };
   }
   if (facts.kind === "compare") {
@@ -296,7 +335,7 @@ export function buildTemplateWording(facts: AskAnswerFacts, context: WordingCont
   const sentences: string[] = [];
   if (facts.kind === "spending" || facts.kind === "plan" || facts.kind === "biggest" || facts.kind === "income" || facts.kind === "compare") {
     if (facts.current.entryCount === 0) {
-      return `There are no entries for ${monthLabel(facts.current.month, today)} yet.`;
+      return `There are no entries for ${facts.kind === "plan" ? planLabel(facts, today) : monthLabel(facts.current.month, today)} yet.`;
     }
   }
   if (facts.kind === "spending") {
@@ -321,7 +360,7 @@ export function buildTemplateWording(facts: AskAnswerFacts, context: WordingCont
     }
   } else if (facts.kind === "plan") {
     const { current } = facts;
-    const label = monthLabel(current.month, today);
+    const label = planLabel(facts, today);
     if (current.plannedMinor <= 0) {
       sentences.push(`There's no spending plan for ${label}, and ${money(current.spentMinor)} has gone out.`);
     } else {
@@ -331,8 +370,14 @@ export function buildTemplateWording(facts: AskAnswerFacts, context: WordingCont
       } else {
         sentences.push(planSentence(current, label));
       }
+      // A quarter names the month that went furthest over; a month its line.
+      const overMonth = (facts.months ?? [])
+        .filter((month) => month.plannedMinor > 0 && month.spentMinor > month.plannedMinor)
+        .sort((left, right) => (right.spentMinor - right.plannedMinor) - (left.spentMinor - left.plannedMinor))[0];
       const [row] = selectPlanRows(current);
-      if (row && row.actualMinor > row.plannedMinor) {
+      if (overMonth) {
+        sentences.push(`${monthLabel(overMonth.month, today)} went furthest over, at ${money(overMonth.spentMinor)} against ${money(overMonth.plannedMinor)} planned.`);
+      } else if (row && row.actualMinor > row.plannedMinor) {
         sentences.push(`${row.label} went furthest over, at ${money(row.actualMinor)} against ${money(row.plannedMinor)} planned.`);
       }
     }
@@ -465,7 +510,7 @@ export function buildPromptFacts(facts: AskAnswerFacts, context: WordingContext)
     if (categories) {
       for (const category of current.categories) lines.push(`Category ${category.name}: ${money(category.amountMinor)}, ${category.sharePercent}% of spending`);
     }
-    for (const entry of current.biggest.slice(0, entries)) lines.push(`Expense ${entryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)} (${entry.categoryName})`);
+    for (const entry of current.biggest.slice(0, entries)) lines.push(`Expense ${promptEntryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)} (${entry.categoryName})`);
   };
   if (facts.kind === "spending") {
     const label = monthLabel(facts.current.month, today);
@@ -477,8 +522,11 @@ export function buildPromptFacts(facts: AskAnswerFacts, context: WordingContext)
       if (gap !== 0) lines.push(`${gap > 0 ? "More" : "Less"} than ${previousLabel} by: ${money(Math.abs(gap))}`);
     }
   } else if (facts.kind === "plan") {
-    const label = monthLabel(facts.current.month, today);
+    const label = planLabel(facts, today);
     monthLines(facts.current, label, { categories: false });
+    for (const month of facts.months ?? []) {
+      lines.push(`Spent in ${monthLabel(month.month, today)}: ${money(month.spentMinor)} of ${money(month.plannedMinor)} planned`);
+    }
     for (const row of selectPlanRows(facts.current)) lines.push(`Plan line ${row.label}: ${money(row.actualMinor)} spent of ${money(row.plannedMinor)} planned`);
     if (facts.current.plannedIncomeMinor > 0) lines.push(`Income in ${label}: ${money(facts.current.incomeMinor)} of ${money(facts.current.plannedIncomeMinor)} planned`);
   } else if (facts.kind === "compare") {
@@ -492,7 +540,7 @@ export function buildPromptFacts(facts: AskAnswerFacts, context: WordingContext)
   } else if (facts.kind === "biggest") {
     const label = monthLabel(facts.current.month, today);
     lines.push(`Month: ${label}`);
-    for (const entry of facts.current.biggest) lines.push(`Expense ${entryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)} (${entry.categoryName})`);
+    for (const entry of facts.current.biggest) lines.push(`Expense ${promptEntryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)} (${entry.categoryName})`);
   } else if (facts.kind === "income") {
     const label = monthLabel(facts.current.month, today);
     lines.push(`Income in ${label}: ${money(facts.current.incomeMinor)}`);
@@ -548,6 +596,20 @@ const MONTH_AND_DAY_WORDS = new Set([
 const BANNED = /\b(forecast|predict|predicted|projected|will (?:be|have|spend|reach|end)|on track to|safe to spend|you should|you could|we recommend|recommend|advice|guarantee|budget tip|try to|consider)\b/i;
 const NUMBER = /\d[\d,]*(?:\.\d+)?/g;
 
+// An amount of money as a phrase: "$1,234.50", "S$20", "Rp 45,000" or
+// "12 dollars". A bare number can be a day, a count or a share, so only these
+// forms must be one of the facts' own amounts.
+const MONEY_AMOUNT = /(?:\$|\bRp\.?)\s?(\d[\d,]*(?:\.\d+)?)|(\d[\d,]*(?:\.\d+)?)\s*(?:dollars?|cents?|bucks)\b/gi;
+// A figure written in words has no digits to compare with the facts, so it
+// cannot be checked and is refused (small counting words stay allowed).
+const NUMBER_WORDS = /\b(?:ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|grand|dozens?)\b|\b(?:one|two|three|four|five|six|seven|eight|nine)\s+(?:percent|per cent|dollars?|cents?|bucks)\b/i;
+
+function moneyAmountsIn(text: string) {
+  return [...text.matchAll(MONEY_AMOUNT)]
+    .map((match) => Number((match[1] ?? match[2]).replace(/,/g, "")))
+    .filter((value) => Number.isFinite(value));
+}
+
 function numbersIn(text: string) {
   return (text.match(NUMBER) ?? []).map((value) => Number(value.replace(/,/g, ""))).filter((value) => Number.isFinite(value));
 }
@@ -586,6 +648,12 @@ export function validateAiWording(value: unknown, input: { promptFacts: string[]
   const factText = input.promptFacts.join("\n");
   const allowedNumbers = new Set(numbersIn(factText));
   if (numbersIn(text).some((number) => !allowedNumbers.has(number))) {
+    return null;
+  }
+  // A sum of money must be a sum the facts hold; a day or a percentage that
+  // happens to share its digits is not enough. Figures in words are refused.
+  const allowedAmounts = new Set(moneyAmountsIn(factText));
+  if (moneyAmountsIn(text).some((amount) => !allowedAmounts.has(amount)) || NUMBER_WORDS.test(text)) {
     return null;
   }
   // Currency must be the facts' own: a "$" followed by a number the facts hold.

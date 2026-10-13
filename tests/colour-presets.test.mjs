@@ -36,7 +36,11 @@ const STYLESHEETS = [path.join(ROOT, "public/styles.css"), ...walk(path.join(ROO
 const CLIENT_CODE = walk(path.join(ROOT, "src/client"), [".js", ".jsx"]).filter((file) => !file.endsWith("colour-presets.js"));
 
 // Layout tokens, and tokens built from other tokens, are the same in every preset.
-const NOT_COLOUR = new Set(["--chrome-edge", "--chrome-radius", "--sheet-radius"]);
+const NOT_COLOUR = new Set([
+  "--chrome-edge", "--chrome-radius", "--sheet-radius",
+  // The desktop chrome's radii and type scale (design.md, "Desktop Chrome").
+  "--radius-control", "--radius-group", "--type-title", "--type-control", "--type-small"
+]);
 const COLOUR_TOKENS = Object.entries(ROOT_TOKENS)
   .filter(([name, value]) => !NOT_COLOUR.has(name) && !value.includes("var("))
   .map(([name]) => name);

@@ -3,9 +3,11 @@ import { ArrowRight, Banknote, ChartPie, Receipt, Scale, Sparkles, Target, Users
 import { skewCountedKind } from "./ask-skew-check";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { moneyWithCurrency } from "./formatters";
+import { splitMoneyUse } from "./money-jobs-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { LeadCard, MetaChip } from "./ui/lead-support-detail";
+import { SavingsBar } from "./ui/savings-bar";
 
 const NEUTRAL_BUBBLE_COLOUR = "#7C8791";
 const INTENT_ICONS = {
@@ -63,6 +65,21 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
         </MetaChip>
       ))}
     >
+      {answer.outcome ? (
+        // Intent against outcome: the Month and Summary lead's savings bar,
+        // from the same four figures (it keeps only percentages when money
+        // is hidden). No period is given, so its parts show the percentage
+        // popover without the View entries / Ask menu.
+        <SavingsBar
+          figures={splitMoneyUse({
+            incomeMinor: answer.outcome.incomeMinor,
+            spentMinor: answer.outcome.spentMinor,
+            plannedSpendMinor: answer.outcome.plannedSpendMinor,
+            savingsTargetMinor: answer.outcome.savingsTargetMinor
+          })}
+          hidden={!areTotalsVisible}
+        />
+      ) : null}
       {areTotalsVisible ? (
         <>
           <p className="ask-money-wording">{wording.text}</p>

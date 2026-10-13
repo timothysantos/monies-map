@@ -16,7 +16,9 @@
 
 export type AskAnswerIntent =
   | { kind: "spending"; focus: "why" | "where"; month: string }
-  | { kind: "plan"; month: string }
+  // `months`: a quarter ("did we stick to the plan in Q3?"), oldest first,
+  // up to this month; `month` is then its last month.
+  | { kind: "plan"; month: string; months?: string[] }
   | { kind: "compare"; month: string; otherMonth: string }
   | { kind: "biggest"; month: string }
   | { kind: "owed"; personId: string | null }
@@ -97,14 +99,32 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
   }
 
   const namesVocabulary = mentionsVocabulary(tokens, context.vocabulary ?? []);
+  // A quarter is answered only as intent against outcome; any other
+  // question about a quarter is not answered rather than answered for one
+  // month.
+  const quarter = readQuarter(tokens, context.today);
+  if (quarter === "unreadable") {
+    return null;
+  }
 
   // Income before the plan: "did income match the plan?" is about income.
   if (has(/\b(income|earn|earned|earning|earnings|salary|came in)\b/)) {
-    return namesVocabulary ? null : { kind: "income", month };
+    return namesVocabulary || quarter ? null : { kind: "income", month };
   }
 
-  if (has(/\b(plan|planned|budget|budgets)\b/) || has(/\bon (track|target)\b/)) {
+  // Intent against outcome: the plan, staying on it, or how a month went
+  // ("how did September go?", "how was August?", "how did we do?").
+  const howItWent = /^how (did|was|were|has|have|is|are)\b/.test(normalized)
+    && !has(/\b(much|many|often|long)\b/)
+    && (refs.length > 0 || quarter !== null || has(/\b(go|went|going|gone|do|did|doing|done|turn|turned|end|ended|look|looking)\b/));
+  if (has(/\b(plan|planned|budget|budgets)\b/) || has(/\bon (track|target)\b/) || has(/\b(stick|stuck|stay|stayed)\b/) || howItWent) {
+    if (quarter) {
+      return { kind: "plan", month: quarter[quarter.length - 1], months: quarter };
+    }
     return { kind: "plan", month };
+  }
+  if (quarter) {
+    return null;
   }
 
   if (has(/\bwhere\b/) && (has(/\b(go|went|going|gone)\b/) || has(/\b(spend|spent|spending|money)\b/))) {
@@ -198,6 +218,46 @@ function readMonthRefs(tokens: Token[], context: AskAnswerIntentContext): MonthR
     refs.push({ month: `${year}-${String(monthNumber).padStart(2, "0")}`, lead });
   }
   return refs;
+}
+
+const QUARTER_WORDS = new Map<string, number>([["first", 1], ["1st", 1], ["second", 2], ["2nd", 2], ["third", 3], ["3rd", 3], ["fourth", 4], ["4th", 4]]);
+
+// A quarter named in the question, as its months up to this month: "Q3",
+// "q3 2025", "the third quarter", "this quarter", "last quarter". A quarter
+// without a year is the latest one that has started. Null when none is
+// named; "unreadable" when the quarter has not started yet.
+function readQuarter(tokens: Token[], today: string): string[] | null | "unreadable" {
+  const thisMonth = today.slice(0, 7);
+  const thisYear = Number(thisMonth.slice(0, 4));
+  const thisQuarter = Math.floor((Number(thisMonth.slice(5, 7)) - 1) / 3) + 1;
+  let quarter = 0;
+  let year: number | null = null;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index].text;
+    const next = tokens[index + 1]?.text ?? "";
+    const named = /^q[1-4]$/.test(token) ? Number(token.slice(1)) : next === "quarter" ? QUARTER_WORDS.get(token) ?? 0 : 0;
+    if (named) {
+      quarter = named;
+      const yearToken = tokens[index + (next === "quarter" ? 2 : 1)]?.text ?? "";
+      year = /^20\d{2}$/.test(yearToken) ? Number(yearToken) : null;
+      break;
+    }
+    if ((token === "this" || token === "last" || token === "previous") && next === "quarter") {
+      const index0 = thisYear * 4 + thisQuarter - 1 - (token === "this" ? 0 : 1);
+      quarter = (index0 % 4) + 1;
+      year = Math.floor(index0 / 4);
+      break;
+    }
+  }
+  if (!quarter) {
+    return null;
+  }
+  const resolvedYear = year ?? (quarter <= thisQuarter ? thisYear : thisYear - 1);
+  const first = `${resolvedYear}-${String(quarter * 3 - 2).padStart(2, "0")}`;
+  if (first > thisMonth) {
+    return "unreadable";
+  }
+  return [0, 1, 2].map((offset) => addMonths(first, offset)).filter((month) => month <= thisMonth);
 }
 
 function findPerson(tokens: Token[], people: AskAnswerIntentContext["people"]) {

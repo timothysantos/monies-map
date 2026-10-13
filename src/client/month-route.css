@@ -231,6 +231,12 @@
   margin-top: 0;
 }
 
+/* The money jobs line sits where the plan line was, as close to the
+   sentence as the bar's own lines (3 px, not the card's 5 px). */
+.month-lead .money-jobs {
+  margin-top: -2px;
+}
+
 .month-lead .lead-column {
   padding-block: 0;
 }
@@ -424,8 +430,7 @@
   background: rgb(var(--accent-strong-rgb) / 0.06);
 }
 
-.panel-subgrid > section,
-.month-plan-grid > section {
+.panel-subgrid > section {
   min-width: 0;
 }
 
@@ -452,11 +457,6 @@
 }
 
 @media (max-width: 760px) {
-  .month-add-dialog-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
   .month-title {
     display: none;
   }

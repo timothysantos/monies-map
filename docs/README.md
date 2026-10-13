@@ -108,6 +108,9 @@ a doc here in the same change.
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice, including the Claude-through-AI-Gateway
   provider and receipt reading (11 October 2026).
+- [`audits/ai-security-review.md`](audits/ai-security-review.md): security
+  review of the AI routes, Ask, the AI Gateway, Access and the write routes
+  (October 2026): findings with severity and status.
 - [`audits/ai-entry-draft-audit.md`](audits/ai-entry-draft-audit.md):
   entry draft parser and its optional AI gap-filler (privacy, cost, writes,
   no-AI behaviour).
@@ -115,6 +118,10 @@ a doc here in the same change.
   Ask's answers to money questions: rules, the skew check first, facts from
   the screens' DTOs, and the validated optional AI wording (privacy, cost,
   writes, no-AI behaviour).
+- [`audits/ask-planning-audit.md`](audits/ask-planning-audit.md):
+  planning by chat (plan drafts saved in one batch) and Intent vs Outcome
+  answers on Ask: rules first, the optional AI reading only into the same
+  draft (privacy, cost, writes, no-AI behaviour).
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):

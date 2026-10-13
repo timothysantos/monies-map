@@ -22,6 +22,15 @@
 //   or { needsConfirmation, candidates } (skew candidates with their
 //   suggested actions), or { answer, wording: { text, source } }.
 //
+// - POST /api/ai-assist/plan-draft (src/server/plan-draft-route.ts): a
+//   typed change to a month's plan ("move $50 from Shopping to Groceries in
+//   October"). Body { text, viewId, month, answers }. Response
+//   PlanDraftResponseDto: { supported: false } (not a plan request; read it
+//   as before), or { supported, source, draft | question | note }.
+//   Saving the draft is POST /api/month-plan/apply-changes { month,
+//   changes: draft.apply } → { applied, undo }; Undo posts `undo` the
+//   same way. A 409 means the plan changed since the draft.
+//
 // - POST /api/splits/suggestion (src/domain/pages/split-suggestion.ts): the
 //   split group and share the payer usually uses for entries like this one
 //   (DOMAIN.md "Split Suggestion"). Body { entryId } for a saved entry, else
@@ -29,9 +38,11 @@
 //   accountId, date }. Response { ok, suggestion: SplitSuggestionDto | null }.
 //   Read-only.
 //
-// Saving never uses a new route: the card goes through the Entries
+// Saving an entry never uses a new route: the card goes through the Entries
 // composer's create path (entry-actions.js createEntryFromDraft), and the
-// follow-ups through the existing entry and split routes.
+// follow-ups through the existing entry and split routes. A plan draft is
+// saved through the plan-row save statements, all its lines in one batch
+// (/api/month-plan/apply-changes).
 //
 // Readers fail soft: any network error, non-OK status or unreadable body
 // comes back as { ok: false, reason } and the card stays manual.
@@ -44,7 +55,9 @@ export const ASK_ENDPOINTS = Object.freeze({
   receiptRead: "/api/ai-assist/receipt-read",
   answer: "/api/ai-assist/answer",
   insightExplain: "/api/ai-assist/insight-explain",
-  splitSuggestion: "/api/splits/suggestion"
+  splitSuggestion: "/api/splits/suggestion",
+  planDraft: "/api/ai-assist/plan-draft",
+  planApply: "/api/month-plan/apply-changes"
 });
 
 const DRAFT_FIELD_NAMES = [
@@ -300,10 +313,103 @@ export function readMoneyAnswerResponse(body) {
       lead: answer.lead,
       support: Array.isArray(answer.support) ? answer.support : [],
       lines: Array.isArray(answer.lines) ? answer.lines : [],
-      links: Array.isArray(answer.links) ? answer.links.filter((link) => ["entries", "month", "splits"].includes(link?.kind)) : []
+      links: Array.isArray(answer.links) ? answer.links.filter((link) => ["entries", "month", "splits"].includes(link?.kind)) : [],
+      ...(readOutcome(answer.outcome) ? { outcome: readOutcome(answer.outcome) } : {})
     },
     wording: { text: wording.text, source: wording.source === "ai" ? "ai" : "template" }
   };
+}
+
+// The plan answer's savings-bar figures, only when every one is a number.
+function readOutcome(value) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const keys = ["incomeMinor", "spentMinor", "plannedSpendMinor", "savingsTargetMinor"];
+  return keys.every((key) => Number.isFinite(value[key])) ? Object.fromEntries(keys.map((key) => [key, value[key]])) : null;
+}
+
+const PLAN_QUESTION_FIELDS = new Set(["month", "line", "owner"]);
+const PLAN_NOTE_REASONS = new Set(["no_plan_to_copy", "same_month", "unknown_line", "nothing_changes", "not_enough", "move_mixed"]);
+
+/**
+ * @typedef {{ supported: boolean, source?: "rules" | "ai", draft?: any, question?: any, note?: any }} PlanDraftReading
+ */
+
+// The plan-draft route's answer as the page keeps it: a draft whose every
+// figure is a number and whose Save list is there, a question with its
+// options, or a known note. Anything else is unreadable.
+/** @returns {PlanDraftReading | null} */
+export function readPlanDraftResponse(body) {
+  if (!body || typeof body !== "object" || body.ok !== true || typeof body.supported !== "boolean") {
+    return null;
+  }
+  if (!body.supported) {
+    return { supported: false };
+  }
+  const source = body.source === "ai" ? "ai" : "rules";
+  const draft = body.draft;
+  if (draft && typeof draft === "object") {
+    const totalsOk = ["before", "after"].every((side) => ["plannedIncomeMinor", "plannedSpendMinor", "remainingMinor"].every((key) => Number.isFinite(draft.totals?.[side]?.[key])));
+    const changesOk = Array.isArray(draft.changes) && draft.changes.length > 0
+      && draft.changes.every((change) => typeof change?.rowId === "string" && typeof change.label === "string" && Number.isFinite(change.beforeMinor) && Number.isFinite(change.afterMinor));
+    if (!/^\d{4}-\d{2}$/.test(String(draft.month)) || !totalsOk || !changesOk || !Array.isArray(draft.apply) || !draft.apply.length || !draft.lead || !Number.isFinite(draft.lead.amountMinor)) {
+      return null;
+    }
+    return { supported: true, source, draft };
+  }
+  const question = body.question;
+  if (question && typeof question === "object") {
+    return PLAN_QUESTION_FIELDS.has(question.field) && Array.isArray(question.options) && question.options.length ? { supported: true, source, question } : null;
+  }
+  const note = body.note;
+  if (note && typeof note === "object" && PLAN_NOTE_REASONS.has(note.reason)) {
+    return { supported: true, source, note };
+  }
+  return null;
+}
+
+export async function requestPlanDraft({ text, viewId, month, answers = {}, signal = undefined, fetchImpl = fetch }) {
+  try {
+    const response = await fetchImpl(ASK_ENDPOINTS.planDraft, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, viewId, month, answers }),
+      signal
+    });
+    if (!response.ok) {
+      return { ok: false, reason: response.status === 404 ? "unavailable" : "failed" };
+    }
+    const reading = readPlanDraftResponse(await readJson(response));
+    return reading ? { ok: true, reading } : { ok: false, reason: "unreadable" };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw error;
+    }
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Save plan and Undo: the draft's changes (or a save's `undo`) through
+ * POST /api/month-plan/apply-changes, one batch on the server.
+ * @returns {Promise<{ ok: boolean, error?: string, undo?: any[], conflict?: boolean }>}
+ */
+export async function applyPlanChanges({ month, changes }, { fetchImpl = fetch, fallbackError = "The plan couldn't be saved. Check your connection and try again." } = {}) {
+  try {
+    const response = await fetchImpl(ASK_ENDPOINTS.planApply, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month, changes })
+    });
+    const data = await readJson(response);
+    if (!response.ok || data?.ok !== true) {
+      return { ok: false, conflict: response.status === 409, error: typeof data?.error === "string" && response.status === 409 ? data.error : fallbackError };
+    }
+    return { ok: true, undo: Array.isArray(data.undo) ? data.undo : [] };
+  } catch {
+    return { ok: false, error: fallbackError };
+  }
 }
 
 export async function requestMoneyAnswer({ text, viewId, scope, month, keepCandidateIds = [], signal = undefined, fetchImpl = fetch }) {

@@ -28,6 +28,43 @@
   right: max(14px, env(safe-area-inset-right));
 }
 
+/* The Entries list's base rules (moved from the first-screen stylesheet;
+   the "Entries list" rules further down refine them). */
+.entries-date-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.entries-date-head {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -12px -16px 8px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgb(var(--muted-rgb, 217 207 194) / 0.72);
+  border-radius: 12px 12px 0 0;
+  background: rgb(var(--cream-rgb, 255 252 247) / 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.entries-date-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.entries-empty-state {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
 /* The Entries top (entries-overview.jsx, design.md "Entries top"): the
    Spent lead, four pills and the Detail rows. Nothing here scrolls sideways
    or is cut off at any width: the old strip did at 390 and 1024 px.
