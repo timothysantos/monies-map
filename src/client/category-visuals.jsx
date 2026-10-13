@@ -28,7 +28,12 @@ export function SpendingMixChart({
   // Percent labels and category badges around the ring. Spending Mix turns
   // them off: its ranked list beside the donut carries them, and they
   // collided with each other when many categories had small slices.
-  callouts = true
+  callouts = true,
+  // Spending Mix's own labels instead: "Name 32.1%" beside the slices with
+  // room for one, none on small slices (donut-label-layout.js). Shares are
+  // of shareTotalMinor, all spending, so hiding a slice does not move them.
+  sliceLabels = false,
+  shareTotalMinor = undefined
 }) {
   const total = typeof totalMinor === "number"
     ? totalMinor
@@ -52,6 +57,8 @@ export function SpendingMixChart({
           totalLabel={totalLabel}
           compact={compact}
           callouts={callouts}
+          sliceLabels={sliceLabels}
+          shareTotalMinor={shareTotalMinor}
           isNarrowViewport={isNarrowViewport}
           resolvedHeight={resolvedHeight}
           resolvedInnerRadius={resolvedInnerRadius}

@@ -21,8 +21,9 @@ import { EmptyState } from "./ui-states";
 import { DetailRows } from "./ui-components";
 import { useIsMobileLayout } from "./use-viewport";
 
-// Spending Mix: spending by category as a donut with no labels on it and a
-// ranked list of the categories (design.md, "Summary body"): the 44 px
+// Spending Mix: spending by category as a donut, its bigger slices labelled
+// where there is room (name and share, or the share alone; small slices
+// none), and a ranked list of the categories (design.md, "Summary body"): the 44 px
 // bubble (edits the category), the name, amount and share, a thin bar, and
 // an arrow that opens Entries for the category. The top five show; "Show all
 // N" lists the rest. It follows the Summary tab's month choice: Summary (All
@@ -30,10 +31,10 @@ import { useIsMobileLayout } from "./use-viewport";
 // (month-spending-mix.js). A row's main tap hides or shows its slice. Without
 // spending it shows the empty state the Entries breakdown uses.
 const TOP_COUNT = 5;
-// With no labels around it the ring needs no margin, so the phone one is small.
+// The margin around the ring holds one line of slice label above and below.
 const DONUT_SIZE = {
-  phone: { height: 216, innerRadius: 60, outerRadius: 92 },
-  wide: { height: 300, innerRadius: 82, outerRadius: 128 }
+  phone: { height: 236, innerRadius: 60, outerRadius: 92 },
+  wide: { height: 310, innerRadius: 82, outerRadius: 128 }
 };
 const mixCopy = messages.summary.mixList;
 
@@ -76,6 +77,8 @@ export function SpendingMixSection({
               categories={categories}
               totalMinor={visibleTotalMinor}
               callouts={false}
+              sliceLabels
+              shareTotalMinor={totalMinor}
               {...(isMobileLayout ? DONUT_SIZE.phone : DONUT_SIZE.wide)}
             />
             {hiddenCount ? (
