@@ -268,6 +268,29 @@ export async function expectImportRowsReady(page, text, { timeout = 60_000 } = {
   await expect(page.locator(".import-stepper-step").first()).toContainText(text, { timeout });
 }
 
+// What the Summary and Month lead show, worked out from a page DTO by hand
+// (DOMAIN.md "Money job"): money filed under Investments or Savings was moved,
+// not spent, and the savings target and Investments plan rows are not spend
+// plan. `spent` and `planned` are the lead's headline and its plan, `kept` is
+// the Saved figure. Pass the Summary page (its "Planned investments" card) or
+// the Month page (its plan rows).
+export function leadFigures(page) {
+  const summaryPage = page.summaryPage?.metricCards ? page.summaryPage : null;
+  const cards = summaryPage ? summaryPage.metricCards : page.monthPage.metricCards;
+  const card = (label) => cards.find((item) => item.label === label)?.amountMinor ?? 0;
+  const chart = summaryPage ? summaryPage.categoryShareChart : page.monthPage.categoryShareChart;
+  const slice = (label) => chart.find((item) => item.label === label)?.valueMinor ?? 0;
+  const rows = summaryPage ? [] : page.monthPage.planSections.flatMap((section) => section.rows);
+  const investPlan = summaryPage
+    ? card("Planned investments")
+    : rows.filter((row) => row.label !== "Savings" && row.categoryName === "Investments").reduce((sum, row) => sum + row.plannedMinor, 0);
+  const income = summaryPage ? card("Actual income") : page.summaryPage.months[0].actualIncomeMinor;
+  const invested = slice("Investments");
+  const spent = Math.max(0, card("Actual spend") - invested - slice("Savings"));
+  const planned = Math.max(0, card("Planned spend") - card("Savings target") - investPlan);
+  return { income, invested, spent, planned, savingsTarget: card("Savings target"), kept: income - spent - invested };
+}
+
 // Opens the Entries page's new-entry form on a wide screen. The inline "+ Add
 // entry" button left the totals; the round + button opens Ask's new entry
 // card, whose "Edit in form" opens the form (the same route a person takes).

@@ -41,7 +41,7 @@ export function sanitizeTabParams(params, tabId) {
   }
 
   if (tabId !== "ask") {
-    ["mode", "from", "saved_entry"].forEach((key) => params.delete(key));
+    ["mode", "from", "saved_entry", "ask_text"].forEach((key) => params.delete(key));
   }
 }
 

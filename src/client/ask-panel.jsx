@@ -1227,20 +1227,33 @@ function AskConversation({
     if (!inDock) return undefined;
     const dock = getAskDockStore();
     dock.setReady(true);
-    const handoff = dock.takeHandoff();
-    if (handoff.text) {
+    const takeText = (text) => {
       // As typed, trailing space included: the person may still be typing.
       const before = store.read(conversationKey)?.composerText ?? "";
-      setComposerText(before && !/\s$/.test(before) ? `${before} ${handoff.text}` : `${before}${handoff.text}`);
+      setComposerText(before && !/\s$/.test(before) ? `${before} ${text}` : `${before}${text}`);
+    };
+    const handoff = dock.takeHandoff();
+    if (handoff.text) {
+      takeText(handoff.text);
     }
     if (handoff.file) {
       void readReceipt(handoff.file);
     }
-    const focusIfAsked = () => {
+    // While this conversation is open, a lead's "Ask about this" puts its
+    // question in the message box too (openAskDockNow's `text`).
+    const onDockChange = () => {
+      // Only the conversation the dock now shows takes it (opening with a
+      // new way in tells this one first, before it gives way).
+      const snapshot = dock.getSnapshot();
+      if (snapshot.draftText && askConversationKey(snapshot.intent) === conversationKey) {
+        const next = dock.takeHandoff();
+        takeText(next.text);
+        if (next.file) void readReceipt(next.file);
+      }
       if (dock.takeFocusRequest()) composerRef.current?.focus();
     };
-    focusIfAsked();
-    const unsubscribe = dock.subscribe(focusIfAsked);
+    onDockChange();
+    const unsubscribe = dock.subscribe(onDockChange);
     return () => {
       unsubscribe();
       dock.setReady(false);
@@ -1248,6 +1261,24 @@ function AskConversation({
     // Once per conversation shown in the dock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inDock, conversationKey]);
+
+  // On the Ask page, a lead's "Ask about this" (ui/money-actions.jsx) brings
+  // its question as `ask_text`: it goes into the message box once, for the
+  // person to send, and leaves the URL so a reload does not add it again.
+  const askText = inDock || isAddMode ? "" : searchParams.get("ask_text") ?? "";
+  useEffect(() => {
+    if (!askText) return;
+    const before = store.read(conversationKey)?.composerText ?? "";
+    if (!before.includes(askText)) {
+      setComposerText(before.trim() ? `${before.trimEnd()} ${askText}` : askText);
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("ask_text");
+    navigate({ pathname: location.pathname, search: `?${next.toString()}` }, { replace: true, state: location.state });
+    composerRef.current?.focus();
+    // Once per question brought in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askText]);
 
   // Escape closes the popup, unless something inside already handled it
   // (a menu or picker) or the person is typing in a field on the page

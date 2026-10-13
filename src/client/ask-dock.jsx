@@ -18,8 +18,9 @@ const AskDockPanel = lazy(() => loadRouteModule("ask").then((module) => ({ defau
 
 /**
  * Opens Ask beside the page (the + and receipt buttons, with their new
- * entry's way in). The dock's code loads on this first call.
- * @param {{ intent?: object, file?: File | null }} [options]
+ * entry's way in; a lead's "Ask about this", with its question as `text`
+ * in the message box). The dock's code loads on this first call.
+ * @param {{ intent?: object, file?: File | null, text?: string }} [options]
  */
 export function openAskDock(options = {}) {
   if (askDockHandle.open) askDockHandle.open(options);
