@@ -161,7 +161,9 @@ export const messages = {
         tickWithAmount: (amount) => `All you earned ${amount}`,
         // The always-visible legend under the bars, one short label per part
         // (the striped part is what came out of savings), and the thin plan bar.
-        legend: { spent: "Spent", invested: "Invested", kept: "Kept", savings: "From savings" },
+        // `takenOut` is a line of its own, with no part on the bar: a period
+        // that took more out of investment accounts than it put in.
+        legend: { spent: "Spent", invested: "Invested", kept: "Kept", savings: "From savings", takenOut: "Took out of investments" },
         planName: "Plan",
         planSpend: "spend",
         planInvest: "invest",

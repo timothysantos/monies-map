@@ -114,6 +114,10 @@ export function SavingsBar({ figures, hidden, period = null }) {
             {legendText(segment.legend)}
           </li>
         ))}
+        {/* More taken out of investments than put in: a line with no part. */}
+        {model.takenOut ? (
+          <li data-legend="taken-out">{`${model.takenOut.name} ${model.takenOut.amount}`}</li>
+        ) : null}
         {model.planLegend ? (
           <li data-legend="plan">
             <span className="savings-bar-swatch is-plan" aria-hidden="true" />
