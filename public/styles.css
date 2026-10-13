@@ -30,6 +30,10 @@
   --negative: var(--pastel-rose-ink);
   --accent: #934923;
   --accent-strong: #b15e2f;
+  /* The label on an open phone tab pill (the strong accent at 12%, 18% for Ask,
+     over the tab bar): the deeper accent here, the lighter strong one in a
+     dark mode, so it reads 4.5:1 in every preset. */
+  --tab-pill-ink: var(--accent);
   /* Colour presets (design.md, "Colour presets") override these in
      public/palettes/<preset>.css. The -rgb channels feed the translucent
      tints; paper is every white surface, on-strong the text on a strong
@@ -312,7 +316,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--chrome-surface);
-  color: var(--accent-strong);
+  color: var(--accent);
   font-size: 1.35rem;
   line-height: 1;
 }
@@ -1942,7 +1946,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .subtle-cancel {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   cursor: pointer;
   font: inherit;
   padding: 0;
@@ -4967,7 +4971,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .import-stage-label.is-current {
   border-color: rgb(var(--accent-strong-rgb) / 0.2);
   background: rgb(var(--cream-rgb, 246 236 228) / 0.86);
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .import-stage-label.is-complete {
@@ -7552,7 +7556,7 @@ th {
   .tab.is-active {
     border-color: rgb(var(--accent-strong-rgb) / 0.2);
     background: rgb(var(--accent-strong-rgb) / 0.12);
-    color: var(--accent-strong);
+    color: var(--tab-pill-ink);
   }
 
   /* The Ask tab has an identity of its own: its icon and label are the
@@ -7567,7 +7571,7 @@ th {
   .tab.tab-phone-only.is-active {
     border-color: rgb(var(--accent-strong-rgb) / 0.4);
     background: rgb(var(--accent-strong-rgb) / 0.18);
-    color: var(--accent);
+    color: var(--tab-pill-ink);
     font-weight: 700;
   }
 
@@ -7776,7 +7780,7 @@ th {
 
   .mobile-context-trigger-caret {
     margin-left: auto;
-    color: var(--accent-strong);
+    color: var(--accent);
     font-size: 0.92rem;
     flex: 0 0 auto;
   }
@@ -7841,7 +7845,7 @@ th {
   }
 
   .mobile-month-choice-caret {
-    color: var(--accent-strong);
+    color: var(--accent);
     font-size: 0.8rem;
   }
 
@@ -7851,7 +7855,7 @@ th {
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--accent-strong);
+    color: var(--accent);
     font-size: 1.35rem;
     cursor: pointer;
   }

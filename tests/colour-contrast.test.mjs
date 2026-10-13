@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { getPersonColour, getPersonColourVars } from "../src/client/person-colour.js";
@@ -118,6 +119,21 @@ for (const preset of PRESETS) {
     }
   });
 
+  // Small accent text that sits straight on the tinted page or on the bare
+  // chrome (the text actions, the phone's month carets and steppers, the
+  // Splits strip's New and All, the phone tab pill) uses --accent. The strong
+  // accent on the page is 3.6:1 in 70s Warm Light, short of 4.5:1 for small
+  // text; the phone tab pill is the strong accent at 12% over the tab bar.
+  test(`${id}: small accent text on the page, the chrome and the phone tab pill reads AA`, () => {
+    const CHROME = rgb("--chrome-surface");
+    assertAA(rgb("--accent"), PAGE, "text actions on the page");
+    assertAA(rgb("--accent"), CHROME, "carets and steppers on the chrome");
+    // --tab-pill-ink: the deeper accent in a light mode, the strong one in a
+    // dark mode (public/styles.css, public/palettes/*-dark.css).
+    assert.equal(preset.tokens["--tab-pill-ink"], isDark ? "var(--accent-strong)" : "var(--accent)");
+    assertAA(rgb(isDark ? "--accent-strong" : "--accent"), mix(rgb("--accent-strong"), 0.12, CHROME), "label on the phone tab pill");
+  });
+
   test(`${id}: cards stand off the page by a soft step, a hairline and a shadow`, () => {
     const [pageLightness] = lab(PAGE);
     const [cardLightness] = lab(CARD);
@@ -181,7 +197,9 @@ for (const preset of PRESETS) {
     const INK = rgb("--accent");
     const CHROME = rgb("--chrome-surface");
     assertAA(INK, CHROME, "accent on the tab bar");
-    assertAA(INK, mix(rgb("--accent-strong"), 0.18, CHROME), "accent on the open Ask pill");
+    // The open pill's label is --tab-pill-ink: the deeper accent in a light
+    // mode and the strong (lighter) accent in a dark one.
+    assertAA(isDark ? rgb("--accent-strong") : INK, mix(rgb("--accent-strong"), 0.18, CHROME), "label on the open Ask pill");
     assertAA(INK, PAPER, "accent on the dock field");
   });
 
@@ -258,6 +276,35 @@ for (const preset of PRESETS) {
     }
   });
 }
+
+// The small accent text found on --page in 70s Warm Light (4.5:1 needed, the
+// strong accent is 3.57:1 there) is written with --accent, not --accent-strong.
+test("small accent text on the page is written with the darker accent", () => {
+  const rule = (file, selector) => {
+    const css = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+    const at = css.search(new RegExp(`\\n\\s*${selector.replace(/[.]/g, "\\.")} \\{`));
+    assert.ok(at >= 0, `${selector} is in ${file}`);
+    return css.slice(at, css.indexOf("}", at));
+  };
+  for (const [file, selector] of [
+    ["public/styles.css", ".subtle-cancel"],
+    ["public/styles.css", ".period-button"],
+    ["public/styles.css", ".mobile-context-trigger-caret"],
+    ["public/styles.css", ".mobile-month-choice-caret"],
+    ["public/styles.css", ".mobile-month-choice-step"],
+    ["public/styles.css", ".import-stage-label.is-current"],
+    ["src/client/settings-add-row.css", ".settings-add-row .lsd-row-label"],
+    ["src/client/ui/lead-support-detail.css", ".lsd-row-more .lsd-row-label"],
+    ["src/client/ui/lead-support-detail.css", ".lsd-row-value.is-action"],
+    ["src/client/ui/lead-support-detail.css", ".lsd-quiet"],
+    ["src/client/splits-group-strip.css", ".splits-strip-half"]
+  ]) {
+    assert.match(rule(file, selector), /color: var\(--accent\);/, `${selector} uses --accent`);
+    assert.doesNotMatch(rule(file, selector), /color: var\(--accent-strong\)/, `${selector} is not --accent-strong`);
+  }
+  const lead = DEFAULT.rgb("--accent-strong");
+  assert.ok(contrast(lead, DEFAULT.rgb("--page")) < AA, "70s Warm Light's strong accent on the page is why");
+});
 
 test("the guard catches a failing pair: a mid harvest gold as text on cream fails AA", () => {
   const PANEL = DEFAULT.rgb("--panel");

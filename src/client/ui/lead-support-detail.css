@@ -517,7 +517,7 @@
 }
 
 .lsd-row-value.is-action {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .lsd-row-text {
@@ -642,7 +642,7 @@
 }
 
 .lsd-row-more .lsd-row-label {
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -729,7 +729,7 @@
 .lsd-quiet {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font-weight: 600;
 }
 

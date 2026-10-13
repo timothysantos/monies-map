@@ -19,6 +19,7 @@
   --accent-strong: #e8996a;
   --accent-rgb: 220 138 90;
   --accent-strong-rgb: 232 153 106;
+  --tab-pill-ink: var(--accent-strong);
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.5);

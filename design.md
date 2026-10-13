@@ -1863,7 +1863,12 @@ How it works:
   so the default keeps each shade exactly. Shadows and modal scrims stay
   neutral dark in every preset. New CSS uses these tokens, never a raw
   colour. On the tinted page the strong accent is a mark (a ring, an icon,
-  large text, 3:1); small accent text on the page uses `--accent`.
+  large text, 3:1); small accent text on the page uses `--accent` (70s Warm
+  Light's strong accent is 3.57:1 on the page): the text actions
+  (`.subtle-action`, `.lsd-quiet`, the Show more rows), the phone's month
+  carets and steppers and the Splits strip's New and All. The label on an open
+  phone tab pill is `--tab-pill-ink`, `--accent` in a light mode and
+  `--accent-strong` in a dark one (the dark sheets set it).
 - **Sheets.** A preset in a mode is one small stylesheet,
   `public/palettes/<id>-<light|dark>.css` (about 2.5 kB, minified by the
   build like `styles.css`): eleven sheets, every pair but the 70s Warm
@@ -2310,7 +2315,7 @@ the plan-table redesign.
 - The Ask tab has an identity of its own: its icon and label are `--accent`
   in semibold (600) even while another page is open, and open it is the same
   pill as the others with a stronger accent tint (18% `--accent-strong`, a 40%
-  edge, label 700; the others' open pill is 12%). Only tokens, so every colour
+  edge, label 700 in `--tab-pill-ink`; the others' open pill is 12%). Only tokens, so every colour
   preset follows; `tests/colour-contrast.test.mjs` checks the label on the bar
   and on the open pill for every preset.
 - The round buttons: the money toggle (44 px, above the Support bar, higher on
