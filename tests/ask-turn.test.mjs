@@ -84,14 +84,19 @@ test("the model's answer must name one known action; anything else is not an act
   assert.equal(parseAskTurnAction({}), null);
   assert.equal(parseAskTurnAction({ action: "delete_entry" }), null);
   assert.equal(parseAskTurnAction([{ action: "draft_entry" }]), null);
-  assert.deepEqual(parseAskTurnAction({ action: "cannot_help", note: "No.", entry: "x" }), {
-    action: "cannot_help", entry: null, split: null, settlement: null, plan: null, question: null, search: null, page: null, clarify: null, note: "No."
+  assert.deepEqual(parseAskTurnAction({ action: "cannot_help", note: "No.", entry: "x", blocked: "format_disk" }), {
+    action: "cannot_help", entry: null, split: null, settlement: null, plan: null, question: null, search: null, page: null, clarify: null, note: "No.",
+    recategorise: null, note_edit: null, transfer: null, group: null, matches: null, payment_way: null, category_edit: null, plan_link: null, blocked: null
   });
-  // The schema the providers get asks for exactly those actions.
+  // The schema the providers get asks for exactly those actions (Phase 2's
+  // changes to saved data after the first eleven).
   assert.deepEqual(ASK_TURN_SCHEMA.properties.action.enum, [
     "draft_entry", "edit_draft", "add_entry_to_splits", "draft_split_expense", "draft_settlement", "plan_change",
-    "answer_question", "search_entries", "open_page", "ask_clarification", "cannot_help"
+    "answer_question", "search_entries", "open_page", "ask_clarification", "cannot_help",
+    "edit_saved_entry", "recategorise", "edit_note", "link_transfer", "split_group", "review_matches", "set_payment_way", "edit_category", "link_plan"
   ]);
+  // Deleting is never an action, only a reason to open the page that does it.
+  assert.ok(!ASK_TURN_SCHEMA.properties.action.enum.some((name) => /delete|remove|import|reconcile/.test(name)));
 });
 
 test("amounts read as written, and nothing past S$10m", () => {
@@ -253,13 +258,16 @@ test("draft_split_expense: a shared expense with the payer and Joyce's share, on
   assert.equal(reply.draft.createBody.ownerName, "Tim");
 });
 
-test("edit_draft: only the named fields change on the card being filled; a saved card is not edited", () => {
+test("edit_draft: only the named fields change on the card being filled; on a saved card it is an edit of that entry", () => {
   const draft = { variant: "expense", description: "Lunch", date: TODAY, accountName: "Citi Rewards 4417", categoryName: "Other", ownerName: "Tim", amountMinor: 1_200, shareOn: false, splitGroupName: "" };
   const reply = validateAskTurnAction(act("edit_draft", { entry: { amount: "15", category: "food & drinks" } }), makeContext({ focus: { kind: "draft", draft }, text: "make it $15, food" }));
   assert.deepEqual(reply, { kind: "draft_patch", patch: { amountMinor: 1_500, categoryName: "Food & Drinks" }, share: null });
   const shared = validateAskTurnAction(act("edit_draft", { split: { shares: [{ person: "Joyce", all: true }] } }), makeContext({ focus: { kind: "draft", draft }, text: "all Joyce" }));
   assert.deepEqual(shared, { kind: "draft_patch", patch: { ownerName: "Shared", splitBasisPoints: 0 }, share: { on: true, groupId: "" } });
-  assert.deepEqual(validateAskTurnAction(act("edit_draft", { entry: { amount: "15" } }), makeContext({ focus: savedFocus(), text: "make it 15" })), { kind: "note", text: "That entry is already saved. Open it to change it." });
+  const saved = validateAskTurnAction(act("edit_draft", { entry: { amount: "15" } }), makeContext({ focus: savedFocus({ accountId: "acct-citi" }), text: "make it 15" }));
+  assert.equal(saved.kind, "change");
+  assert.equal(saved.change.type, "edit_entry");
+  assert.deepEqual(saved.change.rows, [{ field: "amount", before: "", after: "", beforeMinor: 4_250, afterMinor: 1_500, currency: "SGD" }]);
   assert.equal(validateAskTurnAction(act("edit_draft", { entry: { category: "Gifts" } }), makeContext({ focus: { kind: "draft", draft }, text: "gifts" })).kind, "clarify");
 });
 

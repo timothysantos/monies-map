@@ -38,6 +38,7 @@ import {
   type AskTurnMessage
 } from "../domain/ask-turn";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
+import { resolveAskTurnRequest } from "../domain/ask-turn-resolve";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import { json } from "./json";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
@@ -112,7 +113,13 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     return json({ ok: true, mode: "rules", reason: AI_UNUSABLE_SUGGESTION_REASON });
   }
 
-  const reply = validateAskTurnAction(action, context);
+  let reply = validateAskTurnAction(action, context);
+  // A Phase 2 change that needs the household's rows (every entry a bulk
+  // recategorise would move, a group's balance, the matches) is built from
+  // them here, read only.
+  if (reply.kind === "resolve") {
+    reply = await resolveAskTurnRequest(env.DB, reply.request, context);
+  }
   const base = { ok: true as const, mode: "ai" as const, action: action.action, ...(remaining !== undefined ? { remaining } : {}) };
   if (reply.kind === "plan") {
     const reading = await draftPlanRequest(env.DB, reply.request, {
