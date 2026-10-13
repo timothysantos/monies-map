@@ -250,6 +250,10 @@ transfer matching, split linkage, and filter semantics independently.
 - `src/client/import-preview-model.js` — `Own`
 - `src/client/import-preview-review.jsx` — `Own`
 - `src/client/import-preview-rows-table.jsx` — `Own`
+- `src/client/import-preview-row-helpers.jsx` — `Own`
+- `src/client/import-preview-row-list.jsx` — `Own`
+- `src/client/import-file-card.jsx` — `Own`
+- `src/client/import-rollback-confirm.jsx` — `Own`
 - `src/client/import-select-file-stage.jsx` — `Own`
 
 ### Bridge files
@@ -294,7 +298,12 @@ commit state graph behind one imports API.
 - `src/client/splits-dialogs.jsx` — `Own`
 - `src/client/splits-drafts.js` — `Own`
 - `src/client/splits-groups-nav.jsx` — `Own`
-- `src/client/splits-linked-entry-dialog.jsx` — `Own`
+- `src/client/splits-linked-entry-dialog.jsx` — `Own` (never rendered)
+- `src/client/splits-lead-card.jsx`, `splits-lead-model.js` — `Own` (the open
+  group's lead card and what it says)
+- `src/client/split-settlement-card.jsx`, `split-group-card.jsx`,
+  `splits-checkpoint-panel.jsx` — `Own` (Record settlement, Create group and
+  the open simplified settlement in Lead · Support · Detail)
 - `src/client/splits-main-section.jsx` — `Own`
 - `src/client/splits-matches.jsx` — `Own`
 - `src/client/splits-optimistic.js` — `Own`
@@ -332,6 +341,10 @@ its app-sync and invalidation behavior behind a smaller slice API.
 - `src/client/settings-panel.jsx` — `Own`
 - `src/client/settings-reconciliation-dialog.jsx` — `Own`
 - `src/client/settings-sections.jsx` — `Own`
+- `src/client/settings-section.jsx` — `Own`
+- `src/client/settings-summary-model.js` — `Own`
+- `src/client/settings-account-line.js` — `Own`
+- `src/client/settings-add-row.jsx` — `Own` (also used by the Imports account mapping)
 - `src/client/statement-compare.jsx` — `Own`
 
 ### Bridge files

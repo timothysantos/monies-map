@@ -1,0 +1,216 @@
+/* Split activity history and Archived batches (design.md, "Lead · Support ·
+   Detail"): list sheets with a head, one rounded group of rows and a bottom
+   bar with Close. Imported by the two dialogs, so it ships with the lazy
+   Splits route. On a phone they are bottom sheets, on a wide screen a
+   centred dialog, as the All groups sheet is. */
+.split-list-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: min(86dvh, 720px);
+  --bottom-actions-bleed: 22px;
+}
+
+.split-list-sheet:focus {
+  outline: none;
+}
+
+.split-list-sheet-body {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 12px;
+}
+
+.split-list-sheet-actions.lsd-bottom.is-sheet-bar {
+  margin-top: 0;
+}
+
+/* History: each record is a row; Restore sits at its right. */
+.split-history-list {
+  max-height: none;
+  overflow: hidden;
+}
+
+.split-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.split-history-row + .split-history-row {
+  border-top: 1px solid var(--line);
+}
+
+.split-history-row > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.split-history-row strong {
+  overflow-wrap: anywhere;
+}
+
+.split-history-row small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.split-history-restore {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+
+/* Archived batches: a row per settled batch; opening one lists its activity. */
+.split-archive-rows {
+  overflow: hidden;
+}
+
+.panel-splits .split-archive-row,
+.split-archive-row {
+  grid-template-columns: 4.5rem auto minmax(0, 1fr) auto auto;
+  min-height: 60px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.split-archive-row + .split-archive-row {
+  border-top: 1px solid var(--line);
+}
+
+.split-archive-row-chevron {
+  color: var(--muted);
+}
+
+.split-archive-back {
+  justify-self: start;
+  min-height: 44px;
+  padding-left: 4px;
+}
+
+.split-archive-undo {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--pastel-neutral);
+}
+
+.split-archive-undo p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.split-archive-undo .split-archive-undo-action {
+  justify-self: start;
+  min-height: 44px;
+  padding-left: 0;
+}
+
+/* A batch's activity inside the dialog: the same flat rows as the page,
+   in ink on the light surface. */
+.split-archive-batch-detail {
+  display: grid;
+  gap: 4px;
+}
+
+.split-archive-batch-detail .split-date-group {
+  display: block;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.split-archive-batch-detail .split-date-header {
+  position: static;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 2px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  color: var(--muted);
+}
+
+.split-archive-batch-detail .split-date-header > strong {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  font: 500 0.7rem/1.2 ui-monospace, "SF Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.split-archive-batch-detail .split-date-header > strong::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--line);
+}
+
+.split-archive-batch-detail .split-date-items {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(var(--paper-rgb) / 0.6);
+}
+
+.split-archive-batch-detail .split-activity-card {
+  padding: 10px 14px;
+  border: 0;
+}
+
+.split-archive-batch-detail .split-activity-card + .split-activity-card {
+  border-top: 1px solid var(--line);
+}
+
+.split-archive-batch-detail .split-activity-trailing {
+  justify-items: end;
+  text-align: right;
+}
+
+/* On a wide screen Close is a button, not a full-width bar. */
+@media (min-width: 761px) {
+  .split-list-sheet-actions .lsd-primary {
+    flex: 0 1 200px;
+  }
+}
+
+@media (max-width: 760px) {
+  .split-list-sheet {
+    --bottom-actions-bleed: 16px;
+  }
+
+  .note-dialog-content.split-list-sheet {
+    padding-bottom: 0;
+  }
+
+  .split-list-sheet-body {
+    margin: 0 -16px;
+    padding: 2px 16px 12px;
+  }
+}

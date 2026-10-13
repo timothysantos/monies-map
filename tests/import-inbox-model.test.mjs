@@ -220,16 +220,19 @@ test("a bank's lines group by owner first, each owner's accounts in download ord
 
 test("an owner group takes the person's colour from Entries, the same in every bank", async () => {
   const { getPersonColour, getPersonColourVars } = await import("../src/client/person-colour.js");
-  assert.equal(getPersonColour("Tim"), "#33A471");
-  assert.equal(getPersonColour("Joyce"), "#DE726D");
+  assert.equal(getPersonColour("Tim"), "#46788E");
+  assert.equal(getPersonColour("Joyce"), "#B97680");
   assert.equal(getPersonColour("Shared"), getPersonColour("shared"));
+  // The page gets the colour as a palette token, so a colour preset can
+  // re-colour the person; the 70s default falls back to the colour itself.
+  const joyce = "var(--cat-b97680, #B97680)";
   assert.deepEqual(getPersonColourVars("Joyce"), {
-    "--person-colour": "#DE726D",
-    "--person-chip-bg": "color-mix(in srgb, #DE726D 16%, white)",
-    "--person-chip-border": "color-mix(in srgb, #DE726D 45%, white)",
-    "--person-ink": "color-mix(in srgb, #DE726D 55%, var(--text))",
-    "--person-band": "color-mix(in srgb, #DE726D 10%, white)",
-    "--person-wash": "color-mix(in srgb, #DE726D 6%, white)"
+    "--person-colour": joyce,
+    "--person-chip-bg": `color-mix(in srgb, ${joyce} 16%, var(--paper))`,
+    "--person-chip-border": `color-mix(in srgb, ${joyce} 45%, var(--paper))`,
+    "--person-ink": `color-mix(in srgb, ${joyce} 55%, var(--text))`,
+    "--person-band": `color-mix(in srgb, ${joyce} 10%, var(--paper))`,
+    "--person-wash": `color-mix(in srgb, ${joyce} 6%, var(--paper))`
   });
   assert.notEqual(getPersonColour("Tim"), getPersonColour("Joyce"));
 });

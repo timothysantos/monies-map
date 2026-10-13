@@ -599,10 +599,9 @@ Required fields:
 `accountId` or `accountName` is optional. An explicit account must identify an
 active account. Without one, an exact, unique Wallet `name` match selects that
 active account; otherwise, when the amount names another currency than the
-first priority account's and Settings -> Apple Pay shortcut -> Paying in another
-currency names an active card (`foreignCurrencyAccountId` in the stored
+first priority account's and Settings -> Apple Pay shortcut -> Other currencies go to names an active card (`foreignCurrencyAccountId` in the stored
 shortcut settings), that card is used; otherwise the API uses the first active
-account in Default account priority. `accountResolution` in the response reports
+account in Default account. `accountResolution` in the response reports
 `explicit`, `wallet_name`, `foreign_currency`, or `priority`, so the Shortcut
 can show what happened instead of silently guessing.
 
@@ -745,7 +744,7 @@ request is rejected.
 ### How do I install the Apple Shortcut?
 
 1. Open Settings -> Apple Pay shortcut.
-2. Put the card used most often first under Default account priority.
+2. Put the card used most often first under Default account.
 3. Select Install Apple Shortcut. Monies Map saves the connection, copies it,
    and opens the repository-owned Apple-signed shortcut file.
 4. Select Add Shortcut. If this device already has `Monies Map Apple Pay API`,
@@ -1630,6 +1629,20 @@ endpoint that is consistently too expensive. The durable fix is to keep broad
 reads split into route-specific payloads or move the Worker to a plan with more
 CPU/resource headroom if the production data size now requires it.
 
+## How do the colour presets load?
+
+The 70s default is the only scheme in the first-screen `styles.css`. Each
+other preset (Settings → Colours) is a small stylesheet in
+`public/palettes/<id>.css` that overrides the colour tokens under
+`:root[data-palette="<id>"]`; the build minifies it like `styles.css`. A
+short inline script in `index.html` reads the stored choice
+(`localStorage["monies-map:palette"]`) and writes that sheet's `<link>`
+into the head before the page paints, so a reload never flashes the
+default. To change a preset, edit its sheet and run
+`tests/colour-contrast.test.mjs` and `tests/colour-presets.test.mjs`: they
+fail on any unreadable pair or missing token. design.md, "Colour presets",
+has the token list.
+
 ## How should saves and refreshes behave?
 
 The app is moving toward a more precise save model for row-heavy screens such as
@@ -1676,16 +1689,20 @@ has not changed. On Entries, the same pills reuse the loaded household month
 rows and apply the person as a local filter. Switching between people should
 feel like changing a filter, not like reloading the whole page.
 
-On a phone, Summary, Month and Entries have one floating View and scope bar
-above the bottom navigation. It names the view and the whole scope on one
-line, such as `Tim · Direct + Shared`, with `View and scope` under it, and
-never cuts either short (a long name wraps instead). Entries adds previous
-and next month buttons beside it. Summary and Month are one Summary tab
-(below), so there the bar holds the month control instead and drops the
-`View and scope` line to stay one row. Tapping the bar opens a bottom sheet
-where you can switch the household/person view first and then the scope,
-when that view has more than one; on Summary a line under the scope says
-what it counts.
+On a phone, Summary, Month and Entries have one floating Support bar above
+the bottom navigation: the person's chip in their colour, the short scope
+(`Direct + Shared`) as quiet text and a caret, then the month control as a
+chip (Summary and Month) or previous and next period buttons (Entries). It
+sits on the shared chrome tokens (`--chrome-*` in `public/styles.css`) and
+every target is at least 44 px. Tapping it opens a bottom sheet in Lead ·
+Support · Detail: who you are viewing and what the scope counts, then the view
+and scope as segmented chips (the scope group only when that view has more
+than one), then, on Entries, the filters as quiet rows that open the existing
+pickers; `Reset filters` and `Done` sit in the bottom bar and a swipe down
+closes it. The sheet's inside is a lazy chunk
+(`src/client/mobile-context-sheet.jsx`) so the first screen does not carry the
+swipe code; see "Phone Chrome" in `design.md`. Browser proof:
+`tests/e2e/mobile-chrome.spec.js`.
 
 ## How do Summary and Month share one tab?
 
@@ -1733,6 +1750,22 @@ use them. `tests/lead-support-detail.test.mjs` renders each block's states;
 `tests/e2e/lead-support-detail.spec.js` checks the plan sheet on an iPhone
 13 profile (tagged `@webkit`), its 44px tap targets and the Summary lead's
 figures. The colour guard reads `src/client/ui` too.
+
+Dialogs and small sheets use one more shared piece, `SheetDialog`
+(`src/client/sheet-dialog.jsx`, CSS in `sheet-dialog.css`): on a phone it is
+the shared `EntryMobileSheet` with the actions in its bottom bar, on a wide
+screen a centred Radix dialog with the same head, lead, rows and bar. A caller
+passes the copy, a `lead` (`LeadCard`, or `ConfirmLead` for a confirmation),
+the rows or fields as children, and the actions (`primaryLabel`, `onSubmit`,
+`quietLabel`, `destructive`, `tone="danger"`). `dismissible={false}` is for a
+dialog that must be answered. Mount it only while it is open. Keep it, and
+anything that imports it, out of first-screen files: `App.jsx`,
+`summary-panel.jsx`, `responsive-select.jsx` and `ui-components.jsx` load
+`login-registration-dialog.jsx`, `month-note-dialog.jsx` and `picker-sheet.jsx`
+with `React.lazy`, and `check:bundle` fails if a new first-screen file appears.
+`DeleteRowButton` lives in `delete-row-button.jsx`, not in `ui-components.jsx`.
+`tests/e2e/dialogs-lead-support-detail.spec.js` proves each dialog's primary
+action, Cancel, destructive confirm, tap targets and hidden money.
 
 ## What does background prefetching do?
 
@@ -1878,7 +1911,7 @@ named uses that person's payment way from Settings -> Payment ways (stored
 in `app_settings` under `payment_ways`, saved through
 `POST /api/settings/payment-ways/save`, `src/domain/payment-ways.ts`). With
 none chosen, cash is asked (`accountId` question, reason `missing`) and a
-bank word keeps Default account priority unless that is a card, which is
+bank word keeps Default account unless that is a card, which is
 asked too. AI is asked only when the sentence
 named no amount or left no description: one allowance unit, the redacted
 sentence alone, 80 tokens. Its answer fills only those gaps after

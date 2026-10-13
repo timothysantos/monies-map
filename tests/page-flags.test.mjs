@@ -111,12 +111,14 @@ test("dialog overlays and the mobile sheet are portalled straight into <body>", 
       assert.equal(lines[index - 1].trim(), "<Dialog.Portal>", `${name}:${index + 1} overlay is not a direct child of <Dialog.Portal>`);
     });
   }
-  assert.ok(overlays > 20, `expected the app's dialog overlays, found ${overlays}`);
+  // Most dialogs now share the one frame in sheet-dialog.jsx, so there are fewer
+  // overlays to find than there once were.
+  assert.ok(overlays > 8, `expected the app's dialog overlays, found ${overlays}`);
 
   const sheet = readFileSync(new URL("entry-mobile-sheet.jsx", clientDir), "utf8");
   // Inside the portal: the backdrop (RemoveScroll forwards its props, no
   // wrapper) and the FocusScope with asChild around Dialog.Content.
-  assert.match(sheet, /<Dialog\.Portal>\s*<RemoveScroll forwardProps[^>]*>\s*<div className="entry-composer-overlay" \/>\s*<\/RemoveScroll>\s*<FocusScope\s+asChild/);
+  assert.match(sheet, /<Dialog\.Portal>\s*<RemoveScroll forwardProps[^>]*>\s*<div className="entry-composer-overlay"(?: \{\.\.\.eventGuards\})? \/>\s*<\/RemoveScroll>\s*<FocusScope\s+asChild/);
 });
 
 // Returns the argument of every :has() in a stylesheet (balanced parentheses).

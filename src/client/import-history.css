@@ -1,0 +1,96 @@
+/* Recent imports in Lead · Support · Detail (design.md, "Imports"): one 56 px
+   row that opens, then the batches as flat rows in one rounded group under
+   their day, each with its status and a 44 px Rollback import. Ships with the
+   lazy Imports route. */
+.import-history-section {
+  gap: 0;
+  padding: 0;
+}
+
+.import-history-section > .import-history-toggle {
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 14px;
+}
+
+.import-history-toggle .section-head {
+  margin: 0;
+}
+
+.import-history-toggle .section-head h3 {
+  font-size: 0.98rem;
+}
+
+.import-history-toggle .panel-context {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.import-history-toggle .settings-section-toggle-icon {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+}
+
+.import-history-section > .import-history-refreshing,
+.import-history-section > .import-history-earlier {
+  margin: 0 14px 12px;
+}
+
+.import-history-section > .import-history-groups {
+  gap: 12px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.import-history-groups .import-history-list {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
+
+.import-history-groups .import-history-list > .import-card {
+  align-items: start;
+  padding: 12px 14px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.import-history-groups .import-history-list > .import-card:first-child {
+  border-top: 0;
+}
+
+.import-history-groups .import-meta-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+}
+
+.import-history-groups .import-history-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.import-history-groups .import-history-main strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .import-history-groups .import-history-list > .import-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-history-groups .import-meta-compact {
+    justify-content: flex-start;
+  }
+}

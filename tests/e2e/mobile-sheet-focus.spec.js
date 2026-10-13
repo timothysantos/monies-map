@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, openEntryComposer, reseedDemo } from "./helpers";
 
 // The shared mobile bottom sheet (Month plan sheets, Entries add/edit) must
 // behave like the app's Radix dialogs: focus moves in on open, stays inside,
@@ -423,7 +423,7 @@ for (const tablet of PORTRAIT_TABLETS) {
       await page.getByRole("button", { name: "Cancel editing entry" }).click();
       await expect(page.locator(".entry-edit-card")).toHaveCount(0);
 
-      await page.getByRole("button", { name: "+ Add entry" }).first().click();
+      await openEntryComposer(page);
       await expect(page.locator(".entry-row.entry-composer")).toBeVisible();
       await expect(page.locator(".entry-mobile-sheet")).toHaveCount(0);
     });

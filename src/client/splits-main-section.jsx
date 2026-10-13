@@ -1,20 +1,17 @@
-import { createPortal } from "react-dom";
+import { Users } from "lucide-react";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
-import { SplitsGroupsNav } from "./splits-groups-nav";
 import { SplitMatchesList } from "./splits-matches";
 
 // Main split content is presentation-only; SplitsPanel keeps URL state and API handlers.
 export function SplitsMainSection({
-  groups,
   activeGroup,
   selectedMode,
   pendingMatchCount,
   showBreakdown,
-  totalExpenseMinor,
-  groupBalanceMinor,
-  groupSummaryLabel,
+  lead,
   donutRows,
   donutChart,
   categories,
@@ -28,19 +25,21 @@ export function SplitsMainSection({
   inlineSplitDraft,
   inlineSplitError,
   inlineSettlementLock = null,
+  inlineReadOnly = false,
   isUndoingSettlementLock = false,
   onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
-  onSelectGroup,
   onOpenMatches,
   onOpenHistory,
   onBackToGroup,
-  onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
+  onClearSearch,
+  groupCount,
+  onCreateGroup,
   searchControl,
-  summaryToolbar,
+  leadControls,
   onDismissMatch,
   onConfirmMatch,
   onOpenArchive,
@@ -57,56 +56,33 @@ export function SplitsMainSection({
   readOnly = false,
   settlementStatus = null
 }) {
-  // The group nav is rendered twice on desktop:
-  // - inline inside the normal document flow
-  // - as a floating portal when no inline editor is open
-  //
-  // That keeps group switching nearby without covering the inline edit card.
-  const groupsNav = (
-    <SplitsGroupsNav
-      groups={groups}
-      activeGroup={activeGroup}
-      selectedMode={selectedMode}
-      onSelectGroup={onSelectGroup}
-      onCreateGroup={onCreateGroup}
-      readOnly={readOnly}
-    />
-  );
-  const floatingGroupsNav = typeof document === "undefined"
-    ? null
-    : inlineSplitDraft
-      ? null
-      : createPortal(
-        <SplitsGroupsNav
-          groups={groups}
-          activeGroup={activeGroup}
-          selectedMode={selectedMode}
-          onSelectGroup={onSelectGroup}
-          onCreateGroup={onCreateGroup}
-          readOnly={readOnly}
-          floating
-        />,
-        document.body
-      );
+  // Not even the shared group exists: one card says so and offers the way out.
+  if (groupCount === 0) {
+    return (
+      <EmptyState
+        icon={<Users />}
+        title={messages.splits.noGroups}
+        action={readOnly ? null : { label: messages.splits.createGroup, onClick: onCreateGroup }}
+      >
+        {messages.splits.noGroupsDetail}
+      </EmptyState>
+    );
+  }
 
   return (
     <>
-      {groupsNav}
-      {floatingGroupsNav}
-
       <SplitsBreakdownSection
         showBreakdown={showBreakdown}
         currency={activeGroup?.currency ?? "SGD"}
-        totalExpenseMinor={totalExpenseMinor}
-        groupBalanceMinor={groupBalanceMinor}
-        groupSummaryLabel={groupSummaryLabel}
+        lead={lead}
+        activeGroup={activeGroup}
         donutRows={donutRows}
         donutChart={donutChart}
         categories={categories}
         onToggleBreakdown={onToggleBreakdown}
         onAddExpense={onAddExpense}
         searchControl={searchControl}
-        summaryToolbar={summaryToolbar}
+        leadControls={leadControls}
         onOpenHistory={onOpenHistory}
         readOnly={readOnly}
         isRefreshingDerived={isRefreshingDerived}
@@ -147,11 +123,13 @@ export function SplitsMainSection({
             inlineSplitDraft={inlineSplitDraft}
             inlineSplitError={inlineSplitError}
             inlineSettlementLock={inlineSettlementLock}
+            inlineReadOnly={inlineReadOnly}
             isUndoingSettlementLock={isUndoingSettlementLock}
             onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}
             hasInlineSplitChanges={hasInlineSplitChanges}
             onAddExpense={onAddExpense}
+            onClearSearch={onClearSearch}
             activeGroupId={activeGroup?.id ?? ""}
             onOpenArchive={onOpenArchive}
             onEditExpense={onEditExpense}

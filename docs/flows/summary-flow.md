@@ -60,11 +60,27 @@ plan with a bar, the percent of plan and how far under or over, then Income
 DTO's six metric cards (`buildSummaryLeadModel`), so the figures are the
 cards' own; `tests/e2e/lead-support-detail.spec.js` compares them with the
 API on a phone and a desktop. It uses the account-pill DTO for account health and drilldown.
+Intent vs Outcome is one compact card per month, newest first
+(`summary-intent-outcome.jsx`): the lead is the month's spend against its
+plan with the bar, the percent of plan and how far under or over; planned and
+actual income are chips; a "Details" row folds the old table's income, spend
+and savings rows (planned, actual, variance) and the month note, open for
+the latest month only. The month name opens the month and the note row edits
+the note. Every figure is the summary DTO's month row
+(`buildIntentMonthCard`); nothing scrolls sideways at 390 px, and hidden
+money shows dots with only the bar's track
+(`tests/e2e/summary-month-lsd.spec.js`).
 Spending Mix follows the tab's month choice and has no month chips of its
 own: on All months it shows the whole range (`categoryShareChart`); with a
 month picked the Month page shows that month's (`month-flow.md`). The
 section is shared (`spending-mix-section.jsx`) and shows the Entries empty
-state ("No spend rows in this view.") when there is no spending. The month sheet and the desktop month row read the same
+state ("No spend rows in this view.") when there is no spending. Its donut has
+no labels on it; a ranked list (`.summary-mix-row`: bubble, name, amount, share
+and bar; the top five, then "Show all N") carries them, and a row's main tap
+hides the slice, its bubble edits the category and its arrow opens Entries
+(`design.md`, "Summary body"; `tests/e2e/summary-body-lsd.spec.js`). Wallets in
+view is one `DetailRows` group of wallet rows (name, freshness, balance) from
+`/api/summary-account-pills`; a row opens Entries for the wallet. The month sheet and the desktop month row read the same
 DTO's `rangeMonths` and `months` (`realExpensesMinor` against
 `estimatedExpensesMinor`); they add no request.
 

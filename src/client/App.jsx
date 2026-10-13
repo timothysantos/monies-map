@@ -1,3 +1,7 @@
+// Keeps account-display in the entry chunk. Summary and several lazy routes
+// share it; as its own chunk it stops the bundler merging React and the copy
+// into the entry, which adds two first-screen files (check:bundle fails).
+import "./account-display";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
@@ -40,17 +44,15 @@ import {
 import {
   AppLoadingOverlay,
   EnvironmentBanner,
-  RouteChunkLoadingFallback,
   ShellErrorScreen,
   ShellLoadingScreen
 } from "./app-shell-status";
 import { ScreenErrorBoundary } from "./screen-error-boundary";
-import { ErrorPanel } from "./ui-states";
+import { ErrorPanel, StateBanner } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
 import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
-import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -107,13 +109,14 @@ import {
   clampMonthToRange,
   stepMonthInRange
 } from "./summary-month-choice";
+import { ContextPersonChip } from "./mobile-context-chip";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
-const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
+const MobileContextSheet = lazy(() => import("./mobile-context-sheet.jsx"));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
@@ -122,6 +125,8 @@ const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ def
 const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
 // The phone's "Pick a month" sheet loads when it is first opened.
 const SummaryMonthSheet = lazy(() => import("./summary-month-sheet.jsx"));
+// Only an unlinked login ever sees this dialog, and it uses the shared sheet frame.
+const LoginRegistrationDialog = lazy(() => import("./login-registration-dialog.jsx").then((module) => ({ default: module.LoginRegistrationDialog })));
 
 // Canonical route registry for the top navigation and route-based prefetching.
 // One Summary tab stands for two routes: /summary (All months) and /month (one
@@ -233,6 +238,10 @@ export function App() {
   // effective filter props actually change.
   const closeMobileContext = useCallback(() => {
     setMobileContextOpen(false);
+  }, []);
+  // The Entries top's Filters row opens the same sheet as the floating bar.
+  const openMobileContext = useCallback(() => {
+    setMobileContextOpen(true);
   }, []);
   const handleEntriesMobileFilterStateChange = useCallback((nextProps) => {
     setEntriesMobileFilterProps((current) => areEntriesMobileFilterPropsEqual(current, nextProps) ? current : nextProps);
@@ -2087,6 +2096,7 @@ export function App() {
           entriesSourceView={pageView}
           selectedMonth={selectedMonth}
           mobileContextOpen={mobileContextOpen}
+          onOpenMobileContext={openMobileContext}
           onCloseMobileContext={closeMobileContext}
           onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
           externalRefreshToken={entriesExternalRefreshToken}
@@ -2201,6 +2211,7 @@ export function App() {
     isUnregisteringLogin,
     loginIdentityError,
     mobileContextOpen,
+    openMobileContext,
     openSummaryMonth,
     pageView,
     referenceData,
@@ -2294,32 +2305,32 @@ export function App() {
       setIsRetryingRoutePage(false);
     }
   };
-  const routeBody = pageView
-    ? (
-        <>
-          {showRoutePageError ? (
-            <ErrorPanel
-              className="route-page-error"
-              title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
-              detail={messages.common.loadFailedDetail}
-              actions={[{
-                label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
-                onClick: () => void retryRoutePageFromPanel(),
-                disabled: isRetryingRoutePage,
-                primary: true
-              }]}
-            >
-              {routePageError ? <p className="app-loading-issue-inline">{routePageError}</p> : null}
-            </ErrorPanel>
-          ) : null}
-          <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
-            <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
-              {renderedRouteElement}
-            </RouteWorkProvider>
-          </div>
-        </>
-      )
-    : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
+  // pageView is always set here: the shell returns the loading skeleton above
+  // until the first page has settled, and a later navigation keeps the
+  // previous page.
+  const routeBody = (
+    <>
+      {showRoutePageError ? (
+        <ErrorPanel
+          className="route-page-error"
+          title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
+          detail={messages.common.loadFailedDetail}
+          technical={routePageError}
+          actions={[{
+            label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
+            onClick: () => void retryRoutePageFromPanel(),
+            disabled: isRetryingRoutePage,
+            primary: true
+          }]}
+        />
+      ) : null}
+      <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
+        <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
+          {renderedRouteElement}
+        </RouteWorkProvider>
+      </div>
+    </>
+  );
   const showImportInboxBanner = Boolean(
     importInboxBanner
     && ["summary", "month"].includes(renderedTabId)
@@ -2541,21 +2552,28 @@ export function App() {
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
   // The bar names the person and a short scope name ("Tim · Direct + Shared")
-  // that it never cuts short. On Summary the dialog also carries the line
-  // saying what the scope counts, which desktop shows under the pills.
+  // that it never cuts short. The sheet's lead also carries the line saying
+  // what the scope counts, which desktop shows under the pills.
   const mobileContextScopeLabel = selectedViewSupportsScope && selectedMobileScope
     ? messages.views.scopeShortLabel[selectedMobileScope.key] ?? selectedMobileScope.label
     : "";
-  const mobileContextScopeHint = renderedTabId === "summary" && selectedMobileScope
+  const mobileContextScopeHint = selectedViewSupportsScope && selectedMobileScope
     ? messages.views.scopeHint[selectedMobileScope.key]?.(pageView?.label ?? "") ?? ""
     : "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
+  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
+  // What a screen reader hears on the Support bar's trigger: who, the scope,
+  // then what it opens.
+  const mobileContextTriggerName = [
+    pageView?.label ?? "",
+    mobileContextScopeLabel ? `· ${mobileContextScopeLabel}` : "",
+    showMobileContextScopeSection ? "View and scope" : "View"
+  ].filter(Boolean).join(" ");
   // The Summary tab moves its range from the header and picks its month in
   // the bar (All months, or one month with arrows); Entries keeps the bar's
   // month arrows for its single month.
   const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileMonthChoice = showMobileContextSticky && isSummaryTab;
-  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
   // Collapse the mobile sheet when the sticky context is no longer relevant.
   useEffect(() => {
@@ -2621,7 +2639,7 @@ export function App() {
   // Render the loading state while either the shell or the active page is
   // still being resolved.
   if (!appShell || !referenceData || !pageView) {
-    return <ShellLoadingScreen environment={appEnvironment} status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
+    return <ShellLoadingScreen environment={appEnvironment} tabId={selectedTabId} status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   }
 
   // The top chrome reflects the active period semantics of the current route.
@@ -3105,24 +3123,13 @@ export function App() {
                 <button
                   type="button"
                   className="mobile-context-trigger"
+                  aria-label={mobileContextTriggerName}
                   onClick={(event) => {
                     event.currentTarget.blur();
                   }}
                 >
-                  <span className="mobile-context-trigger-copy">
-                    {/* The label wraps between the name and the scope rather than truncating. */}
-                    <span className="mobile-context-trigger-label">
-                      {pageView?.label ?? ""}
-                      {mobileContextScopeLabel ? (
-                        <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
-                      ) : null}
-                    </span>
-                    {/* Beside the month control the hint is for screen readers only, so the bar stays one 46px row. */}
-                    {" "}
-                    <span className={`mobile-context-trigger-hint ${showMobileMonthChoice ? "is-screen-reader-only" : ""}`}>
-                      {showMobileContextScopeSection ? "View and scope" : "View"}
-                    </span>
-                  </span>
+                  <ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />
+                  {mobileContextScopeLabel ? <span className="mobile-context-scope">{mobileContextScopeLabel}</span> : null}
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
               </Dialog.Trigger>
@@ -3135,75 +3142,28 @@ export function App() {
                   <div className="note-dialog-head mobile-context-dialog-head">
                     <div>
                       <Dialog.Title>View and scope</Dialog.Title>
-                      <Dialog.Description>
+                      <Dialog.Description className="sr-only">
                         Change the active household view without scrolling back to the top.
                       </Dialog.Description>
                     </div>
-                    <Dialog.Close asChild>
-                      <button type="button" className="subtle-action mobile-context-dialog-close">Done</button>
-                    </Dialog.Close>
                   </div>
-
-                  <section className="mobile-context-dialog-section" aria-label="View">
-                    <strong className="mobile-context-dialog-section-title">View</strong>
-                    <div className="pill-row mobile-context-pill-row mobile-context-view-row">
-                      {renderedTabId !== "splits"
-                        ? (
-                            <button
-                              className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
-                              type="button"
-                              onClick={() => handleViewChange("household")}
-                            >
-                              {messages.views.household}
-                            </button>
-                          )
-                        : (
-                            <span className="pill pill-disabled" aria-disabled="true">
-                              {messages.views.household}
-                            </span>
-                          )}
-                      {appShell.household.people.map((person) => (
-                        <button
-                          key={person.id}
-                          className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
-                          type="button"
-                          onClick={() => handleViewChange(person.id)}
-                          title={person.name}
-                        >
-                          {person.name}
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-
-                  {showMobileContextScopeSection ? (
-                    <section className="mobile-context-dialog-section" aria-label="Scope">
-                      <strong className="mobile-context-dialog-section-title">Scope</strong>
-                      <div className="scope-toggle pill-row scope-toggle-row mobile-context-pill-row">
-                        {mobileContextScopes.map((scope) => (
-                          <button
-                            key={scope.key}
-                            className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
-                            type="button"
-                            onClick={() => handleStickyScopeChange(scope.key)}
-                          >
-                            {scope.label}
-                          </button>
-                        ))}
-                      </div>
-                      {mobileContextScopeHint ? (
-                        <span className="panel-context">{mobileContextScopeHint}</span>
-                      ) : null}
-                    </section>
-                  ) : null}
-
-                  {renderedTabId === "entries" && entriesMobileFilterProps ? (
-                    <section className="mobile-context-dialog-section mobile-context-dialog-filters-slot" aria-label="Filters">
-                      <Suspense fallback={null}>
-                        <EntriesFilterStack {...entriesMobileFilterProps} />
-                      </Suspense>
-                    </section>
-                  ) : null}
+                  {/* The inside (and the swipe-down code) loads with the sheet, not the first screen. */}
+                  <Suspense fallback={null}>
+                    <MobileContextSheet
+                      viewLabel={pageView?.label ?? ""}
+                      personChip={<ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />}
+                      people={appShell.household.people}
+                      selectedViewId={selectedViewId}
+                      scopeLabel={mobileContextScopeLabel}
+                      scopeHint={mobileContextScopeHint}
+                      scopes={showMobileContextScopeSection ? mobileContextScopes : []}
+                      selectedScopeKey={stickyScopeConfig.selectedKey}
+                      filterProps={renderedTabId === "entries" ? entriesMobileFilterProps : null}
+                      onViewChange={handleViewChange}
+                      onScopeChange={handleStickyScopeChange}
+                      onClose={closeMobileContext}
+                    />
+                  </Suspense>
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
@@ -3295,6 +3255,7 @@ export function App() {
 
       {/* Login registration is modal because it must interrupt the flow only when the shell has no stable identity mapping. */}
       {loginRegistrationDraft ? (
+        <Suspense fallback={null}>
         <LoginRegistrationDialog
           draft={loginRegistrationDraft}
           people={appShell.household.people}
@@ -3311,6 +3272,7 @@ export function App() {
           }}
           onNameChange={(name) => setLoginRegistrationDraft((current) => current ? { ...current, name } : current)}
         />
+        </Suspense>
       ) : null}
 
       {renderedTabId === "entries" && typeof document !== "undefined"
@@ -3386,34 +3348,27 @@ export function App() {
 // screen, and the person can refresh again without losing their place.
 function RefreshFailureNotice({ onRetry, onDismiss }) {
   return (
-    <section className="import-stale-banner refresh-failure-notice" role="status">
-      <div>
-        <strong>{messages.common.refreshFailedTitle}</strong>
-        <span>{messages.common.refreshFailedDetail}</span>
-      </div>
-      <div className="refresh-failure-notice-actions">
-        <button type="button" className="dialog-primary" onClick={onRetry}>
-          {messages.common.refreshFailedRetry}
-        </button>
-        <button type="button" className="subtle-action" onClick={onDismiss}>
-          {messages.common.refreshFailedDismiss}
-        </button>
-      </div>
-    </section>
+    <StateBanner
+      className="refresh-failure-notice"
+      tone="butter"
+      title={messages.common.refreshFailedTitle}
+      detail={messages.common.refreshFailedDetail}
+      actions={[
+        { label: messages.common.refreshFailedRetry, onClick: onRetry, primary: true },
+        { label: messages.common.refreshFailedDismiss, onClick: onDismiss }
+      ]}
+    />
   );
 }
 
 function ImportInboxRouteBanner({ inbox, onOpenImports }) {
   return (
-    <section className="import-stale-banner" role="status">
-      <div>
-        <strong>{messages.imports.routeBannerTitle(inbox.summary.requiredFileCount)}</strong>
-        <span>{messages.imports.routeBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}</span>
-      </div>
-      <button type="button" className="dialog-primary" onClick={onOpenImports}>
-        {messages.imports.routeBannerAction}
-      </button>
-    </section>
+    <StateBanner
+      tone="sky"
+      title={messages.shell.importInboxBannerTitle(inbox.summary.requiredFileCount)}
+      detail={messages.shell.importInboxBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}
+      actions={[{ label: messages.shell.importInboxBannerAction, onClick: onOpenImports, primary: true }]}
+    />
   );
 }
 

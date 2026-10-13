@@ -15,6 +15,7 @@ export function EntriesFilterStack({
   searchSuggestions = [],
   hideToggle = false,
   hideRefresh = false,
+  hideActions = false,
   onToggleMobileFilters,
   onChangeFilter,
   onChangeSearch,
@@ -85,18 +86,20 @@ export function EntriesFilterStack({
           emptyLabel={messages.entries.allTypes}
           onChange={(value) => onChangeFilter("type", value)}
         />
-        <div className="entries-filter-reset">
-          <button type="button" className="subtle-action" onClick={onResetFilters}>
-            {messages.entries.resetFilters}
-          </button>
-          <button
-            type="button"
-            className="subtle-action entries-filter-hide"
-            onClick={onDone ?? onToggleMobileFilters}
-          >
-            {onDone ? "Done" : "Hide"}
-          </button>
-        </div>
+        {!hideActions ? (
+          <div className="entries-filter-reset">
+            <button type="button" className="subtle-action" onClick={onResetFilters}>
+              {messages.entries.resetFilters}
+            </button>
+            <button
+              type="button"
+              className="subtle-action entries-filter-hide"
+              onClick={onDone ?? onToggleMobileFilters}
+            >
+              {onDone ? "Done" : "Hide"}
+            </button>
+          </div>
+        ) : null}
       </section>
     </section>
   );

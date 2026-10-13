@@ -565,6 +565,14 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     await swipeDown(page, history, ".split-history-dialog");
     await expect(history).toBeHidden();
 
+    // The All groups sheet has nothing to lose, so a swipe always closes it.
+    await page.getByRole("button", { name: "All groups" }).filter({ visible: true }).first().click();
+    const allGroups = page.getByRole("dialog", { name: "All groups" });
+    await expect(allGroups).toBeVisible();
+    await expect(allGroups.locator(".sheet-drag-handle")).toBeVisible();
+    await swipeDown(page, allGroups, ".splits-groups-sheet");
+    await expect(allGroups).toBeHidden();
+
     const openGroupSheet = async () => {
       await page.getByRole("button", { name: "Create group" }).filter({ visible: true }).first().click();
       const sheet = page.getByRole("dialog", { name: "Create group" });
@@ -594,7 +602,7 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
     await reseedDemo(page);
     await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
     await waitUsable(page);
-    await page.locator("article.panel-splits .panel-head .split-settle-header").click();
+    await page.locator(".splits-lead").getByRole("button", { name: "Settle group" }).click();
     const sheet = page.getByRole("dialog", { name: "Record settlement" });
     await expect(sheet).toBeVisible();
     await expect(sheet.locator(".sheet-drag-handle")).toHaveCount(0);
@@ -624,6 +632,9 @@ test.describe("Swipe down with real touch input", () => {
   test("a long list inside the sheet scrolls by touch both ways, with the swipe installed", async ({ page }) => {
     await phone(page);
     const { sheet, list } = await openPlanLinkSheet(page);
+    // The lead and filters sit above the list: scroll the sheet's body so the
+    // list's rows are on screen, then drag inside them.
+    await list.evaluate((element) => element.scrollIntoView({ block: "start" }));
     const client = await page.context().newCDPSession(page);
     const listBox = await list.boundingBox();
     const x = listBox.x + 40;

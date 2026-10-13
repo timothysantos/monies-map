@@ -322,7 +322,7 @@ test.describe("desktop Ask", () => {
     expect(new URL(page.url()).searchParams.get("entry_category")).toBe("Bills");
     // The list beside the panel equals the answer; the panel is still here.
     await expect(page.locator(".entry-row")).toHaveCount(count);
-    await expect(page.locator(".entries-totals-item").first().locator("strong")).toHaveText(amount);
+    await expect(page.locator(".entries-totals .lsd-amount")).toHaveText(amount);
     await expect(panel(page)).toBeVisible();
     await expect(page.locator(".ask-dock .ask-me")).toHaveText(["how much on bills?"]);
     const layout = await readLayout(page);

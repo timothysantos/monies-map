@@ -23,7 +23,7 @@ test("new split expenses and settlements default to the Singapore day", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
 
-  await page.locator("article.panel-splits .panel-head .split-settle-header").click();
+  await page.locator(".splits-lead").getByRole("button", { name: "Settle group" }).click();
   const settlementDialog = page.getByRole("dialog");
   await expect(settlementDialog).toContainText("Record payment for this group only");
   await expect(settlementDialog.locator("input[type='date']").first()).toHaveValue("2026-10-01");

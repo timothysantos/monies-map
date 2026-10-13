@@ -1,10 +1,12 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight } from "lucide-react";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { moniesClient } from "./monies-client-service";
-import { DeleteRowButton } from "./ui-components";
+import { ImportRollbackConfirm } from "./import-rollback-confirm";
+import "./import-history.css";
 const { format: formatService } = moniesClient;
 
 // Recent history is read-only except rollback; pagination only changes which batches are visible.
@@ -40,8 +42,8 @@ export function ImportRecentHistorySection({
       >
         <div className="settings-section-toggle-copy">
           <div className="section-head">
-            <h3>{messages.imports.recentTitle}</h3>
-            <span className="panel-context">{messages.imports.recentDetail}</span>
+            <h3>{importMessages.recentTitle}</h3>
+            <span className="panel-context">{importMessages.recentDetail}</span>
           </div>
         </div>
         <span className={`settings-section-toggle-icon ${recentImportsOpen ? "is-open" : ""}`}>
@@ -52,7 +54,7 @@ export function ImportRecentHistorySection({
       {showGenericRefreshStatus ? (
         <div className="import-history-refreshing" role="status" aria-live="polite">
           <span className="app-spinner" aria-hidden="true" />
-          <span>{messages.imports.recentRefreshing}</span>
+          <span>{importMessages.recentRefreshing}</span>
         </div>
       ) : null}
       {recentImportStatus ? (
@@ -61,14 +63,14 @@ export function ImportRecentHistorySection({
           <span>{recentImportStatus.message}</span>
           {recentImportStatus.diagnosticHref ? (
             <a href={recentImportStatus.diagnosticHref} className="inline-link">
-              {messages.imports.openErrorDiagnostics}
+              {importMessages.openErrorDiagnostics}
             </a>
           ) : null}
         </div>
       ) : null}
       {recentImportStatus?.earlierImports?.length ? (
         <div className="import-history-earlier">
-          <span>{messages.imports.recentEarlierTitle}</span>
+          <span>{importMessages.recentEarlierTitle}</span>
           <ul>
             {recentImportStatus.earlierImports.map((line) => <li key={line.id}>{line.text}</li>)}
           </ul>
@@ -77,9 +79,9 @@ export function ImportRecentHistorySection({
       {recentImportsOpen ? (
         <div className="import-history-groups">
           <label className="entries-filter import-history-filter">
-            <span className="entries-filter-label">{messages.imports.recentAccountFilter}</span>
+            <span className="entries-filter-label">{importMessages.recentAccountFilter}</span>
             <select value={recentImportAccountFilter} onChange={(event) => onAccountFilterChange(event.target.value)}>
-              <option value="">{messages.imports.recentAllAccounts}</option>
+              <option value="">{importMessages.recentAllAccounts}</option>
               {recentImportAccountOptions.map((accountName) => (
                 <option key={accountName} value={accountName}>{accountName}</option>
               ))}
@@ -108,11 +110,11 @@ export function ImportRecentHistorySection({
                         {messages.common.triplet(
                           getImportBatchKindLabel(item),
                           formatService.formatDate(item.importedAt),
-                          messages.imports.transactionCount(item.transactionCount)
+                          importMessages.transactionCount(item.transactionCount)
                         )}
                       </span>
                       {item.startDate && item.endDate ? (
-                        <span className="import-history-inline">{messages.imports.importCoverage(
+                        <span className="import-history-inline">{importMessages.importCoverage(
                           formatService.formatDateOnly(item.startDate),
                           formatService.formatDateOnly(item.endDate)
                         )}</span>
@@ -120,8 +122,8 @@ export function ImportRecentHistorySection({
                       {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
                       {item.statementCertificateCount ? (
                         <span className="import-history-inline">
-                          {messages.imports.recentStatementCertificates(item.statementCertificateCount)}
-                          {item.statementCertificateStatus === "exception" ? ` • ${messages.imports.recentStatementCertificateException}` : ""}
+                          {importMessages.recentStatementCertificates(item.statementCertificateCount)}
+                          {item.statementCertificateStatus === "exception" ? ` • ${importMessages.recentStatementCertificateException}` : ""}
                         </span>
                       ) : null}
                       {item.note ? <span className="import-history-inline">{item.note}</span> : null}
@@ -132,17 +134,16 @@ export function ImportRecentHistorySection({
                         <ImportOverlapPopover item={item} />
                       ) : null}
                       {canRollbackImport(item) ? (
-                        <DeleteRowButton
+                        <ImportRollbackConfirm
                           label={item.sourceLabel}
-                          destructive={false}
-                          triggerLabel={messages.imports.rollback}
-                          confirmLabel={messages.imports.rollbackConfirm}
-                          prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
+                          triggerLabel={importMessages.rollback}
+                          confirmLabel={importMessages.rollbackConfirm}
+                          prompt={<>{importMessages.rollbackDetail(item.sourceLabel)}</>}
                           onConfirm={() => onRollback(item.id)}
                         />
                       ) : item.status === "completed" && isStatementCertifiedImport(item) ? (
-                        <span className="pill neutral" title={messages.imports.statementRollbackLockedDetail}>
-                          {messages.imports.statementRollbackLocked}
+                        <span className="pill neutral" title={importMessages.statementRollbackLockedDetail}>
+                          {importMessages.statementRollbackLocked}
                         </span>
                       ) : null}
                     </div>
@@ -151,7 +152,7 @@ export function ImportRecentHistorySection({
               </div>
             </section>
           ))}
-          {!recentImportGroups.length && !isRefreshing ? <EmptyState>{messages.imports.recentEmpty}</EmptyState> : null}
+          {!recentImportGroups.length && !isRefreshing ? <EmptyState>{importMessages.recentEmpty}</EmptyState> : null}
           {shouldPaginate ? (
             <ImportRecentPagination
               className="import-history-pagination-bottom"
@@ -182,7 +183,7 @@ function ImportRecentPagination({
 }) {
   return (
     <div className={`import-history-pagination ${className}`}>
-      <span>{messages.imports.recentPageSummary(recentImportStart, recentImportEnd, recentImportTotal)}</span>
+      <span>{importMessages.recentPageSummary(recentImportStart, recentImportEnd, recentImportTotal)}</span>
       <div className="import-history-pagination-actions">
         <button
           type="button"
@@ -190,16 +191,16 @@ function ImportRecentPagination({
           disabled={recentImportPage <= 1}
           onClick={onPreviousPage}
         >
-          {messages.imports.previousPage}
+          {importMessages.previousPage}
         </button>
-        <span>{messages.imports.recentPageCount(recentImportPage, recentImportPageCount)}</span>
+        <span>{importMessages.recentPageCount(recentImportPage, recentImportPageCount)}</span>
         <button
           type="button"
           className="subtle-action"
           disabled={recentImportPage >= recentImportPageCount}
           onClick={onNextPage}
         >
-          {messages.imports.nextPage}
+          {importMessages.nextPage}
         </button>
       </div>
     </div>
@@ -213,14 +214,14 @@ function ImportOverlapPopover({ item }) {
     <Popover.Root>
       <Popover.Trigger asChild>
         <button type="button" className="pill warning pill-button">
-          {messages.imports.importOverlap(item.overlapImportCount ?? overlaps.length)}
+          {importMessages.importOverlap(item.overlapImportCount ?? overlaps.length)}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content className="import-overlap-popover" sideOffset={8} align="end">
           <div className="category-popover-head">
-            <strong>{messages.imports.overlapPopoverTitle}</strong>
-            <span>{messages.imports.overlapPopoverDetail}</span>
+            <strong>{importMessages.overlapPopoverTitle}</strong>
+            <span>{importMessages.overlapPopoverDetail}</span>
           </div>
           {overlaps.length ? (
             <div className="import-overlap-list">
@@ -231,11 +232,11 @@ function ImportOverlapPopover({ item }) {
                     {messages.common.triplet(
                       getImportBatchKindLabel(overlap),
                       formatService.formatDate(overlap.importedAt),
-                      messages.imports.transactionCount(overlap.transactionCount)
+                      importMessages.transactionCount(overlap.transactionCount)
                     )}
                   </p>
                   {overlap.startDate && overlap.endDate ? (
-                    <p>{messages.imports.importCoverage(
+                    <p>{importMessages.importCoverage(
                       formatService.formatDateOnly(overlap.startDate),
                       formatService.formatDateOnly(overlap.endDate)
                     )}</p>
@@ -245,7 +246,7 @@ function ImportOverlapPopover({ item }) {
               ))}
             </div>
           ) : (
-            <EmptyState>{messages.imports.overlapPopoverEmpty}</EmptyState>
+            <EmptyState>{importMessages.overlapPopoverEmpty}</EmptyState>
           )}
           <Popover.Arrow className="category-popover-arrow" />
         </Popover.Content>
@@ -265,13 +266,13 @@ function isStatementCertifiedImport(item) {
 function getImportBatchKindLabel(item) {
   const parserKey = item.parserKey ?? "";
   if (item.sourceType === "pdf" || parserKey.endsWith("_pdf")) {
-    return messages.imports.importKindPdfStatement;
+    return importMessages.importKindPdfStatement;
   }
   if (parserKey.includes("activity") || parserKey.includes("current_transactions")) {
-    return messages.imports.importKindMidcycle;
+    return importMessages.importKindMidcycle;
   }
   if (item.sourceType === "manual") {
-    return messages.imports.importKindManual;
+    return importMessages.importKindManual;
   }
-  return messages.imports.importKindCsv;
+  return importMessages.importKindCsv;
 }

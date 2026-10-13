@@ -78,8 +78,9 @@ test.describe("mobile continuity", () => {
     for (const [path, apiPath] of pages) {
       const trigger = page.locator(".mobile-context-sticky-wrap .mobile-context-trigger");
       await gotoPageAfterApi(page, path, apiPath, () => trigger);
-      await expect(trigger.locator(".mobile-context-trigger-label"), path).toHaveText("Tim · Direct + Shared");
-      await expect(trigger, path).toContainText("View and scope");
+      await expect(trigger.locator(".mobile-context-person-chip"), path).toHaveText("Tim");
+      await expect(trigger.locator(".mobile-context-scope"), path).toHaveText("Direct + Shared");
+      await expect(trigger, path).toHaveAccessibleName("Tim · Direct + Shared View and scope");
 
       const fit = await trigger.evaluate((element) => {
         // The hint beside the Summary tab's month control is screen-reader

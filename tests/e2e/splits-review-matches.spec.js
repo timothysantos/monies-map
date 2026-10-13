@@ -77,9 +77,11 @@ test("review matches links a split expense into entries and hides already-linked
   const pantryCard = page.locator(".split-activity-card").filter({ hasText: "Tracked in splits before the imported grocery charge was reviewed." }).first();
   await pantryCard.click();
 
-  const inlineEditor = page.locator(".split-inline-editor-card").first();
-  await expect(inlineEditor.getByRole("button", { name: "View entry" })).toBeVisible();
-  await inlineEditor.getByRole("button", { name: "View entry" }).click();
+  // A split expense opens as the card; its Linked entry row opens the entry.
+  const splitCardDialog = page.locator(".split-inline-editor-card");
+  const cardLinkedEntryRow = splitCardDialog.locator("[data-row='linkedEntry']");
+  await expect(cardLinkedEntryRow).toHaveText(/Linked entry\s*View entry/);
+  await cardLinkedEntryRow.click();
 
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(/editing_entry=txn-import-split-pantry-match/);

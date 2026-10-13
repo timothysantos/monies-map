@@ -99,7 +99,7 @@ test.describe("search and filter from Ask on a phone", { tag: "@webkit" }, () =>
       view: "person-tim", month, scope: "direct_plus_shared", entries_scope: "direct_plus_shared", entry_category: "Bills", from_ask: "1"
     });
     await expect(page.locator(".entry-row")).toHaveCount(count);
-    await expect(page.locator(".entries-totals-item").first().locator("strong")).toHaveText(amount);
+    await expect(page.locator(".entries-totals .lsd-amount")).toHaveText(amount);
 
     // The From Ask chip: above the View and scope bar, 44 px targets.
     const chip = page.getByRole("group", { name: "From Ask" });
@@ -295,12 +295,12 @@ test.describe("search and filter from Ask on a wide screen", () => {
     await suggestions(page).getByRole("button", { name: "Open in Entries" }).click();
 
     await expect(page.locator(".entry-row")).toHaveCount(count);
-    await expect(page.locator(".entries-totals-item").first().locator("strong")).toHaveText(amount);
+    await expect(page.locator(".entries-totals .lsd-amount")).toHaveText(amount);
     const chip = page.getByRole("group", { name: "From Ask" });
     await expect(chip).toBeVisible();
     // Inline at the top of the list, above the totals.
     const chipBox = await chip.boundingBox();
-    const totalsBox = await page.locator(".entries-totals-strip").boundingBox();
+    const totalsBox = await page.locator(".entries-totals").boundingBox();
     expect(chipBox.y).toBeLessThan(totalsBox.y);
     await expect(chip).not.toHaveCSS("position", "fixed");
 

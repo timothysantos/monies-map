@@ -3,17 +3,17 @@ import { formatMonthLabel, money } from "./formatters";
 
 export function describeAccountHealth(account) {
   if (account.reconciliationStatus === "matched" && account.latestCheckpointMonth) {
-    return messages.settings.accountHealthMatched(formatMonthLabel(account.latestCheckpointMonth));
+    return messages.accountHealth.matched(formatMonthLabel(account.latestCheckpointMonth));
   }
 
   if (account.reconciliationStatus === "mismatch" && account.latestCheckpointMonth) {
-    return messages.settings.accountHealthMismatch(
+    return messages.accountHealth.mismatch(
       formatMonthLabel(account.latestCheckpointMonth),
       money(Math.abs(account.latestCheckpointDeltaMinor ?? 0))
     );
   }
 
-  return messages.settings.accountHealthNeedsCheckpoint;
+  return messages.accountHealth.needsCheckpoint;
 }
 
 export function formatAccountDisplayName(account) {

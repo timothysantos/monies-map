@@ -1,0 +1,53 @@
+/* The phone's picker sheet (picker-sheet.jsx). It loads when a picker opens,
+   so none of this is in the first-screen stylesheet. */
+
+.mobile-select-dialog.is-picker-sheet {
+  --bottom-actions-bleed: 16px;
+  max-height: min(82dvh, calc(100dvh - 24px - env(safe-area-inset-top, 0px) - var(--keyboard-inset, 0px)));
+}
+
+/* The list keeps a little air under its last option, above the bar. */
+.is-picker-sheet .mobile-select-options {
+  padding-bottom: 14px;
+}
+
+.is-picker-sheet .mobile-select-head {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.is-picker-sheet .mobile-select-head h2,
+.is-picker-sheet .mobile-select-head [data-radix-dialog-title] {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.is-picker-sheet .mobile-select-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(38, 35, 31, 0.06);
+  color: var(--text);
+}
+
+.is-picker-sheet .mobile-select-option {
+  min-height: 52px;
+}
+
+.is-picker-sheet .lsd-bottom.is-sheet-bar {
+  flex: 0 0 auto;
+}
+
+/* Over another sheet it dims that sheet too (see sheet-dialog.css). */
+.note-dialog-overlay:has(+ .is-picker-sheet) {
+  z-index: 90;
+}
+
+.mobile-select-dialog.is-picker-sheet {
+  z-index: 91;
+}

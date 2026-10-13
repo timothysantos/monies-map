@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { moniesClient } from "./monies-client-service";
 
 const { format: formatService } = moniesClient;
@@ -18,36 +18,36 @@ export function ImportStatementRecovery({ recovery, isSubmitting, onAddRow }) {
       data-import-target="statement-ocr-recovery"
       aria-labelledby="import-statement-recovery-title"
     >
-      <strong id="import-statement-recovery-title">{messages.imports.statementRecoveryTitle}</strong>
+      <strong id="import-statement-recovery-title">{importMessages.statementRecoveryTitle}</strong>
       {openTotals.map((item) => (
         <dl key={item.isCredit ? "credits" : "purchases"} className="import-statement-recovery-totals">
           <div>
-            <dt>{item.isCredit ? messages.imports.statementRecoveryCredits : messages.imports.statementRecoveryPurchases}</dt>
+            <dt>{item.isCredit ? importMessages.statementRecoveryCredits : importMessages.statementRecoveryPurchases}</dt>
             <dd>{formatService.money(item.expectedMinor)}</dd>
           </div>
           <div>
-            <dt>{messages.imports.statementRecoveryFound}</dt>
+            <dt>{importMessages.statementRecoveryFound}</dt>
             <dd>{formatService.money(item.foundMinor)}</dd>
           </div>
           <div>
-            <dt>{messages.imports.statementRecoveryDifference}</dt>
+            <dt>{importMessages.statementRecoveryDifference}</dt>
             <dd>{formatService.money(Math.abs(item.differenceMinor))}</dd>
           </div>
         </dl>
       ))}
       {recovery.offeredLeftovers.map((candidate) => (
         <div key={candidate.id} className="import-statement-recovery-row">
-          <span className="import-statement-recovery-label">{messages.imports.statementRecoveryLeftover}</span>
+          <span className="import-statement-recovery-label">{importMessages.statementRecoveryLeftover}</span>
           <span>{describeCandidate(candidate)} · {formatService.money(candidate.amountMinor)}</span>
           <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onAddRow(candidate, candidate.amountMinor)}>
-            {messages.imports.statementRecoveryAddRow}
+            {importMessages.statementRecoveryAddRow}
           </button>
         </div>
       ))}
       {recovery.unreadRows.map((candidate) => (
         <UnreadAmountRow key={candidate.id} candidate={candidate} isSubmitting={isSubmitting} onAddRow={onAddRow} />
       ))}
-      <p className="lede compact">{messages.imports.statementRecoveryHelp}</p>
+      <p className="lede compact">{importMessages.statementRecoveryHelp}</p>
     </section>
   );
 }
@@ -66,18 +66,18 @@ function UnreadAmountRow({ candidate, isSubmitting, onAddRow }) {
         }
       }}
     >
-      <span className="import-statement-recovery-label">{messages.imports.statementRecoveryUnread}</span>
+      <span className="import-statement-recovery-label">{importMessages.statementRecoveryUnread}</span>
       <span>{describeCandidate(candidate)}</span>
       <input
         className="table-edit-input import-statement-recovery-amount"
         inputMode="decimal"
-        aria-label={messages.imports.statementRecoveryAmountLabel(candidate.row.description)}
+        aria-label={importMessages.statementRecoveryAmountLabel(candidate.row.description)}
         placeholder="0.00"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
       />
       <button type="submit" className="subtle-action" disabled={!canAdd}>
-        {messages.imports.statementRecoveryAddRow}
+        {importMessages.statementRecoveryAddRow}
       </button>
     </form>
   );
@@ -85,5 +85,5 @@ function UnreadAmountRow({ candidate, isSubmitting, onAddRow }) {
 
 function describeCandidate(candidate) {
   const date = candidate.row.date ? formatService.formatDateOnly(candidate.row.date) : "";
-  return [date, candidate.row.description || messages.imports.statementRecoveryNoDescription].filter(Boolean).join(" · ");
+  return [date, candidate.row.description || importMessages.statementRecoveryNoDescription].filter(Boolean).join(" · ");
 }

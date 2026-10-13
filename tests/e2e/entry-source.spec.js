@@ -182,7 +182,10 @@ test.describe("entry source", { tag: "@webkit" }, () => {
       const heights = await Promise.all([shortcutId, askId, manualId].map(async (id) => (await row(id).boundingBox()).height));
       expect(Math.abs(heights[0] - heights[2])).toBeLessThan(0.5);
       expect(Math.abs(heights[1] - heights[2])).toBeLessThan(0.5);
-      const amountText = await row(shortcutId).locator(".entry-row-amount strong").innerText();
+      // A row below the fold has no rendered text yet (content-visibility).
+      await row(shortcutId).scrollIntoViewIfNeeded();
+      await expect(row(shortcutId).locator(".entry-row-amount strong")).toHaveText(/\S/);
+      const amountText = (await row(shortcutId).locator(".entry-row-amount strong").textContent()) ?? "";
       if (hidden) {
         expect(amountText).not.toMatch(/\d/);
       } else {

@@ -35,6 +35,12 @@ export function formatCardDate(isoDate, today, { withYear = false } = {}) {
   return `${WEEKDAYS[date.weekday]} ${date.day} ${MONTHS[date.month - 1]}${showYear ? ` ${date.year}` : ""}`;
 }
 
+// "16 May 2026": day, short month, year, no weekday.
+export function formatDayMonthYear(isoDate) {
+  const date = parts(isoDate);
+  return date ? `${date.day} ${MONTHS[date.month - 1]} ${date.year}` : "";
+}
+
 export function formatLongMonth(monthKey) {
   const [, month] = String(monthKey ?? "").split("-").map(Number);
   return LONG_MONTHS[(month ?? 1) - 1] ?? "";
@@ -57,6 +63,7 @@ export const askCopy = {
   threadLabel: "Conversation",
   newChat: "New chat",
   greeting: "Ask about your money, or add something.",
+  greetingHint: "Type below, or tap a shortcut.",
   sinceLastLooked: "Since you last looked",
   briefHidden: "Reveal money totals to read these insights.",
   monthSpent: (monthKey) => `${formatLongMonth(monthKey)} spent`,

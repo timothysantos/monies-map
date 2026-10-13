@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import "./splits-panel.css";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
@@ -48,7 +48,12 @@ import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
+import { SplitsCheckpointPanel } from "./splits-checkpoint-panel";
+import { SplitsGroupStrip } from "./splits-group-strip";
+import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { SplitsMainSection } from "./splits-main-section";
+import { buildSplitsLead } from "./splits-lead-model";
+import { splitsLeadCopy } from "./copy/splits-lead-copy";
 import { buildSplitsPanelModel } from "./splits-selectors";
 import { moniesClient } from "./monies-client-service";
 import {
@@ -60,6 +65,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskReturn } from "./use-ask-origin";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
+import { splitCardLock } from "./split-card-lock";
 import { entriesLocationForAction } from "./check-in-action";
 
 const { format: formatService } = moniesClient;
@@ -106,9 +112,14 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
+  // The split whose card just closed: its row takes focus back.
+  const closedSplitIdRef = useRef("");
   const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
-  const selectedGroupId = selectedGroupParam ?? defaultGroupId;
+  // With no group in the address, reopen the group this viewer used last.
+  const lastUsedGroupId = readLastGroupId(view.id);
+  const openingGroupId = splitsPage.groups.some((group) => group.id === lastUsedGroupId) ? lastUsedGroupId : defaultGroupId;
+  const selectedGroupId = selectedGroupParam ?? openingGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const splitSearchQuery = searchParams.get("split_search") ?? "";
   const isHouseholdView = view.id === "household";
@@ -137,7 +148,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groupBalanceMinor,
     groups,
     groupOptions,
-    groupSummaryLabel,
     openGroupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
@@ -145,6 +155,13 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const lead = useMemo(
+    () => (activeGroup
+      ? buildSplitsLead({ group: activeGroup, viewId: view.id, people, areTotalsVisible, spendMinor: totalExpenseMinor })
+      : null),
+    [activeGroup, areTotalsVisible, people, totalExpenseMinor, view.id]
+  );
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("splits", view.id, activeGroup?.id ?? "split-group-none"),
@@ -218,6 +235,23 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     requestDeleteSplit,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
+  // A settled split expense opens its card read-only (the phone sheet, the
+  // wide dialog and the inline card alike) with the reason and Undo; once
+  // the undo succeeds it is editable in place (the optimistic "undone" lock
+  // stands in until the refreshed page drops the lock). A failed undo shows
+  // its own message in place of the reason.
+  function settledCardLock(draft, recordKey) {
+    if (isHouseholdView || draft?.kind !== "expense" || !draft.id) return null;
+    const state = settlementLock?.recordKey === recordKey ? settlementLock : null;
+    if (state?.undone) return null;
+    const item = displayView.splitsPage.activity.find((candidate) => candidate.kind === "expense" && candidate.id === draft.id);
+    const lock = splitCardLock(item, splitsPage.settlementCheckpoints ?? [], recordKey);
+    return lock && state ? { ...lock, message: state.message } : lock;
+  }
+  const expenseCardKey = `expense:${expenseDialog?.id}`;
+  const expenseCardLock = settledCardLock(expenseDialog, expenseCardKey);
+  const inlineCardKey = `inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`;
+  const inlineCardLock = settledCardLock(inlineSplitDraft, inlineCardKey);
   // The optimistic overlay alone is not counted: it can outlive a failed
   // refresh, and isRefreshingDerived already covers the in-flight window.
   // Back from Ask after the receipt button opened it: the scroll comes back
@@ -252,8 +286,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    updateSplitView({ groupId: defaultGroupId, mode: "entries" });
+    updateSplitView({ groupId: selectedGroupId, mode: "entries" });
   }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
+
+  // Remember the open group per viewer for the next visit.
+  useEffect(() => {
+    if (selectedMode !== "matches" && activeGroup?.id) {
+      writeLastGroupId(view.id, activeGroup.id);
+    }
+  }, [activeGroup?.id, selectedMode, view.id]);
 
   useEffect(() => {
     setDismissedMatchIds([]);
@@ -292,7 +333,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    if (expenseDialog?.id === targetSplitExpenseId) {
+    // A wide screen opens the card in the list (like an Entries link does);
+    // a phone, the household view and the archive open the sheet or dialog.
+    if ((expenseDialog?.id ?? inlineSplitDraft?.id) === targetSplitExpenseId) {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.delete("editing_split_expense");
@@ -301,10 +344,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
-    returnToSplitIdRef.current = targetSplitExpenseId;
-    openExpenseEditor(targetExpense);
+    if (isHouseholdView || useMobileSplitSheet) {
+      returnToSplitIdRef.current = targetSplitExpenseId;
+      openExpenseEditor(targetExpense);
+    } else {
+      openInlineExpenseEditor(targetExpense);
+    }
   }, [
     expenseDialog?.id,
+    inlineSplitDraft?.id,
     searchParams,
     selectedGroupId,
     selectedMode,
@@ -343,6 +391,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     });
   }
 
+  // A modal dialog without a trigger button drops focus on close. Give it
+  // back to the split's row, so keyboard focus continues from where the card
+  // was opened (a deleted split has no row left, and focus stays put).
+  function returnFocusToSplitRow(event) {
+    event.preventDefault();
+    const splitId = closedSplitIdRef.current;
+    closedSplitIdRef.current = "";
+    if (splitId) {
+      document.getElementById(splitActivityDomId("expense", splitId))?.focus({ preventScroll: true });
+    }
+  }
+
   function scrollToSettlementActivity(checkpoint = activeCheckpoint) {
     const targetId = checkpoint?.includedRecordIds?.find((recordId) => (
       document.getElementById(splitActivityDomId("expense", recordId)) ||
@@ -359,6 +419,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   function closeExpenseDialogAndReturn() {
     const returnToSplitId = returnToSplitIdRef.current || expenseDialog?.id || "";
+    closedSplitIdRef.current = returnToSplitId;
     closeExpenseDialog();
     returnToSplitIdRef.current = "";
     scrollBackToSplitCard(returnToSplitId);
@@ -375,6 +436,11 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       }
       return next;
     });
+  }
+
+  function openCreateGroupDialog() {
+    setFormError("");
+    setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
   }
 
   function updateSplitSearch(value) {
@@ -654,6 +720,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
   }
 
+  // The inline editor on a wide screen: the split expense card, or the
+  // settlement form.
   async function saveInlineSplit({ syncLinkedNote = false, syncLinkedCategory = false } = {}) {
     if (!inlineSplitDraft) {
       return;
@@ -1017,6 +1085,13 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         setInlineSplitError("");
         setInlineSplitDraft(null);
       }
+      // Delete from the open card: the card closes with the split gone, not
+      // left open on a deleted row.
+      if (deleteTarget.kind === "expense" && expenseDialog?.id === deleteTarget.id) {
+        closeExpenseDialogAndReturn();
+      } else if (deleteTarget.kind === "settlement" && settlementDialog?.id === deleteTarget.id) {
+        closeSettlementDialog();
+      }
       refreshAfterSplitMutation({
         broadcast: true,
         invalidateEntries: Boolean(deleteTarget.linkedTransactionId),
@@ -1035,8 +1110,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   // offset) or the group settle-up that refused a save or delete. The form
   // stays open with the person's change, so saving again applies it to the
   // now open activity.
-  async function undoSettlementLock() {
-    const lock = settlementLock;
+  async function undoSettlementLock(cardLock = null) {
+    const lock = cardLock ?? settlementLock;
     if (!lock || isCheckpointing) return;
     setIsCheckpointing(true);
     try {
@@ -1062,6 +1137,10 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     return settlementLock.undone || error === settlementLock.message ? settlementLock : null;
   }
 
+  // The page head's links (a wide screen): the bank-match review and Simplify
+  // settlement. Settle group, History and + Add expense are on the lead card;
+  // on a phone the head is hidden and Simplify settlement joins the lead's
+  // actions instead.
   function renderSplitActions(className) {
     return (
       <div className={className}>
@@ -1073,18 +1152,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
           {selectedMode === "matches" ? messages.splits.backToGroup : messages.splits.reviewMatches}
           {selectedMode !== "matches" && pendingMatchCount ? ` (${pendingMatchCount})` : ""}
         </button>
-        {!isHouseholdView && selectedMode !== "matches" ? (
-          <button
-            type="button"
-            className="subtle-action split-settle-header"
-            onClick={() => {
-              openNewSettlementDialog({ activeGroup, groupBalanceMinor });
-            }}
-            disabled={!activeGroup || groupBalanceMinor === 0}
-          >
-            {messages.splits.settleUp}
-          </button>
-        ) : null}
         {!isHouseholdView && selectedMode !== "matches" && !activeCheckpoint ? (
           <button type="button" className="subtle-action split-simplify-action" onClick={() => void simplifySettlement()} disabled={isCheckpointing}>
             {isCheckpointing ? "Simplifying..." : "Simplify settlement"}
@@ -1096,16 +1163,23 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   const splitSearchControl = (
     <SearchFilterInput
-      className="split-summary-search"
+      className="splits-search"
       label={messages.common.search}
       value={splitSearchQuery}
-      placeholder={messages.splits.searchPlaceholder}
+      placeholder={activeGroup ? splitsLeadCopy.searchGroup(activeGroup.name) : messages.splits.searchPlaceholder}
       suggestions={searchSuggestions}
       listId="splits-search-suggestions"
       onChange={updateSplitSearch}
     />
   );
-  const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
+  const leadControls = {
+    canSettle: Boolean(activeGroup) && groupBalanceMinor !== 0,
+    showSimplify: useMobileSplitSheet && !isHouseholdView && !activeCheckpoint,
+    showAddExpense: !useMobileSplitSheet,
+    isCheckpointing,
+    onSettle: () => openNewSettlementDialog({ activeGroup, groupBalanceMinor }),
+    onSimplify: () => void simplifySettlement()
+  };
   const formatCheckpointMoney = (amountMinor, currency) => formatService.moneyWithCurrency(amountMinor, currency ?? "SGD");
   const selectedCheckpointForMatching = settlementCheckpoints.find((checkpoint) => checkpoint.id === checkpointMatchTargetId);
   const renderCheckpointTransfers = (checkpoint) => checkpoint.matchedTransfers?.length ? (
@@ -1150,35 +1224,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     );
   };
   const splitSettlementStatus = activeCheckpoint ? (
-    <section className={`split-checkpoint-panel is-${activeCheckpoint.status}`} aria-live="polite">
-      <div className="split-checkpoint-summary">
-        <div className="split-checkpoint-heading">
-          <span className="split-checkpoint-kicker">Settlement status</span>
-          <strong>{activeCheckpoint.status === "internally_offset" ? "Groups internally offset" : "Simplified settlement"}</strong>
-        </div>
-        <p>
-          {checkpointHasOverpayment
-            ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
-            : activeCheckpoint.amountMinor === 0
-            ? "The included groups now net to zero. No bank transfer is needed."
-            : <>{activeCheckpoint.fromPersonName} pays {activeCheckpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}</PrivateMoney>.</>}
-        </p>
-        <small>{activeCheckpoint.currency ?? "SGD"} · {messages.splits.includedSplitRecords(activeCheckpoint.includedRecordCount)} · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
-      </div>
-      <div className="split-checkpoint-navigation">
-        <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
-          View included activity
-        </button>
-        <span className="split-checkpoint-navigation-hint">Included rows are marked in the timeline below.</span>
-      </div>
-      {renderCheckpointTransfers(activeCheckpoint)}
-      {activeCheckpoint.amountMinor !== 0 ? renderCheckpointMatchControls(activeCheckpoint) : null}
-      <div className="split-checkpoint-completion-actions">
-        <button type="button" className="split-checkpoint-view-action" onClick={() => void markCheckpointPaid(activeCheckpoint)} disabled={isCheckpointing}>Mark paid</button>
-        <small>Moves this repayment out of the active view. It remains awaiting a bank transfer match.</small>
-        <button type="button" className="subtle-action split-checkpoint-reopen" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Undo simplification</button>
-      </div>
-    </section>
+    <SplitsCheckpointPanel
+      checkpoint={activeCheckpoint}
+      hasOverpayment={checkpointHasOverpayment}
+      formattedAmount={formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}
+      matchedLabel={activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}
+      transfers={renderCheckpointTransfers(activeCheckpoint)}
+      matchControls={renderCheckpointMatchControls(activeCheckpoint)}
+      isBusy={isCheckpointing}
+      onViewActivity={() => scrollToSettlementActivity(activeCheckpoint)}
+      onMarkPaid={() => void markCheckpointPaid(activeCheckpoint)}
+      onReopen={() => void reopenSettlement()}
+    />
   ) : null;
   const settlementFollowUps = paidCheckpointsAwaitingBankMatch.length ? (
     <section className="split-settlement-follow-ups" aria-live="polite">
@@ -1214,6 +1271,16 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   return (
     <article ref={pageFlagRef(PAGE_FLAG.splitsPanel)} className="panel panel-accent panel-splits">
+      <SplitsGroupStrip
+        groups={groups}
+        activeGroup={activeGroup}
+        selectedMode={selectedMode}
+        isHousehold={isHouseholdView}
+        readOnly={isHouseholdView}
+        hideBar={Boolean(inlineSplitDraft)}
+        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
+        onCreateGroup={openCreateGroupDialog}
+      />
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.splits}</h2>
@@ -1225,7 +1292,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
             </div>
           ) : null}
         </div>
-        {renderSplitActions("split-head-actions split-header-toolbar")}
+        {useMobileSplitSheet ? null : renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
       <FinancialInsight
@@ -1237,14 +1304,12 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       />
 
       <SplitsMainSection
-        groups={groups}
         activeGroup={activeGroup}
         selectedMode={selectedMode}
         pendingMatchCount={pendingMatchCount}
         showBreakdown={showBreakdown}
-        totalExpenseMinor={totalExpenseMinor}
-        groupBalanceMinor={groupBalanceMinor}
-        groupSummaryLabel={groupSummaryLabel}
+        // The bank-match review has its own lead, so the group card waits behind it.
+        lead={selectedMode === "matches" ? null : lead}
         donutRows={donutRows}
         donutChart={donutChart}
         categories={categories}
@@ -1252,35 +1317,34 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         people={people}
         categoryOptions={categoryOptions}
         searchControl={splitSearchControl}
-        summaryToolbar={splitSummaryToolbar}
+        leadControls={leadControls}
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
         archivedBatches={archivedBatches}
         searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}
         inlineSplitError={inlineSplitError}
-        inlineSettlementLock={settlementLockFor(`inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`, inlineSplitError)}
+        inlineSettlementLock={inlineCardLock ?? settlementLockFor(inlineCardKey, inlineSplitError)}
+        inlineReadOnly={Boolean(inlineCardLock)}
         isUndoingSettlementLock={isCheckpointing}
-        onUndoSettlementLock={() => void undoSettlementLock()}
+        onUndoSettlementLock={inlineCardLock && !inlineCardLock.canUndo ? undefined : () => void undoSettlementLock(inlineCardLock)}
         isSubmitting={isSubmitting}
-        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
         onOpenHistory={() => {
           setHistoryError("");
           setShowHistory(true);
         }}
         onBackToGroup={openActiveGroupView}
-        onCreateGroup={() => {
-          setFormError("");
-          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
-        }}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
         onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}
+        onClearSearch={() => updateSplitSearch("")}
+        groupCount={groups.length}
+        onCreateGroup={openCreateGroupDialog}
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
         readOnly={isHouseholdView}
-        onEditExpense={isHouseholdView ? openExpenseEditor : (useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor)}
+        onEditExpense={isHouseholdView || useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor}
         onEditSettlement={isHouseholdView ? openSettlementEditor : (useMobileSplitSheet ? openSettlementEditor : openInlineSettlementEditor)}
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
@@ -1353,17 +1417,19 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         categoryOptions={categoryOptions}
         categories={categories}
         formError={formError}
-        settlementLock={settlementLockFor(`expense:${expenseDialog?.id}`, formError)}
+        settlementLock={expenseCardLock ?? settlementLockFor(expenseCardKey, formError)}
         isUndoingSettlementLock={isCheckpointing}
-        onUndoSettlementLock={() => void undoSettlementLock()}
+        onUndoSettlementLock={expenseCardLock && !expenseCardLock.canUndo ? undefined : () => void undoSettlementLock(expenseCardLock)}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
         onClose={closeExpenseDialogAndReturn}
+        onCloseAutoFocus={returnFocusToSplitRow}
         onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
         onRequestDelete={requestDeleteSplit}
-        readOnly={isHouseholdView}
+        readOnly={isHouseholdView || Boolean(expenseCardLock)}
+        lockedBySettlement={Boolean(expenseCardLock)}
       />
 
       <SplitSettlementDialog

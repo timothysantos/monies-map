@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
+import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
@@ -9,6 +8,16 @@ import { useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { entryAmountTone } from "../domain/money-tone";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
+import { PreviewRowList } from "./import-preview-row-list";
+import {
+  buildAccountChange,
+  canPromoteExistingRowMatch,
+  DuplicateMatchPopover,
+  formatDuplicateMatch,
+  formatDuplicateMatchKind,
+  isAutoMatchedExistingRowMatch,
+  RestoreRowDialog
+} from "./import-preview-row-helpers";
 
 const {
   accounts: accountService,
@@ -33,7 +42,8 @@ export function ImportPreviewRowsTable({
   onUpdatePreviewRowAccount,
   onUpdatePreviewRowCommitStatus,
   onPromotePreviewRowReconciliationTarget,
-  getPreviewAccountOwnerPatch
+  getPreviewAccountOwnerPatch,
+  isPhoneLayout = false
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
@@ -57,7 +67,9 @@ export function ImportPreviewRowsTable({
   return (
     <>
       {activeRows.length ? (
-        <PreviewRowsTable
+        <RowsView
+          isPhoneLayout={isPhoneLayout}
+          categories={categories}
           rows={activeRows}
           accounts={accounts}
           accountOptions={accountOptions}
@@ -75,18 +87,20 @@ export function ImportPreviewRowsTable({
       ) : (
         <EmptyState>
           {ledgerMatchedStatement
-            ? messages.imports.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount)
+            ? importMessages.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount)
             : hasAlreadyCoveredCheckpointRefresh
-            ? messages.imports.noRowsToImportCoveredStatement
+            ? importMessages.noRowsToImportCoveredStatement
             : hasEmptyStatementCheckpointOnly
-              ? messages.imports.noRowsToImportEmptyStatement
-              : messages.imports.noRowsToImport}
+              ? importMessages.noRowsToImportEmptyStatement
+              : importMessages.noRowsToImport}
         </EmptyState>
       )}
       {skippedRows.length ? (
         <details ref={skippedRowsRef} className="import-skipped-rows" id="import-skipped-rows">
-          <summary>{messages.imports.skippedRowsTitle(skippedRows.length)}</summary>
-          <PreviewRowsTable
+          <summary>{importMessages.skippedRowsTitle(skippedRows.length)}</summary>
+          <RowsView
+            isPhoneLayout={isPhoneLayout}
+            categories={categories}
             rows={skippedRows}
           accounts={accounts}
           accountOptions={accountOptions}
@@ -106,6 +120,18 @@ export function ImportPreviewRowsTable({
       ) : null}
     </>
   );
+}
+
+// A phone gets flat rows that open a row sheet (import-preview-row-list.jsx);
+// every other width keeps the editable table. Both edit the same rows
+// through the same handlers.
+/** @param {any} props */
+function RowsView(props) {
+  const { isPhoneLayout, categories, ...tableProps } = props;
+  if (isPhoneLayout) {
+    return <PreviewRowList categories={categories} {...tableProps} />;
+  }
+  return <PreviewRowsTable {...tableProps} />;
 }
 
 function PreviewRowsTable({
@@ -131,17 +157,17 @@ function PreviewRowsTable({
       <table className="summary-table import-preview-table">
         <thead>
           <tr>
-            <th>{messages.imports.table.row}</th>
-            <th>{messages.imports.table.actions}</th>
-            <th>{messages.imports.table.date}</th>
-            <th>{messages.imports.table.description}</th>
-            <th>{messages.imports.table.amount}</th>
-            <th>{messages.imports.table.type}</th>
-            <th>{messages.imports.table.account}</th>
-            <th>{messages.imports.table.category}</th>
-            <th>{messages.imports.table.owner}</th>
-            <th>{messages.imports.table.split}</th>
-            <th>{messages.imports.table.note}</th>
+            <th>{importMessages.table.row}</th>
+            <th>{importMessages.table.actions}</th>
+            <th>{importMessages.table.date}</th>
+            <th>{importMessages.table.description}</th>
+            <th>{importMessages.table.amount}</th>
+            <th>{importMessages.table.type}</th>
+            <th>{importMessages.table.account}</th>
+            <th>{importMessages.table.category}</th>
+            <th>{importMessages.table.owner}</th>
+            <th>{importMessages.table.split}</th>
+            <th>{importMessages.table.note}</th>
           </tr>
         </thead>
         <tbody>
@@ -162,16 +188,16 @@ function PreviewRowsTable({
                           className="subtle-action"
                           onClick={() => onPromotePreviewRowReconciliationTarget(row.rowId, duplicateMatch.existingTransactionId)}
                         >
-                          {messages.imports.promoteExistingPreviewRow}
+                          {importMessages.promoteExistingPreviewRow}
                         </button>
                       ) : null}
                       {row.commitStatus === "needs_review" ? (
                         <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
-                          {canPromoteExistingRow ? messages.imports.importAsNewPreviewRow : messages.imports.importPreviewRow}
+                          {canPromoteExistingRow ? importMessages.importAsNewPreviewRow : importMessages.importPreviewRow}
                         </button>
                       ) : null}
                       {isAutoMatchedExistingRow ? (
-                        <span className="pill success">{messages.imports.matchedExistingPreviewRow}</span>
+                        <span className="pill success">{importMessages.matchedExistingPreviewRow}</span>
                       ) : isSkippedTable ? (
                         <button
                           type="button"
@@ -184,11 +210,11 @@ function PreviewRowsTable({
                             onUpdatePreviewRowCommitStatus(row.rowId, "included");
                           }}
                         >
-                          {messages.imports.restorePreviewRow}
+                          {importMessages.restorePreviewRow}
                         </button>
                       ) : (
                         <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "skipped")}>
-                          {messages.imports.skipPreviewRow}
+                          {importMessages.skipPreviewRow}
                         </button>
                       )}
                     </div>
@@ -211,8 +237,8 @@ function PreviewRowsTable({
                       disabled={isSkippedTable}
                     />
                     {isInferredAmountRow(row, inferredAmountKeys) ? (
-                      <span className="import-inferred-amount-note" title={messages.imports.statementInferredAmountHint}>
-                        {messages.imports.statementInferredAmount}
+                      <span className="import-inferred-amount-note" title={importMessages.statementInferredAmountHint}>
+                        {importMessages.statementInferredAmount}
                       </span>
                     ) : null}
                   </td>
@@ -228,14 +254,7 @@ function PreviewRowsTable({
                       className="table-edit-input"
                       value={row.accountId ?? row.accountName ?? ""}
                       onChange={(event) => {
-                        const nextAccountId = event.target.value || undefined;
-                        const nextAccount = accounts.find((account) => account.id === nextAccountId);
-                        const nextAccountName = nextAccount?.name ?? (!nextAccountId ? undefined : row.accountName);
-                        onUpdatePreviewRowAccount(row.rowId, {
-                          accountId: nextAccount?.id,
-                          accountName: nextAccountName,
-                          ...getPreviewAccountOwnerPatch(nextAccountName, row, nextAccount?.id)
-                        });
+                        onUpdatePreviewRowAccount(row.rowId, buildAccountChange({ row, nextValue: event.target.value, accounts, getPreviewAccountOwnerPatch }));
                       }}
                       disabled={isSkippedTable}
                     >
@@ -289,14 +308,14 @@ function PreviewRowsTable({
                             </span>
                           ) : null}
                           {row.commitStatus === "needs_review" ? (
-                            <span className="pill warning duplicate-row-pill">{messages.imports.needsReview}</span>
+                            <span className="pill warning duplicate-row-pill">{importMessages.needsReview}</span>
                           ) : null}
                         </div>
                         <div className="duplicate-row-copy">
                           {duplicateMatch ? (
                             <div className="duplicate-row-detail-line">
                               <small className="duplicate-row-detail">
-                                {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
+                                {importMessages.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
                               </small>
                               <DuplicateMatchPopover row={row} match={duplicateMatch} statementImportSourceType={statementImportSourceType} />
                             </div>
@@ -314,270 +333,11 @@ function PreviewRowsTable({
           })}
         </tbody>
       </table>
-      <Dialog.Root open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{messages.imports.restorePreviewRow}</Dialog.Title>
-                <Dialog.Description>{messages.imports.restoreExactCoveredRowConfirm}</Dialog.Description>
-              </div>
-              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
-            </div>
-            <div className="note-dialog-actions">
-              <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
-              <button
-                type="button"
-                className="dialog-primary"
-                onClick={() => {
-                  if (restoreTarget) {
-                    onUpdatePreviewRowCommitStatus(restoreTarget.rowId, "included");
-                  }
-                  setRestoreTarget(null);
-                }}
-              >
-                Restore row
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <RestoreRowDialog
+        target={restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={(row) => onUpdatePreviewRowCommitStatus(row.rowId, "included")}
+      />
     </div>
   );
 }
-
-function formatDuplicateMatch(match) {
-  return messages.common.triplet(
-    formatImportPreviewDate(match.date),
-    match.accountName ?? messages.common.emptyValue,
-    formatService.formatMinorInput(match.amountMinor)
-  );
-}
-
-function formatImportPreviewDate(value) {
-  const [year, month, day] = String(value ?? "").split("-");
-  if (year && month && day) {
-    return `${day}/${month}/${year}`;
-  }
-  return formatService.formatDateOnly(value);
-}
-
-export function DuplicateMatchPopover({ row, match, statementImportSourceType = "csv" }) {
-  const ledgerHref = match.existingTransactionId ? buildDuplicateLedgerEntryHref(match) : "";
-  const incomingCertificationLabel = getIncomingBankCertificationLabel(statementImportSourceType);
-  const ledgerCertificationLabel = getExistingBankCertificationLabel(match);
-  return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button type="button" className="duplicate-row-link">
-          {messages.imports.viewLedgerMatch}
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content className="duplicate-match-popover" sideOffset={8} align="center">
-          <div className="duplicate-match-head">
-            <strong>{messages.imports.duplicateMatchPopoverTitle}</strong>
-            <span>{messages.imports.duplicateMatchPopoverDetail}</span>
-          </div>
-          <div className="duplicate-match-flow">
-            <DuplicateMatchCard
-              label={messages.imports.duplicateMatchIncomingLabel}
-              date={row.date}
-              eventDate={getIncomingEventDate(row)}
-              postedDate={row.date}
-              description={row.description}
-              comparisonDescription={match.description}
-              accountName={row.accountName}
-              amountMinor={row.amountMinor}
-              bankCertificationLabel={incomingCertificationLabel}
-            />
-            <span className="duplicate-match-arrow" aria-hidden="true">{"->"}</span>
-            <DuplicateMatchCard
-              label={messages.imports.duplicateMatchLedgerLabel}
-              date={match.date}
-              eventDate={match.date}
-              postedDate={match.postedDate}
-              description={match.description}
-              comparisonDescription={row.description}
-              accountName={match.accountName}
-              amountMinor={match.amountMinor}
-              bankCertificationLabel={ledgerCertificationLabel}
-            />
-          </div>
-          {ledgerHref ? (
-            <a className="duplicate-match-open-link" href={ledgerHref} target="_blank" rel="noreferrer">
-              {messages.imports.openLedgerEntry}
-            </a>
-          ) : null}
-          <Popover.Arrow className="category-popover-arrow" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-function DuplicateMatchCard({ label, date, eventDate, postedDate, description, comparisonDescription, accountName, amountMinor, bankCertificationLabel }) {
-  return (
-    <div className="duplicate-match-card">
-      <span>{label}</span>
-      <strong>{renderHighlightedDescription(description, comparisonDescription)}</strong>
-      <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatService.formatMinorInput(amountMinor))}</p>
-      <dl className="duplicate-match-dates">
-        <div>
-          <dt>{messages.imports.duplicateMatchTransactionDate}</dt>
-          <dd>{formatOptionalMatchDate(eventDate)}</dd>
-        </div>
-        <div>
-          <dt>{messages.imports.duplicateMatchPostedDate}</dt>
-          <dd>{formatOptionalMatchDate(postedDate)}</dd>
-        </div>
-      </dl>
-      <small>{messages.imports.bankCertificationStatusLine(bankCertificationLabel)}</small>
-    </div>
-  );
-}
-
-function getIncomingEventDate(row) {
-  return normalizeMatchDate(
-    row.rawRow?.transactionDate
-      ?? row.rawRow?.["transaction date"]
-      ?? extractTransactionDateHint(row.note)
-      ?? extractTransactionDateHint(row.rawRow?.note)
-      ?? extractTransactionDateHint(row.rawRow?.notes)
-      ?? extractTransactionDateHint(row.rawRow?.remarks)
-  );
-}
-
-function extractTransactionDateHint(value) {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const match = value.match(/\b(?:txn|transaction)\s+date\s*:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\b/i);
-  return match?.[1];
-}
-
-function normalizeMatchDate(value) {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  return trimmed;
-}
-
-function formatOptionalMatchDate(value) {
-  const normalized = normalizeMatchDate(value);
-  return normalized ? formatImportPreviewDate(normalized) : messages.imports.duplicateMatchDateUnavailable;
-}
-
-function getIncomingBankCertificationLabel(sourceType) {
-  if (sourceType === "pdf") {
-    return messages.imports.bankCertificationStatusIncomingStatement;
-  }
-
-  if (sourceType === "manual") {
-    return "Manual provisional";
-  }
-
-  return "Import provisional";
-}
-
-function getExistingBankCertificationLabel(match) {
-  if (match.existingBankCertificationStatus === "statement_certified") {
-    return "Statement certified";
-  }
-
-  return match.existingSourceType === "manual" ? "Manual provisional" : "Import provisional";
-}
-
-function buildDuplicateLedgerEntryHref(match) {
-  const params = new URLSearchParams({
-    view: "household",
-    month: match.date.slice(0, 7),
-    editing_entry: match.existingTransactionId
-  });
-  if (match.existingAccountId) {
-    params.set("entry_wallet", match.existingAccountId);
-  } else if (match.accountName) {
-    params.set("entry_wallet", match.accountName);
-  }
-  return `/entries?${params.toString()}`;
-}
-
-function canPromoteExistingRowMatch(row, match) {
-  return Boolean(
-    row.commitStatus === "needs_review"
-    && match?.existingTransactionId
-    && match?.existingSourceType === "manual"
-    && match?.existingBankCertificationStatus === "provisional"
-    && (row.reconciliationMatchCount ?? row.reconciliationMatches?.length ?? 0) === 1
-  );
-}
-
-function isAutoMatchedExistingRowMatch(row, match) {
-  return Boolean(
-    row.commitStatus === "included"
-    && row.reconciliationTargetTransactionId
-    && match?.existingTransactionId === row.reconciliationTargetTransactionId
-    && match?.existingSourceType === "manual"
-    && match?.existingBankCertificationStatus === "provisional"
-    && (row.reconciliationMatchCount ?? row.reconciliationMatches?.length ?? 0) === 1
-  );
-}
-
-function renderHighlightedDescription(description, otherDescription) {
-  const text = description || messages.common.emptyValue;
-  const otherTokenSet = buildNormalizedHighlightTokenSet(otherDescription ?? "");
-  if (!otherTokenSet.size) {
-    return text;
-  }
-
-  const parts = text.split(/([A-Za-z0-9]+)/g);
-  return parts.map((part, index) => {
-    if (!part) {
-      return null;
-    }
-
-    const normalizedTokens = normalizeTextForHighlight(part);
-    const isShared = normalizedTokens.some((token) => otherTokenSet.has(token));
-    return isShared
-      ? <mark key={`${part}-${index}`} className="duplicate-match-highlight">{part}</mark>
-      : <Fragment key={`${part}-${index}`}>{part}</Fragment>;
-  });
-}
-
-function buildNormalizedHighlightTokenSet(value) {
-  return new Set(normalizeTextForHighlight(value));
-}
-
-function normalizeTextForHighlight(value) {
-  return value
-    .toLowerCase()
-    .replace(/\bcs\s+fresh\b/g, "cold storage")
-    .replace(/\bcoldstorage\b/g, "cold storage")
-    .replace(/\bcs\b/g, "cold storage")
-    .replace(/\b(singapore|sg|applepay|apple\s+pay)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-function formatDuplicateMatchKind(matchKind) {
-  if (matchKind === "exact") {
-    return messages.imports.duplicateMatchKindExact;
-  }
-
-  if (matchKind === "probable") {
-    return messages.imports.duplicateMatchKindProbable;
-  }
-
-  return messages.imports.duplicateMatchKindNear;
-}
-

@@ -41,6 +41,17 @@ import { useKeyboardInset } from "./use-keyboard-inset";
 export function EntryMobileSheet({
   title,
   description,
+  // A dialog whose lead says what the sheet is about keeps the description
+  // for assistive tech only (a class from lead-support-detail.css).
+  descriptionClassName = "",
+  // The close button's name; defaults to "Close {title}".
+  closeLabel = undefined,
+  // Dialogs opened from a clickable row or a form keep React's submit, click
+  // and key events inside the sheet (see keepEventsInDialog in
+  // category-edit-dialog.jsx).
+  isolateEvents = false,
+  // A sheet that must be answered has no close button.
+  hideClose = false,
   className = "",
   headerAction = null,
   errorMessage = "",
@@ -71,6 +82,12 @@ export function EntryMobileSheet({
   usePageKeyboardScrollLock();
   useKeyboardInset(sheet);
   const swipe = useSheetSwipeDismiss({ sheet, isDirty, isSubmitting, onClose });
+  const isTopSheet = useSheetStack();
+  const eventGuards = isolateEvents ? {
+    onSubmit: (event) => event.stopPropagation(),
+    onClick: (event) => event.stopPropagation(),
+    onKeyDown: (event) => event.stopPropagation()
+  } : {};
 
   return (
     <Dialog.Root
@@ -84,7 +101,7 @@ export function EntryMobileSheet({
     >
       <Dialog.Portal>
         <RemoveScroll forwardProps removeScrollBar={false} allowPinchZoom shards={scrollShards}>
-          <div className="entry-composer-overlay" />
+          <div className="entry-composer-overlay" {...eventGuards} />
         </RemoveScroll>
         <FocusScope
           asChild
@@ -117,6 +134,14 @@ export function EntryMobileSheet({
             // dismissal (the desktop modal dialogs behave the same way).
             onFocusOutside={(event) => event.preventDefault()}
             {...swipe.contentProps}
+            onPointerDownOutside={(event) => {
+              if (!isTopSheet()) {
+                event.preventDefault();
+                return;
+              }
+              swipe.contentProps.onPointerDownOutside(event);
+            }}
+            {...eventGuards}
           >
             <SheetDragHandle />
             <form
@@ -133,18 +158,20 @@ export function EntryMobileSheet({
               <div className="note-dialog-head split-dialog-head entry-composer-head">
                 <div className="entry-composer-copy">
                   <Dialog.Title asChild><strong>{title}</strong></Dialog.Title>
-                  <Dialog.Description asChild><p>{description}</p></Dialog.Description>
+                  <Dialog.Description asChild><p className={descriptionClassName || undefined}>{description}</p></Dialog.Description>
                 </div>
                 <div className="entry-composer-head-actions">
                   {headerAction}
-                  <button
-                    type="button"
-                    className="icon-action subtle-cancel entry-composer-close"
-                    aria-label={`Close ${title.toLowerCase()}`}
-                    onClick={onClose}
-                  >
-                    <X size={16} />
-                  </button>
+                  {hideClose ? null : (
+                    <button
+                      type="button"
+                      className="icon-action subtle-cancel entry-composer-close"
+                      aria-label={closeLabel ?? `Close ${title.toLowerCase()}`}
+                      onClick={onClose}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
               {errorContent ?? <InlineError message={errorMessage} className="entry-submit-error" />}
@@ -164,6 +191,27 @@ export function EntryMobileSheet({
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+// The sheets that are open, the top one last. A sheet opened over another (a
+// confirmation over the Edit entry sheet) is not part of the lower sheet's
+// React tree, so a tap on it would count as "outside" for the one below and
+// close it too. Only the top sheet answers an outside tap.
+const openSheets = [];
+
+function useSheetStack() {
+  const idRef = useRef({});
+  useEffect(() => {
+    const id = idRef.current;
+    openSheets.push(id);
+    return () => {
+      const index = openSheets.indexOf(id);
+      if (index !== -1) {
+        openSheets.splice(index, 1);
+      }
+    };
+  }, []);
+  return () => openSheets[openSheets.length - 1] === idRef.current;
 }
 
 // `overflow: hidden` on <html> stops Space, Page Down and arrow keys from

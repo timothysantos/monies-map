@@ -140,7 +140,9 @@ masked too.
 The choice is remembered only in that browser. A different browser or a
 cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
-they appear with the real figures as soon as you reveal totals. Edit
+they appear with the real figures as soon as you reveal totals. The earned,
+spent and kept bar keeps its shape and shows only percentages (no amounts) while
+totals are hidden. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
 
@@ -174,8 +176,11 @@ The app is designed for phones as well as desktops. The differences:
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
-  `Ethan · Direct + Shared`). Tap it to change the view first, then the
-  scope. Entries adds previous and next month buttons beside it.
+  `Ethan · Direct + Shared`), with the person in their own colour. Tap it to
+  change the view first, then the scope; on Entries the sheet also has the
+  filters, with **Reset filters** and **Done** at the bottom. Swipe the sheet
+  down to close it. Entries adds previous and next month buttons beside the
+  bar.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
 - **Month button.** On Summary, the button beside the bar says **All
   months**. Tap it to pick one month of the range
@@ -228,9 +233,9 @@ Home Screen from Safari's Share menu to open it like an app.
 Each screen in the order it appears in the navigation: what you see, what
 each control does, the common tasks, and what changes on a phone.
 
-Money colours mean the same on every screen: green is money coming in or
-something going well, red is money going out, over plan, short or owed by
-you, blue is a plan, and transfers stay in plain text. In lists only the
+Money colours mean the same on every screen: olive green is money coming in
+or something going well, brick red is money going out, over plan, short or
+owed by you, teal is a plan, and transfers stay in plain text. In lists only the
 amount's text is coloured; Summary's spending turns red only when you are
 over plan.
 
@@ -239,21 +244,34 @@ over plan.
 ### What you see
 
 - **Spent**: what you spent over the selected range against what you planned
-  to spend, with a bar, the share of the plan used and how much you are under
+  to spend, with the share of the plan used and how much you are under
   (green) or over (red) plan.
+- **Earned, spent and kept**: under the Spent figure, one bar stands for all
+  the money you earned over the range. The red part is what you spent and the
+  green part is what you kept. If you spent more than you earned, the bar
+  runs to a small **income** mark and the striped part after it is the money
+  that came out of your savings. A thin blue bar under it shows your plan on
+  the same scale: what you planned to spend, then what you planned to save.
+  One line says it in words ("You kept $38,000 of the $247,000 you earned
+  (15%)"), with your plan in smaller print under it. Hover over a part of the
+  bar (on a phone, tap it) to see how much it is and what share of your
+  income that is.
 - **Income** and **Saved**: the income that came in, with the planned income
   under it, and what you kept, with your savings target under it.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,
-  with a list of categories below it. Pick a month to see that month's
-  ([Month](#month)).
-- **Intent vs Outcome**: one card per month comparing planned and actual
-  income, spending and savings.
-- **Wallets in view**: the current balance of each account and whether a
-  statement has confirmed it.
+  with the categories ranked beside it (under it on a phone): each shows its
+  amount, its share and a thin bar. The top five show; **Show all** lists
+  the rest. Pick a month to see that month's ([Month](#month)).
+- **Intent vs Outcome**: one card per month, newest first. Each leads with
+  what you spent against what you planned, with a bar, the percent of plan
+  and how far under or over you are. Your planned and actual income sit
+  under it, and **Details** opens the income, spending and savings figures.
+- **Wallets in view**: one list with each wallet's current balance and
+  whether a statement has confirmed it. Select a wallet to open its entries.
 
-![Spending Mix and Intent vs Outcome side by side](/faq/guide/desktop/thumbs/summary-charts.webp)
+![Spending Mix: the donut beside the ranked categories, with Intent vs Outcome below](/faq/guide/desktop/thumbs/summary-charts.webp)
 
 ### What each control does
 
@@ -267,12 +285,15 @@ over plan.
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
   ([Pick a month](#pick-a-month)).
-- **A category in the list**: select it to hide or show it in the donut (it
-  says Shown or Hidden). The **›** beside it opens that category's entries.
-  The coloured icon changes the category's icon and colour.
-- **A month card** in Intent vs Outcome: expand it for the planned, actual and
-  variance table. The pencil edits that month's note. The month's name opens
-  that month.
+- **A category in the list**: select its name to hide or show it in the donut
+  (a hidden one is dimmed and says Hidden). The **›** beside it opens that
+  category's entries. The coloured icon changes the category's icon and
+  colour. **Show all** under the first five lists every category;
+  **Show fewer** folds it back. With money hidden the amounts show as dots and
+  the percentages stay.
+- **A month card** in Intent vs Outcome: select **Details** for the planned,
+  actual and variance figures (the latest month starts open). The **Note** row
+  there edits that month's note. The month's name opens that month.
 
 ![Wallets in view shows current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
 
@@ -304,8 +325,8 @@ there to reach other months.
   before or after, within the range.
 - The **Summary** button in the navigation always goes back to All months.
 
-With totals hidden, the amounts show as dots, the bar is empty, and nothing
-turns red or says "under" or "over".
+With totals hidden, the amounts show as dots, the bar turns grey and shows
+only percentages, and nothing turns red or says "under" or "over".
 
 ### On a phone
 
@@ -324,15 +345,21 @@ stays highlighted, and the range at the top stays as it was.
 ### What you see
 
 - **Header**: the month, the person, the scope buttons and **Actions**.
-- **Six cards**: Planned income, Planned spend, Remaining budget (planned
-  income minus planned spend; it says Overplanned when negative), Actual
-  spend, Savings target and Spend gap (planned minus actual).
+- **The top card**: what you have spent this month against what you
+  planned, with the percent of plan and how much you are under or over plan.
+  Under that is the same earned, spent and kept bar as on
+  [Summary](#summary), for this month. Under it, in the same card, are **Income** (received, with
+  the plan), **Saved** (with the savings target) and **To allocate**
+  (planned income minus planned spend; it says Overplanned when negative).
+  Select it to see what it means.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
-  list as on Summary. Select a category to hide or show it in the donut; its
+  ranked list as on Summary. Select a category to hide or show it in the donut; its
   **›** opens that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
-- **Income**: planned income sources.
+- **Income**: planned income sources. On every plan row a thin bar shows how
+  much of the plan you have used. On a phone each row is a small card; tap it
+  to change it.
 - **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
 - **Planned Items**: fixed commitments such as savings, insurance, loans and
@@ -379,26 +406,37 @@ and the month's name opens **Pick a month**.
 
 ### What you see
 
-- **Totals strip**: Spend, Income, Difference, Transfers and Outflow (Spend
-  plus Transfers). In a person view, a shared row counts at the full amount
-  first, with that person's share in brackets.
-- **+ Add entry** and **Money insights**.
-- **Filters**: refresh, Search, By wallet, By category, By type and **Reset
-  filters**. Whose entries you see follows the view at the top left.
-- **Days**: entries grouped by date, newest first, with each day's net.
+- **Spent this month** at the top, in a large card: what you spent. Beside
+  it (under it on a phone) are four small boxes: **Income**, **Difference**,
+  **Transfers** and **Outflow** (Spent plus Transfers). Income and a surplus
+  are tinted green and a shortfall rose; the rest stay plain. In a person
+  view, a shared row counts at the full amount first, with that person's
+  share written next to it.
+- **Spending by category** opens the breakdown by category. On a phone,
+  **Filters** (it says **All entries**, or how many filters are on) opens
+  **View and scope**, where the filters are.
+- **Money insights**.
+- **Filters** (on a wide screen): refresh, Search, By wallet, By category, By
+  type and **Reset filters**. Whose entries you see follows the view at the
+  top left.
+- **Days**: entries grouped by date, newest first, with each day's net at
+  the right of a thin line.
 
-Each row shows the category, description, note, wallet and owner, the amount,
-and small labels such as **On splits**, **Matched transfer out** or the
-owner's name.
+Each row shows the category (small, above), the description, the note, the
+wallet, the amount at the right, and small labels such as **On splits** or
+the owner's name. A matched transfer says so in plain grey text. The coloured
+bar on the left is the owner's colour.
 
 ### What each control does
 
 - **Select a row** to edit it. The editor shows the entry as a card: what
   it was and the amount (type over either to change it), its category,
   and small labels for the date, wallet, owner and how well the bank has
-  confirmed it ([Glossary](#words-used-in-the-app)). Beside the card are
-  rows for **Category**, **Owner**, **Splits**, **Note**, **Date**,
-  **Wallet**, **Posted date** and **Type** (expense, income or transfer).
+  confirmed it ([Glossary](#words-used-in-the-app)). On a wide screen those
+  three labels are the fields: choose the date, the wallet or the person on
+  the card itself to change it (a lock means the bank statement has fixed
+  it). Under the card are rows for **Category**, **Splits**, **Note**,
+  **Posted date** and **Type** (expense, income or transfer).
   ![Selecting an entry opens it as a card with rows for each field, and Delete entry, Cancel and Save under them](/faq/guide/desktop/thumbs/entries-edit.webp)
 - **Splits** row: **Add to splits** shares this entry ([Split an expense](#split-an-expense));
   once it is shared, **View split** opens it on Splits.
@@ -450,27 +488,50 @@ always know you are working on shared money rather than your bank ledger.
 
 ### What you see
 
-- **Group buttons**: **Non-group expenses** plus your named groups (for
-  example a trip or home bills). Each shows its currency, number of entries
-  and your balance, such as "You owe Serene $108.58" or "Settled up". The **+**
-  creates a group.
+- **Group tiles**: a row under the person switcher with your named groups
+  (for example a trip or home bills) and **Non-group expenses**. The group you
+  have open comes first as a white tile with its balance in words, such as
+  "Serene owes you $303.15" or "You owe Serene $108.58", and how many entries
+  it has. The others are smaller tiles with one balance line: groups that owe
+  you first, then groups you owe, then Non-group expenses ("No balance" when
+  it is even), then settled groups, dimmed and marked "Settled". The cream
+  tile on the left stays put: **New** creates a group and **All** opens a list
+  of every group with its balance. When money is hidden every tile says
+  "Balance hidden".
 - **Money insights** for the selected group.
-- **Search**, your balance, the group's spend, **Activity history** and
-  **+ Add expense**.
+- **The group card**: a white card for the group you have open. It shows the
+  group's name, its currency and how many entries it has, then the balance as
+  one figure with who owes whom in words under it ("Serene owes you" in
+  green, "You owe Serene" in red, or "Settled up"). Under that are a chip for
+  the other person and a **Group spend** chip (select it to show or hide the
+  spending-by-category chart). **History** is quiet and **Settle group** is
+  the one main button; on a computer **+ Add expense** sits between them. When
+  money is hidden the figure is dots and the words say "Balance with Serene",
+  so nothing shows who owes whom.
+- **Search**, in its own field under the card, named for the group you have
+  open.
 - **Possible split links**: a reminder when imported bank rows may match
   splits you entered by hand ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 - **Archived batches**: groups you have already settled.
-- **Activity**: the group's open expenses and settle-ups, by date.
+- **Activity**: the group's open expenses and settle-ups, by date. Each date
+  is a quiet divider with how many entries it holds, and that day's rows sit
+  together in one white block. Each row says what it was and who paid, with
+  the words and amount that are yours ("you lent", "you borrowed") at the
+  right.
 
 ### What each control does
 
 - **Review matches**: compare imported bank rows with your manual splits.
+  It is at the top right of the page on a computer, and the **Review
+  matches** button in the reminder on a phone.
 - **Settle group**: record a payment that clears the selected group.
 - **Simplify settlement**: combine all open groups in the same currency into
-  one amount to pay.
+  one amount to pay. It is at the top right of the page on a computer, and a
+  row on the group card on a phone.
 - **Select an expense** to edit it in place: its form replaces the row, with
   **Save**, **Cancel** and **Delete**.
-- **Activity history**: deleted and restored split records, with **Restore**.
+- **History** (on the group card): deleted and restored split records, with
+  **Restore**.
 
 Splits is not filtered by the month picker: it always shows what is still
 open.
@@ -484,7 +545,11 @@ open.
 
 ### On a phone
 
-The view switch stays at the top, groups scroll sideways, and the round
+The view switch stays at the top, the group tiles slide sideways beside the
+cream **New** / **All** tile, and when you scroll down a bar with the open
+group takes their place (tap it to open **All groups**). On the group card
+**Simplify settlement** is a row of its own, and **History** and **Settle
+group** share the last line. The round
 receipt button opens a new entry card on [Ask](#ask), already set to share
 with the other person in the group you are looking at. **+ Add expense**
 (and **Edit in form** on Ask) opens the new expense as a card in a sheet,
@@ -793,9 +858,11 @@ leave Ask.
   dropped on the file you are reviewing is not added. A single file dropped
   while you review another opens straight away; the other waits in the
   queue again. **Review** asks first if you changed the file in review.
+- **How importing works**: a folded row under the drop zone with the notes
+  about PDF and XLS files, trustworthy statements and rollback.
 - **Paste rows or set defaults**: opens the fields below. It opens by
   itself when a plain CSV needs them. Once files are waiting it also holds
-  the notes about PDF and XLS files, trustworthy statements and rollback.
+  those notes.
   - **Source label** and **Batch note**: optional names so you recognise
     the import later. A plain CSV is named by its file unless you typed a
     source label.
@@ -829,7 +896,7 @@ leave Ask.
   the end of your files and opens the next one. Reopen it from its chip
   whenever you like; you don't need the file again. If you changed rows or
   approved fixes, the app asks first, because skipping drops those changes.
-- **×** on a batch (Rollback import): undo it ([Undo an import](#undo-an-import)).
+- **Rollback import** on a batch: undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone
 
@@ -842,8 +909,9 @@ in one sheet; tap a thing to fix to go straight to it, or a file to open it.
 
 ## Settings
 
-Settings is a list of sections. Select a section's heading to open or close
-it.
+Settings is one list. Each row is a section with a short word on the right
+(the people's names, how many accounts or categories, **1 to check**, **Not
+set up**). Select a row to open it; it opens right under its row.
 
 - **People**: rename the two household members.
 - **Accounts**: add, edit, archive and reconcile accounts.
@@ -856,9 +924,16 @@ it.
   yet.
 - **Payment ways**: the account each person's PayNow, bank transfers and
   cash come from ([Choose your payment ways](#choose-your-payment-ways)).
-- **Categories**: the categories used everywhere, with their icon and colour.
+- **Categories**: the categories used everywhere. Select one to change its
+  name, icon or colour.
 - **Category matching**: rules that categorise imported rows, plus
   suggestions and overlapping rules to review.
+- **Colours**: the colour scheme. Pick **70s Warm** (the usual one), **60s
+  Mod**, **80s Pop**, **Modern**, **Black & White** or **Code** (dark) and
+  the whole app changes at once. Money in, money out and plans keep their
+  meaning in every scheme; in Black & White, money in is bold and money out
+  is in italics. The choice is saved on this device only, so your phone and
+  computer can differ.
 - **Balance trust rules**: what makes a balance trustworthy, and a list of
   known gaps (reconciliation exceptions).
 - **Unresolved transfers**: transfers that are not paired yet.
@@ -874,7 +949,15 @@ selecting the tab opens Category matching.
 
 ### On a phone
 
-Settings is under the **•••** button. Dialogs open as sheets.
+Settings is under the **•••** button. Dialogs open as sheets from the bottom
+of the screen. Every one of them has the same parts: a card at the top that
+says what you are changing or removing, the fields as rows under it, and the
+buttons at the bottom within reach of your thumb. **Cancel** is at the left
+and the main button at the right. A button that removes something (such as
+**Delete entry**) is pink with dark red text, and a sheet that asks you to
+type words first (such as **Reset month**) keeps its button off until you
+have typed them. You can swipe any of them down to close it. On a computer the
+same dialogs open in the middle of the screen.
 
 ## Help (FAQ)
 
@@ -893,8 +976,9 @@ you can bookmark or share a link to it.
 
 ### On a phone
 
-FAQ is under the **•••** button. The tabs and contents sit at the top; tap a
-picture to open it full size.
+FAQ is under the **•••** button. The two tabs sit at the top, and **Contents**
+is one row under them: tap it to open the list, so the guide starts straight
+away. Tap a picture to open it full size.
 
 ![The FAQ screen on a phone](/faq/guide/phone/thumbs/phone-faq.webp)
 
@@ -905,12 +989,13 @@ Step-by-step recipes. Each assumes you start from the screen named in step 1.
 ## Add an expense
 
 1. Open **Entries** and choose the month at the top right.
-2. Select **+ Add entry**. On a phone, the round **+** button opens a new
-   entry card on [Ask](#ask) instead: type the amount and what it was (or
-   say it in the message box, or use a receipt photo), check the rows under
-   the card and select **Save**.
-3. Choose the **Category**, **Date**, **Wallet** (the account or card you
-   paid with), **Owner** (who paid) and **Type** (Expense).
+2. Select the round **+** button. It opens a new entry card on
+   [Ask](#ask) (beside the page on a wide screen): type the amount and what
+   it was (or say it in the message box, or use a receipt photo), check the
+   rows under the card and select **Save**. To use the full form instead,
+   select **Edit in form**.
+3. In the form, choose the **Category**, **Date**, **Wallet** (the account or
+   card you paid with), **Owner** (who paid) and **Type** (Expense).
 4. Type the **Amount** and a **Description**. Use the merchant name, such as
    `FairPrice` or `Grab`, so a later bank import can recognise it.
 5. Add a **Note** if the reason matters later.
@@ -930,9 +1015,10 @@ them ([Record entries before the bank file arrives](#record-entries-before-the-b
 1. Open **Entries** and find the entry ([Find an entry](#find-an-entry-filters-search-and-months)).
 2. Select the row. It opens as a card with rows for each field, in place
    (a sheet on a phone).
-3. Type over what it was or the amount on the card, or change a row such as
-   **Category**, **Owner** or **Note** (on a phone the date, wallet, posted
-   date and type are under **More details**). Select **Save**, or **Cancel**
+3. Type over what it was or the amount on the card, change the date, wallet
+   or owner on the card's small labels, or change a row such as
+   **Category** or **Note** (on a phone the posted date and type are under
+   **More details**, with the date and wallet). Select **Save**, or **Cancel**
    to leave it as it was.
 4. To remove it, select **Delete entry**, then confirm.
 
@@ -965,8 +1051,8 @@ Good to know:
 4. Under **Budget Buckets**, select **+ Add budget bucket** for flexible
    spending such as Food, Groceries, Transport and Shopping.
 5. Select **Save** on each row.
-6. Check the cards: **Remaining budget** should not say Overplanned, and
-   **Savings target** should be what you want to put aside.
+6. Check the top of the page: it should say **To allocate**, not Overplanned,
+   and the **Saved** target should be what you want to put aside.
 
 > Tip: keep budget buckets broad. One Food bucket works better than a row for
 > every restaurant. Plan only what is stable as planned items.
@@ -1032,7 +1118,7 @@ words.
    **Before you can commit:** at the top, or **Jump to next** beside the
    commit button, take you to each thing still to fix.
 6. Select **Commit import to ledger**. The rows appear on Entries, and the
-   batch appears under **Recent imports**. The **Done** step (a blue box)
+   batch appears under **Recent imports**. The **Done** step (a teal box)
    names the file, the accounts it went into and the statement period, and
    says **No further action needed** when every card balanced. It shows what
    changed on each card (rows added, entries confirmed or moved, entries left
@@ -1153,7 +1239,7 @@ A card statement that asks for money also says what to pay, for example
 bank printed IMMEDIATE because the card is past due. The due date and
 minimum are saved with the statement for **Money insights**.
 
-When the statement has the bank's own charges, a rose box above the checks
+When the statement has the bank's own charges, a brick-red box above the checks
 lists them, for example "Bank charges on this statement: Late charge $100.00
 · Interest $4.37". It also says when the bank reversed one ("Reversed by
 the bank: Annual fee $196.20") and repeats the bank's notices, such as "The
@@ -1281,9 +1367,9 @@ duplicates, or belong to another account.
 
 1. Open **Imports**, open **Recent imports** and find the batch (use **By
    account** to narrow the list).
-2. Select the **×** (Rollback import) at the end of the batch's row.
-3. Check the name in the message and select **Confirm rollback** (or
-   **Cancel**).
+2. Select **Rollback import** on the batch's row.
+3. Check the name in the sheet that opens (a dialog on a computer) and
+   select **Confirm rollback** (or **Cancel**).
 
 ![Rolling back an import asks you to confirm](/faq/guide/desktop/thumbs/imports-rollback.webp)
 
@@ -1434,15 +1520,23 @@ There are two ways, depending on where the expense is.
 A split made here is not linked to a bank row yet. When the bank row arrives,
 link it instead of adding it again ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
 
-To change a split, select it in the activity list. On a phone it opens as the
-same card you used to add it: change the total, a share, the category or the
-group, open **More details** for the rest, and select **Save expense**.
-**Delete** is at the bottom left and asks before it removes anything.
-On a wide screen the row turns into its form: change the fields and select **Save**. To remove it, select **Delete**,
-then **Delete split row**. A deleted split can be restored
-([Restore a deleted split](#restore-a-deleted-split)).
+To change a split, select it in the activity list (or Tab to it and press
+Enter or Space). It opens as the same card you used to add it: on a phone as a
+sheet, on a wide screen in the list in place of the row. Change the total, a share, the category or the group, open
+**More details** on a phone for the rest (on a wide screen, change the date, who paid or how it was paid from the chips under the total), and select **Save expense**.
+**Delete** is at the bottom left and asks before it removes anything: select
+**Delete**, then **Delete split row**. Escape or **Cancel** closes the card
+without saving, and the cursor goes back to the split you opened. A deleted
+split can be restored ([Restore a deleted split](#restore-a-deleted-split)).
 
-![Selecting a split opens its form in place of the row](/faq/guide/desktop/thumbs/splits-edit.webp)
+A split that has been settled up (or included in a simplified settlement)
+opens read-only: you can read it, but not change it. A line at the top says
+when it was settled ("Settled on 17 May 2026") or simplified, and the button
+under it (**Undo settle-up** or **Undo simplification**) opens that activity
+again. After the
+undo the same card turns editable and you can change and save it.
+
+![Selecting a split turns its row into a card with the total, a row for each share, the category and group](/faq/guide/desktop/thumbs/splits-edit.webp)
 
 ![Deleting a split asks you to confirm](/faq/guide/desktop/thumbs/splits-delete.webp)
 
@@ -1451,8 +1545,9 @@ then **Delete split row**. A deleted split can be restored
 1. Open **Splits**. When bank rows may match splits you entered by hand, a
    banner says "possible split links".
 2. Select **Review matches**.
-3. Each card shows the **Existing split** next to the **Imported ledger row**,
-   with how far apart the dates and amounts are.
+3. Each white card has the **Existing split** and the **Imported ledger row**
+   as two rows, a chip for how likely the match is, and how far apart the
+   dates and amounts are.
 4. Select **Match** to link them, or **Keep separate** if they are different
    purchases.
 5. Select **Back** when you are done.
@@ -1463,9 +1558,10 @@ A split can be linked to only one bank row.
 
 ## Track a trip in another currency
 
-1. Open **Splits** and select **+** next to the groups.
-2. Type a **Group name** (for example "Seoul trip") and choose the **Group
-   currency** (for example KRW).
+1. Open **Splits** and select **New** in the cream tile beside the groups.
+2. Type the **Group name** at the top of the card (for example "Seoul trip")
+   and choose the **Group currency** (for example KRW). The chips under the
+   name show what you have chosen.
 3. Choose the **Purchase source**: **Cash only** for cash spending, or
    **Bank/card** for card purchases you will later match to your statement.
    Two groups (one of each) keep things simplest.
@@ -1484,9 +1580,12 @@ the linked card row counts in dollars, split the same way.
 ## Settle up a group
 
 1. Open **Splits** in your person view and select the group.
-2. Select **Settle group**.
-3. Check **Paid by**, **Received by** and the **Amount** (filled in with the
-   balance), choose how it was paid, and add a note.
+2. Select **Settle group** on the group card.
+3. The card at the top reads who paid whom ("Serene paid Ethan") and holds
+   the **Amount**, filled in with the balance: type over it to pay a different
+   amount. Below it, check **Paid by**, **Received by** and the **Date**, add
+   a **Note**, and choose how it was paid under **Paid using**.
+   **Currency** and **Evidence** are in the same list.
 4. Select **Save settlement**.
 
 ![Record settlement for one group](/faq/guide/desktop/thumbs/splits-settle-group.webp)
@@ -1499,8 +1598,10 @@ expenses start a fresh batch. Other groups are not touched.
 When you have several open groups in the same currency, **Simplify
 settlement** works out one amount to pay for all of them.
 
-1. Open **Splits** in your person view and select **Simplify settlement**.
-2. The **Simplified settlement** panel shows who pays whom and how much. If
+1. Open **Splits** in your person view and select **Simplify settlement** (at
+   the top right of the page on a computer, a row on the group card on a
+   phone).
+2. The **Simplified settlement** card shows who pays whom and how much. If
    the groups cancel each other out, nothing needs paying. **View included
    activity** marks the expenses it covers.
 3. When the bank transfer appears, choose it in **Match a transfer…** and
@@ -1521,20 +1622,21 @@ Expenses that are part of a settle-up or a simplified settlement are locked:
 their amount, currency, shares, payer, date and group cannot change, and they
 cannot be deleted. Otherwise the settled amount would silently stop matching.
 
-If you try, the save is refused and nothing changes. The message names the
-settlement and offers a button:
+Select a settled expense and it opens with nothing to change. A line at the
+top says when it was settled or simplified and the button under it undoes it:
 
 1. Select **Undo settle-up** (for a settled group) or **Undo simplification**
    (for a simplified settlement). You can also open the batch in **Archived
    batches** and undo it there.
-2. Your change is still in the form: select save again.
+2. The same card turns editable: make your change and select **Save expense**.
 3. Settle again for the new balance.
 
-Description, category, note and bank links stay editable without undoing.
+If a change reaches a settled split another way (for example an entry on
+Entries), it is refused with the same message and button, and nothing changes.
 
 ## Restore a deleted split
 
-1. Open **Splits** and select **Activity history**.
+1. Open **Splits** and select **History** on the group card.
 2. Find the deleted expense or settle-up.
 3. Select **Restore**. It comes back with the same shares, group, currency and
    bank link.
@@ -1551,9 +1653,10 @@ On an iPhone, a Shortcut can save each Apple Pay purchase as an entry and
 open it for you to check.
 
 1. Open **Settings → Apple Pay shortcut** on your iPhone.
-2. Under **Default account priority**, put the card you use most first. If
-   the shortcut doesn't name an account, entries go to the first account in
-   this list. Changes save straight away.
+2. Select **Default account** and put the card you use most first. If the
+   shortcut doesn't name an account, entries go to the first account in the
+   list. Changes save straight away. **How to set it up** lists the steps
+   below.
 3. Select **Install Apple Shortcut**. The app copies your private connection
    and opens the Shortcut.
 4. Select **Add Shortcut** (or **Replace** if you installed it before).
@@ -1593,8 +1696,8 @@ Before you import, the matched row says what will change, for example
 longer lists that were removed.
 
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
-to your first card in **Default account priority**. Under **Paying in another
-currency**, choose the card such purchases really land on, for example the
+to your first card in **Default account**. On the **Other currencies go to**
+row, choose the card such purchases really land on, for example the
 Citi card your Amaze card charges. It saves straight away; **Same as other
 purchases** turns it off. The category comes from your
 category rules (otherwise Other). Each iPhone installs its own copy.
@@ -1608,12 +1711,12 @@ remove it so one purchase cannot create two entries.
 
 When you describe an entry in words and say how you paid, for example
 "lunch at nasi lemak bmv 7.20, paynow, mine", the app needs to know which
-account that money came from. **Settings → Payment ways** has one card per
-person with two choices:
+account that money came from. **Settings → Payment ways** has a block per
+person with two rows:
 
 - **PayNow and bank transfers**: the bank account your PayNow, FAST, GIRO,
   NETS and bank transfers come from. It starts on your own first bank
-  account in **Default account priority**. You can pick any bank account,
+  account in **Default account**. You can pick any bank account,
   including a joint one.
 - **Cash**: your cash wallet. To choose one, first add an account of the
   type Cash under **Accounts**.
@@ -1628,7 +1731,7 @@ person is the one you name ("Serene paid by paynow"), or you when you say
 that account is used. If that person has no cash wallet chosen, the app
 asks which account the cash came from instead of putting it on a card. If
 no PayNow account is chosen, the entry goes to the first account in
-**Default account priority**, unless that is a credit card; then it asks
+**Default account**, unless that is a credit card; then it asks
 too. It never uses someone else's account. Words like "fast food", "badminton nets"
 or "cash withdrawal" are read as part of the description.
 
@@ -1645,7 +1748,9 @@ A small label says what kind of line it is:
 - **To do**: something small that keeps your numbers right or settles
   something. For example: a card statement that differs from what's
   recorded here by $42.80, a bill you planned that isn't matched to its
-  payment yet, money owed on a shared cost, or purchases with no category
+  payment yet, a month whose plan spends more than the income you expect
+  (the savings goal is already part of that spending), money owed on a
+  shared cost, or purchases with no category
   yet (they sit under "Other" until you pick one). A card bill is one too:
   from a week before its due date while no payment to the card is recorded
   ("Your OCBC 365 Credit Card bill of $33.15 is due in 3 days"), and for a
@@ -1696,6 +1801,15 @@ back a shared balance ("settling up").
    shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
+
+Money insights can be folded. Under the title, a card shows the
+first thing worth knowing (a **To do** comes first): its label, its headline
+and the start of the line beneath it, with "+2 more" and an arrow when there
+are others. Select the card to open all of it, and select the
+title row to fold it again. On a phone it starts folded; on a computer it
+starts open. With money totals hidden, the card just says how many insights
+there are. Each choice is remembered in this browser, separately for phone and
+computer.
 
 Money insights change month by month. Each month they word the same fact a
 different way and pick a different Fun fact and quote, so none of
@@ -1822,9 +1936,11 @@ it. Filters stay in the address, so you can bookmark a filtered view.
 
 ## The app stays on Loading
 
-The app loads in small steps and shows a percentage. If a step takes too
-long, it stops waiting and shows which part failed, with a button to try
-again.
+While a page loads, the app shows a pale outline of it, so nothing jumps
+when your figures arrive. When you move to another page, the old one stays
+until the new one is ready, with a small "Loading latest data..." note near
+the top. If a step takes too long, the app stops waiting and shows which part
+failed, with a button to try again.
 
 1. Select the retry button.
 2. If it keeps failing, check your internet connection and reload the page.
@@ -1939,8 +2055,8 @@ saves every row or none of them.
 
 - **Actual**: what really happened, taken from your entries.
 - **Planned**: what you intended, from the Month plan.
-- **Variance** or **Spend gap**: planned minus actual. Positive means you
-  spent less than planned.
+- **Variance**, or the **under plan** and **over plan** amount at the top:
+  planned minus actual. Under plan means you spent less than planned.
 - **Planned item**: a fixed commitment (savings, loan, subscription) whose
   actual comes from the entries you link to it.
 - **Budget bucket**: a flexible category budget whose actual comes from all

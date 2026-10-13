@@ -1,0 +1,371 @@
+/* The shared frame for dialogs and small sheets (sheet-dialog.jsx). It ships
+   with the code that opens a dialog, never in the first-screen stylesheet. */
+
+/* Phone: the sheet's head keeps the title and a round 44 px close button; the
+   lead, rows and bar follow the same rhythm as the Edit entry sheet. */
+.entry-mobile-sheet.is-dialog-sheet .entry-composer-head {
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.entry-mobile-sheet.is-dialog-sheet .entry-composer-copy strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.entry-mobile-sheet.is-dialog-sheet .entry-composer-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(38, 35, 31, 0.06);
+  color: var(--text);
+}
+
+/* A dialog nested in a modal Radix dialog (an import review dialog) sits
+   under body { pointer-events: none }; the sheet and its backdrop opt back in. */
+.entry-mobile-sheet.is-dialog-sheet,
+.entry-composer-overlay {
+  pointer-events: auto;
+}
+
+.sheet-dialog-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sheet-dialog-body > .lsd-card {
+  box-shadow: 0 10px 24px rgba(27, 24, 21, 0.08);
+}
+
+/* Wide screen: a centred dialog with the same head, lead, rows and bar. */
+.note-dialog-content.sheet-dialog {
+  width: min(520px, calc(100vw - 40px));
+  padding: 22px;
+  border-radius: 22px;
+}
+
+.note-dialog-content.sheet-dialog.is-wide {
+  width: min(720px, calc(100vw - 40px));
+}
+
+.sheet-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sheet-dialog-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sheet-dialog-head [data-radix-dialog-title],
+.sheet-dialog-copy > h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.sheet-dialog-copy > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.sheet-dialog-head .icon-action {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.lsd-bottom.is-dialog-bar {
+  margin-top: 18px;
+  gap: 12px;
+}
+
+.lsd-bottom.is-dialog-bar .lsd-quiet {
+  min-width: 88px;
+  min-height: 48px;
+}
+
+/* Destructive: pastel rose with the rose ink, never a saturated red. The
+   Cancel button beside it stays the quiet terracotta text. */
+.lsd-primary.is-danger {
+  border: 1px solid var(--pastel-rose-line);
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+}
+
+.lsd-primary.is-danger:disabled {
+  background: color-mix(in srgb, var(--pastel-rose) 55%, var(--paper));
+  color: color-mix(in srgb, var(--pastel-rose-ink) 55%, var(--paper));
+}
+
+.sheet-dialog-lead.is-danger .lsd-bubble,
+.sheet-dialog-lead.is-danger .lsd-subtitle {
+  --cat: var(--pastel-rose-ink);
+}
+
+/* A short field under the lead (a typed confirmation, one text field). */
+.sheet-dialog-field {
+  display: grid;
+  gap: 6px;
+}
+
+.sheet-dialog-field > span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.sheet-dialog-field .table-edit-input,
+.sheet-dialog-field textarea {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.sheet-dialog-note {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(var(--paper-rgb) / 0.8);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.sheet-dialog-note:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 760px) {
+  .sheet-dialog-note {
+    min-height: 140px;
+    max-height: none;
+    height: auto;
+  }
+}
+
+/* The sheet itself takes focus when it opens (no keyboard pop); that is not a
+   control, so it shows no ring. */
+.entry-mobile-sheet.is-dialog-sheet:focus,
+.note-dialog-content.sheet-dialog:focus {
+  outline: none;
+}
+
+/* A confirmation names what it does ("Confirm delete month"), so its button
+   takes the room it needs and wraps rather than clipping. */
+.sheet-dialog .lsd-bottom .lsd-primary {
+  max-width: none;
+  min-width: 132px;
+  padding: 8px 16px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.sheet-dialog .lsd-bottom.is-sheet-bar .lsd-primary {
+  flex: 1 1 auto;
+}
+
+.sheet-dialog .lsd-bottom.is-dialog-bar .lsd-primary {
+  flex: 0 0 auto;
+  min-height: 48px;
+}
+
+.sheet-dialog .lsd-bottom.is-sheet-bar .lsd-bottom-end {
+  flex: 1 1 60%;
+}
+
+/* Match planned item: its filter chips and list rows are real tap targets. */
+.planned-link-body .planned-link-filter-chip {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.planned-link-body .planned-link-filter-panel {
+  margin: 0;
+}
+
+.planned-link-body .planned-link-row {
+  min-height: 56px;
+}
+
+/* Transfer details: the candidate cards and their buttons are real tap
+   targets, and the sections read as one stack under the lead. */
+.transfer-match-dialog .transfer-match-layout,
+.transfer-match-dialog .sheet-dialog-body {
+  gap: 16px;
+}
+
+.transfer-match-dialog .transfer-match-section {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.transfer-match-dialog .transfer-match-section-head {
+  flex-wrap: wrap;
+}
+
+.transfer-match-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.transfer-match-dialog .transfer-match-card {
+  align-items: center;
+}
+
+.transfer-match-dialog .transfer-match-card-toggle {
+  min-height: 48px;
+}
+
+.transfer-match-dialog .transfer-match-card .lsd-quiet {
+  flex: 0 0 auto;
+}
+
+.transfer-match-dialog .transfer-settlement {
+  margin-top: 0;
+}
+
+/* The category pickers float above a dialog, not behind it. */
+.category-picker-popover {
+  z-index: 90;
+}
+
+/* The icon and colour pickers sit in their Detail rows as a small preview
+   and a chevron, not as bordered boxes of their own. */
+.sheet-dialog .lsd-row .category-picker-trigger {
+  width: auto;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 0 0 8px;
+  border: 0;
+  background: transparent;
+}
+
+/* A second, outlined action beside the primary one ("Save only this"). */
+.lsd-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lsd-secondary:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.lsd-secondary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Three actions (Cancel, Save only this, Update both) share the bar: Cancel
+   stays at the start, the other two split the row under it on a phone. */
+.sheet-dialog.is-three-actions .lsd-bottom {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end {
+  flex: 1 1 100%;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end > .lsd-primary {
+  flex: 1 1 0;
+  max-width: none;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end > .lsd-secondary {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom .lsd-quiet {
+  min-width: 56px;
+  padding: 0 8px;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom.is-dialog-bar .lsd-bottom-end {
+  flex: 1 1 auto;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom.is-dialog-bar .lsd-bottom-end > * {
+  flex: 0 0 auto;
+}
+
+.linked-note-sync-dialog .linked-note-sync-grid {
+  margin: 0;
+}
+
+/* Statement checkpoint: its history list is part of the dialog, so its
+   buttons are tap targets too. */
+.statement-checkpoint-dialog .settings-account-history {
+  margin-top: 4px;
+}
+
+.statement-checkpoint-dialog .settings-checkpoint-export,
+.statement-checkpoint-dialog .settings-account-actions .icon-action,
+.statement-checkpoint-dialog .settings-account-actions .subtle-remove,
+.statement-checkpoint-dialog .summary-focus-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* The Month Actions sheet: Delete month reads in the rose ink. */
+.lsd-row.is-danger .lsd-row-label {
+  color: var(--pastel-rose-ink);
+}
+
+/* A dialog opened over another sheet (Delete entry over the Edit entry sheet,
+   Transfer details, a picker) dims that sheet too, so its backdrop and itself
+   sit above it. */
+.entry-composer-overlay:has(+ .entry-mobile-sheet.is-dialog-sheet),
+.note-dialog-overlay:has(+ .is-picker-sheet) {
+  z-index: 90;
+}
+
+.entry-mobile-sheet.is-dialog-sheet,
+.mobile-select-dialog.is-picker-sheet {
+  z-index: 91;
+}
+
+/* The Month Actions rows are actions, not muted fields: their words read in
+   the ink. */
+.month-actions-sheet .lsd-row-label {
+  max-width: none;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sheet-dialog.is-three-actions .lsd-bottom-end > .lsd-primary {
+  min-width: 0;
+  padding: 0 10px;
+  white-space: nowrap;
+}
