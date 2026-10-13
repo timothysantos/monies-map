@@ -6,8 +6,8 @@ export const wholeMoney = (minor) => wholeMoneyFormatter.format(minor / 100);
 const atLeastZero = (minor) => Math.max(0, minor ?? 0);
 
 // What the period's income went to: one calculation for every screen and
-// Ask's plan answer (src/domain/money-use.ts).
-export { splitMoneyUse } from "../domain/money-use";
+// Ask's plan answer (src/domain/money-jobs.ts).
+export { splitMoneyUse } from "../domain/money-jobs";
 
 // The jobs the plan gives the money, as plain numbers (labels and statuses
 // are worded by money-jobs-detail.js, which loads with the opened

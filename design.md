@@ -382,7 +382,7 @@ question (docs/flows/ask-flow.md "Money questions"):
 
 The plan answer is Intent vs Outcome (round-2 mockups `chat-intent-*`):
 its lead reads the Month lead's "Spent" and "of $X plan" (the spend job:
-the shared `splitMoneyUse`, `src/domain/money-use.ts`), and under its lead
+the shared `splitMoneyUse`, `src/domain/money-jobs.ts`), and under its lead
 bar it draws the Month and Summary lead's `SavingsBar` (ui/savings-bar.jsx)
 from the answer's `outcome` (income received, Actual spend, Planned spend,
 Savings target, money moved to Investments and Savings, the Investments

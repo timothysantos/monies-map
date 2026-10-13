@@ -390,7 +390,7 @@ through `buildEntriesFilterSearch`, with the From Ask chip), `Open Month`
 The plan answer is Intent vs Outcome (mockups `chat-intent-*`): its lead
 is the Month and Summary lead's own "Spent" and "of $X plan", the spend
 job's figures (`spendJobFacts`, through the shared `splitMoneyUse` in
-`src/domain/money-use.ts`: Actual spend less money filed under Investments
+`src/domain/money-jobs.ts`: Actual spend less money filed under Investments
 or Savings, against Planned spend less the Savings target and the
 Investments plan rows), with the plan bar; its Plan chip, wording and
 prompt facts use the same two figures. Under it the Month and Summary

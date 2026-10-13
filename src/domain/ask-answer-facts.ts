@@ -14,8 +14,7 @@
 
 import { incomeMinor } from "./category-offset";
 import { plannedInvestMinor } from "./money-job-plan";
-import { isInvestmentsCategoryName, isSavingsCategoryName } from "./money-jobs";
-import { splitMoneyUse } from "./money-use";
+import { isInvestmentsCategoryName, isSavingsCategoryName, splitMoneyUse } from "./money-jobs";
 import { effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
 import type {
   DonutChartDatumDto,
@@ -263,7 +262,7 @@ export function combineMonthFacts(months: MonthFacts[]): MonthFacts {
 // A month (or quarter) as its spend job reads it, the Month and Summary
 // lead's figures: the spend without money moved to Investments or Savings,
 // against the plan without the savings target and the Investments rows
-// (splitMoneyUse, money-use.ts). The plan answer speaks in these, so its
+// (splitMoneyUse, money-jobs.ts). The plan answer speaks in these, so its
 // "of $X plan" is the lead's.
 export function spendJobFacts(facts: MonthFacts): MonthFacts {
   const figures = splitMoneyUse({

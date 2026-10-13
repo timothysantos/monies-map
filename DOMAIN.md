@@ -1127,7 +1127,7 @@ Rules:
 - the plan answer speaks in the spend job's figures, as the Month and
   Summary lead do: spend without money moved to Investments or Savings,
   against the plan without the Savings target and the Investments rows
-  (`splitMoneyUse`, `src/domain/money-use.ts`)
+  (`splitMoneyUse`, `src/domain/money-jobs.ts`)
 - the plan answer also carries its `outcome`: income received, Actual
   spend, Planned spend, the Savings target, money moved to Investments and
   Savings and the Investments plan rows, the figures the Month and Summary
