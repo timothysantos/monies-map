@@ -1415,6 +1415,8 @@ export default {
       const body = await request.json<{
         entryId?: string;
         splitGroupId?: string | null;
+        splitBasisPoints?: number;
+        splitAmountMinor?: number;
       }>();
 
       if (!body.entryId) {
@@ -1426,7 +1428,9 @@ export default {
           ok: true,
           ...(await createSplitExpenseFromEntryRecord(env.DB, {
             entryId: body.entryId,
-            splitGroupId: body.splitGroupId
+            splitGroupId: body.splitGroupId,
+            ...(body.splitBasisPoints !== undefined ? { splitBasisPoints: body.splitBasisPoints } : {}),
+            ...(body.splitAmountMinor !== undefined ? { splitAmountMinor: body.splitAmountMinor } : {})
           }))
         });
       } catch (error) {

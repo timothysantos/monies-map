@@ -132,6 +132,59 @@ test("adding an entry to splits that fails on its shares leaves no split, batch 
   assertSameDatabase(await dumpDatabase(db), before);
 });
 
+test("adding an entry to splits with Joyce's 100% share (Ask's add_entry_to_splits) keeps Tim as payer and moves the whole amount to Joyce", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Split sync all Joyce", amountMinor: 6_000 });
+  const before = await snapshotTotals(db, MONTH);
+
+  const split = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: null, splitBasisPoints: 0 });
+  assert.equal(split.status, 200, JSON.stringify(split.payload));
+
+  assert.deepEqual(
+    await rows(db, `SELECT person_id, ratio_basis_points, amount_minor FROM split_expense_shares WHERE split_expense_id = '${split.payload.splitExpenseId}' ORDER BY person_id`),
+    [
+      { person_id: "person-joyce", ratio_basis_points: 10_000, amount_minor: 6_000 },
+      { person_id: "person-tim", ratio_basis_points: 0, amount_minor: 0 }
+    ]
+  );
+  assert.deepEqual(await rows(db, `SELECT payer_person_id FROM split_expenses WHERE id = '${split.payload.splitExpenseId}'`), [{ payer_person_id: "person-tim" }]);
+  const after = await snapshotTotals(db, MONTH);
+  assert.equal(scopeTotal(after, "person-tim") - scopeTotal(before, "person-tim"), -6_000);
+  assert.equal(scopeTotal(after, "person-joyce") - scopeTotal(before, "person-joyce"), 6_000);
+});
+
+test("adding an entry to splits with an exact first share takes that amount; a share outside 0-100% is refused and changes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Split sync exact", amountMinor: 6_000 });
+  const before = await dumpDatabase(db);
+  for (const body of [{ splitBasisPoints: 10_001 }, { splitBasisPoints: -1 }, { splitBasisPoints: 12.5 }, { splitAmountMinor: 6_001 }, { splitAmountMinor: -5 }]) {
+    const refused = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: null, ...body });
+    assert.equal(refused.status, 400, JSON.stringify(body));
+  }
+  assertSameDatabase(await dumpDatabase(db), before);
+
+  const split = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: null, splitAmountMinor: 2_000 });
+  assert.equal(split.status, 200, JSON.stringify(split.payload));
+  assert.deepEqual(
+    await rows(db, `SELECT person_id, ratio_basis_points, amount_minor FROM split_expense_shares WHERE split_expense_id = '${split.payload.splitExpenseId}' ORDER BY person_id`),
+    [
+      { person_id: "person-joyce", ratio_basis_points: 6_667, amount_minor: 4_000 },
+      { person_id: "person-tim", ratio_basis_points: 3_333, amount_minor: 2_000 }
+    ]
+  );
+});
+
+test("adding an entry to splits with a chosen share that fails on its shares leaves nothing behind", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Split sync share atomic", amountMinor: 6_000 });
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO split_expense_shares/);
+  const split = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: null, splitBasisPoints: 0 }, { database: faulty.db });
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(split.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
 test("adding an income entry to splits is rejected and changes nothing", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const entryId = await createEntry(api, { date: DATE, description: "Split sync income", amountMinor: 6_000, entryType: "income", categoryName: "Salary" });

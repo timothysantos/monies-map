@@ -1438,6 +1438,7 @@ async function assertLedgerRowFreeForRestore(db: D1Database, input: { recordId: 
   }
 }
 
+const SPLIT_SHARE_OUT_OF_RANGE = "A split share must be between 0% and 100% of the amount.";
 const ENTRY_ALREADY_LINKED = "This entry is already linked to a split expense.";
 const LEDGER_ROW_ALREADY_LINKED = "This ledger row is already linked to another split record.";
 const RESTORE_LEDGER_ROW_TAKEN = "Its entry is now linked to another split. Delete that split first to restore this one.";
@@ -1659,8 +1660,18 @@ export async function linkSplitSettlementMatch(
 
 export async function createSplitExpenseFromEntryRecord(
   db: D1Database,
-  input: { entryId: string; splitGroupId?: string | null }
+  // splitBasisPoints / splitAmountMinor: the household's first person's
+  // share (as splitBasisPoints means everywhere), from Ask's "add to splits,
+  // all Joyce" (0). Absent: an even split, as the Entries action has always
+  // done. splitAmountMinor wins when both are sent.
+  input: { entryId: string; splitGroupId?: string | null; splitBasisPoints?: number; splitAmountMinor?: number }
 ) {
+  if (input.splitBasisPoints !== undefined && !(Number.isInteger(input.splitBasisPoints) && input.splitBasisPoints >= 0 && input.splitBasisPoints <= 10_000)) {
+    throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
+  }
+  if (input.splitAmountMinor !== undefined && !(Number.isInteger(input.splitAmountMinor) && input.splitAmountMinor >= 0)) {
+    throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
+  }
   const entry = await db
     .prepare(`
       SELECT
@@ -1720,8 +1731,11 @@ export async function createSplitExpenseFromEntryRecord(
     groupId: input.splitGroupId || null,
     date: entry.transaction_date
   });
+  if (input.splitAmountMinor !== undefined && input.splitAmountMinor > Math.abs(entry.amount_minor)) {
+    throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
+  }
   const sharePeople = await loadSplitSharePeople(db);
-  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amount_minor, 5000);
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amount_minor, input.splitBasisPoints ?? 5000, input.splitAmountMinor);
   const shares = [
     { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
     { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
