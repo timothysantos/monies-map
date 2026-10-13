@@ -969,7 +969,7 @@ function personForAccount(account: AccountDto, people: PersonDto[]) {
     ?? people.find((person) => person.name === account.ownerLabel)?.name;
 }
 
-function buildCreateBody(fields: EntryDraftDto["fields"]): EntryDraftCreateBodyDto | undefined {
+export function buildCreateBody(fields: EntryDraftDto["fields"]): EntryDraftCreateBodyDto | undefined {
   const { date, description, accountId, accountName, amountMinor } = fields;
   if (!date || !description || !accountId || !accountName || !amountMinor) {
     return undefined;

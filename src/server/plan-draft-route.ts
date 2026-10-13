@@ -90,23 +90,34 @@ export async function handlePlanDraft(request: Request, env: AiProviderEnv & { D
     source = "ai";
   }
 
-  const months = planDraftMonths(planRequest, { today, answers }) ?? [];
+  const drafted = await draftPlanRequest(env.DB, planRequest, { today, viewId, monthInView, answers, people: household.people, categoryNames: categories.map((category) => category.name) });
+  return json({ ok: true, supported: true, source, ai, ...drafted } satisfies PlanDraftResponseDto);
+}
+
+// Step 3 on its own, shared with Ask's turn route (ask-turn-route.ts): a
+// structured plan request resolved against the months' real plan rows into
+// a draft, a question or a note. Reads only.
+export async function draftPlanRequest(
+  db: D1Database,
+  planRequest: PlanRequest,
+  input: { today: string; viewId: string; monthInView: string; answers: PlanDraftAnswersDto; people: Array<{ id: string; name: string }>; categoryNames: string[] }
+): Promise<Pick<PlanDraftResponseDto, "draft" | "question" | "note">> {
+  const months = planDraftMonths(planRequest, { today: input.today, answers: input.answers }) ?? [];
   const rowsByMonth: Record<string, PlanRowInput[]> = Object.fromEntries(
-    await Promise.all(months.map(async (month) => [month, await loadMonthPlanRowsForDraft(env.DB, month)] as const))
+    await Promise.all(months.map(async (month) => [month, await loadMonthPlanRowsForDraft(db, month)] as const))
   );
   const build = buildPlanDraft(planRequest, {
-    today,
-    viewId,
-    monthInView,
-    people: household.people.map((person) => ({ id: person.id, name: person.name })),
-    categoryNames: categories.map((category) => category.name),
+    today: input.today,
+    viewId: input.viewId,
+    monthInView: input.monthInView,
+    people: input.people.map((person) => ({ id: person.id, name: person.name })),
+    categoryNames: input.categoryNames,
     rowsByMonth,
-    answers
+    answers: input.answers
   });
-  const base = { ok: true as const, supported: true, source, ai };
-  if (build.kind === "draft") return json({ ...base, draft: build.draft } satisfies PlanDraftResponseDto);
-  if (build.kind === "question") return json({ ...base, question: build.question } satisfies PlanDraftResponseDto);
-  return json({ ...base, note: build.note } satisfies PlanDraftResponseDto);
+  if (build.kind === "draft") return { draft: build.draft };
+  if (build.kind === "question") return { question: build.question };
+  return { note: build.note };
 }
 
 // The answers the page sends back with the same text: only well-formed

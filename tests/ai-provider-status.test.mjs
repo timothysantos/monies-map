@@ -480,7 +480,7 @@ test("a new calendar month in Singapore starts at zero, including at the month b
 });
 
 test("routing per tier: ask features keep Claude first until 90% of the target", () => {
-  const ask = ["receipt_read", "entry_draft", "ask_answer", "plan_draft"];
+  const ask = ["receipt_read", "entry_draft", "ask_answer", "plan_draft", "ask_turn"];
   const background = ["monthly_narrative", "import_explanation", "category_rules", "statement_text_fallback"];
   for (const capability of ask) {
     assert.deepEqual(["claude_all", "ask_only", "basic_first"].map((mode) => claudeGoesFirst(mode, capability)), [true, true, false], capability);

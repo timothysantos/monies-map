@@ -129,6 +129,7 @@ import { SplitSettlementLockedError } from "./domain/split-settlement-lock";
 import { getAuthenticatedEmail } from "./server/access-identity";
 import { checkAccess } from "./server/access-jwt";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
+import { handleAskTurn } from "./server/ask-turn-route";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
@@ -423,6 +424,15 @@ export default {
 
     if (url.pathname === "/api/imports-page") {
       return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB), timing);
+    }
+
+    // Ask's turn: AI reads the message into one action, the app checks it
+    // (src/server/ask-turn-route.ts); AI off falls back to Ask's rules.
+    if (url.pathname === "/api/ask/turn") {
+      if (request.method !== "POST") {
+        return json({ ok: false, error: "The Ask turn route only answers POST." }, 405, { Allow: "POST" });
+      }
+      return handleAskTurn(request, env);
     }
 
     if (url.pathname.startsWith("/api/ai-assist/")) {
