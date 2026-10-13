@@ -387,6 +387,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A share's percent beside its amount on the Add to Splits draft. */
+.ask-turn-percent {
+  min-width: 3.2em;
+  text-align: right;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .ask-plan-before {
   color: var(--muted);
   font-weight: 500;
