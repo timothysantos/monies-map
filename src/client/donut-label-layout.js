@@ -7,7 +7,10 @@
 // Pie defaults (start at 3 o'clock, counter-clockwise).
 
 export const MIN_LABEL_ARC = 18; // px of ring edge a labelled slice needs
-const RING_GAP = 6; // ring edge to label
+// Ring edge to label: every corner keeps this much room, so a label whose
+// rendered box comes out a little larger than measured (WebKit draws SVG text
+// a few px taller than the canvas measure) still clears the ring.
+const RING_GAP = 6;
 const LABEL_GAP = 4; // between two labels
 
 function overlaps(a, b) {
@@ -24,7 +27,7 @@ function boxAt(angle, width, height, { cx, cy, outerRadius }) {
     const x = cx + cos * radius + (cos - 1) * width / 2;
     const y = cy + sin * radius + (sin - 1) * height / 2;
     const corners = [[x, y], [x + width, y], [x, y + height], [x + width, y + height]];
-    if (corners.every(([px, py]) => Math.hypot(px - cx, py - cy) >= outerRadius + 2)) {
+    if (corners.every(([px, py]) => Math.hypot(px - cx, py - cy) >= outerRadius + RING_GAP)) {
       return { x, y, width, height };
     }
   }
