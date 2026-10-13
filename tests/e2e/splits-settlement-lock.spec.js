@@ -155,7 +155,7 @@ test("an entry amount edit that would move a settled linked split is refused, an
   const row = page.locator(".entry-row").filter({ hasText: settled.linkedDescription }).first();
   await expect(row).toBeVisible({ timeout: 60_000 });
 
-  await row.click();
+  await row.locator(".entry-row-main").click();
   const editor = page.locator(".entry-inline-editor").first();
   const amountInput = editor.getByRole("textbox", { name: /^Amount/ });
   await amountInput.fill("80.50");
