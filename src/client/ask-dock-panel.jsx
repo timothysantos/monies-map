@@ -22,16 +22,19 @@ import { isAskDockWide, useIsAskDockWide, useIsMobileLayout } from "./use-viewpo
 /**
  * Opens Ask beside the page (the field, or on a wide screen the Entries +
  * and Splits receipt buttons with their new entry's way in). An open panel
- * keeps its mode; otherwise the window's width picks it.
- * @param {{ intent?: object, file?: File | null }} [options]
+ * keeps its mode; otherwise the window's width picks it. `insight` (a
+ * Money insights line's "Ask about this") is asked in the chat once the
+ * conversation takes it.
+ * @param {{ intent?: object, file?: File | null, insight?: object | null }} [options]
  */
-export function openAskDockNow({ intent = undefined, file = null } = {}) {
+export function openAskDockNow({ intent = undefined, file = null, insight = null } = {}) {
   const store = getAskDockStore();
   const current = store.getSnapshot();
   store.open({
     mode: current.open ? current.mode : askDockModeOnOpen(askDockBandWidth({ phone: false, wide: isAskDockWide() })),
     intent,
-    file
+    file,
+    insight
   });
 }
 

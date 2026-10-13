@@ -21,6 +21,7 @@ export const entryFilterCopy = {
   under: (amount) => `under ${amount}`,
   between: (low, high) => `${low} to ${high}`,
   search: (words) => `“${words}”`,
+  entries: (count) => (count === 1 ? "1 entry" : `${count} entries`),
   moreCount: (first, count) => `${first} +${count}`
 };
 
@@ -59,7 +60,7 @@ function amountPart(minAmountMinor, maxAmountMinor) {
 
 /**
  * The list filters as short labels, in a fixed order: category, wallet,
- * type, amount, search. `withContext` adds the month and the view first (the
+ * type, amount, search, entries. `withContext` adds the month and the view first (the
  * Ask answer card; the Entries page shows those in its own header).
  * @returns {{ key: string, label: string }[]}
  */
@@ -87,6 +88,9 @@ export function describeFilterParts(filter, { accounts = [], people = [], withCo
   }
   if (filter.search) {
     parts.push({ key: "search", label: entryFilterCopy.search(filter.search) });
+  }
+  if (filter.entryIds?.length) {
+    parts.push({ key: "entries", label: entryFilterCopy.entries(filter.entryIds.length) });
   }
   return parts;
 }

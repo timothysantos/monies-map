@@ -7,6 +7,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   addSavedEntryToSplits,
   requestEntryDraft,
+  requestInsightExplanation,
   requestMoneyAnswer,
   requestReceiptRead,
   resolveSkewCandidate,
@@ -35,6 +36,8 @@ import {
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
+import { AskInsightAnswerCard } from "./ask-insight-answer-card";
+import { buildInsightAnswer, insightExplainBody, readInsightHandoff } from "./ask-insight-answer";
 import { skewCheckLabels } from "./ask-skew-check";
 import { readAnswerIntent } from "../domain/ask-answer-intent";
 import { AskBriefCard } from "./ask-brief-card";
@@ -53,6 +56,7 @@ import { createPressGesture, createVoiceController, joinSpokenText } from "./ask
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
 import { EmptyState } from "./ui-states";
 import { messages } from "./copy/en-SG";
+import { useMoneyPrivacy } from "./money-privacy";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskSplitSuggestion } from "./use-ask-split-suggestion";
@@ -136,6 +140,10 @@ function useAskConversation(store, key, create) {
   const conversation = useSyncExternalStore(store.subscribe, read, read);
   return { conversation, restored: initial.restored };
 }
+
+// Insight questions already asked from history state (a phone's "Ask about
+// this"): StrictMode runs the effect twice before the state is replaced.
+const askedInsightHandoffs = new WeakSet();
 
 // A typed line that reads as a question rather than something to add.
 function looksLikeQuestion(text) {
@@ -392,7 +400,7 @@ function AskConversation({
     // A money answer or the check before it arrives after its question, and
     // is often taller than the screen: the question right above it (else
     // the card itself, after a check) goes to the top, so its lead shows.
-    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check");
+    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check" || item.kind === "insight-answer");
     if (money) {
       const before = settled[settled.indexOf(money) - 1];
       document.getElementById(before?.kind === "me" ? before.id : money.id)?.scrollIntoView?.({ block: "start", behavior });
@@ -598,6 +606,44 @@ function AskConversation({
     }
   }
 
+  // "Ask about this" on a Money insights line (ask-insight-answer.js): the
+  // question and the card built from the insight's own facts show at once,
+  // with no request. Then, only with AI on, the server may add a short
+  // explanation checked against those facts; a failure changes nothing.
+  async function askAboutInsight(value) {
+    const insight = readInsightHandoff(value);
+    if (!insight) {
+      return;
+    }
+    const answer = buildInsightAnswer(insight, { today });
+    const item = threadItem("insight-answer", { answer, explanation: null });
+    if ((store.read(conversationKey) ?? conversation).pending) {
+      setPending(null);
+    }
+    appendThread(threadItem("me", { text: answer.question, hiddenText: askCopy.insight.hiddenQuestion }), item);
+    setWorking("insight");
+    setStatus(askCopy.money.reading);
+    try {
+      const result = await requestInsightExplanation(insightExplainBody(insight));
+      if (result.ok && result.explanation) {
+        updateConversation((current) => ({
+          ...current,
+          thread: current.thread.map((entry) => (entry.id === item.id ? { ...entry, explanation: result.explanation } : entry))
+        }));
+      }
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+  }
+
+  // A follow-up chip that is a money question Ask already answers: asked
+  // as if typed, through the answer route and its check before any figure.
+  async function askFollowUpQuestion(link) {
+    appendThread(threadItem("me", { text: link.text }));
+    await askMoneyQuestion(link.text, link.request);
+  }
+
   function setCheckStatus(itemId, status) {
     updateConversation((current) => ({
       ...current,
@@ -663,6 +709,10 @@ function AskConversation({
       goTo("/month", {}, buildContextParams(new URLSearchParams(), link.viewId, link.month, link.scope));
     } else if (link.kind === "splits") {
       goTo("/splits", { split_group: link.groupId && link.groupId !== "split-group-none" ? link.groupId : undefined }, buildContextParams(new URLSearchParams(), link.viewId, link.month, selectedScope));
+    } else if (link.kind === "imports") {
+      goTo("/imports");
+    } else if (link.kind === "question" && link.text && link.request && !working) {
+      void askFollowUpQuestion(link);
     }
   }
 
@@ -1068,6 +1118,9 @@ function AskConversation({
     const dock = getAskDockStore();
     dock.setReady(true);
     const handoff = dock.takeHandoff();
+    if (handoff.insight) {
+      void askAboutInsight(handoff.insight);
+    }
     if (handoff.text) {
       // As typed, trailing space included: the person may still be typing.
       const before = store.read(conversationKey)?.composerText ?? "";
@@ -1088,6 +1141,22 @@ function AskConversation({
     // Once per conversation shown in the dock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inDock, conversationKey]);
+
+  // On a phone, "Ask about this" opens /ask with the insight in history
+  // state (App.jsx): asked once, then dropped from the entry, so a reload
+  // or going back and forward does not ask it again.
+  const stateInsight = inDock ? null : location.state?.askInsight ?? null;
+  useEffect(() => {
+    if (!stateInsight || typeof stateInsight !== "object" || askedInsightHandoffs.has(stateInsight)) {
+      return;
+    }
+    askedInsightHandoffs.add(stateInsight);
+    const { askInsight: _asked, ...restState } = location.state ?? {};
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: Object.keys(restState).length ? restState : null });
+    void askAboutInsight(stateInsight);
+    // Once per insight handed over.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateInsight]);
 
   // Escape closes the popup, unless something inside already handled it
   // (a menu or picker) or the person is typing in a field on the page
@@ -1470,8 +1539,22 @@ function ThreadItem({ item, settled = false, answerProps }) {
   if (item.kind === "money-check") {
     return <AskSkewCheckCard id={item.id} candidate={item.candidate} status={item.status} today={answerProps.today} settled={settled} />;
   }
+  if (item.kind === "insight-answer") {
+    return (
+      <AskInsightAnswerCard
+        id={item.id}
+        answer={item.answer}
+        explanation={item.explanation}
+        settled={settled}
+        queryClient={answerProps.queryClient}
+        fetchEntriesPage={answerProps.fetchEntriesPage}
+        trackedMonths={answerProps.trackedMonths}
+        today={answerProps.today}
+      />
+    );
+  }
   if (item.kind === "me") {
-    return <p className={`ask-me${settledClass}`} id={item.id}>{item.text}</p>;
+    return item.hiddenText ? <MoneyMessage item={item} settledClass={settledClass} /> : <p className={`ask-me${settledClass}`} id={item.id}>{item.text}</p>;
   }
   if (item.kind === "photo") {
     return (
@@ -1484,6 +1567,13 @@ function ThreadItem({ item, settled = false, answerProps }) {
     return <p className="ask-note is-status" aria-busy="true">{item.text}</p>;
   }
   return <p className={`ask-note${item.tone === "calm" ? " is-calm" : ""}${settledClass}`}>{item.text}</p>;
+}
+
+// A message that carries amounts (an insight question): with money hidden it
+// reads as its hidden words instead, so no figure or sign shows.
+function MoneyMessage({ item, settledClass }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  return <p className={`ask-me${settledClass}`} id={item.id}>{areTotalsVisible ? item.text : item.hiddenText}</p>;
 }
 
 // The view, month and scope the person is looking at, carried to whichever

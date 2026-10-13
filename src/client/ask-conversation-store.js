@@ -28,7 +28,7 @@ const MAX_SLOTS = 3;
 const MAX_THREAD_ITEMS = 60;
 const MAX_TEXT = 1000;
 const DEFAULT_MAX_STORED_CHARS = 60_000;
-const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check"]);
+const STORED_KINDS = new Set(["me", "note", "answer", "money-answer", "money-check", "insight-answer"]);
 const DROPPED_KEYS = new Set(["url", "image", "photo", "blob", "file", "audio", "clip", "dataUrl", "receiptImage", "thumbUrl"]);
 
 function isObject(value) {
@@ -132,6 +132,9 @@ function readThreadItem(item) {
   // the check before one keeps its candidate and the question to ask again.
   if (item.kind === "money-answer") return isObject(item.answer) && isObject(item.answer.lead) && isObject(item.wording) ? item : null;
   if (item.kind === "money-check") return isObject(item.candidate) && isObject(item.request) && typeof item.text === "string" ? item : null;
+  // An insight answer keeps the card built from the insight's own facts and
+  // any checked AI explanation.
+  if (item.kind === "insight-answer") return isObject(item.answer) && typeof item.answer.fact === "string" && Array.isArray(item.answer.lines) && Array.isArray(item.answer.links) ? item : null;
   return typeof item.text === "string" ? { ...item, text: clampText(item.text) } : null;
 }
 

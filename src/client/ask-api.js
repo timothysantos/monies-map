@@ -43,6 +43,7 @@ export const ASK_ENDPOINTS = Object.freeze({
   entryDraft: "/api/ai-assist/entry-draft",
   receiptRead: "/api/ai-assist/receipt-read",
   answer: "/api/ai-assist/answer",
+  insightExplain: "/api/ai-assist/insight-explain",
   splitSuggestion: "/api/splits/suggestion"
 });
 
@@ -323,6 +324,41 @@ export async function requestMoneyAnswer({ text, viewId, scope, month, keepCandi
       throw error;
     }
     return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * The optional AI explanation on an insight question (POST
+ * /api/ai-assist/insight-explain): `{ ok: true, explanation }`, where the
+ * explanation is `{ text, source: "ai" }` or null (AI off, out of allowance
+ * or its words failed the check). Any failure is `{ ok: false }`: the card
+ * already shows the insight's facts.
+ * @param {{ kind: string, fact: string, think: string, lines: object[], signal?: AbortSignal, fetchImpl?: typeof fetch }} input
+ */
+export async function requestInsightExplanation({ kind, fact, think, lines, signal = undefined, fetchImpl = fetch }) {
+  try {
+    const response = await fetchImpl(ASK_ENDPOINTS.insightExplain, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, fact, think, lines }),
+      signal
+    });
+    if (!response.ok) {
+      return { ok: false, explanation: null };
+    }
+    const payload = await readJson(response);
+    const explanation = payload?.explanation;
+    return {
+      ok: true,
+      explanation: explanation && typeof explanation.text === "string" && explanation.text && explanation.source === "ai"
+        ? { text: explanation.text, source: "ai" }
+        : null
+    };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw error;
+    }
+    return { ok: false, explanation: null };
   }
 }
 
