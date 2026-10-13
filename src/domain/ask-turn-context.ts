@@ -8,7 +8,8 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadMonthPlanRowsForDraft } from "./app-repository-months";
 import { loadEntryDraftContext } from "./entry-draft-context";
-import type { AskTurnContext, AskTurnDraftFocus, AskTurnFocus, AskTurnFocusEntry, AskTurnGroup, AskTurnMessage, AskTurnPerson } from "./ask-turn";
+import { findClosedStatementCheckpointForTransaction } from "./app-repository-entry-commands";
+import type { AskTurnCategory, AskTurnContext, AskTurnDraftFocus, AskTurnFocus, AskTurnFocusEntry, AskTurnGroup, AskTurnListFocus, AskTurnMessage, AskTurnPerson } from "./ask-turn";
 import type { EntryType } from "../types/dto";
 
 const MAX_ID_LENGTH = 200;
@@ -25,7 +26,7 @@ export interface AskTurnRequestInput {
 }
 
 export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestInput, today: string): Promise<AskTurnContext> {
-  const [people, groups] = await Promise.all([loadPeople(db), loadGroups(db)]);
+  const [people, groups, categories] = await Promise.all([loadPeople(db), loadGroups(db), loadCategoryRecords(db)]);
   const viewId = input.viewId === "household" || people.some((person) => person.id === input.viewId) ? input.viewId : "household";
   const [entry, planRows] = await Promise.all([
     loadEntryDraftContext(db, { today, viewId }),
@@ -42,6 +43,7 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
     entry,
     groups,
     planLines,
+    categories,
     focus: null,
     history: input.history,
     text: input.text
@@ -90,7 +92,29 @@ async function loadFocus(db: D1Database, value: unknown, context: AskTurnContext
   if (focus.kind === "insight" && typeof focus.topic === "string") {
     return { kind: "insight", topic: focus.topic.slice(0, 60) };
   }
+  if (focus.kind === "entry_list" && focus.list && typeof focus.list === "object") {
+    return { kind: "entry_list", list: readList(focus.list as Record<string, unknown>, context) };
+  }
   return null;
+}
+
+// The Entries answer card in focus, as the page sent it: its month, the
+// words it searched (cut short) and only the household's own categories.
+function readList(raw: Record<string, unknown>, context: AskTurnContext): AskTurnListFocus {
+  const month = typeof raw.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw.month) ? raw.month : context.month;
+  const search = typeof raw.search === "string" ? raw.search.replace(/\s+/g, " ").trim().slice(0, 60) : "";
+  const categories = Array.isArray(raw.categories)
+    ? raw.categories.filter((name): name is string => typeof name === "string" && context.entry.categoryNames.includes(name)).slice(0, 6)
+    : [];
+  return { month, search, categories };
+}
+
+async function loadCategoryRecords(db: D1Database): Promise<AskTurnCategory[]> {
+  const result = await db
+    .prepare("SELECT id, name, color_hex, is_system FROM categories WHERE household_id = ? ORDER BY sort_order, name")
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string; name: string; color_hex: string; is_system: number }>();
+  return result.results.map((row) => ({ id: row.id, name: row.name, colorHex: row.color_hex, isSystem: Boolean(row.is_system) }));
 }
 
 // The household's own entry, or null for an id that is not one.
@@ -105,6 +129,13 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
         transactions.currency,
         transactions.entry_type,
         transactions.owner_person_id,
+        transactions.account_id,
+        transactions.note,
+        transactions.post_date,
+        transactions.transfer_direction,
+        transactions.transfer_group_id,
+        transactions.bank_certification_status,
+        owners.display_name AS owner_name,
         accounts.owner_person_id AS account_owner_person_id,
         accounts.account_name,
         categories.name AS category_name,
@@ -117,6 +148,7 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN categories ON categories.id = transactions.category_id
+      LEFT JOIN people AS owners ON owners.id = transactions.owner_person_id
       WHERE transactions.household_id = ? AND transactions.id = ?
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, entryId)
@@ -128,6 +160,13 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
       currency: string;
       entry_type: EntryType;
       owner_person_id: string | null;
+      account_id: string;
+      note: string | null;
+      post_date: string | null;
+      transfer_direction: "in" | "out" | null;
+      transfer_group_id: string | null;
+      bank_certification_status: string;
+      owner_name: string | null;
       account_owner_person_id: string | null;
       account_name: string;
       category_name: string | null;
@@ -136,6 +175,10 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
   if (!row) {
     return null;
   }
+  // The same lock the entry update checks (assertUnlockedBankFactsForEntryUpdate).
+  const lock = row.bank_certification_status === "statement_certified"
+    ? await findClosedStatementCheckpointForTransaction(db, { accountId: row.account_id, transactionDate: row.transaction_date })
+    : null;
   return {
     entryId: row.id,
     description: row.description,
@@ -147,7 +190,14 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
     amountMinor: row.amount_minor,
     // The payer Add to Splits records (createSplitExpenseFromEntryRecord).
     payerPersonId: row.owner_person_id ?? row.account_owner_person_id,
-    linkedToSplits: Number(row.linked_splits) > 0
+    linkedToSplits: Number(row.linked_splits) > 0,
+    accountId: row.account_id,
+    ownerName: row.owner_name,
+    note: row.note ?? "",
+    postDate: row.post_date,
+    transferDirection: row.transfer_direction,
+    linkedToTransfer: Boolean(row.transfer_group_id),
+    lockedMonth: lock?.checkpoint_month ?? null
   };
 }
 

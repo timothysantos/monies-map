@@ -5,7 +5,85 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildTurnFocus, buildTurnHistory, readAskTurnResponse, requestAskTurn, saveSplitProposal } from "../src/client/ask-turn-api.js";
+import { ASK_CHANGE_PATHS, buildTurnFocus, buildTurnHistory, linkTurnMatch, readAskTurnResponse, requestAskTurn, runChangeSteps, saveSplitProposal } from "../src/client/ask-turn-api.js";
+import { ASK_CHANGE_PATHS as SERVER_CHANGE_PATHS } from "../src/domain/ask-turn-actions.ts";
+
+function change(overrides = {}) {
+  return {
+    type: "recategorise_bulk",
+    title: "grab",
+    rows: [{ field: "category", before: "Food & Drinks", after: "Transport" }],
+    entries: [{ entryId: "txn-1", date: "2026-09-10", description: "GRAB RIDE", amountMinor: 1_200, currency: "SGD", categoryName: "Food & Drinks" }],
+    count: 12,
+    confirmCount: 12,
+    save: [{ path: "/api/entries/update-category", body: { changes: [{ entryId: "txn-1", fromCategoryName: "Food & Drinks", categoryName: "Transport" }] } }],
+    undo: [{ path: "/api/entries/update-category", body: { changes: [{ entryId: "txn-1", fromCategoryName: "Transport", categoryName: "Food & Drinks" }], confirmedCount: 12 } }],
+    rule: { pattern: "GRAB", categoryId: "cat-transport", categoryName: "Transport" },
+    month: "2026-09",
+    refresh: ["entries", "month", "summary"],
+    ...overrides
+  };
+}
+
+function recordingFetch(responses = []) {
+  const calls = [];
+  const fetchImpl = async (path, init) => {
+    calls.push({ path, body: JSON.parse(init.body) });
+    const next = responses.shift() ?? { ok: true };
+    return new Response(JSON.stringify(next), { status: next.ok === false ? 400 : 200 });
+  };
+  return { calls, fetchImpl };
+}
+
+test("Phase 2: a change card is kept only when every step posts to a known command; the page and server lists agree", () => {
+  assert.deepEqual([...ASK_CHANGE_PATHS], [...SERVER_CHANGE_PATHS]);
+  const kept = readAskTurnResponse({ ok: true, mode: "ai", action: "recategorise", reply: { kind: "change", change: change() } });
+  assert.equal(kept.reply.kind, "change");
+  assert.equal(kept.reply.change.confirmCount, 12);
+  for (const bad of [
+    change({ save: [{ path: "/api/entries/delete", body: { entryId: "txn-1" } }] }),
+    change({ undo: [{ path: "/api/imports/rollback", body: {} }] }),
+    change({ save: [] }),
+    change({ type: "delete_everything" })
+  ]) {
+    assert.deepEqual(readAskTurnResponse({ ok: true, mode: "ai", action: "recategorise", reply: { kind: "change", change: bad } }), { ok: false });
+  }
+  const matches = readAskTurnResponse({ ok: true, mode: "ai", action: "review_matches", reply: { kind: "matches", month: "2026-09", matches: [{ id: "m1", kind: "expense", splitRecordId: "split-1", transactionId: "txn-9", amountMinor: -8_000, splitAmountMinor: 8_000 }] } });
+  assert.equal(matches.reply.kind, "matches");
+  const blocked = readAskTurnResponse({ ok: true, mode: "ai", action: "cannot_help", reply: { kind: "open_page", page: "entries", params: {}, why: "Ask doesn't delete entries." } });
+  assert.equal(blocked.reply.why, "Ask doesn't delete entries.");
+});
+
+test("Phase 2: Save posts each step; the confirmed count is added only from the person's tap; Undo takes what the save created", async () => {
+  const { calls, fetchImpl } = recordingFetch();
+  const unconfirmed = await runChangeSteps(change().save, { fetchImpl });
+  assert.equal(unconfirmed.ok, true);
+  assert.equal(calls[0].body.confirmedCount, undefined);
+  await runChangeSteps(change().save, { confirmedCount: 12, fetchImpl });
+  assert.equal(calls[1].body.confirmedCount, 12);
+
+  const simplify = recordingFetch([{ ok: true, checkpointId: "split-checkpoint-1", amountMinor: 6_000 }, { ok: true }]);
+  const saved = await runChangeSteps([{ path: "/api/splits/checkpoints/create", body: { viewerPersonId: "person-tim", date: "2026-10-13", currency: "SGD" } }], { fetchImpl: simplify.fetchImpl });
+  await runChangeSteps([{ path: "/api/splits/checkpoints/reopen", body: {}, fromResult: { key: "checkpointId", as: "checkpointId" } }], { result: saved.result, fetchImpl: simplify.fetchImpl });
+  assert.deepEqual(simplify.calls[1], { path: "/api/splits/checkpoints/reopen", body: { checkpointId: "split-checkpoint-1" } });
+
+  const refused = recordingFetch([{ ok: false, error: "Some of these entries were changed meanwhile." }]);
+  assert.deepEqual(await runChangeSteps(change().save, { fetchImpl: refused.fetchImpl }), { ok: false, error: "Some of these entries were changed meanwhile.", result: null });
+  const unknown = recordingFetch();
+  assert.equal((await runChangeSteps([{ path: "/api/entries/delete", body: {} }], { fetchImpl: unknown.fetchImpl })).ok, false);
+  assert.equal(unknown.calls.length, 0, "a step to an unknown command is never posted");
+
+  const match = recordingFetch();
+  await linkTurnMatch({ kind: "settlement", splitRecordId: "settle-1", transactionId: "txn-2" }, { fetchImpl: match.fetchImpl });
+  assert.deepEqual(match.calls, [{ path: "/api/splits/matches/link-settlement", body: { settlementId: "settle-1", transactionId: "txn-2" } }]);
+});
+
+test("Phase 2: right after an Entries answer the focus is that list (what it searched), never its rows", () => {
+  assert.deepEqual(buildTurnFocus({ list: { month: "2026-09", search: "grab", categories: ["Taxi"], wallets: ["acct-1"] }, card: { status: "saved", saved: { entryId: "txn-1" } } }), {
+    kind: "entry_list", list: { month: "2026-09", search: "grab", categories: ["Taxi"] }
+  });
+  assert.equal(buildTurnHistory([{ kind: "change-draft", change: { type: "recategorise_bulk", title: "grab" }, status: "saved" }])[0].text, "Drafted a change (recategorise bulk) to grab (saved).");
+});
 
 test("the history is the person's messages and a short line for each thing Ask showed, newest eight", () => {
   const thread = [

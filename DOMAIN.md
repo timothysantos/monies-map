@@ -1115,15 +1115,27 @@ Canonical terms:
 - `turn action`: what the model chose, one of `draft_entry`, `edit_draft`,
   `add_entry_to_splits`, `draft_split_expense`, `draft_settlement`,
   `plan_change`, `answer_question`, `search_entries`, `open_page`,
-  `ask_clarification`, `cannot_help`
+  `ask_clarification`, `cannot_help`, and Phase 2's changes to saved data:
+  `edit_saved_entry`, `recategorise`, `edit_note`, `link_transfer`,
+  `split_group`, `review_matches`, `set_payment_way`, `edit_category`,
+  `link_plan`
+- `change card` (`AskChange`, `src/domain/ask-turn-actions.ts`): a Phase 2
+  change as the page shows it: each row that changes before and after, the
+  entries it touches (count and first rows), the existing commands it saves
+  through (`ASK_CHANGE_PATHS` only) and its Undo where the command can take
+  it back; a change over 10 entries needs the person's "Yes, change all N"
+- `blocked`: what Ask never does (deleting entries, months or imports,
+  importing or undoing an import, reconciling, accounts, people); the model
+  can only name it, and Ask says why and opens the page that does it
 - `turn context`: what the model reads with the message: the page, view,
   scope and month, the people in household order, wallet, category, split
   group and plan line names, and the `focus`. Names only: no account, card,
   phone or ID number and no amount from the household's records
 - `focus`: what the message is about: the saved entry (the Apple Pay card,
   a card saved in this conversation; loaded by id from the household's own
-  rows), the card being filled, the split group Ask was opened for, or a
-  Money insights line
+  rows), the card being filled, the split group Ask was opened for, a
+  Money insights line, or the Entries answer Ask showed last (its month,
+  words and categories)
 - `turn reply`: the validated action as the page shows it: an `Entry
   Draft`, a change to the card, a `split proposal`, a `settlement draft`, a
   `Plan Draft`, a `Money Question` (as one sentence the answer reader

@@ -86,6 +86,7 @@ import {
   isAskEntryReference,
   linkTransferPair,
   settleTransferPair,
+  updateEntryCategoriesRecord,
   updateEntryCategoryRecord,
   updateEntryClassificationRecord,
   updateEntryNoteRecord,
@@ -978,7 +979,32 @@ export default {
     }
 
     if (url.pathname === "/api/entries/update-category" && request.method === "POST") {
-      const body = await request.json<{ entryId?: string; categoryName?: string }>();
+      const body = await request.json<{
+        entryId?: string;
+        categoryName?: string;
+        changes?: Array<{ entryId?: unknown; fromCategoryName?: unknown; categoryName?: unknown }>;
+        confirmedCount?: unknown;
+      }>();
+
+      // Many entries at once (Ask's bulk recategorise and its Undo).
+      if (Array.isArray(body.changes)) {
+        const text = (value: unknown) => (typeof value === "string" ? value : "");
+        try {
+          return json({
+            ok: true,
+            ...(await updateEntryCategoriesRecord(env.DB, {
+              changes: body.changes.map((change) => ({
+                entryId: text(change?.entryId),
+                fromCategoryName: text(change?.fromCategoryName),
+                categoryName: text(change?.categoryName)
+              })),
+              confirmedCount: typeof body.confirmedCount === "number" ? body.confirmedCount : undefined
+            }))
+          });
+        } catch (error) {
+          return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry categories" }, 400);
+        }
+      }
 
       if (!body.entryId || !body.categoryName) {
         return json({ ok: false, error: "Missing entry category fields" }, 400);

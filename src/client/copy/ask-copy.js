@@ -250,6 +250,96 @@ export const askCopy = {
       discarded: "Not recorded.",
       unsure: "This may have been recorded before the page closed. Check Splits before recording it again.",
       openSplits: "Open Splits"
+    },
+    // A change to saved data Ask drafted (ask-turn-cards.jsx AskChangeCard):
+    // what changes, before and after; nothing is saved until its button.
+    change: {
+      label: "Change",
+      savedTag: "Saved",
+      undoneTag: "Changed back",
+      subtitle: {
+        edit_entry: "Change this entry",
+        recategorise: "Change the category",
+        recategorise_bulk: (count) => `${count === 1 ? "1 entry" : `${count} entries`} change category`,
+        entry_note: "Change the note",
+        month_note: "Change the month's note",
+        link_transfer: "Link as a transfer",
+        group_create: "New split group",
+        group_move: "Move to another split group",
+        simplify: (count) => `Simplify ${count} open ${count === 1 ? "split" : "splits"} into one payment`,
+        payment_way: "Payment ways",
+        category_create: "New category",
+        category_rename: "Rename category",
+        category_colour: "Change its colour",
+        plan_link: (count) => `Link ${count === 1 ? "1 entry" : `${count} entries`} to this plan line`
+      },
+      fields: {
+        amount: "Amount",
+        date: "Date",
+        description: "Description",
+        category: "Category",
+        wallet: "Wallet",
+        owner: "Owner",
+        note: "Note",
+        from: "From",
+        to: "To",
+        group: "Split group",
+        name: "Name",
+        currency: "Currency",
+        paynow: "PayNow",
+        cash: "Cash",
+        colour: "Colour",
+        line: "Plan line"
+      },
+      none: "None",
+      noGroup: "No group",
+      mixed: "Several",
+      entriesLabel: "Entries it changes",
+      more: (count) => `and ${count} more`,
+      confirm: (count) => `Yes, change all ${count} entries`,
+      confirmHint: "Tap to confirm",
+      save: {
+        recategorise_bulk: (count) => `Change ${count === 1 ? "1 entry" : `${count} entries`}`,
+        link_transfer: "Link",
+        group_create: "Create group",
+        simplify: "Simplify",
+        category_create: "Add category",
+        plan_link: "Link entries"
+      },
+      saveDefault: "Save",
+      saving: "Saving…",
+      discard: "Not now",
+      discarded: "Not changed.",
+      saved: {
+        recategorise_bulk: (count, category) => `Moved ${count === 1 ? "1 entry" : `${count} entries`} to ${category}.`,
+        link_transfer: "Linked as a transfer.",
+        group_create: "Group created on Splits.",
+        simplify: "Simplified on Splits.",
+        category_create: "Category added.",
+        plan_link: "Linked to the plan line."
+      },
+      savedDefault: "Saved.",
+      undo: "Undo",
+      undoing: "Changing back…",
+      undone: "Changed back.",
+      rule: (pattern, category) => `Also file new ${pattern} entries as ${category}`,
+      ruleSaving: "Saving the rule…",
+      ruleSaved: (category) => `New ones will go to ${category} too.`,
+      open: { entries: "Open in Entries", splits: "Open Splits", settings: "Open Settings", month: "Open Month" }
+    },
+    // Bank rows that may be the payment behind a split (AskMatchesCard).
+    matches: {
+      label: "Matches to review",
+      title: "Bank rows that may match your splits",
+      subtitle: (month) => month,
+      bank: "Bank row",
+      accept: "Match",
+      skip: "Not this one",
+      linked: "Matched",
+      skipped: "Skipped",
+      needsRate: "Check the rate on Splits",
+      saved: "Matched on Splits.",
+      openSplits: "Open Splits"
     }
   },
   questions: {

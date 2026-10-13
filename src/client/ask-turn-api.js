@@ -9,7 +9,9 @@
 // - Saves never use a new route: an add to Splits is POST
 //   /api/splits/expenses/from-entry with the proposal's share, a settle-up
 //   payment POST /api/splits/settlements/create, an entry the card's create
-//   path, a plan change /api/month-plan/apply-changes.
+//   path, a plan change /api/month-plan/apply-changes. A Phase 2 change card
+//   (`change`) carries its own steps, each one of ASK_CHANGE_PATHS, and its
+//   Undo; a match is Splits' link command.
 //
 // Fails soft: any network error, non-OK status or unreadable body comes
 // back as { ok: false }, and the page reads the message with its rules.
@@ -52,6 +54,8 @@ function describeThreadItem(item) {
     case "plan-draft": return "Drafted a plan change.";
     case "split-proposal": return `Drafted adding ${item.proposal?.description ?? "the entry"} to Splits${item.status === "saved" ? " (added)" : ""}.`;
     case "settlement-draft": return `Drafted a settle-up payment${item.status === "saved" ? " (recorded)" : ""}.`;
+    case "change-draft": return `Drafted a change (${String(item.change?.type ?? "").replace(/_/g, " ")}) to ${item.change?.title ?? "it"}${item.status === "saved" ? " (saved)" : item.status === "undone" ? " (undone)" : ""}.`;
+    case "matches": return "Showed bank rows that may match splits.";
     default: return "";
   }
 }
@@ -61,7 +65,15 @@ function describeThreadItem(item) {
  * a card saved here), the card being filled, or the split group Ask was
  * opened for. Names and ids only; the server loads the entry itself.
  */
-export function buildTurnFocus({ card = null, intent = null, insightTopic = "" } = {}) {
+export function buildTurnFocus({ card = null, intent = null, insightTopic = "", list = null } = {}) {
+  // The Entries answer Ask showed last ("make these Transport"): what it
+  // searched for, never its rows; the server reads the entries again.
+  if (list?.month) {
+    return {
+      kind: "entry_list",
+      list: { month: list.month, search: typeof list.search === "string" ? list.search : "", categories: Array.isArray(list.categories) ? list.categories : [] }
+    };
+  }
   if (card?.status === "saved" && card.saved?.entryId) {
     return { kind: "saved_entry", entryId: card.saved.entryId };
   }
@@ -161,7 +173,15 @@ function readReply(reply) {
     case "search":
       return isObject(reply.filter) && isText(reply.filter.month) && Array.isArray(reply.filter.categories) && Array.isArray(reply.filter.wallets) ? { kind: "search", filter: reply.filter } : null;
     case "open_page":
-      return PAGES.has(reply.page) && isObject(reply.params) ? { kind: "open_page", page: reply.page, params: reply.params } : null;
+      return PAGES.has(reply.page) && isObject(reply.params)
+        ? { kind: "open_page", page: reply.page, params: reply.params, why: isText(reply.why) ? reply.why : "" }
+        : null;
+    case "change":
+      return readChange(reply.change);
+    case "matches":
+      return isText(reply.month) && Array.isArray(reply.matches) && reply.matches.length && reply.matches.every(isMatch)
+        ? { kind: "matches", month: reply.month, matches: reply.matches }
+        : null;
     case "clarify":
       return isText(reply.question) && reply.question
         ? { kind: "clarify", question: reply.question, options: (Array.isArray(reply.options) ? reply.options : []).filter((option) => isText(option) && option).slice(0, 4) }
@@ -171,6 +191,99 @@ function readReply(reply) {
     default:
       return null;
   }
+}
+
+// The only commands a change card may post to: the page's own copy of
+// ASK_CHANGE_PATHS (src/domain/ask-turn-actions.ts). A card naming any other
+// path is not shown.
+export const ASK_CHANGE_PATHS = Object.freeze([
+  "/api/entries/update",
+  "/api/entries/update-category",
+  "/api/entries/update-note",
+  "/api/transfers/link",
+  "/api/splits/groups/create",
+  "/api/splits/expenses/update",
+  "/api/splits/checkpoints/create",
+  "/api/splits/checkpoints/reopen",
+  "/api/settings/payment-ways/save",
+  "/api/categories/create",
+  "/api/categories/update",
+  "/api/category-match-rules/save",
+  "/api/month-plan/links",
+  "/api/month-note/update"
+]);
+const CHANGE_TYPES = new Set([
+  "edit_entry", "recategorise", "recategorise_bulk", "entry_note", "month_note", "link_transfer", "group_create",
+  "group_move", "simplify", "payment_way", "category_create", "category_rename", "category_colour", "plan_link"
+]);
+const MATCH_PATHS = Object.freeze({ expense: "/api/splits/matches/link-expense", settlement: "/api/splits/matches/link-settlement" });
+
+const isStep = (step) => isObject(step) && ASK_CHANGE_PATHS.includes(step.path) && isObject(step.body);
+
+function readChange(change) {
+  if (!isObject(change) || !CHANGE_TYPES.has(change.type) || !isText(change.title) || !isText(change.month)) return null;
+  if (!Array.isArray(change.rows) || !change.rows.every((row) => isObject(row) && isText(row.field) && isText(row.before) && isText(row.after))) return null;
+  if (!Array.isArray(change.entries) || !change.entries.every((entry) => isObject(entry) && isText(entry.entryId) && isText(entry.description) && Number.isInteger(entry.amountMinor))) return null;
+  if (!Array.isArray(change.save) || !change.save.length || !change.save.every(isStep)) return null;
+  if (change.undo !== null && !(Array.isArray(change.undo) && change.undo.every(isStep))) return null;
+  const rule = isObject(change.rule) && isText(change.rule.pattern) && isText(change.rule.categoryId) && isText(change.rule.categoryName) ? change.rule : null;
+  return {
+    kind: "change",
+    change: {
+      ...change,
+      count: Number.isInteger(change.count) ? change.count : 0,
+      confirmCount: Number.isInteger(change.confirmCount) && change.confirmCount > 0 ? change.confirmCount : null,
+      refresh: Array.isArray(change.refresh) ? change.refresh.filter(isText) : [],
+      rule
+    }
+  };
+}
+
+function isMatch(match) {
+  return isObject(match) && (match.kind === "expense" || match.kind === "settlement") && isText(match.id) && isText(match.splitRecordId)
+    && isText(match.transactionId) && isMinor(Math.abs(match.amountMinor)) && isMinor(Math.abs(match.splitAmountMinor));
+}
+
+/**
+ * A change card's Save or Undo: each step through its existing command, in
+ * order, stopping at the first failure. `confirmedCount` is added only when
+ * the person tapped "Yes, change all N"; `result` is the save's response,
+ * for an Undo that names what the save created.
+ * @returns {Promise<{ ok: boolean, error: string, result: any }>}
+ */
+export async function runChangeSteps(steps, { confirmedCount = undefined, result = null, fetchImpl = fetch } = {}) {
+  let last = result;
+  for (const step of steps ?? []) {
+    if (!isStep(step)) {
+      return { ok: false, error: "This change can't be saved from here. Open the page it lives on.", result: last };
+    }
+    const body = { ...step.body };
+    if (Number.isInteger(confirmedCount) && step.path === "/api/entries/update-category" && Array.isArray(body.changes)) {
+      body.confirmedCount = confirmedCount;
+    }
+    if (step.fromResult && last && isText(step.fromResult.as)) {
+      body[step.fromResult.as] = last[step.fromResult.key];
+    }
+    const response = await postJson(step.path, body, "That couldn't be saved. Check your connection and try again.", fetchImpl);
+    if (!response.ok) {
+      return { ok: false, error: response.error, result: last };
+    }
+    last = response;
+  }
+  return { ok: true, error: "", result: last };
+}
+
+// "Also file new ones": the existing category rule command.
+export function saveChangeRule(rule, { fetchImpl = fetch } = {}) {
+  return postJson("/api/category-match-rules/save", { pattern: rule.pattern, categoryId: rule.categoryId }, "The rule couldn't be saved.", fetchImpl);
+}
+
+// Accept one match: Splits' own link command for that kind.
+export function linkTurnMatch(match, { fetchImpl = fetch } = {}) {
+  const body = match.kind === "expense"
+    ? { splitExpenseId: match.splitRecordId, transactionId: match.transactionId }
+    : { settlementId: match.splitRecordId, transactionId: match.transactionId };
+  return postJson(MATCH_PATHS[match.kind], body, "That match couldn't be saved.", fetchImpl);
 }
 
 function readShare(share) {

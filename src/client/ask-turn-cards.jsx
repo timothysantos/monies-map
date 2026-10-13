@@ -1,9 +1,11 @@
-import { ArrowLeftRight, Users } from "lucide-react";
+import { ArrowLeftRight, Link2, PencilLine, Users } from "lucide-react";
 
 import { NEUTRAL_BUBBLE_COLOUR } from "./ask-plan-draft-card";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
+import { formatMonthYear } from "./copy/ask-plan-copy";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
+import { paletteColour } from "./palette-colour";
 import { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
 
 const copy = askCopy.turn;
@@ -106,6 +108,212 @@ export function AskSettlementDraftCard({ item, busy = false, settled = false, on
           primaryDisabled={busy}
         />
       )}
+    </section>
+  );
+}
+
+const changeCopy = copy.change;
+const DATE_FIELDS = new Set(["date"]);
+
+function changeValue(row, side) {
+  const minor = side === "before" ? row.beforeMinor : row.afterMinor;
+  if (Number.isInteger(minor)) {
+    return <PrivateMoney className="money-neutral">{moneyWithCurrency(minor, row.currency)}</PrivateMoney>;
+  }
+  const text = row[side];
+  if (row.field === "colour" && text) {
+    return <span className="ask-change-swatch" style={{ background: paletteColour(text) }} aria-label={text} />;
+  }
+  if (!text) {
+    return row.field === "group" ? changeCopy.noGroup : changeCopy.none;
+  }
+  return DATE_FIELDS.has(row.field) ? formatDay(text) : text;
+}
+
+function subtitleOf(change) {
+  const line = changeCopy.subtitle[change.type];
+  return typeof line === "function" ? line(change.count) : line;
+}
+
+function saveLabelOf(change) {
+  const label = changeCopy.save[change.type];
+  return typeof label === "function" ? label(change.count) : label ?? changeCopy.saveDefault;
+}
+
+/**
+ * A change to saved data that Ask drafted from a message (docs/flows/
+ * ask-flow.md "Phase 2"): what changes, before and after, every figure the
+ * server's, and the entries it touches (count and the first few). Nothing
+ * is written until its button, which posts the existing command; a change
+ * over ten entries needs the "Yes, change all N" tap first. Saved, it
+ * offers Undo where the command can take it back, and after a bulk
+ * recategorise, the optional rule for new entries.
+ */
+export function AskChangeCard({ item, busy = false, settled = false, onSave, onDiscard, onUndo, onConfirm, onRule, onOpen }) {
+  const { change } = item;
+  const saved = item.status === "saved" || item.status === "undoing";
+  const undone = item.status === "undone";
+  const needsConfirm = Boolean(change.confirmCount);
+  const firstEntry = change.entries[0];
+  const showEntries = change.type === "recategorise_bulk" || change.type === "plan_link" || change.type === "link_transfer";
+  const amount = change.entries.length === 1 && !showEntries ? firstEntry : null;
+  return (
+    <section id={item.id} className={`ask-plan-draft ask-turn-card ask-change${settled ? " is-settled" : ""}`} data-change-draft={item.status} data-change-type={change.type} aria-label={changeCopy.label}>
+      <LeadCard
+        className="ask-plan-lead"
+        tag={<span className={`ask-card-tag ${saved ? "is-saved" : "is-filled"}`}>{saved ? changeCopy.savedTag : undone ? changeCopy.undoneTag : copy.draftTag}</span>}
+        category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
+        title={<strong className="lsd-title ask-plan-title">{change.title}</strong>}
+        subtitle={<span className="ask-plan-subtitle">{subtitleOf(change)}</span>}
+        amount={amount ? moneyWithCurrency(amount.amountMinor, amount.currency) : undefined}
+        tone="neutral"
+        amountCaption={amount ? formatDay(amount.date) : undefined}
+        chips={change.type === "month_note" ? <MetaChip>{formatMonthYear(change.month)}</MetaChip> : undefined}
+      />
+      <DetailRows label={changeCopy.label}>
+        {change.rows.map((row) => (
+          <DetailRow
+            key={row.field}
+            readOnly
+            data-change-field={row.field}
+            label={changeCopy.fields[row.field] ?? row.field}
+            value={(
+              <span className="ask-plan-change">
+                {row.before || Number.isInteger(row.beforeMinor) ? <span className="ask-plan-before ask-change-before">{changeValue(row, "before")}</span> : null}
+                {row.before || Number.isInteger(row.beforeMinor) ? <span aria-hidden="true">→</span> : null}
+                <span className="ask-change-after">{changeValue(row, "after")}</span>
+              </span>
+            )}
+          />
+        ))}
+      </DetailRows>
+      {showEntries && change.entries.length ? (
+        <DetailRows label={changeCopy.entriesLabel} className="ask-change-entries">
+          {change.entries.map((entry) => (
+            <DetailRow
+              key={entry.entryId}
+              readOnly
+              data-change-entry={entry.entryId}
+              label={(
+                <span className="ask-change-entry">
+                  <span className="ask-change-entry-name">{entry.description}</span>
+                  <span className="ask-change-entry-meta">{[formatDay(entry.date), entry.accountName ?? entry.categoryName].filter(Boolean).join(" · ")}</span>
+                </span>
+              )}
+              value={<PrivateMoney className="money-neutral">{moneyWithCurrency(entry.amountMinor, entry.currency)}</PrivateMoney>}
+            />
+          ))}
+          {change.count > change.entries.length ? <DetailRow readOnly label={changeCopy.more(change.count - change.entries.length)} /> : null}
+        </DetailRows>
+      ) : null}
+      {item.status === "draft" && needsConfirm ? (
+        <DetailRows label={changeCopy.confirm(change.confirmCount)}>
+          <DetailRow
+            label={changeCopy.confirm(change.confirmCount)}
+            value={item.confirmed ? "✓" : changeCopy.confirmHint}
+            state="action"
+            aria-pressed={item.confirmed ? "true" : "false"}
+            data-change-confirm=""
+            onClick={onConfirm}
+            disabled={busy}
+          />
+        </DetailRows>
+      ) : null}
+      {saved ? (
+        <DetailRows label={changeCopy.label}>
+          {change.rule && !item.ruleSaved ? (
+            <DetailRow label={item.ruleSaving ? changeCopy.ruleSaving : changeCopy.rule(change.rule.pattern, change.rule.categoryName)} state="action" onClick={onRule} disabled={busy} data-change-rule="" />
+          ) : null}
+          {onOpen ? <DetailRow label={changeCopy.open[openPageOf(change)]} state="action" onClick={onOpen} disabled={busy} /> : null}
+          {change.undo ? <DetailRow label={item.status === "undoing" ? changeCopy.undoing : changeCopy.undo} onClick={onUndo} disabled={busy} data-change-undo="" /> : null}
+        </DetailRows>
+      ) : null}
+      {item.status === "draft" || item.status === "saving" ? (
+        <BottomActions
+          className="ask-plan-actions"
+          quietLabel={changeCopy.discard}
+          onQuiet={onDiscard}
+          quietDisabled={busy}
+          primaryLabel={item.status === "saving" ? changeCopy.saving : saveLabelOf(change)}
+          onPrimary={onSave}
+          primaryDisabled={busy || (needsConfirm && !item.confirmed)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+// Where a saved change can be seen.
+export function openPageOf(change) {
+  if (["group_create", "group_move", "simplify"].includes(change.type)) return "splits";
+  if (["payment_way", "category_create", "category_rename", "category_colour"].includes(change.type)) return "settings";
+  if (["month_note", "plan_link"].includes(change.type)) return "month";
+  return "entries";
+}
+
+/**
+ * Bank rows that may be the payment behind a split, as Splits' review lists
+ * them. Match links one through Splits' own command; Not this one only
+ * hides it here (Splits still lists it). A match that needs an exchange
+ * rate checked is left to Splits.
+ */
+export function AskMatchesCard({ item, busy = false, settled = false, onLink, onSkip, onOpen }) {
+  const matchesCopy = copy.matches;
+  return (
+    <section id={item.id} className={`ask-plan-draft ask-turn-card ask-matches${settled ? " is-settled" : ""}`} data-matches="" aria-label={matchesCopy.label}>
+      <LeadCard
+        className="ask-plan-lead"
+        category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: Link2 }}
+        title={<strong className="lsd-title ask-plan-title">{matchesCopy.title}</strong>}
+        subtitle={<span className="ask-plan-subtitle">{matchesCopy.subtitle(formatMonthYear(item.month))}</span>}
+      />
+      {item.matches.map((match) => {
+        const state = item.handled?.[match.id] ?? "";
+        return (
+          <div key={match.id} className="ask-match" data-match={match.id} data-match-state={state || "open"}>
+          <DetailRows label={match.splitDescription}>
+            <DetailRow
+              readOnly
+              label={(
+                <span className="ask-change-entry">
+                  <span className="ask-change-entry-name">{match.splitDescription}</span>
+                  <span className="ask-change-entry-meta">{[formatDay(match.splitDate), match.groupName].filter(Boolean).join(" · ")}</span>
+                </span>
+              )}
+              value={<PrivateMoney className="money-neutral">{moneyWithCurrency(Math.abs(match.splitAmountMinor), match.splitCurrency)}</PrivateMoney>}
+            />
+            <DetailRow
+              readOnly
+              label={(
+                <span className="ask-change-entry">
+                  <span className="ask-change-entry-name">{match.transactionDescription}</span>
+                  <span className="ask-change-entry-meta">{[matchesCopy.bank, formatDay(match.transactionDate)].join(" · ")}</span>
+                </span>
+              )}
+              value={<PrivateMoney className="money-neutral">{moneyWithCurrency(Math.abs(match.amountMinor), match.transactionCurrency)}</PrivateMoney>}
+            />
+            {state ? (
+              <DetailRow readOnly label={state === "linked" ? matchesCopy.linked : matchesCopy.skipped} />
+            ) : match.canLink ? (
+              <BottomActions
+                className="ask-plan-actions"
+                quietLabel={matchesCopy.skip}
+                onQuiet={() => onSkip(match.id)}
+                quietDisabled={busy}
+                primaryLabel={matchesCopy.accept}
+                onPrimary={() => onLink(match.id)}
+                primaryDisabled={busy}
+              />
+            ) : (
+              <DetailRow label={matchesCopy.needsRate} state="action" onClick={onOpen} disabled={busy} />
+            )}
+          </DetailRows>
+          </div>
+        );
+      })}
+      <DetailRows label={matchesCopy.openSplits}>
+        <DetailRow label={matchesCopy.openSplits} state="action" onClick={onOpen} disabled={busy} />
+      </DetailRows>
     </section>
   );
 }

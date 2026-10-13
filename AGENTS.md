@@ -221,6 +221,18 @@ Details and the reasons are in `docs/code-spec.md` and
   plan lines, the entry in focus, amounts the person wrote, shares adding
   up to 100%); anything that does not check out becomes a question back
   with at most 4 chips, never a guess.
+- Changes to saved data (Phase 2, `src/domain/ask-turn-actions.ts`) are
+  change cards: every row that changes before and after, saved only
+  through `ASK_CHANGE_PATHS` (existing commands; the page refuses any
+  other path), with Undo where the command supports it. A bulk change
+  re-reads its rows on the server, lists the count and first rows, needs
+  the person's "Yes, change all N" over 10 and is refused over 200. A
+  statement-certified entry keeps its bank facts. Never from Ask: deleting
+  entries, months or imports, importing or undoing an import, reconciling,
+  accounts and people; the model can only name them (`blocked`), and Ask
+  opens their page with the reason. A new Ask change needs its validator
+  negatives, a route test that saves it through its command, and a
+  `failingStatement` test for any command it changes.
 - The model never writes. It only chooses the action; the page shows the
   existing draft or answer card, and nothing is saved without the
   person's Save tap, through the existing all-or-nothing command. Figures

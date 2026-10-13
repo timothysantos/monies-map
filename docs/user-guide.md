@@ -680,6 +680,38 @@ Food to Groceries" drafts a plan change. When Ask isn't sure what you mean
 (who, which card, how to split it), it asks, with buttons to tap. It never
 uses an amount you didn't type, and it never saves anything by itself.
 
+### Change things you already saved
+
+Ask can also change what is already in the app. Each change comes back as a
+draft that lists exactly what will change, before and after; nothing
+changes until you tap its button, and most changes have **Undo** after.
+
+- On a saved entry: "it was $18", "it was yesterday", "it was on my UOB
+  card", "it's Joyce's", "make it Taxi", or "note: Joyce's birthday
+  dinner". If a bank statement has already confirmed the entry, its amount,
+  date, description and wallet stay as the bank has them, and Ask says so;
+  you can still change its category, owner and note.
+- Many entries at once: "make all Grab rides Transport" lists the entries it
+  would move, how many there are and the first few. When it is more than
+  ten, tap **Yes, change all** first. After saving, Ask offers to file new
+  Grab entries the same way.
+- "This was a transfer to my OCBC account" finds the other side (the same
+  amount in another wallet within a month) and links the two.
+- On Splits: "new group Japan trip", "move this to Home", "settle up
+  everything in Home" (a payment for the whole amount owed, saved with
+  **Record payment**), "simplify everything", and "any matches in
+  September?" (bank rows that may be the payment behind a split; **Match**
+  links one, **Not this one** leaves it for Splits).
+- Settings: "my PayNow is UOB One", "add a category Pets", "rename Taxi to
+  Rides", "make Groceries green".
+- Month: "note for September: Bali trip month", and "link my Netflix
+  payments to the Netflix plan line".
+
+Some things Ask won't do, so you can check them on their own screen first:
+deleting entries, months or imports, importing a statement or undoing an
+import, checking an account against its statement, and changing accounts
+or people. Ask tells you why and opens the right page.
+
 To understand you, Ask sends your message and the last few lines of the
 conversation to the AI it uses, with the names of your people, wallets,
 categories and split groups. It never sends account or card numbers, phone

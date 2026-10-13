@@ -37,8 +37,8 @@ import {
   validateCard
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
-import { buildTurnFocus, buildTurnHistory, removeSplitExpense, requestAskTurn, saveSettlementDraft, saveSplitProposal } from "./ask-turn-api";
-import { AskSettlementDraftCard, AskSplitProposalCard } from "./ask-turn-cards";
+import { buildTurnFocus, buildTurnHistory, linkTurnMatch, removeSplitExpense, requestAskTurn, runChangeSteps, saveChangeRule, saveSettlementDraft, saveSplitProposal } from "./ask-turn-api";
+import { AskChangeCard, AskMatchesCard, AskSettlementDraftCard, AskSplitProposalCard, openPageOf } from "./ask-turn-cards";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
 import { AskInsightAnswerCard } from "./ask-insight-answer-card";
 import { buildInsightAnswer, insightExplainBody, readInsightHandoff } from "./ask-insight-answer";
@@ -189,6 +189,7 @@ function AskConversation({
   fetchEntriesPage,
   onEntryMutation,
   onSplitMutation,
+  onSettingsMutation = undefined,
   runBackgroundRefresh,
   fetchRequiredQuery,
   routeUsable = false,
@@ -581,12 +582,17 @@ function AskConversation({
         page: inDock ? pageOf(location.pathname) : "ask",
         // A follow-up to "Ask about this" on a Money insights line names
         // that insight's kind (never its figures).
+        // A message right after an Entries answer ("make these Transport")
+        // is about that list.
         focus: buildTurnFocus({
           card: before.card,
           intent,
           insightTopic: before.thread.filter((item) => item.kind !== "status").at(-1)?.kind === "insight-answer"
             ? String(before.thread.filter((item) => item.kind !== "status").at(-1).answer?.kind ?? "")
-            : ""
+            : "",
+          list: before.thread.filter((item) => item.kind !== "status").at(-1)?.kind === "answer"
+            ? before.thread.filter((item) => item.kind !== "status").at(-1).filter
+            : null
         })
       });
     } finally {
@@ -636,7 +642,15 @@ function AskConversation({
       await askMoneyQuestion(reply.text, reply.request);
     } else if (reply.kind === "search") {
       answerFilterRequest({ kind: "filter", filter: reply.filter });
+    } else if (reply.kind === "change") {
+      appendThread(threadItem("change-draft", { change: reply.change, status: "draft", confirmed: false }));
+    } else if (reply.kind === "matches") {
+      appendThread(threadItem("matches", { month: reply.month, matches: reply.matches, handled: {} }));
     } else if (reply.kind === "open_page") {
+      // Never from Ask (a delete, an import, accounts): why, then the page.
+      if (reply.why) {
+        appendThread(threadItem("note", { text: reply.why }));
+      }
       appendThread(threadItem("note", { text: askCopy.turn.opened(askCopy.turn.pages[reply.page]) }));
       goTo(reply.page === "help" ? "/faq" : `/${reply.page}`, {}, new URLSearchParams(reply.params));
     } else if (reply.kind === "clarify") {
@@ -768,6 +782,153 @@ function AskConversation({
     const item = turnItem(itemId, "settlement-draft");
     if (item) {
       goTo("/splits", { month: item.settlement.date.slice(0, 7), split_group: item.settlement.groupId || undefined });
+    }
+  }
+
+  // A saved change: the pages it touched refresh through their owners, and
+  // the saved card in focus shows the change too.
+  function afterChange(change, direction) {
+    const refresh = new Set(change.refresh);
+    const month = change.month;
+    if (refresh.has("splits")) {
+      onSplitMutation?.({ month, invalidateEntries: refresh.has("entries"), invalidateMonth: refresh.has("month"), invalidateSummary: refresh.has("summary") });
+    } else if (refresh.has("entries") || refresh.has("month") || refresh.has("summary")) {
+      onEntryMutation?.({ month, invalidateEntries: refresh.has("entries"), invalidateMonth: refresh.has("month"), invalidateSummary: refresh.has("summary") });
+    }
+    if (refresh.has("settings")) {
+      onSettingsMutation?.({ refreshReferenceData: true, invalidateEntries: refresh.has("entries"), invalidateMonth: refresh.has("month"), invalidateSummary: refresh.has("summary") });
+    }
+    const steps = direction === "undo" ? change.undo ?? [] : change.save;
+    const body = steps.find((step) => step.path === "/api/entries/update")?.body;
+    const category = change.type === "recategorise" ? change.rows.find((row) => row.field === "category") : null;
+    const note = change.type === "entry_note" ? change.rows.find((row) => row.field === "note") : null;
+    setCard((current) => {
+      if (!current?.saved?.entryId || current.saved.entryId !== change.entries[0]?.entryId) return current;
+      if (body) {
+        return { ...current, fields: { ...current.fields, date: body.date, description: body.description, accountId: body.accountId, categoryName: body.categoryName, amountMinor: body.amountMinor, ownerName: body.ownerName ?? current.fields.ownerName, note: body.note } };
+      }
+      if (category) return { ...current, fields: { ...current.fields, categoryName: direction === "undo" ? category.before : category.after } };
+      if (note) return { ...current, fields: { ...current.fields, note: direction === "undo" ? note.before : note.after } };
+      return current;
+    });
+    void runBackgroundRefresh(entriesPage.refresh);
+  }
+
+  // Save: the card's own steps through their existing commands. A change
+  // over ten entries carries the count the person confirmed.
+  async function saveTurnChange(itemId) {
+    const item = turnItem(itemId, "change-draft");
+    if (!item || item.status !== "draft" || working || (item.change.confirmCount && !item.confirmed)) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "saving" });
+    setWorking("change-save");
+    try {
+      const { ok, error, result } = await runChangeSteps(item.change.save, { confirmedCount: item.change.confirmCount && item.confirmed ? item.change.confirmCount : undefined });
+      if (!ok) {
+        updateThreadItem(itemId, { status: "draft" });
+        appendThread(threadItem("note", { text: error }));
+        return;
+      }
+      updateThreadItem(itemId, { status: "saved", result });
+      afterChange(item.change, "save");
+      const saved = askCopy.turn.change.saved[item.change.type];
+      const category = item.change.rows.find((row) => row.field === "category")?.after ?? "";
+      appendThread(threadItem("note", { text: typeof saved === "function" ? saved(item.change.count, category) : saved ?? askCopy.turn.change.savedDefault }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  async function undoTurnChange(itemId) {
+    const item = turnItem(itemId, "change-draft");
+    if (!item || item.status !== "saved" || !item.change.undo || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "undoing" });
+    setWorking("change-undo");
+    try {
+      const { ok, error } = await runChangeSteps(item.change.undo, { result: item.result ?? null });
+      if (!ok) {
+        updateThreadItem(itemId, { status: "saved" });
+        appendThread(threadItem("note", { text: error }));
+        return;
+      }
+      updateThreadItem(itemId, { status: "undone" });
+      afterChange(item.change, "undo");
+      appendThread(threadItem("note", { text: askCopy.turn.change.undone }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function confirmTurnChange(itemId) {
+    const item = turnItem(itemId, "change-draft");
+    if (item?.status === "draft" && !working) {
+      updateThreadItem(itemId, { confirmed: !item.confirmed });
+    }
+  }
+
+  // After a bulk recategorise: the optional rule for new entries, through
+  // the existing category rule command.
+  async function saveTurnRule(itemId) {
+    const item = turnItem(itemId, "change-draft");
+    if (!item || item.status !== "saved" || !item.change.rule || item.ruleSaved || working) {
+      return;
+    }
+    updateThreadItem(itemId, { ruleSaving: true });
+    setWorking("change-rule");
+    try {
+      const result = await saveChangeRule(item.change.rule);
+      if (!result.ok) {
+        updateThreadItem(itemId, { ruleSaving: false });
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      updateThreadItem(itemId, { ruleSaving: false, ruleSaved: true });
+      onSettingsMutation?.({ refreshReferenceData: false });
+      appendThread(threadItem("note", { text: askCopy.turn.change.ruleSaved(item.change.rule.categoryName) }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function openTurnChange(itemId) {
+    const item = turnItem(itemId, "change-draft");
+    if (!item) return;
+    const page = openPageOf(item.change);
+    if (page === "settings") {
+      goTo("/settings");
+    } else {
+      goTo(`/${page}`, { month: item.change.month });
+    }
+  }
+
+  async function linkTurnMatchItem(itemId, matchId) {
+    const item = turnItem(itemId, "matches");
+    const match = item?.matches.find((candidate) => candidate.id === matchId);
+    if (!match || item.handled?.[matchId] || working) {
+      return;
+    }
+    setWorking("match-link");
+    try {
+      const result = await linkTurnMatch(match);
+      if (!result.ok) {
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      updateThreadItem(itemId, { handled: { ...item.handled, [matchId]: "linked" } });
+      onSplitMutation?.({ month: item.month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askCopy.turn.matches.saved }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function skipTurnMatch(itemId, matchId) {
+    const item = turnItem(itemId, "matches");
+    if (item && !item.handled?.[matchId] && !working) {
+      updateThreadItem(itemId, { handled: { ...item.handled, [matchId]: "skipped" } });
     }
   }
 
@@ -1509,7 +1670,19 @@ function AskConversation({
       onOpenSplit: openTurnSplit,
       onSaveSettlement: (itemId) => void saveTurnSettlement(itemId),
       onDiscardSettlement: (itemId) => discardTurnItem(itemId, "settlement-draft", askCopy.turn.settlement.discarded),
-      onOpenSettlement: openTurnSettlement
+      onOpenSettlement: openTurnSettlement,
+      onSaveChange: (itemId) => void saveTurnChange(itemId),
+      onDiscardChange: (itemId) => discardTurnItem(itemId, "change-draft", askCopy.turn.change.discarded),
+      onUndoChange: (itemId) => void undoTurnChange(itemId),
+      onConfirmChange: confirmTurnChange,
+      onRuleChange: (itemId) => void saveTurnRule(itemId),
+      onOpenChange: openTurnChange,
+      onLinkMatch: (itemId, matchId) => void linkTurnMatchItem(itemId, matchId),
+      onSkipMatch: skipTurnMatch,
+      onOpenMatches: (itemId) => {
+        const item = turnItem(itemId, "matches");
+        goTo("/splits", { month: item?.month });
+      }
     },
     plan: {
       busy: Boolean(working),
@@ -2041,6 +2214,38 @@ function ThreadItem({ item, settled = false, answerProps }) {
         onSave={() => turn.onSaveSettlement(item.id)}
         onDiscard={() => turn.onDiscardSettlement(item.id)}
         onOpen={() => turn.onOpenSettlement(item.id)}
+      />
+    );
+  }
+  if (item.kind === "change-draft") {
+    if (item.status === "discarded") {
+      return null;
+    }
+    const { turn } = answerProps;
+    return (
+      <AskChangeCard
+        item={item}
+        busy={turn.busy}
+        settled={settled}
+        onSave={() => turn.onSaveChange(item.id)}
+        onDiscard={() => turn.onDiscardChange(item.id)}
+        onUndo={() => turn.onUndoChange(item.id)}
+        onConfirm={() => turn.onConfirmChange(item.id)}
+        onRule={() => turn.onRuleChange(item.id)}
+        onOpen={() => turn.onOpenChange(item.id)}
+      />
+    );
+  }
+  if (item.kind === "matches") {
+    const { turn } = answerProps;
+    return (
+      <AskMatchesCard
+        item={item}
+        busy={turn.busy}
+        settled={settled}
+        onLink={(matchId) => turn.onLinkMatch(item.id, matchId)}
+        onSkip={(matchId) => turn.onSkipMatch(item.id, matchId)}
+        onOpen={() => turn.onOpenMatches(item.id)}
       />
     );
   }
