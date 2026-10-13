@@ -40,7 +40,7 @@ import {
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import { json } from "./json";
-import { readJsonObject, SMALL_JSON_MAX_BYTES } from "./limited-body";
+import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 import { draftPlanRequest } from "./plan-draft-route";
 
 export const ASK_TURN_AI_UNITS = 1;
@@ -53,7 +53,15 @@ const PAGES = new Set(["ask", "summary", "month", "entries", "splits", "imports"
 export type AskTurnEnv = AiProviderEnv & { DB: D1Database; APP_ENVIRONMENT?: string };
 
 export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<Response> {
-  const body = await readJsonObject<Record<string, unknown>>(request, SMALL_JSON_MAX_BYTES);
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonObject<Record<string, unknown>>(request, SMALL_JSON_MAX_BYTES);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return json({ ok: false, error: error.message }, 413);
+    }
+    throw error;
+  }
   const text = typeof body.text === "string" ? body.text.replace(/\s+/g, " ").trim() : "";
   if (!text) {
     return json({ ok: false, error: "Missing message text" }, 400);
