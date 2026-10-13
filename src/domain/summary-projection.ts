@@ -12,6 +12,7 @@ import type {
   AccountDto,
   CategoryDto,
   EntryDto,
+  InvestmentMovesDto,
   MetricCardDto,
   SummaryAccountPillDto,
   SummaryDonutMonthDto,
@@ -32,7 +33,10 @@ export function buildSummaryPage(
   selectedMonth: string,
   summaryRangeMonths: string[],
   trackedMonths: string[],
-  personNameById: Record<string, string>
+  personNameById: Record<string, string>,
+  // The view's transfers into and out of investment accounts over the
+  // range (investment-moves.ts), left out when nothing moved.
+  investmentMoves?: InvestmentMovesDto
 ) {
   const snapshotMonths = buildSummaryMonthsForView(personId, summaryMonthsByView);
   const plannedFallbackMonths = plannedSummaryMonthsByView[personId] ?? [];
@@ -111,6 +115,7 @@ export function buildSummaryPage(
     months,
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     categoryShareByMonth: buildSummaryDonutMonths(visibleEntries, categories, rangeMonths),
+    ...(investmentMoves ? { investmentMoves } : {}),
     notes:
       personId === "household"
         ? [

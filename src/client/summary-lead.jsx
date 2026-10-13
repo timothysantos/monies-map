@@ -12,9 +12,10 @@ const copy = messages.summary.lead;
 // plain ink, the bar keeps only its track, the percent and "under/over plan"
 // go, and the pills lose their tint (the money-tone rule in styles.css).
 // Until the cards arrive nothing shows (the old tile row scrolled sideways
-// on a phone). The range's category share says what was invested.
-export function SummaryLead({ metricCards, categoryShare, rangeStartMonth, rangeEndMonth }) {
-  const model = buildSummaryLeadModel(metricCards, { categoryShare });
+// on a phone). The range's category share and its moves into and out of
+// investment accounts say what was invested.
+export function SummaryLead({ metricCards, categoryShare, investmentMoves = null, rangeStartMonth, rangeEndMonth }) {
+  const model = buildSummaryLeadModel(metricCards, { categoryShare, investmentMoves });
   if (!model) {
     return null;
   }

@@ -3,6 +3,8 @@ import { buildSummaryPage, buildSummaryRange, loadPlannedSummaryMonthsForViews }
 import { adjustEntriesForView } from "../month-projection";
 import { effectiveScopeForView, filterEntriesForView } from "../person-view-scope";
 import { loadEntriesForMonths } from "../app-repository";
+import { loadInvestmentAccountIds } from "../app-repository-entries";
+import { sumInvestmentMoves } from "../investment-moves";
 import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";
 import {
@@ -23,9 +25,10 @@ export async function buildSummaryPageDto(
   const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
-  const [summaryMonths, summaryEntries] = await Promise.all([
+  const [summaryMonths, summaryEntries, investmentAccountIds] = await Promise.all([
     loadRepairedSummaryMonths(db, viewId),
-    loadEntriesForMonths(db, summaryRangeMonths)
+    loadEntriesForMonths(db, summaryRangeMonths),
+    loadInvestmentAccountIds(db)
   ]);
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths);
   // A person view counts only that person's entries in the scope, each at
@@ -48,7 +51,8 @@ export async function buildSummaryPageDto(
       effectiveSelectedMonth,
       summaryRangeMonths,
       trackedMonths,
-      personNameById
+      personNameById,
+      sumInvestmentMoves(visibleSummaryEntries, summaryEntries, investmentAccountIds)
     )
   };
 }

@@ -109,6 +109,17 @@ export async function loadTransferGroupedEntryIds(db: D1Database, rangeStart: st
   return result.results.map((row) => row.id);
 }
 
+// Ids of every account of kind `investment`, archived ones too: money moved
+// into or out of them is invested or taken out of investments
+// (investment-moves.ts).
+export async function loadInvestmentAccountIds(db: D1Database): Promise<Set<string>> {
+  const result = await db
+    .prepare("SELECT id FROM accounts WHERE household_id = ? AND account_kind = 'investment'")
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string }>();
+  return new Set(result.results.map((row) => row.id));
+}
+
 // The ledger stays event-first. We still project post_date so the UI can show
 // when the bank cleared a row without moving it out of its planning month.
 export async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {

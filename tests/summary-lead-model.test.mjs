@@ -32,6 +32,7 @@ test("the lead measures spending against the spend plan, so it agrees with the s
       income: 11_070_000,
       spending: 2_277_767,
       invested: 0,
+      takenFromInvestments: 0,
       movedToSavings: 0,
       kept: 8_792_233,
       spendPlan: 1_980_752,

@@ -155,6 +155,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         <SummaryLead
           metricCards={safeSummaryPage.metricCards}
           categoryShare={safeSummaryPage.categoryShareChart}
+          investmentMoves={safeSummaryPage.investmentMoves ?? null}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
         />

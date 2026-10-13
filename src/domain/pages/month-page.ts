@@ -12,6 +12,8 @@ import {
   loadMonthPlanRows
 } from "../app-repository";
 import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
+import { loadInvestmentAccountIds } from "../app-repository-entries";
+import { sumInvestmentMoves } from "../investment-moves";
 import type { MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
 import {
   loadRoutePageContext,
@@ -27,11 +29,12 @@ export async function buildMonthPageDto(
 ): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto }> {
   const { categories, trackedMonths, viewId, label } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
-  const [monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
+  const [monthEntries, monthPlanRows, incomeRows, summaryMonths, investmentAccountIds] = await Promise.all([
     loadEntries(db, effectiveSelectedMonth),
     loadMonthPlanRows(db, effectiveSelectedMonth),
     loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
-    loadRepairedSummaryMonths(db, viewId)
+    loadRepairedSummaryMonths(db, viewId),
+    loadInvestmentAccountIds(db)
   ]);
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
@@ -62,7 +65,8 @@ export async function buildMonthPageDto(
       monthPlanRows,
       categories,
       effectiveSelectedMonth,
-      currentSummaryMonth
+      currentSummaryMonth,
+      sumInvestmentMoves(visibleEntries, adjustedMonthEntries, investmentAccountIds)
     )
     // No separate household entry list: monthPage.entries already holds
     // every household entry (adjusted for the view), which is all plan

@@ -8,12 +8,13 @@ import { buildSummaryLeadModel } from "./summary-lead-model";
 // cards' own figures (buildMonthMetricCards); income received and the
 // realized savings are the month's Summary rollup, which the Month page
 // already carries (summaryPage.months[0]). The investment goal is the
-// month's Investments plan rows and what was invested its category share
-// (monthPage.planSections, monthPage.categoryShareChart), also already on
-// the page. Nothing is fetched or recomputed another way, so the lead never
+// month's Investments plan rows, and what was invested its category share
+// and its transfers into and out of investment accounts
+// (monthPage.planSections, monthPage.categoryShareChart,
+// monthPage.investmentMoves), also already on the page. Nothing is fetched or recomputed another way, so the lead never
 // disagrees with the cards it replaced. Returns null until the cards are
 // there.
-export function buildMonthLeadModel(metricCards = [], monthSummary = null, { planRows = [], categoryShare = [] } = {}) {
+export function buildMonthLeadModel(metricCards = [], monthSummary = null, { planRows = [], categoryShare = [], investmentMoves = null } = {}) {
   const byLabel = new Map(metricCards.map((card) => [card.label, card]));
   const remaining = byLabel.get("Remaining budget");
   if (!remaining || !byLabel.has("Actual spend") || !byLabel.has("Planned spend")) {
@@ -29,7 +30,7 @@ export function buildMonthLeadModel(metricCards = [], monthSummary = null, { pla
     byLabel.get("Savings target"),
     { label: "Realized savings", amountMinor: realizedSavingsMinor, tone: signTone(realizedSavingsMinor) },
     { label: "Planned investments", amountMinor: plannedInvestMinor(planRows), tone: "plan" }
-  ].filter(Boolean), { categoryShare });
+  ].filter(Boolean), { categoryShare, investmentMoves });
   if (!lead) {
     return null;
   }
