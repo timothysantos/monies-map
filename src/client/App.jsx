@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import {
   useLocation,
-  useNavigate,
-  useSearchParams
+  useNavigate
 } from "react-router-dom";
 import {
   broadcastAppShellRefresh,
@@ -115,6 +114,7 @@ import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month
 import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
 import { useInsightAskLauncher } from "./use-insight-ask-launcher";
+import { useLiveSearchParams } from "./use-live-search-params";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -252,7 +252,10 @@ export function App() {
   const [rangePickerStartYear, setRangePickerStartYear] = useState(null);
   const [rangePickerEndYear, setRangePickerEndYear] = useState(null);
   const [monthPickerYear, setMonthPickerYear] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  // A functional update builds on the URL as it is now, not the last
+  // render's params: a scope tapped right after Reset filters keeps them
+  // cleared (use-live-search-params.js).
+  const [searchParams, setSearchParams] = useLiveSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
   // "Ask about this" on a Money insights line opens Ask with it.

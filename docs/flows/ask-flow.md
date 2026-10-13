@@ -59,7 +59,13 @@ entry with a replace, so a reload or Back does not ask it again. On a wide
 screen it is `openAskDock({ intent: chat, question })`: the dock store's
 one-shot `question` handoff, which the chat takes when it mounts, or at
 once when it is already the one open (a second question joins the same
-conversation). The question never holds an amount.
+conversation). The question never holds an amount. Every question the
+menu asks reads as its own money answer (see "Money questions"): the spent
+part as the plan or spending answer, invested, saved (kept), spending
+against income ("Why did I spend more than I earned…" and, with money
+hidden, "How did my spending compare with my income…"), and the plan
+answer for "How did my spending compare with the plan…". The Summary's
+period ("from Oct 2025 to Sep 2026") reads as its months.
 
 On a phone the tab bar reads Summary, Entries, Splits, Ask, ··· (one grid
 column per primary tab; Month is not a tab, it is the Summary tab's month
@@ -344,24 +350,46 @@ A question the filter reader would not answer well is read first by the
 answer intent reader (`src/domain/ask-answer-intent.ts`, rules only, shared
 with the route): it must read as a question (ends with "?" or starts with a
 question word, "compare", "show", "top"...), name no amount, and match one
-of six intents:
+of nine intents:
 
 - `spending`: "why was August so expensive?" (why) or "where did September
   go?", "what did I spend the most on?" (where);
 - `plan` (intent against outcome): "how am I doing against the plan?",
   "am I on track?", "over budget?", "how did September go?", "how was
-  August?", "did we stick to the plan in Q3?". A quarter ("Q3", "q2
-  2026", "the third quarter", "this quarter", "last quarter"; without a
-  year the latest one that has started) covers its months up to this
-  month; a quarter in any other question is not answered rather than
-  answered for one month;
+  August?", "did we stick to the plan in Q3?", "how did my spending
+  compare with the plan?" (against the plan is never a second month);
 - `compare`: "compare August with July", "August vs September", "did I
   spend more than last month?" (one month named after to, with or than is
   compared with the month in view; "compare July" with the month before);
 - `biggest`: "what's my biggest expense this month?", "top expenses in
   sept" (one naming a category or wallet stays a filter request);
 - `income`: "how much income came in?", "what did we earn in August?";
-- `owed`: "what do I owe Serene?", "who owes who?", "are we settled up?".
+- `owed`: "what do I owe Serene?", "who owes who?", "are we settled up?";
+- the money jobs (DOMAIN.md "Money job"), read before a comparison so
+  "compare my spending with my income" is not two months:
+  - `invested`: "how much did I invest in September?", "how much went
+    into investments?", "did I hit my investment goal?" ("invest in a
+    new phone case" names a purchase and is not one);
+  - `saved`: "how much did I save?", "did I hit my savings target?",
+    "how much did we keep in August?", "what did I put aside?" ("keep to
+    the plan" is the plan);
+  - `spentVsEarned`: "why did I spend more than I earned?", "did we spend
+    more than we made?", "how did my spending compare with my income?",
+    "spending vs income in August?".
+  A search command ("show", "find", "search", "list", "filter") is never
+  one, and one naming a wallet, or a category other than the jobs' own
+  Investments, Savings and Salary, stays a filter request, as does one
+  measured against another month ("did I save more than in July?").
+
+A period reads as its months, oldest first, up to this month: a quarter
+("Q3", "q2 2026", "the third quarter", "this quarter", "last quarter";
+without a year the latest one that has started) or a range ("from Oct 2025
+to Sep 2026", "between July and September"; a start said without a year
+that falls after the end is the year before), at most 12 months (the
+Summary's default range). The plan, spending, income and money-job answers
+add the months up (`combineMonthFacts`); a period in a biggest or compare
+question, one longer than 12 months, or one that has not started is not
+answered rather than answered for one month.
 
 Month words read as the filter reader reads them; with none, the month in
 view. The page then sends `{ text, viewId, scope, month, keepCandidateIds }`
@@ -403,6 +431,46 @@ the plan rows that went furthest over. Its links are Open Month and Open in
 Entries. A quarter's answer adds the months up (`combineMonthFacts`), lists
 each month against its plan first, and links Open Month for its last month
 only (Entries shows one month at a time).
+
+The money jobs' answers are read through the same split as the Month and
+Summary lead (`moneyUseOf` in `ask-answer-facts.ts`, the shared
+`splitMoneyUse`), each with the lead's savings bar under it (`outcome`):
+
+- invested: title "<period> investing"; Lead "Invested", the Investments
+  share of the Spending Mix, against the invest job's plan (the plan's
+  Investments rows; more is fine); chips Plan and Income; lines the largest
+  Investments entries in plain ink (moved, not spent); links Open in Entries
+  filtered to the Investments category (when anything was invested), then
+  Open Month. Wording: "You put $1,200.00 into Investments in May. That's
+  $300.00 short of the $1,500.00 you planned to invest. The largest was
+  iFAST GIRO at $1,200.00 on 3 May."
+- saved: title "<period> savings"; Lead "Saved", the lead's kept (income
+  less spending less invested; below zero when more went out), against the
+  savings target; chips Income, Spent, Invested; lines the largest moves
+  into Savings, then the spending categories; links Open Month, then Open
+  in Entries filtered to Savings when money was moved there. Wording: "In
+  May you earned …, spent … and invested …, so you kept ….", then the
+  target ("… short of your … savings target") and "… of it went into
+  Savings."
+- spentVsEarned: title "<period> spending and income"; Lead "Spent" (the
+  spend job's spending), chips Income and Invested; lines "Came out of
+  savings" (rose) or "Kept" (mint), then the three largest spending
+  categories (the Spending Mix without Investments and Savings) with their
+  share of that spending; links Open in Entries (expenses), Open Month.
+  Wording: "In May you earned …, spent … and invested …, so … came out of
+  savings. Most of the spending went to home (…), … and …. Spending was …
+  more than the … you planned."
+
+The skew check covers them too: invested checks spending skew; saved and
+spentVsEarned either spending or income skew. A period's answer (and a
+quarter's spending or income answer) links Open Month for its last month
+only. With money hidden their titles, lead labels and chips say nothing
+about which side of a plan or of income the money fell, the wording and
+lines give way to the hidden note, and the savings bar is the lead's own
+hidden bar (shares of income, no amounts). The client adapter
+(`readMoneyAnswerResponse`) keeps the bar's invested, moved-to-Savings and
+Investments-plan figures (it used to drop them, so the plan answer's bar
+showed nothing invested).
 
 Every figure comes from the server's facts: the Month page DTO of the view
 and month (the Actual spend and Planned spend cards, the summary month's
@@ -947,7 +1015,7 @@ iPhone 13 profile) and runtime behaviour on a phone.
   one. Topping up does not lift a monthly spending limit (`capped`), which
   stays until a Claude call succeeds.
 
-- Money questions outside the six intents (and biggest or income questions
+- Money questions outside the nine intents (and biggest or income questions
   naming a category or wallet) are not answered; the page says so instead
   of reading them as entries. No AI reads a question to decide what it
   means.

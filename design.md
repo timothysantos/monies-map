@@ -397,6 +397,18 @@ picture. A quarter's answer ("did we stick to the plan in Q3?") is titled
 "July to September against plan" and lists each month against its plan
 before the plan rows.
 
+The money jobs' answers (the lead's "Ask about this" on invested, kept and
+"came out of savings", or the same questions typed) use the same card and
+the same `SavingsBar` under the lead: "May investing" (a trending-up
+glyph; lead "Invested" against the invest plan, more being fine; the
+Investments entries as plain-ink rows), "May savings" (a piggy bank; lead
+"Saved", the lead's kept, against the savings target, its plan bar empty
+when below zero; chips Income, Spent, Invested) and "May spending and
+income" (a wallet; lead "Spent", chips Income and Invested, rows "Came
+out of savings" or "Kept" and the spending categories). A Summary range
+is titled "October 2025 to September …". Their titles, labels and chips
+never say which side of a plan or of income the money fell.
+
 The check before an answer is the same card with the butter "Check this
 first" tag over the head ("Serene → Ethan" or the two accounts, the bank
 description muted, the amount in plain ink) and one plain paragraph; its

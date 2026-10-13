@@ -151,6 +151,35 @@ test("the adapter keeps only what the card renders and refuses a malformed answe
   assert.deepEqual(read.wording, { text: "May came to $0.01.", source: "template" });
 });
 
+test("the money jobs' answers are read, and their savings bar keeps what was invested and moved", () => {
+  const outcome = { incomeMinor: 500_000, spentMinor: 300_000, plannedSpendMinor: 400_000, savingsTargetMinor: 50_000, investedMinor: 30_000, savedMovedMinor: 20_000, plannedInvestMinor: 50_000 };
+  for (const intent of ["invested", "saved", "spentVsEarned"]) {
+    const read = readMoneyAnswerResponse({
+      ok: true, supported: true, intent, viewId: "person-tim", scope: "direct_plus_shared", months: ["2026-05"], needsConfirmation: false,
+      answer: { title: "May", lead: { label: "Invested", amountMinor: 30_000, currency: "SGD", tone: "neutral" }, support: [], lines: [], links: [], outcome },
+      wording: { text: "x", source: "template" }
+    });
+    assert.equal(read.intent, intent);
+    // Before, the adapter dropped the last three, so the bar showed nothing invested.
+    assert.deepEqual(read.answer.outcome, outcome, intent);
+  }
+  // An older answer without the money jobs' figures reads them as zero; a
+  // bad one is dropped.
+  const { investedMinor: _i, savedMovedMinor: _s, plannedInvestMinor: _p, ...monthCards } = outcome;
+  const older = readMoneyAnswerResponse({
+    ok: true, supported: true, intent: "plan", needsConfirmation: false,
+    answer: { title: "May", lead: { label: "Spent", amountMinor: 1, currency: "SGD", tone: "neutral" }, outcome: monthCards },
+    wording: { text: "x" }
+  });
+  assert.deepEqual(older.answer.outcome, { ...monthCards, investedMinor: 0, savedMovedMinor: 0, plannedInvestMinor: 0 });
+  const bad = readMoneyAnswerResponse({
+    ok: true, supported: true, intent: "saved", needsConfirmation: false,
+    answer: { title: "May", lead: { label: "Saved", amountMinor: 1, currency: "SGD", tone: "in" }, outcome: { ...outcome, incomeMinor: "lots" } },
+    wording: { text: "x" }
+  });
+  assert.equal("outcome" in bad.answer, false);
+});
+
 let showcase;
 test.before(async () => {
   showcase = await createSeededTemplate({ vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: "2026-05" } });

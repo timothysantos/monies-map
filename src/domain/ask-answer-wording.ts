@@ -12,7 +12,16 @@
 // the lines may say over, under or who owes whom: the page hides them
 // while money is hidden.
 
-import { selectPlanRows, spendJobFacts, type AskAnswerFacts, type EntryFact, type MonthFacts } from "./ask-answer-facts";
+import {
+  moneyUseOf,
+  selectPlanRows,
+  spendingCategories,
+  spendJobFacts,
+  type AskAnswerFacts,
+  type EntryFact,
+  type MonthFacts
+} from "./ask-answer-facts";
+import { isInvestmentsCategoryName, isSavingsCategoryName } from "./money-jobs";
 import { joinWithAnd, lowerLabel, monthName, plural, tidyName } from "./money-signals/format";
 import { flowTone, signTone, spendTone } from "./money-tone";
 import { formatCurrencyMinor } from "./split-currency";
@@ -37,13 +46,33 @@ export function monthLabel(month: string, today: string) {
   return month.slice(0, 4) === today.slice(0, 4) ? monthName(month) : `${monthName(month)} ${month.slice(0, 4)}`;
 }
 
-// The month a plan answer covers, or its quarter's first and last month:
-// "July to September".
-function planLabel(facts: Extract<AskAnswerFacts, { kind: "plan" }>, today: string) {
-  const months = facts.months ?? [];
-  return months.length > 1
+type MonthAnswerFacts = Exclude<AskAnswerFacts, { kind: "owed" }>;
+
+// A period's months, or none for one month.
+function periodMonths(facts: MonthAnswerFacts) {
+  return "months" in facts && facts.months && facts.months.length > 1 ? facts.months : null;
+}
+
+// The month an answer covers, or its period's first and last month: "July
+// to September", "October 2025 to September".
+function periodLabel(facts: MonthAnswerFacts, today: string) {
+  const months = periodMonths(facts);
+  return months
     ? `${monthLabel(months[0].month, today)} to ${monthLabel(months[months.length - 1].month, today)}`
     : monthLabel(facts.current.month, today);
+}
+
+// The same as a sentence says it: "in September", "from July to September".
+function periodPhrase(facts: MonthAnswerFacts, today: string) {
+  return `${periodMonths(facts) ? "from" : "in"} ${periodLabel(facts, today)}`;
+}
+
+// The Entries filter shows one month: a period links Open Month for its
+// last month only.
+function answerLinks(facts: MonthAnswerFacts, entries: AskAnswerLinkDto | null, { monthFirst = false } = {}): AskAnswerLinkDto[] {
+  const month = monthLink(facts.current);
+  if (periodMonths(facts) || !entries) return [month];
+  return monthFirst ? [month, entries] : [entries, month];
 }
 
 // "12 Aug"
@@ -151,6 +180,216 @@ function spentLead(facts: MonthFacts) {
   };
 }
 
+// The figures the Month and Summary lead's savings bar draws: the Month
+// cards' own, which the card splits with the same splitMoneyUse.
+function outcomeOf(facts: MonthFacts): NonNullable<AskAnswerCardDto["outcome"]> {
+  return {
+    incomeMinor: facts.incomeMinor,
+    spentMinor: facts.spentMinor,
+    plannedSpendMinor: facts.plannedMinor,
+    savingsTargetMinor: facts.savingsTargetMinor,
+    investedMinor: facts.investedMinor,
+    savedMovedMinor: facts.savedMovedMinor,
+    plannedInvestMinor: facts.plannedInvestMinor
+  };
+}
+
+type MoneyJobFacts = Extract<AskAnswerFacts, { kind: "invested" | "saved" | "spentVsEarned" }>;
+
+// The name the Spending Mix uses for a job's category ("Investments"), so
+// Open in Entries filters by exactly that category.
+function categoryName(facts: MonthFacts, isCategory: (name: string) => boolean, fallback: string) {
+  return facts.allCategories.find((category) => isCategory(category.name))?.name ?? fallback;
+}
+
+// Money moved into Investments or Savings was moved, not spent: its rows
+// keep the plain ink, as transfers do.
+function movedLines(entries: EntryFact[]): AskAnswerLineDto[] {
+  return entryLines(entries).map((line) => ({ ...line, tone: "neutral" }));
+}
+
+// The spending categories with their share of the spending (Investments
+// and Savings left out).
+function spendingCategoryLines(facts: MonthFacts): AskAnswerLineDto[] {
+  return categoryLines({ ...facts, categories: spendingCategories(facts) });
+}
+
+// The money jobs' answers (DOMAIN.md "Money job"), every figure from the
+// Month and Summary lead's own split (moneyUseOf, splitMoneyUse), with the
+// lead's savings bar under them. Titles, lead labels and chips never say
+// which side of a plan or of income the money fell, so hidden money can
+// show them with the amounts masked.
+function moneyJobCard(facts: MoneyJobFacts, today: string): AskAnswerCardDto {
+  const { current } = facts;
+  const use = moneyUseOf(current);
+  const label = periodLabel(facts, today);
+  const outcome = outcomeOf(current);
+  const chip = (chipLabel: string, amountMinor: number): AskAnswerChipDto => ({ label: chipLabel, amountMinor, currency: "SGD" });
+  if (facts.kind === "invested") {
+    const support = [use.investPlan > 0 ? chip("Plan", use.investPlan) : null, use.income > 0 ? chip("Income", use.income) : null]
+      .filter((item): item is AskAnswerChipDto => Boolean(item));
+    return {
+      title: `${label} investing`,
+      lead: {
+        label: "Invested",
+        amountMinor: use.invested,
+        currency: "SGD",
+        tone: "neutral",
+        // Investing more than the plan is fine.
+        ...(use.investPlan > 0 ? { planMinor: use.investPlan, overIsShort: false } : {})
+      },
+      support,
+      lines: movedLines(current.investments),
+      links: answerLinks(facts, use.invested > 0 ? entriesLink(current, { categories: [categoryName(current, isInvestmentsCategoryName, "Investments")] }) : null),
+      outcome
+    };
+  }
+  if (facts.kind === "saved") {
+    const support = [chip("Income", use.income), chip("Spent", use.spending), use.invested > 0 ? chip("Invested", use.invested) : null]
+      .filter((item): item is AskAnswerChipDto => Boolean(item));
+    return {
+      title: `${label} savings`,
+      lead: {
+        label: "Saved",
+        // Below zero when more went out than came in, as the lead's Saved.
+        amountMinor: use.kept,
+        currency: "SGD",
+        tone: signTone(use.kept),
+        ...(use.savePlan > 0 ? { planMinor: use.savePlan, overIsShort: false } : {})
+      },
+      support,
+      lines: [...movedLines(current.savingsMoves), ...spendingCategoryLines(current)],
+      links: answerLinks(
+        facts,
+        use.movedToSavings > 0 ? entriesLink(current, { categories: [categoryName(current, isSavingsCategoryName, "Savings")] }) : null,
+        { monthFirst: true }
+      ),
+      outcome
+    };
+  }
+  // Spending against what came in: the part that came out of savings (or
+  // what was kept), then the categories the spending went to.
+  const support = [chip("Income", use.income), use.invested > 0 ? chip("Invested", use.invested) : null]
+    .filter((item): item is AskAnswerChipDto => Boolean(item));
+  const keptLine: AskAnswerLineDto = use.kept < 0
+    ? { label: "Came out of savings", amountMinor: -use.kept, currency: "SGD", tone: "short" }
+    : { label: "Kept", amountMinor: use.kept, currency: "SGD", tone: "in" };
+  return {
+    title: `${label} spending and income`,
+    lead: { label: "Spent", amountMinor: use.spending, currency: "SGD", tone: spendTone(use.spending, use.spendPlan) },
+    support,
+    lines: [keptLine, ...spendingCategoryLines(current)],
+    links: answerLinks(facts, entriesLink(current, { type: "expense" })),
+    outcome
+  };
+}
+
+// "In September you earned $5,000.00, spent $6,200.00 and invested $300.00,
+// so $1,500.00 came out of savings."
+function keptSentence(facts: MoneyJobFacts, today: string) {
+  const use = moneyUseOf(facts.current);
+  const when = capitalizeFirst(periodPhrase(facts, today));
+  const earned = use.income > 0 ? `you earned ${money(use.income)}` : "nothing came in";
+  const out = use.invested > 0
+    ? `${use.income > 0 ? ", " : " and you "}spent ${money(use.spending)} and invested ${money(use.invested)}`
+    : ` and ${use.income > 0 ? "" : "you "}spent ${money(use.spending)}`;
+  const result = use.kept < 0 ? `${money(-use.kept)} came out of savings` : `you kept ${money(use.kept)}`;
+  return `${when} ${earned}${out}, so ${result}.`;
+}
+
+function moneyJobSentences(facts: MoneyJobFacts, today: string): string[] {
+  const { current } = facts;
+  const use = moneyUseOf(current);
+  const sentences: string[] = [];
+  if (facts.kind === "invested") {
+    const phrase = periodPhrase(facts, today);
+    sentences.push(use.invested > 0
+      ? `You put ${money(use.invested)} into Investments ${phrase}.`
+      : `You didn't put any money into Investments ${phrase}.`);
+    if (use.investPlan > 0) {
+      const gap = use.investPlan - use.invested;
+      sentences.push(use.invested <= 0
+        ? `You planned to invest ${money(use.investPlan)}.`
+        : gap > 0
+          ? `That's ${money(gap)} short of the ${money(use.investPlan)} you planned to invest.`
+          : gap < 0
+            ? `That's ${money(-gap)} more than the ${money(use.investPlan)} you planned to invest.`
+            : `That's exactly the ${money(use.investPlan)} you planned to invest.`);
+    }
+    const [largest] = current.investments;
+    if (largest && use.invested > 0) {
+      sentences.push(`The largest was ${entryName(largest)} at ${money(largest.amountMinor)} on ${dayLabel(largest.date)}.`);
+    }
+    return sentences;
+  }
+  sentences.push(keptSentence(facts, today));
+  if (facts.kind === "saved") {
+    if (use.savePlan > 0) {
+      const gap = use.kept - use.savePlan;
+      sentences.push(gap > 0
+        ? `That's ${money(gap)} more than your ${money(use.savePlan)} savings target.`
+        : gap < 0
+          ? `That's ${money(-gap)} short of your ${money(use.savePlan)} savings target.`
+          : `That's your ${money(use.savePlan)} savings target exactly.`);
+    }
+    if (use.movedToSavings > 0 && use.kept > 0) {
+      sentences.push(`${money(use.movedToSavings)} of it went into Savings.`);
+    }
+    return sentences;
+  }
+  const categories = spendingCategories(current);
+  if (categories.length) {
+    sentences.push(`Most of the spending went to ${joinWithAnd(categories.map((category) => `${lowerLabel(category.name)} (${money(category.amountMinor)})`))}.`);
+  }
+  if (use.spendPlan > 0) {
+    const gap = use.spending - use.spendPlan;
+    sentences.push(gap > 0
+      ? `Spending was ${money(gap)} more than the ${money(use.spendPlan)} you planned.`
+      : gap < 0
+        ? `Spending was ${money(-gap)} under the ${money(use.spendPlan)} you planned.`
+        : "Spending was exactly what you planned.");
+  }
+  return sentences;
+}
+
+function moneyJobPromptFacts(facts: MoneyJobFacts, today: string): string[] {
+  const { current } = facts;
+  const use = moneyUseOf(current);
+  const label = periodLabel(facts, today);
+  const lines: string[] = [];
+  if (facts.kind === "invested") {
+    lines.push(`Invested in ${label}: ${money(use.invested)}`);
+    if (use.investPlan > 0) {
+      lines.push(`Planned to invest: ${money(use.investPlan)}`);
+      const gap = use.investPlan - use.invested;
+      if (gap !== 0) lines.push(`${gap > 0 ? "Short of" : "More than"} the plan by: ${money(Math.abs(gap))}`);
+    }
+    if (use.income > 0) lines.push(`Income in ${label}: ${money(use.income)}`);
+    for (const entry of current.investments.slice(0, 3)) lines.push(`Investment ${promptEntryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)}`);
+    return lines;
+  }
+  lines.push(`Income in ${label}: ${money(use.income)}`);
+  lines.push(`Spent in ${label}: ${money(use.spending)}`);
+  if (use.invested > 0) lines.push(`Invested in ${label}: ${money(use.invested)}`);
+  lines.push(use.kept < 0 ? `Came out of savings: ${money(-use.kept)}` : `Kept: ${money(use.kept)}`);
+  if (facts.kind === "saved") {
+    if (use.savePlan > 0) {
+      lines.push(`Savings target: ${money(use.savePlan)}`);
+      const gap = use.kept - use.savePlan;
+      if (gap !== 0) lines.push(`${gap > 0 ? "More than" : "Short of"} the savings target by: ${money(Math.abs(gap))}`);
+    }
+    if (use.movedToSavings > 0) lines.push(`Moved into Savings: ${money(use.movedToSavings)}`);
+    return lines;
+  }
+  for (const category of spendingCategories(current)) lines.push(`Category ${category.name}: ${money(category.amountMinor)}, ${category.sharePercent}% of spending`);
+  if (use.spendPlan > 0) {
+    lines.push(`Planned spending: ${money(use.spendPlan)}`);
+    const gap = use.spending - use.spendPlan;
+    if (gap !== 0) lines.push(`${gap > 0 ? "Over" : "Under"} the plan by: ${money(Math.abs(gap))}`);
+  }
+  return lines;
+}
+
 // The plan answer speaks in the spend job's figures, as the Month and
 // Summary lead do (spendJobFacts): its spend and its "of $X plan" leave out
 // money moved to Investments or Savings and the savings and investment
@@ -174,11 +413,11 @@ export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContex
       ? [...entryLines(current.biggest.slice(0, 3)), ...categoryLines(current)]
       : [...categoryLines(current), ...entryLines(current.biggest.slice(0, 3))];
     return {
-      title: `${monthLabel(current.month, today)} spending`,
+      title: `${periodLabel(facts, today)} spending`,
       lead: spentLead(current),
       support,
       lines,
-      links: [entriesLink(current, { type: "expense" }), monthLink(current)]
+      links: answerLinks(facts, entriesLink(current, { type: "expense" }))
     };
   }
   if (facts.kind === "plan") {
@@ -203,7 +442,7 @@ export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContex
       secondary: { kind: "plan", label: "Plan", amountMinor: month.plannedMinor }
     }));
     return {
-      title: `${planLabel(facts, today)} against plan`,
+      title: `${periodLabel(facts, today)} against plan`,
       lead: spentLead(current),
       support,
       lines: monthLines.length ? [...monthLines, ...planLines.slice(0, 2)] : planLines,
@@ -211,15 +450,7 @@ export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContex
       links: facts.months?.length ? [monthLink(current)] : [monthLink(current), entriesLink(current, { type: "expense" })],
       // The Month cards' own figures: the savings bar splits them itself
       // (splitMoneyUse), into the same spend and plan as the lead above.
-      outcome: rawFacts.kind === "plan" ? {
-        incomeMinor: rawFacts.current.incomeMinor,
-        spentMinor: rawFacts.current.spentMinor,
-        plannedSpendMinor: rawFacts.current.plannedMinor,
-        savingsTargetMinor: rawFacts.current.savingsTargetMinor,
-        investedMinor: rawFacts.current.investedMinor,
-        savedMovedMinor: rawFacts.current.savedMovedMinor,
-        plannedInvestMinor: rawFacts.current.plannedInvestMinor
-      } : undefined
+      outcome: rawFacts.kind === "plan" ? outcomeOf(rawFacts.current) : undefined
     };
   }
   if (facts.kind === "compare") {
@@ -262,7 +493,7 @@ export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContex
     if (current.plannedIncomeMinor > 0) support.push({ label: "Plan", amountMinor: current.plannedIncomeMinor, currency: "SGD" });
     if (previous) support.push({ label: monthLabel(previous.month, today), amountMinor: previous.incomeMinor, currency: "SGD" });
     return {
-      title: `${monthLabel(current.month, today)} income`,
+      title: `${periodLabel(facts, today)} income`,
       lead: {
         label: `Came in · ${plural(current.incomeSources.reduce((sum, source) => sum + source.entryCount, 0), "entry", "entries")}`,
         amountMinor: current.incomeMinor,
@@ -278,8 +509,11 @@ export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContex
         currency: "SGD",
         tone: "in"
       })),
-      links: [entriesLink(current, { type: "income" }), monthLink(current)]
+      links: answerLinks(facts, entriesLink(current, { type: "income" }))
     };
+  }
+  if (facts.kind === "invested" || facts.kind === "saved" || facts.kind === "spentVsEarned") {
+    return moneyJobCard(facts, today);
   }
   // Splits: the viewer's home-currency balance leads; each group (in its
   // own currency) and each open settle-up is a line.
@@ -349,14 +583,12 @@ export function buildTemplateWording(rawFacts: AskAnswerFacts, context: WordingC
   const { today } = context;
   const facts = inSpendJob(rawFacts);
   const sentences: string[] = [];
-  if (facts.kind === "spending" || facts.kind === "plan" || facts.kind === "biggest" || facts.kind === "income" || facts.kind === "compare") {
-    if (facts.current.entryCount === 0) {
-      return `There are no entries for ${facts.kind === "plan" ? planLabel(facts, today) : monthLabel(facts.current.month, today)} yet.`;
-    }
+  if (facts.kind !== "owed" && facts.current.entryCount === 0) {
+    return `There are no entries for ${periodLabel(facts, today)} yet.`;
   }
   if (facts.kind === "spending") {
     const { current, previous } = facts;
-    const label = monthLabel(current.month, today);
+    const label = periodLabel(facts, today);
     const [topCategory] = current.categories;
     const [topEntry] = current.biggest;
     if (facts.focus === "why") {
@@ -376,7 +608,7 @@ export function buildTemplateWording(rawFacts: AskAnswerFacts, context: WordingC
     }
   } else if (facts.kind === "plan") {
     const { current } = facts;
-    const label = planLabel(facts, today);
+    const label = periodLabel(facts, today);
     if (current.plannedMinor <= 0) {
       sentences.push(`There's no spending plan for ${label}, and ${money(current.spentMinor)} has gone out.`);
     } else {
@@ -435,25 +667,27 @@ export function buildTemplateWording(rawFacts: AskAnswerFacts, context: WordingC
     }
   } else if (facts.kind === "income") {
     const { current, previous } = facts;
-    const label = monthLabel(current.month, today);
+    const label = periodMonths(facts) ? periodPhrase(facts, today) : `during ${periodLabel(facts, today)}`;
     if (current.incomeMinor <= 0) {
-      sentences.push(`No income came in during ${label}.`);
+      sentences.push(`No income came in ${label}.`);
     } else {
       const plan = current.plannedIncomeMinor;
       const gap = current.incomeMinor - plan;
       sentences.push(plan <= 0
-        ? `${money(current.incomeMinor)} came in during ${label}.`
+        ? `${money(current.incomeMinor)} came in ${label}.`
         : gap > 0
-          ? `${money(current.incomeMinor)} came in during ${label}, ${money(gap)} more than the ${money(plan)} you planned.`
+          ? `${money(current.incomeMinor)} came in ${label}, ${money(gap)} more than the ${money(plan)} you planned.`
           : gap < 0
-            ? `${money(current.incomeMinor)} came in during ${label}, ${money(-gap)} less than the ${money(plan)} you planned.`
-            : `${money(current.incomeMinor)} came in during ${label}, just as you planned.`);
+            ? `${money(current.incomeMinor)} came in ${label}, ${money(-gap)} less than the ${money(plan)} you planned.`
+            : `${money(current.incomeMinor)} came in ${label}, just as you planned.`);
       const [source] = current.incomeSources;
       if (source) sentences.push(`The largest part was ${lowerLabel(source.name)} at ${money(source.amountMinor)}.`);
     }
     if (previous && previous.entryCount > 0) {
       sentences.push(`${monthLabel(previous.month, today)} brought in ${money(previous.incomeMinor)}.`);
     }
+  } else if (facts.kind === "invested" || facts.kind === "saved" || facts.kind === "spentVsEarned") {
+    sentences.push(...moneyJobSentences(facts, today));
   } else {
     const other = personName(facts, facts.otherPersonId);
     const viewer = personName(facts, facts.viewerPersonId);
@@ -530,7 +764,7 @@ export function buildPromptFacts(rawFacts: AskAnswerFacts, context: WordingConte
     for (const entry of current.biggest.slice(0, entries)) lines.push(`Expense ${promptEntryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)} (${entry.categoryName})`);
   };
   if (facts.kind === "spending") {
-    const label = monthLabel(facts.current.month, today);
+    const label = periodLabel(facts, today);
     monthLines(facts.current, label, { entries: 3 });
     if (facts.previous) {
       const previousLabel = monthLabel(facts.previous.month, today);
@@ -539,7 +773,7 @@ export function buildPromptFacts(rawFacts: AskAnswerFacts, context: WordingConte
       if (gap !== 0) lines.push(`${gap > 0 ? "More" : "Less"} than ${previousLabel} by: ${money(Math.abs(gap))}`);
     }
   } else if (facts.kind === "plan") {
-    const label = planLabel(facts, today);
+    const label = periodLabel(facts, today);
     monthLines(facts.current, label, { categories: false });
     for (const month of facts.months ?? []) {
       lines.push(`Spent in ${monthLabel(month.month, today)}: ${money(month.spentMinor)} of ${money(month.plannedMinor)} planned`);
@@ -559,7 +793,7 @@ export function buildPromptFacts(rawFacts: AskAnswerFacts, context: WordingConte
     lines.push(`Month: ${label}`);
     for (const entry of facts.current.biggest) lines.push(`Expense ${promptEntryName(entry)} on ${dayLabel(entry.date)}: ${money(entry.amountMinor)} (${entry.categoryName})`);
   } else if (facts.kind === "income") {
-    const label = monthLabel(facts.current.month, today);
+    const label = periodLabel(facts, today);
     lines.push(`Income in ${label}: ${money(facts.current.incomeMinor)}`);
     if (facts.current.plannedIncomeMinor > 0) {
       lines.push(`Planned income for ${label}: ${money(facts.current.plannedIncomeMinor)}`);
@@ -568,6 +802,8 @@ export function buildPromptFacts(rawFacts: AskAnswerFacts, context: WordingConte
     }
     for (const source of facts.current.incomeSources) lines.push(`Income from ${source.name}: ${money(source.amountMinor)}`);
     if (facts.previous) lines.push(`Income in ${monthLabel(facts.previous.month, today)}: ${money(facts.previous.incomeMinor)}`);
+  } else if (facts.kind === "invested" || facts.kind === "saved" || facts.kind === "spentVsEarned") {
+    lines.push(...moneyJobPromptFacts(facts, today));
   } else {
     const other = personName(facts, facts.otherPersonId);
     const viewer = personName(facts, facts.viewerPersonId);

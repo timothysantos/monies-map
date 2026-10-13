@@ -275,7 +275,7 @@ export function addSavedEntryToSplits({ entryId, splitGroupId }, { fetchImpl = f
   );
 }
 
-const ANSWER_INTENTS = new Set(["spending", "plan", "compare", "biggest", "owed", "income"]);
+const ANSWER_INTENTS = new Set(["spending", "plan", "compare", "biggest", "owed", "income", "invested", "saved", "spentVsEarned"]);
 
 /**
  * @typedef {{ supported: boolean, needsConfirmation?: boolean, intent?: string, viewId?: string, scope?: string, months?: string[], candidates?: any[], answer?: { title: string, lead: any, support: any[], lines: any[], links: any[] }, wording?: { text: string, source: "ai" | "template" } }} MoneyAnswer
@@ -320,13 +320,23 @@ export function readMoneyAnswerResponse(body) {
   };
 }
 
-// The plan answer's savings-bar figures, only when every one is a number.
+// The savings-bar figures (the plan and money-job answers), only when the
+// four Month cards' figures are numbers. The money jobs' three (invested,
+// moved to Savings, the Investments plan) are kept too, or zero, so the bar
+// splits the money exactly as the lead does.
 function readOutcome(value) {
   if (!value || typeof value !== "object") {
     return null;
   }
   const keys = ["incomeMinor", "spentMinor", "plannedSpendMinor", "savingsTargetMinor"];
-  return keys.every((key) => Number.isFinite(value[key])) ? Object.fromEntries(keys.map((key) => [key, value[key]])) : null;
+  if (!keys.every((key) => Number.isFinite(value[key]))) {
+    return null;
+  }
+  const optional = ["investedMinor", "savedMovedMinor", "plannedInvestMinor"];
+  return Object.fromEntries([
+    ...keys.map((key) => [key, value[key]]),
+    ...optional.map((key) => [key, Number.isFinite(value[key]) ? value[key] : 0])
+  ]);
 }
 
 const PLAN_QUESTION_FIELDS = new Set(["month", "line", "owner"]);

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import worker from "../src/index.ts";
-import { buildAnswerPrompt, validateAiWording } from "../src/domain/ask-answer-wording.ts";
+import { buildAnswerPrompt, buildPromptFacts, validateAiWording } from "../src/domain/ask-answer-wording.ts";
 import { assertSameDatabase, createSeededTemplate, dumpDatabase, openSeededDatabase } from "./support/d1-workspace.mjs";
 
 const promptFacts = [
@@ -27,6 +27,40 @@ test("a phrasing that uses only the facts passes, amounts compared without $ and
   const text = "March came to $10,391.23, which is $3,128.14 over the plan. Home took 54% of it, led by Courts Megastore Tampines at $3,280.00.";
   assert.equal(check(text), text);
   assert.equal(check("  You spent 10391.23 in March,  against $7,263.09 planned. "), "You spent 10391.23 in March, against $7,263.09 planned.");
+});
+
+test("the money jobs' answers give AI the lead's own split, and only a phrasing of those figures passes", () => {
+  const current = {
+    month: "2026-09", viewId: "person-tim", scope: "direct_plus_shared",
+    spentMinor: 620_000, plannedMinor: 500_000, incomeMinor: 500_000, plannedIncomeMinor: 500_000,
+    savingsTargetMinor: 50_000, investedMinor: 30_000, savedMovedMinor: 0, plannedInvestMinor: 50_000,
+    entryCount: 12, expenseCount: 11, categories: [],
+    allCategories: [{ name: "Home", amountMinor: 400_000, sharePercent: 65, entryCount: 3 }, { name: "Investments", amountMinor: 30_000, sharePercent: 5, entryCount: 1 }],
+    biggest: [], investments: [{ id: "e-1", description: "IFAST GIRO 12345678", date: "2026-09-03", categoryName: "Investments", amountMinor: 30_000 }],
+    savingsMoves: [], planRows: [], incomeSources: []
+  };
+  const today = { today: "2026-10-12" };
+  assert.deepEqual(buildPromptFacts({ kind: "spentVsEarned", current }, today), [
+    "Income in September: $5,000.00",
+    "Spent in September: $5,900.00",
+    "Invested in September: $300.00",
+    "Came out of savings: $1,200.00",
+    "Category Home: $4,000.00, 100% of spending",
+    "Planned spending: $4,000.00",
+    "Over the plan by: $1,900.00"
+  ]);
+  // No reference number from the description reaches AI.
+  assert.deepEqual(buildPromptFacts({ kind: "invested", current }, today), [
+    "Invested in September: $300.00",
+    "Planned to invest: $500.00",
+    "Short of the plan by: $200.00",
+    "Income in September: $5,000.00",
+    "Investment Ifast Giro on 3 Sep: $300.00"
+  ]);
+  const facts = buildPromptFacts({ kind: "spentVsEarned", current }, today);
+  const phrasing = "In September you spent $5,900.00 against $5,000.00 of income, so $1,200.00 came out of savings.";
+  assert.equal(validateAiWording(phrasing, { promptFacts: facts, knownNames }), phrasing);
+  assert.equal(validateAiWording("You spent $900.00 more than you earned in September.", { promptFacts: facts, knownNames }), null);
 });
 
 test("an invented or reworked number is rejected", () => {

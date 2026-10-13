@@ -1,4 +1,4 @@
-import { ArrowRight, Banknote, ChartPie, Receipt, Scale, Sparkles, Target, Users } from "lucide-react";
+import { ArrowRight, Banknote, ChartPie, PiggyBank, Receipt, Scale, Sparkles, Target, TrendingUp, Users, Wallet } from "lucide-react";
 
 import { skewCountedKind } from "./ask-skew-check";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
@@ -16,7 +16,10 @@ const INTENT_ICONS = {
   compare: Scale,
   biggest: Receipt,
   owed: Users,
-  income: Banknote
+  income: Banknote,
+  invested: TrendingUp,
+  saved: PiggyBank,
+  spentVsEarned: Wallet
 };
 
 // An Ask answer to a money question (design.md "Ask page", "Money answer";
@@ -55,7 +58,8 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
       subtitle={<span className="ask-answer-detail">{lead.label}</span>}
       amount={<span className="ask-answer-amount"><PrivateMoney>{moneyWithCurrency(lead.amountMinor, lead.currency)}</PrivateMoney></span>}
       tone={lead.tone}
-      progress={plan ? { valueMinor: lead.amountMinor, planMinor: plan, overIsShort: lead.overIsShort !== false } : null}
+      // Saved can be below zero (more went out than came in): the bar is then empty.
+      progress={plan ? { valueMinor: Math.max(0, lead.amountMinor), planMinor: plan, overIsShort: lead.overIsShort !== false } : null}
       progressEnd={plan ? <span className="money-plan">{askCopy.ofPlan(moneyWithCurrency(plan, lead.currency))}</span> : null}
       chips={answer.support.map((chip, index) => (
         <MetaChip key={`${chip.label}-${index}`} className="ask-answer-chip">
@@ -66,8 +70,9 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
       ))}
     >
       {answer.outcome ? (
-        // Intent against outcome: the Month and Summary lead's savings bar,
-        // from the same figures through the same split (it keeps only
+        // Intent against outcome, and the money jobs' answers (invested,
+        // saved, spending against income): the Month and Summary lead's
+        // savings bar, from the same figures through the same split (it keeps only
         // percentages when money is hidden). No period is given, so its
         // parts show the percentage popover without the View entries / Ask
         // menu.

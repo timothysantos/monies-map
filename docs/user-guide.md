@@ -717,6 +717,20 @@ Ask also answers questions about your money in plain words:
   where it came from.
 - "What do I owe Serene?" or "Who owes who?": what is still open between
   you on Splits.
+- "How much did I invest in September?": what went into Investments,
+  against what you planned to invest, and the entries behind it.
+- "How much did we save last month?" or "Did I hit my savings target?":
+  what you kept of what you earned, against your savings target.
+- "Why did I spend more than I earned in August?" or "How did my spending
+  compare with my income?": what you earned, spent and invested, how much
+  came out of your savings (or what you kept), and where most of the
+  spending went.
+
+Questions about spending, the plan, income, investing and saving also
+work for a stretch of months, such as "from October 2025 to September
+2026" (up to 12 months) or "in Q3". The questions
+**Ask about this** asks for the bar and the money jobs are these same
+questions.
 
 The answer is a card with the figure you asked about (and the plan bar when
 there is a plan), a few short facts, a sentence or two, and the rows behind

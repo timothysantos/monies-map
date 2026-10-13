@@ -9,6 +9,7 @@ import test from "node:test";
 
 import { readAnswerIntent } from "../src/domain/ask-answer-intent.ts";
 import { readFilterRequest } from "../src/client/ask-filter-reader.js";
+import { moneyActionView } from "../src/client/money-jobs-detail.js";
 
 const people = [
   { id: "person-ethan", name: "Ethan" },
@@ -96,9 +97,112 @@ test("how a month or a quarter went is intent against outcome: the plan answer, 
   for (const [text, expected] of table) {
     assert.deepEqual(readAnswerIntent(text, context), expected, text);
   }
-  // A quarter only reads as the plan answer; nothing is answered for a
-  // quarter that has not started, or with one month standing in for it.
-  for (const text of ["where did Q3 go?", "what did we earn in Q3?", "how did q1 2027 go?", "how much did I spend in September?", "how often do we eat out?"]) {
+  // Nothing is answered for a quarter that has not started, for one the
+  // answer cannot add up (the biggest expenses are one month's), or with
+  // one month standing in for it.
+  for (const text of ["how did q1 2027 go?", "what were the biggest expenses in Q3?", "how much did I spend in September?", "how often do we eat out?"]) {
+    assert.equal(readAnswerIntent(text, context), null, text);
+  }
+  // Spending and income add a quarter's months up too.
+  assert.deepEqual(readAnswerIntent("where did Q3 go?", context), { kind: "spending", focus: "where", month: "2026-09", months: ["2026-07", "2026-08", "2026-09"] });
+  assert.deepEqual(readAnswerIntent("what did we earn in Q3?", context), { kind: "income", month: "2026-09", months: ["2026-07", "2026-08", "2026-09"] });
+});
+
+// The money jobs' "Ask about this" (money-jobs-detail.js): every question
+// the menu asks, for one month and for the Summary's range, reads as the
+// answer it is about. Built from the menu itself, so a reworded template
+// is caught here.
+const LAST_12 = ["2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"];
+const FIGURES = { income: 500_000, spending: 620_000, invested: 30_000, movedToSavings: 0, kept: -150_000, spendPlan: 450_000, savePlan: 50_000, investPlan: 50_000 };
+const menuQuestion = (key, { hidden = false, startMonth = "2026-09", endMonth = "2026-09", figures = FIGURES } = {}) =>
+  moneyActionView(key, { name: key, figures, hidden, period: { startMonth, endMonth } }).ask.question;
+
+test("each money job's question reads as its own answer, for a month and for the Summary's range", () => {
+  const vocabularyWithJobs = { ...context, vocabulary: [...vocabulary, "Investments", "Savings", "Salary"] };
+  const table = [
+    // The spent part over plan, and under it.
+    [menuQuestion("spent"), "Why did I spend more than planned in Sep 2026?", { kind: "plan", month: "2026-09" }],
+    [menuQuestion("spent", { figures: { ...FIGURES, spending: 100_000 } }), "What did I spend the most on in Sep 2026?", { kind: "spending", focus: "where", month: "2026-09" }],
+    // Hidden money: the plan answer, not this month against last.
+    [menuQuestion("spend", { hidden: true }), "How did my spending compare with the plan in Sep 2026?", { kind: "plan", month: "2026-09" }],
+    // Came out of savings: spending against what came in, not plain income.
+    [menuQuestion("savings"), "Why did I spend more than I earned in Sep 2026?", { kind: "spentVsEarned", month: "2026-09" }],
+    [menuQuestion("savings", { hidden: true }), "How did my spending compare with my income in Sep 2026?", { kind: "spentVsEarned", month: "2026-09" }],
+    [menuQuestion("invested"), "How much did I invest in Sep 2026?", { kind: "invested", month: "2026-09" }],
+    [menuQuestion("kept"), "How much did I save in Sep 2026?", { kind: "saved", month: "2026-09" }],
+    [menuQuestion("income"), "How much did I earn in Sep 2026?", { kind: "income", month: "2026-09" }],
+    // The Summary's twelve months.
+    [menuQuestion("invest", { startMonth: "2025-10" }), "How much did I invest from Oct 2025 to Sep 2026?", { kind: "invested", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("save", { startMonth: "2025-10" }), "How much did I save from Oct 2025 to Sep 2026?", { kind: "saved", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("savings", { startMonth: "2025-10" }), "Why did I spend more than I earned from Oct 2025 to Sep 2026?", { kind: "spentVsEarned", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("spend", { hidden: true, startMonth: "2025-10" }), "How did my spending compare with the plan from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("spent", { startMonth: "2025-10" }), "Why did I spend more than planned from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("income", { startMonth: "2025-10" }), "How much did I earn from Oct 2025 to Sep 2026?", { kind: "income", month: "2026-09", months: LAST_12 }]
+  ];
+  for (const [question, wording, expected] of table) {
+    assert.equal(question, wording);
+    assert.deepEqual(readAnswerIntent(question, context), expected, question);
+    // The Investments, Savings and Salary categories share the jobs' words:
+    // naming them is the question, not a category filter.
+    assert.deepEqual(readAnswerIntent(question, vocabularyWithJobs), expected, `${question} (with the jobs' categories)`);
+  }
+});
+
+test("the money jobs' questions typed by hand read the same way", () => {
+  const table = [
+    ["how much did we invest last month?", { kind: "invested", month: "2026-09" }],
+    ["What did I invest this month", { kind: "invested", month: "2026-10" }],
+    ["how much went into investments in August?", { kind: "invested", month: "2026-08" }],
+    ["did I hit my investment goal?", { kind: "invested", month: "2026-10" }],
+    ["did we invest as much as we planned in Q3?", { kind: "invested", month: "2026-09", months: ["2026-07", "2026-08", "2026-09"] }],
+    ["how much did we save last month?", { kind: "saved", month: "2026-09" }],
+    ["did I hit my savings target?", { kind: "saved", month: "2026-10" }],
+    ["how much did we keep in August?", { kind: "saved", month: "2026-08" }],
+    ["what did I put aside in July?", { kind: "saved", month: "2026-07" }],
+    ["how much have we saved between July and September?", { kind: "saved", month: "2026-09", months: ["2026-07", "2026-08", "2026-09"] }],
+    ["did we spend more than we earned last month?", { kind: "spentVsEarned", month: "2026-09" }],
+    ["did I spend more than I made in August?", { kind: "spentVsEarned", month: "2026-08" }],
+    ["spending vs income in august?", { kind: "spentVsEarned", month: "2026-08" }],
+    ["how does my spending compare to my income?", { kind: "spentVsEarned", month: "2026-10" }],
+    ["did I spend less than I earned from November to February?", { kind: "spentVsEarned", month: "2026-02", months: ["2025-11", "2025-12", "2026-01", "2026-02"] }],
+    ["how did August compare to the plan?", { kind: "plan", month: "2026-08" }],
+    ["how does my spending compare with my budget?", { kind: "plan", month: "2026-10" }],
+    // "Keep to the plan" is the plan, not what was kept.
+    ["did we keep to the plan in July?", { kind: "plan", month: "2026-07" }]
+  ];
+  for (const [text, expected] of table) {
+    assert.deepEqual(readAnswerIntent(text, context), expected, text);
+  }
+});
+
+test("invest, save and earn in a search, a purchase, a named wallet or a range too long are not money-job answers", () => {
+  const filterContext = { today: "2026-10-12", month: "2026-10", viewId: "household", scope: "direct_plus_shared", people, accounts: [], categories: [] };
+  // A merchant search with "invest" in it still searches.
+  for (const text of ["show invest in a new phone case", "find invest in a new phone case", "search invest in a new phone case"]) {
+    assert.equal(readAnswerIntent(text, context), null, text);
+    const reading = readFilterRequest(text, filterContext);
+    assert.equal(reading.kind, "filter", text);
+    assert.match(reading.filter.search, /\binvest\b.*\bphone case\b/, text);
+  }
+  const negatives = [
+    "invest in a new phone case",
+    "did I invest in a new phone case?",
+    "how much did I spend on the invest in a new phone case?",
+    // A wallet named: the filter reader's question.
+    "how much did I save on my UOB One Account in August?",
+    "how much income came into my OCBC 360 Account?",
+    // A comparison with another month.
+    "did I save more than in July?",
+    // Longer than the Summary's twelve months, or not started yet.
+    "how much did I invest from Jan 2025 to Sep 2026?",
+    "how much did I save from Nov 2026 to Dec 2026?",
+    // An amount is a filter.
+    "did I invest more than $500 in August?",
+    // A request, not a question about what happened.
+    "can you save this?",
+    "could you invest it for me?"
+  ];
+  for (const text of negatives) {
     assert.equal(readAnswerIntent(text, context), null, text);
   }
 });

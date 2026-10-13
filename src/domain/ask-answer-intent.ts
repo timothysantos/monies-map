@@ -1,7 +1,7 @@
 // The Ask answer intent reader (DOMAIN.md "Money Question"; docs/flows/
 // ask-flow.md "Money questions"): a free-form money question such as "why
 // was August so expensive?" or "what do I owe Serene?" read by rules into
-// one of six intents, or null. No AI and no request: the same text and
+// one of nine intents, or null. No AI and no request: the same text and
 // context always read the same way.
 //
 // Shared by the answer route (src/server/ask-answer-route.ts), which reads
@@ -13,16 +13,28 @@
 // category or a wallet where that changes the answer (the biggest grocery,
 // the income into a card), is left to the filter reader, and anything it
 // does not recognise is null, so the page keeps its "not answered" note.
+//
+// The money jobs' questions (the Month and Summary lead's "Ask about this",
+// money-jobs-detail.js, and the same questions typed by hand) have their
+// own intents: how much was invested, how much was saved (kept), and
+// spending against what came in. A period ("from Oct 2025 to Sep 2026",
+// "Q3") reads as its months for every answer that can add months up.
 
+// `months`: a period ("did we stick to the plan in Q3?", "how much did I
+// invest from Oct 2025 to Sep 2026?"), oldest first, up to this month;
+// `month` is then its last month.
 export type AskAnswerIntent =
-  | { kind: "spending"; focus: "why" | "where"; month: string }
-  // `months`: a quarter ("did we stick to the plan in Q3?"), oldest first,
-  // up to this month; `month` is then its last month.
+  | { kind: "spending"; focus: "why" | "where"; month: string; months?: string[] }
   | { kind: "plan"; month: string; months?: string[] }
   | { kind: "compare"; month: string; otherMonth: string }
   | { kind: "biggest"; month: string }
   | { kind: "owed"; personId: string | null }
-  | { kind: "income"; month: string };
+  | { kind: "income"; month: string; months?: string[] }
+  // The money jobs (DOMAIN.md "Money job"): money put into Investments,
+  // what was kept (saved), and spending against what came in.
+  | { kind: "invested"; month: string; months?: string[] }
+  | { kind: "saved"; month: string; months?: string[] }
+  | { kind: "spentVsEarned"; month: string; months?: string[] };
 
 export type AskAnswerIntentKind = AskAnswerIntent["kind"];
 
@@ -38,20 +50,34 @@ export interface AskAnswerIntentContext {
   vocabulary?: string[];
 }
 
+// The longest period an answer adds up: the Summary's default range.
+export const MAX_PERIOD_MONTHS = 12;
+
 const MONTH_WORDS = new Map<string, number>([
   ["january", 1], ["jan", 1], ["february", 2], ["feb", 2], ["march", 3], ["mar", 3], ["april", 4], ["apr", 4],
   ["may", 5], ["june", 6], ["jun", 6], ["july", 7], ["jul", 7], ["august", 8], ["aug", 8], ["september", 9],
   ["sept", 9], ["sep", 9], ["october", 10], ["oct", 10], ["november", 11], ["nov", 11], ["december", 12], ["dec", 12]
 ]);
-const MONTH_LEAD_WORDS = new Set(["in", "for", "during", "of", "since", "from", "with", "to", "than", "and", "vs", "versus"]);
+const MONTH_LEAD_WORDS = new Set(["in", "for", "during", "of", "since", "from", "with", "to", "than", "and", "vs", "versus", "between", "until", "till", "through"]);
 const COMPARE_LEAD_WORDS = new Set(["to", "with", "than", "against", "vs", "versus"]);
+// "than last month", "than in July": measured against another month.
+const THAN_A_MONTH = new RegExp(`\\bthan (?:in |during |for )?(?:(?:this|last|previous) month|\\d{4}-\\d{2}|(?:${[...MONTH_WORDS.keys()].join("|")})\\b)`);
+const RANGE_START_LEADS = new Set(["from", "between"]);
+const RANGE_END_LEADS = new Set(["to", "until", "till", "through", "and"]);
 const QUESTION_STARTS = new Set([
   "how", "what", "whats", "when", "where", "which", "who", "whos", "why", "did", "do", "does", "is", "are", "am",
   "was", "were", "can", "could", "have", "has", "compare", "tell", "explain", "show", "give", "break",
   "top", "biggest", "largest"
 ]);
+// A search or filter command is never a money job's question ("show invest
+// in a new phone case" searches).
+const COMMAND_STARTS = new Set(["show", "find", "search", "list", "filter"]);
 // Words that make a name too plain to count as naming a wallet or category.
 const GENERIC_NAME_WORDS = new Set(["card", "account", "the", "and", "other", "income", "one", "cash", "back", "extra", "mo", "yr", "transfer"]);
+// The money jobs' own words (as stems). The Investments and Savings
+// categories share them, so "how much went into investments?" asks the
+// invested question rather than naming a category to filter by.
+const MONEY_JOB_STEMS = new Set(["invest", "investment", "save", "saving", "income", "earning", "salary", "spend", "spending", "expense"]);
 
 interface Token {
   text: string;
@@ -62,6 +88,8 @@ interface MonthRef {
   month: string;
   // The word before it ("to", "than", "with"...).
   lead: string;
+  // The year was said ("Oct 2025", "2026-03", "last month").
+  hasYear: boolean;
 }
 
 /**
@@ -83,64 +111,118 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
   }
   const words = new Set(tokens.map((token) => token.text));
   const has = (pattern: RegExp) => pattern.test(normalized);
-  const refs = readMonthRefs(tokens, context);
-  const month = refs[0]?.month ?? context.month;
+  const allRefs = readMonthRefs(tokens, context);
+
+  // A period: a quarter, or a range of months. One that has not started, or
+  // is longer than MAX_PERIOD_MONTHS, is not answered rather than answered
+  // for part of it.
+  const range = readRange(allRefs, context.today);
+  const quarter = readQuarter(tokens, context.today);
+  if (quarter === "unreadable" || range === "unreadable") {
+    return null;
+  }
+  const period = range?.months ?? quarter;
+  // The months named outside the range ("compared with July").
+  const refs = range ? allRefs.filter((ref) => !range.refs.includes(ref)) : allRefs;
+  const distinctMonths = new Set(refs.map((ref) => ref.month)).size;
+  const month = period ? period[period.length - 1] : refs[0]?.month ?? context.month;
+  const over = <T extends AskAnswerIntent>(intent: T): T => (period ? { ...intent, months: period } : intent);
 
   // Who owes whom: Splits balances, whatever month is named.
   if (has(/\b(owe|owes|owed|owing)\b/) || has(/\bsettled? up\b/) || has(/\bsplits? balance/)) {
     return { kind: "owed", personId: findPerson(tokens, context.people)?.id ?? null };
   }
 
+  // The money jobs' questions, before a comparison could read "compare my
+  // spending with my income" as two months. One naming a category or
+  // wallet ("how much did I invest in Endowus?") stays a filter request,
+  // and one against another month ("did I save more than in July?") a
+  // comparison.
+  if (!COMMAND_STARTS.has(tokens[0].text) && distinctMonths < 2 && !THAN_A_MONTH.test(normalized)) {
+    const job = readMoneyJob(normalized);
+    if (job) {
+      return mentionsVocabulary(tokens, context.vocabulary ?? [], MONEY_JOB_STEMS) ? null : over({ kind: job, month });
+    }
+  }
+
+  // Against the plan is the plan answer, not a second month: "how did my
+  // spending compare with the plan?".
+  const aboutPlan = has(/\b(plan|planned|budget|budgets)\b/);
+
   // Two months side by side.
   const comparing = has(/\b(compare|compared|comparison|vs|versus)\b/)
     || (has(/\b(more|less|higher|lower)\b/) && refs.some((ref) => ref.lead === "than"));
-  if (comparing) {
-    return readCompare(refs, context);
+  if (comparing && !(aboutPlan && distinctMonths < 2)) {
+    return period ? null : readCompare(refs, context);
   }
 
   const namesVocabulary = mentionsVocabulary(tokens, context.vocabulary ?? []);
-  // A quarter is answered only as intent against outcome; any other
-  // question about a quarter is not answered rather than answered for one
-  // month.
-  const quarter = readQuarter(tokens, context.today);
-  if (quarter === "unreadable") {
-    return null;
-  }
 
   // Income before the plan: "did income match the plan?" is about income.
   if (has(/\b(income|earn|earned|earning|earnings|salary|came in)\b/)) {
-    return namesVocabulary || quarter ? null : { kind: "income", month };
+    return namesVocabulary ? null : over({ kind: "income", month });
   }
 
   // Intent against outcome: the plan, staying on it, or how a month went
   // ("how did September go?", "how was August?", "how did we do?").
   const howItWent = /^how (did|was|were|has|have|is|are)\b/.test(normalized)
     && !has(/\b(much|many|often|long)\b/)
-    && (refs.length > 0 || quarter !== null || has(/\b(go|went|going|gone|do|did|doing|done|turn|turned|end|ended|look|looking)\b/));
-  if (has(/\b(plan|planned|budget|budgets)\b/) || has(/\bon (track|target)\b/) || has(/\b(stick|stuck|stay|stayed)\b/) || howItWent) {
-    if (quarter) {
-      return { kind: "plan", month: quarter[quarter.length - 1], months: quarter };
-    }
-    return { kind: "plan", month };
-  }
-  if (quarter) {
-    return null;
+    && (allRefs.length > 0 || period !== null || has(/\b(go|went|going|gone|do|did|doing|done|turn|turned|end|ended|look|looking)\b/));
+  if (aboutPlan || has(/\bon (track|target)\b/) || has(/\b(stick|stuck|stay|stayed)\b/) || has(/\b(keep|kept) (to|within)\b/) || howItWent) {
+    return over({ kind: "plan", month });
   }
 
   if (has(/\bwhere\b/) && (has(/\b(go|went|going|gone)\b/) || has(/\b(spend|spent|spending|money)\b/))) {
-    return { kind: "spending", focus: "where", month };
+    return over({ kind: "spending", focus: "where", month });
   }
   if (has(/\b(spend|spent)\b.*\bmost\b/) || has(/\b(top|biggest|largest) categor/) || has(/\bbreak ?down\b/)) {
-    return { kind: "spending", focus: "where", month };
+    return over({ kind: "spending", focus: "where", month });
   }
   if (words.has("why") && (has(/\b(expensive|much|high|higher|more|big|bigger|spend|spent|spending|cost|costly)\b/))) {
-    return { kind: "spending", focus: "why", month };
+    return over({ kind: "spending", focus: "why", month });
   }
 
+  // The biggest expenses are one month's: a period is not answered.
+  if (period) {
+    return null;
+  }
   if (has(/\b(biggest|largest|most expensive|top|highest|priciest|costliest)\b/) && has(/\b(expense|expenses|purchase|purchases|spend|spending|cost|costs|item|items|payment|payments|thing|things|buy|buys|bought)\b/)) {
     return namesVocabulary ? null : { kind: "biggest", month };
   }
 
+  return null;
+}
+
+// Which money job a question asks about (DOMAIN.md "Money job"): how much
+// went into Investments, how much was saved (kept), or spending against
+// what came in. Null for anything else. "Invest in a new phone case" names
+// a purchase, not investing; "keep to the plan" is the plan.
+function readMoneyJob(normalized: string): "invested" | "saved" | "spentVsEarned" | null {
+  const has = (pattern: RegExp) => pattern.test(normalized);
+  // A bare verb ("save", "invest") is the job's question only when asked
+  // about what happened ("how much did I save?"), never a request ("can you
+  // save this?").
+  const askedAbout = has(/\b(how much|how many|what did|whats|did (?:i|we|you)|do (?:i|we)|have (?:i|we)|has)\b/);
+  if (
+    (has(/\b(invested|investing|investment|investments)\b/) || (has(/\binvest\b/) && askedAbout))
+    && !has(/\binvest(?:ed|ing|s)? (?:in|into|on) (?:a|an|new|that|this|those|these)\b/)
+  ) {
+    return "invested";
+  }
+  const spending = has(/\b(spend|spent|spending|expenses|outgoings)\b/);
+  const earning = has(/\b(earn|earned|earning|earnings|income|salary|paycheck|pay cheque)\b/)
+    || has(/\bthan (?:i|we|you) (?:made|make|brought in|bring in|took home|take home)\b/);
+  if (spending && earning) {
+    return "spentVsEarned";
+  }
+  if (
+    has(/\b(saved|saving|savings)\b/)
+    || (has(/\bsave\b/) && askedAbout)
+    || (has(/\b(put|set) aside\b/) && askedAbout)
+    || (has(/\bhow much\b.*\b(keep|kept)\b/) && !has(/\b(keep|kept) (to|within)\b/))
+  ) {
+    return "saved";
+  }
   return null;
 }
 
@@ -191,12 +273,12 @@ function readMonthRefs(tokens: Token[], context: AskAnswerIntentContext): MonthR
     const next = tokens[index + 1];
     const lead = tokens[index - 1]?.text ?? "";
     if ((token.text === "this" || token.text === "last" || token.text === "previous") && next?.text === "month") {
-      refs.push({ month: token.text === "this" ? thisMonth : addMonths(thisMonth, -1), lead });
+      refs.push({ month: token.text === "this" ? thisMonth : addMonths(thisMonth, -1), lead, hasYear: true });
       index += 1;
       continue;
     }
     if (/^\d{4}-\d{2}$/.test(token.text)) {
-      refs.push({ month: token.text, lead });
+      refs.push({ month: token.text, lead, hasYear: true });
       continue;
     }
     const monthNumber = MONTH_WORDS.get(token.text);
@@ -215,9 +297,34 @@ function readMonthRefs(tokens: Token[], context: AskAnswerIntentContext): MonthR
     } else if (`${year}-${String(monthNumber).padStart(2, "0")}` > thisMonth) {
       year -= 1;
     }
-    refs.push({ month: `${year}-${String(monthNumber).padStart(2, "0")}`, lead });
+    refs.push({ month: `${year}-${String(monthNumber).padStart(2, "0")}`, lead, hasYear });
   }
   return refs;
+}
+
+// "from Oct 2025 to Sep 2026", "between July and September": every month
+// from the first to the second, up to this month. A start said without a
+// year that falls after the end is the year before ("from November to
+// February"). Null when no range is named; "unreadable" when it has not
+// started, runs backwards, or is longer than MAX_PERIOD_MONTHS.
+function readRange(refs: MonthRef[], today: string): { months: string[]; refs: MonthRef[] } | null | "unreadable" {
+  const startIndex = refs.findIndex((ref) => RANGE_START_LEADS.has(ref.lead));
+  const start = startIndex >= 0 ? refs[startIndex] : undefined;
+  const end = startIndex >= 0 ? refs[startIndex + 1] : undefined;
+  if (!start || !end || !RANGE_END_LEADS.has(end.lead)) {
+    return null;
+  }
+  const first = start.month > end.month && !start.hasYear ? addMonths(start.month, -12) : start.month;
+  const thisMonth = today.slice(0, 7);
+  const last = end.month > thisMonth ? thisMonth : end.month;
+  if (first > last) {
+    return "unreadable";
+  }
+  const months: string[] = [];
+  for (let item = first; item <= last && months.length <= MAX_PERIOD_MONTHS; item = addMonths(item, 1)) {
+    months.push(item);
+  }
+  return months.length > MAX_PERIOD_MONTHS ? "unreadable" : { months, refs: [start, end] };
 }
 
 const QUARTER_WORDS = new Map<string, number>([["first", 1], ["1st", 1], ["second", 2], ["2nd", 2], ["third", 3], ["3rd", 3], ["fourth", 4], ["4th", 4]]);
@@ -274,12 +381,12 @@ function stem(word: string) {
 }
 
 // A category or wallet name: the whole name, or one distinctive word of it
-// ("groceries", "citi").
-function mentionsVocabulary(tokens: Token[], vocabulary: string[]) {
+// ("groceries", "citi"). Words whose stem is in `ignore` never count.
+function mentionsVocabulary(tokens: Token[], vocabulary: string[], ignore: Set<string> = new Set()) {
   const stems = new Set(tokens.map((token) => stem(token.text)));
   return vocabulary.some((name) => {
     const nameWords = normalize(name).split(/[^a-z0-9]+/).filter(Boolean);
-    return nameWords.some((word) => word.length >= 3 && !GENERIC_NAME_WORDS.has(word) && stems.has(stem(word)));
+    return nameWords.some((word) => word.length >= 3 && !GENERIC_NAME_WORDS.has(word) && !ignore.has(stem(word)) && stems.has(stem(word)));
   });
 }
 
