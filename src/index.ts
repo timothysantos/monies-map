@@ -70,8 +70,10 @@ import { buildStatementCompareDiagnosis, type StatementCompareSection } from "./
 import { convertForeignAmount, describeForeignAmount, formatForeignAmount, FxRateUnavailableError } from "./domain/foreign-currency";
 import { applyStatementCorrections, StatementCorrectionRefusedError, undoStatementCorrections, type StatementCorrectionDto } from "./domain/app-repository-statement-corrections";
 import {
+  applyMonthPlanChanges,
   deleteMonthPlan,
   deleteMonthPlanRow,
+  MonthPlanChangeError,
   duplicateMonthPlan,
   resetMonthPlan,
   saveMonthPlanEntryLinks,
@@ -1945,6 +1947,32 @@ export default {
           splitBasisPoints: body.splitBasisPoints
         }))
       });
+    }
+
+    // Ask's plan draft, saved: several plan-row changes for one month in one
+    // batch (DOMAIN.md "Plan Draft"). 409 when the plan changed since the
+    // draft; nothing is written then.
+    if (url.pathname === "/api/month-plan/apply-changes" && request.method === "POST") {
+      let body: { month?: unknown; changes?: unknown } | null = null;
+      try {
+        body = await request.json();
+      } catch {
+        body = null;
+      }
+      try {
+        return json({
+          ok: true,
+          ...(await applyMonthPlanChanges(env.DB, {
+            month: typeof body?.month === "string" ? body.month : "",
+            changes: Array.isArray(body?.changes) ? body.changes : []
+          }))
+        });
+      } catch (error) {
+        if (error instanceof MonthPlanChangeError) {
+          return json({ ok: false, error: error.message }, error.status);
+        }
+        return json({ ok: false, error: error instanceof Error ? error.message : "The plan could not be saved." }, 400);
+      }
     }
 
     if (url.pathname === "/api/month-plan/delete" && request.method === "POST") {

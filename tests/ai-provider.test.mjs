@@ -500,7 +500,7 @@ test("only the allowance counter and the status row are written, with no prompt,
 // features; basic_first (90% of the target or more) the basic model first for
 // everything. The other provider is always the fallback.
 
-const ASK_TIER = ["receipt_read", "entry_draft", "ask_answer"];
+const ASK_TIER = ["receipt_read", "entry_draft", "ask_answer", "plan_draft"];
 const BACKGROUND_TIER = ["monthly_narrative", "import_explanation", "category_rules", "statement_text_fallback"];
 // 15 October 2026, noon in Singapore: target US$8 gives a pace of about US$3.87 and a 90% line of US$7.20.
 const MID_MONTH = new Date("2026-10-15T04:00:00.000Z");

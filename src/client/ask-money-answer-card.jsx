@@ -6,6 +6,7 @@ import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { LeadCard, MetaChip } from "./ui/lead-support-detail";
+import { SavingsBar } from "./ui/savings-bar";
 
 const NEUTRAL_BUBBLE_COLOUR = "#7C8791";
 const INTENT_ICONS = {
@@ -63,6 +64,17 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
         </MetaChip>
       ))}
     >
+      {answer.outcome ? (
+        // Intent against outcome: the Month and Summary lead's savings bar,
+        // from the same four figures (it keeps only percentages when money
+        // is hidden).
+        <SavingsBar
+          income={answer.outcome.incomeMinor}
+          spent={answer.outcome.spentMinor}
+          plannedSpend={answer.outcome.plannedSpendMinor}
+          savingsTarget={answer.outcome.savingsTargetMinor}
+        />
+      ) : null}
       {areTotalsVisible ? (
         <>
           <p className="ask-money-wording">{wording.text}</p>

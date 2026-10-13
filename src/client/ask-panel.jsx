@@ -6,8 +6,10 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   addSavedEntryToSplits,
+  applyPlanChanges,
   requestEntryDraft,
   requestMoneyAnswer,
+  requestPlanDraft,
   requestReceiptRead,
   resolveSkewCandidate,
   saveCardEntry,
@@ -37,6 +39,10 @@ import { AskAnswerCard } from "./ask-answer-card";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
 import { skewCheckLabels } from "./ask-skew-check";
 import { readAnswerIntent } from "../domain/ask-answer-intent";
+import { mentionsPlanOrMonth, readPlanRequest } from "../domain/plan-draft-reader";
+import { AskPlanDraftCard } from "./ask-plan-draft-card";
+import { useMoneyPrivacy } from "./money-privacy";
+import { moneyWithCurrency } from "./formatters";
 import { AskBriefCard } from "./ask-brief-card";
 import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
@@ -51,6 +57,7 @@ import { buildChipRow, findActiveItem } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
 import { createPressGesture, createVoiceController, joinSpokenText } from "./ask-voice";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
+import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
 import { EmptyState } from "./ui-states";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
@@ -176,6 +183,7 @@ function AskConversation({
   canExpand = false
 }) {
   const queryClient = useQueryClient();
+  const { areTotalsVisible } = useMoneyPrivacy();
   // Beside another page (the desktop dock) rather than at /ask.
   const inDock = placement !== "page";
   const location = useLocation();
@@ -392,10 +400,12 @@ function AskConversation({
     // A money answer or the check before it arrives after its question, and
     // is often taller than the screen: the question right above it (else
     // the card itself, after a check) goes to the top, so its lead shows.
-    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check");
+    // A plan draft too: the question, its intro note, then the card.
+    const money = [...newItems].reverse().find((item) => item.kind === "money-answer" || item.kind === "money-check" || (item.kind === "plan-draft" && item.status === "draft"));
     if (money) {
-      const before = settled[settled.indexOf(money) - 1];
-      document.getElementById(before?.kind === "me" ? before.id : money.id)?.scrollIntoView?.({ block: "start", behavior });
+      const index = settled.indexOf(money);
+      const asked = settled.slice(Math.max(0, index - 2), index).reverse().find((item) => item.kind === "me");
+      document.getElementById(asked ? asked.id : money.id)?.scrollIntoView?.({ block: "start", behavior });
       return;
     }
     const lastMine = [...newItems].reverse().find((item) => item.kind === "me");
@@ -541,6 +551,16 @@ function AskConversation({
     // sentence is a change to it; a question, or a request naming a month,
     // someone's ("Serene's") or an amount limit, is still a search.
     const cardOpen = Boolean(card && card.status !== "saved");
+    // A change to a month's plan ("move $50 from Shopping to Groceries in
+    // October") goes to the plan-draft route first. While an entry card is
+    // open only one that names the plan or a month does ("set the amount
+    // to 12" changes the card). The route may say it is not a plan request
+    // after all; the readers below then take it as before.
+    const planReading = readPlanRequest(text, { today, walletNames: accounts.map((account) => account.name) });
+    const planFirst = planReading.kind !== "none" && (!cardOpen || (planReading.kind === "request" && mentionsPlanOrMonth(text)));
+    if (planFirst && await askPlanDraft(text, { viewId: view.id, month: selectedMonth })) {
+      return;
+    }
     // A money question ("why was August so expensive?") goes to the answer
     // route before the filter reader could read it as a search.
     if (readAnswerIntent(text, answerContext)) {
@@ -595,6 +615,130 @@ function AskConversation({
     } finally {
       setStatus("");
       setWorking("");
+    }
+  }
+
+  // Planning by chat (docs/flows/ask-flow.md "Planning by chat"): the
+  // plan-draft route answers with a draft card, a question (chips), a note,
+  // or "not a plan request" (false: the caller reads the text as before).
+  // `request` is the view and month it was asked in, kept with a question so
+  // its answer drafts against the same ones.
+  async function askPlanDraft(text, request, answers = {}) {
+    setWorking("plan");
+    setStatus(askPlanCopy.reading);
+    try {
+      const result = await requestPlanDraft({ text, viewId: request.viewId, month: request.month, answers });
+      if (!result.ok) {
+        appendThread(threadItem("note", { text: askPlanCopy.notes.failed, tone: "calm" }));
+        return true;
+      }
+      const { reading } = result;
+      if (!reading.supported) {
+        return false;
+      }
+      if (reading.question) {
+        setPending({ kind: "plan-question", text, request, answers, question: reading.question });
+      } else if (reading.note) {
+        appendThread(threadItem("note", { text: describePlanNote(reading.note, areTotalsVisible) }));
+      } else {
+        appendThread(
+          threadItem("note", { text: askPlanCopy.intro }),
+          threadItem("plan-draft", { text, request, draft: reading.draft, source: reading.source, status: "draft" })
+        );
+      }
+      return true;
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+  }
+
+  function answerPlanQuestion(option) {
+    if (pending?.kind !== "plan-question" || working) {
+      return;
+    }
+    const { question, answers = {}, text, request } = pending;
+    const next = question.field === "month"
+      ? { ...answers, month: option }
+      : question.field === "line"
+        ? { ...answers, lines: { ...(answers.lines ?? {}), [question.name]: option.rowId } }
+        : { ...answers, owner: option.key };
+    setPending(null);
+    void askPlanDraft(text, request, next);
+  }
+
+  function updateThreadItem(itemId, patch) {
+    updateConversation((current) => ({
+      ...current,
+      thread: current.thread.map((item) => (item.id === itemId ? { ...item, ...patch } : item))
+    }));
+  }
+
+  function planItem(itemId) {
+    return (store.read(conversationKey) ?? conversation).thread.find((item) => item.id === itemId && item.kind === "plan-draft") ?? null;
+  }
+
+  // Save plan: the draft's own changes, all its lines in one batch. A plan
+  // changed since the draft is refused whole, with the server's words.
+  async function savePlanDraft(itemId) {
+    const item = planItem(itemId);
+    if (!item || item.status !== "draft" || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "saving" });
+    setWorking("plan-save");
+    try {
+      const result = await applyPlanChanges({ month: item.draft.month, changes: item.draft.apply }, { fallbackError: askPlanCopy.notes.saveFailed });
+      if (!result.ok) {
+        updateThreadItem(itemId, { status: "draft" });
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      updateThreadItem(itemId, { status: "saved", undo: result.undo });
+      onEntryMutation?.({ month: item.draft.month, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askPlanCopy.notes.saved(formatMonthYear(item.draft.month)) }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function discardPlanDraft(itemId) {
+    const item = planItem(itemId);
+    if (!item || item.status !== "draft" || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "discarded" });
+    appendThread(threadItem("note", { text: askPlanCopy.notes.discarded }));
+  }
+
+  // Undo this change: the save's own undo list, the same way; the card is
+  // a draft again, which Save plan can save once more.
+  async function undoPlanDraft(itemId) {
+    const item = planItem(itemId);
+    if (!item || item.status !== "saved" || !item.undo?.length || working) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "undoing" });
+    setWorking("plan-undo");
+    try {
+      const result = await applyPlanChanges({ month: item.draft.month, changes: item.undo }, { fallbackError: askPlanCopy.notes.undoFailed });
+      if (!result.ok) {
+        updateThreadItem(itemId, { status: "saved" });
+        appendThread(threadItem("note", { text: result.error }));
+        return;
+      }
+      updateThreadItem(itemId, { status: "draft", undo: [] });
+      onEntryMutation?.({ month: item.draft.month, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askPlanCopy.notes.undone }));
+    } finally {
+      setWorking("");
+    }
+  }
+
+  function openPlanMonth(itemId) {
+    const item = planItem(itemId);
+    if (item) {
+      goTo("/month", {}, buildContextParams(new URLSearchParams(), item.draft.viewId, item.draft.month, selectedScope));
     }
   }
 
@@ -987,6 +1131,7 @@ function AskConversation({
     },
     declineSplitSuggestion: () => setCard((current) => declineSplitSuggestion(current)),
     chooseFilterOption,
+    answerPlanQuestion,
     switchView,
     resolveCheck: () => void resolveMoneyCheck(),
     keepCheck: () => void keepMoneyCheck(),
@@ -1058,7 +1203,22 @@ function AskConversation({
   const questionPrompt = chips.prompt;
   // New chat: in chat mode, once there is something to start over from.
   const showNewChat = !isAddMode && !isShortcut && Boolean(settledThread.length || card || composerText.trim() || pending);
-  const answerProps = { queryClient, fetchEntriesPage, accounts, categories, people, trackedMonths, today };
+  const answerProps = {
+    queryClient,
+    fetchEntriesPage,
+    accounts,
+    categories,
+    people,
+    trackedMonths,
+    today,
+    plan: {
+      busy: Boolean(working),
+      onSave: (itemId) => void savePlanDraft(itemId),
+      onDiscard: discardPlanDraft,
+      onUndo: (itemId) => void undoPlanDraft(itemId),
+      onOpenMonth: openPlanMonth
+    }
+  };
 
   // In the dock: the field hides once this conversation is here, the words
   // typed into it (and a photo dropped on it) carry over once, and a
@@ -1461,8 +1621,28 @@ function SavedCategoryPicker({ isMobile, open, onOpenChange, value, categories, 
 function ThreadItem({ item, settled = false, answerProps }) {
   const settledClass = settled ? " is-settled" : "";
   if (item.kind === "answer") {
-    const { today: _today, ...filterAnswerProps } = answerProps;
+    const { today: _today, plan: _plan, ...filterAnswerProps } = answerProps;
     return <AskAnswerCard filter={item.filter} settled={settled} {...filterAnswerProps} />;
+  }
+  if (item.kind === "plan-draft") {
+    // A discarded draft leaves only its note ("Discarded. The plan is unchanged.").
+    if (item.status === "discarded") {
+      return null;
+    }
+    const { plan } = answerProps;
+    return (
+      <AskPlanDraftCard
+        item={item}
+        categories={answerProps.categories}
+        people={answerProps.people}
+        busy={plan.busy}
+        settled={settled}
+        onSave={() => plan.onSave(item.id)}
+        onDiscard={() => plan.onDiscard(item.id)}
+        onUndo={() => plan.onUndo(item.id)}
+        onOpenMonth={() => plan.onOpenMonth(item.id)}
+      />
+    );
   }
   if (item.kind === "money-answer") {
     return <AskMoneyAnswerCard id={item.id} answer={item.answer} wording={item.wording} intent={item.intent} settled={settled} />;
@@ -1484,6 +1664,19 @@ function ThreadItem({ item, settled = false, answerProps }) {
     return <p className="ask-note is-status" aria-busy="true">{item.text}</p>;
   }
   return <p className={`ask-note${item.tone === "calm" ? " is-calm" : ""}${settledClass}`}>{item.text}</p>;
+}
+
+// Why a plan request drew no draft, in plain words. A line that is short
+// keeps its amount out of sight while money is hidden.
+function describePlanNote(note, totalsVisible) {
+  const notes = askPlanCopy.notes;
+  const month = (key) => formatMonthYear(key);
+  if (note.reason === "no_plan_to_copy") return notes.noPlanToCopy(month(note.month));
+  if (note.reason === "same_month") return notes.sameMonth(month(note.month));
+  if (note.reason === "unknown_line") return notes.unknownLine(note.name, month(note.month));
+  if (note.reason === "nothing_changes") return notes.nothingChanges(month(note.month));
+  if (note.reason === "not_enough") return totalsVisible ? notes.notEnough(note.label, moneyWithCurrency(note.plannedMinor)) : notes.notEnoughHidden(note.label);
+  return notes.moveMixed;
 }
 
 // The view, month and scope the person is looking at, carried to whichever
