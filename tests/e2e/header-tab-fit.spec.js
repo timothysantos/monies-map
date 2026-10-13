@@ -216,16 +216,16 @@ test.describe("header on a narrow desktop window", () => {
     await openPage(page, "/summary?view=household&month=2026-05");
     expect(await readHeaderSpacing(page)).toEqual({
       barGap: "16px",
-      pillPadding: "18px",
+      pillPadding: "14px",
       stripGap: "4px",
       tabPadding: "10px",
-      tabFontSize: "14.72px",
+      tabFontSize: "14px",
       periodGap: "6px",
       displayMinWidth: "260px",
       displayPadding: "12px",
       displayGap: "10px"
     });
-    expect((await readHeader(page)).headerHeight).toBe(70);
+    expect((await readHeader(page)).headerHeight).toBe(57);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await openPage(page, "/month?view=person-tim&month=2026-05");

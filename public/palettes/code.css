@@ -7,6 +7,8 @@
   --panel: rgba(22, 27, 34, 0.96);
   --chrome-surface: rgba(22, 27, 34, 0.98);
   --chrome-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.5);
   --panel-strong: #010409;
   --text: #e6edf3;
   --muted: #9da7b3;
