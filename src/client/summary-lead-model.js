@@ -1,12 +1,18 @@
-import { headroomTone } from "../domain/money-tone";
+import { headroomTone, signTone, spendTone } from "../domain/money-tone";
+import { isInvestmentsCategoryName, isSavingsCategoryName } from "../domain/money-jobs";
 import { formatMonthLabel } from "./formatters";
+import { splitMoneyUse } from "./money-jobs-model";
 
 // The Summary top in the Lead · Support · Detail language (design.md): one
 // lead card for spend against plan over the range, and two Support pills,
-// Income (with planned income) and Saved (with the savings target). Every
-// figure and tone is the Summary page DTO's own metric card
-// (summary-projection.ts), so the lead never disagrees with the numbers the
-// cards showed before; only the layout changed.
+// Income (with planned income) and Saved (with the savings target). The
+// figures start from the Summary page DTO's own metric cards
+// (summary-projection.ts) and go through one split, splitMoneyUse
+// (money-jobs-model.js; DOMAIN.md "Money job"): money filed under
+// Investments or Savings was moved, not spent, and the savings target and
+// the Investments plan rows are not spend plan. So the lead's "Spent" is the
+// spend job's spending, its plan is the spend job's plan, its "under / over
+// plan" agrees with the spend job, and Saved is the bar's "kept".
 const CARD_LABELS = {
   plannedIncome: "Planned income",
   actualIncome: "Actual income",
@@ -16,9 +22,22 @@ const CARD_LABELS = {
   realizedSavings: "Realized savings"
 };
 
+// The money filed under Investments and under Savings in the period's
+// category share (the same spending the Actual spend card counts).
+function movedMoney(categoryShare) {
+  let investedMinor = 0;
+  let savedMovedMinor = 0;
+  for (const slice of categoryShare ?? []) {
+    if (isInvestmentsCategoryName(slice.label)) investedMinor += slice.valueMinor;
+    else if (isSavingsCategoryName(slice.label)) savedMovedMinor += slice.valueMinor;
+  }
+  return { investedMinor, savedMovedMinor };
+}
+
 // Null when any of the six cards is missing (the page is still loading): the
-// panel then shows the cards as they come.
-export function buildSummaryLeadModel(metricCards = []) {
+// panel then shows the cards as they come. "Planned investments" and the
+// category share are optional: without them nothing is invested or moved.
+export function buildSummaryLeadModel(metricCards = [], { categoryShare = [] } = {}) {
   const byLabel = new Map(metricCards.map((card) => [card.label, card]));
   const card = {};
   for (const [key, label] of Object.entries(CARD_LABELS)) {
@@ -29,11 +48,19 @@ export function buildSummaryLeadModel(metricCards = []) {
     card[key] = found;
   }
 
-  const actualMinor = card.actualSpend.amountMinor;
-  const plannedMinor = card.plannedSpend.amountMinor;
+  const figures = splitMoneyUse({
+    incomeMinor: card.actualIncome.amountMinor,
+    spentMinor: card.actualSpend.amountMinor,
+    ...movedMoney(categoryShare),
+    plannedSpendMinor: card.plannedSpend.amountMinor,
+    savingsTargetMinor: card.savingsTarget.amountMinor,
+    plannedInvestMinor: byLabel.get("Planned investments")?.amountMinor ?? 0
+  });
+  const actualMinor = figures.spending;
+  const plannedMinor = figures.spendPlan;
   const headroomMinor = plannedMinor - actualMinor;
   return {
-    spent: { amountMinor: actualMinor, tone: card.actualSpend.tone },
+    spent: { amountMinor: actualMinor, tone: spendTone(actualMinor, plannedMinor) },
     plannedSpendMinor: plannedMinor,
     percentOfPlan: plannedMinor > 0 ? Math.round((actualMinor / plannedMinor) * 100) : null,
     // Under plan (or exactly on it) is a met plan; over it, or spending with
@@ -42,7 +69,9 @@ export function buildSummaryLeadModel(metricCards = []) {
       ? { amountMinor: Math.abs(headroomMinor), isOver: headroomMinor < 0, tone: headroomTone(headroomMinor) }
       : null,
     income: { amountMinor: card.actualIncome.amountMinor, tone: card.actualIncome.tone, planMinor: card.plannedIncome.amountMinor },
-    saved: { amountMinor: card.realizedSavings.amountMinor, tone: card.realizedSavings.tone, planMinor: card.savingsTarget.amountMinor }
+    saved: { amountMinor: figures.kept, tone: signTone(figures.kept), planMinor: figures.savePlan },
+    // The split itself, for the savings bar and the money jobs.
+    figures
   };
 }
 

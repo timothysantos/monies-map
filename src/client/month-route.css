@@ -231,6 +231,12 @@
   margin-top: 0;
 }
 
+/* The money jobs line sits where the plan line was, as close to the
+   sentence as the bar's own lines (3 px, not the card's 5 px). */
+.month-lead .money-jobs {
+  margin-top: -2px;
+}
+
 .month-lead .lead-column {
   padding-block: 0;
 }

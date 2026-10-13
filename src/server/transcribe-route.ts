@@ -20,6 +20,7 @@
 
 import { reserveDailyAiBudget, type AiAssistEnv } from "../domain/ai-assistance";
 import { json } from "./json";
+import { readFormBody, RequestBodyTooLargeError } from "./limited-body";
 
 // Workers AI's Whisper large v3 turbo: base64 audio in, { text } out.
 export const TRANSCRIBE_MODEL = "@cf/openai/whisper-large-v3-turbo";
@@ -85,6 +86,9 @@ export async function handleTranscribe(request: Request, env: TranscribeEnv): Pr
     if (error instanceof ClipError) {
       return json({ ok: false, error: error.message }, error.status);
     }
+    if (error instanceof RequestBodyTooLargeError) {
+      return json({ ok: false, error: TOO_LONG }, 413);
+    }
     return json({ ok: false, error: "The voice clip could not be read." }, 400);
   }
 
@@ -117,14 +121,11 @@ export async function handleTranscribe(request: Request, env: TranscribeEnv): Pr
 }
 
 async function readClip(request: Request) {
-  const declaredLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
-    throw new ClipError(413, TOO_LONG);
-  }
   if (!(request.headers.get("content-type") ?? "").startsWith("multipart/form-data")) {
     throw new ClipError(415, UNSUPPORTED);
   }
-  const form = await request.formData();
+  // Counted as it arrives, so a chunked upload with no Content-Length is cut off too.
+  const form = await readFormBody(request, MAX_REQUEST_BYTES);
   const file = form.get("audio");
   if (!file || typeof file === "string" || !file.size) {
     throw new ClipError(400, "No voice clip was sent.");

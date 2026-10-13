@@ -21,6 +21,9 @@ const message = (page) => page.getByRole("textbox", { name: "Message" });
 const suggestions = (page) => page.getByRole("group", { name: "Suggestions" }).getByRole("button");
 const draftCard = (page) => page.locator("[data-plan-draft]").last();
 const card = (monthPage, label) => monthPage.monthPage.metricCards.find((item) => item.label === label).amountMinor;
+// The Month lead's "of $X plan" is the spend job's plan: the planned spend
+// less the savings target (the demo plans no investments), not the card's total.
+const leadPlan = (monthPage) => card(monthPage, "Planned spend") - card(monthPage, "Savings target");
 const planRow = (monthPage, id) => monthPage.monthPage.planSections.flatMap((section) => section.rows).find((row) => row.id === id);
 // A draft or an answer reads the month's plan rows on the server.
 const READ = { timeout: 30_000 };
@@ -91,7 +94,7 @@ test.describe("planning by chat on a phone", () => {
     // See it on Month: the Month page shows the new plan.
     await draft.getByRole("button", { name: "See it on Month" }).click();
     await expect(page).toHaveURL(/\/month\?.*view=person-tim.*month=2026-05/);
-    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(plannedBefore + 6_000), READ);
+    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(leadPlan(after)), READ);
 
     await page.goBack();
     await draftCard(page).getByRole("button", { name: "Undo this change" }).click();
@@ -167,7 +170,7 @@ test.describe("planning by chat on a phone", () => {
 
     await suggestions(page).first().click();
     await expect(page).toHaveURL(/\/month\?.*month=2026-05/);
-    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(card(may, "Planned spend")), READ);
+    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(leadPlan(may)), READ);
   });
 
   test("with money hidden the draft shows no amounts and no warning", async ({ page }) => {
@@ -194,7 +197,7 @@ test.describe("planning by chat in the desktop Ask panel", () => {
     const before = await loadMonthPage(page, { view: "household", month: MONTH });
     const planned = card(before, "Planned spend");
     await page.goto(`/month?view=household&month=${MONTH}&scope=direct_plus_shared`);
-    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(planned), READ);
+    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(leadPlan(before)), READ);
     await page.getByRole("textbox", { name: "Ask", exact: true }).click();
     await expect(message(page)).toBeVisible();
     await send(page, "set taxi to 120 for May 2026");
@@ -205,7 +208,9 @@ test.describe("planning by chat in the desktop Ask panel", () => {
     await shot(page, "plan-desktop-draft");
     await draft.getByRole("button", { name: "Save plan" }).click();
     await expect(draft).toHaveAttribute("data-plan-draft", "saved");
-    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(planned + 4_000), READ);
+    const saved = await loadMonthPage(page, { view: "household", month: MONTH });
+    expect(card(saved, "Planned spend")).toBe(planned + 4_000);
+    await expect(page.locator(".summary-lead-plan").first()).toContainText(money(leadPlan(saved)), READ);
 
     await send(page, "how did May 2026 go?");
     await expect(page.locator('.ask-dock [data-ask-money-answer="plan"]')).toBeVisible(READ);

@@ -1,4 +1,5 @@
 import { flowTone, signTone } from "../domain/money-tone";
+import { plannedInvestMinor } from "../domain/money-job-plan";
 import { buildSummaryLeadModel } from "./summary-lead-model";
 
 // The Month top in the Lead · Support · Detail language (design.md): the
@@ -6,10 +7,13 @@ import { buildSummaryLeadModel } from "./summary-lead-model";
 // spend, plan, savings target and remaining budget are the Month metric
 // cards' own figures (buildMonthMetricCards); income received and the
 // realized savings are the month's Summary rollup, which the Month page
-// already carries (summaryPage.months[0]). Nothing is fetched or recomputed
-// another way, so the lead never disagrees with the cards it replaced.
-// Returns null until the cards are there.
-export function buildMonthLeadModel(metricCards = [], monthSummary = null) {
+// already carries (summaryPage.months[0]). The investment goal is the
+// month's Investments plan rows and what was invested its category share
+// (monthPage.planSections, monthPage.categoryShareChart), also already on
+// the page. Nothing is fetched or recomputed another way, so the lead never
+// disagrees with the cards it replaced. Returns null until the cards are
+// there.
+export function buildMonthLeadModel(metricCards = [], monthSummary = null, { planRows = [], categoryShare = [] } = {}) {
   const byLabel = new Map(metricCards.map((card) => [card.label, card]));
   const remaining = byLabel.get("Remaining budget");
   if (!remaining || !byLabel.has("Actual spend") || !byLabel.has("Planned spend")) {
@@ -23,8 +27,9 @@ export function buildMonthLeadModel(metricCards = [], monthSummary = null) {
     byLabel.get("Planned spend"),
     byLabel.get("Actual spend"),
     byLabel.get("Savings target"),
-    { label: "Realized savings", amountMinor: realizedSavingsMinor, tone: signTone(realizedSavingsMinor) }
-  ].filter(Boolean));
+    { label: "Realized savings", amountMinor: realizedSavingsMinor, tone: signTone(realizedSavingsMinor) },
+    { label: "Planned investments", amountMinor: plannedInvestMinor(planRows), tone: "plan" }
+  ].filter(Boolean), { categoryShare });
   if (!lead) {
     return null;
   }

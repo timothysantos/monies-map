@@ -190,8 +190,10 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   height: 10px;
 }
 
+/* Above the money jobs line's reach (its tap target overlaps the bar's). */
 .savings-bar-segment {
   position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   height: 100%;
   min-width: 0;
@@ -265,6 +267,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   width: 2px;
   margin-left: -1px;
   border-radius: 1px;
+  z-index: 2;
   background: var(--text);
   pointer-events: none;
 }
@@ -292,10 +295,14 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   left: auto;
 }
 
-.savings-bar .savings-bar-popover {
+/* The popover and, after a click, tap or Enter, the segment's menu under
+   it (ui/money-actions.jsx), in one white box under the bar. */
+.savings-bar .savings-bar-float {
   position: absolute;
   top: calc(100% + 10px);
   z-index: 5;
+  display: grid;
+  gap: 6px;
   width: max-content;
   max-width: 100%;
   padding: 6px 10px;
@@ -303,16 +310,142 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   border-radius: 10px;
   background: var(--paper);
   box-shadow: 0 10px 24px rgba(24, 18, 12, 0.14);
+}
+
+.savings-bar .savings-bar-float[hidden] {
+  display: none;
+}
+
+.savings-bar .savings-bar-popover {
   color: var(--text);
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
-  pointer-events: none;
 }
 
-.savings-bar .savings-bar-popover[hidden] {
+/* Invested is faded plum: a good outcome like kept (its model tone is
+   "in"), but money put to work, so it has its own colour on the bar. */
+.savings-bar-segment[data-segment="invested"] {
+  --money-ink: var(--pastel-lavender-ink);
+}
+
+html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="invested"] {
+  background: color-mix(in srgb, var(--text) 32%, white);
+}
+
+/* The menu a bar part or a money job opens: two quiet text buttons. */
+.money-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.money-actions .money-action {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.money-actions .money-action:hover,
+.money-actions .money-action:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-strong) 45%, transparent);
+}
+
+/* The money jobs under the bar (ui/money-jobs.jsx): one quiet line that
+   opens a row per job. Folded on a phone, open on a wider screen. */
+.money-jobs {
+  min-width: 0;
+}
+
+/* A 40 px target without making the line taller: the padding reaches into
+   the gaps above and below, the negative margin gives the space back. */
+.money-jobs .money-jobs-summary {
+  position: relative;
+  display: block;
+  margin: -13px 0;
+  padding: 13px 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  list-style: none;
+  cursor: pointer;
+}
+
+.money-jobs .money-jobs-summary::-webkit-details-marker {
   display: none;
+}
+
+.money-jobs .money-jobs-summary::after {
+  content: "›";
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.money-jobs[open] .money-jobs-summary::after {
+  transform: rotate(90deg);
+}
+
+
+.money-jobs-list {
+  display: grid;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.money-job {
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.money-job .money-job-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.money-job .money-job-label {
+  min-width: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.money-job .money-job-status {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.money-job .money-actions {
+  padding-bottom: 8px;
+}
+
+html[data-money-privacy="hidden"] .money-job .money-job-status {
+  color: var(--text);
 }
 
 .savings-bar-plan {
@@ -323,9 +456,14 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
 }
 
 .savings-bar-plan-spend,
+.savings-bar-plan-invest,
 .savings-bar-plan-save {
   display: block;
   height: 100%;
+}
+
+.savings-bar-plan-invest {
+  background: color-mix(in srgb, var(--pastel-sky-ink) 42%, white);
 }
 
 .savings-bar-plan-spend {
@@ -337,8 +475,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   background: color-mix(in srgb, var(--pastel-sky-ink) 28%, var(--paper));
 }
 
-.savings-bar .savings-bar-sentence,
-.savings-bar .savings-bar-plan-line {
+.savings-bar .savings-bar-sentence {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -349,11 +486,4 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   font-size: 0.84rem;
   font-weight: 600;
   line-height: 1.25;
-}
-
-.savings-bar .savings-bar-plan-line {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.2;
 }

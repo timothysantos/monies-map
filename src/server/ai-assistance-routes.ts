@@ -39,6 +39,7 @@ import { todayInAppTimeZone } from "../lib/app-calendar";
 import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
+import { readJsonBody, readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleAskAnswer } from "./ask-answer-route";
 import { handlePlanDraft } from "./plan-draft-route";
@@ -47,7 +48,26 @@ import { handleTranscribe } from "./transcribe-route";
 
 export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database };
 
+// Each route reads its body through limited-body.ts, which stops at a byte
+// limit as the bytes arrive (a chunked upload has no Content-Length to check).
+// A body past the limit is a 413 here, whichever route read it.
+const IMPORT_PREVIEW_MAX_BYTES = 4 * 1024 * 1024;
+// 12,000 characters of statement text, up to four bytes each, plus the wrapper.
+const STATEMENT_TEXT_MAX_BYTES = 64 * 1024;
+const MATCH_PAIRS_MAX_BYTES = 256 * 1024;
+
 export async function handleAiAssistRoute(request: Request, url: URL, env: AiAssistRouteEnv): Promise<Response | null> {
+  try {
+    return await routeAiAssist(request, url, env);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return json({ ok: false, error: error.message }, 413);
+    }
+    throw error;
+  }
+}
+
+async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv): Promise<Response | null> {
   // Entry draft: the deterministic parser always answers. AI is asked (one
   // allowance unit) only when the sentence named no amount or left no
   // description, and only the redacted sentence is sent. Its answer fills
@@ -57,8 +77,11 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   if (url.pathname === "/api/ai-assist/entry-draft" && request.method === "POST") {
     let body: { text?: unknown; viewId?: unknown } | null = null;
     try {
-      body = await request.json();
-    } catch {
+      body = await readJsonBody(request, SMALL_JSON_MAX_BYTES) as { text?: unknown; viewId?: unknown } | null;
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return json({ ok: false, error: error.message }, 413);
+      }
       body = null;
     }
     const { text } = normalizeEntryDraftText(body?.text);
@@ -131,7 +154,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   }
 
   if (url.pathname === "/api/ai-assist/monthly-narrative" && request.method === "POST") {
-    const body = await request.json<{ viewId?: string; month?: string; scope?: PersonScope }>();
+    const body = await readJsonObject<{ viewId?: string; month?: string; scope?: PersonScope }>(request, SMALL_JSON_MAX_BYTES);
     const month = body.month ?? getCurrentMonthKey();
     const monthPage = await buildMonthPageDto(env.DB, body.viewId ?? "household", month, body.scope ?? "direct_plus_shared");
     const facts = buildMonthlyNarrativeFacts(
@@ -161,7 +184,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   }
 
   if (url.pathname === "/api/ai-assist/import-explanation" && request.method === "POST") {
-    const body = await request.json<{ preview?: ImportPreviewDto }>();
+    const body = await readJsonObject<{ preview?: ImportPreviewDto }>(request, IMPORT_PREVIEW_MAX_BYTES);
     const facts = body.preview ? buildImportExplanationFacts(body.preview, formatAiMoney) : [];
     if (!facts.length) {
       return json({ ok: true, available: false, explanations: [], reason: "There is no statement mismatch to explain." });
@@ -227,7 +250,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   }
 
   if (url.pathname === "/api/ai-assist/statement-text-fallback" && request.method === "POST") {
-    const body = await request.json<{ fileName?: string; text?: string }>();
+    const body = await readJsonObject<{ fileName?: string; text?: string }>(request, STATEMENT_TEXT_MAX_BYTES);
     const text = typeof body.text === "string" ? body.text.slice(0, 12000) : "";
     if (!text.trim()) {
       return json({ ok: true, available: false, reason: "No readable statement text was available after local extraction." });
@@ -257,7 +280,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   }
 
   if (url.pathname === "/api/ai-assist/transfer-match-ranking" && request.method === "POST") {
-    const body = await request.json<{ entryId?: string }>();
+    const body = await readJsonObject<{ entryId?: string }>(request, SMALL_JSON_MAX_BYTES);
     if (!body.entryId) {
       return json({ ok: false, error: "Missing transfer entry id" }, 400);
     }
@@ -279,7 +302,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   }
 
   if (url.pathname === "/api/ai-assist/import-match-ranking" && request.method === "POST") {
-    const body = await request.json<{ pairs?: Array<{ rowId?: string; existingTransactionId?: string; incomingDescription?: string; existingDescription?: string }> }>();
+    const body = await readJsonObject<{ pairs?: Array<{ rowId?: string; existingTransactionId?: string; incomingDescription?: string; existingDescription?: string }> }>(request, MATCH_PAIRS_MAX_BYTES);
     const pairs = (body.pairs ?? [])
       .filter((pair) => pair.rowId && pair.existingTransactionId && pair.incomingDescription && pair.existingDescription)
       .slice(0, 12) as Array<{ rowId: string; existingTransactionId: string; incomingDescription: string; existingDescription: string }>;

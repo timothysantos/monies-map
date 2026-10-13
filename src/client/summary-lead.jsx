@@ -1,3 +1,4 @@
+import { getCurrentMonthKey } from "../lib/month";
 import { messages } from "./copy/en-SG";
 import { buildSummaryLeadModel, formatSummaryLeadRange } from "./summary-lead-model";
 import { SpendLeadGroup } from "./ui-components";
@@ -11,9 +12,9 @@ const copy = messages.summary.lead;
 // plain ink, the bar keeps only its track, the percent and "under/over plan"
 // go, and the pills lose their tint (the money-tone rule in styles.css).
 // Until the cards arrive nothing shows (the old tile row scrolled sideways
-// on a phone).
-export function SummaryLead({ metricCards, rangeStartMonth, rangeEndMonth }) {
-  const model = buildSummaryLeadModel(metricCards);
+// on a phone). The range's category share says what was invested.
+export function SummaryLead({ metricCards, categoryShare, rangeStartMonth, rangeEndMonth }) {
+  const model = buildSummaryLeadModel(metricCards, { categoryShare });
   if (!model) {
     return null;
   }
@@ -22,6 +23,7 @@ export function SummaryLead({ metricCards, rangeStartMonth, rangeEndMonth }) {
       model={model}
       leadClassName="summary-lead"
       eyebrow={copy.spent(formatSummaryLeadRange(rangeStartMonth, rangeEndMonth))}
+      period={{ startMonth: rangeStartMonth, endMonth: rangeEndMonth, inProgress: rangeEndMonth === getCurrentMonthKey() }}
     />
   );
 }

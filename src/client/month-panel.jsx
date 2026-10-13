@@ -1498,6 +1498,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         cards={monthMetricCards}
         monthSummary={selectedMonthSummary}
         month={view.monthPage.month}
+        planSections={planSections}
+        categoryShare={view.monthPage.categoryShareChart}
         isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
       />
 

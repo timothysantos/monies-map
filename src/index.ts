@@ -121,12 +121,15 @@ import {
   parseShortcutCreateBody,
   SHORTCUT_NOTE_MAX_LENGTH
 } from "./domain/shortcut-entry-contract";
+import { validateEntryCreateFields } from "./domain/entry-create-validation";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
 import { SplitSettlementLockedError } from "./domain/split-settlement-lock";
 import { getAuthenticatedEmail } from "./server/access-identity";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
+import { isCrossSiteWrite } from "./server/cross-site-guard";
+import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
   buildShortcutEntryOpenUrl,
@@ -198,6 +201,12 @@ export default {
 
     if (!isShortcutCreateRequestAllowed(url.pathname, request.method, SHORTCUT_ENDPOINT_PATH)) {
       return json({ ok: false, error: "Shortcut direct-create endpoint only accepts POST." }, 405, { Allow: "POST" });
+    }
+
+    // A write that another site's page triggered in a signed-in browser is
+    // refused before any schema or data work (src/server/cross-site-guard.ts).
+    if (isCrossSiteWrite(request)) {
+      return json({ ok: false, error: "Cross-site requests are not allowed." }, 403);
     }
 
     if (url.pathname === "/api/health") {
@@ -1059,6 +1068,10 @@ export default {
         || !body.ownershipType
       ) {
         return json({ ok: false, error: "Missing entry create fields" }, 400);
+      }
+      const invalidField = validateEntryCreateFields(body);
+      if (invalidField) {
+        return json({ ok: false, error: invalidField }, 400);
       }
       // An Ask card's stable client id: a repeat create with it returns the
       // entry it already made (a reload during a save). The Shortcut's
@@ -1953,18 +1966,21 @@ export default {
     // batch (DOMAIN.md "Plan Draft"). 409 when the plan changed since the
     // draft; nothing is written then.
     if (url.pathname === "/api/month-plan/apply-changes" && request.method === "POST") {
-      let body: { month?: unknown; changes?: unknown } | null = null;
+      let body: { month?: unknown; changes?: unknown };
       try {
-        body = await request.json();
-      } catch {
-        body = null;
+        body = await readJsonObject<{ month?: unknown; changes?: unknown }>(request, SMALL_JSON_MAX_BYTES);
+      } catch (error) {
+        if (error instanceof RequestBodyTooLargeError) {
+          return json({ ok: false, error: error.message }, 413);
+        }
+        throw error;
       }
       try {
         return json({
           ok: true,
           ...(await applyMonthPlanChanges(env.DB, {
-            month: typeof body?.month === "string" ? body.month : "",
-            changes: Array.isArray(body?.changes) ? body.changes : []
+            month: typeof body.month === "string" ? body.month : "",
+            changes: Array.isArray(body.changes) ? body.changes : []
           }))
         });
       } catch (error) {
