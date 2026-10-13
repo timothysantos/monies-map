@@ -642,7 +642,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .month-actions-trigger {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   cursor: pointer;
   padding: 8px 0;
