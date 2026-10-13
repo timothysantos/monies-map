@@ -3,37 +3,46 @@ import test from "node:test";
 
 import { getPersonColour, getPersonColourVars } from "../src/client/person-colour.js";
 import { getSplitGroupChipStyle } from "../src/client/entry-row-display.js";
-import { contrast, hexRgb, lab, loadPresets, mix, WHITE } from "./support/colour-presets.mjs";
+import { contrast, deltaE, hexRgb, lab, loadPresets, mix, WHITE } from "./support/colour-presets.mjs";
 
-// Every text-on-surface pair the tokens make meets WCAG AA (4.5:1), in the
-// 70s default (:root of public/styles.css) and in every colour preset
-// (public/palettes/<id>.css over it), so a token change is checked here
-// (design.md, "Pastel palette" and "Colour presets"). Light presets keep
-// their fills soft; the dark preset keeps them dark. A mid harvest gold as
-// text on the cream would fail, which is why the 70s warning ink is a dark
-// mustard.
+// Every text-on-surface pair the tokens make meets WCAG AA (4.5:1; 3:1 for
+// large text and for edges and marks that are not text), in the 70s Warm
+// light default (:root of public/styles.css) and in every colour preset in
+// both modes (public/palettes/<id>-<mode>.css over it), so a token change is
+// checked here (design.md, "Pastel palette" and "Colour presets"). Light
+// fills stay soft, dark ones stay dark. A mid harvest gold as text on the
+// cream would fail, which is why the 70s warning ink is a dark mustard.
 
 const PRESETS = loadPresets();
 const DEFAULT = PRESETS[0];
 const HUES = ["mint", "rose", "sky", "lavender", "butter"];
 const AA = 4.5;
+const LARGE = 3;
 
 function assertAA(ink, surface, label, min = AA) {
   const ratio = contrast(ink, surface);
   assert.ok(ratio >= min, `${label} is ${ratio.toFixed(2)}:1`);
 }
 
+test("every preset is checked in a light and a dark mode", () => {
+  assert.equal(PRESETS.length, 12);
+  assert.equal(DEFAULT.id, "70s-light");
+  assert.deepEqual(PRESETS.map((preset) => preset.id), [
+    "70s-light", "70s-dark", "60s-light", "60s-dark", "80s-light", "80s-dark",
+    "modern-light", "modern-dark", "mono-light", "mono-dark", "code-light", "code-dark"
+  ]);
+});
+
 test("the 70s tokens are in :root with the same names", () => {
   const TOKENS = DEFAULT.tokens;
-  for (const name of ["--bg", "--panel", "--text", "--muted", "--line", "--accent", "--accent-strong", "--pastel-neutral", ...HUES.flatMap((hue) => [`--pastel-${hue}`, `--pastel-${hue}-ink`])]) {
+  for (const name of ["--bg", "--page", "--card", "--card-border", "--card-shadow", "--eyebrow", "--chip", "--panel", "--text", "--muted", "--line", "--accent", "--accent-strong", "--pastel-neutral", ...HUES.flatMap((hue) => [`--pastel-${hue}`, `--pastel-${hue}-ink`])]) {
     assert.ok(TOKENS[name], `${name} is defined`);
   }
   // The terracotta accent the Splits theme is built on stays.
   assert.equal(TOKENS["--accent"], "#934923");
   assert.equal(TOKENS["--accent-strong"], "#b15e2f");
-  // Chocolate ink and cream paper, not near-black and grey.
+  // Chocolate ink on cream-tan paper, not near-black on grey or white.
   assert.equal(TOKENS["--text"], "#3b2a1f");
-  assert.equal(TOKENS["--bg"], "#eee4cf");
   assert.deepEqual(
     Object.fromEntries(HUES.map((hue) => [hue, [TOKENS[`--pastel-${hue}`], TOKENS[`--pastel-${hue}-ink`]]])),
     {
@@ -44,9 +53,8 @@ test("the 70s tokens are in :root with the same names", () => {
       butter: ["#f5e4b8", "#664a0b"] // harvest gold, dark mustard ink
     }
   );
-  // The paper, the text on a strong fill and the Splits panel keep the
-  // shipped white and terracotta, so the default looks as it did.
-  assert.equal(TOKENS["--paper-rgb"], "255 255 255");
+  // The text on a strong fill and the Splits panel keep the shipped white
+  // and terracotta.
   assert.equal(TOKENS["--on-strong-rgb"], "255 255 255");
   assert.equal(TOKENS["--splits-rgb"], "177 94 47");
   assert.equal(TOKENS["--splits-deep-rgb"], "155 74 33");
@@ -56,17 +64,26 @@ for (const preset of PRESETS) {
   const { id, rgb, isDark } = preset;
   const PANEL = rgb("--panel");
   const PAPER = rgb("--paper-rgb");
+  const PAGE = rgb("--page");
+  const CARD = rgb("--card");
   const TEXT = rgb("--text");
   const SPLITS_DEEP = rgb("--splits-deep-rgb");
 
-  test(`${id}: every pastel ink reads AA on the panel, its soft tint, its full fill and the Splits wash`, () => {
+  test(`${id}: every pastel ink reads AA on the page, the cards, its soft tint, its full fill and the Splits wash`, () => {
     for (const hue of HUES) {
       const fill = rgb(`--pastel-${hue}`);
       const ink = rgb(`--pastel-${hue}-ink`);
+      assertAA(ink, PAGE, `${hue} ink on the page`);
+      assertAA(ink, CARD, `${hue} ink on a card`);
       assertAA(ink, PANEL, `${hue} ink on the panel`);
       assertAA(ink, PAPER, `${hue} ink on the paper`);
       assertAA(ink, rgb("--pastel-neutral"), `${hue} ink on the neutral fill`);
-      assertAA(ink, mix(fill, 0.6, PANEL), `${hue} ink on its soft tint`);
+      assertAA(ink, rgb("--chip"), `${hue} ink on a chip`);
+      // A soft tint is the fill at 60% over whatever it sits on: the page
+      // (the Summary and Entries pills) or a card.
+      assertAA(ink, mix(fill, 0.6, PAGE), `${hue} ink on its soft tint over the page`);
+      assertAA(ink, mix(fill, 0.6, CARD), `${hue} ink on its soft tint over a card`);
+      assertAA(ink, mix(fill, 0.6, PANEL), `${hue} ink on its soft tint over the panel`);
       assertAA(ink, fill, `${hue} ink on its full fill`);
       assertAA(ink, mix(fill, 0.94, SPLITS_DEEP), `${hue} ink on the Splits wash`);
       // The 85% sky surfaces (Ask, the Summary month sheet) and the
@@ -78,18 +95,60 @@ for (const preset of PRESETS) {
     assertAA(rgb("--pastel-lavender-ink"), rgb("--pastel-butter"), "lavender ink on the butter fill");
   });
 
-  test(`${id}: the text and muted inks read AA on every neutral surface`, () => {
-    const surfaces = { bg: rgb("--bg"), panel: PANEL, chrome: rgb("--chrome-surface"), neutral: rgb("--pastel-neutral"), paper: PAPER };
+  test(`${id}: the text, muted and eyebrow inks read AA on every neutral surface`, () => {
+    const surfaces = {
+      bg: rgb("--bg"), page: PAGE, card: CARD, panel: PANEL, chrome: rgb("--chrome-surface"),
+      neutral: rgb("--pastel-neutral"), paper: PAPER, chip: rgb("--chip")
+    };
     if (preset.tokens["--cream-rgb"]) Object.assign(surfaces, { cream: rgb("--cream-rgb"), blush: rgb("--blush-rgb") });
     for (const [name, surface] of Object.entries(surfaces)) {
       assertAA(TEXT, surface, `text on ${name}`);
       assertAA(rgb("--muted"), surface, `muted on ${name}`);
     }
+    // Section eyebrows sit on the page, on a card and on the bare chrome.
+    for (const name of ["bg", "page", "card", "panel", "chrome"]) assertAA(rgb("--eyebrow"), surfaces[name], `eyebrow on ${name}`);
     for (const hue of HUES) assertAA(TEXT, rgb(`--pastel-${hue}`), `text on the ${hue} fill`);
-    // The accent reads as text on the panel and the paper.
-    assertAA(rgb("--accent"), PANEL, "accent on the panel");
-    assertAA(rgb("--accent-strong"), PANEL, "accent-strong on the panel");
-    assertAA(rgb("--accent-strong"), PAPER, "accent-strong on the paper");
+    // The accent reads as text on the page, the cards, the panel and the
+    // paper. The strong accent is text on the cards, the panel and the
+    // paper; on the tinted page it is a mark (a ring, an icon, large text),
+    // so 3:1 there, and small accent text on the page uses --accent.
+    for (const [name, surface] of Object.entries({ page: PAGE, card: CARD, panel: PANEL, paper: PAPER })) {
+      assertAA(rgb("--accent"), surface, `accent on the ${name}`);
+      assertAA(rgb("--accent-strong"), surface, `accent-strong on the ${name}`, name === "page" ? LARGE : AA);
+    }
+  });
+
+  test(`${id}: cards stand off the page by a soft step, a hairline and a shadow`, () => {
+    const [pageLightness] = lab(PAGE);
+    const [cardLightness] = lab(CARD);
+    const [bgLightness] = lab(rgb("--bg"));
+    // A step, not a wall: the card is lighter than the page (in both modes),
+    // by enough to see and not so much that it glares.
+    const step = cardLightness - pageLightness;
+    assert.ok(step >= 3 && step <= 14, `card is ${step.toFixed(1)} lighter than the page`);
+    // The page behind the header is never lighter than the page itself.
+    assert.ok(bgLightness <= pageLightness + 0.5, `bg ${bgLightness.toFixed(1)} vs page ${pageLightness.toFixed(1)}`);
+    // The hairline is translucent and visible, the shadow gentle.
+    assert.match(preset.tokens["--card-border"], /^rgba\(/);
+    const borderAlpha = Number(preset.tokens["--card-border"].match(/([\d.]+)\)$/)[1]);
+    assert.ok(borderAlpha >= 0.06 && borderAlpha <= 0.22, `card border alpha ${borderAlpha}`);
+    const shadowAlphas = [...preset.tokens["--card-shadow"].matchAll(/rgba\([^)]*,\s*([\d.]+)\)/g)].map(([, alpha]) => Number(alpha));
+    assert.ok(shadowAlphas.length >= 1, `${preset.tokens["--card-shadow"]} is a shadow`);
+    assert.ok(Math.max(...shadowAlphas) <= (isDark ? 0.45 : 0.12), `card shadow alphas ${shadowAlphas.join(", ")}`);
+  });
+
+  test(`${id}: the page is tinted, never plain white or near-white`, () => {
+    for (const name of ["--page", "--bg"]) {
+      const [lightness, a, b] = lab(rgb(name));
+      if (isDark) {
+        assert.ok(lightness <= 16, `${name} lightness ${lightness.toFixed(1)}`);
+      } else {
+        assert.ok(lightness <= 94.5, `${name} lightness ${lightness.toFixed(1)} is near-white`);
+        assert.ok(lightness >= 84, `${name} lightness ${lightness.toFixed(1)} is too dark for a light page`);
+        // Black & White is grey on purpose; every other page carries its hue.
+        if (preset.presetId !== "mono") assert.ok(Math.hypot(a, b) >= 3, `${name} chroma ${Math.hypot(a, b).toFixed(1)}`);
+      }
+    }
   });
 
   test(`${id}: text on a strong fill reads AA on the accent buttons and the Splits panel`, () => {
@@ -114,15 +173,34 @@ for (const preset of PRESETS) {
   });
 
   test(`${id}: fills stay ${isDark ? "dark" : "soft"}`, () => {
-    for (const name of [...HUES.map((hue) => `--pastel-${hue}`), "--pastel-neutral", "--bg"]) {
+    for (const name of [...HUES.map((hue) => `--pastel-${hue}`), "--pastel-neutral", "--bg", "--page", "--card", "--chip"]) {
       const [lightness, a, b] = lab(rgb(name));
       if (isDark) {
         assert.ok(lightness <= 30, `${name} lightness ${lightness.toFixed(0)}`);
       } else {
-        assert.ok(lightness >= 86, `${name} lightness ${lightness.toFixed(0)}`);
+        assert.ok(lightness >= 84, `${name} lightness ${lightness.toFixed(0)}`);
         assert.ok(Math.hypot(a, b) <= preset.fillChromaMax, `${name} chroma ${Math.hypot(a, b).toFixed(0)}`);
       }
     }
+  });
+
+  test(`${id}: the money tones stay told apart`, () => {
+    const inks = Object.fromEntries(["mint", "rose", "sky", "butter", "lavender"].map((hue) => [hue, rgb(`--pastel-${hue}-ink`)]));
+    if (preset.presetId === "mono") {
+      // Black & White tells them apart by type (bold, italic, underlines),
+      // which its sheets set in both modes (tests/colour-presets.test.mjs).
+      for (const ink of Object.values(inks)) assert.equal(new Set(ink.map(Math.round)).size, 1, `${ink} is a grey`);
+      return;
+    }
+    // Money in and money out, and either against a plan, differ clearly in
+    // hue and lightness; every pair at least noticeably.
+    const pairs = [["mint", "rose", 30], ["mint", "sky", 15], ["rose", "sky", 30], ["mint", "butter", 12], ["rose", "butter", 15], ["sky", "lavender", 12], ["rose", "lavender", 12]];
+    for (const [a, b, min] of pairs) {
+      const distance = deltaE(inks[a], inks[b]);
+      assert.ok(distance >= min, `${a} and ${b} inks are only ${distance.toFixed(1)} apart`);
+    }
+    // Each tone also reads apart from plain text.
+    for (const [hue, ink] of Object.entries(inks)) assert.ok(deltaE(ink, TEXT) >= 12, `${hue} ink vs text ${deltaE(ink, TEXT).toFixed(1)}`);
   });
 
   // --person-ink and the split group chip ink are the colour 55% into --text.
@@ -135,8 +213,9 @@ for (const preset of PRESETS) {
       assertAA(inkOf(colour), mix(colour, 0.16, PAPER), `${owner} ink on the chip`);
       assertAA(inkOf(colour), mix(colour, 0.1, PAPER), `${owner} ink on the band`);
       assertAA(inkOf(colour), mix(colour, 0.06, PAPER), `${owner} ink on the wash`);
-      // The Entries row edge keeps 3:1 against the panel.
-      assertAA(colour, PANEL, `${owner} edge on the panel`, 3);
+      // The Entries row edge keeps 3:1 against the panel and a card.
+      assertAA(colour, PANEL, `${owner} edge on the panel`, LARGE);
+      assertAA(colour, CARD, `${owner} edge on a card`, LARGE);
     }
   });
 
@@ -158,6 +237,10 @@ test("the guard catches a failing pair: a mid harvest gold as text on cream fail
   assert.ok(contrast(hexRgb("#B48639"), PANEL) < AA);
   assert.ok(contrast(DEFAULT.rgb("--pastel-butter"), PANEL) < 1.5, "the gold fill is a surface, never text");
   assert.ok(contrast(WHITE, DEFAULT.rgb("--pastel-butter")) < AA, "white on a pastel fill would fail");
+  // A light preset's ink on a dark mode's page would fail: dark modes need
+  // their own inks.
+  const darkPage = PRESETS.find((preset) => preset.id === "70s-dark").rgb("--page");
+  assert.ok(contrast(DEFAULT.rgb("--pastel-rose-ink"), darkPage) < AA);
 });
 
 test("people and groups reach the page as palette tokens with a paper tint", () => {

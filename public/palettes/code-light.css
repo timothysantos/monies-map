@@ -1,0 +1,83 @@
+/* Code, light: Solarized-style base2 page and base3 cards, blue accent, orange Splits panel, magenta eyebrows. (design.md, "Colour presets".) Loaded only while this
+   preset and mode are in use; tests/colour-contrast.test.mjs checks every
+   pair. Category tokens are keyed by the 70s colour they replace. */
+:root[data-palette="code"]:not([data-mode="dark"]) {
+  --bg: #e6dfc7;
+  --page: #eee8d5;
+  --card: #fdf6e3;
+  --panel: rgba(253, 246, 227, 0.96);
+  --card-border: rgba(7, 54, 66, 0.11);
+  --card-shadow: 0 1px 2px rgba(7, 54, 66, 0.06), 0 6px 18px rgba(7, 54, 66, 0.07);
+  --chrome-surface: rgba(246, 240, 220, 0.97);
+  --chrome-shadow: 0 12px 30px rgba(7, 54, 66, 0.14);
+  --panel-strong: #002b36;
+  --text: #073642;
+  --muted: #4a5d64;
+  --line: rgba(7, 54, 66, 0.15);
+  --accent: #17578a;
+  --accent-strong: #1f6aa5;
+  --accent-rgb: 23 87 138;
+  --accent-strong-rgb: 31 106 165;
+  --shadow: 0 10px 30px rgba(7, 54, 66, 0.07);
+  --paper-rgb: 255 251 240;
+  --on-strong-rgb: 253 246 227;
+  --splits-rgb: 184 72 26;
+  --splits-deep-rgb: 150 56 18;
+  --eyebrow: #9b2a6f;
+  --chip: #e1ebe3;
+  --pastel-mint: #e6eacf;
+  --pastel-mint-ink: #4d6800;
+  --pastel-rose: #f6dcd1;
+  --pastel-rose-ink: #a82c1b;
+  --pastel-sky: #dae7ea;
+  --pastel-sky-ink: #1d5c86;
+  --pastel-lavender: #e6e0ee;
+  --pastel-lavender-ink: #5848a3;
+  --pastel-butter: #f2e2b2;
+  --pastel-butter-ink: #664d00;
+  --pastel-neutral: #f6efdb;
+  --cream-rgb: 250 243 222;
+  --blush-rgb: 238 233 214;
+  --on-strong-tint-rgb: 253 246 227;
+  --accent-deep-rgb: 23 87 138;
+  --accent-ink-rgb: 21 80 128;
+  --ink-rgb: 7 54 66;
+  --muted-rgb: 74 93 100;
+  --cat-376966: #3d908c;
+  --cat-566432: #4c916e;
+  --cat-619989: #09797c;
+  --cat-699696: #46858b;
+  --cat-aa6647: #bc6f3e;
+  --cat-6e858a: #7d858e;
+  --cat-918e54: #619137;
+  --cat-758c4d: #2e9654;
+  --cat-b48639: #a47d23;
+  --cat-a98466: #ac7852;
+  --cat-b97680: #d5597c;
+  --cat-9f667b: #c26783;
+  --cat-c67d3f: #94670f;
+  --cat-a58f45: #95842c;
+  --cat-46788e: #3a87cc;
+  --cat-c36351: #cd654b;
+  --cat-a77899: #ce5b93;
+  --cat-7a587d: #a66cc2;
+  --cat-b16739: #ac6222;
+  --cat-2c627c: #5a83d0;
+  --cat-7e584a: #ab7863;
+  --cat-53806f: #0b6661;
+  --cat-7c7998: #8078d2;
+  --cat-625a7a: #8862ba;
+  --cat-816c93: #9c55a6;
+  --cat-986c29: #785804;
+  --cat-92535f: #cf6173;
+  --cat-8e6849: #a86f3c;
+  --cat-7d7369: #6e6f75;
+  --cat-568c99: #468ab4;
+  --cat-7e7541: #7d7b16;
+  --cat-8b897a: #7a8781;
+  --cat-bf7d51: #a57e09;
+  --cat-7c8791: #7d858e;
+}
+
+/* A terminal feel: headings and section titles in the system monospace. */
+:root[data-palette="code"] :is(h1, h2, h3, .settings-section-title) { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: -0.01em; }

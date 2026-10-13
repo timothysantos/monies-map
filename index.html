@@ -9,15 +9,42 @@
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
     <script>
-      // The colour preset chosen on this device (src/client/colour-presets.js),
-      // set before the first paint so the page never flashes the default.
-      try {
-        var palette = localStorage.getItem("monies-map:palette");
-        if (/^(60s|80s|modern|mono|code)$/.test(palette)) {
-          document.documentElement.setAttribute("data-palette", palette);
-          document.write('<link rel="stylesheet" href="/palettes/' + palette + '.css" data-palette-sheet="' + palette + '" />');
+      // The colour preset and light or dark mode chosen on this device
+      // (src/client/colour-presets.js), set before the first paint so the
+      // page never flashes the default. Auto (nothing stored) follows the
+      // phone, also when it switches while the app is open.
+      (function () {
+        var root = document.documentElement;
+        var dark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+        function stored(key) {
+          try { return localStorage.getItem(key); } catch (error) { return null; }
         }
-      } catch (error) {}
+        function apply(firstPaint) {
+          var palette = stored("monies-map:palette");
+          if (!/^(60s|80s|modern|mono|code)$/.test(palette)) palette = "";
+          var mode = stored("monies-map:colour-mode");
+          if (mode !== "light" && mode !== "dark") mode = dark && dark.matches ? "dark" : "light";
+          var sheet = (palette || "70s") + "-" + mode;
+          function show() {
+            root.setAttribute("data-mode", mode);
+            if (palette) root.setAttribute("data-palette", palette);
+            else root.removeAttribute("data-palette");
+          }
+          if (sheet === "70s-light" || document.querySelector('link[data-palette-sheet="' + sheet + '"]')) return show();
+          if (firstPaint) {
+            document.write('<link rel="stylesheet" href="/palettes/' + sheet + '.css" data-palette-sheet="' + sheet + '" />');
+            return show();
+          }
+          var link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "/palettes/" + sheet + ".css";
+          link.setAttribute("data-palette-sheet", sheet);
+          link.onload = link.onerror = show;
+          document.head.appendChild(link);
+        }
+        apply(true);
+        if (dark && dark.addEventListener) dark.addEventListener("change", function () { apply(false); });
+      })();
     </script>
   </head>
   <body>

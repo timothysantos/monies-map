@@ -1,14 +1,18 @@
-/* 80s Pop colour preset (design.md, "Colour presets"). Loaded only
-   when chosen in Settings > Colours; tests/colour-contrast.test.mjs checks
-   every pair. Category tokens are keyed by the 70s colour they replace. */
-:root[data-palette="80s"] {
-  --bg: #efecf6;
-  --panel: rgba(255, 255, 255, 0.93);
-  --chrome-surface: rgba(255, 255, 255, 0.97);
+/* 80s Pop, light: lilac page, lilac-white cards, magenta accent, electric teal eyebrows. (design.md, "Colour presets".) Loaded only while this
+   preset and mode are in use; tests/colour-contrast.test.mjs checks every
+   pair. Category tokens are keyed by the 70s colour they replace. */
+:root[data-palette="80s"]:not([data-mode="dark"]) {
+  --bg: #e1d9ef;
+  --page: #e9e3f5;
+  --card: #fdfbff;
+  --panel: rgba(254, 253, 255, 0.96);
+  --card-border: rgba(34, 28, 61, 0.1);
+  --card-shadow: 0 1px 2px rgba(44, 26, 84, 0.07), 0 6px 18px rgba(44, 26, 84, 0.08);
+  --chrome-surface: rgba(242, 236, 252, 0.97);
   --chrome-shadow: 0 12px 30px rgba(44, 26, 84, 0.16);
   --panel-strong: #1d1638;
   --text: #221c3d;
-  --muted: #5c5577;
+  --muted: #57506f;
   --line: rgba(34, 28, 61, 0.14);
   --accent: #8a1468;
   --accent-strong: #b0198a;
@@ -19,6 +23,8 @@
   --on-strong-rgb: 255 255 255;
   --splits-rgb: 176 25 138;
   --splits-deep-rgb: 84 36 156;
+  --eyebrow: #0a6472;
+  --chip: #dcf1f2;
   --pastel-mint: #d3f5ea;
   --pastel-mint-ink: #08684f;
   --pastel-rose: #ffdbea;
@@ -29,15 +35,18 @@
   --pastel-lavender-ink: #5b2aa3;
   --pastel-butter: #fff0a6;
   --pastel-butter-ink: #5f4d00;
-  --pastel-neutral: #f7f5fb;
-  --cream-rgb: 250 248 255;
-  --blush-rgb: 252 236 248;
+  --pastel-neutral: #f5f1fb;
+  --cream-rgb: 248 245 255;
+  --blush-rgb: 250 232 246;
   --on-strong-tint-rgb: 255 244 252;
   --accent-deep-rgb: 120 20 98;
   --accent-ink-rgb: 110 16 88;
   --ink-rgb: 34 28 61;
-  --muted-rgb: 92 85 119;
+  --muted-rgb: 87 80 111;
+  --cat-376966: #529887;
   --cat-566432: #348a72;
+  --cat-619989: #27a2a5;
+  --cat-699696: #5d9ca0;
   --cat-aa6647: #c77048;
   --cat-6e858a: #7c868e;
   --cat-918e54: #90932c;
@@ -49,17 +58,14 @@
   --cat-c67d3f: #b98b1d;
   --cat-a58f45: #9f8f37;
   --cat-46788e: #458ad0;
-  --cat-699696: #5d9ca0;
   --cat-c36351: #de604c;
   --cat-a77899: #e15797;
   --cat-7a587d: #c164c0;
   --cat-b16739: #dc703e;
   --cat-2c627c: #577ecb;
   --cat-7e584a: #a97363;
-  --cat-619989: #27a2a5;
   --cat-53806f: #3fa18a;
   --cat-7c7998: #7e7ce5;
-  --cat-376966: #529887;
   --cat-625a7a: #936fd6;
   --cat-816c93: #b94fa6;
   --cat-986c29: #9c7d01;
