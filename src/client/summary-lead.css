@@ -173,11 +173,12 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
 
 /* The savings bar under the lead (ui/savings-bar.jsx): money earned is the
    bar, spent rose and kept mint, a thin sky plan bar under it on the same
-   scale, then one plain line and a muted plan line. Colour comes from the
-   money tones only; hidden money turns them to neutral greys (the tone
-   classes drop --money-ink), keeping just the percentages. The money-tone
-   `span` rules above and the panel head's muted `span` rule are beaten with
-   a class pair. */
+   scale, a legend (a swatch per part and for the plan bar, always shown) and
+   one plain line. Colour comes from the money tones only; hidden money turns
+   them to neutral greys (the tone classes drop --money-ink), keeping just the
+   percentages. The money-tone `span` rules above and the panel head's muted
+   `span` rule are beaten with a class pair. The legend's swatches share the
+   parts' colour rules. */
 .savings-bar {
   display: grid;
   gap: 4px;
@@ -192,6 +193,7 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
 
 /* Above the money jobs line's reach (its tap target overlaps the bar's). */
 .savings-bar-segment {
+  display: block;
   position: relative;
   z-index: 1;
   flex: 0 0 auto;
@@ -199,21 +201,28 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   min-width: 0;
   padding: 0;
   border: 0;
-  background: color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper));
   box-shadow: inset -1px 0 0 var(--paper);
+}
+
+button.savings-bar-segment {
   cursor: pointer;
 }
 
-.savings-bar-segment:first-of-type {
+.savings-bar-segment,
+.savings-bar-swatch {
+  background: color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper));
+}
+
+.savings-bar-segment.is-first {
   border-radius: 6px 0 0 6px;
 }
 
-.savings-bar-segment:last-of-type {
+.savings-bar-segment.is-last {
   border-radius: 0 6px 6px 0;
   box-shadow: none;
 }
 
-.savings-bar-segment:only-of-type {
+.savings-bar-segment.is-first.is-last {
   border-radius: 6px;
 }
 
@@ -232,7 +241,8 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
 
 /* Spending past the income: rose stripes, still rose, for the part that
    came out of savings. */
-.savings-bar-segment.is-hatched {
+.savings-bar-segment.is-hatched,
+.savings-bar-swatch.is-hatched {
   background: repeating-linear-gradient(
     135deg,
     color-mix(in srgb, var(--money-ink, var(--text)) 78%, var(--paper)) 0 3px,
@@ -240,7 +250,7 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   );
 }
 
-html[data-money-privacy="hidden"] .savings-bar-segment.is-hatched {
+html[data-money-privacy="hidden"] :is(.savings-bar-segment, .savings-bar-swatch).is-hatched {
   background: repeating-linear-gradient(
     135deg,
     color-mix(in srgb, var(--text) 50%, var(--paper)) 0 3px,
@@ -248,15 +258,15 @@ html[data-money-privacy="hidden"] .savings-bar-segment.is-hatched {
   );
 }
 
-html[data-money-privacy="hidden"] .savings-bar-segment {
+html[data-money-privacy="hidden"] :is(.savings-bar-segment, .savings-bar-swatch) {
   --money-ink: var(--text);
 }
 
-html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="kept"] {
+html[data-money-privacy="hidden"] :is([data-segment="kept"], [data-swatch="kept"]) {
   background: color-mix(in srgb, var(--text) 18%, var(--paper));
 }
 
-html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
+html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spent"]) {
   background: color-mix(in srgb, var(--text) 50%, var(--paper));
 }
 
@@ -272,8 +282,9 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   pointer-events: none;
 }
 
-/* The "income" label sits on the bar, right of the tick (left of it when the
-   tick is near the end), on a white chip so the stripes do not run under it. */
+/* The "All you earned" label sits on the bar, right of the tick (left of it
+   when the tick is near the end), on a white chip so the stripes do not run
+   under it. */
 .savings-bar .savings-bar-tick-label {
   position: absolute;
   top: 2px;
@@ -288,6 +299,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   font-size: 0.58rem;
   font-weight: 600;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .savings-bar .savings-bar-tick.is-late .savings-bar-tick-label {
@@ -295,42 +307,63 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
   left: auto;
 }
 
-/* The popover and, after a click, tap or Enter, the segment's menu under
-   it (ui/money-actions.jsx), in one white box under the bar. */
-.savings-bar .savings-bar-float {
-  position: absolute;
-  top: calc(100% + 10px);
-  z-index: 5;
-  display: grid;
-  gap: 6px;
-  width: max-content;
-  max-width: 100%;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
-  box-shadow: 0 10px 24px rgba(24, 18, 12, 0.14);
-}
-
-.savings-bar .savings-bar-float[hidden] {
-  display: none;
-}
-
-.savings-bar .savings-bar-popover {
+/* The legend under the plan bar: always shown, one line on a phone, wrapping
+   when it must. A swatch is the colour of its part; the share is muted. */
+.savings-bar .savings-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   color: var(--text);
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.25;
   font-variant-numeric: tabular-nums;
+}
+
+.savings-bar .savings-bar-legend li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.savings-bar-swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* The plan bar's swatch is a short slice of the thin bar itself. */
+.savings-bar-swatch.is-plan {
+  width: 12px;
+  height: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pastel-sky-ink) 60%, var(--paper));
+}
+
+.savings-bar .savings-bar-legend-share {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* The open part's menu, in the page flow under the legend. */
+.savings-bar-menu {
+  margin-top: 2px;
 }
 
 /* Invested is faded plum: a good outcome like kept (its model tone is
    "in"), but money put to work, so it has its own colour on the bar. */
-.savings-bar-segment[data-segment="invested"] {
+.savings-bar-segment[data-segment="invested"],
+.savings-bar-swatch[data-swatch="invested"] {
   --money-ink: var(--pastel-lavender-ink);
 }
 
-html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="invested"] {
+html[data-money-privacy="hidden"] :is([data-segment="invested"], [data-swatch="invested"]) {
   background: color-mix(in srgb, var(--text) 32%, var(--paper));
 }
 

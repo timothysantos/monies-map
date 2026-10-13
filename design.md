@@ -855,9 +855,9 @@ Where it is used:
   (received, with "plan $x"), Saved (kept, with "target $x") and
   Remaining budget are one row of three equal columns inside the lead
   card under the savings bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
-  colour only, 52 px tall, at most 205 px for the whole card on an iPhone 13
-  with the savings bar (about 203 px; the card's gaps and padding are tight
-  in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income is the month's own
+  colour only, 52 px tall, at most 215 px for the whole card on an iPhone 13
+  with the savings bar and its legend (about 214 px; the card's gaps and
+  padding are tight in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income is the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
   spend, plan and savings target start from the Month metric cards and go
   through the split with the month's plan rows and category share, Saved
@@ -878,8 +878,10 @@ Where it is used:
   Investments category is invested and money filed under Savings is kept,
   both out of the lead's spend. If more went out than came in there is no
   mint: the bar is as long as what went out (spent, then invested), with a
-  small "income" tick where the income ends; spending past the tick is rose
-  stripes ("came out of savings"). No income but some spending is all
+  small "All you earned" tick where the income ends (the label carries the
+  amount from 761 px, "All you earned $247,007"; the word "income" was
+  dropped because the bar's tick should say what it marks in plain words);
+  spending past the tick is rose stripes ("came out of savings"). No income but some spending is all
   stripes with no tick; no income and nothing out draws nothing. A 3 px sky
   plan bar sits directly under it on the same scale (the spend job's plan,
   then the investment goal, then the savings goal, each a lighter sky; a
@@ -893,23 +895,33 @@ Where it is used:
   is one the lead already has (income, spend, planned spend, savings target,
   the category share) plus the Summary's "Planned investments" card. It
   never forecasts and never says what to spend: only what happened and the
-  household's own plan. Each segment is a `button` (aria-label "Spent",
+  household's own plan. Under the bars is an always-visible legend (`<ul data-savings-legend>`, no
+  popover, hover or tap needed): a swatch in the part's own colour (the stripes
+  for the part that came out of savings, the neutral greys when money is
+  hidden), its short name and its figure, "Spent $209,000", "Invested
+  $8,000", "Kept $38,000", "From savings $54,871", in bar order, then the
+  thin plan bar's name with a sky swatch. On a phone it is one line
+  (11.2 px; it wraps only if it must): amounts without the share, and the
+  plan item is just "Plan". From 761 px each part adds its share of income in
+  muted text ("Spent $209,000 · 85%") and the plan item reads "Plan: spend
+  $247,673 · keep $41,300" (the plan's own figures, not cut to the bar, only
+  the goals that exist). Each segment is a `button` (aria-label "Spent",
   "Invested", "Kept" or "Came out of savings") whose `aria-describedby`
-  points at an always-rendered `role=tooltip` line with the numbers ("Kept
-  $38,000 · 15% of income"), so screen readers have them without opening
-  anything. Sighted users get the same line as a popover: hover (mouse)
-  shows it; a click, a tap (touch; a second tap or a tap elsewhere closes
-  it) or Enter shows it with the segment's menu under it (`renderMoneyActions`:
-  View entries, Ask about this); while the menu is open, hovering other
-  segments does not move it, and Escape or a press outside closes it. The
-  bar is 10 px tall and its hit area reaches 17 px above and below, so a
-  segment is a 44 px target. No chart library: plain flex boxes with
-  percentage widths. Hidden money: the shape and percentages stay (the
-  popover reads "Kept · 15% of income"), the colours go neutral grey (three
-  greys when invested is there), the sentence is "Spent and kept, as a share
-  of what you earned" (or "Spent, invested and kept, as shares of income"),
-  and the plan bar
-  is not drawn. The bar's colours are the money tones (rose spent, mint
+  points at its legend item. A click, a tap or Enter opens the segment's menu
+  (`renderMoneyActions`: View entries, Ask about this) in the page flow
+  under the legend (`.savings-bar-menu`, not floating; the money jobs and
+  columns move down while it is open); a second press on the same segment, a
+  press on another segment (which moves the menu), Escape or a press outside
+  closes it. Without a period (an Ask answer's bar) the parts have no menu
+  and are plain `role="img"` spans. The bar is 10 px tall and its hit area
+  reaches 17 px above and below, so a segment is a 44 px target. No chart
+  library: plain flex boxes with percentage widths. Hidden money: the shape
+  stays, the colours go neutral grey (three greys when invested is there),
+  the legend has the names and percentages only on a phone too ("Spent ·
+  85%", "Kept · 15%"), with no plan item (the plan bar is not drawn), the
+  tick reads "All you earned" without an amount, the sentence is "Spent and
+  kept, as a share of what you earned" (or "Spent, invested and kept, as
+  shares of income"), and the plan bar is not drawn. The bar's colours are the money tones (rose spent, mint
   kept, sky plan) plus faded plum (`--pastel-lavender-ink`) for invested:
   money put to work, a good outcome like kept (its model tone is `in`), but
   a part of its own, and never sky, which is a plan.
@@ -918,10 +930,10 @@ Where it is used:
   "Money job"): a `<details>` Detail whose summary is one muted line, "3 of
   4 money jobs done" ("… so far" while the period's last month is the
   current month), folded on a phone (it takes the old plan line's place and
-  height, 3 px under the sentence, so the Month card stays at most 205 px;
+  height, 3 px under the sentence, so the Month card stays at most 215 px;
   a phone shows the sentences that name investing in a one-line form, "Kept
   $12,000 · invested $8,000 of $247,000" or "Spent $300 over income ·
-  invested $200", so the card stays at most 205 px with investments too;
+  invested $200", so the card stays at most 215 px with investments too;
   wider screens keep the full sentence) and open from 761 px. The line's tap target is 40 px: its
   padding reaches into the gaps above and below and a negative margin gives
   the space back; the bar's segments sit above it where the two reach

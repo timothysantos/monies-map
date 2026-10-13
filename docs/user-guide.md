@@ -141,8 +141,8 @@ The choice is remembered only in that browser. A different browser or a
 cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
 they appear with the real figures as soon as you reveal totals. The earned,
-spent and kept bar keeps its shape and shows only percentages (no amounts) while
-totals are hidden, and each money job shows only ✓ or the share of its plan
+spent and kept bar keeps its shape and its key shows only the names and
+percentages (no amounts, and no plan) while totals are hidden, and each money job shows only ✓ or the share of its plan
 reached. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
@@ -256,16 +256,20 @@ over plan.
   plum part is what you invested (entries in the **Investments** category)
   and the green part is what you kept. Money you filed under **Savings** is
   counted as kept, not spent. If more went out than you earned, the bar
-  runs to a small **income** mark and the striped part after it is the money
-  that came out of your savings. A thin blue bar under it shows your plan on
-  the same scale: what you planned to spend, to invest and to save.
-  One line says it in words ("You kept $12,000 and invested $8,000 of the
-  $247,000 you earned"; on a phone, "Kept $12,000 · invested $8,000 of
-  $247,000"). Hover over a part of the bar to see how much it is
-  and what share of your income that is; click it (on a phone, tap it) for
-  **View entries**, which opens Entries filtered to that money for the last
-  month shown, and **Ask about this**, which opens Ask, asks a question about
-  it for you and shows the answer.
+  runs to a small **All you earned** mark (with the amount, on a wider
+  screen) and the striped part after it is the money that came out of your
+  savings. A thin blue bar under it shows your plan on the same scale: what
+  you planned to spend, to invest and to save. Under the bars a short key is
+  always there, with no hovering: a colour square and the amount for each
+  part ("Spent $20,900", "Kept $38,000", "From savings $54,871"; a wider
+  screen adds the share of what you earned), then the thin bar, named
+  **Plan** (a wider screen adds the plan: "Plan: spend $24,767 · keep
+  $4,130"). One line says it in words ("You kept $12,000 and invested $8,000
+  of the $247,000 you earned"; on a phone, "Kept $12,000 · invested $8,000 of
+  $247,000"). Click a part of the bar (on a phone, tap it) for **View
+  entries**, which opens Entries filtered to that money for the last month
+  shown, and **Ask about this**, which opens Ask, asks a question about it
+  for you and shows the answer; the two buttons open under the key.
 - **Money jobs**: each line of your plan has a job: spend within the
   budget, save the savings target, invest what you planned to invest, and
   the income you expected. One line says how many were done ("3 of 4 money
