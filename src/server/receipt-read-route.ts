@@ -20,6 +20,7 @@ import { getAiProviderUnavailableReason, runVisionJson, type AiImageMediaType, t
 import { finalizeReceiptRead, RECEIPT_READ_JSON_SCHEMA, RECEIPT_READ_PROMPT } from "../domain/receipt-read";
 import type { ReceiptReadDto } from "../types/dto";
 import { json } from "./json";
+import { readFormBody, readJsonBody, RequestBodyTooLargeError } from "./limited-body";
 
 // 1.5 MiB after the client downscales; a phone photo resized to about
 // 1600 px on the long side is well under this.
@@ -50,6 +51,9 @@ export async function handleReceiptRead(request: Request, env: ReceiptReadEnv): 
     if (error instanceof ReceiptImageError) {
       return json({ ok: false, error: error.message }, error.status);
     }
+    if (error instanceof RequestBodyTooLargeError) {
+      return json({ ok: false, error: "The receipt image is too large." }, 413);
+    }
     return json({ ok: false, error: "The receipt image could not be read." }, 400);
   }
 
@@ -69,16 +73,12 @@ export async function handleReceiptRead(request: Request, env: ReceiptReadEnv): 
 }
 
 async function readReceiptImage(request: Request) {
-  const declaredLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
-    throw new ReceiptImageError(413, "The receipt image is too large.");
-  }
-
   const contentType = request.headers.get("content-type") ?? "";
   let mediaType: string;
   let bytes: Uint8Array;
   if (contentType.startsWith("multipart/form-data")) {
-    const form = await request.formData();
+    // Counted as it arrives, so a chunked upload with no Content-Length is cut off too.
+    const form = await readFormBody(request, MAX_REQUEST_BYTES);
     const file = form.get("image");
     if (!file || typeof file === "string") {
       throw new ReceiptImageError(400, "No receipt image was sent.");
@@ -90,7 +90,7 @@ async function readReceiptImage(request: Request) {
     }
     bytes = new Uint8Array(await file.arrayBuffer());
   } else {
-    const body = await request.json<{ image?: { mediaType?: unknown; base64?: unknown } }>();
+    const body = await readJsonBody(request, MAX_REQUEST_BYTES) as { image?: { mediaType?: unknown; base64?: unknown } } | null;
     const base64 = typeof body?.image?.base64 === "string" ? body.image.base64.replace(/^data:[^,]*,/, "").trim() : "";
     mediaType = typeof body?.image?.mediaType === "string" ? body.image.mediaType : "";
     if (!body?.image) {

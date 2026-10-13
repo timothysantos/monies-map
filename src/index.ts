@@ -119,6 +119,7 @@ import {
   parseShortcutCreateBody,
   SHORTCUT_NOTE_MAX_LENGTH
 } from "./domain/shortcut-entry-contract";
+import { validateEntryCreateFields } from "./domain/entry-create-validation";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
@@ -1064,6 +1065,10 @@ export default {
         || !body.ownershipType
       ) {
         return json({ ok: false, error: "Missing entry create fields" }, 400);
+      }
+      const invalidField = validateEntryCreateFields(body);
+      if (invalidField) {
+        return json({ ok: false, error: invalidField }, 400);
       }
       // An Ask card's stable client id: a repeat create with it returns the
       // entry it already made (a reload during a save). The Shortcut's

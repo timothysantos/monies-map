@@ -26,6 +26,7 @@ import {
 import type { AiProviderStatusResponseDto } from "../types/dto";
 import { getAuthenticatedEmail } from "./access-identity";
 import { json } from "./json";
+import { readJsonBody, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 
 type ProviderStatusEnv = AiProviderEnv & { DB: D1Database };
 
@@ -46,8 +47,11 @@ export async function handleAiProviderStatusRoute(request: Request, url: URL, en
     }
     let body: { creditUsd?: unknown } | null = null;
     try {
-      body = await request.json();
-    } catch {
+      body = await readJsonBody(request, SMALL_JSON_MAX_BYTES) as { creditUsd?: unknown } | null;
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return json({ ok: false, error: error.message }, 413);
+      }
       body = null;
     }
     const creditUsd = parseTopUpCreditUsd(body?.creditUsd);

@@ -39,6 +39,7 @@ import { todayInAppTimeZone } from "../lib/app-calendar";
 import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
+import { readJsonBody, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleAskAnswer } from "./ask-answer-route";
 import { handleReceiptRead } from "./receipt-read-route";
@@ -56,8 +57,11 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   if (url.pathname === "/api/ai-assist/entry-draft" && request.method === "POST") {
     let body: { text?: unknown; viewId?: unknown } | null = null;
     try {
-      body = await request.json();
-    } catch {
+      body = await readJsonBody(request, SMALL_JSON_MAX_BYTES) as typeof body;
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return json({ ok: false, error: error.message }, 413);
+      }
       body = null;
     }
     const { text } = normalizeEntryDraftText(body?.text);
