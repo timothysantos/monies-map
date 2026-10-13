@@ -1,14 +1,16 @@
-/* Code colour preset (design.md, "Colour presets"). Loaded only
-   when chosen in Settings > Colours; tests/colour-contrast.test.mjs checks
-   every pair. Category tokens are keyed by the 70s colour they replace. */
-:root[data-palette="code"] {
+/* Code, dark: the terminal look (near-black, bright syntax inks, amber Splits panel). (design.md, "Colour presets".) Loaded only while this
+   preset and mode are in use; tests/colour-contrast.test.mjs checks every
+   pair. Category tokens are keyed by the 70s colour they replace. */
+:root[data-palette="code"][data-mode="dark"] {
   color-scheme: dark;
   --bg: #0d1117;
+  --page: #0f141b;
+  --card: #1c2229;
   --panel: rgba(22, 27, 34, 0.96);
+  --card-border: rgba(230, 237, 243, 0.12);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px rgba(0, 0, 0, 0.3);
   --chrome-surface: rgba(22, 27, 34, 0.98);
   --chrome-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.5);
   --panel-strong: #010409;
   --text: #e6edf3;
   --muted: #9da7b3;
@@ -18,10 +20,14 @@
   --accent-rgb: 57 197 207;
   --accent-strong-rgb: 86 212 221;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.5);
   --paper-rgb: 28 33 40;
   --on-strong-rgb: 13 17 23;
   --splits-rgb: 227 179 65;
   --splits-deep-rgb: 199 140 22;
+  --eyebrow: #d2a8ff;
+  --chip: #222a33;
   --pastel-mint: #12261b;
   --pastel-mint-ink: #56d364;
   --pastel-rose: #2d1618;
@@ -40,7 +46,10 @@
   --accent-ink-rgb: 125 222 230;
   --ink-rgb: 230 237 243;
   --muted-rgb: 157 167 179;
+  --cat-376966: #5fb0ac;
   --cat-566432: #549976;
+  --cat-619989: #56c6ca;
+  --cat-699696: #7ab9bf;
   --cat-aa6647: #da8956;
   --cat-6e858a: #9099a2;
   --cat-918e54: #85b559;
@@ -52,17 +61,14 @@
   --cat-c67d3f: #ecb760;
   --cat-a58f45: #c8b35a;
   --cat-46788e: #5aa0e7;
-  --cat-699696: #7ab9bf;
   --cat-c36351: #ec7f63;
   --cat-a77899: #ef79b0;
   --cat-7a587d: #c085dd;
   --cat-b16739: #e89856;
   --cat-2c627c: #7096e5;
   --cat-7e584a: #ba8671;
-  --cat-619989: #56c6ca;
   --cat-53806f: #66d8d1;
   --cat-7c7998: #9c92ef;
-  --cat-376966: #5fb0ac;
   --cat-625a7a: #c39af6;
   --cat-816c93: #dd93e7;
   --cat-986c29: #fccf72;

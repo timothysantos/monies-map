@@ -7,11 +7,21 @@
      sheets take --sheet-radius. */
   --chrome-edge: 12px;
   --chrome-radius: 22px;
-  --chrome-surface: rgba(255, 253, 248, 0.96);
+  --chrome-surface: rgba(249, 240, 222, 0.97);
   --chrome-shadow: 0 12px 30px rgba(59, 42, 31, 0.14);
   --sheet-radius: 24px;
-  --bg: #eee4cf;
-  --panel: rgba(255, 253, 248, 0.92);
+  /* Surfaces (design.md, "Colour presets"): the body behind the header
+     (--bg), the page every route sits on (--page) and the cards on it
+     (--card), a soft step lighter, with a hairline and a gentle shadow. The
+     eyebrow is the preset's second colour; chips take its soft tint. */
+  --bg: #ebdec5;
+  --page: #ede0c8;
+  --card: #fffbf4;
+  --card-border: rgba(110, 95, 84, 0.16);
+  --card-shadow: 0 1px 2px rgba(59, 42, 31, 0.06), 0 6px 18px rgba(59, 42, 31, 0.07);
+  --eyebrow: #7d5410;
+  --chip: #f4e6cb;
+  --panel: rgba(255, 253, 248, 0.95);
   --panel-strong: #33241a;
   --text: #3b2a1f;
   --muted: #6e5f54;
@@ -81,7 +91,7 @@ body {
   background:
     radial-gradient(circle at top right, rgb(var(--accent-strong-rgb) / 0.08), transparent 22%),
     radial-gradient(circle at left 20%, color-mix(in srgb, var(--pastel-mint) 60%, transparent), transparent 30%),
-    linear-gradient(180deg, var(--pastel-neutral) 0%, var(--bg) 100%);
+    linear-gradient(180deg, var(--page) 0%, var(--bg) 100%);
 }
 
 button {
@@ -298,7 +308,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   height: 34px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgb(var(--paper-rgb) / 0.76);
+  background: var(--chrome-surface);
   color: var(--accent-strong);
   font-size: 1.35rem;
   line-height: 1;
@@ -314,7 +324,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgb(var(--paper-rgb) / 0.76);
+  background: var(--chrome-surface);
   text-align: center;
 }
 
@@ -535,15 +545,17 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   }
 }
 
+/* A route is the page: the tinted --page every card stands off. */
 .panel {
   padding: 20px;
   border-radius: 16px;
+  background: var(--page);
 }
 
 .panel-accent {
   background:
-    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.94), rgb(var(--paper-rgb) / 0.98)),
-    linear-gradient(140deg, rgb(var(--accent-strong-rgb) / 0.04), transparent);
+    linear-gradient(140deg, rgb(var(--accent-strong-rgb) / 0.05), transparent 45%),
+    var(--page);
 }
 
 .panel-head,
@@ -633,7 +645,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 .month-actions-trigger {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--accent);
   font: inherit;
   cursor: pointer;
   padding: 8px 0;
@@ -873,7 +885,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 }
 
 .financial-insight-label {
-  color: var(--accent-strong);
+  color: var(--eyebrow);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -6832,7 +6844,7 @@ th {
   }
 
   .panel {
-    background: rgb(var(--paper-rgb) / 0.86);
+    background: var(--page);
   }
 
   .chart-card,
@@ -8243,7 +8255,7 @@ th {
 .money-caution { --money-ink: var(--pastel-butter-ink); --money-fill: var(--pastel-butter); color: var(--money-ink); }
 
 .money-soft {
-  background: color-mix(in srgb, var(--money-fill) 60%, transparent);
+  background: color-mix(in srgb, var(--money-fill) 60%, var(--card));
   border-color: color-mix(in srgb, var(--money-ink, var(--text)) 14%, transparent);
 }
 

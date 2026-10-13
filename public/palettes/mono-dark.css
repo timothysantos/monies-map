@@ -1,0 +1,91 @@
+/* Black & White, dark: white on black. (design.md, "Colour presets".) Loaded only while this
+   preset and mode are in use; tests/colour-contrast.test.mjs checks every
+   pair. Category tokens are keyed by the 70s colour they replace. */
+:root[data-palette="mono"][data-mode="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --page: #0a0a0a;
+  --card: #1a1a1a;
+  --panel: rgba(26, 26, 26, 0.96);
+  --card-border: rgba(255, 255, 255, 0.16);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px rgba(0, 0, 0, 0.4);
+  --chrome-surface: rgba(24, 24, 24, 0.97);
+  --chrome-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  --panel-strong: #000000;
+  --text: #ffffff;
+  --muted: #b8b8b8;
+  --line: rgba(255, 255, 255, 0.18);
+  --accent: #ffffff;
+  --accent-strong: #f0f0f0;
+  --accent-rgb: 255 255 255;
+  --accent-strong-rgb: 240 240 240;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --paper-rgb: 34 34 34;
+  --on-strong-rgb: 0 0 0;
+  --splits-rgb: 235 235 235;
+  --splits-deep-rgb: 205 205 205;
+  --eyebrow: #d6d6d6;
+  --chip: #262626;
+  --pastel-mint: #202020;
+  --pastel-mint-ink: #ffffff;
+  --pastel-rose: #161616;
+  --pastel-rose-ink: #d4d4d4;
+  --pastel-sky: #1c1c1c;
+  --pastel-sky-ink: #e6e6e6;
+  --pastel-lavender: #191919;
+  --pastel-lavender-ink: #dadada;
+  --pastel-butter: #262626;
+  --pastel-butter-ink: #f2f2f2;
+  --pastel-neutral: #1a1a1a;
+  --cream-rgb: 36 36 36;
+  --blush-rgb: 44 44 44;
+  --on-strong-tint-rgb: 10 10 10;
+  --accent-deep-rgb: 230 230 230;
+  --accent-ink-rgb: 255 255 255;
+  --ink-rgb: 255 255 255;
+  --muted-rgb: 184 184 184;
+  --cat-376966: #6e6e6e;
+  --cat-566432: #6d6d6d;
+  --cat-619989: #7b7b7b;
+  --cat-699696: #737373;
+  --cat-aa6647: #6d6d6d;
+  --cat-6e858a: #6e6e6e;
+  --cat-918e54: #6e6e6e;
+  --cat-758c4d: #6d6d6d;
+  --cat-b48639: #6e6e6e;
+  --cat-a98466: #6d6d6d;
+  --cat-b97680: #727272;
+  --cat-9f667b: #6e6e6e;
+  --cat-c67d3f: #737373;
+  --cat-a58f45: #757575;
+  --cat-46788e: #6e6e6e;
+  --cat-c36351: #6e6e6e;
+  --cat-a77899: #6d6d6d;
+  --cat-7a587d: #6d6d6d;
+  --cat-b16739: #6d6d6d;
+  --cat-2c627c: #6d6d6d;
+  --cat-7e584a: #6d6d6d;
+  --cat-53806f: #747474;
+  --cat-7c7998: #6e6e6e;
+  --cat-625a7a: #6d6d6d;
+  --cat-816c93: #6d6d6d;
+  --cat-986c29: #767676;
+  --cat-92535f: #6d6d6d;
+  --cat-8e6849: #6d6d6d;
+  --cat-7d7369: #6d6d6d;
+  --cat-568c99: #6e6e6e;
+  --cat-7e7541: #818181;
+  --cat-8b897a: #6d6d6d;
+  --cat-bf7d51: #6d6d6d;
+  --cat-7c8791: #6e6e6e;
+}
+
+/* Without hue, money direction shows in the type: money in is bold, money
+   out and over plan italic, a plan dotted and a To do wavy underlined. Hidden
+   amounts keep none of it, so the type never gives the sign away. */
+:root[data-palette="mono"]:not([data-money-privacy="hidden"]) .money-in { font-weight: 700; }
+:root[data-palette="mono"]:not([data-money-privacy="hidden"]) :is(.money-short, .money-out) { font-style: italic; }
+:root[data-palette="mono"]:not([data-money-privacy="hidden"]) .money-plan { text-decoration: underline dotted 1px; text-underline-offset: 3px; }
+:root[data-palette="mono"]:not([data-money-privacy="hidden"]) .money-caution { text-decoration: underline wavy 1px; text-underline-offset: 3px; }

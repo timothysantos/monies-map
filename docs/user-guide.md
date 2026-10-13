@@ -990,10 +990,12 @@ set up**). Select a row to open it; it opens right under its row.
 - **Category matching**: rules that categorise imported rows, plus
   suggestions and overlapping rules to review.
 - **Colours**: the colour scheme. Pick **70s Warm** (the usual one), **60s
-  Mod**, **80s Pop**, **Modern**, **Black & White** or **Code** (dark) and
-  the whole app changes at once. Money in, money out and plans keep their
-  meaning in every scheme; in Black & White, money in is bold and money out
-  is in italics. The choice is saved on this device only, so your phone and
+  Mod**, **80s Pop**, **Modern**, **Black & White** or **Code**, and
+  **Light**, **Dark** or **Auto** above them; the whole app changes at once.
+  Auto (the usual one) follows your phone: light by day, dark when your
+  phone switches to dark. Money in, money out and plans keep their meaning
+  in every scheme; in Black & White, money in is bold and money out is in
+  italics. The choice is saved on this device only, so your phone and
   computer can differ.
 - **Balance trust rules**: what makes a balance trustworthy, and a list of
   known gaps (reconciliation exceptions).

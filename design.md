@@ -1769,10 +1769,12 @@ mean these colours:
 | butter (harvest gold) | `--pastel-butter` #f5e4b8 | `--pastel-butter-ink` #664a0b | 7.97 | 7.08 | 6.54 | 6.05 |
 | neutral (cream) | `--pastel-neutral` #faf4e6 | `--text` #3b2a1f | 13.22 | 12.76 | 12.46 | 11.46 |
 
-The surfaces: `--bg` #eee4cf (cream paper), `--panel` rgba(255, 253, 248,
-0.92) (a warm paper card, #fefbf5 over the background), `--text` #3b2a1f
-(chocolate), `--muted` #6e5f54 (warm grey-brown, 4.85 on the background and
-5.59 on the neutral fill) and `--line` rgba(110, 95, 84, 0.2) (a warm grey
+The surfaces: `--bg` #ebdec5 (the body behind the header), `--page`
+#ede0c8 (cream-tan, the page every route sits on), `--card` #fffbf4 (the
+lead and metric cards, a soft step lighter, with `--card-border` and
+`--card-shadow`), `--panel` rgba(255, 253, 248, 0.95) (a warm paper card),
+`--text` #3b2a1f (chocolate), `--muted` #6e5f54 (warm grey-brown, 4.70 on
+the page) and `--line` rgba(110, 95, 84, 0.2) (a warm grey
 hairline). `--accent` #934923 and `--accent-strong` #b15e2f did not change.
 Harvest gold's ink is a dark mustard: a mid gold such as #b48639 is only
 3.2:1 as text on the cream, so gold is a surface, never text.
@@ -1799,18 +1801,46 @@ other tint, text uses that tint's ink instead.
 
 The 70s Warm palette above is the default. **Settings → Colours** offers
 five more whole schemes, each with its own accent, Splits panel, money
-tones, surfaces, category and person colours; the meaning of every tone
-stays (mint money in, rose out and over plan, sky a plan, butter a To do,
+tones, surfaces, category and person colours, and every scheme comes in a
+**Light** and a **Dark** mode. Above the preset chips a Light / Dark / Auto
+switch (the View and scope sheet's segmented pattern) picks the mode; Auto,
+the default, follows the phone's `prefers-color-scheme`, also when it
+changes while the app is open. The meaning of every tone stays in both
+modes (mint money in, rose out and over plan, sky a plan, butter a To do,
 lavender "think about").
 
-| Preset | Id | Feel | Accent / Splits panel |
-| --- | --- | --- | --- |
-| 70s Warm | `70s` | cream paper, chocolate ink (the default) | terracotta #b15e2f / terracotta |
-| 60s Mod | `60s` | mid-century cream and charcoal: olive, coral, Eames blue, mustard, aubergine | teal #127a74 / teal |
-| 80s Pop | `80s` | Memphis lilac-grey and deep indigo: aqua mint, hot pink, electric teal, neon purple, sunny yellow | magenta #b0198a / magenta into purple |
-| Modern | `modern` | neutral greys and white, crisp fintech | indigo #4f46e5 / indigo |
-| Black & White | `mono` | monochrome, high contrast | near-black #1a1a1a / black |
-| Code | `code` | dark terminal (near-black, monospace headings) | cyan #56d4dd / amber #e3b341 |
+| Preset | Id | Light | Dark | Accent / Splits panel (light; dark) |
+| --- | --- | --- | --- | --- |
+| 70s Warm | `70s` | cream-tan page, cream cards, chocolate ink (the default) | chocolate night, warm cream ink | terracotta #b15e2f / terracotta; lifted terracotta #e8996a / soft terracotta |
+| 60s Mod | `60s` | pale teal-cream page, cream cards, charcoal | deep teal charcoal | teal #127a74 / teal; bright teal #4cc3b8 / soft teal |
+| 80s Pop | `80s` | lilac page, lilac-white cards, deep indigo | deep indigo night | magenta #b0198a / magenta into purple; neon pink #f07ad0 / orchid into lilac |
+| Modern | `modern` | cool grey-blue page, white cards, crisp fintech | slate blue | indigo #4f46e5 / indigo; soft indigo #a9a5ff / periwinkle |
+| Black & White | `mono` | grey page, white cards, black ink | white on black | near-black #1a1a1a / black; near-white #f0f0f0 / light grey |
+| Code | `code` | Solarized-style base2 page, base3 cards (Code Light) | the terminal look it always had (Code Dark) | blue #1f6aa5 / Solarized orange; cyan #56d4dd / amber #e3b341 |
+
+Each preset's identity shows beyond the accent, the same way in every
+preset and mode:
+
+- **Surfaces.** `--bg` is the body behind the header, `--page` the page a
+  route sits on (the route's `.panel`, edge to edge on a phone) and `--card`
+  the lead and metric cards on it. The page is never plain or near-white
+  (Lab lightness 84 to 94.5 with some hue in light modes; 16 or less in dark
+  ones). A card is a soft step lighter than the page (3 to 14 in Lab
+  lightness, in both modes) with a `--card-border` hairline and a gentle
+  `--card-shadow`: the Summary, Month and Entries lead cards
+  (`.lsd-card`), the Summary and Entries metric pills, and the Support rows
+  (`.lsd-rows`). A toned pill keeps its soft tint, now 60% of the fill over
+  `--card` (`.money-soft`).
+- **Chrome.** `--chrome-surface` (the tab bar, the Support bar, the round
+  floating buttons and the header's period controls) is a light tint of the
+  preset in light modes and a lifted surface in dark ones.
+- **Second colour.** `--eyebrow` is the preset's second colour (70s mustard,
+  60s burnt orange, 80s electric teal, Modern cyan, Code magenta in light
+  and violet in dark; Black & White a grey). Section eyebrows
+  (`.financial-insight-label`, "Ethan's money insights") and the lead
+  card's eyebrow (`.lsd-eyebrow`) use it. Plain chips (`.lsd-chip`) take
+  `--chip`, a soft tint of a preset hue.
+- **Categories and people** come from the preset's own `--cat-*` palette.
 
 How it works:
 
@@ -1824,44 +1854,70 @@ How it works:
   `--accent-ink-rgb`, `--ink-rgb`, `--muted-rgb`): only a preset sets them,
   so the default keeps each shade exactly. Shadows and modal scrims stay
   neutral dark in every preset. New CSS uses these tokens, never a raw
-  colour.
-- **Sheets.** A preset is one small stylesheet, `public/palettes/<id>.css`
-  (about 2 kB, minified by the build like `styles.css`), that overrides the
-  tokens under `:root[data-palette="<id>"]`. Only the default is in the
-  first-screen CSS. `src/client/colour-presets.js` lists the presets (name,
-  four swatch dots) and `applyColourPreset` loads the sheet, then sets the
-  attribute; a later choice wins over a sheet that arrives late.
+  colour. On the tinted page the strong accent is a mark (a ring, an icon,
+  large text, 3:1); small accent text on the page uses `--accent`.
+- **Sheets.** A preset in a mode is one small stylesheet,
+  `public/palettes/<id>-<light|dark>.css` (about 2.5 kB, minified by the
+  build like `styles.css`): eleven sheets, every pair but the 70s Warm
+  light default, which is `:root` of the first-screen CSS. A sheet
+  overrides the tokens under `:root[data-palette="<id>"]` with
+  `:not([data-mode="dark"])` (light) or `[data-mode="dark"]` (dark); 70s
+  Warm's dark sheet uses `:root:not([data-palette])[data-mode="dark"]`. Dark
+  sheets set `color-scheme: dark`. Black & White's type rules and Code's
+  monospace headings are in both of their sheets.
+  `src/client/colour-presets.js` lists the presets (name, four swatch dots
+  per mode) and the modes; `applyColours({ presetId, mode })` stores both
+  (the defaults, 70s Warm and Auto, as nothing), loads the sheet, then sets
+  `data-palette` and `data-mode`; a later choice wins over a sheet that
+  arrives late.
 - **Before the first paint.** The inline script in `index.html` reads
-  `localStorage["monies-map:palette"]` and, for a known id, sets
-  `data-palette` and writes the sheet's `<link>` into the head, so the
-  sheet blocks the first paint and the default never flashes. Blocked or
-  empty storage means the default.
+  `localStorage["monies-map:palette"]` and `["monies-map:colour-mode"]`,
+  resolves Auto with `matchMedia("(prefers-color-scheme: dark)")`, sets
+  `data-mode` (always) and `data-palette` (for a known non-default id), and
+  writes the sheet's `<link>` into the head, so the sheet blocks the first
+  paint and the default never flashes. Blocked or empty storage means 70s
+  Warm in Auto. In Auto it listens for the phone switching, loads the other
+  sheet and flips `data-mode` once it is in.
 - **Category, person and group colours.** They all come from the category
   palette, so `src/client/palette-colour.js` (`paletteColour`) hands each to
   the page as `var(--cat-<70s hex>, <70s hex>)` and a preset sets one
-  `--cat-*` token per palette colour. Stored colours never change. The
-  donut keeps the 70s colour in its `fill` attribute and draws the preset's
-  through `style`.
-- **Black & White** shows money direction in the type as well as the grey:
-  money in is bold, money out and over plan italic, a plan dotted and a To
-  do wavy underlined; hidden amounts keep none of it. Categories are greys
-  told apart by icon and name.
-- **Code** is dark: `color-scheme: dark`, dark fills with bright inks, and a
-  bright accent and Splits panel with near-black text on them.
+  `--cat-*` token per palette colour in each mode (dark modes lift them so
+  they read on the dark page). Stored colours never change. The donut keeps
+  the 70s colour in its `fill` attribute and draws the preset's through
+  `style`.
+- **Black & White** shows money direction in the type as well as the grey,
+  in both modes: money in is bold, money out and over plan italic, a plan
+  dotted and a To do wavy underlined; hidden amounts keep none of it.
+  Categories are greys told apart by icon and name. Its dark mode is white
+  on black.
+- **Dark modes** use dark fills with bright inks, and a bright accent and a
+  soft, light Splits panel with near-black text on them (dark text keeps
+  4.5:1 on a light panel; light text on a dark accent could not also read
+  as accent text on the dark page).
 
-`tests/colour-contrast.test.mjs` runs every check of the 70s palette
-(money inks on the panel, soft tint, full fill and Splits wash; text and
-muted on every neutral surface; the accent; person and group chips) against
-every preset, plus text on a strong fill. `tests/colour-presets.test.mjs`
-checks that each preset sets every colour token, every preset-only token
-the stylesheets read and a `--cat-*` colour for every palette colour the
-client draws; that the category colours read (3:1 on the panel, glyph 3:1
-on its tint, label 4.5:1) and stay 8 apart in Lab (greys in Black &
-White); that the Settings swatches match the tokens; and that the
-`index.html` script knows exactly the preset ids.
-`tests/e2e/colour-presets.spec.js` chooses a preset, reloads with the sheet
-held back (the first frame already shows the preset), checks a donut
-segment draws the preset's colour, and blocks storage.
+`tests/colour-contrast.test.mjs` runs every check against all twelve
+preset and mode pairs: money inks on the page, cards, panel, paper, chips,
+soft tint (over the page, a card and the panel), full fill and Splits wash;
+text, muted and eyebrow on every neutral surface; the accent; text on a
+strong fill; the card step, hairline and shadow; a tinted (never
+near-white) page; soft (light) or dark (dark) fills; the money tones told
+apart (in, out, plan, To do and think by Lab distance, and from the text;
+type in Black & White); person and group chips. `tests/colour-presets.test.mjs`
+checks that each sheet sets every colour and surface token, every
+preset-only token the stylesheets read and a `--cat-*` colour for every
+palette colour the client draws, under only its own selector; that light
+and dark differ, Black & White Dark is white on black and Code Dark is the
+old Code; that pages differ between presets and the eyebrow is a second
+colour; that the category colours read (3:1 on the panel, paper and card,
+glyph 3:1 on its tint, label 4.5:1) and stay 8 apart in Lab; that the
+Settings swatches match each mode's tokens; and it runs the `index.html`
+script against a stand-in page (stored choice, Auto on a light or dark
+phone, blocked storage, the phone switching).
+`tests/e2e/colour-presets.spec.js` chooses a preset and each mode
+(attributes, tokens, the page surface, storage), follows Auto with
+`emulateMedia` at load and live, reloads with the dark sheet held back (the
+first frame already shows the preset and mode), checks a donut segment and
+the lead card, and blocks storage.
 
 ## Person Colour
 

@@ -1,26 +1,32 @@
-/* Black & White colour preset (design.md, "Colour presets"). Loaded only
-   when chosen in Settings > Colours; tests/colour-contrast.test.mjs checks
-   every pair. Category tokens are keyed by the 70s colour they replace. */
-:root[data-palette="mono"] {
-  --bg: #f0f0f0;
+/* Black & White, light: grey page, white cards, black ink. (design.md, "Colour presets".) Loaded only while this
+   preset and mode are in use; tests/colour-contrast.test.mjs checks every
+   pair. Category tokens are keyed by the 70s colour they replace. */
+:root[data-palette="mono"]:not([data-mode="dark"]) {
+  --bg: #e0e0e0;
+  --page: #e8e8e8;
+  --card: #ffffff;
   --panel: rgba(255, 255, 255, 0.96);
-  --chrome-surface: rgba(255, 255, 255, 0.98);
+  --card-border: rgba(0, 0, 0, 0.12);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 18px rgba(0, 0, 0, 0.07);
+  --chrome-surface: rgba(244, 244, 244, 0.97);
   --chrome-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.14);
-  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.14);
   --panel-strong: #000000;
   --text: #0a0a0a;
-  --muted: #4d4d4d;
+  --muted: #474747;
   --line: rgba(0, 0, 0, 0.16);
   --accent: #000000;
   --accent-strong: #1a1a1a;
   --accent-rgb: 0 0 0;
   --accent-strong-rgb: 26 26 26;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.14);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.14);
   --paper-rgb: 255 255 255;
   --on-strong-rgb: 255 255 255;
   --splits-rgb: 38 38 38;
   --splits-deep-rgb: 10 10 10;
+  --eyebrow: #3d3d3d;
+  --chip: #f2f2f2;
   --pastel-mint: #e6e6e6;
   --pastel-mint-ink: #000000;
   --pastel-rose: #f3f3f3;
@@ -31,15 +37,18 @@
   --pastel-lavender-ink: #2e2e2e;
   --pastel-butter: #dedede;
   --pastel-butter-ink: #141414;
-  --pastel-neutral: #f7f7f7;
+  --pastel-neutral: #f5f5f5;
   --cream-rgb: 250 250 250;
   --blush-rgb: 240 240 240;
   --on-strong-tint-rgb: 245 245 245;
   --accent-deep-rgb: 26 26 26;
   --accent-ink-rgb: 20 20 20;
   --ink-rgb: 0 0 0;
-  --muted-rgb: 77 77 77;
+  --muted-rgb: 71 71 71;
+  --cat-376966: #656565;
   --cat-566432: #4b4b4b;
+  --cat-619989: #7b7b7b;
+  --cat-699696: #737373;
   --cat-aa6647: #5e5e5e;
   --cat-6e858a: #595959;
   --cat-918e54: #6a6a6a;
@@ -51,17 +60,14 @@
   --cat-c67d3f: #737373;
   --cat-a58f45: #757575;
   --cat-46788e: #333333;
-  --cat-699696: #737373;
   --cat-c36351: #5f5f5f;
   --cat-a77899: #626262;
   --cat-7a587d: #5e5e5e;
   --cat-b16739: #6b6b6b;
   --cat-2c627c: #555555;
   --cat-7e584a: #525252;
-  --cat-619989: #7b7b7b;
   --cat-53806f: #747474;
   --cat-7c7998: #5f5f5f;
-  --cat-376966: #656565;
   --cat-625a7a: #5b5b5b;
   --cat-816c93: #626262;
   --cat-986c29: #767676;

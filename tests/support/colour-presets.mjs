@@ -1,10 +1,11 @@
-// Reads the colour tokens of the 70s default (:root of public/styles.css)
-// and of every colour preset (public/palettes/<id>.css over the default),
-// plus the colour maths the contrast tests share.
+// Reads the colour tokens of the 70s Warm light default (:root of
+// public/styles.css) and of every other colour preset and mode
+// (public/palettes/<id>-<mode>.css over the default), plus the colour maths
+// the contrast tests share.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { COLOUR_PRESETS, DEFAULT_PRESET_ID } from "../../src/client/colour-presets.js";
+import { COLOUR_PRESETS, DEFAULT_PRESET_ID, RESOLVED_MODES, variantSheetId } from "../../src/client/colour-presets.js";
 
 export const ROOT = path.resolve(import.meta.dirname, "../..");
 export const WHITE = [255, 255, 255];
@@ -17,15 +18,28 @@ export function readRootTokens() {
   return tokensOf(css.match(/:root\s*\{([^}]*)\}/)[1]);
 }
 
-export function readPresetSheet(id) {
-  return readFileSync(path.join(ROOT, "public/palettes", `${id}.css`), "utf8");
+export function readPresetSheet(sheetId) {
+  return readFileSync(path.join(ROOT, "public/palettes", `${sheetId}.css`), "utf8");
 }
 
-/** The tokens a preset's sheet sets under :root[data-palette="<id>"]. */
-export function readPresetTokens(id) {
-  const css = stripComments(readPresetSheet(id));
-  const block = css.match(new RegExp(`:root\\[data-palette="${id}"\\]\\s*\\{([^}]*)\\}`));
-  if (!block) throw new Error(`public/palettes/${id}.css has no :root[data-palette="${id}"] block`);
+/**
+ * The selector a preset's mode sheet sets its tokens under. The default
+ * preset carries no data-palette attribute; a light sheet also applies when
+ * no mode is set yet, a dark one only under data-mode="dark".
+ */
+export function variantSelector(presetId, mode) {
+  const palette = presetId === DEFAULT_PRESET_ID ? ":root:not([data-palette])" : `:root[data-palette="${presetId}"]`;
+  return mode === "dark" ? `${palette}[data-mode="dark"]` : `${palette}:not([data-mode="dark"])`;
+}
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** The tokens a preset's mode sheet sets under its variant selector. */
+export function readPresetTokens(presetId, mode) {
+  const sheetId = variantSheetId(presetId, mode);
+  const css = stripComments(readPresetSheet(sheetId));
+  const block = css.match(new RegExp(`${escapeRegExp(variantSelector(presetId, mode))}\\s*\\{([^}]*)\\}`));
+  if (!block) throw new Error(`public/palettes/${sheetId}.css has no ${variantSelector(presetId, mode)} block`);
   return tokensOf(block[1]);
 }
 
@@ -41,7 +55,7 @@ export function parse(value) {
 }
 export const hexRgb = (hex) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
 const channel = (value) => { const c = value / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
-const luminance = (colour) => { const [r, g, b] = colour.map(channel); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+export const luminance = (colour) => { const [r, g, b] = colour.map(channel); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 export const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 export const mix = (colour, share, base) => colour.map((value, index) => value * share + base[index] * (1 - share));
 export function lab(colour) {
@@ -59,30 +73,36 @@ export const deltaE = (a, b) => { const p = lab(a); const q = lab(b); return Mat
 const FILL_CHROMA_MAX = { "80s": 44, mono: 2 };
 
 /**
- * Every preset as the contrast tests see it: `tokens` (the preset's over the
- * default's), `rgb(name)` (a token as an opaque colour, a translucent one
- * over --bg) and `cat(hex)` (the colour a 70s palette colour shows as).
+ * Every preset in every mode as the contrast tests see it, the 70s Warm
+ * light default first: `id` ("60s-dark"), `presetId`, `mode`, `own` (what
+ * its sheet sets), `tokens` (its own over the default's), `rgb(name)` (a
+ * token as an opaque colour, a translucent one over --bg) and `cat(hex)`
+ * (the colour a 70s palette colour shows as).
  */
 export function loadPresets() {
   const rootTokens = readRootTokens();
-  return COLOUR_PRESETS.map((preset) => {
-    const own = preset.id === DEFAULT_PRESET_ID ? {} : readPresetTokens(preset.id);
+  return COLOUR_PRESETS.flatMap((preset) => RESOLVED_MODES.map((mode) => {
+    const sheetId = variantSheetId(preset.id, mode);
+    const own = sheetId ? readPresetTokens(preset.id, mode) : {};
     const tokens = { ...rootTokens, ...own };
     const bg = parse(tokens["--bg"]).rgb;
     const rgb = (name) => {
-      if (!tokens[name]) throw new Error(`${preset.id} has no ${name}`);
+      if (!tokens[name]) throw new Error(`${preset.id}-${mode} has no ${name}`);
       const { rgb: colour, alpha } = parse(tokens[name]);
       return alpha === 1 ? colour : mix(colour, alpha, bg);
     };
     return {
-      id: preset.id,
+      id: `${preset.id}-${mode}`,
+      presetId: preset.id,
+      mode,
+      sheetId,
       name: preset.name,
       own,
       tokens,
       rgb,
-      isDark: preset.scheme === "dark",
+      isDark: mode === "dark",
       fillChromaMax: FILL_CHROMA_MAX[preset.id] ?? 26,
       cat: (hex) => own[`--cat-${hex.slice(1).toLowerCase()}`] ?? hex
     };
-  });
+  }));
 }

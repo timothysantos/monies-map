@@ -40,13 +40,15 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   row-gap: 2px;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
+  box-shadow: var(--card-shadow);
   font-variant-numeric: tabular-nums;
 }
 
+/* Metric cards stand off the page like the lead; a toned one keeps its tint. */
 .summary-support-pill:not(.money-soft) {
-  background: var(--pastel-neutral);
+  background: var(--card);
 }
 
 .summary-support-pill .summary-support-pill-label {
@@ -329,7 +331,7 @@ html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="spent"] {
 }
 
 html[data-money-privacy="hidden"] .savings-bar-segment[data-segment="invested"] {
-  background: color-mix(in srgb, var(--text) 32%, white);
+  background: color-mix(in srgb, var(--text) 32%, var(--paper));
 }
 
 /* The menu a bar part or a money job opens: two quiet text buttons. */
@@ -461,7 +463,7 @@ html[data-money-privacy="hidden"] .money-job .money-job-status {
 }
 
 .savings-bar-plan-invest {
-  background: color-mix(in srgb, var(--pastel-sky-ink) 42%, white);
+  background: color-mix(in srgb, var(--pastel-sky-ink) 42%, var(--paper));
 }
 
 .savings-bar-plan-spend {
