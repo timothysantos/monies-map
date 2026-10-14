@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { createElement, lazy, Suspense, useMemo, useState } from "react";
 import {
   useLocation,
   useNavigate,
@@ -12,6 +13,8 @@ import "./summary-body.css";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { SummaryLead } from "./summary-lead";
+import { buildSummaryLeadModel } from "./summary-lead-model";
+import { useLeadView } from "./lead-view";
 import { SummaryIntentVsOutcomeSection } from "./summary-intent-outcome";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
@@ -24,10 +27,20 @@ import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows } from "./ui-components";
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
+// The Simple view's month list replaces Intent vs Outcome; only Simple needs
+// it. Its module imports no React (summary-earned-spent.js), so it is handed
+// createElement and the chevron here and adds no first-screen file.
+const SummaryEarnedSpentSection = lazy(() => import("./summary-earned-spent.js").then(({ renderEarnedSpent }) => ({
+  default: function EarnedSpentSection(props) {
+    const { areTotalsVisible } = useMoneyPrivacy();
+    return renderEarnedSpent(createElement, { ...props, hidden: !areTotalsVisible, MonthIcon: ChevronRight });
+  }
+})));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
-// 2. Month-by-month "intent vs outcome" plan review.
+// 2. Month-by-month "intent vs outcome" plan review (in the Simple view,
+//    earned against spent by month instead).
 // 3. Account health pills that stay independent from the selected range.
 export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth }) {
   const [, setSearchParams] = useSearchParams();
@@ -38,6 +51,13 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
   useRouteWorkReport({ busy: Boolean(monthNoteDialog) || isSavingMonthNote });
+  const leadModel = useMemo(() => buildSummaryLeadModel(view.summaryPage?.metricCards, {
+    categoryShare: view.summaryPage?.categoryShareChart,
+    investmentMoves: view.summaryPage?.investmentMoves ?? null
+  }), [view.summaryPage]);
+  // Plan or Simple (lead-view.js): the lead and the month-by-month section
+  // follow it. Until the figures arrive it is Plan, unless chosen before.
+  const [leadView, setLeadView] = useLeadView(leadModel ? leadModel.hasPlan : null);
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = useMemo(() => ({
@@ -153,9 +173,9 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
         </div>
         <SummaryLead
-          metricCards={safeSummaryPage.metricCards}
-          categoryShare={safeSummaryPage.categoryShareChart}
-          investmentMoves={safeSummaryPage.investmentMoves ?? null}
+          model={leadModel}
+          view={leadView}
+          onViewChange={setLeadView}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
         />
@@ -177,11 +197,21 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           onOpenEntriesForCategory={handleOpenEntriesForCategory}
         />
 
-        <SummaryIntentVsOutcomeSection
-          months={safeSummaryPage.months}
-          onOpenMonth={onOpenMonth}
-          onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
-        />
+        {leadView === "simple" ? (
+          <Suspense fallback={null}>
+            <SummaryEarnedSpentSection
+              months={safeSummaryPage.months}
+              categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
+              onOpenMonth={onOpenMonth}
+            />
+          </Suspense>
+        ) : (
+          <SummaryIntentVsOutcomeSection
+            months={safeSummaryPage.months}
+            onOpenMonth={onOpenMonth}
+            onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
+          />
+        )}
       </div>
 
       <SummaryAccountsSection

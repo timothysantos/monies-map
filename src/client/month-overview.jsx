@@ -9,6 +9,7 @@ import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
 import { useIsMobileLayout } from "./use-viewport";
 import { SpendLeadGroup } from "./ui-components";
 import { buildMonthLeadModel } from "./month-lead-model";
+import { useLeadView } from "./lead-view";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
@@ -262,16 +263,21 @@ export function MonthLead({ cards, monthSummary, month, planSections = [], categ
     categoryShare,
     investmentMoves
   });
+  // Plan or Simple (lead-view.js), the same remembered choice as Summary's.
+  // Only the lead switches: the plan tables below are what Month is for.
+  const [leadView, setLeadView] = useLeadView(model ? model.hasPlan : null);
   return (
     <>
       {isRefreshing ? <p className="month-refresh-hint">Updating totals and actuals...</p> : null}
       {model ? (
         <SpendLeadGroup
           model={model}
+          view={leadView}
+          onViewChange={setLeadView}
           className="month-lead-group"
           leadClassName="month-lead"
           inline
-          eyebrow={messages.summary.lead.spent(formatService.formatMonthLabel(month))}
+          periodLabel={formatService.formatMonthLabel(month)}
           period={{ startMonth: month, endMonth: month, inProgress: month === getCurrentMonthKey() }}
         >
           <RemainingColumn remaining={model.remaining} />

@@ -1,9 +1,6 @@
 import { getCurrentMonthKey } from "../lib/month";
-import { messages } from "./copy/en-SG";
-import { buildSummaryLeadModel, formatSummaryLeadRange } from "./summary-lead-model";
+import { formatSummaryLeadRange } from "./summary-lead-model";
 import { SpendLeadGroup } from "./ui-components";
-
-const copy = messages.summary.lead;
 
 // The Summary top (design.md, "Lead · Support · Detail"): the lead card is
 // spend against plan over the range; Income and Saved are soft pills beside
@@ -12,18 +9,19 @@ const copy = messages.summary.lead;
 // plain ink, the bar keeps only its track, the percent and "under/over plan"
 // go, and the pills lose their tint (the money-tone rule in styles.css).
 // Until the cards arrive nothing shows (the old tile row scrolled sideways
-// on a phone). The range's category share and its moves into and out of
-// investment accounts say what was invested.
-export function SummaryLead({ metricCards, categoryShare, investmentMoves = null, rangeStartMonth, rangeEndMonth }) {
-  const model = buildSummaryLeadModel(metricCards, { categoryShare, investmentMoves });
+// on a phone). `model` is buildSummaryLeadModel's, built by the panel (its
+// `hasPlan` picks the default view); `view` is Plan or Simple (lead-view.js).
+export function SummaryLead({ model, view, onViewChange, rangeStartMonth, rangeEndMonth }) {
   if (!model) {
     return null;
   }
   return (
     <SpendLeadGroup
       model={model}
+      view={view}
+      onViewChange={onViewChange}
       leadClassName="summary-lead"
-      eyebrow={copy.spent(formatSummaryLeadRange(rangeStartMonth, rangeEndMonth))}
+      periodLabel={formatSummaryLeadRange(rangeStartMonth, rangeEndMonth)}
       period={{ startMonth: rangeStartMonth, endMonth: rangeEndMonth, inProgress: rangeEndMonth === getCurrentMonthKey() }}
     />
   );
