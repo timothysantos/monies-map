@@ -1041,6 +1041,29 @@ Add to Splits). "Not this time" hides it for that card. Only an even share is
 offered; a failed, aborted or late answer is no question. It never replaces a
 field question already on the card. No AI, no new write route.
 
+### Card suggestion
+
+Beside the split suggestion, on the same two cards (a new expense with a shop
+and a card chosen; the Apple Pay saved card until it is on Splits or shared),
+Ask makes one debounced (500 ms) read-only `POST /api/entries/card-suggestion`
+(`use-ask-card-suggestion.js`). When the household's own last 12 months say
+so (`src/domain/card-history-suggestion.ts`: at least 3 entries at the same
+shop and at least 70% of them on one other card; transfers, settle-ups,
+estimates in another currency and the entry itself ignored; the other card
+active and in the chosen card's currency) it shows ONE question in the chip
+row: "Past {shop} entries were on {card}. Was this on that card too?" with
+"Yes, {card}" and "No, keep {current card}". It comes before the split
+question and before "It landed in Other" on the Apple Pay card, and after a
+reader's own field question. Yes on a draft picks the card (nothing is written
+until Save); Yes on the Apple Pay card moves the saved entry through
+`POST /api/entries/update-account` (only the card changes; a statement-confirmed
+entry, an entry on Splits, a transfer and another currency are refused). No
+hides it for that card; nothing is learned from it. The request reads three
+tables once each at most (the saved entry, the accounts, one history read
+on the household-and-date index limited to 500 rows) and writes nothing
+(`tests/card-suggestion-route.test.mjs`). It works with AI off, because AI
+is not involved. A failed, aborted or late answer is no question.
+
 ### Hands-off
 
 Owner decision (2026-10-14, "Fully hands-off for safe things"): Ask needs as

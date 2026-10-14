@@ -2182,6 +2182,65 @@ Important distinctions:
 - Ask offers only an even share, since the Splits switch saves 50/50.
 - "Not this time" is kept on the card only; nothing is learned from it.
 
+### Card Suggestion
+
+The card Ask asks about for a new expense at a shop the household has mostly
+paid for on another card: "Past {shop} entries were on {card}. Was this on that
+card too?", with "Yes, {card}" and "No, keep {current card}". Deterministic
+and read-only (no AI): a pure rule over the household's own expense entries of
+the last 12 months. It asks only; the card changes only on the person's Yes.
+
+Canonical term:
+- `card suggestion`
+
+Code:
+- `src/domain/card-history-suggestion.ts` (the rule, `CARD_HISTORY_POLICY`)
+- `src/domain/pages/card-suggestion.ts` (the three reads)
+- `POST /api/entries/card-suggestion`; Yes on a saved entry is
+  `POST /api/entries/update-account` (`src/domain/app-repository-entry-account.ts`)
+- `src/client/ask-card-suggestion.js` (the card's side)
+
+Important distinctions:
+- At least 3 entries at the same shop (same normalised description) and at
+  least 70% of all of them on one other card. The entry itself, transfers,
+  settle-ups, estimates (an original amount in another currency), entries
+  older than 12 months and later entries are not history.
+- The suggested card must be active and in the chosen card's currency; the
+  move changes only the card (never the amount, date, note, owner or Splits).
+- A statement-confirmed entry and an entry on Splits are never offered.
+- "No" is kept on the card only; nothing is learned from it. It is a separate
+  term from `ask habit` and `split suggestion`.
+
+### Shortcut Connection
+
+One person's Apple Pay Shortcut connection: its own private key, Default
+account order, default params and card for other currencies. The first
+person's (the household owner's) is the household's original connection, so a
+key installed before connections keeps working. An entry saved through a
+connection always belongs to that connection's person, whatever the request
+or the default params name; two people cannot hold the same key.
+
+Canonical terms:
+- `shortcut connection` (user wording: "this phone", "who is this phone for")
+- `revoke` a connection (user wording: "Stop this phone")
+
+Code:
+- `src/domain/shortcut-connections.ts` (storage keys, parsing, default order)
+- `src/domain/app-repository-shortcuts.ts` (load, save, revoke)
+- `ShortcutConnectionDto` in `src/types/dto.ts`
+- `POST /api/settings/shortcuts/save` (with `personId`) and
+  `POST /api/settings/shortcuts/revoke`
+- `findShortcutConnectionByKey` in `src/server/shortcut-gateway.ts`
+
+Important distinctions:
+- Stored in `app_settings`: `shortcut_api` is the first person's,
+  `shortcut_api_person_<personId>` anyone else's. No table changed.
+- A person with no saved list starts with their own cards first.
+- The card for other currencies falls back to the household's (the first
+  person's) when the person has not chosen one.
+- A Worker secret (`SHORTCUT_INGEST_TOKEN`) answers for the first person only
+  until that connection is stopped.
+
 ### AI Provider Status
 
 One aggregate row about the optional Claude provider, kept so the app can

@@ -612,8 +612,22 @@ configure one URL reliably without exposing blank header rows to the user.
 HTTPS protects the connection in transit, but a token embedded in a URL may be
 visible in the installed shortcut and infrastructure request logs. Do not share
 screenshots or exports that show it. Generate a new key and reinstall the
-shortcut if it is exposed. Because one household key can be used by multiple
-devices, rotate and update every installed household shortcut together.
+shortcut if it is exposed. Each person has their own connection (DOMAIN.md
+"Shortcut Connection"), so a leaked or lost key is regenerated or stopped
+(Settings, **Stop this phone**, `POST /api/settings/shortcuts/revoke`) for that
+person alone, and the old key stops at once.
+
+The key says whose phone it is. `authenticateShortcutRequest` compares the
+provided token with every connection's key in constant time (no early exit,
+`findShortcutConnectionByKey`) and hands the matched connection to the create
+route, which uses that person's default params, Default account order and card
+for other currencies, and always saves the entry with that person as owner,
+overriding `ownerName` in the request or the default params. Two connections
+cannot hold the same key (the save refuses it). Connections live in
+`app_settings` (`shortcut_api` for the first person, the household owner;
+`shortcut_api_person_<personId>` for anyone else), so nothing was migrated:
+the key installed before connections is the first person's and keeps working.
+See `docs/audits/shortcut-per-person-audit.md`.
 
 ### How do I configure the server secret?
 
@@ -634,8 +648,9 @@ the server (or the quick-entry draft) uses the first active account in this
 priority order.
 
 The app-managed key is stored in app settings and takes priority over the
-Cloudflare environment token. Existing deployments can still use a Cloudflare
-Worker secret named:
+Cloudflare environment token. The Worker secret answers for the first person
+only, and stops answering once that connection is stopped in Settings. Existing
+deployments can still use a Cloudflare Worker secret named:
 
 - `SHORTCUT_INGEST_TOKEN`
 

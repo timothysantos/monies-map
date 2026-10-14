@@ -137,6 +137,8 @@ a doc here in the same change.
   app shell reference data split.
 - [`audits/apple-pay-api-hardening-audit.md`](audits/apple-pay-api-hardening-audit.md):
   Apple Pay API hardening.
+- [`audits/shortcut-per-person-audit.md`](audits/shortcut-per-person-audit.md):
+  one Shortcut connection per person, and the card suggestion's reads.
 - [`audits/category-match-rule-duplicates-surface-audit.md`](audits/category-match-rule-duplicates-surface-audit.md):
   category rule duplicate surface.
 - [`audits/category-match-suggestion-duplicate-rule-audit.md`](audits/category-match-suggestion-duplicate-rule-audit.md):

@@ -24,7 +24,10 @@ Settings state is split between:
 - workflow state for account, category, person, checkpoint, and reconciliation
   actions
 - workflow state for Apple Pay shortcut installation, private key edits,
-  default shortcut params, and default-account priority order
+  default shortcut params, and default-account priority order, for the person
+  chosen on "Who is this phone for?" (one connection per person; the row shows
+  with two or more people, and **Stop this phone** under More shortcut settings
+  asks in an in-app dialog first)
 - workflow state for each person's payment ways (DOMAIN.md, "Payment Way")
 - transient UI state for dialogs and section disclosure
 

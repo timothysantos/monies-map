@@ -648,6 +648,20 @@ A persistence command is all-or-nothing:
   event in one batch; the person's entry is merged into the stored JSON
   inside the statement (`json_patch`), so two people saved at once cannot
   overwrite each other (`tests/atomic-writes-payment-ways.test.mjs`)
+- a Shortcut connection save or revoke (`src/domain/app-repository-shortcuts.ts`)
+  checks the person, the accounts and that no other person holds the key
+  first, then commits the setting and its audit event in one batch (a revoke
+  merges `apiKey: ""` and `revoked: true` with `json_patch`, so it cannot undo
+  a save made at the same moment; `tests/atomic-writes-shortcut-connections.test.mjs`)
+- moving an entry to another card (`src/domain/app-repository-entry-account.ts`,
+  Ask's card suggestion) refuses a statement-confirmed entry, an entry on
+  Splits, a transfer and another currency, then commits the account change,
+  its audit event and the month refresh markers in one batch; only the
+  account changes (`tests/atomic-writes-entry-account.test.mjs`)
+- the card suggestion read (`POST /api/entries/card-suggestion`) has a fixed
+  budget of three reads and no writes: the saved entry (by id; none for a
+  draft), the accounts, and one history read on `idx_transactions_household_date`
+  limited to 500 rows (`tests/card-suggestion-route.test.mjs`)
 - a login's Plan | Simple choice (`src/domain/app-repository-viewer-preferences.ts`)
   is one upsert in one batch, merged with `json_patch`, under a hashed key.
   It is a display preference, not household data, so it writes no audit

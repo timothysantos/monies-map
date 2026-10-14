@@ -1982,10 +1982,45 @@ Citi card your Amaze card charges. It saves straight away; **Same as other
 purchases** turns it off. The category comes from your
 category rules (otherwise Other). Each iPhone installs its own copy.
 
+### One phone for each person
+
+Each person has their own phone connection, with its own private key, its own
+**Default account** list and its own **Other currencies go to** card. A
+purchase from Joyce's phone is saved as Joyce's, on her own cards, and it
+shows with her colour in Entries; Tim's phone does the same for Tim. A phone
+cannot save a purchase as someone else, even if the shortcut is edited.
+
+To set up a second phone:
+
+1. On that person's phone, open **Settings → Apple Pay shortcut**.
+2. On **Who is this phone for?**, choose that person. The list under
+   **Default account** starts with their own cards; put the card they use most
+   first.
+3. Select **Install Apple Shortcut for** that person and follow the steps
+   above on their phone.
+
+The first person's phone keeps working as it is: nothing to reinstall. To
+turn a phone off (a lost phone, or one that is no longer used), choose its
+person, open **More shortcut settings** and select **Stop this phone**. Only
+that phone stops; install the shortcut again to turn it back on with a new key.
+
 Keep the private connection secret like a password: do not share screenshots
-of it. If it leaks, generate a new key under **More shortcut settings** in
-the same section and reinstall on every phone. If you used an older "Register Apple Pay transaction" Shortcut,
+of it. If it leaks, choose that person, generate a new key under **More
+shortcut settings** and reinstall on their phone; the old key stops working at
+once and nobody else's phone is affected. If you used an older "Register Apple Pay transaction" Shortcut,
 remove it so one purchase cannot create two entries.
+
+### Was this on that card?
+
+When a new entry (from Apple Pay, or one you describe to Ask) is at a shop you
+have already paid several times in the last 12 months, and nearly all of those
+were on a different card, Ask asks one question, for example "Past Grab entries
+were on Citi Rewards. Was this on that card too?" Choose **Yes, Citi Rewards**
+to move it, or **No, keep UOB One**. It asks only when at least 3 earlier
+entries were at the shop and at least 70% of them were on that one card. Transfers,
+settle-ups and purchases in another currency are left out, and it never moves
+anything unless you choose Yes. A purchase that a bank statement has already
+confirmed, or one on Splits, is not offered.
 
 ## Choose your payment ways
 

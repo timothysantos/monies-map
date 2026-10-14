@@ -344,7 +344,13 @@ write routes that resolve each candidate (`/api/transfers/link`,
 The Apple Pay integration uses a dedicated direct-create route rather than the
 browser entry form. The Apple-signed shortcut must remain secret-free. Settings
 owns key generation, connection-URL copy, the verified signed-file install path,
-and default account priority.
+and default account priority. There is one connection per person (key,
+Default account order, card for other currencies; the first person's is the
+household's original), chosen under "Who is this phone for?", and an entry
+saved through a connection is always that person's
+(DOMAIN.md "Shortcut Connection"). Ask can also ask a one-line card question
+for a new entry at a shop mostly paid on another card
+(DOMAIN.md "Card Suggestion").
 
 Production serves that route through the `monies-map-shortcuts` Worker. It
 shares the production D1 database but has no static assets and returns `404` for
