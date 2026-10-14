@@ -15,7 +15,9 @@ const names = {
   expenses: "Spent",
   transfers: "Transfers",
   outflow: "Outflow",
-  difference: "Difference"
+  difference: "Difference",
+  plan: "Plan",
+  splits: "Splits"
 };
 
 export const figureCopy = {
@@ -26,7 +28,8 @@ export const figureCopy = {
   // period of months; ✕ goes back to the month's whole list.
   chipLabel: (parts) => parts.join(" · "),
   clear: "Show all of this month's entries",
-  // The menu.
+  // The menu: its title says what it opens ("Invested · Jun 2025 – May 2026").
+  periodRange: (startLabel, endLabel) => `${startLabel} – ${endLabel}`,
   menuLabel: (name) => `${name}: what next`,
   viewEntries: "View entries",
   openPlan: "Open plan",

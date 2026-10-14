@@ -24,6 +24,12 @@ import { figureMenu } from "./figure-menu-model";
 // - data-fig-plan: the figure has a plan line: "Open plan" goes to that
 //   part of the Month plan ("income", or "" for the whole plan).
 // - data-fig-ask: the question to ask, a key of figureCopy.questions.
+// - data-fig-name: the name its menu is titled with, when it is not the
+//   figure's own (a split balance's group).
+// - data-fig-colour: a category's colour, the dot before its name in the
+//   menu's title.
+// - data-fig-row: a category's list row (its name); the row is marked and
+//   scrolled into view while the menu is open.
 // - data-fig-note: a line that explains the figure, shown first in the menu
 //   (Month's To allocate).
 // The view and scope are the page's own (the URL).
@@ -36,6 +42,7 @@ export function readFigure(element) {
   return {
     fig: element.getAttribute("data-fig") ?? "",
     arg: element.getAttribute("data-fig-arg") ?? "",
+    name: element.getAttribute("data-fig-name") ?? "",
     ids,
     plan: element.hasAttribute("data-fig-plan") ? element.getAttribute("data-fig-plan") ?? "" : null,
     ask: element.getAttribute("data-fig-ask") ?? "",
@@ -60,9 +67,40 @@ function close({ restoreFocus = false } = {}) {
   open = null;
   cleanup();
   menu.remove();
+  for (const row of document.querySelectorAll(".is-figure-open")) {
+    row.classList.remove("is-figure-open");
+  }
   trigger.setAttribute("aria-expanded", "false");
   if (restoreFocus && trigger.isConnected) {
     trigger.focus();
+  }
+}
+
+// A category's row in the list is marked while its menu is open, and scrolled
+// into view when it is off the screen (never so far that the figure the menu
+// hangs from leaves it).
+function markListRow(trigger) {
+  const name = trigger.getAttribute("data-fig-arg");
+  if (trigger.getAttribute("data-fig") !== "category" || !name) {
+    return;
+  }
+  const row = [...document.querySelectorAll("[data-fig-row]")].find((candidate) => candidate.getAttribute("data-fig-row") === name);
+  if (!row) {
+    return;
+  }
+  row.classList.add("is-figure-open");
+  const rowRect = row.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const below = rowRect.bottom - (window.innerHeight - 8);
+  const above = rowRect.top - 8;
+  let delta = 0;
+  if (below > 0) {
+    delta = Math.min(below, Math.max(0, triggerRect.top - 8));
+  } else if (above < 0) {
+    delta = Math.max(above, -(window.innerHeight - 8 - triggerRect.bottom));
+  }
+  if (delta) {
+    window.scrollBy(0, delta);
   }
 }
 
@@ -125,6 +163,28 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
   menu.setAttribute("role", "group");
   menu.setAttribute("aria-label", view.label);
   menu.setAttribute("data-figure-menu", trigger.getAttribute("data-fig") ?? "");
+  // What it is, first: a category's colour dot and name, or a figure's name
+  // and period. Long names wrap (two lines, then cut).
+  const title = document.createElement("div");
+  title.className = "figure-menu-title";
+  const colour = trigger.getAttribute("data-fig-colour");
+  if (colour) {
+    const dot = document.createElement("span");
+    dot.className = "figure-menu-dot";
+    dot.setAttribute("aria-hidden", "true");
+    dot.style.background = colour;
+    title.appendChild(dot);
+  }
+  const name = document.createElement("strong");
+  name.textContent = view.title.name;
+  title.appendChild(name);
+  if (view.title.period) {
+    const period = document.createElement("span");
+    period.textContent = ` · ${view.title.period}`;
+    title.appendChild(period);
+  }
+  menu.appendChild(title);
+  markListRow(trigger);
   // The figure's explanation or quick facts, one per line.
   const note = trigger.getAttribute("data-fig-note");
   if (note) {

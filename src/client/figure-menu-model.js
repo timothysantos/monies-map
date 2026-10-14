@@ -32,9 +32,9 @@ const HIDDEN_QUESTION = { spentOverPlan: "spentVsPlan", spentMore: "spentVsIncom
  * The menu a figure opens, as data: its label and its items, each with the
  * location it opens or the question it asks. Pure: the DOM is read by
  * readFigure.
- * @param {{ fig: string, arg?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean }} figure
+ * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean }} figure
  */
-export function figureMenu({ fig, arg = "", ids = [], plan = null, ask = "", period, search = "", pathname = "", hidden = false }) {
+export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search = "", pathname = "", hidden = false }) {
   const current = new URLSearchParams(search);
   const viewId = current.get("view") || "household";
   const scope = current.get("entries_scope") || current.get("scope") || "direct_plus_shared";
@@ -112,6 +112,11 @@ export function figureMenu({ fig, arg = "", ids = [], plan = null, ask = "", per
       : (questions[questionKey] ?? questions.spentMost)(periodWords);
   items.push({ action: "ask", label: copy.ask, question: question.replace(/ \?$/, "?") });
 
-  const name = fig === "category" ? arg : copy.names[fig] ?? (fig === "plan" ? copy.openPlan : copy.ask);
-  return { label: copy.menuLabel(name), items };
+  // What the figure is, first in the menu: a category (or a plan row's
+  // category) by its name alone, any other figure by its name and period
+  // ("Invested · Jun 2025 – May 2026"). Money hidden changes no word of it.
+  const isCategory = fig === "category" || (fig === "spent" && Boolean(arg));
+  const name = ownName || (isCategory ? arg : copy.names[fig]) || copy.ask;
+  const periodLabel = isCategory || fig === "splits" || !startMonth ? "" : isRange ? copy.periodRange(formatMonthLabel(startMonth), endLabel) : endLabel;
+  return { label: copy.menuLabel(name), title: { name, period: periodLabel }, items };
 }

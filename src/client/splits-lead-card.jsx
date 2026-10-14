@@ -56,7 +56,7 @@ export function SplitsLeadCard({
       title={lead.title}
       subtitle={lead.subtitle}
       amount={(
-        <span data-fig="splits" data-fig-arg={groupId} role="button" tabIndex={0}>
+        <span data-fig="splits" data-fig-arg={groupId} data-fig-name={lead.title} role="button" tabIndex={0}>
           <PrivateMoney>{amount}</PrivateMoney>
         </span>
       )}

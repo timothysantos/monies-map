@@ -340,7 +340,9 @@ over plan.
   ([Pick a month](#pick-a-month)).
 - **The donut**: each slice with room is named with its share. Point at a
   slice (on a phone, tap it; with the keyboard, Tab to the donut and use the
-  arrow keys, then Enter) for its amount, share and number of entries, then
+  arrow keys, then Enter) for its category name (first, in bold, with its
+  colour; its row in the list is marked while the menu is open), its amount,
+  share and number of entries, then
   **View entries** and **Ask about this** ([Dig into any
   figure](#dig-into-any-figure)). **Hide list** folds the list away so the
   donut fills the card; **Show list** brings it back. Your choice is kept on

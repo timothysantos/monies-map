@@ -222,6 +222,7 @@ function useOpenableSlices(enabled, { shareTotal, hidden, sliceFacts }) {
           data-slice={name}
           data-fig="category"
           data-fig-arg={name}
+          data-fig-colour={paletteColour(payload?.color)}
           data-fig-note={lines.join("\n")}
           data-fig-plan={hasPlan ? "" : undefined}
           role="button"

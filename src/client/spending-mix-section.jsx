@@ -150,6 +150,7 @@ export function SpendingMixSection({
                 return (
                   <div
                     key={item.key}
+                    data-fig-row={categoryName}
                     className={`summary-mix-row ${isHidden ? "is-hidden-from-donut" : ""}`}
                     style={{ "--bar-color": paletteColour(getCategoryTheme(categories, item, index).color) }}
                   >
@@ -172,6 +173,7 @@ export function SpendingMixSection({
                       title={messages.common.viewEntries}
                       data-fig="category"
                       data-fig-arg={categoryName}
+                      data-fig-colour={paletteColour(getCategoryTheme(categories, item, index).color)}
                     >
                       <ChevronRight size={18} />
                     </button>
