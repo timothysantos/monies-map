@@ -24,6 +24,9 @@
 
 import { normalizeDescriptionForMatch } from "./app-repository-helpers";
 
+// The app_settings key of "Let Ask handle safe things" (default on).
+export const ASK_HANDLES_SAFE_SETTING_KEY = "ask_handles_safe_things";
+
 export type AskHabitKind = "category" | "split" | "alias";
 export type AskHabitSource = "entries" | "splits" | "ask" | "undo" | "settings";
 export type AskHabitConfidence = "high" | "suggest" | "none";

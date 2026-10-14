@@ -5,6 +5,7 @@
 import { ensureDemoSchema } from "./app-repository-schema";
 import { ensureAppSettingsTable } from "./app-settings-table";
 import { PAYMENT_WAYS_SETTINGS_KEY } from "./payment-ways";
+import { ASK_HANDLES_SAFE_SETTING_KEY } from "./ask-habits";
 import { recalculateMonthlySnapshots } from "./app-repository-snapshots";
 import {
   accounts as demoAccounts,
@@ -309,6 +310,11 @@ export async function clearDemoData(db: D1Database) {
   // Shortcut settings stay: an installed shortcut depends on their key.
   await ensureAppSettingsTable(db);
   await db.prepare("DELETE FROM app_settings WHERE key = ?").bind(PAYMENT_WAYS_SETTINGS_KEY).run();
+  // Ask's habits name shops, people and groups of the household being
+  // replaced, and its switch goes back to its default (on). The table is
+  // additive, so an older database without it has nothing to clear.
+  await db.prepare("DELETE FROM app_settings WHERE key = ?").bind(ASK_HANDLES_SAFE_SETTING_KEY).run();
+  await db.prepare("DELETE FROM ask_habits").run().catch(() => undefined);
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
     "DELETE FROM split_activity_history",

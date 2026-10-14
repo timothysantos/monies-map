@@ -15,6 +15,7 @@ import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { ensureAppSettingsTable } from "./app-settings-table";
 import {
   ASK_CATCH_ALL_CATEGORIES,
+  ASK_HANDLES_SAFE_SETTING_KEY,
   askHabitId,
   canonicalHabitValue,
   habitAliasKey,
@@ -29,7 +30,6 @@ import {
 } from "./ask-habits";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 
-export const ASK_HANDLES_SAFE_SETTING_KEY = "ask_handles_safe_things";
 
 // Habits kept at most; the least recently used are dropped past it.
 const MAX_HABITS = 400;
