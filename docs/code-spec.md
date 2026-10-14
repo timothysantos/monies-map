@@ -702,7 +702,7 @@ check before a linking batch is backed by the database when two writes race.
 Not yet converted, so still
 written statement by statement: the rest of the split workspace
 (`app-repository-splits.ts`: split create, note and category edits,
-checkpoints), category match rules,
+checkpoints), category match rules (except rule delete, converted 2026-10-14, `tests/atomic-writes-category-rule-delete.test.mjs`),
 settings, categories,
 statement checkpoint edits, Shortcut requests (parked on purpose) and the
 demo seed. Convert a module the next time its writes change.

@@ -1,7 +1,7 @@
 import { defaultCategoryMatchRules, deprecatedDefaultCategoryMatchRuleIds } from "./category-match-defaults";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { slugify } from "./app-repository-helpers";
-import { recordAuditEvent } from "./app-repository-audit";
+import { buildAuditEventStatement, recordAuditEvent } from "./app-repository-audit";
 import type { CategoryMatchRuleDto, CategoryMatchRuleSuggestionDto } from "../types/dto";
 
 export async function ensureDefaultCategoryMatchRules(db: D1Database) {
@@ -577,6 +577,10 @@ export async function ignoreCategoryMatchRuleSuggestion(db: D1Database, suggesti
   return { suggestionId, ignored: true };
 }
 
+// All-or-nothing: the rule, the "ignored" marks on duplicate issues that name
+// it, and the audit event commit in one batch. A rule that is already gone
+// (another tab or device removed it) is not an error: the person's goal holds,
+// and the refresh after the call drops the stale row.
 export async function deleteCategoryMatchRule(db: D1Database, ruleId: string) {
   const existing = await db
     .prepare("SELECT id, pattern FROM category_match_rules WHERE household_id = ? AND id = ?")
@@ -584,29 +588,27 @@ export async function deleteCategoryMatchRule(db: D1Database, ruleId: string) {
     .first<{ id: string; pattern: string }>();
 
   if (!existing) {
-    throw new Error("Unknown category match rule.");
+    return { ruleId, deleted: false };
   }
 
-  await db
-    .prepare("DELETE FROM category_match_rules WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, ruleId)
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM category_match_rule_issue_ignores
-      WHERE household_id = ?
-        AND rule_ids_json LIKE ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, `%"${ruleId}"%`)
-    .run();
-
-  await recordAuditEvent(db, {
-    entityType: "category_match_rule",
-    entityId: ruleId,
-    action: "category_match_rule_deleted",
-    detail: `Deleted category match rule ${existing.pattern}.`
-  });
+  await db.batch([
+    db
+      .prepare("DELETE FROM category_match_rules WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, ruleId),
+    db
+      .prepare(`
+        DELETE FROM category_match_rule_issue_ignores
+        WHERE household_id = ?
+          AND rule_ids_json LIKE ?
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, `%"${ruleId}"%`),
+    buildAuditEventStatement(db, {
+      entityType: "category_match_rule",
+      entityId: ruleId,
+      action: "category_match_rule_deleted",
+      detail: `Deleted category match rule ${existing.pattern}.`
+    })
+  ]);
 
   return { ruleId, deleted: true };
 }
