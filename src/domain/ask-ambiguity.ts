@@ -97,6 +97,8 @@ export const ASK_ERROR_CODES = [
   "amount_needed",
   "shares_unreadable",
   "shares_mismatch",
+  // A share that cannot be right (negative, over 100%, over the total): the person's own number.
+  "share_out_of_range",
   "date_invalid",
   "month_invalid",
   "no_entry_in_focus",

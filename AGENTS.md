@@ -218,8 +218,9 @@ Details and the reasons are in `docs/code-spec.md` and
   expense, a settle-up payment, a plan change, a money question, a search,
   open a page, ask back, or cannot help). The server checks that action
   against the household's real data (people, wallets, categories, groups,
-  plan lines, the entry in focus, amounts the person wrote, shares adding
-  up to 100%); anything that does not check out becomes a question back
+  plan lines, the entry in focus, amounts the person wrote, shares: one
+  stated share is enough and the other person has the rest, two add up to
+  100%); anything that does not check out becomes a question back
   with at most 4 chips, never a guess.
 - Changes to saved data (Phase 2, `src/domain/ask-turn-actions.ts`) are
   change cards: every row that changes before and after, saved only

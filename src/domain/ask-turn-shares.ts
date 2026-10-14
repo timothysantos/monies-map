@@ -1,193 +1,153 @@
-// "Joyce's share 1.6", "all Joyce", "70% Joyce", "split half": the model
-// reports only the shares the person stated (a person and the value as
-// written: "all", "70%", "$1.60", "1.6"); this reads them into the first
-// person's basis points. Splits is between the household's two, so one
-// stated share leaves the rest to the other person, whatever numbers the
-// model filled in for them. The model is never asked for a computed share.
+// Reading a share out of the person's own words ("Joyce's share 1.6",
+// "Joyce 30%", "Joyce owes me 1.60", "all Joyce"). Two jobs, both pure:
 //
-// Pure, no database. Used by the three actions that carry shares: a new
-// shared expense, a change to the card being filled, and an add to Splits.
+// 1. Say what a number in the message means. "$1.6" or "1.6 dollars" is
+//    money, "30%" or "30 percent" a percentage, and a bare "1.6" is a guess:
+//    a number above the entry's total can only be a percentage, anything
+//    else is dollars. The model is not trusted with that call.
+// 2. The rules' own reading of a split request (the offline backup when AI
+//    is off or fails), as the same `split.shares` shape the model returns,
+//    so one validator checks both.
 
-import { assumption, type AskAssumption } from "./ask-ambiguity";
-import {
-  COPY,
-  groundedAmount,
-  findPerson,
-  isRecord,
-  personQuestion,
-  type AskTurnContext,
-  type AskTurnPerson,
-  type AskTurnReply,
-  type Ground
-} from "./ask-turn";
-import { readAmountMinor, readShareValue, type ShareValue } from "./ask-turn-names";
+export type ShareUnit = "amount" | "percent" | "bare";
 
-export type ShareResult =
-  | { kind: "ok"; firstBasisPoints: number; firstAmountMinor?: number; assumptions: AskAssumption[] }
-  | { kind: "reply"; reply: AskTurnReply };
-
-interface ReadShare {
-  person: AskTurnPerson;
-  basisPoints: number;
-  amountMinor?: number;
-  // The person wrote this number (or it is a flag such as "all"); the model
-  // did not make it up. A computed share is dropped when another is stated.
-  stated: boolean;
-  assumed: AskAssumption | null;
+export interface ShareMention {
+  value: number;
+  unit: ShareUnit;
+  // Where the number starts in the text, for finding the person next to it.
+  index: number;
 }
 
-function sharesQuestion(people: AskTurnPerson[], code: "shares_unreadable" | "shares_mismatch" = "shares_unreadable"): AskTurnReply {
-  const [first, second] = people;
-  return {
-    kind: "clarify",
-    question: COPY.sharesQuestion,
-    options: [COPY.chips.even, COPY.chips.allOf(first.name), COPY.chips.allOf(second.name)],
-    error: { code, field: "split.shares", valid: people.map((person) => person.name) }
-  };
+export interface RawShare {
+  person: string;
+  percent?: number | null;
+  amount?: string | null;
+  all?: boolean | null;
 }
 
-// The model's share item as a value: the new `value` as written, or the older
-// percent / amount / all fields.
-function readItem(item: Record<string, unknown>): ShareValue | null {
-  if (item.all === true) return { kind: "all" };
-  if (item.value !== undefined && item.value !== null && item.value !== "") return readShareValue(item.value);
-  if (typeof item.percent === "number") return { kind: "percent", percent: item.percent };
-  if (item.amount !== undefined && item.amount !== null && item.amount !== "") {
-    // The older `amount` field says it is an amount, with or without a symbol.
-    const minor = readAmountMinor(item.amount);
-    return minor === null ? null : { kind: "amount", minor };
+interface PersonRef {
+  id: string;
+  name: string;
+}
+
+const NUMBER = /(s?\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(%|percent\b|pct\b|dollars?\b|bucks\b|sgd\b)?/gi;
+
+// Every figure in the text with the unit the person wrote beside it. A
+// fraction like 50/50 is a ratio, not an amount, and is left out.
+export function readShareMentions(text: string): ShareMention[] {
+  const mentions: ShareMention[] = [];
+  const source = String(text ?? "");
+  for (const match of source.matchAll(NUMBER)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const before = source.slice(0, start);
+    const after = source.slice(end);
+    if (/\d\s*\/\s*$/.test(before) || /^\s*\/\s*\d/.test(after)) continue;
+    const value = Number(match[2].replace(/,/g, ""));
+    if (!Number.isFinite(value)) continue;
+    const marker = (match[3] ?? "").toLowerCase();
+    const unit: ShareUnit = marker === "%" || marker === "percent" || marker === "pct" ? "percent" : match[1] || marker ? "amount" : "bare";
+    mentions.push({ value, unit, index: start + (match[0].length - match[0].trimStart().length) });
+  }
+  return mentions;
+}
+
+// The unit of a number the model gave: what the person wrote beside it, and
+// for a bare number the entry-total rule. `guessed` is true for a bare
+// number, so the card can offer the other reading. null when the number is
+// nowhere in the text (the model derived it, or it is a word like "half").
+export function interpretShareNumber(
+  value: number,
+  texts: string[],
+  totalMinor: number | null
+): { unit: "amount" | "percent"; guessed: boolean } | null {
+  for (const text of texts) {
+    const mention = readShareMentions(text).find((candidate) => Math.abs(candidate.value - value) < 1e-9);
+    if (!mention) continue;
+    if (mention.unit === "amount") return { unit: "amount", guessed: false };
+    if (mention.unit === "percent") return { unit: "percent", guessed: false };
+    if (totalMinor === null) return null;
+    return { unit: mention.value * 100 > totalMinor ? "percent" : "amount", guessed: true };
   }
   return null;
 }
 
-// Whether the person's own words carry this number: "70%", "70 percent",
-// "$30", or a bare "30".
-function saidNumber(text: string, number: number) {
-  const digits = String(number).replace(".", "\\.");
-  return new RegExp(`(?<![\\d.])${digits}(?![\\d]|\\.\\d)`).test(text);
+// A message that asks to put something on Splits or to set a share, so the
+// rules know to try reading it.
+export function looksLikeSplitRequest(text: string): boolean {
+  return /\bsplits?\b|\bshare\b|\bowes?\b|\bpays?\b|\bhalf\b|\bfifty\b|\d\s*\/\s*\d/i.test(text);
 }
 
-function unitSaid(text: string, number: number): "percent" | "amount" | null {
-  const digits = String(number).replace(".", "\\.");
-  if (new RegExp(`(?<![\\d.])${digits}\\s?(?:%|percent|per cent|pct)`).test(text)) return "percent";
-  if (new RegExp(`(?:s?\\$\\s?${digits}(?![\\d])|(?<![\\d.])${digits}\\s?(?:dollars?|bucks?|sgd))`).test(text)) return "amount";
+const EVEN = /\b50\s*\/\s*50\b|\bhalf\b|\bevenly\b|\bequally\b|\beven\b|\bequal\b/i;
+const SELF_WORDS = new Set(["i", "me", "my", "mine", "myself"]);
+const WINDOW = 40;
+// What may sit between a person and their figure ("Joyce's share is 1.6",
+// "Joyce pays 2", "1.6 for Joyce"). Anything else ("I paid, split with
+// Joyce") means the figure is about something other than a share.
+const LINK = /^[\s:=\-\u2013]*(?:(?:share|shares|is|are|pays?|owes?|covers?|takes?|gets?|will|should|only|part|portion|of|it|to|for|from|at|as|s)\b[\s:=\-\u2013]*)*$/i;
+
+interface NamedToken {
+  index: number;
+  end: number;
+  person: PersonRef;
+}
+
+// The rules' reading of a split request, as the model's `split.shares`:
+// { shares: [] } for an even split, one or two shares when a person is
+// named beside a figure or "all", null when the message says nothing about
+// shares. Names are the household's own; "I", "me" and "my" are the viewer.
+export function readSharesByRules(text: string, people: PersonRef[], viewerId: string): { shares: RawShare[] } | null {
+  const viewer = people.find((person) => person.id === viewerId) ?? null;
+  // "Joyce owes me 1.6" is Joyce's figure: "me" there is who is owed.
+  const cleaned = String(text ?? "").replace(/\b(owes?|pays?|paying|gave|gives)\s+me\b/gi, "$1");
+  const personAt = (word: string): PersonRef | null => {
+    if (SELF_WORDS.has(word)) return viewer;
+    return people.find((person) => person.name.toLowerCase() === word) ?? null;
+  };
+  const named: NamedToken[] = [];
+  for (const match of cleaned.matchAll(/[\p{L}']+/gu)) {
+    const person = personAt(match[0].toLowerCase().replace(/'s$/, ""));
+    if (person) named.push({ index: match.index ?? 0, end: (match.index ?? 0) + match[0].length, person });
+  }
+
+  const all = /\ball\b/i.test(cleaned) ? readAll(cleaned, named) : null;
+  if (all) return { shares: [all] };
+  const mentions = readShareMentions(cleaned);
+  if (EVEN.test(cleaned) && !mentions.some((mention) => mention.unit === "percent")) return { shares: [] };
+
+  const found = new Map<string, RawShare>();
+  for (const mention of mentions) {
+    const near = nearestPerson(cleaned, mention.index, named);
+    if (!near || found.has(near.id)) continue;
+    const share: RawShare = { person: near.name };
+    if (mention.unit === "percent") share.percent = mention.value;
+    else share.amount = numberText(cleaned, mention);
+    found.set(near.id, share);
+  }
+  return found.size ? { shares: [...found.values()].slice(0, 2) } : null;
+}
+
+// The figure as the person wrote it ("1.60" keeps its zero).
+function numberText(text: string, mention: ShareMention) {
+  const written = /^\d[\d,]*(?:\.\d+)?/.exec(text.slice(mention.index).replace(/^s?\$\s*/i, ""));
+  return written ? written[0].replace(/,/g, "") : String(mention.value);
+}
+
+// "all Joyce", "all of it is Joyce's", "Joyce pays all", "all mine".
+function readAll(text: string, named: NamedToken[]): RawShare | null {
+  const allAt = /\ball\b/i.exec(text)?.index ?? -1;
+  if (allAt < 0 || !named.length) return null;
+  const closest = [...named].sort((a, b) => Math.abs(a.index - allAt) - Math.abs(b.index - allAt))[0];
+  return Math.abs(closest.index - allAt) > WINDOW ? null : { person: closest.person.name, all: true };
+}
+
+// The person written beside a figure: just before it (the usual order),
+// else just after ("1.6 for Joyce"), with only share words between them.
+function nearestPerson(text: string, index: number, named: NamedToken[]): PersonRef | null {
+  const before = [...named].reverse().find((token) => token.end <= index);
+  if (before && index - before.end <= WINDOW && LINK.test(text.slice(before.end, index))) return before.person;
+  const numberEnd = index + (/^s?\$?\s*\d[\d,]*(?:\.\d+)?\s*(?:%|percent|pct|dollars?|bucks|sgd)?/i.exec(text.slice(index))?.[0].length ?? 0);
+  const after = named.find((token) => token.index >= numberEnd);
+  if (after && after.index - numberEnd <= WINDOW && LINK.test(text.slice(numberEnd, after.index))) return after.person;
   return null;
-}
-
-function money(minor: number, currency: string) {
-  return `${currency === "SGD" ? "S$" : `${currency} `}${(minor / 100).toFixed(2)}`;
-}
-
-// Each person's share as stated, read into the first person's basis points.
-// Two people only. None stated: an even split, said as an assumption. One
-// stated: the other person has the rest. Two stated: they must add up to
-// the whole, unless only one of them is a number the person wrote, in which
-// case that one stands and the other is the rest.
-export function resolveShares(value: unknown, context: AskTurnContext, totalMinor: number | null, ground: Ground, currency = "SGD"): ShareResult {
-  const people = context.people.slice(0, 2);
-  if (people.length < 2) return { kind: "reply", reply: { kind: "note", text: COPY.needsTwoPeople } };
-  const [first, second] = people;
-  const items = Array.isArray(value) ? value.filter(isRecord) : [];
-  if (!items.length) {
-    return {
-      kind: "ok",
-      firstBasisPoints: 5000,
-      assumptions: [assumption(COPY.assumed.evenSplit, [COPY.chips.allOf(first.name), COPY.chips.allOf(second.name)])]
-    };
-  }
-  if (items.length > 2) return { kind: "reply", reply: sharesQuestion(people) };
-
-  const text = ground.userText.toLowerCase();
-  const read: ReadShare[] = [];
-  for (const item of items) {
-    const person = findPerson(item.person, context);
-    if (!person || person === "unknown" || !people.some((candidate) => candidate.id === person.id)) {
-      return { kind: "reply", reply: personQuestion(context, COPY.whoseShare, "split.shares.person", String(item.person ?? "")) };
-    }
-    if (read.some((entry) => entry.person.id === person.id)) return { kind: "reply", reply: sharesQuestion(people) };
-    const share = readItem(item);
-    if (!share) return { kind: "reply", reply: sharesQuestion(people) };
-    const placed = placeShare(share, person, people, totalMinor, ground, text, currency);
-    if (placed.kind === "reply") return { kind: "reply", reply: placed.reply };
-    read.push(placed.share);
-  }
-
-  if (read.length === 2) {
-    const [left, right] = read;
-    const consistent = left.amountMinor !== undefined && right.amountMinor !== undefined && totalMinor
-      ? left.amountMinor + right.amountMinor === totalMinor
-      : left.basisPoints + right.basisPoints === 10_000;
-    if (!consistent) {
-      // A share the person never wrote is a number the model worked out.
-      const stated = read.filter((entry) => entry.stated);
-      if (stated.length !== 1) return { kind: "reply", reply: sharesQuestion(people, "shares_mismatch") };
-      return finish([stated[0]], first, second, totalMinor);
-    }
-  }
-  return finish(read, first, second, totalMinor);
-}
-
-function finish(read: ReadShare[], first: AskTurnPerson, second: AskTurnPerson, totalMinor: number | null): ShareResult {
-  const assumptions = read.flatMap((entry) => (entry.assumed ? [entry.assumed] : []));
-  const own = read.find((entry) => entry.person.id === first.id);
-  if (own) {
-    return { kind: "ok", firstBasisPoints: own.basisPoints, ...(own.amountMinor !== undefined ? { firstAmountMinor: own.amountMinor } : {}), assumptions };
-  }
-  const other = read.find((entry) => entry.person.id === second.id) as ReadShare;
-  return other.amountMinor !== undefined && totalMinor
-    ? { kind: "ok", firstBasisPoints: 10_000 - other.basisPoints, firstAmountMinor: totalMinor - other.amountMinor, assumptions }
-    : { kind: "ok", firstBasisPoints: 10_000 - other.basisPoints, assumptions };
-}
-
-// One stated share as basis points (and the amount when it was one).
-// A bare number is told apart by what the person wrote around it, then by
-// whether it fits as an amount of this entry; when both fit it is read as an
-// amount and the percent reading is offered as the alternative.
-function placeShare(
-  share: ShareValue,
-  person: AskTurnPerson,
-  people: AskTurnPerson[],
-  totalMinor: number | null,
-  ground: Ground,
-  text: string,
-  currency: string
-): { kind: "ok"; share: ReadShare } | { kind: "reply"; reply: AskTurnReply } {
-  const ask = (reply: AskTurnReply) => ({ kind: "reply" as const, reply });
-  const percentOf = (percent: number, stated: boolean, assumed: AskAssumption | null = null) => {
-    if (!(percent >= 0 && percent <= 100)) return ask(sharesQuestion(people));
-    return { kind: "ok" as const, share: { person, basisPoints: Math.round(percent * 100), stated, assumed } };
-  };
-  const amountOf = (minor: number, stated: boolean, assumed: AskAssumption | null = null) => {
-    if (!totalMinor) return ask({ kind: "clarify", question: COPY.totalFirst, options: [], error: { code: "amount_needed", field: "split.shares" } });
-    if (minor > totalMinor) return ask(sharesQuestion(people));
-    return { kind: "ok" as const, share: { person, basisPoints: Math.round((minor / totalMinor) * 10_000), amountMinor: minor, stated, assumed } };
-  };
-
-  if (share.kind === "all") return { kind: "ok", share: { person, basisPoints: 10_000, stated: true, assumed: null } };
-  if (share.kind === "percent") return percentOf(share.percent, saidNumber(text, share.percent) || /\b(half|third|quarter|equal|even|50\/50)\b/.test(text));
-  if (share.kind === "amount") {
-    const amount = groundedAmount(share.minor / 100, ground);
-    if (!amount.given || amount.minor === null) return ask({ kind: "clarify", question: COPY.amountQuestion, options: [], error: { code: "amount_not_stated", field: "split.shares" } });
-    return amountOf(amount.minor, true);
-  }
-
-  // A bare number: "1.6", "70".
-  const number = share.number;
-  const minor = Math.round(number * 100);
-  const stated = saidNumber(text, number);
-  // A bare number the person never wrote is one the model worked out.
-  if (!stated) return ask({ kind: "clarify", question: COPY.amountQuestion, options: [], error: { code: "amount_not_stated", field: "split.shares" } });
-  const unit = stated ? unitSaid(text, number) : null;
-  if (unit === "percent") return percentOf(number, true);
-  if (unit === "amount") return amountOf(minor, true);
-  const fitsAsAmount = Boolean(totalMinor) && minor > 0 && minor <= (totalMinor as number) && ground.amounts.has(minor);
-  const fitsAsPercent = number > 0 && number <= 100;
-  if (fitsAsAmount) {
-    // Both readings can fit; an amount of this entry is the likelier thing to
-    // say about "the share", and the percent is one tap away.
-    const alternative = fitsAsPercent ? [`${person.name}'s share is ${number}%`] : [];
-    return amountOf(minor, stated, assumption(COPY.assumed.readAsAmount(number, money(minor, currency), person.name), alternative));
-  }
-  if (fitsAsPercent) return percentOf(number, true, assumption(COPY.assumed.readAsPercent(number, person.name)));
-  return ask(sharesQuestion(people));
 }
