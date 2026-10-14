@@ -217,6 +217,8 @@ export const askCopy = {
   // cards a turn can add (an entry onto Splits, a settle-up payment).
   turn: {
     rulesNote: "AI isn't available right now, so Ask read this with its built-in rules.",
+    // The public demo only, when its own Claude allowance is used up.
+    demoAllowanceNote: "The demo's Claude allowance is used up for today, so Ask is using its built-in rules.",
     opened: (page) => `Opened ${page}.`,
     pages: { summary: "Summary", month: "Month", entries: "Entries", splits: "Splits", imports: "Imports", settings: "Settings", help: "Help" },
     draftTag: "Draft",

@@ -194,7 +194,7 @@ test("requestMoneyAnswer reads the real route's answer, and a failure is a calm 
   const result = await requestMoneyAnswer({ text: "where did April go?", viewId: "household", scope: "direct_plus_shared", month: "2026-05", fetchImpl });
   assert.equal(result.ok, true);
   assert.equal(result.answer.intent, "spending");
-  assert.equal(result.answer.answer.lead.amountMinor, 457539);
+  assert.equal(result.answer.answer.lead.amountMinor, 366757);
   assert.deepEqual(result.answer.answer.links.map((link) => link.kind), ["entries", "month"]);
   assert.equal(result.answer.wording.source, "template");
 

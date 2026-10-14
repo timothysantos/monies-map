@@ -109,7 +109,9 @@ export function deriveIncomeRowActuals(
         return false;
       }
 
-      if (personId !== "household" && row.ownerName && entry.ownerName && row.ownerName !== entry.ownerName) {
+      // An income row is one person's income in every view: on Household,
+      // "Ethan salary" never counts Serene's salary too.
+      if (row.ownerName && entry.ownerName && row.ownerName !== entry.ownerName) {
         return false;
       }
 

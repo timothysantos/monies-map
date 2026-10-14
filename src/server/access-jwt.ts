@@ -8,7 +8,7 @@
 // anyone could send.
 //
 // ACCESS_JWT_MODE:
-// - unset / "off": nothing is checked (demo, local, tests, the shortcuts
+// - unset / "off": nothing is checked (local, tests, the shortcuts
 //   Worker). The plain identity header names the viewer, as before.
 // - "report": every request is checked and logged in one line, and is
 //   served whatever the result. A verified token names the viewer; a failed

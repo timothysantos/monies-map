@@ -10,14 +10,21 @@
 // the category rules and the entries read naturally.
 //
 // Months are named by their offset from the seed month (M0): M-16 is the
-// oldest, M-1 the last complete month. The stories:
+// oldest, M-1 the last complete month. Both work full time on modest pay
+// (net of CPF, which is not shown as income): Ethan about $5,700 a month,
+// Serene about $4,400, with a 13th-month AWS in December and a small
+// mid-year bonus for Ethan in July (calendar months, so they land wherever
+// the seed month puts them). Every month both pay into the joint POSB
+// account, and money goes to Endowus, StashAway and (quarterly) IBKR.
+// The stories:
 // - M-13 Bali long weekend, the same-season month for M-1
-// - M-10 Ethan's pay rise; M-8 his bonus
-// - M-9 a heavier family month that lands close to plan
-// - M-7 Japan flights booked; M-5 the Japan trip (JPY split group)
-// - M-2 aircon and sofa: the clearly over-plan month
+// - M-11 the one month with no plan (the Simple view shows by default)
+// - M-9 a heavier family month, a little over plan
+// - M-7 Ethan's pay rise; Japan flights booked; M-5 the Japan trip (JPY split group)
+// - M-6 Mochi's vet bill, a little over plan
+// - M-2 aircon and sofa: the clearly over-plan month, part paid from StashAway
 // - M-1 Serene's SRS top-up, the one unresolved transfer
-// - M0 the month in progress, cut at `cutoffDay`
+// - M0 the month in progress, cut at `cutoffDay`, with two Apple Pay entries
 
 import { categories as defaultCategories } from "./demo-data";
 import { defaultCategoryMatchRules } from "./category-match-defaults";
@@ -38,14 +45,18 @@ export const SHOWCASE_ACCOUNT_IDS = {
   ethanBank: "acct-ethan-ocbc-360",
   sereneBank: "acct-serene-uob-one",
   joint: "acct-joint-posb",
-  ethanCard: "acct-ethan-citi-cash-back",
-  sereneCard: "acct-serene-uob-prvi",
-  sereneGroceryCard: "acct-serene-ocbc-365"
+  ethanCard: "acct-ethan-citi-rewards",
+  ethanTransportCard: "acct-ethan-dbs-live-fresh",
+  sereneCard: "acct-serene-uob-ladys",
+  sereneGroceryCard: "acct-serene-ocbc-365",
+  ethanEndowus: "acct-ethan-endowus",
+  ethanIbkr: "acct-ethan-ibkr",
+  sereneStashAway: "acct-serene-stashaway"
 } as const;
 
 const A = SHOWCASE_ACCOUNT_IDS;
 
-export type ShowcaseAccountKind = "bank" | "credit_card";
+export type ShowcaseAccountKind = "bank" | "credit_card" | "investment";
 
 export interface ShowcaseAccount {
   id: string;
@@ -64,18 +75,29 @@ export const SHOWCASE_INSTITUTIONS = [
   { id: "inst-ocbc", name: "OCBC" },
   { id: "inst-uob", name: "UOB" },
   { id: "inst-citibank", name: "Citibank" },
-  { id: "inst-dbs", name: "DBS" }
+  { id: "inst-dbs", name: "DBS" },
+  { id: "inst-endowus", name: "Endowus" },
+  { id: "inst-stashaway", name: "StashAway" },
+  { id: "inst-ibkr", name: "Interactive Brokers" }
 ];
 
 export const SHOWCASE_ACCOUNTS: ShowcaseAccount[] = [
-  { id: A.ethanBank, institutionId: "inst-ocbc", ownerPersonId: ETHAN, name: "OCBC 360 Account", kind: "bank", openingBalanceMinor: 1_840_000, isJoint: false, slug: "ocbc-360", statementParserKey: "ocbc_360_pdf", activityParserKey: "ocbc_360_activity_csv" },
-  { id: A.sereneBank, institutionId: "inst-uob", ownerPersonId: SERENE, name: "UOB One Account", kind: "bank", openingBalanceMinor: 1_275_000, isJoint: false, slug: "uob-one", statementParserKey: "uob_savings_pdf", activityParserKey: "uob_current_transactions_xls" },
+  { id: A.ethanBank, institutionId: "inst-ocbc", ownerPersonId: ETHAN, name: "OCBC 360 Account", kind: "bank", openingBalanceMinor: 1_420_000, isJoint: false, slug: "ocbc-360", statementParserKey: "ocbc_360_pdf", activityParserKey: "ocbc_360_activity_csv" },
+  { id: A.sereneBank, institutionId: "inst-uob", ownerPersonId: SERENE, name: "UOB One Account", kind: "bank", openingBalanceMinor: 1_065_000, isJoint: false, slug: "uob-one", statementParserKey: "uob_savings_pdf", activityParserKey: "uob_current_transactions_xls" },
   // DBS has no statement parser: its monthly CSV files are generic and its
   // balances are entered by hand as statement checkpoints.
-  { id: A.joint, institutionId: "inst-dbs", ownerPersonId: null, name: "POSB Joint Account", kind: "bank", openingBalanceMinor: 620_000, isJoint: true, slug: "posb-joint", statementParserKey: null, activityParserKey: null },
-  { id: A.ethanCard, institutionId: "inst-citibank", ownerPersonId: ETHAN, name: "Citi Cash Back Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "citi-cash-back", statementParserKey: "citibank_credit_card_pdf", activityParserKey: "citibank_credit_card_activity_csv" },
-  { id: A.sereneCard, institutionId: "inst-uob", ownerPersonId: SERENE, name: "UOB PRVI Miles Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "uob-prvi-miles", statementParserKey: "uob_credit_card_pdf", activityParserKey: "uob_credit_card_current_transactions_xls" },
-  { id: A.sereneGroceryCard, institutionId: "inst-ocbc", ownerPersonId: SERENE, name: "OCBC 365 Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "ocbc-365", statementParserKey: "ocbc_365_credit_card_pdf", activityParserKey: "ocbc_credit_card_activity_csv" }
+  { id: A.joint, institutionId: "inst-dbs", ownerPersonId: null, name: "POSB Joint Account", kind: "bank", openingBalanceMinor: 480_000, isJoint: true, slug: "posb-joint", statementParserKey: null, activityParserKey: null },
+  { id: A.ethanCard, institutionId: "inst-citibank", ownerPersonId: ETHAN, name: "Citi Rewards Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "citi-rewards", statementParserKey: "citibank_credit_card_pdf", activityParserKey: "citibank_credit_card_activity_csv" },
+  { id: A.ethanTransportCard, institutionId: "inst-dbs", ownerPersonId: ETHAN, name: "DBS Live Fresh Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "dbs-live-fresh", statementParserKey: null, activityParserKey: null },
+  { id: A.sereneCard, institutionId: "inst-uob", ownerPersonId: SERENE, name: "UOB Lady's Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "uob-ladys", statementParserKey: "uob_credit_card_pdf", activityParserKey: "uob_credit_card_current_transactions_xls" },
+  { id: A.sereneGroceryCard, institutionId: "inst-ocbc", ownerPersonId: SERENE, name: "OCBC 365 Card", kind: "credit_card", openingBalanceMinor: 0, isJoint: false, slug: "ocbc-365", statementParserKey: "ocbc_365_credit_card_pdf", activityParserKey: "ocbc_credit_card_activity_csv" },
+  // Investment accounts: money moved in is invested (DOMAIN.md, "Money
+  // job"). Their monthly transaction files are generic CSVs; their
+  // checkpoints are the money put in, typed from the platform's statement
+  // (market gains are not tracked here).
+  { id: A.ethanEndowus, institutionId: "inst-endowus", ownerPersonId: ETHAN, name: "Endowus Core Portfolio", kind: "investment", openingBalanceMinor: 1_860_000, isJoint: false, slug: "endowus", statementParserKey: null, activityParserKey: null },
+  { id: A.ethanIbkr, institutionId: "inst-ibkr", ownerPersonId: ETHAN, name: "IBKR Brokerage", kind: "investment", openingBalanceMinor: 1_240_000, isJoint: false, slug: "ibkr", statementParserKey: null, activityParserKey: null },
+  { id: A.sereneStashAway, institutionId: "inst-stashaway", ownerPersonId: SERENE, name: "StashAway General Investing", kind: "investment", openingBalanceMinor: 960_000, isJoint: false, slug: "stashaway", statementParserKey: null, activityParserKey: null }
 ];
 
 const CUSTOM_CATEGORIES: CategoryDto[] = [
@@ -97,7 +119,7 @@ function categoryId(name: string) {
 
 const CUSTOM_RULES = [
   { id: "catrule-showcase-harbourline", pattern: "HARBOURLINE LOGISTICS", categoryName: "Salary", priority: 12, note: "Ethan's employer." },
-  { id: "catrule-showcase-lumen-studio", pattern: "LUMEN STUDIO", categoryName: "Freelance Income", priority: 12, note: "Serene's main design client." },
+  { id: "catrule-showcase-lumen-studio", pattern: "LUMEN STUDIO", categoryName: "Salary", priority: 12, note: "Serene's employer." },
   { id: "catrule-showcase-kite-co", pattern: "KITE & CO", categoryName: "Freelance Income", priority: 12 },
   { id: "catrule-showcase-pet-lovers", pattern: "PET LOVERS CENTRE", categoryName: "Pet Care", priority: 20, note: "Mochi's food and litter." },
   { id: "catrule-showcase-tampines-tc", pattern: "TAMPINES TOWN COUNCIL", categoryName: "Bills", priority: 25 },
@@ -162,6 +184,9 @@ export interface ShowcaseTransaction {
   certified: boolean;
   createdAt: string;
   planKey: string | null;
+  // `shortcut:<id>` marks an entry the Apple Pay Shortcut saved (DOMAIN.md,
+  // "Added By"); such entries are typed in, never imported.
+  externalReference: string | null;
 }
 
 export interface ShowcaseImport {
@@ -434,6 +459,16 @@ function pick<T>(rng: () => number, values: readonly T[]): T {
   return values[Math.floor(rng() * values.length)];
 }
 
+// ---- Pay (take-home, after CPF) --------------------------------------------
+
+// Ethan's pay rise lands at M-7, after his annual review.
+function ethanSalaryFor(offset: number) {
+  return offset <= -8 ? 542_000 : 568_000;
+}
+
+const SERENE_SALARY_MINOR = 438_000;
+const MID_YEAR_BONUS_MINOR = 180_000;
+
 // ---- Builder ----------------------------------------------------------------
 
 const ACCOUNT_BY_ID = new Map(SHOWCASE_ACCOUNTS.map((account) => [account.id, account]));
@@ -450,6 +485,7 @@ type AddInput = {
   note?: string;
   planKey?: string;
   postLagDays?: number;
+  externalReference?: string;
 };
 
 function signedMinor(row: { entryType: EntryType; transferDirection: "in" | "out" | null; amountMinor: number }) {
@@ -493,7 +529,7 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     if (!account) {
       throw new Error(`Unknown showcase account ${input.accountId}`);
     }
-    const lag = account.kind === "credit_card" ? input.postLagDays ?? 1 : 0;
+    const lag = account.kind === "credit_card" && !input.externalReference ? input.postLagDays ?? 1 : 0;
     const row: ShowcaseTransaction = {
       id: nextId(input.date),
       accountId: input.accountId,
@@ -512,7 +548,8 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
       importRowId: null,
       certified: false,
       createdAt: "",
-      planKey: input.planKey ?? null
+      planKey: input.planKey ?? null,
+      externalReference: input.externalReference ?? null
     };
     transactions.push(row);
     return row;
@@ -614,17 +651,23 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
 
   const cardPayers = [
     { cardId: A.ethanCard, bankId: A.ethanBank, day: 18, out: "BILL PAYMENT CITI CARD XXXX-XXXX-XXXX-0000", into: "PAYMENT RECEIVED - THANK YOU" },
+    { cardId: A.ethanTransportCard, bankId: A.ethanBank, day: 20, out: "BILL PAYMENT DBS CARD XXXX-XXXX-XXXX-0000", into: "PAYMENT - DBS INTERNET/WIRELESS" },
     { cardId: A.sereneCard, bankId: A.sereneBank, day: 15, out: "BILL PAYMENT UOB CARD XXXX-XXXX-XXXX-0000", into: "PAYMENT - THANK YOU" },
     { cardId: A.sereneGroceryCard, bankId: A.sereneBank, day: 22, out: "BILL PAYMENT OCBC CARD XXXX-XXXX-XXXX-0000", into: "PAYMENT BY INTERNET BANKING" }
   ];
 
-  const ethanDining = ["YA KUN KAYA TOAST", "TOAST BOX", "KOUFU FOOD COURT", "GRAB*GRABFOOD", "STARBUCKS", "PEPPER KITCHEN", "SHAKE SHACK", "OLD CHANG KEE"] as const;
-  const sereneDining = ["GRAB*GRABFOOD", "TIONG BAHRU BAKERY", "SALAD STOP", "PARIS BAGUETTE", "GENKI SUSHI", "HEYTEA", "THE COFFEE BEAN"] as const;
-  const dinnerPlaces = ["DIN TAI FUNG PARAGON", "SONG FA BAK KUT TEH", "HAIDILAO VIVOCITY", "PS.CAFE DEMPSEY", "LEVEL33 MARINA BAY", "JUMBO SEAFOOD RIVERSIDE", "TONKOTSU KAZAN"] as const;
-  const groceryStores = ["NTUC FAIRPRICE TAMPINES", "SHENG SIONG TAMPINES", "COLD STORAGE CENTURY SQ", "NTUC FAIRPRICE XTRA"] as const;
+  // Weekday lunches and coffee are mostly hawker and food court; delivery
+  // is the pricier evening fallback.
+  const ethanDining = ["YA KUN KAYA TOAST", "TOAST BOX", "KOUFU FOOD COURT", "KOPITIAM TAMPINES", "GRAB*GRABFOOD", "FOODPANDA", "OLD CHANG KEE", "MCDONALD'S TAMPINES", "STARBUCKS", "PEPPER LUNCH"] as const;
+  const sereneDining = ["GRAB*GRABFOOD", "DELIVEROO", "TIONG BAHRU BAKERY", "SALADSTOP!", "KOPITIAM TAMPINES", "PARIS BAGUETTE", "HEYTEA", "LUCKIN COFFEE", "GENKI SUSHI"] as const;
+  const deliveryApps = new Set<string>(["GRAB*GRABFOOD", "FOODPANDA", "DELIVEROO"]);
+  const dinnerPlaces = ["DIN TAI FUNG TAMPINES 1", "SONG FA BAK KUT TEH", "HAIDILAO VIVOCITY", "SUSHIRO TAMPINES", "JUMBO SEAFOOD RIVERSIDE", "ASTONS SPECIALITIES", "NANDOS JEWEL"] as const;
+  const groceryStores = ["NTUC FAIRPRICE TAMPINES", "SHENG SIONG TAMPINES", "COLD STORAGE TAMPINES 1", "NTUC FAIRPRICE XTRA"] as const;
+  const modulo = (value: number, base: number) => ((value % base) + base) % base;
 
   for (let offset = -(SHOWCASE_MONTH_COUNT - 1); offset <= 0; offset += 1) {
     const month = monthAt(offset);
+    const calendarMonth = Number(month.slice(5, 7));
     const rng = rngFor(offset, "month");
     const d = (day: number) => dayOf(month, day);
 
@@ -639,87 +682,107 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
       }
     }
 
-    // Income.
-    const salaryMinor = offset <= -11 ? 785_000 : 830_000;
-    add({ accountId: A.ethanBank, date: d(25), description: "SALARY HARBOURLINE LOGISTICS PTE LTD", amountMinor: salaryMinor, entryType: "income", category: "Salary", note: offset === -10 ? "First month at the new pay after the annual review." : undefined });
-    if (offset === -8) {
-      add({ accountId: A.ethanBank, date: d(25), description: "BONUS HARBOURLINE LOGISTICS PTE LTD", amountMinor: 1_200_000, entryType: "income", category: "Extra Income", note: "Annual performance bonus." });
+    // Income: take-home pay after CPF.
+    const ethanSalaryMinor = ethanSalaryFor(offset);
+    add({ accountId: A.ethanBank, date: d(25), description: "SALARY HARBOURLINE LOGISTICS PTE LTD", amountMinor: ethanSalaryMinor, entryType: "income", category: "Salary", note: offset === -7 ? "First month at the new pay after the annual review." : undefined });
+    add({ accountId: A.sereneBank, date: d(27), description: "SALARY LUMEN STUDIO PTE LTD", amountMinor: SERENE_SALARY_MINOR, entryType: "income", category: "Salary" });
+    if (calendarMonth === 12) {
+      add({ accountId: A.ethanBank, date: d(25), description: "AWS HARBOURLINE LOGISTICS PTE LTD", amountMinor: ethanSalaryMinor, entryType: "income", category: "Extra Income", note: "13th-month pay (AWS)." });
+      add({ accountId: A.sereneBank, date: d(27), description: "AWS LUMEN STUDIO PTE LTD", amountMinor: SERENE_SALARY_MINOR, entryType: "income", category: "Extra Income", note: "13th-month pay (AWS)." });
     }
-    const freelanceMinor = [546_000, 498_500, 522_000, 575_000, 510_000, 489_000, 533_500, 560_000, 504_000, 517_500, 462_000, 545_000, 598_000, 640_000, 521_000, 556_000, 529_000][offset + 16];
-    add({ accountId: A.sereneBank, date: d(20), description: "GIRO LUMEN STUDIO PTE LTD", amountMinor: freelanceMinor, entryType: "income", category: "Freelance Income" });
-    if (offset % 3 === 0) {
-      add({ accountId: A.sereneBank, date: d(11), description: "PAYNOW FROM KITE & CO", amountMinor: between(rng, 60_000, 110_000), entryType: "income", category: "Freelance Income", note: "Logo project for a small cafe." });
+    if (calendarMonth === 7) {
+      add({ accountId: A.ethanBank, date: d(25), description: "BONUS HARBOURLINE LOGISTICS PTE LTD", amountMinor: MID_YEAR_BONUS_MINOR, entryType: "income", category: "Extra Income", note: "Small mid-year performance bonus." });
     }
+    if (modulo(offset, 3) === 0) {
+      add({ accountId: A.sereneBank, date: d(11), description: "PAYNOW FROM KITE & CO", amountMinor: between(rng, 35_000, 80_000), entryType: "income", category: "Freelance Income", note: "Weekend logo job for a small cafe." });
+    }
+    add({ accountId: A.ethanBank, date: monthEnd(month), description: "OCBC 360 BONUS INTEREST", amountMinor: between(rng, 2_400, 4_200), entryType: "income", category: "Income" });
+    add({ accountId: A.sereneBank, date: monthEnd(month), description: "UOB ONE BONUS INTEREST", amountMinor: between(rng, 1_600, 3_000), entryType: "income", category: "Income" });
 
-    // Household account: contributions in, fixed costs and groceries out.
-    transferPair({ date: d(26), fromAccountId: A.ethanBank, toAccountId: A.joint, amountMinor: 150_000, outDescription: "FAST TRANSFER TO POSB XXX-XXXXX-0", inDescription: "FAST TRANSFER FROM ETHAN", groupNote: "Household account contribution" });
-    transferPair({ date: d(21), fromAccountId: A.sereneBank, toAccountId: A.joint, amountMinor: 100_000, outDescription: "FUNDS TRANSFER TO POSB XXX-XXXXX-0", inDescription: "FAST TRANSFER FROM SERENE", groupNote: "Household account contribution" });
-    expense(A.joint, d(1), "HDB HOUSING LOAN GIRO", 148_000, "Loans", { planKey: "hdb" });
-    expense(A.joint, d(8), "TAMPINES TOWN COUNCIL S&CC", 8_600, "Bills", { planKey: "scc" });
+    // Household account: contributions in, home costs and groceries out.
+    transferPair({ date: d(26), fromAccountId: A.ethanBank, toAccountId: A.joint, amountMinor: 90_000, outDescription: "FAST TRANSFER TO POSB XXX-XXXXX-0", inDescription: "FAST TRANSFER FROM ETHAN", groupNote: "Household account contribution" });
+    transferPair({ date: d(28), fromAccountId: A.sereneBank, toAccountId: A.joint, amountMinor: 70_000, outDescription: "FUNDS TRANSFER TO POSB XXX-XXXXX-0", inDescription: "FAST TRANSFER FROM SERENE", groupNote: "Household account contribution" });
+    expense(A.joint, d(1), "HDB HOUSING LOAN GIRO", 62_000, "Loans", { planKey: "hdb", note: offset === -16 ? "The cash part of the instalment; CPF pays the rest." : undefined });
+    expense(A.joint, d(8), "TAMPINES TOWN COUNCIL S&CC", 7_850, "Bills", { planKey: "scc" });
     const saturdays = Array.from({ length: daysInMonth(month) }, (_, index) => d(index + 1)).filter((date) => weekday(date) === 6);
     saturdays.forEach((date, index) => {
-      expense(A.joint, date, groceryStores[index % 3], between(rng, 9_200, 17_800), "Groceries");
+      expense(A.joint, date, groceryStores[(index + offset + 16) % groceryStores.length], between(rng, 7_200, 14_600), "Groceries");
     });
+    if (modulo(offset, 4) === 2) {
+      expense(A.joint, d(9), "PAYNOW TO COOLBREEZE AIRCON SVC", 12_000, "Home", { note: offset === -2 ? "Servicing. The technician said both units were on their last legs." : "Aircon servicing, every four months." });
+    }
     if (offset === -11) {
-      expense(A.joint, d(12), "SINGLIFE HOME INSURANCE", 34_800, "Insurance", { note: "Yearly home contents cover." });
+      expense(A.joint, d(12), "INCOME INSURANCE HOME GIRO", 26_800, "Insurance", { note: "Yearly HDB home contents cover." });
     }
 
-    // Ethan: bank.
+    // Ethan: bank. Investments go out after payday.
     expense(A.ethanBank, d(1), "PAYNOW TRANSFER - PARENTS ALLOWANCE", 50_000, "Family & Personal", { planKey: "allowance", note: offset === -16 ? "For Mum and Dad, every month." : undefined });
-    expense(A.ethanBank, d(3), "PRUDENTIAL ASSURANCE GIRO", 24_500, "Insurance", { planKey: "prudential" });
+    expense(A.ethanBank, d(3), "AIA SINGAPORE GIRO", 18_640, "Insurance", { planKey: "aia" });
+    transferPair({ date: d(26), fromAccountId: A.ethanBank, toAccountId: A.ethanEndowus, amountMinor: 60_000, outDescription: "GIRO ENDOWUS SINGAPORE PTE LTD", inDescription: "DEPOSIT RECEIVED - CORE PORTFOLIO", groupNote: "Monthly investment" });
+    if (modulo(offset, 3) === 0) {
+      transferPair({ date: d(27), fromAccountId: A.ethanBank, toAccountId: A.ethanIbkr, amountMinor: 100_000, outDescription: "FAST TRANSFER TO INTERACTIVE BROKERS", inDescription: "CASH RECEIPT - ELECTRONIC FUND TRANSFER", groupNote: "Quarterly investment" });
+    }
 
-    // Ethan: card. Bills he pays for both are shared in Home & Bills.
-    const spMinor = [16_420, 17_880, 19_240, 21_360, 20_150, 18_730, 15_960, 14_820, 15_410, 16_990, 18_260, 19_870, 21_140, 20_480, 18_090, 16_750, 17_320][offset + 16];
-    const sp = expense(A.ethanCard, d(10), "SP DIGITAL PTE LTD", spMinor, "Bills");
-    linkedSplit(HOME, ETHAN, sp, "SP Group utilities", "Bills");
-    const singtel = expense(A.ethanCard, d(14), "SINGTEL BILL PAYMENT", offset >= -6 ? 13_280 : 12_880, "Bills");
-    linkedSplit(HOME, ETHAN, singtel, "Singtel fibre and mobile", "Bills");
+    // Ethan: Citi Rewards for food, shopping and streaming.
     expense(A.ethanCard, d(4), "APPLE.COM/BILL", 398, "Subscriptions MO", { planKey: "icloud" });
-    expense(A.ethanCard, d(9), "NETFLIX.COM", 1_998, "Subscriptions MO", { planKey: "netflix" });
-    expense(A.ethanCard, d(2), "MYACTIVESG GYM PASS", 2_500, "Sports & Hobbies");
-    for (let index = 0; index < 7; index += 1) {
-      const day = 2 + index * 4 + Math.floor(rng() * 3);
+    expense(A.ethanCard, d(9), "NETFLIX.COM", 1_898, "Subscriptions MO", { planKey: "netflix" });
+    for (let index = 0; index < 13; index += 1) {
+      const day = 1 + index * 2 + Math.floor(rng() * 2);
       const place = pick(rng, ethanDining);
-      expense(A.ethanCard, d(day), place, place === "GRAB*GRABFOOD" ? between(rng, 1_850, 3_900) : between(rng, 520, 2_380), "Food & Drinks", { postLagDays: 1 + (index % 2) });
+      expense(A.ethanCard, d(day), place, deliveryApps.has(place) ? between(rng, 1_650, 3_400) : between(rng, 480, 1_650), "Food & Drinks", { postLagDays: 1 + (index % 2) });
     }
-    for (let week = 0; week < 4; week += 1) {
-      expense(A.ethanCard, d(7 + week * 7), "BUS/MRT SIMPLYGO", between(rng, 1_640, 2_980), "Public Transport");
-    }
-    expense(A.ethanCard, d(6 + Math.floor(rng() * 6)), "GRAB*TRIP", between(rng, 1_260, 2_840), "Taxi");
-    expense(A.ethanCard, d(19 + Math.floor(rng() * 6)), "GRAB*TRIP", between(rng, 1_180, 3_120), "Taxi", { postLagDays: 2 });
     if (offset % 2 === 0) {
-      expense(A.ethanCard, d(16), pick(rng, ["SHOPEE SINGAPORE", "LAZADA SINGAPORE", "DECATHLON TAMPINES"]), between(rng, 2_400, 11_800), "Shopping");
+      expense(A.ethanCard, d(16), pick(rng, ["SHOPEE SINGAPORE", "LAZADA SINGAPORE", "DECATHLON TAMPINES", "UNIQLO TAMPINES 1"]), between(rng, 1_800, 8_900), "Shopping");
     }
     if (offset % 3 === -1) {
       expense(A.ethanCard, d(23), "GOLDEN VILLAGE TAMPINES", 2_700, "Entertainment");
     }
 
-    // Serene: bank.
-    expense(A.sereneBank, d(5), "GREAT EASTERN LIFE GIRO", 19_800, "Insurance", { planKey: "great-eastern" });
+    // Ethan: DBS Live Fresh for transport, the gym and the home bills he
+    // pays for both (shared in Home & Bills).
+    expense(A.ethanTransportCard, d(2), "ANYTIME FITNESS TAMPINES", 9_800, "Sports & Hobbies", { planKey: "gym" });
+    expense(A.ethanTransportCard, d(14), "SINGTEL MOBILE BILL", 4_280, "Bills", { planKey: "singtel" });
+    const spMinor = [12_420, 13_880, 15_240, 16_360, 15_150, 13_730, 11_960, 10_820, 11_410, 12_990, 14_260, 15_870, 16_140, 15_480, 13_090, 11_750, 12_320][offset + 16];
+    const sp = expense(A.ethanTransportCard, d(10), "SP DIGITAL PTE LTD", spMinor, "Bills");
+    linkedSplit(HOME, ETHAN, sp, "SP Group utilities", "Bills");
+    const fibre = expense(A.ethanTransportCard, d(12), "MYREPUBLIC BROADBAND", 4_599, "Bills");
+    linkedSplit(HOME, ETHAN, fibre, "Home fibre broadband", "Bills");
+    for (let week = 0; week < 4; week += 1) {
+      expense(A.ethanTransportCard, d(7 + week * 7), "BUS/MRT SIMPLYGO", between(rng, 1_480, 2_640), "Public Transport");
+    }
+    expense(A.ethanTransportCard, d(6 + Math.floor(rng() * 6)), "GRAB*TRIP", between(rng, 1_160, 2_640), "Taxi");
+    expense(A.ethanTransportCard, d(19 + Math.floor(rng() * 6)), "GRAB*TRIP", between(rng, 1_080, 2_920), "Taxi", { postLagDays: 2 });
 
-    // Serene: cards.
-    expense(A.sereneCard, d(2), "CIRCLES.LIFE", 2_800, "Bills", { planKey: "circles" });
-    expense(A.sereneCard, d(7), "SPOTIFY SINGAPORE", 1_598, "Subscriptions MO", { planKey: "spotify" });
-    expense(A.sereneCard, d(16), "ADOBE CREATIVE CLOUD", 3_615, "Subscriptions MO", { planKey: "adobe" });
-    for (let index = 0; index < 6; index += 1) {
-      const day = 3 + index * 5 + Math.floor(rng() * 3);
+    // Serene: bank.
+    expense(A.sereneBank, d(1), "PAYNOW TRANSFER - MUM", 30_000, "Family & Personal", { planKey: "serene-parents" });
+    expense(A.sereneBank, d(5), "PRUDENTIAL ASSURANCE GIRO", 14_280, "Insurance", { planKey: "prudential" });
+    transferPair({ date: d(28), fromAccountId: A.sereneBank, toAccountId: A.sereneStashAway, amountMinor: 40_000, outDescription: "PAYNOW TO STASHAWAY SG", inDescription: "DEPOSIT - FAST", groupNote: "Monthly investment" });
+
+    // Serene: UOB Lady's for food, beauty and clothes.
+    expense(A.sereneCard, d(2), "STARHUB MOBILE", 2_800, "Bills", { planKey: "starhub" });
+    expense(A.sereneCard, d(7), "SPOTIFY SINGAPORE", 1_198, "Subscriptions MO", { planKey: "spotify" });
+    for (let index = 0; index < 11; index += 1) {
+      const day = 2 + index * 2 + Math.floor(rng() * 3);
       const place = pick(rng, sereneDining);
-      expense(A.sereneCard, d(day), place, place === "GRAB*GRABFOOD" ? between(rng, 1_900, 4_200) : between(rng, 680, 2_960), "Food & Drinks", { postLagDays: 1 + (index % 2) });
+      expense(A.sereneCard, d(day), place, deliveryApps.has(place) ? between(rng, 1_800, 3_600) : between(rng, 520, 1_890), "Food & Drinks", { postLagDays: 1 + (index % 2) });
     }
     for (let week = 0; week < 3; week += 1) {
-      expense(A.sereneCard, d(9 + week * 8), "BUS/MRT SIMPLYGO", between(rng, 1_120, 2_260), "Public Transport");
+      expense(A.sereneCard, d(9 + week * 8), "BUS/MRT SIMPLYGO", between(rng, 1_040, 2_060), "Public Transport");
     }
-    expense(A.sereneCard, d(13), "GOPAY-GOJEK", between(rng, 1_340, 2_760), "Taxi");
-    expense(A.sereneCard, d(27), "GOPAY-GOJEK", between(rng, 1_520, 3_380), "Taxi");
+    expense(A.sereneCard, d(13), "GRAB*TRIP", between(rng, 1_240, 2_560), "Taxi");
+    expense(A.sereneCard, d(27), "GRAB*TRIP", between(rng, 1_420, 2_980), "Taxi");
     if (offset % 2 !== 0) {
-      expense(A.sereneCard, d(18), pick(rng, ["UNIQLO BUGIS", "SHOPEE SINGAPORE", "MUJI PLAZA SINGAPURA", "DAISO TAMPINES"]), between(rng, 1_800, 14_600), "Shopping");
+      expense(A.sereneCard, d(18), pick(rng, ["UNIQLO BUGIS", "SHOPEE SINGAPORE", "LOVE BONITO", "DAISO TAMPINES", "LAZADA SINGAPORE"]), between(rng, 1_500, 9_800), "Shopping");
     }
     if (offset % 2 === 0) {
-      expense(A.sereneCard, d(24), "CREATIVE SALON TAMPINES", 8_800, "Beauty");
+      expense(A.sereneCard, d(24), "CREATIVE SALON TAMPINES", 6_800, "Beauty");
     }
-    expense(A.sereneGroceryCard, d(6), "PET LOVERS CENTRE", between(rng, 5_800, 8_900), "Pet Care");
-    expense(A.sereneGroceryCard, d(12), "GUARDIAN HEALTH & BEAUTY", between(rng, 1_650, 4_480), "Healthcare");
-    expense(A.sereneGroceryCard, d(17), "NTUC FAIRPRICE XTRA", between(rng, 2_900, 6_100), "Groceries");
+    expense(A.sereneCard, d(20), "WATSONS TAMPINES 1", between(rng, 1_100, 3_400), "Beauty");
+
+    // Serene: OCBC 365 for the cat, the pharmacy and midweek top-ups.
+    expense(A.sereneGroceryCard, d(6), "PET LOVERS CENTRE", between(rng, 4_800, 7_600), "Pet Care");
+    expense(A.sereneGroceryCard, d(12), "GUARDIAN HEALTH & BEAUTY", between(rng, 1_250, 3_600), "Healthcare");
+    expense(A.sereneGroceryCard, d(17), "NTUC FAIRPRICE TAMPINES", between(rng, 2_400, 5_200), "Groceries");
 
     // Dinners the two of them split, from M-8 on, alternating who pays.
     if (offset >= -8) {
@@ -728,7 +791,7 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
         const payer = (offset + index) % 2 === 0 ? ETHAN : SERENE;
         const place = dinnerPlaces[(offset + 8 + index * 3) % dinnerPlaces.length];
         const date = d(5 + index * 9 + Math.floor(rng() * 3));
-        const amountMinor = between(rng, 7_400, 18_900);
+        const amountMinor = between(rng, 5_800, 13_800);
         const row = expense(payer === ETHAN ? A.ethanCard : A.sereneCard, date, place, amountMinor, "Food & Drinks");
         linkedSplit(DINNERS, payer, row, titleCase(place), "Food & Drinks");
       }
@@ -736,27 +799,27 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
 
     // ---- Month stories --------------------------------------------------
     if (offset === -13) {
-      expense(A.ethanCard, d(8), "AIRASIA SINGAPORE", 58_640, "Travel", { note: "Bali long weekend, return flights for two." });
-      expense(A.ethanCard, d(15), "UBUD RIVERSIDE VILLA BALI ID", 72_480, "Travel", { postLagDays: 2 });
-      expense(A.ethanCard, d(16), "WARUNG MADE SEMINYAK ID", 4_860, "Food & Drinks", { postLagDays: 2 });
-      expense(A.sereneCard, d(16), "UBUD ART MARKET ID", 6_240, "Shopping", { postLagDays: 2 });
+      expense(A.ethanCard, d(8), "AIRASIA SINGAPORE", 48_640, "Travel", { note: "Bali long weekend, return flights for two." });
+      expense(A.ethanCard, d(15), "UBUD RIVERSIDE VILLA BALI ID", 52_480, "Travel", { postLagDays: 2 });
+      expense(A.ethanCard, d(16), "WARUNG MADE SEMINYAK ID", 3_860, "Food & Drinks", { postLagDays: 2 });
+      expense(A.sereneCard, d(16), "UBUD ART MARKET ID", 4_240, "Shopping", { postLagDays: 2 });
     }
     if (offset === -12) {
-      const ikea = expense(A.ethanCard, d(20), "IKEA TAMPINES", 18_450, "Home");
-      linkedSplit(HOME, ETHAN, ikea, "IKEA shelves and lamps", "Home");
+      const ikea = expense(A.ethanCard, d(20), "IKEA TAMPINES", 28_450, "Home");
+      linkedSplit(HOME, ETHAN, ikea, "IKEA shelves and a desk lamp", "Home");
     }
     if (offset === -9) {
-      expense(A.ethanCard, d(12), "TAKASHIMAYA DEPT STORE", 38_600, "Gifts", { note: "Gifts for both families." });
-      expense(A.sereneCard, d(13), "TAKASHIMAYA DEPT STORE", 21_900, "Gifts");
+      expense(A.ethanCard, d(12), "TAKASHIMAYA DEPT STORE", 26_800, "Gifts", { note: "Gifts for both families." });
+      expense(A.sereneCard, d(13), "TAKASHIMAYA DEPT STORE", 14_900, "Gifts");
       expense(A.ethanBank, d(14), "ATM WITHDRAWAL TAMPINES MRT", 60_000, "Gifts", { note: "Red packets for the family visits." });
       expense(A.sereneCard, d(19), "DISNEY PLUS", 11_898, "Subscriptions YR");
       expense(A.ethanCard, d(21), "BOON TONG KEE", 16_800, "Food & Drinks", { note: "Family dinner." });
     }
     if (offset === -7) {
-      expense(A.sereneCard, d(9), "SINGAPORE AIRLINES", 142_600, "Travel", { planKey: "japan-flights", note: "Tokyo and Kyoto flights for both of us." });
+      expense(A.sereneCard, d(9), "SINGAPORE AIRLINES", 118_000, "Travel", { planKey: "japan-flights", note: "Tokyo and Kyoto flights for both of us, from the sale." });
     }
     if (offset === -6) {
-      expense(A.sereneGroceryCard, d(20), "MOUNT PLEASANT VET CENTRE", 28_600, "Pet Care", { note: "Mochi's yearly vaccination and check-up." });
+      expense(A.sereneGroceryCard, d(20), "MOUNT PLEASANT VET CENTRE", 38_600, "Pet Care", { note: "Mochi's yearly vaccination, check-up and a dental clean." });
     }
     if (offset === -5) {
       const hotel = expense(A.ethanCard, d(6), "AGODA.COM HOTEL TOKYO JP", 152_880, "Travel", { postLagDays: 2 });
@@ -786,26 +849,30 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     }
     if (offset === -4) {
       add({ accountId: A.sereneCard, date: d(8), description: "UNIQLO BUGIS REFUND", amountMinor: 3_990, entryType: "income", category: "Shopping", offsetsCategory: true, note: "Returned a jacket that didn't fit." });
-      expense(A.sereneCard, d(21), "SISTIC CONCERT TICKETS", 29_600, "Entertainment");
+      expense(A.sereneCard, d(21), "SISTIC CONCERT TICKETS", 19_600, "Entertainment");
     }
     if (offset === -3) {
-      expense(A.ethanCard, d(15), "RAFFLES MEDICAL TAMPINES", 12_800, "Healthcare");
+      expense(A.ethanCard, d(15), "RAFFLES MEDICAL TAMPINES", 6_800, "Healthcare");
     }
     if (offset === -2) {
-      const aircon = expense(A.ethanCard, d(11), "COURTS MEGASTORE TAMPINES", 328_000, "Home", { note: "Both aircon units replaced in the same week. 5-year warranty." });
+      const aircon = expense(A.ethanCard, d(11), "COURTS MEGASTORE TAMPINES", 268_000, "Home", { note: "Both aircon units replaced in the same week. 5-year warranty." });
       linkedSplit(HOME, ETHAN, aircon, "Aircon replacement", "Home", "Split 50/50 like the other home costs.");
-      const sofa = expense(A.sereneCard, d(19), "CASTLERY PTE LTD", 219_000, "Home", { note: "Finally bought the sofa." });
+      transferPair({ date: d(18), fromAccountId: A.sereneStashAway, toAccountId: A.sereneBank, amountMinor: 200_000, outDescription: "WITHDRAWAL TO BANK ACCOUNT", inDescription: "FAST TRANSFER FROM STASHAWAY", groupNote: "Investment withdrawal", note: "Took some out of StashAway for the sofa." });
+      const sofa = expense(A.sereneCard, d(19), "CASTLERY PTE LTD", 159_000, "Home", { note: "Finally bought the sofa." });
       linkedSplit(HOME, SERENE, sofa, "New sofa", "Home");
-      expense(A.ethanCard, d(12), "AIRCON UNCLE SERVICING", 18_000, "Home");
       // The statement also printed a ride that never reached the ledger.
       unrecordedStatementRows.push({ accountId: A.sereneGroceryCard, postDate: d(26), amountMinor: 4_280, description: "GRAB*TRIP" });
     }
     if (offset === -1) {
-      add({ accountId: A.sereneBank, date: d(12), description: "FAST TRANSFER TO SRS A/C XXXX-0000", amountMinor: 150_000, entryType: "transfer", transferDirection: "out", category: "Transfer", note: "Yearly SRS top-up. The SRS account isn't tracked here." });
+      add({ accountId: A.sereneBank, date: d(12), description: "FAST TRANSFER TO SRS A/C XXXX-0000", amountMinor: 100_000, entryType: "transfer", transferDirection: "out", category: "Transfer", note: "SRS top-up for the tax relief. The SRS account isn't tracked here." });
     }
     if (offset === 0) {
-      // Today's breakfast, typed in by hand: not in any bank file yet.
-      expense(A.ethanCard, cutoffDate, "TIONG BAHRU HAWKER CENTRE", 850, "Food & Drinks", { note: "Added from the phone shortcut." });
+      // Paid with Apple Pay and saved by the phone shortcut: not in any
+      // bank file yet.
+      if (cutoffDate > dayOf(month, 1)) {
+        expense(A.sereneCard, addDays(cutoffDate, -1), "COLD STORAGE TAMPINES 1", 2_365, "Groceries", { externalReference: "shortcut:showcase-apple-pay-1" });
+      }
+      expense(A.ethanCard, cutoffDate, "TIONG BAHRU HAWKER CENTRE", 850, "Food & Drinks", { note: "Added from the phone shortcut.", externalReference: "shortcut:showcase-apple-pay-2" });
     }
   }
 
@@ -937,13 +1004,25 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
 
   const snapshotNotes: ShowcaseSnapshotNote[] = [
     { month: monthAt(-13), personScope: "household", note: "Bali long weekend. Flights and the villa went on Ethan's card." },
-    { month: monthAt(-10), personScope: ETHAN, note: "Pay rise from this month." },
-    { month: monthAt(-8), personScope: "household", note: "Bonus month. Most of it stays in savings." },
-    { month: monthAt(-9), personScope: "household", note: "Family gifts and dinners: a heavier month, still inside the plan." },
-    { month: monthAt(-6), personScope: SERENE, note: "Mochi's vaccination month." },
+    { month: monthAt(-11), personScope: "household", note: "No plan this month: we only kept track of what came in and went out." },
+    { month: monthAt(-7), personScope: ETHAN, note: "Pay rise from this month." },
+    { month: monthAt(-9), personScope: "household", note: "Family gifts, red packets and a big family dinner: a little over the plan." },
+    { month: monthAt(-6), personScope: SERENE, note: "Mochi's vaccination and dental clean. A little over the plan." },
     { month: monthAt(-5), personScope: "household", note: "Japan trip. Hotel, ryokan and Shinkansen are shared in the Japan trip split group." },
-    { month: monthAt(-2), personScope: "household", note: "Both aircon units died in the same week and we finally bought the sofa. Over plan, on purpose." }
-  ].map((item) => ({ ...item, id: `snapshot-${item.personScope}-${item.month}` }));
+    { month: monthAt(-2), personScope: "household", note: "Both aircon units died in the same week and we finally bought the sofa. Over plan, on purpose; $2,000 came out of StashAway." },
+    ...months.filter((month) => month.endsWith("-12")).map((month) => ({ month, personScope: "household", note: "AWS month. Most of the 13th-month pay goes to savings." }))
+  ].reduce<ShowcaseSnapshotNote[]>((notes, item) => {
+    // One note per month and view: a story month that is also December
+    // keeps both lines in one note.
+    const id = `snapshot-${item.personScope}-${item.month}`;
+    const existing = notes.find((note) => note.id === id);
+    if (existing) {
+      existing.note = `${existing.note} ${item.note}`;
+    } else {
+      notes.push({ ...item, id });
+    }
+    return notes;
+  }, []);
 
   const ruleSuggestions: ShowcaseRuleSuggestion[] = [{
     id: "catrule-suggestion-showcase-ya-kun",
@@ -1033,7 +1112,7 @@ function assignImports(input: {
   }
 
   SHOWCASE_ACCOUNTS.forEach((account, accountIndex) => {
-    const minute = String(10 + accountIndex * 7).padStart(2, "0");
+    const minute = String(10 + accountIndex * 4).padStart(2, "0");
     const accountRows = transactions
       .filter((row) => row.accountId === account.id)
       .sort((left, right) => (left.postDate ?? left.date).localeCompare(right.postDate ?? right.date) || left.id.localeCompare(right.id));
@@ -1073,7 +1152,16 @@ function assignImports(input: {
       note: "Older activity brought in when the household started using the app."
     };
 
+    const genericCsvNote = account.kind === "investment"
+      ? `Monthly transactions CSV from ${SHOWCASE_INSTITUTIONS.find((item) => item.id === account.institutionId)?.name ?? "the platform"}.`
+      : "Monthly CSV from DBS digibank; the balance is entered by hand.";
+
     for (const row of accountRows) {
+      // Saved by the Apple Pay Shortcut: typed in, not imported.
+      if (row.externalReference) {
+        row.createdAt = stamp(row.date, "11:42:00");
+        continue;
+      }
       const postMonth = (row.postDate ?? row.date).slice(0, 7);
       const postOffset = offsetOf(postMonth);
       if (postOffset <= -7) {
@@ -1102,7 +1190,7 @@ function assignImports(input: {
             parserKey: "generic_csv",
             importedAt: stamp(importDate, `01:${minute}:00`),
             status: "completed",
-            note: "Monthly CSV from DBS digibank; the balance is entered by hand."
+            note: genericCsvNote
           }), false);
         }
         continue;
@@ -1143,7 +1231,11 @@ function assignImports(input: {
         startDate,
         endDate,
         statementBalanceMinor: statementMinor,
-        note: account.statementParserKey ? null : "Balance from the POSB e-statement."
+        note: account.statementParserKey
+          ? null
+          : account.kind === "investment"
+            ? "Money put in, from the platform's monthly statement; market gains aren't tracked here."
+            : `Balance from the ${account.name.startsWith("POSB") ? "POSB" : "DBS"} e-statement.`
       });
       if (!account.statementParserKey) {
         continue;
@@ -1193,9 +1285,9 @@ function assignImports(input: {
   // One import rolled back the same day it was committed (its rows are gone).
   const rolledBackMonth = monthAt(-1);
   imports.push({
-    id: `import-showcase-citi-cash-back-duplicate-${rolledBackMonth}`,
+    id: `import-showcase-citi-rewards-duplicate-${rolledBackMonth}`,
     sourceType: "csv",
-    sourceLabel: `citi-cash-back-current-activity-${dayOfMonth(rolledBackMonth, 12)}`,
+    sourceLabel: `citi-rewards-current-activity-${dayOfMonth(rolledBackMonth, 12)}`,
     parserKey: "citibank_credit_card_activity_csv",
     importedAt: stamp(dayOfMonth(rolledBackMonth, 12), "03:40:00"),
     status: "rolled_back",
@@ -1231,59 +1323,88 @@ type PlanTemplate = {
   note?: string;
 };
 
-function planTemplatesFor(offset: number): PlanTemplate[] {
-  const salaryMinor = offset <= -11 ? 785_000 : 830_000;
+// A month's plan. Spending budgets sit a little above a typical month, so
+// most months finish a little under; modest savings targets and the
+// investment lines sit beside them, and a bonus month saves more. M-11 has
+// no plan at all.
+function planTemplatesFor(offset: number, month: string): PlanTemplate[] {
+  if (offset === -11) {
+    return [];
+  }
+  const calendarMonth = Number(month.slice(5, 7));
+  const ethanSalaryMinor = ethanSalaryFor(offset);
   const templates: PlanTemplate[] = [
-    { key: "salary", personId: ETHAN, section: "income", category: "Salary", label: "Salary", plannedMinor: salaryMinor },
-    { key: "freelance", personId: SERENE, section: "income", category: "Freelance Income", label: "Freelance income", plannedMinor: 520_000 },
+    { key: "salary", personId: ETHAN, section: "income", category: "Salary", label: "Salary", plannedMinor: ethanSalaryMinor },
+    { key: "serene-salary", personId: SERENE, section: "income", category: "Salary", label: "Salary", plannedMinor: SERENE_SALARY_MINOR },
     // Household costs paid from the joint account: household view only.
-    { key: "hdb", personId: null, section: "planned_items", category: "Loans", label: "HDB loan", plannedMinor: 148_000, day: 1, accountId: A.joint },
-    { key: "scc", personId: null, section: "planned_items", category: "Bills", label: "Town council S&CC", plannedMinor: 8_600, day: 8, accountId: A.joint },
-    { key: "groceries", personId: null, section: "budget_buckets", category: "Groceries", label: "Groceries", plannedMinor: 62_000 },
+    { key: "hdb", personId: null, section: "planned_items", category: "Loans", label: "HDB loan", plannedMinor: 62_000, day: 1, accountId: A.joint },
+    { key: "scc", personId: null, section: "planned_items", category: "Bills", label: "Town council S&CC", plannedMinor: 7_850, day: 8, accountId: A.joint },
+    { key: "groceries", personId: null, section: "budget_buckets", category: "Groceries", label: "Groceries", plannedMinor: 55_000 },
     // Ethan.
     { key: "allowance", personId: ETHAN, section: "planned_items", category: "Family & Personal", label: "Parents allowance", plannedMinor: 50_000, day: 1, accountId: A.ethanBank },
-    { key: "prudential", personId: ETHAN, section: "planned_items", category: "Insurance", label: "Prudential premium", plannedMinor: 24_500, day: 3, accountId: A.ethanBank },
+    { key: "aia", personId: ETHAN, section: "planned_items", category: "Insurance", label: "AIA premium", plannedMinor: 18_640, day: 3, accountId: A.ethanBank },
+    { key: "gym", personId: ETHAN, section: "planned_items", category: "Sports & Hobbies", label: "Gym membership", plannedMinor: 9_800, day: 2, accountId: A.ethanTransportCard },
     { key: "icloud", personId: ETHAN, section: "planned_items", category: "Subscriptions MO", label: "iCloud storage", plannedMinor: 398, day: 4, accountId: A.ethanCard },
-    { key: "netflix", personId: ETHAN, section: "planned_items", category: "Subscriptions MO", label: "Netflix", plannedMinor: 1_998, day: 9, accountId: A.ethanCard },
-    { key: "ethan-food", personId: ETHAN, section: "budget_buckets", category: "Food & Drinks", label: "Food & Drinks", plannedMinor: 32_000 },
-    { key: "ethan-transport", personId: ETHAN, section: "budget_buckets", category: "Public Transport", label: "Public Transport", plannedMinor: 10_000 },
+    { key: "netflix", personId: ETHAN, section: "planned_items", category: "Subscriptions MO", label: "Netflix", plannedMinor: 1_898, day: 9, accountId: A.ethanCard },
+    { key: "singtel", personId: ETHAN, section: "planned_items", category: "Bills", label: "Singtel mobile", plannedMinor: 4_280, day: 14, accountId: A.ethanTransportCard },
+    { key: "ethan-food", personId: ETHAN, section: "budget_buckets", category: "Food & Drinks", label: "Food & Drinks", plannedMinor: 45_000 },
+    { key: "ethan-transport", personId: ETHAN, section: "budget_buckets", category: "Public Transport", label: "Public Transport", plannedMinor: 9_000 },
     { key: "ethan-taxi", personId: ETHAN, section: "budget_buckets", category: "Taxi", label: "Taxi", plannedMinor: 5_000 },
-    { key: "ethan-bills", personId: ETHAN, section: "budget_buckets", category: "Bills", label: "Bills", plannedMinor: 16_000, note: "His half of SP Group and Singtel." },
-    { key: "ethan-shopping", personId: ETHAN, section: "budget_buckets", category: "Shopping", label: "Shopping", plannedMinor: 8_000 },
-    { key: "ethan-sport", personId: ETHAN, section: "budget_buckets", category: "Sports & Hobbies", label: "Sports & Hobbies", plannedMinor: 3_000 },
-    { key: "ethan-savings", personId: ETHAN, section: "planned_items", category: "Savings", label: "Savings", plannedMinor: 150_000 },
+    { key: "ethan-bills", personId: ETHAN, section: "budget_buckets", category: "Bills", label: "Bills", plannedMinor: 9_000, note: "His half of SP Group and the fibre broadband." },
+    { key: "ethan-shopping", personId: ETHAN, section: "budget_buckets", category: "Shopping", label: "Shopping", plannedMinor: 5_000 },
+    { key: "ethan-savings", personId: ETHAN, section: "planned_items", category: "Savings", label: "Savings", plannedMinor: 100_000 },
+    { key: "ethan-endowus", personId: ETHAN, section: "planned_items", category: "Investments", label: "Endowus monthly", plannedMinor: 60_000, note: "GIRO from OCBC 360 after payday." },
     // Serene.
-    { key: "circles", personId: SERENE, section: "planned_items", category: "Bills", label: "Circles.Life mobile", plannedMinor: 2_800, day: 2, accountId: A.sereneCard },
-    { key: "great-eastern", personId: SERENE, section: "planned_items", category: "Insurance", label: "Great Eastern premium", plannedMinor: 19_800, day: 5, accountId: A.sereneBank },
-    { key: "spotify", personId: SERENE, section: "planned_items", category: "Subscriptions MO", label: "Spotify", plannedMinor: 1_598, day: 7, accountId: A.sereneCard },
-    { key: "adobe", personId: SERENE, section: "planned_items", category: "Subscriptions MO", label: "Adobe Creative Cloud", plannedMinor: 3_615, day: 16, accountId: A.sereneCard },
-    { key: "serene-food", personId: SERENE, section: "budget_buckets", category: "Food & Drinks", label: "Food & Drinks", plannedMinor: 28_000 },
-    { key: "serene-transport", personId: SERENE, section: "budget_buckets", category: "Public Transport", label: "Public Transport", plannedMinor: 6_000 },
+    { key: "serene-parents", personId: SERENE, section: "planned_items", category: "Family & Personal", label: "Mum's allowance", plannedMinor: 30_000, day: 1, accountId: A.sereneBank },
+    { key: "starhub", personId: SERENE, section: "planned_items", category: "Bills", label: "StarHub mobile", plannedMinor: 2_800, day: 2, accountId: A.sereneCard },
+    { key: "prudential", personId: SERENE, section: "planned_items", category: "Insurance", label: "Prudential premium", plannedMinor: 14_280, day: 5, accountId: A.sereneBank },
+    { key: "spotify", personId: SERENE, section: "planned_items", category: "Subscriptions MO", label: "Spotify", plannedMinor: 1_198, day: 7, accountId: A.sereneCard },
+    { key: "serene-food", personId: SERENE, section: "budget_buckets", category: "Food & Drinks", label: "Food & Drinks", plannedMinor: 36_000 },
+    { key: "serene-transport", personId: SERENE, section: "budget_buckets", category: "Public Transport", label: "Public Transport", plannedMinor: 5_500 },
     { key: "serene-taxi", personId: SERENE, section: "budget_buckets", category: "Taxi", label: "Taxi", plannedMinor: 5_000 },
-    { key: "serene-bills", personId: SERENE, section: "budget_buckets", category: "Bills", label: "Bills", plannedMinor: 16_000, note: "Her half of SP Group and Singtel." },
-    { key: "serene-shopping", personId: SERENE, section: "budget_buckets", category: "Shopping", label: "Shopping", plannedMinor: 8_000 },
-    { key: "serene-pets", personId: SERENE, section: "budget_buckets", category: "Pet Care", label: "Pet Care", plannedMinor: 8_000 },
-    { key: "serene-health", personId: SERENE, section: "budget_buckets", category: "Healthcare", label: "Healthcare", plannedMinor: 3_500 },
-    { key: "serene-beauty", personId: SERENE, section: "budget_buckets", category: "Beauty", label: "Beauty", plannedMinor: 4_500 },
-    { key: "serene-savings", personId: SERENE, section: "planned_items", category: "Savings", label: "Savings", plannedMinor: 100_000 }
+    { key: "serene-bills", personId: SERENE, section: "budget_buckets", category: "Bills", label: "Bills", plannedMinor: 9_000, note: "Her half of SP Group and the fibre broadband." },
+    { key: "serene-groceries", personId: SERENE, section: "budget_buckets", category: "Groceries", label: "Groceries", plannedMinor: 4_500, note: "Midweek top-ups on the OCBC card." },
+    { key: "serene-shopping", personId: SERENE, section: "budget_buckets", category: "Shopping", label: "Shopping", plannedMinor: 6_000 },
+    { key: "serene-pets", personId: SERENE, section: "budget_buckets", category: "Pet Care", label: "Pet Care", plannedMinor: 7_000 },
+    { key: "serene-health", personId: SERENE, section: "budget_buckets", category: "Healthcare", label: "Healthcare", plannedMinor: 3_000 },
+    { key: "serene-beauty", personId: SERENE, section: "budget_buckets", category: "Beauty", label: "Beauty", plannedMinor: 6_500 },
+    { key: "serene-savings", personId: SERENE, section: "planned_items", category: "Savings", label: "Savings", plannedMinor: 80_000 },
+    { key: "serene-stashaway", personId: SERENE, section: "planned_items", category: "Investments", label: "StashAway monthly", plannedMinor: 40_000, note: "PayNow from UOB One after payday." }
   ];
 
-  if (offset === -8) {
-    templates.splice(2, 0, { key: "bonus", personId: ETHAN, section: "income", category: "Extra Income", label: "Performance bonus", plannedMinor: 1_200_000 });
+  if (calendarMonth === 12) {
+    templates.splice(2, 0,
+      { key: "ethan-aws", personId: ETHAN, section: "income", category: "Extra Income", label: "AWS (13th month)", plannedMinor: ethanSalaryMinor },
+      { key: "serene-aws", personId: SERENE, section: "income", category: "Extra Income", label: "AWS (13th month)", plannedMinor: SERENE_SALARY_MINOR }
+    );
+    templates.find((template) => template.key === "ethan-savings")!.plannedMinor += 300_000;
+    templates.find((template) => template.key === "serene-savings")!.plannedMinor += 250_000;
+  }
+  if (calendarMonth === 7) {
+    templates.splice(2, 0, { key: "ethan-bonus", personId: ETHAN, section: "income", category: "Extra Income", label: "Mid-year bonus", plannedMinor: MID_YEAR_BONUS_MINOR });
+    templates.find((template) => template.key === "ethan-savings")!.plannedMinor += 100_000;
+  }
+  if (((offset % 3) + 3) % 3 === 0) {
+    templates.push({ key: "ethan-ibkr", personId: ETHAN, section: "planned_items", category: "Investments", label: "IBKR top-up", plannedMinor: 100_000, note: "Quarterly." });
+  }
+  if (offset === -4) {
+    templates.push({ key: "concert", personId: SERENE, section: "budget_buckets", category: "Entertainment", label: "Concert tickets", plannedMinor: 20_000 });
   }
   if (offset === -13) {
-    templates.push({ key: "bali", personId: ETHAN, section: "budget_buckets", category: "Travel", label: "Travel", plannedMinor: 130_000, note: "Bali long weekend." });
+    templates.push({ key: "bali", personId: ETHAN, section: "budget_buckets", category: "Travel", label: "Travel", plannedMinor: 110_000, note: "Bali long weekend." });
   }
   if (offset === -9) {
-    templates.push({ key: "gifts", personId: ETHAN, section: "budget_buckets", category: "Gifts", label: "Gifts", plannedMinor: 90_000, note: "Family gifts and red packets." });
+    templates.push({ key: "gifts", personId: ETHAN, section: "budget_buckets", category: "Gifts", label: "Gifts", plannedMinor: 55_000, note: "Family gifts and red packets." });
   }
   if (offset === -7) {
-    templates.push({ key: "japan-flights", personId: SERENE, section: "planned_items", category: "Travel", label: "Japan flights", plannedMinor: 145_000, day: 9, accountId: A.sereneCard });
+    templates.push({ key: "japan-flights", personId: SERENE, section: "planned_items", category: "Travel", label: "Japan flights", plannedMinor: 120_000, day: 9, accountId: A.sereneCard });
   }
   if (offset === -5) {
     templates.push(
-      { key: "japan-ethan", personId: ETHAN, section: "budget_buckets", category: "Travel", label: "Travel", plannedMinor: 80_000, note: "His share of the Tokyo hotel and Kyoto ryokan." },
-      { key: "japan-serene", personId: SERENE, section: "budget_buckets", category: "Travel", label: "Travel", plannedMinor: 40_000, note: "Her share of the ryokan and Shinkansen." }
+      { key: "japan-ethan", personId: ETHAN, section: "budget_buckets", category: "Travel", label: "Travel", plannedMinor: 165_000, note: "The Tokyo hotel, on his card." },
+      { key: "japan-serene", personId: SERENE, section: "budget_buckets", category: "Travel", label: "Travel", plannedMinor: 115_000, note: "The Kyoto ryokan and the Shinkansen, on her card." },
+      { key: "japan-gifts", personId: ETHAN, section: "budget_buckets", category: "Gifts", label: "Gifts", plannedMinor: 30_000, note: "Souvenirs and the nephew's present." },
+      { key: "japan-shopping", personId: SERENE, section: "budget_buckets", category: "Shopping", label: "Japan shopping", plannedMinor: 30_000 }
     );
   }
   return templates;
@@ -1299,7 +1420,7 @@ function buildPlans(input: {
   const planLinks: ShowcasePlanLink[] = [];
   for (const month of input.months) {
     const offset = input.offsetOf(month);
-    planTemplatesFor(offset).forEach((template, index) => {
+    planTemplatesFor(offset, month).forEach((template, index) => {
       const createdAt = stamp(dayOf(month, 1), `00:${String(Math.floor(index / 60)).padStart(2, "0")}:${String(index % 60).padStart(2, "0")}`);
       const row: ShowcasePlanRow = {
         id: `showcase-plan-${month}-${template.key}`,
