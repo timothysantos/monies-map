@@ -41,6 +41,7 @@ import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../ty
 import { json } from "./json";
 import { readJsonBody, readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 import { IMPORT_PREVIEW_MAX_BYTES, MATCH_PAIRS_MAX_BYTES, STATEMENT_TEXT_MAX_BYTES } from "../domain/request-limits";
+import { runClaudeProviderDiagnostic } from "../domain/ai-provider-diagnosis";
 import { handleAiProviderStatusRoute } from "./ai-provider-status-route";
 import { handleAskAnswer } from "./ask-answer-route";
 import { handleInsightExplain } from "./ask-insight-route";
@@ -149,6 +150,12 @@ async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv):
 
   if (url.pathname === "/api/ai-assist/receipt-read" && request.method === "POST") {
     return handleReceiptRead(request, env);
+  }
+
+  // Owner diagnostic: one minimal Claude call that says which layer refuses.
+  // Not linked from the UI; docs/developer-guide.md "Claude diagnostic".
+  if (url.pathname === "/api/ai-assist/provider-diagnostic" && request.method === "GET") {
+    return json(await runClaudeProviderDiagnostic(env.DB, env));
   }
 
   if (url.pathname.startsWith("/api/ai-assist/provider-status")) {

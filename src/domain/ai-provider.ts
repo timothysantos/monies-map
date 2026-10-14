@@ -22,6 +22,7 @@
 // Claude attempt, the aggregate Claude status row (ai-provider-status.ts:
 // success time and estimated cost, or the failure's category and time).
 
+import { diagnoseClaudeRejection } from "./ai-provider-diagnosis";
 import { reserveDailyAiBudget, type AiAssistCapability, type AiAssistEnv, type AiAssistResult } from "./ai-assistance";
 import {
   categorizeClaudeFailure,
@@ -292,31 +293,28 @@ async function callClaude(
         "cf-aig-request-timeout": String(timeoutMs),
         ...gateway.headers
       },
-      body: JSON.stringify({
-        model: gateway.model,
-        max_tokens: input.maxTokens + CLAUDE_THINKING_HEADROOM_TOKENS,
-        system: SYSTEM_PROMPT,
-        // Low effort keeps Haiku's adaptive thinking short; the schema keeps
-        // the answer to the requested JSON.
-        output_config: { effort: "low", format: { type: "json_schema", schema: input.schema } },
-        messages: [{
-          role: "user",
-          content: [
-            ...images.map((image) => ({ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } })),
-            { type: "text", text: input.prompt }
-          ]
-        }]
-      })
+      body: JSON.stringify(buildClaudeRequestBody(gateway, input, images))
     });
     if (!response.ok) {
+      let rejected = false;
       // A key, model or gateway the provider rejects is a setup problem the
       // owner needs to see; the status code is all that is logged.
       if ([400, 401, 403, 404].includes(response.status)) {
-        console.warn("AI provider config rejected", { provider: "claude", status: response.status });
+        rejected = true;
       }
-      // The error body is read only to categorize it (for example
-      // Anthropic's "credit balance is too low"); it is never kept.
+      // The error body is read to categorize it (for example Anthropic's
+      // "credit balance is too low") and, for a rejection, to say which layer
+      // refused. Only a sanitised, capped message is logged; never kept.
       const body = await readErrorBody(response);
+      if (rejected) {
+        console.warn("AI provider config rejected", {
+          provider: "claude",
+          status: response.status,
+          model: gateway.model,
+          path: new URL(gateway.url).pathname.replace(/^\/v1\/[^/]+\/[^/]+/, "/v1/<account>/<gateway>"),
+          ...diagnoseClaudeRejection(body, Object.values(gateway.headers))
+        });
+      }
       return { raw: null, outcome: { kind: "failure", category: categorizeClaudeFailure(response.status, body) } };
     }
     const message = await response.json() as { stop_reason?: unknown; content?: unknown; usage?: unknown };
@@ -334,6 +332,30 @@ async function callClaude(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// The one request shape every Claude call uses (the owner diagnostic sends
+// the same shape, so a request-shape rejection shows up there too).
+export function buildClaudeRequestBody(
+  gateway: { model: string },
+  input: { maxTokens: number; schema: unknown; prompt: string },
+  images: AiImage[]
+) {
+  return {
+    model: gateway.model,
+    max_tokens: input.maxTokens + CLAUDE_THINKING_HEADROOM_TOKENS,
+    system: SYSTEM_PROMPT,
+    // Low effort keeps Haiku's adaptive thinking short; the schema keeps
+    // the answer to the requested JSON.
+    output_config: { effort: "low", format: { type: "json_schema", schema: input.schema } },
+    messages: [{
+      role: "user",
+      content: [
+        ...images.map((image) => ({ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } })),
+        { type: "text", text: input.prompt }
+      ]
+    }]
+  };
 }
 
 async function readErrorBody(response: Response) {
