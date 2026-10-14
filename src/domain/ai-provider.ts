@@ -22,7 +22,7 @@
 // Claude attempt, the aggregate Claude status row (ai-provider-status.ts:
 // success time and estimated cost, or the failure's category and time).
 
-import { prepareClaudeSchema } from "./ai-claude-schema";
+import { canConstrainClaudeAnswer, describeClaudeAnswerShape } from "./ai-claude-schema";
 import { diagnoseClaudeRejection } from "./ai-provider-diagnosis";
 import { reserveDailyAiBudget, type AiAssistCapability, type AiAssistEnv, type AiAssistResult } from "./ai-assistance";
 import {
@@ -279,8 +279,6 @@ async function callClaude(
   images: AiImage[],
   timeoutMs: number
 ): Promise<{ raw: unknown; outcome: ClaudeOutcome }> {
-  // Claude limits optional and union parameters; see ai-claude-schema.ts.
-  const wire = prepareClaudeSchema(input.schema);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -296,7 +294,7 @@ async function callClaude(
         "cf-aig-request-timeout": String(timeoutMs),
         ...gateway.headers
       },
-      body: JSON.stringify(buildClaudeRequestBody(gateway, { ...input, schema: wire.schema }, images))
+      body: JSON.stringify(buildClaudeRequestBody(gateway, input, images))
     });
     if (!response.ok) {
       let rejected = false;
@@ -329,7 +327,7 @@ async function callClaude(
       .filter((block): block is { type: "text"; text: string } => block?.type === "text" && typeof block.text === "string")
       .map((block) => block.text)
       .join("");
-    return { raw: wire.restore(parseJsonText(text)), outcome };
+    return { raw: parseJsonText(text), outcome };
   } catch {
     return { raw: null, outcome: { kind: "failure", category: "other" } };
   } finally {
@@ -344,18 +342,22 @@ export function buildClaudeRequestBody(
   input: { maxTokens: number; schema: unknown; prompt: string },
   images: AiImage[]
 ) {
+  // A schema Claude cannot compile into a grammar (too many optional or
+  // union fields, or too large: the Ask turn) is described in the prompt
+  // instead of constrained; the parser validates the answer either way.
+  const constrained = canConstrainClaudeAnswer(input.schema);
   return {
     model: gateway.model,
     max_tokens: input.maxTokens + CLAUDE_THINKING_HEADROOM_TOKENS,
     system: SYSTEM_PROMPT,
     // Low effort keeps Haiku's adaptive thinking short; the schema keeps
     // the answer to the requested JSON.
-    output_config: { effort: "low", format: { type: "json_schema", schema: input.schema } },
+    output_config: constrained ? { effort: "low", format: { type: "json_schema", schema: input.schema } } : { effort: "low" },
     messages: [{
       role: "user",
       content: [
         ...images.map((image) => ({ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } })),
-        { type: "text", text: input.prompt }
+        { type: "text", text: constrained ? input.prompt : `${input.prompt}\n\n${describeClaudeAnswerShape(input.schema)}` }
       ]
     }]
   };
