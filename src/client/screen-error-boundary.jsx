@@ -1,19 +1,14 @@
 import { Component } from "react";
 
+import { reportClientCrash } from "./client-crash-report";
 import { messages } from "./copy/en-SG";
+import { isCodeLoadError } from "./preload-recovery";
 import { ErrorPanel } from "./ui-states";
 
 // Contains a render crash so it cannot unmount the whole app. The screen
 // boundary wraps only the active page, so navigation keeps working; it clears
 // itself when the route changes. The app boundary is the last resort around
 // everything and can only offer a reload.
-
-// React.lazy keeps a failed code download failed, so for those only a reload
-// helps (usually a deploy replaced the old files).
-function isCodeLoadError(error) {
-  return /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk|ChunkLoadError/i
-    .test(String(error?.message ?? error ?? ""));
-}
 
 export class ScreenErrorBoundary extends Component {
   constructor(props) {
@@ -30,6 +25,14 @@ export class ScreenErrorBoundary extends Component {
     // Still reported to the console so the loading-issue line and devtools
     // show what broke.
     console.error("A page failed to render.", error, info?.componentStack ?? "");
+    // Also left in the app's error diagnostics (Settings), so the next report
+    // names the error instead of needing a screen recording.
+    reportClientCrash({
+      kind: "render",
+      level: this.props.level === "app" ? "app" : this.props.level === "section" ? "section" : "screen",
+      error,
+      componentStack: info?.componentStack ?? ""
+    });
   }
 
   componentDidUpdate(previousProps) {

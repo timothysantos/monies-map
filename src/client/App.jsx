@@ -3211,22 +3211,24 @@ export function App() {
                     </div>
                   </div>
                   {/* The inside (and the swipe-down code) loads with the sheet, not the first screen. */}
-                  <Suspense fallback={null}>
-                    <MobileContextSheet
-                      viewLabel={pageView?.label ?? ""}
-                      personChip={<ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />}
-                      people={appShell.household.people}
-                      selectedViewId={selectedViewId}
-                      scopeLabel={mobileContextScopeLabel}
-                      scopeHint={mobileContextScopeHint}
-                      scopes={showMobileContextScopeSection ? mobileContextScopes : []}
-                      selectedScopeKey={stickyScopeConfig.selectedKey}
-                      filterProps={renderedTabId === "entries" ? entriesMobileFilterProps : null}
-                      onViewChange={handleViewChange}
-                      onScopeChange={handleStickyScopeChange}
-                      onClose={closeMobileContext}
-                    />
-                  </Suspense>
+                  <ScreenErrorBoundary level="section">
+                    <Suspense fallback={null}>
+                      <MobileContextSheet
+                        viewLabel={pageView?.label ?? ""}
+                        personChip={<ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />}
+                        people={appShell.household.people}
+                        selectedViewId={selectedViewId}
+                        scopeLabel={mobileContextScopeLabel}
+                        scopeHint={mobileContextScopeHint}
+                        scopes={showMobileContextScopeSection ? mobileContextScopes : []}
+                        selectedScopeKey={stickyScopeConfig.selectedKey}
+                        filterProps={renderedTabId === "entries" ? entriesMobileFilterProps : null}
+                        onViewChange={handleViewChange}
+                        onScopeChange={handleStickyScopeChange}
+                        onClose={closeMobileContext}
+                      />
+                    </Suspense>
+                  </ScreenErrorBoundary>
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
@@ -3267,18 +3269,20 @@ export function App() {
         </section>
       ) : null}
       {showMobileMonthChoice && monthSheetOpen ? (
-        <Suspense fallback={null}>
-          <SummaryMonthSheet
-            open
-            onOpenChange={setMonthSheetOpen}
-            rangeStartMonth={summaryRangePage?.rangeStartMonth ?? ""}
-            rangeEndMonth={summaryRangePage?.rangeEndMonth ?? ""}
-            months={summaryRangePage?.months ?? []}
-            pickedMonth={pickedSummaryMonth}
-            onPick={selectSummaryMonth}
-            onChangeRange={openHeaderRangePicker}
-          />
-        </Suspense>
+        <ScreenErrorBoundary level="section">
+          <Suspense fallback={null}>
+            <SummaryMonthSheet
+              open
+              onOpenChange={setMonthSheetOpen}
+              rangeStartMonth={summaryRangePage?.rangeStartMonth ?? ""}
+              rangeEndMonth={summaryRangePage?.rangeEndMonth ?? ""}
+              months={summaryRangePage?.months ?? []}
+              pickedMonth={pickedSummaryMonth}
+              onPick={selectSummaryMonth}
+              onChangeRange={openHeaderRangePicker}
+            />
+          </Suspense>
+        </ScreenErrorBoundary>
       ) : null}
 
       {/* The routed panel area is the actual screen body; every tab renders through this slot. */}

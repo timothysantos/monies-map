@@ -2578,6 +2578,16 @@ Colours are tokens only (`data-tone`: `rose`, `sky`, `butter`, `mint`).
   keeps the reason as `data-technical-detail`. A stored code (credit_card, a
   category slug, a hex colour) is never shown either; screens use the label
   maps in `src/client/enum-labels.js` (`tests/raw-enum-guard.test.mjs`).
+- A phone sheet that App opens lazily (View and scope, Pick a month) sits in
+  its own `ScreenErrorBoundary level="section"`, so a chunk that cannot load
+  leaves the page, the tab bar and the sheet's close in place. A lazy chunk's
+  stylesheet that fails to download is ridden out (`preload-recovery.js`,
+  Vite's `vite:preloadError`): the sheet opens, perhaps unstyled. Every
+  boundary crash and every ridden-out stylesheet is also posted once per page
+  load to `/api/error-diagnostics/record` as source `client_crash`
+  (`client-crash-report.js`): the message, a trimmed stack, the component
+  stack and the page's path only, so the next report is read from Settings,
+  Error diagnostics (`app_error_diagnostics`).
 - `StateBanner` is a notice above a page: the refresh failure notice (butter,
   "Refresh now" primary, "Dismiss" quiet) and the import inbox banner (sky,
   "Open import inbox" primary). Pastel fill, the tone's ink, one primary action
