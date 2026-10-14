@@ -360,7 +360,7 @@ Ask action follows these three rules, and every new Ask action must too.
 
 ### Eval bank
 
-`tests/fixtures/ask-eval-utterances.json` holds 121 realistic messages across
+`tests/fixtures/ask-eval-utterances.json` holds 143 realistic messages across
 every Ask action (typos, shorthand, partial information, unit ambiguities, the
 owner's own phrasings), each with the action and reply it should end with and
 the answer a good model records for it. Two runs share it
@@ -369,7 +369,7 @@ the answer a good model records for it. Two runs share it
 - `tests/ask-eval-bank.test.mjs` (in `npm run test:unit`) replays every
   recorded answer through the real Worker route on a seeded household with no
   model, so the server's completion, validation and repair logic is proved on
-  every run; it also fails if the bank shrinks below 80, misses an action, or
+  every run; it also fails if the bank shrinks below 100, misses an action, or
   a recorded answer stops fitting the schema the model is given.
 - `npm run eval:ask` sends the same messages to the real model: manual, not
   in CI, cap-aware (a spread sample of 30 by default; `--all --yes` for the
@@ -1017,6 +1017,58 @@ and "Not this time". Choosing it turns the Splits switch on with that group
 Add to Splits). "Not this time" hides it for that card. Only an even share is
 offered; a failed, aborted or late answer is no question. It never replaces a
 field question already on the card. No AI, no new write route.
+
+### Hands-off
+
+Owner decision (2026-10-14, "Fully hands-off for safe things"): Ask needs as
+little typing and as few steps as possible, without writing anything that
+matters on its own.
+
+**Lookups.** In a turn the model may answer `look_up` with one of five
+read-only tools (find_entries, get_entry, get_split_balances,
+list_recent_entries, get_category_history; `ask-lookup-tools.ts`). The route
+runs it and asks again with the result in a `<lookups>` block (untrusted
+data), up to 3 lookups and 4 model calls a turn (a repair counts) and a token
+cap, each call one allowance unit. Results are household-scoped and compact
+(names through `promptEntryName`, no amounts, a balance is only who owes
+whom). The final action may carry `target_entry`; it becomes the entry in
+focus only if a lookup in that turn returned that exact id. "Split last
+night's dinner with Joyce" is find, then the usual split proposal. Over the
+budget the turn answers `mode: "rules"` ("Ask could not find that."). Test
+replies may be an array (`X-Ask-Turn-Test-Reply`): the first answers the
+message, the rest the later calls; the bank's `then` field records them.
+
+**Habits.** `ask_habits` counts what the household confirms (shop to
+category, shop to usual split, nickname to person). Learning is deterministic
+and best effort, from the existing commands (`/api/entries/update-category`,
+`/api/entries/create`, `/api/splits/expenses/from-entry`) and a confirmed
+"who did you mean" chip; never from message text. Confidence and the override
+rule are in DOMAIN.md "Ask Habit". An unknown person word the model used comes
+back on the clarify reply as `nickname` (one short word); tapping the person
+keeps it and the next turn tells the model.
+
+**Suggestion row.** When a saved entry's card opens (Apple Pay, an Ask add,
+an entry opened from Entries), the page asks `POST /api/ask/entry-habits`
+once. Under the card, a single quiet row shows what the habits say that the
+entry does not already have, with a tick (the existing category and Add to
+Splits commands) and a cross (an override). It replaces the history-based
+split question when it has a split. No notification, never an interruption.
+
+**Done for you.** With the switch on, a high-confidence habit is applied to a
+new entry without asking, only inside the safe set and every gate (new within
+the hour, not imported or certified, one entry; a hand-made entry's own
+category is never replaced). `/api/shortcuts/entries/create` and
+`/api/entries/create` run it after the save (best effort) and opening the
+card runs it again; an entry is never handled twice, so an Undo is final. A
+note the person asked for in a turn (`edit_note` on a new entry) is added the
+same way and the reply says so. Every line is logged and listed under "Done
+for you" at the end of the Ask page with Undo and Stop doing this; an Undo
+refuses an entry changed since. The change is reversed if its log row cannot
+be written.
+
+**Settings.** "What Ask remembers": the switch, the habits (change, forget
+with an in-app confirm), Forget everything. Reseeding the demo clears habits
+and resets the switch.
 
 ### Voice input
 

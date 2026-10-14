@@ -1202,7 +1202,8 @@ Canonical terms:
   `ask_clarification`, `cannot_help`, and Phase 2's changes to saved data:
   `edit_saved_entry`, `recategorise`, `edit_note`, `link_transfer`,
   `split_group`, `review_matches`, `set_payment_way`, `edit_category`,
-  `link_plan`
+  `link_plan`; and `look_up`, a read-only lookup (see "Ask Habit") the route
+  runs before the real action
 - `change card` (`AskChange`, `src/domain/ask-turn-actions.ts`): a Phase 2
   change as the page shows it: each row that changes before and after, the
   entries it touches (count and first rows), the existing commands it saves
@@ -2107,6 +2108,48 @@ Important distinctions:
 - A card ending pre-selects an account only when exactly one active account
   has that `last4`; otherwise Default account priority applies. A total in
   another currency than that account's is a currency hint, not an amount.
+
+### Ask Habit
+
+A small structured fact about what the household actually does and confirms,
+kept so Ask can suggest, and for the safe set apply, the same thing next time
+(`ask_habits`; `src/domain/ask-habits.ts`; `docs/flows/ask-flow.md`
+"Hands-off"). Never learned from chat text: only from commands the person ran
+(a category change, a new entry's category, Add to Splits) and confirmed
+clarifications. Deterministic: no AI call.
+
+Canonical terms:
+- `habit`: kind `category` (shop to category), `split` (shop to the usual
+  split: payer, the payer's share, group) or `alias` (a nickname to a
+  person); keyed by the shop's normalised name with long digit runs removed
+- `confidence`: counted since the last override. 3 or more consistent
+  confirmations is `high` (Ask may apply a safe action), 2 `suggest` (a quiet
+  row only), fewer or idle for a year `none`. An override (the person did
+  something different, declined the suggestion, or undid what Ask did) resets
+  the count to 0
+- `safe set`: set a new entry's category, add a note the person asked for,
+  add a new entry to Splits with the habitual split. Nothing else is ever
+  applied without a Save
+- `Let Ask handle safe things`: the Settings switch (default on)
+- `suggestion row`: the one quiet line under a saved entry in Ask, "Food &
+  Drinks · Add to splits 50/50 with Joyce, as you usually do", with a tick
+  and a cross
+- `nickname`: an `alias` habit; reaches the model as a fact
+
+Code:
+- `src/domain/ask-habits.ts` (rules, `autoApplyRefusal`), `ask-habit-plan.ts`
+- `src/domain/app-repository-ask-habits.ts` (storage, all-or-nothing commands)
+- `src/server/ask-habits-routes.ts`, `ask-auto-apply.ts`
+- `src/client/use-ask-habits.js`, `ask-habits-ui.jsx`,
+  `settings-ask-remembers-section.jsx`
+
+### Done for you
+
+The log of what Ask did by itself (the safe set), last 30 days, listed at the
+end of the Ask conversation: what, which entry, when, Undo, and Stop doing
+this for the habit behind it. Each line is an audit event (entity `ask_auto`)
+written after the command; Undo uses the existing commands and counts as an
+override. An entry changed since cannot be undone from here.
 
 ### Split Suggestion
 
