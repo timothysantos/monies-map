@@ -107,7 +107,9 @@ test("amounts read as written, and nothing past S$10m", () => {
   assert.equal(readAmountMinor("0"), null);
   assert.equal(readAmountMinor("-5"), null);
   assert.equal(readAmountMinor("20000000"), null);
-  assert.equal(readAmountMinor("twelve"), null);
+  // Words for a number read too ("fifty bucks"); a word that is no number does not.
+  assert.equal(readAmountMinor("twelve"), 1_200);
+  assert.equal(readAmountMinor("lunch"), null);
 });
 
 // --- add_entry_to_splits (the owner's case) -----------------------------------
@@ -167,13 +169,23 @@ test("no shares named is an even split", () => {
 
 test("negative: an unknown person asks who, naming the household's two people", () => {
   const reply = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "Serene", all: true }] } }), makeContext({ focus: savedFocus(), text: "all Serene" }));
-  assert.deepEqual(reply, { kind: "clarify", question: "Whose share do you mean? This household has Tim and Joyce.", options: ["Tim", "Joyce"] });
+  assert.deepEqual(reply, {
+    kind: "clarify",
+    question: "Whose share do you mean? This household has Tim and Joyce.",
+    options: ["Tim", "Joyce"],
+    error: { code: "unknown_person", field: "split.shares.person", valid: ["Tim", "Joyce"], got: "Serene" }
+  });
 });
 
 test("negative: shares that do not add up to 100% are asked, never rounded off", () => {
   const context = makeContext({ focus: savedFocus(), text: "Tim 60 Joyce 60" });
   const reply = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "Tim", percent: 60 }, { person: "Joyce", percent: 60 }] } }), context);
-  assert.deepEqual(reply, { kind: "clarify", question: "How should it be split? The two shares need to add up to the whole amount.", options: ["Split 50/50", "All Tim's", "All Joyce's"] });
+  assert.deepEqual(reply, {
+    kind: "clarify",
+    question: "How should it be split? The two shares need to add up to the whole amount.",
+    options: ["Split 50/50", "All Tim's", "All Joyce's"],
+    error: { code: "shares_mismatch", field: "split.shares", valid: ["Tim", "Joyce"] }
+  });
   const over = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "Joyce", percent: 140 }] } }), context);
   assert.equal(over.kind, "clarify");
 });
@@ -181,7 +193,7 @@ test("negative: shares that do not add up to 100% are asked, never rounded off",
 test("negative: a dollar share the person never wrote, or one past the total, is refused", () => {
   const context = makeContext({ focus: savedFocus(), text: "Joyce pays her part" });
   const invented = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "Joyce", amount: "20" }] } }), context);
-  assert.deepEqual(invented, { kind: "clarify", question: "How much was it? Type the amount as a number.", options: [] });
+  assert.deepEqual(invented, { kind: "clarify", question: "How much was it? Type the amount as a number.", options: [], error: { code: "amount_not_stated", field: "split.shares" } });
   const tooMuch = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "Joyce", amount: "50" }] } }), makeContext({ focus: savedFocus(), text: "Joyce owes $50" }));
   assert.equal(tooMuch.kind, "clarify");
 });
@@ -195,18 +207,27 @@ test("negative: an entry already on Splits, an income, or a payer other than the
   const all = { split: { shares: [{ person: "Joyce", all: true }] } };
   assert.deepEqual(validateAskTurnAction(act("add_entry_to_splits", all), makeContext({ focus: savedFocus({ linkedToSplits: true }), text: "all Joyce" })), { kind: "note", text: "This entry is already on Splits." });
   assert.deepEqual(validateAskTurnAction(act("add_entry_to_splits", all), makeContext({ focus: savedFocus({ entryType: "income" }), text: "all Joyce" })), { kind: "note", text: "Only an expense can go on Splits." });
+  // A payer other than the wallet's owner is not asked: the card shows the
+  // wallet owner as the payer, and says so.
   const otherPayer = validateAskTurnAction(act("add_entry_to_splits", { split: { payer: "Joyce", shares: [{ person: "Tim", all: true }] } }), makeContext({ focus: savedFocus(), text: "Joyce paid, all mine" }));
-  assert.equal(otherPayer.kind, "clarify");
-  assert.match(otherPayer.question, /Citi Rewards, which is Tim's/);
-  assert.deepEqual(otherPayer.options, ["Yes, Tim paid", "Not now"]);
+  assert.equal(otherPayer.kind, "split_proposal");
+  assert.equal(otherPayer.proposal.payerName, "Tim");
+  assert.equal(otherPayer.assumptions[0].text, "This entry is Tim's, so Splits shows Tim as the one who paid.");
+  assert.deepEqual(otherPayer.assumptions[0].chips, []);
 });
 
-test("negative: an unknown group, or a group in another currency, is asked", () => {
+test("negative: an unknown group is asked; a group in another currency is left out and said", () => {
   const unknown = validateAskTurnAction(act("add_entry_to_splits", { split: { group: "Tokyo", shares: [] } }), makeContext({ focus: savedFocus(), text: "tokyo group" }));
-  assert.deepEqual(unknown, { kind: "clarify", question: "Which split group should it go in?", options: ["Bali trip", "Home", "No group"] });
+  assert.deepEqual(unknown, {
+    kind: "clarify",
+    question: "Which split group should it go in?",
+    options: ["Bali trip", "Home", "No group"],
+    error: { code: "unknown_group", field: "group", valid: ["Bali trip", "Home"], got: "Tokyo" }
+  });
   const currency = validateAskTurnAction(act("add_entry_to_splits", { split: { group: "Bali trip", shares: [] } }), makeContext({ focus: savedFocus(), text: "bali" }));
-  assert.equal(currency.kind, "clarify");
-  assert.match(currency.question, /IDR/);
+  assert.equal(currency.kind, "split_proposal");
+  assert.equal(currency.proposal.groupId, null);
+  assert.ok(currency.assumptions.some((line) => /IDR and this is in SGD, so I left it out of the group/.test(line.text)));
 });
 
 // --- Entries ------------------------------------------------------------------
@@ -233,12 +254,26 @@ test("draft_entry: the model's fields that check out fill the draft, marked ai, 
   assert.deepEqual(reply.draft.missing, []);
 });
 
-test("draft_entry negatives: an invented amount, a future date, an unknown or inactive wallet, an unknown person", () => {
+test("draft_entry negatives: an invented amount, a future date, an unknown or inactive wallet, an unknown person are left off the card and said", () => {
   const context = makeContext({ text: "lunch with joyce" });
-  assert.deepEqual(validateAskTurnAction(act("draft_entry", { entry: { amount: "15" } }), context), { kind: "clarify", question: "How much was it? Type the amount as a number.", options: [] });
-  assert.deepEqual(validateAskTurnAction(act("draft_entry", { entry: { date: "2026-10-20" } }), context), { kind: "clarify", question: "Which day was it?", options: ["Today", "Yesterday"] });
-  assert.deepEqual(validateAskTurnAction(act("draft_entry", { entry: { wallet: "Old Card" } }), context), { kind: "clarify", question: "Which wallet was it?", options: ["Citi Rewards 4417", "UOB One", "DBS Joyce"] });
-  assert.equal(validateAskTurnAction(act("draft_entry", { entry: { owner: "Serene" } }), context).kind, "clarify");
+  // Each is a draft with the field missing (the card asks it), never a question first.
+  const invented = validateAskTurnAction(act("draft_entry", { entry: { amount: "15" } }), context);
+  assert.equal(invented.kind, "entry_draft");
+  assert.equal(invented.draft.fields.amountMinor, undefined);
+  assert.ok(invented.draft.missing.includes("amountMinor"));
+  const future = validateAskTurnAction(act("draft_entry", { entry: { date: "2026-10-20" } }), context);
+  assert.equal(future.kind, "entry_draft");
+  assert.equal(future.draft.fields.date?.source !== "ai", true);
+  const inactive = validateAskTurnAction(act("draft_entry", { entry: { wallet: "Old Card" } }), context);
+  assert.equal(inactive.kind, "entry_draft");
+  assert.notEqual(inactive.draft.fields.accountId?.value, "acct-old");
+  assert.notEqual(inactive.draft.fields.accountId?.source, "ai");
+  assert.equal(inactive.assumptions[0].text, 'I couldn\'t find a wallet called "Old Card", so I left the wallet out.');
+  assert.ok(inactive.assumptions[0].chips.every((chip) => chip.startsWith("On ")));
+  const stranger = validateAskTurnAction(act("draft_entry", { entry: { owner: "Serene" } }), context);
+  assert.equal(stranger.kind, "entry_draft");
+  assert.notEqual(stranger.draft.fields.ownerName?.source, "ai");
+  assert.deepEqual(stranger.assumptions[0].chips, ["It's Tim's", "It's Joyce's"]);
   // A description with words the person never wrote is dropped, not shown.
   const reply = validateAskTurnAction(act("draft_entry", { entry: { description: "Expensive steak dinner" } }), context);
   assert.equal(reply.kind, "entry_draft");
@@ -312,7 +347,11 @@ test("answer_question becomes a sentence the answer route reads as the same topi
   }
   const joyce = validateAskTurnAction(act("answer_question", { question: { topic: "spending_where", month: "2026-09", person: "Joyce" } }), context);
   assert.equal(joyce.viewId, "person-joyce");
-  assert.equal(validateAskTurnAction(act("answer_question", { question: { topic: "plan", month: "2027-01" } }), context).kind, "note");
+  const noMonthSaid = makeContext({ text: "did we stick to the plan" });
+  assert.equal(validateAskTurnAction(act("answer_question", { question: { topic: "plan", month: "2027-01" } }), noMonthSaid).kind, "note");
+  // The month the person wrote wins over the one the model worked out (here a wrong one).
+  const wrong = validateAskTurnAction(act("answer_question", { question: { topic: "spending_where", month: "2025-03" } }), context);
+  assert.equal(wrong.text, "Where did my money go in September 2026?");
   assert.equal(validateAskTurnAction(act("answer_question", { question: { topic: "compare", month: "2026-09" } }), context).kind, "clarify");
 });
 
@@ -334,7 +373,7 @@ test("open_page keeps the view and month; clarification prose with an invented f
     kind: "open_page", page: "splits", params: { view: "person-joyce", month: "2026-10" }
   });
   const context = makeContext({ text: "add lunch" });
-  assert.deepEqual(validateAskTurnAction(act("ask_clarification", { clarify: { question: "Was it $14.20 at the cafe?", options: ["Yes"] } }), context), { kind: "clarify", question: "Can you say that another way?", options: [] });
+  assert.deepEqual(validateAskTurnAction(act("ask_clarification", { clarify: { question: "Was it $14.20 at the cafe?", options: ["Yes"] } }), context), { kind: "clarify", question: "Can you say that another way?", options: [], error: { code: "other", field: "clarify.question" } });
   assert.deepEqual(validateAskTurnAction(act("ask_clarification", { clarify: { question: "Which wallet did you pay lunch with?", options: ["UOB One", "Citi Rewards", "UOB One", "Cash", "PayNow"] } }), context), {
     kind: "clarify", question: "Which wallet did you pay lunch with?", options: ["UOB One", "Citi Rewards", "Cash", "PayNow"]
   });

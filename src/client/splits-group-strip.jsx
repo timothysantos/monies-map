@@ -158,6 +158,7 @@ export function SplitsGroupStrip({
               // (design.md "Openable figures"); another tile opens its group.
               data-fig={tile.isActive ? "splits" : undefined}
               data-fig-arg={tile.isActive ? tile.id : undefined}
+              data-fig-name={tile.isActive ? tile.name : undefined}
               onClick={() => onSelectGroup(tile.id)}
             >
               <strong className="splits-strip-tile-name">{tile.name}</strong>

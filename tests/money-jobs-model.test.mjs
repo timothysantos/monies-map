@@ -209,6 +209,7 @@ test("a figure's menu: View entries over the figure's whole period in the page's
   const month = { startMonth: "2026-05", endMonth: "2026-05" };
   assert.deepEqual(figureMenu({ fig: "invested", plan: "", period: month, search: "?view=person-tim&month=2026-05&scope=direct&summary_start=2026-05" }), {
     label: "Invested: what next",
+    title: { name: "Invested", period: "May 2026" },
     items: [
       { action: "entries", label: "View entries", location: { pathname: "/entries", search: "?view=person-tim&month=2026-05&scope=direct&entries_scope=direct&entry_figure=invested" } },
       { action: "plan", label: "Open plan", location: { pathname: "/month", search: "?view=person-tim&month=2026-05&scope=direct", hash: "#month-plan" } },

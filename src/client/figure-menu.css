@@ -54,6 +54,52 @@
   margin: 0;
 }
 
+/* What the menu opens, first: a category's colour dot and name, or a
+   figure's name and period. The name wraps to two lines, then is cut. */
+.figure-menu .figure-menu-title {
+  flex: 1 0 100%;
+  max-width: 100%;
+  margin: 2px 2px 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.figure-menu .figure-menu-title strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-weight: 700;
+}
+
+.figure-menu .figure-menu-title > span:not(.figure-menu-dot) {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.figure-menu .figure-menu-title.has-dot {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.figure-menu .figure-menu-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 0.38em;
+  border-radius: 50%;
+}
+
+/* The list row whose slice's menu is open. */
+.is-figure-open {
+  background: var(--pastel-neutral);
+  border-radius: 10px;
+}
+
 /* The first fact (a slice's amount and share) reads first. */
 .figure-menu .figure-menu-note p:first-child {
   color: var(--text);

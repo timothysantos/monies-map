@@ -340,7 +340,9 @@ over plan.
   ([Pick a month](#pick-a-month)).
 - **The donut**: each slice with room is named with its share. Point at a
   slice (on a phone, tap it; with the keyboard, Tab to the donut and use the
-  arrow keys, then Enter) for its amount, share and number of entries, then
+  arrow keys, then Enter) for its category name (first, in bold, with its
+  colour; its row in the list is marked while the menu is open), its amount,
+  share and number of entries, then
   **View entries** and **Ask about this** ([Dig into any
   figure](#dig-into-any-figure)). **Hide list** folds the list away so the
   donut fills the card; **Show list** brings it back. Your choice is kept on
@@ -698,6 +700,13 @@ posted date, the owner and a note. Tap any of them to change it, or tap the
 date, wallet or person label on the card itself. What it was can be up to
 500 characters and a note up to 2,000; a small count shows under the field
 when you get close, and **Save** tells you if one is too long.
+
+When Ask has to guess a detail, it says so under the card in plain words and
+offers the other reading as buttons: for example "I couldn't find a wallet
+called "posb", so I left the wallet out." with buttons for your real wallets.
+Tap one and Ask redoes the card that way. Ask only stops to ask you a question
+when two readings would save something different, such as two split groups
+that both fit.
 
 ### What each control does
 

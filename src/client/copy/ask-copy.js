@@ -236,6 +236,7 @@ export const askCopy = {
       saved: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
       discarded: "Not added. The entry is unchanged.",
       openOnSplits: "Open on Splits",
+      percentInstead: "Is that a percentage instead?",
       undo: "Undo",
       undoing: "Removing…",
       undone: "Removed from Splits. The entry is unchanged."

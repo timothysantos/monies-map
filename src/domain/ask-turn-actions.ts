@@ -21,10 +21,13 @@
 // opens the page that does it and says why.
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
+import { assumption, decideReadings, type AskReading } from "./ask-ambiguity";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
 import { chooseTransferOptions } from "./transfer-candidates";
 import {
   COPY,
+  askBack,
+  categoryQuestion,
   findCategory,
   findGroup,
   findPerson,
@@ -38,6 +41,7 @@ import {
   readMonth,
   scrubName,
   walletQuestion,
+  withAssumptions,
   wordsOf,
   type AskTurnAction,
   type AskTurnBlocked,
@@ -265,28 +269,28 @@ export function validateEditSavedEntry(action: AskTurnAction, context: AskTurnCo
     note: entry.note ?? ""
   };
   const amount = groundedAmount(raw.amount, ground);
-  if (amount.given && amount.minor === null) return { kind: "clarify", question: COPY.amountQuestion, options: [] };
+  if (amount.given && amount.minor === null) return askBack({ code: "amount_not_stated", field: "entry.amount" }, COPY.amountQuestion, []);
   if (amount.given && amount.minor !== null) next.amountMinor = amount.minor;
   const date = readDate(raw.date, context);
-  if (!date.ok) return { kind: "clarify", question: COPY.dateQuestion, options: [COPY.chips.today, COPY.chips.yesterday] };
+  if (!date.ok) return askBack({ code: "date_invalid", field: "entry.date" }, COPY.dateQuestion, [COPY.chips.today, COPY.chips.yesterday]);
   if (date.date) next.date = date.date;
   const description = groundedDescription(raw.description, ground);
   if (description) next.description = description;
   const category = findCategory(raw.category, context);
-  if (category === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(raw.category ?? "")), options: [] };
+  if (category === "unknown") return categoryQuestion(context, String(raw.category ?? ""));
   if (category) next.categoryName = category;
   const wallet = findWallet(raw.wallet, context);
-  if (wallet === "unknown") return walletQuestion(context);
+  if (wallet === "unknown") return walletQuestion(context, String(raw.wallet));
   if (wallet) {
     next.accountId = wallet.id;
     next.accountName = wallet.name;
   }
   const owner = findPerson(raw.owner, context);
-  if (owner === "unknown") return personQuestion(context, COPY.whoQuestion);
+  if (owner === "unknown") return personQuestion(context, COPY.whoQuestion, "entry.owner", String(raw.owner));
   if (owner) next.ownerName = owner.name;
   if (raw.note !== null && raw.note !== undefined) {
     const note = groundedNote(raw.note, ground);
-    if (note === null) return { kind: "clarify", question: ACTION_COPY.noteQuestion, options: [] };
+    if (note === null) return askBack({ code: "field_missing", field: "noteQuestion" }, ACTION_COPY.noteQuestion, []);
     next.note = note;
   }
 
@@ -312,7 +316,7 @@ export function validateEditSavedEntry(action: AskTurnAction, context: AskTurnCo
   if ((next.ownerName ?? "") !== (entry.ownerName ?? "")) rows.push({ field: "owner", before: entry.ownerName ?? "", after: next.ownerName ?? "" });
   if (next.note !== (entry.note ?? "")) rows.push({ field: "note", before: entry.note ?? "", after: next.note });
   if (!rows.length) {
-    return { kind: "clarify", question: ACTION_COPY.whatToChangeSaved, options: [] };
+    return askBack({ code: "nothing_to_change", field: "entry" }, ACTION_COPY.whatToChangeSaved, []);
   }
 
   const body = (values: typeof next) => ({
@@ -350,8 +354,8 @@ export function validateEditSavedEntry(action: AskTurnAction, context: AskTurnCo
 export function validateRecategorise(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.recategorise ?? {};
   const category = findCategory(raw.category, context);
-  if (category === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(raw.category ?? "")), options: [] };
-  if (!category) return { kind: "clarify", question: ACTION_COPY.whichCategory, options: [] };
+  if (category === "unknown") return categoryQuestion(context, String(raw.category ?? ""));
+  if (!category) return askBack({ code: "field_missing", field: "whichCategory" }, ACTION_COPY.whichCategory, []);
   if (category === "Transfer") {
     // One saved entry in focus becomes a transfer through the same search
     // as "link this as a transfer"; many entries cannot.
@@ -361,21 +365,21 @@ export function validateRecategorise(action: AskTurnAction, context: AskTurnCont
   }
 
   let words = groundedWords(raw.words, ground);
-  if (words === null) return { kind: "clarify", question: ACTION_COPY.whichEntries, options: [] };
+  if (words === null) return askBack({ code: "field_missing", field: "whichEntries" }, ACTION_COPY.whichEntries, []);
   let month = readMonth(raw.month, context);
-  if (!month.ok) return { kind: "clarify", question: COPY.whichMonth, options: [] };
+  if (!month.ok) return askBack({ code: "month_invalid", field: "month" }, COPY.whichMonth, []);
   if (!words && context.focus?.kind === "entry_list" && context.focus.list.search) {
     words = context.focus.list.search;
     month = { ok: true, month: month.month ?? context.focus.list.month };
   }
   if (words) {
     const from = findCategory(raw.from_category, context);
-    if (from === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(raw.from_category ?? "")), options: [] };
+    if (from === "unknown") return categoryQuestion(context, String(raw.from_category ?? ""));
     return { kind: "resolve", request: { type: "recategorise_bulk", words, categoryName: category, fromCategoryName: from, month: month.month } };
   }
 
   if (context.focus?.kind !== "saved_entry") {
-    return { kind: "clarify", question: ACTION_COPY.whichEntries, options: [] };
+    return askBack({ code: "field_missing", field: "whichEntries" }, ACTION_COPY.whichEntries, []);
   }
   const entry = context.focus.entry;
   if (entry.entryType === "transfer") return { kind: "note", text: ACTION_COPY.transferKeepsCategory };
@@ -399,10 +403,10 @@ export function validateRecategorise(action: AskTurnAction, context: AskTurnCont
 export function validateEditNote(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.note_edit ?? {};
   const text = groundedNote(raw.text, ground);
-  if (text === null) return { kind: "clarify", question: ACTION_COPY.noteQuestion, options: [] };
+  if (text === null) return askBack({ code: "field_missing", field: "noteQuestion" }, ACTION_COPY.noteQuestion, []);
   if (raw.target === "month") {
     const month = readMonth(raw.month, context);
-    if (!month.ok) return { kind: "clarify", question: COPY.whichMonth, options: [] };
+    if (!month.ok) return askBack({ code: "month_invalid", field: "month" }, COPY.whichMonth, []);
     return { kind: "resolve", request: { type: "month_note", month: month.month ?? context.month, personScope: context.viewId, text } };
   }
   if (context.focus?.kind !== "saved_entry") {
@@ -439,11 +443,11 @@ function transferRequest(entry: AskTurnFocusEntry, context: AskTurnContext, rawW
   if (entry.linkedToTransfer) return { kind: "note", text: ACTION_COPY.alreadyLinked };
   if (entry.linkedToSplits) return { kind: "note", text: ACTION_COPY.onSplitsNotTransfer };
   const wallet = findWallet(rawWallet, context);
-  if (wallet === "unknown") return walletQuestion(context);
+  if (wallet === "unknown") return walletQuestion(context, String(rawWallet ?? ""));
   // The entry's own wallet is never the other side.
   const other = wallet && wallet.id !== entry.accountId ? wallet : null;
   const date = readDate(rawDate, context);
-  if (!date.ok) return { kind: "clarify", question: COPY.dateQuestion, options: [] };
+  if (!date.ok) return askBack({ code: "date_invalid", field: "entry.date" }, COPY.dateQuestion, []);
   return { kind: "resolve", request: { type: "link_transfer", entry, walletId: other?.id ?? null, walletName: other?.name ?? "", date: date.date } };
 }
 
@@ -452,7 +456,7 @@ export function validateSplitGroup(action: AskTurnAction, context: AskTurnContex
   const op = raw.op;
   if (op === "create") {
     const name = groundedWords(raw.name, ground, NAME_MAX);
-    if (!name) return { kind: "clarify", question: ACTION_COPY.groupName, options: [] };
+    if (!name) return askBack({ code: "field_missing", field: "groupName" }, ACTION_COPY.groupName, []);
     if (context.groups.some((group) => group.name.toLowerCase() === name.toLowerCase())) {
       return { kind: "note", text: ACTION_COPY.groupExists(name) };
     }
@@ -474,26 +478,34 @@ export function validateSplitGroup(action: AskTurnAction, context: AskTurnContex
       return { kind: "note", text: ACTION_COPY.moveNeedsSplit };
     }
     const group = findGroup(raw.name, context);
-    if (group === "unknown") return groupQuestion(context);
+    if (group === "unknown") return groupQuestion(context, String(raw.name));
     return { kind: "resolve", request: { type: "group_move", entry: context.focus.entry, group } };
   }
   if (op === "settle") {
     const named = findGroup(raw.name, context);
-    if (named === "unknown") return groupQuestion(context);
-    const group = named ?? (context.focus?.kind === "split_group" ? context.focus.group : null);
-    if (!group) return groupQuestion(context);
-    return { kind: "resolve", request: { type: "group_settle", group } };
+    if (named === "unknown") return groupQuestion(context, String(raw.name));
+    const inFocus = context.focus?.kind === "split_group" ? context.focus.group : null;
+    // "Settle up with Joyce" names no group: the group in focus is meant; with
+    // none, the only group is; with several, they are two readings that settle
+    // different groups, so it asks (ask-ambiguity.ts).
+    if (named || inFocus) return { kind: "resolve", request: { type: "group_settle", group: (named ?? inFocus) as AskTurnGroup } };
+    const decision = decideReadings(context.groups.map((candidate): AskReading<AskTurnGroup> => ({ value: candidate, label: candidate.name, effect: `group:${candidate.id}`, basis: "default" })));
+    // Two groups that would settle differently: the person's to choose.
+    if (decision.kind === "ask") return groupQuestion(context, "", "ambiguous_name");
+    if (decision.kind === "none") return groupQuestion(context);
+    const group = decision.chosen.value;
+    return withAssumptions({ kind: "resolve", request: { type: "group_settle", group } }, [assumption(ACTION_COPY.settleOnlyGroup(group.name))]);
   }
   if (op === "simplify") {
     if (context.people.length < 2) return { kind: "note", text: COPY.needsTwoPeople };
     return { kind: "resolve", request: { type: "simplify", currency: groundedCurrency(raw.currency, ground) } };
   }
-  return { kind: "clarify", question: ACTION_COPY.whichGroupAction, options: [] };
+  return askBack({ code: "field_missing", field: "whichGroupAction" }, ACTION_COPY.whichGroupAction, []);
 }
 
 export function validateReviewMatches(action: AskTurnAction, context: AskTurnContext): AskTurnReply {
   const month = readMonth(action.matches?.month, context);
-  if (!month.ok) return { kind: "clarify", question: COPY.whichMonth, options: [] };
+  if (!month.ok) return askBack({ code: "month_invalid", field: "month" }, COPY.whichMonth, []);
   return { kind: "resolve", request: { type: "matches", month: month.month ?? context.month } };
 }
 
@@ -503,14 +515,14 @@ export function validateReviewMatches(action: AskTurnAction, context: AskTurnCon
 export function validatePaymentWay(action: AskTurnAction, context: AskTurnContext): AskTurnReply {
   const raw = action.payment_way ?? {};
   const named = findPerson(raw.person, context);
-  if (named === "unknown") return personQuestion(context, COPY.whoQuestion);
+  if (named === "unknown") return personQuestion(context, COPY.whoQuestion, "payment_way.person", String(raw.person));
   const person = named ?? context.people.find((candidate) => candidate.id === context.viewId) ?? null;
-  if (!person) return personQuestion(context, COPY.whoQuestion);
+  if (!person) return personQuestion(context, COPY.whoQuestion, "payment_way.person");
   const bank = findWallet(raw.paynow_wallet, context);
   if (bank === "unknown" || (bank && bank.kind !== "bank")) return walletsOfKind(context, "bank", ACTION_COPY.payNowWallet);
   const cash = findWallet(raw.cash_wallet, context);
   if (cash === "unknown" || (cash && cash.kind !== "cash")) return walletsOfKind(context, "cash", ACTION_COPY.cashWallet);
-  if (!bank && !cash) return { kind: "clarify", question: ACTION_COPY.payNowWallet, options: walletNames(context, "bank") };
+  if (!bank && !cash) return askBack({ code: "field_missing", field: "payNowWallet" }, ACTION_COPY.payNowWallet, walletNames(context, "bank"));
   const current = context.entry.paymentWays?.find((way) => way.personId === person.id) ?? { personId: person.id, bankTransferAccountId: "", cashAccountId: "" };
   const nextBank = bank?.id ?? current.bankTransferAccountId;
   const nextCash = cash?.id ?? current.cashAccountId;
@@ -565,7 +577,7 @@ export function validateEditCategory(action: AskTurnAction, context: AskTurnCont
   const colour = colourWord ? CATEGORY_COLOUR_WORDS[colourWord] ?? null : null;
   if (raw.op === "create") {
     const name = groundedWords(raw.new_name, ground, NAME_MAX);
-    if (!name) return { kind: "clarify", question: ACTION_COPY.categoryName, options: [] };
+    if (!name) return askBack({ code: "field_missing", field: "categoryName" }, ACTION_COPY.categoryName, []);
     if (context.entry.categoryNames.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
       return { kind: "note", text: ACTION_COPY.categoryExists(name) };
     }
@@ -583,14 +595,14 @@ export function validateEditCategory(action: AskTurnAction, context: AskTurnCont
     });
   }
   const categoryName = findCategory(raw.category, context);
-  if (categoryName === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(raw.category ?? "")), options: [] };
-  if (!categoryName) return { kind: "clarify", question: ACTION_COPY.whichCategoryToChange, options: [] };
+  if (categoryName === "unknown") return categoryQuestion(context, String(raw.category ?? ""));
+  if (!categoryName) return askBack({ code: "field_missing", field: "whichCategoryToChange" }, ACTION_COPY.whichCategoryToChange, []);
   const record = records.find((category) => category.name === categoryName);
   if (!record) return { kind: "open_page", page: "settings", params: {}, why: ACTION_COPY.categoryInSettings };
   if (raw.op === "rename") {
     if (record.isSystem) return { kind: "note", text: ACTION_COPY.categoryKeepsName(record.name) };
     const name = groundedWords(raw.new_name, ground, NAME_MAX);
-    if (!name) return { kind: "clarify", question: ACTION_COPY.categoryName, options: [] };
+    if (!name) return askBack({ code: "field_missing", field: "categoryName" }, ACTION_COPY.categoryName, []);
     if (name === record.name) return { kind: "note", text: ACTION_COPY.categoryExists(name) };
     if (context.entry.categoryNames.some((existing) => existing !== record.name && existing.toLowerCase() === name.toLowerCase())) {
       return { kind: "note", text: ACTION_COPY.categoryExists(name) };
@@ -622,7 +634,7 @@ export function validateEditCategory(action: AskTurnAction, context: AskTurnCont
       refresh: ["settings", "entries", "month", "summary"]
     });
   }
-  return { kind: "clarify", question: ACTION_COPY.whichCategoryChange, options: [] };
+  return askBack({ code: "field_missing", field: "whichCategoryChange" }, ACTION_COPY.whichCategoryChange, []);
 }
 
 function pickColourInSettings(): AskTurnReply {
@@ -633,11 +645,11 @@ export function validateLinkPlan(action: AskTurnAction, context: AskTurnContext,
   const raw = action.plan_link ?? {};
   const lineName = typeof raw.line === "string" ? raw.line.trim().toLowerCase() : "";
   const line = context.planLines.find((candidate) => candidate.toLowerCase() === lineName) ?? null;
-  if (!line) return { kind: "clarify", question: ACTION_COPY.whichPlanLine, options: context.planLines.slice(0, 4) };
+  if (!line) return askBack({ code: "field_missing", field: "plan_link.line" }, ACTION_COPY.whichPlanLine, context.planLines.slice(0, 4));
   const month = readMonth(raw.month, context);
-  if (!month.ok) return { kind: "clarify", question: COPY.whichMonth, options: [] };
+  if (!month.ok) return askBack({ code: "month_invalid", field: "month" }, COPY.whichMonth, []);
   const words = groundedWords(raw.words, ground);
-  if (!words) return { kind: "clarify", question: ACTION_COPY.whichEntriesForPlan(line), options: [] };
+  if (!words) return askBack({ code: "field_missing", field: "whichEntriesForPlan" }, ACTION_COPY.whichEntriesForPlan(line), []);
   return { kind: "resolve", request: { type: "plan_link", line, month: month.month ?? context.month, words } };
 }
 
@@ -861,7 +873,7 @@ export function buildGroupMove(request: Extract<AskResolveRequest, { type: "grou
   const groupId = request.group?.id ?? null;
   if ((split.groupId ?? null) === groupId) return { kind: "note", text: ACTION_COPY.alreadyInGroup(request.group?.name ?? "") };
   if (request.group && request.group.currency.toUpperCase() !== split.currency.toUpperCase()) {
-    return { kind: "clarify", question: COPY.groupCurrency(request.group.name, request.group.currency), options: [COPY.chips.noGroup] };
+    return askBack({ code: "field_missing", field: "COPY.groupCurrency" }, COPY.groupCurrency(request.group.name, request.group.currency), [COPY.chips.noGroup]);
   }
   const body = (targetGroupId: string | null) => ({
     splitExpenseId: split.id,
@@ -924,7 +936,7 @@ export type AskSimplifyPlan =
 export function buildSimplify(plan: AskSimplifyPlan, context: AskTurnContext): AskTurnReply {
   if (!plan.ok) {
     if (plan.reason === "already") return { kind: "open_page", page: "splits", params: { view: context.viewId, month: context.month }, why: ACTION_COPY.alreadySimplified };
-    if (plan.reason === "currencies") return { kind: "clarify", question: ACTION_COPY.simplifyWhichCurrency, options: [] };
+    if (plan.reason === "currencies") return askBack({ code: "field_missing", field: "simplifyWhichCurrency" }, ACTION_COPY.simplifyWhichCurrency, []);
     return { kind: "note", text: ACTION_COPY.nothingToSimplify };
   }
   if (!plan.recordCount) return { kind: "note", text: ACTION_COPY.nothingToSimplify };
@@ -1031,7 +1043,8 @@ function walletNames(context: AskTurnContext, kind: string) {
 }
 
 function walletsOfKind(context: AskTurnContext, kind: string, question: string): AskTurnReply {
-  return { kind: "clarify", question, options: walletNames(context, kind) };
+  const names = walletNames(context, kind);
+  return askBack({ code: "unknown_wallet", field: "payment_way.wallet", valid: names.map(scrubName) }, question, names);
 }
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -1043,6 +1056,7 @@ function dayLabel(date: string) {
 
 // Every line these actions say back, in plain words.
 export const ACTION_COPY = {
+  settleOnlyGroup: (name: string) => `You didn't name a group, so I used ${name}, the only split group.`,
   whichEntryToChange: "Which entry should change? Open it from Entries, then ask again.",
   whatToChangeSaved: "What should change on this entry?",
   noteQuestion: "What should the note say? Type it in your own words.",

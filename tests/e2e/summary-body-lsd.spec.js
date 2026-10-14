@@ -344,6 +344,70 @@ for (const device of [
       expect(await page.locator("[data-figure-menu]").textContent()).not.toMatch(/\$/);
     });
 
+    test("Spending Mix: a slice's menu leads with its category, large or tiny, and marks its row in the list", async ({ page }) => {
+      await setMoney(page, true);
+      await openSummary(page);
+      const share = await rangeShare(page);
+      const listed = await mixCard(page).locator(".summary-mix-row .summary-mix-name").allTextContents();
+      for (const item of [share[0], share[share.length - 1]]) {
+        const slice = mixCard(page).locator(`.donut-slice[data-slice="${item.label}"]`);
+        await slice.focus();
+        await page.keyboard.press("Enter");
+        const menu = page.locator('[data-figure-menu="category"]');
+        // The title is the menu's first line, ahead of the amount and share.
+        await expect(menu.locator(":scope > :first-child")).toHaveClass(/figure-menu-title/);
+        await expect(menu.locator(".figure-menu-title")).toHaveText(item.label);
+        await expect(menu.locator(".figure-menu-title .figure-menu-dot")).toHaveCount(1);
+        await expect(menu.locator(".figure-menu-title strong")).toHaveCSS("font-weight", "700");
+        // The first button still takes the focus; Escape still returns it.
+        await expect(menu.getByRole("button", { name: "View entries" })).toBeFocused();
+        // Its row in the list is marked while the menu is open.
+        const marked = mixCard(page).locator(".summary-mix-row.is-figure-open .summary-mix-name");
+        if (listed.includes(item.label)) {
+          await expect(marked).toHaveText(item.label);
+        } else {
+          await expect(marked).toHaveCount(0);
+        }
+        await page.keyboard.press("Escape");
+        await expect(menu).toHaveCount(0);
+        await expect(mixCard(page).locator(".summary-mix-row.is-figure-open")).toHaveCount(0);
+        await expect(slice).toBeFocused();
+      }
+    });
+
+    test("Spending Mix: a long category name wraps to two lines and the menu stays on the screen", async ({ page }) => {
+      await setMoney(page, true);
+      await openSummary(page);
+      const share = await rangeShare(page);
+      const long = "Childcare, education and after-school enrichment classes for the children of the household";
+      const slice = mixCard(page).locator(`.donut-slice[data-slice="${share[0].label}"]`);
+      await slice.evaluate((element, name) => element.setAttribute("data-fig-arg", name), long);
+      await slice.focus();
+      await page.keyboard.press("Enter");
+      const menu = page.locator("[data-figure-menu]");
+      await expect(menu.locator(".figure-menu-title")).toContainText("Childcare, education");
+      const view = page.viewportSize();
+      const menuBox = await box(menu);
+      expect(menuBox.x).toBeGreaterThanOrEqual(16 - 1);
+      expect(menuBox.right).toBeLessThanOrEqual(view.width - 16 + 1);
+      const lines = await menu.locator(".figure-menu-title strong").evaluate((element) => {
+        const style = getComputedStyle(element);
+        return Math.round(element.getBoundingClientRect().height / parseFloat(style.lineHeight));
+      });
+      expect(lines).toBeLessThanOrEqual(2);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(view.width + 1);
+    });
+
+    test("Spending Mix: with money hidden a slice's menu still names its category", async ({ page }) => {
+      await setMoney(page, false);
+      await openSummary(page);
+      const share = await rangeShare(page);
+      const slice = mixCard(page).locator(`.donut-slice[data-slice="${share[0].label}"]`);
+      await slice.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.locator("[data-figure-menu] .figure-menu-title")).toHaveText(share[0].label);
+    });
+
     test("Spending Mix: the list sits under the donut on a phone and beside it on a desktop", async ({ page }) => {
       await setMoney(page, true);
       await openSummary(page);

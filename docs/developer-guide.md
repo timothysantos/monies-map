@@ -2551,7 +2551,20 @@ card. With AI off (local and the e2e stack) the route answers
 - Browser tests stand in for the model with the `X-Ask-Turn-Test-Reply`
   header (read only when `APP_ENVIRONMENT` is `test`); see
   `tests/e2e/ask-ai-turn.spec.js`.
-- `npx tsx scripts/ask-turn-eval.mjs` runs about 30 messages, the owner's
-  among them, through the real model on a seeded local D1 when
-  `AI_GATEWAY_TOKEN` or `ANTHROPIC_API_KEY` (and the gateway ids) are in
-  the environment; without them it prints only the prompt size. Not in CI.
+- `X-Ask-Turn-Test-Repair-Reply` stands in for the repair turn's answer
+  (test environment only); without it a test-reply turn is not repaired.
+- `npm run eval:ask` runs the eval bank
+  (`tests/fixtures/ask-eval-utterances.json`, 121 messages across every Ask
+  action) through the real model on a seeded local D1 when `AI_GATEWAY_TOKEN`
+  or `ANTHROPIC_API_KEY` (and the gateway ids) are in the environment, printing
+  PASS or FAIL per message, the pass rate and the repair rate; without them it
+  prints only the prompt size. A spread sample of 30 by default (about
+  US$0.05); `--all --yes` runs the whole bank; `--ids`, `--group`, `--limit`
+  and `--dry` narrow it. Manual, not in CI. The same bank runs in CI without a
+  model as `tests/ask-eval-bank.test.mjs`, replaying each recorded model answer
+  through the Worker. A new Ask action adds its messages to the bank.
+- A refused model answer gets one repair turn (a second allowance unit) with
+  the checks' errors and valid options before the person is asked; each repair
+  is logged as `{"event":"ask_turn_repair","action","validatorError","field",
+  "repaired"}` (no message text). Count them in the Worker logs to measure the
+  repair rate.

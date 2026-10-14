@@ -635,12 +635,41 @@ function AskConversation({
       updateConversation((current) => ({ ...current, rulesNoted: true }));
       appendThread(threadItem("note", { text: turn.ok && turn.mode === "rules" && turn.notice === "demo_allowance" ? askCopy.turn.demoAllowanceNote : askCopy.turn.rulesNote, tone: "calm" }));
     }
+    // A share on the saved entry ("Joyce's share 1.6") the server's rules
+    // already read and checked: shown like the model's draft.
+    if (turn.ok && turn.mode === "rules" && turn.reply) {
+      await applyTurnReply(text, turn.reply);
+      return;
+    }
     await readSentenceByRules(text);
   }
 
   // What the turn route sent back, shown with the cards the page already
   // has. Nothing here writes: every draft waits for its Save.
   async function applyTurnReply(text, reply) {
+    await showTurnReply(text, reply);
+    showAssumptions(reply.assumptions, reply.kind);
+  }
+
+  // What the app assumed while drafting, in plain words, with the other
+  // readings as chips that send them as the next message (docs/flows/
+  // ask-flow.md, "Three principles"). The draft is already on screen, and
+  // Save is not behind these chips. A page that has gone elsewhere says
+  // nothing.
+  function showAssumptions(assumptions, kind) {
+    if (!assumptions?.length || kind === "open_page" || kind === "clarify") {
+      return;
+    }
+    const lines = assumptions.map((line) => line.text).join(" ");
+    const chips = [...new Set(assumptions.flatMap((line) => line.chips))].slice(0, 4);
+    if (chips.length) {
+      setPending({ kind: "turn-question", question: lines, options: chips });
+    } else {
+      appendThread(threadItem("note", { text: lines, tone: "calm" }));
+    }
+  }
+
+  async function showTurnReply(text, reply) {
     if (reply.kind === "entry_draft") {
       let next = applyEntryDraft(workingCard(), reply.draft, context);
       if (reply.share?.on) {
@@ -781,6 +810,19 @@ function AskConversation({
     }
     updateThreadItem(itemId, { status: "discarded" });
     appendThread(threadItem("note", { text: note }));
+  }
+
+  // "Is that a percentage instead?": the bare number was read as dollars.
+  // The draft is replaced by one for the same message read as a percentage;
+  // nothing is saved either way.
+  function splitAsPercent(itemId) {
+    const item = turnItem(itemId, "split-proposal");
+    const retry = item?.proposal?.percentGuess?.retryText;
+    if (!item || item.status !== "draft" || working || typeof retry !== "string" || !retry) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "discarded" });
+    void readSentence(retry);
   }
 
   // Record payment: the existing settlement command.
@@ -1708,6 +1750,7 @@ function AskConversation({
       busy: Boolean(working),
       onSaveSplit: (itemId) => void saveTurnSplit(itemId),
       onDiscardSplit: (itemId) => discardTurnItem(itemId, "split-proposal", askCopy.turn.split.discarded),
+      onSplitAsPercent: (itemId) => splitAsPercent(itemId),
       onUndoSplit: (itemId) => void undoTurnSplit(itemId),
       onOpenSplit: openTurnSplit,
       onSaveSettlement: (itemId) => void saveTurnSettlement(itemId),
@@ -2258,6 +2301,7 @@ function ThreadItem({ item, settled = false, answerProps }) {
         onSave={() => turn.onSaveSplit(item.id)}
         onDiscard={() => turn.onDiscardSplit(item.id)}
         onUndo={() => turn.onUndoSplit(item.id)}
+        onGuess={() => turn.onSplitAsPercent(item.id)}
         onOpen={() => turn.onOpenSplit(item.id)}
       />
     );

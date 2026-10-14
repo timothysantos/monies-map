@@ -144,7 +144,13 @@ test("negative: a statement-certified entry keeps its bank facts and says why; i
 
 test("negative: no entry in focus, an amount the person never wrote, a stranger, or nothing to change is never a change", () => {
   assert.deepEqual(turn("edit_saved_entry", { entry: { amount: "18" } }, { text: "make it 18" }), { kind: "note", text: "Which entry should change? Open it from Entries, then ask again." });
-  assert.equal(turn("edit_saved_entry", { entry: { amount: "99" } }, { focus: saved(), text: "make it 18" }).kind, "clarify");
+  // A figure the person never wrote is replaced by the one amount they did write ...
+  const replaced = turn("edit_saved_entry", { entry: { amount: "99" } }, { focus: saved(), text: "make it 18" });
+  assert.equal(replaced.kind, "change");
+  assert.equal(replaced.change.rows[0].afterMinor, 1_800);
+  // ... and with none or two to choose from it is asked.
+  assert.equal(turn("edit_saved_entry", { entry: { amount: "99" } }, { focus: saved(), text: "make it bigger" }).kind, "clarify");
+  assert.equal(turn("edit_saved_entry", { entry: { amount: "99" } }, { focus: saved(), text: "make it 18 or 20" }).kind, "clarify");
   assert.equal(turn("edit_saved_entry", { entry: { owner: "Serene" } }, { focus: saved(), text: "Serene's" }).kind, "clarify");
   assert.equal(turn("edit_saved_entry", { entry: { note: "call the bank at 2am" } }, { focus: saved(), text: "add a note" }).kind, "clarify");
   assert.equal(turn("edit_saved_entry", { entry: { category: "Food & Drinks" } }, { focus: saved(), text: "food" }).kind, "clarify");
@@ -413,7 +419,7 @@ test("set_payment_way: a bank wallet for PayNow, a cash wallet for cash, with Un
   assert.deepEqual(reply.change.save, [{ path: "/api/settings/payment-ways/save", body: { personId: "person-joyce", bankTransferAccountId: "acct-uob", cashAccountId: "" } }]);
   assert.deepEqual(reply.change.undo[0].body, { personId: "person-joyce", bankTransferAccountId: "acct-dbs-joyce", cashAccountId: "" });
   assert.deepEqual(reply.change.rows, [{ field: "paynow", before: "DBS Joyce", after: "UOB One" }]);
-  assert.deepEqual(turn("set_payment_way", { payment_way: { paynow_wallet: "Citi Rewards" } }, { text: "my paynow is citi" }), { kind: "clarify", question: "Which bank wallet should PayNow mean?", options: ["UOB One", "DBS Joyce"] });
+  assert.deepEqual(turn("set_payment_way", { payment_way: { paynow_wallet: "Citi Rewards" } }, { text: "my paynow is citi" }), { kind: "clarify", question: "Which bank wallet should PayNow mean?", options: ["UOB One", "DBS Joyce"], error: { code: "unknown_wallet", field: "payment_way.wallet", valid: ["UOB One", "DBS Joyce"] } });
   assert.equal(turn("set_payment_way", { payment_way: { paynow_wallet: "UOB One" } }, { text: "my paynow is uob" }).kind, "note");
 });
 

@@ -243,8 +243,8 @@ exactly one action, and the server checks it before anything shows:
 | --- | --- | --- | --- |
 | `draft_entry` | wallet active, category and person exist, amount written by the person, date not in the future, description words the person wrote | the entry card, filled (fields marked AI) | the card's Save, `/api/entries/create` |
 | `edit_draft` | the same, field by field; a saved card is not edited | the card being filled, changed | the card's Save |
-| `draft_split_expense` | as `draft_entry`, plus payer, shares adding up to 100%, group | the card with Shared and the Splits switch on | the card's Save, with `addToSplits` |
-| `add_entry_to_splits` | the saved entry in focus is the household's, an expense, not on Splits yet; the payer is the entry's own; shares add up to 100% (percent, a written amount, or "all"); the group exists and has the entry's currency | the Add to Splits draft card (each share computed from the entry's amount) | Add to Splits, `/api/splits/expenses/from-entry` with `splitBasisPoints` (or `splitAmountMinor`) |
+| `draft_split_expense` | as `draft_entry`, plus payer, shares (one stated share is enough; two add up to 100%), group | the card with Shared and the Splits switch on | the card's Save, with `addToSplits` |
+| `add_entry_to_splits` | the saved entry in focus is the household's, an expense, not on Splits yet; the payer is the entry's own; one stated share is enough, the other person has the rest (percent, a written amount, or "all"; two stated shares add up to 100%; none stated is 50/50); the group exists and has the entry's currency | the Add to Splits draft card (each share computed from the entry's amount) | Add to Splits, `/api/splits/expenses/from-entry` with `splitBasisPoints` (or `splitAmountMinor`) |
 | `draft_settlement` | two different people, an amount the person wrote, a date not in the future | the settle-up payment draft card | Record payment, `/api/splits/settlements/create` |
 | `plan_change` | line names and amounts the person wrote (`parsePlanAiReading`), drafted against the real plan rows | the plan draft card, its question or note | Save plan, `/api/month-plan/apply-changes` |
 | `answer_question` | the topic, months and person, written as one sentence the answer route's own reader reads as the same topic | the money answer (or the check before one) | none |
@@ -257,6 +257,23 @@ Anything that does not check out becomes a question back (with the
 household's own people, wallets or groups as chips), never a guess: an
 unknown person, shares that do not add up, an amount the person never
 wrote, a foreign or missing entry, a group in another currency.
+
+ or "dollars" is money, `%` or "percent" a percentage,
+and a bare number is a guess: above the entry's total it is a percentage,
+otherwise dollars (1.6 on $7.90 is $1.60). The draft card lists both people
+with an amount and a percent; when a bare number was read as dollars it also
+offers "Is that a percentage instead?" (`proposal.percentGuess`), which
+re-sends the message as "Add to splits, Joyce's share is 1.6%" and replaces
+the draft. A share above the total, above 100%, negative or $0 is asked back
+in plain words ("Joyce's share can't be more than $7.90."), no chips.
+
+AI off or failing, with a saved entry in focus: the route still reads a share
+in the message with `readSharesByRules` ("Joyce's share 1.6", "Joyce pays
+2", "Joyce owes me 1.60", "Joyce 30%", "Tim 70%", "all Joyce", "split
+50/50"), checks it the same way and answers `{ mode: "rules", action, reply
+}`; the page shows the draft after its one-line rules note. Any other message
+is answered at once as before. Tests: `tests/ask-turn-shares.test.mjs`,
+`tests/ask-turn-route.test.mjs`, `tests/e2e/ask-ai-turn.spec.js`.
 
 The owner's example: on the Apple Pay card, "Add to splits, all Joyce" (or
 "I meant all splits share is Joyce, I'm the owner") reads as
@@ -276,6 +293,92 @@ conversation (`rulesNoted`). On the public demo, whose caps are its own
 used-up cap answers `{ mode: "rules", reason, notice: "demo_allowance" }`
 and the note reads "The demo's Claude allowance is used up for today, so
 Ask is using its built-in rules." instead.
+
+### Three principles
+
+Owner request, 2026-10-14: fix the class of failure, not the phrase. Every
+Ask action follows these three rules, and every new Ask action must too.
+
+1. **The model states intent, the server completes.** The model reports only
+   what the person said, as they said it: a name as written ("joyce's", "J",
+   "citi"), a month or day as a word ("september", "last month",
+   "yesterday"), an amount without units ("1.6", "fifty"), a share as stated
+   ({person, value} with value "all", "70%", "$1.60", "1.6", "half"). It is
+   never asked for a computed number: no remainder share, no converted
+   amount, no worked-out date. The server derives all of it:
+   - names: `matchName` (`ask-turn-names.ts`) matches people, wallets,
+     categories and groups by exact name, initial, a word of the name, a
+     containing word or a typo (a swapped pair counts as one); two that fit
+     equally are ambiguous and asked, never guessed;
+   - days and months: a day or month the message itself names wins over the
+     model's (`findDayIn`, `findMonthIn`) and fills one the model left out;
+     words are read from today (`readDayWord`, `readMonthWord`); nothing said
+     is the month in view;
+   - amounts: symbols, words, `k`, a decimal comma (`readAmountMinor`); a
+     figure the person never wrote is replaced by the one amount the message
+     does state, and with none or several it is no amount;
+   - shares: one stated share is enough, the other person has the rest; a
+     bare number is told apart by what is written beside it and the entry's
+     total (`ask-turn-shares.ts`); a second figure the person never wrote is
+     the model's and is dropped;
+   - defaults: the entry in focus (its payer, wallet, amount), the viewer for
+     "I", this month, the only split group.
+2. **Draft with visible assumptions; ask only when outcomes differ.** What
+   the app assumed is said in plain words on the reply (`assumptions`: a line
+   and up to 3 chips; the page shows it under the draft, and a chip is sent as
+   the next message, like any question's chip). A name that fits nothing in an
+   optional field of a new draft (wallet, owner, category) leaves that field
+   off, says so and offers the nearest names; an even split nobody asked for,
+   a payer other than the entry's owner, a group in another currency, a bare
+   number read as dollars (the existing "Is that a percentage instead?" row),
+   an unknown person in a question or search ("I used the whole household")
+   are all assumptions, not questions. Ask only when two readings lead to
+   materially different saves or answers: the rule is `decideReadings`
+   (`ask-ambiguity.ts`). Each reading has an effect (what would be written or
+   answered) and a basis (stated, focus, default, guess); one effect is
+   settled; one strongest reading is drafted (shown as an assumption when it
+   was a default or a guess); several different effects at the strongest
+   basis are asked, with the readings as chips (two split groups for "settle
+   up with Joyce", two categories for "subscriptions", two people for "J").
+3. **Repair before asking.** When the checks refuse the model's action for a
+   reason the model can fix (`ASK_REPAIRABLE_CODES`: a name, day, month, share
+   or plan line they could not use), the route sends ONE repair turn
+   (`ask-turn-repair.ts`): the turn's own prompt, the refused answer without
+   its nulls, and the errors as a machine-readable list (`code`, `field`,
+   `got`, and the valid options: people, wallets, categories, groups, plan
+   lines). The corrected action is used only if it checks out; otherwise the
+   person gets the original question, with its chips. Never repaired: the
+   model's own question, and a question only the person can answer (an amount
+   they never gave, which of two things they meant, a share that is simply
+   too big). At most one repair per message; it counts as a second allowance
+   unit (about US$0.001), uses the same scrubbed context, and sends no
+   account number or amount from the household's records. The route logs one
+   line per repair: `{"event":"ask_turn_repair","action","validatorError",
+   "field","repaired"}`, never the message, a name or an amount, so the
+   repair rate can be measured in the Worker logs. The response carries
+   `repaired: true|false` when one was tried (the page ignores it).
+
+### Eval bank
+
+`tests/fixtures/ask-eval-utterances.json` holds 121 realistic messages across
+every Ask action (typos, shorthand, partial information, unit ambiguities, the
+owner's own phrasings), each with the action and reply it should end with and
+the answer a good model records for it. Two runs share it
+(`tests/support/ask-eval-bank.mjs`):
+
+- `tests/ask-eval-bank.test.mjs` (in `npm run test:unit`) replays every
+  recorded answer through the real Worker route on a seeded household with no
+  model, so the server's completion, validation and repair logic is proved on
+  every run; it also fails if the bank shrinks below 80, misses an action, or
+  a recorded answer stops fitting the schema the model is given.
+- `npm run eval:ask` sends the same messages to the real model: manual, not
+  in CI, cap-aware (a spread sample of 30 by default; `--all --yes` for the
+  whole bank; `--ids`, `--group`, `--limit`, `--dry`), printing PASS or FAIL
+  per message, the pass rate and the repair rate.
+
+A new Ask action adds its messages to the bank (its happy path, a typo or
+shorthand, a partial message, and a message that must be asked back) before it
+ships.
 
 ### Phase 2: changes to saved data
 

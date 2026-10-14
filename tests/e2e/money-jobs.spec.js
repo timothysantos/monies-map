@@ -280,7 +280,12 @@ test.describe("phone", () => {
     // Its question gets the plan answer (not this month against last), with
     // every amount masked and no words that say which side of the plan.
     const spendAsk = page.locator('[data-figure-menu="spending"] [data-action="ask"]');
-    if (!(await spendAsk.isVisible())) await lead.locator('[data-job="spend"] .money-job-row').tap();
+    if (!(await spendAsk.isVisible())) {
+      // The Invested menu (with its title) can sit over the Spend row: a second tap on Invested closes it.
+      await lead.locator('[data-segment="invested"]').tap();
+      await expect(page.locator('[data-figure-menu="invested"]')).toHaveCount(0);
+      await lead.locator('[data-job="spend"] .money-job-row').tap();
+    }
     await spendAsk.tap();
     await expect(page).toHaveURL(/\/ask\?/);
     const answer = page.locator('[data-ask-money-answer="plan"]');
