@@ -117,7 +117,11 @@ const OLDEST_DATE_DAYS = 400;
 
 const nullableString = { type: ["string", "null"] };
 const nullableAmount = { type: ["string", "number", "null"] };
-const nullableObject = (properties: Record<string, unknown>) => ({
+// A nullable enum is a union of a string enum and null. Anthropic's schema
+// validator refuses {type: ["string","null"], enum: [..., null]} ("Enum value
+// does not match declared type"), which rejected every Ask turn with a 400.
+const nullableEnum = (values: string[]) => ({ anyOf: [{ type: "string", enum: values }, { type: "null" }] });
+const nullableObject =(properties: Record<string, unknown>) => ({
   anyOf: [{ type: "object", properties, additionalProperties: false }, { type: "null" }]
 });
 
@@ -129,7 +133,7 @@ export const ASK_TURN_SCHEMA = {
   properties: {
     action: { type: "string", enum: [...ASK_TURN_ACTIONS] },
     entry: nullableObject({
-      type: { type: ["string", "null"], enum: ["expense", "income", "transfer", null] },
+      type: nullableEnum(["expense", "income", "transfer"]),
       description: nullableString,
       amount: nullableAmount,
       date: nullableString,
@@ -186,7 +190,7 @@ export const ASK_TURN_SCHEMA = {
       wallets: { type: "array", items: { type: "string" } },
       person: nullableString,
       month: nullableString,
-      type: { type: ["string", "null"], enum: ["expense", "income", "transfer", null] },
+      type: nullableEnum(["expense", "income", "transfer"]),
       min_amount: nullableAmount,
       max_amount: nullableAmount
     }),
@@ -201,7 +205,7 @@ export const ASK_TURN_SCHEMA = {
     payment_way: nullableObject({ person: nullableString, paynow_wallet: nullableString, cash_wallet: nullableString }),
     category_edit: nullableObject({ op: { type: "string", enum: ["create", "rename", "colour"] }, category: nullableString, new_name: nullableString, colour: nullableString }),
     plan_link: nullableObject({ line: nullableString, month: nullableString, words: nullableString }),
-    blocked: { type: ["string", "null"], enum: [...ASK_TURN_BLOCKED, null] }
+    blocked: nullableEnum([...ASK_TURN_BLOCKED])
   },
   required: ["action"],
   additionalProperties: false
