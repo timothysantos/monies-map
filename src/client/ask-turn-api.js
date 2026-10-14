@@ -158,7 +158,36 @@ function readRulesReply(reply) {
   return read && (read.kind === "split_proposal" || read.kind === "clarify" || read.kind === "note") ? read : null;
 }
 
+const ASSUMPTION_TEXT_LIMIT = 140;
+const ASSUMPTION_CHIP_LIMIT = 40;
+const ASSUMPTION_MAX = 3;
+const ASSUMPTION_MAX_CHIPS = 3;
+
+// What the app assumed while drafting (docs/flows/ask-flow.md, "Three
+// principles"): plain-words lines, each with up to 3 one-tap alternatives.
+// Anything malformed is dropped; the reply itself is unaffected.
+/** @returns {{ text: string, chips: string[] }[]} */
+export function readAssumptions(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => isObject(item) && isText(item.text) && item.text.trim() && item.text.length <= ASSUMPTION_TEXT_LIMIT)
+    .slice(0, ASSUMPTION_MAX)
+    .map((item) => ({
+      text: item.text.trim(),
+      chips: (Array.isArray(item.chips) ? item.chips : [])
+        .filter((chip) => isText(chip) && chip.trim() && chip.length <= ASSUMPTION_CHIP_LIMIT)
+        .slice(0, ASSUMPTION_MAX_CHIPS)
+    }));
+}
+
 function readReply(reply) {
+  const read = readReplyBody(reply);
+  if (!read) return null;
+  const assumptions = readAssumptions(reply.assumptions);
+  return assumptions.length ? { ...read, assumptions } : read;
+}
+
+function readReplyBody(reply) {
   if (!isObject(reply)) return null;
   switch (reply.kind) {
     case "entry_draft": {

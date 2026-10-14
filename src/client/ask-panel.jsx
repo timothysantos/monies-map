@@ -627,6 +627,29 @@ function AskConversation({
   // What the turn route sent back, shown with the cards the page already
   // has. Nothing here writes: every draft waits for its Save.
   async function applyTurnReply(text, reply) {
+    await showTurnReply(text, reply);
+    showAssumptions(reply.assumptions, reply.kind);
+  }
+
+  // What the app assumed while drafting, in plain words, with the other
+  // readings as chips that send them as the next message (docs/flows/
+  // ask-flow.md, "Three principles"). The draft is already on screen, and
+  // Save is not behind these chips. A page that has gone elsewhere says
+  // nothing.
+  function showAssumptions(assumptions, kind) {
+    if (!assumptions?.length || kind === "open_page" || kind === "clarify") {
+      return;
+    }
+    const lines = assumptions.map((line) => line.text).join(" ");
+    const chips = [...new Set(assumptions.flatMap((line) => line.chips))].slice(0, 4);
+    if (chips.length) {
+      setPending({ kind: "turn-question", question: lines, options: chips });
+    } else {
+      appendThread(threadItem("note", { text: lines, tone: "calm" }));
+    }
+  }
+
+  async function showTurnReply(text, reply) {
     if (reply.kind === "entry_draft") {
       let next = applyEntryDraft(workingCard(), reply.draft, context);
       if (reply.share?.on) {

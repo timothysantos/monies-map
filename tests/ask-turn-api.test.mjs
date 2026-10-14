@@ -163,6 +163,28 @@ test("a reply is kept only in a shape the page can show", () => {
   }
 });
 
+test("assumptions: plain-words lines with up to 3 chips are kept on any reply; malformed ones are dropped and the reply stays", () => {
+  const note = { kind: "note", text: "Done." };
+  const kept = readAskTurnResponse({
+    ok: true, mode: "ai", action: "cannot_help",
+    reply: { ...note, assumptions: [{ text: "I read 1.6 as $1.60 for Joyce.", chips: ["Joyce's share is 1.6%", "a", "b", "c-dropped"] }, { text: "Second line.", chips: [] }] }
+  });
+  assert.deepEqual(kept.reply, {
+    kind: "note", text: "Done.",
+    assumptions: [{ text: "I read 1.6 as $1.60 for Joyce.", chips: ["Joyce's share is 1.6%", "a", "b"] }, { text: "Second line.", chips: [] }]
+  });
+  const bad = readAskTurnResponse({
+    ok: true, mode: "ai", action: "cannot_help",
+    reply: { ...note, assumptions: [{ text: "" }, { text: "x".repeat(141), chips: [] }, { chips: ["only chips"] }, "nope", { text: "Kept.", chips: ["y".repeat(41), 7, "ok"] }] }
+  });
+  assert.deepEqual(bad.reply, { kind: "note", text: "Done.", assumptions: [{ text: "Kept.", chips: ["ok"] }] });
+  // No assumptions: the reply is unchanged, with no empty key.
+  assert.deepEqual(readAskTurnResponse({ ok: true, mode: "ai", action: "cannot_help", reply: { ...note, assumptions: "nonsense" } }).reply, note);
+  // At most 3 lines.
+  const many = readAskTurnResponse({ ok: true, mode: "ai", action: "cannot_help", reply: { ...note, assumptions: [1, 2, 3, 4, 5].map((index) => ({ text: `Line ${index}.`, chips: [] })) } });
+  assert.equal(many.reply.assumptions.length, 3);
+});
+
 test("a failed or refused request is { ok: false }; the body sent is what the route reads", async () => {
   let sent = null;
   const ok = await requestAskTurn({ text: "hi" }, { fetchImpl: async (url, init) => { sent = { url, body: JSON.parse(init.body) }; return new Response(JSON.stringify({ ok: true, mode: "rules", reason: "off" })); } });
