@@ -207,3 +207,20 @@ test.describe("Settings: What Ask remembers", () => {
     expect(habits.habits).toEqual([]);
   });
 });
+
+test.describe("Settings: What Ask remembers on a computer", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("the section lists what Ask learned beside the switch", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/");
+    await reseedDemo(page);
+    await teachShop(page, "Desktop Cafe", 3);
+    await page.goto("/settings");
+    const section = page.locator("#settings-ask-remembers");
+    await section.getByRole("button", { name: /What Ask remembers/ }).click();
+    await expect(section.locator('[data-habit-id="category:desktop cafe"]')).toContainText("Food & Drinks");
+    await section.scrollIntoViewIfNeeded();
+    await shot(page, "settings-section-desktop");
+  });
+});

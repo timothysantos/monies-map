@@ -306,7 +306,8 @@ test.describe("Ask, AI first, Phase 2", () => {
     await expect.poll(async () => (await loadSplitsPage(page, { view: "person-tim", month: MONTH })).splitsPage.groups.find((item) => item.id === group.id)?.balanceMinor ?? 0).toBe(0);
   });
 
-  test("note edit: the saved entry's note in the person's words; Save writes it, Undo puts the old one back", async ({ page }) => {
+  test("note edit (Let Ask handle safe things off): the saved entry's note in the person's words; Save writes it, Undo puts the old one back", async ({ page }) => {
+    await postJson(page, "/api/ask/habits/setting", { enabled: false });
     const entryId = await createEntry(page, { description: `DINNER ${Date.now()}`, note: "dinner" });
     await stubModel(page, [{ action: "edit_note", note_edit: { target: "entry", text: "Joyce's birthday dinner" } }]);
     await openSavedEntry(page, entryId);
@@ -318,6 +319,22 @@ test.describe("Ask, AI first, Phase 2", () => {
     await card.getByRole("button", { name: "Save" }).click();
     await expect.poll(async () => (await entryById(page, entryId)).note).toBe("Joyce's birthday dinner");
     await page.locator("[data-change-undo]").click();
+    await expect.poll(async () => (await entryById(page, entryId)).note).toBe("dinner");
+  });
+
+  test("note edit with Let Ask handle safe things on (the default): a note the person asked for on a new entry is added at once, listed under Done for you, and Undo puts the old one back", async ({ page }) => {
+    const entryId = await createEntry(page, { description: `DINNER ${Date.now()}`, note: "dinner" });
+    await stubModel(page, [{ action: "edit_note", note_edit: { target: "entry", text: "Joyce's birthday dinner" } }]);
+    await openSavedEntry(page, entryId);
+    await send(page, "note: Joyce's birthday dinner");
+
+    await expect(page.locator(".ask-note").filter({ hasText: "Added the note to" })).toBeVisible();
+    await expect(page.locator("[data-change-draft]")).toHaveCount(0);
+    await expect.poll(async () => (await entryById(page, entryId)).note).toBe("Joyce's birthday dinner");
+    const list = page.locator("[data-ask-done-list]");
+    await list.getByRole("button", { name: /Done for you/ }).click();
+    await expect(list.locator('[data-done-kind="note"]')).toContainText("Note added");
+    await list.getByRole("button", { name: "Undo" }).click();
     await expect.poll(async () => (await entryById(page, entryId)).note).toBe("dinner");
   });
 
