@@ -104,7 +104,7 @@ export function buildTurnFocus({ card = null, intent = null, insightTopic = "", 
 }
 
 /**
- * @returns {Promise<{ ok: true, mode: "rules", reason: string } | { ok: true, mode: "ai", action: string, reply: any } | { ok: false }>}
+ * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance" } | { ok: true, mode: "ai", action: string, reply: any } | { ok: false }>}
  */
 export async function requestAskTurn(body, { fetchImpl = fetch, timeoutMs = TURN_TIMEOUT_MS } = {}) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -134,7 +134,12 @@ export function readAskTurnResponse(body) {
     return { ok: false };
   }
   if (body.mode === "rules") {
-    return { ok: true, mode: "rules", reason: typeof body.reason === "string" ? body.reason : "" };
+    return {
+      ok: true,
+      mode: "rules",
+      reason: typeof body.reason === "string" ? body.reason : "",
+      ...(body.notice === "demo_allowance" ? { notice: "demo_allowance" } : {})
+    };
   }
   const reply = body.mode === "ai" ? readReply(body.reply) : null;
   return reply ? { ok: true, mode: "ai", action: String(body.action ?? ""), reply } : { ok: false };

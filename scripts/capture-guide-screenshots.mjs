@@ -238,7 +238,7 @@ const SHOTS = [
     name: "month-link-entries", device: "desktop",
     run: async (page) => {
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
-      const row = page.locator("tr").filter({ hasText: "Prudential premium" }).first();
+      const row = page.locator("tr").filter({ hasText: "AIA premium" }).first();
       await scrollToLocator(page, row, 300);
       await row.locator(".planned-link-manage-trigger").first().click();
       await page.getByRole("dialog").first().waitFor();
@@ -611,7 +611,7 @@ const SHOTS = [
       // have confirmed May statements, which keep every row of an old export
       // out, so the export goes to a new card that has no statement yet.
       const reference = await (await page.request.get("/api/reference-data")).json();
-      const serene = reference.accounts.find((account) => account.name === "UOB PRVI Miles Card")?.ownerPersonId;
+      const serene = reference.accounts.find((account) => account.name === "UOB Lady's Card")?.ownerPersonId;
       await page.request.post("/api/accounts/create", {
         data: { name: SAMPLE_CARD_ACCOUNT, institution: "UOB", kind: "credit_card", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: serene ?? null, isJoint: false }
       });

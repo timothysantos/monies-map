@@ -270,7 +270,12 @@ allowance use), and the page reads the message with its rule readers
 exactly as before (`readSentenceByRules`: plan request, money question,
 filter, then the entry draft), with the one-line note "AI isn't available
 right now, so Ask read this with its built-in rules." once per
-conversation (`rulesNoted`).
+conversation (`rulesNoted`). On the public demo, whose caps are its own
+(`AI_ASSIST_DAILY_LIMIT` 50 a Singapore day and
+`AI_ASSIST_VISITOR_DAILY_LIMIT` 10 per hashed visitor, in the demo D1), a
+used-up cap answers `{ mode: "rules", reason, notice: "demo_allowance" }`
+and the note reads "The demo's Claude allowance is used up for today, so
+Ask is using its built-in rules." instead.
 
 ### Phase 2: changes to saved data
 
