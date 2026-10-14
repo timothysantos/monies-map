@@ -1,4 +1,4 @@
-import { headroomTone, signTone, spendTone } from "../domain/money-tone";
+import { flowTone, headroomTone, signTone, spendTone } from "../domain/money-tone";
 import { isInvestmentsCategoryName, isSavingsCategoryName } from "../domain/money-jobs";
 import { formatMonthLabel } from "./formatters";
 import { splitMoneyUse } from "./money-jobs-model";
@@ -39,7 +39,9 @@ function movedMoney(categoryShare) {
 // category share and the investment moves (the page's `investmentMoves`:
 // transfers into and out of investment accounts, investment-moves.ts) are
 // optional: without them nothing is invested or moved.
-export function buildSummaryLeadModel(metricCards = [], { categoryShare = [], investmentMoves = null } = {}) {
+// `hasPlanRows` is the Month page's: a month with plan lines has a plan even
+// when every line is zero.
+export function buildSummaryLeadModel(metricCards = [], { categoryShare = [], investmentMoves = null, hasPlanRows = false } = {}) {
   const byLabel = new Map(metricCards.map((card) => [card.label, card]));
   const card = {};
   for (const [key, label] of Object.entries(CARD_LABELS)) {
@@ -74,6 +76,16 @@ export function buildSummaryLeadModel(metricCards = [], { categoryShare = [], in
       : null,
     income: { amountMinor: card.actualIncome.amountMinor, tone: card.actualIncome.tone, planMinor: card.plannedIncome.amountMinor },
     saved: { amountMinor: figures.kept, tone: signTone(figures.kept), planMinor: figures.savePlan },
+    // Whether the period has any plan: it picks Plan or Simple until the
+    // person chooses (lead-view.js).
+    hasPlan: hasPlanRows || card.plannedIncome.amountMinor > 0 || card.plannedSpend.amountMinor > 0
+      || figures.savePlan > 0 || figures.investPlan > 0,
+    // The Simple view's lead, "Earned $x · Spent $y": the same split with no
+    // plan. Spending is plain ink unless more went out than came in.
+    simple: {
+      earned: { amountMinor: figures.income, tone: flowTone(figures.income) },
+      spent: { amountMinor: actualMinor, tone: spendTone(actualMinor, figures.income) }
+    },
     // The split itself, for the savings bar and the money jobs.
     figures
   };

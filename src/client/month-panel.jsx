@@ -13,7 +13,7 @@ import { MonthPlanSheet } from "./month-plan-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
-import { MonthLead, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
+import { MonthLead, MonthMoneyIn, MonthNotesAndAccounts, MonthPanelHeader, useMonthLead } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
   buildMobileMonthPlanDialog,
@@ -36,6 +36,7 @@ import { selectMonthInsightEntries } from "./month-insight-facts";
 import { selectMonthSpendingMix } from "./month-spending-mix";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildMonthSignals, monthCalmLines, MONTH_TRIVIA_ROTATION } from "../domain/money-signals/month-signals";
+import { withoutPlanSignals } from "../domain/money-signals/plan-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
@@ -232,10 +233,20 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     [view.id, view.monthPage]
   );
   const checkInClock = useCheckInClock();
+  // The lead's model and the page's Plan | Simple view (lead-view.js).
+  const monthLead = useMonthLead({
+    cards: monthMetricCards,
+    monthSummary: selectedMonthSummary,
+    planSections,
+    categoryShare: view.monthPage.categoryShareChart,
+    investmentMoves: view.monthPage.investmentMoves ?? null
+  });
+  const isSimple = monthLead.leadView === "simple";
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
-    contextKey: `${view.monthPage.month}|${view.monthPage.selectedScope}`,
-    signals: buildMonthSignals({
+    contextKey: `${view.monthPage.month}|${view.monthPage.selectedScope}${isSimple ? "|simple" : ""}`,
+    // Simple shows no plan, so it leaves out the insights about the plan.
+    signals: (isSimple ? withoutPlanSignals : (signals) => signals)(buildMonthSignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       month: view.monthPage.month,
@@ -246,7 +257,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       summary: selectedMonthSummary,
       accountPills: view.accountPills,
       formatMoney: formatService.unmaskedMoney
-    }),
+    })),
     page: "month",
     period: view.monthPage.month,
     triviaRotation: MONTH_TRIVIA_ROTATION,
@@ -256,7 +267,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     // Wallet health arrives beside the month page; until it does, nothing
     // may be called sorted from a partial picture.
     ready: Array.isArray(view.accountPills)
-  }), [checkInClock, incomeRows, insightEntries, planSections, selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage.month, view.monthPage.selectedScope]);
+  }), [checkInClock, incomeRows, insightEntries, isSimple, planSections, selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage.month, view.monthPage.selectedScope]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -1495,13 +1506,13 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       />
 
       <MonthLead
-        cards={monthMetricCards}
-        monthSummary={selectedMonthSummary}
+        model={monthLead.model}
+        leadView={monthLead.leadView}
+        onLeadViewChange={monthLead.setLeadView}
         month={view.monthPage.month}
-        planSections={planSections}
         categoryShare={view.monthPage.categoryShareChart}
-        investmentMoves={view.monthPage.investmentMoves ?? null}
         isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
+        onOpenCategory={(categoryName) => handleOpenEntriesForActual({ categoryName })}
       />
 
       <FinancialInsight
@@ -1525,7 +1536,15 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         onOpenEntriesForCategory={(categoryName) => handleOpenEntriesForActual({ categoryName })}
       />
 
-      <MonthPlanStack
+      {/* Simple (lead-view.js): money in, and a way back to Plan, in the
+          plan tables' place; the plan is edited in Plan. */}
+      {monthLead.leadView === "simple" ? (
+        <MonthMoneyIn
+          entries={insightEntries}
+          onOpenEntries={(entryIds) => handleOpenEntriesForActual({ entryIds })}
+          onPlanThisMonth={() => monthLead.setLeadView("plan")}
+        />
+      ) : <MonthPlanStack
         view={view}
         categories={categories}
         categorySelectOptions={categorySelectOptions}
@@ -1561,7 +1580,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         onSortChange={handleSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         saveErrorMessage={monthRowError}
-      />
+      />}
 
       <MonthNotesAndAccounts
         monthNote={view.monthPage.monthNote}

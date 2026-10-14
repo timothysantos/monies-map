@@ -30,7 +30,7 @@ export function buildMonthLeadModel(metricCards = [], monthSummary = null, { pla
     byLabel.get("Savings target"),
     { label: "Realized savings", amountMinor: realizedSavingsMinor, tone: signTone(realizedSavingsMinor) },
     { label: "Planned investments", amountMinor: plannedInvestMinor(planRows), tone: "plan" }
-  ].filter(Boolean), { categoryShare, investmentMoves });
+  ].filter(Boolean), { categoryShare, investmentMoves, hasPlanRows: planRows.length > 0 });
   if (!lead) {
     return null;
   }

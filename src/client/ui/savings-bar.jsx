@@ -19,16 +19,16 @@ const copy = messages.summary.lead.savingsBar;
 // description is its legend item. Hidden money keeps the percentages and
 // neutral colours, and shows no amount anywhere.
 /**
- * @param {{ figures: any, hidden: boolean, period?: any }} props `period` is
+ * @param {{ figures: any, hidden: boolean, period?: any, withPlan?: boolean }} props `period` is
  * optional: without it (an Ask answer's bar) the parts have no menu and are
  * plain images.
  */
-export function SavingsBar({ figures, hidden, period = null }) {
+export function SavingsBar({ figures, hidden, period = null, withPlan = true }) {
   const baseId = useId();
   const rootRef = useRef(null);
   // The part whose menu is open (a click, tap or Enter).
   const [menuKey, setMenuKey] = useState(null);
-  const model = buildSavingsBarModel({ figures, hidden });
+  const model = buildSavingsBarModel({ figures, hidden, withPlan });
   const phone = useIsMobileLayout();
   const detail = useMoneyJobsDetail(menuKey !== null);
   // Start the menu's code on the first sign of interest, so a tap finds it.

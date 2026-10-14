@@ -1040,6 +1040,99 @@ Where it is used:
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
   sideways scroll.
+- Plan or Simple (`lead-view.js`, DOMAIN.md "Lead View"): one switch sets
+  the whole Summary and Month page's mode. It sits on the right of the
+  lead's eyebrow, "Plan" | "Simple" (`LeadViewSwitch` in
+  `ui/spend-lead-group.jsx`): a `role="radiogroup"` named "Show this
+  period" of two native radio inputs (`name="lead-view"`), so the browser
+  gives the arrow keys and the tab order. It is drawn 30 px tall as a pill
+  on `--chip` with the chosen option on `--card`; negative margins keep the
+  eyebrow line's height (the Month card stays at most 215 px on a phone),
+  and each invisible input covers its label and 9 px above and below, a
+  44 px target. Plan is the pages as they were. Without a choice a page
+  opens in Plan when the period has a plan (`hasPlan`) and in Simple when
+  it has none; while the figures load it is Plan.
+  The choice belongs to the signed-in login: the app shell carries it
+  (`leadView`, `app-repository-viewer-preferences.ts`, keyed by a SHA-256
+  of the Access email) and a switch is shown at once, then saved with
+  `POST /api/viewer-preferences/lead-view` (`viewer-preferences-route.ts`:
+  1 KB body cap, 401 without a login, 400 for anything but plan or simple,
+  the cross-site guard in front). One store (`leadViewStore`,
+  `useSyncExternalStore`) serves both pages; App applies each shell to it.
+  The device's `monies-map:lead-view` is a first-paint cache that a signed-in
+  shell replaces (a login that never chose clears it); a switch also
+  patches the app shell kept for a fast start (`app-shell-query.js`), so a
+  reload does not bring the old choice back. A save on its way is not
+  undone by a shell that lands meanwhile; a failed save keeps the choice
+  for the visit and on the device. Without a login (demo, local dev) the
+  device's storage is where it lives (read and written in try/catch:
+  blocked storage means the default and a switch that works for the visit).
+  The lead in Simple (`SpendLeadGroup view="simple"`): the eyebrow is the
+  period alone ("Jun 2025 – May 2026", "May 2026"); the lead is "Earned $x ·
+  Spent $y" at 1.5 rem, wrapping to two lines when the figures are long
+  (earned is mint, spent plain ink, rose only when more went out than came
+  in, `spendTone` against income); then the savings bar with
+  `withPlan={false}` (no plan bar, no plan legend item; its plain line, "You
+  kept $x of the $y you earned (15%)" or "You spent $x more than you
+  earned", is Simple's one line of words); no "of $x plan", no percent of
+  plan, no money jobs, and no Income / Saved pills or Income / Saved /
+  Remaining budget columns (each a plan figure or a repeat of the lead).
+  Under the bar, Simple's facts (`simple-metrics-model.js`, rendered by
+  `simple-detail.js`): small pills that wrap, "Daily spend $56" (the spending over the period's
+  days; "Daily spend so far" up to today while it is going), then "Top
+  spending" with the three biggest spending categories and their share of
+  spending as chips that open the category's entries (44 px reach). Money
+  filed under Investments or Savings is not spending here either. Chosen
+  over the other candidates: what was kept and its share of income (the
+  savings rate), or how much more went out than came in, is already the
+  bar's plain line just above (a "Kept $x · 79%" pill repeated it word for
+  word, so it was dropped); invested and taken out of investments are
+  already the bar's legend lines; a change against the previous period and
+  a splits balance need data neither page loads, so they are left out. All
+  whole dollars, every figure from the lead's `splitMoneyUse` and the page's
+  category share. Hidden money keeps only the categories' shares.
+  The figures are the lead model's `simple` (`buildSummaryLeadModel`), from
+  the same split as Plan's.
+  Summary in Simple: the lead, Money insights without the insights about
+  the plan (`withoutPlanSignals`, `money-signals/plan-signals.ts`: months
+  under plan, plan short or left, over plan, planned bills, savings on
+  plan, plan pace, fixed costs; the check-in's context key gains "|simple"
+  so its memory is per mode), Spending Mix, "Earned vs spent by month" in
+  Intent vs Outcome's place, and Wallets in view. "Earned vs spent by month"
+  (`summary-earned-spent.js`, model `summary-earned-spent-model.js`): flat
+  rows split by hairlines, newest first; the month name (44 px) opens the
+  month, beside it "Kept $x" (mint) or "Overspent $x" (rose), under it
+  "Earned $x  Spent $y" (and "Invested $z" when there is any) and a 6 px bar
+  on the month's own scale in the savings bar's colours (spent, the part
+  past the income striped, invested, kept). Each month goes through
+  `splitMoneyUse` with its own category share, so its spent is the Month
+  lead's; its invested is the Investments category only, as the Summary
+  page has transfers into investment accounts for the whole range only.
+  Month in Simple: the lead, the insights without the plan ones, Spending
+  Mix (where the money went: each category with its amount, share and bar,
+  opening its entries), then "Money in" (`MonthMoneyIn` in
+  `month-overview.jsx`, `month-money-in-model.js`, words
+  `copy/month-simple-copy.js`) where the plan tables are: one row per income
+  source (the entry's description; repeated sources add up, "Salary · 2
+  entries"), mint amounts, each opening its entries, then a quiet "Plan this
+  month" that switches the page to Plan, where the plan is edited; then the
+  notes and accounts. The lead's model and the view are the panel's
+  (`useMonthLead`).
+  Loading: the lead's Simple parts are in the first screen (the switch, the
+  store, the Simple lead). The facts and the month list are
+  `simple-detail.js` (with `simple-view.css` and `copy/simple-view-copy.js`),
+  loaded by `SimpleDetail` (a `React.lazy` in `ui/spend-lead-group.jsx`)
+  only when Simple shows. It imports no React (it is handed `createElement`
+  and the chevron), like `money-jobs-detail.js`: a lazy chunk importing
+  React made the bundler split a shared chunk into one more first-screen
+  file. Month's parts are in the Month route's chunk. Hidden money: the
+  Simple lead's figures are dots in plain ink; the bar is in greys with its
+  hidden sentence; the facts keep only the categories' shares; the month
+  list keeps each bar and says only "Spent · 85% of earned" (nothing for a
+  month with no income), with no amount and no kept or overspent word;
+  Money in shows dots. (`tests/e2e/lead-simple-view.spec.js`,
+  `tests/lead-view.test.mjs`, `tests/simple-metrics-model.test.mjs`,
+  `tests/simple-page.test.mjs`, `tests/viewer-preferences.test.mjs`.)
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
   chunks; no `styles.css` growth). The Spending Mix donut labels only the

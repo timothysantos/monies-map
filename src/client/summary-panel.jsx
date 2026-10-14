@@ -12,6 +12,8 @@ import "./summary-body.css";
 import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { SummaryLead } from "./summary-lead";
+import { buildSummaryLeadModel } from "./summary-lead-model";
+import { useLeadView } from "./lead-view";
 import { SummaryIntentVsOutcomeSection } from "./summary-intent-outcome";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
@@ -21,13 +23,14 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-import { DetailRow, DetailRows } from "./ui-components";
+import { DetailRow, DetailRows, SimpleDetail } from "./ui-components";
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
-// 2. Month-by-month "intent vs outcome" plan review.
+// 2. Month-by-month "intent vs outcome" plan review (in the Simple view,
+//    earned against spent by month instead).
 // 3. Account health pills that stay independent from the selected range.
 export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth }) {
   const [, setSearchParams] = useSearchParams();
@@ -38,6 +41,13 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
   useRouteWorkReport({ busy: Boolean(monthNoteDialog) || isSavingMonthNote });
+  const leadModel = useMemo(() => buildSummaryLeadModel(view.summaryPage?.metricCards, {
+    categoryShare: view.summaryPage?.categoryShareChart,
+    investmentMoves: view.summaryPage?.investmentMoves ?? null
+  }), [view.summaryPage]);
+  // Plan or Simple (lead-view.js): the lead and the month-by-month section
+  // follow it. Until the figures arrive it is Plan, unless chosen before.
+  const [leadView, setLeadView] = useLeadView(leadModel ? leadModel.hasPlan : null);
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = useMemo(() => ({
@@ -61,8 +71,9 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   // Null until the insights module arrives: the insights show their frame.
   const checkIn = useMemo(() => (summaryInsights ? {
     memoryKey: checkInMemoryKey("summary", view.id),
-    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), checkInFocusMonth, view.selectedScope].join("|"),
-    signals: summaryInsights.buildSummarySignals({
+    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), checkInFocusMonth, view.selectedScope].join("|") + (leadView === "simple" ? "|simple" : ""),
+    // Simple shows no plan, so it leaves out the insights about the plan.
+    signals: (leadView === "simple" ? summaryInsights.withoutPlanSignals : (signals) => signals)(summaryInsights.buildSummarySignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       today: checkInClock.today,
@@ -73,7 +84,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
       formatMoney: unmaskedMoney
-    }),
+    })),
     page: "summary",
     // The range's last month is the period Summary rotates by.
     period: safeSummaryPage.rangeMonths.at(-1) ?? checkInClock.today.slice(0, 7),
@@ -81,7 +92,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     calmLines: summaryInsights.SUMMARY_CALM_LINES,
     alsoLabel: "Also in this period",
     clock: checkInClock
-  } : null), [accounts, checkInClock, checkInFocusMonth, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
+  } : null), [accounts, checkInClock, checkInFocusMonth, leadView, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
     if (action.id === "review-statement") {
       handleOpenImports();
@@ -153,9 +164,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
         </div>
         <SummaryLead
-          metricCards={safeSummaryPage.metricCards}
+          model={leadModel}
+          view={leadView}
+          onViewChange={setLeadView}
           categoryShare={safeSummaryPage.categoryShareChart}
-          investmentMoves={safeSummaryPage.investmentMoves ?? null}
+          onOpenCategory={handleOpenEntriesForCategory}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
         />
@@ -177,11 +190,23 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           onOpenEntriesForCategory={handleOpenEntriesForCategory}
         />
 
-        <SummaryIntentVsOutcomeSection
-          months={safeSummaryPage.months}
-          onOpenMonth={onOpenMonth}
-          onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
-        />
+        {leadView === "simple" ? (
+          // The Simple view's month list, loaded only in Simple.
+          <Suspense fallback={null}>
+            <SimpleDetail
+              part="months"
+              months={safeSummaryPage.months}
+              categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
+              onOpenMonth={onOpenMonth}
+            />
+          </Suspense>
+        ) : (
+          <SummaryIntentVsOutcomeSection
+            months={safeSummaryPage.months}
+            onOpenMonth={onOpenMonth}
+            onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
+          />
+        )}
       </div>
 
       <SummaryAccountsSection

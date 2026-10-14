@@ -32,6 +32,11 @@ test("Month lead: spend against the spend plan, the savings target, remaining bu
     headroom: { amountMinor: 100_000, isOver: true, tone: "short" },
     income: { amountMinor: 650_000, tone: "in", planMinor: 600_000 },
     saved: { amountMinor: 230_000, tone: "in", planMinor: 180_000 },
+    hasPlan: true,
+    simple: {
+      earned: { amountMinor: 650_000, tone: "in" },
+      spent: { amountMinor: 420_000, tone: "neutral" }
+    },
     figures: {
       income: 650_000,
       spending: 420_000,

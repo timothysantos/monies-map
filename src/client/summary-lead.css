@@ -100,6 +100,108 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   }
 }
 
+/* The lead's head: the eyebrow, and the Plan | Simple switch on its right
+   (lead-view.js). The switch is drawn 30 px tall but takes no more height
+   than the eyebrow line (negative margins), so the Month card keeps its
+   phone height; each option's hit area reaches 44 px. */
+.lead-view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lead-view-switch {
+  display: inline-flex;
+  flex: none;
+  margin-block: -9px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--chip);
+}
+
+.lead-view-switch label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The radio itself is invisible and covers the label and 9 px above and
+   below it: the 44 px target. */
+.lead-view-switch input {
+  position: absolute;
+  inset: -9px -1px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.lead-view-switch label:has(> input:checked) {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.14);
+}
+
+.lead-view-switch label:has(> input:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 1px;
+}
+
+/* Simple: "Earned $x · Spent $y" as the lead, wrapping to two lines when
+   the figures are long; no pills beside it. */
+.summary-lead-group.is-simple {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lead-simple {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: 1.5rem;
+  white-space: normal;
+}
+
+.lead-simple > span[aria-hidden] {
+  color: var(--muted);
+}
+
+/* A phone puts Earned and Spent on a line each, with no dot between. */
+@media (max-width: 760px) {
+  .lead-simple {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lead-simple > span[aria-hidden] {
+    display: none;
+  }
+}
+
+.lead-simple-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.summary-lead-group .lead-simple-figure small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 /* The Month top's support row (ui/spend-lead-group.jsx, `inline`): Income,
    Saved and Remaining budget as three equal columns under the bar, split by
    a hairline, in text colour only. */

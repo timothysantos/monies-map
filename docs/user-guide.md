@@ -306,6 +306,21 @@ over plan.
 
 ### What each control does
 
+- **Plan | Simple** (top right of the Spent card): **Plan** shows your
+  spending against your plan, as above. **Simple** is for when you do not
+  keep a plan, and changes the whole page: the card shows only what you
+  **Earned** and what you **Spent**, the same bar without the plan, one
+  line in words ("You kept $12,000 of the $80,000 you earned (15%)" or "You
+  spent $300 more than you earned"), and a few facts: your **daily spend**
+  and your **top spending** categories with their share of your spending
+  (select one to see its entries). The figures are the same in both.
+  **Earned vs spent by month** takes the place of Intent vs Outcome: one row
+  per month, newest first, with what you kept (or overspent), what you
+  earned and spent, and a thin bar; the month's name opens that month.
+  Money insights leave out the ones about your plan. If a range has no plan
+  at all it opens in Simple. Your choice is remembered for your login, on
+  every phone and computer you use, for Summary and Month alike (in the
+  demo, on this device).
 - **Range** (top right): the months included, 12 by default. Use **‹** and
   **›** to move the whole range, or select the start or end month to pick one.
   ![Selecting the start of the range opens a month picker](/faq/guide/desktop/thumbs/summary-range-picker.webp)
@@ -402,6 +417,13 @@ stays highlighted, and the range at the top stays as it was.
 
 ### What each control does
 
+- **Plan | Simple** (top right of the top card): the same switch as on
+  [Summary](#summary). Simple shows what you earned and spent this month,
+  with the bar and the same few facts; in place of the plan rows it lists
+  **Money in** (what came in, one row per source; select one to see its
+  entries), and **Plan this month** switches back to Plan to set budgets
+  and planned items. Spending Mix shows where the money went in both. A
+  month with no plan opens in Simple.
 - **Month**: the row of months under the top bar (on a phone, **‹**, the
   month's name and **›** beside the View and scope bar) moves to another
   month of the range, or **All months** back to Summary.

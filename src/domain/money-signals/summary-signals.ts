@@ -1013,3 +1013,6 @@ export function buildSummarySignals(input: SummarySignalInput): MoneySignal[] {
     incomeMonthsTrivia(input)
   ].filter((signal): signal is MoneySignal => Boolean(signal));
 }
+
+// The Simple view leaves out the insights about the plan (plan-signals.ts).
+export { withoutPlanSignals } from "./plan-signals";

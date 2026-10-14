@@ -73,6 +73,18 @@ the note. Every figure is the summary DTO's month row
 (`buildIntentMonthCard`); nothing scrolls sideways at 390 px, and hidden
 money shows dots with only the bar's track
 (`tests/e2e/summary-month-lsd.spec.js`).
+
+The Plan | Simple switch (`lead-view.js`, DOMAIN.md "Lead View") sets the
+page's mode. The panel builds the lead model once (`buildSummaryLeadModel`);
+its `hasPlan` picks the default (Plan with a plan, Simple without; Plan
+while loading), and the login's choice wins: it comes on `GET /api/app-shell`
+(`leadView`, only for a signed-in login that chose) and a switch saves it
+with `POST /api/viewer-preferences/lead-view`; without a login the device
+keeps it. Simple shows the model's `simple` figures and facts, Money
+insights without the plan ones (`withoutPlanSignals`), and in Intent vs
+Outcome's place "Earned vs spent by month" (`simple-detail.js`, lazy, from
+the same DTO's `months` and `categoryShareByMonth`). The page request does
+not change with the mode (`tests/e2e/lead-simple-view.spec.js`).
 Spending Mix follows the tab's month choice and has no month chips of its
 own: on All months it shows the whole range (`categoryShareChart`); with a
 month picked the Month page shows that month's (`month-flow.md`). The

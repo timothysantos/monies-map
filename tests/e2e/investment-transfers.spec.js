@@ -75,6 +75,8 @@ async function keepShot(page, locator, name) {
 test.describe("money moved into and out of investment accounts", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    // These read the Plan lead; April has no plan, so it would open in Simple.
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:lead-view", "plan"));
     await reseedDemo(page);
     await seedInvestmentMoves(page);
   });

@@ -132,6 +132,7 @@ import { getAuthenticatedEmail } from "./server/access-identity";
 import { checkAccess } from "./server/access-jwt";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { handleAskTurn } from "./server/ask-turn-route";
+import { handleViewerPreferencesRoute, LEAD_VIEW_PATH } from "./server/viewer-preferences-route";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
@@ -445,6 +446,11 @@ export default {
         return json({ ok: false, error: "The Ask turn route only answers POST." }, 405, { Allow: "POST" });
       }
       return handleAskTurn(request, env);
+    }
+
+    if (url.pathname === LEAD_VIEW_PATH) {
+      return (await handleViewerPreferencesRoute(request, url, env))
+        ?? json({ ok: false, error: "This route only answers POST." }, 405, { Allow: "POST" });
     }
 
     if (url.pathname.startsWith("/api/ai-assist/")) {

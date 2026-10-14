@@ -146,6 +146,10 @@ export const messages = {
       incomePlan: "plan",
       saved: "Saved",
       savedTarget: "target",
+      // The lead's Plan | Simple switch (lead-view.js) and the Simple lead,
+      // "Earned $x · Spent $y".
+      view: { label: "Show this period", plan: "Plan", simple: "Simple" },
+      earned: "Earned",
       // The savings bar under the lead (ui/savings-bar.jsx, design.md): all
       // the money earned in the period is the bar; spent and kept share it.
       // Hidden money gets percentages and a share sentence, never an amount.
