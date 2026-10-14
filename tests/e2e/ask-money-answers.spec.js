@@ -172,7 +172,7 @@ test.describe("money questions on Ask on a wide screen", () => {
     expect(actualSpend(await loadMonthPage(page, { view: "household", month: MONTH }))).toBe(spend);
 
     await send(page, "should I buy a car?");
-    await expect(page.locator(".ask-note").last()).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
+    await expect(page.locator(".ask-note:not(.is-source)").last()).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
   });
 
   test("with money hidden the answer shows no amounts and no words", async ({ page }) => {

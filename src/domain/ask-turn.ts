@@ -21,7 +21,6 @@
 import { promptEntryName } from "./ask-answer-wording";
 import { ASK_LOOKUP_TOOL_NAMES } from "./ask-lookup-spec";
 import { readAnswerIntent, type AskAnswerIntentKind } from "./ask-answer-intent";
-import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
 import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
@@ -835,19 +834,24 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     fields.description = sourceAi(description);
     set.add("description");
   }
+  // Category: the household's rules and the everyday-word list (already in
+  // base, source "rule") come first; then the model's category when it is a
+  // real one other than Other (or when the person named it themselves);
+  // "Other" only when nothing fits, and then said as an assumption.
   const category = findCategory(raw.category, context);
-  if (typeof category === "string" && category !== "unknown") {
-    fields.categoryName = sourceAi(category);
-    set.add("categoryName");
-  } else {
-    if (category === "unknown") {
-      assumptions.push(assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
+  if (category === "unknown") {
+    assumptions.push(assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
+  }
+  if (fields.entryType.value !== "transfer") {
+    const byRule = fields.categoryName.source === "rule";
+    const namedByPerson = typeof category === "string" && category !== "unknown" && context.text.toLowerCase().includes(category.toLowerCase());
+    const modelUseful = typeof category === "string" && category !== "unknown" && !/^other\b/i.test(category);
+    if (typeof category === "string" && category !== "unknown" && (namedByPerson || (!byRule && modelUseful))) {
+      fields.categoryName = sourceAi(category);
+      set.add("categoryName");
     }
-    if (description && fields.entryType.value !== "transfer") {
-      const ruled = matchCategoryRule(description, context.entry.categoryMatchRules);
-      if (ruled && ruled !== "Transfer" && context.entry.categoryNames.includes(ruled)) {
-        fields.categoryName = { value: ruled, source: "rule" };
-      }
+    if (/^other\b/i.test(fields.categoryName.value) && fields.categoryName.source !== "sentence") {
+      assumptions.push(assumption(COPY.assumed.categoryOther(fields.categoryName.value)));
     }
   }
   const owner = findPerson(raw.owner, context);
@@ -1514,6 +1518,7 @@ export const COPY = {
     readAsPercent: (number: number, name: string) => `I read ${number} as ${number}% for ${scrubName(name)}.`,
     noWallet: (said: string) => `I couldn't find a wallet called "${scrubName(said)}", so I left the wallet out.`,
     noCategory: (said: string) => `There's no category called "${scrubName(said)}", so I left the category out.`,
+    categoryOther: (name: string) => `I couldn't tell the category, so I used ${name}.`,
     noPerson: (said: string) => `I couldn't tell who "${scrubName(said)}" is, so I left that out.`,
     noPersonView: (said: string) => `I couldn't tell who "${scrubName(said)}" is, so I used the whole household.`,
     amountKept: "I couldn't use that amount, so the amount stays as it was.",

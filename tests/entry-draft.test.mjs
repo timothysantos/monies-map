@@ -112,7 +112,7 @@ test("Dinner $120 at Burnt Ends with Serene, she paid: a shared suggestion paid 
     description: s("Dinner at Burnt Ends"),
     accountId: d("acct-ocbc-365"),
     accountName: d("OCBC 365 Card"),
-    categoryName: d("Other"),
+    categoryName: r("Food & Drinks"),
     amountMinor: s(12_000),
     entryType: d("expense"),
     ownershipType: s("shared"),
@@ -126,7 +126,7 @@ test("Dinner $120 at Burnt Ends with Serene, she paid: a shared suggestion paid 
     description: "Dinner at Burnt Ends",
     accountId: "acct-ocbc-365",
     accountName: "OCBC 365 Card",
-    categoryName: "Other",
+    categoryName: "Food & Drinks",
     amountMinor: 12_000,
     entryType: "expense",
     ownershipType: "shared",
@@ -630,7 +630,7 @@ test("taxi 15 cash: the cash wallet when one is set, and cash leaves the descrip
     description: s("taxi"),
     accountId: r("acct-ethan-cash"),
     accountName: r("Ethan's Wallet"),
-    categoryName: d("Other"),
+    categoryName: r("Taxi"),
     amountMinor: s(1500),
     entryType: d("expense"),
     ownershipType: d("direct"),
@@ -672,7 +672,7 @@ test("negative: cash with no cash wallet set is asked, never put on a card, offe
   assert.deepEqual(draft.fields, {
     date: d(TODAY),
     description: s("taxi"),
-    categoryName: d("Other"),
+    categoryName: r("Taxi"),
     amountMinor: s(1500),
     entryType: d("expense"),
     ownershipType: d("direct"),
@@ -786,4 +786,20 @@ test("negative: ordinary words that look like payment words stay in the descript
   const withdrawal = parseEntrySentence("cash withdrawal 100", { ...PAY_CONTEXT, accounts: [...ACCOUNTS, purse] });
   assert.deepEqual(withdrawal.fields.description, s("cash withdrawal"));
   assert.deepEqual(withdrawal.fields.accountId, d("acct-citi-cash-back"));
+});
+
+test("everyday words pick a category that exists; the household's rules win; a stranger word stays Other", () => {
+  const category = (text, context = CONTEXT) => parseEntrySentence(text, context).fields.categoryName;
+  assert.deepEqual(category("coffee 4.50"), r("Food & Drinks"));
+  assert.deepEqual(category("kopi 1.40"), r("Food & Drinks"));
+  assert.deepEqual(category("lunch 9.80"), r("Food & Drinks"));
+  assert.deepEqual(category("grab ride 14.20"), r("Taxi"));
+  assert.deepEqual(category("groceries 63.10"), r("Groceries"));
+  // A word whose category the household does not have is not used.
+  assert.deepEqual(category("coffee 4.50", { ...CONTEXT, categoryNames: ["Other", "Taxi"] }), d("Other"));
+  // The household's own rule comes first.
+  const ruled = { ...CONTEXT, categoryMatchRules: [{ id: "r1", pattern: "COFFEE", categoryName: "Shopping", priority: 1, isActive: true }] };
+  assert.deepEqual(category("coffee 4.50", ruled), r("Shopping"));
+  // Nothing fits.
+  assert.deepEqual(category("zorblax 7"), d("Other"));
 });

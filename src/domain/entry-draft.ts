@@ -14,6 +14,7 @@
 // people. Whatever is left is the description.
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
+import { categoryFromEverydayWords } from "./category-keywords";
 import { selectShortcutAccount } from "./app-repository-shortcuts";
 import { isBankTransferAccount, isCashWalletAccount, paymentWayAccountId, type PaymentWayKind } from "./payment-ways";
 import type {
@@ -298,6 +299,9 @@ export function parseEntrySentence(
     categoryName = { value: "Transfer", source: entryType.source };
   } else if (ruleCategory && ruleCategory !== "Transfer" && knownCategory(ruleCategory)) {
     categoryName = { value: ruleCategory, source: "rule" };
+  } else if (description && entryType.value === "expense" && categoryFromEverydayWords(description.value, context.categoryNames)) {
+    // No household rule fits: an everyday word ("coffee", "grab") still does.
+    categoryName = { value: categoryFromEverydayWords(description.value, context.categoryNames) as string, source: "rule" };
   } else if (entryType.value === "income" && context.categoryNames.includes("Other - Income")) {
     categoryName = fallback("Other - Income");
   } else {

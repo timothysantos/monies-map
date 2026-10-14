@@ -77,6 +77,29 @@ test.describe("Ask, AI first", () => {
     await chip.click();
     await expect.poll(() => seen.length).toBe(2);
     expect(seen[1].text).toBe(label.trim());
+    await expect(page.locator("[data-reply-source]")).toHaveCount(2);
+  });
+
+  test("\"coffee 4.50\" is Food & Drinks even when the model says Other, and each reply says where it came from: Claude, the basic model, or the built-in rules", async ({ page }) => {
+    await stubModel(page, [
+      { action: "draft_entry", entry: { type: "expense", description: "coffee", amount: "4.50", category: "Other" } },
+      { action: "draft_entry", entry: { type: "expense", description: "zorblax", amount: "7", category: "Other" } },
+      {}
+    ]);
+    await page.goto(`/ask?month=${MONTH}&view=person-tim`);
+    await send(page, "coffee 4.50");
+    await expect(page.locator('[data-reply-source="claude"]')).toHaveText("Reply from Claude");
+    await page.screenshot({ path: "test-results/ask-reply-source-after.png", fullPage: false });
+    await expect(page.locator("[data-ask-card]").last()).toContainText("Food & Drinks");
+    await expect(page.locator("[data-ask-card]").last()).not.toContainText("Other");
+
+    // Nothing fits: Other, said plainly.
+    await send(page, "zorblax 7");
+    await expect(page.locator(".ask-note, .ask-question").filter({ hasText: "I couldn't tell the category, so I used Other." }).first()).toBeVisible();
+
+    // No model answer (AI off in the test Worker): the built-in rules, said once more.
+    await send(page, "tea 3");
+    await expect(page.locator('[data-reply-source="rules"]')).toHaveText("Reply from the built-in rules");
   });
 
   test("Apple Pay entry, \"Add to splits, all Joyce\": a draft with Tim paying and Joyce's 100% share; Add to Splits saves it, and Splits shows Joyce owes the whole amount", async ({ page }) => {
@@ -192,7 +215,7 @@ test.describe("Ask, AI first", () => {
     expect(seen[1].text).toBe("Today's lunch");
     expect(seen[1].history.map((line) => line.text)).toContain("split the lunch");
     await expect(page.locator(".ask-me").last()).toHaveText("Today's lunch");
-    await expect(page.locator(".ask-note").last()).toHaveText("Pick the entry in Entries, then ask again.");
+    await expect(page.locator(".ask-note:not(.is-source)").last()).toHaveText("Pick the entry in Entries, then ask again.");
   });
 
   test("a model that names someone outside the household is asked back, never drafted", async ({ page }) => {

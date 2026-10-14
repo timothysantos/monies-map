@@ -104,7 +104,7 @@ export function buildTurnFocus({ card = null, intent = null, insightTopic = "", 
 }
 
 /**
- * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance", reply?: any } | { ok: true, mode: "ai", action: string, reply: any } | { ok: false }>}
+ * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance", reply?: any } | { ok: true, mode: "ai", action: string, reply: any, provider?: "claude" | "workers-ai" } | { ok: false }>}
  */
 export async function requestAskTurn(body, { fetchImpl = fetch, timeoutMs = TURN_TIMEOUT_MS } = {}) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -144,7 +144,9 @@ export function readAskTurnResponse(body) {
     };
   }
   const reply = body.mode === "ai" ? readReply(body.reply) : null;
-  return reply ? { ok: true, mode: "ai", action: String(body.action ?? ""), reply } : { ok: false };
+  // Which provider produced the reply; anything else is dropped.
+  const provider = body.provider === "claude" || body.provider === "workers-ai" ? body.provider : undefined;
+  return reply ? { ok: true, mode: "ai", action: String(body.action ?? ""), reply, ...(provider ? { provider } : {}) } : { ok: false };
 }
 
 const isObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);

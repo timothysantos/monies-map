@@ -221,6 +221,11 @@
   color: var(--text);
 }
 
+.ask-note.is-source {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
 .ask-note.is-error {
   color: var(--pastel-rose-ink);
 }
