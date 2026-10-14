@@ -46,20 +46,26 @@ function significantTokens(normalised: string) {
   return kept.length ? kept : tokens;
 }
 
-// Edit distance, early out above `limit`.
+// Edit distance, counting a swapped pair of letters as one typo ("jocye"),
+// stopping early above `limit`.
 export function editDistance(left: string, right: string, limit = 3) {
   if (Math.abs(left.length - right.length) > limit) return limit + 1;
+  let beforePrevious: number[] = [];
   let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
   for (let row = 1; row <= left.length; row += 1) {
     const current = [row];
     let best = row;
     for (let column = 1; column <= right.length; column += 1) {
       const cost = left[row - 1] === right[column - 1] ? 0 : 1;
-      const value = Math.min(previous[column] + 1, current[column - 1] + 1, previous[column - 1] + cost);
+      let value = Math.min(previous[column] + 1, current[column - 1] + 1, previous[column - 1] + cost);
+      if (row > 1 && column > 1 && left[row - 1] === right[column - 2] && left[row - 2] === right[column - 1]) {
+        value = Math.min(value, beforePrevious[column - 2] + 1);
+      }
       current.push(value);
       best = Math.min(best, value);
     }
     if (best > limit) return limit + 1;
+    beforePrevious = previous;
     previous = current;
   }
   return previous[right.length];
@@ -389,7 +395,7 @@ export function findMonthIn(text: string, today: string): string | null {
     const month = readMonthWord(phrase.trim(), today);
     if (month) months.add(month);
   };
-  for (const match of lower.matchAll(/ (this month|last month|previous month|current month|(?:\d{1,2}|two|three|four|five|six) months? ago) /g)) add(match[1]);
+  for (const match of lower.matchAll(/ (this month|last month|next month|previous month|current month|(?:\d{1,2}|two|three|four|five|six) months? ago) /g)) add(match[1]);
   const monthWord = `${MONTH_FULL}|${MONTH_ABBR}`;
   // A month name counts after a month-ish word or beside a year, so "may" the
   // verb and "mar" the name are told apart.

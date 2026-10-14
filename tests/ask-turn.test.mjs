@@ -212,7 +212,7 @@ test("negative: an entry already on Splits, an income, or a payer other than the
   const otherPayer = validateAskTurnAction(act("add_entry_to_splits", { split: { payer: "Joyce", shares: [{ person: "Tim", all: true }] } }), makeContext({ focus: savedFocus(), text: "Joyce paid, all mine" }));
   assert.equal(otherPayer.kind, "split_proposal");
   assert.equal(otherPayer.proposal.payerName, "Tim");
-  assert.match(otherPayer.assumptions[0].text, /Citi Rewards, which is Tim's, so Tim shows as the one who paid/);
+  assert.equal(otherPayer.assumptions[0].text, "This entry is Tim's, so Splits shows Tim as the one who paid.");
   assert.deepEqual(otherPayer.assumptions[0].chips, []);
 });
 

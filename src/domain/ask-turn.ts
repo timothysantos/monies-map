@@ -1026,7 +1026,13 @@ export function resolveShares(value: unknown, context: AskTurnContext, totalMino
     else if (listed.length && !reading) return { kind: "reply", reply: sharesQuestion(people) };
   }
   if (!items.length) {
-    return { kind: "ok", firstBasisPoints: 5000, assumptions: [assumption(COPY.assumed.evenSplit, [COPY.chips.allOf(people[0].name), COPY.chips.allOf(people[1].name)])] };
+    // "50/50", "half", "evenly" say it; "split it" does not, so it is shown as assumed.
+    const saidEven = /\b50\s*\/\s*50\b|\bhalf\b|\bevenly\b|\bequally\b|\bequal\b|\beven\b|\bfifty/i.test(context.text);
+    return {
+      kind: "ok",
+      firstBasisPoints: 5000,
+      assumptions: saidEven ? [] : [assumption(COPY.assumed.evenSplit, [COPY.chips.allOf(people[0].name), COPY.chips.allOf(people[1].name)])]
+    };
   }
   if (items.length > 2) return { kind: "reply", reply: sharesQuestion(people) };
   const texts = [context.text, ground.userText];
@@ -1125,7 +1131,7 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
   // only worth a line when it differs from the entry's.
   const saidPayer = findPerson(split.payer, context);
   if (saidPayer && saidPayer !== "unknown" && saidPayer.id !== payer.id) {
-    assumptions.push(assumption(COPY.assumed.payerIsWalletOwner(scrubName(entry.accountName), payer.name)));
+    assumptions.push(assumption(COPY.assumed.payerIsEntryOwner(payer.name)));
   }
   const total = Math.abs(entry.amountMinor);
   const shares = resolveShares(split.shares, context, total, ground, entry.currency);
@@ -1202,7 +1208,16 @@ function validateSettlement(action: AskTurnAction, context: AskTurnContext, grou
 // route then drafts it against the real plan rows.
 function validatePlan(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.plan ?? {};
-  const request = parsePlanAiReading({ kind: "plan", month: raw.month ?? null, copyFrom: raw.copy_from ?? null, ops: raw.ops ?? [] }, ground.userText, context.today);
+  // A month said as a word ("next month", "october") is read here, so the plan
+  // reader gets YYYY-MM.
+  const month = readMonth(raw.month, context);
+  const copyFrom = readMonth(raw.copy_from, context, false);
+  const request = parsePlanAiReading({
+    kind: "plan",
+    month: month.ok ? month.month : raw.month ?? null,
+    copyFrom: copyFrom.ok ? copyFrom.month : raw.copy_from ?? null,
+    ops: raw.ops ?? []
+  }, ground.userText, context.today);
   return request ? { kind: "plan", request } : askBack({ code: "plan_unreadable", field: "plan", valid: context.planLines.slice(0, 12) }, COPY.planQuestion);
 }
 
@@ -1373,15 +1388,17 @@ export function walletQuestion(context: AskTurnContext, said = ""): AskTurnReply
   return askBack({ code: ambiguous ? "ambiguous_name" : "unknown_wallet", field: "wallet", valid: active.slice(0, 12).map(scrubName), ...(said ? { got: said.slice(0, 40) } : {}) }, COPY.walletQuestion, options);
 }
 
-export function groupQuestion(context: AskTurnContext, said = ""): AskTurnReply {
+export function groupQuestion(context: AskTurnContext, said = "", code: "unknown_group" | "ambiguous_name" = "unknown_group"): AskTurnReply {
   const names = context.groups.map((group) => group.name);
-  const ambiguous = said ? matchName(said, names).kind === "ambiguous" : false;
-  const options = ambiguous ? askableNames(said, names, MAX_CHIPS - 1) : names.slice(0, MAX_CHIPS - 1);
+  const ambiguous = code === "ambiguous_name" || (said ? matchName(said, names).kind === "ambiguous" : false);
+  const options = said && ambiguous ? askableNames(said, names, MAX_CHIPS - 1) : names.slice(0, MAX_CHIPS - 1);
   return askBack({ code: ambiguous ? "ambiguous_name" : "unknown_group", field: "group", valid: names, ...(said ? { got: said.slice(0, 40) } : {}) }, COPY.groupQuestion, [...options, COPY.chips.noGroup]);
 }
 
 export function categoryQuestion(context: AskTurnContext, said: string): AskTurnReply {
-  return askBack({ code: "unknown_category", field: "category", valid: context.entry.categoryNames.slice(0, 40), got: said.slice(0, 40) }, COPY.categoryQuestion(said), askableNames(said, context.entry.categoryNames, 3));
+  const ambiguous = matchName(said, context.entry.categoryNames).kind === "ambiguous";
+  const question = ambiguous ? COPY.categoryWhich(said) : COPY.categoryQuestion(said);
+  return askBack({ code: ambiguous ? "ambiguous_name" : "unknown_category", field: "category", valid: context.entry.categoryNames.slice(0, 40), got: said.slice(0, 40) }, question, askableNames(said, context.entry.categoryNames, 3));
 }
 
 // ---- Helpers --------------------------------------------------------------
@@ -1431,6 +1448,7 @@ export const COPY = {
   shareOverTotal: (name: string, total: string) => `${name}'s share can't be more than ${total}.`,
   shareZero: (name: string, other: string) => `${name}'s share has to be more than $0. For none of it, say all ${other}'s.`,
   sharePercentRetry: (name: string, figure: string) => `Add to splits, ${name}'s share is ${figure}%`,
+  categoryWhich: (name: string) => `"${scrubName(name)}" fits more than one category. Which one do you mean?`,
   categoryQuestion: (name: string) => `There's no category called "${scrubName(name)}". Which one do you mean?`,
   whatToChange: "What should change on the card?",
   planQuestion: "Which plan line, how much, and for which month?",
@@ -1472,7 +1490,7 @@ export const COPY = {
     noPersonView: (said: string) => `I couldn't tell who "${scrubName(said)}" is, so I used the whole household.`,
     amountKept: "I couldn't use that amount, so the amount stays as it was.",
     dateKept: "I couldn't use that date, so the date stays as it was.",
-    payerIsWalletOwner: (wallet: string, payer: string) => `It was paid from ${wallet}, which is ${payer}'s, so ${payer} shows as the one who paid.`,
+    payerIsEntryOwner: (payer: string) => `This entry is ${payer}'s, so Splits shows ${payer} as the one who paid.`,
     groupCurrency: (name: string, groupCurrency: string, entryCurrency: string) => `${name} keeps its splits in ${groupCurrency} and this is in ${entryCurrency}, so I left it out of the group.`,
     categoryAsWords: (words: string) => `There's no category called "${scrubName(words)}", so I searched the entries for that word.`
   }

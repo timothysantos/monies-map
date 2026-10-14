@@ -36,6 +36,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:client": "tsc -p tsconfig.client.json",
     "lint": "eslint .",
+    "eval:ask": "tsx scripts/ask-turn-eval.mjs",
     "test:unit": "tsx --test tests/*.test.mjs tests/performance/*.test.mjs",
     "audit": "npm audit",
     "audit:prod": "npm audit --omit=dev",

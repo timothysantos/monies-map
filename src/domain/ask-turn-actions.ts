@@ -490,7 +490,9 @@ export function validateSplitGroup(action: AskTurnAction, context: AskTurnContex
     // different groups, so it asks (ask-ambiguity.ts).
     if (named || inFocus) return { kind: "resolve", request: { type: "group_settle", group: (named ?? inFocus) as AskTurnGroup } };
     const decision = decideReadings(context.groups.map((candidate): AskReading<AskTurnGroup> => ({ value: candidate, label: candidate.name, effect: `group:${candidate.id}`, basis: "default" })));
-    if (decision.kind === "none" || decision.kind === "ask") return groupQuestion(context);
+    // Two groups that would settle differently: the person's to choose.
+    if (decision.kind === "ask") return groupQuestion(context, "", "ambiguous_name");
+    if (decision.kind === "none") return groupQuestion(context);
     const group = decision.chosen.value;
     return withAssumptions({ kind: "resolve", request: { type: "group_settle", group } }, [assumption(ACTION_COPY.settleOnlyGroup(group.name))]);
   }
@@ -1041,7 +1043,8 @@ function walletNames(context: AskTurnContext, kind: string) {
 }
 
 function walletsOfKind(context: AskTurnContext, kind: string, question: string): AskTurnReply {
-  return { kind: "clarify", question, options: walletNames(context, kind) };
+  const names = walletNames(context, kind);
+  return askBack({ code: "unknown_wallet", field: "payment_way.wallet", valid: names.map(scrubName) }, question, names);
 }
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

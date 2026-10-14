@@ -35,6 +35,8 @@ test("names match through a possessive, an initial, case, and a typo", () => {
     assert.equal(indexOf(said, PEOPLE), "Joyce", said);
   }
   assert.equal(indexOf("T", PEOPLE), "Tim");
+  // A swapped pair of letters is one typo.
+  assert.equal(indexOf("jocye", PEOPLE), "Joyce");
   assert.equal(indexOf("Bob", PEOPLE), "none");
   // Two people starting with the same letter: the initial alone is ambiguous.
   assert.equal(indexOf("J", ["Joyce", "Jun"]), "ambiguous");
@@ -183,6 +185,7 @@ test("the one day or month a message names is what the card gets", () => {
   assert.equal(findMonthIn("why was last month so expensive", today), "2026-09");
   assert.equal(findMonthIn("where did my money go this month", today), "2026-10");
   assert.equal(findMonthIn("show grab rides in sep", today), "2026-09");
+  assert.equal(findMonthIn("set groceries to 300 for next month", today), "2026-11");
   assert.equal(findMonthIn("sep 2024 spending", today), "2024-09");
   // Two months (a comparison or a range) is not one; "may" the verb is not May.
   assert.equal(findMonthIn("compare september with august", today), null);
