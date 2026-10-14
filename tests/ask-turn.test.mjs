@@ -308,6 +308,48 @@ test("edit_draft: only the named fields change on the card being filled; on a sa
   assert.equal(validateAskTurnAction(act("edit_draft", { entry: { category: "Gifts" } }), makeContext({ focus: { kind: "draft", draft }, text: "gifts" })).kind, "clarify");
 });
 
+test("'coffee 4.50' then 'coffee': the category is never left on Other when a rule or an everyday word fits, on the first turn and on the follow-up that edits the card", () => {
+  const turnOne = (entry) => validateAskTurnAction(act("draft_entry", { entry }), makeContext({ text: "coffee 4.50" }));
+  for (const category of ["Other", undefined]) {
+    const first = turnOne({ type: "expense", description: "coffee", amount: "4.50", ...(category ? { category } : {}) });
+    assert.equal(first.kind, "entry_draft");
+    assert.equal(first.draft.fields.categoryName.value, "Food & Drinks");
+    assert.ok(!(first.assumptions ?? []).some((line) => /couldn't tell the category/.test(line.text)));
+  }
+  // The card the owner had: description coffee, amount 4.50, category Other (an earlier turn).
+  const draft = { variant: "expense", description: "coffee", date: TODAY, accountName: "Citi Rewards 4417", categoryName: "Other", ownerName: "Tim", amountMinor: 450, shareOn: false, splitGroupName: "" };
+  const second = (entry) => validateAskTurnAction(act("edit_draft", { entry }), makeContext({ focus: { kind: "draft", draft }, text: "coffee" }));
+  for (const entry of [{ description: "coffee", category: "Other" }, { description: "coffee" }, {}]) {
+    const reply = second(entry);
+    assert.equal(reply.kind, "draft_patch");
+    assert.equal(reply.patch.categoryName, "Food & Drinks");
+    assert.ok(!(reply.assumptions ?? []).some((line) => /couldn't tell the category/.test(line.text)));
+  }
+  // A household rule beats the word list on the follow-up too.
+  const ruled = makeContext({ focus: { kind: "draft", draft }, text: "coffee" });
+  ruled.entry.categoryMatchRules = [{ id: "r1", pattern: "COFFEE", categoryName: "Groceries", priority: 1, isActive: true }];
+  assert.equal(validateAskTurnAction(act("edit_draft", { entry: { description: "coffee", category: "Other" } }), ruled).patch.categoryName, "Groceries");
+  // Negatives: a category the person names wins, a change that is not about the description leaves it, and a stranger word stays Other and says so.
+  const named = validateAskTurnAction(act("edit_draft", { entry: { description: "coffee", category: "Groceries" } }), makeContext({ focus: { kind: "draft", draft }, text: "coffee, groceries" }));
+  assert.equal(named.patch.categoryName, "Groceries");
+  const amountOnly = validateAskTurnAction(act("edit_draft", { entry: { amount: "6" } }), makeContext({ focus: { kind: "draft", draft }, text: "make it 6" }));
+  assert.deepEqual(amountOnly, { kind: "draft_patch", patch: { amountMinor: 600 }, share: null });
+  const stranger = validateAskTurnAction(act("edit_draft", { entry: { description: "zorblax", category: "Other" } }), makeContext({ focus: { kind: "draft", draft }, text: "zorblax" }));
+  assert.equal(stranger.kind, "draft_patch");
+  assert.equal(stranger.patch.categoryName, undefined);
+  assert.ok(stranger.assumptions.some((line) => line.text === "I couldn't tell the category, so I used Other."));
+});
+
+test("the everyday words reach the household's own category names ('Transport' for a taxi word, 'Food and Drinks' for coffee)", () => {
+  const context = makeContext({ text: "grab 14" });
+  context.entry.categoryNames = ["Food and Drinks", "Transport", "Other", "Transfer"];
+  const taxi = validateAskTurnAction(act("draft_entry", { entry: { type: "expense", description: "grab", amount: "14", category: "Other" } }), context);
+  assert.equal(taxi.draft.fields.categoryName.value, "Transport");
+  const coffee = makeContext({ text: "coffee 4" });
+  coffee.entry.categoryNames = ["Food and Drinks", "Other", "Transfer"];
+  assert.equal(validateAskTurnAction(act("draft_entry", { entry: { type: "expense", description: "coffee", amount: "4" } }), coffee).draft.fields.categoryName.value, "Food and Drinks");
+});
+
 // --- Settlements, plans, questions, search, pages ------------------------------
 
 test("draft_settlement: who paid whom and the written amount; one person both ways or no amount is asked", () => {

@@ -21,6 +21,7 @@
 import { promptEntryName } from "./ask-answer-wording";
 import { ASK_LOOKUP_TOOL_NAMES } from "./ask-lookup-spec";
 import { readAnswerIntent, type AskAnswerIntentKind } from "./ask-answer-intent";
+import { categoryFromDescription } from "./category-keywords";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
 import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
@@ -842,6 +843,12 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
   if (category === "unknown") {
     assumptions.push(assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
   }
+  if (fields.entryType.value === "expense" && fields.categoryName.source !== "rule" && fields.categoryName.source !== "sentence") {
+    // The model's tidied description ("Starbucks coffee") may carry the word
+    // the message's own reading did not.
+    const found = categoryFromDescription(fields.description?.value ?? "", context.entry.categoryNames, context.entry.categoryMatchRules);
+    if (found) fields.categoryName = { value: found, source: "rule" };
+  }
   if (fields.entryType.value !== "transfer") {
     const byRule = fields.categoryName.source === "rule";
     const namedByPerson = typeof category === "string" && category !== "unknown" && context.text.toLowerCase().includes(category.toLowerCase());
@@ -980,6 +987,26 @@ function validateDraftPatch(action: AskTurnAction, context: AskTurnContext, grou
     trouble(categoryQuestion(context, String(raw.category ?? "")), assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
   } else if (category) {
     patch.categoryName = category;
+  }
+  if (context.focus?.kind === "draft" && (patch.variant ?? context.focus.draft.variant) === "expense") {
+    // A follow-up about what it was ("coffee") re-reads the category the
+    // way a new entry does: the household's rules, then everyday words, so
+    // the card is never left on Other when a word fits. A category the
+    // person wrote stays, and so does one on a change that is not about
+    // what it was.
+    const onCard = context.focus.draft.categoryName;
+    const named = typeof patch.categoryName === "string" && context.text.toLowerCase().includes(patch.categoryName.toLowerCase());
+    const isOther = (name: string | undefined) => !name || /^other\b/i.test(name);
+    if (!named && isOther(patch.categoryName ?? onCard)) {
+      const found = categoryFromDescription(patch.description ?? context.text, context.entry.categoryNames, context.entry.categoryMatchRules);
+      if (found && found !== onCard) {
+        patch.categoryName = found;
+      } else if (found || patch.description !== undefined) {
+        // Already right, or the words fit nothing: the model's Other is not a change.
+        delete patch.categoryName;
+        if (!found) assumptions.push(assumption(COPY.assumed.categoryOther(onCard || "Other")));
+      }
+    }
   }
   const owner = findPerson(raw.owner, context);
   if (owner === "unknown") {

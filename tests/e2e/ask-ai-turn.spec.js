@@ -102,6 +102,58 @@ test.describe("Ask, AI first", () => {
     await expect(page.locator('[data-reply-source="rules"]')).toHaveText("Reply from the built-in rules");
   });
 
+  test("\"coffee 4.50\" then \"coffee\" in the same chat: the card is Food & Drinks after both turns even when the model says Other, and each reply, drafts included, shows where it came from", async ({ page }) => {
+    const seen = await stubModel(page, [
+      { action: "draft_entry", entry: { type: "expense", description: "coffee", amount: "4.50", category: "Other" } },
+      { action: "edit_draft", entry: { description: "coffee", category: "Other" } }
+    ]);
+    await page.goto(`/ask?month=${MONTH}&view=person-tim`);
+    await send(page, "coffee 4.50");
+    await expect(page.locator('[data-reply-source="claude"]')).toHaveCount(1);
+    await send(page, "coffee");
+    await expect(page.locator('[data-reply-source="claude"]')).toHaveCount(2);
+    expect(seen[1].focus.kind).toBe("draft");
+    const card = page.locator("[data-ask-card]").last();
+    await expect(card).toContainText("Food & Drinks");
+    await expect(card).not.toContainText("Other");
+    await expect(page.locator('[data-reply-source="claude"]').last()).toBeVisible();
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: "test-results/ask-coffee-twice.png", fullPage: false });
+  });
+
+  test("Discard on an unsaved draft removes it and says so, sends no save, and Save still works on the next draft; a saved card has no Discard", async ({ page }) => {
+    await stubModel(page, [
+      { action: "draft_entry", entry: { type: "expense", description: "coffee", amount: "4.50" } },
+      { action: "draft_entry", entry: { type: "expense", description: "lunch", amount: "9.80" } }
+    ]);
+    const writes = [];
+    page.on("request", (request) => {
+      if (request.method() !== "GET" && /\/api\/entries\/create/.test(request.url())) writes.push(request.url());
+    });
+    await page.goto(`/ask?month=${MONTH}&view=person-tim`);
+    await send(page, "coffee 4.50");
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
+    const discard = page.getByRole("button", { name: "Discard", exact: true });
+    await expect(discard).toBeVisible();
+    expect((await discard.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await discard.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: "test-results/ask-discard-before.png", fullPage: false });
+    await discard.click();
+    await expect(page.locator("[data-ask-card]")).toHaveCount(0);
+    await expect(page.locator(".ask-note").filter({ hasText: "Discarded the draft." })).toBeVisible();
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: "test-results/ask-discard-after.png", fullPage: false });
+    expect(writes).toEqual([]);
+
+    await send(page, "lunch 9.80");
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();
+    expect(writes.length).toBeGreaterThan(0);
+    await expect(page.getByRole("button", { name: "Discard", exact: true })).toHaveCount(0);
+  });
+
   test("Apple Pay entry, \"Add to splits, all Joyce\": a draft with Tim paying and Joyce's 100% share; Add to Splits saves it, and Splits shows Joyce owes the whole amount", async ({ page }) => {
     const description = `STARBUCKS ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {

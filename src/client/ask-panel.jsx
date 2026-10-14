@@ -31,6 +31,7 @@ import {
   createAskCard,
   declineCardSuggestion,
   declineSplitSuggestion,
+  isCardEmpty,
   markCardSaved,
   markCardSaveFailed,
   markCardSaving,
@@ -65,6 +66,7 @@ import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
 import { buildChipRow, findActiveItem } from "./ask-chips";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
+import { BottomActions } from "./ui/lead-support-detail";
 import { LimitHint } from "./limit-hint";
 import { ASK_MESSAGE_MAX, askMessageLength, limitState, receiptSizePlan } from "./input-limits";
 import { limitsCopy } from "./copy/limits-copy";
@@ -1446,6 +1448,18 @@ function AskConversation({
     }
   }
 
+  // Discard on a draft that is not saved yet: the card leaves the chat and
+  // nothing is sent anywhere (nothing was written). A draft in the middle of
+  // saving is not discarded.
+  function discardCard() {
+    if (!card || card.status !== "draft" || working) {
+      return;
+    }
+    setPending(null);
+    setCard(isAddMode ? createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId }) : null);
+    appendThread(threadItem("note", { text: askCopy.card.discarded, tone: "calm" }));
+  }
+
   async function undoSave() {
     if (!card?.saved || working) {
       return;
@@ -2144,6 +2158,9 @@ function AskConversation({
             onVariantChange={changeVariant}
             onShareChange={changeShare}
           />
+        ) : null}
+        {card?.status === "draft" && !isCardEmpty(card) ? (
+          <BottomActions className="ask-plan-actions ask-card-discard" quietLabel={askCopy.card.discard} onQuiet={discardCard} quietDisabled={Boolean(working)} />
         ) : null}
         {card && card.status === "draft" && card.variant === "transfer" && transferMatch ? (
           <AskTransferMatchRows
