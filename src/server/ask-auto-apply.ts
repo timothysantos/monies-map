@@ -49,6 +49,11 @@ export interface DoneForYouItem {
   summary: string;
   // The habit this followed ("" for a note): "Stop doing this" deletes it.
   habitId: string;
+  // What changed, for the page to patch its card: a category's before and
+  // after, the split an add to splits created.
+  from: string | null;
+  to: string | null;
+  splitExpenseId: string | null;
   at: string;
   undone: boolean;
 }
@@ -168,6 +173,9 @@ function toItem(row: { entity_id: string; detail: string; created_at: string }, 
       entryDescription: detail.description,
       summary: detail.summary,
       habitId: detail.habitId ?? "",
+      from: detail.kind === "note" ? null : detail.from ?? null,
+      to: detail.kind === "note" ? null : detail.to ?? null,
+      splitExpenseId: detail.splitExpenseId ?? null,
       at: `${row.created_at.replace(" ", "T")}Z`,
       undone: undoneIds.has(detail.doneId)
     };
@@ -277,7 +285,7 @@ async function logOrRevert(db: D1Database, detail: LogDetail, revert: () => Prom
     await revert().catch(() => undefined);
     throw error;
   }
-  return { id: detail.doneId, kind: detail.kind, entryId: detail.entryId, entryDescription: detail.description, summary: detail.summary, habitId: detail.habitId ?? "", at: new Date().toISOString(), undone: false };
+  return { id: detail.doneId, kind: detail.kind, entryId: detail.entryId, entryDescription: detail.description, summary: detail.summary, habitId: detail.habitId ?? "", from: detail.kind === "note" ? null : detail.from ?? null, to: detail.kind === "note" ? null : detail.to ?? null, splitExpenseId: detail.splitExpenseId ?? null, at: new Date().toISOString(), undone: false };
 }
 
 // A note from the person's own words, on a new entry (the one auto action

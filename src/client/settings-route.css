@@ -1101,3 +1101,96 @@
 .settings-colour-preset-dots span + span {
   margin-left: -5px;
 }
+
+/* What Ask remembers (settings-ask-remembers-section.jsx): the "Let Ask
+   handle safe things" switch, the habit rows and Forget everything. */
+.settings-habit-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 4px 2px 10px;
+}
+
+.settings-habit-toggle-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-habit-toggle-copy label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.settings-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 18%, var(--paper));
+  cursor: pointer;
+}
+
+.settings-switch::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.settings-switch[aria-checked="true"] {
+  background: var(--accent-strong);
+}
+
+.settings-switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+}
+
+.settings-switch:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-switch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.settings-habit-heading {
+  margin: 8px 2px 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-habit-row .settings-row-text small {
+  white-space: normal;
+}
+
+.settings-habit-forget {
+  display: flex;
+  justify-content: flex-start;
+  padding: 6px 0 0;
+}
+
+.icon-action.settings-habit-forget-button,
+.subtle-remove.settings-habit-forget-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  color: var(--pastel-rose-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}

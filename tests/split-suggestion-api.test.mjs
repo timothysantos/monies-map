@@ -27,6 +27,10 @@ const SHOP = "Kopi Kaki Holland V";
 // Tim bought at the shop four times this year and put three of them on
 // Splits in Baby River (the add-to-splits route shares 50/50).
 async function seedHabit(api, { shop = SHOP, group = "split-group-baby-river", split = 3, unsplit = 1 } = {}) {
+  // Ask's own habits would put the later, unsplit entries on Splits by
+  // themselves; this file is about the history-based suggestion, so Ask is
+  // told not to handle things (tests/ask-habits-route.test.mjs covers that).
+  await api("/api/ask/habits/setting", { enabled: false });
   const ids = [];
   for (let index = 0; index < split + unsplit; index += 1) {
     const entryId = await createEntry(api, {

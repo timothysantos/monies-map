@@ -1109,3 +1109,204 @@
     font-size: 1.85rem;
   }
 }
+
+/* Habits (docs/flows/ask-flow.md "Hands-off"): the one quiet suggestion row
+   and what Ask did by itself, under the saved card; Done for you folds at
+   the end of the thread. Neutral card tones, text in --muted/--text. */
+.ask-habit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 6px 4px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.ask-habit-text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ask-habit-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.ask-habit-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ask-habit-button.is-apply {
+  color: var(--accent-strong);
+}
+
+.ask-habit-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ask-habit-button:focus-visible,
+.ask-habit-undo:focus-visible,
+.ask-habit-stop:focus-visible,
+.ask-done-toggle:focus-visible {
+  outline: 2px solid rgb(var(--accent-strong-rgb) / 0.55);
+  outline-offset: 2px;
+}
+
+.ask-habit-lines {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-habit-lines li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ask-habit-undo,
+.ask-habit-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ask-habit-stop {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ask-habit-error {
+  flex: 1 1 100%;
+  margin: 0 0 6px;
+  color: var(--pastel-rose-ink);
+  font-size: 0.85rem;
+}
+
+.ask-done {
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.ask-done-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ask-done-title {
+  flex: 1 1 auto;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.ask-done-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.ask-done-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 10px;
+}
+
+.ask-done-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.ask-done-items {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-done-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--card-border);
+}
+
+.ask-done-item:first-child {
+  border-top: 0;
+}
+
+.ask-done-item.is-undone {
+  opacity: 0.6;
+}
+
+.ask-done-main {
+  display: grid;
+  flex: 1 1 11rem;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ask-done-main strong {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.ask-done-main small,
+.ask-done-state {
+  color: var(--muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.ask-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2px;
+}

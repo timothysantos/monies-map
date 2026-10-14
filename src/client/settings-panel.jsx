@@ -42,6 +42,7 @@ import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsColoursSection } from "./settings-colours-section";
+import { SettingsAskRemembersSection } from "./settings-ask-remembers-section";
 import { SettingsLeadViewSection } from "./settings-lead-view-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
@@ -160,6 +161,7 @@ export function SettingsPanel({
     accounts: false,
     shortcutApi: false,
     askAi: false,
+    askRemembers: false,
     paymentWays: false,
     categories: false,
     categoryRules: false,
@@ -1358,6 +1360,12 @@ export function SettingsPanel({
         isOpen={settingsSectionsOpen.askAi}
         onToggle={() => toggleSettingsSection("askAi")}
         onMarkToppedUp={claudeCredit.markToppedUp}
+      />
+
+      <SettingsAskRemembersSection
+        categories={categories}
+        isOpen={settingsSectionsOpen.askRemembers}
+        onToggle={() => toggleSettingsSection("askRemembers")}
       />
 
       <SettingsPaymentWaysSection

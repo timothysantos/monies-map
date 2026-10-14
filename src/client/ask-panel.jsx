@@ -73,6 +73,9 @@ import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskSplitSuggestion } from "./use-ask-split-suggestion";
+import { useAskHabits } from "./use-ask-habits";
+import { AskDoneForYou, AskDoneInline, AskSuggestionRow } from "./ask-habits-ui";
+import { patchCardAfterAuto, patchCardAfterUndo } from "./ask-habits-card";
 import { useAskTransferMatch } from "./use-ask-transfer-match";
 import { AskTransferMatchRows } from "./ask-transfer-choices";
 import { NO_OTHER_SIDE, transferLinkBody } from "./ask-transfer-match";
@@ -300,7 +303,24 @@ function AskConversation({
   );
   // "You usually split this with …": from the household's own split
   // history, read-only (DOMAIN.md "Split Suggestion").
-  const splitSuggestion = useAskSplitSuggestion({ card, context, splitGroups });
+  const historySplitSuggestion = useAskSplitSuggestion({ card, context, splitGroups });
+  // Ask's habits for the saved card: the one quiet suggestion row, and what
+  // Ask did by itself with its Undo (docs/flows/ask-flow.md "Hands-off").
+  const habits = useAskHabits({
+    entryId: card?.status === "saved" ? card.saved?.entryId ?? "" : "",
+    applyCategory: (categoryName) => changeSavedCategory(categoryName),
+    applyShare: (splitGroupId, splitBasisPoints) => shareSavedEntry(splitGroupId, splitBasisPoints),
+    onChanged: () => {
+      const month = (card?.fields.date ?? today).slice(0, 7);
+      onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      onSplitMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      void runBackgroundRefresh(entriesPage.refresh);
+    },
+    onApplied: (applied) => setCard((current) => applied.reduce(patchCardAfterAuto, current)),
+    onUndone: (item) => setCard((current) => patchCardAfterUndo(current, item))
+  });
+  // One suggestion about splitting: the habit's, when there is one.
+  const splitSuggestion = habits.suggestion?.split ? null : historySplitSuggestion;
   // The other side of a draft transfer, from the Entries transfer dialog's
   // own search (docs/flows/ask-flow.md "Transfers: the other side").
   const transferMatch = useAskTransferMatch({ card });
@@ -1392,34 +1412,35 @@ function AskConversation({
 
   async function changeSavedCategory(categoryName) {
     if (!card?.saved || working || !categoryName) {
-      return;
+      return false;
     }
     setWorking("category");
     try {
       const result = await updateSavedEntryCategory({ entryId: card.saved.entryId, categoryName });
       if (!result.ok) {
         appendThread(threadItem("note", { text: result.error }));
-        return;
+        return false;
       }
       setCard((current) => ({ ...current, fields: { ...current.fields, categoryName } }));
       onEntryMutation?.({ month: card.fields.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
       appendThread(threadItem("note", { text: askCopy.notes.categoryChanged(categoryName) }));
       void runBackgroundRefresh(entriesPage.refresh);
+      return true;
     } finally {
       setWorking("");
     }
   }
 
-  async function shareSavedEntry(splitGroupId) {
+  async function shareSavedEntry(splitGroupId, splitBasisPoints = undefined) {
     if (!card?.saved || working) {
-      return;
+      return false;
     }
     setWorking("share");
     try {
-      const result = await addSavedEntryToSplits({ entryId: card.saved.entryId, splitGroupId });
+      const result = await addSavedEntryToSplits({ entryId: card.saved.entryId, splitGroupId, splitBasisPoints });
       if (!result.ok) {
         appendThread(threadItem("note", { text: result.error }));
-        return;
+        return false;
       }
       const groupName = splitGroups.find((group) => group.id === splitGroupId)?.name ?? "";
       setCard((current) => ({
@@ -1430,6 +1451,7 @@ function AskConversation({
       onSplitMutation?.({ month: result.splitExpenseMonth ?? card.fields.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
       appendThread(threadItem("note", { text: askCopy.notes.addedToSplits(groupName) }));
       void runBackgroundRefresh(entriesPage.refresh);
+      return true;
     } finally {
       setWorking("");
     }
@@ -2001,6 +2023,12 @@ function AskConversation({
             }}
           />
         ) : null}
+        {card?.status === "saved" ? (
+          <>
+            <AskDoneInline items={habits.items.filter((item) => item.entryId === card.saved?.entryId)} busy={habits.busy} error={habits.suggestion ? "" : habits.error} onUndo={habits.undo} />
+            <AskSuggestionRow suggestion={habits.suggestion} busy={habits.busy} error={habits.error} onApply={() => void habits.apply()} onDismiss={habits.dismiss} />
+          </>
+        ) : null}
         {card && card.status !== "saved" ? (
           <AskCardRows
             card={card}
@@ -2028,6 +2056,7 @@ function AskConversation({
         {card ? settledThread.slice(cardSlot).map((item) => <ThreadItem key={item.id} item={item} settled={settledIds.has(item.id)} answerProps={answerProps} />) : null}
         {statusItems.map((item) => <ThreadItem key={item.id} item={item} answerProps={answerProps} />)}
         {card?.saveError ? <p className="ask-note is-error" role="alert">{card.saveError}</p> : null}
+        <AskDoneForYou items={habits.items} busy={habits.busy} error={card?.status === "saved" ? "" : habits.error} onUndo={habits.undo} onStop={habits.stop} />
         {questionPrompt ? <p className="ask-note ask-question" data-question-field={pendingQuestion?.field ?? ""}>{questionPrompt}</p> : null}
         <div ref={threadEndRef} />
       </div>
