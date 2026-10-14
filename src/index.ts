@@ -132,6 +132,9 @@ import { getAuthenticatedEmail } from "./server/access-identity";
 import { checkAccess } from "./server/access-jwt";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { handleAskTurn } from "./server/ask-turn-route";
+import { handleAskHabitsRoute } from "./server/ask-habits-routes";
+import { applyHabitsToNewEntry } from "./server/ask-auto-apply";
+import { learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntry } from "./domain/app-repository-ask-habits";
 import { aiVisitorKey } from "./domain/ai-assistance";
 import { handleViewerPreferencesRoute, LEAD_VIEW_PATH } from "./server/viewer-preferences-route";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
@@ -449,6 +452,15 @@ export default {
 
     if (url.pathname === "/api/imports-page") {
       return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB), timing);
+    }
+
+    // Ask's habits, suggestions and Done for you: no AI, deterministic
+    // (src/server/ask-habits-routes.ts).
+    if (url.pathname.startsWith("/api/ask/") && url.pathname !== "/api/ask/turn") {
+      const habitsResponse = await handleAskHabitsRoute(request, url, env);
+      if (habitsResponse) {
+        return habitsResponse;
+      }
     }
 
     // Ask's turn: AI reads the message into one action, the app checks it
@@ -1040,13 +1052,14 @@ export default {
       }
 
       try {
-        return json({
-          ok: true,
-          ...(await updateEntryCategoryRecord(env.DB, {
-            entryId: body.entryId,
-            categoryName: body.categoryName
-          }))
+        const updated = await updateEntryCategoryRecord(env.DB, {
+          entryId: body.entryId,
+          categoryName: body.categoryName
         });
+        // The person's own category choice is a habit confirmation (best
+        // effort; ask-habits.ts).
+        await learnCategoryHabitForEntry(env.DB, { entryId: body.entryId, categoryName: body.categoryName, source: "entries" });
+        return json({ ok: true, ...updated });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry category" }, 400);
       }
@@ -1160,26 +1173,31 @@ export default {
       }
 
       try {
-        return json({
-          ok: true,
-          ...(await createEntryRecord(env.DB, {
-            date: body.date,
-            postDate: body.postDate,
-            description: body.description,
-            accountId: body.accountId,
-            accountName: body.accountName,
-            categoryName: body.categoryName,
-            amountMinor: body.amountMinor,
-            entryType: body.entryType,
-            transferDirection: body.transferDirection,
-            ownershipType: body.ownershipType,
-            ownerName: body.ownerName,
-            offsetsCategory: body.offsetsCategory,
-            note: body.note,
-            splitBasisPoints: body.splitBasisPoints,
-            externalReference: body.externalReference
-          }))
+        const createdEntry = await createEntryRecord(env.DB, {
+          date: body.date,
+          postDate: body.postDate,
+          description: body.description,
+          accountId: body.accountId,
+          accountName: body.accountName,
+          categoryName: body.categoryName,
+          amountMinor: body.amountMinor,
+          entryType: body.entryType,
+          transferDirection: body.transferDirection,
+          ownershipType: body.ownershipType,
+          ownerName: body.ownerName,
+          offsetsCategory: body.offsetsCategory,
+          note: body.note,
+          splitBasisPoints: body.splitBasisPoints,
+          externalReference: body.externalReference
         });
+        // A new hand-made expense: its category is the person's own choice
+        // (a habit confirmation), then Ask handles what the habits allow
+        // (src/server/ask-auto-apply.ts). Both are best effort.
+        if (createdEntry.created && body.entryType === "expense") {
+          await learnCategoryHabit(env.DB, { description: body.description, categoryName: body.categoryName, source: "entries" });
+          await applyHabitsToNewEntry(env.DB, createdEntry.entryId);
+        }
+        return json({ ok: true, ...createdEntry });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create entry" }, 400);
       }
@@ -1318,6 +1336,12 @@ export default {
           splitBasisPoints: bodyWithDefaults.splitBasisPoints,
           externalReference: requestId ? `shortcut:${requestId}` : undefined
         });
+        // A new Apple Pay entry: Ask handles what its habits allow (its
+        // category is the rules' default, not the person's choice). Best
+        // effort, never part of the save.
+        if (created.created && entryType === "expense") {
+          await applyHabitsToNewEntry(env.DB, created.entryId, { applePay: true });
+        }
         const openUrl = buildShortcutEntryOpenUrl(request, {
           entryId: created.entryId,
           date: shortcutDate,
@@ -1489,15 +1513,23 @@ export default {
       }
 
       try {
-        return json({
-          ok: true,
-          ...(await createSplitExpenseFromEntryRecord(env.DB, {
-            entryId: body.entryId,
-            splitGroupId: body.splitGroupId,
-            ...(body.splitBasisPoints !== undefined ? { splitBasisPoints: body.splitBasisPoints } : {}),
-            ...(body.splitAmountMinor !== undefined ? { splitAmountMinor: body.splitAmountMinor } : {})
-          }))
+        const added = await createSplitExpenseFromEntryRecord(env.DB, {
+          entryId: body.entryId,
+          splitGroupId: body.splitGroupId,
+          ...(body.splitBasisPoints !== undefined ? { splitBasisPoints: body.splitBasisPoints } : {}),
+          ...(body.splitAmountMinor !== undefined ? { splitAmountMinor: body.splitAmountMinor } : {})
         });
+        // An even or percentage split is the shop's usual split (a fixed
+        // amount is not a habit). Best effort.
+        if (body.splitAmountMinor === undefined) {
+          await learnSplitHabitFromEntry(env.DB, {
+            entryId: body.entryId,
+            splitGroupId: body.splitGroupId ?? null,
+            firstPersonBasisPoints: body.splitBasisPoints ?? 5000,
+            source: "splits"
+          });
+        }
+        return json({ ok: true, ...added });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to add entry to splits" }, 400);
       }

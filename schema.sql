@@ -680,6 +680,25 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Ask habits (DOMAIN.md "Ask Habit"): structured facts learned from what
+-- the household confirms (shop -> category, shop -> usual split, nickname ->
+-- person). Never message text. Additive: code that reads it tolerates the
+-- table missing (the feature is simply off), so this ships before the code.
+CREATE TABLE IF NOT EXISTS ask_habits (
+  household_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('category', 'split', 'alias')),
+  key TEXT NOT NULL,
+  value_json TEXT NOT NULL,
+  times_confirmed INTEGER NOT NULL DEFAULT 0,
+  times_overridden INTEGER NOT NULL DEFAULT 0,
+  last_used TEXT NOT NULL,
+  source TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (household_id, kind, key),
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
 CREATE TABLE IF NOT EXISTS app_error_diagnostics (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -765,3 +784,6 @@ CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active
 
 CREATE INDEX IF NOT EXISTS idx_category_match_rule_issue_ignores_household
   ON category_match_rule_issue_ignores (household_id, issue_key);
+
+CREATE INDEX IF NOT EXISTS idx_ask_habits_household_kind
+  ON ask_habits (household_id, kind, last_used DESC);
