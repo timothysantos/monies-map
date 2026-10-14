@@ -74,6 +74,7 @@ import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskSplitSuggestion } from "./use-ask-split-suggestion";
 import { useAskHabits } from "./use-ask-habits";
+import { rememberAlias } from "./ask-habits-api";
 import { AskDoneForYou, AskDoneInline, AskSuggestionRow } from "./ask-habits-ui";
 import { patchCardAfterAuto, patchCardAfterUndo } from "./ask-habits-card";
 import { useAskTransferMatch } from "./use-ask-transfer-match";
@@ -712,7 +713,7 @@ function AskConversation({
       goTo(reply.page === "help" ? "/faq" : `/${reply.page}`, {}, new URLSearchParams(reply.params));
     } else if (reply.kind === "clarify") {
       if (reply.options.length) {
-        setPending({ kind: "turn-question", question: reply.question, options: reply.options });
+        setPending({ kind: "turn-question", question: reply.question, options: reply.options, nickname: reply.nickname ?? "" });
       } else {
         appendThread(threadItem("note", { text: reply.question }));
       }
@@ -726,6 +727,12 @@ function AskConversation({
   function answerTurnQuestion(option) {
     if (pending?.kind !== "turn-question" || working) {
       return;
+    }
+    // "Who is J?" answered with a person: keep the nickname (a confirmed
+    // clarification, never message text).
+    const chosen = pending.nickname ? (context.people ?? []).find((person) => person.name === option) : null;
+    if (chosen?.id) {
+      void rememberAlias(pending.nickname, chosen.id);
     }
     void readSentence(option);
   }

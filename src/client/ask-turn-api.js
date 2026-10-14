@@ -227,7 +227,7 @@ function readReplyBody(reply) {
         : null;
     case "clarify":
       return isText(reply.question) && reply.question
-        ? { kind: "clarify", question: reply.question, options: (Array.isArray(reply.options) ? reply.options : []).filter((option) => isText(option) && option).slice(0, 4) }
+        ? { kind: "clarify", question: reply.question, options: (Array.isArray(reply.options) ? reply.options : []).filter((option) => isText(option) && option).slice(0, 4), ...(isText(reply.nickname) && /^\p{L}{1,24}$/u.test(reply.nickname) ? { nickname: reply.nickname } : {}) }
         : null;
     case "note":
       return isText(reply.text) && reply.text ? { kind: "note", text: reply.text, ...(reply.autoDone === true ? { autoDone: true } : {}) } : null;

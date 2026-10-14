@@ -276,10 +276,15 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
 }
 
 // Why a question is asked is for the repair turn only; the page never sees it.
+// One thing survives for the page: a single word the message used for a
+// person the household does not have ("J"), so that when the person taps who
+// they meant, the page can keep it as a nickname (Ask habits, aliases). It
+// is a word the person wrote, checked to be one short word of letters.
 function forPage(reply: AskTurnReply): AskTurnReply {
   if (reply.kind === "clarify" && reply.error) {
-    const { error: _error, ...question } = reply;
-    return question;
+    const { error, ...question } = reply;
+    const nickname = error.code === "unknown_person" && error.got && /^\p{L}{1,24}$/u.test(error.got.trim()) ? error.got.trim().toLowerCase() : "";
+    return nickname ? { ...question, nickname } as AskTurnReply : question;
   }
   return reply;
 }

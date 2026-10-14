@@ -343,6 +343,8 @@ export interface AskTurnContext {
   entry: EntryDraftContext;
   groups: AskTurnGroup[];
   planLines: string[];
+  // Nicknames the household confirmed (Ask habits): "J" means Joyce.
+  nicknames?: Array<{ alias: string; person: string }>;
   // Ids and colours for Phase 2's category edits; absent in older callers.
   categories?: AskTurnCategory[];
   focus: AskTurnFocus;
@@ -536,6 +538,7 @@ export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = 
     "<context>",
     `Today: ${context.today}. Page: ${context.page}. Viewing: ${viewLabel}. Month in view: ${context.month}.`,
     `People (household order): ${context.people.map((person) => scrubName(person.name)).join(", ")}.`,
+    ...(context.nicknames?.length ? [`Nicknames this household uses: ${context.nicknames.slice(0, 8).map((nickname) => `${scrubName(nickname.alias)} means ${scrubName(nickname.person)}`).join("; ")}.`] : []),
     `Wallets: ${wallets.join("; ") || "none"}.`,
     `Categories: ${context.entry.categoryNames.slice(0, MAX_LIST_NAMES).map(scrubName).join(", ") || "none"}.`,
     `Split groups: ${context.groups.map((group) => `${scrubName(group.name)} (${group.currency})`).join(", ") || "none"}.`,

@@ -136,3 +136,19 @@ test("with AI off a lookup is never run and the turn answers rules at once", asy
   assert.deepEqual(await response.json(), { ok: true, mode: "rules", reason: "AI assistance is turned off." });
   assert.equal(await usedUnits(db), 0);
 });
+
+test("a confirmed nickname reaches the model as a fact; an unknown person word comes back as a nickname the page may keep", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: TODAY, description: "Sushi", categoryName: "Food & Drinks", amountMinor: 3_000 });
+  const stranger = stubAi([{ action: "add_entry_to_splits", split: { payer: null, group: null, shares: [{ person: "Wifey", value: "half" }] } }]);
+  const { payload } = await turn(db, { text: "split with Wifey", focus: { kind: "saved_entry", entryId } }, stranger);
+  assert.equal(payload.reply.kind, "clarify");
+  assert.equal(payload.reply.nickname, "wifey");
+  assert.equal("error" in payload.reply, false, "the validator's reason still stays on the server");
+  assert.doesNotMatch(stranger.calls[0].prompt, /Nicknames/);
+
+  assert.equal((await api("/api/ask/habits/alias", { alias: "Wifey", personId: "person-joyce" })).status, 200);
+  const known = stubAi([{ action: "cannot_help", note: "ok" }]);
+  await turn(db, { text: "split with Wifey" }, known);
+  assert.match(known.calls[0].prompt, /Nicknames this household uses: wifey means Joyce\./);
+});

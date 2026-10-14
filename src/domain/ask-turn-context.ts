@@ -6,6 +6,7 @@
 // exist, is no focus at all. Writes nothing.
 
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { loadAskHabits } from "./app-repository-ask-habits";
 import { loadMonthPlanRowsForDraft } from "./app-repository-months";
 import { loadEntryDraftContext } from "./entry-draft-context";
 import { findClosedStatementCheckpointForTransaction } from "./app-repository-entry-commands";
@@ -43,6 +44,7 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
     entry,
     groups,
     planLines,
+    nicknames: await loadNicknames(db, people),
     categories,
     focus: null,
     history: input.history,
@@ -223,4 +225,16 @@ function readDraft(raw: Record<string, unknown>, context: AskTurnContext): AskTu
     shareOn: raw.shareOn === true,
     splitGroupName: group?.name ?? ""
   };
+}
+
+// The nicknames the household confirmed ("J" means Joyce), from Ask's habits;
+// none when the table is missing.
+async function loadNicknames(db: D1Database, people: AskTurnPerson[]) {
+  const { habits } = await loadAskHabits(db);
+  return habits
+    .filter((habit) => habit.kind === "alias")
+    .flatMap((habit) => {
+      const person = people.find((candidate) => candidate.id === (habit.value as { personId: string }).personId);
+      return person ? [{ alias: habit.key, person: person.name }] : [];
+    });
 }
