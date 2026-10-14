@@ -114,14 +114,18 @@ async function expectMonthLeadFigures(page) {
   return figures;
 }
 
-// Remaining budget keeps its explanation: a tap on the pill opens it.
+// Remaining budget keeps its explanation: a tap on the pill opens its menu
+// (design.md "Openable figures"), the explanation first, then Open plan and
+// Ask about this.
 async function expectRemainingExplains(page, figures) {
   await page.locator('.month-lead-group .lead-column[data-metric="remaining"]').click();
-  await expect(page.locator(".metric-detail-popover")).toContainText(
+  const menu = page.locator('[data-figure-menu="plan"]');
+  await expect(menu.locator(".figure-menu-note")).toContainText(
     figures.remaining >= 0 ? "Money is still unassigned" : "Planned spend is higher than planned income"
   );
+  await expect(menu.getByRole("button")).toHaveText(["Open plan", "Ask about this"]);
   await page.keyboard.press("Escape");
-  await expect(page.locator(".metric-detail-popover")).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
 }
 
 async function expectIntentCards(page) {

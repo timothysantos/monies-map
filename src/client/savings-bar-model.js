@@ -2,6 +2,7 @@ import { messages } from "./copy/en-SG";
 import { wholeMoney } from "./money-jobs-model";
 
 const copy = messages.summary.lead.savingsBar;
+const earnedWord = messages.summary.lead.earned;
 
 // The savings bar under the Summary and Month lead (ui/savings-bar.jsx,
 // design.md "Lead · Support · Detail"): all the money earned in the period is
@@ -122,6 +123,9 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
     // line (the figure goes with it when money is shown).
     tickPercent: hasTick ? width(income) : null,
     tickLegend: hasTick ? (hidden ? copy.tick : copy.tickWithAmount(formatMoney(income))) : null,
+    // A phone's legend keeps one line: the word alone, "Earned" (the Simple
+    // lead's word); the figure is the Income column's and the sentence's.
+    tickLegendShort: hasTick ? earnedWord : null,
     sentence,
     shortSentence: shortSentence ?? sentence,
     sentenceFig,

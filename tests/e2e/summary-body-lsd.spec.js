@@ -300,10 +300,14 @@ for (const device of [
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).toHaveCount(0);
 
-      // The arrow opens Entries for the category.
+      // The arrow opens the category's menu; View entries lists its
+      // spending over the whole range (design.md "Openable figures").
       await first.getByRole("button", { name: `View entries for ${share[0].label}` }).click();
+      await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
       await expect(page).toHaveURL(/\/entries\?/);
-      expect(new URL(page.url()).searchParams.getAll("entry_category")).toEqual([share[0].label]);
+      const url = new URL(page.url());
+      expect(url.searchParams.getAll("entry_category")).toEqual([share[0].label]);
+      expect([url.searchParams.get("entry_figure"), url.searchParams.get("entry_to")]).toEqual(["spent", url.searchParams.get("month")]);
     });
 
     test("Wallets in view: one group of compact rows, the DTO's wallet, balance and freshness, no sideways scroll", async ({ page }) => {

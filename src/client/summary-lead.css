@@ -398,7 +398,7 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
 .savings-bar .savings-bar-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 9px;
+  gap: 0 7px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -412,7 +412,7 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
 .savings-bar .savings-bar-legend li {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   white-space: nowrap;
 }
@@ -435,6 +435,13 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
 .savings-bar .savings-bar-legend-share {
   color: var(--muted);
   font-weight: 500;
+}
+
+/* The legend lines and the sentence are openable figures too (design.md
+   "Openable figures"): they sit over the bar parts' 44 px reach, so a tap on
+   "Earned" or "Plan" opens their own menu, not the part above. */
+.savings-bar :is(.savings-bar-legend, .savings-bar-sentence) [data-fig] {
+  z-index: 2;
 }
 
 /* Invested is faded plum: a good outcome like kept (its model tone is

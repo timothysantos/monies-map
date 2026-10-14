@@ -163,18 +163,18 @@ test.describe("phone", () => {
     await expect(jobs.locator('[data-job="invest"] [data-job-status]')).toHaveClass(/money-short/);
   });
 
-  test("a bar part's menu opens Entries filtered to that money, and a job's to its own", async ({ page }) => {
+  test("a bar part's menu opens Entries narrowed to that money, and a job's to its own", async ({ page }) => {
     await revealMoney(page);
     const lead = await openLead(page, MONTH_URL, ".month-lead");
     const bar = lead.locator("[data-savings-bar]");
 
     await bar.locator('[data-segment="invested"]').tap();
-    const menu = bar.locator('[data-money-actions="invested"]');
-    await expect(menu.getByRole("button")).toHaveText(["View entries", "Ask about this"]);
+    const menu = page.locator('[data-figure-menu="invested"]');
+    await expect(menu.getByRole("button")).toHaveText(["View entries", "Open plan", "Ask about this"]);
     await menu.getByRole("button", { name: "View entries" }).tap();
     await expect(page).toHaveURL(/\/entries\?/);
     const url = new URL(page.url());
-    expect(Object.fromEntries(url.searchParams)).toMatchObject({ view: VIEW, month: MONTH, scope: "direct_plus_shared", entry_category: "Investments" });
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({ view: VIEW, month: MONTH, scope: "direct_plus_shared", entry_figure: "invested" });
     expect(url.searchParams.has("entry_type")).toBe(false);
     expect(url.searchParams.has("from_ask")).toBe(false);
     await expect(page.locator(".entry-row").filter({ hasText: "Money jobs iFAST GIRO" })).toHaveCount(1, { timeout: 30_000 });
@@ -183,15 +183,15 @@ test.describe("phone", () => {
     // The spent part lists the expenses; the income job the income.
     await page.goBack();
     await bar.locator('[data-segment="spent"]').tap();
-    await bar.locator('[data-money-actions="spent"]').getByRole("button", { name: "View entries" }).tap();
-    await expect(page).toHaveURL(/entry_type=expense/);
+    await page.locator('[data-figure-menu="spending"]').getByRole("button", { name: "View entries" }).tap();
+    await expect(page).toHaveURL(/entry_figure=spending/);
     expect(new URL(page.url()).searchParams.get("month")).toBe(MONTH);
 
     await page.goBack();
     await lead.locator("[data-money-jobs-summary]").tap();
     await lead.locator('[data-job="income"] .money-job-row').tap();
-    await lead.locator('[data-job="income"] [data-action="entries"]').tap();
-    await expect(page).toHaveURL(/entry_type=income/);
+    await page.locator('[data-figure-menu="earned"] [data-action="entries"]').tap();
+    await expect(page).toHaveURL(/entry_figure=earned/);
     await expect(page.locator(".entry-row").filter({ hasText: "Money jobs salary" })).toHaveCount(1, { timeout: 30_000 });
   });
 
@@ -203,7 +203,7 @@ test.describe("phone", () => {
       ? `Why did I spend more than planned in ${MONTH_WORDS}?`
       : `What did I spend the most on in ${MONTH_WORDS}?`;
     await lead.locator('[data-segment="spent"]').tap();
-    const ask = lead.locator('[data-money-actions="spent"] [data-action="ask"]');
+    const ask = page.locator('[data-figure-menu="spending"] [data-action="ask"]');
     await expect(ask).toHaveAttribute("data-question", question);
     await ask.tap();
     await expect(page).toHaveURL(/\/ask\?/);
@@ -229,7 +229,7 @@ test.describe("phone", () => {
     expect(figures.kept, "something was kept").toBeGreaterThan(0);
     const bar = lead.locator("[data-savings-bar]");
     await bar.locator('[data-segment="kept"]').tap();
-    const ask = bar.locator('[data-money-actions="kept"] [data-action="ask"]');
+    const ask = page.locator('[data-figure-menu="kept"] [data-action="ask"]');
     await expect(ask).toHaveAttribute("data-question", `How much did I save in ${MONTH_WORDS}?`);
     await ask.tap();
     await expect(page).toHaveURL(/\/ask\?/);
@@ -271,15 +271,15 @@ test.describe("phone", () => {
     expect(colours).toHaveLength(1);
 
     await lead.locator('[data-job="spend"] .money-job-row').tap();
-    await expect(lead.locator('[data-job="spend"] [data-action="ask"]')).toHaveAttribute("data-question", `How did my spending compare with the plan in ${MONTH_WORDS}?`);
+    await expect(page.locator('[data-figure-menu="spending"] [data-action="ask"]')).toHaveAttribute("data-question", `How did my spending compare with the plan in ${MONTH_WORDS}?`);
     await expect(lead.locator('[data-legend="invested"]')).toHaveText(/^Invested · \d+%$/);
     await lead.locator('[data-segment="invested"]').tap();
-    const text = await lead.locator("[data-savings-bar], [data-money-jobs]").evaluateAll((items) => items.map((item) => item.textContent).join(" "));
+    const text = await page.locator(".month-lead [data-savings-bar], .month-lead [data-money-jobs], [data-figure-menu]").evaluateAll((items) => items.map((item) => item.textContent).join(" "));
     expect(text).not.toMatch(/\$|short|over by|under|more than/i);
 
     // Its question gets the plan answer (not this month against last), with
     // every amount masked and no words that say which side of the plan.
-    const spendAsk = lead.locator('[data-job="spend"] [data-action="ask"]');
+    const spendAsk = page.locator('[data-figure-menu="spending"] [data-action="ask"]');
     if (!(await spendAsk.isVisible())) await lead.locator('[data-job="spend"] .money-job-row').tap();
     await spendAsk.tap();
     await expect(page).toHaveURL(/\/ask\?/);
@@ -316,9 +316,9 @@ test.describe("desktop", () => {
     // The legend has the figure and the share without a hover; a hover opens nothing.
     await expect(lead.locator('[data-legend="invested"]')).toHaveText(/^Invested \$[\d,]+ · \d+%$/);
     await invested.hover();
-    await expect(lead.locator('[data-money-actions="invested"]')).toHaveCount(0);
+    await expect(page.locator('[data-figure-menu="invested"]')).toHaveCount(0);
     await invested.click();
-    const ask = lead.locator('[data-money-actions="invested"] [data-action="ask"]');
+    const ask = page.locator('[data-figure-menu="invested"] [data-action="ask"]');
     await expect(ask).toBeVisible();
     await ask.click();
     // The Ask panel beside Summary, which stays, asks it at once.
@@ -338,7 +338,7 @@ test.describe("desktop", () => {
 
     // A second question while the panel is open is asked in the same conversation.
     await lead.locator('[data-job="income"] .money-job-row').click();
-    await lead.locator('[data-job="income"] [data-action="ask"]').click();
+    await page.locator('[data-figure-menu="earned"] [data-action="ask"]').click();
     await expect(dock.locator(".ask-thread .ask-me")).toHaveText([`How much did I invest in ${MONTH_WORDS}?`, `How much did I earn in ${MONTH_WORDS}?`], { timeout: 30_000 });
     await expect(dock.locator('[data-ask-money-answer="income"] .ask-answer-amount')).toHaveText(cents.format((await monthFigures(page)).income / 100), { timeout: 30_000 });
     await expect(dock.getByRole("textbox", { name: "Message" })).toHaveValue("");

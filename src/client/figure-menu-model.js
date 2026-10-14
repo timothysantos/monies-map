@@ -89,7 +89,16 @@ export function figureMenu({ fig, arg = "", ids = [], plan = null, ask = "", per
   // Ask about this: asked at once, as if typed.
   let questionKey = ask || DEFAULT_QUESTION[fig] || "spentMost";
   if (hidden) {
-    questionKey = HIDDEN_QUESTION[questionKey] ?? questionKey;
+    // The spending questions a figure picks by which side of its plan (or
+    // of income) it fell would tell: with money hidden they are all the
+    // neutral one.
+    if (plan !== null && ["spentOverPlan", "spentMost"].includes(questionKey)) {
+      questionKey = "spentVsPlan";
+    } else if (["spending", "from_savings", "kept"].includes(fig) && ["spentMore", "spentMost"].includes(questionKey)) {
+      questionKey = "spentVsIncome";
+    } else {
+      questionKey = HIDDEN_QUESTION[questionKey] ?? questionKey;
+    }
   }
   const periodWords = !startMonth
     ? ""

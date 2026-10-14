@@ -556,9 +556,16 @@ export function EntriesPanel({
   );
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
+  // While a period of months is listed (entry_from), it still reads the
+  // page's own month only.
   const checkInEntries = useMemo(
-    () => projectEntriesForView(getFilteredEntries({ entries, entryFilters: {}, selectedScope, viewId: entryView.id }), entryView.id).aggregateEntries,
-    [entries, entryView.id, selectedScope]
+    () => projectEntriesForView(getFilteredEntries({
+      entries: rangeStartMonth ? entries.filter((entry) => entry.date?.startsWith(entryView.monthPage.month)) : entries,
+      entryFilters: {},
+      selectedScope,
+      viewId: entryView.id
+    }), entryView.id).aggregateEntries,
+    [entries, entryView.id, entryView.monthPage.month, rangeStartMonth, selectedScope]
   );
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({

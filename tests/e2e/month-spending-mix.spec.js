@@ -165,7 +165,9 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     const top = monthShare(summary, earlier)[0];
     await page.goto(`/month?view=person-tim&month=${earlier}&${RANGE_QUERY}`);
     await waitUsable(page);
+    // The arrow opens the category's menu (design.md "Openable figures").
     await spendingMix(page).getByRole("button", { name: `View entries for ${top.label}` }).click();
+    await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
     await expect(page).toHaveURL(/\/entries\?/);
     const url = new URL(page.url());
     expect(url.searchParams.get("month")).toBe(earlier);
@@ -233,6 +235,7 @@ test.describe("Spending Mix for a picked month on a desktop", () => {
     await page.goto(`/month?view=person-tim&month=${later}&${RANGE_QUERY}`);
     await waitUsable(page);
     await spendingMix(page).getByRole("button", { name: `View entries for ${last.label}` }).click();
+    await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
     await expect(page).toHaveURL(/\/entries\?/);
     const url = new URL(page.url());
     expect(url.searchParams.get("month")).toBe(later);

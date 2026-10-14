@@ -755,7 +755,9 @@ test.describe("month page", () => {
 
     await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const row = page.locator("tr").filter({ hasText: "Actual drilldown item" }).first();
+    // The actual is an openable figure: its menu's View entries lists them.
     await row.locator(".month-actual-drilldown").click();
+    await page.locator('[data-figure-menu="spent"]').getByRole("button", { name: "View entries" }).click();
 
     await expect(page).toHaveURL(/\/entries\?/);
     await expect(page).toHaveURL(/entry_id=/);

@@ -105,8 +105,9 @@ test("overspent beyond income: no kept part, an income tick, and the hatched par
     ["From savings", "$54,871", 22]
   ]);
   // The tick says what it marks in plain words, with the figure; the bar part keeps its full name for readers.
-  // The legend names the tick, so no label covers the bar.
+  // The legend names the tick, so no label covers the bar; a phone says the word alone.
   assert.equal(model.tickLegend, "All you earned $247,000");
+  assert.equal(model.tickLegendShort, "Earned");
   assert.equal(model.segments[1].name, "Came out of savings");
   assert.equal(model.planLegend, "Plan: spend $247,673 · keep $41,300");
   assert.equal(model.sentence, "You spent $54,871 more than you earned");

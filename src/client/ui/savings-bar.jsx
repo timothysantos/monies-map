@@ -84,7 +84,7 @@ export function SavingsBar({ figures, hidden, period = null, withPlan = true }) 
         {model.tickLegend ? (
           <li data-legend="earned">
             <span className="savings-bar-swatch is-tick" aria-hidden="true" />
-            {open("earned", withPlan ? { "data-fig-plan": "income" } : {}, model.tickLegend)}
+            {open("earned", withPlan ? { "data-fig-plan": "income" } : {}, phone ? model.tickLegendShort : model.tickLegend)}
           </li>
         ) : null}
         {/* More taken out of investments than put in: a line with no part. */}

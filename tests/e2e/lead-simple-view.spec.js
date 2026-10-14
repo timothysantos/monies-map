@@ -231,8 +231,11 @@ test.describe("desktop", () => {
     await expect(facts).not.toContainText(/kept/i);
     // No invested money: nothing about investing anywhere in the facts.
     await expect(facts).not.toContainText(/invest/i);
+    // A chip is an openable figure: View entries is its spending over the period.
     await facts.getByRole("button", { name: /^Food & Drinks 100%/ }).click();
+    await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
     await expect(page).toHaveURL(/\/entries\?.*entry_category=Food/);
+    await expect(page.locator(".entries-totals-lead .lsd-amount")).toHaveText("$123.45", { timeout: 30_000 });
 
     // The month alone on Month: the same facts.
     await page.goto(BARE_MONTH_URL);
