@@ -71,8 +71,9 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   // Null until the insights module arrives: the insights show their frame.
   const checkIn = useMemo(() => (summaryInsights ? {
     memoryKey: checkInMemoryKey("summary", view.id),
-    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), checkInFocusMonth, view.selectedScope].join("|"),
-    signals: summaryInsights.buildSummarySignals({
+    contextKey: [safeSummaryPage.rangeMonths[0], safeSummaryPage.rangeMonths.at(-1), checkInFocusMonth, view.selectedScope].join("|") + (leadView === "simple" ? "|simple" : ""),
+    // Simple shows no plan, so it leaves out the insights about the plan.
+    signals: (leadView === "simple" ? summaryInsights.withoutPlanSignals : (signals) => signals)(summaryInsights.buildSummarySignals({
       audience: view.id === "household" ? "household" : "person",
       viewLabel: view.label,
       today: checkInClock.today,
@@ -83,7 +84,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
       formatMoney: unmaskedMoney
-    }),
+    })),
     page: "summary",
     // The range's last month is the period Summary rotates by.
     period: safeSummaryPage.rangeMonths.at(-1) ?? checkInClock.today.slice(0, 7),
@@ -91,7 +92,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     calmLines: summaryInsights.SUMMARY_CALM_LINES,
     alsoLabel: "Also in this period",
     clock: checkInClock
-  } : null), [accounts, checkInClock, checkInFocusMonth, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
+  } : null), [accounts, checkInClock, checkInFocusMonth, leadView, safeSummaryPage, summaryInsights, view.id, view.label, view.selectedScope]);
   function handleCheckInAction(action) {
     if (action.id === "review-statement") {
       handleOpenImports();

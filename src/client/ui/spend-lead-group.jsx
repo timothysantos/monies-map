@@ -135,36 +135,19 @@ function SimpleFigure({ label, figure, name }) {
   );
 }
 
-// Plan | Simple, two radio buttons drawn as one segmented control. Each is
-// a 44 px target (its hit area reaches past the drawn pill). The arrow keys
-// move the choice, as in any radio group.
+// Plan | Simple, two native radio buttons drawn as one segmented control:
+// the browser gives the radio group's keys (the arrows move the choice and
+// the focus; only the chosen one is in the tab order). Each input is
+// invisible and covers its label and the space around it, a 44 px target.
+// One lead per page, so one group name.
 function LeadViewSwitch({ view, onChange }) {
-  const options = ["plan", "simple"];
   return (
-    <div
-      className="lead-view-switch"
-      role="radiogroup"
-      aria-label={copy.view.label}
-      onKeyDown={(event) => {
-        if (!event.key.startsWith("Arrow")) return;
-        event.preventDefault();
-        const next = view === "plan" ? "simple" : "plan";
-        onChange(next);
-        /** @type {HTMLElement | null} */ (event.currentTarget.querySelector(`[data-view="${next}"]`))?.focus();
-      }}
-    >
-      {options.map((key) => (
-        <button
-          key={key}
-          type="button"
-          role="radio"
-          data-view={key}
-          aria-checked={view === key}
-          tabIndex={view === key ? 0 : -1}
-          onClick={() => onChange(key)}
-        >
+    <div className="lead-view-switch" role="radiogroup" aria-label={copy.view.label}>
+      {["plan", "simple"].map((key) => (
+        <label key={key}>
+          <input type="radio" name="lead-view" checked={view === key} onChange={() => onChange(key)} />
           {copy.view[key]}
-        </button>
+        </label>
       ))}
     </div>
   );

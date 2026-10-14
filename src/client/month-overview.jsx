@@ -1,6 +1,6 @@
 import * as Popover from "@radix-ui/react-popover";
 import { CalendarDays, RotateCcw, SquarePen, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
@@ -10,6 +10,8 @@ import { useIsMobileLayout } from "./use-viewport";
 import { SpendLeadGroup } from "./ui-components";
 import { buildMonthLeadModel } from "./month-lead-model";
 import { useLeadView } from "./lead-view";
+import { buildMoneyIn } from "./month-money-in-model";
+import { monthSimpleCopy } from "./copy/month-simple-copy";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { InlineError } from "./ui-states";
@@ -257,15 +259,10 @@ export function MonthPanelHeader({
 // percent of plan and the spend gap as "under/over plan"), with Income,
 // Saved and Remaining budget as Support pills. It replaced six tiles that
 // scrolled sideways on a phone; every figure they showed is here.
-export function MonthLead({ cards, monthSummary, month, planSections = [], categoryShare = [], investmentMoves = null, isRefreshing = false, onOpenCategory }) {
-  const model = buildMonthLeadModel(cards, monthSummary, {
-    planRows: planSections.flatMap((section) => section.rows ?? []),
-    categoryShare,
-    investmentMoves
-  });
-  // Plan or Simple (lead-view.js), the same remembered choice as Summary's.
-  // Only the lead switches: the plan tables below are what Month is for.
-  const [leadView, setLeadView] = useLeadView(model ? model.hasPlan : null);
+// `model` is buildMonthLeadModel's (useMonthLead below); `leadView` is Plan
+// or Simple (lead-view.js), which the panel also uses for the rest of the page.
+export function MonthLead({ model, leadView, onLeadViewChange, month, categoryShare = [], isRefreshing = false, onOpenCategory }) {
+  const setLeadView = onLeadViewChange;
   return (
     <>
       {isRefreshing ? <p className="month-refresh-hint">Updating totals and actuals...</p> : null}
@@ -287,6 +284,52 @@ export function MonthLead({ cards, monthSummary, month, planSections = [], categ
       ) : null}
     </>
   );
+}
+
+// Month · Simple, in the plan tables' place (design.md "Plan or Simple"):
+// "Money in", one row per source with what came in (mint; dots when money
+// is hidden), each opening its entries; then a quiet "Plan this month" that
+// switches the page to Plan, where the plan is edited. Where the money went
+// is the Spending Mix above it (categories, amounts, shares, bars, each
+// opening its entries), shown in both views.
+export function MonthMoneyIn({ entries, onOpenEntries, onPlanThisMonth }) {
+  const { rows } = useMemo(() => buildMoneyIn(entries), [entries]);
+  return (
+    <section className="chart-card month-money-in" data-money-in>
+      <div className="chart-head">
+        <h3>{monthSimpleCopy.title}</h3>
+        <p>{monthSimpleCopy.detail}</p>
+      </div>
+      {rows.length ? (
+        <DetailRows label={monthSimpleCopy.title}>
+          {rows.map((row) => (
+            <DetailRow
+              key={row.label}
+              data-source={row.label}
+              label={row.entryIds.length > 1 ? `${row.label} · ${monthSimpleCopy.sources(row.entryIds.length)}` : row.label}
+              value={<span className={moneyToneClass("in")}><PrivateMoney>{formatService.money(row.amountMinor)}</PrivateMoney></span>}
+              onClick={() => onOpenEntries(row.entryIds)}
+            />
+          ))}
+        </DetailRows>
+      ) : <p className="month-money-in-empty">{monthSimpleCopy.empty}</p>}
+      <button type="button" className="subtle-action month-plan-link" title={monthSimpleCopy.planThisMonthHint} onClick={onPlanThisMonth}>
+        {monthSimpleCopy.planThisMonth}
+      </button>
+    </section>
+  );
+}
+
+// The Month lead's model and the page's Plan | Simple view (the same
+// remembered choice as Summary's): a month with no plan opens in Simple.
+export function useMonthLead({ cards, monthSummary, planSections = [], categoryShare = [], investmentMoves = null }) {
+  const model = useMemo(() => buildMonthLeadModel(cards, monthSummary, {
+    planRows: planSections.flatMap((section) => section.rows ?? []),
+    categoryShare,
+    investmentMoves
+  }), [cards, categoryShare, investmentMoves, monthSummary, planSections]);
+  const [leadView, setLeadView] = useLeadView(model ? model.hasPlan : null);
+  return { model, leadView, setLeadView };
 }
 
 // Remaining budget (planned income minus planned spend), the third column of

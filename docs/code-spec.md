@@ -648,6 +648,11 @@ A persistence command is all-or-nothing:
   event in one batch; the person's entry is merged into the stored JSON
   inside the statement (`json_patch`), so two people saved at once cannot
   overwrite each other (`tests/atomic-writes-payment-ways.test.mjs`)
+- a login's Plan | Simple choice (`src/domain/app-repository-viewer-preferences.ts`)
+  is one upsert in one batch, merged with `json_patch`, under a hashed key.
+  It is a display preference, not household data, so it writes no audit
+  event (`tests/viewer-preferences.test.mjs`, with a `failingStatement`
+  case)
 - a repeated destructive command is rejected, not re-run (rolling back a
   rolled-back import returns 409)
 - a check on the record's own state that a concurrent request can make stale

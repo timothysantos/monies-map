@@ -1090,11 +1090,21 @@ Definitions:
 - `earned` is the UI word for the period's recorded income in the Simple
   view and the savings bar ("All you earned"). It is recorded money, never
   a forecast.
+- The view is the whole page's mode on Summary and Month, not only the lead.
+  In `Simple`, Summary keeps Spending Mix, Wallets in view and Money insights
+  (without the insights about the plan, `plan-signals.ts`); Month keeps its
+  Spending Mix, notes and accounts and shows `Money in` (what came in, one
+  row per source) where the plan tables are, with "Plan this month" to go
+  back to Plan. Entries, Splits and Ask do not change.
 - The default is `Plan` when the period has a plan (any planned income,
   planned spend, savings target or investment goal above zero, or on Month
-  any plan line) and `Simple` when it has none. A person's choice is kept on
-  that device (local storage, `monies-map:lead-view`), one choice for both
-  pages, and wins over the default.
+  any plan line) and `Simple` when it has none. A person's choice wins over
+  the default and is one choice for both pages. It belongs to the signed-in
+  login (the verified Cloudflare Access email): stored in `app_settings`
+  under `viewer_preferences:` and a SHA-256 of the email (never the email),
+  read back on the app shell (`leadView`). Without a login (the demo, local
+  development) it is kept on the device (`monies-map:lead-view`), which is
+  otherwise only a first-paint cache.
 
 ### Ask Page
 

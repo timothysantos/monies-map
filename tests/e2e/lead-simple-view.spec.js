@@ -57,8 +57,8 @@ const option = (page, name) => viewSwitch(page).getByRole("radio", { name });
 async function expectPlan(page, { summary, jobs = true }) {
   const group = leadGroup(page);
   await expect(group).toHaveAttribute("data-lead-view", "plan", { timeout: 30_000 });
-  await expect(option(page, "Plan")).toHaveAttribute("aria-checked", "true");
-  await expect(option(page, "Simple")).toHaveAttribute("aria-checked", "false");
+  await expect(option(page, "Plan")).toBeChecked();
+  await expect(option(page, "Simple")).not.toBeChecked();
   await expect(group.locator(".summary-lead-spent")).toBeVisible();
   await expect(group.locator(".lsd-eyebrow")).toHaveText(/^Spent · /);
   await expect(group.locator(".summary-lead-plan")).toBeVisible();
@@ -77,8 +77,8 @@ async function expectPlan(page, { summary, jobs = true }) {
 async function expectSimple(page, { summary, earned, spent }) {
   const group = leadGroup(page);
   await expect(group).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
-  await expect(option(page, "Simple")).toHaveAttribute("aria-checked", "true");
-  await expect(option(page, "Plan")).toHaveAttribute("aria-checked", "false");
+  await expect(option(page, "Simple")).toBeChecked();
+  await expect(option(page, "Plan")).not.toBeChecked();
   await expect(group.locator('.lead-simple [data-simple="earned"]')).toHaveText(`Earned${money(earned)}`);
   await expect(group.locator('.lead-simple [data-simple="spent"]')).toHaveText(`Spent${money(spent)}`);
   // No plan anywhere: no "of $x plan", no percent of plan, no plan bar or
@@ -155,10 +155,11 @@ test.describe("desktop", () => {
     await page.reload();
     await expectSimple(page, { summary: true, earned: expected.earned, spent: expected.spent });
 
-    // Month keeps the same choice; only its lead switches, the plan tables stay.
+    // Month keeps the same choice: Simple there too, with Money in for the plan tables.
     await page.goto(MONTH_URL);
     await expectSimple(page, { summary: false, earned: may.earned, spent: may.spent });
-    await expect(page.locator(".month-plan-stack")).toBeVisible();
+    await expect(page.locator(".month-plan-stack")).toHaveCount(0);
+    await expect(page.locator("[data-money-in]")).toBeVisible();
     await expect(leadGroup(page).locator(".lsd-eyebrow")).toHaveText("May 2026");
 
     // Back to Plan on Month: Summary follows.
@@ -180,9 +181,8 @@ test.describe("desktop", () => {
   test("the switch is a radio group: the arrow keys move the choice and the focus", async ({ page }) => {
     await page.goto(SUMMARY_URL);
     await expectPlan(page, { summary: true });
-    // Only the checked option is in the tab order.
-    await expect(option(page, "Plan")).toHaveAttribute("tabindex", "0");
-    await expect(option(page, "Simple")).toHaveAttribute("tabindex", "-1");
+    // Native radios in one group: Tab reaches the checked one only.
+    await expect(viewSwitch(page).locator('input[type="radio"][name="lead-view"]')).toHaveCount(2);
     await option(page, "Plan").focus();
     await page.keyboard.press("ArrowRight");
     await expect(option(page, "Simple")).toBeFocused();
@@ -248,6 +248,68 @@ test.describe("desktop", () => {
     // Plan has none of these.
     await option(page, "Plan").click();
     await expect(leadGroup(page).locator("[data-simple-metrics]")).toHaveCount(0);
+  });
+
+  test("the whole page follows the switch: Summary keeps Spending Mix, wallets and insights; Month swaps the plan tables for Money in", async ({ page }) => {
+    await recordBareMonth(page);
+    await page.goto(SUMMARY_URL);
+    await expectPlan(page, { summary: true });
+    for (const section of [".summary-mix-list", ".summary-accounts", ".financial-insight"]) {
+      await expect(page.locator(section).first(), section).toBeVisible();
+    }
+    // Switching at the top keeps the page where it is.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await option(page, "Simple").click();
+    await expect(page.locator("[data-earned-spent]")).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    for (const section of [".summary-mix-list", ".summary-accounts", ".financial-insight"]) {
+      await expect(page.locator(section).first(), section).toBeVisible();
+    }
+    await expect(page.locator(".summary-intent")).toHaveCount(0);
+
+    // Month, Simple (the choice carries): no plan tables; Money in by source.
+    await page.goto(BARE_MONTH_URL);
+    await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+    await expect(page.locator(".month-plan-stack")).toHaveCount(0);
+    await expect(page.locator(".month-spending-mix")).toBeVisible();
+    const moneyIn = page.locator("[data-money-in]");
+    await expect(moneyIn.locator("h3")).toHaveText("Money in");
+    const salary = moneyIn.locator('[data-source="Simple view salary"]');
+    await expect(salary).toContainText("Simple view salary");
+    await expect(salary).toContainText(money(50_000));
+    await expect(moneyIn.locator("[data-source]")).toHaveCount(1);
+    // "Plan this month" switches the page to Plan, with the plan tables in view.
+    const planLink = moneyIn.getByRole("button", { name: "Plan this month" });
+    await planLink.scrollIntoViewIfNeeded();
+    await planLink.click();
+    await expectPlan(page, { summary: false, jobs: false });
+    const stack = await page.locator(".month-plan-stack").boundingBox();
+    expect(stack.y).toBeLessThan(page.viewportSize().height);
+    await expect(page.locator("[data-money-in]")).toHaveCount(0);
+
+    // Back to Simple: a Money in row opens its entries.
+    await option(page, "Simple").click();
+    await page.locator('[data-money-in] [data-source="Simple view salary"]').click();
+    await expect(page).toHaveURL(/\/entries\?/);
+  });
+
+  test("Simple leaves out the insights about the plan; Plan keeps them", async ({ page }) => {
+    const insightText = async () => {
+      const insight = page.locator(".financial-insight-month");
+      await expect(insight.locator(".checkin-fact").first()).toBeVisible({ timeout: 30_000 });
+      const toggle = insight.getByRole("button", { name: "See all insights" });
+      if (await toggle.count()) await toggle.click();
+      return (await insight.locator(".checkin-fact, .checkin-also li").allTextContents()).join(" | ");
+    };
+    await page.addInitScript((key) => window.localStorage.setItem(key, "plan"), STORAGE_KEY);
+    await page.goto(MONTH_URL);
+    const planText = await insightText();
+    // The demo's May has insights about its plan in Plan.
+    expect(planText).toMatch(/plan/i);
+    await option(page, "Simple").click();
+    await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "simple");
+    const simpleText = await insightText();
+    expect(simpleText).not.toMatch(/plan|budget/i);
   });
 
   test("blocked storage: the default still applies and the switch still works for the visit", async ({ page }) => {

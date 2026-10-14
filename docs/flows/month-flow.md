@@ -52,10 +52,13 @@ Remaining budget column (labelled "To allocate" or "Overplanned", "Remaining bud
 390 px (`tests/e2e/summary-month-lsd.spec.js`).
 
 The card's Plan | Simple switch (`lead-view.js`, DOMAIN.md "Lead View")
-shares Summary's remembered choice. Simple is "Earned $x · Spent $y" over
-the savings bar without its plan bar, with no plan line, money jobs or
-columns; a month with no plan lines and no planned figures opens in Simple
-when nothing is chosen. Only the card switches: the plan tables stay
+shares Summary's remembered choice (per login, from the app shell) and sets
+the page's mode. Simple is "Earned $x · Spent $y" over the savings bar
+without its plan bar, with the plan-free facts and no plan line, money jobs
+or columns; the insights leave out the plan ones; and "Money in" (income
+entries by source, from the month page's own entries) with "Plan this
+month" replaces the plan tables, which Plan keeps for editing. A month with
+no plan lines and no planned figures opens in Simple when nothing is chosen
 (`tests/e2e/lead-simple-view.spec.js`).
 
 The plan tables (Income, Budget Buckets, Planned Items) keep their table

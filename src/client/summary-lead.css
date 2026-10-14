@@ -121,33 +121,38 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   background: var(--chip);
 }
 
-.lead-view-switch button {
+.lead-view-switch label {
   position: relative;
+  display: inline-flex;
+  align-items: center;
   min-height: 26px;
   padding: 0 11px;
-  border: 0;
   border-radius: 999px;
-  background: transparent;
   color: var(--muted);
-  font: inherit;
   font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.lead-view-switch button::after {
-  content: "";
+/* The radio itself is invisible and covers the label and 9 px above and
+   below it: the 44 px target. */
+.lead-view-switch input {
   position: absolute;
   inset: -9px -1px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
-.lead-view-switch button[aria-checked="true"] {
+.lead-view-switch label:has(> input:checked) {
   background: var(--card);
   color: var(--text);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.14);
 }
 
-.lead-view-switch button:focus-visible {
+.lead-view-switch label:has(> input:focus-visible) {
   outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
   outline-offset: 1px;
 }
