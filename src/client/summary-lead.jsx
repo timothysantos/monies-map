@@ -9,8 +9,8 @@ import { SpendLeadGroup } from "./ui-components";
 // plain ink, the bar keeps only its track, the percent and "under/over plan"
 // go, and the pills lose their tint (the money-tone rule in styles.css).
 // Until the cards arrive nothing shows (the old tile row scrolled sideways
-// on a phone). `model` is buildSummaryLeadModel's, built by the panel (its
-// `hasPlan` picks the default view); `view` is Plan or Simple (lead-view.js).
+// on a phone). `model` is buildSummaryLeadModel's, built by the panel; `view`
+// is Plan or Simple (lead-view.js; Simple until the person chooses).
 export function SummaryLead({ model, view, onViewChange, categoryShare, onOpenCategory, rangeStartMonth, rangeEndMonth }) {
   if (!model) {
     return null;

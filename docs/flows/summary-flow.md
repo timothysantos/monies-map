@@ -76,8 +76,9 @@ money shows dots with only the bar's track
 
 The Plan | Simple switch (`lead-view.js`, DOMAIN.md "Lead View") sets the
 page's mode. The panel builds the lead model once (`buildSummaryLeadModel`);
-its `hasPlan` picks the default (Plan with a plan, Simple without; Plan
-while loading), and the login's choice wins: it comes on `GET /api/app-shell`
+the default is Simple (a login that never chose, with a plan or without,
+and while loading), and the login's choice wins (Settings > Summary view
+sets the same choice): it comes on `GET /api/app-shell`
 (`leadView`, only for a signed-in login that chose) and a switch saves it
 with `POST /api/viewer-preferences/lead-view`; without a login the device
 keeps it. Simple shows the model's `simple` figures and facts, Money

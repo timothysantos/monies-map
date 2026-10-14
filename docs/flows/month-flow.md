@@ -57,8 +57,8 @@ the page's mode. Simple is "Earned $x · Spent $y" over the savings bar
 without its plan bar, with the plan-free facts and no plan line, money jobs
 or columns; the insights leave out the plan ones; and "Money in" (income
 entries by source, from the month page's own entries) with "Plan this
-month" replaces the plan tables, which Plan keeps for editing. A month with
-no plan lines and no planned figures opens in Simple when nothing is chosen
+month" replaces the plan tables, which Plan keeps for editing. Month
+opens in Simple, with a plan or without, until a choice is made
 (`tests/e2e/lead-simple-view.spec.js`).
 
 The plan tables (Income, Budget Buckets, Planned Items) keep their table

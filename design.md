@@ -1049,9 +1049,18 @@ Where it is used:
   on `--chip` with the chosen option on `--card`; negative margins keep the
   eyebrow line's height (the Month card stays at most 215 px on a phone),
   and each invisible input covers its label and 9 px above and below, a
-  44 px target. Plan is the pages as they were. Without a choice a page
-  opens in Plan when the period has a plan (`hasPlan`) and in Simple when
-  it has none; while the figures load it is Plan.
+  44 px target. Plan is the pages as they were. Without a choice
+  a page opens in Simple, with a plan or without, and while the figures
+  load (a constant in `chooseLeadView`, so the first screen does not grow;
+  `hasPlan` no longer picks the default).
+  Settings > Summary view (`settings-lead-view-section.jsx`, a row in the
+  Settings list like Colours: label, the status word "Simple" or "Plan", a
+  chevron) unfolds to the same two choices as a segmented control
+  (`settings-colour-mode` buttons, `aria-pressed`) with one line: "How
+  Summary and Month open. You can still switch on the page." It reads and
+  writes `leadViewStore` through `useLeadView`, so it is the same per-login
+  preference as the page's switch, not a second setting; Settings is a lazy
+  route, so the row adds nothing to the first screen.
   The choice belongs to the signed-in login: the app shell carries it
   (`leadView`, `app-repository-viewer-preferences.ts`, keyed by a SHA-256
   of the Access email) and a switch is shown at once, then saved with

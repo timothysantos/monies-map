@@ -51,13 +51,16 @@ const MONTH = addMonths(SEED_MONTH, -1);
 // year earlier (M-13), so the check-in can show a same-season comparison.
 const OLDEST_MONTH = addMonths(SEED_MONTH, -16);
 const OUT_DIR = path.resolve("public/faq/guide");
+// E2E_PORT_OFFSET moves the ports as it does for the e2e shards, so two
+// worktrees can capture at once.
+const PORT_OFFSET = Number(process.env.E2E_PORT_OFFSET) || 0;
 const GUIDE_STACK = {
   index: "guide",
-  uiPort: 5442,
-  apiPort: 8842,
-  inspectorPort: 9442,
-  baseURL: "http://127.0.0.1:5442",
-  apiOrigin: "http://127.0.0.1:8842",
+  uiPort: 5442 + PORT_OFFSET,
+  apiPort: 8842 + PORT_OFFSET,
+  inspectorPort: 9442 + PORT_OFFSET,
+  baseURL: `http://127.0.0.1:${5442 + PORT_OFFSET}`,
+  apiOrigin: `http://127.0.0.1:${8842 + PORT_OFFSET}`,
   persistTo: ".wrangler/state-guide",
   viteCacheDir: "node_modules/.vite-guide",
   serverLog: "test-results/guide-screenshots/servers.log",
@@ -160,6 +163,11 @@ const SHOTS = [
   // Start here
   {
     name: "summary-household", device: "desktop",
+    run: (page) => open(page, `/summary?view=household&month=${MONTH}`)
+  },
+  {
+    // What a new account sees: Summary opens in Simple until Plan is chosen.
+    name: "summary-simple", device: "desktop", leadView: "default",
     run: (page) => open(page, `/summary?view=household&month=${MONTH}`)
   },
   {
@@ -793,13 +801,24 @@ function parseArgs(argv) {
   return options;
 }
 
-async function newContext(browser, device, baseURL, { hidden = false } = {}) {
+// Summary and Month open in Simple until a person chooses (lead-view.js). The
+// guide's text and shots explain the plan, so every shot pins the saved Plan
+// choice (once per tab, so a switch inside a shot sticks) unless it sets
+// `leadView: "default"` to show what a new account sees.
+async function newContext(browser, device, baseURL, { hidden = false, leadView = "plan" } = {}) {
   const context = await browser.newContext(device === "phone"
     ? { ...devices["iPhone 13"], baseURL, locale: "en-SG", timezoneId: "Asia/Singapore" }
     : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, baseURL, locale: "en-SG", timezoneId: "Asia/Singapore" });
   await context.addInitScript((visible) => {
     window.localStorage.setItem("monies-map:money-totals-visible", visible ? "true" : "false");
   }, !hidden);
+  if (leadView === "plan") {
+    await context.addInitScript(() => {
+      if (window.sessionStorage.getItem("guide-pinned-plan")) return;
+      window.sessionStorage.setItem("guide-pinned-plan", "1");
+      window.localStorage.setItem("monies-map:lead-view", "plan");
+    });
+  }
   return context;
 }
 
@@ -838,7 +857,7 @@ async function main() {
     await reseed(setupPage);
     for (const shot of selected) {
       if (shot.reseed) await reseed(setupPage);
-      const context = await newContext(await browserFor(shot.device), shot.device, baseURL, { hidden: shot.hidden });
+      const context = await newContext(await browserFor(shot.device), shot.device, baseURL, { hidden: shot.hidden, leadView: shot.leadView });
       const page = await context.newPage();
       const captured = new Set();
       // `kind` picks the output folder and size when it differs from the

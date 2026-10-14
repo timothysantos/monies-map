@@ -10,8 +10,8 @@ import { buildSummaryLeadModel } from "../src/client/summary-lead-model.js";
 
 // The lead's Plan | Simple views (lead-view.js, design.md "Plan or Simple"):
 // Simple shows earned and spent with no plan, from the same split as Plan,
-// so the two never disagree. Without a remembered choice a period with a
-// plan opens in Plan and one with none in Simple; the choice wins once made.
+// so the two never disagree. Without a remembered choice a page opens in
+// Simple; the choice wins once made.
 
 function summaryCards({ plannedIncome = 0, actualIncome = 650_000, plannedSpend = 0, actualSpend = 420_000, savingsTarget = 0, realizedSavings = 230_000 } = {}) {
   return [
@@ -59,7 +59,7 @@ test("signed in, the shell's choice replaces the device's cache, and none on the
   assert.equal(store.get(), null);
   assert.equal(storage.values.has(LEAD_VIEW_STORAGE_KEY), false);
   assert.equal(changes, 2);
-  assert.equal(chooseLeadView(store.get(), false), "simple");
+  assert.equal(chooseLeadView(store.get()), "simple");
 });
 
 test("signed in, a switch is shown at once and saved for the login; a shell that lands meanwhile does not undo it", async () => {
@@ -172,13 +172,28 @@ test("a month with plan lines has a plan even at zero; a month with none has no 
   assert.deepEqual(unplanned.simple, { earned: { amountMinor: 80_000, tone: "in" }, spent: { amountMinor: 50_000, tone: "neutral" } });
 });
 
-test("the default is Plan with a plan and Simple without; a remembered choice wins either way", () => {
-  assert.equal(chooseLeadView(null, true), "plan");
-  assert.equal(chooseLeadView(null, false), "simple");
-  // Still loading: Plan, as before, so the page does not swap when the figures arrive.
-  assert.equal(chooseLeadView(null, null), "plan");
-  assert.equal(chooseLeadView("simple", true), "simple");
-  assert.equal(chooseLeadView("plan", false), "plan");
+test("the default is Simple whether or not the period has a plan; a saved choice wins either way", () => {
+  // A fresh account (nothing saved) opens Simple, with plans or without, and
+  // while the figures load (so the page does not swap when they arrive).
+  assert.equal(chooseLeadView(null), "simple");
+  assert.equal(chooseLeadView(undefined), "simple");
+  assert.equal(chooseLeadView("plan"), "plan");
+  assert.equal(chooseLeadView("simple"), "simple");
+  // Junk is not a choice.
+  assert.equal(chooseLeadView("fancy"), "simple");
+});
+
+test("two accounts on one device each get their own choice: a shell without one clears the other's", () => {
+  const storage = memoryStorage();
+  const store = createLeadViewStore({ storage, send: async () => {} });
+  store.applyShell(signedIn("plan"));
+  assert.equal(chooseLeadView(store.get()), "plan");
+  // Another login on the same device that never chose: Simple, not the first login's Plan.
+  store.applyShell({ viewerIdentity: { email: "joyce@example.com" } });
+  assert.equal(chooseLeadView(store.get()), "simple");
+  assert.equal(storage.values.has(LEAD_VIEW_STORAGE_KEY), false);
+  store.applyShell(signedIn("plan"));
+  assert.equal(chooseLeadView(store.get()), "plan");
 });
 
 test("the choice is remembered on the device, and junk or blocked storage falls back to the default", () => {

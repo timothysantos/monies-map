@@ -47,7 +47,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   }), [view.summaryPage]);
   // Plan or Simple (lead-view.js): the lead and the month-by-month section
   // follow it. Until the figures arrive it is Plan, unless chosen before.
-  const [leadView, setLeadView] = useLeadView(leadModel ? leadModel.hasPlan : null);
+  const [leadView, setLeadView] = useLeadView();
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = useMemo(() => ({

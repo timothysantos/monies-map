@@ -6,6 +6,16 @@ const isolatedBaseURL = process.env.E2E_BASE_URL;
 const baseURL = isolatedBaseURL ?? "http://127.0.0.1:5173";
 const shouldStartWebServer = !process.env.PLAYWRIGHT_USE_EXISTING_SERVER && !isolatedBaseURL;
 
+// Summary and Month open in Simple until a person chooses (lead-view.js), but
+// most specs are about Plan, so every test starts on a device that has chosen
+// Plan. A spec about the default or the choice itself opts out with
+// `test.use({ storageState: { cookies: [], origins: [] } })`
+// (lead-simple-view, settings summary view).
+const PLAN_CHOSEN = {
+  cookies: [],
+  origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: "monies-map:lead-view", value: "plan" }] }]
+};
+
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 120_000,
@@ -22,6 +32,7 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL,
+    storageState: PLAN_CHOSEN,
     trace: "on-first-retry"
   },
   webServer: shouldStartWebServer

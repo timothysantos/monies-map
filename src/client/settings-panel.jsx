@@ -42,6 +42,7 @@ import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsColoursSection } from "./settings-colours-section";
+import { SettingsLeadViewSection } from "./settings-lead-view-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import { EntryTransferTools } from "./entry-editor";
@@ -163,6 +164,7 @@ export function SettingsPanel({
     categories: false,
     categoryRules: false,
     colours: false,
+    leadView: false,
     trust: false,
     transfers: false,
     errorDiagnostics: false,
@@ -1406,6 +1408,11 @@ export function SettingsPanel({
       <SettingsColoursSection
         isOpen={settingsSectionsOpen.colours}
         onToggle={() => toggleSettingsSection("colours")}
+      />
+
+      <SettingsLeadViewSection
+        isOpen={settingsSectionsOpen.leadView}
+        onToggle={() => toggleSettingsSection("leadView")}
       />
 
       <SettingsTrustSection
