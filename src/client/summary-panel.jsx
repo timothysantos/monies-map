@@ -9,7 +9,6 @@ import { messages } from "./copy/en-SG";
 import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
 import { formatMonthLabel, money, unmaskedMoney } from "./formatters";
 import "./summary-body.css";
-import { SpendingMixSection } from "./spending-mix-section";
 import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "./summary-workflow";
 import { SummaryLead } from "./summary-lead";
 import { buildSummaryLeadModel } from "./summary-lead-model";
@@ -25,6 +24,9 @@ import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows, SimpleDetail } from "./ui-components";
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
+// Spending Mix sits under the lead and the insights: its section (the list,
+// the donut's slice menus and their words) loads beside the first screen.
+const SpendingMixSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SpendingMixSection })));
 // Intent vs Outcome sits below the fold, under Spending Mix: it loads beside
 // the first screen, which keeps the lead's openable figures in budget.
 const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcome").then((module) => ({ default: module.SummaryIntentVsOutcomeSection })));
@@ -184,12 +186,14 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
 
       <div className="summary-top-grid has-intent-grid">
         {/* All months: the whole range's spending by category. */}
-        <SpendingMixSection
-          donutData={safeSummaryPage.categoryShareChart}
-          categories={categories}
-          onCategoryAppearanceChange={onCategoryAppearanceChange}
-          period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
-        />
+        <Suspense fallback={null}>
+          <SpendingMixSection
+            donutData={safeSummaryPage.categoryShareChart}
+            categories={categories}
+            onCategoryAppearanceChange={onCategoryAppearanceChange}
+            period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
+          />
+        </Suspense>
 
         {leadView === "simple" ? (
           // The Simple view's month list, loaded only in Simple.

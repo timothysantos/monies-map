@@ -244,7 +244,7 @@ test("Intent vs Outcome and Earned vs spent by month: each month's figures open 
     const card = buildIntentMonthCard(month);
     for (const [figure, amountMinor] of [["spent", card.spent.amountMinor], ["earned", card.actualIncomeMinor], ["difference", card.metrics[2].actualMinor]]) {
       const { model } = await viewEntries(api, accounts, figure, { search, period });
-      assert.equal(shownTotal(model), amountMinor, `${month.month} intent ${figure}`);
+      assert.equal(model.spent.amountMinor, amountMinor, `${month.month} intent ${figure}`);
     }
     const row = rows.find((item) => item.month === month.month);
     for (const [figure, amountMinor] of [["earned", row.earnedMinor], ["spending", row.spentMinor], ["invested", row.investedMinor], ["kept", row.keptMinor]]) {
@@ -270,7 +270,7 @@ test("Month plan rows' actuals, Spending Mix and Top spending open exactly their
     for (const section of page.monthPage.planSections) {
       for (const row of section.rows.filter((item) => item.actualEntryIds?.length)) {
         const { model } = await viewEntries(api, accounts, "spent", { search, ids: row.actualEntryIds });
-        assert.equal(shownTotal(model), row.actualMinor, `${view.viewId} ${section.key} ${row.label}`);
+        assert.equal(model.spent.amountMinor, row.actualMinor, `${view.viewId} ${section.key} ${row.label}`);
         checked += 1;
       }
     }
@@ -282,7 +282,7 @@ test("Month plan rows' actuals, Spending Mix and Top spending open exactly their
     assert.ok(checked > 0, "some plan row has an actual");
     for (const slice of page.monthPage.categoryShareChart) {
       const { model } = await viewEntries(api, accounts, "category", { search, period, arg: slice.label });
-      assert.equal(shownTotal(model), slice.valueMinor, `${view.viewId} mix ${slice.label}`);
+      assert.equal(model.spent.amountMinor, slice.valueMinor, `${view.viewId} mix ${slice.label}`);
     }
     // Top spending names three of those categories.
     const top = buildSimpleMetrics({ figures: lead.figures, categoryShare: page.monthPage.categoryShareChart, startMonth: MAY, endMonth: MAY, today: "2026-06-15" }).topCategories;
@@ -293,7 +293,7 @@ test("Month plan rows' actuals, Spending Mix and Top spending open exactly their
   const search = viewSearch(VIEWS[0], MAY, `&summary_start=${START}&summary_end=${MAY}`);
   for (const slice of summaryPage.categoryShareChart.slice(0, 4)) {
     const { model } = await viewEntries(api, accounts, "category", { search, period: { startMonth: START, endMonth: MAY }, arg: slice.label });
-    assert.equal(shownTotal(model), slice.valueMinor, `range mix ${slice.label}`);
+    assert.equal(model.spent.amountMinor, slice.valueMinor, `range mix ${slice.label}`);
   }
 });
 
@@ -318,7 +318,7 @@ test("Entries pills: View entries narrows the list to the rows behind the pill a
     const base = `?view=${view.viewId}&month=${MAY}&scope=${view.scope}&entries_scope=${view.scope}`;
     const { model: whole, derived: wholeRows } = await openEntries(api, { pathname: "/entries", search: base }, accounts);
     const pills = Object.fromEntries(whole.pills.map((pill) => [pill.key, pill]));
-    for (const [figure, pill] of [["spent", whole.spent], ["earned", pills.income], ["difference", pills.difference], ["transfers", pills.transfers], ["outflow", pills.outflow]]) {
+    for (const [figure, pill] of [["expenses", whole.spent], ["earned", pills.income], ["difference", pills.difference], ["transfers", pills.transfers], ["outflow", pills.outflow]]) {
       const menu = figureMenu({ fig: figure, period: null, search: base, pathname: "/entries" });
       const { model, derived } = await openEntries(api, menu.items[0].location, accounts);
       assert.equal(model.spent.amountMinor, pill.amountMinor, `${view.viewId}/${view.scope} ${figure}`);

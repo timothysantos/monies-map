@@ -67,9 +67,15 @@ function close({ restoreFocus = false } = {}) {
 }
 
 // Under the figure, inside the page's 16 px gutters; above it when there is
-// no room below.
-function place(menu, trigger) {
-  const rect = trigger.getBoundingClientRect();
+// no room below. A donut slice (SVG) is anchored at its middle, or at the
+// pointer that rested on it (`point`).
+function place(menu, trigger, point) {
+  let rect = trigger.getBoundingClientRect();
+  if (point || trigger instanceof SVGElement) {
+    const x = point?.x ?? rect.left + rect.width / 2;
+    const y = point?.y ?? rect.top + rect.height / 2;
+    rect = { left: x, top: y, bottom: y + 4 };
+  }
   const width = menu.offsetWidth;
   const height = menu.offsetHeight;
   const viewport = document.documentElement.clientWidth;
@@ -89,7 +95,27 @@ function place(menu, trigger) {
  */
 export function toggleFigureMenu(trigger) {
   if (open?.trigger === trigger) {
+    // A menu a resting pointer opened stays open for the click that follows.
+    if (open.byHover) {
+      open.byHover = false;
+      open.menu.querySelector("button")?.focus({ preventScroll: true });
+      return;
+    }
     close({ restoreFocus: true });
+    return;
+  }
+  openFigureMenu(trigger);
+}
+
+/**
+ * Opens the figure's menu (a donut slice's on a resting pointer: `point`
+ * places it there and `focus: false` leaves the focus where it is). Already
+ * open for this figure, it stays as it is.
+ * @param {Element} trigger
+ * @param {{ point?: { x: number, y: number }, focus?: boolean }} [options]
+ */
+export function openFigureMenu(trigger, { point = undefined, focus = true } = {}) {
+  if (open?.trigger === trigger || !trigger.isConnected) {
     return;
   }
   close();
@@ -99,12 +125,17 @@ export function toggleFigureMenu(trigger) {
   menu.setAttribute("role", "group");
   menu.setAttribute("aria-label", view.label);
   menu.setAttribute("data-figure-menu", trigger.getAttribute("data-fig") ?? "");
+  // The figure's explanation or quick facts, one per line.
   const note = trigger.getAttribute("data-fig-note");
   if (note) {
-    const line = document.createElement("p");
-    line.className = "figure-menu-note";
-    line.textContent = note;
-    menu.appendChild(line);
+    const facts = document.createElement("div");
+    facts.className = "figure-menu-note";
+    for (const text of note.split("\n")) {
+      const line = document.createElement("p");
+      line.textContent = text;
+      facts.appendChild(line);
+    }
+    menu.appendChild(facts);
   }
   for (const item of view.items) {
     const button = document.createElement("button");
@@ -122,7 +153,7 @@ export function toggleFigureMenu(trigger) {
     menu.appendChild(button);
   }
   document.body.appendChild(menu);
-  place(menu, trigger);
+  place(menu, trigger, point);
   trigger.setAttribute("aria-expanded", "true");
 
   const onKey = (event) => {
@@ -153,6 +184,7 @@ export function toggleFigureMenu(trigger) {
   open = {
     trigger,
     menu,
+    byHover: !focus,
     cleanup: () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("click", onPress);
@@ -161,7 +193,9 @@ export function toggleFigureMenu(trigger) {
       window.removeEventListener("popstate", onResize);
     }
   };
-  menu.querySelector("button")?.focus({ preventScroll: true });
+  if (focus) {
+    menu.querySelector("button")?.focus({ preventScroll: true });
+  }
 }
 
 // The menu leaves with the page it belongs to (a route change).

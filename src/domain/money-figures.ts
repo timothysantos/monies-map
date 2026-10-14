@@ -10,13 +10,15 @@
 //   month" show: `spending` (spent, without money filed under Investments
 //   or Savings), `invested` (the Investments category plus transfers into
 //   investment accounts, less transfers out), `kept`, `earned`,
-//   `from_savings` (spending past what came in) and `took_out` (more taken
-//   out of investments than put in);
-// - the Entries page's own figures, as entry-totals.js counts them:
-//   `spent` (every expense less paybacks, the Spent lead and the Month
-//   "Actual spend"), `transfers` (transfers out), `outflow` (spent plus
-//   transfers out) and `difference` (income less spent; Summary's realized
-//   savings).
+//   `from_savings` (spending past what came in), `took_out` (more taken out
+//   of investments than put in) and `spent` (every expense less paybacks, at
+//   the view's amounts: the Month "Actual spend", Intent vs Outcome, a
+//   category's spending, a plan row's actual);
+// - the Entries page's own figures, as entry-totals.js counts them (whole
+//   amounts, with a person's share beside them): `expenses` (the Spent
+//   lead), `transfers` (transfers out), `outflow` (spent plus transfers out)
+//   and `difference` (income less spent at the view's amounts; Summary's
+//   realized savings).
 //
 // A row belongs to a figure when it adds to it (or takes from it), so
 // leaving the other rows out never changes the figure. The total is worked
@@ -28,8 +30,8 @@ import { findInvestmentMoves } from "./investment-moves";
 import { isInvestmentsCategoryName, isSavingsCategoryName, splitMoneyUse, type MoneyUseInput } from "./money-jobs";
 import type { EntryDto } from "../types/dto";
 
-export const MONEY_JOB_FIGURES = ["spending", "invested", "kept", "earned", "from_savings", "took_out"] as const;
-export const ENTRIES_FIGURES = ["spent", "transfers", "outflow", "difference"] as const;
+export const MONEY_JOB_FIGURES = ["spending", "invested", "kept", "earned", "from_savings", "took_out", "spent"] as const;
+export const ENTRIES_FIGURES = ["expenses", "transfers", "outflow", "difference"] as const;
 export const MONEY_FIGURES = [...MONEY_JOB_FIGURES, ...ENTRIES_FIGURES] as const;
 export type MoneyFigure = (typeof MONEY_FIGURES)[number];
 
@@ -121,6 +123,7 @@ export function figureEntryIds(
         counts = earns || (spends && !isMovedCategory(entry));
         break;
       case "spent":
+      case "expenses":
         counts = spends;
         break;
       case "transfers":
@@ -154,7 +157,11 @@ export function moneyJobFigureMinor(
   if (!isMoneyJobFigure(figure)) {
     return null;
   }
-  const split = splitMoneyUse(moneyUseInputFromEntries(entries, allEntries, investmentAccountIds));
+  const input = moneyUseInputFromEntries(entries, allEntries, investmentAccountIds);
+  if (figure === "spent") {
+    return input.spentMinor;
+  }
+  const split = splitMoneyUse(input);
   switch (figure) {
     case "spending":
       return split.spending;

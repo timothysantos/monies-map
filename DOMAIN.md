@@ -266,11 +266,14 @@ savings bar, Simple and "Earned vs spent by month" show them):
 - `kept`: income less spending less invested (the lead's "Saved");
 - `earned`: income (paybacks lower spending instead);
 - `from_savings`: spending past what came in;
-- `took_out`: more taken out of investments than put in.
+- `took_out`: more taken out of investments than put in;
+- `spent`: every expense less paybacks at the view's amounts (the Month
+  "Actual spend", Intent vs Outcome, a category's spending, a plan row's
+  actual).
 
-The Entries page's own figures (as entry-totals counts them):
-- `spent`: every expense less paybacks (the Entries "Spent", the Month
-  "Actual spend", a category's spending, a plan row's actual);
+The Entries page's own figures (as entry-totals counts them, whole amounts
+with a person's share beside):
+- `expenses`: every expense less paybacks (the Entries "Spent" lead);
 - `transfers`: transfers out;
 - `outflow`: spent plus transfers out;
 - `difference`: income less spent (the stored `realized savings`).

@@ -11,6 +11,7 @@ import { NoteSheetDialog } from "./note-sheet-dialog";
 import { useDraftChanged } from "./use-draft-changed";
 import { MonthPlanSheet } from "./month-plan-sheet";
 import { useHashTarget } from "./use-hash-target";
+import { buildMonthSliceFacts } from "./month-slice-facts";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
@@ -243,6 +244,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     investmentMoves: view.monthPage.investmentMoves ?? null
   });
   const isSimple = monthLead.leadView === "simple";
+  // A Spending Mix slice's plan and merchants, from what the page holds.
+  const monthSliceFacts = useMemo(
+    () => buildMonthSliceFacts({ planRows: planSections.flatMap((section) => section.rows ?? []), entries: insightEntries }),
+    [insightEntries, planSections]
+  );
   // A plan figure's "Open plan" (figure-menu.js) lands on the plan.
   useHashTarget(!isSimple && Boolean(monthLead.model));
   const checkIn = useMemo(() => ({
@@ -1536,6 +1542,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         categories={categories}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         period={`${view.monthPage.month}:${view.monthPage.month}`}
+        sliceFacts={monthSliceFacts}
       />
 
       {/* Simple (lead-view.js): money in, and a way back to Plan, in the

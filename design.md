@@ -1133,33 +1133,54 @@ Where it is used:
   `tests/simple-page.test.mjs`, `tests/viewer-preferences.test.mjs`.)
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
-  chunks; no `styles.css` growth). The Spending Mix donut labels only the
+  chunks; no `styles.css` growth; Spending Mix is a `React.lazy` chunk beside
+  the first screen, list, slice menus and words included). The Spending Mix donut labels only the
   slices with room for a label (`SpendingMixChart sliceLabels`, laid out by
   `donut-label-layout.js` in the lazy Recharts chunk; the old percent labels
   and category badges collided when many categories had thin slices, and
   Entries and Splits keep those). Biggest slice first, a slice whose ring
   edge is at least 18 px long gets "Name 32.1%" just outside the ring, or
-  "32.1%" alone when the name does not fit, or nothing: each label must stay
+  the name over the share on two lines when one line does not fit, or
+  nothing (owner, 2026-10-14: a bare "4.3%" cannot be told apart, so a share
+  never shows without its name): each label must stay
   inside the chart, off the ring and 4 px clear of every label already
   placed (text measured on a canvas). Small slices have no label; the ranked
   list names every category. Labels are plain page ink (`--text`), so they
   read in every colour preset, are `aria-hidden` (the list is what assistive
   tech reads), show shares of all spending (as the list does) and never an
-  amount, so hidden money keeps them. The chart is 236 px on a phone and
-  310 px from 761 px, one label line above and below the ring. Under it (beside it from 1,024 px, where the card has the full
-  row) a ranked list in one `DetailRows` group, biggest first: the 44 px
-  category bubble (edits the category, as before), the name and amount on
-  one line (the name is one line with an ellipsis), a 6 px bar in the
-  category's colour whose width is the category's share of all spending, and
-  the share to one decimal; the `›` (44 × 44) opens the category's figure
+  amount, so hidden money keeps them. The chart is 260 px tall on a phone and
+  380 px wider, with label room around the ring. Under it, or beside it when
+  the card itself is at least 700 px wide (a container query; the donut
+  then takes 58% of the card), a lean ranked list in one `DetailRows` group,
+  biggest first, one 44 px line per category: a small dot in the category's
+  colour (a 44 px target that edits the category, as the bubble did), the
+  name (one line, an ellipsis), the amount and the share to one decimal; the
+  `›` (44 × 44) opens the category's figure
   menu (`category`, over the page's period: the Summary's whole range, or
   the Month's month), whose View entries total is the row's amount.
   The main tap still hides or shows the slice in the donut (`aria-pressed`);
-  a hidden category stays listed, dimmed, with the existing "Hidden" word
-  and a grey bar, and the donut's total follows the shown ones while the
-  shares stay of all spending. The top five show; a last row, "Show all N" /
-  "Show fewer" (`aria-expanded`), lists the rest. The old per-category
-  transaction count and the old "Shown" caption are gone with the cards.
+  a hidden category stays listed, dimmed, with the existing "Hidden" word,
+  and the donut's total follows the shown ones while the shares stay of all
+  spending. A desktop shows the top five and a phone the top three (the
+  owner leaned to the donut and three rows on a phone, so it stays short
+  without hiding the list); a last row, "Show all N" / "Show fewer"
+  (`aria-expanded`), lists the rest. "Hide list" / "Show list" in the
+  card's head (a quiet text button, `aria-expanded`) folds the list away:
+  the donut then takes the whole card, bigger (340 px on a phone, 440 px
+  wider), with every label that fits; the choice is kept on the device
+  (`monies-map:spending-mix-list`, read and written in try/catch). Each
+  slice is an openable figure (`category`): a clear sector over it in the
+  labels' layer takes the tap, the focus (`tabIndex` 0, the arrow keys move
+  between slices in ring order) and on a desktop a resting pointer (a
+  quarter of a second, the menu at the pointer, the focus left where it
+  is; a click then keeps it open). Its menu starts with the slice's facts:
+  amount and share of spending ("$7,638.77 · 44.5% of spending"; the share
+  alone with money hidden), entries, and on the Month page what it already
+  holds (`month-slice-facts.js`): "$250 of $300 planned" when a plan line
+  has the category (then Open plan) and the two biggest merchants. A change
+  against the previous period is left out: neither page loads it. The
+  coloured sectors take no pointer events, so Recharts never swaps a sector
+  for its "active" copy under the pointer.
   Wallets in view is one group of `DetailRow`s (a `DetailRows` group, from
   1,024 px the heading on the left and the group on the right): the wallet
   name with its statement freshness under it ("Reconciled to Sep 2026
@@ -1487,7 +1508,7 @@ Where: the Summary and Month lead in Plan and Simple (Spent and its plan,
 the plan line, Earned and Spent in Simple, every savings bar part, legend
 line and the sentence, the money jobs, the Income and Saved pills or
 columns, To allocate), Simple's Daily spend and Top spending, Intent vs
-Outcome, Earned vs spent by month, Spending Mix (each row's `›`), the Month
+Outcome, Earned vs spent by month, Spending Mix (each slice and each row's `›`), the Month
 plan rows' actuals, the Entries lead and pills, the Splits lead's balance
 and the open group's strip tile (another tile still opens its group).
 Hidden money: the same menu, no amount in any label. A text figure is the

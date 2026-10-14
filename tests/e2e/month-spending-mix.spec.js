@@ -52,10 +52,10 @@ async function expectMix(page, share) {
   const mix = spendingMix(page);
   await expect(mix).toHaveCount(1);
   await expect(mix.locator(".donut-center strong")).toHaveText(formatMoney(sumMinor(share)));
-  // The ranked list shows the top five; "Show all N" lists the rest
+  // The ranked list shows the top five (three on a phone); "Show all N" lists the rest
   // (tests/e2e/summary-body-lsd.spec.js covers the toggle).
   const rows = mix.locator(".summary-mix-row");
-  const listed = Math.min(share.length, 5);
+  const listed = Math.min(share.length, page.viewportSize().width < 761 ? 3 : 5);
   await expect(rows).toHaveCount(listed);
   await expect(rows.first()).toContainText(share[0].label);
   await expect(rows.first()).toContainText(formatMoney(share[0].valueMinor));

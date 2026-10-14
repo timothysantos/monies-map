@@ -33,15 +33,21 @@ export function SpendingMixChart({
   // room for one, none on small slices (donut-label-layout.js). Shares are
   // of shareTotalMinor, all spending, so hiding a slice does not move them.
   sliceLabels = false,
-  shareTotalMinor = undefined
+  shareTotalMinor = undefined,
+  // Spending Mix: each slice is an openable figure, and `sliceFacts` adds a
+  // category's plan and merchants to its menu (spending-mix-recharts.jsx).
+  sliceFacts = undefined,
+  // Spending Mix sizes its own donut for a phone; others are clamped there.
+  fullSize = false
 }) {
   const total = typeof totalMinor === "number"
     ? totalMinor
     : data.reduce((sum, item) => sum + item.valueMinor, 0);
   const isNarrowViewport = useIsMobileLayout();
-  const resolvedHeight = isNarrowViewport ? Math.min(height, compact ? 250 : 280) : height;
-  const resolvedInnerRadius = isNarrowViewport ? Math.min(innerRadius, compact ? 54 : 62) : innerRadius;
-  const resolvedOuterRadius = isNarrowViewport ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
+  const clamp = isNarrowViewport && !fullSize;
+  const resolvedHeight = clamp ? Math.min(height, compact ? 250 : 280) : height;
+  const resolvedInnerRadius = clamp ? Math.min(innerRadius, compact ? 54 : 62) : innerRadius;
+  const resolvedOuterRadius = clamp ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
   const chartData = data.map((item, index) => ({
     ...item,
     ...getCategoryTheme(categories, item, index)
@@ -58,6 +64,7 @@ export function SpendingMixChart({
           compact={compact}
           callouts={callouts}
           sliceLabels={sliceLabels}
+          sliceFacts={sliceFacts}
           shareTotalMinor={shareTotalMinor}
           isNarrowViewport={isNarrowViewport}
           resolvedHeight={resolvedHeight}

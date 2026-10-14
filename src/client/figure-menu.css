@@ -8,7 +8,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-width: calc(100vw - 32px);
+  max-width: min(380px, calc(100vw - 32px));
   padding: 8px;
   border: 1px solid var(--card-border, var(--line));
   border-radius: 14px;
@@ -43,9 +43,19 @@
 /* A figure's explanation (data-fig-note), above its buttons. */
 .figure-menu .figure-menu-note {
   flex: 1 0 100%;
-  max-width: 34ch;
+  max-width: 100%;
   margin: 0 2px 2px;
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.35;
+}
+
+.figure-menu .figure-menu-note p {
+  margin: 0;
+}
+
+/* The first fact (a slice's amount and share) reads first. */
+.figure-menu .figure-menu-note p:first-child {
+  color: var(--text);
+  font-weight: 600;
 }

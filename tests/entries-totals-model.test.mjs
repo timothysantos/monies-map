@@ -77,8 +77,10 @@ test("a figure opened from a card leads: its name, the period and its total (des
   // An Entries figure (a pill) leads with the pill's own figure and share.
   const outflow = buildEntriesTotalsModel({ ...INPUT, figure: "outflow", figureMinor: null });
   assert.deepEqual([outflow.eyebrow, outflow.spent], ["Outflow · Aug 2026", { amountMinor: 767_269, tone: "neutral", shareMinor: 736_267 }]);
-  // Spent is the Spent lead.
-  assert.deepEqual(buildEntriesTotalsModel({ ...INPUT, figure: "spent", figureMinor: null }).spent, { amountMinor: 167_927, tone: "neutral", shareMinor: 136_925 });
+  // Entries' own Spent (expenses) is the Spent lead, whole with the share beside.
+  assert.deepEqual(buildEntriesTotalsModel({ ...INPUT, figure: "expenses", figureMinor: null }).spent, { amountMinor: 167_927, tone: "neutral", shareMinor: 136_925 });
+  // A card's spent (a category, a plan row) is at the view's amounts.
+  assert.deepEqual(buildEntriesTotalsModel({ ...INPUT, figure: "spent", figureMinor: 136_925 }).spent, { amountMinor: 136_925, tone: "neutral", shareMinor: null });
 });
 
 test("the filters row says All entries, or how many filters are on", () => {

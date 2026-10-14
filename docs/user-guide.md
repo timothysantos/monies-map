@@ -330,12 +330,20 @@ over plan.
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
   ([Pick a month](#pick-a-month)).
+- **The donut**: each slice with room is named with its share. Point at a
+  slice (on a phone, tap it; with the keyboard, Tab to the donut and use the
+  arrow keys, then Enter) for its amount, share and number of entries, then
+  **View entries** and **Ask about this** ([Dig into any
+  figure](#dig-into-any-figure)). **Hide list** folds the list away so the
+  donut fills the card; **Show list** brings it back. Your choice is kept on
+  this device.
 - **A category in the list**: select its name to hide or show it in the donut
-  (a hidden one is dimmed and says Hidden). The **›** beside it shows where
+  (a hidden one is dimmed and says Hidden). The list shows the top five (three
+  on a phone). The coloured dot changes the category's icon and colour. The
+  **›** beside it shows where
   that category's spending came from: **View entries** lists it for the
-  whole range, adding up to the amount shown. The coloured icon changes the
-  category's icon and
-  colour. **Show all** under the first five lists every category;
+  whole range, adding up to the amount shown. **Show all** lists every
+  category;
   **Show fewer** folds it back. With money hidden the amounts show as dots and
   the percentages stay.
 - **A month card** in Intent vs Outcome: select **Details** for the planned,

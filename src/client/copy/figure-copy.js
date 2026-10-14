@@ -12,6 +12,7 @@ const names = {
   from_savings: "From savings",
   took_out: "Took out of investments",
   spent: "Spent",
+  expenses: "Spent",
   transfers: "Transfers",
   outflow: "Outflow",
   difference: "Difference"

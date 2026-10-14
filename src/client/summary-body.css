@@ -4,13 +4,28 @@
    section's chunk, never in public/styles.css. Colours are tokens, the
    category colours and the money tones; every tappable is at least 44px. */
 
-/* Spending Mix: the donut, then the ranked list (beside it from 1,024px,
-   where Summary gives the card the full row). */
+/* Spending Mix: the donut, then a lean ranked list (beside it from
+   1,024px, where the donut takes about 58% of the card). "Hide list" folds
+   the list away and the donut takes the whole card (.is-poster). */
+.spending-mix-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spending-mix-list-toggle.subtle-action {
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .summary-mix {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .summary-mix-chart {
@@ -20,17 +35,23 @@
   min-width: 0;
 }
 
+.summary-mix-chart .spending-mix-chart-shell {
+  width: 100%;
+}
+
 .summary-mix-list {
   min-width: 0;
 }
 
+/* One line per category: a small colour dot (it edits the category, a 44px
+   target), the name, the amount and the share, then the arrow. */
 .summary-mix-row {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 10px;
-  min-height: 64px;
-  padding: 8px 2px 8px 12px;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 2px 0 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -38,24 +59,37 @@
   border-bottom: 0;
 }
 
-/* The category bubble in its soft pair, like the Lead card's. */
 .summary-mix-row .category-icon {
+  display: grid;
+  place-items: center;
   width: 44px;
   height: 44px;
-  border-color: color-mix(in srgb, var(--category-color) 35%, var(--paper));
-  background: color-mix(in srgb, var(--category-color) 20%, var(--paper));
+  border: 0;
+  background: transparent;
   box-shadow: none;
 }
 
 .summary-mix-row .category-icon svg {
-  width: 20px;
-  height: 20px;
+  display: none;
+}
+
+.summary-mix-row .category-icon::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--category-color, var(--bar-color));
+}
+
+.summary-mix-row .category-icon-button:hover::before,
+.summary-mix-row .category-icon-button:focus-visible::before {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--category-color) 30%, transparent);
 }
 
 .summary-mix-main {
-  display: grid;
-  gap: 7px;
-  align-content: center;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   min-width: 0;
   min-height: 44px;
   padding: 0;
@@ -67,19 +101,16 @@
   cursor: pointer;
 }
 
-.summary-mix-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
+.summary-mix-main {
+  align-items: center;
 }
 
 .summary-mix-name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  font-size: 0.94rem;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -91,30 +122,6 @@
   font-weight: 600;
 }
 
-.summary-mix-meter {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.summary-mix-bar {
-  display: block;
-  flex: 1 1 auto;
-  height: 6px;
-  min-width: 0;
-  overflow: hidden;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--text) 8%, var(--paper));
-}
-
-.summary-mix-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 6px;
-  background: var(--bar-color);
-}
-
 .summary-mix-percent,
 .summary-mix-state {
   flex: 0 0 auto;
@@ -124,17 +131,13 @@
 }
 
 .summary-mix-percent {
-  min-width: 3.2em;
+  min-width: 3.4em;
   text-align: right;
 }
 
 /* A category hidden from the donut stays listed, dimmed. */
 .summary-mix-row.is-hidden-from-donut {
   opacity: 0.58;
-}
-
-.summary-mix-row.is-hidden-from-donut .summary-mix-bar-fill {
-  background: color-mix(in srgb, var(--text) 30%, var(--paper));
 }
 
 .summary-mix-arrow {
@@ -164,10 +167,37 @@
   font-weight: 700;
 }
 
-@media (min-width: 1024px) {
+/* A slice is an openable figure: focusable, and lifted a little while it
+   is focused or its menu is open. */
+.donut-slice {
+  cursor: pointer;
+  outline: none;
+}
+
+.has-slice-menus .recharts-pie-sector {
+  pointer-events: none;
+}
+
+.donut-slice:focus-visible .donut-slice-hit,
+.donut-slice[aria-expanded="true"] .donut-slice-hit {
+  stroke: var(--text);
+  stroke-width: 2px;
+}
+
+/* Beside the donut when the card itself is wide (a container query: the card
+   is narrow beside Earned vs spent or the Ask panel, whatever the screen). */
+.spending-mix-card {
+  container-type: inline-size;
+}
+
+@container (min-width: 700px) {
   .summary-mix {
-    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
-    gap: 28px;
+    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+    gap: 20px;
+  }
+
+  .summary-mix.is-poster {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

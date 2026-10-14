@@ -44,7 +44,7 @@ export function EntriesTotals({
         <LeadCard
           className="entries-totals-lead"
           eyebrow={model.eyebrow}
-          amount={<span {...openFigure(model.figure || "spent")}><PrivateMoney>{formatService.money(model.spent.amountMinor)}</PrivateMoney></span>}
+          amount={<span {...openFigure(model.figure || "expenses")}><PrivateMoney>{formatService.money(model.spent.amountMinor)}</PrivateMoney></span>}
           tone={model.spent.tone}
           amountAside={shareAside}
         />

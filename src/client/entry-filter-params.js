@@ -19,7 +19,8 @@
 //   Open in Entries)
 // - entry_figure: the rows behind one figure and that figure as the lead
 //   (src/domain/money-figures.ts): spending | invested | kept | earned |
-//   from_savings | took_out | spent | transfers | outflow | difference; a
+//   from_savings | took_out | spent | expenses | transfers | outflow |
+//   difference; a
 //   card's "View entries" (design.md "Openable figures")
 // - entry_from, entry_to: a period of months (YYYY-MM) in place of the one
 //   month, when entry_to is the page's month: a Summary range's figure
@@ -54,7 +55,7 @@ export const ASK_FILTER_PARAM_KEYS = Object.freeze([
 // The figures entry_figure names (MONEY_FIGURES in src/domain/money-figures.ts,
 // pinned by tests/money-figures.test.mjs; listed here so this module stays
 // free of the domain's entry code).
-export const ENTRY_FIGURES = Object.freeze(["spending", "invested", "kept", "earned", "from_savings", "took_out", "spent", "transfers", "outflow", "difference"]);
+export const ENTRY_FIGURES = Object.freeze(["spending", "invested", "kept", "earned", "from_savings", "took_out", "spent", "expenses", "transfers", "outflow", "difference"]);
 
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 // The longest period Entries lists at once: two years of months.

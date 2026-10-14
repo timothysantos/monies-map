@@ -10,6 +10,7 @@ import { formatMonthLabel } from "./formatters";
 const DEFAULT_QUESTION = {
   spending: "spentMost",
   spent: "spentMost",
+  expenses: "spentMost",
   outflow: "spentMost",
   transfers: "spentMost",
   invested: "invested",

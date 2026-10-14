@@ -1,7 +1,9 @@
-import { useMemo } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { useMemo, useRef } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Sector } from "recharts";
 
+import { spendingMixCopy } from "./copy/spending-mix-copy";
 import { layoutDonutLabels } from "./donut-label-layout";
+import { useMoneyPrivacy } from "./money-privacy";
 
 import { money, moneyWithCurrency } from "./formatters";
 import { getIconComponent } from "./ui-components";
@@ -16,6 +18,7 @@ export default function SpendingMixRecharts({
   compact,
   callouts,
   sliceLabels,
+  sliceFacts = undefined,
   shareTotalMinor,
   isNarrowViewport,
   resolvedHeight,
@@ -26,10 +29,13 @@ export default function SpendingMixRecharts({
     () => (sliceLabels ? sliceLabelRenderer(chartData, shareTotalMinor, isNarrowViewport ? 11 : 12) : null),
     [sliceLabels, chartData, shareTotalMinor, isNarrowViewport]
   );
+  const { areTotalsVisible } = useMoneyPrivacy();
+  // Spending Mix (sliceLabels): every slice is an openable figure.
+  const renderSlice = useOpenableSlices(sliceLabels, { shareTotal: shareTotalMinor || total, hidden: !areTotalsVisible, sliceFacts });
   return (
-    <div className={`spending-mix-chart ${compact ? "is-compact" : ""}`}>
+    <div className={`spending-mix-chart ${compact ? "is-compact" : ""} ${renderSlice ? "has-slice-menus" : ""}`} onKeyDown={sliceLabels ? moveBetweenSlices : undefined}>
       <ResponsiveContainer width="100%" height={resolvedHeight}>
-        <PieChart>
+        <PieChart accessibilityLayer={!renderSlice}>
           <Pie
             data={chartData}
             dataKey="valueMinor"
@@ -41,7 +47,10 @@ export default function SpendingMixRecharts({
             paddingAngle={0}
             isAnimationActive={false}
             labelLine={false}
-            label={callouts ? (props) => renderPieCallout(props, total, { compact: isNarrowViewport }) : (renderSliceLabel ?? false)}
+            label={callouts
+              ? (props) => renderPieCallout(props, total, { compact: isNarrowViewport })
+              : renderSlice ? (props) => renderSlice(props, renderSliceLabel(props)) : (renderSliceLabel ?? false)}
+            rootTabIndex={renderSlice ? -1 : undefined}
           >
             {chartData.map((entry) => (
               // The fill attribute keeps the plain colour; the style (which
@@ -103,8 +112,17 @@ function sliceLabelRenderer(chartData, shareTotalMinor, fontSize) {
         fontSize={fontSize}
         style={{ fill: "var(--text)" }}
       >
-        {label.name ? <tspan fontWeight="500">{`${label.name} `}</tspan> : null}
-        <tspan fontWeight="700">{label.percent}</tspan>
+        {label.twoLines ? (
+          <>
+            <tspan x={label.x + label.width / 2} dy="-0.72em" fontWeight="500">{label.name}</tspan>
+            <tspan x={label.x + label.width / 2} dy="1.44em" fontWeight="700">{label.percent}</tspan>
+          </>
+        ) : (
+          <>
+            <tspan fontWeight="500">{`${label.name} `}</tspan>
+            <tspan fontWeight="700">{label.percent}</tspan>
+          </>
+        )}
       </text>
     );
   };
@@ -154,4 +172,79 @@ function renderPieCallout(props, total, options = {}) {
       </text>
     </g>
   );
+}
+
+// Spending Mix's slices as openable figures (design.md "Openable figures",
+// figure-menu.js): each is a focusable group around its sector with the
+// category's figure attributes and its quick facts (`data-fig-note`, one
+// fact per line: amount and share, entries, then the page's own facts such
+// as the plan and the top merchants). A tap, a click or Enter opens its menu
+// through the shell's listener; on a desktop a resting pointer (a quarter of
+// a second) opens it too, beside the pointer, so passing over slices on the
+// way to the menu does not. Hidden money: shares only.
+function useOpenableSlices(enabled, { shareTotal, hidden, sliceFacts }) {
+  const hoverTimer = useRef(0);
+  return useMemo(() => {
+    if (!enabled) {
+      return null;
+    }
+    const facts = (payload) => {
+      const percent = `${((payload.valueMinor / (shareTotal || 1)) * 100).toFixed(1)}%`;
+      const extra = sliceFacts?.(payload, hidden) ?? null;
+      const lines = [
+        hidden ? spendingMixCopy.sliceShare(percent) : spendingMixCopy.sliceAmount(money(payload.valueMinor), percent),
+        payload.entryCount ? spendingMixCopy.sliceEntries(payload.entryCount) : null,
+        ...(extra?.lines ?? [])
+      ].filter(Boolean);
+      return { percent, lines, hasPlan: Boolean(extra?.hasPlan) };
+    };
+    const hoverOpen = (event) => {
+      if (event.pointerType !== "mouse") return;
+      const slice = event.currentTarget;
+      const point = { x: event.clientX, y: event.clientY };
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = window.setTimeout(() => {
+        import("./figure-menu.js").then((menu) => menu.openFigureMenu(slice, { point, focus: false }), () => {});
+      }, 250);
+    };
+    const hoverLeave = () => window.clearTimeout(hoverTimer.current);
+    // Drawn in the labels' layer, over the coloured sector (whose own
+    // pointer events are off, so Recharts never swaps it for an "active"
+    // copy under the pointer): a clear sector of the same shape that takes
+    // the tap, the hover and the focus, and the slice's label.
+    return function OpenableSlice(props, labelNode) {
+      const { payload, cx, cy, innerRadius, outerRadius, startAngle, endAngle } = props;
+      const name = payload?.label ?? "";
+      const { percent, lines, hasPlan } = facts(payload ?? { valueMinor: 0 });
+      return (
+        <g
+          className="donut-slice"
+          data-slice={name}
+          data-fig="category"
+          data-fig-arg={name}
+          data-fig-note={lines.join("\n")}
+          data-fig-plan={hasPlan ? "" : undefined}
+          role="button"
+          tabIndex={0}
+          aria-label={spendingMixCopy.sliceLabel(name, percent)}
+          onPointerEnter={hoverOpen}
+          onPointerLeave={hoverLeave}
+        >
+          <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius} startAngle={startAngle} endAngle={endAngle} fill="transparent" className="donut-slice-hit" />
+          {labelNode}
+        </g>
+      );
+    };
+  }, [enabled, hidden, shareTotal, sliceFacts]);
+}
+
+// The arrow keys move between the slices, in ring order.
+function moveBetweenSlices(event) {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+  const current = event.target.closest?.(".donut-slice");
+  if (!step || !current) return;
+  const slices = [...event.currentTarget.querySelectorAll(".donut-slice")];
+  const next = slices[(slices.indexOf(current) + step + slices.length) % slices.length];
+  event.preventDefault();
+  next?.focus();
 }

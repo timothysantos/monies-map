@@ -16,7 +16,8 @@ import { formatMonthLabel } from "./formatters";
 // figure tapped and the figure shown are the same to the cent. A money
 // job's figure (`figureMinor`, worked out by entry-filtering.js through the
 // same split the card used) is at the view's amounts; the Entries page's
-// own figures (Spent, Transfers, Outflow, Difference) are the pill's. A
+// own figures (its Spent lead, Transfers, Outflow, Difference) are the
+// lead's or the pill's, whole amounts with the person's share beside. A
 // period of months (`rangeStartMonth`) names the whole period.
 export function buildEntriesTotalsModel({
   entryTotals,
@@ -71,6 +72,7 @@ function figureLead({ figure, figureMinor, spent, pills }) {
   }
   const pill = pills.find((item) => item.key === figure);
   return pill ? { amountMinor: pill.amountMinor, tone: pill.tone, shareMinor: pill.shareMinor } : spent;
+  // ("expenses", and no figure, is the Spent lead.)
 }
 
 // Money in is mint, kept is mint or rose by its sign, spending past income
