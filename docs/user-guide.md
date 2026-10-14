@@ -546,7 +546,7 @@ always know you are working on shared money rather than your bank ledger.
 - **Group tiles**: a row under the person switcher with your named groups
   (for example a trip or home bills) and **Non-group expenses**. The group you
   have open comes first as a white tile with its balance in words, such as
-  "Serene owes you $303.15" or "You owe Serene $108.58", and how many entries
+  "Serene owes you $166.35" or "You owe Serene $109.50", and how many entries
   it has. The others are smaller tiles with one balance line: groups that owe
   you first, then groups you owe, then Non-group expenses ("No balance" when
   it is even), then settled groups, dimmed and marked "Settled". The cream

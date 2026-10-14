@@ -1112,7 +1112,7 @@ function assignImports(input: {
   }
 
   SHOWCASE_ACCOUNTS.forEach((account, accountIndex) => {
-    const minute = String(10 + accountIndex * 7).padStart(2, "0");
+    const minute = String(10 + accountIndex * 4).padStart(2, "0");
     const accountRows = transactions
       .filter((row) => row.accountId === account.id)
       .sort((left, right) => (left.postDate ?? left.date).localeCompare(right.postDate ?? right.date) || left.id.localeCompare(right.id));
@@ -1353,7 +1353,7 @@ function planTemplatesFor(offset: number, month: string): PlanTemplate[] {
     { key: "ethan-bills", personId: ETHAN, section: "budget_buckets", category: "Bills", label: "Bills", plannedMinor: 9_000, note: "His half of SP Group and the fibre broadband." },
     { key: "ethan-shopping", personId: ETHAN, section: "budget_buckets", category: "Shopping", label: "Shopping", plannedMinor: 5_000 },
     { key: "ethan-savings", personId: ETHAN, section: "planned_items", category: "Savings", label: "Savings", plannedMinor: 100_000 },
-    { key: "ethan-endowus", personId: ETHAN, section: "planned_items", category: "Investments", label: "Endowus monthly", plannedMinor: 60_000, day: 26, accountId: A.ethanBank },
+    { key: "ethan-endowus", personId: ETHAN, section: "planned_items", category: "Investments", label: "Endowus monthly", plannedMinor: 60_000, note: "GIRO from OCBC 360 after payday." },
     // Serene.
     { key: "serene-parents", personId: SERENE, section: "planned_items", category: "Family & Personal", label: "Mum's allowance", plannedMinor: 30_000, day: 1, accountId: A.sereneBank },
     { key: "starhub", personId: SERENE, section: "planned_items", category: "Bills", label: "StarHub mobile", plannedMinor: 2_800, day: 2, accountId: A.sereneCard },
@@ -1369,7 +1369,7 @@ function planTemplatesFor(offset: number, month: string): PlanTemplate[] {
     { key: "serene-health", personId: SERENE, section: "budget_buckets", category: "Healthcare", label: "Healthcare", plannedMinor: 3_000 },
     { key: "serene-beauty", personId: SERENE, section: "budget_buckets", category: "Beauty", label: "Beauty", plannedMinor: 6_500 },
     { key: "serene-savings", personId: SERENE, section: "planned_items", category: "Savings", label: "Savings", plannedMinor: 80_000 },
-    { key: "serene-stashaway", personId: SERENE, section: "planned_items", category: "Investments", label: "StashAway monthly", plannedMinor: 40_000, day: 28, accountId: A.sereneBank }
+    { key: "serene-stashaway", personId: SERENE, section: "planned_items", category: "Investments", label: "StashAway monthly", plannedMinor: 40_000, note: "PayNow from UOB One after payday." }
   ];
 
   if (calendarMonth === 12) {
@@ -1385,7 +1385,7 @@ function planTemplatesFor(offset: number, month: string): PlanTemplate[] {
     templates.find((template) => template.key === "ethan-savings")!.plannedMinor += 100_000;
   }
   if (((offset % 3) + 3) % 3 === 0) {
-    templates.push({ key: "ethan-ibkr", personId: ETHAN, section: "planned_items", category: "Investments", label: "IBKR top-up", plannedMinor: 100_000, day: 27, accountId: A.ethanBank });
+    templates.push({ key: "ethan-ibkr", personId: ETHAN, section: "planned_items", category: "Investments", label: "IBKR top-up", plannedMinor: 100_000, note: "Quarterly." });
   }
   if (offset === -4) {
     templates.push({ key: "concert", personId: SERENE, section: "budget_buckets", category: "Entertainment", label: "Concert tickets", plannedMinor: 20_000 });

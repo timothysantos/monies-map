@@ -93,6 +93,11 @@ test("the showcase replaces the household with a fictional one and records the d
   const [{ count }] = await rows(db, "SELECT COUNT(*) AS count FROM transactions");
   assert.equal(count, buildShowcaseDataset({ seedMonth: SEED_MONTH }).transactions.length);
   assert.ok(count >= 900 && count <= 1500, `a few hundred to ~1,500 entries, got ${count}`);
+  // Every stored time is a real time of day (Settings formats them).
+  const dataset = buildShowcaseDataset({ seedMonth: SEED_MONTH });
+  const times = [...dataset.imports.map((item) => item.importedAt), ...dataset.transactions.map((row) => row.createdAt)];
+  const invalid = times.filter((value) => !/^\d{4}-\d\d-\d\d ([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(value));
+  assert.deepEqual(invalid, []);
 });
 
 test("tracked months span 17 months ending at the seed month", async (t) => {
@@ -152,7 +157,12 @@ test("plans: most months a little under, two a few hundred over, the aircon mont
   const planned_items = march.monthPage.planSections.find((section) => section.key === "planned_items").rows;
   const hdb = planned_items.find((row) => row.label === "HDB loan");
   assert.equal(hdb.actualMinor, 62_000, "the HDB loan row is linked to its GIRO entry");
-  assert.deepEqual(planned_items.filter((row) => row.categoryName === "Investments").map((row) => [row.label, row.plannedMinor]), [["Endowus monthly", 60_000], ["StashAway monthly", 40_000]]);
+  // The investment lines carry no bill date, so nothing asks to link them
+  // to a payment (the transfers count as invested on their own).
+  assert.deepEqual(
+    planned_items.filter((row) => row.categoryName === "Investments").map((row) => [row.label, row.plannedMinor, row.planDate ?? null]),
+    [["Endowus monthly", 60_000, null], ["StashAway monthly", 40_000, null]]
+  );
   // Both earn a salary: each income row shows only its own person's pay,
   // on Household too.
   assert.deepEqual(
