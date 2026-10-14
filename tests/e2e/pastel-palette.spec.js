@@ -29,7 +29,7 @@ test("donut segments and category icons read on the panel and stay distinct", as
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoPageAfterApi(page, "/summary?view=household&month=2025-06&scope=direct_plus_shared&summary_start=2025-06&summary_end=2025-06", "/api/summary-page", () => page.getByRole("heading", { name: "Spending Mix" }));
-  const segments = page.locator(".recharts-pie-sector path, .recharts-sector");
+  const segments = page.locator(".recharts-pie-sector path, .recharts-sector:not(.donut-slice-hit)");
   await expect(segments.first()).toBeVisible();
 
   const fills = await segments.evaluateAll((elements) => elements.map((element) => element.getAttribute("fill")).filter(Boolean));
@@ -39,7 +39,11 @@ test("donut segments and category icons read on the panel and stay distinct", as
   }
   expect(new Set(fills.map((fill) => fill.toLowerCase())).size).toBe(fills.length);
 
-  const icons = await page.locator(".category-icon").evaluateAll((elements) => elements.slice(0, 12).map((element) => {
+  // Spending Mix's list rows draw a plain colour dot, not a glyph on a tint, so
+  // the glyph icons are measured on Entries, where each row shows one.
+  await gotoPageAfterApi(page, "/entries?view=household&month=2025-06&scope=direct_plus_shared", "/api/entries-page", () => page.getByRole("heading", { name: "Entries", exact: true }));
+  await expect(page.locator(".category-icon svg").first()).toBeVisible();
+  const icons = await page.locator(".category-icon").evaluateAll((elements) => elements.filter((element) => element.querySelector("svg") && getComputedStyle(element.querySelector("svg")).display !== "none").slice(0, 12).map((element) => {
     const style = getComputedStyle(element);
     return { glyph: style.color, tint: style.backgroundColor };
   }));

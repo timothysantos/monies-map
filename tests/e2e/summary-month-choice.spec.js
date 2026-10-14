@@ -248,8 +248,9 @@ test.describe("Summary tab month choice on a phone", () => {
     await expect(mix).toBeVisible();
     await expect(mix.locator(".summary-focus-button")).toHaveCount(0);
     await expect(mix.getByRole("button", { name: "Range overall" })).toHaveCount(0);
+    // A phone lists the top three (five on a desktop).
     const rows = mix.locator(".summary-mix-row");
-    await expect(rows).toHaveCount(Math.min(summary.categoryShareChart.length, 5));
+    await expect(rows).toHaveCount(Math.min(summary.categoryShareChart.length, 3));
     const top = summary.categoryShareChart[0];
     await expect(rows.first()).toContainText(moneyFormatter.format(top.valueMinor / 100));
 
@@ -262,7 +263,7 @@ test.describe("Summary tab month choice on a phone", () => {
     await expect(page).toHaveURL(new RegExp(`/month\\?.*month=${newest}(&|$)`));
     await expect(page.locator(".month-panel-head")).toBeVisible();
     const monthMix = page.locator(".month-panel .chart-card").filter({ has: page.getByRole("heading", { name: "Spending Mix" }) });
-    await expect(monthMix.locator(".summary-mix-row")).toHaveCount(Math.min(newestShare.length, 5));
+    await expect(monthMix.locator(".summary-mix-row")).toHaveCount(Math.min(newestShare.length, 3));
     await expect(monthMix.locator(".summary-focus-button")).toHaveCount(0);
   });
 });

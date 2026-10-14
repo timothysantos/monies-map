@@ -186,7 +186,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
 
       <div className="summary-top-grid has-intent-grid">
         {/* All months: the whole range's spending by category. */}
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="spending-mix-reserve" aria-hidden="true" />}>
           <SpendingMixSection
             donutData={safeSummaryPage.categoryShareChart}
             categories={categories}

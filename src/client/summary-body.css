@@ -256,3 +256,15 @@
     gap: 28px;
   }
 }
+
+/* Holds Spending Mix's place while its lazy chunk loads, so the cards under it
+   do not jump when it lands. Empty and invisible. */
+.spending-mix-reserve {
+  min-height: 480px;
+}
+
+@media (max-width: 760px) {
+  .spending-mix-reserve {
+    min-height: 420px;
+  }
+}
