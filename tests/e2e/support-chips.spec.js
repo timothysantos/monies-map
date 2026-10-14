@@ -76,10 +76,11 @@ async function chipText(chip) {
   return (await chip.locator(".lsd-chip").innerText()).trim();
 }
 
+// 43.9 absorbs layout float noise (a 44px chip can measure 43.99998 mid-scroll).
 async function expectTapTarget(locator) {
   const rect = await locator.boundingBox();
-  expect(rect.width).toBeGreaterThanOrEqual(44);
-  expect(rect.height).toBeGreaterThanOrEqual(44);
+  expect(rect.width).toBeGreaterThanOrEqual(43.9);
+  expect(rect.height).toBeGreaterThanOrEqual(43.9);
 }
 
 test.describe("tappable Support chips on a phone", { tag: "@webkit" }, () => {
