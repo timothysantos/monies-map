@@ -132,6 +132,7 @@ import { getAuthenticatedEmail } from "./server/access-identity";
 import { checkAccess } from "./server/access-jwt";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { handleAskTurn } from "./server/ask-turn-route";
+import { aiVisitorKey } from "./domain/ai-assistance";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
@@ -167,6 +168,10 @@ export interface Env {
   FX_RATES_OFFLINE?: string;
   AI_ASSIST_ENABLED?: string;
   AI_ASSIST_DAILY_LIMIT?: string;
+  // The demo's per-visitor daily cap and the request's visitor hash
+  // (src/domain/ai-assistance.ts, reserveDailyAiBudget).
+  AI_ASSIST_VISITOR_DAILY_LIMIT?: string;
+  AI_VISITOR_KEY?: string;
   // Optional Claude via Cloudflare AI Gateway (src/domain/ai-provider.ts,
   // docs/developer-guide.md "Optional AI provider"). All absent: Workers AI
   // is used directly.
@@ -190,7 +195,7 @@ export interface Env {
   AI_CLAUDE_MONTHLY_TARGET_USD?: string;
   // Cloudflare Access token check (src/server/access-jwt.ts): "off" (unset),
   // "report" or "enforce", the team domain and the Access application's AUD
-  // tag. Set for production only.
+  // tag. Production enforces; the demo has its own app tag (report).
   ACCESS_JWT_MODE?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
@@ -228,6 +233,12 @@ export default {
 
     if (url.pathname === "/api/health") {
       return json({ ok: true, service: "monies-map" });
+    }
+
+    // The demo's per-visitor AI cap (AI_ASSIST_VISITOR_DAILY_LIMIT) counts
+    // by a hash of the visitor, never the address itself.
+    if (env.AI_ASSIST_VISITOR_DAILY_LIMIT && request.method === "POST" && url.pathname.startsWith("/api/")) {
+      env = { ...env, AI_VISITOR_KEY: await aiVisitorKey(request) };
     }
 
     // Existing production databases may need additive columns before any page

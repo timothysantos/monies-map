@@ -56,17 +56,46 @@ test("production configures 100 daily AI allowance units and the Worker honours 
   assert.equal(bound[0].at(-1), 100, "the upsert caps usage at the configured limit");
 });
 
+// The public demo (owner decision 2026-10-14): Claude through the same
+// gateway, with its own caps counted in its own D1, which is never
+// production's. Production keeps one shared cap and no visitor cap.
+test("the demo has its own small AI caps in its own database, and production is unchanged", async () => {
+  const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8").then(JSON.parse);
+  const demo = await read("wrangler.demo.jsonc");
+  const app = await read("wrangler.jsonc");
+  assert.equal(demo.vars.AI_ASSIST_ENABLED, "true");
+  assert.equal(demo.vars.AI_ASSIST_DAILY_LIMIT, "50");
+  assert.equal(demo.vars.AI_ASSIST_VISITOR_DAILY_LIMIT, "10");
+  for (const key of ["AI_GATEWAY_ACCOUNT_ID", "AI_GATEWAY_ID", "AI_GATEWAY_BYOK_ALIAS"]) {
+    assert.equal(demo.vars[key], app.vars[key], key);
+  }
+  // The gateway token is a secret, never a var; no Workers AI binding, so
+  // without the token the demo answers with its rules and calls nothing.
+  assert.equal(demo.vars.AI_GATEWAY_TOKEN, undefined);
+  assert.equal(demo.ai, undefined);
+  assert.notEqual(demo.d1_databases[0].database_id, app.d1_databases[0].database_id);
+  assert.equal(app.vars.AI_ASSIST_VISITOR_DAILY_LIMIT, undefined);
+  assert.equal(app.vars.AI_ASSIST_DAILY_LIMIT, "100");
+});
+
 // Security review F6: production checks the Access token itself
 // (src/server/access-jwt.ts), in enforce mode (it ran in report mode until
-// real owner requests verified). The demo, test and shortcuts Workers have no Access in
+// real owner requests verified). The demo has its own Access application and checks in report mode first; the test and shortcuts Workers have no Access in
 // front and leave it off, and so does local `npm run dev:api`.
-test("only production checks the Access token, against its own team and app tag", async () => {
+test("production enforces the Access token and the demo reports it, each against its own app tag", async () => {
   const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8").then(JSON.parse);
   const appConfig = await read("wrangler.jsonc");
   assert.equal(appConfig.vars.ACCESS_JWT_MODE, "enforce");
   assert.equal(appConfig.vars.ACCESS_TEAM_DOMAIN, "monies-map.cloudflareaccess.com");
   assert.match(appConfig.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
-  for (const name of ["wrangler.demo.jsonc", "wrangler.test.jsonc", "wrangler.shortcuts.jsonc"]) {
+  // The demo sits behind its own Access application (invite-only, owner
+  // decision 2026-10-14): same team, its own app tag, report mode first.
+  const demoConfig = await read("wrangler.demo.jsonc");
+  assert.equal(demoConfig.vars.ACCESS_JWT_MODE, "report");
+  assert.equal(demoConfig.vars.ACCESS_TEAM_DOMAIN, appConfig.vars.ACCESS_TEAM_DOMAIN);
+  assert.match(demoConfig.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
+  assert.notEqual(demoConfig.vars.ACCESS_AUD, appConfig.vars.ACCESS_AUD, "prod and demo each carry their own app tag");
+  for (const name of ["wrangler.test.jsonc", "wrangler.shortcuts.jsonc"]) {
     const vars = (await read(name)).vars ?? {};
     for (const key of ["ACCESS_JWT_MODE", "ACCESS_TEAM_DOMAIN", "ACCESS_AUD"]) {
       assert.equal(vars[key], undefined, `${name} ${key}`);

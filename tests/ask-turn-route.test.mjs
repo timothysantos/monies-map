@@ -212,6 +212,62 @@ test("over the day's allowance the route answers rules and the provider is never
   assert.equal(ai.calls.length, 1);
 });
 
+// The public demo (wrangler.demo.jsonc): a whole-demo cap and a per-visitor
+// cap, each counted by the Singapore day in the demo's own D1. A used-up cap
+// answers rules with the plain demo note; the visitor is stored as a hash.
+const DEMO_CAPS = { AI_ASSIST_DAILY_LIMIT: "4", AI_ASSIST_VISITOR_DAILY_LIMIT: "2" };
+const visitor = (address, agent = "Safari") => ({ "cf-connecting-ip": address, "user-agent": agent });
+
+test("demo: a visitor over their own daily cap gets the rules with the demo note; another visitor still gets Claude", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const ai = stubAi({ action: "cannot_help", note: "x" });
+  for (let index = 0; index < 2; index += 1) {
+    const { payload } = await turn(db, { text: "lunch 12" }, { ai, vars: DEMO_CAPS, headers: visitor("203.0.113.7") });
+    assert.equal(payload.mode, "ai");
+  }
+  const over = await turn(db, { text: "lunch 12" }, { ai, vars: DEMO_CAPS, headers: visitor("203.0.113.7") });
+  assert.deepEqual(over.payload, {
+    ok: true,
+    mode: "rules",
+    reason: "The demo's Claude allowance is used up for today, so Ask is using its built-in rules.",
+    notice: "demo_allowance",
+    remaining: 0
+  });
+  assert.equal(ai.calls.length, 2, "the provider is not called over the cap");
+  const other = await turn(db, { text: "lunch 12" }, { ai, vars: DEMO_CAPS, headers: visitor("203.0.113.7", "Chrome") });
+  assert.equal(other.payload.mode, "ai", "the same address in another browser is another visitor");
+
+  const counters = await rows(db, "SELECT household_id, usage_day, used_units FROM ai_assist_daily_usage ORDER BY household_id");
+  assert.deepEqual(
+    counters.map((row) => [row.household_id.replace(/[0-9a-f]{32}$/, "<hash>"), row.usage_day, row.used_units]).sort((left, right) => left[0].localeCompare(right[0]) || right[2] - left[2]),
+    [["demo-visitor:<hash>", TODAY, 2], ["demo-visitor:<hash>", TODAY, 1], ["household-default", TODAY, 3]]
+  );
+  assert.doesNotMatch(JSON.stringify(counters), /203\.0\.113\.7|Safari|Chrome/, "no address or browser is stored");
+});
+
+test("demo: the whole demo's cap answers rules with the demo note and hands the visitor's unit back", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const ai = stubAi({ action: "cannot_help", note: "x" });
+  await db.prepare("INSERT INTO ai_assist_daily_usage (household_id, usage_day, used_units) VALUES ('household-default', ?, 4)").bind(TODAY).run();
+  const { payload } = await turn(db, { text: "lunch 12" }, { ai, vars: DEMO_CAPS, headers: visitor("198.51.100.4") });
+  assert.equal(payload.mode, "rules");
+  assert.equal(payload.notice, "demo_allowance");
+  assert.equal(ai.calls.length, 0);
+  const [{ used }] = await rows(db, "SELECT used_units AS used FROM ai_assist_daily_usage WHERE household_id LIKE 'demo-visitor:%'");
+  assert.equal(used, 0);
+});
+
+test("negative: without the demo's visitor cap the allowance note stays production's and no visitor is counted", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const ai = stubAi({ action: "cannot_help", note: "x" });
+  await db.prepare("INSERT INTO ai_assist_daily_usage (household_id, usage_day, used_units) VALUES ('household-default', ?, 4)").bind(new Date().toISOString().slice(0, 10)).run();
+  const { payload } = await turn(db, { text: "lunch 12" }, { ai, vars: { AI_ASSIST_DAILY_LIMIT: "4" }, headers: visitor("198.51.100.4") });
+  assert.equal(payload.mode, "rules");
+  assert.equal(payload.notice, undefined);
+  assert.match(payload.reason, /optional AI allowance/);
+  assert.deepEqual(await rows(db, "SELECT household_id FROM ai_assist_daily_usage WHERE household_id LIKE 'demo-visitor:%'"), []);
+});
+
 test("the test reply header stands in for the model only in the test environment", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const entryId = await applePayEntry(api);

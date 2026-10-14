@@ -613,7 +613,7 @@ function AskConversation({
     }
     if (!before.rulesNoted) {
       updateConversation((current) => ({ ...current, rulesNoted: true }));
-      appendThread(threadItem("note", { text: askCopy.turn.rulesNote, tone: "calm" }));
+      appendThread(threadItem("note", { text: turn.ok && turn.notice === "demo_allowance" ? askCopy.turn.demoAllowanceNote : askCopy.turn.rulesNote, tone: "calm" }));
     }
     await readSentenceByRules(text);
   }

@@ -10,7 +10,16 @@
   },
   "vars": {
     "APP_ENVIRONMENT": "demo",
-    "DEMO_DATASET": "showcase"
+    "DEMO_DATASET": "showcase",
+    "AI_ASSIST_ENABLED": "true",
+    "AI_ASSIST_DAILY_LIMIT": "50",
+    "AI_ASSIST_VISITOR_DAILY_LIMIT": "10",
+    "AI_GATEWAY_ACCOUNT_ID": "f36beb0fea34ebd370af7911d073c767",
+    "AI_GATEWAY_ID": "monies-map",
+    "AI_GATEWAY_BYOK_ALIAS": "monies-map-claude-api-key",
+    "ACCESS_JWT_MODE": "report",
+    "ACCESS_TEAM_DOMAIN": "monies-map.cloudflareaccess.com",
+    "ACCESS_AUD": "2773b7dc70d50d926bfbfbfba63babf37a81e89855853e203d305e273d7d300a"
   },
   "d1_databases": [
     {
