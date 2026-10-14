@@ -1,0 +1,128 @@
+/* The Simple view's parts that load only in Simple (simple-detail.js):
+   the facts under the savings bar, and Summary's "Earned vs spent by month"
+   (summary-earned-spent.js). */
+
+/* The facts: small quiet pills that wrap, then "Top spending" and its
+   categories as chips; each chip is a 44 px target. Money tones are text
+   only (.money-in / .money-short set --money-ink). */
+.simple-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.simple-metric {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--money-ink, var(--text));
+  white-space: nowrap;
+}
+
+.simple-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.simple-top-label {
+  color: var(--muted);
+}
+
+.simple-top-category {
+  position: relative;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.simple-top-category::after {
+  content: "";
+  position: absolute;
+  inset: -10px -3px;
+}
+
+.simple-top-category:hover,
+.simple-top-category:focus-visible {
+  border-color: var(--accent-strong);
+}
+
+/* Summary's "Earned vs spent by month": rows are flat (Lead · Support ·
+   Detail: a list is not a stack of cards), split by hairlines. The bar's
+   parts take the savings bar's colours (.savings-bar-segment in
+   summary-lead.css, hidden money included). */
+.earned-spent-months {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.earned-spent-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  min-width: 0;
+  padding: 6px 0 12px;
+  border-top: 1px solid var(--line);
+}
+
+.earned-spent-row:first-child {
+  border-top: 0;
+}
+
+.earned-spent-row .summary-month-link {
+  margin: 0 0 0 -4px;
+}
+
+.earned-spent-result {
+  color: var(--money-ink, var(--muted));
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.earned-spent-figures {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 0 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.earned-spent-bar {
+  display: flex;
+  grid-column: 1 / -1;
+  height: 6px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.earned-spent-bar .savings-bar-segment {
+  pointer-events: none;
+}
+
+.earned-spent-bar .savings-bar-segment::after {
+  content: none;
+}

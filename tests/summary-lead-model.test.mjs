@@ -27,6 +27,12 @@ test("the lead measures spending against the spend plan, so it agrees with the s
     headroom: { amountMinor: 297_015, isOver: true, tone: "short" },
     income: { amountMinor: 11_070_000, tone: "in", planMinor: 11_070_000 },
     saved: { amountMinor: 8_792_233, tone: "in", planMinor: 1_800_000 },
+    hasPlan: true,
+    // Simple: the same income and spend, with no plan to be over.
+    simple: {
+      earned: { amountMinor: 11_070_000, tone: "in" },
+      spent: { amountMinor: 2_277_767, tone: "neutral" }
+    },
     // No "Planned investments" card and no category share: nothing invested or moved.
     figures: {
       income: 11_070_000,

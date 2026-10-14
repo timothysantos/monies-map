@@ -1,4 +1,7 @@
 import "../summary-lead.css";
+import { ChevronRight } from "lucide-react";
+import { createElement, lazy, Suspense } from "react";
+
 import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
@@ -25,26 +28,43 @@ const planWords = messages.summary.monthChoice;
 // `inline` is the Month top: Income, Saved and `children` (Remaining budget)
 // fold into the lead card as one row of equal columns under the bar, in
 // text colour only, so the whole card stays compact on a phone.
-export function SpendLeadGroup({ model, eyebrow, period, className = "", leadClassName = "", inline = false, children = null }) {
+//
+// `view` is "plan" or "simple" (lead-view.js), switched in the card's head.
+// Simple is "Earned $x · Spent $y" over the same savings bar without its plan
+// bar, and nothing else: the plan line, the money jobs and the Income, Saved
+// and Remaining budget figures (each a plan or a repeat of the lead) go.
+export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], onOpenCategory, className = "", leadClassName = "", inline = false, children = null }) {
+  const simple = view === "simple";
   return (
-    <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${className}`}>
+    <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${simple ? "is-simple" : ""} ${className}`} data-lead-view={view}>
       <LeadCard
         className={leadClassName}
-        eyebrow={eyebrow}
-        amount={(
+        tag={(
+          <div className="lead-view-head">
+            <span className="lsd-eyebrow">{simple ? periodLabel : copy.spent(periodLabel)}</span>
+            <LeadViewSwitch view={view} onChange={onViewChange} />
+          </div>
+        )}
+        amount={simple ? (
+          <span className="lead-simple">
+            <SimpleFigure label={copy.earned} figure={model.simple.earned} name="earned" />
+            <span aria-hidden="true">·</span>
+            <SimpleFigure label={copy.savingsBar.spentName} figure={model.simple.spent} name="spent" />
+          </span>
+        ) : (
           <span className={`summary-lead-spent ${moneyToneClass(model.spent.tone)}`}>
             <PrivateMoney>{money(model.spent.amountMinor)}</PrivateMoney>
           </span>
         )}
-        amountAside={(
+        amountAside={simple ? null : (
           <span className={`summary-lead-plan ${moneyToneClass("plan")}`}>
             {planWords.planPrefix} <PrivateMoney>{money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
           </span>
         )}
       >
-        <SpendLine model={model} />
-        <MoneyUse model={model} period={period} />
-        {inline ? (
+        {simple ? null : <SpendLine model={model} />}
+        <MoneyUse model={model} period={period} simple={simple} categoryShare={categoryShare} onOpenCategory={onOpenCategory} />
+        {simple ? null : inline ? (
           <div className="lead-columns">
             <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
             <LeadColumn metric="saved" label={copy.saved} amountMinor={model.saved.amountMinor} tone={model.saved.tone} planLabel={copy.savedTarget} planMinor={model.saved.planMinor} />
@@ -52,7 +72,7 @@ export function SpendLeadGroup({ model, eyebrow, period, className = "", leadCla
           </div>
         ) : null}
       </LeadCard>
-      {inline ? null : <div className="summary-support-pills">
+      {inline || simple ? null : <div className="summary-support-pills">
         <SummarySupportPill
           metric="income"
           label={copy.income}
@@ -79,14 +99,57 @@ export function SpendLeadGroup({ model, eyebrow, period, className = "", leadCla
 // period's money (`model.figures`, splitMoneyUse): spend, invested and kept,
 // and the plan's spend, investment and savings jobs. `period` is
 // { startMonth, endMonth, inProgress } for the parts' menus and "so far".
-function MoneyUse({ model, period }) {
+function MoneyUse({ model, period, simple, categoryShare, onOpenCategory }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const hidden = !areTotalsVisible;
   return (
     <>
-      <SavingsBar figures={model.figures} hidden={hidden} period={period} />
-      <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />
+      <SavingsBar figures={model.figures} hidden={hidden} period={period} withPlan={!simple} />
+      {simple ? (
+        <Suspense fallback={null}>
+          <SimpleDetail part="metrics" figures={model.figures} categoryShare={categoryShare} period={period} onOpenCategory={onOpenCategory} />
+        </Suspense>
+      ) : <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />}
     </>
+  );
+}
+
+// The Simple view's parts that load only when Simple is shown: its facts
+// under the bar here, and Summary's "Earned vs spent by month"
+// (summary-panel.jsx). The module imports no React (simple-detail.js), so it
+// is handed createElement and the chevron and adds no first-screen file.
+export const SimpleDetail = lazy(() => import("../simple-detail.js").then(({ renderSimpleDetail }) => ({
+  default: function SimpleDetailPart(props) {
+    const { areTotalsVisible } = useMoneyPrivacy();
+    return renderSimpleDetail(createElement, { ...props, hidden: !areTotalsVisible, MonthIcon: ChevronRight });
+  }
+})));
+
+// One half of the Simple lead: "Earned" and its figure in its money tone.
+function SimpleFigure({ label, figure, name }) {
+  return (
+    <span className="lead-simple-figure" data-simple={name}>
+      <small>{label}</small>
+      <span className={moneyToneClass(figure.tone)}><PrivateMoney>{money(figure.amountMinor)}</PrivateMoney></span>
+    </span>
+  );
+}
+
+// Plan | Simple, two native radio buttons drawn as one segmented control:
+// the browser gives the radio group's keys (the arrows move the choice and
+// the focus; only the chosen one is in the tab order). Each input is
+// invisible and covers its label and the space around it, a 44 px target.
+// One lead per page, so one group name.
+function LeadViewSwitch({ view, onChange }) {
+  return (
+    <div className="lead-view-switch" role="radiogroup" aria-label={copy.view.label}>
+      {["plan", "simple"].map((key) => (
+        <label key={key}>
+          <input type="radio" name="lead-view" checked={view === key} onChange={() => onChange(key)} />
+          {copy.view[key]}
+        </label>
+      ))}
+    </div>
   );
 }
 

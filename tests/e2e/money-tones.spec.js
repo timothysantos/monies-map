@@ -55,6 +55,8 @@ const monthPill = (page, metric) => page.locator(`.month-lead-group .lead-column
 
 // The demo seeds no income entries, so each test records one salary.
 test.beforeEach(async ({ page }) => {
+  // These read the Plan lead; April 2026 has no plan, so it would open in Simple.
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:lead-view", "plan"));
   await reseedDemo(page);
   await postJson(page, "/api/entries/create", {
     date: "2026-04-25",

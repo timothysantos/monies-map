@@ -26,8 +26,11 @@ const copy = messages.summary.lead.savingsBar;
 // part on the bar: it is not income and not kept. Hidden money leaves the
 // line out (it has no share of income to show instead).
 //
+// `withPlan: false` is the lead's Simple view (lead-view.js): no plan bar and
+// no plan in the legend.
+//
 // Returns null when there is nothing to draw (no income and nothing out).
-export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wholeMoney }) {
+export function buildSavingsBarModel({ figures, hidden = false, withPlan = true, formatMoney = wholeMoney }) {
   const { income, spending, invested, kept } = figures;
   const outMinor = spending + invested;
   if (income === 0 && outMinor === 0) {
@@ -114,10 +117,10 @@ export function buildSavingsBarModel({ figures, hidden = false, formatMoney = wh
     takenOut: hidden || !(figures.takenFromInvestments > 0)
       ? null
       : { name: copy.legend.takenOut, amount: formatMoney(figures.takenFromInvestments) },
-    plan: hidden ? null : buildPlan(scaleMinor, figures),
+    plan: hidden || !withPlan ? null : buildPlan(scaleMinor, figures),
     // The legend's wording for the thin plan bar: the plan's own figures,
     // not cut to the bar, and only the goals that exist.
-    planLegend: hidden ? null : buildPlanLegend(figures, formatMoney)
+    planLegend: hidden || !withPlan ? null : buildPlanLegend(figures, formatMoney)
   };
 }
 
