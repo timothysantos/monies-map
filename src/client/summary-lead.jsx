@@ -11,7 +11,7 @@ import { SpendLeadGroup } from "./ui-components";
 // Until the cards arrive nothing shows (the old tile row scrolled sideways
 // on a phone). `model` is buildSummaryLeadModel's, built by the panel; `view`
 // is Plan or Simple (lead-view.js; Simple until the person chooses).
-export function SummaryLead({ model, view, onViewChange, categoryShare, onOpenCategory, rangeStartMonth, rangeEndMonth }) {
+export function SummaryLead({ model, view, onViewChange, categoryShare, rangeStartMonth, rangeEndMonth }) {
   if (!model) {
     return null;
   }
