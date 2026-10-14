@@ -176,6 +176,18 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   color: var(--muted);
 }
 
+/* A phone puts Earned and Spent on a line each, with no dot between. */
+@media (max-width: 760px) {
+  .lead-simple {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lead-simple > span[aria-hidden] {
+    display: none;
+  }
+}
+
 .lead-simple-figure {
   display: inline-flex;
   align-items: baseline;

@@ -214,7 +214,7 @@ test.describe("desktop", () => {
     await expectPlan(page, { summary: true, jobs: false });
   });
 
-  test("Simple's facts under the bar: kept and its share, daily spend, top spending opening Entries; dipped into savings when more went out", async ({ page }) => {
+  test("Simple's facts under the bar: daily spend and top spending opening Entries; what was kept stays the bar's line", async ({ page }) => {
     await recordBareMonth(page);
     // April 2024: spending and no income.
     await postJson(page, "/api/entries/create", {
@@ -224,11 +224,11 @@ test.describe("desktop", () => {
     await page.goto(BARE_SUMMARY_URL);
     const facts = leadGroup(page).locator("[data-simple-metrics]");
     await expect(facts).toBeVisible({ timeout: 30_000 });
-    // $500 earned, $123.45 spent: $377 kept, 75%; $123.45 over March's 31 days.
-    await expect(facts.locator('[data-metric="kept"]')).toHaveText("Kept $377 · 75%");
+    // $123.45 over March's 31 days; what was kept is the bar's line, not a fact.
+    await expect(leadGroup(page).locator("[data-savings-sentence]")).toHaveText("You kept $377 of the $500 you earned (75%)");
     await expect(facts.locator('[data-metric="daily"]')).toHaveText("Daily spend $4");
     await expect(facts.locator('[data-metric="top"]')).toHaveText("Top spendingFood & Drinks 100%");
-    await expect(facts.locator('[data-metric="dipped"]')).toHaveCount(0);
+    await expect(facts).not.toContainText(/kept/i);
     // No invested money: nothing about investing anywhere in the facts.
     await expect(facts).not.toContainText(/invest/i);
     await facts.getByRole("button", { name: /^Food & Drinks 100%/ }).click();
@@ -236,14 +236,13 @@ test.describe("desktop", () => {
 
     // The month alone on Month: the same facts.
     await page.goto(BARE_MONTH_URL);
-    await expect(leadGroup(page).locator('[data-simple-metrics] [data-metric="kept"]')).toHaveText("Kept $377 · 75%");
+    await expect(leadGroup(page).locator('[data-simple-metrics] [data-metric="daily"]')).toHaveText("Daily spend $4");
 
-    // A month with spending and no income dipped into savings.
+    // A month with spending and no income: the bar says it, the facts stay.
     await page.goto(`/month?view=${VIEW}&month=2024-04&scope=direct_plus_shared`);
     const april = leadGroup(page).locator("[data-simple-metrics]");
-    await expect(april.locator('[data-metric="dipped"]')).toHaveText("Dipped into savings $123", { timeout: 30_000 });
-    await expect(april.locator('[data-metric="kept"]')).toHaveCount(0);
-    await expect(april.locator('[data-metric="daily"]')).toHaveText("Daily spend $4");
+    await expect(april.locator('[data-metric="daily"]')).toHaveText("Daily spend $4", { timeout: 30_000 });
+    await expect(leadGroup(page).locator("[data-savings-sentence]")).toHaveText("You spent $123 more than you earned");
 
     // Plan has none of these.
     await option(page, "Plan").click();
@@ -417,7 +416,7 @@ test.describe("phone", () => {
     // The facts keep only the categories' shares: no kept, no daily spend.
     const facts = group.locator("[data-simple-metrics]");
     await expect(facts.locator('[data-metric="top"] button').first()).toHaveText(/^.+ \d+%$/);
-    await expect(facts.locator('[data-metric="kept"], [data-metric="dipped"], [data-metric="daily"]')).toHaveCount(0);
+    await expect(facts.locator('[data-metric="daily"]')).toHaveCount(0);
     await expect(facts).not.toContainText("$");
 
     // The no-plan month alone, hidden: the same.

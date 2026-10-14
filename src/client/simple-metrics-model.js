@@ -2,9 +2,9 @@ import { isInvestmentsCategoryName, isSavingsCategoryName } from "../domain/mone
 
 // The Simple view's few facts under the savings bar (design.md "Plan or
 // Simple"): things worth knowing that need no plan, all about what already
-// happened, never a forecast or a figure to spend.
-// - kept: what was kept and its share of what was earned, or, when more
-//   went out than came in, how much was taken from savings ("dipped");
+// happened, never a forecast or a figure to spend. What was kept and its
+// share of income (or how much more went out than came in) is the savings
+// bar's own line just above, so it is not repeated here.
 // - dailySpend: the period's spending over its days so far (the whole
 //   period once it has ended; up to today while it is going);
 // - topCategories: the three biggest spending categories and their share
@@ -13,7 +13,7 @@ import { isInvestmentsCategoryName, isSavingsCategoryName } from "../domain/mone
 // period's category share, already on the page. `today` is YYYY-MM-DD.
 // Returns null when nothing was earned or spent.
 export function buildSimpleMetrics({ figures, categoryShare = [], startMonth, endMonth, today }) {
-  const { income, spending, kept } = figures;
+  const { income, spending } = figures;
   if (income === 0 && spending === 0) {
     return null;
   }
@@ -23,9 +23,6 @@ export function buildSimpleMetrics({ figures, categoryShare = [], startMonth, en
     .sort((left, right) => right.valueMinor - left.valueMinor);
   const sliceTotal = slices.reduce((sum, slice) => sum + slice.valueMinor, 0);
   return {
-    kept: kept >= 0
-      ? { key: "kept", tone: "in", amountMinor: kept, percent: income > 0 ? Math.round((kept * 100) / income) : null }
-      : { key: "dipped", tone: "short", amountMinor: -kept, percent: null },
     dailySpend: days.count > 0 && spending > 0 ? { amountMinor: Math.round(spending / days.count), days: days.count, soFar: days.soFar } : null,
     topCategories: slices.slice(0, 3).map((slice) => ({
       name: slice.label,

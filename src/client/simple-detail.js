@@ -13,24 +13,22 @@ export function renderSimpleDetail(h, props) {
   return props.part === "months" ? renderEarnedSpent(h, props) : renderSimpleMetrics(h, props);
 }
 
-// "Kept $3,453 · 66%" (mint) or "Dipped into savings $300" (rose), "Daily
-// spend $56", then "Top spending" with the three biggest categories and
-// their share of spending, each opening that category's entries. Hidden
-// money keeps only the categories' shares.
+// "Daily spend $56", then "Top spending" with the three biggest categories
+// and their share of spending, each opening that category's entries. What
+// was kept is the savings bar's line above. Hidden money keeps only the
+// categories' shares.
 function renderSimpleMetrics(h, { figures, categoryShare, period, hidden, onOpenCategory }) {
   const metrics = buildSimpleMetrics({ figures, categoryShare, startMonth: period?.startMonth, endMonth: period?.endMonth, today: todayKey() });
   if (!metrics) {
     return null;
   }
-  const { kept, dailySpend, topCategories } = metrics;
+  const { dailySpend, topCategories } = metrics;
+  if ((hidden || !dailySpend) && topCategories.length === 0) {
+    return null;
+  }
   return h(
     "div",
     { className: "simple-metrics", role: "group", "aria-label": copy.metricsLabel, "data-simple-metrics": "" },
-    hidden ? null : h(
-      "span",
-      { className: `simple-metric money-${kept.tone}`, "data-metric": kept.key },
-      kept.key === "kept" ? copy.keptShare(wholeMoney(kept.amountMinor), kept.percent) : copy.dipped(wholeMoney(kept.amountMinor))
-    ),
     hidden || !dailySpend ? null : h("span", { className: "simple-metric", "data-metric": "daily" }, copy.dailySpend(wholeMoney(dailySpend.amountMinor), dailySpend.soFar)),
     topCategories.length === 0 ? null : h(
       "div",

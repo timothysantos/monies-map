@@ -14,8 +14,6 @@ export const simpleViewCopy = {
   hiddenShare: (percent) => `Spent · ${percent}% of earned`,
   // The facts under the bar (simple-metrics.js).
   metricsLabel: "This period at a glance",
-  keptShare: (amount, percent) => (percent === null ? `Kept ${amount}` : `Kept ${amount} · ${percent}%`),
-  dipped: (amount) => `Dipped into savings ${amount}`,
   dailySpend: (amount, soFar) => `${soFar ? "Daily spend so far" : "Daily spend"} ${amount}`,
   topSpending: "Top spending",
   topCategory: (name, percent) => `${name} ${percent}%`,
