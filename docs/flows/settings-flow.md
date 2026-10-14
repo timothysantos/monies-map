@@ -31,6 +31,11 @@ Settings state is split between:
 - workflow state for each person's payment ways (DOMAIN.md, "Payment Way")
 - transient UI state for dialogs and section disclosure
 
+Each section is wrapped in `GuardedSettingsSection` (`settings-section.jsx`): a
+section that cannot draw its data is replaced by the app's own "could not be
+shown" panel (Try again, Reload app) and the rest of Settings keeps working.
+`tests/e2e/settings-section-crash.spec.js` proves it.
+
 Settings should stay lightweight. It should not become a hidden app-shell
 state container.
 

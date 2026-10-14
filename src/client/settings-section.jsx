@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 
+import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { MetaChip } from "./ui-components";
 
 // One Settings section in the page's list (design.md, "Lead · Support ·
@@ -33,4 +34,12 @@ export function SettingsSection({ id, title, value = null, valueTone = undefined
       {isOpen ? <div className="settings-section-body">{children}</div> : null}
     </section>
   );
+}
+
+// Contains a crash inside one section (a data shape it cannot draw) so the
+// rest of Settings stays usable. The fallback is the app's own "could not be
+// shown" panel with Try again and Reload app; it takes the section's place.
+/** @param {{ children?: any }} props */
+export function GuardedSettingsSection({ children }) {
+  return <ScreenErrorBoundary level="section">{children}</ScreenErrorBoundary>;
 }
