@@ -56,6 +56,22 @@ export interface ShortcutSettingsDto {
   defaultParams: string;
   // "" when purchases in another currency follow the priority list.
   foreignCurrencyAccountId: string;
+  // Settings only (DOMAIN.md "Shortcut connection"): one per person, the
+  // first person's first. The fields above are that first connection's.
+  connections?: ShortcutConnectionDto[];
+}
+
+// One person's Apple Pay Shortcut connection: its own key, Default account
+// order and card for other currencies. Entries saved through it belong to
+// that person.
+export interface ShortcutConnectionDto {
+  personId: string;
+  personName: string;
+  apiKey: string;
+  apiKeySource: "app" | "environment" | "none";
+  defaultAccountPriorityIds: string[];
+  defaultParams: string;
+  foreignCurrencyAccountId: string;
 }
 
 // Settings -> Payment ways (DOMAIN.md "Payment Way"): for one person, the

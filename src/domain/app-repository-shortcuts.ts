@@ -1,19 +1,20 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
-import { recordAuditEvent } from "./app-repository-audit";
+import { buildAuditEventStatement } from "./app-repository-audit";
 import { ensureAppSettingsTable } from "./app-settings-table";
-import type { AccountDto, ShortcutSettingsDto } from "../types/dto";
+import {
+  buildDefaultShortcutAccountPriorityIds,
+  completeShortcutPriorityIds,
+  parseStoredShortcutConnection,
+  SHORTCUT_PERSON_SETTINGS_PREFIX,
+  SHORTCUT_SETTINGS_KEY,
+  shortcutKeyPersonId,
+  shortcutSettingsKey,
+  type StoredShortcutConnection
+} from "./shortcut-connections";
+import type { AccountDto, ShortcutConnectionDto, ShortcutSettingsDto } from "../types/dto";
 
-const SHORTCUT_SETTINGS_KEY = "shortcut_api";
+export { buildDefaultShortcutAccountPriorityIds };
 export const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
-
-interface StoredShortcutSettings {
-  apiKey?: string;
-  defaultAccountPriorityIds?: string[];
-  defaultParams?: string;
-  // The card a Wallet purchase in another currency goes to when the
-  // Shortcut names no card (an Amaze card abroad charges the linked card).
-  foreignCurrencyAccountId?: string;
-}
 
 export interface ShortcutAccountSelection {
   id: string;
@@ -22,18 +23,104 @@ export interface ShortcutAccountSelection {
   resolution: "explicit" | "wallet_name" | "priority" | "foreign_currency";
 }
 
-export function buildDefaultShortcutAccountPriorityIds(accounts: AccountDto[]) {
-  return accounts
-    .filter((account) => account.isActive)
-    .slice()
-    .sort((left, right) => (
-      accountKindRank(left.kind) - accountKindRank(right.kind)
-      || left.institution.localeCompare(right.institution)
-      || left.name.localeCompare(right.name)
-    ))
-    .map((account) => account.id);
+// One person's connection as the Worker reads it: who it is for, the key it
+// answers to (from the app, else for the first person a Worker secret) and
+// what was saved for it. The first person's is the household's original.
+export interface ShortcutConnectionRecord {
+  personId: string;
+  personName: string;
+  isFirstPerson: boolean;
+  apiKey: string;
+  apiKeySource: ShortcutConnectionDto["apiKeySource"];
+  stored: StoredShortcutConnection;
+  // The household's (first person's) card for other currencies, used when
+  // this person has not chosen one.
+  householdForeignCurrencyAccountId: string;
 }
 
+// The first active person (the household owner) holds the original
+// connection; the rest follow in household order.
+async function loadShortcutPeople(db: D1Database) {
+  const result = await db
+    .prepare(`
+      SELECT id, display_name
+      FROM people
+      WHERE household_id = ? AND is_active = 1
+      ORDER BY CASE role WHEN 'owner' THEN 0 ELSE 1 END, created_at, id
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string; display_name: string }>();
+  return result.results.map((row) => ({ id: row.id, name: row.display_name }));
+}
+
+// Every person's connection with its stored settings: two reads (the
+// settings rows, the people). Callers pass the Worker secret so the first
+// person's connection can still answer to it.
+export async function loadShortcutConnectionRecords(
+  db: D1Database,
+  environmentToken?: string | null
+): Promise<ShortcutConnectionRecord[]> {
+  await ensureAppSettingsTable(db);
+  const [people, settingRows] = await Promise.all([
+    loadShortcutPeople(db),
+    db
+      .prepare("SELECT key, value_json FROM app_settings WHERE key = ? OR substr(key, 1, ?) = ?")
+      .bind(SHORTCUT_SETTINGS_KEY, SHORTCUT_PERSON_SETTINGS_PREFIX.length, SHORTCUT_PERSON_SETTINGS_PREFIX)
+      .all<{ key: string; value_json: string }>()
+  ]);
+  const firstPersonId = people[0]?.id ?? "";
+  const storedByPerson = new Map<string, StoredShortcutConnection>();
+  for (const row of settingRows.results) {
+    const personId = shortcutKeyPersonId(row.key, firstPersonId);
+    if (personId) {
+      storedByPerson.set(personId, parseStoredShortcutConnection(row.value_json));
+    }
+  }
+  const fallbackToken = environmentToken?.trim() ?? "";
+  const householdForeignCurrencyAccountId = storedByPerson.get(firstPersonId)?.foreignCurrencyAccountId ?? "";
+  return people.map((person, index) => {
+    const stored = storedByPerson.get(person.id) ?? parseStoredShortcutConnection(null);
+    const isFirstPerson = index === 0;
+    const environmentKey = isFirstPerson && !stored.revoked ? fallbackToken : "";
+    return {
+      personId: person.id,
+      personName: person.name,
+      isFirstPerson,
+      apiKey: stored.apiKey || environmentKey,
+      apiKeySource: stored.apiKey ? "app" : environmentKey ? "environment" : "none",
+      stored,
+      householdForeignCurrencyAccountId
+    };
+  });
+}
+
+// The connection's Default account order: what was saved, then every other
+// active account. The first person's keeps the household order; another
+// person's starts with their own accounts.
+export function shortcutConnectionPriorityIds(accounts: AccountDto[], record: ShortcutConnectionRecord) {
+  return completeShortcutPriorityIds(
+    accounts,
+    record.stored.defaultAccountPriorityIds,
+    record.isFirstPerson ? undefined : record.personId
+  );
+}
+
+function buildConnectionDto(accounts: AccountDto[], record: ShortcutConnectionRecord): ShortcutConnectionDto {
+  const activeAccountIds = new Set(accounts.filter((account) => account.isActive).map((account) => account.id));
+  const foreignId = record.stored.foreignCurrencyAccountId;
+  return {
+    personId: record.personId,
+    personName: record.personName,
+    apiKey: record.apiKey,
+    apiKeySource: record.apiKeySource,
+    defaultAccountPriorityIds: shortcutConnectionPriorityIds(accounts, record),
+    defaultParams: record.stored.defaultParams,
+    foreignCurrencyAccountId: foreignId && (!accounts.length || activeAccountIds.has(foreignId)) ? foreignId : ""
+  };
+}
+
+// The first person's settings, flat: what the app shell and the entry draft
+// read as the household's Default account order. One read of one row.
 export async function loadShortcutSettings(
   db: D1Database,
   accounts: AccountDto[] = [],
@@ -45,42 +132,69 @@ export async function loadShortcutSettings(
     .prepare("SELECT value_json FROM app_settings WHERE key = ?")
     .bind(SHORTCUT_SETTINGS_KEY)
     .first<{ value_json: string }>();
-  const stored = parseShortcutSettings(row?.value_json);
+  const stored = parseStoredShortcutConnection(row?.value_json);
   const activeAccountIds = new Set(accounts.filter((account) => account.isActive).map((account) => account.id));
-  const storedPriorityIds = (stored.defaultAccountPriorityIds ?? []).filter((accountId) => activeAccountIds.has(accountId));
-  const defaultPriorityIds = buildDefaultShortcutAccountPriorityIds(accounts);
-  const priorityIds = [
-    ...storedPriorityIds,
-    ...defaultPriorityIds.filter((accountId) => !storedPriorityIds.includes(accountId))
-  ];
-  const appApiKey = stored.apiKey?.trim() ?? "";
-  const fallbackToken = environmentToken?.trim() ?? "";
+  const fallbackToken = stored.revoked ? "" : environmentToken?.trim() ?? "";
 
   return {
     endpointPath,
-    apiKey: appApiKey || fallbackToken,
-    apiKeySource: appApiKey ? "app" : fallbackToken ? "environment" : "none",
-    defaultAccountPriorityIds: priorityIds,
-    defaultParams: stored.defaultParams?.trim() ?? "",
-    foreignCurrencyAccountId: stored.foreignCurrencyAccountId && (!accounts.length || activeAccountIds.has(stored.foreignCurrencyAccountId))
+    apiKey: stored.apiKey || fallbackToken,
+    apiKeySource: stored.apiKey ? "app" : fallbackToken ? "environment" : "none",
+    defaultAccountPriorityIds: completeShortcutPriorityIds(accounts, stored.defaultAccountPriorityIds),
+    defaultParams: stored.defaultParams,
+    foreignCurrencyAccountId: stored.foreignCurrencyAccountId
+      && (!accounts.length || activeAccountIds.has(stored.foreignCurrencyAccountId))
       ? stored.foreignCurrencyAccountId
       : ""
   };
 }
 
+// Settings -> Apple Pay shortcut: the first person's settings flat (as the
+// app shell reads them) and one connection per person.
+export async function loadShortcutSettingsWithConnections(
+  db: D1Database,
+  accounts: AccountDto[],
+  environmentToken?: string | null,
+  endpointPath = SHORTCUT_ENDPOINT_PATH
+): Promise<ShortcutSettingsDto> {
+  const records = await loadShortcutConnectionRecords(db, environmentToken);
+  const connections = records.map((record) => buildConnectionDto(accounts, record));
+  const first = connections[0];
+  return {
+    endpointPath,
+    apiKey: first?.apiKey ?? "",
+    apiKeySource: first?.apiKeySource ?? "none",
+    defaultAccountPriorityIds: first?.defaultAccountPriorityIds ?? buildDefaultShortcutAccountPriorityIds(accounts),
+    defaultParams: first?.defaultParams ?? "",
+    foreignCurrencyAccountId: first?.foreignCurrencyAccountId ?? "",
+    connections
+  };
+}
+
+// Saves one person's connection (the first person's when no person is
+// named, as before connections) and its audit event in one batch, after
+// checking the person, the accounts and that no other person already uses
+// the key: two phones with one key could not be told apart.
 export async function saveShortcutSettings(
   db: D1Database,
   input: {
+    personId?: string;
     apiKey: string;
     defaultAccountPriorityIds: string[];
     defaultParams?: string;
     foreignCurrencyAccountId?: string;
-  }
+  },
+  environmentToken?: string | null
 ) {
-  await ensureAppSettingsTable(db);
   const apiKey = input.apiKey.trim();
   if (!apiKey) {
     throw new Error("Shortcut API key is required.");
+  }
+
+  const records = await loadShortcutConnectionRecords(db, environmentToken);
+  const record = findConnectionRecord(records, input.personId);
+  if (records.some((other) => other.personId !== record.personId && other.apiKey === apiKey)) {
+    throw new Error("Another person's phone already uses this key. Generate a new key for this one.");
   }
 
   const activeRows = await db
@@ -98,41 +212,81 @@ export async function saveShortcutSettings(
     throw new Error("Choose an active card for purchases in another currency.");
   }
 
-  const value: StoredShortcutSettings = {
+  const value = {
     apiKey,
     defaultAccountPriorityIds,
     defaultParams: input.defaultParams?.trim() ?? "",
     ...(foreignCurrencyAccountId ? { foreignCurrencyAccountId } : {})
   };
-  await db
-    .prepare(`
-      INSERT INTO app_settings (key, value_json, updated_at)
-      VALUES (?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(key) DO UPDATE SET
-        value_json = excluded.value_json,
-        updated_at = CURRENT_TIMESTAMP
-    `)
-    .bind(SHORTCUT_SETTINGS_KEY, JSON.stringify(value))
-    .run();
-
-  await recordAuditEvent(db, {
-    entityType: "settings",
-    entityId: SHORTCUT_SETTINGS_KEY,
-    action: "shortcut_settings_updated",
-    detail: `Updated shortcut API key and ${defaultAccountPriorityIds.length} default account priorities.`
-  });
+  const settingsKey = shortcutSettingsKey(record.personId, records[0].personId);
+  await db.batch([
+    db
+      .prepare(`
+        INSERT INTO app_settings (key, value_json, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET
+          value_json = excluded.value_json,
+          updated_at = CURRENT_TIMESTAMP
+      `)
+      .bind(settingsKey, JSON.stringify(value)),
+    buildAuditEventStatement(db, {
+      entityType: "settings",
+      entityId: settingsKey,
+      action: "shortcut_settings_updated",
+      detail: `Updated ${record.personName}'s shortcut API key and ${defaultAccountPriorityIds.length} default account priorities.`
+    })
+  ]);
 
   return { updated: true };
 }
 
-export async function resolveShortcutDefaultAccountId(db: D1Database) {
-  const accounts = await loadShortcutAccountReferences(db);
-  const settings = await loadShortcutSettings(db, accounts);
-  return settings.defaultAccountPriorityIds[0] ?? null;
+// Stops one person's connection answering: its key is removed and stays
+// removed even when a Worker secret exists. Their account order is kept for
+// the next key. The change merges into the stored settings inside the
+// statement, so it cannot undo a save made at the same moment.
+export async function revokeShortcutConnection(
+  db: D1Database,
+  input: { personId?: string },
+  environmentToken?: string | null
+) {
+  const records = await loadShortcutConnectionRecords(db, environmentToken);
+  const record = findConnectionRecord(records, input.personId);
+  const settingsKey = shortcutSettingsKey(record.personId, records[0].personId);
+  await db.batch([
+    db
+      .prepare(`
+        INSERT INTO app_settings (key, value_json, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET
+          value_json = json_patch(CASE WHEN json_valid(app_settings.value_json) THEN app_settings.value_json ELSE '{}' END, excluded.value_json),
+          updated_at = CURRENT_TIMESTAMP
+      `)
+      .bind(settingsKey, JSON.stringify({ apiKey: "", revoked: true })),
+    buildAuditEventStatement(db, {
+      entityType: "settings",
+      entityId: settingsKey,
+      action: "shortcut_connection_revoked",
+      detail: `Revoked ${record.personName}'s shortcut key.`
+    })
+  ]);
+  return { revoked: true };
 }
 
+function findConnectionRecord(records: ShortcutConnectionRecord[], personId?: string) {
+  const wanted = personId?.trim();
+  const record = wanted ? records.find((candidate) => candidate.personId === wanted) : records[0];
+  if (!record) {
+    throw new Error("Choose a person in this household.");
+  }
+  return record;
+}
+
+// Where a Shortcut purchase goes when the Shortcut names no card, for one
+// person's connection: the card for other currencies falls back to the
+// household's (the first person's) when this person has none.
 export async function resolveShortcutAccountSelection(
   db: D1Database,
+  connection: ShortcutConnectionRecord,
   input: {
     accountId?: string;
     accountName?: string;
@@ -141,12 +295,11 @@ export async function resolveShortcutAccountSelection(
   }
 ): Promise<ShortcutAccountSelection | null> {
   const accounts = await loadShortcutAccountReferences(db);
-  const settings = await loadShortcutSettings(db, accounts);
   const selected = selectShortcutAccount(
     accounts,
-    settings.defaultAccountPriorityIds,
+    shortcutConnectionPriorityIds(accounts, connection),
     input,
-    { foreignCurrencyAccountId: settings.foreignCurrencyAccountId }
+    { foreignCurrencyAccountId: connection.stored.foreignCurrencyAccountId || connection.householdForeignCurrencyAccountId }
   );
   if (selected.error) {
     throw new Error(selected.error);
@@ -290,38 +443,6 @@ function toShortcutAccountSelection(
     currency: account.currency.toUpperCase(),
     resolution
   };
-}
-
-function parseShortcutSettings(value?: string | null): StoredShortcutSettings {
-  if (!value) {
-    return {};
-  }
-  try {
-    const parsed = JSON.parse(value) as StoredShortcutSettings;
-    return {
-      apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
-      defaultAccountPriorityIds: Array.isArray(parsed.defaultAccountPriorityIds)
-        ? parsed.defaultAccountPriorityIds.filter((item): item is string => typeof item === "string")
-        : [],
-      defaultParams: typeof parsed.defaultParams === "string" ? parsed.defaultParams : "",
-      foreignCurrencyAccountId: typeof parsed.foreignCurrencyAccountId === "string" ? parsed.foreignCurrencyAccountId : ""
-    };
-  } catch {
-    return {};
-  }
-}
-
-function accountKindRank(kind?: string) {
-  if (kind === "credit_card") {
-    return 0;
-  }
-  if (kind === "bank") {
-    return 1;
-  }
-  if (kind === "cash") {
-    return 2;
-  }
-  return 3;
 }
 
 function dedupe(values: string[]) {

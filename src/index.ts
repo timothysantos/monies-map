@@ -104,10 +104,12 @@ import {
 import { reopenSplitBatchRecord } from "./domain/app-repository-splits";
 import { savePaymentWay } from "./domain/app-repository-payment-ways";
 import {
-  loadShortcutSettings,
+  loadShortcutConnectionRecords,
   resolveShortcutAccountSelection,
+  revokeShortcutConnection,
   saveShortcutSettings,
-  SHORTCUT_ENDPOINT_PATH
+  SHORTCUT_ENDPOINT_PATH,
+  type ShortcutConnectionRecord
 } from "./domain/app-repository-shortcuts";
 import {
   hasOversizedShortcutDescription,
@@ -139,6 +141,7 @@ import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
   buildShortcutEntryOpenUrl,
+  findShortcutConnectionByKey,
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
@@ -534,11 +537,13 @@ export default {
 
     if (url.pathname === "/api/settings/shortcuts/save" && request.method === "POST") {
       const body = await request.json<{
+        personId?: string;
         apiKey?: string;
         defaultAccountPriorityIds?: string[];
         defaultParams?: string;
         foreignCurrencyAccountId?: string;
       }>().catch(() => ({
+        personId: undefined,
         apiKey: undefined,
         defaultAccountPriorityIds: undefined,
         defaultParams: undefined,
@@ -549,14 +554,30 @@ export default {
         return json({
           ok: true,
           ...(await saveShortcutSettings(env.DB, {
+            personId: typeof body.personId === "string" ? body.personId : undefined,
             apiKey: body.apiKey ?? "",
             defaultAccountPriorityIds: body.defaultAccountPriorityIds ?? [],
             defaultParams: body.defaultParams ?? "",
             foreignCurrencyAccountId: typeof body.foreignCurrencyAccountId === "string" ? body.foreignCurrencyAccountId : ""
-          }))
+          }, env.SHORTCUT_INGEST_TOKEN))
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save shortcut settings" }, 400);
+      }
+    }
+
+    // Stops one person's phone: its key no longer saves entries.
+    if (url.pathname === "/api/settings/shortcuts/revoke" && request.method === "POST") {
+      const body = await request.json<{ personId?: string }>().catch(() => ({ personId: undefined }));
+      try {
+        return json({
+          ok: true,
+          ...(await revokeShortcutConnection(env.DB, {
+            personId: typeof body.personId === "string" ? body.personId : undefined
+          }, env.SHORTCUT_INGEST_TOKEN))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to revoke the shortcut key" }, 400);
       }
     }
 
@@ -1203,8 +1224,10 @@ export default {
       }
       const body = parsedBody.body;
 
-      const shortcutDefaults = await loadShortcutSettings(env.DB);
-      const bodyWithDefaults = applyShortcutCreateDefaults(body, shortcutDefaults.defaultParams);
+      // The key said whose phone this is: their default params, card order
+      // and card for other currencies apply, and the entry is theirs.
+      const connection = shortcutAuth.connection;
+      const bodyWithDefaults = applyShortcutCreateDefaults(body, connection.stored.defaultParams);
       const amount = normalizeShortcutAmount(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
       const shortcutDate = normalizeShortcutDate(bodyWithDefaults.date);
       const explicitCurrency = normalizeShortcutCurrency(bodyWithDefaults.currency);
@@ -1213,7 +1236,7 @@ export default {
       const ownershipType = bodyWithDefaults.ownershipType ?? "direct";
       let account;
       try {
-        account = await resolveShortcutAccountSelection(env.DB, {
+        account = await resolveShortcutAccountSelection(env.DB, connection, {
           accountId: bodyWithDefaults.accountId,
           accountName: bodyWithDefaults.accountName,
           walletName: bodyWithDefaults.name,
@@ -1312,7 +1335,9 @@ export default {
           entryType,
           transferDirection: bodyWithDefaults.transferDirection,
           ownershipType,
-          ownerName: bodyWithDefaults.ownerName,
+          // Always the key's person, whatever the request or the default
+          // params name: one person's key cannot save an entry as another's.
+          ownerName: connection.personName,
           offsetsCategory: bodyWithDefaults.offsetsCategory,
           note: [foreign?.note, note].filter(Boolean).join("\n") || undefined,
           splitBasisPoints: bodyWithDefaults.splitBasisPoints,
@@ -2377,11 +2402,11 @@ async function authenticateShortcutRequest(
   env: Env,
   scope: string
 ): Promise<
-  | { ok: true }
+  | { ok: true; connection: ShortcutConnectionRecord }
   | { ok: false; status: number; error: string }
 > {
-  const configuredToken = (await loadShortcutSettings(env.DB, [], env.SHORTCUT_INGEST_TOKEN)).apiKey.trim();
-  if (!configuredToken) {
+  const connections = await loadShortcutConnectionRecords(env.DB, env.SHORTCUT_INGEST_TOKEN);
+  if (!connections.some((connection) => connection.apiKey)) {
     return { ok: false, status: 503, error: "Shortcut ingest is not configured." };
   }
 
@@ -2393,15 +2418,15 @@ async function authenticateShortcutRequest(
     return { ok: false, status: 401, error: "Missing shortcut token." };
   }
 
-  const tokenMatches = await constantTimeEqual(configuredToken, providedToken);
-  if (!tokenMatches) {
+  const connection = await findShortcutConnectionByKey(connections, providedToken);
+  if (!connection) {
     return { ok: false, status: 401, error: "Invalid shortcut token." };
   }
 
   const nonce = request.headers.get("X-Monies-Shortcut-Nonce")?.trim();
   const timestampHeader = request.headers.get("X-Monies-Shortcut-Timestamp")?.trim();
   if (!nonce && !timestampHeader) {
-    return { ok: true };
+    return { ok: true, connection };
   }
 
   if (!nonce) {
@@ -2423,7 +2448,7 @@ async function authenticateShortcutRequest(
     return { ok: false, status: 409, error: "Shortcut request was already used." };
   }
 
-  return { ok: true };
+  return { ok: true, connection };
 }
 
 function parseShortcutTimestamp(value?: string | null) {
@@ -2464,21 +2489,6 @@ async function cleanupExpiredShortcutNonces(db: D1Database) {
     `)
     .bind(`-${SHORTCUT_NONCE_RETENTION_HOURS} hours`)
     .run();
-}
-
-async function constantTimeEqual(left: string, right: string) {
-  const encoder = new TextEncoder();
-  const [leftDigest, rightDigest] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(left)),
-    crypto.subtle.digest("SHA-256", encoder.encode(right))
-  ]);
-  const leftBytes = new Uint8Array(leftDigest);
-  const rightBytes = new Uint8Array(rightDigest);
-  let mismatch = leftBytes.length ^ rightBytes.length;
-  for (let index = 0; index < Math.max(leftBytes.length, rightBytes.length); index += 1) {
-    mismatch |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
-  }
-  return mismatch === 0;
 }
 
 function applyShortcutCreateDefaults<

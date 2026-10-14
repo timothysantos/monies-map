@@ -13,7 +13,7 @@ import {
 } from "../app-repository";
 import { loadCategoryRuleBackfills } from "../app-repository-category-rule-backfill";
 import { loadPaymentWays } from "../app-repository-payment-ways";
-import { loadShortcutSettings } from "../app-repository-shortcuts";
+import { loadShortcutSettingsWithConnections } from "../app-repository-shortcuts";
 import type { SettingsPageDto } from "../../types/dto";
 
 // Build the route-owned Settings page DTO.
@@ -45,7 +45,7 @@ export async function buildSettingsPageDto(
     loadHousehold(db)
   ]);
   const categoryRuleBackfills = await loadCategoryRuleBackfills(db, categoryMatchRules);
-  const shortcutSettings = await loadShortcutSettings(
+  const shortcutSettings = await loadShortcutSettingsWithConnections(
     db,
     accounts,
     environmentShortcutToken,
