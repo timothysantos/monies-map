@@ -16,6 +16,7 @@ const SHOTS = process.env.HANDSOFF_SHOT_DIR ?? "";
 
 async function shot(page, name) {
   if (SHOTS) {
+    await page.waitForTimeout(600);
     await page.screenshot({ path: `${SHOTS}/${name}.png` });
   }
 }
