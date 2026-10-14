@@ -121,7 +121,7 @@ const nullableAmount = { type: ["string", "number", "null"] };
 // validator refuses {type: ["string","null"], enum: [..., null]} ("Enum value
 // does not match declared type"), which rejected every Ask turn with a 400.
 const nullableEnum = (values: string[]) => ({ anyOf: [{ type: "string", enum: values }, { type: "null" }] });
-const nullableObject =(properties: Record<string, unknown>) => ({
+const nullableObject = (properties: Record<string, unknown>) => ({
   anyOf: [{ type: "object", properties, additionalProperties: false }, { type: "null" }]
 });
 

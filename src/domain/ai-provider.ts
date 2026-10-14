@@ -22,6 +22,7 @@
 // Claude attempt, the aggregate Claude status row (ai-provider-status.ts:
 // success time and estimated cost, or the failure's category and time).
 
+import { prepareClaudeSchema } from "./ai-claude-schema";
 import { diagnoseClaudeRejection } from "./ai-provider-diagnosis";
 import { reserveDailyAiBudget, type AiAssistCapability, type AiAssistEnv, type AiAssistResult } from "./ai-assistance";
 import {
@@ -278,6 +279,8 @@ async function callClaude(
   images: AiImage[],
   timeoutMs: number
 ): Promise<{ raw: unknown; outcome: ClaudeOutcome }> {
+  // Claude limits optional and union parameters; see ai-claude-schema.ts.
+  const wire = prepareClaudeSchema(input.schema);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -293,7 +296,7 @@ async function callClaude(
         "cf-aig-request-timeout": String(timeoutMs),
         ...gateway.headers
       },
-      body: JSON.stringify(buildClaudeRequestBody(gateway, input, images))
+      body: JSON.stringify(buildClaudeRequestBody(gateway, { ...input, schema: wire.schema }, images))
     });
     if (!response.ok) {
       let rejected = false;
@@ -326,7 +329,7 @@ async function callClaude(
       .filter((block): block is { type: "text"; text: string } => block?.type === "text" && typeof block.text === "string")
       .map((block) => block.text)
       .join("");
-    return { raw: parseJsonText(text), outcome };
+    return { raw: wire.restore(parseJsonText(text)), outcome };
   } catch {
     return { raw: null, outcome: { kind: "failure", category: "other" } };
   } finally {
