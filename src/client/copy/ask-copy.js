@@ -151,6 +151,9 @@ export const askCopy = {
     coaxExample: "“Koufu lunch $12.50, Citi”",
     coaxAfter: ". A receipt photo works too.",
     filledFromMessage: "Filled in from your message",
+    // The quiet button under an unsaved draft: nothing was saved, so nothing is undone.
+    discard: "Discard",
+    discarded: "Discarded the draft.",
     readFromReceipt: "Read from your receipt",
     saved: "Saved",
     savedTo: "Saved to Entries",

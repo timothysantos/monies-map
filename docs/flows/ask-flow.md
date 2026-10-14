@@ -381,6 +381,28 @@ built-in rules. Copy: `askCopy.turn.source`. The caption is a thread item
 (`source`, not stored with the conversation) and is skipped when Ask opens a
 page.
 
+The same category rule runs when a message changes the card being filled
+(`edit_draft` on a draft, `validateDraftPatch`): a follow-up like "coffee"
+after "coffee 4.50" re-reads the category from the household's rules, then
+the word list, so the card is never left on Other when a word fits; a category
+the person named stays, and a message that is not about what it was ("make it
+6") leaves the category alone. Nothing fitting keeps Other and says so. The
+word list matches the household's own names ("Food and Drinks", "Transport").
+Root cause of the owner's "coffee" still showing Other: the follow-up took the
+patch path, which never read the word list, and the model's Other was kept.
+
+### Discard
+
+A draft card that is not saved (status `draft`, not empty) has a quiet
+**Discard** button under its rows (`BottomActions`, the same quiet button as
+Not now on the other draft cards, at least 44 px on a phone). It removes the
+card from the chat (in Add mode, resets it to a blank card), clears any open
+question and adds the calm note "Discarded the draft." Nothing is sent to the
+server (a draft was never saved), and Save works as before on the next draft.
+A saved card has no Discard (it has Undo). Copy: `askCopy.card.discard` and
+`askCopy.card.discarded`. Screenshots: `docs/audits/ask-discard/`. Specs:
+`tests/e2e/ask-ai-turn.spec.js`.
+
 ### Eval bank
 
 `tests/fixtures/ask-eval-utterances.json` holds 151 realistic messages across

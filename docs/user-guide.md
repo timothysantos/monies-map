@@ -742,6 +742,7 @@ that both fit.
   the dot on the Ask button, and is there when you come back.
 - **Save**: appears beside the message box when the card is ready. It stays
   greyed out until the card has an amount and what it was.
+- **Discard**: a quiet button under a card that is not saved yet; it removes the draft from the chat, and nothing was saved.
 - **Back to the unsaved entry**: if you ask for entries while a card is
   still unsaved, the suggestions and the send button follow the answer. The
   card stays where it was; tap this to bring it back to the bottom with its
