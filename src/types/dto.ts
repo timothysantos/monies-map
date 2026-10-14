@@ -57,8 +57,9 @@ export interface ShortcutSettingsDto {
   // "" when purchases in another currency follow the priority list.
   foreignCurrencyAccountId: string;
   // Settings only (DOMAIN.md "Shortcut connection"): one per person, the
-  // first person's first. The fields above are that first connection's.
-  connections?: ShortcutConnectionDto[];
+  // first person's first. The fields above are that first connection's, so
+  // its entry here names the person only.
+  connections?: Array<ShortcutConnectionDto | Pick<ShortcutConnectionDto, "personId" | "personName">>;
 }
 
 // One person's Apple Pay Shortcut connection: its own key, Default account

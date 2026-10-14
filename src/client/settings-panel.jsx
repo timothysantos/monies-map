@@ -222,7 +222,12 @@ export function SettingsPanel({
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
   // Whose phone the Apple Pay section is about; "" is the first person's.
   const [shortcutPersonId, setShortcutPersonId] = useState("");
-  const shortcutConnections = safeSettingsPage.shortcutSettings.connections ?? [];
+  // The first person's entry names the person; their settings are the flat
+  // fields. Memoized: the draft effect below depends on the selected object.
+  const shortcutConnections = useMemo(() => {
+    const { endpointPath: _endpointPath, connections = [], ...flat } = safeSettingsPage.shortcutSettings;
+    return connections.map((connection, index) => (index === 0 ? { ...flat, ...connection } : connection));
+  }, [safeSettingsPage.shortcutSettings]);
   const selectedShortcutConnection = shortcutConnections.find((connection) => connection.personId === shortcutPersonId)
     ?? shortcutConnections[0]
     ?? safeSettingsPage.shortcutSettings;

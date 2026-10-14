@@ -241,12 +241,17 @@ test("Settings lists one connection per person and starts a new one with that pe
   await enableShortcut(db, { defaultAccountPriorityIds: [ids.uobOne] });
 
   const before = (await api("/api/settings-page?view=household")).payload.settingsPage.shortcutSettings;
-  assert.deepEqual(before.connections.map((connection) => [connection.personId, connection.personName, connection.apiKeySource]), [
-    [TIM, "Tim", "app"],
-    [JOYCE, "Joyce", "none"]
+  assert.deepEqual(before.connections.map((connection) => [connection.personId, connection.personName]), [
+    [TIM, "Tim"],
+    [JOYCE, "Joyce"]
   ]);
+  assert.equal(before.apiKeySource, "app");
+  assert.equal(before.connections[1].apiKeySource, "none");
   assert.equal(before.apiKey, TOKEN, "the flat fields are the first person's, as before");
-  assert.equal(before.connections[0].defaultAccountPriorityIds[0], ids.uobOne);
+  assert.equal(before.defaultAccountPriorityIds[0], ids.uobOne);
+  // The first person's settings are the flat fields above; their entry in the
+  // list names the person only, so the page does not send the same settings twice.
+  assert.deepEqual(before.connections[0], { personId: TIM, personName: "Tim" });
   const joyceOrder = before.connections[1].defaultAccountPriorityIds;
   assert.deepEqual(joyceOrder.slice(0, 2).sort(), [ids.citiRewards, ids.uobLadys].sort(), "her own cards come first");
 

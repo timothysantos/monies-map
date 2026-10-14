@@ -627,7 +627,10 @@ cannot hold the same key (the save refuses it). Connections live in
 `app_settings` (`shortcut_api` for the first person, the household owner;
 `shortcut_api_person_<personId>` for anyone else), so nothing was migrated:
 the key installed before connections is the first person's and keeps working.
-See `docs/audits/shortcut-per-person-audit.md`.
+The Settings page sends the first person's settings once, as the flat
+`shortcutSettings` fields; their entry in `connections` names the person only
+(`settings-panel.jsx` merges them back), which keeps `settings-page` inside its
+payload budget. See `docs/audits/shortcut-per-person-audit.md`.
 
 ### How do I configure the server secret?
 

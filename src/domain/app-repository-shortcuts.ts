@@ -150,7 +150,9 @@ export async function loadShortcutSettings(
 }
 
 // Settings -> Apple Pay shortcut: the first person's settings flat (as the
-// app shell reads them) and one connection per person.
+// app shell reads them) and one connection per person. The first person's
+// connection names the person only; its settings are the flat fields, so the
+// page never carries the same settings twice (payload budget).
 export async function loadShortcutSettingsWithConnections(
   db: D1Database,
   accounts: AccountDto[],
@@ -167,7 +169,9 @@ export async function loadShortcutSettingsWithConnections(
     defaultAccountPriorityIds: first?.defaultAccountPriorityIds ?? buildDefaultShortcutAccountPriorityIds(accounts),
     defaultParams: first?.defaultParams ?? "",
     foreignCurrencyAccountId: first?.foreignCurrencyAccountId ?? "",
-    connections
+    connections: connections.map((connection, index) => index === 0
+      ? { personId: connection.personId, personName: connection.personName }
+      : connection)
   };
 }
 
