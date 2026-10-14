@@ -7,8 +7,9 @@ import { loadMonthPage, loadSummaryPage, postJson, reseedDemo } from "./helpers"
 // mint, a thin plan bar under it, a legend and one plain line. Every figure is
 // the page DTO's own. The legend (each part's name and figure, and the plan
 // bar's name) is always in the page: nothing needs a hover or a tap, and
-// there is no popover. A tap or click on a part opens its menu in the page
-// flow under the legend. Hidden money keeps labels and percentages only. The
+// there is no popover. A tap or click on a part (or its legend line) opens
+// its menu under it (design.md "Openable figures"). Hidden money keeps labels
+// and percentages only. The
 // model's exact numbers are in tests/savings-bar-model.test.mjs; this proves
 // the rendering, the legend, the tap targets, the Month card height and
 // hidden money.
@@ -162,8 +163,10 @@ async function expectOverBar(page, lead, figures) {
   await expect(bar.locator('[data-segment="kept"]')).toHaveCount(0);
   await expect(savingsSegment).toHaveClass(/is-hatched/);
   const tick = bar.locator(".savings-bar-tick");
-  // The tick says what it marks, in plain words, with the figure where there is room.
-  await expect(tick).toHaveText(isPhone(page) ? "All you earned" : `All you earned ${dollars(figures.income)}`);
+  // The tick carries no label on the bar (a label there covered the parts):
+  // the legend names it, "Earned" on a phone (one line), "All you earned $x" with room.
+  await expect(tick).toHaveText("");
+  await expect(legendItem(bar, "earned")).toHaveText(isPhone(page) ? "Earned" : `All you earned ${dollars(figures.income)}`);
   const withinPercent = (figures.income / figures.spent) * 100;
   const tickBox = await box(tick);
   expect(((tickBox.x + tickBox.width / 2 - track.x) / track.width) * 100).toBeCloseTo(withinPercent, 0);
@@ -194,15 +197,20 @@ async function expectTouchTarget(page, segment) {
   }
 }
 
-// A tap or click on a part opens its menu (View entries, Ask about this) in
-// the page flow, under the legend: not floating over the bar or the legend.
+// A tap or click on a part opens its menu (View entries, Open plan, Ask
+// about this; design.md "Openable figures") just under the part, inside the
+// page's gutters. `key` is the part's money figure (spending, kept,
+// invested, from_savings).
+const openMenu = (page) => page.locator("[data-figure-menu]");
 async function expectMenuInFlow(bar, key) {
-  const menu = bar.locator(`[data-money-actions="${key}"]`);
+  const page = bar.page();
+  const menu = page.locator(`[data-figure-menu="${key}"]`);
   await expect(menu).toBeVisible();
-  // ("View May 2026 entries" on a Summary range.)
-  await expect(menu.getByRole("button")).toHaveText([/^View (\w+ \d{4} )?entries$/, "Ask about this"]);
-  expect(await bar.locator("[data-savings-menu]").evaluate((element) => getComputedStyle(element).position), "the menu is in the flow").not.toBe("absolute");
-  expect((await box(menu)).y, "the menu is under the legend").toBeGreaterThanOrEqual((await box(bar.locator("[data-savings-legend]"))).bottom - 1);
+  // ("Open May 2026 plan" on a Summary range.)
+  await expect(menu.getByRole("button")).toHaveText(["View entries", /^Open (\w+ \d{4} )?plan$/, "Ask about this"]);
+  const segment = bar.locator(`[data-fig="${key}"]`).first();
+  expect((await box(menu)).y, "the menu is under the part").toBeGreaterThanOrEqual((await box(segment)).bottom - 1);
+  expect((await box(menu)).right).toBeLessThanOrEqual(page.viewportSize().width - 15);
   return menu;
 }
 
@@ -248,18 +256,18 @@ test.describe("phone", () => {
     // Tap: a part opens its menu in the flow, a tap on the other part moves
     // it, a second tap on the same part closes it, a tap elsewhere closes it.
     await expectTouchTarget(page, keptSegment);
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
     await keptSegment.tap();
     await expectMenuInFlow(bar, "kept");
     await spentSegment.tap();
-    await expectMenuInFlow(bar, "spent");
-    await expect(bar.locator('[data-money-actions="kept"]')).toHaveCount(0);
+    await expectMenuInFlow(bar, "spending");
+    await expect(page.locator('[data-figure-menu="kept"]')).toHaveCount(0);
     await spentSegment.tap();
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
     await keptSegment.tap();
     await expectMenuInFlow(bar, "kept");
     await lead.locator(".lsd-eyebrow").tap();
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
   });
 
   test("Month lead, spending more than was earned: rose to an \"All you earned\" tick, the rest striped and named in the legend, no kept part", async ({ page }) => {
@@ -273,7 +281,7 @@ test.describe("phone", () => {
     expect((await box(lead.locator("[data-savings-legend]"))).height, "legend on one line").toBeLessThan(18);
     await expect(lead.locator('[data-segment="savings"]')).toHaveAccessibleName("Came out of savings");
     await lead.locator('[data-segment="savings"]').tap();
-    await expectMenuInFlow(lead.locator("[data-savings-bar]"), "savings");
+    await expectMenuInFlow(lead.locator("[data-savings-bar]"), "from_savings");
   });
 
   test("hidden money: the legend has labels and percentages only, no plan item, no amount and no sign word anywhere in the bar", async ({ page }) => {
@@ -295,7 +303,10 @@ test.describe("phone", () => {
     await bar.locator('[data-segment="kept"]').tap();
     await expectMenuInFlow(bar, "kept");
     // Everything the bar holds, the menu too, is free of amounts and sign words.
-    const text = await bar.evaluate((element) => [element.textContent, ...[...element.querySelectorAll("[aria-label]")].map((part) => part.getAttribute("aria-label"))].join(" "));
+    const text = [
+      await bar.evaluate((element) => [element.textContent, ...[...element.querySelectorAll("[aria-label]")].map((part) => part.getAttribute("aria-label"))].join(" ")),
+      await openMenu(page).evaluate((element) => `${element.textContent} ${element.getAttribute("aria-label")}`)
+    ].join(" ");
     expect(text).not.toMatch(/\$|[-−]\s?\d|\bkept \d|more than/i);
     // Neutral warm greys (the 70s ink is brown, so a little chroma): no rose or mint colour reveals a sign.
     for (const key of ["spent", "kept"]) {
@@ -325,28 +336,28 @@ test.describe("desktop", () => {
     // Hover opens nothing: the legend is already there and there is no popover.
     await keptSegment.hover();
     await expect(bar.locator(POPOVER)).toHaveCount(0);
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
     // A click opens the menu under the legend (a second click closes it);
     // hovering another part leaves it where it is.
     await keptSegment.click();
     await expectMenuInFlow(bar, "kept");
     await spentSegment.hover();
-    await expect(bar.locator('[data-money-actions="kept"]')).toBeVisible();
-    await bar.locator('[data-money-actions="kept"] [data-action="ask"]').hover();
-    await expect(bar.locator('[data-money-actions="kept"]')).toBeVisible();
+    await expect(page.locator('[data-figure-menu="kept"]')).toBeVisible();
+    await page.locator('[data-figure-menu="kept"] [data-action="ask"]').hover();
+    await expect(page.locator('[data-figure-menu="kept"]')).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
     await spentSegment.click();
-    await expectMenuInFlow(bar, "spent");
+    await expectMenuInFlow(bar, "spending");
     await spentSegment.click();
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
 
     // Keyboard: Enter on a focused part opens its menu, Escape closes it.
     await keptSegment.focus();
     await page.keyboard.press("Enter");
     await expectMenuInFlow(bar, "kept");
     await page.keyboard.press("Escape");
-    await expect(bar.locator("[data-money-actions]")).toHaveCount(0);
+    await expect(openMenu(page)).toHaveCount(0);
 
     // The Support pills and the plan line are still there; the old spend-vs-plan
     // bar is not (the savings bar and its plan bar are the only bars).
@@ -362,11 +373,14 @@ test.describe("desktop", () => {
     expect(figures.over, "the range overspends the small salary").toBe(true);
     const lead = await openLead(page, "summary");
     await expectOverBar(page, lead, figures);
-    // The tick's label sits inside the bar, not clipped.
+    // Nothing is drawn over the bar: the tick's name is in the legend, under
+    // the bars.
     const track = await box(lead.locator(".savings-bar-track"));
-    const tickLabel = await box(lead.locator(".savings-bar-tick-label"));
-    expect(tickLabel.x).toBeGreaterThanOrEqual(track.x);
-    expect(tickLabel.right).toBeLessThanOrEqual(track.right);
+    const earned = await box(legendItem(lead.locator("[data-savings-bar]"), "earned"));
+    expect(earned.y).toBeGreaterThanOrEqual(track.bottom);
+    // It opens what was earned.
+    await legendItem(lead.locator("[data-savings-bar]"), "earned").locator("[data-fig]").click();
+    await expect(page.locator('[data-figure-menu="earned"]')).toBeVisible();
   });
 
   test("no income at all: the whole bar is the part that came out of savings, with no tick and no share of income", async ({ page }) => {

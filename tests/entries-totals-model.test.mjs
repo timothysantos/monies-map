@@ -28,6 +28,8 @@ const INPUT = {
 test("the lead is Spent for the month with the person's share as its aside; the pills keep the strip's figures", () => {
   assert.deepEqual(buildEntriesTotalsModel(INPUT), {
     month: "Aug 2026",
+    eyebrow: "Spent · Aug 2026",
+    figure: "",
     spent: { amountMinor: 167_927, tone: "neutral", shareMinor: 136_925 },
     pills: [
       { key: "income", amountMinor: 830_000, tone: "in", shareMinor: null },
@@ -59,6 +61,26 @@ test("spend, transfers and outflow are plain; income and a deficit carry their d
     ["income", "neutral"], ["difference", "short"], ["transfers", "neutral"], ["outflow", "neutral"]
   ]);
   assert.equal(deficit.spent.tone, "neutral");
+});
+
+test("a figure opened from a card leads: its name, the period and its total (design.md \"Openable figures\")", () => {
+  // A money job's figure, worked out by entry-filtering.js, at the view's amounts.
+  const invested = buildEntriesTotalsModel({ ...INPUT, rangeStartMonth: "2025-09", figure: "invested", figureMinor: 320_000 });
+  assert.deepEqual([invested.eyebrow, invested.month, invested.figure], ["Invested · Sep 2025 – Aug 2026", "Sep 2025 – Aug 2026", "invested"]);
+  assert.deepEqual(invested.spent, { amountMinor: 320_000, tone: "neutral", shareMinor: null });
+  // The pills stay the list's own.
+  assert.equal(invested.pills.find((pill) => pill.key === "income").amountMinor, 830_000);
+  // Kept below zero is rose; earned is mint; more out than in is rose.
+  assert.equal(buildEntriesTotalsModel({ ...INPUT, figure: "kept", figureMinor: -5_000 }).spent.tone, "short");
+  assert.equal(buildEntriesTotalsModel({ ...INPUT, figure: "earned", figureMinor: 830_000 }).spent.tone, "in");
+  assert.equal(buildEntriesTotalsModel({ ...INPUT, figure: "from_savings", figureMinor: 1 }).spent.tone, "short");
+  // An Entries figure (a pill) leads with the pill's own figure and share.
+  const outflow = buildEntriesTotalsModel({ ...INPUT, figure: "outflow", figureMinor: null });
+  assert.deepEqual([outflow.eyebrow, outflow.spent], ["Outflow · Aug 2026", { amountMinor: 767_269, tone: "neutral", shareMinor: 736_267 }]);
+  // Entries' own Spent (expenses) is the Spent lead, whole with the share beside.
+  assert.deepEqual(buildEntriesTotalsModel({ ...INPUT, figure: "expenses", figureMinor: null }).spent, { amountMinor: 167_927, tone: "neutral", shareMinor: 136_925 });
+  // A card's spent (a category, a plan row) is at the view's amounts.
+  assert.deepEqual(buildEntriesTotalsModel({ ...INPUT, figure: "spent", figureMinor: 136_925 }).spent, { amountMinor: 136_925, tone: "neutral", shareMinor: null });
 });
 
 test("the filters row says All entries, or how many filters are on", () => {

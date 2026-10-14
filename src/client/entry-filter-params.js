@@ -17,6 +17,14 @@
 //   invested answer's Open in Entries; src/domain/investment-moves.ts)
 // - entry_id: entry ids (the check-in's links, and an insight answer's
 //   Open in Entries)
+// - entry_figure: the rows behind one figure and that figure as the lead
+//   (src/domain/money-figures.ts): spending | invested | kept | earned |
+//   from_savings | took_out | spent | expenses | transfers | outflow |
+//   difference; a
+//   card's "View entries" (design.md "Openable figures")
+// - entry_from, entry_to: a period of months (YYYY-MM) in place of the one
+//   month, when entry_to is the page's month: a Summary range's figure
+//   lists the whole range. Another month picked in the header drops it.
 // - entries_scope: direct | shared | direct_plus_shared
 // - from_ask=1: the filters came from an Ask answer, so the page shows the
 //   "From Ask" chip that clears them or goes back to Ask
@@ -38,8 +46,35 @@ export const ASK_FILTER_PARAM_KEYS = Object.freeze([
   "entry_max",
   "entry_id",
   "entry_invest_moves",
+  "entry_figure",
+  "entry_from",
+  "entry_to",
   "from_ask"
 ]);
+
+// The figures entry_figure names (MONEY_FIGURES in src/domain/money-figures.ts,
+// pinned by tests/money-figures.test.mjs; listed here so this module stays
+// free of the domain's entry code).
+export const ENTRY_FIGURES = Object.freeze(["spending", "invested", "kept", "earned", "from_savings", "took_out", "spent", "expenses", "transfers", "outflow", "difference"]);
+
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+// The longest period Entries lists at once: two years of months.
+export const MAX_ENTRY_RANGE_MONTHS = 24;
+
+/**
+ * The first month of the period Entries lists, or "" for the one month:
+ * entry_from when entry_to is `month` and the period is at most
+ * MAX_ENTRY_RANGE_MONTHS long.
+ */
+export function readEntriesRangeStart(searchParams, month) {
+  const from = searchParams.get("entry_from") ?? "";
+  const to = searchParams.get("entry_to") ?? "";
+  if (!MONTH_KEY.test(from) || to !== month || !(from < month)) {
+    return "";
+  }
+  const span = (Number(month.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(month.slice(5, 7)) - Number(from.slice(5, 7)) + 1;
+  return span <= MAX_ENTRY_RANGE_MONTHS ? from : "";
+}
 
 function readMultiValues(searchParams, key) {
   const values = searchParams.getAll(key);
@@ -65,6 +100,7 @@ export function formatAmountParam(amountMinor) {
 
 export function readEntriesFilterParams(searchParams, defaultScope = "direct_plus_shared") {
   const type = searchParams.get("entry_type") ?? "";
+  const figure = searchParams.get("entry_figure") ?? "";
   return {
     selectedScope: searchParams.get("entries_scope") ?? defaultScope,
     entryFilters: {
@@ -75,7 +111,8 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
       search: searchParams.get("entry_search") ?? "",
       minAmountMinor: readAmountParam(searchParams.get("entry_min")),
       maxAmountMinor: readAmountParam(searchParams.get("entry_max")),
-      investmentMovesIn: searchParams.get("entry_invest_moves") === "1"
+      investmentMovesIn: searchParams.get("entry_invest_moves") === "1",
+      figure: ENTRY_FIGURES.includes(figure) ? figure : ""
     }
   };
 }
@@ -83,7 +120,9 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
 /**
  * An Ask answer's filter (ask-filter-reader.js) as the Entries URL that
  * shows the same rows.
- * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean }} filter
+ * `fromMonth` lists the months from it to `month` (entry_from, entry_to);
+ * `figure` narrows to the rows behind one figure (entry_figure).
+ * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean, figure?: string, fromMonth?: string }} filter
  */
 export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   const params = new URLSearchParams();
@@ -97,6 +136,11 @@ export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   for (const wallet of normalizeEntryFilterValues(filter.wallets ?? [])) params.append("entry_wallet", wallet);
   for (const category of normalizeEntryFilterValues(filter.categories ?? [])) params.append("entry_category", category);
   if (filter.investmentMovesIn) params.set("entry_invest_moves", "1");
+  if (filter.figure && ENTRY_FIGURES.includes(filter.figure)) params.set("entry_figure", filter.figure);
+  if (filter.month && filter.fromMonth && filter.fromMonth < filter.month) {
+    params.set("entry_from", filter.fromMonth);
+    params.set("entry_to", filter.month);
+  }
   if (filter.type && ENTRY_TYPES.includes(filter.type)) params.set("entry_type", filter.type);
   if (Number.isFinite(filter.minAmountMinor)) params.set("entry_min", formatAmountParam(filter.minAmountMinor));
   if (Number.isFinite(filter.maxAmountMinor)) params.set("entry_max", formatAmountParam(filter.maxAmountMinor));

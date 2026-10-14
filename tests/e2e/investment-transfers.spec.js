@@ -141,11 +141,22 @@ test.describe("money moved into and out of investment accounts", () => {
     await expect(rows.filter({ hasText: "Endowus withdrawal" })).toHaveCount(0);
   });
 
-  test("Month lead: the invested part's View entries lists the transfer into Endowus", async ({ page }) => {
+  test("Month lead: the invested part's View entries lists the transfer into Endowus, and its total is the lead's invested", async ({ page }) => {
+    const figures = await monthFigures(page, MAY);
     const bar = await openMonthLead(page, MAY);
     await bar.locator('[data-segment="invested"]').click();
-    await page.locator('[data-money-actions="invested"] [data-action="entries"]').click();
-    await expect(page).toHaveURL(/\/entries\?.*entry_category=Investments.*entry_invest_moves=1/);
+    await page.locator('[data-figure-menu="invested"] [data-action="entries"]').click();
+    await expect(page).toHaveURL(/\/entries\?.*entry_figure=invested/);
     await expect(page.locator(".entry-row").filter({ hasText: "Endowus top-up" })).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator(".entries-totals-lead .lsd-amount")).toHaveText(cents(figures.invested));
+
+    // April took more out than it put in: Took out of investments opens
+    // the same rows with that figure.
+    const april = await monthFigures(page, APRIL);
+    const aprilBar = await openMonthLead(page, APRIL);
+    await aprilBar.locator('[data-legend="taken-out"] [data-fig="took_out"]').click();
+    await page.locator('[data-figure-menu="took_out"] [data-action="entries"]').click();
+    await expect(page.locator(".entries-totals-lead .lsd-eyebrow")).toHaveText("Took out of investments · Apr 2026", { timeout: 30_000 });
+    await expect(page.locator(".entries-totals-lead .lsd-amount")).toHaveText(cents(april.takenOut));
   });
 });

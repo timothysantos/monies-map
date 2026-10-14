@@ -877,8 +877,10 @@ Where it is used:
   spend, plan and savings target start from the Month metric cards and go
   through the split with the month's plan rows and category share, Saved
   is the split's kept, and remaining budget (planned income minus the whole
-  plan) is the card's own figure. Remaining budget is a
-  button: the whole column opens its explanation popover; its label is "To
+  plan) is the card's own figure. Remaining budget is an openable figure
+  (see "Openable figures"): the whole column opens its menu, whose first line
+  is the explanation the old popover held, then Open plan and Ask about this;
+  its label is "To
   allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
   tiles are gone; nothing scrolls sideways at 390 px.
 - Savings bar (`ui/savings-bar.jsx`, `savings-bar-model.js`, CSS in
@@ -899,9 +901,12 @@ Where it is used:
   part on the bar, "Took out of investments $x" (`data-legend="taken-out"`),
   left out when money is hidden. If more went out than came in there is no
   mint: the bar is as long as what went out (spent, then invested), with a
-  small "All you earned" tick where the income ends (the label carries the
-  amount from 761 px, "All you earned $247,007"; the word "income" was
-  dropped because the bar's tick should say what it marks in plain words);
+  small dark tick where the income ends. The tick has no label on the bar
+  (a label there covered the parts, the owner's screenshot of "All you earned
+  $138,761" over the plum): the legend names it with a swatch drawn like the
+  tick, "All you earned $247,007" from 761 px and "Earned" on a phone, where
+  the legend must stay one line (the figure is the Income column's and the
+  sentence's; `data-legend="earned"`, `tickLegend`, `tickLegendShort`);
   spending past the tick is rose stripes ("came out of savings"). No income but some spending is all
   stripes with no tick; no income and nothing out draws nothing. A 3 px sky
   plan bar sits directly under it on the same scale (the spend job's plan,
@@ -929,22 +934,25 @@ Where it is used:
   $247,673 · keep $41,300" (the plan's own figures, not cut to the bar, only
   the goals that exist). Each segment is a `button` (aria-label "Spent",
   "Invested", "Kept" or "Came out of savings") whose `aria-describedby`
-  points at its legend item. A click, a tap or Enter opens the segment's menu
-  (`renderMoneyActions`: View entries, Ask about this; the invested part's
-  View entries is the Investments category plus the transfers into
-  investment accounts, `entry_invest_moves=1`, which Entries resolves with
-  `findInvestmentMoves` over its accounts' kinds) in the page flow
-  under the legend (`.savings-bar-menu`, not floating; the money jobs and
-  columns move down while it is open); a second press on the same segment, a
-  press on another segment (which moves the menu), Escape or a press outside
-  closes it. Without a period (an Ask answer's bar) the parts have no menu
-  and are plain `role="img"` spans. The bar is 10 px tall and its hit area
-  reaches 17 px above and below, so a segment is a 44 px target. No chart
+  points at its legend item. Every part, legend line and the sentence is an
+  openable figure (see "Openable figures"): spent is `spending`, invested
+  `invested`, kept `kept`, the striped part `from_savings`, the tick's line
+  `earned`, the plan line `plan` and "Took out of investments" `took_out`;
+  the sentence opens the figure it is about (`sentenceFig`: kept, invested
+  past income, or from savings). A click, a tap, Enter or Space opens the
+  menu under the part; a second press on the same part, a press on another
+  figure (which moves the menu), Escape or a press outside closes it. The
+  legend lines and the sentence sit over the parts' 44 px reach (`z-index`),
+  so a tap on "Earned" or "Plan" opens their own menu. Without a period (an
+  Ask answer's bar) nothing opens and the parts are plain `role="img"`
+  spans. The bar is 10 px tall and its hit area reaches 17 px above and
+  below, so a segment is a 44 px target. No chart
   library: plain flex boxes with percentage widths. Hidden money: the shape
   stays, the colours go neutral grey (three greys when invested is there),
   the legend has the names and percentages only on a phone too ("Spent ·
   85%", "Kept · 15%"), with no plan item (the plan bar is not drawn), the
-  tick reads "All you earned" without an amount, the sentence is "Spent and
+  tick's legend line reads "All you earned" ("Earned" on a phone) without an
+  amount, the sentence is "Spent and
   kept, as a share of what you earned" (or "Spent, invested and kept, as
   shares of income"), and the plan bar is not drawn. The bar's colours are the money tones (rose spent, mint
   kept, sky plan) plus faded plum (`--pastel-lavender-ink`) for invested:
@@ -968,47 +976,22 @@ Where it is used:
   by $n" / "over by $n" in rose, text only ("✓ so far" and "… so far" for a
   month in progress). A job is listed only when its plan line is more than
   zero; a gap under 50 cents (which would read "$0") is done. Each row is a
-  button that opens the same menu under it. Hidden money: the
+  button and an openable figure (`MONEY_JOB_FIGURES` in
+  `money-jobs-detail.js`): the spend job is `spending`, save `kept`, invest
+  `invested` and income `earned`, each with Open plan (income opens the
+  plan's income part), and the spend job over its plan asks why. Hidden money: the
   labels drop their amounts ("Spend within plan", "Save"), a done job is
   "✓" and any other the share of its plan reached ("80%"), all in plain ink.
   Only the folded line is in the first screen (the jobs' numbers,
-  `listMoneyJobs`, and its one string). The rows, the menu, their words
-  (`copy/money-jobs-copy.js`), the questions and the Entries filter code are
-  `money-jobs-detail.js`, loaded by `money-jobs-loader.js` on the first
-  open of the jobs (at once where they start open, from 761 px) or the
-  first hover, focus or press on a bar part, the way Money insights load.
-  It draws its two small pieces of UI with the caller's `createElement`
-  and keeps no state (the open row and the open menu stay in
-  `ui/money-jobs.jsx` and `ui/savings-bar.jsx`): a lazy chunk that imports
-  React from the shared chunk made the bundler split that chunk into one
-  more first-screen file.
-- The bar parts' and jobs' menu (`renderMoneyActions` in
-  `money-jobs-detail.js`): two quiet pill buttons. "View
-  entries" opens Entries for the period's last month (Entries shows one
-  month; on a Summary range the button says "View Sep 2026 entries"), in the
-  page's view and scope, filtered to the money behind the part: Spent, the
-  spend job and "Came out of savings" to expenses (`entry_type=expense`),
-  Invested and the invest job to the Investments category, the income job
-  to income, and Kept and the save job to the Savings category only when
-  something was filed there (otherwise there is no entry to show, and only
-  the Ask button is offered). It is a plain filter, not "From Ask". "Ask
-  about this" opens Ask and asks the question at once, as if typed, so the
-  answer follows ("Why did I spend more than planned in May 2026?", "What did I
-  spend the most on in …?", "How much did I invest in …?", "How much did I
-  save in …?", "How much did I earn in …?", "Why did I spend more than I
-  earned in …?"): on a phone the Ask page (history state `askQuestion`, asked once and
-  dropped from the entry), on a wider screen the Ask panel beside the page
-  (`openAskDock({ question })`, which the open conversation takes too). The
-  question never holds an amount, and with hidden money never says which
-  side of the plan the money fell ("How did my spending compare with the
-  plan in …?"). The question goes through the same reader as a typed
-  message (`readSentence` in `ask-panel.jsx`), so the money-answer route and
-  its check before any figure apply. The menu does not navigate
-  itself: it sends one window event, `monies:money-action` (`{ entries }` or
-  `{ askText }`), and the shell (App.jsx) opens Entries or Ask. Importing the
-  router or the Ask dock's launcher into the lead's chunk split Vite's
-  preload helper into a ninth first-screen file (`check:bundle` counts
-  files). The menu closes as it goes, so Back finds the lead as it was.
+  `listMoneyJobs`, and its one string). The rows and their words
+  (`copy/money-jobs-copy.js`) are `money-jobs-detail.js`, loaded by
+  `money-jobs-loader.js` on the first open of the jobs (at once where they
+  start open, from 761 px), the way Money insights load. It draws the rows
+  with the caller's `createElement` and keeps no state: a lazy chunk that
+  imports React from the shared chunk made the bundler split that chunk
+  into one more first-screen file.
+- The menu a bar part, a job and every other figure opens is the one
+  described under "Openable figures" below (`figure-menu.js`).
 - Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
   Month route chunk): Income, Budget Buckets and Planned Items keep their
   `<table>` markup (inline editing, sorting, row opening and the tests'
@@ -1033,7 +1016,14 @@ Where it is used:
   (the old row's variance); Support: Planned income and Actual income chips;
   Detail: a `MoreDetails` row named "Details" holds the old table's three
   rows (Income, Expected spend, Savings goal: planned, actual, variance) and
-  the month note row, which edits the note. The latest month starts open,
+  the month note row, which edits the note. Every figure is openable (see
+  "Openable figures"; the card carries its month as the period): the spent
+  lead and its line open `spent` (every expense less paybacks, as the card
+  counts it) with Open plan, the plan aside and planned figures `plan`, the
+  income chips `earned`, and the Details' actuals `earned`, `spent` and
+  `difference` (realized savings, income less spending). The section is a
+  `React.lazy` chunk beside the first screen (it sits under Spending Mix),
+  which made room in the first-screen budget for the lead's figures. The latest month starts open,
   the others fold. From 1,024 px the cards are a grid, 2 across (3 from 1,440
   px), latest first; a card with its Details open spans the whole row so no gap sits beside it, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
   percent and no under/over words, the variance dots too.
@@ -1090,7 +1080,11 @@ Where it is used:
   `simple-detail.js`): small pills that wrap, "Daily spend $56" (the spending over the period's
   days; "Daily spend so far" up to today while it is going), then "Top
   spending" with the three biggest spending categories and their share of
-  spending as chips that open the category's entries (44 px reach). Money
+  spending as chips (44 px reach), each an openable figure (`category`: View
+  entries is that category's spending over the period, Ask asks how much
+  was spent on it). Daily spend opens the spending it is worked out from
+  (`spending`; a daily average is not a filter, so Entries shows the
+  period's spending, the figure it divides). Money
   filed under Investments or Savings is not spending here either. Chosen
   over the other candidates: what was kept and its share of income (the
   savings rate), or how much more went out than came in, is already the
@@ -1114,9 +1108,13 @@ Where it is used:
   "Earned $x  Spent $y" (and "Invested $z" when there is any) and a 6 px bar
   on the month's own scale in the savings bar's colours (spent, the part
   past the income striped, invested, kept). Each month goes through
-  `splitMoneyUse` with its own category share, so its spent is the Month
-  lead's; its invested is the Investments category only, as the Summary
-  page has transfers into investment accounts for the whole range only.
+  `splitMoneyUse` with its own category share and its own investment moves
+  (the Summary page's `investmentMovesByMonth`, only the months where
+  something moved), so its spent, invested and kept are the Month lead's.
+  Each row carries its month as the period, and Earned, Spent, Invested and
+  Kept / Overspent are openable figures (`earned`, `spending`, `invested`,
+  `kept`; with money hidden the "Spent · 85% of earned" line opens
+  `spending`).
   Month in Simple: the lead, the insights without the plan ones, Spending
   Mix (where the money went: each category with its amount, share and bar,
   opening its entries), then "Money in" (`MonthMoneyIn` in
@@ -1144,31 +1142,54 @@ Where it is used:
   `tests/simple-page.test.mjs`, `tests/viewer-preferences.test.mjs`.)
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
-  chunks; no `styles.css` growth). The Spending Mix donut labels only the
+  chunks; no `styles.css` growth; Spending Mix is a `React.lazy` chunk beside
+  the first screen, list, slice menus and words included). The Spending Mix donut labels only the
   slices with room for a label (`SpendingMixChart sliceLabels`, laid out by
   `donut-label-layout.js` in the lazy Recharts chunk; the old percent labels
   and category badges collided when many categories had thin slices, and
   Entries and Splits keep those). Biggest slice first, a slice whose ring
   edge is at least 18 px long gets "Name 32.1%" just outside the ring, or
-  "32.1%" alone when the name does not fit, or nothing: each label must stay
+  the name over the share on two lines when one line does not fit, or
+  nothing (owner, 2026-10-14: a bare "4.3%" cannot be told apart, so a share
+  never shows without its name): each label must stay
   inside the chart, off the ring and 4 px clear of every label already
   placed (text measured on a canvas). Small slices have no label; the ranked
   list names every category. Labels are plain page ink (`--text`), so they
   read in every colour preset, are `aria-hidden` (the list is what assistive
   tech reads), show shares of all spending (as the list does) and never an
-  amount, so hidden money keeps them. The chart is 236 px on a phone and
-  310 px from 761 px, one label line above and below the ring. Under it (beside it from 1,024 px, where the card has the full
-  row) a ranked list in one `DetailRows` group, biggest first: the 44 px
-  category bubble (edits the category, as before), the name and amount on
-  one line (the name is one line with an ellipsis), a 6 px bar in the
-  category's colour whose width is the category's share of all spending, and
-  the share to one decimal; the `›` (44 × 44) opens Entries for the category.
+  amount, so hidden money keeps them. The chart is 260 px tall on a phone and
+  380 px wider, with label room around the ring. Under it, or beside it when
+  the card itself is at least 700 px wide (a container query; the donut
+  then takes 58% of the card), a lean ranked list in one `DetailRows` group,
+  biggest first, one 44 px line per category: a small dot in the category's
+  colour (a 44 px target that edits the category, as the bubble did), the
+  name (one line, an ellipsis), the amount and the share to one decimal; the
+  `›` (44 × 44) opens the category's figure
+  menu (`category`, over the page's period: the Summary's whole range, or
+  the Month's month), whose View entries total is the row's amount.
   The main tap still hides or shows the slice in the donut (`aria-pressed`);
-  a hidden category stays listed, dimmed, with the existing "Hidden" word
-  and a grey bar, and the donut's total follows the shown ones while the
-  shares stay of all spending. The top five show; a last row, "Show all N" /
-  "Show fewer" (`aria-expanded`), lists the rest. The old per-category
-  transaction count and the old "Shown" caption are gone with the cards.
+  a hidden category stays listed, dimmed, with the existing "Hidden" word,
+  and the donut's total follows the shown ones while the shares stay of all
+  spending. A desktop shows the top five and a phone the top three (the
+  owner leaned to the donut and three rows on a phone, so it stays short
+  without hiding the list); a last row, "Show all N" / "Show fewer"
+  (`aria-expanded`), lists the rest. "Hide list" / "Show list" in the
+  card's head (a quiet text button, `aria-expanded`) folds the list away:
+  the donut then takes the whole card, bigger (340 px on a phone, 440 px
+  wider), with every label that fits; the choice is kept on the device
+  (`monies-map:spending-mix-list`, read and written in try/catch). Each
+  slice is an openable figure (`category`): a clear sector over it in the
+  labels' layer takes the tap, the focus (`tabIndex` 0, the arrow keys move
+  between slices in ring order) and on a desktop a resting pointer (a
+  quarter of a second, the menu at the pointer, the focus left where it
+  is; a click then keeps it open). Its menu starts with the slice's facts:
+  amount and share of spending ("$7,638.77 · 44.5% of spending"; the share
+  alone with money hidden), entries, and on the Month page what it already
+  holds (`month-slice-facts.js`): "$250 of $300 planned" when a plan line
+  has the category (then Open plan) and the two biggest merchants. A change
+  against the previous period is left out: neither page loads it. The
+  coloured sectors take no pointer events, so Recharts never swaps a sector
+  for its "active" copy under the pointer.
   Wallets in view is one group of `DetailRow`s (a `DetailRows` group, from
   1,024 px the heading on the left and the group on the right): the wallet
   name with its statement freshness under it ("Reconciled to Sep 2026
@@ -1241,7 +1262,19 @@ Where it is used:
   inline "+ Add entry" is gone (the round + opens Ask's new entry card,
   whose "Edit in form" opens the Entries form). Hidden money: dots in plain
   ink, no sign, pills lose their tint. Nothing scrolls sideways or is cut
-  off at 390, 1,024 or 1,280 px (`tests/e2e/entries-lsd.spec.js`). The wide
+  off at 390, 1,024 or 1,280 px (`tests/e2e/entries-lsd.spec.js`). The lead
+  and every pill are openable figures (`spent`, `earned`, `difference`,
+  `transfers`, `outflow`): View entries narrows this same list to the rows
+  behind the figure (`entry_figure`, the other filters kept), and the figure
+  does not change. A figure opened from another card leads instead of
+  Spent: "Invested · Jun 2025 – May 2026" and its total (a money job's total
+  through `splitMoneyUse` at the view's amounts; an Entries figure the
+  pill's own, with its share aside), with a chip at the top of the list in
+  the From Ask chip's style naming the figure and period, whose ✕ goes back
+  to the month's whole list (`EntriesFigureChip`). A Summary range lists all
+  its months (`entry_from`, `entry_to`; the page asks
+  `/api/entries-page?from=`); the money check-in still reads the page's own
+  month. The wide
   filter bar stacks the Search label over its field and, from 961 to 1,099
   px, puts the search on its own row.
 - Entries list rows and day headers (`entries-list.jsx`, `entries-route.css`).
@@ -1420,6 +1453,81 @@ actions; it gives them the layout:
   Done for several choices).
 - Tests: `tests/e2e/dialogs-lead-support-detail.spec.js` (primary, Cancel,
   destructive confirm, tap targets, hidden money; WebKit and Chromium).
+
+## Openable Figures
+
+Owner principle (2026-10-14, AGENTS.md "Frontend guidance"): on a card,
+every figure or statement that has money behind it is quietly openable, so
+the person can dig in. It is not a button and does not shout "click me":
+the text stays as it is; on hover or keyboard focus (and while its menu is
+open) it gains a soft underline and a small chevron after it; on a phone a
+tap opens it. The menu is small and in the page, under the figure, with
+only the places that apply:
+
+- View entries: Entries narrowed to exactly the money behind the figure,
+  over the figure's whole period (a Summary range lists every month of it)
+  and in the page's view and scope, so the total Entries leads with is the
+  figure, to the cent (`tests/openable-figures.test.mjs` proves it for
+  every figure kind, view and scope on the real Worker). The rule is the
+  figure's own (`src/domain/money-figures.ts`, DOMAIN.md "Money figure",
+  the URL's `entry_figure`): Invested is the Investments category plus the
+  transfers into investment accounts less the transfers out, through the
+  same `splitMoneyUse` the card used.
+- Open plan: the Month page's plan for the period's last month ("Open May
+  2026 plan" on a range), at its income part for income figures
+  (`#month-plan-income`) or at the plan (`#month-plan`); `use-hash-target.js`
+  scrolls there once the page has drawn it. Only figures with a plan line
+  offer it (Plan mode, plan figures, money jobs, Month plan rows).
+- Open Splits: the group, at its list (`#splits-activity`), for a split
+  balance.
+- Ask about this: Ask with the question asked and answered at once, as
+  before (the Ask page on a phone, the Ask panel beside the page on a
+  wider screen). The question never holds an amount; with money hidden the
+  spending questions a figure picks by which side of its plan or of income
+  it fell become the neutral one ("How did my spending compare with the
+  plan in …?"). A category asks "How much did I spend on Groceries in …?",
+  a balance "Who owes whom?".
+
+How it is built. A figure carries `data-fig` (what it is: a money figure,
+`category`, `plan` or `splits`), and where needed `data-fig-arg` (the
+category or the group), `data-fig-ids` (a Month plan row's entries),
+`data-fig-plan` (its part of the plan), `data-fig-ask` (its question when
+not its own) and `data-fig-note` (a line that explains it, first in the
+menu: To allocate's old popover). The period is `data-fig-period`
+("YYYY-MM:YYYY-MM") on the figure or a parent (the lead group, a month's
+card or row); without one it is the page's month. A text figure is
+`role="button"` with `tabIndex=0`; parts and rows that are buttons already
+stay buttons. One listener in the shell (App.jsx, captured on `document`,
+so the row or card around a figure does not act too) takes a tap, a click,
+Enter or Space on a `[data-fig]`, loads `figure-menu.js` with a dynamic
+import on first use and toggles the menu. The menu is a few DOM nodes the
+module draws itself (no React, so its chunk adds no first-screen file),
+placed under the figure inside the 16 px gutters (above it when there is no
+room), each choice a 44 px pill; its first choice takes the focus, Escape
+closes it and gives the figure its focus back, a press outside, Back or a
+resize closes it, and the figure has `aria-expanded` while it is open. A
+choice sends `monies:money-action` (`{ entries: location }` or
+`{ askText }`) and the shell navigates. What the menu offers is pure data
+(`figure-menu-model.js`, `figureMenu`), tested without a page; the words
+are `copy/figure-copy.js`. The first screen carries only the attributes and
+the listener (`check:bundle`; Intent vs Outcome moved to a lazy chunk to
+make room).
+
+Where: the Summary and Month lead in Plan and Simple (Spent and its plan,
+the plan line, Earned and Spent in Simple, every savings bar part, legend
+line and the sentence, the money jobs, the Income and Saved pills or
+columns, To allocate), Simple's Daily spend and Top spending, Intent vs
+Outcome, Earned vs spent by month, Spending Mix (each slice and each row's `›`), the Month
+plan rows' actuals, the Entries lead and pills, the Splits lead's balance
+and the open group's strip tile (another tile still opens its group).
+Hidden money: the same menu, no amount in any label. A text figure is the
+text itself, like a link in a sentence: it is not held to the 44 px rule,
+its row or card is.
+
+One figure cannot be shown as it is: a Month budget line whose refunds are
+more than its spending reads $0 actual (it never goes below zero), while
+its entries add up to the refund below zero. Daily spend is an average, so
+View entries shows the spending it divides.
 
 ## Apple Shortcut Install Boundary
 

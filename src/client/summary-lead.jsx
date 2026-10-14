@@ -21,7 +21,6 @@ export function SummaryLead({ model, view, onViewChange, categoryShare, onOpenCa
       view={view}
       onViewChange={onViewChange}
       categoryShare={categoryShare}
-      onOpenCategory={onOpenCategory}
       leadClassName="summary-lead"
       periodLabel={formatSummaryLeadRange(rangeStartMonth, rangeEndMonth)}
       period={{ startMonth: rangeStartMonth, endMonth: rangeEndMonth, inProgress: rangeEndMonth === getCurrentMonthKey() }}

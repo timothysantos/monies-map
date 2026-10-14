@@ -347,6 +347,16 @@ Details and the reasons are in `docs/code-spec.md` and
   the owner to decide instead of shipping it silently. Check the existing
   pattern first (for example the mobile floating "View and scope" bar) before
   proposing a new control.
+- Every figure or money statement on a card is quietly openable (owner
+  principle; design.md "Openable figures"). Give it `data-fig` and its
+  period, never a button look: the text stays as it is, with a soft
+  underline and chevron on hover or focus. Its menu offers only what
+  applies: View entries, whose Entries total equals the figure to the cent
+  (the figure's rule lives in `src/domain/money-figures.ts`; a new figure
+  adds its rule there and its equality test to
+  `tests/openable-figures.test.mjs`), Open plan for plan figures, Open
+  Splits for split balances, and Ask about this. The menu stays in the lazy
+  `figure-menu.js`; the first screen carries only the attributes.
 - Write user-facing copy in plain words. Say what happened to the
   person's money, then the number; never describe the app's own state
   ("in the app", "unlinked", "every chart"). An app term a line needs

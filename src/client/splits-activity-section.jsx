@@ -38,7 +38,7 @@ export function SplitsActivitySection({
   archiveControl = null
 }) {
   return (
-    <section className="split-list-section">
+    <section className="split-list-section" id="splits-activity">
       {!readOnly ? (
         <button
           type="button"

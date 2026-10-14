@@ -14,14 +14,32 @@ const leadCopy = messages.summary.lead;
 const planWords = messages.summary.monthChoice;
 const table = messages.summary.table;
 const METRIC_LABELS = { income: table.income, spend: table.expectedExpenses, savings: table.expectedSavings };
+// What each Details row's actual opens (design.md "Openable figures"): the
+// month's income, its spending (every expense, as the card's lead counts it)
+// and income less spending (its realized savings), with that row's part of
+// the plan.
+const METRIC_FIGURES = {
+  income: { fig: "earned", plan: "income" },
+  spend: { fig: "spent", plan: "" },
+  savings: { fig: "difference", plan: "" }
+};
+// An openable figure's attributes (figure-menu.js).
+const open = (fig, plan = null, ask = "") => ({
+  "data-fig": fig,
+  "data-fig-plan": plan ?? undefined,
+  "data-fig-ask": ask || undefined,
+  role: "button",
+  tabIndex: 0
+});
 
 // Summary's month-by-month plan review (design.md, "Lead · Support ·
 // Detail"): newest month first, each a compact card. Lead: the month's spend
 // against its plan, with the bar. Support: planned and actual income. Detail:
 // the planned, actual and variance figures for income, spend and savings and
 // the month note, folded under "Details"; the latest month starts open. The
-// month name opens the month. Nothing is wider than the card, so a phone
-// never scrolls sideways.
+// month name opens the month. Every figure is openable (design.md "Openable
+// figures": View entries for that month, Open plan, Ask about this). Nothing
+// is wider than the card, so a phone never scrolls sideways.
 export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote }) {
   const sortedMonths = [...months].sort((left, right) => right.month.localeCompare(left.month));
   return (
@@ -55,6 +73,7 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
     <LeadCard
       className={isOpen ? "summary-intent-month is-details-open" : "summary-intent-month"}
       data-month={card.month}
+      data-fig-period={`${card.month}:${card.month}`}
       tag={(
         <button type="button" className="summary-month-link" onClick={() => onOpenMonth(card.month)}>
           {monthLabel}
@@ -62,25 +81,25 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
         </button>
       )}
       amount={(
-        <span className={`summary-intent-spent ${moneyToneClass(card.spent.tone)}`}>
+        <span className={`summary-intent-spent ${moneyToneClass(card.spent.tone)}`} {...open("spent", "", headroom?.isOver ? "spentOverPlan" : "")}>
           <PrivateMoney>{money(card.spent.amountMinor)}</PrivateMoney>
         </span>
       )}
       amountAside={(
-        <span className={`summary-intent-plan ${moneyToneClass("plan")}`}>
+        <span className={`summary-intent-plan ${moneyToneClass("plan")}`} {...open("plan", "")}>
           {planWords.planPrefix} <PrivateMoney>{money(card.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
         </span>
       )}
       progress={card.progress}
       progressStart={card.percentOfPlan === null ? null : leadCopy.percentOfPlan(card.percentOfPlan)}
       progressEnd={headroom ? (
-        <span className={`summary-intent-headroom ${moneyToneClass(headroom.tone)}`}>
+        <span className={`summary-intent-headroom ${moneyToneClass(headroom.tone)}`} {...open("spent", "", headroom.isOver ? "spentOverPlan" : "plan")}>
           {money(headroom.amountMinor)} {headroom.isOver ? leadCopy.overPlan : leadCopy.underPlan}
         </span>
       ) : null}
       chips={[
-        <MetaChip key="planned">{copy.plannedIncome} <PrivateMoney>{money(card.plannedIncomeMinor)}</PrivateMoney></MetaChip>,
-        <MetaChip key="actual">{copy.actualIncome} <PrivateMoney>{money(card.actualIncomeMinor)}</PrivateMoney></MetaChip>
+        <MetaChip key="planned" {...open("plan", "income")}>{copy.plannedIncome} <PrivateMoney>{money(card.plannedIncomeMinor)}</PrivateMoney></MetaChip>,
+        <MetaChip key="actual" {...open("earned", "income")}>{copy.actualIncome} <PrivateMoney>{money(card.actualIncomeMinor)}</PrivateMoney></MetaChip>
       ]}
     >
       <DetailRows label={copy.detailsFor(monthLabel)}>
@@ -91,15 +110,15 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
               <dl className="summary-intent-figures">
                 <div>
                   <dt>{table.estimate}</dt>
-                  <dd><PrivateMoney>{money(metric.plannedMinor)}</PrivateMoney></dd>
+                  <dd><span {...open("plan", METRIC_FIGURES[metric.key].plan)}><PrivateMoney>{money(metric.plannedMinor)}</PrivateMoney></span></dd>
                 </div>
                 <div>
                   <dt>{table.actual}</dt>
-                  <dd className={moneyToneClass(metric.actualTone)}><PrivateMoney>{money(metric.actualMinor)}</PrivateMoney></dd>
+                  <dd className={moneyToneClass(metric.actualTone)}><span {...open(METRIC_FIGURES[metric.key].fig, METRIC_FIGURES[metric.key].plan)}><PrivateMoney>{money(metric.actualMinor)}</PrivateMoney></span></dd>
                 </div>
                 <div>
                   <dt>{table.variance}</dt>
-                  <dd className={moneyToneClass(metric.varianceTone)}><PrivateMoney>{money(metric.varianceMinor)}</PrivateMoney></dd>
+                  <dd className={moneyToneClass(metric.varianceTone)}><span {...open("plan", METRIC_FIGURES[metric.key].plan)}><PrivateMoney>{money(metric.varianceMinor)}</PrivateMoney></span></dd>
                 </div>
               </dl>
             </div>

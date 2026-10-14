@@ -52,10 +52,10 @@ async function expectMix(page, share) {
   const mix = spendingMix(page);
   await expect(mix).toHaveCount(1);
   await expect(mix.locator(".donut-center strong")).toHaveText(formatMoney(sumMinor(share)));
-  // The ranked list shows the top five; "Show all N" lists the rest
+  // The ranked list shows the top five (three on a phone); "Show all N" lists the rest
   // (tests/e2e/summary-body-lsd.spec.js covers the toggle).
   const rows = mix.locator(".summary-mix-row");
-  const listed = Math.min(share.length, 5);
+  const listed = Math.min(share.length, page.viewportSize().width < 761 ? 3 : 5);
   await expect(rows).toHaveCount(listed);
   await expect(rows.first()).toContainText(share[0].label);
   await expect(rows.first()).toContainText(formatMoney(share[0].valueMinor));
@@ -165,7 +165,9 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     const top = monthShare(summary, earlier)[0];
     await page.goto(`/month?view=person-tim&month=${earlier}&${RANGE_QUERY}`);
     await waitUsable(page);
+    // The arrow opens the category's menu (design.md "Openable figures").
     await spendingMix(page).getByRole("button", { name: `View entries for ${top.label}` }).click();
+    await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
     await expect(page).toHaveURL(/\/entries\?/);
     const url = new URL(page.url());
     expect(url.searchParams.get("month")).toBe(earlier);
@@ -233,6 +235,7 @@ test.describe("Spending Mix for a picked month on a desktop", () => {
     await page.goto(`/month?view=person-tim&month=${later}&${RANGE_QUERY}`);
     await waitUsable(page);
     await spendingMix(page).getByRole("button", { name: `View entries for ${last.label}` }).click();
+    await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
     await expect(page).toHaveURL(/\/entries\?/);
     const url = new URL(page.url());
     expect(url.searchParams.get("month")).toBe(later);

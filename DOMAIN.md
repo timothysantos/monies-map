@@ -245,7 +245,51 @@ Important distinctions:
   still counts money filed under `Savings` and `Investments` as spend.
 - The Summary page's `Planned investments` metric card carries the range's
   investment goal; the Month page derives it from its plan rows. The only
-  other field is `investmentMoves` (above).
+  other fields are `investmentMoves` (above) and, on the Summary page,
+  `investmentMovesByMonth` (the same totals per month, only for the months
+  where something moved), so "Earned vs spent by month" splits each month
+  the way its Month lead does.
+
+### Money Figure
+
+A figure a card shows, named by the rule that produces it, so the entries
+behind it can be listed and add up to it exactly
+(`src/domain/money-figures.ts`; design.md "Openable figures"). The Entries
+filter `entry_figure` names one, and Entries then leads with its total.
+
+The money jobs' figures (through `splitMoneyUse`, as the leads, the
+savings bar, Simple and "Earned vs spent by month" show them):
+- `spending`: expenses less paybacks, without money filed under
+  `Investments` or `Savings` (the lead's "Spent");
+- `invested`: the `Investments` category plus transfers into investment
+  accounts, less transfers out of them, never below zero;
+- `kept`: income less spending less invested (the lead's "Saved");
+- `earned`: income (paybacks lower spending instead);
+- `from_savings`: spending past what came in;
+- `took_out`: more taken out of investments than put in;
+- `spent`: every expense less paybacks at the view's amounts (the Month
+  "Actual spend", Intent vs Outcome, a category's spending, a plan row's
+  actual).
+
+The Entries page's own figures (as entry-totals counts them, whole amounts
+with a person's share beside):
+- `expenses`: every expense less paybacks (the Entries "Spent" lead);
+- `transfers`: transfers out;
+- `outflow`: spent plus transfers out;
+- `difference`: income less spent (the stored `realized savings`).
+
+Canonical term:
+- `money figure`
+
+Important distinctions:
+- A row belongs to a figure when it adds to it or takes from it, so leaving
+  the other rows out never changes the figure; the total is worked out from
+  the rows by the card's own calculation.
+- A figure has a period: one month, or a Summary range, which Entries then
+  lists in full (`entry_from`, `entry_to`; at most 24 months).
+- A Month budget line's actual never goes below zero; when its refunds are
+  more than its spending, its entries add up to less than the zero it
+  shows. Daily spend is an average, not a figure with rows of its own.
 
 ### Statement Checkpoint
 

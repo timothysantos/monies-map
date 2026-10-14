@@ -126,7 +126,17 @@ hairline divider with the daily net (design.md "Entries list").
 
 Entries data comes from:
 
-- `GET /api/entries-page`
+- `GET /api/entries-page` (`view`, `month`, and `from` for a period of
+  months: a card's View entries over a Summary range sets `entry_from` and
+  `entry_to`, and the page lists every month from `from` to `month`, at
+  most 24; `monthPage.rangeStartMonth` names the first)
+
+A card's View entries also sets `entry_figure` (design.md "Openable
+figures", `src/domain/money-figures.ts`): the list keeps only the rows
+behind that figure, the lead shows its total ("Invested · Jun 2025 – May
+2026"), and a chip at the top of the list names it; its ✕ drops
+`entry_figure`, `entry_from` and `entry_to`. The money check-in keeps
+reading the page's own month.
 
 Entries mutations may also refresh:
 

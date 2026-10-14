@@ -337,6 +337,9 @@ export interface EntriesPageDto {
   }>;
   monthPage: {
     month: string;
+    // The first month of a period of months (the request's `from`), when
+    // the page lists more than `month`.
+    rangeStartMonth?: string;
     selectedPersonId: string;
     selectedScope: PersonScope;
     scopes: Array<{ key: PersonScope; label: string }>;
@@ -1133,6 +1136,10 @@ export interface SummaryPageDto {
   categoryShareChart: DonutChartDatumDto[];
   categoryShareByMonth: SummaryDonutMonthDto[];
   investmentMoves?: InvestmentMovesDto;
+  // The same moves month by month, only for the months where something
+  // moved (left out when nothing did): "Earned vs spent by month" counts a
+  // month's invested and kept as the Month lead does.
+  investmentMovesByMonth?: Array<InvestmentMovesDto & { month: string }>;
   notes: string[];
 }
 

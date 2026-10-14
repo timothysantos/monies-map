@@ -10,6 +10,7 @@ import { entryMatchesSearch } from "./entry-search";
 import { projectEntriesForView } from "./entry-row-projection";
 import { getEntryTotals, getExpenseBreakdown } from "./entry-totals";
 import { findInvestmentMoves } from "../domain/investment-moves";
+import { figureEntryIds, moneyJobFigureMinor } from "../domain/money-figures";
 
 // The transfers into investment accounts (the same rule as the invested
 // totals, investment-moves.ts), when the filter asks for them
@@ -26,8 +27,20 @@ export function getInvestmentAccountIds(accounts = []) {
   return new Set(accounts.filter((account) => account.kind === "investment").map((account) => account.id));
 }
 
+// The rows behind one figure (entry_figure, src/domain/money-figures.ts),
+// found among the view's own rows so the moves into investments are the
+// ones the figure counted.
+function figureRowIds(entries, entryFilters, selectedScope, viewId, investmentAccountIds) {
+  if (!entryFilters.figure) {
+    return null;
+  }
+  const inScope = entries.filter((entry) => entryMatchesScope(entry, viewId, selectedScope));
+  return figureEntryIds(entryFilters.figure, inScope, entries, investmentAccountIds ?? new Set());
+}
+
 export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [], investmentAccountIds = undefined }) {
   const movesIn = investmentMoveIds(entries, entryFilters, investmentAccountIds);
+  const figureIds = figureRowIds(entries, entryFilters, selectedScope, viewId, investmentAccountIds);
   return entries.filter((entry) => {
     // Scope is the first gate because it is the page-level visibility rule.
     if (!entryMatchesScope(entry, viewId, selectedScope)) {
@@ -35,6 +48,9 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     }
     if (entryBypassesFieldFilters(entry.id, pinnedEntryIds)) {
       return true;
+    }
+    if (figureIds && !figureIds.has(entry.id)) {
+      return false;
     }
     if (
       entryFilters.entryIds?.length
@@ -85,11 +101,22 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
   const { aggregateEntries, rowEntries } = projectEntriesForView(filteredEntries, viewId);
   const groupedEntries = groupEntriesByDate(rowEntries);
   const entryTotals = getEntryTotals(aggregateEntries);
+  // A money job's figure (entry_figure) from the rows shown, at the view's
+  // amounts, through the same split the card used; null otherwise.
+  const figureMinor = entryFilters.figure
+    ? moneyJobFigureMinor(
+      entryFilters.figure,
+      aggregateEntries.map((entry) => ({ ...entry, amountMinor: entry.visibleAmountMinor })),
+      entries,
+      investmentAccountIds ?? new Set()
+    )
+    : null;
 
   return {
     filteredEntries,
     groupedEntries,
     entryTotals,
+    figureMinor,
     // "Outflow" includes transfers out, while "net" ignores transfer pairs and
     // only compares income against expenses.
     entryOutflowMinor: entryTotals.spendMinor + entryTotals.transferOutMinor,

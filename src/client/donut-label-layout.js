@@ -1,9 +1,10 @@
 // Where the Spending Mix donut puts its slice labels (design.md, "Summary
 // body"). Biggest slice first, each slice whose arc is long enough gets
-// "Name 32.1%" just outside the ring, or "32.1%" when the name does not fit,
-// or nothing: a label must stay inside the chart, off the ring and clear of
-// every label already placed. Small slices go unlabelled; the ranked list
-// under or beside the donut names every category. Angles follow Recharts'
+// "Name 32.1%" just outside the ring, or the name over the share on two
+// lines when one line does not fit, or nothing: a label must stay inside the
+// chart, off the ring and clear of every label already placed. A share is
+// never shown without its name (a bare "4.3%" cannot be told apart). Small
+// slices go unlabelled; the ranked list names every category. Angles follow Recharts'
 // Pie defaults (start at 3 o'clock, counter-clockwise).
 
 export const MIN_LABEL_ARC = 18; // px of ring edge a labelled slice needs
@@ -35,7 +36,8 @@ function boxAt(angle, width, height, { cx, cy, outerRadius }) {
 }
 
 // slices: [{ key, label, valueMinor }] in ring order. Returns one entry per
-// slice: null, or { name, percent, x, y, width, height } (the box's top left).
+// slice: null, or { name, percent, twoLines, x, y, width, height } (the
+// box's top left).
 export function layoutDonutLabels(slices, { width, height, outerRadius, shareTotalMinor, measure, lineHeight }) {
   const ringTotal = slices.reduce((sum, slice) => sum + Math.max(0, slice.valueMinor), 0);
   const shareTotal = shareTotalMinor || ringTotal;
@@ -54,12 +56,18 @@ export function layoutDonutLabels(slices, { width, height, outerRadius, shareTot
     const { sweep, mid } = angles[index];
     if (sweep * outerRadius < MIN_LABEL_ARC) continue;
     const percent = `${((slices[index].valueMinor / shareTotal) * 100).toFixed(1)}%`;
-    for (const name of [slices[index].label, ""]) {
-      const box = boxAt(mid, measure(name ? `${name} ${percent}` : percent), lineHeight, geometry);
+    const name = slices[index].label;
+    if (!name) continue;
+    const shapes = [
+      { twoLines: false, width: measure(`${name} ${percent}`), height: lineHeight },
+      { twoLines: true, width: Math.max(measure(name), measure(percent)), height: lineHeight * 2 + 2 }
+    ];
+    for (const shape of shapes) {
+      const box = boxAt(mid, shape.width, shape.height, geometry);
       const inside = box && box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height;
       if (inside && !placed.some((other) => overlaps(box, other))) {
         placed.push(box);
-        result[index] = { name, percent, ...box };
+        result[index] = { name, percent, twoLines: shape.twoLines, ...box };
         break;
       }
     }

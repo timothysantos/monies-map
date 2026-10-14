@@ -261,7 +261,7 @@ export function MonthPanelHeader({
 // scrolled sideways on a phone; every figure they showed is here.
 // `model` is buildMonthLeadModel's (useMonthLead below); `leadView` is Plan
 // or Simple (lead-view.js), which the panel also uses for the rest of the page.
-export function MonthLead({ model, leadView, onLeadViewChange, month, categoryShare = [], isRefreshing = false, onOpenCategory }) {
+export function MonthLead({ model, leadView, onLeadViewChange, month, categoryShare = [], isRefreshing = false }) {
   const setLeadView = onLeadViewChange;
   return (
     <>
@@ -272,7 +272,6 @@ export function MonthLead({ model, leadView, onLeadViewChange, month, categorySh
           view={leadView}
           onViewChange={setLeadView}
           categoryShare={categoryShare}
-          onOpenCategory={onOpenCategory}
           className="month-lead-group"
           leadClassName="month-lead"
           inline
@@ -335,24 +334,16 @@ export function useMonthLead({ cards, monthSummary, planSections = [], categoryS
 // Remaining budget (planned income minus planned spend), the third column of
 // the lead's support row. Its label says which side of zero it is ("To
 // allocate" or "Overplanned"), so with hidden money it falls back to the
-// plain name. The whole column opens the explanation (a 44px target).
+// plain name. The whole column is an openable figure (design.md "Openable
+// figures", a 44px target): its menu starts with the explanation, then Open
+// plan and Ask about this.
 function RemainingColumn({ remaining }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button type="button" className="lead-column is-button" data-metric="remaining">
-          <span className="lead-column-label">{areTotalsVisible ? remaining.detail : remaining.label}</span>
-          <strong className={moneyToneClass(remaining.tone)}><PrivateMoney>{formatService.money(remaining.amountMinor)}</PrivateMoney></strong>
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content className="metric-detail-popover" sideOffset={8} align="end">
-          <p>{remaining.detailPopover}</p>
-          <Popover.Arrow className="category-popover-arrow" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <button type="button" className="lead-column is-button" data-metric="remaining" data-fig="plan" data-fig-plan="" data-fig-note={remaining.detailPopover}>
+      <span className="lead-column-label">{areTotalsVisible ? remaining.detail : remaining.label}</span>
+      <strong className={moneyToneClass(remaining.tone)}><PrivateMoney>{formatService.money(remaining.amountMinor)}</PrivateMoney></strong>
+    </button>
   );
 }
 

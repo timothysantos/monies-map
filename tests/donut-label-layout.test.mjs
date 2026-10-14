@@ -55,16 +55,26 @@ test("many equal small slices: none is labelled", () => {
   assert.deepEqual(layout.filter(Boolean), []);
 });
 
-test("a name that does not fit leaves the percent alone; one that fits shows both", () => {
+test("never a bare share: a name too long for one line goes over its share on two lines, and one that fits nowhere is left out", () => {
   const data = [
-    { key: "a", label: "Groceries, household supplies, pet food and garden things", valueMinor: 5000 },
+    { key: "a", label: "Groceries and pets", valueMinor: 5000 },
     { key: "b", label: "Taxi", valueMinor: 5000 }
   ];
-  const layout = layoutDonutLabels(data, PHONE);
-  expectSound(layout, PHONE);
-  // Slice a's label sits above the ring (mid angle 90°), b's below it (270°).
-  assert.deepEqual(layout.map((label) => label && label.name), ["", "Taxi"]);
-  assert.deepEqual(layout.map((label) => label && label.percent), ["50.0%", "50.0%"]);
+  const narrow = { ...PHONE, width: 150, height: 300, outerRadius: 60 };
+  const layout = layoutDonutLabels(data, narrow);
+  expectSound(layout, narrow);
+  // Every label carries its name; the long one takes two lines.
+  for (const label of layout.filter(Boolean)) {
+    assert.ok(label.name, `${label.percent} has its name`);
+  }
+  assert.deepEqual(layout.map((label) => label && [label.name, label.twoLines]), [["Groceries and pets", true], ["Taxi", false]]);
+  assert.equal(layout[0].height, narrow.lineHeight * 2 + 2);
+  // A name too long for either shape is left out rather than shown as "50.0%".
+  const tooLong = layoutDonutLabels([{ key: "x", label: "Groceries, household supplies, pet food and garden things", valueMinor: 5000 }, { key: "y", label: "Taxi", valueMinor: 5000 }], narrow);
+  assert.equal(tooLong[0], null);
+  assert.equal(tooLong[1].name, "Taxi");
+  // A slice with no name is never labelled.
+  assert.deepEqual(layoutDonutLabels([{ key: "z", label: "", valueMinor: 100 }], DESKTOP), [null]);
 });
 
 test("shares are of all spending when slices are hidden", () => {

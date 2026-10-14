@@ -1,0 +1,61 @@
+/* The small menu an openable figure opens (figure-menu.js, design.md
+   "Openable figures"): a white card under the figure with quiet pill
+   buttons, inside the page's 16 px gutters. Loaded with the menu's chunk,
+   so it never grows styles.css. */
+.figure-menu {
+  position: absolute;
+  z-index: 80;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: min(380px, calc(100vw - 32px));
+  padding: 8px;
+  border: 1px solid var(--card-border, var(--line));
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 10px 26px rgba(27, 24, 21, 0.14);
+}
+
+.figure-menu .money-action {
+  min-height: 44px;
+  padding: 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.figure-menu .money-action:hover,
+.figure-menu .money-action:focus-visible {
+  border-color: rgb(var(--accent-strong-rgb) / 0.45);
+}
+
+.figure-menu .money-action:focus-visible {
+  outline: 2px solid rgb(var(--accent-strong-rgb) / 0.55);
+  outline-offset: 1px;
+}
+
+/* A figure's explanation (data-fig-note), above its buttons. */
+.figure-menu .figure-menu-note {
+  flex: 1 0 100%;
+  max-width: 100%;
+  margin: 0 2px 2px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.figure-menu .figure-menu-note p {
+  margin: 0;
+}
+
+/* The first fact (a slice's amount and share) reads first. */
+.figure-menu .figure-menu-note p:first-child {
+  color: var(--text);
+  font-weight: 600;
+}

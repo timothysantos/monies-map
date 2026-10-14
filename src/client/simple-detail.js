@@ -14,10 +14,12 @@ export function renderSimpleDetail(h, props) {
 }
 
 // "Daily spend $56", then "Top spending" with the three biggest categories
-// and their share of spending, each opening that category's entries. What
-// was kept is the savings bar's line above. Hidden money keeps only the
-// categories' shares.
-function renderSimpleMetrics(h, { figures, categoryShare, period, hidden, onOpenCategory }) {
+// and their share of spending. Each is an openable figure (design.md
+// "Openable figures", figure-menu.js): Daily spend opens the spending it is
+// worked out from, a category its spending over the period. What was kept is
+// the savings bar's line above. Hidden money keeps only the categories'
+// shares.
+function renderSimpleMetrics(h, { figures, categoryShare, period, hidden }) {
   const metrics = buildSimpleMetrics({ figures, categoryShare, startMonth: period?.startMonth, endMonth: period?.endMonth, today: todayKey() });
   if (!metrics) {
     return null;
@@ -29,7 +31,11 @@ function renderSimpleMetrics(h, { figures, categoryShare, period, hidden, onOpen
   return h(
     "div",
     { className: "simple-metrics", role: "group", "aria-label": copy.metricsLabel, "data-simple-metrics": "" },
-    hidden || !dailySpend ? null : h("span", { className: "simple-metric", "data-metric": "daily" }, copy.dailySpend(wholeMoney(dailySpend.amountMinor), dailySpend.soFar)),
+    hidden || !dailySpend ? null : h(
+      "span",
+      { className: "simple-metric", "data-metric": "daily", "data-fig": "spending", role: "button", tabIndex: 0 },
+      copy.dailySpend(wholeMoney(dailySpend.amountMinor), dailySpend.soFar)
+    ),
     topCategories.length === 0 ? null : h(
       "div",
       { className: "simple-top", "data-metric": "top" },
@@ -41,8 +47,8 @@ function renderSimpleMetrics(h, { figures, categoryShare, period, hidden, onOpen
           type: "button",
           className: "simple-top-category",
           "data-category": category.name,
-          "aria-label": `${copy.topCategory(category.name, category.percent)}. ${copy.openCategory(category.name)}`,
-          onClick: () => onOpenCategory?.(category.name)
+          "data-fig": "category",
+          "data-fig-arg": category.name
         },
         copy.topCategory(category.name, category.percent)
       ))

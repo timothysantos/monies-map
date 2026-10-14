@@ -313,16 +313,19 @@ export function App() {
   // keyboard-friendly on small screens.
   useEffect(() => installMobileFocusVisibility(), []);
 
-  // The Summary and Month lead's menu (ui/money-actions.jsx, design.md
-  // "Money jobs"): Entries filtered to a part's money, or "Ask about this"
-  // with its question asked and answered at once (as if typed): the Ask
-  // page on a phone, the Ask panel beside the page on a wider screen. The shell navigates, so the
-  // router and the dock's launcher stay out of the lead's chunk.
+  // Openable figures (figure-menu.js, design.md "Openable figures"): a tap,
+  // click, Enter or Space on a [data-fig] loads the menu on first use and
+  // opens it. Its choices come back as `monies:money-action`: a location
+  // (Entries narrowed to the figure, the Month plan, Splits), or "Ask about
+  // this" with its question asked and answered at once (as if typed): the
+  // Ask page on a phone, the Ask panel beside the page on a wider screen.
+  // The shell navigates, so the router and the dock's launcher stay out of
+  // the menu's chunk.
   const moneyActionRef = useRef(/** @type {(detail: any) => void} */ (() => {}));
   moneyActionRef.current = (detail) => {
-    if (detail?.entries?.pathname === "/entries") {
+    if (detail?.entries) {
       navigate(detail.entries);
-    } else if (typeof detail?.askText === "string" && detail.askText) {
+    } else if (detail?.askText) {
       if (isMobileLayout()) {
         navigate(buildAskLocation(searchParams), { state: { askQuestion: { text: detail.askText } } });
       } else {
@@ -332,8 +335,23 @@ export function App() {
   };
   useEffect(() => {
     const onMoneyAction = (event) => moneyActionRef.current(/** @type {CustomEvent} */ (event).detail);
+    const onFigure = (event) => {
+      const figure = event.target.closest?.("[data-fig]");
+      if (figure && (event.type === "click" || (figure.tagName !== "BUTTON" && (event.key === "Enter" || event.key === " ")))) {
+        // Captured, so the row or card around the figure does not act too.
+        event.preventDefault();
+        event.stopPropagation();
+        import("./figure-menu.js").then((menu) => menu.toggleFigureMenu(figure), () => {});
+      }
+    };
     window.addEventListener("monies:money-action", onMoneyAction);
-    return () => window.removeEventListener("monies:money-action", onMoneyAction);
+    document.addEventListener("click", onFigure, true);
+    document.addEventListener("keydown", onFigure, true);
+    return () => {
+      window.removeEventListener("monies:money-action", onMoneyAction);
+      document.removeEventListener("click", onFigure, true);
+      document.removeEventListener("keydown", onFigure, true);
+    };
   }, []);
 
   // The active route's code loads beside its data rather than after it (the

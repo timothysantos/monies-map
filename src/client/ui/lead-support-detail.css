@@ -773,3 +773,67 @@ html[data-money-privacy="hidden"] .lsd-amount-field {
     transition: transform 160ms ease;
   }
 }
+
+/* Openable figures (design.md "Openable figures", figure-menu.js): a figure
+   on a card is quietly openable. Its text stays as it is; on hover or
+   keyboard focus (and while its menu is open) it gains a soft underline and
+   a small chevron after it, and a tap or click opens its menu. Nothing looks
+   like a button and nothing moves: the chevron is drawn just outside the
+   text's box, and only then (at rest it is not drawn, so it never widens a
+   pill or a card). Bar parts and rows that are buttons already keep their
+   own look. */
+[data-fig] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-fig]:not(button) {
+  position: relative;
+  border-radius: 4px;
+  outline: none;
+}
+
+[data-fig]:not(button)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  display: none;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.55;
+  transform: translateY(-50%) rotate(-45deg);
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  [data-fig]:not(button):hover {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 38%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  [data-fig]:not(button):hover::after {
+    display: block;
+  }
+}
+
+[data-fig]:not(button):focus-visible,
+[data-fig]:not(button)[aria-expanded="true"] {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 38%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+[data-fig]:not(button):focus-visible::after,
+[data-fig]:not(button)[aria-expanded="true"]::after {
+  display: block;
+}
+
+[data-fig]:not(button):focus-visible {
+  box-shadow: 0 0 0 2px rgb(var(--accent-strong-rgb) / 0.45);
+}

@@ -104,7 +104,7 @@ export function MonthPlanStack({
   const sortedSections = [...planSections].sort((left, right) => SECTION_ORDER[left.key] - SECTION_ORDER[right.key]);
 
   return (
-    <div className="month-plan-stack">
+    <div className="month-plan-stack" id="month-plan">
       <p className={`month-plan-stack-hint ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
         {isCombinedHouseholdView ? messages.month.readOnlyCombinedHint : messages.month.editHint}
       </p>
@@ -198,7 +198,7 @@ function IncomePlanSection({
   saveErrorMessage = ""
 }) {
   return (
-    <section className={`month-plan-section month-plan-section-income ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
+    <section className={`month-plan-section month-plan-section-income ${isCombinedHouseholdView ? "is-readonly" : ""}`} id="month-plan-income">
       <div className="month-plan-summary">
         <div className="panel-subhead month-plan-header-bar">
           <button
@@ -310,17 +310,15 @@ function IncomePlanSection({
                       </td>
                       <td className="month-cell-actual">
                         <div className="month-actual-cell">
+                          {/* An openable figure (design.md "Openable figures"):
+                              View entries lists exactly the entries behind
+                              the actual, Ask about this asks about income. */}
                           <button
                             type="button"
                             className={`month-actual-drilldown ${row.isPendingDerived ? "is-pending" : ""}`}
                             disabled={!row.actualEntryIds?.length}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onOpenEntriesForActual({
-                                categoryName: row.categoryName,
-                                entryIds: row.actualEntryIds ?? []
-                              });
-                            }}
+                            data-fig="earned"
+                            data-fig-ids={(row.actualEntryIds ?? []).join(" ")}
                           >
                             <PrivateMoney className={moneyToneClass(flowTone(row.actualMinor))}>{formatService.money(row.actualMinor)}</PrivateMoney>
                           </button>
@@ -638,17 +636,17 @@ function PlanningRow({
         </td>
         <td className="month-cell-actual">
           <div className="month-actual-cell">
+            {/* An openable figure (design.md "Openable figures"): View
+                entries lists exactly the entries behind the actual, whose
+                Spent total is this actual. */}
             <button
               type="button"
               className={`month-actual-drilldown ${row.isPendingDerived ? "is-pending" : ""}`}
               disabled={!row.actualEntryIds?.length}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenEntriesForActual({
-                  categoryName: row.categoryName,
-                  entryIds: row.actualEntryIds ?? []
-                });
-              }}
+              data-fig="spent"
+              data-fig-ids={(row.actualEntryIds ?? []).join(" ")}
+              data-fig-arg={row.categoryName}
+              data-fig-ask={row.categoryName ? "category" : undefined}
             >
               <PrivateMoney className={moneyToneClass(spendTone(row.actualMinor, row.plannedMinor))}>{formatService.money(row.actualMinor)}</PrivateMoney>
             </button>

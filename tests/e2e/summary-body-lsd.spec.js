@@ -4,10 +4,12 @@ import { gotoPageAfterApi, loadSummaryAccountPills, loadSummaryPage, postJson, r
 
 // The Summary body under the lead in the Lead · Support · Detail language
 // (design.md, "Summary body"): Spending Mix is a donut whose bigger slices
-// carry a label just outside the ring ("Name 32.1%", or the share alone)
-// where there is room, small slices none, and a ranked category list beside
-// or under it (bubble, name, amount, share and a thin bar; the top 5, then
-// "Show all N"); Wallets in view is one
+// carry a label just outside the ring ("Name 32.1%", or the name over the
+// share; never a bare share) where there is room, small slices none, and a
+// lean ranked list beside or under it (a colour dot, name, amount and share
+// on one line; the top 5 on a desktop and 3 on a phone, then "Show all N"),
+// which "Hide list" folds away for a bigger donut. Every slice opens its
+// figure menu. Wallets in view is one
 // group of compact rows (wallet, balance, how fresh its statement is);
 // everything tappable is at least 44px each way; nothing scrolls sideways.
 // Hidden money shows no amounts and no wallet health, but keeps the shares.
@@ -16,10 +18,11 @@ const VIEW = "person-tim";
 const RANGE = { summaryStart: "2025-06", summaryEnd: "2025-10" };
 const SUMMARY_URL = `/summary?view=${VIEW}&month=2025-10&summary_start=${RANGE.summaryStart}&summary_end=${RANGE.summaryEnd}`;
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
-const TOP = 5;
+// The list's first rows: five on a desktop, three on a phone.
+const topCount = (page) => (page.viewportSize().width < 761 ? 3 : 5);
 // The ring's outer radius on each layout (spending-mix-section.jsx) and the
 // shortest slice edge that may carry a label (donut-label-layout.js).
-const OUTER_RADIUS = { phone: 92, desktop: 128 };
+const OUTER_RADIUS = { phone: 96, desktop: 142 };
 const MIN_LABEL_ARC = 18;
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
@@ -73,7 +76,7 @@ function pageParams(page) {
 // The range's share for what the open page is showing.
 async function rangeShare(page) {
   const { summaryPage } = await loadSummaryPage(page, { view: pageParams(page).view, month: RANGE.summaryEnd, ...RANGE, scope: pageParams(page).scope });
-  expect(summaryPage.categoryShareChart.length, "the fixture range has more than five categories").toBeGreaterThan(TOP);
+  expect(summaryPage.categoryShareChart.length, "the fixture range has more than five categories").toBeGreaterThan(5);
   return summaryPage.categoryShareChart;
 }
 
@@ -160,6 +163,8 @@ async function expectSliceLabels(page, share, deviceName) {
     const item = share.find((entry) => entry.key === label.key);
     expect(item, `label ${label.text} names a slice`).toBeTruthy();
     expect(label.text.endsWith(percentOf(item, share)), `${label.text} ends in its share`).toBe(true);
+    // Never a bare share: every label names its category.
+    expect(label.text.startsWith(item.label), `${label.text} names ${item.label}`).toBe(true);
     expect(label.text).not.toMatch(/\$/);
     expect(label.hidden).toBe("true");
     expect(label.fill, `${label.text} in the page ink`).toBe(label.ink);
@@ -183,9 +188,12 @@ async function expectSliceLabels(page, share, deviceName) {
   return labels;
 }
 
-// Everything tappable inside `selector` is at least 44px tall and wide.
+// Everything tappable inside `selector` is at least 44px tall and wide. A
+// figure in a line of text (design.md "Openable figures": an amount, a chip's
+// figure) is the text itself, like a link in a sentence, so it is not
+// counted; its row or card is.
 async function expectTargets44(page, selector) {
-  const small = await page.locator(selector).evaluate((root) => [...root.querySelectorAll("button, a, input, select, textarea, [role='button']")]
+  const small = await page.locator(selector).evaluate((root) => [...root.querySelectorAll("button, a, input, select, textarea, [role='button']:not([data-fig])")]
     .map((element) => ({ rect: element.getBoundingClientRect(), name: element.getAttribute("aria-label") || element.textContent.trim().slice(0, 30) }))
     .filter(({ rect }) => rect.width > 0 && rect.height > 0 && (rect.width < 43.5 || rect.height < 43.5))
     .map(({ rect, name }) => `${name} ${Math.round(rect.width)}x${Math.round(rect.height)}`));
@@ -207,6 +215,7 @@ async function expectNoSidewaysScroll(page, selector) {
 }
 
 async function expectRankedList(page, share) {
+  const TOP = topCount(page);
   const rows = mixCard(page).locator(".summary-mix-row");
   await expect(rows).toHaveCount(TOP);
   for (const [index, item] of share.slice(0, TOP).entries()) {
@@ -214,8 +223,8 @@ async function expectRankedList(page, share) {
     await expect(row.locator(".summary-mix-name")).toHaveText(item.label);
     await expect(row.locator(".summary-mix-amount")).toHaveText(money(item.valueMinor));
     await expect(row.locator(".summary-mix-percent")).toHaveText(percentOf(item, share));
-    const width = await row.locator(".summary-mix-bar-fill").evaluate((fill) => fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width);
-    expect(width).toBeCloseTo(item.valueMinor / sumMinor(share), 1);
+    // One line: a row is no taller than its 44px targets.
+    expect((await box(row)).height).toBeLessThanOrEqual(46);
   }
   // Ranked: biggest first.
   expect(share.slice(0, TOP).map((item) => item.valueMinor)).toEqual(share.slice(0, TOP).map((item) => item.valueMinor).sort((a, b) => b - a));
@@ -231,7 +240,7 @@ async function expectShowAll(page, share) {
   const fewer = mixCard(page).getByRole("button", { name: "Show fewer" });
   await expect(fewer).toHaveAttribute("aria-expanded", "true");
   await fewer.click();
-  await expect(rows).toHaveCount(TOP);
+  await expect(rows).toHaveCount(topCount(page));
   await expect(mixCard(page).getByRole("button", { name: `Show all ${share.length}` })).toBeVisible();
 }
 
@@ -253,6 +262,7 @@ for (const device of [
       await openSummary(page);
       const share = await rangeShare(page);
       await expect(mixCard(page).locator(".donut-center strong")).toHaveText(money(sumMinor(share)));
+      // The list as shown before (another test may have folded it on this device).
       await expectSliceLabels(page, share, device.name);
       await expectNoOverlappingLabels(page);
       await expectRankedList(page, share);
@@ -260,6 +270,78 @@ for (const device of [
       await expectNoSidewaysScroll(page, ".chart-card:has(.spending-mix-chart)");
       await expectTargets44(page, ".chart-card:has(.spending-mix-chart)");
       await expectNoOverlappingLabels(page);
+    });
+
+    test("Spending Mix: Hide list folds the list away for a bigger donut with more names, remembered on the device", async ({ page }) => {
+      await setMoney(page, true);
+      await openSummary(page);
+      const card = mixCard(page);
+      const toggle = card.getByRole("button", { name: "Hide list" });
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      const before = await box(card.locator(".spending-mix-chart"));
+      const namedBefore = await card.locator(".donut-slice-label").count();
+      await toggle.click();
+      await expect(card.locator(".summary-mix-list")).toHaveCount(0);
+      await expect(card.getByRole("button", { name: "Show list" })).toHaveAttribute("aria-expanded", "false");
+      const after = await box(card.locator(".spending-mix-chart"));
+      expect(after.width, "the donut takes the card").toBeGreaterThanOrEqual(before.width);
+      expect(after.height).toBeGreaterThan(before.height);
+      expect(await card.locator(".donut-slice-label").count()).toBeGreaterThanOrEqual(namedBefore);
+      for (const text of await card.locator(".donut-slice-label").allTextContents()) {
+        expect(text, "a label names its category").toMatch(/^\D/);
+      }
+      // Remembered on this device.
+      await page.reload();
+      await expect(mixCard(page).getByRole("button", { name: "Show list" })).toBeVisible({ timeout: 30_000 });
+      await expect(mixCard(page).locator(".summary-mix-list")).toHaveCount(0);
+      await mixCard(page).getByRole("button", { name: "Show list" }).click();
+      await expect(mixCard(page).locator(".summary-mix-row")).toHaveCount(topCount(page));
+    });
+
+    test("Spending Mix: a slice opens its menu with its facts; View entries shows the slice's amount; the arrow keys move between slices", async ({ page }) => {
+      await setMoney(page, true);
+      await openSummary(page);
+      const share = await rangeShare(page);
+      const slice = mixCard(page).locator(`.donut-slice[data-slice="${share[0].label}"]`);
+      await expect(slice).toHaveAttribute("aria-label", `${share[0].label}, ${percentOf(share[0], share)} of spending`);
+      await slice.focus();
+      await page.keyboard.press("Enter");
+      const menu = page.locator('[data-figure-menu="category"]');
+      await expect(menu.locator(".figure-menu-note p").first()).toHaveText(`${money(share[0].valueMinor)} · ${percentOf(share[0], share)} of spending`);
+      await expect(menu.locator(".figure-menu-note")).toContainText(share[0].entryCount === 1 ? "1 entry" : `${share[0].entryCount} entries`);
+      await expect(menu.getByRole("button", { name: "View entries" })).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+      await expect(slice).toBeFocused();
+      // The arrow keys move to the next slice and back.
+      await page.keyboard.press("ArrowRight");
+      await expect(mixCard(page).locator(`.donut-slice[data-slice="${share[1].label}"]`)).toBeFocused();
+      await page.keyboard.press("ArrowLeft");
+      await expect(slice).toBeFocused();
+      if (device.name === "desktop") {
+        // A resting pointer opens it too, without taking the focus.
+        await page.mouse.move(0, 0);
+        await slice.locator(".donut-slice-label").hover();
+        await expect(menu).toBeVisible();
+        await expect(menu.getByRole("button", { name: "View entries" })).not.toBeFocused();
+      } else {
+        await slice.locator(".donut-slice-label").tap();
+        await expect(menu).toBeVisible();
+      }
+      await menu.getByRole("button", { name: "View entries" }).click();
+      await expect(page.locator(".entries-totals-lead .lsd-amount")).toHaveText(money(share[0].valueMinor), { timeout: 30_000 });
+    });
+
+    test("Spending Mix: with money hidden a slice's menu shows its share only", async ({ page }) => {
+      await setMoney(page, false);
+      await openSummary(page);
+      const share = await rangeShare(page);
+      const slice = mixCard(page).locator(`.donut-slice[data-slice="${share[0].label}"]`);
+      await slice.focus();
+      await page.keyboard.press("Enter");
+      const note = page.locator('[data-figure-menu="category"] .figure-menu-note');
+      await expect(note.locator("p").first()).toHaveText(`${percentOf(share[0], share)} of spending`);
+      expect(await page.locator("[data-figure-menu]").textContent()).not.toMatch(/\$/);
     });
 
     test("Spending Mix: the list sits under the donut on a phone and beside it on a desktop", async ({ page }) => {
@@ -300,10 +382,14 @@ for (const device of [
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).toHaveCount(0);
 
-      // The arrow opens Entries for the category.
+      // The arrow opens the category's menu; View entries lists its
+      // spending over the whole range (design.md "Openable figures").
       await first.getByRole("button", { name: `View entries for ${share[0].label}` }).click();
+      await page.locator('[data-figure-menu="category"]').getByRole("button", { name: "View entries" }).click();
       await expect(page).toHaveURL(/\/entries\?/);
-      expect(new URL(page.url()).searchParams.getAll("entry_category")).toEqual([share[0].label]);
+      const url = new URL(page.url());
+      expect(url.searchParams.getAll("entry_category")).toEqual([share[0].label]);
+      expect([url.searchParams.get("entry_figure"), url.searchParams.get("entry_to")]).toEqual(["spent", url.searchParams.get("month")]);
     });
 
     test("Wallets in view: one group of compact rows, the DTO's wallet, balance and freshness, no sideways scroll", async ({ page }) => {

@@ -62,6 +62,7 @@ import {
 } from "./splits-workflow";
 import { buildSplitsSignals, SPLITS_CALM_LINES, SPLITS_TRIVIA_ROTATION } from "../domain/money-signals/splits-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { useHashTarget } from "./use-hash-target";
 import { useAskReturn } from "./use-ask-origin";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
@@ -162,6 +163,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       : null),
     [activeGroup, areTotalsVisible, people, totalExpenseMinor, view.id]
   );
+  // A balance's "Open Splits" (figure-menu.js) lands on the group's list.
+  useHashTarget(Boolean(activeGroup));
   const checkInClock = useCheckInClock();
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("splits", view.id, activeGroup?.id ?? "split-group-none"),

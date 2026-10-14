@@ -1838,6 +1838,26 @@ with `React.lazy`, and `check:bundle` fails if a new first-screen file appears.
 `tests/e2e/dialogs-lead-support-detail.spec.js` proves each dialog's primary
 action, Cancel, destructive confirm, tap targets and hidden money.
 
+## How do figures open their entries?
+
+Every figure on a card is an openable figure (design.md "Openable
+figures"): it carries `data-fig` (and its period, `data-fig-period`, on it
+or a parent), and one captured listener in `App.jsx` loads
+`src/client/figure-menu.js` with a dynamic import on the first tap, click,
+Enter or Space and opens its menu (View entries, Open plan, Open Splits,
+Ask about this). What the menu offers is `figureMenu` in
+`figure-menu-model.js`. View entries opens Entries with `entry_figure` (the
+figure's rule, `src/domain/money-figures.ts`) and, for a Summary range,
+`entry_from` and `entry_to`, which make the page ask
+`GET /api/entries-page?view=…&month=…&from=YYYY-MM` for every month of the
+range (at most 24). Entries then filters to the rows behind the figure
+(`entry-filtering.js`) and leads with its total, worked out through the
+same `splitMoneyUse` the card used. `tests/openable-figures.test.mjs` runs
+every figure kind, view and scope on the real Worker and checks the total
+equals the card's figure to the cent; `tests/e2e/openable-figures.spec.js`
+proves the menu, the keyboard, hidden money and the phone. A new figure on
+a card adds its rule to `money-figures.ts` and its equality test there.
+
 ## What does background prefetching do?
 
 After the first usable screen renders, the app also uses browser idle time to

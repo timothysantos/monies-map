@@ -264,8 +264,9 @@ over plan.
   invested shows nothing and the key adds a line such as **Took out of
   investments $2,500**: that money is not counted as income or as kept. Money you filed under **Savings** is
   counted as kept, not spent. If more went out than you earned, the bar
-  runs to a small **All you earned** mark (with the amount, on a wider
-  screen) and the striped part after it is the money that came out of your
+  runs past a small dark mark where your income ends, named in the key
+  (**All you earned** with the amount on a wider screen, **Earned** on a
+  phone), and the striped part after it is the money that came out of your
   savings. A thin blue bar under it shows your plan on the same scale: what
   you planned to spend, to invest and to save. Under the bars a short key is
   always there, with no hovering: a colour square and the amount for each
@@ -274,19 +275,17 @@ over plan.
   **Plan** (a wider screen adds the plan: "Plan: spend $24,767 · keep
   $4,130"). One line says it in words ("You kept $12,000 and invested $8,000
   of the $247,000 you earned"; on a phone, "Kept $12,000 · invested $8,000 of
-  $247,000"). Click a part of the bar (on a phone, tap it) for **View
-  entries**, which opens Entries filtered to that money for the last month
-  shown (for the plum part: your **Investments** entries and the money you
-  moved into an investment account), and **Ask about this**, which opens Ask, asks a question about it
-  for you and shows the answer; the two buttons open under the key.
+  $247,000"). Click a part of the bar, a line of the key or the sentence (on
+  a phone, tap it) to see where it came from ([Dig into any
+  figure](#dig-into-any-figure)).
 - **Money jobs**: each line of your plan has a job: spend within the
   budget, save the savings target, invest what you planned to invest, and
   the income you expected. One line says how many were done ("3 of 4 money
   jobs done"); open it (on a phone, tap it) to see each job with **✓ done**,
   **short by** or **over by** an amount. While the month is still going it
-  says "so far". Select a job for the same **View entries** and **Ask about
-  this**. It only looks back at what happened against your own plan; it
-  never guesses what is still to come.
+  says "so far". Select a job for **View entries**, **Open plan** and **Ask
+  about this**. It only looks back at what happened against your own plan;
+  it never guesses what is still to come.
 - **Income** and **Saved**: the income that came in, with the planned income
   under it, and what you kept (the same as the green part of the bar, so
   money you filed under **Savings** counts as saved), with your savings
@@ -339,10 +338,20 @@ over plan.
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
   ([Pick a month](#pick-a-month)).
+- **The donut**: each slice with room is named with its share. Point at a
+  slice (on a phone, tap it; with the keyboard, Tab to the donut and use the
+  arrow keys, then Enter) for its amount, share and number of entries, then
+  **View entries** and **Ask about this** ([Dig into any
+  figure](#dig-into-any-figure)). **Hide list** folds the list away so the
+  donut fills the card; **Show list** brings it back. Your choice is kept on
+  this device.
 - **A category in the list**: select its name to hide or show it in the donut
-  (a hidden one is dimmed and says Hidden). The **›** beside it opens that
-  category's entries. The coloured icon changes the category's icon and
-  colour. **Show all** under the first five lists every category;
+  (a hidden one is dimmed and says Hidden). The list shows the top five (three
+  on a phone). The coloured dot changes the category's icon and colour. The
+  **›** beside it shows where
+  that category's spending came from: **View entries** lists it for the
+  whole range, adding up to the amount shown. **Show all** lists every
+  category;
   **Show fewer** folds it back. With money hidden the amounts show as dots and
   the percentages stay.
 - **A month card** in Intent vs Outcome: select **Details** for the planned,
@@ -356,8 +365,9 @@ over plan.
 1. To see one person: select their name at the top left.
 2. To check last year: select **‹** next to the range until the months you
    want are shown.
-3. To find what drove spending: select **›** next to the biggest category in
-   Spending Mix to open those entries, or pick a month to see its plan.
+3. To find what drove spending: select the Spent figure, then **View
+   entries**, or select **›** next to the biggest category in Spending Mix,
+   or pick a month to see its plan.
 
 ### Pick a month
 
@@ -381,6 +391,40 @@ there to reach other months.
 
 With totals hidden, the amounts show as dots, the bar turns grey and shows
 only percentages, and nothing turns red or says "under" or "over".
+
+### Dig into any figure
+
+Every amount and money line on a card can be opened to see where it came
+from: Spent and its plan, each part of the earned, spent and kept bar and
+each line of its key, the sentence under it, the money jobs, Income and
+Saved, Daily spend and Top spending, each month in Intent vs Outcome and in
+Earned vs spent by month, the Spending Mix categories, the Month plan's
+actual amounts, the Entries totals and the Splits balance. Nothing looks
+like a button: point at a figure (or move to it with Tab) and it is
+underlined with a small arrow after it; select it (on a phone, tap it) and
+a small menu opens under it with what applies:
+
+- **View entries** opens Entries showing only the entries behind that
+  figure, for the same months, person and scope, and the total at the top
+  is the same figure, to the cent. From a range of months it lists the
+  whole range ("Invested · Jun 2025 – May 2026"). Invested, for example,
+  lists your **Investments** entries and the money you moved into an
+  investment account, less what you took back out. A line at the top of the
+  list names what it shows; select **✕** on it to see the whole month again.
+- **Open plan** opens that month's plan on the Month page (for plan
+  figures and the money jobs).
+- **Open Splits** opens that group on Splits (for a split balance).
+- **Ask about this** opens Ask, asks a question about it for you and shows
+  the answer.
+
+Press **Esc** (or tap anywhere else) to close the menu. With totals hidden
+the menu is the same, and its question never says whether you were under
+or over.
+
+Two figures are not a list of entries as they are: **Daily spend** is an
+average, so **View entries** shows the spending it is worked out from; and
+a budget line whose refunds are more than its spending shows $0 actual,
+while its entries add up to the refund.
 
 ### On a phone
 
@@ -407,11 +451,11 @@ stays highlighted, and the range at the top stays as it was.
   money jobs done", folded on a phone). Under it, in the same card, are **Income** (received, with
   the plan), **Saved** (with the savings target) and **To allocate**
   (planned income minus planned spend; it says Overplanned when negative).
-  Select it to see what it means.
+  Select it to see what it means, with **Open plan** and **Ask about this**.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
   ranked list as on Summary. Select a category to hide or show it in the donut; its
-  **›** opens that category's entries for this month. A month with no
+  **›** offers that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
 - **Income**: planned income sources. On every plan row a thin bar shows how
   much of the plan you have used. On a phone each row is a small card; tap it
@@ -2134,8 +2178,9 @@ be forgotten. Adding one does not change any balance.
 3. Narrow with **By wallet**, **By category** and **By type**.
 4. Select **Reset filters** to see everything again.
 
-From Summary, the **›** beside a category opens Entries already filtered to
-it. Filters stay in the address, so you can bookmark a filtered view.
+From Summary, the **›** beside a category, then **View entries**, opens
+Entries already filtered to it for the whole range. Filters stay in the
+address, so you can bookmark a filtered view.
 
 # Troubleshooting
 

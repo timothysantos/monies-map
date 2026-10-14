@@ -29,14 +29,19 @@ const planWords = messages.summary.monthChoice;
 // fold into the lead card as one row of equal columns under the bar, in
 // text colour only, so the whole card stays compact on a phone.
 //
+// Every figure here is openable (design.md "Openable figures"): it carries
+// `data-fig` (figure-menu.js reads it; `fig` below) and the group carries
+// the period, so a tap opens View entries, Open plan and Ask about this.
+//
 // `view` is "plan" or "simple" (lead-view.js), switched in the card's head.
 // Simple is "Earned $x · Spent $y" over the same savings bar without its plan
 // bar, and nothing else: the plan line, the money jobs and the Income, Saved
 // and Remaining budget figures (each a plan or a repeat of the lead) go.
-export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], onOpenCategory, className = "", leadClassName = "", inline = false, children = null }) {
+export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, children = null }) {
   const simple = view === "simple";
+  const over = model.headroom?.isOver;
   return (
-    <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${simple ? "is-simple" : ""} ${className}`} data-lead-view={view}>
+    <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${simple ? "is-simple" : ""} ${className}`} data-lead-view={view} data-fig-period={period ? `${period.startMonth}:${period.endMonth}` : undefined}>
       <LeadCard
         className={leadClassName}
         tag={(
@@ -47,27 +52,27 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
         )}
         amount={simple ? (
           <span className="lead-simple">
-            <SimpleFigure label={copy.earned} figure={model.simple.earned} name="earned" />
+            <SimpleFigure label={copy.earned} figure={model.simple.earned} name="earned" fig="earned" />
             <span aria-hidden="true">·</span>
-            <SimpleFigure label={copy.savingsBar.spentName} figure={model.simple.spent} name="spent" />
+            <SimpleFigure label={copy.savingsBar.spentName} figure={model.simple.spent} name="spent" fig="spending" ask={model.simple.spent.tone === "short" ? "spentMore" : ""} />
           </span>
         ) : (
-          <span className={`summary-lead-spent ${moneyToneClass(model.spent.tone)}`}>
+          <span className={`summary-lead-spent ${moneyToneClass(model.spent.tone)}`} {...fig("spending", "", over ? "spentOverPlan" : "")}>
             <PrivateMoney>{money(model.spent.amountMinor)}</PrivateMoney>
           </span>
         )}
         amountAside={simple ? null : (
-          <span className={`summary-lead-plan ${moneyToneClass("plan")}`}>
+          <span className={`summary-lead-plan ${moneyToneClass("plan")}`} {...fig("plan", "")}>
             {planWords.planPrefix} <PrivateMoney>{money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
           </span>
         )}
       >
         {simple ? null : <SpendLine model={model} />}
-        <MoneyUse model={model} period={period} simple={simple} categoryShare={categoryShare} onOpenCategory={onOpenCategory} />
+        <MoneyUse model={model} period={period} simple={simple} categoryShare={categoryShare} />
         {simple ? null : inline ? (
           <div className="lead-columns">
-            <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
-            <LeadColumn metric="saved" label={copy.saved} amountMinor={model.saved.amountMinor} tone={model.saved.tone} planLabel={copy.savedTarget} planMinor={model.saved.planMinor} />
+            <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} open={fig("earned", "income")} />
+            <LeadColumn metric="saved" label={copy.saved} amountMinor={model.saved.amountMinor} tone={model.saved.tone} planLabel={copy.savedTarget} planMinor={model.saved.planMinor} open={fig("kept", "")} />
             {children}
           </div>
         ) : null}
@@ -80,6 +85,7 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
           tone={model.income.tone}
           planLabel={copy.incomePlan}
           planMinor={model.income.planMinor}
+          open={fig("earned", "income")}
         />
         <SummarySupportPill
           metric="saved"
@@ -88,6 +94,7 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
           tone={model.saved.tone}
           planLabel={copy.savedTarget}
           planMinor={model.saved.planMinor}
+          open={fig("kept", "")}
         />
         {children}
       </div>}
@@ -95,11 +102,22 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
   );
 }
 
+// An openable figure's attributes (figure-menu.js): what it is, the part of
+// the plan it has a line in ("" the whole plan, null none) and the question
+// for Ask when not the figure's own.
+export const fig = (kind, plan = null, ask = "") => ({
+  "data-fig": kind,
+  "data-fig-plan": plan ?? undefined,
+  "data-fig-ask": ask || undefined,
+  role: "button",
+  tabIndex: 0
+});
+
 // The savings bar and the money jobs under it read the lead's split of the
 // period's money (`model.figures`, splitMoneyUse): spend, invested and kept,
 // and the plan's spend, investment and savings jobs. `period` is
 // { startMonth, endMonth, inProgress } for the parts' menus and "so far".
-function MoneyUse({ model, period, simple, categoryShare, onOpenCategory }) {
+function MoneyUse({ model, period, simple, categoryShare }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const hidden = !areTotalsVisible;
   return (
@@ -107,7 +125,7 @@ function MoneyUse({ model, period, simple, categoryShare, onOpenCategory }) {
       <SavingsBar figures={model.figures} hidden={hidden} period={period} withPlan={!simple} />
       {simple ? (
         <Suspense fallback={null}>
-          <SimpleDetail part="metrics" figures={model.figures} categoryShare={categoryShare} period={period} onOpenCategory={onOpenCategory} />
+          <SimpleDetail part="metrics" figures={model.figures} categoryShare={categoryShare} period={period} />
         </Suspense>
       ) : <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />}
     </>
@@ -126,11 +144,11 @@ export const SimpleDetail = lazy(() => import("../simple-detail.js").then(({ ren
 })));
 
 // One half of the Simple lead: "Earned" and its figure in its money tone.
-function SimpleFigure({ label, figure, name }) {
+function SimpleFigure({ label, figure, name, fig: kind, ask = "" }) {
   return (
     <span className="lead-simple-figure" data-simple={name}>
       <small>{label}</small>
-      <span className={moneyToneClass(figure.tone)}><PrivateMoney>{money(figure.amountMinor)}</PrivateMoney></span>
+      <span className={moneyToneClass(figure.tone)} {...fig(kind, null, ask)}><PrivateMoney>{money(figure.amountMinor)}</PrivateMoney></span>
     </span>
   );
 }
@@ -162,7 +180,7 @@ function SpendLine({ model }) {
     return null;
   }
   return (
-    <div className="lsd-progress-line summary-lead-line">
+    <div className="lsd-progress-line summary-lead-line" {...fig("spending", "", headroom?.isOver ? "spentOverPlan" : "plan")}>
       {model.percentOfPlan === null ? null : <span>{copy.percentOfPlan(model.percentOfPlan)}</span>}
       {headroom ? (
         <span className={`summary-lead-headroom ${moneyToneClass(headroom.tone)}`}>
@@ -176,9 +194,9 @@ function SpendLine({ model }) {
 // One column of the Month lead's support row: a small label, the figure on
 // one line (its money tone as text colour only) and the plan or target as a
 // quiet line under it.
-export function LeadColumn({ metric, label, amountMinor, tone, planLabel = null, planMinor = null }) {
+export function LeadColumn({ metric, label, amountMinor, tone, planLabel = null, planMinor = null, open = {} }) {
   return (
-    <div className="lead-column" data-metric={metric}>
+    <div className="lead-column" data-metric={metric} {...open}>
       <span className="lead-column-label">{label}</span>
       <strong className={moneyToneClass(tone)}><PrivateMoney>{money(amountMinor)}</PrivateMoney></strong>
       {planLabel ? <small>{planLabel} <PrivateMoney>{money(planMinor)}</PrivateMoney></small> : null}
@@ -188,9 +206,9 @@ export function LeadColumn({ metric, label, amountMinor, tone, planLabel = null,
 
 // A Support figure on Summary: a soft tint when it is an outcome (mint
 // income, mint or rose savings), its plan as a quiet line inside it.
-function SummarySupportPill({ metric, label, amountMinor, tone, planLabel, planMinor }) {
+function SummarySupportPill({ metric, label, amountMinor, tone, planLabel, planMinor, open }) {
   return (
-    <div className={`summary-support-pill ${metricCardToneClass(tone)}`} data-metric={metric}>
+    <div className={`summary-support-pill ${metricCardToneClass(tone)}`} data-metric={metric} {...open}>
       <span className="summary-support-pill-label">{label}</span>
       <strong><PrivateMoney>{money(amountMinor)}</PrivateMoney></strong>
       <small>{planLabel} <PrivateMoney>{money(planMinor)}</PrivateMoney></small>

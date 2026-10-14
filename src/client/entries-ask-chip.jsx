@@ -34,3 +34,22 @@ export function EntriesAskChip({ searchParams, accounts, people, floating, onRet
   );
   return floating && typeof document !== "undefined" ? createPortal(chip, document.body) : chip;
 }
+
+// "Invested · Jun 2025 – May 2026  ✕" (design.md "Openable figures"): shown
+// on Entries when a card's "View entries" narrowed the list to the money
+// behind one figure (entry_figure) or opened a period of months (entry_from,
+// entry_to). It names what the list shows, in the From Ask chip's style;
+// ✕ goes back to the month's whole list and keeps the view, month, scope
+// and any other filter.
+export function EntriesFigureChip({ label, clearLabel, onClear }) {
+  return (
+    <div className="entries-ask-chip entries-figure-chip" role="group" aria-label={label} data-figure-chip>
+      <span className="entries-ask-chip-back">
+        <span className="entries-ask-chip-text"><strong>{label}</strong></span>
+      </span>
+      <button type="button" className="entries-ask-chip-clear" onClick={onClear} aria-label={clearLabel} title={clearLabel}>
+        <X size={18} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
