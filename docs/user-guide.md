@@ -1592,10 +1592,12 @@ shows, for example, **2 entries belong on UOB One Card**, lists each entry
 with the date you bought it, the date the bank posted it and the amount, and
 says how much of the difference the move takes away.
 
-- Select **Move 2 entries to UOB One Card** to approve it. The check updates
-  straight away; nothing is saved until you commit, and **Undo** takes the
-  approval back. The statement then confirms the moved entries instead of
-  adding copies.
+- Select **Move 2 entries to UOB One Card** (the orange button; **Keep as is**
+  beside it leaves things alone). A box asks you to confirm, because both
+  cards' totals change. Choose **Move entries** to approve it, or **Cancel**
+  to change nothing. The check updates straight away; nothing is saved until
+  you commit, and **Undo** takes the approval back. The statement then
+  confirms the moved entries instead of adding copies.
 - An entry marked **Check this one** is a less certain match: approve it on
   its own with **Move it** after you have looked at it.
 - **Do this for me next time when the statement proves it**: from then on,

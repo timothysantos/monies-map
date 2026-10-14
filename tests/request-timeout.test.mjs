@@ -96,3 +96,75 @@ test("transient Worker bodies retry three times for required work and once for s
     globalThis.setTimeout = originalSetTimeout;
   }
 });
+
+// A required page read that hangs or is cut off is tried again before the
+// screen reports "couldn't reach your data": D1 stalls are per request, and a
+// 52 s stall in production failed Imports and Settings on the first attempt.
+test("a required read that times out is retried and the retry's data is used", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalWindow = globalThis.window;
+  globalThis.window = { __MONIES_MAP_REQUEST_TIMEOUT_MS__: 15 };
+  try {
+    let calls = 0;
+    await withMockFetch(async (_url, options = {}) => {
+      calls += 1;
+      if (calls === 1) {
+        return new Promise((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      }
+      return new Response('{"ok":true}', { status: 200 });
+    }, async () => {
+      const result = await fetchTextWithTransientWorkerRetry("/api/imports-page", { requestLabel: "Page request" });
+      assert.equal(calls, 2);
+      assert.equal(result.responseText, '{"ok":true}');
+    });
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+  }
+});
+
+test("a dropped connection and a gateway timeout are retried; a real 500, a speculative read and a caller's abort are not", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (callback) => originalSetTimeout(callback, 0);
+  try {
+    let calls = 0;
+    await withMockFetch(async () => {
+      calls += 1;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      if (calls === 2) return new Response("gateway", { status: 524 });
+      return new Response('{"ok":true}', { status: 200 });
+    }, async () => {
+      const result = await fetchTextWithTransientWorkerRetry("/api/settings-page", {});
+      assert.equal(calls, 3);
+      assert.equal(result.response.status, 200);
+    });
+
+    calls = 0;
+    await withMockFetch(async () => { calls += 1; return new Response('{"error":"boom"}', { status: 500 }); }, async () => {
+      const result = await fetchTextWithTransientWorkerRetry("/api/settings-page", {});
+      assert.equal(calls, 1, "an application error is shown, not retried");
+      assert.equal(result.response.status, 500);
+    });
+
+    calls = 0;
+    await withMockFetch(async () => { calls += 1; throw new TypeError("Failed to fetch"); }, async () => {
+      await assert.rejects(fetchTextWithTransientWorkerRetry("/api/settings-page", { maxAttempts: 1 }), /Failed to fetch/);
+      assert.equal(calls, 1, "speculative reads never retry");
+    });
+
+    calls = 0;
+    const upstream = new AbortController();
+    await withMockFetch(async () => {
+      calls += 1;
+      upstream.abort();
+      throw new DOMException("aborted", "AbortError");
+    }, async () => {
+      await assert.rejects(fetchTextWithTransientWorkerRetry("/api/settings-page", { signal: upstream.signal }), (error) => error.name === "AbortError");
+      assert.equal(calls, 1, "a caller's own abort is never retried");
+    });
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});

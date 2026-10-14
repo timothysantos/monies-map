@@ -5,7 +5,7 @@
 // printed to a real PDF so the browser parses it as a user's file.
 import { expect, test } from "@playwright/test";
 import { openRecentImports } from "./helpers.js";
-import { LADYS_CARD, ONE_CARD, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
+import { LADYS_CARD, ONE_CARD, moveEntriesAndConfirm, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 async function entryAccountName(page, entryId) {
   const response = await page.request.get("/api/entries-page?view=household&month=2026-04");
@@ -52,7 +52,7 @@ test("a wrong-card purchase is found, moved on approval, committed and undone by
 
   // Approving the move refreshes the check: both cards close, nothing is
   // saved yet, and the approval can be undone.
-  await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
+  await moveEntriesAndConfirm(page, ladysCard, "Move 2 entries to UOB One Card");
   await expect(ladysCard.getByText("2 entries will move to UOB One Card when you commit.")).toBeVisible();
   await expect(oneCard.locator(".pill").first()).toHaveText("Resolved");
   await expect(ladysCard.locator(".pill").first()).toHaveText("Resolved");
@@ -60,7 +60,7 @@ test("a wrong-card purchase is found, moved on approval, committed and undone by
   await ladysCard.getByRole("button", { name: "Undo" }).click();
   await expect(ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" })).toBeVisible();
   await expect(ladysCard.locator(".pill").first()).toHaveText("Fix ready");
-  await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
+  await moveEntriesAndConfirm(page, ladysCard, "Move 2 entries to UOB One Card");
   await expect(ladysCard.getByText("2 entries will move to UOB One Card when you commit.")).toBeVisible();
 
   // Both cards close, so the commit does not ask.
@@ -87,7 +87,7 @@ test("editing a row after the statement check asks for a fresh check before comm
   await page.goto("/imports");
   await page.locator("input[type=file]").setInputFiles(pdfPath);
   const ladysCard = page.locator(".statement-reconciliation-row").filter({ hasText: `${LADYS_CARD} • May 2026` });
-  await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
+  await moveEntriesAndConfirm(page, ladysCard, "Move 2 entries to UOB One Card");
   await expect(ladysCard.getByText("2 entries will move to UOB One Card when you commit.")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit rows" }).click();

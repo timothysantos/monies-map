@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 
 import { dropFiles, loadImportsPage, openPasteRowsAndDefaults } from "./helpers.js";
-import { LADYS_CARD, ONE_CARD, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
+import { LADYS_CARD, ONE_CARD, moveEntriesAndConfirm, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
@@ -38,7 +38,7 @@ const fullDoneCard = (page) => page.locator(".import-done-card:not(.is-compact)"
 async function openBalancedStatement(page) {
   await chips(page).filter({ hasText: "UOB cards May" }).click();
   const ladysCard = page.locator(".statement-reconciliation-row").filter({ hasText: `${LADYS_CARD} • May 2026` });
-  await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click({ timeout: 30_000 });
+  await moveEntriesAndConfirm(page, ladysCard, "Move 2 entries to UOB One Card", { timeout: 30_000 });
   await expect(page.locator(".statement-review-actions .pill")).toHaveText("Both cards balance");
 }
 

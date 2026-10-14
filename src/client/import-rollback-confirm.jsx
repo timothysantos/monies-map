@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { InlineError } from "./ui-states";
@@ -13,16 +13,24 @@ import "./import-rollback-confirm.css";
 // reason is read from it). Nothing changes until the confirming action.
 /**
  * @param {{
- *   label?: string, triggerLabel: string, confirmLabel: string, prompt: any,
- *   onConfirm: () => Promise<any> | any, buttonClassName?: string, children?: any
+ *   label?: string, triggerLabel: string, title?: string, confirmLabel: string, prompt: any,
+ *   onConfirm: () => Promise<any> | any, buttonClassName?: string, bareTrigger?: boolean, children?: any
  * }} props
  */
-export function ImportRollbackConfirm({ triggerLabel, confirmLabel, prompt, onConfirm, buttonClassName = "", children = null }) {
+// `title` words the dialog when it differs from the trigger; `bareTrigger`
+// drops the quiet-link look so the caller's own button classes apply.
+export function ImportRollbackConfirm({ triggerLabel, title = "", confirmLabel, prompt, onConfirm, buttonClassName = "", bareTrigger = false, children = null }) {
+  // A second tap before the first finishes must not run the action twice.
+  const inFlight = useRef(false);
   const [open, setOpen] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
 
   async function handleConfirm() {
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
     setIsWorking(true);
     setError("");
     try {
@@ -31,6 +39,7 @@ export function ImportRollbackConfirm({ triggerLabel, confirmLabel, prompt, onCo
     } catch (confirmError) {
       setError(confirmError instanceof Error ? confirmError.message : "The action could not finish.");
     } finally {
+      inFlight.current = false;
       setIsWorking(false);
     }
   }
@@ -49,7 +58,7 @@ export function ImportRollbackConfirm({ triggerLabel, confirmLabel, prompt, onCo
       }}
     >
       <Dialog.Trigger asChild>
-        <button type="button" className={`import-rollback-trigger ${buttonClassName}`.trim()} aria-label={triggerLabel} disabled={isWorking}>
+        <button type="button" className={`${bareTrigger ? "" : "import-rollback-trigger "}${buttonClassName}`.trim()} aria-label={triggerLabel} disabled={isWorking}>
           {children ?? triggerLabel}
         </button>
       </Dialog.Trigger>
@@ -57,7 +66,7 @@ export function ImportRollbackConfirm({ triggerLabel, confirmLabel, prompt, onCo
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content delete-popover import-rollback-sheet">
           <div className="import-rollback-head">
-            <Dialog.Title>{triggerLabel}</Dialog.Title>
+            <Dialog.Title>{title || triggerLabel}</Dialog.Title>
             <Dialog.Description>{prompt}</Dialog.Description>
           </div>
           <InlineError message={error} />

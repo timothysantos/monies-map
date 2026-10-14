@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { collectStaticFiles, compareWithBudget, DEFERRED_COPY_MARKERS, findDeferredCopy, measureInitialBundle } from "../../scripts/check-initial-bundle.mjs";
+import { collectStaticFiles, compareWithBudget, DEFERRED_COPY_MARKERS, findDeferredCopy, findMissingChunks, measureInitialBundle } from "../../scripts/check-initial-bundle.mjs";
 
 // A small manifest in the shape Vite writes: the entry lazily imports the
 // Summary route, which statically imports shared chunks; the chart is only a
@@ -79,4 +79,24 @@ test("each copy-pool marker is a real line of its pool", async () => {
   for (const marker of DEFERRED_COPY_MARKERS) {
     assert.ok((lines[marker.pool] ?? []).some((line) => line.includes(marker.text)), `${marker.pool}: ${marker.text}`);
   }
+});
+
+test("every chunk, stylesheet and import the build refers to exists, and each lazy route panel is a chunk", () => {
+  const everything = new Set(Object.values(MANIFEST).map((chunk) => chunk.file));
+  assert.deepEqual(findMissingChunks(MANIFEST, (file) => everything.has(file), ["src/client/faq-panel.jsx"]), []);
+
+  // A chunk file the deploy lost: a stale page would load index.html in its place.
+  const lost = new Set(everything);
+  lost.delete("assets/faq-panel-d.js");
+  assert.deepEqual(findMissingChunks(MANIFEST, (file) => lost.has(file)), [
+    "src/client/faq-panel.jsx refers to assets/faq-panel-d.js, which is not in dist/."
+  ]);
+
+  // An import that names no manifest entry, and a route panel that is not lazy.
+  const broken = { ...MANIFEST, "_shared-c.js": { file: "assets/shared-c.js", imports: ["_gone.js"] } };
+  assert.deepEqual(findMissingChunks(broken, (file) => everything.has(file), ["src/client/settings-panel.jsx", "index.html"]), [
+    "_shared-c.js imports _gone.js, which the build did not write.",
+    "The route panel src/client/settings-panel.jsx is not a lazy chunk in the build.",
+    "The route panel index.html is not a lazy chunk in the build."
+  ]);
 });

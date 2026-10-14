@@ -10,6 +10,7 @@
 //
 // Raise the budget only for a deliberate, measured reason, and say why in the
 // commit.
+import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -93,6 +94,30 @@ export function compareWithBudget(measured, budget, tolerance = TOLERANCE) {
   return failures;
 }
 
+// A route (or any lazy chunk) the build refers to but did not write: the page
+// would fail on its dynamic import in a browser. Reports every chunk file,
+// stylesheet or asset the manifest lists that is not in dist/, every import
+// that names no manifest entry, and every lazy route panel the manifest lacks.
+export function findMissingChunks(manifest, fileExists, routePanelKeys = []) {
+  const problems = [];
+  for (const [key, chunk] of Object.entries(manifest)) {
+    for (const file of [chunk.file, ...(chunk.css ?? []), ...(chunk.assets ?? [])]) {
+      if (!fileExists(file)) problems.push(`${key} refers to ${file}, which is not in dist/.`);
+    }
+    for (const next of [...(chunk.imports ?? []), ...(chunk.dynamicImports ?? [])]) {
+      if (!manifest[next]) problems.push(`${key} imports ${next}, which the build did not write.`);
+    }
+  }
+  for (const key of routePanelKeys) {
+    if (!manifest[key]?.isDynamicEntry) problems.push(`The route panel ${key} is not a lazy chunk in the build.`);
+  }
+  return problems;
+}
+
+const ROUTE_PANEL_KEYS = [
+  "ask", "entries", "faq", "imports", "month", "settings", "splits", "summary"
+].map((route) => `src/client/${route}-panel.jsx`);
+
 async function main(argv) {
   const root = process.cwd();
   const manifest = JSON.parse(await readFile(path.join(root, "dist/.vite/manifest.json"), "utf8"));
@@ -111,6 +136,7 @@ async function main(argv) {
   }
   const budget = JSON.parse(await readFile(path.join(root, BUDGET_FILE), "utf8"));
   const failures = [
+    ...findMissingChunks(manifest, (file) => existsSync(path.join(root, "dist", file)), ROUTE_PANEL_KEYS),
     ...compareWithBudget(summary, budget),
     ...findDeferredCopy(measured.files, (file) => assets.get(file)).map((item) => `${item.file} holds the ${item.pool} copy pool, which must load after the first screen.`)
   ];
