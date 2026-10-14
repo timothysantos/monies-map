@@ -258,274 +258,6 @@ household's own people, wallets or groups as chips), never a guess: an
 unknown person, shares that do not add up, an amount the person never
 wrote, a foreign or missing entry, a group in another currency.
 
-One stated share is enough (owner report, 2026-10-14: "Add to splits,
-Joyce's share 1.6" on a saved $7.90 entry was asked back as "the two shares
-need to add up", because the model listed Tim with nothing in him).
-`resolveShares` (`ask-turn.ts`) drops a person listed with no figure, drops
-a second figure the person never wrote (the model worked it out), and gives
-the other person the remainder; with nothing usable from the model, the
-person's own words are read by `readSharesByRules` (`ask-turn-shares.ts`).
-A number is read by what the person wrote beside it, whichever field the
-model put it in: `# Ask Flow
-
-This doc describes the Ask page flow in three parts:
-
-- route flow
-- state flow
-- data flow
-
-The Ask page is one full page (not a sheet) where a person adds an entry by
-hand, from a typed or spoken sentence or from a receipt photo, finds entries
-by asking ("grab rides in september"), asks about their money ("why was
-August so expensive?", "what do I owe Serene?", "how did September go?"),
-changes a month's plan ("move $50 from Shopping to Groceries in October",
-saved only with Save plan), and sees what changed since they last looked. Its visual design is in `design.md` ("Ask page").
-
-## Route Flow
-
-Route entry:
-
-- `/ask`: chat mode, from the Ask tab.
-- `/ask?mode=add&from=entries`: add mode, from the Entries + button on a
-  phone (on a wide screen the + opens the same card in the Ask panel, see
-  "Desktop").
-- `/ask?mode=expense&from=splits&split_group=<id>`: add mode with the Splits
-  switch on for that group, from the Splits receipt button on a phone (on a
-  wide screen, in the Ask panel).
-- `/ask?mode=add&from=ask` and `/ask?mode=expense&from=ask`: add mode from the
-  chat mode's Add entry and Add expense chips.
-- `/ask?view&month&scope` with `state.askInsight`: a Money insights
-  line's "Ask about this" on a phone (see "Insight questions"). The
-  insight rides in history state, never in the URL, and is dropped from
-  the entry once asked.
-- `/ask?saved_entry=<id>&month=<YYYY-MM>&view=<view>&from=shortcut`: the
-  Apple Pay Shortcut's `openUrl` (`buildShortcutEntryOpenUrl` in
-  `src/server/shortcut-gateway.ts`). Shortcuts installed earlier keep working:
-  they open whatever URL the create route returns, and the Entries link they
-  used before (`/entries?editing_entry=<id>`) still opens the entry in
-  Entries.
-
-`view`, `month` and `scope` always ride along (`buildAskLocation` in
-`app-routing.js`). Ask has no period: the period controls are passive on a
-wide screen, and the shell never moves Ask's `month` to a tracked month (the
-Shortcut's entry month stays the entry's). `mode`, `from` and `saved_entry`
-never leak to another tab (`sanitizeTabParams`). A new way in (`mode`, `from`,
-`saved_entry` or `split_group` changing) has its own conversation, kept in
-the Ask conversation store (see "Continuity"); the Ask tab reopens the
-newest one in progress (an add-mode card carries its `mode`, `from` and
-`split_group` in the tab's link).
-
-A lead's "Ask about this" (the savings bar and money jobs on Summary and
-Month, `money-jobs-detail.js`, design.md "Money jobs") opens the chat and
-asks its question at once, as if the person had typed and sent it: the
-message shows, then the answer, check or note the same reader gives
-(`readSentence`: plan request, money answer, filter, entry draft). The menu
-sends a `monies:money-action` window event and the shell (App.jsx) opens
-Ask. On a phone it navigates to `/ask?view&month&scope` with history state
-`{ askQuestion: { text } }`: the chat sends it once and drops it from the
-entry with a replace, so a reload or Back does not ask it again. On a wide
-screen it is `openAskDock({ intent: chat, question })`: the dock store's
-one-shot `question` handoff, which the chat takes when it mounts, or at
-once when it is already the one open (a second question joins the same
-conversation). The question never holds an amount. Every question the
-menu asks reads as its own money answer (see "Money questions"): the spent
-part as the plan or spending answer, invested, saved (kept), spending
-against income ("Why did I spend more than I earned…" and, with money
-hidden, "How did my spending compare with my income…"), and the plan
-answer for "How did my spending compare with the plan…". The Summary's
-period ("from Oct 2025 to Sep 2026") reads as its months.
-
-On a phone the tab bar reads Summary, Entries, Splits, Ask, ··· (one grid
-column per primary tab; Month is not a tab, it is the Summary tab's month
-choice). On a wide screen (761 px and up) the Ask tab is hidden: the Ask
-field at the bottom right of every page opens the same conversation beside
-the page (see "Desktop" below), and the Entries + and Splits receipt
-buttons open their new entry card there too. `/ask` itself still renders in
-the main area there (the Shortcut's link, the From Ask chip's way back, an
-old link), and shows no field or panel.
-
-Chips leave Ask for: Entries (`Back to Entries`, `‹ Entries`, and an
-answer's `Open in Entries`, see "Search and filter" and "Money
-questions"), Month and Splits (a money answer's `Open Month` and `Open
-Splits`; the header's
-`‹ Entries` / `‹ Splits` link and the chip row's `‹ Entries` go back to
-the page exactly as it was, see "Back to where you were"), the entry's
-editor (`Open this entry`: `/entries?editing_entry=<id>` in the entry's month),
-Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
-`/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
-Entries composer through `?action=add-expense&source=ask` with the card's
-values, or the Splits expense dialog through `?split_action=add-expense`).
-`source=ask` keeps the Apple Pay Shortcut's "Shortcut did not pass …"
-warnings off a card opened by hand: a blank card is not a Shortcut that
-lost its Amount variable (`tests/e2e/entry-form-shortcut-warning.spec.js`).
-Once the form has the values the link parameters are cleared from the URL
-(and the reload copy in session storage is dropped), so a reload or back
-step does not reopen the form; the month correction in `App.jsx` builds from
-the live address bar so it cannot put them back. A blank card's Amount is
-empty (placeholder `0.00`), and saving it empty is still refused by the
-server's "Amount must be greater than zero".
-
-## Back to where you were
-
-On a phone the Entries + and the Splits receipt button open Ask as a new
-history entry, so going back returns to the page as it was, never out of
-the app (`ask-origin.js`, `use-ask-origin.js`; design.md "Ask origin"):
-
-- Before Ask opens, the page's place is kept on its own history entry
-  (`state.askReturn`) and handed to Ask (`state.askOrigin`): its URL (the
-  month, view, scope, the Entries filters, the split group), the window's
-  scroll, and an open Entries edit or add sheet with its draft. (On a
-  phone the + sits under a sheet's backdrop, so a sheet is part of the
-  place only if something else opens Ask while it is open.)
-- The ways back: the header's back link ("‹ Entries" / "‹ Splits", top
-  left above the title, far from Save; its screen reader name is "Back to
-  Entries"), the chip row's "‹ Entries" (only while the card is untouched:
-  nothing typed, picked, read or said), and the phone's back gesture. With
-  the page right behind Ask in the history the link is history.back, so
-  all three are one way.
-- The page puts the place back once its data is there: the sheet with its
-  draft (Close still discards it to the saved entry), then the scroll,
-  set again each frame until it holds (rows render over a few frames) and
-  never after the person scrolls. Forward and back again does not move the
-  person a second time.
-- Nothing is lost and nothing asks: an untouched card just returns; a
-  started card stays in the conversation store, the Ask tab shows its dot,
-  and the card is there when the Ask tab (or the + again) reopens it.
-- When Ask's history entry has lost the place (the Ask tab reopened the
-  card, or Ask changed its own URL), the back link opens the place kept
-  for the tab's session (sessionStorage `monies.askOrigin.v1`, one per way
-  in, versioned, checked so it can only lead to /entries or /splits): the
-  place the + kept until the page has put it back, then the page's own URL and
-  scroll from when it was last left. With nothing kept (an /ask link opened
-  directly) it opens the page for the same view and month.
-- After a save, "Back to Entries" still opens the saved entry's month so
-  the new row shows; the header's link goes back to the place.
-- On a wide screen the + and the receipt button open the card in the Ask
-  panel and the page never leaves, so there is no back link there.
-
-## Desktop
-
-On a wide screen Ask has no tab. A one-line field, "Ask, or drop a
-receipt…", is fixed at the bottom right of every page but `/ask`, beside
-the Entries + or the Splits receipt button where there is one
-(`ask-dock.jsx`, the only part in the first screen: the field, `/` and the
-panel's loading frame; the dock's store, layout rules and panel load in the Ask
-page's chunk on the first way in, or once the page is usable when a panel was
-left open in this tab; `ask-dock-entry.js` keeps what was done meanwhile). Focusing, clicking or typing in it,
-Enter, `/` (when the person is not typing in a field and no dialog is
-open; `isAskShortcutKey`), its paperclip (the photo picker), or a photo
-dropped or pasted on it opens Ask. Words typed before the conversation has
-loaded follow into its message box; a photo goes through the same receipt
-reader as the composer's.
-
-Where it opens (`ask-dock-layout.js`, pure, unit tested):
-
-- 760 px and narrower: nothing (the phone's Ask tab).
-- 761 to 1,279 px: a popup over the page, anchored bottom right, 410 × 560
-  px (smaller on a short window). The page keeps its width.
-- 1,280 px and wider: docked, a full-height panel at the right (`clamp(360px,
-  27vw, 400px)`) that pushes the page narrower (`body[data-ask-dock]`
-  pads the body; the + and receipt buttons move beside it). The page keeps
-  at least 880 px, where the header still fits one row (design.md "Layout
-  Breakpoint Boundary").
-- The mode is chosen when Ask opens. A docked panel on a window narrowed
-  below 1,280 px shows as the popup (there is no room to push the page)
-  and docks again when it widens. A popup kept open while the window
-  widens stays a popup and shows the expand control ("Dock Ask beside the
-  page"), which docks it.
-
-The Entries + and the Splits receipt button open their new entry card in
-the dock (`openAskDock` with the way in `add`/`entries`, or
-`expense`/`splits` with the open split group), docked or as a popup by the
-same rule; the page stays where it was. Each press is a new visit (the
-dock's `visit` remounts the conversation), so a saved card gives way to a
-new one, as on the phone. On Entries and Splits the popup sits above the
-round button (94 px from the bottom) so it stays in reach. A save in the
-panel refreshes the page beside it the way a save from another browser tab
-does (`handleRemoteEntryMutation` / `handleRemoteSplitMutation`), so the new
-row shows in the Entries list beside it.
-
-The panel is the Ask page itself (`AskPanel` with `placement` "docked" or
-"popup", the same lazy chunk `/ask` loads) on the shared conversation
-store, so the phone's Ask tab and the panel are one conversation. Its way
-in is the dock's, not the URL's (`ask-dock-state.js`): opening from the
-field resumes a new entry still being filled (the presence's
-`resumeIntent`, as the phone's Ask tab does), else the chat. A chip that
-would open `/ask` (Add entry, Add expense, `‹ Ask`) changes the dock's
-conversation instead, and Switch to … changes the view of the page beside
-it. Every link out of an answer or a card (Open in Entries, Open this
-entry, Back to Entries, the "since you last looked" actions) navigates the
-page beside the panel; the panel stays.
-
-Dock state (`ask-dock-state.js`, sessionStorage `monies.askDock.v1`,
-versioned): open or closed, the mode and the way in, so the panel stays
-open across route changes and a reload until closed. The field's words,
-a dropped photo and the panel's readiness are memory only.
-
-Loading: the field and the panel's frame are in the first screen (a few
-kB, inside `npm run check:bundle`). The conversation's code loads when the
-person opens Ask, or, for a panel left open before a reload, once the page
-beside it is usable (the frame shows "Loading..." and keeps its space
-meanwhile, so the page does not shift). Hovering or keyboard-focusing the
-field offers the Ask chunk to the warmup scheduler as link intent. The
-panel reports busy work (a card being filled or saved, the mic) under no
-route key, so optional work waits for it, but it never makes a route
-ready.
-
-Focus and keys: the panel is a complementary landmark named by its heading
-("Ask", "New entry", …). A person's open puts focus in the message box; a
-panel restored after a reload does not take focus. `/` while it is open
-returns focus to the message box. Close ("Close Ask") and Escape close it,
-and focus goes back to the field without reopening it. Escape closes the
-popup unless a menu or picker inside handled it or the person is typing in
-a field on the page; the docked panel, a fixture beside the page, closes
-only when focus is inside it.
-
-## AI first
-
-Owner decision, 2026-10-13: AI understands, the app validates, rules are
-the offline backup. Every message (typed, spoken, a chip's answer, the
-money jobs menu's question, a message on the Apple Pay card, the Entries +
-card or the Splits receipt card) goes first to `POST /api/ask/turn`
-(`src/server/ask-turn-route.ts`) with:
-
-- `text`, and `history`: the last 8 lines of the conversation
-  (`buildTurnHistory` in `ask-turn-api.js`: the person's messages as
-  written, and a short line for each thing Ask showed back);
-- `viewId`, `scope`, `month`, and `page` (`ask`, or the page beside the
-  desktop panel);
-- `focus` (`buildTurnFocus`): the saved entry by id (the Apple Pay card, a
-  card saved in this conversation), else the card being filled (its
-  fields), else the split group Ask was opened for. The server loads the
-  saved entry itself from the household's rows; an id that is not one is
-  no focus.
-
-The route (`src/domain/ask-turn.ts`) sends Claude Haiku (through AI
-Gateway, logging and caching off; Workers AI as its fallback; one
-allowance unit) the conversation, a compact context (people, wallet,
-category, split group and plan line names; the focus described without
-any amount or account number) and one JSON schema. The model answers with
-exactly one action, and the server checks it before anything shows:
-
-| Action | Checked | Page shows | Save |
-| --- | --- | --- | --- |
-| `draft_entry` | wallet active, category and person exist, amount written by the person, date not in the future, description words the person wrote | the entry card, filled (fields marked AI) | the card's Save, `/api/entries/create` |
-| `edit_draft` | the same, field by field; a saved card is not edited | the card being filled, changed | the card's Save |
-| `draft_split_expense` | as `draft_entry`, plus payer, shares (one stated share is enough; two add up to 100%), group | the card with Shared and the Splits switch on | the card's Save, with `addToSplits` |
-| `add_entry_to_splits` | the saved entry in focus is the household's, an expense, not on Splits yet; the payer is the entry's own; one stated share is enough, the other person has the rest (percent, a written amount, or "all"; two stated shares add up to 100%; none stated is 50/50); the group exists and has the entry's currency | the Add to Splits draft card (each share computed from the entry's amount) | Add to Splits, `/api/splits/expenses/from-entry` with `splitBasisPoints` (or `splitAmountMinor`) |
-| `draft_settlement` | two different people, an amount the person wrote, a date not in the future | the settle-up payment draft card | Record payment, `/api/splits/settlements/create` |
-| `plan_change` | line names and amounts the person wrote (`parsePlanAiReading`), drafted against the real plan rows | the plan draft card, its question or note | Save plan, `/api/month-plan/apply-changes` |
-| `answer_question` | the topic, months and person, written as one sentence the answer route's own reader reads as the same topic | the money answer (or the check before one) | none |
-| `search_entries` | categories and wallets exist, amounts written, words the person wrote | the Entries answer card | none |
-| `open_page` | a known page; the view and month carried | a note, and the page opens | none |
-| `ask_clarification` | the question and up to 4 chips, without a figure the person or context never said | the question above its chips; a chip is sent as the next message | none |
-| `cannot_help` | the same | a note | none |
-
-Anything that does not check out becomes a question back (with the
-household's own people, wallets or groups as chips), never a guess: an
-unknown person, shares that do not add up, an amount the person never
-wrote, a foreign or missing entry, a group in another currency.
-
  or "dollars" is money, `%` or "percent" a percentage,
 and a bare number is a guess: above the entry's total it is a percentage,
 otherwise dollars (1.6 on $7.90 is $1.60). The draft card lists both people
@@ -561,6 +293,92 @@ conversation (`rulesNoted`). On the public demo, whose caps are its own
 used-up cap answers `{ mode: "rules", reason, notice: "demo_allowance" }`
 and the note reads "The demo's Claude allowance is used up for today, so
 Ask is using its built-in rules." instead.
+
+### Three principles
+
+Owner request, 2026-10-14: fix the class of failure, not the phrase. Every
+Ask action follows these three rules, and every new Ask action must too.
+
+1. **The model states intent, the server completes.** The model reports only
+   what the person said, as they said it: a name as written ("joyce's", "J",
+   "citi"), a month or day as a word ("september", "last month",
+   "yesterday"), an amount without units ("1.6", "fifty"), a share as stated
+   ({person, value} with value "all", "70%", "$1.60", "1.6", "half"). It is
+   never asked for a computed number: no remainder share, no converted
+   amount, no worked-out date. The server derives all of it:
+   - names: `matchName` (`ask-turn-names.ts`) matches people, wallets,
+     categories and groups by exact name, initial, a word of the name, a
+     containing word or a typo (a swapped pair counts as one); two that fit
+     equally are ambiguous and asked, never guessed;
+   - days and months: a day or month the message itself names wins over the
+     model's (`findDayIn`, `findMonthIn`) and fills one the model left out;
+     words are read from today (`readDayWord`, `readMonthWord`); nothing said
+     is the month in view;
+   - amounts: symbols, words, `k`, a decimal comma (`readAmountMinor`); a
+     figure the person never wrote is replaced by the one amount the message
+     does state, and with none or several it is no amount;
+   - shares: one stated share is enough, the other person has the rest; a
+     bare number is told apart by what is written beside it and the entry's
+     total (`ask-turn-shares.ts`); a second figure the person never wrote is
+     the model's and is dropped;
+   - defaults: the entry in focus (its payer, wallet, amount), the viewer for
+     "I", this month, the only split group.
+2. **Draft with visible assumptions; ask only when outcomes differ.** What
+   the app assumed is said in plain words on the reply (`assumptions`: a line
+   and up to 3 chips; the page shows it under the draft, and a chip is sent as
+   the next message, like any question's chip). A name that fits nothing in an
+   optional field of a new draft (wallet, owner, category) leaves that field
+   off, says so and offers the nearest names; an even split nobody asked for,
+   a payer other than the entry's owner, a group in another currency, a bare
+   number read as dollars (the existing "Is that a percentage instead?" row),
+   an unknown person in a question or search ("I used the whole household")
+   are all assumptions, not questions. Ask only when two readings lead to
+   materially different saves or answers: the rule is `decideReadings`
+   (`ask-ambiguity.ts`). Each reading has an effect (what would be written or
+   answered) and a basis (stated, focus, default, guess); one effect is
+   settled; one strongest reading is drafted (shown as an assumption when it
+   was a default or a guess); several different effects at the strongest
+   basis are asked, with the readings as chips (two split groups for "settle
+   up with Joyce", two categories for "subscriptions", two people for "J").
+3. **Repair before asking.** When the checks refuse the model's action for a
+   reason the model can fix (`ASK_REPAIRABLE_CODES`: a name, day, month, share
+   or plan line they could not use), the route sends ONE repair turn
+   (`ask-turn-repair.ts`): the turn's own prompt, the refused answer without
+   its nulls, and the errors as a machine-readable list (`code`, `field`,
+   `got`, and the valid options: people, wallets, categories, groups, plan
+   lines). The corrected action is used only if it checks out; otherwise the
+   person gets the original question, with its chips. Never repaired: the
+   model's own question, and a question only the person can answer (an amount
+   they never gave, which of two things they meant, a share that is simply
+   too big). At most one repair per message; it counts as a second allowance
+   unit (about US$0.001), uses the same scrubbed context, and sends no
+   account number or amount from the household's records. The route logs one
+   line per repair: `{"event":"ask_turn_repair","action","validatorError",
+   "field","repaired"}`, never the message, a name or an amount, so the
+   repair rate can be measured in the Worker logs. The response carries
+   `repaired: true|false` when one was tried (the page ignores it).
+
+### Eval bank
+
+`tests/fixtures/ask-eval-utterances.json` holds 121 realistic messages across
+every Ask action (typos, shorthand, partial information, unit ambiguities, the
+owner's own phrasings), each with the action and reply it should end with and
+the answer a good model records for it. Two runs share it
+(`tests/support/ask-eval-bank.mjs`):
+
+- `tests/ask-eval-bank.test.mjs` (in `npm run test:unit`) replays every
+  recorded answer through the real Worker route on a seeded household with no
+  model, so the server's completion, validation and repair logic is proved on
+  every run; it also fails if the bank shrinks below 80, misses an action, or
+  a recorded answer stops fitting the schema the model is given.
+- `npm run eval:ask` sends the same messages to the real model: manual, not
+  in CI, cap-aware (a spread sample of 30 by default; `--all --yes` for the
+  whole bank; `--ids`, `--group`, `--limit`, `--dry`), printing PASS or FAIL
+  per message, the pass rate and the repair rate.
+
+A new Ask action adds its messages to the bank (its happy path, a typo or
+shorthand, a partial message, and a message that must be asked back) before it
+ships.
 
 ### Phase 2: changes to saved data
 

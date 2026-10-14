@@ -234,6 +234,27 @@ Details and the reasons are in `docs/code-spec.md` and
   opens their page with the reason. A new Ask change needs its validator
   negatives, a route test that saves it through its command, and a
   `failingStatement` test for any command it changes.
+- The model reports intent; the server derives (owner decision, 2026-10-14;
+  `docs/flows/ask-flow.md`, "Three principles"). The model-facing schema
+  carries only what the person said, as they said it (a name as written, a
+  month or day as a word, an amount without units, a share as stated); it is
+  never asked for a computed number. Matching names, reading days, months and
+  amounts, remainder shares, % versus $, defaults from the entry in focus and
+  this month are the server's (`ask-turn-names.ts`, `ask-turn-shares.ts`).
+  Never add a model-supplied figure the server could work out.
+- Draft with the assumption showing; ask only when two readings would save or
+  answer differently (`decideReadings`, `ask-ambiguity.ts`). A reply carries
+  `assumptions` (plain words and up to 3 chips). A needless question is a bug.
+- Repair before asking: a refusal the model can fix gets exactly one repair
+  turn with the validator's machine-readable errors and valid options
+  (`ask-turn-repair.ts`), counted against the allowance, with only
+  `{action, validatorError, field, repaired}` logged, never message text. Only
+  then does the person get the question with chips.
+- Every new Ask action adds messages to the eval bank
+  (`tests/fixtures/ask-eval-utterances.json`: its happy path, a typo or
+  shorthand, a partial message, one that must be asked back), proved by
+  `tests/ask-eval-bank.test.mjs`. `npm run eval:ask` runs the bank against the
+  real model (manual, cap-aware, not in CI).
 - The model never writes. It only chooses the action; the page shows the
   existing draft or answer card, and nothing is saved without the
   person's Save tap, through the existing all-or-nothing command. Figures

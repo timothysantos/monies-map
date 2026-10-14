@@ -121,6 +121,10 @@ a doc here in the same change.
   Ask's answers to money questions: rules, the skew check first, facts from
   the screens' DTOs, and the validated optional AI wording (privacy, cost,
   writes, no-AI behaviour).
+- [`audits/ask-robust-audit.md`](audits/ask-robust-audit.md):
+  Ask's three principles (the server completes what the model reports, drafts
+  show their assumptions, one repair before a question) and the eval bank
+  (privacy, cost, writes, no-AI behaviour).
 - [`audits/ask-planning-audit.md`](audits/ask-planning-audit.md):
   planning by chat (plan drafts saved in one batch) and Intent vs Outcome
   answers on Ask: rules first, the optional AI reading only into the same

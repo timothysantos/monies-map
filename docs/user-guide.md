@@ -701,6 +701,13 @@ date, wallet or person label on the card itself. What it was can be up to
 500 characters and a note up to 2,000; a small count shows under the field
 when you get close, and **Save** tells you if one is too long.
 
+When Ask has to guess a detail, it says so under the card in plain words and
+offers the other reading as buttons: for example "I couldn't find a wallet
+called "posb", so I left the wallet out." with buttons for your real wallets.
+Tap one and Ask redoes the card that way. Ask only stops to ask you a question
+when two readings would save something different, such as two split groups
+that both fit.
+
 ### What each control does
 
 - **Scan receipt**, or **+** then **Take a photo** or **Choose a photo**:

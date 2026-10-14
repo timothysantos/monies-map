@@ -18,8 +18,12 @@ async function stubModel(page, replies) {
   await page.route("**/api/ask/turn", async (route) => {
     const body = route.request().postDataJSON();
     seen.push(body);
-    const reply = replies.shift();
-    const response = await route.fetch({ headers: { ...route.request().headers(), ...(reply ? { "x-ask-turn-test-reply": JSON.stringify(reply) } : {}) } });
+    const { _repair: repair, ...reply } = replies.shift() ?? {};
+    const headers = { ...route.request().headers() };
+    if (Object.keys(reply).length) headers["x-ask-turn-test-reply"] = JSON.stringify(reply);
+    // The model's answer to the repair turn, when the first answer is refused.
+    if (repair) headers["x-ask-turn-test-repair-reply"] = JSON.stringify(repair);
+    const response = await route.fetch({ headers });
     await route.fulfill({ response });
   });
   return seen;
@@ -38,6 +42,41 @@ test.describe("Ask, AI first", () => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.goto("/");
     await reseedDemo(page);
+  });
+
+  test("a refused answer is repaired before the person is asked: \"all hers\" names nobody, the repair names Joyce, and the draft shows", async ({ page }) => {
+    const description = `STARBUCKS ${Date.now()}`;
+    const created = await postJson(page, "/api/entries/create", {
+      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+    });
+    await stubModel(page, [
+      { action: "add_entry_to_splits", split: { shares: [{ person: "wife", all: true }] }, _repair: { action: "add_entry_to_splits", split: { shares: [{ person: "Joyce", all: true }] } } }
+    ]);
+    await page.goto(`/ask?saved_entry=${created.entryId}&month=${MONTH}&view=person-tim&from=shortcut`);
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible({ timeout: 60_000 });
+    await send(page, "split this with my wife, all hers");
+    const proposal = page.locator('[data-split-proposal="draft"]');
+    await expect(proposal).toBeVisible();
+    await expect(proposal.locator('[data-split-share="Joyce"]')).toContainText("100%");
+    // No question was asked.
+    await expect(page.locator(".ask-chips").getByRole("button", { name: "Tim" })).toHaveCount(0);
+  });
+
+  test("a draft says what it assumed, with the other reading one tap away: an unknown wallet is left off, and a chip puts it on a real one", async ({ page }) => {
+    const seen = await stubModel(page, [
+      { action: "draft_entry", entry: { type: "expense", description: "stuff", amount: "30", wallet: "posb" } },
+      { action: "edit_draft", entry: { wallet: "UOB One" } }
+    ]);
+    await page.goto(`/ask?month=${MONTH}&view=person-tim`);
+    await send(page, "bought stuff 30 on posb");
+    await expect(page.locator(".ask-question")).toContainText('I couldn\'t find a wallet called "posb", so I left the wallet out.');
+    const chip = page.locator(".ask-chips").getByRole("button", { name: /^On / }).first();
+    await expect(chip).toBeVisible();
+    await page.screenshot({ path: "test-results/ask-ai-turn-assumption.png", fullPage: false });
+    const label = (await chip.textContent()) ?? "";
+    await chip.click();
+    await expect.poll(() => seen.length).toBe(2);
+    expect(seen[1].text).toBe(label.trim());
   });
 
   test("Apple Pay entry, \"Add to splits, all Joyce\": a draft with Tim paying and Joyce's 100% share; Add to Splits saves it, and Splits shows Joyce owes the whole amount", async ({ page }) => {
