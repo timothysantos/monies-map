@@ -64,26 +64,26 @@ test("why was March so expensive: the Month page's figures, plan, Spending Mix a
   // The lead is Month's Actual spend card, measured against its Planned spend.
   assert.equal(answer.lead.amountMinor, card(march.monthPage.metricCards, "Actual spend"));
   assert.equal(answer.lead.planMinor, card(march.monthPage.metricCards, "Planned spend"));
-  assert.deepEqual([answer.lead.amountMinor, answer.lead.planMinor], [1039123, 726309]);
+  assert.deepEqual([answer.lead.amountMinor, answer.lead.planMinor], [813467, 693644]);
   // Over plan, so the summary figure is rose.
   assert.equal(answer.lead.tone, "short");
   assert.equal(answer.title, "March spending");
   assert.deepEqual(answer.support, [
-    { label: "Plan", amountMinor: 726309, currency: "SGD" },
+    { label: "Plan", amountMinor: 693644, currency: "SGD" },
     { label: "February", amountMinor: card(february.monthPage.metricCards, "Actual spend"), currency: "SGD" },
     { label: "Home", percent: 54 },
-    { label: "Loans", percent: 14 }
+    { label: "Family & Personal", percent: 10 }
   ]);
   // The categories are Month's Spending Mix, largest first.
   const mix = march.monthPage.categoryShareChart.slice(0, 3);
   assert.deepEqual(answer.lines.filter((line) => line.tone === "neutral").map((line) => [line.label, line.amountMinor]), mix.map((datum) => [datum.label, datum.valueMinor]));
   assert.deepEqual(answer.lines.filter((line) => line.tone === "out").map((line) => [line.label, line.detail, line.amountMinor]), [
-    ["Courts Megastore Tampines", "11 Mar · Home", 328000],
-    ["Castlery", "19 Mar · Home", 219000],
-    ["HDB Housing Loan Giro", "1 Mar · Loans", 148000]
+    ["Courts Megastore Tampines", "11 Mar · Home", 268000],
+    ["Castlery", "19 Mar · Home", 159000],
+    ["HDB Housing Loan Giro", "1 Mar · Loans", 62000]
   ]);
   assert.equal(payload.wording.source, "template");
-  assert.equal(payload.wording.text, "March came to $10,391.23, $3,128.14 more than the $7,263.09 you planned. That's $5,684.61 more than February. Home took the most at $5,650.00, and the biggest single cost was Courts Megastore Tampines at $3,280.00.");
+  assert.equal(payload.wording.text, "March came to $8,134.67, $1,198.23 more than the $6,936.44 you planned. That's $4,219.19 more than February. Home took the most at $4,390.00, and the biggest single cost was Courts Megastore Tampines at $2,680.00.");
   assert.deepEqual(payload.ai, { requested: false, available: false, reason: "AI assistance is turned off." });
   assert.deepEqual(answer.links.map((link) => link.kind), ["entries", "month"]);
   assert.deepEqual(answer.links[1], { kind: "month", label: "Open Month", month: "2026-03", viewId: "household", scope: "direct_plus_shared" });
@@ -102,8 +102,8 @@ test("where did April go leads with the categories, then the biggest cost and th
   const payload = await ask(api, "where did April go?");
   assert.equal(payload.intent, "spending");
   assert.equal(payload.answer.lead.tone, "neutral");
-  assert.deepEqual(payload.answer.lines.slice(0, 3).map((line) => line.label), ["Loans", "Groceries", "Food & Drinks"]);
-  assert.equal(payload.wording.text, "April came to $4,575.39, and the largest shares went to loans ($1,480.00), groceries ($680.09) and food & drinks ($555.64). The biggest single cost was HDB Housing Loan Giro at $1,480.00. That's $2,687.70 under the $7,263.09 you planned.");
+  assert.deepEqual(payload.answer.lines.slice(0, 3).map((line) => line.label), ["Family & Personal", "Loans", "Food & Drinks"]);
+  assert.equal(payload.wording.text, "April came to $3,667.57, and the largest shares went to family & personal ($800.00), loans ($620.00) and food & drinks ($578.13). The biggest single cost was HDB Housing Loan Giro at $620.00. That's $3,268.87 under the $6,936.44 you planned.");
 });
 
 test("how am I doing against the plan: Month's cards and the plan rows that went over", async (t) => {
@@ -112,22 +112,24 @@ test("how am I doing against the plan: Month's cards and the plan rows that went
   const may = await get(api, "/api/month-page?view=household&month=2026-05&scope=direct_plus_shared");
   assert.equal(payload.intent, "plan");
   assert.equal(payload.answer.title, "May against plan");
-  // The Month lead's figures: the spend plan leaves out the savings target.
+  // The Month lead's figures: the spend plan leaves out the savings target
+  // and the investment lines (Endowus, StashAway and May's IBKR top-up).
   assert.equal(payload.answer.lead.amountMinor, monthLead(may).spent.amountMinor);
   assert.equal(payload.answer.lead.planMinor, monthLead(may).plannedSpendMinor);
-  assert.equal(monthLead(may).plannedSpendMinor, card(may.monthPage.metricCards, "Planned spend") - card(may.monthPage.metricCards, "Savings target"));
+  assert.equal(monthLead(may).plannedSpendMinor, card(may.monthPage.metricCards, "Planned spend") - card(may.monthPage.metricCards, "Savings target") - 200_000);
+  assert.equal(payload.answer.outcome.plannedInvestMinor, 200_000);
   const rows = may.monthPage.planSections.flatMap((section) => section.rows);
   for (const line of payload.answer.lines) {
     const row = rows.find((item) => item.label === line.label);
     assert.deepEqual([line.amountMinor, line.secondary.amountMinor], [row.actualMinor, row.plannedMinor], line.label);
     assert.equal(line.tone, "short");
   }
-  assert.deepEqual(payload.answer.lines.map((line) => [line.label, line.amountMinor, line.secondary.amountMinor]), [["Groceries", 72341, 62000], ["Beauty", 8800, 4500]]);
+  assert.deepEqual(payload.answer.lines.map((line) => [line.label, line.amountMinor, line.secondary.amountMinor]), [["Beauty", 8985, 6500], ["Pet Care", 7241, 7000]]);
   assert.deepEqual(payload.answer.support, [
-    { label: "Plan", amountMinor: 476309, currency: "SGD" },
+    { label: "Plan", amountMinor: 413644, currency: "SGD" },
     { label: "Income", amountMinor: may.summaryPage.months[0].actualIncomeMinor, currency: "SGD" }
   ]);
-  assert.equal(payload.wording.text, "May came to $4,697.36, $65.73 under the $4,763.09 you planned. Groceries went furthest over, at $723.41 against $620.00 planned. Income was $14,669.48 against $13,500.00 planned.");
+  assert.equal(payload.wording.text, "May came to $3,889.60, $246.84 under the $4,136.44 you planned. Beauty went furthest over, at $89.85 against $65.00 planned. Income was $10,900.40 against $10,060.00 planned.");
 });
 
 test("how did April go: intent against outcome with the Month lead's figures and the savings bar's", async (t) => {
@@ -149,8 +151,11 @@ test("how did April go: intent against outcome with the Month lead's figures and
     savingsTargetMinor: card(april.monthPage.metricCards, "Savings target"),
     investedMinor: 0,
     savedMovedMinor: 0,
-    plannedInvestMinor: 0
+    // Ethan's monthly GIRO into Endowus, planned and done.
+    plannedInvestMinor: 60_000,
+    movedIntoInvestmentsMinor: april.monthPage.investmentMoves.intoMinor
   });
+  assert.equal(april.monthPage.investmentMoves.intoMinor, 60_000);
   assert.deepEqual(payload.answer.links.map((link) => [link.kind, link.label, link.month ?? link.filter?.month]), [["month", "Open Month", "2026-04"], ["entries", "Open in Entries", "2026-04"]]);
   assert.equal(payload.wording.source, "template");
 });
@@ -176,7 +181,8 @@ test("did we stick to the plan in Q2: each month against its plan, their sum, an
     savingsTargetMinor: sum("Savings target"),
     investedMinor: 0,
     savedMovedMinor: 0,
-    plannedInvestMinor: 0
+    plannedInvestMinor: 300_000,
+    movedIntoInvestmentsMinor: tracked.reduce((total, page) => total + page.monthPage.investmentMoves.intoMinor, 0)
   });
   // June has nothing yet, so only April and May are lines, then plan rows:
   // each month as its Month lead reads it.
@@ -195,9 +201,9 @@ test("compare March with February: both months' spend and the categories that mo
   const payload = await ask(api, "compare March with February");
   assert.equal(payload.intent, "compare");
   assert.deepEqual(payload.months, ["2026-03", "2026-02"]);
-  assert.deepEqual(payload.answer.support, [{ label: "February", amountMinor: 470662, currency: "SGD" }]);
-  assert.deepEqual(payload.answer.lines[0], { label: "Home", amountMinor: 565000, currency: "SGD", tone: "neutral", secondary: { kind: "compare", label: "February", amountMinor: 0 } });
-  assert.equal(payload.wording.text, "March came to $10,391.23, $5,684.61 more than February's $4,706.62. The biggest change was home: $5,650.00 in March against $0.00 in February. Income was $13,510.00 in March and $15,516.38 in February.");
+  assert.deepEqual(payload.answer.support, [{ label: "February", amountMinor: 391548, currency: "SGD" }]);
+  assert.deepEqual(payload.answer.lines[0], { label: "Home", amountMinor: 439000, currency: "SGD", tone: "neutral", secondary: { kind: "compare", label: "February", amountMinor: 0 } });
+  assert.equal(payload.wording.text, "March came to $8,134.67, $4,219.19 more than February's $3,915.48. The biggest change was home: $4,390.00 in March against $0.00 in February. Income was $10,118.80 in March and $10,664.92 in February.");
 });
 
 test("the biggest expenses are the view's five largest, and Open in Entries shows exactly those", async (t) => {
@@ -206,7 +212,7 @@ test("the biggest expenses are the view's five largest, and Open in Entries show
   assert.equal(payload.intent, "biggest");
   const { answer } = payload;
   assert.equal(answer.title, "Biggest in March");
-  assert.deepEqual(answer.lead, { label: "Courts Megastore Tampines", amountMinor: 328000, currency: "SGD", tone: "neutral" });
+  assert.deepEqual(answer.lead, { label: "Courts Megastore Tampines", amountMinor: 268000, currency: "SGD", tone: "neutral" });
   assert.deepEqual(answer.support, [{ label: "Home" }, { label: "11 Mar" }]);
   assert.equal(answer.lines.length, 5);
   assert.ok(answer.lines.every((line) => line.tone === "out"));
@@ -217,7 +223,7 @@ test("the biggest expenses are the view's five largest, and Open in Entries show
   const opened = summarizeFilterAnswer(entriesPage, answer.links[0].filter);
   assert.equal(answer.links[0].filter.minAmountMinor, expenses[4].amountMinor);
   assert.equal(opened.count, expenses.filter((entry) => entry.amountMinor >= expenses[4].amountMinor).length);
-  assert.equal(payload.wording.text, "Your biggest expense in March was Courts Megastore Tampines at $3,280.00 on 11 Mar. Next came Castlery at $2,190.00 and HDB Housing Loan Giro at $1,480.00.");
+  assert.equal(payload.wording.text, "Your biggest expense in March was Courts Megastore Tampines at $2,680.00 on 11 Mar. Next came Castlery at $1,590.00 and HDB Housing Loan Giro at $620.00.");
 });
 
 test("what do I owe Serene: Ethan's Splits balances plus the settle-up still to pay", async (t) => {
@@ -235,18 +241,18 @@ test("what do I owe Serene: Ethan's Splits balances plus the settle-up still to 
   const homeNet = groups.filter((group) => group.currency === "SGD").reduce((sum, group) => sum + group.balanceMinor, 0)
     + open.reduce((sum, checkpoint) => sum + (checkpoint.toPersonId === ETHAN ? 1 : -1) * (checkpoint.amountMinor - (checkpoint.matchedAmountMinor ?? 0)), 0);
   assert.deepEqual(payload.answer.lead, { label: "Balance", amountMinor: Math.abs(homeNet), currency: "SGD", tone: "in" });
-  assert.equal(homeNet, 118241);
+  assert.equal(homeNet, 85536);
   assert.deepEqual(payload.answer.links, [{ kind: "splits", label: "Open Splits", month: "2026-05", viewId: "household", groupId: "split-group-japan-trip" }]);
-  assert.equal(payload.wording.text, "Serene owes you $1,182.41 on Splits. That's $1,019.17 from the 6 Apr settle-up and $303.15 for Home & Bills, less $139.91 for Dinners out. Japan trip has JP¥26,730 still open.");
+  assert.equal(payload.wording.text, "Serene owes you $855.36 on Splits. That's $798.51 from the 6 Apr settle-up and $166.35 for Home & Bills, less $109.50 for Dinners out. Japan trip has JP¥26,730 still open.");
 
   // On the household view with nobody named, both names are used.
   const household = await ask(api, "who owes who?");
   assert.equal(household.answer.lead.tone, "neutral");
-  assert.match(household.wording.text, /^Serene owes Ethan \$1,182\.41 on Splits\./);
+  assert.match(household.wording.text, /^Serene owes Ethan \$855\.36 on Splits\./);
   // Serene's own view says it from her side.
   const sereneView = await ask(api, "what do I owe Ethan?", { viewId: SERENE });
   assert.equal(sereneView.answer.lead.tone, "short");
-  assert.match(sereneView.wording.text, /^You owe Ethan \$1,182\.41 on Splits\./);
+  assert.match(sereneView.wording.text, /^You owe Ethan \$855\.36 on Splits\./);
 });
 
 test("income for a person view is that person's income, against their plan", async (t) => {
@@ -257,8 +263,8 @@ test("income for a person view is that person's income, against their plan", asy
   assert.equal(payload.viewId, ETHAN);
   assert.equal(payload.answer.lead.amountMinor, april.summaryPage.months[0].actualIncomeMinor);
   assert.equal(payload.answer.lead.planMinor, april.summaryPage.months[0].plannedIncomeMinor);
-  assert.deepEqual(payload.answer.lead, { label: "Came in · 1 entry", amountMinor: 830000, currency: "SGD", tone: "in", planMinor: 830000, overIsShort: false });
-  assert.equal(payload.wording.text, "$8,300.00 came in during April, just as you planned. The largest part was salary at $8,300.00. March brought in $8,300.00.");
+  assert.deepEqual(payload.answer.lead, { label: "Came in · 2 entries", amountMinor: 570793, currency: "SGD", tone: "in", planMinor: 568000, overIsShort: false });
+  assert.equal(payload.wording.text, "$5,707.93 came in during April, $27.93 more than the $5,680.00 you planned. The largest part was salary at $5,680.00. March brought in $5,719.90.");
 });
 
 test("a person view and scope count what Month counts for them", async (t) => {
@@ -281,7 +287,7 @@ test("a month with no entries says so instead of borrowing another month", async
   assert.equal(payload.wording.text, "There are no entries for November 2024 yet.");
   const compare = await ask(api, "compare March 2026 with March 2024");
   assert.deepEqual(compare.months, ["2026-03", "2024-03"]);
-  assert.equal(compare.wording.text, "March came to $10,391.23. There are no entries for March 2024 to compare it with.");
+  assert.equal(compare.wording.text, "March came to $8,134.67. There are no entries for March 2024 to compare it with.");
 });
 
 test("an unsupported question, a bad body or a GET is refused plainly, and nothing is written", async (t) => {
