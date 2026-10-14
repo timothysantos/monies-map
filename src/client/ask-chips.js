@@ -130,12 +130,35 @@ function suggestionChips(card, splitSuggestion, actions) {
   };
 }
 
-function savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, actions }) {
+// The card suggestion's question and its two chips (ask-card-suggestion.js),
+// while the card can still take it. The shop is shown as typed, cut short.
+function cardSuggestionChips(card, cardSuggestion, actions) {
+  if (!cardSuggestion || card.variant !== "expense" || card.cardSuggestionAnswer) {
+    return null;
+  }
+  const merchant = cardSuggestion.merchant.length > 32 ? `${cardSuggestion.merchant.slice(0, 31).trimEnd()}…` : cardSuggestion.merchant;
+  return {
+    prompt: askCopy.questions.usualCard(merchant, cardSuggestion.accountName),
+    items: /** @type {AskChip[]} */ ([
+      { key: "suggested-card", label: askCopy.chips.suggestedCard(cardSuggestion.accountName), primary: true, onClick: actions.acceptCardSuggestion },
+      { key: "suggested-card-no", label: askCopy.chips.keepCard(cardSuggestion.currentAccountName), onClick: actions.declineCardSuggestion }
+    ])
+  };
+}
+
+function savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, cardSuggestion, actions }) {
   /** @type {AskChip[]} */
   const items = [];
   let prompt = "";
   if (intent.savedEntryId) {
     items.push({ key: "open-entry", label: askCopy.chips.openEntry, primary: true, onClick: actions.openEntry });
+    // One question at a time: the card first, since the rest follow it.
+    const cardAsk = cardSuggestionChips(card, cardSuggestion, actions);
+    if (cardAsk) {
+      items[0] = { ...items[0], primary: undefined };
+      items.push(...cardAsk.items);
+      return { items, prompt: cardAsk.prompt };
+    }
     if (card.variant === "expense" && card.fields.categoryName === "Other") {
       prompt = askCopy.questions.otherCategory;
       for (const name of suggestCategories(entries, context.categories)) {
@@ -183,7 +206,7 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   return { items, prompt };
 }
 
-export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, headerBack = false, actions }) {
+export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, headerBack = false, actions }) {
   const isAddMode = intent.mode !== "chat";
   if (!card) {
     if (intent.savedEntryId) {
@@ -200,7 +223,7 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
     };
   }
   if (card.status === "saved") {
-    return savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, actions });
+    return savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, cardSuggestion, actions });
   }
 
   /** @type {AskChip[]} */
@@ -211,7 +234,8 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
     items.push({ key: "back", label: askCopy.chips.back(backLabel(intent)), back: true, onClick: actions.back });
   }
   const question = card.questions?.[0] ?? null;
-  const suggested = question ? null : suggestionChips(card, splitSuggestion, actions);
+  // The card question comes before the split question: one at a time.
+  const suggested = question ? null : cardSuggestionChips(card, cardSuggestion, actions) ?? suggestionChips(card, splitSuggestion, actions);
   let prompt = "";
   if (suggested) {
     prompt = suggested.prompt;
@@ -323,9 +347,9 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // "Back to the unsaved entry", which makes it the newest item again. An
 // answer for a month with no entries (canOpenAnswer false) has no Entries
 // page to open.
-export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, actions }) {
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, actions }) {
   if (active?.kind === "card") {
-    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, headerBack, actions });
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, cardSuggestion, headerBack, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }

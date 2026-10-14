@@ -94,6 +94,9 @@ export const askCopy = {
     // The split suggestion's two answers (ask-split-suggestion.js).
     suggestedSplit: (share, groupName) => `Split ${share} in ${groupName}`,
     notThisTime: "Not this time",
+    // The card suggestion's two answers.
+    suggestedCard: (cardName) => `Yes, ${cardName}`,
+    keepCard: (cardName) => `No, keep ${cardName}`,
     chooseCategory: "Choose category",
     openInEntries: "Open in Entries",
     // An unsaved card further up the thread, once something newer owns the chips.
@@ -209,6 +212,7 @@ export const askCopy = {
     shortcutMissing: "That entry couldn't be found. It may have been removed.",
     shortcutLoading: "Opening the saved entry…",
     categoryChanged: (name) => `Moved to ${name}.`,
+    cardChanged: (cardName) => `Moved to ${cardName}.`,
     addedToSplits: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
     askNotReady: "I can find entries and add new ones. Other questions aren't answered yet."
   },
@@ -374,6 +378,8 @@ export const askCopy = {
     otherCategory: "It landed in Other. Which category fits?",
     shareOnSplits: "Share it on Splits?",
     usualSplit: (name, groupName) => `You usually split this with ${name}. Add it to ${groupName}?`,
+    // The card suggestion (ask-card-suggestion.js): past entries at this shop.
+    usualCard: (merchant, cardName) => `Past ${merchant} entries were on ${cardName}. Was this on that card too?`,
     checkField: (label) => `Check the ${label.toLowerCase()}.`
   },
   shareOption: (name, percent) => `${name} ${percent}%`,

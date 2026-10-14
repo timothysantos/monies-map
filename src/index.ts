@@ -13,7 +13,9 @@ import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
-import { buildSplitSuggestionDto, readSplitSuggestionRequest, SplitSuggestionEntryNotFound } from "./domain/pages/split-suggestion";
+import { updateEntryAccountRecord } from "./domain/app-repository-entry-account";
+import { buildCardSuggestion,CardSuggestionEntryNotFound, readCardSuggestionRequest } from "./domain/pages/card-suggestion";
+import { buildSplitSuggestionDto,readSplitSuggestionRequest, SplitSuggestionEntryNotFound } from "./domain/pages/split-suggestion";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
 import { buildTransferDraftCandidatesDto, readTransferDraftQuery } from "./domain/pages/transfer-draft-candidates";
 import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
@@ -403,6 +405,28 @@ export default {
         }
         console.error("Split suggestion failed", { path: url.pathname, error: describeError(error) });
         return json({ ok: false, error: "Split suggestion failed" }, 500);
+      }
+    }
+
+    // Read-only card suggestion for one entry (DOMAIN.md "Card Suggestion"):
+    // the card the household usually pays this shop with, when it is not
+    // the chosen one. No AI, nothing written, never changes the card.
+    if (url.pathname === "/api/entries/card-suggestion") {
+      if (request.method !== "POST") {
+        return json({ ok: false, error: "Card suggestions only answer POST." }, 405, { Allow: "POST" });
+      }
+      const suggestionRequest = readCardSuggestionRequest(await request.json().catch(() => null));
+      if (!suggestionRequest) {
+        return json({ ok: false, error: "Invalid card suggestion fields" }, 400);
+      }
+      try {
+        return json({ ok: true, suggestion: await buildCardSuggestion(env.DB, suggestionRequest) });
+      } catch (error) {
+        if (error instanceof CardSuggestionEntryNotFound) {
+          return json({ ok: false, error: error.message }, 404);
+        }
+        console.error("Card suggestion failed", { path: url.pathname, error: describeError(error) });
+        return json({ ok: false, error: "Card suggestion failed" }, 500);
       }
     }
 
@@ -1037,6 +1061,19 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry note" }, 400);
+      }
+    }
+
+    // Only the card changes (Ask's card suggestion, after the person's Yes).
+    if (url.pathname === "/api/entries/update-account" && request.method === "POST") {
+      const body = await request.json<{ entryId?: unknown; accountId?: unknown }>().catch(() => ({ entryId: undefined, accountId: undefined }));
+      if (typeof body.entryId !== "string" || !body.entryId || typeof body.accountId !== "string" || !body.accountId) {
+        return json({ ok: false, error: "Missing entry card fields" }, 400);
+      }
+      try {
+        return json({ ok: true, ...(await updateEntryAccountRecord(env.DB, { entryId: body.entryId, accountId: body.accountId })) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to change the card" }, 400);
       }
     }
 

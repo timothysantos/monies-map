@@ -121,6 +121,8 @@ export function createAskCard(context, { mode = "add", splitGroupId = "" } = {})
     questions: [],
     // "accepted" or "declined" once the split suggestion was answered.
     splitSuggestionAnswer: "",
+    // "accepted" or "declined" once the card suggestion was answered.
+    cardSuggestionAnswer: "",
     // A transfer's other side the person chose (ask-transfer-match.js): an
     // entry id, "none" for no other side yet, "" for the best match.
     transferMatchId: "",
@@ -260,6 +262,20 @@ export function acceptSplitSuggestion(card, suggestion) {
 
 export function declineSplitSuggestion(card) {
   return card ? { ...card, splitSuggestionAnswer: "declined" } : card;
+}
+
+// "Yes, <card>" on a draft: the card's card becomes the suggested one, as
+// the "Different card" picker would; nothing is written until Save. Either
+// answer is kept on the card, so the question is never asked again for it.
+export function acceptCardSuggestion(card, suggestion, context) {
+  if (card.status !== "draft" || !suggestion?.accountId) {
+    return card;
+  }
+  return { ...setCardField(card, { accountId: suggestion.accountId }, context), cardSuggestionAnswer: "accepted" };
+}
+
+export function declineCardSuggestion(card) {
+  return card ? { ...card, cardSuggestionAnswer: "declined" } : card;
 }
 
 // The groups a shared expense can go to; with one group the switch picks it.

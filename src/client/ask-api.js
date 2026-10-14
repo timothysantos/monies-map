@@ -48,6 +48,7 @@
 // comes back as { ok: false, reason } and the card stays manual.
 
 import { createEntryFromDraft } from "./entry-create-request";
+import { readCardSuggestionResponse } from "./ask-card-suggestion";
 import { readSplitSuggestionResponse } from "./ask-split-suggestion";
 import { readTransferMatchResponse } from "./ask-transfer-match";
 
@@ -57,6 +58,7 @@ export const ASK_ENDPOINTS = Object.freeze({
   answer: "/api/ai-assist/answer",
   insightExplain: "/api/ai-assist/insight-explain",
   splitSuggestion: "/api/splits/suggestion",
+  cardSuggestion: "/api/entries/card-suggestion",
   transferCandidates: "/api/transfers/draft-candidates",
   transferLink: "/api/transfers/link",
   planDraft: "/api/ai-assist/plan-draft",
@@ -227,6 +229,22 @@ export async function requestSplitSuggestion(body, { signal = undefined, fetchIm
   }
 }
 
+// The card suggestion for a card (ask-card-suggestion.js builds the body).
+// Fails soft: any error, refusal or unreadable answer is no suggestion.
+export async function requestCardSuggestion(body, { signal = undefined, fetchImpl = fetch } = {}) {
+  try {
+    const response = await fetchImpl(ASK_ENDPOINTS.cardSuggestion, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal
+    });
+    return response.ok ? readCardSuggestionResponse(await readJson(response)) : null;
+  } catch {
+    return null;
+  }
+}
+
 // The other-side candidates for a draft transfer (ask-transfer-match.js
 // builds the query): the Entries transfer dialog's own search, read only.
 // Fails soft: any error or unreadable answer is no candidates (null).
@@ -282,6 +300,11 @@ export async function undoSavedEntry({ entryId, splitExpenseId }, { fetchImpl = 
     }
   }
   return postJson("/api/entries/delete", { entryId }, "The entry could not be removed.", fetchImpl);
+}
+
+// Only the card changes (the person's "Yes" to the card suggestion).
+export function updateSavedEntryCard({ entryId, accountId }, { fetchImpl = fetch } = {}) {
+  return postJson("/api/entries/update-account", { entryId, accountId }, "The card could not be changed.", fetchImpl);
 }
 
 export function updateSavedEntryCategory({ entryId, categoryName }, { fetchImpl = fetch } = {}) {

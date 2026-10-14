@@ -16,9 +16,11 @@ import {
   resolveSkewCandidate,
   saveCardEntry,
   undoSavedEntry,
+  updateSavedEntryCard,
   updateSavedEntryCategory
 } from "./ask-api";
 import {
+  acceptCardSuggestion,
   acceptSplitSuggestion,
   answerCardQuestion,
   applyEntryDraft,
@@ -27,6 +29,7 @@ import {
   cardFromSavedEntry,
   chooseTransferMatch,
   createAskCard,
+  declineCardSuggestion,
   declineSplitSuggestion,
   markCardSaved,
   markCardSaveFailed,
@@ -72,6 +75,7 @@ import { EmptyState } from "./ui-states";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { useAskCardSuggestion } from "./use-ask-card-suggestion";
 import { useAskSplitSuggestion } from "./use-ask-split-suggestion";
 import { useAskHabits } from "./use-ask-habits";
 import { rememberAlias } from "./ask-habits-api";
@@ -305,6 +309,10 @@ function AskConversation({
   // "You usually split this with …": from the household's own split
   // history, read-only (DOMAIN.md "Split Suggestion").
   const historySplitSuggestion = useAskSplitSuggestion({ card, context, splitGroups });
+  // "Past Grab entries were on Citi Rewards. Was this on that card too?":
+  // the card the household usually pays this shop with, read-only (DOMAIN.md
+  // "Card Suggestion"). It only asks; the card changes on the person's Yes.
+  const cardSuggestion = useAskCardSuggestion({ card, context });
   // Ask's habits for the saved card: the one quiet suggestion row, and what
   // Ask did by itself with its Undo (docs/flows/ask-flow.md "Hands-off").
   const habits = useAskHabits({
@@ -1484,6 +1492,32 @@ function AskConversation({
     }
   }
 
+  // "Yes, <card>" on the Apple Pay card: only the entry's card changes.
+  async function changeSavedCard(suggestion) {
+    if (!card?.saved || working || !suggestion?.accountId) {
+      return false;
+    }
+    setWorking("card");
+    try {
+      const result = await updateSavedEntryCard({ entryId: card.saved.entryId, accountId: suggestion.accountId });
+      if (!result.ok) {
+        appendThread(threadItem("note", { text: result.error }));
+        return false;
+      }
+      setCard((current) => ({
+        ...current,
+        cardSuggestionAnswer: "accepted",
+        fields: { ...current.fields, accountId: suggestion.accountId, accountName: suggestion.accountName }
+      }));
+      onEntryMutation?.({ month: card.fields.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+      appendThread(threadItem("note", { text: askCopy.notes.cardChanged(suggestion.accountName) }));
+      void runBackgroundRefresh(entriesPage.refresh);
+      return true;
+    } finally {
+      setWorking("");
+    }
+  }
+
   async function shareSavedEntry(splitGroupId, splitBasisPoints = undefined) {
     if (!card?.saved || working) {
       return false;
@@ -1675,6 +1709,17 @@ function AskConversation({
       setCard((current) => acceptSplitSuggestion(current, splitSuggestion));
     },
     declineSplitSuggestion: () => setCard((current) => declineSplitSuggestion(current)),
+    // The card suggestion: on a draft "Yes" picks the card (saved with the
+    // card); on the Apple Pay card it moves the saved entry.
+    acceptCardSuggestion: () => {
+      if (!cardSuggestion) return;
+      if (card?.status === "saved") {
+        void changeSavedCard(cardSuggestion);
+        return;
+      }
+      setCard((current) => acceptCardSuggestion(current, cardSuggestion, context));
+    },
+    declineCardSuggestion: () => setCard((current) => declineCardSuggestion(current)),
     chooseFilterOption,
     answerPlanQuestion,
     answerTurnQuestion,
@@ -1719,6 +1764,7 @@ function AskConversation({
     canOpenAnswer: active?.kind !== "answer" || isTrackedMonth(active.filter.month),
     moneyLabels: active?.kind === "money-check" ? skewCheckLabels(active.candidate) : null,
     splitSuggestion,
+    cardSuggestion,
     headerBack: showHeaderBack,
     actions
   });

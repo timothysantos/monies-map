@@ -161,11 +161,21 @@ export function retainLatestErrorDiagnostics(keep = 50) {
   );
 }
 
-export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds, defaultParams, foreignCurrencyAccountId = "" }) {
+// One person's Shortcut connection (the first person's when personId is left out).
+export function saveShortcutSettings({ personId, apiKey, defaultAccountPriorityIds, defaultParams, foreignCurrencyAccountId = "" }) {
   return postJson(
     "/api/settings/shortcuts/save",
-    { apiKey, defaultAccountPriorityIds, defaultParams, foreignCurrencyAccountId },
+    { personId, apiKey, defaultAccountPriorityIds, defaultParams, foreignCurrencyAccountId },
     "Failed to save shortcut settings."
+  );
+}
+
+// Stops one person's phone: its key no longer saves entries.
+export function revokeShortcutConnection({ personId }) {
+  return postJson(
+    "/api/settings/shortcuts/revoke",
+    { personId },
+    "Failed to stop the shortcut key."
   );
 }
 

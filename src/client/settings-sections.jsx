@@ -85,6 +85,10 @@ export function SettingsShortcutApiSection({
   isOpen,
   isSubmitting,
   shortcutSettings,
+  connections = [],
+  selectedConnection = null,
+  onPersonChange,
+  onRevoke,
   status,
   summary,
   onApiKeyChange,
@@ -99,7 +103,12 @@ export function SettingsShortcutApiSection({
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isPriorityOpen, setIsPriorityOpen] = useState(false);
+  const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   useRouteWorkBusy(isInstalling);
+  // With two or more people each phone has its own connection; the row and
+  // the person's name on the buttons only appear then.
+  const hasSeveralPhones = connections.length > 1;
+  const phoneName = selectedConnection?.personName ?? "";
   const accountsById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
   const orderedAccounts = draft.defaultAccountPriorityIds
     .map((accountId) => accountsById.get(accountId))
@@ -159,6 +168,21 @@ export function SettingsShortcutApiSection({
         )}
       />
       <DetailRows>
+        {hasSeveralPhones ? (
+          <DetailRow label={settingsMessages.shortcutPhoneRowLabel} value={phoneName}>
+            <select
+              className="lsd-row-native"
+              aria-label={settingsMessages.shortcutPhoneSelectLabel}
+              value={selectedConnection?.personId ?? ""}
+              disabled={isSubmitting}
+              onChange={(event) => onPersonChange(event.target.value)}
+            >
+              {connections.map((connection) => (
+                <option key={connection.personId} value={connection.personId}>{connection.personName}</option>
+              ))}
+            </select>
+          </DetailRow>
+        ) : null}
         <DetailRow
           label={settingsMessages.shortcutDefaultAccountLabel}
           value={orderedAccounts[0]?.name}
@@ -300,6 +324,11 @@ export function SettingsShortcutApiSection({
               <button type="button" className="subtle-action" onClick={onGenerateApiKey} disabled={isSubmitting}>
                 {settingsMessages.shortcutGenerateApiKey}
               </button>
+              {hasSeveralPhones ? (
+                <button type="button" className="subtle-action" onClick={() => setIsRevokeOpen(true)} disabled={isSubmitting || !isSetUp}>
+                  {settingsMessages.shortcutRevoke}
+                </button>
+              ) : null}
               <button type="button" className="subtle-action" onClick={onSave} disabled={isSubmitting || !draft.apiKey.trim() || orderedAccounts.length === 0}>
                 {isSubmitting ? messages.common.saving : settingsMessages.shortcutSave}
               </button>
@@ -307,6 +336,9 @@ export function SettingsShortcutApiSection({
           </div>
         </MoreDetails>
       </DetailRows>
+      {hasSeveralPhones
+        ? <p className="settings-hint">{settingsMessages.shortcutPhoneHint(phoneName)}</p>
+        : null}
       {isPriorityOpen ? null : <p className="settings-hint">{settingsMessages.shortcutFallbackHint}</p>}
       <button
         type="button"
@@ -315,8 +347,37 @@ export function SettingsShortcutApiSection({
         onClick={() => void handleInstallShortcut()}
       >
         <ExternalLink size={16} aria-hidden="true" />
-        {isInstalling ? settingsMessages.shortcutInstalling : settingsMessages.shortcutInstall}
+        {isInstalling
+          ? settingsMessages.shortcutInstalling
+          : hasSeveralPhones ? settingsMessages.shortcutInstallFor(phoneName) : settingsMessages.shortcutInstall}
       </button>
+      {isRevokeOpen ? (
+        <SheetDialog
+          tone="danger"
+          className="settings-account-dialog"
+          title={settingsMessages.shortcutRevokeTitle(phoneName)}
+          description={settingsMessages.shortcutRevokeDetail(phoneName)}
+          descriptionHidden
+          closeLabel={settingsMessages.shortcutRevokeTitle(phoneName)}
+          lead={(
+            <ConfirmLead icon={Smartphone} title={settingsMessages.shortcutRevokeTitle(phoneName)}>
+              <p className="lsd-note">{settingsMessages.shortcutRevokeDetail(phoneName)}</p>
+            </ConfirmLead>
+          )}
+          primaryLabel={isSubmitting ? messages.common.working : settingsMessages.shortcutRevokeConfirm}
+          primaryDisabled={isSubmitting}
+          isSubmitting={isSubmitting}
+          onSubmit={async () => {
+            try {
+              await onRevoke();
+              setIsRevokeOpen(false);
+            } catch {
+              // The section shows the error; the dialog stays for another try.
+            }
+          }}
+          onClose={() => setIsRevokeOpen(false)}
+        />
+      ) : null}
     </SettingsSection>
   );
 }

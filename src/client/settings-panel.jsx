@@ -33,6 +33,7 @@ import {
   runDemoAction,
   saveCategoryMatchRule,
   savePaymentWay,
+  revokeShortcutConnection,
   saveShortcutSettings,
   saveSettingsCategory,
   updateSettingsPerson
@@ -219,7 +220,13 @@ export function SettingsPanel({
     [checkpointHistoryYear, reconciliationDialog?.history]
   );
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
-  const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
+  // Whose phone the Apple Pay section is about; "" is the first person's.
+  const [shortcutPersonId, setShortcutPersonId] = useState("");
+  const shortcutConnections = safeSettingsPage.shortcutSettings.connections ?? [];
+  const selectedShortcutConnection = shortcutConnections.find((connection) => connection.personId === shortcutPersonId)
+    ?? shortcutConnections[0]
+    ?? safeSettingsPage.shortcutSettings;
+  const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(selectedShortcutConnection, accounts));
   const [shortcutSettingsError, setShortcutSettingsError] = useState("");
   const [shortcutSettingsStatus, setShortcutSettingsStatus] = useState("");
   const [paymentWaysDraft, setPaymentWaysDraft] = useState(() => buildPaymentWaysDraft(safeSettingsPage.paymentWays, people));
@@ -245,8 +252,8 @@ export function SettingsPanel({
   });
 
   useEffect(() => {
-    setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
-  }, [safeSettingsPage.shortcutSettings, accounts]);
+    setShortcutSettingsDraft(buildShortcutSettingsDraft(selectedShortcutConnection, accounts));
+  }, [selectedShortcutConnection, accounts]);
 
   useEffect(() => {
     setPaymentWaysDraft(buildPaymentWaysDraft(safeSettingsPage.paymentWays, people));
@@ -1131,7 +1138,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await copyShortcutConnection(connectionUrl.toString());
-      await saveShortcutSettings(nextDraft);
+      await saveShortcutSettings({ ...nextDraft, personId: selectedShortcutConnection?.personId });
       setShortcutSettingsStatus(settingsMessages.shortcutConnectionCopied);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
@@ -1168,7 +1175,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     setShortcutSettingsStatus(settingsMessages.shortcutPrioritySaving);
     try {
-      await saveShortcutSettings(nextDraft);
+      await saveShortcutSettings({ ...nextDraft, personId: selectedShortcutConnection?.personId });
       setShortcutSettingsStatus(settingsMessages.shortcutPrioritySaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
@@ -1191,7 +1198,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     setShortcutSettingsStatus(settingsMessages.shortcutPrioritySaving);
     try {
-      await saveShortcutSettings(nextDraft);
+      await saveShortcutSettings({ ...nextDraft, personId: selectedShortcutConnection?.personId });
       setShortcutSettingsStatus(settingsMessages.shortcutForeignCurrencySaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
@@ -1227,11 +1234,33 @@ export function SettingsPanel({
     }
   }
 
+  function handleShortcutPersonChange(personId) {
+    setShortcutPersonId(personId);
+    setShortcutSettingsError("");
+    setShortcutSettingsStatus("");
+  }
+
+  async function handleRevokeShortcutConnection() {
+    setIsSubmitting(true);
+    setShortcutSettingsError("");
+    try {
+      await revokeShortcutConnection({ personId: selectedShortcutConnection?.personId });
+      setShortcutSettingsStatus(settingsMessages.shortcutRevoked(selectedShortcutConnection?.personName));
+      await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
+    } catch (error) {
+      setShortcutSettingsError(error instanceof Error ? error.message : "Failed to stop the shortcut key.");
+      setShortcutSettingsStatus("");
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSaveShortcutSettings() {
     setIsSubmitting(true);
     setShortcutSettingsError("");
     try {
-      await saveShortcutSettings(shortcutSettingsDraft);
+      await saveShortcutSettings({ ...shortcutSettingsDraft, personId: selectedShortcutConnection?.personId });
       setShortcutSettingsStatus(settingsMessages.shortcutSettingsSaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
@@ -1246,7 +1275,9 @@ export function SettingsPanel({
   const summaries = buildSettingsSummaries({
     people,
     accounts: visibleAccounts,
-    shortcutIsSetUp: Boolean(shortcutSettingsDraft.apiKey?.trim()),
+    shortcutIsSetUp: shortcutConnections.length
+      ? shortcutConnections.some((connection) => connection.apiKey?.trim())
+      : Boolean(shortcutSettingsDraft.apiKey?.trim()),
     claudeStatus: claudeCredit.status,
     categories: visibleCategories,
     exceptions: safeSettingsPage.reconciliationExceptions ?? [],
@@ -1337,7 +1368,11 @@ export function SettingsPanel({
         isOpen={settingsSectionsOpen.shortcutApi}
         isSubmitting={isSubmitting}
         shortcutSettings={safeSettingsPage.shortcutSettings}
+        connections={shortcutConnections}
+        selectedConnection={selectedShortcutConnection}
         status={shortcutSettingsStatus}
+        onPersonChange={handleShortcutPersonChange}
+        onRevoke={handleRevokeShortcutConnection}
         onApiKeyChange={(apiKey) => {
           setShortcutSettingsDraft((current) => ({ ...current, apiKey }));
           setShortcutSettingsStatus("");

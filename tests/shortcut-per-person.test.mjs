@@ -182,7 +182,7 @@ test("a missing, wrong or blank key is refused and nothing is saved", async (t) 
 });
 
 test("a Worker secret still answers for the first person only until that person's key is revoked", async (t) => {
-  const { db, api } = await openSeededDatabase(t, template);
+  const { db } = await openSeededDatabase(t, template);
   const ids = await accountIds(db);
   const env = { DB: db, ...template.config.vars, SHORTCUT_INGEST_TOKEN: "env-secret" };
   const post = async (key) => {
