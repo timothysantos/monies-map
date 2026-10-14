@@ -24,6 +24,7 @@ import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
 import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
+import { interpretShareNumber, readShareMentions, readSharesByRules } from "./ask-turn-shares";
 import {
   describePhase2Actions,
   validateBlocked,
@@ -148,6 +149,7 @@ export const ASK_TURN_SCHEMA = {
       group: nullableString,
       shares: {
         type: "array",
+        description: "Only the people whose share the message states; one is enough, the other person has the rest.",
         items: {
           type: "object",
           properties: { person: { type: "string" }, percent: { type: ["number", "null"] }, amount: nullableAmount, all: { type: ["boolean", "null"] } },
@@ -345,6 +347,8 @@ export interface AskSplitProposal {
   // The first person's share, as POST /api/splits/expenses/from-entry takes it.
   splitBasisPoints: number;
   splitAmountMinor?: number;
+  // Set when a bare number was read as dollars: the message that reads it as a percentage instead.
+  percentGuess?: { retryText: string };
   shares: Array<{ personName: string; basisPoints: number; amountMinor: number }>;
 }
 
@@ -467,7 +471,7 @@ export function buildAskTurnPrompt(context: AskTurnContext) {
     "Actions:",
     "- draft_entry: record a new expense, income or transfer (entry). transfer: money moved between two of their wallets (to_wallet).",
     "- edit_draft: change the entry card being filled (in focus: a draft); set only the entry fields that change.",
-    "- add_entry_to_splits: put the saved entry in focus on Splits. split.payer: who paid. split.shares: each person's share as percent, amount, or all=true for the whole amount (\"all Joyce\" means Joyce's share is 100%).",
+    "- add_entry_to_splits: put the saved entry in focus on Splits. split.payer: who paid. split.shares: list ONLY the person or people whose share the message states, as percent, amount (exactly as written, e.g. \"1.6\" for \"Joyce's share 1.6\"), or all=true for the whole amount (\"all Joyce\" means Joyce's share is 100%). One stated share is enough: the app gives the other person the rest, so never list the other person or work out their share. Leave shares empty for an even split.",
     "- draft_split_expense: a new expense shared on Splits: entry plus split.",
     "- draft_settlement: one person paid another back (settle up): settlement.",
     "- plan_change: change a month's plan: plan.ops (set, change, move or add a line; amounts as written) and plan.month.",
@@ -882,20 +886,54 @@ function validateDraftPatch(action: AskTurnAction, context: AskTurnContext, grou
 // ---- Splits ---------------------------------------------------------------
 
 type ShareResult =
-  | { kind: "ok"; firstBasisPoints: number; firstAmountMinor?: number }
+  | { kind: "ok"; firstBasisPoints: number; firstAmountMinor?: number; percentGuess?: { retryText: string } }
   | { kind: "reply"; reply: AskTurnReply };
+
+const plainMoney = (minor: number, currency: string) => `${currency.toUpperCase() === "SGD" ? "$" : `${currency.toUpperCase()} `}${(minor / 100).toFixed(2)}`;
+
+// One stated share, as the model gave it: a percent, an amount or "all".
+function shareValue(item: Record<string, unknown>) {
+  if (item.all === true) return true;
+  if (typeof item.percent === "number") return true;
+  return item.amount !== null && item.amount !== undefined && item.amount !== "";
+}
 
 // Each person's share as percent, amount or "all", read into the first
 // person's basis points. Two people only (Splits splits between the
-// household's two). One share given: the other person has the rest. Both
-// given: they must add up to the whole. None: an even split.
-export function resolveShares(value: unknown, context: AskTurnContext, totalMinor: number | null, ground: Ground): ShareResult {
+// household's two). One share given is enough: the other person has the
+// rest, and a person listed with nothing in them is not a second share.
+// Both given: they must add up to the whole. None: an even split. A number
+// is read by what the person wrote beside it ($ or dollars, % or percent)
+// and, bare, by the entry's total (above it a percentage, else dollars),
+// whichever field the model put it in (ask-turn-shares.ts).
+export function resolveShares(value: unknown, context: AskTurnContext, totalMinor: number | null, ground: Ground, currency = "SGD"): ShareResult {
   const people = context.people.slice(0, 2);
   if (people.length < 2) return { kind: "reply", reply: { kind: "note", text: COPY.needsTwoPeople } };
-  const items = Array.isArray(value) ? value.filter(isRecord) : [];
+  const listed = Array.isArray(value) ? value.filter(isRecord) : [];
+  let items = listed.filter(shareValue);
+  if (!items.length) {
+    // Nothing usable from the model: the person's own words may still name a share.
+    const reading = readSharesByRules(context.text, people, context.viewId);
+    if (reading?.shares.length) items = reading.shares.map((share) => ({ ...share })).filter(shareValue);
+    else if (listed.length && !reading) return { kind: "reply", reply: sharesQuestion(people) };
+  }
   if (!items.length) return { kind: "ok", firstBasisPoints: 5000 };
   if (items.length > 2) return { kind: "reply", reply: sharesQuestion(people) };
+  const texts = [context.text, ground.userText];
+  const numberOf = (item: Record<string, unknown>) => {
+    if (item.all === true) return null;
+    const raw = typeof item.percent === "number" ? item.percent : typeof item.amount === "number" ? item.amount : typeof item.amount === "string" ? Number(item.amount.replace(/[$,\s]/g, "")) : NaN;
+    return Number.isFinite(raw) ? raw : null;
+  };
+  const inText = (item: Record<string, unknown>) => {
+    const number = numberOf(item);
+    return number === null || texts.some((text) => readShareMentions(text).some((mention) => Math.abs(mention.value - number) < 1e-9));
+  };
+  // The model worked out the second share itself (a figure the person never
+  // wrote): the one they wrote stands, the other is the remainder.
+  if (items.length === 2 && inText(items[0]) !== inText(items[1])) items = [items.find(inText) as Record<string, unknown>];
   const read: Array<{ person: AskTurnPerson; basisPoints: number; amountMinor?: number }> = [];
+  let guess: { retryText: string } | undefined;
   for (const item of items) {
     const person = findPerson(item.person, context);
     if (!person || person === "unknown" || !people.some((candidate) => candidate.id === person.id)) {
@@ -904,18 +942,26 @@ export function resolveShares(value: unknown, context: AskTurnContext, totalMino
     if (read.some((entry) => entry.person.id === person.id)) return { kind: "reply", reply: sharesQuestion(people) };
     if (item.all === true) {
       read.push({ person, basisPoints: 10_000 });
-    } else if (typeof item.percent === "number") {
-      if (!(item.percent >= 0 && item.percent <= 100)) return { kind: "reply", reply: sharesQuestion(people) };
-      read.push({ person, basisPoints: Math.round(item.percent * 100) });
-    } else if (item.amount !== null && item.amount !== undefined) {
-      const amount = groundedAmount(item.amount, ground);
-      if (!amount.given || amount.minor === null) return { kind: "reply", reply: { kind: "clarify", question: COPY.amountQuestion, options: [] } };
-      if (!totalMinor) return { kind: "reply", reply: { kind: "clarify", question: COPY.totalFirst, options: [] } };
-      if (amount.minor > totalMinor) return { kind: "reply", reply: sharesQuestion(people) };
-      read.push({ person, basisPoints: Math.round((amount.minor / totalMinor) * 10_000), amountMinor: amount.minor });
-    } else {
-      return { kind: "reply", reply: sharesQuestion(people) };
+      continue;
     }
+    const number = numberOf(item);
+    if (number === null) return { kind: "reply", reply: { kind: "clarify", question: COPY.amountQuestion, options: [] } };
+    if (number < 0) return { kind: "reply", reply: refusal(COPY.shareNegative(person.name)) };
+    const meant = interpretShareNumber(number, texts, totalMinor);
+    const unit = meant?.unit ?? (typeof item.percent === "number" ? "percent" : "amount");
+    if (unit === "percent") {
+      if (number > 100) return { kind: "reply", reply: refusal(COPY.shareOverPercent(person.name)) };
+      read.push({ person, basisPoints: Math.round(number * 100) });
+      continue;
+    }
+    if (number === 0) return { kind: "reply", reply: refusal(COPY.shareZero(person.name, people.find((other) => other.id !== person.id)?.name ?? "")) };
+    if (!totalMinor) return { kind: "reply", reply: { kind: "clarify", question: COPY.totalFirst, options: [] } };
+    const minor = readAmountMinor(number);
+    // A dollar figure is the person's: written in the message, or refused.
+    if (minor === null || (!meant && !ground.amounts.has(minor))) return { kind: "reply", reply: { kind: "clarify", question: COPY.amountQuestion, options: [] } };
+    if (minor > totalMinor) return { kind: "reply", reply: refusal(COPY.shareOverTotal(person.name, plainMoney(totalMinor, currency))) };
+    read.push({ person, basisPoints: Math.round((minor / totalMinor) * 10_000), amountMinor: minor });
+    if (meant?.guessed && items.length === 1) guess = { retryText: COPY.sharePercentRetry(person.name, String(number)) };
   }
   const [first, second] = people;
   if (read.length === 2) {
@@ -926,13 +972,19 @@ export function resolveShares(value: unknown, context: AskTurnContext, totalMino
   }
   const own = read.find((entry) => entry.person.id === first.id);
   const other = read.find((entry) => entry.person.id === second.id);
+  const withGuess = <T extends object>(result: T) => (guess ? { ...result, percentGuess: guess } : result);
   if (own) {
-    return own.amountMinor !== undefined ? { kind: "ok", firstBasisPoints: own.basisPoints, firstAmountMinor: own.amountMinor } : { kind: "ok", firstBasisPoints: own.basisPoints };
+    return withGuess(own.amountMinor !== undefined ? { kind: "ok" as const, firstBasisPoints: own.basisPoints, firstAmountMinor: own.amountMinor } : { kind: "ok" as const, firstBasisPoints: own.basisPoints });
   }
   const otherShare = other as { basisPoints: number; amountMinor?: number };
-  return otherShare.amountMinor !== undefined && totalMinor
-    ? { kind: "ok", firstBasisPoints: 10_000 - otherShare.basisPoints, firstAmountMinor: totalMinor - otherShare.amountMinor }
-    : { kind: "ok", firstBasisPoints: 10_000 - otherShare.basisPoints };
+  return withGuess(otherShare.amountMinor !== undefined && totalMinor
+    ? { kind: "ok" as const, firstBasisPoints: 10_000 - otherShare.basisPoints, firstAmountMinor: totalMinor - otherShare.amountMinor }
+    : { kind: "ok" as const, firstBasisPoints: 10_000 - otherShare.basisPoints });
+}
+
+// A share that cannot be right: said in plain words, no chips.
+function refusal(question: string): AskTurnReply {
+  return { kind: "clarify", question, options: [] };
 }
 
 // "Add to splits, all Joyce" on the saved entry in focus: the entry's own
@@ -957,7 +1009,7 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
     return { kind: "clarify", question: COPY.payerIsWalletOwner(scrubName(entry.accountName), payer.name), options: [COPY.chips.addWithPayer(payer.name), COPY.chips.notNow] };
   }
   const total = Math.abs(entry.amountMinor);
-  const shares = resolveShares(split.shares, context, total, ground);
+  const shares = resolveShares(split.shares, context, total, ground, entry.currency);
   if (shares.kind !== "ok") return shares.reply;
   const group = findGroup(split.group, context);
   if (group === "unknown") return groupQuestion(context);
@@ -980,6 +1032,7 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
       groupName: group?.name ?? "",
       splitBasisPoints: firstBasisPoints,
       ...(shares.firstAmountMinor !== undefined ? { splitAmountMinor: shares.firstAmountMinor } : {}),
+      ...(shares.percentGuess ? { percentGuess: shares.percentGuess } : {}),
       shares: [
         { personName: first.name, basisPoints: firstBasisPoints, amountMinor: firstAmount },
         { personName: second.name, basisPoints: 10_000 - firstBasisPoints, amountMinor: total - firstAmount }
@@ -1226,6 +1279,11 @@ export const COPY = {
   walletQuestion: "Which wallet was it?",
   groupQuestion: "Which split group should it go in?",
   sharesQuestion: "How should it be split? The two shares need to add up to the whole amount.",
+  shareNegative: (name: string) => `${name}'s share can't be negative.`,
+  shareOverPercent: (name: string) => `${name}'s share can't be more than 100%.`,
+  shareOverTotal: (name: string, total: string) => `${name}'s share can't be more than ${total}.`,
+  shareZero: (name: string, other: string) => `${name}'s share has to be more than $0. For none of it, say all ${other}'s.`,
+  sharePercentRetry: (name: string, figure: string) => `Add to splits, ${name}'s share is ${figure}%`,
   categoryQuestion: (name: string) => `There's no category called "${scrubName(name)}". Which one do you mean?`,
   whatToChange: "What should change on the card?",
   planQuestion: "Which plan line, how much, and for which month?",

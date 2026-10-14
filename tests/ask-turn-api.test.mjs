@@ -122,6 +122,20 @@ test("the focus is the saved entry, else the card being filled, else the split g
   assert.equal(buildTurnFocus({}), null);
 });
 
+test("a rules answer that carries a checked split draft keeps it, with the percentage guess; a broken one is dropped", () => {
+  const proposal = {
+    entryId: "txn-1", description: "Tori-Q", date: "2026-10-12", amountMinor: 790, currency: "SGD", payerName: "Tim", groupId: null, groupName: "", splitBasisPoints: 7_975,
+    percentGuess: { retryText: "Joyce's share is 1.6%" },
+    shares: [{ personName: "Tim", basisPoints: 7_975, amountMinor: 630 }, { personName: "Joyce", basisPoints: 2_025, amountMinor: 160 }]
+  };
+  const kept = readAskTurnResponse({ ok: true, mode: "rules", reason: "AI assistance is turned off.", action: "add_entry_to_splits", reply: { kind: "split_proposal", proposal } });
+  assert.deepEqual(kept, { ok: true, mode: "rules", reason: "AI assistance is turned off.", reply: { kind: "split_proposal", proposal } });
+  const clarify = readAskTurnResponse({ ok: true, mode: "rules", reason: "x", reply: { kind: "clarify", question: "Joyce's share can't be more than $7.90.", options: [] } });
+  assert.equal(clarify.reply.kind, "clarify");
+  const broken = readAskTurnResponse({ ok: true, mode: "rules", reason: "x", reply: { kind: "split_proposal", proposal: { entryId: "txn-1", shares: [] } } });
+  assert.deepEqual(broken, { ok: true, mode: "rules", reason: "x" });
+});
+
 test("a reply is kept only in a shape the page can show", () => {
   assert.deepEqual(readAskTurnResponse({ ok: true, mode: "rules", reason: "AI assistance is turned off." }), { ok: true, mode: "rules", reason: "AI assistance is turned off." });
   // The demo's used-up allowance keeps its notice, so the page shows the

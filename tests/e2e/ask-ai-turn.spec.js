@@ -82,6 +82,61 @@ test.describe("Ask, AI first", () => {
     await page.screenshot({ path: "test-results/ask-ai-turn-split-proposal.png", fullPage: false });
   });
 
+  test("\"Add to splits, Joyce's share 1.6\" on a $7.90 entry: one stated share is enough, both shares shown, nothing saved, and \"Is that a percentage instead?\" re-reads it as 1.6%", async ({ page }) => {
+    const description = `TORI-Q ${Date.now()}`;
+    const created = await postJson(page, "/api/entries/create", {
+      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 790, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+    });
+    const seen = await stubModel(page, [
+      // The shape that failed in production: Tim listed with nothing in him.
+      { action: "add_entry_to_splits", split: { payer: null, group: null, shares: [{ person: "Joyce", percent: null, amount: "1.6", all: null }, { person: "Tim", percent: null, amount: null, all: null }] } },
+      { action: "add_entry_to_splits", split: { payer: null, group: null, shares: [{ person: "Joyce", percent: 1.6, amount: null, all: null }] } }
+    ]);
+    await page.goto(`/ask?saved_entry=${created.entryId}&month=${MONTH}&view=person-tim&from=shortcut`);
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible({ timeout: 60_000 });
+    await send(page, "Add to splits, Joyce's share 1.6");
+
+    const proposal = page.locator('[data-split-proposal="draft"]');
+    await expect(proposal).toBeVisible();
+    await expect(page.locator(".ask-question, .ask-note").filter({ hasText: "need to add up" })).toHaveCount(0);
+    await expect(proposal.locator('[data-split-share="Joyce"]')).toContainText("$1.60");
+    await expect(proposal.locator('[data-split-share="Joyce"]')).toContainText("20%");
+    await expect(proposal.locator('[data-split-share="Tim"]')).toContainText("$6.30");
+    await expect(proposal.locator('[data-split-share="Tim"]')).toContainText("80%");
+    let splits = await loadSplitsPage(page, { view: "person-joyce", month: MONTH });
+    expect(splits.splitsPage.activity.some((item) => item.description === description)).toBe(false);
+    await page.screenshot({ path: "test-results/ask-ai-turn-split-share-guess.png", fullPage: false });
+
+    await proposal.locator("[data-split-percent-instead]").click();
+    await expect.poll(() => seen.length).toBe(2);
+    expect(seen[1].text).toBe("Add to splits, Joyce's share is 1.6%");
+    const reread = page.locator('[data-split-proposal="draft"]');
+    await expect(reread).toHaveCount(1);
+    await expect(reread.locator('[data-split-share="Joyce"]')).toContainText("$0.13");
+    await expect(reread.locator('[data-split-share="Joyce"]')).toContainText("2%");
+    await expect(reread.locator("[data-split-percent-instead]")).toHaveCount(0);
+    splits = await loadSplitsPage(page, { view: "person-joyce", month: MONTH });
+    expect(splits.splitsPage.activity.some((item) => item.description === description)).toBe(false);
+
+    // Save: Joyce owes the $0.13 share the person chose.
+    await reread.getByRole("button", { name: "Add to Splits" }).click();
+    await expect(page.locator('[data-split-proposal="saved"]')).toBeVisible();
+  });
+
+  test("with AI off, \"Joyce's share 1.6\" on the saved entry still drafts the split (the rules read the share)", async ({ page }) => {
+    const description = `TORI-Q OFF ${Date.now()}`;
+    const created = await postJson(page, "/api/entries/create", {
+      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 790, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+    });
+    await page.goto(`/ask?saved_entry=${created.entryId}&month=${MONTH}&view=person-tim&from=shortcut`);
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible({ timeout: 60_000 });
+    await send(page, "Add to splits, Joyce's share 1.6");
+    await expect(page.locator(".ask-note").filter({ hasText: "AI isn't available right now" })).toHaveCount(1);
+    const proposal = page.locator('[data-split-proposal="draft"]');
+    await expect(proposal.locator('[data-split-share="Joyce"]')).toContainText("$1.60");
+    await expect(proposal.locator('[data-split-share="Tim"]')).toContainText("$6.30");
+  });
+
   test("an unclear message is asked back with chips; a chip is sent as the next message", async ({ page }) => {
     const seen = await stubModel(page, [
       { action: "ask_clarification", clarify: { question: "Which lunch do you mean?", options: ["Today's lunch", "Yesterday's lunch"] } },

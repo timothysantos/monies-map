@@ -275,7 +275,7 @@ test("the test reply header stands in for the model only in the test environment
   const testEnv = await turn(db, { text: "Add to splits, all Joyce", focus: { kind: "saved_entry", entryId } }, { headers: header });
   assert.equal(testEnv.payload.reply.kind, "split_proposal");
   assert.equal(await usedUnits(db), 0);
-  const production = await turn(db, { text: "Add to splits, all Joyce", focus: { kind: "saved_entry", entryId } }, { headers: header, vars: { APP_ENVIRONMENT: "production" } });
+  const production = await turn(db, { text: "Add to splits", focus: { kind: "saved_entry", entryId } }, { headers: header, vars: { APP_ENVIRONMENT: "production" } });
   assert.deepEqual(production.payload, { ok: true, mode: "rules", reason: "AI assistance is turned off." });
 });
 
@@ -289,4 +289,79 @@ test("negative requests: no text, too long, too large, wrong method, another sit
   const crossSite = await fetch("/api/ask/turn", { method: "POST", headers: { "content-type": "application/json", "sec-fetch-site": "cross-site" }, body: JSON.stringify({ text: "hi" }) });
   assert.equal(crossSite.status, 403);
   assert.deepEqual(await rows(db, "SELECT * FROM ai_assist_daily_usage"), []);
+});
+
+// --- One stated share is enough (the owner's iPhone report) -------------------
+
+async function toriEntry(api) {
+  return createEntry(api, { date: TODAY, description: "Tori-Q", accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 790 });
+}
+
+const figures = (reply) => reply.proposal.shares.map((share) => [share.personName, share.amountMinor]);
+
+test("\"Add to splits, Joyce's share 1.6\" on a saved $7.90 entry: the model's two-person list with nothing in Tim still drafts Tim $6.30, Joyce $1.60", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await toriEntry(api);
+  const before = await dumpDatabase(db);
+  const ai = stubAi({ action: "add_entry_to_splits", split: { payer: null, group: null, shares: [{ person: "Joyce", percent: null, amount: "1.6", all: null }, { person: "Tim", percent: null, amount: null, all: null }] } });
+  const { payload } = await turn(db, { text: "Add to splits, Joyce's share 1.6", focus: { kind: "saved_entry", entryId } }, { ai });
+  assert.equal(payload.mode, "ai");
+  assert.equal(payload.reply.kind, "split_proposal");
+  assert.deepEqual(figures(payload.reply), [["Tim", 630], ["Joyce", 160]]);
+  assert.equal(payload.reply.proposal.percentGuess.retryText, "Add to splits, Joyce's share is 1.6%");
+  // The prompt tells the model one share is enough, and carries no amount from the records.
+  assert.match(promptOf(ai), /One stated share is enough/);
+  assert.doesNotMatch(promptOf(ai), /7\.90|790/);
+  assert.equal(await usedUnits(db), 1);
+  assertSameDatabase({ ...(await dumpDatabase(db)), ai_assist_daily_usage: before.ai_assist_daily_usage }, before);
+  // Saving is the existing command with the draft's share.
+  const saved = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: payload.reply.proposal.groupId, splitBasisPoints: payload.reply.proposal.splitBasisPoints });
+  assert.equal(saved.status, 200, JSON.stringify(saved.payload));
+});
+
+// AI off: the rules' own reader gives the same drafts for the same phrasings.
+const OFFLINE = [
+  ["Add to splits, Joyce's share 1.6", [630, 160]],
+  ["Joyce pays 2", [590, 200]],
+  ["Joyce owes me 1.60", [630, 160]],
+  ["Joyce 30%", [553, 237]],
+  ["Tim 70%", [553, 237]],
+  ["all Joyce", [0, 790]],
+  ["Joyce's share is 100", [0, 790]],
+  ["split 50/50", [395, 395]]
+];
+
+for (const [text, [tim, joyce]] of OFFLINE) {
+  test(`AI off, "${text}" on the saved entry: rules draft Tim ${tim}, Joyce ${joyce}; no allowance, nothing written`, async (t) => {
+    const { db, api } = await openSeededDatabase(t, template);
+    const entryId = await toriEntry(api);
+    const before = await dumpDatabase(db);
+    const { payload } = await turn(db, { text, focus: { kind: "saved_entry", entryId } });
+    assert.equal(payload.mode, "rules");
+    assert.equal(payload.reason, "AI assistance is turned off.");
+    assert.equal(payload.action, "add_entry_to_splits");
+    assert.deepEqual(figures(payload.reply), [["Tim", tim], ["Joyce", joyce]]);
+    assertSameDatabase(await dumpDatabase(db), before);
+  });
+}
+
+test("negative: AI off, a share too big, a message with no share, or no saved entry in focus gets no draft", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await toriEntry(api);
+  const focus = { kind: "saved_entry", entryId };
+  const tooMuch = await turn(db, { text: "Joyce pays $10", focus });
+  assert.deepEqual(tooMuch.payload.reply, { kind: "clarify", question: "Joyce's share can't be more than $7.90.", options: [] });
+  assert.deepEqual((await turn(db, { text: "add to splits", focus })).payload, { ok: true, mode: "rules", reason: "AI assistance is turned off." });
+  assert.deepEqual((await turn(db, { text: "lunch 12 on citi", focus })).payload, { ok: true, mode: "rules", reason: "AI assistance is turned off." });
+  assert.deepEqual((await turn(db, { text: "Joyce's share 1.6" })).payload, { ok: true, mode: "rules", reason: "AI assistance is turned off." });
+  assert.deepEqual(await rows(db, "SELECT * FROM ai_assist_daily_usage"), []);
+});
+
+test("a provider that answers nothing usable falls back to the rules' reading of the share", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await toriEntry(api);
+  const { payload } = await turn(db, { text: "Joyce 30%", focus: { kind: "saved_entry", entryId } }, { ai: stubAi("not json at all") });
+  assert.equal(payload.mode, "rules");
+  assert.equal(payload.reply.kind, "split_proposal");
+  assert.deepEqual(figures(payload.reply), [["Tim", 553], ["Joyce", 237]]);
 });

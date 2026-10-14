@@ -615,6 +615,12 @@ function AskConversation({
       updateConversation((current) => ({ ...current, rulesNoted: true }));
       appendThread(threadItem("note", { text: turn.ok && turn.mode === "rules" && turn.notice === "demo_allowance" ? askCopy.turn.demoAllowanceNote : askCopy.turn.rulesNote, tone: "calm" }));
     }
+    // A share on the saved entry ("Joyce's share 1.6") the server's rules
+    // already read and checked: shown like the model's draft.
+    if (turn.ok && turn.mode === "rules" && turn.reply) {
+      await applyTurnReply(text, turn.reply);
+      return;
+    }
     await readSentenceByRules(text);
   }
 
@@ -761,6 +767,19 @@ function AskConversation({
     }
     updateThreadItem(itemId, { status: "discarded" });
     appendThread(threadItem("note", { text: note }));
+  }
+
+  // "Is that a percentage instead?": the bare number was read as dollars.
+  // The draft is replaced by one for the same message read as a percentage;
+  // nothing is saved either way.
+  function splitAsPercent(itemId) {
+    const item = turnItem(itemId, "split-proposal");
+    const retry = item?.proposal?.percentGuess?.retryText;
+    if (!item || item.status !== "draft" || working || typeof retry !== "string" || !retry) {
+      return;
+    }
+    updateThreadItem(itemId, { status: "discarded" });
+    void readSentence(retry);
   }
 
   // Record payment: the existing settlement command.
@@ -1686,6 +1705,7 @@ function AskConversation({
       busy: Boolean(working),
       onSaveSplit: (itemId) => void saveTurnSplit(itemId),
       onDiscardSplit: (itemId) => discardTurnItem(itemId, "split-proposal", askCopy.turn.split.discarded),
+      onSplitAsPercent: (itemId) => splitAsPercent(itemId),
       onUndoSplit: (itemId) => void undoTurnSplit(itemId),
       onOpenSplit: openTurnSplit,
       onSaveSettlement: (itemId) => void saveTurnSettlement(itemId),
@@ -2229,6 +2249,7 @@ function ThreadItem({ item, settled = false, answerProps }) {
         onSave={() => turn.onSaveSplit(item.id)}
         onDiscard={() => turn.onDiscardSplit(item.id)}
         onUndo={() => turn.onUndoSplit(item.id)}
+        onGuess={() => turn.onSplitAsPercent(item.id)}
         onOpen={() => turn.onOpenSplit(item.id)}
       />
     );

@@ -4,6 +4,9 @@
 //
 // 1. AI off or not configured: { mode: "rules" } at once, before any data
 //    work or allowance use; the page reads the message with its rules.
+//    One exception: a share on the saved entry in focus ("Joyce's share
+//    1.6") is read here by the rules' share reader (ask-turn-shares.ts) and
+//    checked like the model's, so the offline backup still drafts the split.
 // 2. The context is loaded (ask-turn-context.ts): people, wallets,
 //    categories, groups, plan line names and the entry or card in focus,
 //    the entry from the household's own rows by its id.
@@ -35,8 +38,10 @@ import {
   parseAskTurnAction,
   validateAskTurnAction,
   type AskTurnAction,
+  type AskTurnContext,
   type AskTurnMessage
 } from "../domain/ask-turn";
+import { readSharesByRules } from "../domain/ask-turn-shares";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { resolveAskTurnRequest } from "../domain/ask-turn-resolve";
 import { todayInAppTimeZone } from "../lib/app-calendar";
@@ -72,7 +77,10 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   }
   const testReply = env.APP_ENVIRONMENT === "test" ? request.headers.get(TEST_REPLY_HEADER) : null;
   const offReason = getAiProviderUnavailableReason(env);
-  if (offReason && !testReply) {
+  const focusIsSavedEntry = typeof body.focus === "object" && body.focus !== null && (body.focus as { kind?: unknown }).kind === "saved_entry";
+  // A saved entry in focus and a message with a figure, "all" or "split" in
+  // it may be a share the rules can read; anything else answers at once.
+  if (offReason && !testReply && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text))) {
     return json({ ok: true, mode: "rules", reason: offReason });
   }
 
@@ -90,6 +98,9 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
 
   let action: AskTurnAction | null;
   let remaining: number | undefined;
+  if (offReason && !testReply) {
+    return rulesAnswer(context, text, offReason);
+  }
   if (testReply) {
     action = parseTestReply(testReply);
   } else {
@@ -106,10 +117,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     action = result.value ?? null;
     remaining = result.remaining;
     if (!action) {
-      return json({
-        ok: true,
-        mode: "rules",
-        reason: result.reason ?? "AI is temporarily unavailable.",
+      return rulesAnswer(context, text, result.reason ?? "AI is temporarily unavailable.", {
         // The demo's Claude allowance is used up: the page says so plainly.
         ...(result.demoAllowanceUsed ? { notice: "demo_allowance" } : {}),
         ...(remaining !== undefined ? { remaining } : {})
@@ -117,7 +125,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     }
   }
   if (!action) {
-    return json({ ok: true, mode: "rules", reason: AI_UNUSABLE_SUGGESTION_REASON });
+    return rulesAnswer(context, text, AI_UNUSABLE_SUGGESTION_REASON);
   }
 
   let reply = validateAskTurnAction(action, context);
@@ -143,6 +151,21 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     });
   }
   return json({ ...base, reply });
+}
+
+// The offline backup's answer: the page reads the message with its rules,
+// except a share on the saved entry in focus, which the rules' share reader
+// turns into the same action the model would send, checked the same way.
+function rulesAnswer(context: AskTurnContext, text: string, reason: string, extra: Record<string, unknown> = {}) {
+  const reading = context.focus?.kind === "saved_entry" ? readSharesByRules(text, context.people, context.viewId) : null;
+  // A bare "split 50/50" needs the word "split"; a named share stands alone.
+  if (reading && (reading.shares.length || /\bsplits?\b/i.test(text))) {
+    const action = parseAskTurnAction({ action: "add_entry_to_splits", split: { payer: null, group: null, shares: reading.shares } });
+    if (action) {
+      return json({ ok: true, mode: "rules", reason, action: action.action, reply: validateAskTurnAction(action, context), ...extra });
+    }
+  }
+  return json({ ok: true, mode: "rules", reason, ...extra });
 }
 
 // The recent conversation as the page sent it: at most the last few
