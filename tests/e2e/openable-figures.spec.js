@@ -178,7 +178,9 @@ test.describe("desktop", () => {
     await expect(lead.locator(".summary-lead-spent")).toHaveText("••••");
     await lead.locator('[data-legend="spent"] [data-fig]').click();
     await expect(menu(page).getByRole("button")).toHaveText(["View entries", "Open plan", "Ask about this"]);
-    expect(await menu(page).evaluate((element) => element.textContent + element.getAttribute("aria-label"))).not.toMatch(/\$|\d/);
+    // The title keeps the figure's name and period; no amount shows.
+    await expect(menu(page).locator(".figure-menu-title")).toHaveText("Spent · May 2026");
+    expect(await menu(page).evaluate((element) => element.textContent + element.getAttribute("aria-label"))).not.toMatch(/\$|\d+\.\d\d/);
     await expect(menu(page).getByRole("button", { name: "Ask about this" })).toHaveAttribute("data-question", "How did my spending compare with the plan in May 2026?");
   });
 });
@@ -195,6 +197,9 @@ test.describe("phone", () => {
     const lead = await openLead(page, summaryUrl, ".summary-lead");
     await lead.locator('[data-segment="invested"]').tap();
     await expect(menu(page)).toBeVisible();
+    // It leads with what it is: the figure's name and its period.
+    await expect(menu(page).locator(".figure-menu-title")).toHaveText("Invested · Jun 2025 – May 2026");
+    expect(await menu(page).evaluate((element) => element.firstElementChild?.className)).toContain("figure-menu-title");
     const menuBox = await box(menu(page));
     expect(menuBox.x).toBeGreaterThanOrEqual(16);
     expect(menuBox.right).toBeLessThanOrEqual(390 - 16);

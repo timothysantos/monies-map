@@ -1502,7 +1502,14 @@ so the row or card around a figure does not act too) takes a tap, a click,
 Enter or Space on a `[data-fig]`, loads `figure-menu.js` with a dynamic
 import on first use and toggles the menu. The menu is a few DOM nodes the
 module draws itself (no React, so its chunk adds no first-screen file),
-placed under the figure inside the 16 px gutters (above it when there is no
+titled with what it is, first and in bold: a category's colour dot and name
+(a Spending Mix slice or row, a plan row's category, a Top spending chip),
+otherwise the figure's name and period ("Invested · Jun 2025 – May 2026";
+`title` in `figureMenu`, `data-fig-name` for a split balance's group). A long
+name wraps to two lines. Hidden money keeps the title (no amount is in it).
+While a category's menu is open its list row (`data-fig-row`) is marked
+(`is-figure-open`) and scrolled into view, never so far that the slice leaves
+the screen. The menu is placed under the figure inside the 16 px gutters (above it when there is no
 room), each choice a 44 px pill; its first choice takes the focus, Escape
 closes it and gives the figure its focus back, a press outside, Back or a
 resize closes it, and the figure has `aria-expanded` while it is open. A
