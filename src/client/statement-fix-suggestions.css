@@ -71,7 +71,36 @@
 }
 
 .statement-fix-apply {
+  min-height: 44px;
   font-weight: 700;
+}
+
+/* The secondary button next to the primary one (the shared terracotta
+   .dialog-primary): a paper button with a quiet border, same radius. */
+.statement-fix-keep {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.statement-fix-keep:hover {
+  border-color: var(--accent-strong);
+}
+
+.statement-fix-keep:focus-visible {
+  outline: 3px solid rgb(var(--accent-rgb) / 0.28);
+  outline-offset: 3px;
+}
+
+.statement-fix-keep:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .statement-fix-check,
@@ -95,6 +124,18 @@
 }
 
 @media (max-width: 760px) {
+  /* Two clear buttons side by side, or stacked when the labels are long;
+     the standing choice sits under them. */
+  .statement-fix-actions .statement-fix-apply,
+  .statement-fix-actions .statement-fix-keep {
+    flex: 1 1 10rem;
+  }
+
+  .statement-fix-automatic {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
   .statement-fix-rows .import-overlap-entry-row {
     grid-template-columns: minmax(0, 1fr) max-content;
   }

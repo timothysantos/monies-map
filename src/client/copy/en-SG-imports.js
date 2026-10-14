@@ -403,6 +403,9 @@ export const importMessages = {
     ? `${count === 1 ? "It is" : "They are"} on ${fromName} in your ledger, but this statement lists ${count === 1 ? "it" : "them"} under ${toName}. Moving ${count === 1 ? "it" : "them"} takes ${amount} off ${fromName}'s difference${closes ? " and the statement closes" : ""}.`
     : `${count === 1 ? "It is" : "They are"} on ${fromName} in your ledger, but this statement lists ${count === 1 ? "it" : "them"} under ${toName}. Moving ${count === 1 ? "it" : "them"} stops a second copy being added to ${toName}.`,
   statementFixMoveAction: (count, toName) => count === 1 ? `Move it to ${toName}` : `Move ${count} entries to ${toName}`,
+  statementFixMoveConfirmTitle: (count, toName) => `Move ${countOf(count, "entry", "entries")} to ${toName}?`,
+  statementFixMoveConfirmDetail: (count, fromName, toName) => `${count === 1 ? "This entry is" : "These entries are"} on ${fromName} now. Moving ${count === 1 ? "it" : "them"} to ${toName} changes the totals of both cards. Nothing is saved until you commit the import, and Undo on the card takes the move back before then.`,
+  statementFixMoveConfirm: (count) => count === 1 ? "Move entry" : "Move entries",
   statementFixMoveApplied: (count, toName) => `${countOf(count, "entry", "entries")} will move to ${toName} when you commit.`,
   statementFixDestinationNote: (count, fromName) => `${countOf(count, "row")} here ${count === 1 ? "is" : "are"} already in your ledger on ${fromName}. See the suggested move on ${fromName}.`,
   statementFixDeferTitle: (count) => `${countOf(count, "entry", "entries")} ${count === 1 ? "looks" : "look"} like the next statement's`,

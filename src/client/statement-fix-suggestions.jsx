@@ -1,3 +1,4 @@
+import { ImportRollbackConfirm } from "./import-rollback-confirm";
 import { importMessages } from "./copy/en-SG-imports";
 import { settingsMessages } from "./copy/en-SG-settings";
 import { moniesClient } from "./monies-client-service";
@@ -69,6 +70,11 @@ export function StatementFixSuggestions({
           })}
           findings={group}
           actionLabel={importMessages.statementFixMoveAction(group.length, accountName(toAccountId))}
+          confirmMove={(count) => ({
+            title: importMessages.statementFixMoveConfirmTitle(count, accountName(toAccountId)),
+            prompt: importMessages.statementFixMoveConfirmDetail(count, accountName(group[0].entry.accountId), accountName(toAccountId)),
+            confirmLabel: importMessages.statementFixMoveConfirm(count)
+          })}
           isSubmitting={isSubmitting}
           onApply={onApplyStatementFixes}
           onDismiss={onDismissStatementFindings}
@@ -146,7 +152,7 @@ export function StatementFixSuggestions({
 // One action for every strong suggestion in the group; a medium one is
 // approved on its own so the user looks at it first. Also used by the
 // Settings statement comparison for corrections to saved data.
-export function FixGroup({ title, detail, findings, actionLabel, isSubmitting, onApply, onDismiss, isAutomatic = false, onAutomaticChange = undefined }) {
+export function FixGroup({ title, detail, findings, actionLabel, confirmMove = undefined, isSubmitting, onApply, onDismiss, isAutomatic = false, onAutomaticChange = undefined }) {
   const strong = findings.filter((finding) => finding.confidence === "high");
   const toReview = findings.filter((finding) => finding.confidence !== "high");
   return (
@@ -164,19 +170,37 @@ export function FixGroup({ title, detail, findings, actionLabel, isSubmitting, o
         ))}
       </div>
       <div className="statement-fix-actions">
-        {strong.length ? (
-          <button
-            type="button"
-            className="subtle-action statement-fix-apply"
-            disabled={isSubmitting}
-            onClick={() => onApply(strong.map((finding) => finding.fix))}
-          >
-            {strong.length === findings.length ? actionLabel : importMessages.statementFixApplyClear(strong.length)}
-          </button>
-        ) : null}
+        {strong.length ? (() => {
+          const applyLabel = strong.length === findings.length ? actionLabel : importMessages.statementFixApplyClear(strong.length);
+          const applyStrong = () => onApply(strong.map((finding) => finding.fix));
+          if (confirmMove) {
+            const confirm = confirmMove(strong.length);
+            return (
+              <ImportRollbackConfirm
+                bareTrigger
+                buttonClassName="dialog-primary statement-fix-apply"
+                triggerLabel={applyLabel}
+                title={confirm.title}
+                confirmLabel={confirm.confirmLabel}
+                prompt={confirm.prompt}
+                onConfirm={applyStrong}
+              />
+            );
+          }
+          return (
+            <button
+              type="button"
+              className="dialog-primary statement-fix-apply"
+              disabled={isSubmitting}
+              onClick={applyStrong}
+            >
+              {applyLabel}
+            </button>
+          );
+        })() : null}
         <button
           type="button"
-          className="subtle-action"
+          className="statement-fix-keep"
           disabled={isSubmitting}
           onClick={() => onDismiss([...strong, ...toReview].map((finding) => finding.id))}
         >

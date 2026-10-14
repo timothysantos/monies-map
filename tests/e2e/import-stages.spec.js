@@ -6,7 +6,7 @@
 import { expect, test } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 
-import { LADYS_CARD, ONE_CARD, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
+import { LADYS_CARD, ONE_CARD, moveEntriesAndConfirm, setUpWrongCardLedger, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
 // The review must stay short: a resolved card is one line, rows and the
 // breakdown are behind disclosures. Measured 2026-10-01 at 1,959 px
@@ -60,7 +60,7 @@ test("a statement and an activity export dropped together are reviewed in order,
   await expect(stepper.getByRole("button", { name: "Change" })).toBeVisible();
 
   const ladysCard = page.locator(".statement-reconciliation-row").filter({ hasText: `${LADYS_CARD} • May 2026` });
-  await ladysCard.getByRole("button", { name: "Move 2 entries to UOB One Card" }).click();
+  await moveEntriesAndConfirm(page, ladysCard, "Move 2 entries to UOB One Card");
   await expect(page.locator(".statement-review-actions .pill")).toHaveText("Both cards balance");
   await expect(page.locator(".import-commit-bar .import-commit-button")).toHaveText("Commit and open next");
   await page.locator(".import-commit-bar .import-commit-button").click();

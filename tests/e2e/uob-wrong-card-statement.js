@@ -9,6 +9,13 @@ import { postJson, reseedDemo } from "./helpers.js";
 export const ONE_CARD = "UOB One Card";
 export const LADYS_CARD = "UOB Lady's Card";
 
+// Moving entries to another card asks first: select the Move button on the
+// card, then confirm in the dialog.
+export async function moveEntriesAndConfirm(page, card, buttonName, options = {}) {
+  await card.getByRole("button", { name: buttonName }).click(options);
+  await page.getByRole("dialog").getByRole("button", { name: /^Move entr(y|ies)$/ }).click();
+}
+
 export async function writeStatementPdf(page, path) {
   const text = (await readFile(new URL("../fixtures/pdf-statement-text/uob-card-two-card-may-2026-sanitized.pdf-text.txt", import.meta.url), "utf8"))
     .split("__PDF_LAYOUT_TEXT__")[0];
