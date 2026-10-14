@@ -61,6 +61,7 @@ import {
   SettingsTransfersSection,
   SettingsTrustSection
 } from "./settings-sections";
+import { GuardedSettingsSection } from "./settings-section";
 import { DeleteRowButton } from "./delete-row-button";
 import { FALLBACK_THEME } from "./ui-options";
 import { buildSettingsRefreshPlan } from "./settings-refresh-plan";
@@ -1327,199 +1328,229 @@ export function SettingsPanel({
       ) : null}
 
       <div className="settings-list">
-      <SettingsPeopleSection
-        summary={summaries.people}
-        people={people}
-        isOpen={settingsSectionsOpen.people}
-        onToggle={() => toggleSettingsSection("people")}
-        onEditPerson={openEditPersonDialog}
-      />
+      <GuardedSettingsSection>
+        <SettingsPeopleSection
+          summary={summaries.people}
+          people={people}
+          isOpen={settingsSectionsOpen.people}
+          onToggle={() => toggleSettingsSection("people")}
+          onEditPerson={openEditPersonDialog}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsAccountsSection
-        summary={summaries.accounts}
-        accounts={visibleAccounts}
-        categories={categories}
-        people={people}
-        isOpen={settingsSectionsOpen.accounts}
-        isSubmitting={isSubmitting}
-        statementComparePanel={statementComparePanel}
-        statementCompareResult={statementCompareResult}
-        statementCompareStatus={statementCompareStatus}
-        statementCorrection={statementCorrection}
-        dismissedCorrectionFindingIds={dismissedCorrectionFindingIds}
-        onApplyStatementCorrections={handleApplyStatementCorrections}
-        onUndoStatementCorrections={handleUndoStatementCorrections}
-        onDismissStatementCorrections={(ids) => setDismissedCorrectionFindingIds((current) => [...current, ...ids])}
-        onToggle={() => toggleSettingsSection("accounts")}
-        onCreateAccount={openCreateAccountDialog}
-        onEditAccount={openEditAccountDialog}
-        onArchiveAccount={handleArchiveAccount}
-        onReconcileAccount={openReconciliationDialog}
-        onOpenStatementCompare={openStatementComparePanel}
-        onCloseStatementCompare={() => setStatementComparePanel(null)}
-        onUploadStatementCompare={handleCompareStatementUpload}
-        onRowsMatched={handleStatementCompareRowsMatched}
-        onEntryAdded={handleStatementCompareEntryAdded}
-      />
+      <GuardedSettingsSection>
+        <SettingsAccountsSection
+          summary={summaries.accounts}
+          accounts={visibleAccounts}
+          categories={categories}
+          people={people}
+          isOpen={settingsSectionsOpen.accounts}
+          isSubmitting={isSubmitting}
+          statementComparePanel={statementComparePanel}
+          statementCompareResult={statementCompareResult}
+          statementCompareStatus={statementCompareStatus}
+          statementCorrection={statementCorrection}
+          dismissedCorrectionFindingIds={dismissedCorrectionFindingIds}
+          onApplyStatementCorrections={handleApplyStatementCorrections}
+          onUndoStatementCorrections={handleUndoStatementCorrections}
+          onDismissStatementCorrections={(ids) => setDismissedCorrectionFindingIds((current) => [...current, ...ids])}
+          onToggle={() => toggleSettingsSection("accounts")}
+          onCreateAccount={openCreateAccountDialog}
+          onEditAccount={openEditAccountDialog}
+          onArchiveAccount={handleArchiveAccount}
+          onReconcileAccount={openReconciliationDialog}
+          onOpenStatementCompare={openStatementComparePanel}
+          onCloseStatementCompare={() => setStatementComparePanel(null)}
+          onUploadStatementCompare={handleCompareStatementUpload}
+          onRowsMatched={handleStatementCompareRowsMatched}
+          onEntryAdded={handleStatementCompareEntryAdded}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsShortcutApiSection
-        summary={summaries.shortcutApi}
-        accounts={accounts}
-        draft={shortcutSettingsDraft}
-        error={shortcutSettingsError}
-        isOpen={settingsSectionsOpen.shortcutApi}
-        isSubmitting={isSubmitting}
-        shortcutSettings={safeSettingsPage.shortcutSettings}
-        connections={shortcutConnections}
-        selectedConnection={selectedShortcutConnection}
-        status={shortcutSettingsStatus}
-        onPersonChange={handleShortcutPersonChange}
-        onRevoke={handleRevokeShortcutConnection}
-        onApiKeyChange={(apiKey) => {
-          setShortcutSettingsDraft((current) => ({ ...current, apiKey }));
-          setShortcutSettingsStatus("");
-        }}
-        onDefaultParamsChange={(defaultParams) => {
-          setShortcutSettingsDraft((current) => ({ ...current, defaultParams }));
-          setShortcutSettingsStatus("");
-        }}
-        onGenerateApiKey={handleGenerateShortcutApiKey}
-        onInstallShortcut={handleInstallShortcut}
-        onMoveAccount={handleMoveShortcutAccount}
-        onForeignCurrencyAccountChange={handleForeignCurrencyAccountChange}
-        onToggle={() => toggleSettingsSection("shortcutApi")}
-        onSave={handleSaveShortcutSettings}
-      />
+      <GuardedSettingsSection>
+        <SettingsShortcutApiSection
+          summary={summaries.shortcutApi}
+          accounts={accounts}
+          draft={shortcutSettingsDraft}
+          error={shortcutSettingsError}
+          isOpen={settingsSectionsOpen.shortcutApi}
+          isSubmitting={isSubmitting}
+          shortcutSettings={safeSettingsPage.shortcutSettings}
+          connections={shortcutConnections}
+          selectedConnection={selectedShortcutConnection}
+          status={shortcutSettingsStatus}
+          onPersonChange={handleShortcutPersonChange}
+          onRevoke={handleRevokeShortcutConnection}
+          onApiKeyChange={(apiKey) => {
+            setShortcutSettingsDraft((current) => ({ ...current, apiKey }));
+            setShortcutSettingsStatus("");
+          }}
+          onDefaultParamsChange={(defaultParams) => {
+            setShortcutSettingsDraft((current) => ({ ...current, defaultParams }));
+            setShortcutSettingsStatus("");
+          }}
+          onGenerateApiKey={handleGenerateShortcutApiKey}
+          onInstallShortcut={handleInstallShortcut}
+          onMoveAccount={handleMoveShortcutAccount}
+          onForeignCurrencyAccountChange={handleForeignCurrencyAccountChange}
+          onToggle={() => toggleSettingsSection("shortcutApi")}
+          onSave={handleSaveShortcutSettings}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsAskAiSection
-        status={claudeCredit.status}
-        checkedAt={claudeCredit.checkedAt}
-        isOpen={settingsSectionsOpen.askAi}
-        onToggle={() => toggleSettingsSection("askAi")}
-        onMarkToppedUp={claudeCredit.markToppedUp}
-      />
+      <GuardedSettingsSection>
+        <SettingsAskAiSection
+          status={claudeCredit.status}
+          checkedAt={claudeCredit.checkedAt}
+          isOpen={settingsSectionsOpen.askAi}
+          onToggle={() => toggleSettingsSection("askAi")}
+          onMarkToppedUp={claudeCredit.markToppedUp}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsAskRemembersSection
-        categories={categories}
-        isOpen={settingsSectionsOpen.askRemembers}
-        onToggle={() => toggleSettingsSection("askRemembers")}
-      />
+      <GuardedSettingsSection>
+        <SettingsAskRemembersSection
+          categories={categories}
+          isOpen={settingsSectionsOpen.askRemembers}
+          onToggle={() => toggleSettingsSection("askRemembers")}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsPaymentWaysSection
-        summary={summaries.paymentWays}
-        accounts={accounts}
-        draft={paymentWaysDraft}
-        error={paymentWaysError}
-        isOpen={settingsSectionsOpen.paymentWays}
-        isSubmitting={isSubmitting}
-        status={paymentWaysStatus}
-        onChange={handlePaymentWayChange}
-        onToggle={() => toggleSettingsSection("paymentWays")}
-      />
+      <GuardedSettingsSection>
+        <SettingsPaymentWaysSection
+          summary={summaries.paymentWays}
+          accounts={accounts}
+          draft={paymentWaysDraft}
+          error={paymentWaysError}
+          isOpen={settingsSectionsOpen.paymentWays}
+          isSubmitting={isSubmitting}
+          status={paymentWaysStatus}
+          onChange={handlePaymentWayChange}
+          onToggle={() => toggleSettingsSection("paymentWays")}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsCategoriesSection
-        summary={summaries.categories}
-        categories={visibleCategories}
-        isOpen={settingsSectionsOpen.categories}
-        onToggle={() => toggleSettingsSection("categories")}
-        onCreateCategory={openCreateCategoryDialog}
-        onEditCategory={openEditCategoryDialog}
-        onDeleteCategory={handleDeleteCategory}
-      />
+      <GuardedSettingsSection>
+        <SettingsCategoriesSection
+          summary={summaries.categories}
+          categories={visibleCategories}
+          isOpen={settingsSectionsOpen.categories}
+          onToggle={() => toggleSettingsSection("categories")}
+          onCreateCategory={openCreateCategoryDialog}
+          onEditCategory={openEditCategoryDialog}
+          onDeleteCategory={handleDeleteCategory}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsCategoryMatchRulesSection
-        id="settings-category-rules"
-        summary={summaries.categoryRules}
-        rules={safeSettingsPage.categoryMatchRules ?? []}
-        categories={categories}
-        suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
-        backfills={safeSettingsPage.categoryRuleBackfills ?? []}
-        ignoredIssueIds={safeSettingsPage.ignoredCategoryMatchRuleIssueIds ?? []}
-        isOpen={settingsSectionsOpen.categoryRules}
-        onToggle={() => toggleSettingsSection("categoryRules")}
-        onCreateRule={openCreateCategoryRuleDialog}
-        onEditRule={openEditCategoryRuleDialog}
-        onDeleteRule={handleDeleteCategoryRule}
-        onAcceptSuggestion={handleAcceptCategoryRuleSuggestion}
-        onEditSuggestion={openCategoryRuleSuggestionDialog}
-        onIgnoreSuggestion={handleIgnoreCategoryRuleSuggestion}
-        onIgnoreIssue={handleIgnoreCategoryRuleIssue}
-        onApplyBackfill={(backfill) => void handleApplyCategoryRuleBackfill(backfill)}
-        aiStatus={aiCategoryRuleStatus}
-        isAiWorking={isSubmitting}
-        onRequestAiSuggestions={() => void handleRequestAiCategoryRules()}
-      />
+      <GuardedSettingsSection>
+        <SettingsCategoryMatchRulesSection
+          id="settings-category-rules"
+          summary={summaries.categoryRules}
+          rules={safeSettingsPage.categoryMatchRules ?? []}
+          categories={categories}
+          suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
+          backfills={safeSettingsPage.categoryRuleBackfills ?? []}
+          ignoredIssueIds={safeSettingsPage.ignoredCategoryMatchRuleIssueIds ?? []}
+          isOpen={settingsSectionsOpen.categoryRules}
+          onToggle={() => toggleSettingsSection("categoryRules")}
+          onCreateRule={openCreateCategoryRuleDialog}
+          onEditRule={openEditCategoryRuleDialog}
+          onDeleteRule={handleDeleteCategoryRule}
+          onAcceptSuggestion={handleAcceptCategoryRuleSuggestion}
+          onEditSuggestion={openCategoryRuleSuggestionDialog}
+          onIgnoreSuggestion={handleIgnoreCategoryRuleSuggestion}
+          onIgnoreIssue={handleIgnoreCategoryRuleIssue}
+          onApplyBackfill={(backfill) => void handleApplyCategoryRuleBackfill(backfill)}
+          aiStatus={aiCategoryRuleStatus}
+          isAiWorking={isSubmitting}
+          onRequestAiSuggestions={() => void handleRequestAiCategoryRules()}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsColoursSection
-        isOpen={settingsSectionsOpen.colours}
-        onToggle={() => toggleSettingsSection("colours")}
-      />
+      <GuardedSettingsSection>
+        <SettingsColoursSection
+          isOpen={settingsSectionsOpen.colours}
+          onToggle={() => toggleSettingsSection("colours")}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsLeadViewSection
-        isOpen={settingsSectionsOpen.leadView}
-        onToggle={() => toggleSettingsSection("leadView")}
-      />
+      <GuardedSettingsSection>
+        <SettingsLeadViewSection
+          isOpen={settingsSectionsOpen.leadView}
+          onToggle={() => toggleSettingsSection("leadView")}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsTrustSection
-        summary={summaries.trust}
-        accounts={visibleAccounts}
-        exceptions={safeSettingsPage.reconciliationExceptions ?? []}
-        isOpen={settingsSectionsOpen.trust}
-        isSubmitting={isSubmitting}
-        onToggle={() => toggleSettingsSection("trust")}
-        onCreateException={handleCreateReconciliationException}
-        onResolveException={handleResolveReconciliationException}
-      />
+      <GuardedSettingsSection>
+        <SettingsTrustSection
+          summary={summaries.trust}
+          accounts={visibleAccounts}
+          exceptions={safeSettingsPage.reconciliationExceptions ?? []}
+          isOpen={settingsSectionsOpen.trust}
+          isSubmitting={isSubmitting}
+          onToggle={() => toggleSettingsSection("trust")}
+          onCreateException={handleCreateReconciliationException}
+          onResolveException={handleResolveReconciliationException}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsTransfersSection
-        summary={summaries.transfers}
-        transfers={safeSettingsPage.unresolvedTransfers}
-        isOpen={settingsSectionsOpen.transfers}
-        isSubmitting={isSubmitting}
-        onToggle={() => toggleSettingsSection("transfers")}
-        onDismissTransfer={handleDismissUnresolvedTransfer}
-        onDismissAllTransfers={handleDismissAllUnresolvedTransfers}
-        onRefreshTransfers={() => handleRefreshUnresolvedTransfers()}
-        onOpenTransferReview={openTransferReview}
-        onManageTransfer={openTransferManager}
-        isRefreshing={isRefreshingTransfers}
-      />
+      <GuardedSettingsSection>
+        <SettingsTransfersSection
+          summary={summaries.transfers}
+          transfers={safeSettingsPage.unresolvedTransfers}
+          isOpen={settingsSectionsOpen.transfers}
+          isSubmitting={isSubmitting}
+          onToggle={() => toggleSettingsSection("transfers")}
+          onDismissTransfer={handleDismissUnresolvedTransfer}
+          onDismissAllTransfers={handleDismissAllUnresolvedTransfers}
+          onRefreshTransfers={() => handleRefreshUnresolvedTransfers()}
+          onOpenTransferReview={openTransferReview}
+          onManageTransfer={openTransferManager}
+          isRefreshing={isRefreshingTransfers}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsErrorDiagnosticsSection
-        summary={summaries.errorDiagnostics}
-        diagnostics={safeSettingsPage.errorDiagnostics ?? []}
-        isOpen={settingsSectionsOpen.errorDiagnostics}
-        isSubmitting={isSubmitting}
-        onToggle={() => toggleSettingsSection("errorDiagnostics")}
-        onRetainLatest={handleRetainLatestErrorDiagnostics}
-      />
+      <GuardedSettingsSection>
+        <SettingsErrorDiagnosticsSection
+          summary={summaries.errorDiagnostics}
+          diagnostics={safeSettingsPage.errorDiagnostics ?? []}
+          isOpen={settingsSectionsOpen.errorDiagnostics}
+          isSubmitting={isSubmitting}
+          onToggle={() => toggleSettingsSection("errorDiagnostics")}
+          onRetainLatest={handleRetainLatestErrorDiagnostics}
+        />
+      </GuardedSettingsSection>
 
-      <SettingsActivitySection
-        summary={summaries.activity}
-        activityGroups={recentActivityGroups}
-        isOpen={settingsSectionsOpen.activity}
-        onToggle={() => toggleSettingsSection("activity")}
-      />
+      <GuardedSettingsSection>
+        <SettingsActivitySection
+          summary={summaries.activity}
+          activityGroups={recentActivityGroups}
+          isOpen={settingsSectionsOpen.activity}
+          onToggle={() => toggleSettingsSection("activity")}
+        />
+      </GuardedSettingsSection>
 
       {canUseDemoControls ? (
-        <SettingsDemoSection
-          demo={safeSettingsPage.demo}
-          error={demoActionError}
-          emptyStateDialogOpen={emptyStateDialogOpen}
-          emptyStateText={emptyStateText}
-          isOpen={demoStateOpen}
-          isSubmitting={isSubmitting}
-          reloadDialogOpen={reloadDialogOpen}
-          reloadText={reloadText}
-          onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
-          onReloadDialogOpenChange={setReloadDialogOpen}
-          onToggle={() => setDemoStateOpen((current) => !current)}
-          onEmptyStateTextChange={setEmptyStateText}
-          onReloadTextChange={setReloadText}
-          onReseed={handleReseed}
-          onRefresh={handleRefresh}
-          onEmptyState={handleEmptyState}
-        />
+        <GuardedSettingsSection>
+          <SettingsDemoSection
+            demo={safeSettingsPage.demo}
+            error={demoActionError}
+            emptyStateDialogOpen={emptyStateDialogOpen}
+            emptyStateText={emptyStateText}
+            isOpen={demoStateOpen}
+            isSubmitting={isSubmitting}
+            reloadDialogOpen={reloadDialogOpen}
+            reloadText={reloadText}
+            onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
+            onReloadDialogOpenChange={setReloadDialogOpen}
+            onToggle={() => setDemoStateOpen((current) => !current)}
+            onEmptyStateTextChange={setEmptyStateText}
+            onReloadTextChange={setReloadText}
+            onReseed={handleReseed}
+            onRefresh={handleRefresh}
+            onEmptyState={handleEmptyState}
+          />
+        </GuardedSettingsSection>
       ) : null}
 
       </div>

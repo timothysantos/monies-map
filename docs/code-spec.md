@@ -63,6 +63,15 @@ These are target budgets, not platform guarantees.
 The current slow-log threshold is `750ms`. New visible page queries should aim
 to stay well below that.
 
+Client side, a required page read (`fetchTextWithTransientWorkerRetry`,
+`src/client/request-timeout.js`) is tried again after a timeout (once), a
+dropped connection, a gateway error (502/503/504/522/523/524/530) or a
+restarting Worker body before the screen reports it could not load; an
+application 500, a caller abort and speculative reads (`maxAttempts: 1`) are
+never retried. `npm run check:bundle` also fails when the build refers to a
+chunk or stylesheet that is not in `dist/` or a route panel is not a lazy
+chunk.
+
 | Query / workflow | Target server time | Stretch limit | Notes |
 | --- | --- | --- | --- |
 | `appShell` | `<= 100ms` | `200ms` | route-neutral shell only; no accounts, categories, page payloads, balances, checkpoints, or import history |
