@@ -37,7 +37,7 @@
 
 import { ASK_REPAIRABLE_CODES } from "../domain/ask-ambiguity";
 import { AI_UNUSABLE_SUGGESTION_REASON } from "../domain/ai-assistance";
-import { getAiProviderUnavailableReason, runTextJson, type AiProviderEnv } from "../domain/ai-provider";
+import { getAiProviderUnavailableReason, runTextJson, type AiProviderEnv, type AiProviderName } from "../domain/ai-provider";
 import {
   ASK_TURN_MAX_HISTORY,
   ASK_TURN_MAX_TEXT,
@@ -66,6 +66,7 @@ const ASK_TURN_MAX_TOKENS = 500;
 const ASK_TURN_TIMEOUT_MS = 10_000;
 const TEST_REPLY_HEADER = "x-ask-turn-test-reply";
 const TEST_REPAIR_HEADER = "x-ask-turn-test-repair-reply";
+const TEST_PROVIDER_HEADER = "x-ask-turn-test-provider";
 const PAGES = new Set(["ask", "summary", "month", "entries", "splits", "imports", "settings", "faq"]);
 
 export type AskTurnEnv = AiProviderEnv & { DB: D1Database; APP_ENVIRONMENT?: string };
@@ -122,15 +123,21 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
 
   let action: AskTurnAction | null;
   let remaining: number | undefined;
+  // Which provider actually produced the action, for the small note on the
+  // reply ("Claude" or "Basic model"). Only the name is kept.
+  let provider: AiProviderName | undefined;
   if (offReason && !testReply) {
     return rulesAnswer(context, text, offReason);
   }
   if (testReply) {
     action = parseTestReply(testReply);
+    const named = request.headers.get(TEST_PROVIDER_HEADER);
+    provider = named === "workers-ai" ? "workers-ai" : "claude";
   } else {
     const result = await ask(buildAskTurnPrompt(context));
     action = result.value ?? null;
     remaining = result.remaining;
+    provider = result.provider;
     if (!action) {
       return rulesAnswer(context, text, result.reason ?? "AI is temporarily unavailable.", {
         // The demo's Claude allowance is used up: the page says so plainly.
@@ -160,6 +167,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
       const result = await ask(buildAskRepairPrompt(context, action, error));
       second = result.value ?? null;
       remaining = result.remaining ?? remaining;
+      if (second) provider = result.provider ?? provider;
     }
     const fixed = second ? validateAskTurnAction(second, context) : null;
     repaired = Boolean(second && fixed && fixed.kind !== "clarify");
@@ -182,6 +190,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     ok: true as const,
     mode: "ai" as const,
     action: action.action,
+    ...(provider ? { provider } : {}),
     ...(remaining !== undefined ? { remaining } : {}),
     ...(repaired !== null ? { repaired } : {})
   };

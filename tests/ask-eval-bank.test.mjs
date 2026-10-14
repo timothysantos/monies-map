@@ -142,6 +142,8 @@ test("the bank replayed through the Worker: each recorded answer ends as the ent
       repairsAttempted += 1;
       repairsFixed += payload.repaired ? 1 : 0;
     }
+    // The reply says which provider produced it (here the Workers AI binding), and only its name.
+    if (payload.mode === "ai" && payload.provider !== "workers-ai") problems.push(`provider ${payload.provider}, wanted workers-ai`);
     // The page never sees why a question is asked.
     if (payload.reply?.kind === "clarify" && "error" in payload.reply) problems.push("the reply leaks the validator error");
     if (problems.length) failures.push(`${entry.id}  "${entry.text}"\n    - ${problems.join("\n    - ")}`);

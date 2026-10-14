@@ -216,6 +216,8 @@ export const askCopy = {
   // AI can't read a message and the built-in rules do, and the two draft
   // cards a turn can add (an entry onto Splits, a settle-up payment).
   turn: {
+    // A quiet line under each reply: where it came from.
+    source: { claude: "Reply from Claude", "workers-ai": "Reply from the basic model", rules: "Reply from the built-in rules" },
     rulesNote: "AI isn't available right now, so Ask read this with its built-in rules.",
     // The public demo only, when its own Claude allowance is used up.
     demoAllowanceNote: "The demo's Claude allowance is used up for today, so Ask is using its built-in rules.",

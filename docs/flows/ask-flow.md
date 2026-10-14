@@ -358,6 +358,29 @@ Ask action follows these three rules, and every new Ask action must too.
    repair rate can be measured in the Worker logs. The response carries
    `repaired: true|false` when one was tried (the page ignores it).
 
+### Category and reply source
+
+Owner request, 2026-10-14 ("coffee 4.50" came back as Other). The category of
+a drafted entry is chosen by the server, in this order: (a) the household's own
+category rules on the description, (b) a small built-in word list for everyday
+words ("coffee", "kopi", "lunch", "grab", "groceries", "mrt"...) mapped onto
+categories that exist (`category-keywords.ts`, also used by the offline rules
+reading in `entry-draft.ts`), (c) the model's category when it is a real one
+other than Other, or when the person named it in the message, then (d) Other
+(Other - Income for income), said as the assumption "I couldn't tell the
+category, so I used Other." Root cause: the household rules are bank
+merchant patterns, so a plain word matched nothing and the draft fell to Other;
+the model's "Other" then won over everything.
+
+Each reply carries a quiet caption saying where it came from: "Reply from
+Claude", "Reply from the basic model" (Workers AI fallback) or "Reply from the
+built-in rules". The `/api/ask/turn` response has `provider: "claude" |
+"workers-ai"` on an `mode: "ai"` answer (the provider that produced the final
+action; the name only, nothing else is stored); `mode: "rules"` is the
+built-in rules. Copy: `askCopy.turn.source`. The caption is a thread item
+(`source`, not stored with the conversation) and is skipped when Ask opens a
+page.
+
 ### Eval bank
 
 `tests/fixtures/ask-eval-utterances.json` holds 121 realistic messages across

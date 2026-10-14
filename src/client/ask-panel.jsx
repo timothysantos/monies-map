@@ -595,11 +595,11 @@ function AskConversation({
         focus: buildTurnFocus({
           card: before.card,
           intent,
-          insightTopic: before.thread.filter((item) => item.kind !== "status").at(-1)?.kind === "insight-answer"
-            ? String(before.thread.filter((item) => item.kind !== "status").at(-1).answer?.kind ?? "")
+          insightTopic: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "insight-answer"
+            ? String(before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).answer?.kind ?? "")
             : "",
-          list: before.thread.filter((item) => item.kind !== "status").at(-1)?.kind === "answer"
-            ? before.thread.filter((item) => item.kind !== "status").at(-1).filter
+          list: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "answer"
+            ? before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).filter
             : null
         })
       });
@@ -608,7 +608,7 @@ function AskConversation({
       setWorking("");
     }
     if (turn.ok && turn.mode === "ai") {
-      await applyTurnReply(text, turn.reply);
+      await applyTurnReply(text, turn.reply, turn.provider ?? "claude");
       return;
     }
     if (!before.rulesNoted) {
@@ -618,16 +618,18 @@ function AskConversation({
     // A share on the saved entry ("Joyce's share 1.6") the server's rules
     // already read and checked: shown like the model's draft.
     if (turn.ok && turn.mode === "rules" && turn.reply) {
-      await applyTurnReply(text, turn.reply);
+      await applyTurnReply(text, turn.reply, "rules");
       return;
     }
     await readSentenceByRules(text);
+    appendThread(threadItem("source", { source: "rules" }));
   }
 
   // What the turn route sent back, shown with the cards the page already
   // has. Nothing here writes: every draft waits for its Save.
-  async function applyTurnReply(text, reply) {
+  async function applyTurnReply(text, reply, source) {
     await showTurnReply(text, reply);
+    if (reply.kind !== "open_page") appendThread(threadItem("source", { source }));
     showAssumptions(reply.assumptions, reply.kind);
   }
 
@@ -2358,6 +2360,9 @@ function ThreadItem({ item, settled = false, answerProps }) {
   }
   if (item.kind === "status") {
     return <p className="ask-note is-status" aria-busy="true">{item.text}</p>;
+  }
+  if (item.kind === "source") {
+    return <p className="ask-note is-source" data-reply-source={item.source}>{askCopy.turn.source[item.source] ?? ""}</p>;
   }
   return <p className={`ask-note${item.tone === "calm" ? " is-calm" : ""}${settledClass}`}>{item.text}</p>;
 }

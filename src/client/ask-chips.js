@@ -296,7 +296,8 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
     return pending;
   }
   const settled = thread.filter((item) => item.kind !== "status");
-  const last = settled.at(-1);
+  // The reply-source caption is not an item the chips belong to.
+  const last = settled.filter((item) => item.kind !== "source").at(-1);
   if (last?.kind === "answer" && (!card || cardSlot < settled.length)) {
     return { kind: "answer", filter: last.filter };
   }

@@ -679,6 +679,11 @@ bottom right ([Ask on a computer](#ask-on-a-computer)).
 
 ### What you see
 
+- **Where a reply came from**: a small grey line under each reply says
+  "Reply from Claude", "Reply from the basic model" or "Reply from the
+  built-in rules", so you know what read your message. When Ask cannot tell
+  what an entry is, it uses Other and says so; a word like "coffee" or "grab"
+  goes to Food & Drinks or Taxi by itself.
 - **Since you last looked**: the most useful line from Summary's money
   insights for the person you are viewing, and this month's spending against
   its plan. It shows once Summary has loaded in this visit.

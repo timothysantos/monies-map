@@ -238,13 +238,13 @@ test.describe("search and filter from Ask on a phone", { tag: "@webkit" }, () =>
     await suggestions(page).getByRole("button", { name: "Switch to Joyce" }).click();
     await expect(page).toHaveURL(/view=person-joyce/);
     await expect(page.locator(".ask-context")).toHaveText(`Joyce · Direct + Shared · ${formatMonth(month)}`);
-    await expect(page.locator(".ask-note").last()).toHaveText("Now showing Joyce.");
+    await expect(page.locator(".ask-note:not(.is-source)").last()).toHaveText("Now showing Joyce.");
     // The earlier answer keeps its own filter (Tim's UOB One).
     await expect(page.locator(".ask-answer").first().locator(".ask-answer-chip").nth(1)).toHaveText("Tim");
 
     // A question it cannot read still gets the plain note.
     await send(page, "Should I buy a car?");
-    await expect(page.locator(".ask-note").last()).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
+    await expect(page.locator(".ask-note:not(.is-source)").last()).toHaveText("I can find entries and add new ones. Other questions aren't answered yet.");
   });
 
   test("a receipt photo never reaches sessionStorage", async ({ page }) => {
