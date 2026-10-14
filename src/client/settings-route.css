@@ -1194,3 +1194,7 @@
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+.settings-habit-row .settings-row-text .lsd-chip {
+  justify-self: start;
+}
