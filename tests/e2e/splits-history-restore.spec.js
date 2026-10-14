@@ -35,7 +35,7 @@ test("a deleted split expense is restored from the activity history view", async
 
   const deletedRow = dialog.locator(".split-history-row").filter({ hasText: description });
   await expect(deletedRow).toHaveCount(1);
-  await expect(deletedRow).toContainText(/Non-group expenses · \$42\.00 · deleted · \d{4}-\d{2}-\d{2}/);
+  await expect(deletedRow).toContainText(/Non-group expenses · \$42\.00 · Deleted · \d{4}-\d{2}-\d{2}/);
 
   const restoreRequest = page.waitForRequest((request) => request.url().includes("/api/splits/activity-history/restore"));
   await deletedRow.getByRole("button", { name: "Restore" }).click();

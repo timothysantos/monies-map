@@ -606,3 +606,87 @@ test.describe("settings reference data", () => {
     expect(after.household.people.find((person) => person.id === targetPerson.id)?.name).toBe(renamedPerson);
   });
 });
+
+// Settings > Summary view (design.md, "Plan or Simple"): the same preference
+// as the Plan | Simple switch on Summary and Month, not a second setting.
+test.describe("settings summary view", () => {
+  // The real default (Simple), not the suite's pre-set Plan (playwright.config.js).
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  const SUMMARY = "/summary?view=person-tim&month=2026-05&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-05";
+  const row = (page) => page.locator("#settings-lead-view");
+  const status = (page) => row(page).locator(".settings-section-status");
+  const choice = (page, name) => row(page).getByRole("button", { name, exact: true });
+  const leadGroup = (page) => page.locator(".summary-lead-group").first();
+
+  async function openRow(page) {
+    await openSettingsPage(page);
+    await row(page).locator(".settings-section-toggle").click();
+    await expect(row(page).getByText("How Summary and Month open. You can still switch on the page.")).toBeVisible();
+  }
+
+  test("the row shows how Summary opens; changing it changes what Summary opens with, and the page switch updates the row", async ({ page }) => {
+    await reseedDemo(page);
+    await openSettingsPage(page);
+    // Closed: label and status word. A fresh device has no choice, so Simple.
+    await expect(row(page).getByRole("heading", { name: "Summary view" })).toBeVisible();
+    await expect(status(page)).toHaveText("Simple");
+    await openRow(page);
+    await expect(choice(page, "Simple")).toHaveAttribute("aria-pressed", "true");
+    await expect(choice(page, "Plan")).toHaveAttribute("aria-pressed", "false");
+
+    await choice(page, "Plan").click();
+    await expect(status(page)).toHaveText("Plan");
+    await expect(choice(page, "Plan")).toHaveAttribute("aria-pressed", "true");
+    await page.goto(SUMMARY);
+    await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "plan", { timeout: 30_000 });
+
+    // The page's own switch is the same preference: Settings shows it.
+    await leadGroup(page).getByRole("radio", { name: "Simple" }).click();
+    await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "simple");
+    await openRow(page);
+    await expect(status(page)).toHaveText("Simple");
+    await expect(choice(page, "Simple")).toHaveAttribute("aria-pressed", "true");
+    await page.goto(SUMMARY);
+    await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+  });
+
+  test("signed in, the row is the account's choice: saved for that account, not for another", async ({ browser }) => {
+    async function signIn(email, personId) {
+      const context = await browser.newContext({ extraHTTPHeaders: { "Cf-Access-Authenticated-User-Email": email } });
+      const page = await context.newPage();
+      if (personId) {
+        const response = await page.request.post("/api/login-identities/register", { data: { personId } });
+        expect(response.ok(), await response.text()).toBeTruthy();
+      }
+      return { context, page };
+    }
+
+    const tim = await signIn("tim.settings-view@example.com");
+    await reseedDemo(tim.page);
+    expect((await tim.page.request.post("/api/login-identities/register", { data: { personId: "person-tim" } })).ok()).toBeTruthy();
+    await openRow(tim.page);
+    await expect(status(tim.page)).toHaveText("Simple");
+    const saved = tim.page.waitForResponse((response) => response.url().endsWith("/api/viewer-preferences/lead-view") && response.request().method() === "POST");
+    await choice(tim.page, "Plan").click();
+    expect((await saved).status()).toBe(200);
+    await expect(status(tim.page)).toHaveText("Plan");
+    await tim.context.close();
+
+    // A new browser for Tim: the row says Plan, and Summary opens in Plan.
+    const timAgain = await signIn("tim.settings-view@example.com");
+    await openSettingsPage(timAgain.page);
+    await expect(status(timAgain.page)).toHaveText("Plan");
+    await timAgain.page.goto(SUMMARY);
+    await expect(leadGroup(timAgain.page)).toHaveAttribute("data-lead-view", "plan", { timeout: 30_000 });
+    await timAgain.context.close();
+
+    // Another account never chose: Simple, untouched by Tim's Plan.
+    const joyce = await signIn("joyce.settings-view@example.com", "person-joyce");
+    await openSettingsPage(joyce.page);
+    await expect(status(joyce.page)).toHaveText("Simple");
+    await joyce.page.goto(SUMMARY);
+    await expect(leadGroup(joyce.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+    await joyce.context.close();
+  });
+});

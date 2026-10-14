@@ -95,7 +95,7 @@ test("entries search keeps every key typed quickly right after the page loads", 
   await expect(search).toHaveValue("food court 2");
   await expect.poll(() => new URL(page.url()).searchParams.get("entry_search")).toBe("food court 2");
   // A change from outside the box still shows in it.
-  await page.getByRole("button", { name: "Reset filters" }).click();
+  await page.getByRole("button", { name: "Reset filters" }).first().click();
   await expect(search).toHaveValue("");
   expect(new URL(page.url()).searchParams.get("entry_search")).toBeNull();
 });

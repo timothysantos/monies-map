@@ -118,7 +118,7 @@ test.describe("optional data warmup on desktop", () => {
     const recorder = recordDataRequests(page);
     await openUsable(page, "/summary?view=household&month=2026-05", recorder);
     await expect.poll(() => recorder.requests.length, { timeout: 15_000 }).toBe(1);
-    await page.getByRole("button", { name: "Edit Bills" }).first().click();
+    await page.getByRole("button", { name: /^Edit [^ ]/ }).first().click();
     await expect(page.getByText("Edit category")).toBeVisible();
     await expect.poll(() => failed).toContain("/api/entries-page");
     await page.waitForTimeout(4_000);

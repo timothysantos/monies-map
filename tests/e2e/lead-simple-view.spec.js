@@ -8,10 +8,16 @@ import { loadMonthPage, loadSummaryPage, postJson, reseedDemo } from "./helpers"
 // figures, and on Summary Intent vs Outcome. Simple is "Earned $x · Spent $y"
 // over the same savings bar without the plan bar, nothing else, and on
 // Summary "Earned vs spent by month" in Intent vs Outcome's place. Without a
-// remembered choice a period with a plan opens in Plan and one without in
-// Simple; the choice is remembered on the device and wins on both pages.
+// remembered choice both pages open in Simple, planned period or not; the
+// choice is remembered on the device (or the login) and wins on both pages.
+// Settings > Summary view is the same preference (settings-reference-data).
+// Specs that exercise Plan pin it with pinPlan().
 // The model's exact numbers are in tests/lead-view.test.mjs; this proves the
 // rendering, the switch, the remembered choice, the defaults and hidden money.
+
+// These specs exercise the real default (Simple) and the choice itself, so no
+// saved Plan choice is pre-set as in playwright.config.js.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 const VIEW = "person-tim";
 const MONTH = "2026-05";
@@ -26,6 +32,16 @@ const STORAGE_KEY = "monies-map:lead-view";
 const centsFormat = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const money = (minor) => centsFormat.format(minor / 100);
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
+
+// A saved Plan choice, set once per tab so a later switch and a reload are
+// not overwritten by the init script.
+async function pinPlan(page) {
+  await page.addInitScript((key) => {
+    if (window.sessionStorage.getItem("pinned-plan")) return;
+    window.sessionStorage.setItem("pinned-plan", "1");
+    window.localStorage.setItem(key, "plan");
+  }, STORAGE_KEY);
+}
 
 async function revealMoney(page) {
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
@@ -118,7 +134,24 @@ test.describe("desktop", () => {
     await revealMoney(page);
   });
 
-  test("a planned period opens in Plan; Simple shows earned and spent from the same split, and the choice survives a reload and carries to Month", async ({ page }) => {
+  test("a fresh visit opens Summary and Month in Simple even when the period has a plan; a saved Plan choice opens Plan", async ({ page }) => {
+    const expected = await expectedSummary(page, { start: RANGE.start, end: RANGE.end, month: MONTH });
+    await page.goto(SUMMARY_URL);
+    await expectSimple(page, { summary: true, earned: expected.earned, spent: expected.spent });
+    expect(await page.evaluate((key) => window.localStorage.getItem(key), STORAGE_KEY)).toBeNull();
+    await page.goto(MONTH_URL);
+    await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+    // A saved Plan choice wins over the default, on both pages and a reload.
+    await option(page, "Plan").click();
+    await expectPlan(page, { summary: false });
+    await page.goto(SUMMARY_URL);
+    await expectPlan(page, { summary: true });
+    await page.reload();
+    await expectPlan(page, { summary: true });
+  });
+
+  test("with Plan chosen, Simple shows earned and spent from the same split, and the choice survives a reload and carries to Month", async ({ page }) => {
+    await pinPlan(page);
     const expected = await expectedSummary(page, { start: RANGE.start, end: RANGE.end, month: MONTH });
     await page.goto(SUMMARY_URL);
     await expectPlan(page, { summary: true });
@@ -179,6 +212,7 @@ test.describe("desktop", () => {
   });
 
   test("the switch is a radio group: the arrow keys move the choice and the focus", async ({ page }) => {
+    await pinPlan(page);
     await page.goto(SUMMARY_URL);
     await expectPlan(page, { summary: true });
     // Native radios in one group: Tab reaches the checked one only.
@@ -250,6 +284,7 @@ test.describe("desktop", () => {
   });
 
   test("the whole page follows the switch: Summary keeps Spending Mix, wallets and insights; Month swaps the plan tables for Money in", async ({ page }) => {
+    await pinPlan(page);
     await recordBareMonth(page);
     await page.goto(SUMMARY_URL);
     await expectPlan(page, { summary: true });
@@ -300,7 +335,7 @@ test.describe("desktop", () => {
       if (await toggle.count()) await toggle.click();
       return (await insight.locator(".checkin-fact, .checkin-also li").allTextContents()).join(" | ");
     };
-    await page.addInitScript((key) => window.localStorage.setItem(key, "plan"), STORAGE_KEY);
+    await pinPlan(page);
     await page.goto(MONTH_URL);
     const planText = await insightText();
     // The demo's May has insights about its plan in Plan.
@@ -325,9 +360,9 @@ test.describe("desktop", () => {
     });
     const expected = await expectedSummary(page, { start: RANGE.start, end: RANGE.end, month: MONTH });
     await page.goto(SUMMARY_URL);
-    await expectPlan(page, { summary: true });
-    await option(page, "Simple").click();
     await expectSimple(page, { summary: true, earned: expected.earned, spent: expected.spent });
+    await option(page, "Plan").click();
+    await expectPlan(page, { summary: true });
   });
 });
 
@@ -341,6 +376,7 @@ test.describe("phone", () => {
 
   test("Simple on a phone: 44px switch targets, no sideways scroll, and the Month card is no taller in Plan", async ({ page }) => {
     await revealMoney(page);
+    await pinPlan(page);
     const expected = await expectedSummary(page, { start: RANGE.start, end: RANGE.end, month: MONTH });
     await page.goto(SUMMARY_URL);
     await expectPlan(page, { summary: true });
@@ -448,37 +484,38 @@ test.describe("per login", () => {
     await reseedDemo(tim.page);
     expect((await tim.page.request.post("/api/login-identities/register", { data: { personId: "person-tim" } })).ok()).toBeTruthy();
     await tim.page.goto(SUMMARY_URL);
-    await expectPlan(tim.page, { summary: true });
+    // Never chose: Simple, though May has a plan.
+    await expect(leadGroup(tim.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
     const saved = tim.page.waitForResponse((response) => response.url().endsWith("/api/viewer-preferences/lead-view"));
-    await option(tim.page, "Simple").click();
+    await option(tim.page, "Plan").click();
     expect((await saved).status()).toBe(200);
-    await expect(leadGroup(tim.page)).toHaveAttribute("data-lead-view", "simple");
+    await expectPlan(tim.page, { summary: true });
     await tim.context.close();
 
     // A new browser for the same login: fresh storage, and the choice is back.
     const timAgain = await loginContext(browser, "tim.simple@example.com");
     await timAgain.page.goto(SUMMARY_URL);
-    await expect(leadGroup(timAgain.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+    await expectPlan(timAgain.page, { summary: true });
     await timAgain.page.goto(MONTH_URL);
-    await expect(leadGroup(timAgain.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+    await expectPlan(timAgain.page, { summary: false });
 
-    // Another login has not chosen: Plan for a planned period.
+    // Another login has not chosen: Simple, not Tim's Plan.
     const joyce = await loginContext(browser, "joyce.simple@example.com", "person-joyce");
     await joyce.page.goto(SUMMARY_URL);
-    await expectPlan(joyce.page, { summary: true });
+    await expect(leadGroup(joyce.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
     await joyce.context.close();
 
-    // Back to Plan on this browser: it stays Plan on reload (the kept app
-    // shell is updated too), and a third browser opens in Plan.
-    const savedPlan = timAgain.page.waitForResponse((response) => response.url().endsWith("/api/viewer-preferences/lead-view"));
-    await option(timAgain.page, "Plan").click();
-    expect((await savedPlan).status()).toBe(200);
+    // Back to Simple on this browser: it stays Simple on reload (the kept app
+    // shell is updated too), and a third browser opens in Simple.
+    const savedSimple = timAgain.page.waitForResponse((response) => response.url().endsWith("/api/viewer-preferences/lead-view"));
+    await option(timAgain.page, "Simple").click();
+    expect((await savedSimple).status()).toBe(200);
     await timAgain.page.reload();
-    await expectPlan(timAgain.page, { summary: false });
+    await expect(leadGroup(timAgain.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
     await timAgain.context.close();
     const timThird = await loginContext(browser, "tim.simple@example.com");
     await timThird.page.goto(SUMMARY_URL);
-    await expectPlan(timThird.page, { summary: true });
+    await expect(leadGroup(timThird.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
     await timThird.context.close();
   });
 
@@ -492,7 +529,8 @@ test.describe("per login", () => {
     });
     expect(refused.status()).toBe(403);
     await tim.page.goto(SUMMARY_URL);
-    await expectPlan(tim.page, { summary: true });
+    // Nothing changed: still the default, Simple.
+    await expect(leadGroup(tim.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
     await tim.context.close();
   });
 });

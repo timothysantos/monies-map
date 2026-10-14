@@ -108,8 +108,19 @@ test("mobile split match review has readable actions and a clear back path", asy
   await expect(matchCard).toBeVisible();
   const keepSeparate = matchCard.getByRole("button", { name: "Keep separate" });
   const matchButton = matchCard.getByRole("button", { name: "Match", exact: true });
-  await expect(keepSeparate).toHaveCSS("color", "rgb(177, 94, 47)");
-  await expect(matchButton).toHaveCSS("background-color", "rgb(177, 94, 47)");
+  const accent = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    document.body.append(probe);
+    const read = (token) => {
+      probe.style.color = `var(${token})`;
+      return getComputedStyle(probe).color;
+    };
+    const colours = { accent: read("--accent"), strong: read("--accent-strong") };
+    probe.remove();
+    return colours;
+  });
+  await expect(keepSeparate).toHaveCSS("color", accent.accent);
+  await expect(matchButton).toHaveCSS("background-color", accent.strong);
 
   const layout = await matchCard.locator(".split-match-actions").evaluate((element) => {
     const card = element.closest(".split-match-card");

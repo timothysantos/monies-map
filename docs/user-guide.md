@@ -31,7 +31,10 @@ appear in this order:
 1. **Summary**: the big picture for a range of months: planned versus actual
    income, spending and savings, where the money went, and your wallet
    balances. This is **All months**.
-   ![Summary shows planned and actual totals, money insights, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
+   ![Summary in Plan shows planned and actual totals, money insights, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
+   The pictures in this guide show **Plan**; Summary and Month open in
+   **Simple** until you choose (see **Plan | Simple** under
+   [Summary](#summary)).
    Pick one month of the range to see its plan (the **Month** page): income,
    budget buckets and planned items next to what was actually spent, and
    where that month's money went ([Pick a month](#pick-a-month)).
@@ -317,10 +320,15 @@ over plan.
   **Earned vs spent by month** takes the place of Intent vs Outcome: one row
   per month, newest first, with what you kept (or overspent), what you
   earned and spent, and a thin bar; the month's name opens that month.
-  Money insights leave out the ones about your plan. If a range has no plan
-  at all it opens in Simple. Your choice is remembered for your login, on
-  every phone and computer you use, for Summary and Month alike (in the
-  demo, on this device).
+  Money insights leave out the ones about your plan. Until you choose,
+  Summary and Month open in **Simple**, as in the picture below; the other
+  pictures in this guide show **Plan**. Your choice is remembered for your
+  login, on every phone and computer you use, for Summary and Month alike
+  (in the demo, on this device). You can also set it in
+  [Settings](#settings) under **Summary view**.
+
+  ![Summary in Simple: what you earned and spent, the bar, and a few facts](/faq/guide/desktop/thumbs/summary-simple.webp)
+
 - **Range** (top right): the months included, 12 by default. Use **‹** and
   **›** to move the whole range, or select the start or end month to pick one.
   ![Selecting the start of the range opens a month picker](/faq/guide/desktop/thumbs/summary-range-picker.webp)
@@ -422,8 +430,8 @@ stays highlighted, and the range at the top stays as it was.
   with the bar and the same few facts; in place of the plan rows it lists
   **Money in** (what came in, one row per source; select one to see its
   entries), and **Plan this month** switches back to Plan to set budgets
-  and planned items. Spending Mix shows where the money went in both. A
-  month with no plan opens in Simple.
+  and planned items. Spending Mix shows where the money went in both.
+  Month opens in Simple until you choose Plan.
 - **Month**: the row of months under the top bar (on a phone, **‹**, the
   month's name and **›** beside the View and scope bar) moves to another
   month of the range, or **All months** back to Summary.
@@ -1105,6 +1113,9 @@ set up**). Select a row to open it; it opens right under its row.
   name, icon or colour.
 - **Category matching**: rules that categorise imported rows, plus
   suggestions and overlapping rules to review.
+- **Summary view**: how Summary and Month open, **Simple** (the usual one)
+  or **Plan**. It is the same choice as the **Plan | Simple** switch on those
+  pages, so changing one changes the other.
 - **Colours**: the colour scheme. Pick **70s Warm** (the usual one), **60s
   Mod**, **80s Pop**, **Modern**, **Black & White**, **Code**, **Midnight
   Calm**, **Gen Z 2026** or **Futuristic**, and

@@ -44,6 +44,12 @@ export const settingsMessages = {
   coloursModeLabel: "Light or dark",
   coloursModes: { light: "Light", dark: "Dark", auto: "Auto" },
   coloursDeviceHint: "Auto follows your phone's light or dark setting. Saved on this device only.",
+  // Settings > Summary view (design.md, "Plan or Simple"): the same choice as
+  // the Plan | Simple switch on the page.
+  leadViewTitle: "Summary view",
+  leadViewChoiceLabel: "How Summary and Month open",
+  leadViewChoices: { simple: "Simple", plan: "Plan" },
+  leadViewHint: "How Summary and Month open. You can still switch on the page.",
   accountsTitle: "Accounts",
   accountsDetail: "Reference finance accounts used by imports, entries, and planning.",
   addAccount: "+ Add account",

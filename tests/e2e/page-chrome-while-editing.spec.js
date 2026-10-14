@@ -115,12 +115,21 @@ test.describe("page chrome while editing on a phone", () => {
     const addButton = page.locator(".splits-fab");
     const totalsButton = page.locator(".totals-visibility-toggle--floating");
     const groupRow = page.locator(".splits-group-bar");
-    const splitsBackground = await page.evaluate(() => ({
-      body: getComputedStyle(document.body).backgroundImage,
-      shell: getComputedStyle(document.querySelector("main.shell")).backgroundImage
-    }));
-    expect(splitsBackground.body).toContain("linear-gradient");
-    expect(splitsBackground.shell).toContain("linear-gradient");
+    const splitsBackground = await page.evaluate(() => {
+      const probe = document.createElement("span");
+      probe.style.backgroundColor = "var(--splits-surface)";
+      document.body.append(probe);
+      const surface = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return {
+        surface,
+        body: getComputedStyle(document.body).backgroundColor,
+        shell: getComputedStyle(document.querySelector("main.shell")).backgroundColor
+      };
+    });
+    expect(splitsBackground.surface).not.toBe("rgba(0, 0, 0, 0)");
+    expect(splitsBackground.body).toBe(splitsBackground.surface);
+    expect(splitsBackground.shell).toBe(splitsBackground.surface);
     await expect(addButton).toBeVisible();
     await expect(totalsButton).toBeVisible();
     // The group bar takes over from the strip once the strip has scrolled away.

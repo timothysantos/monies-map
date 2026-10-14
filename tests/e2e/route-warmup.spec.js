@@ -92,7 +92,7 @@ test.describe("route warmup on mobile", () => {
     const requests = recordPanelRequests(page);
     await page.goto("/summary?view=household&month=2026-05");
     await waitUsable(page);
-    await page.getByRole("button", { name: "Edit Bills" }).first().click();
+    await page.getByRole("button", { name: /^Edit [^ ]/ }).first().click();
     await expect(page.getByText("Edit category")).toBeVisible();
     await page.waitForTimeout(5_000);
     expect(requests).toEqual(["summary"]);

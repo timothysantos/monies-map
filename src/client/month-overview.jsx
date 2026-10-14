@@ -328,7 +328,7 @@ export function useMonthLead({ cards, monthSummary, planSections = [], categoryS
     categoryShare,
     investmentMoves
   }), [cards, categoryShare, investmentMoves, monthSummary, planSections]);
-  const [leadView, setLeadView] = useLeadView(model ? model.hasPlan : null);
+  const [leadView, setLeadView] = useLeadView();
   return { model, leadView, setLeadView };
 }
 

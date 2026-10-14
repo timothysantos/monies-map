@@ -489,6 +489,14 @@
     line-height: 1.1;
   }
 
+  /* The lead card sits right under this trigger and paints over the lower
+     part of its 44 px hit area (and the Plan | Simple switch's own area
+     starts there), so the hit area grows upward into the empty page top
+     instead of evenly. */
+  .month-panel .month-actions-trigger::before {
+    transform: translate(-50%, -80%);
+  }
+
   /* Room above "Draft a summary" for its 44 px hit area to clear the note. */
   .note-card-actions .subtle-action {
     margin-top: 11px;

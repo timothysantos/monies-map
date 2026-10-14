@@ -1096,10 +1096,10 @@ Definitions:
   Spending Mix, notes and accounts and shows `Money in` (what came in, one
   row per source) where the plan tables are, with "Plan this month" to go
   back to Plan. Entries, Splits and Ask do not change.
-- The default is `Plan` when the period has a plan (any planned income,
-  planned spend, savings target or investment goal above zero, or on Month
-  any plan line) and `Simple` when it has none. A person's choice wins over
-  the default and is one choice for both pages. It belongs to the signed-in
+- The default is `Simple` for anyone who has never chosen, whether or not
+  the period has a plan. A person's choice wins over the default and is one
+  choice for both pages, set from the switch on the page or from Settings >
+  Summary view (the same preference). It belongs to the signed-in
   login (the verified Cloudflare Access email): stored in `app_settings`
   under `viewer_preferences:` and a SHA-256 of the email (never the email),
   read back on the app shell (`leadView`). Without a login (the demo, local

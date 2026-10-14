@@ -5,9 +5,9 @@ import { APP_SHELL_PERSISTED_CACHE_KEY } from "./app-shell-query";
 // Which way the Summary and Month lead reads (DOMAIN.md "Lead View",
 // design.md "Plan or Simple"): "plan" is spend against the plan with the
 // money jobs; "simple" is only what was earned and what was spent, for a
-// household that keeps no plan. The person's choice wins; without one, a
-// period with a plan shows Plan and a period with none shows Simple. One
-// choice for both pages.
+// household that keeps no plan. The person's choice wins; without one, both
+// pages open in Simple, whether or not the period has a plan. One choice for
+// both pages, also set from Settings > Summary view.
 //
 // The choice belongs to the signed-in login: the app shell carries it
 // (`leadView`, stored on the server under the login) and a switch saves it
@@ -43,10 +43,9 @@ export function saveLeadView(view, storage = globalThis.localStorage) {
   }
 }
 
-// `hasPlan` is null while the period's figures are still loading: Plan, as
-// before, so the page does not swap views when they arrive.
-export function chooseLeadView(stored, hasPlan) {
-  return stored ?? (hasPlan === false ? "simple" : "plan");
+// Nobody who has never chosen sees Plan: Simple is the default.
+export function chooseLeadView(stored) {
+  return isLeadView(stored) ? stored : "simple";
 }
 
 // One store for the page: Summary and Month read the same choice.
@@ -124,7 +123,7 @@ async function sendLeadView(leadView) {
 export const leadViewStore = createLeadViewStore();
 
 /** [view, choose]: the view to show and the switch's handler. */
-export function useLeadView(hasPlan) {
+export function useLeadView() {
   const stored = useSyncExternalStore(leadViewStore.subscribe, leadViewStore.get, leadViewStore.get);
-  return [chooseLeadView(stored, hasPlan), leadViewStore.choose];
+  return [chooseLeadView(stored), leadViewStore.choose];
 }
