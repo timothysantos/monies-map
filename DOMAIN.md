@@ -1066,6 +1066,36 @@ Definitions:
   Spending Mix's "Range overall" chip). The old `summary focus`
   (`summary_focus`) is retired.
 
+### Lead View
+
+How the Summary and Month lead reads a period: against the plan, or plainly
+as money in and money out. A display preference, never data.
+
+Canonical terms:
+- `lead view`
+- `Plan` (UI label; code `plan`)
+- `Simple` (UI label; code `simple`)
+- `earned`
+
+Definitions:
+- `Plan` is the lead as it was: the `money job` spend against its plan, the
+  savings bar with its plan bar, the money jobs line, and the Income and
+  Saved figures with their plan and target; on Summary, Intent vs Outcome.
+- `Simple` is for a household that keeps no plan: `earned` (the period's
+  income) and spent (the spend job's spending, the same figure as Plan's
+  "Spent"), the same savings bar without its plan bar, and nothing about a
+  plan; on Summary, "Earned vs spent by month" replaces Intent vs Outcome.
+  Both views read one split of the period's money (`splitMoneyUse`), so
+  they always agree. Month's plan tables stay in both views.
+- `earned` is the UI word for the period's recorded income in the Simple
+  view and the savings bar ("All you earned"). It is recorded money, never
+  a forecast.
+- The default is `Plan` when the period has a plan (any planned income,
+  planned spend, savings target or investment goal above zero, or on Month
+  any plan line) and `Simple` when it has none. A person's choice is kept on
+  that device (local storage, `monies-map:lead-view`), one choice for both
+  pages, and wins over the default.
+
 ### Ask Page
 
 The one page where a person adds an entry by hand, from a typed sentence or

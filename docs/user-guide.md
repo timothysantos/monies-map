@@ -306,6 +306,17 @@ over plan.
 
 ### What each control does
 
+- **Plan | Simple** (top right of the Spent card): **Plan** shows your
+  spending against your plan, as above. **Simple** is for when you do not
+  keep a plan: the card shows only what you **Earned** and what you
+  **Spent**, the same bar without the plan, and one line in words ("You
+  kept $12,000 of the $80,000 you earned (15%)" or "You spent $300 more
+  than you earned"). The figures are the same in both. In Simple,
+  **Earned vs spent by month** takes the place of Intent vs Outcome: one row
+  per month, newest first, with what you kept (or overspent), what you
+  earned and spent, and a thin bar; the month's name opens that month. If a
+  range has no plan at all it opens in Simple. Your choice is remembered on
+  this phone or computer, for Summary and Month alike.
 - **Range** (top right): the months included, 12 by default. Use **‹** and
   **›** to move the whole range, or select the start or end month to pick one.
   ![Selecting the start of the range opens a month picker](/faq/guide/desktop/thumbs/summary-range-picker.webp)
@@ -402,6 +413,10 @@ stays highlighted, and the range at the top stays as it was.
 
 ### What each control does
 
+- **Plan | Simple** (top right of the top card): the same switch as on
+  [Summary](#summary). Simple shows only what you earned and spent this
+  month, with the bar; the plan rows below stay as they are. A month with no
+  plan opens in Simple.
 - **Month**: the row of months under the top bar (on a phone, **‹**, the
   month's name and **›** beside the View and scope bar) moves to another
   month of the range, or **All months** back to Summary.

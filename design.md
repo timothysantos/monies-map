@@ -1040,6 +1040,50 @@ Where it is used:
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
   sideways scroll.
+- Plan or Simple (`lead-view.js`, DOMAIN.md "Lead View"): the Summary and
+  Month lead has a two-option switch on the right of its eyebrow, "Plan" |
+  "Simple" (`LeadViewSwitch` in `ui/spend-lead-group.jsx`): a
+  `role="radiogroup"` named "Show this period" with two `role="radio"`
+  buttons, the arrow keys moving the choice and the focus, only the checked
+  one in the tab order. It is drawn 30 px tall as a pill on `--chip` with
+  the checked option on `--card`, but negative margins keep the eyebrow
+  line's height (the Month card stays at most 215 px on a phone) and each
+  option's hit area reaches 44 px. Plan is everything above. Simple
+  (`SpendLeadGroup view="simple"`): the eyebrow is the period alone ("Jun
+  2025 – May 2026", "May 2026"); the lead is "Earned $x · Spent $y" at
+  1.5 rem, wrapping to two lines when the figures are long (earned is mint,
+  spent plain ink, rose only when more went out than came in, `spendTone`
+  against income); then the savings bar with `withPlan={false}` (no plan
+  bar, no plan legend item; its plain line, "You kept $x of the $y you
+  earned (15%)" or "You spent $x more than you earned", is Simple's one line
+  of words); no "of $x plan", no percent of plan, no money jobs, and no
+  Income / Saved pills or Income / Saved / Remaining budget columns (each a
+  plan figure or a repeat of the lead). The figures are the lead model's
+  `simple` (`buildSummaryLeadModel`), from the same `splitMoneyUse` as
+  Plan's. Without a choice the page opens in Plan when the period has a plan
+  (`hasPlan`) and in Simple when it has none; while the figures load it is
+  Plan. The choice is kept on the device (`monies-map:lead-view`, read and
+  written in try/catch, so blocked storage means the default and a switch
+  that still works for the visit) and is one choice for Summary and Month.
+  On Summary, Simple replaces Intent vs Outcome with "Earned vs spent by
+  month" (`summary-earned-spent.js`, model `summary-earned-spent-model.js`,
+  CSS `summary-earned-spent.css`, words `copy/earned-spent-copy.js`): flat
+  rows split by hairlines, newest first; the month name (44 px) opens the
+  month, beside it "Kept $x" (mint) or "Overspent $x" (rose), under it
+  "Earned $x  Spent $y" (and "Invested $z" when there is any) and a 6 px bar
+  on the month's own scale in the savings bar's colours (spent, the part
+  past the income striped, invested, kept). Each month goes through
+  `splitMoneyUse` with its own category share, so its spent is the Month
+  lead's; its invested is the Investments category only, as the Summary
+  page has transfers into investment accounts for the whole range only. It
+  loads only when Simple is shown and imports no React (the panel hands it
+  `createElement` and the chevron), like `money-jobs-detail.js`, so it adds
+  no first-screen file. On Month only the lead switches: the plan tables
+  are the page's purpose. Hidden money: the Simple lead's figures are dots
+  in plain ink; the bar is in greys with its hidden sentence; the month
+  list keeps each bar and says only "Spent · 85% of earned" (nothing for a
+  month with no income), with no amount and no kept or overspent word
+  (`tests/e2e/lead-simple-view.spec.js`, `tests/lead-view.test.mjs`).
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
   chunks; no `styles.css` growth). The Spending Mix donut labels only the

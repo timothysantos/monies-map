@@ -51,6 +51,13 @@ figures are the month page DTO's metric cards plus the month's Summary row
 Remaining budget column (labelled "To allocate" or "Overplanned", "Remaining budget" when money is hidden) opens its explanation. Nothing scrolls sideways at
 390 px (`tests/e2e/summary-month-lsd.spec.js`).
 
+The card's Plan | Simple switch (`lead-view.js`, DOMAIN.md "Lead View")
+shares Summary's remembered choice. Simple is "Earned $x · Spent $y" over
+the savings bar without its plan bar, with no plan line, money jobs or
+columns; a month with no plan lines and no planned figures opens in Simple
+when nothing is chosen. Only the card switches: the plan tables stay
+(`tests/e2e/lead-simple-view.spec.js`).
+
 The plan tables (Income, Budget Buckets, Planned Items) keep their table
 markup on every layout and add hierarchy: the item leads, the money columns
 are right-aligned, and a thin bar under each actual shows actual against
