@@ -404,7 +404,26 @@ To add Claude later:
    `wrangler.jsonc` sets 100, and a Worker without it uses 12).
 7. Deploy as usual. If Claude rejects the key, model or gateway (400, 401,
    403 or 404), `npx wrangler tail` shows `AI provider config rejected` with
-   the status code only; receipts keep working through Workers AI.
+   the status, a `source` (`gateway`, `anthropic` or `unknown`) and a short
+   sanitised `message`; receipts keep working through Workers AI.
+
+### Claude diagnostic (which layer refuses)
+
+When every Claude call fails, ask the Worker directly. It makes one minimal
+Claude call through the gateway (`max_tokens` 1, one allowance unit) and
+answers `{ ok, status, source, message, alias, gatewayIdPresent,
+tokenPresent }`. `source` is `gateway` (Cloudflare refused: authenticated
+gateway, token), `anthropic` (the provider key, credit or model) or
+`unknown`; the presence fields are booleans only. It is not linked from the
+app and stores nothing. Open it in a signed-in browser tab (it is a GET):
+
+```
+https://<worker-host>/api/ai-assist/provider-diagnostic
+```
+
+or with curl behind Cloudflare Access, using a service token or a copied
+session cookie: `curl -s -H "CF-Access-Client-Id: ..." -H
+"CF-Access-Client-Secret: ..." https://<worker-host>/api/ai-assist/provider-diagnostic`.
 
 ### Claude credit warnings
 

@@ -359,3 +359,22 @@ test("the prompt names people, wallets, categories, groups and lines but no acco
   // About 4 characters a token: a typical turn stays well under 2k tokens.
   assert.ok(prompt.length < 6_000, `prompt is ${prompt.length} characters`);
 });
+
+// Anthropic's structured-output validator refuses an enum whose values do not
+// all match one declared type ("Enum value 'expense' does not match declared
+// type ['string','null']"), which returned a 400 for every Ask turn.
+test("the Ask turn schema never mixes a type list with an enum", () => {
+  const offenders = [];
+  const walk = (node, path) => {
+    if (Array.isArray(node)) { node.forEach((item, index) => walk(item, `${path}[${index}]`)); return; }
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node.type) && node.enum) offenders.push(path);
+    for (const [key, value] of Object.entries(node)) walk(value, `${path}.${key}`);
+  };
+  walk(ASK_TURN_SCHEMA, "schema");
+  assert.deepEqual(offenders, []);
+  const blocked = ASK_TURN_SCHEMA.properties.blocked;
+  assert.deepEqual(blocked.anyOf[1], { type: "null" });
+  assert.equal(blocked.anyOf[0].type, "string");
+  assert.ok(blocked.anyOf[0].enum.length > 0);
+});

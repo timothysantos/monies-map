@@ -352,3 +352,24 @@ pass with zero errors; `build` passes; the targeted browser specs
 `ask-page`, `settings-payment-ways` and `ask-split-suggestion` pass. The
 `ask-page` run is what found the first version of the F1 guard refusing a
 replayed request (see F1).
+
+## Addendum: Claude rejection diagnosis (October 2026)
+
+Privacy, cost and write boundaries of the rejection diagnosis:
+
+- The `AI provider config rejected` log now carries `{provider, status,
+  source, message}`. `source` is derived from the error body's shape
+  (Cloudflare gateway, Anthropic or unknown). `message` is the provider's
+  error text, capped at 300 characters, with the gateway token and API key
+  values removed verbatim and any `sk-...`, `Bearer ...` or 32+ character
+  token-like run replaced by `[redacted]`. Request headers, the token and the
+  key are never logged. The body is read only on a 400, 401, 403 or 404 and
+  is not stored.
+- `GET /api/ai-assist/provider-diagnostic` (behind the same Access check as
+  every API route) makes one Claude call with `max_tokens` 1 and the fixed
+  prompt "ping": no user data leaves. It costs 1 allowance unit, writes only
+  the shared daily allowance counter, is read-only otherwise, and returns the
+  same sanitised message plus booleans for gateway-id and token presence and
+  the BYOK alias name. Tested in `tests/ai-provider-diagnosis.test.mjs`
+  (gateway 401, Anthropic 401, Anthropic 400 credit balance, success, no
+  secret in log or response).

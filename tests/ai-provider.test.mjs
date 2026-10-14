@@ -270,14 +270,14 @@ test("Claude configured without a Workers AI binding still degrades to unavailab
   assert.equal(result.available, false);
 });
 
-test("a gateway misconfiguration warns with the status code only, never the request", async (t) => {
+test("a gateway misconfiguration warns with the status, layer and a sanitised message, never the request", async (t) => {
   mockFetch(t, () => new Response("{\"error\":\"bad key\"}", { status: 401 }));
   const warnings = t.mock.method(console, "warn", () => {});
   const ai = stubWorkersAi({ response: "{\"total\":\"2.00\"}" });
   const result = await runVisionJson(createFakeDb(), { ...GATEWAY_BYOK, AI: ai }, visionInput());
   assert.equal(result.provider, "workers-ai");
   assert.equal(warnings.mock.callCount(), 1);
-  assert.deepEqual(warnings.mock.calls[0].arguments, ["AI provider config rejected", { provider: "claude", status: 401 }]);
+  assert.deepEqual(warnings.mock.calls[0].arguments, ["AI provider config rejected", { provider: "claude", status: 401, model: "claude-haiku-5-5", path: "/v1/<account>/<gateway>/anthropic/v1/messages", source: "unknown", message: "bad key" }]);
 });
 
 test("turned off, unconfigured or over the allowance: no inference and no gateway call", async (t) => {
