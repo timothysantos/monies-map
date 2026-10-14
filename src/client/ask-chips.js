@@ -175,7 +175,11 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   if (card.saved?.splitExpenseId) {
     items.push({ key: "open-splits", label: askCopy.chips.openOnSplits, onClick: actions.openOnSplits });
   }
-  items.push({ key: "undo", label: askCopy.chips.undo, onClick: actions.undo });
+  // Undo removes the new entry; a transfer already linked to its other side
+  // would leave that side changed, so it has no Undo here.
+  if (!card.saved?.transferLinkedEntryId) {
+    items.push({ key: "undo", label: askCopy.chips.undo, onClick: actions.undo });
+  }
   return { items, prompt };
 }
 

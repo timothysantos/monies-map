@@ -293,7 +293,7 @@ command can take it back, and Open on the page that shows it.
 | `edit_saved_entry` (also `edit_draft` on a saved card) | the saved entry in focus; amount the person wrote, date not in the future, wallet active, person and category the household's, note in the person's words; a statement-certified entry keeps amount, date, description and wallet (a note says why) | each field before → after | `/api/entries/update` with every other fact kept (the old values) |
 | `recategorise` | the category exists and is not Transfer; one entry in focus, or the person's words (or the Entries answer in focus) | one: the category; many: the count, the first 8 entries, "Yes, change all N" over 10, refused over 200 | `/api/entries/update-category` with `changes` (each back); after a bulk save, the optional rule through `/api/category-match-rules/save` |
 | `edit_note` | entry in focus or a month; the person's words, at most 200 characters | note before → after | `/api/entries/update-note` or `/api/month-note/update` (the old note) |
-| `link_transfer` | the saved entry in focus, not already linked or on Splits; candidates with the same amount in another wallet within a month, narrowed by the wallet and day said; several are asked as chips | from, to, the two entries | `/api/transfers/link` (none) |
+| `link_transfer` (also `edit_saved_entry` with type Transfer, a category of Transfer, or `recategorise` to Transfer, on one saved entry) | the saved entry in focus, not already linked or on Splits; the Entries transfer dialog's own candidates, narrowed by the wallet and day said; see "Transfers: the other side" | from, to, the two entries, the choices | `/api/transfers/link` (none), or the entry update for "No other side yet" (the old type and category) |
 | `split_group` create / move | a new name in the person's words; the split of the saved entry in focus, a group with its currency | name and currency; group before → after | `/api/splits/groups/create` (none); `/api/splits/expenses/update` (the old group) |
 | `split_group` settle | the group named or in focus; its balance as Splits shows it | the settle-up payment draft card | Record payment, `/api/splits/settlements/create` |
 | `split_group` simplify | the plan the command itself reads (`planSplitSettlementCheckpoint`) | who pays whom, the amount, how many open splits | `/api/splits/checkpoints/create` (`/api/splits/checkpoints/reopen` with the created id) |
@@ -302,6 +302,46 @@ command can take it back, and Open on the page that shows it.
 | `edit_category` | create: a new name; rename: not a built-in category; colour: a palette colour (any other word opens Settings) | name or colour before → after | `/api/categories/create` (none), `/api/categories/update` (the old name or colour) |
 | `link_plan` | a planned item of the month; its expenses with the words, not yet linked | the line, the count and first 8 | `/api/month-plan/links` with the old links kept (the old links) |
 | `cannot_help` with `blocked` | one of: delete an entry, month or import, import a statement, undo an import, reconcile, accounts, people | a note with the app's reason, then the page opens | none |
+
+#### Transfers: the other side
+
+Every Ask path that makes an entry a transfer asks the question the Entries
+transfer dialog asks: which entry on the other side? There is one rule set,
+`selectTransferCandidates` in `src/domain/transfer-candidates.ts` (the same
+amount in another wallet within a month; opposite direction first, then the
+closest date, then the wallet). The dialog's loaded rows
+(`getTransferMatchCandidates`), its Recheck matches
+(`loadTransferMatchCandidates`, `GET /api/transfers/candidates`), Ask's
+`link_transfer` and the draft search below all call it, so they cannot
+disagree. `chooseTransferOptions` then applies what the person said.
+
+- A saved entry becoming a transfer (`transferRequest` in
+  `ask-turn-actions.ts`, `buildTransferLink`): the change card pre-selects the
+  best match (its date, wallet and amount are in the card), shows up to 3
+  other candidates as chips, and, while the entry is not a transfer yet, a
+  last chip "No other side yet (keep as an unmatched transfer)". Entries
+  already paired, or on Splits, are never offered. Saving a match is
+  `/api/transfers/link` (one batch, both sides); "No other side yet" is the
+  entry update with type Transfer and the Transfer category, and keeps its
+  Undo. The page saves the chosen option's steps (`effectiveChange`).
+- A wallet the person names ("to my UOB One", `to_wallet` or
+  `transfer.wallet`) keeps only that wallet's candidates. With none there the
+  card says so ("Nothing in UOB One has this amount. These other accounts do.")
+  and offers the others; with no candidates at all it says "Nothing in UOB One
+  has this amount." and offers only "No other side yet". The entry's own
+  wallet is never the other side.
+- A new transfer drafted in Ask: the card asks
+  `GET /api/transfers/draft-candidates` (`date`, `accountId`, `amountMinor`,
+  `transferDirection`) once the amount, date and wallet are set and have
+  settled (`use-ask-transfer-match.js`), and shows the best match selected
+  under the rows (`AskTransferMatchRows`) with the same chips. A To wallet on
+  the card narrows them as above. Save creates the entry through the
+  composer's create path, then pairs it with the chosen entry through
+  `/api/transfers/link` ("Saved to Entries and linked to the other side."); a
+  failed link keeps the entry and says so. A linked save has no Undo
+  (removing the new entry would leave the other side changed).
+- No AI: with the model off, a drafted transfer card gets the same candidates
+  (they come from the card's fields, not from the model).
 
 After a save the card's `refresh` list drives the owners: entries, month and
 summary through `onEntryMutation`, splits through `onSplitMutation`,

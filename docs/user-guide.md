@@ -695,8 +695,13 @@ changes until you tap its button, and most changes have **Undo** after.
   would move, how many there are and the first few. When it is more than
   ten, tap **Yes, change all** first. After saving, Ask offers to file new
   Grab entries the same way.
-- "This was a transfer to my OCBC account" finds the other side (the same
-  amount in another wallet within a month) and links the two.
+- "This was a transfer to my OCBC account" (or changing an entry's type to
+  Transfer) looks for the other side, the same way the Entries transfer
+  window does: the same amount in another wallet within a month. The best
+  match is chosen for you, a few others are shown as buttons, and **No other
+  side yet** keeps it as a transfer you pair later. If you named the account
+  and nothing there matches, Ask says so and shows the others. A transfer you
+  add in Ask shows the same choices before you save.
 - On Splits: "new group Japan trip", "move this to Home", "settle up
   everything in Home" (a payment for the whole amount owed, saved with
   **Record payment**), "simplify everything", and "any matches in

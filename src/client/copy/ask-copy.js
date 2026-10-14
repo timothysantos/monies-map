@@ -200,6 +200,8 @@ export const askCopy = {
     pasteEmpty: "There's nothing to paste. Copy a receipt photo or a sentence first.",
     pasteBlocked: "This browser didn't allow pasting here. Press and hold in the message box to paste.",
     saved: "Saved to Entries.",
+    savedAndLinked: "Saved to Entries and linked to the other side.",
+    transferLinkFailed: (error) => `Saved to Entries, but it couldn't be linked to the other side: ${error}`,
     savedOnSplits: "Saved to Entries and added to Splits.",
     splitAddFailed: (error) => `Saved to Entries, but it couldn't be added to Splits: ${error}`,
     undone: "Removed. The card is back if you want to change it and save again.",
@@ -264,6 +266,7 @@ export const askCopy = {
         entry_note: "Change the note",
         month_note: "Change the month's note",
         link_transfer: "Link as a transfer",
+        link_transfer_none: "Make this a transfer",
         group_create: "New split group",
         group_move: "Move to another split group",
         simplify: (count) => `Simplify ${count} open ${count === 1 ? "split" : "splits"} into one payment`,
@@ -306,6 +309,7 @@ export const askCopy = {
         category_create: "Add category",
         plan_link: "Link entries"
       },
+      saveTransferNone: "Save as a transfer",
       saveDefault: "Save",
       saving: "Saving…",
       discard: "Not now",
@@ -317,6 +321,16 @@ export const askCopy = {
         simplify: "Simplified on Splits.",
         category_create: "Category added.",
         plan_link: "Linked to the plan line."
+      },
+      savedTransferNone: "Marked as a transfer. The other side isn't linked yet.",
+      // The other sides of a transfer to choose from (ask-transfer-choices.jsx).
+      transfer: {
+        label: "Other side",
+        none: "No other side yet (keep as an unmatched transfer)",
+        noneRow: "No other side yet",
+        chip: (wallet, day) => `${wallet}, ${day}`,
+        walletMissed: (wallet) => `Nothing in ${wallet} has this amount. These other accounts do.`,
+        walletMissedNone: (wallet) => `Nothing in ${wallet} has this amount.`
       },
       savedDefault: "Saved.",
       undo: "Undo",

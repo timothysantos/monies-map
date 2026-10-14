@@ -11,6 +11,7 @@ import {
   requestInsightExplanation,
   requestMoneyAnswer,
   requestPlanDraft,
+  linkSavedTransfer,
   requestReceiptRead,
   resolveSkewCandidate,
   saveCardEntry,
@@ -24,6 +25,7 @@ import {
   applyReceiptRead,
   buildCardCreateDraft,
   cardFromSavedEntry,
+  chooseTransferMatch,
   createAskCard,
   declineSplitSuggestion,
   markCardSaved,
@@ -37,7 +39,7 @@ import {
   validateCard
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
-import { buildTurnFocus, buildTurnHistory, linkTurnMatch, removeSplitExpense, requestAskTurn, runChangeSteps, saveChangeRule, saveSettlementDraft, saveSplitProposal } from "./ask-turn-api";
+import { buildTurnFocus, buildTurnHistory, effectiveChange, linkTurnMatch, removeSplitExpense, requestAskTurn, runChangeSteps, saveChangeRule, saveSettlementDraft, saveSplitProposal, selectedChoiceId } from "./ask-turn-api";
 import { AskChangeCard, AskMatchesCard, AskSettlementDraftCard, AskSplitProposalCard, openPageOf } from "./ask-turn-cards";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
 import { AskInsightAnswerCard } from "./ask-insight-answer-card";
@@ -71,6 +73,9 @@ import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { useAskSplitSuggestion } from "./use-ask-split-suggestion";
+import { useAskTransferMatch } from "./use-ask-transfer-match";
+import { AskTransferMatchRows } from "./ask-transfer-choices";
+import { NO_OTHER_SIDE, transferLinkBody } from "./ask-transfer-match";
 import { useIsMobileLayout } from "./use-viewport";
 import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
@@ -296,6 +301,9 @@ function AskConversation({
   // "You usually split this with …": from the household's own split
   // history, read-only (DOMAIN.md "Split Suggestion").
   const splitSuggestion = useAskSplitSuggestion({ card, context, splitGroups });
+  // The other side of a draft transfer, from the Entries transfer dialog's
+  // own search (docs/flows/ask-flow.md "Transfers: the other side").
+  const transferMatch = useAskTransferMatch({ card });
 
   useRouteWorkReport({
     ready: true,
@@ -821,20 +829,23 @@ function AskConversation({
     if (!item || item.status !== "draft" || working || (item.change.confirmCount && !item.confirmed)) {
       return;
     }
+    // A transfer change saves the choice the person made.
+    const change = effectiveChange(item.change, item.choiceId);
+    const unmatched = selectedChoiceId(item.change, item.choiceId) === NO_OTHER_SIDE;
     updateThreadItem(itemId, { status: "saving" });
     setWorking("change-save");
     try {
-      const { ok, error, result } = await runChangeSteps(item.change.save, { confirmedCount: item.change.confirmCount && item.confirmed ? item.change.confirmCount : undefined });
+      const { ok, error, result } = await runChangeSteps(change.save, { confirmedCount: change.confirmCount && item.confirmed ? change.confirmCount : undefined });
       if (!ok) {
         updateThreadItem(itemId, { status: "draft" });
         appendThread(threadItem("note", { text: error }));
         return;
       }
-      updateThreadItem(itemId, { status: "saved", result });
-      afterChange(item.change, "save");
-      const saved = askCopy.turn.change.saved[item.change.type];
-      const category = item.change.rows.find((row) => row.field === "category")?.after ?? "";
-      appendThread(threadItem("note", { text: typeof saved === "function" ? saved(item.change.count, category) : saved ?? askCopy.turn.change.savedDefault }));
+      updateThreadItem(itemId, { status: "saved", result, choiceId: selectedChoiceId(item.change, item.choiceId) });
+      afterChange(change, "save");
+      const saved = unmatched ? askCopy.turn.change.savedTransferNone : askCopy.turn.change.saved[change.type];
+      const category = change.rows.find((row) => row.field === "category")?.after ?? "";
+      appendThread(threadItem("note", { text: typeof saved === "function" ? saved(change.count, category) : saved ?? askCopy.turn.change.savedDefault }));
     } finally {
       setWorking("");
     }
@@ -842,20 +853,21 @@ function AskConversation({
 
   async function undoTurnChange(itemId) {
     const item = turnItem(itemId, "change-draft");
-    if (!item || item.status !== "saved" || !item.change.undo || working) {
+    const change = item ? effectiveChange(item.change, item.choiceId) : null;
+    if (!item || !change || item.status !== "saved" || !change.undo || working) {
       return;
     }
     updateThreadItem(itemId, { status: "undoing" });
     setWorking("change-undo");
     try {
-      const { ok, error } = await runChangeSteps(item.change.undo, { result: item.result ?? null });
+      const { ok, error } = await runChangeSteps(change.undo, { result: item.result ?? null });
       if (!ok) {
         updateThreadItem(itemId, { status: "saved" });
         appendThread(threadItem("note", { text: error }));
         return;
       }
       updateThreadItem(itemId, { status: "undone" });
-      afterChange(item.change, "undo");
+      afterChange(change, "undo");
       appendThread(threadItem("note", { text: askCopy.turn.change.undone }));
     } finally {
       setWorking("");
@@ -1323,9 +1335,13 @@ function AskConversation({
         return;
       }
       const groupName = splitGroups.find((group) => group.id === createDraft.splitGroupId)?.name ?? "";
+      // A transfer saved with an other side chosen: the existing pair
+      // command, so Entries shows one matched transfer.
+      const otherSideId = sending.variant === "transfer" && transferMatch && transferMatch.selectedId !== NO_OTHER_SIDE ? transferMatch.selectedId : "";
+      const link = otherSideId ? await linkSavedTransfer(transferLinkBody(sending, result.entryId, otherSideId)) : null;
       setCard((current) => {
         const saved = markCardSaved(current, { ...result, splitGroupId: createDraft.splitGroupId });
-        return { ...saved, saved: { ...saved.saved, splitGroupName: groupName } };
+        return { ...saved, saved: { ...saved.saved, splitGroupName: groupName, ...(link?.ok ? { transferLinkedEntryId: otherSideId } : {}) } };
       });
       const month = createDraft.date.slice(0, 7);
       onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
@@ -1333,9 +1349,13 @@ function AskConversation({
         onSplitMutation?.({ month: result.splitExpenseMonth ?? month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
       }
       appendThread(threadItem("note", {
-        text: result.splitAddError
-          ? askCopy.notes.splitAddFailed(result.splitAddError)
-          : result.splitExpenseId ? askCopy.notes.savedOnSplits : askCopy.notes.saved
+        text: link && !link.ok
+          ? askCopy.notes.transferLinkFailed(link.error)
+          : link?.ok
+            ? askCopy.notes.savedAndLinked
+            : result.splitAddError
+              ? askCopy.notes.splitAddFailed(result.splitAddError)
+              : result.splitExpenseId ? askCopy.notes.savedOnSplits : askCopy.notes.saved
       }));
       // Bring that month's Entries page up to date, so Back to Entries and
       // Open this entry show the saved row; a failure raises the notice.
@@ -1675,6 +1695,10 @@ function AskConversation({
       onDiscardChange: (itemId) => discardTurnItem(itemId, "change-draft", askCopy.turn.change.discarded),
       onUndoChange: (itemId) => void undoTurnChange(itemId),
       onConfirmChange: confirmTurnChange,
+      onChooseTransfer: (itemId, choiceId) => {
+        const item = turnItem(itemId, "change-draft");
+        if (item?.status === "draft" && !working) updateThreadItem(itemId, { choiceId });
+      },
       onRuleChange: (itemId) => void saveTurnRule(itemId),
       onOpenChange: openTurnChange,
       onLinkMatch: (itemId, matchId) => void linkTurnMatchItem(itemId, matchId),
@@ -1993,6 +2017,14 @@ function AskConversation({
             onShareChange={changeShare}
           />
         ) : null}
+        {card && card.status === "draft" && card.variant === "transfer" && transferMatch ? (
+          <AskTransferMatchRows
+            match={transferMatch}
+            currency={context.accounts?.find((account) => account.id === card.fields.accountId)?.currency ?? "SGD"}
+            disabled={Boolean(working)}
+            onChoose={(id) => setCard((current) => chooseTransferMatch(current, id))}
+          />
+        ) : null}
         {card ? settledThread.slice(cardSlot).map((item) => <ThreadItem key={item.id} item={item} settled={settledIds.has(item.id)} answerProps={answerProps} />) : null}
         {statusItems.map((item) => <ThreadItem key={item.id} item={item} answerProps={answerProps} />)}
         {card?.saveError ? <p className="ask-note is-error" role="alert">{card.saveError}</p> : null}
@@ -2231,6 +2263,7 @@ function ThreadItem({ item, settled = false, answerProps }) {
         onDiscard={() => turn.onDiscardChange(item.id)}
         onUndo={() => turn.onUndoChange(item.id)}
         onConfirm={() => turn.onConfirmChange(item.id)}
+        onChooseTransfer={(choiceId) => turn.onChooseTransfer(item.id, choiceId)}
         onRule={() => turn.onRuleChange(item.id)}
         onOpen={() => turn.onOpenChange(item.id)}
       />

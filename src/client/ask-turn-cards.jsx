@@ -1,6 +1,8 @@
 import { ArrowLeftRight, Link2, PencilLine, Users } from "lucide-react";
 
 import { NEUTRAL_BUBBLE_COLOUR } from "./ask-plan-draft-card";
+import { effectiveChange, selectedChoiceId } from "./ask-turn-api";
+import { TransferChoices } from "./ask-transfer-choices";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
 import { formatMonthYear } from "./copy/ask-plan-copy";
 import { moneyWithCurrency } from "./formatters";
@@ -130,12 +132,13 @@ function changeValue(row, side) {
   return DATE_FIELDS.has(row.field) ? formatDay(text) : text;
 }
 
-function subtitleOf(change) {
-  const line = changeCopy.subtitle[change.type];
+function subtitleOf(change, choiceId) {
+  const line = changeCopy.subtitle[choiceId === "none" ? "link_transfer_none" : change.type];
   return typeof line === "function" ? line(change.count) : line;
 }
 
-function saveLabelOf(change) {
+function saveLabelOf(change, choiceId) {
+  if (choiceId === "none") return changeCopy.saveTransferNone;
   const label = changeCopy.save[change.type];
   return typeof label === "function" ? label(change.count) : label ?? changeCopy.saveDefault;
 }
@@ -149,8 +152,12 @@ function saveLabelOf(change) {
  * offers Undo where the command can take it back, and after a bulk
  * recategorise, the optional rule for new entries.
  */
-export function AskChangeCard({ item, busy = false, settled = false, onSave, onDiscard, onUndo, onConfirm, onRule, onOpen }) {
-  const { change } = item;
+export function AskChangeCard({ item, busy = false, settled = false, onSave, onDiscard, onUndo, onConfirm, onRule, onOpen, onChooseTransfer }) {
+  // A transfer change shows the choice the person made (the best match to
+  // begin with): its rows, entries, steps and Undo.
+  const change = effectiveChange(item.change, item.choiceId);
+  const choiceId = selectedChoiceId(item.change, item.choiceId);
+  const choices = item.change.transfer;
   const saved = item.status === "saved" || item.status === "undoing";
   const undone = item.status === "undone";
   const needsConfirm = Boolean(change.confirmCount);
@@ -164,7 +171,7 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
         tag={<span className={`ask-card-tag ${saved ? "is-saved" : "is-filled"}`}>{saved ? changeCopy.savedTag : undone ? changeCopy.undoneTag : copy.draftTag}</span>}
         category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
         title={<strong className="lsd-title ask-plan-title">{change.title}</strong>}
-        subtitle={<span className="ask-plan-subtitle">{subtitleOf(change)}</span>}
+        subtitle={<span className="ask-plan-subtitle">{subtitleOf(change, choiceId)}</span>}
         amount={amount ? moneyWithCurrency(amount.amountMinor, amount.currency) : undefined}
         tone="neutral"
         amountCaption={amount ? formatDay(amount.date) : undefined}
@@ -206,6 +213,16 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
           {change.count > change.entries.length ? <DetailRow readOnly label={changeCopy.more(change.count - change.entries.length)} /> : null}
         </DetailRows>
       ) : null}
+      {choices && item.status === "draft" ? (
+        <TransferChoices
+          options={choices.options.map((option) => ({ id: option.id, wallet: option.entries[1]?.accountName ?? "", date: option.entries[1]?.date ?? "" }))}
+          selectedId={choiceId}
+          showNone={Boolean(choices.none)}
+          walletMissed={choices.walletMissed}
+          disabled={busy}
+          onChoose={onChooseTransfer}
+        />
+      ) : null}
       {item.status === "draft" && needsConfirm ? (
         <DetailRows label={changeCopy.confirm(change.confirmCount)}>
           <DetailRow
@@ -234,7 +251,7 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
           quietLabel={changeCopy.discard}
           onQuiet={onDiscard}
           quietDisabled={busy}
-          primaryLabel={item.status === "saving" ? changeCopy.saving : saveLabelOf(change)}
+          primaryLabel={item.status === "saving" ? changeCopy.saving : saveLabelOf(change, choiceId)}
           onPrimary={onSave}
           primaryDisabled={busy || (needsConfirm && !item.confirmed)}
         />

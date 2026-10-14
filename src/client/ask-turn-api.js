@@ -220,12 +220,60 @@ const MATCH_PATHS = Object.freeze({ expense: "/api/splits/matches/link-expense",
 
 const isStep = (step) => isObject(step) && ASK_CHANGE_PATHS.includes(step.path) && isObject(step.body);
 
+const isRow = (row) => isObject(row) && isText(row.field) && isText(row.before) && isText(row.after);
+const isChangeEntry = (entry) => isObject(entry) && isText(entry.entryId) && isText(entry.description) && Number.isInteger(entry.amountMinor);
+
+// One way a transfer change can end: pairing with an other side, or "none"
+// (an unmatched transfer). Anything malformed drops the whole card.
+function readTransferOption(option) {
+  if (!isObject(option) || !isText(option.id) || !option.id) return null;
+  if (!Array.isArray(option.rows) || !option.rows.every(isRow)) return null;
+  if (!Array.isArray(option.entries) || !option.entries.every(isChangeEntry)) return null;
+  if (!Array.isArray(option.save) || !option.save.length || !option.save.every(isStep)) return null;
+  if (option.undo !== null && !(Array.isArray(option.undo) && option.undo.every(isStep))) return null;
+  return { ...option, count: Number.isInteger(option.count) ? option.count : option.entries.length };
+}
+
+function readTransferChoices(transfer) {
+  if (transfer === undefined || transfer === null) return { ok: true, value: null };
+  if (!isObject(transfer) || !Array.isArray(transfer.options) || transfer.options.length > 4) return { ok: false, value: null };
+  const options = transfer.options.map(readTransferOption);
+  const none = transfer.none === null || transfer.none === undefined ? null : readTransferOption(transfer.none);
+  if (options.some((option) => !option) || (transfer.none && !none) || (!options.length && !none)) return { ok: false, value: null };
+  return { ok: true, value: { options, none, walletMissed: isText(transfer.walletMissed) ? transfer.walletMissed : "" } };
+}
+
+/**
+ * A change card as it will be saved: for a transfer change, the rows,
+ * entries, steps and Undo of the choice the person made (the best match
+ * when they made none). Every other change is returned as it is.
+ */
+export function effectiveChange(change, choiceId = "") {
+  const choices = change.transfer;
+  if (!choices) return change;
+  const chosen = effectiveChangeChoice(choices, choiceId);
+  return { ...change, rows: chosen.rows, entries: chosen.entries, count: chosen.count, save: chosen.save, undo: chosen.undo };
+}
+
+/** The id of the choice a change card has selected (the best match by default). */
+export function selectedChoiceId(change, choiceId = "") {
+  const choices = change.transfer;
+  if (!choices) return "";
+  return effectiveChangeChoice(choices, choiceId).id;
+}
+
+function effectiveChangeChoice(choices, choiceId) {
+  return [...choices.options, ...(choices.none ? [choices.none] : [])].find((option) => option.id === choiceId) ?? choices.options[0] ?? choices.none;
+}
+
 function readChange(change) {
   if (!isObject(change) || !CHANGE_TYPES.has(change.type) || !isText(change.title) || !isText(change.month)) return null;
   if (!Array.isArray(change.rows) || !change.rows.every((row) => isObject(row) && isText(row.field) && isText(row.before) && isText(row.after))) return null;
   if (!Array.isArray(change.entries) || !change.entries.every((entry) => isObject(entry) && isText(entry.entryId) && isText(entry.description) && Number.isInteger(entry.amountMinor))) return null;
   if (!Array.isArray(change.save) || !change.save.length || !change.save.every(isStep)) return null;
   if (change.undo !== null && !(Array.isArray(change.undo) && change.undo.every(isStep))) return null;
+  const transfer = readTransferChoices(change.transfer);
+  if (!transfer.ok) return null;
   const rule = isObject(change.rule) && isText(change.rule.pattern) && isText(change.rule.categoryId) && isText(change.rule.categoryName) ? change.rule : null;
   return {
     kind: "change",
@@ -234,7 +282,8 @@ function readChange(change) {
       count: Number.isInteger(change.count) ? change.count : 0,
       confirmCount: Number.isInteger(change.confirmCount) && change.confirmCount > 0 ? change.confirmCount : null,
       refresh: Array.isArray(change.refresh) ? change.refresh.filter(isText) : [],
-      rule
+      rule,
+      transfer: transfer.value
     }
   };
 }

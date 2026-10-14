@@ -53,6 +53,7 @@ tap posts to the command listed.
 | Delete an entry | `cannot_help` with `blocked: delete_entry`: Ask says why and opens Entries | W | `/api/entries/delete` | high | stays in editor |
 | Notes on an entry | `edit_note` (target entry) | W (draft) | `/api/entries/update-note`, Undo | low | 2 (done) |
 | Mark as transfer / link a transfer | `link_transfer`: the other side with the same amount in another wallet within a month (`loadTransferMatchCandidates`), narrowed by the wallet and day said; several are asked as chips | W (draft) | `/api/transfers/link` (no Undo: the editor unlinks) | medium | 2 (done) |
+| (same row, 2026-10-14) any Ask path that makes an entry a transfer | edit type Transfer, category Transfer, a new transfer draft: the same candidates (`transfer-candidates.ts`), best pre-selected, 3 more as chips, "No other side yet" | W (draft) | `/api/transfers/link`, or the entry update for no other side | medium | done |
 | Owner, wallet | `edit_saved_entry`; post date stays in the editor | W (draft) | `/api/entries/update` | medium | 2 (done) |
 | Find entries ("grab rides in september", "food over $50") | `search_entries` | R | Entries filter (`EntriesFilter`, `summarizeFilterAnswer`) | low | 1 |
 | Open Entries with filters | `open_page` with filter | R | `buildEntriesFilterSearch` | low | 1 |

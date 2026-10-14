@@ -121,6 +121,9 @@ export function createAskCard(context, { mode = "add", splitGroupId = "" } = {})
     questions: [],
     // "accepted" or "declined" once the split suggestion was answered.
     splitSuggestionAnswer: "",
+    // A transfer's other side the person chose (ask-transfer-match.js): an
+    // entry id, "none" for no other side yet, "" for the best match.
+    transferMatchId: "",
     saveError: "",
     saved: null
   };
@@ -224,6 +227,10 @@ export function swapTransferDirection(card) {
       transferAccountName: card.fields.transferAccountId ? card.fields.accountName : ""
     }
   };
+}
+
+export function chooseTransferMatch(card, transferMatchId) {
+  return card?.status === "draft" && card.variant === "transfer" ? { ...card, transferMatchId } : card;
 }
 
 export function setShare(card, { on, splitGroupId }) {

@@ -49,6 +49,7 @@
 
 import { createEntryFromDraft } from "./entry-create-request";
 import { readSplitSuggestionResponse } from "./ask-split-suggestion";
+import { readTransferMatchResponse } from "./ask-transfer-match";
 
 export const ASK_ENDPOINTS = Object.freeze({
   entryDraft: "/api/ai-assist/entry-draft",
@@ -56,6 +57,8 @@ export const ASK_ENDPOINTS = Object.freeze({
   answer: "/api/ai-assist/answer",
   insightExplain: "/api/ai-assist/insight-explain",
   splitSuggestion: "/api/splits/suggestion",
+  transferCandidates: "/api/transfers/draft-candidates",
+  transferLink: "/api/transfers/link",
   planDraft: "/api/ai-assist/plan-draft",
   planApply: "/api/month-plan/apply-changes"
 });
@@ -222,6 +225,25 @@ export async function requestSplitSuggestion(body, { signal = undefined, fetchIm
   } catch {
     return null;
   }
+}
+
+// The other-side candidates for a draft transfer (ask-transfer-match.js
+// builds the query): the Entries transfer dialog's own search, read only.
+// Fails soft: any error or unreadable answer is no candidates (null).
+export async function requestTransferMatches(query, { signal = undefined, fetchImpl = fetch } = {}) {
+  try {
+    const params = new URLSearchParams({ date: query.date, accountId: query.accountId, amountMinor: String(query.amountMinor), transferDirection: query.transferDirection });
+    const response = await fetchImpl(`${ASK_ENDPOINTS.transferCandidates}?${params}`, { signal, cache: "no-store" });
+    return response.ok ? readTransferMatchResponse(await readJson(response)) : null;
+  } catch {
+    return null;
+  }
+}
+
+// After a transfer card saved its entry: the existing pair command, which
+// makes both sides one transfer in a single batch.
+export function linkSavedTransfer(body, { fetchImpl = fetch } = {}) {
+  return postJson(ASK_ENDPOINTS.transferLink, body, "The other side could not be linked.", fetchImpl);
 }
 
 // Saves the card's draft through the composer's create path.
