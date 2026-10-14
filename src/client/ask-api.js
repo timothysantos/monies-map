@@ -288,10 +288,16 @@ export function updateSavedEntryCategory({ entryId, categoryName }, { fetchImpl 
   return postJson("/api/entries/update-category", { entryId, categoryName }, "The category could not be changed.", fetchImpl);
 }
 
-export function addSavedEntryToSplits({ entryId, splitGroupId }, { fetchImpl = fetch } = {}) {
+// `splitBasisPoints` is the first person's share (the command's own
+// meaning); absent is the even split the Splits switch has always saved.
+export function addSavedEntryToSplits({ entryId, splitGroupId, splitBasisPoints }, { fetchImpl = fetch } = {}) {
   return postJson(
     "/api/splits/expenses/from-entry",
-    { entryId, splitGroupId: splitGroupId === "split-group-none" ? null : (splitGroupId || null) },
+    {
+      entryId,
+      splitGroupId: splitGroupId === "split-group-none" ? null : (splitGroupId || null),
+      ...(Number.isInteger(splitBasisPoints) ? { splitBasisPoints } : {})
+    },
     "The entry could not be added to Splits.",
     fetchImpl
   );

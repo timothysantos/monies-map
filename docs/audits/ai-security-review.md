@@ -301,6 +301,48 @@ characters (about 1,100 tokens), so a real household should stay near
 1,600 to 1,900 input tokens, under the 2k target, at about US$0.0005 a
 turn.
 
+## Ask hands-off audit note (2026-10-14, branch `ask-handsoff`)
+
+Owner decision "Fully hands-off for safe things": multi-step lookups, habits,
+a suggestion row, and automatic application of a listed safe set with Undo.
+
+Privacy: what is stored. `ask_habits` holds, per household, a kind, a key
+(a shop's normalised name with digit runs of 4 or more dropped, or a one-word
+nickname), a value (a category name; a group id, payer id and share; a person
+id), two counters, a date and a source word. No message, prompt, answer,
+amount, account or card number, description or file. The "Done for you" log is
+audit events (`ask_auto`): the entry's description and the change, as the
+audit log already holds. Forget everything deletes the habits. What goes to
+the model: lookup results (entry id, date, `promptEntryName` description,
+type, category, owner, on splits or not; a note cut to 80 characters with
+long digit runs removed; who owes whom without any figure; category counts),
+and nicknames. Results are fenced as untrusted data, and the model may only
+name as target an entry id that a lookup in the same turn returned (a made-up
+or foreign id is no target; `tests/ask-lookup-route.test.mjs`).
+
+Cost. A plain turn is still one allowance unit. A lookup adds a model call
+(about 1 to 2k tokens each, prompts stay under the existing caps): at most 4
+calls and 6,000 estimated tokens a turn, so at most 4 units; a repair counts.
+Suggestions, habit learning and auto-apply make no AI call and use no
+allowance.
+
+Write boundaries. The model never writes. The app applies, on its own rules
+(`autoApplyRefusal`), only: a new entry's category (Apple Pay entries only),
+a note the person asked for, an Add to Splits with the habitual split; only
+when the switch is on, the entry is under an hour old, not imported or
+certified, and (category, split) the habit is high. Each uses the existing
+command, is logged, and a log failure reverses it
+(`tests/atomic-writes-ask-habits.test.mjs`). The excluded cases (setting off,
+imported, certified, old, bulk, low confidence, hand-made category, other
+payer, already on Splits) are each a test (`tests/ask-habits.test.mjs`,
+`tests/ask-habits-route.test.mjs`). Undo uses the existing commands, refuses
+an entry changed since, and counts as an override. Habit edits, deletes,
+Forget everything and the switch are all-or-nothing with an audit event.
+
+Failure. AI off: no lookup runs and the turn answers rules; habits,
+suggestions and Done for you do not need AI at all. A missing `ask_habits`
+table switches the feature off without an error (tested).
+
 ## Controls checked and found sound
 
 | Area | Evidence |

@@ -668,6 +668,7 @@ export async function loadAuditEvents(db: D1Database) {
       SELECT id, entity_type, entity_id, action, detail, created_at
       FROM audit_events
       WHERE household_id = ?
+        AND entity_type <> 'ask_auto'
       ORDER BY created_at DESC
       LIMIT 12
     `)

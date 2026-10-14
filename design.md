@@ -236,6 +236,17 @@ The Ask page (`/ask`, `src/client/ask-panel.jsx`, lazy) is one full page,
 never a sheet: the tab bar stays visible and there is no close button. Flow
 and data contract: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md).
 
+Hands-off parts (owner decision 2026-10-14; `docs/flows/ask-flow.md`
+"Hands-off"): under a saved entry's card, at most one quiet line in the
+neutral card tone (`.ask-habit-row`): the habits' suggestion with a tick and
+a cross (44 px targets), or what Ask did by itself with an Undo; at the end
+of the thread, a folded "Done for you" list (`.ask-done`) of the last 30
+days. Settings has "What Ask remembers" as a normal list-row section (the
+switch, one row per habit with change and forget, Forget everything); its
+code stays in the lazy Settings route and the habits' client code in the Ask
+chunk (`use-ask-habits.js`, `ask-habits-ui.jsx`, `ask-habits-api.js`; copy in
+`copy/ask-habits-copy.js`). Nothing here is a notification.
+
 Layout, top to bottom:
 
 - Header: "Ask" (chat mode) or "New entry" / "New income" / "New transfer" /

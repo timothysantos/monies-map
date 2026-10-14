@@ -170,7 +170,7 @@ async function loadDraftTarget(db: D1Database, request: Exclude<SplitSuggestionR
 
 // The pair the split routes share an expense between: the same people, in
 // the same order, as loadSplitSharePeople in app-repository-splits.ts.
-async function loadSharePeople(db: D1Database) {
+export async function loadSharePeople(db: D1Database) {
   const people = await db
     .prepare(`
       SELECT id, display_name

@@ -255,7 +255,44 @@ Details and the reasons are in `docs/code-spec.md` and
   shorthand, a partial message, one that must be asked back), proved by
   `tests/ask-eval-bank.test.mjs`. `npm run eval:ask` runs the bank against the
   real model (manual, cap-aware, not in CI).
-- The model never writes. It only chooses the action; the page shows the
+- Hands-off for safe things (owner decision, 2026-10-14, "Fully hands-off
+  for safe things"; `docs/flows/ask-flow.md` "Hands-off"). The model still
+  never writes. Ask itself may apply only the safe set without a Save tap:
+  set a new entry's category to the habitual one, add a note the person
+  explicitly asked for, add a new entry to Splits with the habitual split.
+  Only when ALL hold: Settings' "Let Ask handle safe things" is on (default
+  on), the entry is new (created in the last hour, by Apple Pay or a manual
+  add; a hand-made entry's own category is never replaced), not imported and
+  not statement-certified, one entry, and (for category and split) a
+  high-confidence habit (3 or more consistent confirmations since its last
+  override; `src/domain/ask-habits.ts`, `autoApplyRefusal`). Each runs
+  through the existing command, is written to the "Done for you" log (an
+  `ask_auto` audit event; last 30 days in Ask) and has an Undo that uses the
+  existing commands and counts as an override. If the log row cannot be
+  written the change is reversed. Everything else never applies by itself:
+  settle-ups, bulk edits, deletes, transfer links, plan changes, anything on
+  a certified or imported or old entry, amounts, dates, wallets, owners.
+  Those still need the person's Save.
+- Habits are structured facts, never chat text (`ask_habits`, DOMAIN.md "Ask
+  Habit"): a shop's category, a shop's usual split, a confirmed nickname,
+  each with a count of confirmations and overrides, learned only from
+  commands the person ran (a category change, an Add to Splits, a new
+  entry's category) and confirmed clarifications. No prompt, message, answer
+  or file is stored. The table is additive and every reader tolerates it
+  missing (the feature is then off). Settings "What Ask remembers" lists,
+  edits and deletes them, and has Forget everything. Suggestions and
+  auto-apply are deterministic: no AI call, no allowance.
+- Lookups: within a turn the model may call read-only tools (`look_up`:
+  find_entries, get_entry, get_split_balances, list_recent_entries,
+  get_category_history; `src/domain/ask-lookup-tools.ts`). At most 4 model
+  calls a turn (a repair counts) and a token cap, each call one allowance
+  unit; household rows only; results compact, names through
+  `promptEntryName`, no amount, balance figure or account number, shown to
+  the model as untrusted data; the model may name as its target only an
+  entry id a lookup in that turn returned. A new tool needs its household
+  scope test, its caps test and bank messages.
+- Apart from the safe set above, the model never writes. It only chooses the
+  action; the page shows the
   existing draft or answer card, and nothing is saved without the
   person's Save tap, through the existing all-or-nothing command. Figures
   come from the app (the entry's amount, a share computed from it, the
@@ -269,8 +306,9 @@ Details and the reasons are in `docs/code-spec.md` and
   action, its validator negatives and its no-AI behaviour.
 - The turn's context carries names, never numbers: no account, card,
   phone or ID number (`scrubName`, `promptEntryName`), and no balance or
-  amount from the household's records. One allowance unit per turn; keep a
-  typical prompt under 2k input tokens.
+  amount from the household's records. One allowance unit per model call
+  (a plain turn is one; lookups and a repair add one each, at most 4); keep
+  a typical first prompt under 2k input tokens.
 
 ## Optional AI Assistance
 
@@ -300,7 +338,9 @@ Details and the reasons are in `docs/code-spec.md` and
 - Keep deterministic data and existing review controls authoritative. AI may
   phrase, rank, or propose a draft, but must not certify, import, categorize,
   skip, merge, delete, or link finance records by itself. AI only drafts and
-  never writes: nothing is saved without the user's tap, and the numbers
+  never writes: nothing is saved without the user's tap (the one exception
+  is Ask's listed safe set, applied by the app's deterministic rules, gated
+  and logged with Undo; see "AI in Ask"), and the numbers
   shown come from the app's own validation, not from model prose.
 - Money insights are a deterministic, read-only projection. They may show
   recorded cash flow, plan variance, a same-season comparison that is

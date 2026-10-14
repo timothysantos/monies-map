@@ -962,6 +962,35 @@ When Claude is set up and Ask can't read a request on its own, Claude may
 read it into the same draft, marked **Read by AI**; the figures are still
 your plan's own, and nothing is saved until you tap Save plan.
 
+### Ask learns what you usually do
+
+Ask quietly notices what you choose. When you put a shop's entries in the
+same category, or add them to Splits the same way, a few times, Ask
+remembers it. It remembers only these small facts, such as "Bengawan Solo is
+Food & Drinks" or "Hawker Dinner is split 50/50 with Joyce". It does not keep
+what you type in the chat.
+
+- **A quiet suggestion.** When you open a new entry in Ask (an Apple Pay
+  purchase, or one you added), a single line can appear under it, such as
+  *Food & Drinks · Add to splits 50/50 with Joyce, as you usually do*. Tap
+  the tick to do it, or the cross for "not this time". It never pops up on
+  its own and is never a notification.
+- **Done for you.** Once Ask has seen you do the same thing three times in a
+  row, it does it for a **new** Apple Pay or hand-added entry without
+  asking: it sets the category, or adds the entry to Splits the usual way,
+  and tells you right under the entry with an **Undo**. **Done for you**, at
+  the bottom of Ask, lists the last 30 days. **Undo** puts it back and Ask
+  stops trusting that habit until you repeat it. **Stop doing this** makes
+  Ask forget it.
+- **What it never does by itself.** Ask never changes an amount, date,
+  wallet or person, never settles up, deletes or links anything, never
+  touches an entry you imported or the bank has confirmed, and never touches
+  an entry older than an hour. Everything else still needs your Save.
+
+In **Settings**, **What Ask remembers** has the switch **Let Ask handle safe
+things** (on to start with), lists everything Ask has learned, lets you
+change or forget any of it, and has **Forget everything**.
+
 ### Ask on a computer
 
 On a computer there is no Ask tab. Every screen has a box at the bottom

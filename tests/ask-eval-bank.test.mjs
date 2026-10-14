@@ -15,7 +15,7 @@ import test from "node:test";
 import worker from "../src/index.ts";
 import { ASK_TURN_ACTIONS, ASK_TURN_SCHEMA, parseAskTurnAction } from "../src/domain/ask-turn.ts";
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
-import { bankDates, checkExpectation, loadBank, seedBankHousehold } from "./support/ask-eval-bank.mjs";
+import { bankDates, checkExpectation, fill, loadBank, seedBankHousehold } from "./support/ask-eval-bank.mjs";
 import { createSeededTemplate, openSeededDatabase } from "./support/d1-workspace.mjs";
 
 let template;
@@ -63,10 +63,10 @@ function conforms(value, schema) {
 }
 
 test("the bank is big, varied and covers every Ask action and the owner's own messages", () => {
-  assert.ok(bank.length >= 80, `${bank.length} entries`);
+  assert.ok(bank.length >= 100, `${bank.length} entries`);
   assert.equal(new Set(bank.map((entry) => entry.id)).size, bank.length, "ids are unique");
   assert.equal(new Set(bank.map((entry) => entry.text)).size > bank.length * 0.8, true, "messages are varied");
-  const covered = new Set(bank.flatMap((entry) => [entry.model.action, ...(entry.repair ? [entry.repair.action] : [])]));
+  const covered = new Set(bank.flatMap((entry) => [entry.model.action, ...(entry.then ?? []).map((answer) => answer.action), ...(entry.repair ? [entry.repair.action] : [])]));
   for (const action of ASK_TURN_ACTIONS) assert.ok(covered.has(action), `no entry records ${action}`);
   const texts = bank.map((entry) => entry.text.toLowerCase());
   for (const owner of [
@@ -89,7 +89,7 @@ test("the bank is big, varied and covers every Ask action and the owner's own me
 
 test("every recorded answer is an action the model could give: it parses, and fits the schema it is given", () => {
   for (const entry of bank) {
-    for (const [label, answer] of [["model", entry.model], ["repair", entry.repair]]) {
+    for (const [label, answer] of [["model", entry.model], ...(entry.then ?? []).map((later, index) => [`then ${index + 1}`, later]), ["repair", entry.repair]]) {
       if (!answer) continue;
       const parsed = parseAskTurnAction(answer);
       assert.ok(parsed, `${entry.id}: ${label} does not parse`);
@@ -114,7 +114,10 @@ test("the bank replayed through the Worker: each recorded answer ends as the ent
 
   for (const entry of bank) {
     const month = entry.setup?.month ?? dates.month;
-    const answers = [entry.model, ...(entry.repair ? [entry.repair] : [])];
+    // `then` answers the model's later calls after a look_up (hands-off
+    // lookups, docs/flows/ask-flow.md); {{entryId}} is the saved entry the
+    // lookups will find.
+    const answers = [entry.model, ...fill(entry.then ?? [], dates, { entryId: seed.entryId }), ...(entry.repair ? [entry.repair] : [])];
     const ai = recorded(...answers);
     await db.prepare("DELETE FROM ai_assist_daily_usage").run();
     const response = await worker.fetch(new Request("http://127.0.0.1/api/ask/turn", {
