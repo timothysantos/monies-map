@@ -25,8 +25,9 @@ import { BottomActions } from "./ui/lead-support-detail";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { formatShortMonth } from "./copy/ask-copy";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
-import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams } from "./entry-filter-params";
-import { EntriesAskChip } from "./entries-ask-chip";
+import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams, readEntriesRangeStart } from "./entry-filter-params";
+import { EntriesAskChip, EntriesFigureChip } from "./entries-ask-chip";
+import { figureCopy } from "./copy/figure-copy";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotals } from "./entries-overview";
 import { buildEntriesTotalsModel, describeEntryFilters } from "./entries-totals-model";
@@ -147,6 +148,8 @@ export function EntriesPanel({
   const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
+  // A period of months (entry_from, entry_to) from a Summary range's figure.
+  const rangeStartMonth = readEntriesRangeStart(searchParams, selectedMonth);
   const {
     entriesPage,
     isEntriesPageLoading,
@@ -157,6 +160,7 @@ export function EntriesPanel({
     view,
     entriesSourceView,
     selectedMonth,
+    rangeStartMonth,
     externalRefreshToken,
     onInvalidateAppShellCache,
     runBackgroundRefresh
@@ -520,6 +524,7 @@ export function EntriesPanel({
     filteredEntries,
     groupedEntries,
     entryTotals,
+    figureMinor,
     entryOutflowMinor,
     entryGrossOutflowMinor,
     entryNetMinor,
@@ -542,9 +547,12 @@ export function EntriesPanel({
       entryGrossOutflowMinor,
       entryNetMinor,
       month: entryView.monthPage.month,
-      personLabel: entryView.label
+      rangeStartMonth: entriesPage.monthPage.rangeStartMonth ?? "",
+      personLabel: entryView.label,
+      figure: entryFilters.figure,
+      figureMinor
     }),
-    [entryGrossOutflowMinor, entryNetMinor, entryOutflowMinor, entryTotals, entryView.label, entryView.monthPage.month]
+    [entriesPage.monthPage.rangeStartMonth, entryFilters.figure, entryGrossOutflowMinor, entryNetMinor, entryOutflowMinor, entryTotals, entryView.label, entryView.monthPage.month, figureMinor]
   );
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
@@ -1037,6 +1045,7 @@ export function EntriesPanel({
       next.delete("entry_search");
       next.delete("entry_min");
       next.delete("entry_max");
+      next.delete("entry_figure");
       next.delete("from_ask");
       return next;
     });
@@ -1047,6 +1056,14 @@ export function EntriesPanel({
   const showAskChip = hasAskFilterChip(searchParams);
   const clearAskFilters = useCallback(() => {
     setSearchParams((current) => clearAskFilterParams(current));
+  }, [setSearchParams]);
+  // The figure chip's ✕: the month's whole list again, other filters kept.
+  const clearFigureFilters = useCallback(() => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      ["entry_figure", "entry_from", "entry_to"].forEach((key) => next.delete(key));
+      return next;
+    });
   }, [setSearchParams]);
   const returnToAsk = useCallback(() => {
     const next = new URLSearchParams();
@@ -1165,6 +1182,14 @@ export function EntriesPanel({
           ))}
         </div>
       </div>
+
+      {!showAskChip && (entryFilters.figure || entriesPage.monthPage.rangeStartMonth) ? (
+        <EntriesFigureChip
+          label={figureCopy.chipLabel([entryFilters.figure ? figureCopy.names[entryFilters.figure] : "", totalsModel.month].filter(Boolean))}
+          clearLabel={figureCopy.clear}
+          onClear={clearFigureFilters}
+        />
+      ) : null}
 
       {showAskChip ? (
         <EntriesAskChip
@@ -1609,6 +1634,7 @@ function useEntriesPageData({
   view,
   entriesSourceView,
   selectedMonth,
+  rangeStartMonth = "",
   externalRefreshToken,
   onInvalidateAppShellCache,
   runBackgroundRefresh
@@ -1623,11 +1649,18 @@ function useEntriesPageData({
     owner.getSnapshot
   );
   const entriesPageParams = useMemo(
-    () => buildEntriesPageParams({
-      viewId: entriesSourceView.id,
-      month: selectedMonth
-    }),
-    [entriesSourceView.id, selectedMonth]
+    () => {
+      const params = buildEntriesPageParams({
+        viewId: entriesSourceView.id,
+        month: selectedMonth
+      });
+      // A period of months is its own request (and cache entry).
+      if (rangeStartMonth) {
+        params.set("from", rangeStartMonth);
+      }
+      return params;
+    },
+    [entriesSourceView.id, rangeStartMonth, selectedMonth]
   );
   const entriesPageCacheKey = entriesPageParams.toString();
 
@@ -1675,12 +1708,13 @@ function useEntriesPageData({
 
   useEffect(() => {
     const initialPage = buildInitialEntriesPage(entriesSourceView);
-    if (initialPage.monthPage.month !== selectedMonth) {
+    // The shell's warm start is one month; a period waits for its own load.
+    if (initialPage.monthPage.month !== selectedMonth || rangeStartMonth) {
       return;
     }
 
     owner.seed(initialPage, entriesPageParams);
-  }, [entriesPageCacheKey, entriesPageParams, entriesSourceView, owner, selectedMonth]);
+  }, [entriesPageCacheKey, entriesPageParams, entriesSourceView, owner, rangeStartMonth, selectedMonth]);
 
   // A failed load over rows that already belong to this month and view is a
   // background failure: the rows stay and the refresh notice offers a retry.
@@ -1735,11 +1769,11 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
   const walletFilterKey = read.entryFilters.wallets.join("\u0000");
   const categoryFilterKey = read.entryFilters.categories.join("\u0000");
   const entryIdFilterKey = read.entryFilters.entryIds.join("\u0000");
-  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn } = read.entryFilters;
+  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn, figure } = read.entryFilters;
   const entryFilters = useMemo(
     () => read.entryFilters,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categoryFilterKey, entryIdFilterKey, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, type, walletFilterKey]
+    [categoryFilterKey, entryIdFilterKey, figure, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, type, walletFilterKey]
   );
 
   return {

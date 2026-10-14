@@ -49,6 +49,7 @@ export function SplitsBreakdownSection({
     <>
       {lead ? <SplitsLeadCard
         lead={lead}
+        groupId={activeGroup?.id}
         iconKey={activeGroup?.iconKey}
         currency={currency}
         readOnly={readOnly}

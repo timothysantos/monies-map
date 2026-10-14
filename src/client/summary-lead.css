@@ -384,29 +384,13 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
   pointer-events: none;
 }
 
-/* The "All you earned" label sits on the bar, right of the tick (left of it
-   when the tick is near the end), on a white chip so the stripes do not run
-   under it. */
-.savings-bar .savings-bar-tick-label {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 4px;
-  display: flex;
-  align-items: center;
-  padding: 0 3px;
-  border-radius: 3px;
-  background: var(--paper);
-  color: var(--muted);
-  font-size: 0.58rem;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.savings-bar .savings-bar-tick.is-late .savings-bar-tick-label {
-  right: 4px;
-  left: auto;
+/* The tick has no label on the bar (a label there covered the parts): the
+   legend names it, "All you earned $x", with a swatch drawn like the tick. */
+.savings-bar-swatch.is-tick {
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--text);
 }
 
 /* The legend under the plan bar: always shown, one line on a phone, wrapping
@@ -451,11 +435,6 @@ html[data-money-privacy="hidden"] :is([data-segment="spent"], [data-swatch="spen
 .savings-bar .savings-bar-legend-share {
   color: var(--muted);
   font-weight: 500;
-}
-
-/* The open part's menu, in the page flow under the legend. */
-.savings-bar-menu {
-  margin-top: 2px;
 }
 
 /* Invested is faded plum: a good outcome like kept (its model tone is
@@ -575,9 +554,6 @@ html[data-money-privacy="hidden"] :is([data-segment="invested"], [data-swatch="i
   font-variant-numeric: tabular-nums;
 }
 
-.money-job .money-actions {
-  padding-bottom: 8px;
-}
 
 html[data-money-privacy="hidden"] .money-job .money-job-status {
   color: var(--text);

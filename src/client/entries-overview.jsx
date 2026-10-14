@@ -23,7 +23,10 @@ const { categories: categoryService, format: formatService } = moniesClient;
 // direction), and Detail rows for the category breakdown and, on a phone,
 // the filters (which live in the View and scope sheet). `model` is
 // buildEntriesTotalsModel's shape: the same filtered figures the old
-// sideways strip showed, which clipped at 390 and 1024 px.
+// sideways strip showed, which clipped at 390 and 1024 px. The lead and
+// every pill are openable figures (design.md "Openable figures",
+// figure-menu.js): View entries narrows this list to the rows behind the
+// figure (entry_figure), and the figure stays the same.
 export function EntriesTotals({
   model,
   showExpenseBreakdown,
@@ -40,8 +43,8 @@ export function EntriesTotals({
       <div className="entries-totals-main">
         <LeadCard
           className="entries-totals-lead"
-          eyebrow={copy.spentEyebrow(model.month)}
-          amount={formatService.money(model.spent.amountMinor)}
+          eyebrow={model.eyebrow}
+          amount={<span {...openFigure(model.figure || "spent")}><PrivateMoney>{formatService.money(model.spent.amountMinor)}</PrivateMoney></span>}
           tone={model.spent.tone}
           amountAside={shareAside}
         />
@@ -67,7 +70,7 @@ export function EntriesTotals({
       </div>
       <div className="entries-totals-pills">
         {model.pills.map((pill) => (
-          <div key={pill.key} className={`entries-totals-pill ${moneyToneClass(pill.tone, "soft")}`} data-pill={pill.key}>
+          <div key={pill.key} className={`entries-totals-pill ${moneyToneClass(pill.tone, "soft")}`} data-pill={pill.key} {...openFigure(PILL_FIGURES[pill.key])}>
             <span className="entries-totals-label">{PILL_LABELS[pill.key]}</span>
             <strong><PrivateMoney>{formatService.money(pill.amountMinor)}</PrivateMoney></strong>
             {pill.shareMinor === null ? null : (
@@ -81,6 +84,10 @@ export function EntriesTotals({
     </section>
   );
 }
+
+// The money figure each pill is (src/domain/money-figures.ts).
+const PILL_FIGURES = { income: "earned", difference: "difference", transfers: "transfers", outflow: "outflow" };
+const openFigure = (fig) => ({ "data-fig": fig, role: "button", tabIndex: 0 });
 
 const PILL_LABELS = {
   income: messages.entries.totalIncome,

@@ -35,8 +35,10 @@ export function buildSummaryPage(
   trackedMonths: string[],
   personNameById: Record<string, string>,
   // The view's transfers into and out of investment accounts over the
-  // range (investment-moves.ts), left out when nothing moved.
-  investmentMoves?: InvestmentMovesDto
+  // range (investment-moves.ts), left out when nothing moved, and the same
+  // per month (only the months where something moved).
+  investmentMoves?: InvestmentMovesDto,
+  investmentMovesByMonth: Array<InvestmentMovesDto & { month: string }> = []
 ) {
   const snapshotMonths = buildSummaryMonthsForView(personId, summaryMonthsByView);
   const plannedFallbackMonths = plannedSummaryMonthsByView[personId] ?? [];
@@ -116,6 +118,7 @@ export function buildSummaryPage(
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     categoryShareByMonth: buildSummaryDonutMonths(visibleEntries, categories, rangeMonths),
     ...(investmentMoves ? { investmentMoves } : {}),
+    ...(investmentMovesByMonth.length ? { investmentMovesByMonth } : {}),
     notes:
       personId === "household"
         ? [

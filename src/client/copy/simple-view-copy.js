@@ -16,6 +16,5 @@ export const simpleViewCopy = {
   metricsLabel: "This period at a glance",
   dailySpend: (amount, soFar) => `${soFar ? "Daily spend so far" : "Daily spend"} ${amount}`,
   topSpending: "Top spending",
-  topCategory: (name, percent) => `${name} ${percent}%`,
-  openCategory: (name) => `Show ${name} entries`
+  topCategory: (name, percent) => `${name} ${percent}%`
 };

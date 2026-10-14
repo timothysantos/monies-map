@@ -9,7 +9,7 @@ import test from "node:test";
 
 import { readAnswerIntent } from "../src/domain/ask-answer-intent.ts";
 import { readFilterRequest } from "../src/client/ask-filter-reader.js";
-import { moneyActionView } from "../src/client/money-jobs-detail.js";
+import { figureMenu } from "../src/client/figure-menu-model.js";
 
 const people = [
   { id: "person-ethan", name: "Ethan" },
@@ -113,31 +113,41 @@ test("how a month or a quarter went is intent against outcome: the plan answer, 
 // answer it is about. Built from the menu itself, so a reworded template
 // is caught here.
 const LAST_12 = ["2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"];
-const FIGURES = { income: 500_000, spending: 620_000, invested: 30_000, movedToSavings: 0, kept: -150_000, spendPlan: 450_000, savePlan: 50_000, investPlan: 50_000 };
-const menuQuestion = (key, { hidden = false, startMonth = "2026-09", endMonth = "2026-09", figures = FIGURES } = {}) =>
-  moneyActionView(key, { name: key, figures, hidden, period: { startMonth, endMonth } }).ask.question;
+// "Ask about this" in an openable figure's menu (figure-menu-model.js):
+// the figure, and the question it asks when not its own (the spent figure
+// over its plan asks why).
+const menuQuestion = (fig, { ask = "", arg = "", hidden = false, startMonth = "2026-09", endMonth = "2026-09" } = {}) =>
+  figureMenu({ fig, ask, arg, hidden, period: { startMonth, endMonth } }).items.find((item) => item.action === "ask").question;
 
 test("each money job's question reads as its own answer, for a month and for the Summary's range", () => {
   const vocabularyWithJobs = { ...context, vocabulary: [...vocabulary, "Investments", "Savings", "Salary"] };
   const table = [
     // The spent part over plan, and under it.
-    [menuQuestion("spent"), "Why did I spend more than planned in Sep 2026?", { kind: "plan", month: "2026-09" }],
-    [menuQuestion("spent", { figures: { ...FIGURES, spending: 100_000 } }), "What did I spend the most on in Sep 2026?", { kind: "spending", focus: "where", month: "2026-09" }],
+    [menuQuestion("spending", { ask: "spentOverPlan" }), "Why did I spend more than planned in Sep 2026?", { kind: "plan", month: "2026-09" }],
+    [menuQuestion("spending"), "What did I spend the most on in Sep 2026?", { kind: "spending", focus: "where", month: "2026-09" }],
+    [menuQuestion("spent"), "What did I spend the most on in Sep 2026?", { kind: "spending", focus: "where", month: "2026-09" }],
     // Hidden money: the plan answer, not this month against last.
-    [menuQuestion("spend", { hidden: true }), "How did my spending compare with the plan in Sep 2026?", { kind: "plan", month: "2026-09" }],
+    [menuQuestion("spending", { ask: "spentOverPlan", hidden: true }), "How did my spending compare with the plan in Sep 2026?", { kind: "plan", month: "2026-09" }],
     // Came out of savings: spending against what came in, not plain income.
-    [menuQuestion("savings"), "Why did I spend more than I earned in Sep 2026?", { kind: "spentVsEarned", month: "2026-09" }],
-    [menuQuestion("savings", { hidden: true }), "How did my spending compare with my income in Sep 2026?", { kind: "spentVsEarned", month: "2026-09" }],
+    [menuQuestion("from_savings"), "Why did I spend more than I earned in Sep 2026?", { kind: "spentVsEarned", month: "2026-09" }],
+    [menuQuestion("from_savings", { hidden: true }), "How did my spending compare with my income in Sep 2026?", { kind: "spentVsEarned", month: "2026-09" }],
     [menuQuestion("invested"), "How much did I invest in Sep 2026?", { kind: "invested", month: "2026-09" }],
+    [menuQuestion("took_out"), "How much did I invest in Sep 2026?", { kind: "invested", month: "2026-09" }],
     [menuQuestion("kept"), "How much did I save in Sep 2026?", { kind: "saved", month: "2026-09" }],
-    [menuQuestion("income"), "How much did I earn in Sep 2026?", { kind: "income", month: "2026-09" }],
+    [menuQuestion("difference"), "How much did I save in Sep 2026?", { kind: "saved", month: "2026-09" }],
+    [menuQuestion("earned"), "How much did I earn in Sep 2026?", { kind: "income", month: "2026-09" }],
+    // A plan figure (the plan legend, "of $x plan", To allocate).
+    [menuQuestion("plan"), "How did I do against the plan in Sep 2026?", { kind: "plan", month: "2026-09" }],
+    // A split balance.
+    [menuQuestion("splits", { arg: "split-group-japan" }), "Who owes whom?", { kind: "owed", personId: null }],
     // The Summary's twelve months.
-    [menuQuestion("invest", { startMonth: "2025-10" }), "How much did I invest from Oct 2025 to Sep 2026?", { kind: "invested", month: "2026-09", months: LAST_12 }],
-    [menuQuestion("save", { startMonth: "2025-10" }), "How much did I save from Oct 2025 to Sep 2026?", { kind: "saved", month: "2026-09", months: LAST_12 }],
-    [menuQuestion("savings", { startMonth: "2025-10" }), "Why did I spend more than I earned from Oct 2025 to Sep 2026?", { kind: "spentVsEarned", month: "2026-09", months: LAST_12 }],
-    [menuQuestion("spend", { hidden: true, startMonth: "2025-10" }), "How did my spending compare with the plan from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
-    [menuQuestion("spent", { startMonth: "2025-10" }), "Why did I spend more than planned from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
-    [menuQuestion("income", { startMonth: "2025-10" }), "How much did I earn from Oct 2025 to Sep 2026?", { kind: "income", month: "2026-09", months: LAST_12 }]
+    [menuQuestion("invested", { startMonth: "2025-10" }), "How much did I invest from Oct 2025 to Sep 2026?", { kind: "invested", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("kept", { startMonth: "2025-10" }), "How much did I save from Oct 2025 to Sep 2026?", { kind: "saved", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("from_savings", { startMonth: "2025-10" }), "Why did I spend more than I earned from Oct 2025 to Sep 2026?", { kind: "spentVsEarned", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("spending", { ask: "spentOverPlan", hidden: true, startMonth: "2025-10" }), "How did my spending compare with the plan from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("spending", { ask: "spentOverPlan", startMonth: "2025-10" }), "Why did I spend more than planned from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("plan", { startMonth: "2025-10" }), "How did I do against the plan from Oct 2025 to Sep 2026?", { kind: "plan", month: "2026-09", months: LAST_12 }],
+    [menuQuestion("earned", { startMonth: "2025-10" }), "How much did I earn from Oct 2025 to Sep 2026?", { kind: "income", month: "2026-09", months: LAST_12 }]
   ];
   for (const [question, wording, expected] of table) {
     assert.equal(question, wording);
@@ -221,4 +231,14 @@ test("every supported example reaches the route before the filter reader could m
   for (const text of ["why was August so expensive?", "compare August with July", "what's my biggest expense this month?"]) {
     assert.ok(readAnswerIntent(text, context), text);
   }
+});
+
+test("a category's Ask about this (Spending Mix, Top spending, a budget line) reads as that category's spending in the period", () => {
+  const question = menuQuestion("category", { arg: "Groceries" });
+  assert.equal(question, "How much did I spend on Groceries in Sep 2026?");
+  // Not a whole-month answer: it names a category, so it is a filter answer.
+  assert.equal(readAnswerIntent(question, context), null);
+  const reading = readFilterRequest(question, { today: "2026-10-12", month: "2026-10", viewId: "household", scope: "direct_plus_shared", people, accounts: [], categories: [{ id: "cat-groceries", name: "Groceries" }] });
+  assert.equal(reading.kind, "filter");
+  assert.deepEqual([reading.filter.categories, reading.filter.month], [["Groceries"], "2026-09"]);
 });

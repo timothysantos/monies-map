@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { messages } from "../src/client/copy/en-SG.js";
-import { describeMoneyJobs, moneyActionTarget, moneyActionView } from "../src/client/money-jobs-detail.js";
+import { describeMoneyJobs, MONEY_JOB_FIGURES } from "../src/client/money-jobs-detail.js";
+import { figureMenu } from "../src/client/figure-menu-model.js";
 import { listMoneyJobs, splitMoneyUse } from "../src/client/money-jobs-model.js";
 import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
 import { buildSummaryLeadModel } from "../src/client/summary-lead-model.js";
@@ -117,20 +118,23 @@ test("hidden money: ✓ for a done job, else the share of the plan reached, and 
   assert.doesNotMatch(words, /\$|short|over|under|left|\d+ more/);
 });
 
-test("each part opens the entries behind it and a question with no amount in it", () => {
+test("each job's row opens its money figure, its part of the plan and its question, with no amount in it", () => {
   const figures = splitMoneyUse({ ...PERIOD, savedMovedMinor: 0 });
-  assert.deepEqual(moneyActionTarget("spent", { figures }), { entries: { type: "expense" }, question: "spentOverPlan" });
-  assert.deepEqual(moneyActionTarget("spend", { figures, hidden: true }), { entries: { type: "expense" }, question: "spentVsPlan" });
-  // Invested is the Investments entries and the transfers into investment accounts.
-  assert.deepEqual(moneyActionTarget("invested", { figures }), { entries: { categories: ["Investments"], investmentMovesIn: true }, question: "invested" });
-  assert.deepEqual(moneyActionTarget("savings", { figures }), { entries: { type: "expense" }, question: "spentMore" });
-  assert.deepEqual(moneyActionTarget("income", { figures }), { entries: { type: "income" }, question: "income" });
-  // Money left in the bank has no entry: Kept offers only the question.
-  assert.deepEqual(moneyActionTarget("kept", { figures }), { entries: null, question: "saved" });
-  assert.deepEqual(moneyActionTarget("save", { figures: splitMoneyUse({ ...PERIOD, savedMovedMinor: 5_000 }) }), { entries: { categories: ["Savings"] }, question: "saved" });
-  // Spending within its plan asks what it went on.
-  assert.equal(moneyActionTarget("spent", { figures: splitMoneyUse({ incomeMinor: 100_000, spentMinor: 10_000, plannedSpendMinor: 50_000 }) }).question, "spentMost");
-  assert.equal(moneyActionTarget("tick", { figures }), null);
+  const jobs = describeMoneyJobs(listMoneyJobs({ figures, plannedIncomeMinor: 25_000_000 }));
+  const opens = Object.fromEntries(jobs.map((job) => {
+    const { fig, plan, ask } = MONEY_JOB_FIGURES[job.key];
+    return [job.key, { fig, plan, ask: ask(job) }];
+  }));
+  assert.deepEqual(opens, {
+    // Over its plan the spend job asks why.
+    spend: { fig: "spending", plan: "", ask: "spentOverPlan" },
+    save: { fig: "kept", plan: "", ask: "saved" },
+    invest: { fig: "invested", plan: "", ask: "invested" },
+    income: { fig: "earned", plan: "income", ask: "income" }
+  });
+  // Within its plan it asks what the money went on.
+  const within = describeMoneyJobs(listMoneyJobs({ figures: splitMoneyUse({ incomeMinor: 100_000, spentMinor: 10_000, plannedSpendMinor: 50_000 }) }));
+  assert.equal(MONEY_JOB_FIGURES.spend.ask(within[0]), "spentMost");
 });
 
 const SUMMARY_CARDS = [
@@ -187,32 +191,60 @@ test("the Month lead takes the investment goal from its Investments plan rows, n
   assert.deepEqual(model.headroom, { amountMinor: 125_000, isOver: true, tone: "short" });
 });
 
-test("the shell listens for the lead menu under the same event name", async () => {
-  const { MONEY_ACTION_EVENT } = await import("../src/client/money-jobs-detail.js");
+test("the shell opens a figure's menu on a tap, click, Enter or Space and navigates for its choices under one event name", async () => {
+  const MONEY_ACTION_EVENT = "monies:money-action";
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("../src/client/App.jsx", import.meta.url), "utf8");
+  const menu = await readFile(new URL("../src/client/figure-menu.js", import.meta.url), "utf8");
+  assert.equal(MONEY_ACTION_EVENT, "monies:money-action");
+  assert.ok(menu.includes('export const MONEY_ACTION_EVENT = "monies:money-action"'));
   assert.ok(app.includes(`window.addEventListener("${MONEY_ACTION_EVENT}"`), "App.jsx navigates for it");
+  // One captured listener for every figure; the menu is a dynamic import.
+  assert.ok(app.includes('document.addEventListener("click", onFigure, true)'));
+  assert.ok(app.includes('document.addEventListener("keydown", onFigure, true)'));
+  assert.ok(app.includes('import("./figure-menu.js")'));
 });
 
-test("a part's menu: the Entries location for the period's last month in the page's view and scope, and its question", () => {
-  const figures = splitMoneyUse({ ...PERIOD });
+test("a figure's menu: View entries over the figure's whole period in the page's view and scope, Open plan, and its question", () => {
   const month = { startMonth: "2026-05", endMonth: "2026-05" };
-  assert.deepEqual(moneyActionView("invested", { name: "Invested", figures, period: month, search: "?view=person-tim&month=2026-05&scope=direct&summary_start=2026-05" }), {
+  assert.deepEqual(figureMenu({ fig: "invested", plan: "", period: month, search: "?view=person-tim&month=2026-05&scope=direct&summary_start=2026-05" }), {
     label: "Invested: what next",
-    entries: {
-      label: "View entries",
-      location: { pathname: "/entries", search: "?view=person-tim&month=2026-05&scope=direct&entries_scope=direct&entry_category=Investments&entry_invest_moves=1" }
-    },
-    ask: { label: "Ask about this", question: "How much did I invest in May 2026?" }
+    items: [
+      { action: "entries", label: "View entries", location: { pathname: "/entries", search: "?view=person-tim&month=2026-05&scope=direct&entries_scope=direct&entry_figure=invested" } },
+      { action: "plan", label: "Open plan", location: { pathname: "/month", search: "?view=person-tim&month=2026-05&scope=direct", hash: "#month-plan" } },
+      { action: "ask", label: "Ask about this", question: "How much did I invest in May 2026?" }
+    ]
   });
-  // A range opens its last month, and says so; household has no person scope.
-  const range = moneyActionView("spent", { name: "Spent", figures, period: { startMonth: "2025-10", endMonth: "2026-09" }, search: "" });
-  assert.equal(range.entries.label, "View Sep 2026 entries");
-  assert.equal(range.entries.location.search, "?view=household&month=2026-09&scope=direct_plus_shared&entries_scope=direct_plus_shared&entry_type=expense");
-  assert.equal(range.ask.question, "Why did I spend more than planned from Oct 2025 to Sep 2026?");
-  // Money left in the bank has no entry to show: only the question.
-  assert.equal(moneyActionView("kept", { name: "Kept", figures, period: month }).entries, null);
-  // Hidden money never says which side of the plan the spending fell.
-  assert.equal(moneyActionView("spent", { name: "Spent", figures, hidden: true, period: month }).ask.question, "How did my spending compare with the plan in May 2026?");
-  assert.equal(moneyActionView("tick", { name: "", figures, period: month }), null);
+  // A range opens every month of it (entry_from to entry_to); the plan is
+  // its last month's, and says so; household has no person scope.
+  const range = figureMenu({ fig: "spending", plan: "", ask: "spentOverPlan", period: { startMonth: "2025-10", endMonth: "2026-09" }, search: "" });
+  assert.deepEqual(range.items.map((item) => item.label), ["View entries", "Open Sep 2026 plan", "Ask about this"]);
+  assert.equal(range.items[0].location.search, "?view=household&month=2026-09&scope=direct_plus_shared&entries_scope=direct_plus_shared&entry_figure=spending&entry_from=2025-10&entry_to=2026-09");
+  assert.equal(range.items[2].question, "Why did I spend more than planned from Oct 2025 to Sep 2026?");
+  // Kept has entries behind it too: the income, spending and moves that made it.
+  assert.equal(figureMenu({ fig: "kept", period: month }).items[0].location.search, "?view=household&month=2026-05&scope=direct_plus_shared&entries_scope=direct_plus_shared&entry_figure=kept");
+  // Income opens the plan's income part.
+  assert.equal(figureMenu({ fig: "earned", plan: "income", period: month }).items[1].location.hash, "#month-plan-income");
+  // A plan figure has no entries: Open plan and Ask only.
+  assert.deepEqual(figureMenu({ fig: "plan", plan: "", period: month }).items.map((item) => item.action), ["plan", "ask"]);
+  // A category: its spending in the period.
+  assert.equal(figureMenu({ fig: "category", arg: "Groceries", period: { startMonth: "2025-10", endMonth: "2026-09" } }).items[0].location.search,
+    "?view=household&month=2026-09&scope=direct_plus_shared&entries_scope=direct_plus_shared&entry_category=Groceries&entry_figure=spent&entry_from=2025-10&entry_to=2026-09");
+  // A plan row's actual: exactly its entries.
+  assert.equal(figureMenu({ fig: "spent", ids: ["e1", "e2"], period: null, search: "?view=household&month=2026-05&scope=direct_plus_shared" }).items[0].location.search,
+    "?view=household&month=2026-05&scope=direct_plus_shared&entries_scope=direct_plus_shared&entry_figure=spent&entry_id=e1&entry_id=e2");
+  // On Entries, a pill narrows the list it is on, keeping its filters.
+  assert.equal(figureMenu({ fig: "transfers", period: null, pathname: "/entries", search: "?view=household&month=2026-05&entry_wallet=acc-1" }).items[0].location.search,
+    "?view=household&month=2026-05&entry_wallet=acc-1&entry_figure=transfers");
+  // A split balance: its group on Splits, and who owes whom.
+  assert.deepEqual(figureMenu({ fig: "splits", arg: "split-group-japan", period: null, search: "?view=person-tim&month=2026-05" }).items, [
+    { action: "splits", label: "Open Splits", location: { pathname: "/splits", search: "?view=person-tim&month=2026-05&split_group=split-group-japan", hash: "#splits-activity" } },
+    { action: "ask", label: "Ask about this", question: "Who owes whom?" }
+  ]);
+  // Hidden money: the same menu, and a question that never says which side
+  // of the plan or of income the money fell. No label holds an amount.
+  const hidden = figureMenu({ fig: "spending", plan: "", ask: "spentOverPlan", hidden: true, period: month });
+  assert.equal(hidden.items[2].question, "How did my spending compare with the plan in May 2026?");
+  assert.equal(figureMenu({ fig: "from_savings", hidden: true, period: month }).items.at(-1).question, "How did my spending compare with my income in May 2026?");
+  assert.doesNotMatch(JSON.stringify(hidden), /\$\d/);
 });

@@ -7,9 +7,10 @@ const copy = messages.summary.lead.savingsBar;
 // design.md "Lead · Support · Detail"): all the money earned in the period is
 // one bar (income = 100%). Spent is the rose part, invested the plum part
 // and kept (what is left) the mint part. When more went out than came in,
-// the bar is as long as what went out: a tick, "All you earned", marks where
-// the income ended, and spending past the tick is hatched (still rose) because
-// it came out of savings. A thin plan bar under it, on the same scale, is the
+// the bar is as long as what went out: a tick marks where the income ended
+// (the legend names it, "All you earned $x", so no label covers the bar), and
+// spending past the tick is hatched (still rose) because it came out of
+// savings. A thin plan bar under it, on the same scale, is the
 // planned spend, the investment goal and the savings goal. A legend under the
 // bars (each part's name, figure and share; the plan's figures) is always
 // shown, so nothing needs a hover or a tap to be read.
@@ -29,6 +30,11 @@ const copy = messages.summary.lead.savingsBar;
 // `withPlan: false` is the lead's Simple view (lead-view.js): no plan bar and
 // no plan in the legend.
 //
+// Each part, legend line and the sentence names the money figure it opens
+// (`fig`, `sentenceFig`; src/domain/money-figures.ts, design.md "Openable
+// figures"): spent is `spending`, invested `invested`, kept `kept` and the
+// part that came out of savings `from_savings`.
+//
 // Returns null when there is nothing to draw (no income and nothing out).
 export function buildSavingsBarModel({ figures, hidden = false, withPlan = true, formatMoney = wholeMoney }) {
   const { income, spending, invested, kept } = figures;
@@ -46,6 +52,7 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
   // `legend.name` is what sighted users read under the bar.
   const segment = (key, tone, minor, name, percent, extra = {}) => ({
     key,
+    fig: SEGMENT_FIGURES[key],
     tone,
     widthPercent: width(minor),
     name,
@@ -58,6 +65,9 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
   // that name investing differ.
   let sentence;
   let shortSentence = null;
+  // The figure the sentence is about: what was kept, or what went out
+  // past the income (or, past it only through investing, what was invested).
+  let sentenceFig = "kept";
 
   if (isOver) {
     const spentWithin = Math.min(spending, income);
@@ -71,6 +81,7 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
     if (invested > 0) {
       segments.push(segment("invested", "in", invested, copy.investedName, share(invested)));
     }
+    sentenceFig = spentPast > 0 ? "from_savings" : "invested";
     if (hidden) {
       sentence = invested > 0 ? copy.hiddenSentenceInvested : copy.hiddenSentence;
     } else if (spentPast > 0 && invested > 0) {
@@ -107,13 +118,13 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
   const hasTick = isOver && income > 0;
   return {
     segments,
-    // Where the income ends on a bar that is longer than it, and what to
-    // call it (the figure goes with it when money is shown).
+    // Where the income ends on a bar that is longer than it, and its legend
+    // line (the figure goes with it when money is shown).
     tickPercent: hasTick ? width(income) : null,
-    tickLabel: hasTick ? copy.tick : null,
-    tickLabelWithAmount: hasTick ? (hidden ? copy.tick : copy.tickWithAmount(formatMoney(income))) : null,
+    tickLegend: hasTick ? (hidden ? copy.tick : copy.tickWithAmount(formatMoney(income))) : null,
     sentence,
     shortSentence: shortSentence ?? sentence,
+    sentenceFig,
     takenOut: hidden || !(figures.takenFromInvestments > 0)
       ? null
       : { name: copy.legend.takenOut, amount: formatMoney(figures.takenFromInvestments) },
@@ -123,6 +134,8 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
     planLegend: hidden || !withPlan ? null : buildPlanLegend(figures, formatMoney)
   };
 }
+
+const SEGMENT_FIGURES = { spent: "spending", invested: "invested", kept: "kept", savings: "from_savings" };
 
 function buildPlanLegend({ spendPlan, investPlan, savePlan }, formatMoney) {
   const parts = [

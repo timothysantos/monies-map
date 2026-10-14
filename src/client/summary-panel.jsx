@@ -14,7 +14,6 @@ import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "
 import { SummaryLead } from "./summary-lead";
 import { buildSummaryLeadModel } from "./summary-lead-model";
 import { useLeadView } from "./lead-view";
-import { SummaryIntentVsOutcomeSection } from "./summary-intent-outcome";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
@@ -26,6 +25,9 @@ import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows, SimpleDetail } from "./ui-components";
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
+// Intent vs Outcome sits below the fold, under Spending Mix: it loads beside
+// the first screen, which keeps the lead's openable figures in budget.
+const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcome").then((module) => ({ default: module.SummaryIntentVsOutcomeSection })));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -168,7 +170,6 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           view={leadView}
           onViewChange={setLeadView}
           categoryShare={safeSummaryPage.categoryShareChart}
-          onOpenCategory={handleOpenEntriesForCategory}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
         />
@@ -187,7 +188,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           donutData={safeSummaryPage.categoryShareChart}
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
-          onOpenEntriesForCategory={handleOpenEntriesForCategory}
+          period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
         />
 
         {leadView === "simple" ? (
@@ -197,15 +198,18 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
               part="months"
               months={safeSummaryPage.months}
               categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
+              investmentMovesByMonth={safeSummaryPage.investmentMovesByMonth}
               onOpenMonth={onOpenMonth}
             />
           </Suspense>
         ) : (
-          <SummaryIntentVsOutcomeSection
-            months={safeSummaryPage.months}
-            onOpenMonth={onOpenMonth}
-            onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
-          />
+          <Suspense fallback={null}>
+            <SummaryIntentVsOutcomeSection
+              months={safeSummaryPage.months}
+              onOpenMonth={onOpenMonth}
+              onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
+            />
+          </Suspense>
         )}
       </div>
 

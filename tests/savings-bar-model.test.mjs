@@ -105,8 +105,8 @@ test("overspent beyond income: no kept part, an income tick, and the hatched par
     ["From savings", "$54,871", 22]
   ]);
   // The tick says what it marks in plain words, with the figure; the bar part keeps its full name for readers.
-  assert.equal(model.tickLabel, "All you earned");
-  assert.equal(model.tickLabelWithAmount, "All you earned $247,000");
+  // The legend names the tick, so no label covers the bar.
+  assert.equal(model.tickLegend, "All you earned $247,000");
   assert.equal(model.segments[1].name, "Came out of savings");
   assert.equal(model.planLegend, "Plan: spend $247,673 · keep $41,300");
   assert.equal(model.sentence, "You spent $54,871 more than you earned");
@@ -139,14 +139,14 @@ test("investing more than spending left: the tick falls in the invested part and
   ]);
   assert.equal(rounded(model.tickPercent), 76.9231);
   assert.equal(model.sentence, "You invested $500, $300 of it from savings");
-  assert.equal(model.tickLabelWithAmount, "All you earned $1,000");
+  assert.equal(model.tickLegend, "All you earned $1,000");
 });
 
 test("spending exactly the income keeps nothing and is not overspent", () => {
   const model = build({ incomeMinor: 50_000, spentMinor: 50_000 });
   assert.deepEqual(model.segments.map((segment) => [segment.key, segment.widthPercent]), [["spent", 100]]);
   assert.equal(model.tickPercent, null);
-  assert.equal(model.tickLabel, null);
+  assert.equal(model.tickLegend, null);
   assert.equal(model.sentence, "You kept $0 of the $500 you earned (0%)");
 });
 
@@ -182,8 +182,7 @@ test("hidden money keeps the percentages and drops every amount and every sign w
   const over = build({ incomeMinor: 100_000, spentMinor: 125_000 }, { hidden: true, formatMoney: noFormatting });
   assert.deepEqual(legends(over), [["Spent", null, 125], ["From savings", null, 25]]);
   // The tick's words stay, without the figure.
-  assert.equal(over.tickLabel, "All you earned");
-  assert.equal(over.tickLabelWithAmount, "All you earned");
+  assert.equal(over.tickLegend, "All you earned");
   assert.equal(over.sentence, "Spent and kept, as a share of what you earned");
   assert.doesNotMatch(JSON.stringify(over), /\$|more than|kept \d/);
 

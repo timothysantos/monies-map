@@ -42,7 +42,7 @@ export function SpendingMixSection({
   donutData,
   categories,
   onCategoryAppearanceChange,
-  onOpenEntriesForCategory,
+  period,
   className = ""
 }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
@@ -65,7 +65,7 @@ export function SpendingMixSection({
   }
 
   return (
-    <section className={["chart-card", className].filter(Boolean).join(" ")}>
+    <section className={["chart-card", className].filter(Boolean).join(" ")} data-fig-period={period}>
       <div className="chart-head">
         <h3>{messages.summary.spendingMix}</h3>
       </div>
@@ -122,7 +122,8 @@ export function SpendingMixSection({
                     className="summary-mix-arrow"
                     aria-label={messages.common.viewEntriesFor(categoryName)}
                     title={messages.common.viewEntries}
-                    onClick={() => onOpenEntriesForCategory(categoryName)}
+                    data-fig="category"
+                    data-fig-arg={categoryName}
                   >
                     <ChevronRight size={18} />
                   </button>

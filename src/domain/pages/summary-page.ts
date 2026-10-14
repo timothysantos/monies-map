@@ -52,7 +52,17 @@ export async function buildSummaryPageDto(
       summaryRangeMonths,
       trackedMonths,
       personNameById,
-      sumInvestmentMoves(visibleSummaryEntries, summaryEntries, investmentAccountIds)
+      sumInvestmentMoves(visibleSummaryEntries, summaryEntries, investmentAccountIds),
+      // Month by month, so each month of "Earned vs spent by month" is its
+      // Month lead (and the Entries figure a row opens).
+      summaryRangeMonths.flatMap((month) => {
+        const moves = sumInvestmentMoves(
+          visibleSummaryEntries.filter((entry) => entry.date.slice(0, 7) === month),
+          summaryEntries,
+          investmentAccountIds
+        );
+        return moves ? [{ month, ...moves }] : [];
+      })
     )
   };
 }

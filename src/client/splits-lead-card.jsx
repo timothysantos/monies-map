@@ -4,6 +4,7 @@ import { History, Receipt } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { splitsLeadCopy as copy } from "./copy/splits-lead-copy";
 import { moniesClient } from "./monies-client-service";
+import { PrivateMoney } from "./money-privacy";
 import { getIconComponent } from "./ui-components";
 import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
 
@@ -20,8 +21,12 @@ const GROUP_BUBBLE_COLOUR = "#BF7D51";
 // primary). A wide screen adds + Add expense. The group spend chip opens the
 // category breakdown, as the old summary strip's chevron did.
 // `lead` comes from buildSplitsLead; every handler stays in SplitsPanel.
+// The balance is an openable figure (design.md "Openable figures",
+// figure-menu.js): Open Splits (this group, at the list that made the
+// balance) and Ask about this ("Who owes whom?").
 export function SplitsLeadCard({
   lead,
+  groupId = "",
   iconKey,
   currency,
   readOnly = false,
@@ -50,7 +55,11 @@ export function SplitsLeadCard({
       category={{ colorHex: GROUP_BUBBLE_COLOUR, icon: Icon }}
       title={lead.title}
       subtitle={lead.subtitle}
-      amount={amount}
+      amount={(
+        <span data-fig="splits" data-fig-arg={groupId} role="button" tabIndex={0}>
+          <PrivateMoney>{amount}</PrivateMoney>
+        </span>
+      )}
       tone={lead.tone}
       amountCaption={caption}
       chips={[

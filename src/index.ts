@@ -305,7 +305,8 @@ export default {
         buildEntriesPageDto(
           env.DB,
           url.searchParams.get("view") ?? "household",
-          url.searchParams.get("month") ?? getCurrentMonthKey()
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
+          url.searchParams.get("from")
         ),
         timing
       );

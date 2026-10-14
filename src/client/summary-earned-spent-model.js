@@ -9,13 +9,16 @@ import { splitMoneyUse } from "./money-jobs-model";
 // month's "Spent" is the Month page lead's "Spent". The figures are the
 // Summary page's own month rows and per-month category share; nothing is
 // fetched. The Summary page has transfers into investment accounts for the
-// whole range only, so a month's invested here is its Investments category.
+// The page's month-by-month investment moves (investmentMovesByMonth) add
+// the transfers into and out of investment accounts, so a month's invested
+// and kept are the Month lead's.
 //
 // `bar` is a thin bar on one scale per month (what was earned, or what went
 // out when that is more): spent, the part of it past the income (it came
 // out of savings, hatched), invested and kept, as percentages of the bar.
-export function buildEarnedSpentMonths(months = [], categoryShareByMonth = []) {
+export function buildEarnedSpentMonths(months = [], categoryShareByMonth = [], investmentMovesByMonth = []) {
   const shareByMonth = new Map(categoryShareByMonth.map((entry) => [entry.month, entry.data ?? []]));
+  const movesByMonth = new Map(investmentMovesByMonth.map((entry) => [entry.month, entry]));
   return [...months]
     .sort((left, right) => right.month.localeCompare(left.month))
     .map((month) => {
@@ -25,11 +28,14 @@ export function buildEarnedSpentMonths(months = [], categoryShareByMonth = []) {
         if (isInvestmentsCategoryName(slice.label)) investedMinor += slice.valueMinor;
         else if (isSavingsCategoryName(slice.label)) savedMovedMinor += slice.valueMinor;
       }
+      const moves = movesByMonth.get(month.month);
       const figures = splitMoneyUse({
         incomeMinor: month.actualIncomeMinor,
         spentMinor: month.realExpensesMinor,
         investedMinor,
-        savedMovedMinor
+        savedMovedMinor,
+        movedIntoInvestmentsMinor: moves?.intoMinor ?? 0,
+        takenFromInvestmentsMinor: moves?.outOfMinor ?? 0
       });
       return {
         month: month.month,

@@ -154,6 +154,10 @@ export function SplitsGroupStrip({
               type="button"
               className={`splits-strip-tile ${tile.isActive ? "is-active" : ""} ${tile.isSettled ? "is-settled" : ""}`}
               aria-current={tile.isActive ? "true" : undefined}
+              // The open group's tile is its balance, an openable figure
+              // (design.md "Openable figures"); another tile opens its group.
+              data-fig={tile.isActive ? "splits" : undefined}
+              data-fig-arg={tile.isActive ? tile.id : undefined}
               onClick={() => onSelectGroup(tile.id)}
             >
               <strong className="splits-strip-tile-name">{tile.name}</strong>

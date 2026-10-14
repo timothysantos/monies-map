@@ -10,6 +10,7 @@ import { MonthPlanLinkDialog } from "./month-plan-link-dialog";
 import { NoteSheetDialog } from "./note-sheet-dialog";
 import { useDraftChanged } from "./use-draft-changed";
 import { MonthPlanSheet } from "./month-plan-sheet";
+import { useHashTarget } from "./use-hash-target";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { moniesClient } from "./monies-client-service";
@@ -242,6 +243,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     investmentMoves: view.monthPage.investmentMoves ?? null
   });
   const isSimple = monthLead.leadView === "simple";
+  // A plan figure's "Open plan" (figure-menu.js) lands on the plan.
+  useHashTarget(!isSimple && Boolean(monthLead.model));
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
     contextKey: `${view.monthPage.month}|${view.monthPage.selectedScope}${isSimple ? "|simple" : ""}`,
@@ -1512,7 +1515,6 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         month={view.monthPage.month}
         categoryShare={view.monthPage.categoryShareChart}
         isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
-        onOpenCategory={(categoryName) => handleOpenEntriesForActual({ categoryName })}
       />
 
       <FinancialInsight
@@ -1533,7 +1535,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         donutData={monthSpendingMix.data}
         categories={categories}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
-        onOpenEntriesForCategory={(categoryName) => handleOpenEntriesForActual({ categoryName })}
+        period={`${view.monthPage.month}:${view.monthPage.month}`}
       />
 
       {/* Simple (lead-view.js): money in, and a way back to Plan, in the
