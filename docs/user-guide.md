@@ -152,9 +152,9 @@ single figure without revealing the whole page.
 
 ## Try it safely with the demo data
 
-The demo household (Ethan and Serene, with six bank accounts and cards, 17
-months of plans and bank statements, and shared expenses including a trip to
-Japan) is the best way to learn. Everything in this guide was captured from
+The demo household (Ethan and Serene, with bank accounts, credit cards and
+investment accounts, 17 months of plans and bank statements, and shared
+expenses including a trip to Japan) is the best way to learn. Everything in this guide was captured from
 it.
 
 On the demo site, open **Settings** and use **Demo state**:

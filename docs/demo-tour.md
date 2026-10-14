@@ -182,8 +182,8 @@ For developers: the demo worker uses the showcase data when
 
 ```bash
 npm run deploy:demo
-curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
 ```
 
-Or press **Reseed demo data** in Settings, Demo state on the demo site.
+Then press **Reseed demo data** in Settings, Demo state on the demo site
+(the demo is behind Cloudflare Access, so sign in first).
 Details are in the developer guide's demo section.
