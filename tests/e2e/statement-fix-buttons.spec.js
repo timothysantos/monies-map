@@ -62,9 +62,11 @@ for (const [name, viewport] of [["phone", { width: 390, height: 844 }], ["deskto
     // The standing choice stays, below or beside the buttons, and fits the screen.
     const automatic = card.getByLabel("Do this for me next time when the statement proves it");
     await expect(automatic).toBeVisible();
-    const keepBox = await keep.boundingBox();
-    const moveBox = await move.boundingBox();
-    const autoBox = await card.locator(".statement-fix-automatic").boundingBox();
+    // Measured in one pass so a scroll between reads cannot skew the layout.
+    const [keepBox, moveBox, autoBox] = await card.evaluate((root) => [".statement-fix-keep", ".statement-fix-apply", ".statement-fix-automatic"].map((selector) => {
+      const rect = root.querySelector(selector).getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }));
     expect(autoBox?.height ?? 0).toBeGreaterThanOrEqual(44);
     if (name === "phone") {
       expect(autoBox.y).toBeGreaterThanOrEqual(Math.max(keepBox.y + keepBox.height, moveBox.y + moveBox.height) - 1);
