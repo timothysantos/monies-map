@@ -268,8 +268,10 @@ It uses the separate Cloudflare D1 database `monies-map-demo` (never
 production's, so nothing it counts or stores mixes with production) and sits
 behind its own Cloudflare Access application (invite-only, owner decision
 2026-10-14), with its own app tag in `wrangler.demo.jsonc`. The Worker checks
-the Access token in `report` mode for now (it logs and serves); switch
-`ACCESS_JWT_MODE` to `enforce` once the logs show real visitors verifying.
+the Access token in `enforce` mode (since 2026-10-14; a request without a
+valid token is refused, and a signed-in visit verified on every request in
+`wrangler tail` first). To roll back, set `ACCESS_JWT_MODE` to `"report"` in
+`wrangler.demo.jsonc` and redeploy.
 Nothing in the demo depends on who is signed in: there is no
 login-to-person linking, visitors switch between household and person views
 by hand, and everyone shares the same fake data and can change it. The demo
@@ -296,8 +298,9 @@ demo's 50 units a day keep its share small.
 The demo runs the showcase dataset (`DEMO_DATASET` is `showcase` in
 `wrangler.demo.jsonc`; walkthrough in `docs/demo-tour.md`). To refresh it,
 deploy, then reseed once so the history ends in the current month. The
-reseed is a Worker route, so with Access in front it runs from Settings,
-Demo state, signed in. A table change needs `npm run db:migrate:demo` first.
+reseed is a Worker route, and the demo enforces the Access token, so it only
+works from Settings, Demo state, in a browser signed in through Access (a bare
+`curl` to `/api/demo/reseed` gets a 401 or the Access login redirect). A table change needs `npm run db:migrate:demo` first.
 
 ```bash
 npm run deploy:demo

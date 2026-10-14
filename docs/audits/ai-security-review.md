@@ -153,15 +153,16 @@ minute; a failed refresh keeps the last keys), and checks `aud` contains
 `ACCESS_AUD`, `iss` is `https://<team>`, and `exp`/`nbf` within 60 seconds of
 clock difference. A verified token's email is the viewer
 (`getAuthenticatedEmail`); the plain identity header is ignored. Mode
-`ACCESS_JWT_MODE`: unset/`off` (demo, test, the shortcuts Worker, local
+`ACCESS_JWT_MODE`: unset/`off` (test, the shortcuts Worker, local
 `npm run dev:api`), `report` (log one line per request, `access-jwt
 mode=report result=ok|fail reason=...`, with running counts, and serve as
 before; a failed token falls back to the header so nothing changes for the
 household), `enforce` (401 JSON for `/api/`, a plain 403 page otherwise).
-Production ships `enforce` with the team domain and AUD tag in
+Production and the demo (its own Access application and AUD tag) ship `enforce` with the team domain and AUD tag in
 `wrangler.jsonc` (it ran in `report` first and every real owner request
-verified in `wrangler tail`). To roll back, set `ACCESS_JWT_MODE` to
-`report` and redeploy.
+verified in `wrangler tail`). The demo moved from `report` to `enforce` on 2026-10-14 after the owner's
+signed-in visit passed every request (result=ok, header=match, fails=0). To
+roll back, set `ACCESS_JWT_MODE` to `report` and redeploy.
 
 Exemptions: `POST /api/shortcuts/entries/create` keeps its own signed-token
 check (`authenticateShortcutRequest`) and is not asked for an Access token.

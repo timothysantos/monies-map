@@ -80,18 +80,18 @@ test("the demo has its own small AI caps in its own database, and production is 
 
 // Security review F6: production checks the Access token itself
 // (src/server/access-jwt.ts), in enforce mode (it ran in report mode until
-// real owner requests verified). The demo has its own Access application and checks in report mode first; the test and shortcuts Workers have no Access in
+// real owner requests verified). The demo has its own Access application and enforces too (since 2026-10-14); the test and shortcuts Workers have no Access in
 // front and leave it off, and so does local `npm run dev:api`.
-test("production enforces the Access token and the demo reports it, each against its own app tag", async () => {
+test("production enforces the Access token and the demo enforces it, each against its own app tag", async () => {
   const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8").then(JSON.parse);
   const appConfig = await read("wrangler.jsonc");
   assert.equal(appConfig.vars.ACCESS_JWT_MODE, "enforce");
   assert.equal(appConfig.vars.ACCESS_TEAM_DOMAIN, "monies-map.cloudflareaccess.com");
   assert.match(appConfig.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
   // The demo sits behind its own Access application (invite-only, owner
-  // decision 2026-10-14): same team, its own app tag, report mode first.
+  // decision 2026-10-14): same team, its own app tag, enforced.
   const demoConfig = await read("wrangler.demo.jsonc");
-  assert.equal(demoConfig.vars.ACCESS_JWT_MODE, "report");
+  assert.equal(demoConfig.vars.ACCESS_JWT_MODE, "enforce");
   assert.equal(demoConfig.vars.ACCESS_TEAM_DOMAIN, appConfig.vars.ACCESS_TEAM_DOMAIN);
   assert.match(demoConfig.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);
   assert.notEqual(demoConfig.vars.ACCESS_AUD, appConfig.vars.ACCESS_AUD, "prod and demo each carry their own app tag");
