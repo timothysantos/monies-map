@@ -350,6 +350,58 @@ export function readMonthWord(value: unknown, today: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// What the message itself says about a day or a month
+
+const WEEKDAY_FULL = "sunday|monday|tuesday|wednesday|thursday|friday|saturday";
+const MONTH_FULL = "january|february|march|april|may|june|july|august|september|october|november|december";
+const MONTH_ABBR = "jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec";
+
+function paddedLower(text: string) {
+  return ` ${String(text ?? "").toLowerCase().replace(/[,.!?]/g, " ").replace(/\s+/g, " ")} `;
+}
+
+// The one day the message names ("yesterday", "2 days ago", "last friday",
+// "12 oct"), read from today, or null when it names none or several. The
+// model reports a day as it likes (even as a date it worked out wrongly);
+// a day the person wrote is what the card gets.
+export function findDayIn(text: string, today: string): string | null {
+  const lower = paddedLower(text);
+  const days = new Set<string>();
+  const add = (phrase: string) => {
+    const day = readDayWord(phrase.trim(), today);
+    if (day) days.add(day);
+  };
+  for (const match of lower.matchAll(/ (day before yesterday|yesterday|today|tonight|last night) /g)) add(match[1]);
+  for (const match of lower.matchAll(/ ((?:\d{1,3}|a|one|two|three|four|five|six|seven) days? ago) /g)) add(match[1]);
+  for (const match of lower.matchAll(new RegExp(` ((?:on |last |this |on last )(?:${WEEKDAY_FULL})) `, "g"))) add(match[1]);
+  const monthWord = `${MONTH_FULL}|${MONTH_ABBR}`;
+  for (const match of lower.matchAll(new RegExp(` (\\d{1,2}(?:st|nd|rd|th)?(?: of)? (?:${monthWord})(?: \\d{4})?) `, "g"))) add(match[1]);
+  for (const match of lower.matchAll(new RegExp(` ((?:${monthWord}) \\d{1,2}(?:st|nd|rd|th)?(?: \\d{4})?) `, "g"))) add(match[1]);
+  return days.size === 1 ? [...days][0] : null;
+}
+
+// The one month the message names ("last month", "this month", "3 months
+// ago", "in september", "sep 2025"), or null when none or several.
+export function findMonthIn(text: string, today: string): string | null {
+  const lower = paddedLower(text);
+  const months = new Set<string>();
+  const add = (phrase: string) => {
+    const month = readMonthWord(phrase.trim(), today);
+    if (month) months.add(month);
+  };
+  for (const match of lower.matchAll(/ (this month|last month|previous month|current month|(?:\d{1,2}|two|three|four|five|six) months? ago) /g)) add(match[1]);
+  const monthWord = `${MONTH_FULL}|${MONTH_ABBR}`;
+  // A month name counts after a month-ish word or beside a year, so "may" the
+  // verb and "mar" the name are told apart.
+  for (const match of lower.matchAll(new RegExp(` (?:in|for|during|of|from|to|since|until|through|by|compare|vs|versus|with|and) ((?:${monthWord})(?: \\d{4})?) `, "g"))) add(match[1]);
+  for (const match of lower.matchAll(new RegExp(` ((?:${monthWord}) \\d{4}) `, "g"))) add(match[1]);
+  // A whole month name needs no helper word ("how did September go?"),
+  // except May, which is also a verb.
+  for (const match of lower.matchAll(new RegExp(` (${MONTH_FULL.replace("|may", "")}) `, "g"))) add(match[1]);
+  return months.size === 1 ? [...months][0] : null;
+}
+
+// ---------------------------------------------------------------------------
 // Shares
 
 export type ShareValue =

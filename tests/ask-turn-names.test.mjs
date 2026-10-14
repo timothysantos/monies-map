@@ -9,6 +9,8 @@ import test from "node:test";
 
 import {
   amountsIn,
+  findDayIn,
+  findMonthIn,
   closestNames,
   matchName,
   normaliseName,
@@ -165,4 +167,25 @@ test("a share is a percent, an amount, all, or a bare number the caller places",
   assert.equal(readShareValue("lots"), null);
   assert.equal(readShareValue(""), null);
   assert.equal(readShareValue(null), null);
+});
+
+test("the one day or month a message names is what the card gets", () => {
+  const today = "2026-10-14";
+  assert.equal(findDayIn("grab to work $18 yesterday", today), "2026-10-13");
+  assert.equal(findDayIn("lunch 12 on last friday", today), "2026-10-09");
+  assert.equal(findDayIn("it was 3 days ago", today), "2026-10-11");
+  assert.equal(findDayIn("paid on 5 oct for dinner", today), "2026-10-05");
+  assert.equal(findDayIn("how did september go?", today), null);
+  // Two different days, or none, is not one day.
+  assert.equal(findDayIn("yesterday and today", today), null);
+  assert.equal(findDayIn("koufu lunch 12.50", today), null);
+  assert.equal(findMonthIn("how did September go?", today), "2026-09");
+  assert.equal(findMonthIn("why was last month so expensive", today), "2026-09");
+  assert.equal(findMonthIn("where did my money go this month", today), "2026-10");
+  assert.equal(findMonthIn("show grab rides in sep", today), "2026-09");
+  assert.equal(findMonthIn("sep 2024 spending", today), "2024-09");
+  // Two months (a comparison or a range) is not one; "may" the verb is not May.
+  assert.equal(findMonthIn("compare september with august", today), null);
+  assert.equal(findMonthIn("I may want that", today), null);
+  assert.equal(findMonthIn("how much did I invest", today), null);
 });

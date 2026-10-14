@@ -24,10 +24,13 @@ import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
 import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
-import { assumption, type AskAssumption, type AskErrorCode, type AskValidatorError } from "./ask-ambiguity";
+import { assumption, type AskAssumption, type AskValidatorError } from "./ask-ambiguity";
+import { resolveShares } from "./ask-turn-shares";
 import {
   amountsIn,
   closestNames,
+  findDayIn,
+  findMonthIn,
   matchName,
   readAmountMinor as readAmountWords,
   readDayWord,
@@ -627,6 +630,8 @@ export interface Ground {
   userText: string;
   words: Set<string>;
   amounts: Set<number>;
+  // The one amount this message states, when it states exactly one.
+  statedAmount: number | null;
   proseNumbers: Set<string>;
 }
 
@@ -634,12 +639,14 @@ function buildGround(context: AskTurnContext): Ground {
   const userText = [...context.history.filter((message) => message.role === "user").map((message) => message.text), context.text].join(" \n ");
   const words = new Set(wordsOf(userText));
   const amounts = amountsIn(userText);
+  const thisMessage = amountsIn(context.text);
+  const statedAmount = thisMessage.size === 1 ? [...thisMessage][0] : null;
   const proseNumbers = new Set<string>();
   const shown = [userText, buildAskTurnPrompt({ ...context, history: [], text: "" })].join(" ");
   for (const match of shown.match(/\d+(?:[.,]\d+)*/g) ?? []) {
     proseNumbers.add(match.replace(/,/g, ""));
   }
-  return { userText, words, amounts, proseNumbers };
+  return { userText, words, amounts, statedAmount, proseNumbers };
 }
 
 export function wordsOf(text: string) {
@@ -650,11 +657,15 @@ export function wordsOf(text: string) {
 // null (ask-turn-names.ts reads it).
 export const readAmountMinor = readAmountWords;
 
-// An amount the model gives, only when the person wrote it.
+// An amount the model gives, only when the person wrote it. A figure the
+// person never wrote (one the model converted or worked out) is replaced by
+// the one amount the message does state; with none or several to choose
+// from, it is no amount (`minor: null`).
 export function groundedAmount(value: unknown, ground: Ground) {
   if (value === null || value === undefined || value === "") return { given: false as const };
   const minor = readAmountMinor(value);
-  return minor !== null && ground.amounts.has(minor) ? { given: true as const, minor } : { given: true as const, minor: null };
+  if (minor !== null && ground.amounts.has(minor)) return { given: true as const, minor };
+  return { given: true as const, minor: ground.statedAmount };
 }
 
 // Prose the model wrote (a question, a note), kept only when every number
@@ -715,9 +726,12 @@ export function askableNames(said: unknown, candidates: readonly string[], count
 // A day: the model's YYYY-MM-DD, or the person's own word for it ("yesterday",
 // "last friday", "12 oct"), read from today. Not in the future, and not more
 // than OLDEST_DATE_DAYS back.
+// A day the message itself names wins over the model's (it may have worked a
+// date out wrongly) and fills one the model left out.
 export function readDate(value: unknown, context: AskTurnContext): { ok: true; date: string | null } | { ok: false } {
-  if (value === null || value === undefined || value === "") return { ok: true, date: null };
-  const date = typeof value === "string" ? readDayWord(value, context.today) : null;
+  const said = findDayIn(context.text, context.today);
+  if (!said && (value === null || value === undefined || value === "")) return { ok: true, date: null };
+  const date = said ?? (typeof value === "string" ? readDayWord(value, context.today) : null);
   if (!date || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return { ok: false };
   const oldest = new Date(Date.parse(`${context.today}T00:00:00Z`) - OLDEST_DATE_DAYS * 86_400_000).toISOString().slice(0, 10);
   return date <= context.today && date >= oldest ? { ok: true, date } : { ok: false };
@@ -725,9 +739,13 @@ export function readDate(value: unknown, context: AskTurnContext): { ok: true; d
 
 // A month: YYYY-MM, or a word ("september", "last month", "this month").
 // Nothing said is the month in view where a caller defaults it.
-export function readMonth(value: unknown, context: AskTurnContext): { ok: true; month: string | null } | { ok: false } {
-  if (value === null || value === undefined || value === "") return { ok: true, month: null };
-  const month = typeof value === "string" ? readMonthWord(value, context.today) : null;
+// `main` is the month the message is about: the one it names wins over the
+// model's and fills one left out. The other months of a comparison or a range
+// are the model's own report.
+export function readMonth(value: unknown, context: AskTurnContext, main = true): { ok: true; month: string | null } | { ok: false } {
+  const said = main ? findMonthIn(context.text, context.today) : null;
+  if (!said && (value === null || value === undefined || value === "")) return { ok: true, month: null };
+  const month = said ?? (typeof value === "string" ? readMonthWord(value, context.today) : null);
   if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month < "2000-01") return { ok: false };
   return { ok: true, month };
 }
@@ -739,13 +757,16 @@ function sourceAi<T>(value: T): EntryDraftFieldDto<T> {
 }
 
 // A new entry: the rules' reading of the message, with each field the model
-// read that checks out on top (marked "ai"). A field that does not check
-// out is asked, as the rules' own questions are.
+// read that checks out on top (marked "ai"). A field that does not check out
+// is left to the card (its missing list and questions) and said as an
+// assumption with one-tap alternatives; it is never a question back, because
+// the person sees the draft and fixes the one field.
 function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, ground: Ground, shared: boolean): AskTurnReply {
   const raw = action.entry ?? {};
   const base = parseEntrySentence(context.text, context.entry);
   const fields: EntryDraftDto["fields"] = { ...base.fields };
   const set = new Set<EntryDraftField | "categoryName" | "entryType">();
+  const assumptions: AskAssumption[] = [];
 
   const type = raw.type === "expense" || raw.type === "income" || raw.type === "transfer" ? raw.type : shared ? "expense" : null;
   if (type) {
@@ -753,21 +774,20 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     set.add("entryType");
   }
   const wallet = findWallet(raw.wallet, context);
-  if (wallet === "unknown") return walletQuestion(context);
-  if (wallet) {
+  if (wallet === "unknown") {
+    assumptions.push(assumption(COPY.assumed.noWallet(String(raw.wallet)), walletChips(context, String(raw.wallet), COPY.chips.onWallet)));
+  } else if (wallet) {
     fields.accountId = sourceAi(wallet.id);
     fields.accountName = sourceAi(wallet.name);
     set.add("accountId");
   }
   const amount = groundedAmount(raw.amount, ground);
-  if (amount.given && amount.minor === null) return { kind: "clarify", question: COPY.amountQuestion, options: [] };
   if (amount.given && amount.minor !== null && !base.foreignAmount) {
     fields.amountMinor = sourceAi(amount.minor);
     set.add("amountMinor");
   }
   const date = readDate(raw.date, context);
-  if (!date.ok) return { kind: "clarify", question: COPY.dateQuestion, options: [COPY.chips.today, COPY.chips.yesterday] };
-  if (date.date) {
+  if (date.ok && date.date) {
     fields.date = sourceAi(date.date);
     set.add("date");
   }
@@ -780,15 +800,21 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
   if (typeof category === "string" && category !== "unknown") {
     fields.categoryName = sourceAi(category);
     set.add("categoryName");
-  } else if (description && fields.entryType.value !== "transfer") {
-    const ruled = matchCategoryRule(description, context.entry.categoryMatchRules);
-    if (ruled && ruled !== "Transfer" && context.entry.categoryNames.includes(ruled)) {
-      fields.categoryName = { value: ruled, source: "rule" };
+  } else {
+    if (category === "unknown") {
+      assumptions.push(assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
+    }
+    if (description && fields.entryType.value !== "transfer") {
+      const ruled = matchCategoryRule(description, context.entry.categoryMatchRules);
+      if (ruled && ruled !== "Transfer" && context.entry.categoryNames.includes(ruled)) {
+        fields.categoryName = { value: ruled, source: "rule" };
+      }
     }
   }
   const owner = findPerson(raw.owner, context);
-  if (owner === "unknown") return personQuestion(context, COPY.whoQuestion);
-  if (owner) {
+  if (owner === "unknown") {
+    assumptions.push(assumption(COPY.assumed.noPerson(String(raw.owner)), context.people.slice(0, 3).map((person) => COPY.chips.itsPerson(person.name))));
+  } else if (owner) {
     fields.ownerName = sourceAi(owner.name);
     set.add("ownerName");
   }
@@ -798,8 +824,9 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     fields.categoryName = { value: "Transfer", source: fields.entryType.source };
     fields.transferDirection = fields.transferDirection ?? { value: "out", source: "ai" };
     const toWallet = findWallet(raw.to_wallet, context);
-    if (toWallet === "unknown") return walletQuestion(context);
-    if (toWallet) {
+    if (toWallet === "unknown") {
+      assumptions.push(assumption(COPY.assumed.noWallet(String(raw.to_wallet)), walletChips(context, String(raw.to_wallet), COPY.chips.toWallet)));
+    } else if (toWallet) {
       transferAccount = sourceAi({ accountId: toWallet.id, accountName: toWallet.name });
     }
   }
@@ -808,18 +835,20 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
   if (shared) {
     const split = action.split ?? {};
     const payer = findPerson(split.payer, context);
-    if (payer === "unknown") return personQuestion(context, COPY.whoPaidQuestion);
-    if (payer) {
+    if (payer === "unknown") {
+      assumptions.push(assumption(COPY.assumed.noPerson(String(split.payer)), context.people.slice(0, 3).map((person) => COPY.chips.personPaid(person.name))));
+    } else if (payer) {
       fields.ownerName = sourceAi(payer.name);
       set.add("ownerName");
     }
     const shares = resolveShares(split.shares, context, fields.amountMinor?.value ?? null, ground);
     if (shares.kind !== "ok") return shares.reply;
+    assumptions.push(...shares.assumptions);
     fields.ownershipType = sourceAi("shared");
     fields.splitBasisPoints = sourceAi(shares.firstBasisPoints);
     set.add("splitBasisPoints");
     const group = findGroup(split.group, context);
-    if (group === "unknown") return groupQuestion(context);
+    if (group === "unknown") return groupQuestion(context, String(split.group));
     share = { on: true, groupId: group?.id ?? "" };
   }
 
@@ -840,7 +869,19 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     flags: base.flags
   };
   const createBody = missing.length ? undefined : buildCreateBody(fields);
-  return { kind: "entry_draft", draft: createBody ? { ...draft, createBody } : draft, share };
+  return withAssumptions({ kind: "entry_draft", draft: createBody ? { ...draft, createBody } : draft, share }, assumptions);
+}
+
+// Attach the assumptions a reply carries, when there are any.
+export function withAssumptions(reply: AskTurnReply, assumptions: readonly AskAssumption[]): AskTurnReply {
+  return assumptions.length ? { ...reply, assumptions: [...assumptions] } : reply;
+}
+
+// The wallets a question or an assumption offers: the ones the name fits
+// (or the nearest), as messages that move the draft onto that wallet.
+function walletChips(context: AskTurnContext, said: string, chip: (name: string) => string) {
+  const active = context.entry.accounts.filter((account) => account.isActive).map((account) => account.name);
+  return askableNames(said, active, 3).map((name) => chip(scrubName(name)));
 }
 
 // A description the model tidied ("Starbucks coffee"), kept only when every
@@ -852,111 +893,83 @@ export function groundedDescription(value: unknown, ground: Ground) {
 }
 
 // A change to the card being filled. Only the fields the model names, each
-// checked as for a new entry.
+// checked as for a new entry. A field that does not check out is left
+// unchanged and said as an assumption while another field still changes;
+// when nothing else changes, it is the question back.
 function validateDraftPatch(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.entry ?? {};
   const patch: AskTurnDraftPatch = {};
+  const assumptions: AskAssumption[] = [];
+  const issues: AskTurnReply[] = [];
+  const trouble = (reply: AskTurnReply, said: AskAssumption) => {
+    issues.push(reply);
+    assumptions.push(said);
+  };
   if (raw.type === "expense" || raw.type === "income" || raw.type === "transfer") patch.variant = raw.type;
   const description = groundedDescription(raw.description, ground);
   if (description) patch.description = description;
   const amount = groundedAmount(raw.amount, ground);
-  if (amount.given && amount.minor === null) return { kind: "clarify", question: COPY.amountQuestion, options: [] };
-  if (amount.given && amount.minor !== null) patch.amountMinor = amount.minor;
+  if (amount.given && amount.minor === null) {
+    trouble(askBack({ code: "amount_not_stated", field: "entry.amount" }, COPY.amountQuestion), assumption(COPY.assumed.amountKept));
+  } else if (amount.given && amount.minor !== null) {
+    patch.amountMinor = amount.minor;
+  }
   const date = readDate(raw.date, context);
-  if (!date.ok) return { kind: "clarify", question: COPY.dateQuestion, options: [COPY.chips.today, COPY.chips.yesterday] };
-  if (date.date) patch.date = date.date;
+  if (!date.ok) {
+    trouble(askBack({ code: "date_invalid", field: "entry.date" }, COPY.dateQuestion, [COPY.chips.today, COPY.chips.yesterday]), assumption(COPY.assumed.dateKept, [COPY.chips.today, COPY.chips.yesterday]));
+  } else if (date.date) {
+    patch.date = date.date;
+  }
   const wallet = findWallet(raw.wallet, context);
-  if (wallet === "unknown") return walletQuestion(context);
-  if (wallet) patch.accountId = wallet.id;
+  if (wallet === "unknown") {
+    trouble(walletQuestion(context, String(raw.wallet)), assumption(COPY.assumed.noWallet(String(raw.wallet)), walletChips(context, String(raw.wallet), COPY.chips.onWallet)));
+  } else if (wallet) {
+    patch.accountId = wallet.id;
+  }
   const toWallet = findWallet(raw.to_wallet, context);
-  if (toWallet === "unknown") return walletQuestion(context);
-  if (toWallet) patch.transferAccountId = toWallet.id;
+  if (toWallet === "unknown") {
+    trouble(walletQuestion(context, String(raw.to_wallet)), assumption(COPY.assumed.noWallet(String(raw.to_wallet)), walletChips(context, String(raw.to_wallet), COPY.chips.toWallet)));
+  } else if (toWallet) {
+    patch.transferAccountId = toWallet.id;
+  }
   const category = findCategory(raw.category, context);
-  if (category === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(raw.category ?? "")), options: [] };
-  if (category) patch.categoryName = category;
+  if (category === "unknown") {
+    trouble(categoryQuestion(context, String(raw.category ?? "")), assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
+  } else if (category) {
+    patch.categoryName = category;
+  }
   const owner = findPerson(raw.owner, context);
-  if (owner === "unknown") return personQuestion(context, COPY.whoQuestion);
-  if (owner) patch.ownerName = owner.name;
+  if (owner === "unknown") {
+    trouble(personQuestion(context, COPY.whoQuestion, "entry.owner", String(raw.owner)), assumption(COPY.assumed.noPerson(String(raw.owner)), context.people.slice(0, 3).map((person) => COPY.chips.itsPerson(person.name))));
+  } else if (owner) {
+    patch.ownerName = owner.name;
+  }
 
   let share: AskTurnShare | null = null;
   if (action.split) {
     const draftAmount = patch.amountMinor ?? (context.focus?.kind === "draft" ? context.focus.draft.amountMinor : 0);
     const shares = resolveShares(action.split.shares, context, draftAmount > 0 ? draftAmount : null, ground);
     if (shares.kind !== "ok") return shares.reply;
-    const payer = findPerson(action.split.payer, context);
-    if (payer === "unknown") return personQuestion(context, COPY.whoPaidQuestion);
+    assumptions.push(...shares.assumptions);
     patch.ownerName = "Shared";
     patch.splitBasisPoints = shares.firstBasisPoints;
     const group = findGroup(action.split.group, context);
-    if (group === "unknown") return groupQuestion(context);
+    if (group === "unknown") return groupQuestion(context, String(action.split.group));
     share = { on: true, groupId: group?.id ?? "" };
   }
   if (!Object.keys(patch).length && !share) {
-    return { kind: "clarify", question: COPY.whatToChange, options: [] };
+    return issues[0] ?? askBack({ code: "nothing_to_change", field: "entry" }, COPY.whatToChange);
   }
-  return { kind: "draft_patch", patch, share };
+  return withAssumptions({ kind: "draft_patch", patch, share }, assumptions);
 }
 
 // ---- Splits ---------------------------------------------------------------
 
-type ShareResult =
-  | { kind: "ok"; firstBasisPoints: number; firstAmountMinor?: number }
-  | { kind: "reply"; reply: AskTurnReply };
-
-// Each person's share as percent, amount or "all", read into the first
-// person's basis points. Two people only (Splits splits between the
-// household's two). One share given: the other person has the rest. Both
-// given: they must add up to the whole. None: an even split.
-export function resolveShares(value: unknown, context: AskTurnContext, totalMinor: number | null, ground: Ground): ShareResult {
-  const people = context.people.slice(0, 2);
-  if (people.length < 2) return { kind: "reply", reply: { kind: "note", text: COPY.needsTwoPeople } };
-  const items = Array.isArray(value) ? value.filter(isRecord) : [];
-  if (!items.length) return { kind: "ok", firstBasisPoints: 5000 };
-  if (items.length > 2) return { kind: "reply", reply: sharesQuestion(people) };
-  const read: Array<{ person: AskTurnPerson; basisPoints: number; amountMinor?: number }> = [];
-  for (const item of items) {
-    const person = findPerson(item.person, context);
-    if (!person || person === "unknown" || !people.some((candidate) => candidate.id === person.id)) {
-      return { kind: "reply", reply: personQuestion(context, COPY.whoseShare) };
-    }
-    if (read.some((entry) => entry.person.id === person.id)) return { kind: "reply", reply: sharesQuestion(people) };
-    if (item.all === true) {
-      read.push({ person, basisPoints: 10_000 });
-    } else if (typeof item.percent === "number") {
-      if (!(item.percent >= 0 && item.percent <= 100)) return { kind: "reply", reply: sharesQuestion(people) };
-      read.push({ person, basisPoints: Math.round(item.percent * 100) });
-    } else if (item.amount !== null && item.amount !== undefined) {
-      const amount = groundedAmount(item.amount, ground);
-      if (!amount.given || amount.minor === null) return { kind: "reply", reply: { kind: "clarify", question: COPY.amountQuestion, options: [] } };
-      if (!totalMinor) return { kind: "reply", reply: { kind: "clarify", question: COPY.totalFirst, options: [] } };
-      if (amount.minor > totalMinor) return { kind: "reply", reply: sharesQuestion(people) };
-      read.push({ person, basisPoints: Math.round((amount.minor / totalMinor) * 10_000), amountMinor: amount.minor });
-    } else {
-      return { kind: "reply", reply: sharesQuestion(people) };
-    }
-  }
-  const [first, second] = people;
-  if (read.length === 2) {
-    const sum = read[0].amountMinor !== undefined && read[1].amountMinor !== undefined && totalMinor
-      ? (read[0].amountMinor + read[1].amountMinor === totalMinor ? 10_000 : -1)
-      : read[0].basisPoints + read[1].basisPoints;
-    if (sum !== 10_000) return { kind: "reply", reply: sharesQuestion(people) };
-  }
-  const own = read.find((entry) => entry.person.id === first.id);
-  const other = read.find((entry) => entry.person.id === second.id);
-  if (own) {
-    return own.amountMinor !== undefined ? { kind: "ok", firstBasisPoints: own.basisPoints, firstAmountMinor: own.amountMinor } : { kind: "ok", firstBasisPoints: own.basisPoints };
-  }
-  const otherShare = other as { basisPoints: number; amountMinor?: number };
-  return otherShare.amountMinor !== undefined && totalMinor
-    ? { kind: "ok", firstBasisPoints: 10_000 - otherShare.basisPoints, firstAmountMinor: totalMinor - otherShare.amountMinor }
-    : { kind: "ok", firstBasisPoints: 10_000 - otherShare.basisPoints };
-}
-
 // "Add to splits, all Joyce" on the saved entry in focus: the entry's own
 // payer (Splits takes the payer from the entry's owner or wallet), the
 // shares, and the group, checked; the share amounts come from the entry's
-// own amount.
+// own amount. What the person did not say (the shares, the group) or said
+// differently from the entry (a payer) is shown as an assumption on the card.
 function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   if (context.focus?.kind !== "saved_entry") {
     return context.focus?.kind === "draft"
@@ -969,23 +982,27 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
   const payer = context.people.find((person) => person.id === entry.payerPersonId) ?? null;
   if (!payer) return { kind: "note", text: COPY.noPayer };
   const split = action.split ?? {};
+  const assumptions: AskAssumption[] = [];
+  // Splits takes the payer from the entry, so a payer the model reports is
+  // only worth a line when it differs from the entry's.
   const saidPayer = findPerson(split.payer, context);
-  if (saidPayer === "unknown") return personQuestion(context, COPY.whoPaidQuestion);
-  if (saidPayer && saidPayer.id !== payer.id) {
-    return { kind: "clarify", question: COPY.payerIsWalletOwner(scrubName(entry.accountName), payer.name), options: [COPY.chips.addWithPayer(payer.name), COPY.chips.notNow] };
+  if (saidPayer && saidPayer !== "unknown" && saidPayer.id !== payer.id) {
+    assumptions.push(assumption(COPY.assumed.payerIsWalletOwner(scrubName(entry.accountName), payer.name)));
   }
   const total = Math.abs(entry.amountMinor);
-  const shares = resolveShares(split.shares, context, total, ground);
+  const shares = resolveShares(split.shares, context, total, ground, entry.currency);
   if (shares.kind !== "ok") return shares.reply;
-  const group = findGroup(split.group, context);
-  if (group === "unknown") return groupQuestion(context);
+  assumptions.push(...shares.assumptions);
+  let group = findGroup(split.group, context);
+  if (group === "unknown") return groupQuestion(context, String(split.group));
   if (group && group.currency.toUpperCase() !== entry.currency.toUpperCase()) {
-    return { kind: "clarify", question: COPY.groupCurrency(group.name, group.currency), options: [COPY.chips.noGroup] };
+    assumptions.push(assumption(COPY.assumed.groupCurrency(group.name, group.currency, entry.currency)));
+    group = null;
   }
   const [first, second] = context.people;
   const firstAmount = shares.firstAmountMinor ?? Math.round((total * shares.firstBasisPoints) / 10_000);
   const firstBasisPoints = shares.firstAmountMinor !== undefined && total ? Math.round((firstAmount / total) * 10_000) : shares.firstBasisPoints;
-  return {
+  return withAssumptions({
     kind: "split_proposal",
     proposal: {
       entryId: entry.entryId,
@@ -1003,21 +1020,28 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
         { personName: second.name, basisPoints: 10_000 - firstBasisPoints, amountMinor: total - firstAmount }
       ]
     }
-  };
+  }, assumptions);
 }
 
 function validateSettlement(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.settlement ?? {};
-  const from = findPerson(raw.from, context);
-  const to = findPerson(raw.to, context);
-  if (!from || !to || from === "unknown" || to === "unknown") return personQuestion(context, COPY.whoPaidBack);
-  if (from.id === to.id) return personQuestion(context, COPY.whoPaidBack);
+  let from = findPerson(raw.from, context);
+  let to = findPerson(raw.to, context);
+  if (from === "unknown" || to === "unknown") return personQuestion(context, COPY.whoPaidBack, "settlement.from", String(raw.from ?? raw.to ?? ""));
+  // Splits is between the household's two: naming one person puts the other
+  // on the other side ("Joyce paid me back" names Joyce and the speaker).
+  const other = (person: AskTurnPerson) => (context.people.length === 2 ? context.people.find((candidate) => candidate.id !== person.id) ?? null : null);
+  if (from && !to) to = other(from) ?? to;
+  else if (to && !from) from = other(to) ?? from;
+  if (!from || !to || from.id === to.id) return personQuestion(context, COPY.whoPaidBack, "settlement.from");
   const amount = groundedAmount(raw.amount, ground);
-  if (!amount.given || amount.minor === null) return { kind: "clarify", question: COPY.settleAmount, options: [COPY.chips.openSplits] };
+  if (!amount.given || amount.minor === null) {
+    return askBack({ code: "amount_needed", field: "settlement.amount" }, COPY.settleAmount, [COPY.chips.openSplits]);
+  }
   const date = readDate(raw.date, context);
-  if (!date.ok) return { kind: "clarify", question: COPY.dateQuestion, options: [COPY.chips.today, COPY.chips.yesterday] };
+  if (!date.ok) return askBack({ code: "date_invalid", field: "settlement.date" }, COPY.dateQuestion, [COPY.chips.today, COPY.chips.yesterday]);
   const group = findGroup(raw.group, context) ?? (context.focus?.kind === "split_group" ? context.focus.group : null);
-  if (group === "unknown") return groupQuestion(context);
+  if (group === "unknown") return groupQuestion(context, String(raw.group));
   return {
     kind: "settlement_draft",
     settlement: {
@@ -1040,7 +1064,7 @@ function validateSettlement(action: AskTurnAction, context: AskTurnContext, grou
 function validatePlan(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.plan ?? {};
   const request = parsePlanAiReading({ kind: "plan", month: raw.month ?? null, copyFrom: raw.copy_from ?? null, ops: raw.ops ?? [] }, ground.userText, context.today);
-  return request ? { kind: "plan", request } : { kind: "clarify", question: COPY.planQuestion, options: [] };
+  return request ? { kind: "plan", request } : askBack({ code: "plan_unreadable", field: "plan", valid: context.planLines.slice(0, 12) }, COPY.planQuestion);
 }
 
 const QUESTION_KIND: Record<AskTurnTopic, AskAnswerIntentKind> = {
@@ -1062,14 +1086,15 @@ const QUESTION_KIND: Record<AskTurnTopic, AskAnswerIntentKind> = {
 function validateQuestion(action: AskTurnAction, context: AskTurnContext): AskTurnReply {
   const raw = action.question ?? {};
   const topic = (ASK_TURN_TOPICS as readonly string[]).includes(String(raw.topic)) ? raw.topic as AskTurnTopic : null;
-  if (!topic) return { kind: "clarify", question: COPY.questionUnclear, options: [] };
+  if (!topic) return askBack({ code: "question_unclear", field: "question.topic", valid: [...ASK_TURN_TOPICS] }, COPY.questionUnclear);
   const month = readMonth(raw.month, context);
-  const other = readMonth(raw.other_month, context);
-  const from = readMonth(raw.from_month, context);
-  const to = readMonth(raw.to_month, context);
-  if (!month.ok || !other.ok || !from.ok || !to.ok) return { kind: "clarify", question: COPY.whichMonth, options: [] };
-  const person = findPerson(raw.person, context);
-  if (person === "unknown") return personQuestion(context, COPY.whoQuestion);
+  const other = readMonth(raw.other_month, context, false);
+  const from = readMonth(raw.from_month, context, false);
+  const to = readMonth(raw.to_month, context, false);
+  if (!month.ok || !other.ok || !from.ok || !to.ok) return askBack({ code: "month_invalid", field: "question.month" }, COPY.whichMonth);
+  const found = findPerson(raw.person, context);
+  const person = found === "unknown" ? null : found;
+  const assumptions = found === "unknown" ? [assumption(COPY.assumed.noPersonView(String(raw.person)))] : [];
   const thisMonth = context.today.slice(0, 7);
   const target = month.month ?? to.month ?? context.month;
   if (target > thisMonth || (from.month && from.month > thisMonth)) return { kind: "note", text: COPY.futureMonth };
@@ -1077,13 +1102,13 @@ function validateQuestion(action: AskTurnAction, context: AskTurnContext): AskTu
     ? `from ${monthLabel(from.month)} to ${monthLabel(to.month)}`
     : `in ${monthLabel(target)}`;
   const text = canonicalQuestion(topic, when, target, other.month, person);
-  if (!text) return { kind: "clarify", question: COPY.compareWhich, options: [] };
+  if (!text) return askBack({ code: "month_invalid", field: "question.other_month" }, COPY.compareWhich);
   const intent = readAnswerIntent(text, { today: context.today, month: context.month, people: context.people });
   if (!intent || intent.kind !== QUESTION_KIND[topic]) {
-    return { kind: "clarify", question: COPY.questionUnclear, options: [] };
+    return askBack({ code: "question_unclear", field: "question.topic", valid: [...ASK_TURN_TOPICS] }, COPY.questionUnclear);
   }
   const viewId = person && topic !== "owed" ? person.id : context.viewId;
-  return { kind: "question", text, viewId, scope: viewId === "household" ? "direct_plus_shared" : context.scope, month: target };
+  return withAssumptions({ kind: "question", text, viewId, scope: viewId === "household" ? "direct_plus_shared" : context.scope, month: target }, assumptions);
 }
 
 function canonicalQuestion(topic: AskTurnTopic, when: string, month: string, otherMonth: string | null, person: AskTurnPerson | null) {
@@ -1105,32 +1130,44 @@ function canonicalQuestion(topic: AskTurnTopic, when: string, month: string, oth
 function validateSearch(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.search ?? {};
   const month = readMonth(raw.month, context);
-  if (!month.ok) return { kind: "clarify", question: COPY.whichMonth, options: [] };
-  const person = findPerson(raw.person, context);
-  if (person === "unknown") return personQuestion(context, COPY.whoQuestion);
+  if (!month.ok) return askBack({ code: "month_invalid", field: "search.month" }, COPY.whichMonth);
+  const assumptions: AskAssumption[] = [];
+  const found = findPerson(raw.person, context);
+  const person = found === "unknown" ? null : found;
+  if (found === "unknown") assumptions.push(assumption(COPY.assumed.noPersonView(String(raw.person))));
   const words = typeof raw.words === "string" ? raw.words.replace(/\s+/g, " ").trim() : "";
-  const search = words && words.length <= SEARCH_MAX && wordsOf(words).every((word) => ground.words.has(word)) ? words : "";
+  let search = words && words.length <= SEARCH_MAX && wordsOf(words).every((word) => ground.words.has(word)) ? words : "";
   const categories: string[] = [];
   for (const name of Array.isArray(raw.categories) ? raw.categories.slice(0, 6) : []) {
     const category = findCategory(name, context);
-    if (category === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(name)), options: [] };
+    if (category === "unknown") {
+      // A word that is no category is still something to look for in the
+      // entries' own words.
+      const asWords = typeof name === "string" ? name.replace(/\s+/g, " ").trim() : "";
+      if (!search && asWords && asWords.length <= SEARCH_MAX && wordsOf(asWords).every((word) => ground.words.has(word))) {
+        search = asWords;
+        assumptions.push(assumption(COPY.assumed.categoryAsWords(asWords)));
+        continue;
+      }
+      return categoryQuestion(context, String(name));
+    }
     if (category && !categories.includes(category)) categories.push(category);
   }
   const wallets: string[] = [];
   for (const name of Array.isArray(raw.wallets) ? raw.wallets.slice(0, 6) : []) {
     const wallet = findWallet(name, context);
-    if (wallet === "unknown") return walletQuestion(context);
+    if (wallet === "unknown") return walletQuestion(context, String(name));
     if (wallet && !wallets.includes(wallet.id)) wallets.push(wallet.id);
   }
   const min = groundedAmount(raw.min_amount, ground);
   const max = groundedAmount(raw.max_amount, ground);
-  if ((min.given && min.minor === null) || (max.given && max.minor === null)) return { kind: "clarify", question: COPY.amountQuestion, options: [] };
+  if ((min.given && min.minor === null) || (max.given && max.minor === null)) return askBack({ code: "amount_not_stated", field: "search.amount" }, COPY.amountQuestion);
   const type = raw.type === "expense" || raw.type === "income" || raw.type === "transfer" ? raw.type : "";
   if (!search && !categories.length && !wallets.length && !type && !min.given && !max.given && !month.month && !person) {
-    return { kind: "clarify", question: COPY.searchWhat, options: [] };
+    return askBack({ code: "search_empty", field: "search" }, COPY.searchWhat);
   }
   const viewId = person ? person.id : context.viewId;
-  return {
+  return withAssumptions({
     kind: "search",
     filter: {
       month: month.month ?? context.month,
@@ -1143,16 +1180,16 @@ function validateSearch(action: AskTurnAction, context: AskTurnContext, ground: 
       minAmountMinor: min.given ? min.minor : null,
       maxAmountMinor: max.given ? max.minor : null
     }
-  };
+  }, assumptions);
 }
 
 function validatePage(action: AskTurnAction, context: AskTurnContext): AskTurnReply {
   const raw = action.page ?? {};
   const page = (ASK_TURN_PAGES as readonly string[]).includes(String(raw.name)) ? raw.name as AskTurnPage : null;
-  if (!page) return { kind: "clarify", question: COPY.whichPage, options: ["Summary", "Entries", "Splits", "Imports"] };
+  if (!page) return askBack({ code: "field_missing", field: "page.name", valid: [...ASK_TURN_PAGES] }, COPY.whichPage, ["Summary", "Entries", "Splits", "Imports"]);
   const month = readMonth(raw.month, context);
-  const person = findPerson(raw.person, context);
-  if (person === "unknown") return personQuestion(context, COPY.whoQuestion);
+  const found = findPerson(raw.person, context);
+  const person = found === "unknown" ? null : found;
   const params: Record<string, string> = {};
   if (["summary", "month", "entries", "splits"].includes(page)) {
     params.view = person ? person.id : context.viewId;
@@ -1164,7 +1201,7 @@ function validatePage(action: AskTurnAction, context: AskTurnContext): AskTurnRe
 function validateClarification(action: AskTurnAction, ground: Ground): AskTurnReply {
   const raw = action.clarify ?? {};
   const question = groundedProse(raw.question, ground, QUESTION_MAX);
-  if (!question) return { kind: "clarify", question: COPY.sayAgain, options: [] };
+  if (!question) return askBack({ code: "other", field: "clarify.question" }, COPY.sayAgain);
   const options = (Array.isArray(raw.options) ? raw.options : [])
     .map((option) => groundedProse(option, ground, CHIP_MAX))
     .filter((option): option is string => Boolean(option))
@@ -1175,31 +1212,37 @@ function validateClarification(action: AskTurnAction, ground: Ground): AskTurnRe
 
 // ---- Questions the app asks back -----------------------------------------
 
-export function personQuestion(context: AskTurnContext, question: string): AskTurnReply {
-  return { kind: "clarify", question: `${question} ${COPY.peopleAre(context.people.map((person) => person.name))}`, options: context.people.slice(0, MAX_CHIPS).map((person) => person.name) };
+// A question back, with why it is asking (for the repair turn; never shown).
+export function askBack(error: AskValidatorError, question: string, options: string[] = []): AskTurnReply {
+  return { kind: "clarify", question, options, error };
 }
 
-export function walletQuestion(context: AskTurnContext): AskTurnReply {
+export function personQuestion(context: AskTurnContext, question: string, field = "person", said = ""): AskTurnReply {
+  const names = context.people.map((person) => person.name);
+  const ambiguous = matchName(said, names).kind === "ambiguous";
+  const options = ambiguous ? askableNames(said, names, MAX_CHIPS) : names.slice(0, MAX_CHIPS);
+  return askBack({ code: ambiguous ? "ambiguous_name" : "unknown_person", field, valid: names, ...(said ? { got: said.slice(0, 40) } : {}) }, `${question} ${COPY.peopleAre(names)}`, options);
+}
+
+export function walletQuestion(context: AskTurnContext, said = ""): AskTurnReply {
   const priority = context.entry.defaultAccountPriorityIds
     .map((id) => context.entry.accounts.find((account) => account.id === id && account.isActive))
     .filter((account): account is AccountDto => Boolean(account));
-  const names = [...priority, ...context.entry.accounts.filter((account) => account.isActive && !priority.includes(account))]
-    .slice(0, MAX_CHIPS)
-    .map((account) => account.name);
-  return { kind: "clarify", question: COPY.walletQuestion, options: names };
+  const active = [...priority, ...context.entry.accounts.filter((account) => account.isActive && !priority.includes(account))].map((account) => account.name);
+  const ambiguous = said ? matchName(said, active).kind === "ambiguous" : false;
+  const options = said && (ambiguous || matchName(said, active).kind === "none") ? askableNames(said, active, MAX_CHIPS) : active.slice(0, MAX_CHIPS);
+  return askBack({ code: ambiguous ? "ambiguous_name" : "unknown_wallet", field: "wallet", valid: active.slice(0, 12).map(scrubName), ...(said ? { got: said.slice(0, 40) } : {}) }, COPY.walletQuestion, options);
 }
 
-export function groupQuestion(context: AskTurnContext): AskTurnReply {
-  return { kind: "clarify", question: COPY.groupQuestion, options: [...context.groups.slice(0, MAX_CHIPS - 1).map((group) => group.name), COPY.chips.noGroup] };
+export function groupQuestion(context: AskTurnContext, said = ""): AskTurnReply {
+  const names = context.groups.map((group) => group.name);
+  const ambiguous = said ? matchName(said, names).kind === "ambiguous" : false;
+  const options = ambiguous ? askableNames(said, names, MAX_CHIPS - 1) : names.slice(0, MAX_CHIPS - 1);
+  return askBack({ code: ambiguous ? "ambiguous_name" : "unknown_group", field: "group", valid: names, ...(said ? { got: said.slice(0, 40) } : {}) }, COPY.groupQuestion, [...options, COPY.chips.noGroup]);
 }
 
-function sharesQuestion(people: AskTurnPerson[]): AskTurnReply {
-  const [first, second] = people;
-  return {
-    kind: "clarify",
-    question: COPY.sharesQuestion,
-    options: [COPY.chips.even, COPY.chips.allOf(first.name), COPY.chips.allOf(second.name)]
-  };
+export function categoryQuestion(context: AskTurnContext, said: string): AskTurnReply {
+  return askBack({ code: "unknown_category", field: "category", valid: context.entry.categoryNames.slice(0, 20), got: said.slice(0, 40) }, COPY.categoryQuestion(said), askableNames(said, context.entry.categoryNames, 3));
 }
 
 // ---- Helpers --------------------------------------------------------------
@@ -1265,6 +1308,28 @@ export const COPY = {
     openSplits: "Open Splits",
     even: "Split 50/50",
     allOf: (name: string) => `All ${name}'s`,
-    addWithPayer: (name: string) => `Yes, ${name} paid`
+    addWithPayer: (name: string) => `Yes, ${name} paid`,
+    onWallet: (name: string) => `On ${name}`,
+    toWallet: (name: string) => `To ${name}`,
+    inCategory: (name: string) => `Category ${name}`,
+    itsPerson: (name: string) => `It's ${name}'s`,
+    personPaid: (name: string) => `${name} paid`
+  },
+  // What the app assumed while drafting, in plain words (docs/flows/
+  // ask-flow.md, "Three principles"). Names are the person's own words,
+  // scrubbed. Each line may come with chips that send the other reading.
+  assumed: {
+    evenSplit: "You didn't say how to split it, so I split it evenly.",
+    readAsAmount: (number: number, money: string, name: string) => `I read ${number} as ${money} for ${scrubName(name)}, and the rest goes to the other person.`,
+    readAsPercent: (number: number, name: string) => `I read ${number} as ${number}% for ${scrubName(name)}.`,
+    noWallet: (said: string) => `I couldn't find a wallet called "${scrubName(said)}", so I left the wallet out.`,
+    noCategory: (said: string) => `There's no category called "${scrubName(said)}", so I left the category out.`,
+    noPerson: (said: string) => `I couldn't tell who "${scrubName(said)}" is, so I left that out.`,
+    noPersonView: (said: string) => `I couldn't tell who "${scrubName(said)}" is, so I used the whole household.`,
+    amountKept: "I couldn't use that amount, so the amount stays as it was.",
+    dateKept: "I couldn't use that date, so the date stays as it was.",
+    payerIsWalletOwner: (wallet: string, payer: string) => `It was paid from ${wallet}, which is ${payer}'s, so ${payer} shows as the one who paid.`,
+    groupCurrency: (name: string, groupCurrency: string, entryCurrency: string) => `${name} keeps its splits in ${groupCurrency} and this is in ${entryCurrency}, so I left it out of the group.`,
+    categoryAsWords: (words: string) => `There's no category called "${scrubName(words)}", so I searched the entries for that word.`
   }
 };
