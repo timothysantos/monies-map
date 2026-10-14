@@ -141,8 +141,10 @@ async function getEntry(db: D1Database, args: Record<string, unknown>): Promise<
 
 async function listRecent(db: D1Database, args: Record<string, unknown>): Promise<AskLookupResult> {
   const limit = whole(args.n ?? args.limit, 5, ASK_LOOKUP_LIMITS.maxRows);
+  // created_at is CURRENT_TIMESTAMP (whole seconds), so entries added in the same
+  // second tie; rowid (insertion order) makes "newest first" deterministic.
   const result = await db
-    .prepare(`${ENTRY_SELECT} ORDER BY transactions.created_at DESC, transactions.transaction_date DESC LIMIT ${limit}`)
+    .prepare(`${ENTRY_SELECT} ORDER BY transactions.created_at DESC, transactions.transaction_date DESC, transactions.rowid DESC LIMIT ${limit}`)
     .bind(DEFAULT_HOUSEHOLD_ID)
     .all<EntryRow>();
   return result.results.length ? { ok: true, text: cut(result.results.map((row) => describeRow(row)).join("\n")) } : { ok: true, text: "No entries yet." };

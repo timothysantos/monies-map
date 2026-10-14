@@ -66,6 +66,8 @@ test("list_recent_entries returns the newest few, capped", async (t) => {
   const result = await run(db, "list_recent_entries", { n: 2 });
   assert.equal(result.text.split("\n").length, 2);
   assert.match(result.text.split("\n")[0], /Third/);
+  assert.match(result.text.split("\n")[1], /Second/);
+  assert.doesNotMatch(result.text, /First/);
   assert.equal((await run(db, "list_recent_entries", { n: 999 })).text.split("\n").length, ASK_LOOKUP_LIMITS.maxRows);
 });
 
