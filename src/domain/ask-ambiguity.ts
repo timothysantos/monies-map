@@ -109,6 +109,26 @@ export const ASK_ERROR_CODES = [
 ] as const;
 export type AskErrorCode = typeof ASK_ERROR_CODES[number];
 
+// The codes a model can fix when it is told what was wrong and what was
+// valid: it reported a name, day, month, share, amount or plan line the checks
+// could not use. The others are a question only the person can answer (an
+// amount they never gave, which of two things they meant, nothing to change)
+// and stay questions; repairing them would spend a turn for the same answer.
+export const ASK_REPAIRABLE_CODES: ReadonlySet<AskErrorCode> = new Set<AskErrorCode>([
+  "unknown_person",
+  "unknown_wallet",
+  "unknown_category",
+  "unknown_group",
+  "amount_not_stated",
+  "shares_unreadable",
+  "shares_mismatch",
+  "date_invalid",
+  "month_invalid",
+  "plan_unreadable",
+  "question_unclear",
+  "other"
+]);
+
 // What the validator found wrong, machine-readable: the field, the code, and
 // the options that would have been valid. Never sent to the page.
 export interface AskValidatorError {

@@ -563,7 +563,7 @@ export function scrubName(value: string | null | undefined) {
     .slice(0, 60);
 }
 
-function redactText(value: string, maxLength: number) {
+export function redactText(value: string, maxLength: number) {
   return String(value ?? "")
     .replace(/[\r\n\t]+/g, " ")
     .replace(/\b[STFGM]\d{7}[A-Z]\b/gi, "[number]")
@@ -1250,7 +1250,7 @@ export function groupQuestion(context: AskTurnContext, said = ""): AskTurnReply 
 }
 
 export function categoryQuestion(context: AskTurnContext, said: string): AskTurnReply {
-  return askBack({ code: "unknown_category", field: "category", valid: context.entry.categoryNames.slice(0, 20), got: said.slice(0, 40) }, COPY.categoryQuestion(said), askableNames(said, context.entry.categoryNames, 3));
+  return askBack({ code: "unknown_category", field: "category", valid: context.entry.categoryNames.slice(0, 40), got: said.slice(0, 40) }, COPY.categoryQuestion(said), askableNames(said, context.entry.categoryNames, 3));
 }
 
 // ---- Helpers --------------------------------------------------------------

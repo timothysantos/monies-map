@@ -12,19 +12,27 @@
 //    action in ASK_TURN_SCHEMA. No answer, or an unusable one: { mode:
 //    "rules", reason }, and the page reads the message with its rules.
 // 4. The action is checked against the household's data
-//    (validateAskTurnAction); one that does not check out becomes a
-//    question back. A plan change is drafted against the real plan rows.
+//    (validateAskTurnAction). One the checks refuse for a reason the model
+//    can fix (a name, day, month, share or plan line they could not use) is
+//    sent back ONCE with the errors and the valid options (the repair turn,
+//    ask-turn-repair.ts; a second allowance unit); only if that is refused
+//    too does it become a question back. A plan change is drafted against
+//    the real plan rows.
 //
 // Nothing is written but the shared allowance counter (and, after a Claude
 // attempt, the aggregate Claude status row). Every draft is saved later by
 // the person's Save tap, through the existing command. No message, prompt,
-// context or answer is stored or logged.
+// context or answer is stored. The only thing logged is the repair measure:
+// { action, validatorError, field, repaired }, never the message, a name or
+// an amount.
 //
 // Tests (APP_ENVIRONMENT "test", set only in wrangler.test.jsonc) may send
 // the model's answer in the X-Ask-Turn-Test-Reply header: it stands in for
 // the provider and goes through the same checks, so a browser test proves
-// the whole path without a model.
+// the whole path without a model. X-Ask-Turn-Test-Repair-Reply stands in for
+// the repair turn's answer; without it a test-reply turn is not repaired.
 
+import { ASK_REPAIRABLE_CODES } from "../domain/ask-ambiguity";
 import { AI_UNUSABLE_SUGGESTION_REASON } from "../domain/ai-assistance";
 import { getAiProviderUnavailableReason, runTextJson, type AiProviderEnv } from "../domain/ai-provider";
 import {
@@ -34,10 +42,12 @@ import {
   buildAskTurnPrompt,
   parseAskTurnAction,
   validateAskTurnAction,
+  withAssumptions,
   type AskTurnAction,
   type AskTurnMessage
 } from "../domain/ask-turn";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
+import { buildAskRepairPrompt } from "../domain/ask-turn-repair";
 import { resolveAskTurnRequest } from "../domain/ask-turn-resolve";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import { json } from "./json";
@@ -49,6 +59,7 @@ export const ASK_TURN_AI_UNITS = 1;
 const ASK_TURN_MAX_TOKENS = 500;
 const ASK_TURN_TIMEOUT_MS = 10_000;
 const TEST_REPLY_HEADER = "x-ask-turn-test-reply";
+const TEST_REPAIR_HEADER = "x-ask-turn-test-repair-reply";
 const PAGES = new Set(["ask", "summary", "month", "entries", "splits", "imports", "settings", "faq"]);
 
 export type AskTurnEnv = AiProviderEnv & { DB: D1Database; APP_ENVIRONMENT?: string };
@@ -70,7 +81,9 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   if (text.length > ASK_TURN_MAX_TEXT) {
     return json({ ok: false, error: "The message is too long." }, 400);
   }
-  const testReply = env.APP_ENVIRONMENT === "test" ? request.headers.get(TEST_REPLY_HEADER) : null;
+  const testing = env.APP_ENVIRONMENT === "test";
+  const testReply = testing ? request.headers.get(TEST_REPLY_HEADER) : null;
+  const testRepairReply = testing ? request.headers.get(TEST_REPAIR_HEADER) : null;
   const offReason = getAiProviderUnavailableReason(env);
   if (offReason && !testReply) {
     return json({ ok: true, mode: "rules", reason: offReason });
@@ -88,21 +101,23 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     focus: body.focus
   }, today);
 
+  const ask = (prompt: string) => runTextJson(env.DB, env, {
+    capability: "ask_turn",
+    units: ASK_TURN_AI_UNITS,
+    maxTokens: ASK_TURN_MAX_TOKENS,
+    timeoutMs: ASK_TURN_TIMEOUT_MS,
+    schema: ASK_TURN_SCHEMA,
+    prompt,
+    parse: parseAskTurnAction,
+    unusableReason: AI_UNUSABLE_SUGGESTION_REASON
+  });
+
   let action: AskTurnAction | null;
   let remaining: number | undefined;
   if (testReply) {
     action = parseTestReply(testReply);
   } else {
-    const result = await runTextJson(env.DB, env, {
-      capability: "ask_turn",
-      units: ASK_TURN_AI_UNITS,
-      maxTokens: ASK_TURN_MAX_TOKENS,
-      timeoutMs: ASK_TURN_TIMEOUT_MS,
-      schema: ASK_TURN_SCHEMA,
-      prompt: buildAskTurnPrompt(context),
-      parse: parseAskTurnAction,
-      unusableReason: AI_UNUSABLE_SUGGESTION_REASON
-    });
+    const result = await ask(buildAskTurnPrompt(context));
     action = result.value ?? null;
     remaining = result.remaining;
     if (!action) {
@@ -121,13 +136,51 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   }
 
   let reply = validateAskTurnAction(action, context);
+
+  // Repair before asking: a refusal the model can fix gets one more turn with
+  // the errors and the valid options. The corrected action is used only when
+  // it checks out (not another question); otherwise the person gets the
+  // original question, with its chips. At most one repair per message.
+  let repaired: boolean | null = null;
+  if (reply.kind === "clarify" && reply.error && ASK_REPAIRABLE_CODES.has(reply.error.code) && action.action !== "ask_clarification" && (!testReply || testRepairReply)) {
+    const { error } = reply;
+    const refused = action.action;
+    let second: AskTurnAction | null;
+    if (testReply) {
+      second = parseTestReply(testRepairReply ?? "");
+    } else {
+      const result = await ask(buildAskRepairPrompt(context, action, error));
+      second = result.value ?? null;
+      remaining = result.remaining ?? remaining;
+    }
+    const fixed = second ? validateAskTurnAction(second, context) : null;
+    repaired = Boolean(second && fixed && fixed.kind !== "clarify");
+    if (second && fixed && repaired) {
+      action = second;
+      reply = fixed;
+    }
+    console.info(JSON.stringify({ event: "ask_turn_repair", action: refused, validatorError: error.code, field: error.field, repaired }));
+  }
+
   // A Phase 2 change that needs the household's rows (every entry a bulk
   // recategorise would move, a group's balance, the matches) is built from
   // them here, read only.
   if (reply.kind === "resolve") {
-    reply = await resolveAskTurnRequest(env.DB, reply.request, context);
+    const assumptions = reply.assumptions ?? [];
+    reply = withAssumptions(await resolveAskTurnRequest(env.DB, reply.request, context), assumptions);
   }
-  const base = { ok: true as const, mode: "ai" as const, action: action.action, ...(remaining !== undefined ? { remaining } : {}) };
+  // Why a question is asked is for the repair turn only; the page never sees it.
+  if (reply.kind === "clarify" && reply.error) {
+    const { error: _error, ...question } = reply;
+    reply = question;
+  }
+  const base = {
+    ok: true as const,
+    mode: "ai" as const,
+    action: action.action,
+    ...(remaining !== undefined ? { remaining } : {}),
+    ...(repaired !== null ? { repaired } : {})
+  };
   if (reply.kind === "plan") {
     const reading = await draftPlanRequest(env.DB, reply.request, {
       today,
