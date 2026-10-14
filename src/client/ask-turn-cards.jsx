@@ -24,7 +24,7 @@ function formatDay(date) {
  * entry's own amount). Nothing is written until Add to Splits, which posts
  * the existing command; saved, it offers Open on Splits and Undo.
  */
-export function AskSplitProposalCard({ item, busy = false, settled = false, onSave, onDiscard, onOpen, onUndo }) {
+export function AskSplitProposalCard({ item, busy = false, settled = false, onSave, onDiscard, onOpen, onUndo, onGuess }) {
   const { proposal } = item;
   const saved = item.status === "saved" || item.status === "undoing";
   return (
@@ -55,6 +55,10 @@ export function AskSplitProposalCard({ item, busy = false, settled = false, onSa
             )}
           />
         ))}
+        {/* A bare number was read as dollars: one tap reads it as a percentage instead. */}
+        {!saved && item.status === "draft" && proposal.percentGuess && onGuess
+          ? <DetailRow label={copy.split.percentInstead} state="action" onClick={onGuess} disabled={busy} data-split-percent-instead="" />
+          : null}
         {saved ? <DetailRow label={copy.split.openOnSplits} state="action" onClick={onOpen} disabled={busy} /> : null}
         {saved ? <DetailRow label={item.status === "undoing" ? copy.split.undoing : copy.split.undo} onClick={onUndo} disabled={busy} data-split-undo="" /> : null}
       </DetailRows>

@@ -104,7 +104,7 @@ export function buildTurnFocus({ card = null, intent = null, insightTopic = "", 
 }
 
 /**
- * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance" } | { ok: true, mode: "ai", action: string, reply: any } | { ok: false }>}
+ * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance", reply?: any } | { ok: true, mode: "ai", action: string, reply: any } | { ok: false }>}
  */
 export async function requestAskTurn(body, { fetchImpl = fetch, timeoutMs = TURN_TIMEOUT_MS } = {}) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -138,6 +138,8 @@ export function readAskTurnResponse(body) {
       ok: true,
       mode: "rules",
       reason: typeof body.reason === "string" ? body.reason : "",
+      // The rules' own checked reading of a share on the saved entry, when there is one.
+      ...(readRulesReply(body.reply) ? { reply: readRulesReply(body.reply) } : {}),
       ...(body.notice === "demo_allowance" ? { notice: "demo_allowance" } : {})
     };
   }
@@ -148,6 +150,13 @@ export function readAskTurnResponse(body) {
 const isObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const isMinor = (value) => Number.isInteger(value) && value >= 0;
 const isText = (value) => typeof value === "string";
+
+// A rules answer may carry only the split draft (or its plain question) the
+// server's share reader checked; any other kind is the page's own rules' job.
+function readRulesReply(reply) {
+  const read = readReply(reply);
+  return read && (read.kind === "split_proposal" || read.kind === "clarify" || read.kind === "note") ? read : null;
+}
 
 function readReply(reply) {
   if (!isObject(reply)) return null;
