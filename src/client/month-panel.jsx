@@ -1502,6 +1502,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         categoryShare={view.monthPage.categoryShareChart}
         investmentMoves={view.monthPage.investmentMoves ?? null}
         isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
+        onOpenCategory={(categoryName) => handleOpenEntriesForActual({ categoryName })}
       />
 
       <FinancialInsight

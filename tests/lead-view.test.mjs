@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LEAD_VIEW_STORAGE_KEY, chooseLeadView, readLeadView, saveLeadView } from "../src/client/lead-view.js";
+import { LEAD_VIEW_STORAGE_KEY, chooseLeadView, createLeadViewStore, readLeadView, saveLeadView } from "../src/client/lead-view.js";
 import { buildMonthMetricCards } from "../src/client/month-helpers.js";
 import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
@@ -29,14 +29,94 @@ function memoryStorage(initial = {}) {
   return {
     getItem: (key) => (values.has(key) ? values.get(key) : null),
     setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key),
     values
   };
 }
 
 const blockedStorage = {
   getItem() { throw new Error("SecurityError"); },
-  setItem() { throw new Error("QuotaExceededError"); }
+  setItem() { throw new Error("QuotaExceededError"); },
+  removeItem() { throw new Error("SecurityError"); }
 };
+
+// The page's store: the login's choice comes on the app shell and replaces
+// this device's cache; a switch shows at once and is saved for the login.
+const signedIn = (leadView) => ({ viewerIdentity: { email: "tim@example.com" }, ...(leadView ? { leadView } : {}) });
+
+test("signed in, the shell's choice replaces the device's cache, and none on the shell means the default", () => {
+  const storage = memoryStorage({ [LEAD_VIEW_STORAGE_KEY]: "plan" });
+  const store = createLeadViewStore({ storage, send: async () => {} });
+  // First paint: the cache.
+  assert.equal(store.get(), "plan");
+  let changes = 0;
+  store.subscribe(() => { changes += 1; });
+  store.applyShell(signedIn("simple"));
+  assert.equal(store.get(), "simple");
+  assert.equal(storage.values.get(LEAD_VIEW_STORAGE_KEY), "simple");
+  // A login that never chose: the cache from another login or an old visit goes.
+  store.applyShell(signedIn(null));
+  assert.equal(store.get(), null);
+  assert.equal(storage.values.has(LEAD_VIEW_STORAGE_KEY), false);
+  assert.equal(changes, 2);
+  assert.equal(chooseLeadView(store.get(), false), "simple");
+});
+
+test("signed in, a switch is shown at once and saved for the login; a shell that lands meanwhile does not undo it", async () => {
+  const storage = memoryStorage();
+  const sent = [];
+  let release;
+  const store = createLeadViewStore({ storage, send: (view) => { sent.push(view); return new Promise((resolve) => { release = resolve; }); } });
+  store.applyShell(signedIn("plan"));
+  const saving = store.choose("simple");
+  assert.equal(store.get(), "simple");
+  assert.deepEqual(sent, ["simple"]);
+  store.applyShell(signedIn("plan"));
+  assert.equal(store.get(), "simple", "the old shell does not win over a save on its way");
+  release();
+  await saving;
+  store.applyShell(signedIn("simple"));
+  assert.equal(store.get(), "simple");
+});
+
+test("signed in, a switch also updates the app shell this device keeps, so a reload does not bring the old choice back", async () => {
+  const storage = memoryStorage({ "monies-map-app-shell-cache-v4": JSON.stringify({ cacheKey: "", data: signedIn("simple") }) });
+  const store = createLeadViewStore({ storage, send: async () => {} });
+  store.applyShell(signedIn("simple"));
+  await store.choose("plan");
+  assert.equal(JSON.parse(storage.values.get("monies-map-app-shell-cache-v4")).data.leadView, "plan");
+  // Without a login the kept shell is left alone.
+  const anonymous = memoryStorage({ "monies-map-app-shell-cache-v4": JSON.stringify({ cacheKey: "", data: { household: {} } }) });
+  const deviceStore = createLeadViewStore({ storage: anonymous, send: async () => {} });
+  deviceStore.applyShell({ household: {} });
+  await deviceStore.choose("simple");
+  assert.equal(JSON.parse(anonymous.values.get("monies-map-app-shell-cache-v4")).data.leadView, undefined);
+});
+
+test("a failed save keeps the choice for the visit and on the device", async () => {
+  const storage = memoryStorage();
+  const store = createLeadViewStore({ storage, send: async () => { throw new Error("offline"); } });
+  store.applyShell(signedIn(null));
+  await store.choose("simple");
+  assert.equal(store.get(), "simple");
+  assert.equal(storage.values.get(LEAD_VIEW_STORAGE_KEY), "simple");
+});
+
+test("without a login the device keeps the choice and nothing is sent", async () => {
+  const storage = memoryStorage({ [LEAD_VIEW_STORAGE_KEY]: "simple" });
+  const sent = [];
+  const store = createLeadViewStore({ storage, send: async (view) => { sent.push(view); } });
+  store.applyShell({ household: {} });
+  assert.equal(store.get(), "simple");
+  await store.choose("plan");
+  assert.deepEqual(sent, []);
+  assert.equal(storage.values.get(LEAD_VIEW_STORAGE_KEY), "plan");
+  // Blocked storage: the default first, and the switch still works.
+  const blocked = createLeadViewStore({ storage: blockedStorage, send: async () => {} });
+  assert.equal(blocked.get(), null);
+  await blocked.choose("simple");
+  assert.equal(blocked.get(), "simple");
+});
 
 test("Simple's earned and spent are Plan's income and spend, and kept is Plan's Saved", () => {
   const model = buildSummaryLeadModel([

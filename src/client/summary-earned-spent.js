@@ -1,5 +1,5 @@
-import "./summary-earned-spent.css";
-import { earnedSpentCopy as copy } from "./copy/earned-spent-copy";
+import "./simple-view.css";
+import { simpleViewCopy as copy } from "./copy/simple-view-copy";
 import { formatMonthLabel, money } from "./formatters";
 import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 

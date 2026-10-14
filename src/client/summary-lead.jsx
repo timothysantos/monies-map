@@ -11,7 +11,7 @@ import { SpendLeadGroup } from "./ui-components";
 // Until the cards arrive nothing shows (the old tile row scrolled sideways
 // on a phone). `model` is buildSummaryLeadModel's, built by the panel (its
 // `hasPlan` picks the default view); `view` is Plan or Simple (lead-view.js).
-export function SummaryLead({ model, view, onViewChange, rangeStartMonth, rangeEndMonth }) {
+export function SummaryLead({ model, view, onViewChange, categoryShare, onOpenCategory, rangeStartMonth, rangeEndMonth }) {
   if (!model) {
     return null;
   }
@@ -20,6 +20,8 @@ export function SummaryLead({ model, view, onViewChange, rangeStartMonth, rangeE
       model={model}
       view={view}
       onViewChange={onViewChange}
+      categoryShare={categoryShare}
+      onOpenCategory={onOpenCategory}
       leadClassName="summary-lead"
       periodLabel={formatSummaryLeadRange(rangeStartMonth, rangeEndMonth)}
       period={{ startMonth: rangeStartMonth, endMonth: rangeEndMonth, inProgress: rangeEndMonth === getCurrentMonthKey() }}

@@ -1,4 +1,7 @@
 import "../summary-lead.css";
+import { ChevronRight } from "lucide-react";
+import { createElement, lazy, Suspense } from "react";
+
 import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
@@ -30,7 +33,7 @@ const planWords = messages.summary.monthChoice;
 // Simple is "Earned $x · Spent $y" over the same savings bar without its plan
 // bar, and nothing else: the plan line, the money jobs and the Income, Saved
 // and Remaining budget figures (each a plan or a repeat of the lead) go.
-export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, className = "", leadClassName = "", inline = false, children = null }) {
+export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], onOpenCategory, className = "", leadClassName = "", inline = false, children = null }) {
   const simple = view === "simple";
   return (
     <div className={`summary-lead-group ${inline ? "is-inline" : ""} ${simple ? "is-simple" : ""} ${className}`} data-lead-view={view}>
@@ -60,7 +63,7 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
         )}
       >
         {simple ? null : <SpendLine model={model} />}
-        <MoneyUse model={model} period={period} simple={simple} />
+        <MoneyUse model={model} period={period} simple={simple} categoryShare={categoryShare} onOpenCategory={onOpenCategory} />
         {simple ? null : inline ? (
           <div className="lead-columns">
             <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} />
@@ -96,16 +99,31 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
 // period's money (`model.figures`, splitMoneyUse): spend, invested and kept,
 // and the plan's spend, investment and savings jobs. `period` is
 // { startMonth, endMonth, inProgress } for the parts' menus and "so far".
-function MoneyUse({ model, period, simple }) {
+function MoneyUse({ model, period, simple, categoryShare, onOpenCategory }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const hidden = !areTotalsVisible;
   return (
     <>
       <SavingsBar figures={model.figures} hidden={hidden} period={period} withPlan={!simple} />
-      {simple ? null : <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />}
+      {simple ? (
+        <Suspense fallback={null}>
+          <SimpleDetail part="metrics" figures={model.figures} categoryShare={categoryShare} period={period} onOpenCategory={onOpenCategory} />
+        </Suspense>
+      ) : <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />}
     </>
   );
 }
+
+// The Simple view's parts that load only when Simple is shown: its facts
+// under the bar here, and Summary's "Earned vs spent by month"
+// (summary-panel.jsx). The module imports no React (simple-detail.js), so it
+// is handed createElement and the chevron and adds no first-screen file.
+export const SimpleDetail = lazy(() => import("../simple-detail.js").then(({ renderSimpleDetail }) => ({
+  default: function SimpleDetailPart(props) {
+    const { areTotalsVisible } = useMoneyPrivacy();
+    return renderSimpleDetail(createElement, { ...props, hidden: !areTotalsVisible, MonthIcon: ChevronRight });
+  }
+})));
 
 // One half of the Simple lead: "Earned" and its figure in its money tone.
 function SimpleFigure({ label, figure, name }) {

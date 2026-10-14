@@ -1246,6 +1246,9 @@ export interface SettingsPageDto {
 }
 
 export interface AppShellDto {
+  // The signed-in login's Plan | Simple choice (DOMAIN.md "Lead View"); absent
+  // without a login or a choice.
+  leadView?: "plan" | "simple";
   appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
   availableViewIds: string[];

@@ -115,6 +115,7 @@ import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
 import { useInsightAskLauncher } from "./use-insight-ask-launcher";
 import { useLiveSearchParams } from "./use-live-search-params";
+import { leadViewStore } from "./lead-view";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
@@ -225,6 +226,8 @@ export function App() {
   // active route from that data instead of maintaining a second store.
   const queryClient = useQueryClient();
   const { appShell, appShellError, appShellOwner } = useAppShellState();
+  // The login's Plan | Simple choice rides on the shell (lead-view.js).
+  useEffect(() => leadViewStore.applyShell(appShell), [appShell]);
   const [appShellLoadCount, setAppShellLoadCount] = useState(0);
   // Loading state is separate from shell state so route and shell fetches can
   // report progress without mutating the active payloads.

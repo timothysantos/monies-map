@@ -214,6 +214,42 @@ test.describe("desktop", () => {
     await expectPlan(page, { summary: true, jobs: false });
   });
 
+  test("Simple's facts under the bar: kept and its share, daily spend, top spending opening Entries; dipped into savings when more went out", async ({ page }) => {
+    await recordBareMonth(page);
+    // April 2024: spending and no income.
+    await postJson(page, "/api/entries/create", {
+      date: "2024-04-08", description: "Simple view groceries", accountName: "UOB One", categoryName: "Food & Drinks",
+      amountMinor: 12_345, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+    });
+    await page.goto(BARE_SUMMARY_URL);
+    const facts = leadGroup(page).locator("[data-simple-metrics]");
+    await expect(facts).toBeVisible({ timeout: 30_000 });
+    // $500 earned, $123.45 spent: $377 kept, 75%; $123.45 over March's 31 days.
+    await expect(facts.locator('[data-metric="kept"]')).toHaveText("Kept $377 · 75%");
+    await expect(facts.locator('[data-metric="daily"]')).toHaveText("Daily spend $4");
+    await expect(facts.locator('[data-metric="top"]')).toHaveText("Top spendingFood & Drinks 100%");
+    await expect(facts.locator('[data-metric="dipped"]')).toHaveCount(0);
+    // No invested money: nothing about investing anywhere in the facts.
+    await expect(facts).not.toContainText(/invest/i);
+    await facts.getByRole("button", { name: /^Food & Drinks 100%/ }).click();
+    await expect(page).toHaveURL(/\/entries\?.*entry_category=Food/);
+
+    // The month alone on Month: the same facts.
+    await page.goto(BARE_MONTH_URL);
+    await expect(leadGroup(page).locator('[data-simple-metrics] [data-metric="kept"]')).toHaveText("Kept $377 · 75%");
+
+    // A month with spending and no income dipped into savings.
+    await page.goto(`/month?view=${VIEW}&month=2024-04&scope=direct_plus_shared`);
+    const april = leadGroup(page).locator("[data-simple-metrics]");
+    await expect(april.locator('[data-metric="dipped"]')).toHaveText("Dipped into savings $123", { timeout: 30_000 });
+    await expect(april.locator('[data-metric="kept"]')).toHaveCount(0);
+    await expect(april.locator('[data-metric="daily"]')).toHaveText("Daily spend $4");
+
+    // Plan has none of these.
+    await option(page, "Plan").click();
+    await expect(leadGroup(page).locator("[data-simple-metrics]")).toHaveCount(0);
+  });
+
   test("blocked storage: the default still applies and the switch still works for the visit", async ({ page }) => {
     await page.addInitScript(() => {
       const { getItem, setItem } = Storage.prototype;
@@ -316,10 +352,86 @@ test.describe("phone", () => {
     await expect(list.locator('[data-month="2025-10"] .earned-spent-result')).toHaveCount(0);
     await expect(list.locator(`[data-month="${MONTH}"] .earned-spent-bar [data-segment]`).first()).toBeVisible();
 
+    // The facts keep only the categories' shares: no kept, no daily spend.
+    const facts = group.locator("[data-simple-metrics]");
+    await expect(facts.locator('[data-metric="top"] button').first()).toHaveText(/^.+ \d+%$/);
+    await expect(facts.locator('[data-metric="kept"], [data-metric="dipped"], [data-metric="daily"]')).toHaveCount(0);
+    await expect(facts).not.toContainText("$");
+
     // The no-plan month alone, hidden: the same.
     await page.goto(BARE_SUMMARY_URL);
     await expect(leadGroup(page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
     await expect(page.locator(`[data-earned-spent] [data-month="${BARE_MONTH}"] .earned-spent-result`)).toHaveText("Spent · 25% of earned");
     await expect(page.locator("[data-earned-spent]")).not.toContainText("$");
+  });
+});
+
+// Signed in (the Access identity header, as Cloudflare Access sends it), the
+// choice belongs to the login: saved on the server and back on the app
+// shell, so it follows the login to a new browser, and two logins keep their
+// own. Without a login (every test above) it stays on the device.
+test.describe("per login", () => {
+  async function loginContext(browser, email, personId = null) {
+    const context = await browser.newContext({ extraHTTPHeaders: { "Cf-Access-Authenticated-User-Email": email } });
+    await context.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    const page = await context.newPage();
+    if (personId) {
+      const response = await page.request.post("/api/login-identities/register", { data: { personId } });
+      expect(response.ok(), await response.text()).toBeTruthy();
+    }
+    return { context, page };
+  }
+
+  test("a login's choice follows it to a new browser, and another login keeps its own", async ({ browser }) => {
+    const tim = await loginContext(browser, "tim.simple@example.com");
+    await reseedDemo(tim.page);
+    expect((await tim.page.request.post("/api/login-identities/register", { data: { personId: "person-tim" } })).ok()).toBeTruthy();
+    await tim.page.goto(SUMMARY_URL);
+    await expectPlan(tim.page, { summary: true });
+    const saved = tim.page.waitForResponse((response) => response.url().endsWith("/api/viewer-preferences/lead-view"));
+    await option(tim.page, "Simple").click();
+    expect((await saved).status()).toBe(200);
+    await expect(leadGroup(tim.page)).toHaveAttribute("data-lead-view", "simple");
+    await tim.context.close();
+
+    // A new browser for the same login: fresh storage, and the choice is back.
+    const timAgain = await loginContext(browser, "tim.simple@example.com");
+    await timAgain.page.goto(SUMMARY_URL);
+    await expect(leadGroup(timAgain.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+    await timAgain.page.goto(MONTH_URL);
+    await expect(leadGroup(timAgain.page)).toHaveAttribute("data-lead-view", "simple", { timeout: 30_000 });
+
+    // Another login has not chosen: Plan for a planned period.
+    const joyce = await loginContext(browser, "joyce.simple@example.com", "person-joyce");
+    await joyce.page.goto(SUMMARY_URL);
+    await expectPlan(joyce.page, { summary: true });
+    await joyce.context.close();
+
+    // Back to Plan on this browser: it stays Plan on reload (the kept app
+    // shell is updated too), and a third browser opens in Plan.
+    const savedPlan = timAgain.page.waitForResponse((response) => response.url().endsWith("/api/viewer-preferences/lead-view"));
+    await option(timAgain.page, "Plan").click();
+    expect((await savedPlan).status()).toBe(200);
+    await timAgain.page.reload();
+    await expectPlan(timAgain.page, { summary: false });
+    await timAgain.context.close();
+    const timThird = await loginContext(browser, "tim.simple@example.com");
+    await timThird.page.goto(SUMMARY_URL);
+    await expectPlan(timThird.page, { summary: true });
+    await timThird.context.close();
+  });
+
+  test("a write from another site is refused and changes nothing", async ({ browser }) => {
+    const tim = await loginContext(browser, "tim.cross@example.com");
+    await reseedDemo(tim.page);
+    expect((await tim.page.request.post("/api/login-identities/register", { data: { personId: "person-tim" } })).ok()).toBeTruthy();
+    const refused = await tim.page.request.post("/api/viewer-preferences/lead-view", {
+      data: { leadView: "simple" },
+      headers: { "Sec-Fetch-Site": "cross-site", Origin: "https://elsewhere.example" }
+    });
+    expect(refused.status()).toBe(403);
+    await tim.page.goto(SUMMARY_URL);
+    await expectPlan(tim.page, { summary: true });
+    await tim.context.close();
   });
 });

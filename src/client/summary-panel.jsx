@@ -1,5 +1,4 @@
-import { ChevronRight } from "lucide-react";
-import { createElement, lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import {
   useLocation,
   useNavigate,
@@ -24,18 +23,9 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-import { DetailRow, DetailRows } from "./ui-components";
+import { DetailRow, DetailRows, SimpleDetail } from "./ui-components";
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
-// The Simple view's month list replaces Intent vs Outcome; only Simple needs
-// it. Its module imports no React (summary-earned-spent.js), so it is handed
-// createElement and the chevron here and adds no first-screen file.
-const SummaryEarnedSpentSection = lazy(() => import("./summary-earned-spent.js").then(({ renderEarnedSpent }) => ({
-  default: function EarnedSpentSection(props) {
-    const { areTotalsVisible } = useMoneyPrivacy();
-    return renderEarnedSpent(createElement, { ...props, hidden: !areTotalsVisible, MonthIcon: ChevronRight });
-  }
-})));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -176,6 +166,8 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           model={leadModel}
           view={leadView}
           onViewChange={setLeadView}
+          categoryShare={safeSummaryPage.categoryShareChart}
+          onOpenCategory={handleOpenEntriesForCategory}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
         />
@@ -198,8 +190,10 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         />
 
         {leadView === "simple" ? (
+          // The Simple view's month list, loaded only in Simple.
           <Suspense fallback={null}>
-            <SummaryEarnedSpentSection
+            <SimpleDetail
+              part="months"
               months={safeSummaryPage.months}
               categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
               onOpenMonth={onOpenMonth}
