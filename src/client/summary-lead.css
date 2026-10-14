@@ -21,6 +21,12 @@
   color: var(--money-ink, inherit);
 }
 
+/* The legend lines and the sentence are openable figures (spans), so they
+   take the line's own ink back from the .panel-head span rule. */
+.summary-lead-group .savings-bar :is(.savings-bar-legend, .savings-bar-sentence) span[data-fig] {
+  color: inherit;
+}
+
 html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-plan {
   color: var(--muted);
 }

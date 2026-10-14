@@ -797,10 +797,10 @@ html[data-money-privacy="hidden"] .lsd-amount-field {
   content: "";
   position: absolute;
   top: 50%;
-  right: -0.62em;
+  right: -9px;
   display: none;
-  width: 0.32em;
-  height: 0.32em;
+  width: 5px;
+  height: 5px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   opacity: 0.55;
