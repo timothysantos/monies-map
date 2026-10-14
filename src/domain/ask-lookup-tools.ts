@@ -20,20 +20,9 @@ import {
 } from "./app-repository-splits";
 import { loadRoutePageContext } from "./route-context";
 import { promptEntryName } from "./ask-answer-wording";
+import { ASK_LOOKUP_LIMITS } from "./ask-lookup-spec";
+export { ASK_LOOKUP_LIMITS, ASK_LOOKUP_TOOL_NAMES, type AskLookupToolName } from "./ask-lookup-spec";
 import { buildSplitsPage } from "./splits-projection";
-
-export const ASK_LOOKUP_LIMITS = Object.freeze({
-  // Model calls in one turn, the first included.
-  maxModelCalls: 4,
-  maxRows: 8,
-  maxResultChars: 1_200,
-  maxNoteChars: 80,
-  // Tokens one turn may spend across all its model calls.
-  maxTurnTokens: 6_000
-});
-
-export const ASK_LOOKUP_TOOL_NAMES = ["find_entries", "get_entry", "get_split_balances", "list_recent_entries", "get_category_history"] as const;
-export type AskLookupToolName = typeof ASK_LOOKUP_TOOL_NAMES[number];
 
 export interface AskLookupCall {
   tool: string;

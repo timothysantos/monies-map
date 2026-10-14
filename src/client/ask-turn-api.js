@@ -230,7 +230,7 @@ function readReplyBody(reply) {
         ? { kind: "clarify", question: reply.question, options: (Array.isArray(reply.options) ? reply.options : []).filter((option) => isText(option) && option).slice(0, 4) }
         : null;
     case "note":
-      return isText(reply.text) && reply.text ? { kind: "note", text: reply.text } : null;
+      return isText(reply.text) && reply.text ? { kind: "note", text: reply.text, ...(reply.autoDone === true ? { autoDone: true } : {}) } : null;
     default:
       return null;
   }

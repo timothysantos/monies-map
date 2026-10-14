@@ -86,14 +86,16 @@ test("the model's answer must name one known action; anything else is not an act
   assert.equal(parseAskTurnAction([{ action: "draft_entry" }]), null);
   assert.deepEqual(parseAskTurnAction({ action: "cannot_help", note: "No.", entry: "x", blocked: "format_disk" }), {
     action: "cannot_help", entry: null, split: null, settlement: null, plan: null, question: null, search: null, page: null, clarify: null, note: "No.",
-    recategorise: null, note_edit: null, transfer: null, group: null, matches: null, payment_way: null, category_edit: null, plan_link: null, blocked: null
+    recategorise: null, note_edit: null, transfer: null, group: null, matches: null, payment_way: null, category_edit: null, plan_link: null, blocked: null,
+    lookup: null, target_entry: null
   });
   // The schema the providers get asks for exactly those actions (Phase 2's
   // changes to saved data after the first eleven).
   assert.deepEqual(ASK_TURN_SCHEMA.properties.action.enum, [
     "draft_entry", "edit_draft", "add_entry_to_splits", "draft_split_expense", "draft_settlement", "plan_change",
     "answer_question", "search_entries", "open_page", "ask_clarification", "cannot_help",
-    "edit_saved_entry", "recategorise", "edit_note", "link_transfer", "split_group", "review_matches", "set_payment_way", "edit_category", "link_plan"
+    "edit_saved_entry", "recategorise", "edit_note", "link_transfer", "split_group", "review_matches", "set_payment_way", "edit_category", "link_plan",
+    "look_up"
   ]);
   // Deleting is never an action, only a reason to open the page that does it.
   assert.ok(!ASK_TURN_SCHEMA.properties.action.enum.some((name) => /delete|remove|import|reconcile/.test(name)));

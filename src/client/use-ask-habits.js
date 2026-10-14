@@ -130,5 +130,7 @@ export function useAskHabits({ entryId, applyCategory, applyShare, onChanged, on
     }
   }, [busy]);
 
-  return { suggestion, items, busy, error, apply, dismiss, undo, stop };
+  const reload = useCallback(() => void reloadDone(), [reloadDone]);
+
+  return { suggestion, items, busy, error, apply, dismiss, undo, stop, reload };
 }

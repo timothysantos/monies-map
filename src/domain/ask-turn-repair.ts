@@ -41,10 +41,10 @@ function cleanError(error: AskValidatorError) {
   };
 }
 
-export function buildAskRepairPrompt(context: AskTurnContext, previous: AskTurnAction, error: AskValidatorError): string {
+export function buildAskRepairPrompt(context: AskTurnContext, previous: AskTurnAction, error: AskValidatorError, lookups: string[] = []): string {
   const answer = compact(previous) as Record<string, unknown>;
   return [
-    buildAskTurnPrompt(context),
+    buildAskTurnPrompt(context, lookups),
     "<previous_answer>",
     JSON.stringify(answer),
     "</previous_answer>",

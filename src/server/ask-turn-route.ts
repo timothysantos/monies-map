@@ -51,6 +51,9 @@ import {
   type AskTurnMessage,
   type AskTurnReply
 } from "../domain/ask-turn";
+import { ASK_LOOKUP_LIMITS } from "../domain/ask-lookup-spec";
+import { lookupBudgetLeft, runLookupTool, type AskLookupCall } from "../domain/ask-lookup-tools";
+import { applyNoteToNewEntry } from "./ask-auto-apply";
 import { readSharesByRules } from "../domain/ask-turn-shares";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { buildAskRepairPrompt } from "../domain/ask-turn-repair";
@@ -99,7 +102,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
 
   const today = todayInAppTimeZone();
   const month = typeof body.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(body.month) ? body.month : today.slice(0, 7);
-  const context = await loadAskTurnContext(env.DB, {
+  const contextInput = {
     text,
     history: readHistory(body.history),
     viewId: typeof body.viewId === "string" ? body.viewId : "household",
@@ -107,9 +110,25 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     month,
     page: typeof body.page === "string" && PAGES.has(body.page) ? body.page : "ask",
     focus: body.focus
-  }, today);
+  };
+  let context = await loadAskTurnContext(env.DB, contextInput, today);
 
-  const ask = (prompt: string) => runTextJson(env.DB, env, {
+  // The turn's budget (ask-lookup-spec.ts): at most 4 model calls, the first
+  // and a repair included, and a token cap across them, every call counted
+  // against the allowance. Lookups are read only; the ids they return are
+  // the only entries the model may then name as its target.
+  let modelCalls = 0;
+  let tokensUsed = 0;
+  const lookups: string[] = [];
+  const lookupTools: string[] = [];
+  const seenEntryIds = new Set<string>();
+  const testReplies = testReply ? parseTestReplies(testReply) : [];
+  const ask = (prompt: string) => {
+    modelCalls += 1;
+    tokensUsed += Math.ceil(prompt.length / 4) + ASK_TURN_MAX_TOKENS;
+    return runAsk(prompt);
+  };
+  const runAsk = (prompt: string) => runTextJson(env.DB, env, {
     capability: "ask_turn",
     units: ASK_TURN_AI_UNITS,
     maxTokens: ASK_TURN_MAX_TOKENS,
@@ -126,7 +145,8 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     return rulesAnswer(context, text, offReason);
   }
   if (testReply) {
-    action = parseTestReply(testReply);
+    modelCalls += 1;
+    action = testReplies.shift() ?? null;
   } else {
     const result = await ask(buildAskTurnPrompt(context));
     action = result.value ?? null;
@@ -143,6 +163,40 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     return rulesAnswer(context, text, AI_UNUSABLE_SUGGESTION_REASON);
   }
 
+  // Multi-step: while the model asks to look something up, run the read and
+  // ask again with what it found, within the turn's budget.
+  while (action.action === "look_up") {
+    if (lookupTools.length >= 3 || !lookupBudgetLeft({ modelCalls, tokens: tokensUsed })) {
+      return rulesAnswer(context, text, "Ask could not find that.", remaining !== undefined ? { remaining } : {});
+    }
+    const call = lookupCallOf(action);
+    const found = await runLookupTool(env.DB, call, today);
+    lookupTools.push(call.tool);
+    for (const match of found.text.matchAll(/\bid (txn-[A-Za-z0-9-]+)/g)) seenEntryIds.add(match[1]);
+    lookups.push(`${call.tool}: ${found.text}`.slice(0, ASK_LOOKUP_LIMITS.maxResultChars + 40));
+    let next: AskTurnAction | null;
+    if (testReply) {
+      modelCalls += 1;
+      next = testReplies.shift() ?? null;
+    } else {
+      const result = await ask(buildAskTurnPrompt(context, lookups));
+      next = result.value ?? null;
+      remaining = result.remaining ?? remaining;
+    }
+    if (!next) {
+      return rulesAnswer(context, text, AI_UNUSABLE_SUGGESTION_REASON, remaining !== undefined ? { remaining } : {});
+    }
+    action = next;
+  }
+  if (lookupTools.length) {
+    console.info(JSON.stringify({ event: "ask_turn_lookups", tools: lookupTools, modelCalls }));
+  }
+  // The entry the lookups found becomes the one in focus, only when a lookup
+  // in this turn returned that exact id.
+  if (action.target_entry && seenEntryIds.has(action.target_entry) && !(context.focus?.kind === "saved_entry" && context.focus.entry.entryId === action.target_entry)) {
+    context = await loadAskTurnContext(env.DB, { ...contextInput, focus: { kind: "saved_entry", entryId: action.target_entry } }, today);
+  }
+
   let reply = validateAskTurnAction(action, context);
 
   // Repair before asking: a refusal the model can fix gets one more turn with
@@ -150,14 +204,14 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   // it checks out (not another question); otherwise the person gets the
   // original question, with its chips. At most one repair per message.
   let repaired: boolean | null = null;
-  if (reply.kind === "clarify" && reply.error && ASK_REPAIRABLE_CODES.has(reply.error.code) && action.action !== "ask_clarification" && (!testReply || testRepairReply)) {
+  if (reply.kind === "clarify" && reply.error && ASK_REPAIRABLE_CODES.has(reply.error.code) && action.action !== "ask_clarification" && (!testReply || testRepairReply) && lookupBudgetLeft({ modelCalls, tokens: tokensUsed })) {
     const { error } = reply;
     const refused = action.action;
     let second: AskTurnAction | null;
     if (testReply) {
       second = parseTestReply(testRepairReply ?? "");
     } else {
-      const result = await ask(buildAskRepairPrompt(context, action, error));
+      const result = await ask(buildAskRepairPrompt(context, action, error, lookups));
       second = result.value ?? null;
       remaining = result.remaining ?? remaining;
     }
@@ -178,12 +232,31 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     reply = withAssumptions(await resolveAskTurnRequest(env.DB, reply.request, context), assumptions);
   }
   reply = forPage(reply);
+  // The one write Ask makes in a turn: a note the person asked for, on a new
+  // entry, when "Let Ask handle safe things" is on (src/server/ask-auto-apply.ts
+  // holds every gate). The words are theirs: the validator only accepts note
+  // text taken from the conversation. Logged under Done for you with Undo.
+  if (action.action === "edit_note" && reply.kind === "change" && reply.change.type === "entry_note" && reply.change.count === 1
+    && reply.change.save.length === 1 && reply.change.save[0].path === "/api/entries/update-note") {
+    const step = reply.change.save[0].body as { entryId: string; note: string };
+    const done = await applyNoteToNewEntry(env.DB, { entryId: step.entryId, note: step.note });
+    if (done) {
+      return json({
+        ok: true as const,
+        mode: "ai" as const,
+        action: action.action,
+        ...(remaining !== undefined ? { remaining } : {}),
+        reply: { kind: "note", text: `Added the note to ${done.entryDescription}. It is listed under Done for you, with Undo.`, autoDone: true }
+      });
+    }
+  }
   const base = {
     ok: true as const,
     mode: "ai" as const,
     action: action.action,
     ...(remaining !== undefined ? { remaining } : {}),
-    ...(repaired !== null ? { repaired } : {})
+    ...(repaired !== null ? { repaired } : {}),
+    ...(lookupTools.length ? { lookups: lookupTools.length } : {})
   };
   if (reply.kind === "plan") {
     const reading = await draftPlanRequest(env.DB, reply.request, {
@@ -245,4 +318,21 @@ function parseTestReply(value: string) {
   } catch {
     return null;
   }
+}
+
+// A test reply is one action, or an array of them: the first answers the
+// message and the next ones answer the model's later calls (after a look_up).
+function parseTestReplies(value: string): Array<AskTurnAction | null> {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map((item) => parseAskTurnAction(item)) : [parseAskTurnAction(parsed)];
+  } catch {
+    return [null];
+  }
+}
+
+// The lookup as the model named it: a tool and flat arguments.
+function lookupCallOf(action: AskTurnAction): AskLookupCall {
+  const { tool, ...args } = (action.lookup ?? {}) as Record<string, unknown>;
+  return { tool: typeof tool === "string" ? tool : "", args };
 }

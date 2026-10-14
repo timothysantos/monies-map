@@ -718,6 +718,8 @@ function AskConversation({
       }
     } else {
       appendThread(threadItem("note", { text: reply.text }));
+      // Ask added a note by itself: Done for you has a new line.
+      if (reply.autoDone) habits.reload();
     }
   }
 
