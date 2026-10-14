@@ -89,6 +89,23 @@ test("Month budget bucket and income rows: the payback reduces the bucket and is
   assert.equal(income.actualMinor, 500_000);
 });
 
+test("Month income rows: on Household each person's salary row counts only that person's salary", () => {
+  const salaries = [
+    entry("tim-pay", "income", "Salary", 568_000),
+    entry("joyce-pay", "income", "Salary", 438_000, { ownerName: "Joyce", splits: [split("person-joyce", "Joyce", 438_000)] })
+  ];
+  const rows = [
+    { id: "tim", categoryName: "Salary", label: "Salary", ownerName: "Tim", plannedMinor: 568_000, actualMinor: 0 },
+    { id: "joyce", categoryName: "Salary", label: "Salary", ownerName: "Joyce", plannedMinor: 438_000, actualMinor: 0 }
+  ];
+  for (const view of ["household", "person-tim"]) {
+    assert.deepEqual(deriveIncomeRowActuals(rows, salaries, view).map((row) => [row.id, row.actualMinor, row.actualEntryIds]), [
+      ["tim", 568_000, ["tim-pay"]],
+      ["joyce", 438_000, ["joyce-pay"]]
+    ], view);
+  }
+});
+
 test("Entries page totals and breakdown agree with Summary", () => {
   const totals = getEntryTotals(ENTRIES);
   assert.equal(totals.incomeMinor, 500_000);

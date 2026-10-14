@@ -134,7 +134,7 @@ async function askWithAi(db, ai, text, vars = {}) {
   return response.json();
 }
 
-const TEMPLATE = "March came to $10,391.23, $3,128.14 more than the $7,263.09 you planned. That's $5,684.61 more than February. Home took the most at $5,650.00, and the biggest single cost was Courts Megastore Tampines at $3,280.00.";
+const TEMPLATE = "March came to $8,134.67, $1,198.23 more than the $6,936.44 you planned. That's $4,219.19 more than February. Home took the most at $4,390.00, and the biggest single cost was Courts Megastore Tampines at $2,680.00.";
 
 async function usedUnits(db) {
   const row = await db.prepare("SELECT SUM(used_units) AS used FROM ai_assist_daily_usage").first();
@@ -143,7 +143,7 @@ async function usedUnits(db) {
 
 test("a valid AI phrasing is shown, costs one unit, and only the allowance counter changes", async (t) => {
   const { db } = await openSeededDatabase(t, showcase);
-  const phrasing = "March came to $10,391.23, $3,128.14 more than planned. Home took the most at $5,650.00.";
+  const phrasing = "March came to $8,134.67, $1,198.23 more than planned. Home took the most at $4,390.00.";
   const ai = stubAi({ text: phrasing });
   const before = await dumpDatabase(db);
   const payload = await askWithAi(db, ai, "why was March so expensive?");
@@ -151,10 +151,10 @@ test("a valid AI phrasing is shown, costs one unit, and only the allowance count
   assert.equal(payload.ai.requested, true);
   assert.equal(payload.ai.available, true);
   // The figures never come from the model.
-  assert.equal(payload.answer.lead.amountMinor, 1039123);
+  assert.equal(payload.answer.lead.amountMinor, 813467);
   assert.equal(ai.calls.length, 1);
   const prompt = ai.calls[0].input.messages.at(-1).content;
-  assert.match(prompt, /- Spent in March: \$10,391\.23/);
+  assert.match(prompt, /- Spent in March: \$8,134\.67/);
   assert.match(prompt, /<question>why was March so expensive\?<\/question>/);
   // Bounded facts only: no entry, account or category ids, no raw rows.
   assert.doesNotMatch(prompt, /acct-|txn-|entry-|cat-|"id"/);
@@ -168,10 +168,10 @@ test("a valid AI phrasing is shown, costs one unit, and only the allowance count
 test("an invented number, an unknown name or a malformed reply shows the computed wording", async (t) => {
   const { db } = await openSeededDatabase(t, showcase);
   for (const reply of [
-    { text: "March came to about $10,400, mostly on Home." },
-    { text: "March came to $10,391.23, mostly at IKEA." },
+    { text: "March came to about $8,100, mostly on Home." },
+    { text: "March came to $8,134.67, mostly at IKEA." },
     "not json at all",
-    { wording: "March came to $10,391.23." },
+    { wording: "March came to $8,134.67." },
     { text: 12 }
   ]) {
     const payload = await askWithAi(db, stubAi(reply), "why was March so expensive?");
@@ -196,7 +196,7 @@ test("AI off, not configured, failing or out of allowance: the computed wording,
   assert.deepEqual(failing.wording, { text: TEMPLATE, source: "template" });
 
   // The smallest daily limit is 4 units: use them up, then ask again.
-  const ai = stubAi({ text: "March came to $10,391.23." });
+  const ai = stubAi({ text: "March came to $8,134.67." });
   for (let index = 0; index < 4; index += 1) {
     await askWithAi(db, ai, "why was March so expensive?", { AI_ASSIST_DAILY_LIMIT: "4" });
   }
@@ -210,7 +210,7 @@ test("AI off, not configured, failing or out of allowance: the computed wording,
 
 test("an unsupported question and a month with no entries never reach AI", async (t) => {
   const { db } = await openSeededDatabase(t, showcase);
-  const ai = stubAi({ text: "March came to $10,391.23." });
+  const ai = stubAi({ text: "March came to $8,134.67." });
   const unsupported = await askWithAi(db, ai, "should I buy a car?");
   assert.deepEqual(unsupported, { ok: true, supported: false });
   const empty = await askWithAi(db, ai, "why was November 2024 so expensive?");

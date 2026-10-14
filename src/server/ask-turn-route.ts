@@ -106,7 +106,14 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     action = result.value ?? null;
     remaining = result.remaining;
     if (!action) {
-      return json({ ok: true, mode: "rules", reason: result.reason ?? "AI is temporarily unavailable.", ...(remaining !== undefined ? { remaining } : {}) });
+      return json({
+        ok: true,
+        mode: "rules",
+        reason: result.reason ?? "AI is temporarily unavailable.",
+        // The demo's Claude allowance is used up: the page says so plainly.
+        ...(result.demoAllowanceUsed ? { notice: "demo_allowance" } : {}),
+        ...(remaining !== undefined ? { remaining } : {})
+      });
     }
   }
   if (!action) {

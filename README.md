@@ -485,9 +485,12 @@ npm run deploy:demo
 ```
 
 The demo uses [`wrangler.demo.jsonc`](wrangler.demo.jsonc), deploys the Worker
-as `monies-map-demo`, and binds the `monies-map-demo` D1 database. Do not enable
-Cloudflare Access on the demo if it should stay login-free. A login-free demo is
-public and mutable, so keep it limited to fake data.
+as `monies-map-demo`, and binds the `monies-map-demo` D1 database. The demo
+sits behind its own invite-only Cloudflare Access application (its app tag is
+in the config; the Worker checks the token in report mode). Everyone invited
+shares the same fake data and can change it. Ask there uses Claude with the
+demo's own small caps (50 a day for the whole demo, 10 per visitor), counted
+in the demo database; see the developer guide's demo section.
 
 The demo config sets `DEMO_DATASET` to `showcase`, so its reseed writes the
 showcase household (Ethan and Serene, 17 months ending in the current month)
@@ -500,7 +503,7 @@ forward:
 
 ```bash
 npm run deploy:demo
-curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
+# then, signed in, Settings → Demo state → Reseed demo data
 ```
 
 To deploy all three Workers (production, the Shortcut API and the demo) from

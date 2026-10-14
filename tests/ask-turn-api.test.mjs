@@ -124,6 +124,10 @@ test("the focus is the saved entry, else the card being filled, else the split g
 
 test("a reply is kept only in a shape the page can show", () => {
   assert.deepEqual(readAskTurnResponse({ ok: true, mode: "rules", reason: "AI assistance is turned off." }), { ok: true, mode: "rules", reason: "AI assistance is turned off." });
+  // The demo's used-up allowance keeps its notice, so the page shows the
+  // demo note; any other notice is dropped.
+  assert.deepEqual(readAskTurnResponse({ ok: true, mode: "rules", reason: "x", notice: "demo_allowance" }), { ok: true, mode: "rules", reason: "x", notice: "demo_allowance" });
+  assert.deepEqual(readAskTurnResponse({ ok: true, mode: "rules", reason: "x", notice: "other" }), { ok: true, mode: "rules", reason: "x" });
   const proposal = {
     entryId: "txn-1", description: "Starbucks", date: "2026-10-12", amountMinor: 4_250, currency: "SGD", payerName: "Tim", groupId: null, groupName: "", splitBasisPoints: 0,
     shares: [{ personName: "Tim", basisPoints: 0, amountMinor: 0 }, { personName: "Joyce", basisPoints: 10_000, amountMinor: 4_250 }]

@@ -1,3 +1,5 @@
+import { isoDateInAppTimeZone } from "../lib/app-calendar";
+
 export type AiAssistCapability =
   | "monthly_narrative"
   | "import_explanation"
@@ -15,6 +17,13 @@ export interface AiAssistEnv {
   AI?: Ai;
   AI_ASSIST_ENABLED?: string;
   AI_ASSIST_DAILY_LIMIT?: string;
+  // The public demo only (wrangler.demo.jsonc): each visitor's own daily
+  // cap on top of the whole deployment's. When set, both caps count by the
+  // Singapore day and a used-up cap says so in DEMO_ALLOWANCE_USED_REASON.
+  AI_ASSIST_VISITOR_DAILY_LIMIT?: string;
+  // Set per request by the Worker when the visitor cap is on: a SHA-256 of
+  // the visitor's address and browser (aiVisitorKey), never the address.
+  AI_VISITOR_KEY?: string;
 }
 
 export interface AiAssistResult<T> {
@@ -22,7 +31,13 @@ export interface AiAssistResult<T> {
   value?: T;
   reason?: string;
   remaining?: number;
+  // True when a demo cap (the demo's whole allowance or one visitor's)
+  // is used up for the day.
+  demoAllowanceUsed?: boolean;
 }
+
+export const DEMO_ALLOWANCE_USED_REASON = "The demo's Claude allowance is used up for today, so Ask is using its built-in rules.";
+const VISITOR_COUNTER_PREFIX = "demo-visitor:";
 
 // Only when AI_ASSIST_DAILY_LIMIT is unset or not a number (local and test
 // Workers); production sets 100 in wrangler.jsonc. Either is clamped to 4-100.
@@ -184,9 +199,40 @@ export async function reserveDailyAiBudget(
 ): Promise<AiAssistResult<never>> {
   const limit = readDailyLimit(env.AI_ASSIST_DAILY_LIMIT);
   const safeUnits = Math.max(1, Math.min(10, Math.round(units)));
-  const usageDay = new Date().toISOString().slice(0, 10);
-  const householdId = AI_ALLOWANCE_COUNTER_KEY;
+  const visitorLimit = readVisitorLimit(env.AI_ASSIST_VISITOR_DAILY_LIMIT);
+  // Production keeps its UTC day so its counter never resets mid-day on a
+  // deploy; the demo's caps follow the Singapore day.
+  const usageDay = visitorLimit ? isoDateInAppTimeZone(new Date()) : new Date().toISOString().slice(0, 10);
 
+  // The demo: the visitor's own cap first, then the demo's whole cap; a
+  // visitor unit is handed back when the whole cap is used up. A request
+  // without a visitor key (no address) counts as one shared visitor.
+  const visitorCounter = visitorLimit ? `${VISITOR_COUNTER_PREFIX}${env.AI_VISITOR_KEY || "unknown"}` : null;
+  if (visitorCounter && !(await reserveCounter(db, visitorCounter, usageDay, safeUnits, visitorLimit!))) {
+    return { ...unavailable(DEMO_ALLOWANCE_USED_REASON, 0), demoAllowanceUsed: true };
+  }
+
+  if (!(await reserveCounter(db, AI_ALLOWANCE_COUNTER_KEY, usageDay, safeUnits, limit))) {
+    if (visitorCounter) {
+      await db
+        .prepare("UPDATE ai_assist_daily_usage SET used_units = MAX(0, used_units - ?), updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND usage_day = ?")
+        .bind(safeUnits, visitorCounter, usageDay)
+        .run();
+      return { ...unavailable(DEMO_ALLOWANCE_USED_REASON, 0), demoAllowanceUsed: true };
+    }
+    return unavailable("Today's optional AI allowance has been used. The normal workflow is still available.", 0);
+  }
+
+  const used = await db
+    .prepare("SELECT used_units FROM ai_assist_daily_usage WHERE household_id = ? AND usage_day = ?")
+    .bind(AI_ALLOWANCE_COUNTER_KEY, usageDay)
+    .first<{ used_units: number }>();
+  return { available: true, remaining: Math.max(0, limit - Number(used?.used_units ?? limit)) };
+}
+
+// Adds `units` to one counter row for the day unless that would pass
+// `limit`; false when it would.
+async function reserveCounter(db: D1Database, counterKey: string, usageDay: string, units: number, limit: number) {
   const result = await db
     .prepare(`
       INSERT INTO ai_assist_daily_usage (household_id, usage_day, used_units, updated_at)
@@ -196,23 +242,35 @@ export async function reserveDailyAiBudget(
         updated_at = CURRENT_TIMESTAMP
       WHERE ai_assist_daily_usage.used_units + excluded.used_units <= ?
     `)
-    .bind(householdId, usageDay, safeUnits, limit)
+    .bind(counterKey, usageDay, units, limit)
     .run();
-
-  if (!result.meta.changes) {
-    return unavailable("Today's optional AI allowance has been used. The normal workflow is still available.", 0);
-  }
-
-  const used = await db
-    .prepare("SELECT used_units FROM ai_assist_daily_usage WHERE household_id = ? AND usage_day = ?")
-    .bind(householdId, usageDay)
-    .first<{ used_units: number }>();
-  return { available: true, remaining: Math.max(0, limit - Number(used?.used_units ?? limit)) };
+  return Boolean(result.meta.changes);
 }
 
 function readDailyLimit(value: string | undefined) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(4, Math.min(100, Math.round(parsed))) : DEFAULT_DAILY_LIMIT;
+}
+
+// The demo's per-visitor cap, 1-50 a day; null (no visitor cap) when unset.
+function readVisitorLimit(value: string | undefined) {
+  if (!value?.trim()) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(50, Math.round(parsed))) : null;
+}
+
+// The visitor key for the demo's per-visitor cap: a SHA-256 of the address
+// Cloudflare saw and the browser's user agent, so no address is stored.
+export async function aiVisitorKey(request: Request) {
+  const address = request.headers.get("cf-connecting-ip") ?? "";
+  const agent = request.headers.get("user-agent") ?? "";
+  if (!address && !agent) {
+    return "";
+  }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${address}\n${agent}`));
+  return Array.from(new Uint8Array(digest).slice(0, 16), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function parseAiJsonResponse(output: unknown) {

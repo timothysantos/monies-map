@@ -74,12 +74,16 @@ test("the showcase replaces the household with a fictional one and records the d
   assert.deepEqual(
     (await rows(db, "SELECT account_name, account_kind, is_joint FROM accounts ORDER BY account_name")).map((row) => `${row.account_name}|${row.account_kind}|${row.is_joint}`),
     [
-      "Citi Cash Back Card|credit_card|0",
+      "Citi Rewards Card|credit_card|0",
+      "DBS Live Fresh Card|credit_card|0",
+      "Endowus Core Portfolio|investment|0",
+      "IBKR Brokerage|investment|0",
       "OCBC 360 Account|bank|0",
       "OCBC 365 Card|credit_card|0",
       "POSB Joint Account|bank|1",
-      "UOB One Account|bank|0",
-      "UOB PRVI Miles Card|credit_card|0"
+      "StashAway General Investing|investment|0",
+      "UOB Lady's Card|credit_card|0",
+      "UOB One Account|bank|0"
     ]
   );
 
@@ -89,6 +93,11 @@ test("the showcase replaces the household with a fictional one and records the d
   const [{ count }] = await rows(db, "SELECT COUNT(*) AS count FROM transactions");
   assert.equal(count, buildShowcaseDataset({ seedMonth: SEED_MONTH }).transactions.length);
   assert.ok(count >= 900 && count <= 1500, `a few hundred to ~1,500 entries, got ${count}`);
+  // Every stored time is a real time of day (Settings formats them).
+  const dataset = buildShowcaseDataset({ seedMonth: SEED_MONTH });
+  const times = [...dataset.imports.map((item) => item.importedAt), ...dataset.transactions.map((row) => row.createdAt)];
+  const invalid = times.filter((value) => !/^\d{4}-\d\d-\d\d ([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(value));
+  assert.deepEqual(invalid, []);
 });
 
 test("tracked months span 17 months ending at the seed month", async (t) => {
@@ -110,27 +119,64 @@ test("tracked months span 17 months ending at the seed month", async (t) => {
   assert.ok(april["2026-04"].actualIncomeMinor > april["2025-04"].actualIncomeMinor);
 });
 
-test("plans: typical months under plan, the Japan month on plan, the aircon month over plan", async (t) => {
+// The spend job's plan (DOMAIN.md, "Money job"): every plan line except the
+// savings targets and the Investments lines, as the Summary and Month lead
+// read it.
+function spendPlanMinor(page) {
+  return page.monthPage.planSections
+    .flatMap((section) => section.rows)
+    .filter((row) => row.label !== "Savings" && row.categoryName !== "Investments")
+    .reduce((sum, row) => sum + row.plannedMinor, 0);
+}
+
+test("plans: most months a little under, two a few hundred over, the aircon month far over, one month with no plan", async (t) => {
   const { api } = await openSeededDatabase(t, showcase);
-  const summary = await get(api, `/api/summary-page?view=household&month=${SEED_MONTH}&scope=direct_plus_shared&summary_start=2025-01&summary_end=${SEED_MONTH}`);
-  const variance = Object.fromEntries(summary.summaryPage.months.map((month) => [month.month, month.estimatedExpensesMinor - month.realExpensesMinor]));
-  assert.equal(variance["2026-03"], -312_814, "aircon and sofa: $3,128.14 over plan");
-  assert.equal(variance["2025-12"], 3_577, "Japan: $35.77 unspent");
-  assert.equal(variance["2026-04"], 268_770, "last complete month: $2,687.70 unspent");
-  assert.deepEqual(Object.entries(variance).filter(([, value]) => value < 0).map(([month]) => month), ["2026-03"]);
+  const overBy = {};
+  const planned = {};
+  for (const month of MONTHS.slice(0, -1)) {
+    const page = await get(api, `/api/month-page?view=household&month=${month}&scope=direct_plus_shared`);
+    planned[month] = spendPlanMinor(page);
+    overBy[month] = card(page.monthPage.metricCards, "Actual spend") - planned[month];
+  }
+  // M-11 (2025-06) keeps no plan at all, so it opens in the Simple view.
+  assert.equal(planned["2025-06"], 0);
+  const overMonths = Object.entries(overBy).filter(([month, value]) => planned[month] > 0 && value > 0).map(([month]) => month);
+  // M-9 (family gifts) and M-6 (Mochi's vet) a little over; M-2 the aircon and sofa.
+  assert.deepEqual(overMonths, ["2025-08", "2025-11", "2026-03"]);
+  assert.ok(overBy["2025-08"] > 10_000 && overBy["2025-08"] < 40_000, `M-9 over by ${overBy["2025-08"]}`);
+  assert.ok(overBy["2025-11"] > 10_000 && overBy["2025-11"] < 40_000, `M-6 over by ${overBy["2025-11"]}`);
+  assert.ok(overBy["2026-03"] > 350_000, `M-2 over by ${overBy["2026-03"]}`);
+  // The Japan month (M-5) was budgeted: within $100 of its plan.
+  assert.ok(Math.abs(overBy["2025-12"]) < 10_000, `Japan ${overBy["2025-12"]}`);
 
   const march = await get(api, "/api/month-page?view=household&month=2026-03&scope=direct_plus_shared");
-  assert.equal(card(march.monthPage.metricCards, "Planned spend"), 726_309);
-  assert.equal(card(march.monthPage.metricCards, "Actual spend"), 1_039_123);
-  assert.equal(card(march.monthPage.metricCards, "Savings target"), 250_000);
+  assert.equal(card(march.monthPage.metricCards, "Planned spend"), 693_644);
+  assert.equal(card(march.monthPage.metricCards, "Actual spend"), 813_467);
+  assert.equal(card(march.monthPage.metricCards, "Savings target"), 180_000);
   assert.match(march.monthPage.monthNote, /aircon/);
-  const planned = march.monthPage.planSections.find((section) => section.key === "planned_items").rows;
-  const hdb = planned.find((row) => row.label === "HDB loan");
-  assert.equal(hdb.actualMinor, 148_000, "the HDB loan row is linked to its GIRO entry");
-  // Income rows use one category each, so each shows only its own entries.
+  const planned_items = march.monthPage.planSections.find((section) => section.key === "planned_items").rows;
+  const hdb = planned_items.find((row) => row.label === "HDB loan");
+  assert.equal(hdb.actualMinor, 62_000, "the HDB loan row is linked to its GIRO entry");
+  // The investment lines carry no bill date, so nothing asks to link them
+  // to a payment (the transfers count as invested on their own).
+  assert.deepEqual(
+    planned_items.filter((row) => row.categoryName === "Investments").map((row) => [row.label, row.plannedMinor, row.planDate ?? null]),
+    [["Endowus monthly", 60_000, null], ["StashAway monthly", 40_000, null]]
+  );
+  // Both earn a salary: each income row shows only its own person's pay,
+  // on Household too.
   assert.deepEqual(
     march.monthPage.incomeRows.map((row) => [row.label, row.plannedMinor, row.actualMinor]),
-    [["Ethan salary", 830_000, 830_000], ["Serene freelance income", 520_000, 521_000]]
+    [["Ethan salary", 568_000, 568_000], ["Serene salary", 438_000, 438_000]]
+  );
+  // Money moved into investments, less the StashAway withdrawal for the sofa.
+  assert.deepEqual(march.monthPage.investmentMoves, { intoMinor: 100_000, outOfMinor: 200_000 });
+
+  // December: both get a 13th-month AWS, planned as income.
+  const december = await get(api, "/api/month-page?view=household&month=2025-12&scope=direct_plus_shared");
+  assert.deepEqual(
+    december.monthPage.incomeRows.filter((row) => row.categoryName === "Extra Income").map((row) => [row.plannedMinor, row.actualMinor]),
+    [[568_000, 568_000], [438_000, 438_000]]
   );
 });
 
@@ -145,15 +191,15 @@ test("person views: Direct, Shared and Direct + Shared give different totals tha
   }
   const household = card((await get(api, "/api/month-page?view=household&month=2026-03&scope=direct_plus_shared")).monthPage.metricCards, "Actual spend");
   assert.deepEqual(spend, {
-    // Ethan's own card and bank spend; Serene's own cards.
-    "person-ethan:direct": 133_891,
-    // Half of the aircon (1,640.00), the sofa (1,095.00), SP Group, Singtel
-    // and three dinners; the odd cents go to Serene.
-    "person-ethan:shared": 310_303,
-    "person-ethan:direct_plus_shared": 444_194,
-    "person-serene:direct": 73_967,
-    "person-serene:shared": 310_305,
-    "person-serene:direct_plus_shared": 384_272
+    // Ethan's own card and bank spend; Serene's own cards and bank.
+    "person-ethan:direct": 121_114,
+    // Half of the aircon (1,340.00), the sofa (795.00), SP Group, the
+    // broadband and three dinners; the odd cents go to Serene.
+    "person-ethan:shared": 237_828,
+    "person-ethan:direct_plus_shared": 358_942,
+    "person-serene:direct": 95_163,
+    "person-serene:shared": 237_829,
+    "person-serene:direct_plus_shared": 332_992
   });
   for (const view of [ETHAN, SERENE]) {
     assert.equal(spend[`${view}:direct`] + spend[`${view}:shared`], spend[`${view}:direct_plus_shared`]);
@@ -185,13 +231,13 @@ test("transfers: card bills, contributions and settle-ups are matched pairs; one
       COUNT(DISTINCT account_id) AS accounts, MIN(transaction_date) = MAX(transaction_date) AS same_day
     FROM transactions WHERE transfer_group_id IS NOT NULL GROUP BY transfer_group_id
   `);
-  assert.equal(groups.length, 84);
+  assert.equal(groups.length, 141);
   assert.ok(groups.every((group) => group.size === 2 && group.net === 0 && group.accounts === 2 && group.same_day === 1));
 
   const settings = await get(api, "/api/settings-page?view=household");
   assert.deepEqual(
     settings.settingsPage.unresolvedTransfers.map((entry) => [entry.description, entry.amountMinor, entry.accountName]),
-    [["FAST TRANSFER TO SRS A/C XXXX-0000", 150_000, "UOB One Account"]]
+    [["FAST TRANSFER TO SRS A/C XXXX-0000", 100_000, "UOB One Account"]]
   );
   const entries = await get(api, "/api/entries-page?view=household&month=2026-04");
   const bill = entries.monthPage.entries.find((entry) => entry.description === "PAYMENT RECEIVED - THANK YOU");
@@ -205,12 +251,16 @@ test("statements: every account reconciled except the OCBC card, off by $42.80 w
   assert.deepEqual(
     Object.fromEntries(Object.entries(accounts).map(([name, account]) => [name, [account.reconciliationStatus, account.latestCheckpointMonth, account.latestCheckpointDeltaMinor, account.unresolvedTransferCount]])),
     {
-      "Citi Cash Back Card": ["matched", "2026-04", 0, 0],
+      "Citi Rewards Card": ["matched", "2026-04", 0, 0],
+      "DBS Live Fresh Card": ["matched", "2026-04", 0, 0],
+      "Endowus Core Portfolio": ["matched", "2026-04", 0, 0],
+      "IBKR Brokerage": ["matched", "2026-04", 0, 0],
       "OCBC 360 Account": ["matched", "2026-04", 0, 0],
       "OCBC 365 Card": ["mismatch", "2026-03", 4_280, 0],
       "POSB Joint Account": ["matched", "2026-04", 0, 0],
-      "UOB One Account": ["matched", "2026-04", 0, 1],
-      "UOB PRVI Miles Card": ["matched", "2026-04", 0, 0]
+      "StashAway General Investing": ["matched", "2026-04", 0, 0],
+      "UOB Lady's Card": ["matched", "2026-04", 0, 0],
+      "UOB One Account": ["matched", "2026-04", 0, 1]
     }
   );
   // Every older checkpoint reconciles too.
@@ -225,7 +275,7 @@ test("statements: every account reconciled except the OCBC card, off by $42.80 w
 
   const imports = await get(api, "/api/imports-page");
   const recent = imports.importsPage.recentImports;
-  assert.equal(recent.length, 47);
+  assert.equal(recent.length, 71);
   assert.equal(recent.filter((item) => item.sourceType === "pdf" && item.statementCertificateStatus === "certified").length, 28);
   assert.deepEqual(recent.filter((item) => item.statementCertificateStatus === "exception").map((item) => item.sourceLabel), ["ocbc-365-statement-2026-03"]);
   assert.deepEqual(recent.filter((item) => item.status === "rolled_back").map((item) => item.transactionCount), [0]);
@@ -282,12 +332,12 @@ test("splits: a JPY trip with home shares, settled batches, one simplification a
     WHERE split_batches.closed_on IS NOT NULL ORDER BY split_batches.closed_on
   `);
   assert.deepEqual(closed.map((row) => [row.closed_on, row.settlement_date === row.closed_on, row.amount_minor, row.expenses]), [
-    ["2025-07-28", true, 119_175, 15],
-    ["2026-01-28", true, 92_485, 12]
+    ["2025-07-28", true, 79_695, 15],
+    ["2026-01-28", true, 54_545, 12]
   ]);
 
   assert.deepEqual(household.settlementCheckpoints.map((item) => [item.status, item.currency, item.fromPersonName, item.toPersonName, item.amountMinor, item.includedRecordCount]), [
-    ["open", "SGD", "Serene", "Ethan", 101_917, 27]
+    ["open", "SGD", "Serene", "Ethan", 79_851, 27]
   ]);
   assert.deepEqual(household.activityHistory.map((item) => [item.action, item.recordKind, item.description]), [
     ["deleted", "expense", "Haidilao Vivocity (entered twice)"]
@@ -316,6 +366,11 @@ test("entries carry notes, a refund and all three bank certification labels", as
   assert.deepEqual(labels(may), ["import_provisional", "manual_provisional"]);
   const manual = may.monthPage.entries.filter((entry) => entry.bankCertificationStatus === "manual_provisional");
   assert.ok(manual.some((entry) => entry.description === "TIONG BAHRU HAWKER CENTRE" && entry.date === "2026-05-31"));
+  // Both of this month's hand-saved entries came from the Apple Pay Shortcut.
+  assert.deepEqual(manual.filter((entry) => entry.addedBy).map((entry) => [entry.description, entry.addedBy]).sort(), [
+    ["COLD STORAGE TAMPINES 1", "apple_pay_shortcut"],
+    ["TIONG BAHRU HAWKER CENTRE", "apple_pay_shortcut"]
+  ]);
 
   const january = await get(api, "/api/entries-page?view=household&month=2026-01");
   const refund = january.monthPage.entries.find((entry) => entry.description === "UNIQLO BUGIS REFUND");
@@ -330,7 +385,7 @@ test("categories and rules: two custom categories, the household's own rules and
   assert.deepEqual(custom.map((rule) => [rule.pattern, rule.categoryName]).sort(), [
     ["HARBOURLINE LOGISTICS", "Salary"],
     ["KITE & CO", "Freelance Income"],
-    ["LUMEN STUDIO", "Freelance Income"],
+    ["LUMEN STUDIO", "Salary"],
     ["PET LOVERS CENTRE", "Pet Care"],
     ["SHENG SIONG", "Groceries"],
     ["SINGTEL", "Bills"],

@@ -60,10 +60,19 @@ The local and test Workers seed the demo around the month set in
 The public demo Worker uses a second, deeper dataset: the showcase. When a
 Worker sets `DEMO_DATASET` to `showcase` (`wrangler.demo.jsonc` does), reseed
 replaces the household with a fictional couple, Ethan and Serene, and 17
-months of history ending today: six accounts with statement imports and
-checkpoints (one card deliberately off by $42.80, one unresolved transfer),
-month plans with under-, on- and over-plan months, notes, category rules, a
-yen trip split, settled split batches and a simplification. It is built by
+months of history ending today. They earn modest take-home pay (about
+$5,700 and $4,400 a month, a 13th-month AWS in December and a small
+mid-year bonus for Ethan in July; CPF is not income) and spend about $3,400
+to $4,800 in a usual month. Ten accounts: three banks (one joint), four
+credit cards with statement imports and checkpoints (one card deliberately
+off by $42.80), and three investment accounts (Endowus, StashAway, IBKR)
+that monthly transfers feed, with one withdrawal for the over-plan month.
+Card bills, contributions and settle-ups are matched transfers; one SRS
+top-up is unresolved. Month plans with savings and investment lines cover
+every month but one (so that month opens in the Simple view), with a few
+months a little over and one clearly over. There are notes, category rules,
+two Apple Pay entries this month, a yen trip split, settled split batches
+and a simplification. It is built by
 `src/domain/demo-showcase-data.ts` and written in one batch by
 `src/domain/app-repository-showcase-seed.ts`; `tests/demo-showcase.test.mjs`
 checks it. The guide screenshots use the showcase too (see [How do I
@@ -255,23 +264,47 @@ The public demo deployment is:
 
 [https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev)
 
-It uses the separate Cloudflare D1 database `monies-map-demo` and intentionally
-does not require Cloudflare Access. Without Access, the app has no authenticated
-viewer email, so login-to-person linking is unavailable and users switch between
-household/person views manually. Keep the demo database limited to fake data
-because anyone with the URL can make changes. The demo app shows a thin sticky
-blue `demo` banner at the top of the page.
+It uses the separate Cloudflare D1 database `monies-map-demo` (never
+production's, so nothing it counts or stores mixes with production) and sits
+behind its own Cloudflare Access application (invite-only, owner decision
+2026-10-14), with its own app tag in `wrangler.demo.jsonc`. The Worker checks
+the Access token in `report` mode for now (it logs and serves); switch
+`ACCESS_JWT_MODE` to `enforce` once the logs show real visitors verifying.
+Nothing in the demo depends on who is signed in: there is no
+login-to-person linking, visitors switch between household and person views
+by hand, and everyone shares the same fake data and can change it. The demo
+app shows a thin sticky blue `demo` banner at the top of the page.
+
+Ask on the demo uses Claude through the same AI Gateway as production, with
+the demo's own small caps counted in the demo D1: `AI_ASSIST_DAILY_LIMIT`
+50 units a Singapore day for the whole demo, and
+`AI_ASSIST_VISITOR_DAILY_LIMIT` 10 a day per visitor, keyed by a SHA-256 of
+the visitor's address and browser (`aiVisitorKey`; no address is stored).
+When either cap is used up, Ask reads with its built-in rules and says "The
+demo's Claude allowance is used up for today, so Ask is using its built-in
+rules." The demo has no Workers AI binding, so Claude is used only once the
+gateway token secret is set on the demo Worker:
+
+```bash
+npx wrangler secret put AI_GATEWAY_TOKEN --config wrangler.demo.jsonc
+```
+
+Until then the demo answers every Ask message with its rules and calls
+nothing. The gateway's monthly spend limit is shared with production; the
+demo's 50 units a day keep its share small.
 
 The demo runs the showcase dataset (`DEMO_DATASET` is `showcase` in
 `wrangler.demo.jsonc`; walkthrough in `docs/demo-tour.md`). To refresh it,
-deploy, then reseed once so the history ends in the current month:
+deploy, then reseed once so the history ends in the current month. The
+reseed is a Worker route, so with Access in front it runs from Settings,
+Demo state, signed in. A table change needs `npm run db:migrate:demo` first.
 
 ```bash
 npm run deploy:demo
-curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
+# then Settings → Demo state → Reseed demo data, signed in through Access
 ```
 
-Reseed from Settings, Demo state works too. A deploy alone keeps the data
+Reseed from Settings, Demo state is the usual way. A deploy alone keeps the data
 that is already stored; only a reseed switches to the showcase or moves its
 months forward.
 

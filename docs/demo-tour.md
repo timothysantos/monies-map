@@ -16,9 +16,13 @@ share costs fairly.
   previous visitor changed is replaced.
 - Money totals can be hidden. If you see dots instead of amounts, press the
   eye button to show them.
-- The data is invented. Ethan works at a logistics company; Serene is a
-  freelance designer; they live in an HDB flat in Tampines with a cat called
-  Mochi. Their history covers the last 17 months, ending today. The current
+- The data is invented. Ethan works at a logistics company and takes home
+  about $5,700 a month; Serene is a designer at a small studio and takes home
+  about $4,400 (CPF is not shown as income). Both get a 13th-month AWS in
+  December, and Ethan a small mid-year bonus in July. They live in an HDB
+  flat in Tampines with a cat called Mochi, put money into Endowus,
+  StashAway and IBKR every month, and usually spend about $3,400 to $4,800 a
+  month. Their history covers the last 17 months, ending today. The current
   month is only filled in up to today.
 
 Month names below are relative to the day you reseed, for example "two months
@@ -33,7 +37,7 @@ Open **Summary** with **Household** selected.
   income and savings sit beside it. "Realized savings" is what was actually left over.
 - **Money insights** under the cards lead with a **To do**: Serene's OCBC 365
   Card statement differs from what's recorded by $42.80. Its **Big picture** line says the household
-  kept about 61% of what came in over the last 11 complete months.
+  kept about 58% of what came in over the last 12 months.
 - Scroll to **Intent vs Outcome**: each month is a card with its spend
   against plan. Most months finish under plan. One month,
   two months ago, sticks out above the plan. Hold that thought.
@@ -53,7 +57,7 @@ ending in the current month.
 2. Stay on **All months** and read the Money insights **Big picture** line.
 
 With last year's month in the range, the Big picture can compare the two:
-last month spent about $1,000 less than the same month last year (the year
+last month spent about $800 less than the same month last year (the year
 before had a Bali long weekend). The Big picture takes turns by month with the
 household's keep rate and cushion, so on some months it shows one of those
 instead.
@@ -88,14 +92,16 @@ under the top bar, on a phone with the **All months** button beside the
 View and scope bar. The Summary button stays highlighted; a picked month
 shows that month's plan.
 
-- **Actual spend** is above **Planned spend** by about $3,100. The month
-  note explains it: both aircon units were replaced and the new sofa
-  arrived.
-- Money insights lead with a **Something to think about**: the aircon made up most of
-  the $3,128.14 over plan. Press **See all insights**: **Also this month**
-  lists the card's statement gap.
+- The lead's **Spent** is about $4,000 over its spending plan. The month
+  note explains it: both aircon units were replaced, the new sofa arrived,
+  and $2,000 came out of StashAway to help pay for it (the savings bar shows
+  it as taken out of investments).
+- Money insights lead with a **Something to think about**: the aircon made
+  up most of what went over plan. Press **See all insights**: **Also this
+  month** lists the card's statement gap.
 - Scroll to **Planned Items**: the HDB loan, S&CC, insurance and
-  subscriptions are each linked to the real bank entry that paid them.
+  subscriptions are each linked to the real bank entry that paid them. The
+  savings targets and the Endowus and StashAway lines sit beside them.
   **Budget Buckets** (groceries, food, transport) show how much of each
   budget is used.
 
@@ -105,6 +111,9 @@ plan.
 
 Then choose the **current month**: the plan is complete, the spending is
 only filled in up to today, and not every bill has been paid yet.
+
+The month a year ago with no plan at all (11 months back) opens in the
+**Simple** view: what came in against what went out, with no plan.
 
 Story: "Big months are fine when they were planned. The app shows which
 overspend was a decision and which was a surprise."
@@ -118,7 +127,8 @@ Open **Entries** for **two months ago**.
   statement confirmed it.
 - Card bill payments show their matched other half in the bank account.
 - In the current month, entries come from current activity files, and
-  today's breakfast was typed in by hand from the phone.
+  two were saved by the Apple Pay shortcut (yesterday's groceries and
+  today's breakfast).
 
 Story: "Every number on the Summary can be traced to a real row, and you can
 see how trustworthy each row is."
@@ -137,12 +147,14 @@ Open **Imports**.
 
 Open **Settings**, then **Accounts**.
 
-- Five accounts are **reconciled to last month's statement**.
+- Nine of the ten accounts are **reconciled to last month's statement**,
+  including the three investment accounts (their checkpoints are the money
+  put in; market gains aren't tracked).
 - The **OCBC 365 Card** is off by **$42.80**: a Grab ride printed on the
   statement never made it into the ledger. It shows as an open
   reconciliation exception.
-- **Transfer review** lists one unresolved transfer: Serene's yearly SRS
-  top-up, going to an account the app does not track.
+- **Transfer review** lists one unresolved transfer: Serene's SRS top-up,
+  going to an account the app does not track.
 
 Story: "The app doesn't just import. It proves the ledger against the bank,
 and tells you precisely what doesn't match."
@@ -182,8 +194,8 @@ For developers: the demo worker uses the showcase data when
 
 ```bash
 npm run deploy:demo
-curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
 ```
 
-Or press **Reseed demo data** in Settings, Demo state on the demo site.
+Then press **Reseed demo data** in Settings, Demo state on the demo site
+(the demo is behind Cloudflare Access, so sign in first).
 Details are in the developer guide's demo section.

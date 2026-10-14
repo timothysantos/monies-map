@@ -156,12 +156,12 @@ export function buildShowcaseInsertSqlStatements(dataset: ShowcaseDataset) {
       "id", "household_id", "import_id", "import_row_id", "account_id", "transfer_group_id", "transaction_date", "post_date",
       "description", "amount_minor", "currency", "entry_type", "transfer_direction", "category_id", "owner_person_id",
       "offsets_category", "note", "bank_certification_status", "statement_certified_import_id",
-      "statement_certified_import_row_id", "statement_certified_at", "created_at", "updated_at"
+      "statement_certified_import_row_id", "statement_certified_at", "external_reference", "created_at", "updated_at"
     ], dataset.transactions.map((row) => [
       row.id, H, row.importId, row.importRowId, row.accountId, row.transferGroupId, row.date, row.postDate,
       row.description, row.amountMinor, "SGD", row.entryType, row.transferDirection, row.categoryId, row.ownerPersonId,
       row.offsetsCategory, row.note, row.certified ? "statement_certified" : "provisional", row.certified ? row.importId : null,
-      row.certified ? row.importRowId : null, row.certified ? row.createdAt : null, row.createdAt, row.createdAt
+      row.certified ? row.importRowId : null, row.certified ? row.createdAt : null, row.externalReference, row.createdAt, row.createdAt
     ])],
     ["reconciliation_exceptions", ["id", "household_id", "account_id", "checkpoint_month", "kind", "severity", "status", "title", "note", "created_at", "updated_at"],
       dataset.reconciliationExceptions.map((item) => [item.id, H, item.accountId, item.month, item.kind, "review", "open", item.title, item.note, item.createdAt, item.createdAt])],
