@@ -173,6 +173,7 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
     dot.className = "figure-menu-dot";
     dot.setAttribute("aria-hidden", "true");
     dot.style.background = colour;
+    title.classList.add("has-dot");
     title.appendChild(dot);
   }
   const name = document.createElement("strong");

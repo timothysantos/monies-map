@@ -80,7 +80,7 @@
   font-size: 0.8rem;
 }
 
-.figure-menu .figure-menu-title:has(.figure-menu-dot) {
+.figure-menu .figure-menu-title.has-dot {
   display: flex;
   align-items: flex-start;
   gap: 8px;
