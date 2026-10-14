@@ -311,9 +311,8 @@ over plan.
   keep a plan, and changes the whole page: the card shows only what you
   **Earned** and what you **Spent**, the same bar without the plan, one
   line in words ("You kept $12,000 of the $80,000 you earned (15%)" or "You
-  spent $300 more than you earned"), and a few facts: what you kept and its
-  share of what you earned (or how much you **dipped into savings**), your
-  **daily spend**, and your **top spending** categories with their share
+  spent $300 more than you earned"), and a few facts: your **daily spend**
+  and your **top spending** categories with their share of your spending
   (select one to see its entries). The figures are the same in both.
   **Earned vs spent by month** takes the place of Intent vs Outcome: one row
   per month, newest first, with what you kept (or overspent), what you

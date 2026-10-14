@@ -1078,14 +1078,15 @@ Where it is used:
   plan, no money jobs, and no Income / Saved pills or Income / Saved /
   Remaining budget columns (each a plan figure or a repeat of the lead).
   Under the bar, Simple's facts (`simple-metrics-model.js`, rendered by
-  `simple-detail.js`): small pills that wrap, "Kept $3,453 · 66%" (mint, the
-  share of what was earned) or "Dipped into savings $300" (rose, when more
-  went out than came in), "Daily spend $56" (the spending over the period's
+  `simple-detail.js`): small pills that wrap, "Daily spend $56" (the spending over the period's
   days; "Daily spend so far" up to today while it is going), then "Top
   spending" with the three biggest spending categories and their share of
   spending as chips that open the category's entries (44 px reach). Money
   filed under Investments or Savings is not spending here either. Chosen
-  over the other candidates: invested and taken out of investments are
+  over the other candidates: what was kept and its share of income (the
+  savings rate), or how much more went out than came in, is already the
+  bar's plain line just above (a "Kept $x · 79%" pill repeated it word for
+  word, so it was dropped); invested and taken out of investments are
   already the bar's legend lines; a change against the previous period and
   a splits balance need data neither page loads, so they are left out. All
   whole dollars, every figure from the lead's `splitMoneyUse` and the page's
