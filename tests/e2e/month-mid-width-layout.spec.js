@@ -111,11 +111,23 @@ for (const size of MID_WIDTHS) {
       // Full mobile emulation must not have widened the layout viewport.
       expect(fit.innerWidth).toBeLessThanOrEqual(size.use.viewport.width);
 
+      const planned = page.locator(".month-plan-section-planned");
+      const wrap = planned.locator(".month-table-wrap");
+      if (size.layout === "sheet") {
+        // The portrait tablet shares the phone's layout: each plan row is a
+        // compact card (month-plan-rows.css) with no column headings, so
+        // there are no columns to scroll to. Every card sits inside the
+        // visible width, and the page does not move sideways.
+        const card = wrap.locator("tbody tr").first();
+        await scrollToVertically(card);
+        expectInsideVisibleWidth(await readControlPlacement(card));
+        expect(await page.evaluate(() => window.scrollX)).toBe(0);
+        return;
+      }
+
       // Each table fits its section or scrolls inside it; the Note column
       // (the last one) can always be brought into view without the page
       // itself moving sideways.
-      const planned = page.locator(".month-plan-section-planned");
-      const wrap = planned.locator(".month-table-wrap");
       const lastHeader = wrap.locator("thead th").last();
       await expect(lastHeader).toHaveText(/note/i);
       await wrap.evaluate((element) => {
@@ -295,6 +307,8 @@ test.describe("Month outside the mid-width range", () => {
     const layout = await readOutOfRangeLayout(page);
     expect(layout.periodInlineDisplay).toBe("grid");
     expect(layout.noteWhiteSpace).toBe("nowrap");
-    expect(layout.cellPadding).toBe("10px");
+    // A phone's plan rows are cards (month-plan-rows.css): their cells carry
+    // no padding of their own, unlike the table cells above the phone range.
+    expect(layout.cellPadding).toBe("0px");
   });
 });

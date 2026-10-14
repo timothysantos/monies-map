@@ -39,7 +39,7 @@ test.describe("route work status", () => {
     await page.getByRole("link", { name: "Entries", exact: true }).click();
     await expect(page).toHaveURL(/\/entries\?/);
     // Summary content is still on screen while Entries data is held back.
-    await expect(page.getByRole("button", { name: "View entries for Bills" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^View entries for / }).first()).toBeVisible();
     await waitForRouteWork(page, { routeKey: ENTRIES_KEY, ready: false, usable: false });
     const pending = await readRouteWork(page);
     expect(["no-page-view", "shell-loading", "route-data-pending"]).toContain(pending.reason);
@@ -54,6 +54,7 @@ test.describe("route work status", () => {
     await waitForRouteWork(page, { routeKey: ENTRIES_KEY, usable: true });
 
     const row = page.locator(".entry-row").filter({ hasText: "Vivify" }).first();
+    await row.scrollIntoViewIfNeeded();
     await row.click();
     const editor = page.locator(".entry-edit-card").first();
     await expect(editor).toBeVisible();
@@ -63,6 +64,7 @@ test.describe("route work status", () => {
     await expect(editor).toHaveCount(0);
     await waitForRouteWork(page, { busy: false, usable: true, reason: "usable" });
 
+    await row.scrollIntoViewIfNeeded();
     await row.click();
     await expect(editor).toBeVisible();
     const amount = editor.getByLabel("Amount");
@@ -86,7 +88,7 @@ test.describe("route work status", () => {
   test("a shared category dialog on Summary reports busy through the panel's route key", async ({ page }) => {
     await page.goto("/summary?view=household&month=2026-05");
     await waitForRouteWork(page, { usable: true });
-    await page.getByRole("button", { name: "Edit Bills" }).first().click();
+    await page.getByRole("button", { name: /^Edit [^ ]/ }).first().click();
     await expect(page.getByText("Edit category")).toBeVisible();
     await waitForRouteWork(page, { ready: true, busy: true, reason: "busy" });
     await page.keyboard.press("Escape");

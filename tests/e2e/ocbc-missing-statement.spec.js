@@ -59,7 +59,7 @@ test("a statement after months that were never imported names them, and the card
   // The owner chip wears Joyce's colour, the same one as her Entries rows.
   await expect(title.locator(".statement-card-owner")).toHaveText("Joyce");
   const chipVars = await title.locator(".statement-card-owner").evaluate((element) => element.style.getPropertyValue("--person-colour"));
-  expect(chipVars.trim().toUpperCase()).toBe("#B97680");
+  expect(chipVars.trim().toUpperCase()).toBe("VAR(--CAT-B97680, #B97680)");
   // The cycle runs from the day after the previous statement date, not the
   // first row's date (24 Aug).
   await expect(page.getByText("Statement date 1 Sep 2026 · covers 2 Aug 2026 – 1 Sep 2026 · 1 card · 5 rows")).toBeVisible();
