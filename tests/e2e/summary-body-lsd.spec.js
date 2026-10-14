@@ -183,9 +183,12 @@ async function expectSliceLabels(page, share, deviceName) {
   return labels;
 }
 
-// Everything tappable inside `selector` is at least 44px tall and wide.
+// Everything tappable inside `selector` is at least 44px tall and wide. A
+// figure in a line of text (design.md "Openable figures": an amount, a chip's
+// figure) is the text itself, like a link in a sentence, so it is not
+// counted; its row or card is.
 async function expectTargets44(page, selector) {
-  const small = await page.locator(selector).evaluate((root) => [...root.querySelectorAll("button, a, input, select, textarea, [role='button']")]
+  const small = await page.locator(selector).evaluate((root) => [...root.querySelectorAll("button, a, input, select, textarea, [role='button']:not([data-fig])")]
     .map((element) => ({ rect: element.getBoundingClientRect(), name: element.getAttribute("aria-label") || element.textContent.trim().slice(0, 30) }))
     .filter(({ rect }) => rect.width > 0 && rect.height > 0 && (rect.width < 43.5 || rect.height < 43.5))
     .map(({ rect, name }) => `${name} ${Math.round(rect.width)}x${Math.round(rect.height)}`));

@@ -776,10 +776,12 @@ html[data-money-privacy="hidden"] .lsd-amount-field {
 
 /* Openable figures (design.md "Openable figures", figure-menu.js): a figure
    on a card is quietly openable. Its text stays as it is; on hover or
-   keyboard focus it gains a soft underline and a small chevron after it,
-   and a tap or click opens its menu. Nothing looks like a button and
-   nothing moves: the chevron is drawn outside the text's box. Bar parts and
-   rows that are buttons already keep their own look. */
+   keyboard focus (and while its menu is open) it gains a soft underline and
+   a small chevron after it, and a tap or click opens its menu. Nothing looks
+   like a button and nothing moves: the chevron is drawn just outside the
+   text's box, and only then (at rest it is not drawn, so it never widens a
+   pill or a card). Bar parts and rows that are buttons already keep their
+   own look. */
 [data-fig] {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -796,11 +798,12 @@ html[data-money-privacy="hidden"] .lsd-amount-field {
   position: absolute;
   top: 50%;
   right: -0.62em;
+  display: none;
   width: 0.32em;
   height: 0.32em;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  opacity: 0;
+  opacity: 0.55;
   transform: translateY(-50%) rotate(-45deg);
   pointer-events: none;
 }
@@ -814,7 +817,7 @@ html[data-money-privacy="hidden"] .lsd-amount-field {
   }
 
   [data-fig]:not(button):hover::after {
-    opacity: 0.55;
+    display: block;
   }
 }
 
@@ -828,7 +831,7 @@ html[data-money-privacy="hidden"] .lsd-amount-field {
 
 [data-fig]:not(button):focus-visible::after,
 [data-fig]:not(button)[aria-expanded="true"]::after {
-  opacity: 0.55;
+  display: block;
 }
 
 [data-fig]:not(button):focus-visible {
