@@ -107,7 +107,9 @@ test("amounts read as written, and nothing past S$10m", () => {
   assert.equal(readAmountMinor("0"), null);
   assert.equal(readAmountMinor("-5"), null);
   assert.equal(readAmountMinor("20000000"), null);
-  assert.equal(readAmountMinor("twelve"), null);
+  // Words for a number read too ("fifty bucks"); a word that is no number does not.
+  assert.equal(readAmountMinor("twelve"), 1_200);
+  assert.equal(readAmountMinor("lunch"), null);
 });
 
 // --- add_entry_to_splits (the owner's case) -----------------------------------

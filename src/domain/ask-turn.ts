@@ -24,6 +24,16 @@ import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
 import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
+import { assumption, type AskAssumption, type AskErrorCode, type AskValidatorError } from "./ask-ambiguity";
+import {
+  amountsIn,
+  closestNames,
+  matchName,
+  readAmountMinor as readAmountWords,
+  readDayWord,
+  readMonthWord,
+  readShareValue
+} from "./ask-turn-names";
 import {
   describePhase2Actions,
   validateBlocked,
@@ -370,7 +380,13 @@ export interface AskTurnFilter {
   maxAmountMinor: number | null;
 }
 
-export type AskTurnReply =
+// Every reply may carry what the app assumed (docs/flows/ask-flow.md, "Three
+// principles"): a plain-words line and the one-tap alternatives. A question
+// back (clarify) may carry why it is asking, for the repair turn; neither
+// is ever stored.
+export type AskTurnReply = AskTurnReplyBody & { assumptions?: AskAssumption[] };
+
+export type AskTurnReplyBody =
   | { kind: "entry_draft"; draft: EntryDraftDto; share: AskTurnShare | null }
   | { kind: "draft_patch"; patch: AskTurnDraftPatch; share: AskTurnShare | null }
   | { kind: "split_proposal"; proposal: AskSplitProposal }
@@ -379,7 +395,7 @@ export type AskTurnReply =
   | { kind: "question"; text: string; viewId: string; scope: string; month: string }
   | { kind: "search"; filter: AskTurnFilter }
   | { kind: "open_page"; page: AskTurnPage; params: Record<string, string>; why?: string }
-  | { kind: "clarify"; question: string; options: string[] }
+  | { kind: "clarify"; question: string; options: string[]; error?: AskValidatorError }
   | { kind: "note"; text: string }
   | { kind: "change"; change: AskChange }
   | { kind: "matches"; month: string; matches: AskMatch[] }
@@ -617,11 +633,7 @@ export interface Ground {
 function buildGround(context: AskTurnContext): Ground {
   const userText = [...context.history.filter((message) => message.role === "user").map((message) => message.text), context.text].join(" \n ");
   const words = new Set(wordsOf(userText));
-  const amounts = new Set<number>();
-  for (const match of userText.toLowerCase().match(/\$?\d[\d,]*(?:\.\d{1,2})?k?/g) ?? []) {
-    const minor = readAmountMinor(match);
-    if (minor !== null) amounts.add(minor);
-  }
+  const amounts = amountsIn(userText);
   const proseNumbers = new Set<string>();
   const shown = [userText, buildAskTurnPrompt({ ...context, history: [], text: "" })].join(" ");
   for (const match of shown.match(/\d+(?:[.,]\d+)*/g) ?? []) {
@@ -634,16 +646,9 @@ export function wordsOf(text: string) {
   return String(text ?? "").toLowerCase().normalize("NFKC").split(/[^\p{L}\p{N}&']+/u).filter(Boolean);
 }
 
-// "12", "$12.50", "1,200", "1.2k" as minor units, or null.
-export function readAmountMinor(value: unknown): number | null {
-  const text = typeof value === "number" ? String(value) : typeof value === "string" ? value.trim().toLowerCase() : "";
-  const match = /^\$?(\d[\d,]*(?:\.\d{1,2})?)(k?)$/.exec(text.replace(/^s\$/, "$"));
-  if (!match) return null;
-  const number = Number(match[1].replace(/,/g, "")) * (match[2] ? 1000 : 1);
-  if (!Number.isFinite(number)) return null;
-  const minor = Math.round(number * 100);
-  return minor > 0 && minor <= AMOUNT_MAX_MINOR ? minor : null;
-}
+// "12", "$12.50", "S$12", "1,200", "1.2k", "fifty bucks" as minor units, or
+// null (ask-turn-names.ts reads it).
+export const readAmountMinor = readAmountWords;
 
 // An amount the model gives, only when the person wrote it.
 export function groundedAmount(value: unknown, ground: Ground) {
@@ -661,57 +666,70 @@ export function groundedProse(value: unknown, ground: Ground, max: number): stri
   return numbers.every((number) => ground.proseNumbers.has(number.replace(/,/g, ""))) ? text : null;
 }
 
+// Names: the model reports what was said ("joyce's", "J", "citi") and the app
+// finds the record (ask-turn-names.ts matchName). `null` is nothing said;
+// "unknown" is a name that fits none or fits two (askableNames says which).
 export function findPerson(value: unknown, context: AskTurnContext): AskTurnPerson | null | "unknown" {
   const name = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (!name) return null;
-  if (["i", "me", "my", "mine", "myself"].includes(name)) {
+  if (["i", "me", "my", "mine", "myself", "i'm", "im", "i am"].includes(name)) {
     const viewer = context.people.find((person) => person.id === context.viewId);
     return viewer ?? "unknown";
   }
-  return context.people.find((person) => person.name.toLowerCase() === name)
-    ?? uniqueMatch(context.people, (person) => person.name.toLowerCase().startsWith(name) || name.startsWith(person.name.toLowerCase()))
-    ?? "unknown";
+  // Household order is owner first.
+  if (["owner", "the owner", "account owner"].includes(name)) return context.people[0] ?? "unknown";
+  const match = matchName(name, context.people.map((person) => person.name));
+  return match.kind === "match" ? context.people[match.index] : "unknown";
 }
 
 export function findWallet(value: unknown, context: AskTurnContext): AccountDto | null | "unknown" {
   const name = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (!name) return null;
   const active = context.entry.accounts.filter((account) => account.isActive);
-  return active.find((account) => account.name.toLowerCase() === name)
-    ?? uniqueMatch(active, (account) => account.name.toLowerCase().includes(name) || name.includes(account.name.toLowerCase()))
-    ?? "unknown";
+  const match = matchName(name, active.map((account) => account.name));
+  return match.kind === "match" ? active[match.index] : "unknown";
 }
 
 export function findCategory(value: unknown, context: AskTurnContext): string | null | "unknown" {
   const name = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (!name) return null;
-  return context.entry.categoryNames.find((category) => category.toLowerCase() === name) ?? "unknown";
+  const match = matchName(name, context.entry.categoryNames);
+  return match.kind === "match" ? context.entry.categoryNames[match.index] : "unknown";
 }
 
 export function findGroup(value: unknown, context: AskTurnContext): AskTurnGroup | null | "unknown" {
   const name = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (!name || ["none", "no group", "non-group", "not in a group"].includes(name)) return null;
-  return context.groups.find((group) => group.name.toLowerCase() === name)
-    ?? uniqueMatch(context.groups, (group) => group.name.toLowerCase().includes(name) || name.includes(group.name.toLowerCase()))
-    ?? "unknown";
+  if (!name || ["none", "no group", "non-group", "not in a group", "no", "n/a"].includes(name)) return null;
+  const match = matchName(name, context.groups.map((group) => group.name));
+  return match.kind === "match" ? context.groups[match.index] : "unknown";
 }
 
-function uniqueMatch<T>(items: T[], test: (item: T) => boolean): T | null {
-  const matches = items.filter(test);
-  return matches.length === 1 ? matches[0] : null;
+// The names a question back offers for a name that fits none or two: the ones
+// it fits (when two), else the nearest.
+export function askableNames(said: unknown, candidates: readonly string[], count = MAX_CHIPS): string[] {
+  const match = matchName(said, candidates);
+  if (match.kind === "ambiguous") return match.indexes.slice(0, count).map((index) => candidates[index]);
+  return closestNames(said, candidates, count);
 }
 
+// A day: the model's YYYY-MM-DD, or the person's own word for it ("yesterday",
+// "last friday", "12 oct"), read from today. Not in the future, and not more
+// than OLDEST_DATE_DAYS back.
 export function readDate(value: unknown, context: AskTurnContext): { ok: true; date: string | null } | { ok: false } {
   if (value === null || value === undefined || value === "") return { ok: true, date: null };
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) return { ok: false };
+  const date = typeof value === "string" ? readDayWord(value, context.today) : null;
+  if (!date || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return { ok: false };
   const oldest = new Date(Date.parse(`${context.today}T00:00:00Z`) - OLDEST_DATE_DAYS * 86_400_000).toISOString().slice(0, 10);
-  return value <= context.today && value >= oldest ? { ok: true, date: value } : { ok: false };
+  return date <= context.today && date >= oldest ? { ok: true, date } : { ok: false };
 }
 
+// A month: YYYY-MM, or a word ("september", "last month", "this month").
+// Nothing said is the month in view where a caller defaults it.
 export function readMonth(value: unknown, context: AskTurnContext): { ok: true; month: string | null } | { ok: false } {
   if (value === null || value === undefined || value === "") return { ok: true, month: null };
-  if (typeof value !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value) || value < "2000-01") return { ok: false };
-  return { ok: true, month: value };
+  const month = typeof value === "string" ? readMonthWord(value, context.today) : null;
+  if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month < "2000-01") return { ok: false };
+  return { ok: true, month };
 }
 
 // ---- Entries ------------------------------------------------------------
