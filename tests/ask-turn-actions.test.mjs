@@ -419,7 +419,7 @@ test("set_payment_way: a bank wallet for PayNow, a cash wallet for cash, with Un
   assert.deepEqual(reply.change.save, [{ path: "/api/settings/payment-ways/save", body: { personId: "person-joyce", bankTransferAccountId: "acct-uob", cashAccountId: "" } }]);
   assert.deepEqual(reply.change.undo[0].body, { personId: "person-joyce", bankTransferAccountId: "acct-dbs-joyce", cashAccountId: "" });
   assert.deepEqual(reply.change.rows, [{ field: "paynow", before: "DBS Joyce", after: "UOB One" }]);
-  assert.deepEqual(turn("set_payment_way", { payment_way: { paynow_wallet: "Citi Rewards" } }, { text: "my paynow is citi" }), { kind: "clarify", question: "Which bank wallet should PayNow mean?", options: ["UOB One", "DBS Joyce"] });
+  assert.deepEqual(turn("set_payment_way", { payment_way: { paynow_wallet: "Citi Rewards" } }, { text: "my paynow is citi" }), { kind: "clarify", question: "Which bank wallet should PayNow mean?", options: ["UOB One", "DBS Joyce"], error: { code: "unknown_wallet", field: "payment_way.wallet", valid: ["UOB One", "DBS Joyce"] } });
   assert.equal(turn("set_payment_way", { payment_way: { paynow_wallet: "UOB One" } }, { text: "my paynow is uob" }).kind, "note");
 });
 

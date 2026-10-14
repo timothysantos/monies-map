@@ -87,9 +87,8 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   if (text.length > ASK_TURN_MAX_TEXT) {
     return json({ ok: false, error: "The message is too long." }, 400);
   }
-  const testing = env.APP_ENVIRONMENT === "test";
-  const testReply = testing ? request.headers.get(TEST_REPLY_HEADER) : null;
-  const testRepairReply = testing ? request.headers.get(TEST_REPAIR_HEADER) : null;
+  const testReply = env.APP_ENVIRONMENT === "test" ? request.headers.get(TEST_REPLY_HEADER) : null;
+  const testRepairReply = env.APP_ENVIRONMENT === "test" ? request.headers.get(TEST_REPAIR_HEADER) : null;
   const offReason = getAiProviderUnavailableReason(env);
   const focusIsSavedEntry = typeof body.focus === "object" && body.focus !== null && (body.focus as { kind?: unknown }).kind === "saved_entry";
   // A saved entry in focus and a message with a figure, "all" or "split" in
