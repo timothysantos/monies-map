@@ -206,6 +206,125 @@ test("link a transfer: the one other side with the same amount is found from the
   assert.deepEqual(linked.map((row) => [row.id, row.entry_type, row.transfer_direction]), [[into, "transfer", "in"], [out, "transfer", "out"]]);
 });
 
+async function otherBanks(db, count = 3) {
+  return rows(db, "SELECT id, account_name FROM accounts WHERE account_kind = 'bank' AND is_active = 1 AND account_name <> 'UOB One' ORDER BY account_name LIMIT ?", count);
+}
+
+async function dialogCandidateIds(api, entryId) {
+  const { status, payload } = await api(`/api/transfers/candidates?entryId=${entryId}`);
+  assert.equal(status, 200);
+  return payload.candidates.map((candidate) => candidate.id);
+}
+
+test("making an entry a transfer offers exactly the Entries transfer dialog's candidates: the best pre-selected, the rest as choices, and the unmatched transfer", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const banks = await otherBanks(db, 2);
+  const out = await createEntry(api, { date: "2026-05-20", description: "XFER OUT", accountName: "UOB One", categoryName: "Other", amountMinor: 223_457 });
+  const near = await createEntry(api, { date: "2026-05-20", description: "XFER IN NEAR", accountName: banks[0].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 223_457 });
+  const far = await createEntry(api, { date: "2026-05-27", description: "XFER IN FAR", accountName: banks[1].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 223_457 });
+  await createEntry(api, { date: "2026-05-20", description: "XFER SAME WALLET", accountName: "UOB One", categoryName: "Other - Income", entryType: "income", amountMinor: 223_457 });
+  await createEntry(api, { date: "2026-05-20", description: "XFER OTHER AMOUNT", accountName: banks[0].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 223_458 });
+  const before = await dumpDatabase(db);
+
+  const dialog = await dialogCandidateIds(api, out);
+  assert.deepEqual(dialog, [near, far]);
+
+  for (const model of [
+    { action: "link_transfer" },
+    { action: "edit_saved_entry", entry: { type: "transfer" } },
+    { action: "recategorise", recategorise: { category: "Transfer" } }
+  ]) {
+    const { reply } = await turn(db, { text: "this is a transfer", focus: { kind: "saved_entry", entryId: out } }, model);
+    assert.equal(reply.kind, "change", `${model.action}: ${JSON.stringify(reply)}`);
+    assert.deepEqual(reply.change.transfer.options.map((option) => option.id), dialog, model.action);
+    assert.deepEqual(reply.change.save, [{ path: "/api/transfers/link", body: { fromEntryId: out, toEntryId: near } }]);
+    assert.equal(reply.change.transfer.none.id, "none");
+  }
+  await assertOnlyAllowanceChanged(db, before);
+
+  // Choosing the second candidate links that one; the first stays untouched.
+  const { reply } = await turn(db, { text: "this is a transfer", focus: { kind: "saved_entry", entryId: out } }, { action: "link_transfer" });
+  await run(api, reply.change.transfer.options[1].save);
+  const linked = await rows(db, "SELECT id, entry_type, transfer_direction, transfer_group_id FROM transactions WHERE id IN (?, ?, ?) ORDER BY id", out, near, far);
+  const byId = Object.fromEntries(linked.map((row) => [row.id, row]));
+  assert.equal(byId[out].entry_type, "transfer");
+  assert.equal(byId[far].entry_type, "transfer");
+  assert.equal(byId[near].entry_type, "income");
+  assert.equal(byId[out].transfer_group_id, byId[far].transfer_group_id);
+});
+
+test("\"transfer to <wallet>\" keeps only that wallet's rows; a wallet with none says so and offers the others; with no candidates at all the unmatched transfer saves and undoes", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const banks = await otherBanks(db, 2);
+  const out = await createEntry(api, { date: "2026-05-20", description: "XFER OUT", accountName: "UOB One", categoryName: "Other", amountMinor: 323_457 });
+  const near = await createEntry(api, { date: "2026-05-20", description: "XFER IN NEAR", accountName: banks[0].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 323_457 });
+  const far = await createEntry(api, { date: "2026-05-27", description: "XFER IN FAR", accountName: banks[1].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 323_457 });
+  const focus = { kind: "saved_entry", entryId: out };
+
+  const named = await turn(db, { text: `this is a transfer to my ${banks[1].account_name}`, focus }, { action: "edit_saved_entry", entry: { type: "transfer", to_wallet: banks[1].account_name } });
+  assert.deepEqual(named.reply.change.transfer.options.map((option) => option.id), [far]);
+  assert.equal(named.reply.change.transfer.walletMissed, "");
+  assert.deepEqual(named.reply.change.save, [{ path: "/api/transfers/link", body: { fromEntryId: out, toEntryId: far } }]);
+
+  const [cash] = await rows(db, "SELECT account_name FROM accounts WHERE is_active = 1 AND account_name NOT IN ('UOB One', ?, ?) ORDER BY account_name LIMIT 1", banks[0].account_name, banks[1].account_name);
+  const missed = await turn(db, { text: `this is a transfer to ${cash.account_name}`, focus }, { action: "edit_saved_entry", entry: { type: "transfer", to_wallet: cash.account_name } });
+  assert.deepEqual(missed.reply.change.transfer.options.map((option) => option.id), [near, far]);
+  assert.equal(missed.reply.change.transfer.walletMissed, cash.account_name);
+
+  const lone = await createEntry(api, { date: "2026-05-21", description: "XFER LONE", accountName: "UOB One", categoryName: "Other", amountMinor: 423_457 });
+  const { reply } = await turn(db, { text: "this is a transfer", focus: { kind: "saved_entry", entryId: lone } }, { action: "link_transfer" });
+  assert.deepEqual(reply.change.transfer.options, []);
+  await run(api, reply.change.save);
+  const [row] = await rows(db, "SELECT entry_type, transfer_direction, transfer_group_id, categories.name AS category FROM transactions JOIN categories ON categories.id = transactions.category_id WHERE transactions.id = ?", lone);
+  assert.deepEqual([row.entry_type, row.transfer_direction, row.transfer_group_id, row.category], ["transfer", "out", null, "Transfer"]);
+  await run(api, reply.change.undo);
+  const [back] = await rows(db, "SELECT entry_type, transfer_direction, categories.name AS category FROM transactions JOIN categories ON categories.id = transactions.category_id WHERE transactions.id = ?", lone);
+  assert.deepEqual([back.entry_type, back.transfer_direction, back.category], ["expense", null, "Other"]);
+});
+
+test("a candidate already paired with another transfer is never offered as the other side", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const banks = await otherBanks(db, 1);
+  const first = await createEntry(api, { date: "2026-05-20", description: "XFER FIRST", accountName: "UOB One", categoryName: "Other", amountMinor: 523_457 });
+  const second = await createEntry(api, { date: "2026-05-20", description: "XFER SECOND", accountName: "UOB One", categoryName: "Other", amountMinor: 523_457 });
+  const into = await createEntry(api, { date: "2026-05-20", description: "XFER IN", accountName: banks[0].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 523_457 });
+  const paired = await api("/api/transfers/link", { fromEntryId: first, toEntryId: into });
+  assert.equal(paired.status, 200);
+  // The dialog still lists the paired row; Ask does not offer it.
+  assert.deepEqual(await dialogCandidateIds(api, second), [into]);
+  const { reply } = await turn(db, { text: "this is a transfer", focus: { kind: "saved_entry", entryId: second } }, { action: "link_transfer" });
+  assert.equal(reply.kind, "change");
+  assert.deepEqual(reply.change.transfer.options, []);
+});
+
+test("GET /api/transfers/draft-candidates is the dialog's search for an entry not saved yet: same amount, other wallet, best first, nothing already paired", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const banks = await otherBanks(db, 2);
+  const [uob] = await rows(db, "SELECT id FROM accounts WHERE account_name = 'UOB One'");
+  const near = await createEntry(api, { date: "2026-05-21", description: "XFER IN NEAR", accountName: banks[0].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 623_457 });
+  const far = await createEntry(api, { date: "2026-05-28", description: "XFER IN FAR", accountName: banks[1].account_name, categoryName: "Other - Income", entryType: "income", amountMinor: 623_457 });
+  await createEntry(api, { date: "2026-05-21", description: "XFER SAME WALLET", accountName: "UOB One", categoryName: "Other - Income", entryType: "income", amountMinor: 623_457 });
+  const query = `date=2026-05-20&accountId=${uob.id}&amountMinor=623457&transferDirection=out`;
+  const found = await api(`/api/transfers/draft-candidates?${query}`);
+  assert.equal(found.status, 200);
+  assert.deepEqual(found.payload.candidates.map((candidate) => [candidate.entryId, candidate.accountName, candidate.date, candidate.amountMinor]), [
+    [near, banks[0].account_name, "2026-05-21", 623_457],
+    [far, banks[1].account_name, "2026-05-28", 623_457]
+  ]);
+
+  // The same rows rank the same way once the entry is saved (what the dialog shows).
+  const saved = await createEntry(api, { date: "2026-05-20", description: "XFER OUT", accountName: "UOB One", categoryName: "Other", amountMinor: 623_457 });
+  assert.deepEqual(await dialogCandidateIds(api, saved), found.payload.candidates.map((candidate) => candidate.entryId));
+
+  await api("/api/transfers/link", { fromEntryId: saved, toEntryId: near });
+  const after = await api(`/api/transfers/draft-candidates?${query}`);
+  assert.deepEqual(after.payload.candidates.map((candidate) => candidate.entryId), [far]);
+
+  for (const bad of ["date=2026-05-20", `date=2026-05-20&accountId=${uob.id}&amountMinor=0`, "date=nope&accountId=x&amountMinor=5", `date=2026-05-20&accountId=${uob.id}&amountMinor=1.5`]) {
+    assert.equal((await api(`/api/transfers/draft-candidates?${bad}`)).status, 400, bad);
+  }
+});
+
 test("settle a whole group: the balance Splits shows becomes the settle-up draft; recording it leaves nothing owed", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const [group] = await rows(db, "SELECT id, group_name, currency FROM split_groups WHERE currency = 'SGD' ORDER BY sort_order LIMIT 1");

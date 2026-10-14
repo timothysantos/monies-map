@@ -1814,3 +1814,18 @@ export interface SplitSuggestionDto {
   matchedCount: number;
   matchedBy: "description" | "category";
 }
+
+// An entry that may be the other side of a transfer (GET
+// /api/transfers/draft-candidates): the same candidates the Entries transfer
+// dialog offers (src/domain/transfer-candidates.ts), best first, without the
+// ones already paired or on Splits.
+export interface TransferOptionDto {
+  entryId: string;
+  date: string;
+  description: string;
+  accountId: string;
+  accountName: string;
+  accountOwnerLabel?: string;
+  amountMinor: number;
+  categoryName: string;
+}

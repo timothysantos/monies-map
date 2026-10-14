@@ -20,9 +20,9 @@ import {
   type AskSimplifyPlan,
   type AskSplitExpenseFacts
 } from "./ask-turn-actions";
-import type { AskTurnContext, AskTurnReply } from "./ask-turn";
+import type { AskTurnContext, AskTurnFocusEntry, AskTurnReply } from "./ask-turn";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
-import { loadTransferMatchCandidates } from "./app-repository-entries";
+import { loadTakenTransferEntryIds, loadTransferMatchCandidates } from "./app-repository-entries";
 import { loadMonthPlanRowsForDraft } from "./app-repository-months";
 import {
   loadSplitExpenses,
@@ -47,7 +47,7 @@ export async function resolveAskTurnRequest(db: D1Database, request: AskResolveR
     case "month_note":
       return buildMonthNote(request, await loadMonthNote(db, request.month, request.personScope));
     case "link_transfer":
-      return buildTransferLink(request, await loadTransferCandidates(db, request.entry.entryId, request.entry.currency));
+      return buildTransferLink(request, await loadTransferCandidates(db, request.entry));
     case "group_move":
       return buildGroupMove(request, await loadEntrySplit(db, request.entry.entryId, context));
     case "group_settle":
@@ -121,16 +121,12 @@ async function loadMonthNote(db: D1Database, month: string, personScope: string)
   return row?.note ?? null;
 }
 
-async function loadTransferCandidates(db: D1Database, entryId: string, currency: string) {
-  const { candidates } = await loadTransferMatchCandidates(db, entryId);
-  if (!candidates.length) {
-    return [];
-  }
-  const linked = await db
-    .prepare(`SELECT id FROM transactions WHERE household_id = ? AND transfer_group_id IS NOT NULL AND id IN (${candidates.map(() => "?").join(", ")})`)
-    .bind(DEFAULT_HOUSEHOLD_ID, ...candidates.map((candidate) => candidate.id))
-    .all<{ id: string }>();
-  const linkedIds = new Set(linked.results.map((row) => row.id));
+// The Entries transfer dialog's own candidates for this entry, ranked as if
+// it already were the transfer it is about to become.
+async function loadTransferCandidates(db: D1Database, entry: AskTurnFocusEntry) {
+  const direction = entry.transferDirection ?? (entry.entryType === "income" ? "in" : "out");
+  const { candidates } = await loadTransferMatchCandidates(db, entry.entryId, { transferDirection: direction });
+  const taken = await loadTakenTransferEntryIds(db, candidates);
   return candidates.map((candidate) => ({
     entryId: candidate.id,
     date: candidate.date,
@@ -138,9 +134,9 @@ async function loadTransferCandidates(db: D1Database, entryId: string, currency:
     accountId: candidate.accountId ?? "",
     accountName: candidate.accountName,
     amountMinor: candidate.amountMinor,
-    currency,
+    currency: entry.currency,
     categoryName: candidate.categoryName,
-    linked: linkedIds.has(candidate.id) || Boolean(candidate.linkedSplitExpenseId)
+    linked: taken.has(candidate.id)
   }));
 }
 

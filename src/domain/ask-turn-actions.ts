@@ -22,6 +22,7 @@
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
+import { chooseTransferOptions } from "./transfer-candidates";
 import {
   COPY,
   findCategory,
@@ -137,6 +138,27 @@ export interface AskChangeStep {
   fromResult?: { key: string; as: string };
 }
 
+// One way a transfer change can end (the Entries transfer dialog's choices):
+// pair with a candidate other side, or keep the entry as an unmatched
+// transfer. Each carries what the card shows and the steps it saves with.
+export interface AskTransferOption {
+  // The other side's entry id; "none" for the unmatched transfer.
+  id: string;
+  rows: AskChangeRow[];
+  entries: AskChangeEntry[];
+  count: number;
+  save: AskChangeStep[];
+  undo: AskChangeStep[] | null;
+}
+
+export interface AskTransferChoices {
+  // Best match first (pre-selected), at most 3 more.
+  options: AskTransferOption[];
+  none: AskTransferOption | null;
+  // The wallet the person named when it has no match ("" otherwise).
+  walletMissed: string;
+}
+
 export interface AskChange {
   type: AskChangeType;
   // A name the card leads with: the entry's description, the group,
@@ -157,6 +179,10 @@ export interface AskChange {
   // The month whose pages refresh after the save, and which pages.
   month: string;
   refresh: Array<"entries" | "month" | "summary" | "splits" | "settings">;
+  // A change that makes an entry a transfer: the other sides to choose
+  // from. `rows`, `entries`, `save` and `undo` above are the pre-selected
+  // choice's (the best match, or the unmatched transfer when none exist).
+  transfer?: AskTransferChoices | null;
 }
 
 // A bank row that may be the payment behind a split record, as Splits'
@@ -183,7 +209,7 @@ export interface AskMatch {
 export type AskResolveRequest =
   | { type: "recategorise_bulk"; words: string; categoryName: string; fromCategoryName: string | null; month: string | null }
   | { type: "month_note"; month: string; personScope: string; text: string }
-  | { type: "link_transfer"; entry: AskTurnFocusEntry; walletId: string | null; date: string | null }
+  | { type: "link_transfer"; entry: AskTurnFocusEntry; walletId: string | null; walletName: string; date: string | null }
   | { type: "group_move"; entry: AskTurnFocusEntry; group: AskTurnGroup | null }
   | { type: "group_settle"; group: AskTurnGroup }
   | { type: "simplify"; currency: string | null }
@@ -199,7 +225,7 @@ const WORDS_MAX = 40;
 // The prompt's lines for these actions (buildAskTurnPrompt).
 export function describePhase2Actions() {
   return [
-    "- edit_saved_entry: change the saved entry in focus; set only the entry fields that change (amount, date, description, category, wallet, owner, note).",
+    "- edit_saved_entry: change the saved entry in focus; set only the entry fields that change (amount, date, description, category, wallet, owner, note). To make it a transfer set entry.type transfer, and entry.to_wallet when they name the other account.",
     "- recategorise: change a category: of the saved entry in focus, or of every entry whose bank text has recategorise.words (\"make all Grab rides Transport\": words \"grab\", category \"Transport\"); rule true when new ones should be filed the same way.",
     "- edit_note: note_edit.target entry (the saved entry in focus) or month (note_edit.month); note_edit.text is the whole note as they want it.",
     "- link_transfer: pair the saved entry in focus with the other side of a move between their wallets (transfer.wallet and transfer.date only if said).",
@@ -224,6 +250,10 @@ export function validateEditSavedEntry(action: AskTurnAction, context: AskTurnCo
   }
   const entry = context.focus.entry;
   const raw = action.entry ?? {};
+  // Making it a transfer is a search for the other side, not a field edit.
+  if (entry.entryType !== "transfer" && (raw.type === "transfer" || findCategory(raw.category, context) === "Transfer")) {
+    return transferRequest(entry, context, raw.to_wallet ?? raw.wallet, null);
+  }
   const next = {
     amountMinor: entry.amountMinor,
     date: entry.date,
@@ -322,7 +352,13 @@ export function validateRecategorise(action: AskTurnAction, context: AskTurnCont
   const category = findCategory(raw.category, context);
   if (category === "unknown") return { kind: "clarify", question: COPY.categoryQuestion(String(raw.category ?? "")), options: [] };
   if (!category) return { kind: "clarify", question: ACTION_COPY.whichCategory, options: [] };
-  if (category === "Transfer") return { kind: "note", text: ACTION_COPY.transferIsALink };
+  if (category === "Transfer") {
+    // One saved entry in focus becomes a transfer through the same search
+    // as "link this as a transfer"; many entries cannot.
+    return context.focus?.kind === "saved_entry" && !raw.words && context.focus.entry.entryType !== "transfer"
+      ? transferRequest(context.focus.entry, context, null, null)
+      : { kind: "note", text: ACTION_COPY.transferIsALink };
+  }
 
   let words = groundedWords(raw.words, ground);
   if (words === null) return { kind: "clarify", question: ACTION_COPY.whichEntries, options: [] };
@@ -392,15 +428,23 @@ export function validateLinkTransfer(action: AskTurnAction, context: AskTurnCont
   if (context.focus?.kind !== "saved_entry") {
     return { kind: "note", text: ACTION_COPY.whichEntryForTransfer };
   }
-  const entry = context.focus.entry;
+  const raw = action.transfer ?? {};
+  return transferRequest(context.focus.entry, context, raw.wallet, raw.date);
+}
+
+// The saved entry in focus becomes (or is) a transfer: the route searches
+// for the other side with the Entries dialog's own rules (buildTransferLink).
+// A wallet the person named narrows it; `rawWallet` is the other account.
+function transferRequest(entry: AskTurnFocusEntry, context: AskTurnContext, rawWallet: unknown, rawDate: unknown): AskTurnReply {
   if (entry.linkedToTransfer) return { kind: "note", text: ACTION_COPY.alreadyLinked };
   if (entry.linkedToSplits) return { kind: "note", text: ACTION_COPY.onSplitsNotTransfer };
-  const raw = action.transfer ?? {};
-  const wallet = findWallet(raw.wallet, context);
+  const wallet = findWallet(rawWallet, context);
   if (wallet === "unknown") return walletQuestion(context);
-  const date = readDate(raw.date, context);
+  // The entry's own wallet is never the other side.
+  const other = wallet && wallet.id !== entry.accountId ? wallet : null;
+  const date = readDate(rawDate, context);
   if (!date.ok) return { kind: "clarify", question: COPY.dateQuestion, options: [] };
-  return { kind: "resolve", request: { type: "link_transfer", entry, walletId: wallet?.id ?? null, date: date.date } };
+  return { kind: "resolve", request: { type: "link_transfer", entry, walletId: other?.id ?? null, walletName: other?.name ?? "", date: date.date } };
 }
 
 export function validateSplitGroup(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
@@ -708,38 +752,83 @@ export interface AskTransferCandidate {
   linked: boolean;
 }
 
-// The other side of a transfer: an entry with the same amount in another
-// wallet within a month (loadTransferMatchCandidates), narrowed by the
-// wallet and day the person named. One: the card. Several: a question with
-// each as a chip. None: says so.
+// The other side of a transfer. `candidates` are the Entries transfer
+// dialog's own (loadTransferMatchCandidates: the same amount in another
+// wallet within a month, best first); the card pre-selects the best, offers
+// up to 3 more, and, for an entry that is not a transfer yet, "no other
+// side yet". A wallet the person named narrows them; with none there, the
+// card says so and offers the others. Pairing is the existing command,
+// which makes both sides transfers in one batch.
 export function buildTransferLink(request: Extract<AskResolveRequest, { type: "link_transfer" }>, candidates: AskTransferCandidate[]): AskTurnReply {
-  const open = candidates
-    .filter((candidate) => !candidate.linked)
-    .filter((candidate) => !request.walletId || candidate.accountId === request.walletId)
-    .filter((candidate) => !request.date || candidate.date === request.date);
-  if (!open.length) return { kind: "note", text: ACTION_COPY.noTransferMatch };
-  if (open.length > 1) {
-    return { kind: "clarify", question: ACTION_COPY.whichOtherSide, options: open.slice(0, 4).map((candidate) => `${candidate.accountName}, ${dayLabel(candidate.date)}`) };
-  }
-  const [other] = open;
   const entry = request.entry;
+  const open = candidates.filter((candidate) => !candidate.linked);
+  const { options: shown, walletMissed } = chooseTransferOptions(open, { walletId: request.walletId, date: request.date });
+  const becomes = entry.entryType !== "transfer";
   // The command stores a transfer from the side money left to the side it
   // reached; the entry in focus is the receiving side when it is money in.
   const focusIsIn = entry.entryType === "income" || entry.transferDirection === "in";
-  const fromEntryId = focusIsIn ? other.entryId : entry.entryId;
-  const toEntryId = focusIsIn ? entry.entryId : other.entryId;
-  const fromWallet = focusIsIn ? other.accountName : entry.accountName;
-  const toWallet = focusIsIn ? entry.accountName : other.accountName;
+  const direction = focusIsIn ? "in" : "out";
+  const categoryRow: AskChangeRow[] = entry.categoryName === "Transfer" ? [] : [{ field: "category", before: entry.categoryName, after: "Transfer" }];
+
+  const options: AskTransferOption[] = shown.map((other) => {
+    const fromEntryId = focusIsIn ? other.entryId : entry.entryId;
+    const toEntryId = focusIsIn ? entry.entryId : other.entryId;
+    return {
+      id: other.entryId,
+      rows: [
+        { field: "from", before: "", after: focusIsIn ? other.accountName : entry.accountName },
+        { field: "to", before: "", after: focusIsIn ? entry.accountName : other.accountName },
+        ...categoryRow
+      ],
+      entries: [entryRow(entry), { entryId: other.entryId, date: other.date, description: other.description, amountMinor: other.amountMinor, currency: other.currency, categoryName: other.categoryName, accountName: other.accountName }],
+      count: 2,
+      save: [{ path: "/api/transfers/link", body: { fromEntryId, toEntryId } }],
+      undo: null
+    };
+  });
+
+  const classify = (entryType: string, categoryName: string, withDirection: boolean) => ({
+    entryId: entry.entryId,
+    date: entry.date,
+    postDate: entry.postDate ?? null,
+    description: entry.description,
+    accountId: entry.accountId ?? "",
+    categoryName,
+    amountMinor: entry.amountMinor,
+    entryType,
+    ...(withDirection ? { transferDirection: direction } : entry.transferDirection ? { transferDirection: entry.transferDirection } : {}),
+    ownershipType: "direct",
+    ...(entry.ownerName ? { ownerName: entry.ownerName } : {}),
+    note: entry.note ?? ""
+  });
+  const none: AskTransferOption | null = becomes
+    ? {
+      id: "none",
+      rows: [
+        { field: focusIsIn ? "to" : "from", before: "", after: entry.accountName },
+        { field: focusIsIn ? "from" : "to", before: "", after: ACTION_COPY.notMatchedYet },
+        ...categoryRow
+      ],
+      entries: [entryRow(entry)],
+      count: 1,
+      save: [{ path: "/api/entries/update", body: classify("transfer", "Transfer", true) }],
+      undo: [{ path: "/api/entries/update", body: classify(entry.entryType, entry.categoryName, false) }]
+    }
+    : null;
+
+  const first = options[0] ?? none;
+  if (!first) return { kind: "note", text: ACTION_COPY.noTransferMatch };
   return change({
     type: "link_transfer",
     title: entry.description,
-    rows: [{ field: "from", before: "", after: fromWallet }, { field: "to", before: "", after: toWallet }, { field: "category", before: entry.categoryName, after: "Transfer" }],
-    entries: [entryRow(entry), { entryId: other.entryId, date: other.date, description: other.description, amountMinor: other.amountMinor, currency: other.currency, categoryName: other.categoryName, accountName: other.accountName }],
-    count: 2,
-    save: [{ path: "/api/transfers/link", body: { fromEntryId, toEntryId } }],
-    undo: null,
+    rows: first.rows,
+    entries: first.entries,
+    count: first.count,
+    save: first.save,
+    undo: first.undo,
     month: entry.date.slice(0, 7),
-    refresh: ["entries", "month", "summary"]
+    refresh: ["entries", "month", "summary"],
+    transfer: { options, none, walletMissed: walletMissed ? request.walletName : "" }
   });
 }
 
@@ -970,7 +1059,7 @@ export const ACTION_COPY = {
   alreadyLinked: "This entry is already linked as a transfer.",
   onSplitsNotTransfer: "This entry is on Splits, so it can't also be a transfer.",
   noTransferMatch: "No entry in another wallet has the same amount within a month of this one.",
-  whichOtherSide: "Which one is the other side of the transfer?",
+  notMatchedYet: "Not matched yet",
   groupName: "What should the group be called?",
   groupExists: (name: string) => `There's already a group called ${scrubName(name)}.`,
   moveNeedsSplit: "Only an entry that's on Splits can move to a group. Add it to Splits first.",

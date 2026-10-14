@@ -159,7 +159,7 @@ test("recategorise one: the entry in focus moves category through the category c
   assert.deepEqual(reply.change.undo, [{ path: "/api/entries/update-category", body: { changes: [{ entryId: "txn-1", fromCategoryName: "Taxi", categoryName: "Food & Drinks" }] } }]);
   assert.equal(turn("recategorise", { recategorise: { category: "Food & Drinks" } }, { focus: saved(), text: "food" }).kind, "note");
   assert.equal(turn("recategorise", { recategorise: { category: "Taxi" } }, { focus: saved({ entryType: "transfer" }), text: "taxi" }).kind, "note");
-  assert.equal(turn("recategorise", { recategorise: { category: "Transfer" } }, { focus: saved(), text: "transfer" }).kind, "note");
+  assert.equal(turn("recategorise", { recategorise: { category: "Transfer" } }, { focus: saved(), text: "transfer" }).request.type, "link_transfer");
   assert.equal(turn("recategorise", { recategorise: { category: "Pets" } }, { focus: saved(), text: "pets" }).kind, "clarify");
 });
 
@@ -244,21 +244,105 @@ function other(id, extra = {}) {
   return { entryId: id, date: "2026-10-10", description: "FAST TRANSFER", accountId: "acct-uob", accountName: "UOB One", amountMinor: 1_850, currency: "SGD", categoryName: "Other - Income", linked: false, ...extra };
 }
 
-test("link_transfer: one other side is the card (money leaves the entry in focus, reaches the other); several are asked as chips; none says so", () => {
+test("link_transfer: the best match is pre-selected (money leaves the entry in focus, reaches the other); up to 3 more are choices; an entry that is not a transfer yet can stay unmatched", () => {
   const request = turn("link_transfer", { transfer: { wallet: null, date: null } }, { focus: saved(), text: "this was a transfer" });
   assert.equal(request.kind, "resolve");
   const card = buildTransferLink(request.request, [other("t2")]);
+  assert.equal(card.kind, "change");
   assert.deepEqual(card.change.save, [{ path: "/api/transfers/link", body: { fromEntryId: "txn-1", toEntryId: "t2" } }]);
   assert.equal(card.change.undo, null);
   assert.deepEqual(card.change.rows.slice(0, 2), [{ field: "from", before: "", after: "Citi Rewards" }, { field: "to", before: "", after: "UOB One" }]);
+  assert.deepEqual(card.change.transfer.options.map((option) => option.id), ["t2"]);
+  assert.equal(card.change.transfer.walletMissed, "");
   const incoming = buildTransferLink({ ...request.request, entry: { ...ENTRY, entryType: "income" } }, [other("t2")]);
   assert.deepEqual(incoming.change.save[0].body, { fromEntryId: "t2", toEntryId: "txn-1" });
-  assert.deepEqual(buildTransferLink(request.request, [other("t2"), other("t3", { accountName: "DBS Joyce", accountId: "acct-dbs-joyce", date: "2026-10-11" })]), {
-    kind: "clarify", question: "Which one is the other side of the transfer?", options: ["UOB One, 10 Oct", "DBS Joyce, 11 Oct"]
-  });
-  assert.equal(buildTransferLink(request.request, [other("t2", { linked: true })]).kind, "note");
+
+  // Several: the best (first) is selected and pre-saved; at most 3 more follow.
+  const many = [
+    other("t2"),
+    other("t3", { accountName: "DBS Joyce", accountId: "acct-dbs-joyce", date: "2026-10-11" }),
+    other("t4", { accountName: "Tim cash", accountId: "acct-cash-tim", date: "2026-10-12" }),
+    other("t5", { date: "2026-10-13" }),
+    other("t6", { date: "2026-10-14" })
+  ];
+  const several = buildTransferLink(request.request, many);
+  assert.equal(several.kind, "change");
+  assert.deepEqual(several.change.transfer.options.map((option) => option.id), ["t2", "t3", "t4", "t5"]);
+  assert.deepEqual(several.change.save, several.change.transfer.options[0].save);
+  assert.deepEqual(several.change.transfer.options[1].save, [{ path: "/api/transfers/link", body: { fromEntryId: "txn-1", toEntryId: "t3" } }]);
+  assert.deepEqual(several.change.transfer.options[1].rows.slice(0, 2), [{ field: "from", before: "", after: "Citi Rewards" }, { field: "to", before: "", after: "DBS Joyce" }]);
+
+  // "No other side yet": the entry becomes an unmatched transfer through the entry update, and can be changed back.
+  const none = several.change.transfer.none;
+  assert.equal(none.id, "none");
+  assert.deepEqual(none.save, [{
+    path: "/api/entries/update",
+    body: { entryId: "txn-1", date: "2026-10-10", postDate: null, description: "GRAB RIDE 123", accountId: "acct-citi", categoryName: "Transfer", amountMinor: 1_850, entryType: "transfer", transferDirection: "out", ownershipType: "direct", ownerName: "Tim", note: "" }
+  }]);
+  assert.deepEqual(none.undo, [{
+    path: "/api/entries/update",
+    body: { entryId: "txn-1", date: "2026-10-10", postDate: null, description: "GRAB RIDE 123", accountId: "acct-citi", categoryName: "Food & Drinks", amountMinor: 1_850, entryType: "expense", ownershipType: "direct", ownerName: "Tim", note: "" }
+  }]);
+  assert.deepEqual(none.rows.slice(0, 2), [{ field: "from", before: "", after: "Citi Rewards" }, { field: "to", before: "", after: "Not matched yet" }]);
+  assertSavesThroughKnownCommands({ save: none.save, undo: none.undo });
+  const incomingNone = buildTransferLink({ ...request.request, entry: { ...ENTRY, entryType: "income" } }, []).change.transfer.none;
+  assert.equal(incomingNone.save[0].body.transferDirection, "in");
+
   assert.equal(turn("link_transfer", {}, { focus: saved({ linkedToTransfer: true }), text: "link it" }).kind, "note");
+  assert.equal(turn("link_transfer", {}, { focus: saved({ linkedToSplits: true }), text: "link it" }).kind, "note");
   assert.equal(turn("link_transfer", {}, { text: "link it" }).kind, "note");
+});
+
+test("link_transfer: no candidates offers only the unmatched transfer; an entry that already is an unmatched transfer has nothing to offer; a pair already linked is never offered", () => {
+  const request = turn("link_transfer", {}, { focus: saved(), text: "this is a transfer" }).request;
+  const nothing = buildTransferLink(request, []);
+  assert.equal(nothing.kind, "change");
+  assert.deepEqual(nothing.change.transfer.options, []);
+  assert.deepEqual(nothing.change.save, nothing.change.transfer.none.save);
+  assert.equal(nothing.change.count, 1);
+  const taken = buildTransferLink(request, [other("t2", { linked: true })]);
+  assert.deepEqual(taken.change.transfer.options, []);
+  const already = { ...request, entry: { ...ENTRY, entryType: "transfer", categoryName: "Transfer", transferDirection: "out" } };
+  assert.equal(buildTransferLink(already, []).kind, "note");
+  assert.equal(buildTransferLink(already, [other("t2")]).change.transfer.none, null);
+});
+
+test("link_transfer: a wallet the person named narrows the choices; with no match there the card says so and offers the others", () => {
+  const request = turn("link_transfer", { transfer: { wallet: "DBS Joyce", date: null } }, { focus: saved(), text: "transfer to DBS Joyce" });
+  assert.equal(request.request.walletId, "acct-dbs-joyce");
+  assert.equal(request.request.walletName, "DBS Joyce");
+  const both = [other("t2"), other("t3", { accountName: "DBS Joyce", accountId: "acct-dbs-joyce", date: "2026-10-11" })];
+  const narrowed = buildTransferLink(request.request, both);
+  assert.deepEqual(narrowed.change.transfer.options.map((option) => option.id), ["t3"]);
+  assert.equal(narrowed.change.transfer.walletMissed, "");
+  const missed = buildTransferLink(request.request, [other("t2"), other("t4", { accountName: "Tim cash", accountId: "acct-cash-tim" })]);
+  assert.deepEqual(missed.change.transfer.options.map((option) => option.id), ["t2", "t4"]);
+  assert.equal(missed.change.transfer.walletMissed, "DBS Joyce");
+  const empty = buildTransferLink(request.request, []);
+  assert.deepEqual(empty.change.transfer.options, []);
+  assert.equal(empty.change.transfer.walletMissed, "DBS Joyce");
+  // The entry's own wallet is never the other side, so naming it names nobody.
+  assert.equal(turn("link_transfer", { transfer: { wallet: "Citi Rewards", date: null } }, { focus: saved(), text: "transfer" }).request.walletId, null);
+  // A day the person named keeps only that day's rows.
+  const day = turn("link_transfer", { transfer: { wallet: null, date: "2026-10-11" } }, { focus: saved(), text: "transfer on the 11th" });
+  assert.deepEqual(buildTransferLink(day.request, both).change.transfer.options.map((option) => option.id), ["t3"]);
+});
+
+test("every Ask action that makes an entry a transfer runs the same search: edit type, edit category Transfer, recategorise to Transfer; a bulk recategorise to Transfer still cannot", () => {
+  const focus = saved();
+  const byType = turn("edit_saved_entry", { entry: { type: "transfer", to_wallet: "UOB One" } }, { focus, text: "this is a transfer to my UOB One" });
+  assert.deepEqual(byType, { kind: "resolve", request: { type: "link_transfer", entry: focus.entry, walletId: "acct-uob", walletName: "UOB One", date: null } });
+  const byEdit = turn("edit_draft", { entry: { type: "transfer" } }, { focus, text: "make it a transfer" });
+  assert.equal(byEdit.request.type, "link_transfer");
+  assert.equal(byEdit.request.walletId, null);
+  assert.equal(turn("edit_saved_entry", { entry: { category: "Transfer" } }, { focus, text: "make it a transfer" }).request.type, "link_transfer");
+  const byCategory = turn("recategorise", { recategorise: { category: "Transfer" } }, { focus, text: "make it Transfer" });
+  assert.equal(byCategory.request.type, "link_transfer");
+  assert.equal(turn("recategorise", { recategorise: { category: "Transfer", words: "grab" } }, { focus, text: "make all grab Transfer" }).kind, "note");
+  assert.equal(turn("edit_saved_entry", { entry: { type: "transfer" } }, { focus: saved({ linkedToTransfer: true }), text: "transfer" }).kind, "note");
+  assert.equal(turn("edit_saved_entry", { entry: { type: "transfer", to_wallet: "no such bank" } }, { focus, text: "transfer to no such bank" }).kind, "clarify");
+  // An entry that already is a transfer keeps editing as before.
+  assert.equal(turn("edit_saved_entry", { entry: { type: "transfer", amount: "5" } }, { focus: saved({ entryType: "transfer", categoryName: "Transfer" }), text: "make it 5" }).change.type, "edit_entry");
 });
 
 // --- split groups ----------------------------------------------------------

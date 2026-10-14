@@ -1,4 +1,5 @@
 import { rebalanceSplitSharesForTotal } from "../domain/split-allocation";
+import { daysBetween, selectTransferCandidates } from "../domain/transfer-candidates";
 import { formatEditableMinorInput } from "./formatters";
 import { todayInAppTimeZone } from "./app-dates";
 
@@ -351,61 +352,25 @@ export function getTransferWallets(entry) {
   };
 }
 
+// The Entries transfer dialog's candidates: the shared rules
+// (src/domain/transfer-candidates.ts), the same ones the server's Recheck
+// matches and Ask use.
 export function getTransferMatchCandidates(entry, entries) {
-  const amountMinor = entry.totalAmountMinor ?? entry.amountMinor;
-
-  // Transfer matching stays heuristic: amount first, then opposite direction and date proximity.
-  return entries
-    .filter((candidate) => {
-      if (candidate.id === entry.id) {
-        return false;
-      }
-
-      const candidateAmountMinor = candidate.totalAmountMinor ?? candidate.amountMinor;
-      if (candidateAmountMinor !== amountMinor) {
-        return false;
-      }
-
-      if (
-        (candidate.accountId && entry.accountId && candidate.accountId === entry.accountId)
-        || (!candidate.accountId && !entry.accountId && candidate.accountName === entry.accountName)
-      ) {
-        return false;
-      }
-
-      return true;
-    })
-    .sort((left, right) => {
-      const leftOpposite = left.transferDirection && entry.transferDirection
-        ? left.transferDirection !== entry.transferDirection
-        : false;
-      const rightOpposite = right.transferDirection && entry.transferDirection
-        ? right.transferDirection !== entry.transferDirection
-        : false;
-      if (leftOpposite !== rightOpposite) {
-        return leftOpposite ? -1 : 1;
-      }
-
-      const leftGap = Math.abs(daysBetween(entry.date, left.date));
-      const rightGap = Math.abs(daysBetween(entry.date, right.date));
-      if (leftGap !== rightGap) {
-        return leftGap - rightGap;
-      }
-
-      return left.accountName.localeCompare(right.accountName);
-    })
-    .slice(0, 5);
+  return selectTransferCandidates({
+    id: entry.id,
+    date: entry.date,
+    accountId: entry.accountId,
+    accountName: entry.accountName,
+    amountMinor: entry.totalAmountMinor ?? entry.amountMinor,
+    transferDirection: entry.transferDirection
+  }, entries, 5);
 }
 
 function formatTransferWalletLabel({ accountName, accountOwnerLabel }) {
   return accountOwnerLabel ? `${accountName} - ${accountOwnerLabel}` : accountName;
 }
 
-export function daysBetween(left, right) {
-  const leftDate = new Date(`${left}T00:00:00Z`);
-  const rightDate = new Date(`${right}T00:00:00Z`);
-  return Math.round((rightDate.getTime() - leftDate.getTime()) / 86400000);
-}
+export { daysBetween };
 
 export function normalizeMatchText(value) {
   return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

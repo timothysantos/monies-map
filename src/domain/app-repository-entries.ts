@@ -5,6 +5,7 @@ import { getMonthBounds, groupSplits } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
 import { homeCurrencyShareAmounts } from "./split-allocation";
 import { isCurrencyMatch } from "./split-currency";
+import { selectTransferCandidates, transferCandidateWindow } from "./transfer-candidates";
 import type { EntryDto, LinkedTransferDto } from "../types/dto";
 
 export async function loadEntries(db: D1Database, month = getCurrentMonthKey()): Promise<EntryDto[]> {
@@ -23,9 +24,14 @@ export async function loadEntriesForMonths(db: D1Database, months: string[]): Pr
   return loadEntriesForDateRange(db, monthStart, monthEnd);
 }
 
+// The other-side candidates the Entries transfer dialog shows
+// (selectTransferCandidates is the one rule set). `transferDirection`
+// ranks as if the entry already had that direction: Ask asks it for an
+// entry that is about to become a transfer.
 export async function loadTransferMatchCandidates(
   db: D1Database,
-  entryId: string
+  entryId: string,
+  options: { transferDirection?: "in" | "out" } = {}
 ): Promise<{ entry: EntryDto | null; candidates: EntryDto[] }> {
   const entryRow = await db
     .prepare(`
@@ -40,55 +46,52 @@ export async function loadTransferMatchCandidates(
     return { entry: null, candidates: [] };
   }
 
-  const rangeStart = shiftDate(entryRow.transaction_date, -31);
-  const rangeEndExclusive = shiftDate(entryRow.transaction_date, 32);
-  const entries = await loadEntriesForDateRange(db, rangeStart, rangeEndExclusive);
+  const window = transferCandidateWindow(entryRow.transaction_date);
+  const entries = await loadEntriesForDateRange(db, window.start, window.endExclusive);
   const entry = entries.find((candidate) => candidate.id === entryId) ?? null;
   if (!entry) {
     return { entry: null, candidates: [] };
   }
 
-  const amountMinor = entry.totalAmountMinor ?? entry.amountMinor;
-  const candidates = entries
-    .filter((candidate) => {
-      if (candidate.id === entry.id) {
-        return false;
-      }
-
-      const candidateAmountMinor = candidate.totalAmountMinor ?? candidate.amountMinor;
-      if (candidateAmountMinor !== amountMinor) {
-        return false;
-      }
-
-      if (candidate.accountId && entry.accountId && candidate.accountId === entry.accountId) {
-        return false;
-      }
-
-      return true;
-    })
-    .sort((left, right) => {
-      const leftOpposite = left.transferDirection && entry.transferDirection
-        ? left.transferDirection !== entry.transferDirection
-        : false;
-      const rightOpposite = right.transferDirection && entry.transferDirection
-        ? right.transferDirection !== entry.transferDirection
-        : false;
-      if (leftOpposite !== rightOpposite) {
-        return leftOpposite ? -1 : 1;
-      }
-
-      const leftGap = Math.abs(daysBetween(entry.date, left.date));
-      const rightGap = Math.abs(daysBetween(entry.date, right.date));
-      if (leftGap !== rightGap) {
-        return leftGap - rightGap;
-      }
-
-      return `${left.accountName} ${left.accountOwnerLabel ?? ""}`
-        .localeCompare(`${right.accountName} ${right.accountOwnerLabel ?? ""}`);
-    })
-    .slice(0, 10);
+  const candidates = selectTransferCandidates({
+    id: entry.id,
+    date: entry.date,
+    accountId: entry.accountId,
+    accountName: entry.accountName,
+    amountMinor: entry.totalAmountMinor ?? entry.amountMinor,
+    transferDirection: entry.transferDirection ?? options.transferDirection ?? null
+  }, entries);
 
   return { entry, candidates };
+}
+
+// The same search for an entry that is not saved yet (an Ask draft): the
+// rows around its date, ranked by the same rules.
+export async function loadTransferCandidatesForDraft(
+  db: D1Database,
+  subject: { date: string; accountId: string; amountMinor: number; transferDirection?: "in" | "out" }
+): Promise<EntryDto[]> {
+  const window = transferCandidateWindow(subject.date);
+  const entries = await loadEntriesForDateRange(db, window.start, window.endExclusive);
+  return selectTransferCandidates({ ...subject, transferDirection: subject.transferDirection ?? null }, entries);
+}
+
+// Which of these entries already belong to a transfer pair or a split: the
+// pair command would refuse to take them from it, so a card never offers
+// them as the other side.
+export async function loadTakenTransferEntryIds(db: D1Database, candidates: EntryDto[]): Promise<Set<string>> {
+  const taken = new Set(candidates.filter((candidate) => candidate.linkedSplitExpenseId).map((candidate) => candidate.id));
+  if (!candidates.length) {
+    return taken;
+  }
+  const linked = await db
+    .prepare(`SELECT id FROM transactions WHERE household_id = ? AND transfer_group_id IS NOT NULL AND id IN (${candidates.map(() => "?").join(", ")})`)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...candidates.map((candidate) => candidate.id))
+    .all<{ id: string }>();
+  for (const row of linked.results) {
+    taken.add(row.id);
+  }
+  return taken;
 }
 
 // Ids of the entries in [rangeStart, rangeEndExclusive) that belong to a
@@ -372,18 +375,6 @@ function buildLinkedSplitShareMap(rows: LinkedSplitShareRow[]) {
   }
 
   return shareMap;
-}
-
-function daysBetween(left: string, right: string) {
-  const leftDate = new Date(`${left}T00:00:00Z`);
-  const rightDate = new Date(`${right}T00:00:00Z`);
-  return Math.round((rightDate.getTime() - leftDate.getTime()) / 86400000);
-}
-
-function shiftDate(value: string, days: number) {
-  const date = new Date(`${value}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 function getEntryBankCertificationStatus(row: {

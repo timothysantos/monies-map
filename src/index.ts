@@ -15,6 +15,7 @@ import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
 import { buildSplitSuggestionDto, readSplitSuggestionRequest, SplitSuggestionEntryNotFound } from "./domain/pages/split-suggestion";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
+import { buildTransferDraftCandidatesDto, readTransferDraftQuery } from "./domain/pages/transfer-draft-candidates";
 import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
 import { buildSummaryPageDto } from "./domain/pages/summary-page";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
@@ -319,6 +320,16 @@ export default {
         ok: true,
         ...(await loadTransferMatchCandidates(env.DB, entryId))
       });
+    }
+
+    // The other-side candidates for a transfer that is not saved yet (an Ask
+    // draft): the Entries transfer dialog's own search, read only.
+    if (url.pathname === "/api/transfers/draft-candidates" && request.method === "GET") {
+      const query = readTransferDraftQuery(url.searchParams);
+      if (!query) {
+        return json({ ok: false, error: "Missing or invalid transfer draft fields" }, 400);
+      }
+      return json({ ok: true, candidates: await buildTransferDraftCandidatesDto(env.DB, query) });
     }
 
     // Read-only skew candidates for a view and month (DOMAIN.md "Skew
