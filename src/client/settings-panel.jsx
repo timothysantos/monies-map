@@ -796,13 +796,15 @@ export function SettingsPanel({
     }
   }
 
+  // The confirm popover (DeleteRowButton) owns the error: it stays open and
+  // shows the message beside the button, where the person is looking, instead
+  // of the page-top banner. Confirming again retries; deleting a rule that is
+  // already gone succeeds, so a stale row clears on that refresh.
   async function handleDeleteCategoryRule(rule) {
     setIsSubmitting(true);
     try {
       await deleteCategoryMatchRule(rule.id);
       await onRefresh(buildSettingsRefreshPlan("category_rule_deleted"));
-    } catch (error) {
-      setSettingsActionError(error instanceof Error ? error.message : "Failed to delete category match rule");
     } finally {
       setIsSubmitting(false);
     }
