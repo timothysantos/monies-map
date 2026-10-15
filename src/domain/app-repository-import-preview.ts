@@ -55,6 +55,8 @@ import type {
   StatementFixDto
 } from "../types/dto";
 import { cleanStatementNotices } from "./statement-notices";
+import { attachInvestmentTransferMatches } from "./import-investment-statement";
+import { buildImportPreviewInvestmentValues, isInvestmentValueCheckpoint } from "./import-investment-values";
 
 export async function buildImportPreview(
   db: D1Database,
@@ -137,12 +139,21 @@ export async function buildImportPreview(
     accountsById
   });
   const accountByStatementName = new Map(statementAccountMatches.map((match) => [match.detectedAccountName, accountsById.get(match.accountId)!]));
-  const statementCheckpoints = (input.statementCheckpoints ?? []).map((checkpoint) => {
+  const resolvedCheckpoints = (input.statementCheckpoints ?? []).map((checkpoint) => {
     const match = accountByStatementName.get(checkpoint.detectedAccountName ?? checkpoint.accountName);
     return match && !checkpoint.accountId
       ? { ...checkpoint, accountId: match.id, accountName: match.name, detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName }
       : checkpoint;
   });
+  // An investment statement's value is not a bank balance: it is shown and
+  // saved apart and never reaches the statement reconciliation below.
+  const valueCheckpoints = resolvedCheckpoints.filter(isInvestmentValueCheckpoint).map((checkpoint) => {
+    const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
+    return account && !checkpoint.accountId
+      ? { ...checkpoint, accountId: account.id, accountName: account.name, detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName }
+      : checkpoint;
+  });
+  const statementCheckpoints = resolvedCheckpoints.filter((checkpoint) => !isInvestmentValueCheckpoint(checkpoint));
   const statementCards = statementCheckpoints.flatMap((checkpoint) => {
     const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
     return account ? [{
@@ -308,6 +319,18 @@ export async function buildImportPreview(
     throw new Error(`Import validation failed. ${validationErrors.join(" | ")}`);
   }
 
+  // Investment statements: pair each contribution with the bank entry that
+  // paid it, and say what value the statement will save. An account that
+  // cannot be found yet joins the unknown accounts, so the statement can be
+  // mapped or the account created, as for a bank statement.
+  attachInvestmentTransferMatches({ previewRows, valueCheckpoints, ledgerRows, accountsById });
+  const investmentValues = await buildImportPreviewInvestmentValues(db, valueCheckpoints, new Map(accounts.map((account) => [account.id, account])));
+  for (const value of investmentValues) {
+    if (!value.accountId) {
+      unknownAccounts.add(value.detectedAccountName);
+    }
+  }
+
   const overlapImports = await findOverlappingImports(db, previewRows);
   const statementChainBreaks = await loadStatementChainBreaks(db, statementCheckpoints);
   autoIncludeDuplicateMatchesExplainedByStatementBalance({
@@ -377,6 +400,7 @@ export async function buildImportPreview(
     accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter((accountName): accountName is string => Boolean(accountName)))).sort(),
     reconciliationCandidates,
     statementReconciliations,
+    ...(investmentValues.length ? { investmentValues } : {}),
     exceptionSummary,
     ...(statementDiagnosis ? { statementDiagnosis } : {}),
     ...(statementAccountMatches.length ? { statementAccountMatches } : {}),

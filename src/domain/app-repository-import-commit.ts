@@ -29,6 +29,20 @@ import {
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
+import {
+  buildInvestmentValueCleanupStatement,
+  buildInvestmentValueRollbackStatements,
+  buildInvestmentValueSaveStatements,
+  isInvestmentValueCheckpoint,
+  readInvestmentValueSave
+} from "./import-investment-values";
+import {
+  buildTransferLinkCleanupStatement,
+  buildTransferLinkRollbackStatements,
+  buildTransferLinkStatements,
+  loadTransferLinkPlan,
+  type TransferLinkPlan
+} from "./import-transfer-links";
 import { buildEstimateReopen, buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, findLaterNoLongerListedChange } from "./import-no-longer-listed-entries";
 import {
   assertStatementFixesMatchCertification,
@@ -497,10 +511,15 @@ export async function commitImportBatch(
     accountRowsByName.set(account.account_name, current);
   }
   const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
+  // An investment statement's value is saved apart from the bank balance
+  // checkpoints: it is never certified, reconciled or part of the statement
+  // chain, so everything below that reads checkpoints sees only the others.
+  const valueCheckpoints = (input.statementCheckpoints ?? []).filter(isInvestmentValueCheckpoint);
+  const balanceCheckpoints = (input.statementCheckpoints ?? []).filter((checkpoint) => !isInvestmentValueCheckpoint(checkpoint));
   const statementFixPlan = await loadStatementFixPlan(db, {
     fixes: input.statementFixes ?? [],
     sourceType: input.sourceType ?? "csv",
-    statementCards: (input.statementCheckpoints ?? []).flatMap((checkpoint) => {
+    statementCards: balanceCheckpoints.flatMap((checkpoint) => {
       const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
       return account ? [{
         accountId: account.id,
@@ -519,7 +538,36 @@ export async function commitImportBatch(
     deletedIds: new Set<string>(),
     upserts: new Map<string, Omit<CertificateLedgerRow, "import_id" | "bank_certification_status">>()
   };
-  const savesCertificates = isOfficialStatementImport && Boolean(input.statementCheckpoints?.length);
+  const savesCertificates = isOfficialStatementImport && balanceCheckpoints.length > 0;
+  // Statement rows paired with a bank entry already in the ledger, checked
+  // now against the ledger as it is.
+  const transferLinkPlans = new Map<string, TransferLinkPlan>();
+  for (const row of input.rows) {
+    if (!row.transferMatch || row.commitStatus === "skipped" || row.commitStatus === "needs_review") {
+      continue;
+    }
+    const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
+    if (!account || account.account_kind !== "investment" || row.entryType !== "transfer" || !row.transferDirection) {
+      throw new Error("A statement row can only be paired with a bank entry when it moves money in or out of an investment account.");
+    }
+    transferLinkPlans.set(row.rowId, await loadTransferLinkPlan(db, {
+      match: row.transferMatch,
+      rowAccountId: account.id,
+      rowAmountMinor: row.amountMinor,
+      rowDirection: row.transferDirection
+    }));
+  }
+  // The values to save, checked before anything is written.
+  const investmentValueSaves = valueCheckpoints.map((checkpoint) => {
+    const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
+    if (!account) {
+      throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
+    }
+    if (account.account_kind !== "investment") {
+      throw new Error(`${account.account_name} is not an investment account, so it cannot take an investment statement. Choose or create an investment account.`);
+    }
+    return readInvestmentValueSave(account.id, checkpoint);
+  });
   // Snapshots of the rows a statement supersedes, taken before the commit
   // deletes them so a rollback can restore them as they were.
   const supersededSnapshotsByReconciliation = new Map<ImportPreviewStatementReconciliationDto, SupersededLedgerRowSnapshot[]>();
@@ -861,10 +909,52 @@ export async function commitImportBatch(
     });
 
     monthsToRecalculate.add(row.date.slice(0, 7));
+
+    // A statement row paired with its bank entry becomes one transfer with it.
+    const linkPlan = transferLinkPlans.get(row.rowId);
+    if (linkPlan) {
+      const transferCategoryId = categoryIdsByName.get("Transfer");
+      if (!transferCategoryId) {
+        throw new Error("Transfer category not found");
+      }
+      for (const statement of buildTransferLinkStatements(db, {
+        importId,
+        plan: linkPlan,
+        rowTransactionId: transactionId,
+        rowDirection: row.transferDirection!,
+        transferCategoryId,
+        sourceLabel: input.sourceLabel
+      })) {
+        write(statement);
+      }
+      monthsToRecalculate.add(linkPlan.counterpart.transaction_date.slice(0, 7));
+    }
   }
   assertStatementFixesMatchCertification(statementFixPlan, certifiedEntryIds);
 
-  for (const checkpoint of input.statementCheckpoints ?? []) {
+  for (const statement of await buildInvestmentValueSaveStatements(db, importId, investmentValueSaves)) {
+    write(statement);
+  }
+  // The digits of an investment account's number identify it for the next
+  // statement, as a card's last four do.
+  for (const checkpoint of valueCheckpoints) {
+    const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
+    if (account && isOfficialStatementImport && checkpoint.accountLast4 && /^\d{4}$/.test(checkpoint.accountLast4)) {
+      write(db
+        .prepare(`
+          UPDATE accounts
+          SET last4 = ?
+          WHERE household_id = ? AND id = ? AND last4 IS NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM accounts AS other
+              WHERE other.household_id = accounts.household_id AND other.last4 = ? AND other.id != accounts.id
+            )
+        `)
+        .bind(checkpoint.accountLast4, DEFAULT_HOUSEHOLD_ID, account.id, checkpoint.accountLast4));
+    }
+  }
+
+  for (const checkpoint of balanceCheckpoints) {
     const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
     if (!account) {
       throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
@@ -924,14 +1014,14 @@ export async function commitImportBatch(
     }
   }
 
-  if (savesCertificates && input.statementCheckpoints) {
+  if (savesCertificates) {
     const ledgerRowsAfterCommit = [
       ...certificateLedgerRows.filter((row) => !pendingLedger.deletedIds.has(row.id) && !pendingLedger.upserts.has(row.id)),
       ...pendingLedger.upserts.values()
     ];
     for (const statement of buildStatementReconciliationCertificateStatements(db, {
       importId,
-      checkpoints: input.statementCheckpoints,
+      checkpoints: balanceCheckpoints,
       committedRows: input.rows,
       statementControlRows: input.statementControlRows ?? input.rows,
       statementReconciliations: input.statementReconciliations ?? [],
@@ -944,7 +1034,7 @@ export async function commitImportBatch(
       write(statement);
     }
     for (const statement of buildStatementChainBreakClearStatements(db, {
-      checkpoints: input.statementCheckpoints,
+      checkpoints: balanceCheckpoints,
       statementControlRows: input.statementControlRows ?? input.rows,
       accountsById,
       accountRowsByName
@@ -1404,6 +1494,10 @@ export async function rollbackImportBatch(
     .map((fix) => [fix.transaction_id, fix.from_account_id])));
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
   const noLongerListedRestore = await buildNoLongerListedEntryRestore(db, input.importId);
+  // Bank entries this import paired with a statement row go back as they were;
+  // a value it replaced is put back.
+  const transferLinkRestore = await buildTransferLinkRollbackStatements(db, input.importId);
+  const investmentValueRestore = await buildInvestmentValueRollbackStatements(db, input.importId);
   const promotedRestore = importRecord.source_type === "pdf"
     ? { statements: [], months: new Set<string>(), amountChanges: [] }
     : await buildPromotedEntryRestore(db, input.importId);
@@ -1442,6 +1536,7 @@ export async function rollbackImportBatch(
     ...certifiedRestore.months,
     ...supersededRestore.months,
     ...noLongerListedRestore.months,
+    ...transferLinkRestore.months,
     ...promotedRestore.months,
     ...removedEntryMonths.results.flatMap((row) => [row.event_month, row.cleared_month])
   ]);
@@ -1456,6 +1551,8 @@ export async function rollbackImportBatch(
     ...fixRestore.statements,
     ...supersededRestore.statements,
     ...noLongerListedRestore.statements,
+    ...transferLinkRestore.statements,
+    ...investmentValueRestore,
     // Before the cleanup: a restored entry no longer carries this import's
     // id, so the cleanup neither unlinks its splits nor deletes it.
     ...promotedRestore.statements,
@@ -2596,6 +2693,8 @@ async function buildImportBatchCleanupStatements(db: D1Database, importId: strin
   return [
     ...await buildStatementImportMetadataCleanupStatements(db, importId),
     buildStatementFixCleanupStatement(db, importId),
+    buildTransferLinkCleanupStatement(db, importId),
+    buildInvestmentValueCleanupStatement(db, importId),
     buildStatementCertificationResetStatement(db, importId),
     db
       .prepare(`

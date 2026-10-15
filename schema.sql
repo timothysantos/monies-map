@@ -113,6 +113,61 @@ CREATE TABLE IF NOT EXISTS import_statement_fixes (
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
 );
 
+-- What an investment statement says an account was worth at its period end
+-- (DOMAIN.md, Investment Statement Value). Not a bank balance: it is never
+-- reconciled against ledger activity and never feeds the certify logic, so it
+-- lives apart from account_balance_checkpoints. One row per account and
+-- month; a revised statement replaces it and keeps the replaced values in
+-- previous_value_json for the import's rollback.
+-- Migration (additive, safe to run again): CREATE TABLE/INDEX IF NOT EXISTS only.
+CREATE TABLE IF NOT EXISTS investment_statement_values (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  value_month TEXT NOT NULL,
+  as_of_date TEXT NOT NULL,
+  total_assets_minor INTEGER NOT NULL,
+  market_value_minor INTEGER NOT NULL,
+  cash_minor INTEGER NOT NULL DEFAULT 0,
+  income_minor INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'SGD',
+  account_reference TEXT,
+  import_id TEXT NOT NULL,
+  previous_value_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
+  UNIQUE (account_id, value_month)
+);
+
+CREATE INDEX IF NOT EXISTS idx_investment_statement_values_account_date
+  ON investment_statement_values (household_id, account_id, as_of_date);
+
+-- The transfer links an import commit made between a statement row and an
+-- entry already in the ledger (an iFAST contribution and the bank's GIRO
+-- row), with the bank entry's earlier classification so a rollback puts it
+-- back as it was.
+CREATE TABLE IF NOT EXISTS import_transfer_links (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  import_id TEXT NOT NULL,
+  transfer_group_id TEXT NOT NULL,
+  transaction_id TEXT NOT NULL,
+  counterpart_transaction_id TEXT NOT NULL,
+  previous_entry_type TEXT NOT NULL,
+  previous_transfer_direction TEXT,
+  previous_category_id TEXT,
+  previous_offsets_category INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_transfer_links_import
+  ON import_transfer_links (household_id, import_id);
+
 -- Entries an activity export removed because the bank no longer lists them
 -- (a pending hold it released), for the export's rollback.
 CREATE TABLE IF NOT EXISTS import_no_longer_listed_entries (

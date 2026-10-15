@@ -121,6 +121,9 @@ export interface SummaryAccountPillDto {
   accountCharges?: AccountChargeDto[];
   ownTransfersAsIncome?: OwnTransferIncomeDto[];
   upcomingShortfall?: UpcomingShortfallDto;
+  // Investment accounts only: what the latest statement says the account was
+  // worth on its date (a statement figure, not a ledger balance).
+  investmentValue?: { valueMinor: number; asOfDate: string };
 }
 
 export interface CardNoticesDto {
@@ -698,6 +701,9 @@ export interface ImportPreviewRowDto {
   // A mid-cycle row dated inside an already confirmed statement period for
   // its account: whether that statement covers it.
   certifiedStatement?: { checkpointMonth: string; covered: boolean };
+  // An investment statement's contribution or withdrawal: the bank entry it
+  // is the other side of. The commit links the two as one transfer.
+  transferMatch?: ImportTransferMatchDto;
 }
 
 // An entry an earlier activity export created that this one, covering its
@@ -748,6 +754,8 @@ export interface ImportPreviewDto {
   accountNames: string[];
   reconciliationCandidates: ReconciliationCandidateDto[];
   statementReconciliations: ImportPreviewStatementReconciliationDto[];
+  // Investment statements only: the value each one saves for its account.
+  investmentValues?: ImportPreviewInvestmentValueDto[];
   exceptionSummary: ImportPreviewExceptionDto[];
   // Deterministic explanation of each statement card's difference, with the
   // fixes the user can approve. Present only for statement imports.
@@ -932,7 +940,49 @@ export interface StatementCheckpointDraftDto {
   paymentDueDate?: string;
   minimumPaymentMinor?: number;
   notices?: StatementNoticeDto[];
+  // An investment statement: what the account was worth at period end. Such a
+  // checkpoint is saved as an investment statement value, never as a bank
+  // balance, and is not reconciled (DOMAIN.md, "Investment Statement Value").
+  investmentValue?: StatementInvestmentValueDto;
   note?: string;
+}
+
+export interface StatementInvestmentValueDto {
+  // The account number printed on the statement, which the bank rows paying
+  // it carry in their text.
+  accountReference: string;
+  currency: string;
+  totalAssetsMinor: number;
+  marketValueMinor: number;
+  cashMinor: number;
+  incomeMinor: number;
+}
+
+// The bank entry a statement movement pairs with as one transfer.
+export interface ImportTransferMatchDto {
+  transactionId: string;
+  accountId: string;
+  accountName: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  // "reference": the bank row names the statement's account number.
+  basis: "reference" | "amount_and_date";
+}
+
+// What an investment statement import will save for one account and month.
+export interface ImportPreviewInvestmentValueDto {
+  accountId?: string;
+  accountName: string;
+  detectedAccountName: string;
+  accountKind?: string;
+  checkpointMonth: string;
+  asOfDate: string;
+  totalAssetsMinor: number;
+  cashMinor: number;
+  currency: string;
+  // A value already saved for the month, which this statement replaces.
+  replaces?: { asOfDate: string; totalAssetsMinor: number };
 }
 
 // The bank's own notice about a card, printed on its statement.

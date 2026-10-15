@@ -338,6 +338,8 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM statement_reconciliation_certificates",
     "DELETE FROM statement_chain_breaks",
     "DELETE FROM import_statement_fixes",
+    "DELETE FROM investment_statement_values",
+    "DELETE FROM import_transfer_links",
     "DELETE FROM import_no_longer_listed_entries",
     "DELETE FROM statement_corrections",
     "DELETE FROM import_rows",

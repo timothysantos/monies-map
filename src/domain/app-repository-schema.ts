@@ -471,6 +471,65 @@ async function ensureDemoSchemaOnce(db: D1Database) {
     `)
     .run();
 
+  // What an investment statement says an account was worth (never a bank
+  // balance), and the transfer links an import made, for its rollback.
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS investment_statement_values (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        value_month TEXT NOT NULL,
+        as_of_date TEXT NOT NULL,
+        total_assets_minor INTEGER NOT NULL,
+        market_value_minor INTEGER NOT NULL,
+        cash_minor INTEGER NOT NULL DEFAULT 0,
+        income_minor INTEGER NOT NULL DEFAULT 0,
+        currency TEXT NOT NULL DEFAULT 'SGD',
+        account_reference TEXT,
+        import_id TEXT NOT NULL,
+        previous_value_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+        FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
+        UNIQUE (account_id, value_month)
+      )
+    `)
+    .run();
+  await db
+    .prepare(`
+      CREATE INDEX IF NOT EXISTS idx_investment_statement_values_account_date
+      ON investment_statement_values (household_id, account_id, as_of_date)
+    `)
+    .run();
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS import_transfer_links (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        import_id TEXT NOT NULL,
+        transfer_group_id TEXT NOT NULL,
+        transaction_id TEXT NOT NULL,
+        counterpart_transaction_id TEXT NOT NULL,
+        previous_entry_type TEXT NOT NULL,
+        previous_transfer_direction TEXT,
+        previous_category_id TEXT,
+        previous_offsets_category INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+      )
+    `)
+    .run();
+  await db
+    .prepare(`
+      CREATE INDEX IF NOT EXISTS idx_import_transfer_links_import
+      ON import_transfer_links (household_id, import_id)
+    `)
+    .run();
+
   // Entries an activity export removed because the bank no longer lists
   // them, for the export's rollback.
   await db
