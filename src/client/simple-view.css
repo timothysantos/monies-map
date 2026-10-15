@@ -86,8 +86,39 @@
   border-top: 0;
 }
 
+/* The month name opens the month. Its base style (summary-intent-outcome.css)
+   is not loaded with the Simple view, so the flat row-link look is set here:
+   no native button fill or border, the label then its chevron at the start
+   of the left column, a 44px target across that whole column. */
 .earned-spent-row .summary-month-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+  min-height: 44px;
   margin: 0 0 0 -4px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.earned-spent-row .summary-month-link svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.earned-spent-row .summary-month-link:hover,
+.earned-spent-row .summary-month-link:focus-visible {
+  color: var(--accent-strong);
 }
 
 .earned-spent-result {
