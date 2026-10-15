@@ -160,7 +160,7 @@ test("saving goes through the existing create route, then the existing split lin
     amountMinor: 3860, totalAmountMinor: 3860, entryType: "expense", ownershipType: "direct", ownerName: "Tim", note: "", splits: [],
     addToSplits: true, splitGroupId: "split-group-none"
   }, { fetchImpl: fetch.impl });
-  assert.deepEqual(result, { ok: true, error: "", entryId: "txn-9", splitExpenseId: "split-9", splitExpenseMonth: "2026-09", splitAddError: "" });
+  assert.deepEqual(result, { ok: true, error: "", entryId: "txn-9", splitExpenseId: "split-9", splitExpenseMonth: "2026-09", splitAddError: "", time: null });
   assert.deepEqual(fetch.calls.map((call) => call.url), ["/api/entries/create", "/api/splits/expenses/from-entry"]);
   assert.equal(fetch.calls[0].body.amountMinor, 3860);
   assert.equal(fetch.calls[0].body.ownerName, "Tim");

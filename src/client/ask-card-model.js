@@ -575,6 +575,8 @@ export function markCardSaved(card, result) {
       // Saved by Ask, so a provisional entry until a statement certifies it.
       addedBy: "ask",
       bankCertificationStatus: "manual_provisional",
+      // The local clock time the server saved (today's entries only).
+      time: result.time ?? null,
       splitExpenseId: result.splitExpenseId ?? null,
       splitExpenseMonth: result.splitExpenseMonth ?? null,
       splitGroupId: result.splitGroupId ?? card.share.splitGroupId ?? "",
@@ -621,6 +623,7 @@ export function cardFromSavedEntry(entry, context) {
       addedBy: entry.addedBy ?? null,
       bankCertificationStatus: entry.bankCertificationStatus ?? null,
       bankCertificationLabel: entry.bankCertificationLabel ?? "",
+      time: entry.time ?? null,
       splitExpenseId: entry.linkedSplitExpenseId ?? null,
       splitExpenseMonth: entry.linkedSplitExpenseId ? entry.date.slice(0, 7) : null,
       splitGroupId: "",

@@ -240,13 +240,13 @@ test("a row with its own control is a label around it, so the control keeps the 
 });
 
 test("More details names what it holds while closed and shows its rows only when open", () => {
-  const closed = render(h(MoreDetails, { summary: "Posted date, type", open: false, onOpenChange: () => {} }, h(DetailRow, { label: "Posted date", value: "Not set" })));
+  const closed = render(h(MoreDetails, { summary: "Time, posted date, type", open: false, onOpenChange: () => {} }, h(DetailRow, { label: "Posted date", value: "Not set" })));
   assert.match(closed, /aria-expanded="false"/);
   assert.match(closed, /<span class="lsd-row-label">More details<\/span>/);
-  assert.match(closed, /<span class="lsd-row-hint">Posted date, type<\/span>/);
+  assert.match(closed, /<span class="lsd-row-hint">Time, posted date, type<\/span>/);
   assert.doesNotMatch(closed, />Not set</);
 
-  const open = render(h(MoreDetails, { summary: "Posted date, type", open: true, onOpenChange: () => {} }, h(DetailRow, { label: "Posted date", value: "Not set" })));
+  const open = render(h(MoreDetails, { summary: "Time, posted date, type", open: true, onOpenChange: () => {} }, h(DetailRow, { label: "Posted date", value: "Not set" })));
   assert.match(open, /aria-expanded="true"/);
   assert.match(open, /<span class="lsd-row-label">Fewer details<\/span>/);
   assert.doesNotMatch(open, /lsd-row-hint/);
@@ -254,13 +254,13 @@ test("More details names what it holds while closed and shows its rows only when
 });
 
 test("More details on its own folds by default, opens from defaultOpen and never folds when forced open", () => {
-  const closed = render(h(MoreDetails, { summary: "Posted date, type" }, h("p", null, "inside")));
+  const closed = render(h(MoreDetails, { summary: "Time, posted date, type" }, h("p", null, "inside")));
   assert.match(closed, /^<button type="button" class="lsd-row lsd-row-more" aria-expanded="false"/);
   assert.doesNotMatch(closed, /inside/);
 
   assert.match(render(h(MoreDetails, { defaultOpen: true }, h("p", null, "inside"))), /<p>inside<\/p>/);
 
-  const forced = render(h(MoreDetails, { summary: "Posted date, type", forceOpen: true }, h("p", null, "inside")));
+  const forced = render(h(MoreDetails, { summary: "Time, posted date, type", forceOpen: true }, h("p", null, "inside")));
   assert.match(forced, /aria-expanded="true" disabled=""/);
   // Forced open keeps its plain name: there is nothing to fold.
   assert.match(forced, /<span class="lsd-row-label">More details<\/span>/);

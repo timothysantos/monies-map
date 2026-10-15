@@ -183,6 +183,16 @@ Rules:
 
 ## Target System Shape
 
+### Entry time of day
+
+An entry can carry the local clock time it was made (`transactions.transaction_time`,
+"HH:MM" in the household's Asia/Singapore time, nullable, additive;
+`src/lib/entry-time.ts`). The Apple Pay Shortcut, the Entries form and Ask
+set it only for an entry dated today; imports leave it empty and a statement
+that certifies an entry keeps it. It is display-only: matching, duplicate
+checks and month totals never read it, and only the Entries page DTO sends it
+(`loadEntries(..., { withTime: true })`). DOMAIN.md, "Transaction Time".
+
 ### Server-state strategy
 
 The app should move toward TanStack Query as the main server-state boundary.

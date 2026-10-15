@@ -673,6 +673,19 @@ protection and app-managed shortcut settings storage exist:
 npm run db:migrate:remote
 ```
 
+A new column on an existing table (for example `transactions.transaction_time`,
+the entry's time of day) is additive and nullable. `schema.sql` only creates
+it on a fresh database (`CREATE TABLE IF NOT EXISTS` leaves an existing table
+alone); `ensureDemoSchema` (`app-repository-schema.ts`) adds it with `ALTER
+TABLE` on the first request of an isolate. Before deploying code that selects
+the column, export the production D1 (not committed), run `db:migrate:remote`
+and `db:migrate:demo`, then add the column to both databases yourself when
+`PRAGMA table_info(transactions)` does not list it:
+`npx wrangler d1 execute monies-map --remote --command "ALTER TABLE transactions ADD COLUMN transaction_time TEXT"`
+(and `monies-map-demo`). No existing row changes; every reader treats a null
+as no time. `tests/entry-time-api.test.mjs` proves a database without the
+column is repaired on the first request.
+
 ### What body should the shortcut send?
 
 Send JSON.
@@ -717,6 +730,12 @@ Common payload:
   "note": "Created from Shortcut"
 }
 ```
+
+The entry's time of day is the time the server received the request in
+Singapore time (`transaction_time`, "HH:MM"), only when `date` is today there;
+the response adds `time` for a new entry. No new request field is needed, so
+installed copies of the Shortcut keep working (`src/lib/entry-time.ts`,
+DOMAIN.md "Transaction Time").
 
 `amount` can be a positive decimal number or Wallet-style text such as `SGD
 12.34` or `S$1,234.56`. The API preserves cents and rejects ambiguous decimal

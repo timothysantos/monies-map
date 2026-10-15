@@ -7,6 +7,7 @@
 // (shortcut-entry-contract.ts).
 
 import { SHORTCUT_DESCRIPTION_MAX_LENGTH, SHORTCUT_NOTE_MAX_LENGTH } from "./shortcut-entry-contract";
+import { parseEntryTime } from "../lib/entry-time";
 
 // Far above any household amount (SGD 10 billion in cents), well inside a
 // safe integer.
@@ -20,8 +21,19 @@ function isRealIsoDate(value: unknown): value is string {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+// The refusal for a time that is not "HH:MM" (empty or null is no time).
+export function entryTimeFieldError(value: unknown): string | null {
+  try {
+    parseEntryTime(value);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Enter the time as HH:MM.";
+  }
+}
+
 export function validateEntryCreateFields(input: {
   date?: unknown;
+  time?: unknown;
   postDate?: unknown;
   description?: unknown;
   amountMinor?: unknown;
@@ -32,6 +44,10 @@ export function validateEntryCreateFields(input: {
   }
   if (input.postDate !== undefined && input.postDate !== null && !isRealIsoDate(input.postDate)) {
     return "Enter the posted date as YYYY-MM-DD.";
+  }
+  const timeError = entryTimeFieldError(input.time);
+  if (timeError) {
+    return timeError;
   }
   if (typeof input.description !== "string" || input.description.length > SHORTCUT_DESCRIPTION_MAX_LENGTH) {
     return `The description must be text of at most ${SHORTCUT_DESCRIPTION_MAX_LENGTH} characters.`;

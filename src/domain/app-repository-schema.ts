@@ -320,6 +320,12 @@ async function ensureDemoSchemaOnce(rawDb: D1Database) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN original_currency TEXT").run();
   }
 
+  // The local clock time an Apple Pay or hand-made entry was made
+  // (src/lib/entry-time.ts). Nullable and additive.
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "transaction_time")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN transaction_time TEXT").run();
+  }
+
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_id TEXT").run();
     shouldResetRolledBackStatementCertifications = true;

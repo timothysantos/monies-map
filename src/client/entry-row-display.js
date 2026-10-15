@@ -2,6 +2,7 @@ import { messages } from "./copy/en-SG";
 import { entryAmountTone } from "../domain/money-tone";
 import { paletteColour } from "./palette-colour";
 import { getPersonColour } from "./person-colour";
+import { formatEntryTime } from "../lib/entry-time";
 
 export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
   const splitPercent = getVisibleSplitPercent(entry, viewId);
@@ -46,6 +47,8 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
       entry.linkedTransfer ? entry.accountName : null,
       entry.accountOwnerLabel
     ].filter(Boolean).join(" - "),
+    // "2:32 pm" for an entry made on its own day (Apple Pay, typed in), else "".
+    timeLabel: formatEntryTime(entry.time),
     primarySignedAmountMinor: hasWeightedTotal ? signedTotalAmountMinor : signedAmountMinor,
     amountTone: entryAmountTone(entry.entryType, signedAmountMinor),
     secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null

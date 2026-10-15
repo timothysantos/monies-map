@@ -260,6 +260,12 @@
   min-width: 0;
 }
 
+/* The time beside the wallet on a phone (see entries-list.jsx); a wide
+   screen shows it in the second line instead. */
+.entry-row-time-inline {
+  display: none;
+}
+
 .entry-row-category {
   display: flex;
   align-items: center;
@@ -635,6 +641,16 @@
     display: none;
   }
 
+  .entry-row-time-inline {
+    display: inline;
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
+
+  .entry-row-time-inline::before {
+    content: "· ";
+  }
+
   .entry-row-right {
     display: contents;
   }
@@ -809,6 +825,14 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   flex: 0 1 auto;
   min-width: 0;
   color-scheme: light;
+}
+
+/* "Clear time" under the Time row: quiet, at the row's right edge. */
+.entry-edit-card .lsd-row-clear {
+  align-self: flex-end;
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 0.9rem;
 }
 
 .entry-edit-card .entry-edit-transfer-helper {

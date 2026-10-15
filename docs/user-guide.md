@@ -2170,6 +2170,12 @@ provisional**. If it landed in
 on Splits, and **Open this entry** opens it in Entries to change anything
 else.
 
+An entry from Apple Pay, or one you type in on the day, also shows the time
+of day it was made (for example "2:32 pm") beside its account, so you can
+tell the day's purchases apart and match them to your bank or phone; a bank
+file has no time, so those entries show none. To change it, open the entry
+and use **Time** under **More details** (**Clear time** removes it).
+
 Paying abroad in another currency (for example with an Amaze card in Bali)
 also works: the purchase is saved in the card's currency at the day's
 exchange rate, and its note keeps what you paid, such as "Paid IDR 159,000".

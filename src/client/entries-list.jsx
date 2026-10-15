@@ -498,7 +498,11 @@ function EntryRow({
           </div>
           <div className="entry-row-transfer">
             <strong>{display.transferDetail}</strong>
-            {display.accountDetail ? <p>{display.accountDetail}</p> : null}
+            {display.timeLabel || display.accountDetail ? (
+              <p>{[display.timeLabel, display.accountDetail].filter(Boolean).join(" · ")}</p>
+            ) : null}
+            {/* A phone hides that second line, so its time rides on the wallet line. */}
+            {display.timeLabel ? <span className="entry-row-time-inline">{display.timeLabel}</span> : null}
           </div>
           <div className="entry-row-right">
             <MemoizedEntryRowAmount

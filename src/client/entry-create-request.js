@@ -69,7 +69,7 @@ export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {
     }
   }
 
-  return { ok: true, error: "", entryId: data.entryId, splitExpenseId, splitExpenseMonth, splitAddError };
+  return { ok: true, error: "", entryId: data.entryId, splitExpenseId, splitExpenseMonth, splitAddError, time: data.time ?? null };
 }
 
 export function buildPersistedEntryPayload(entry, primarySplit) {
@@ -89,6 +89,9 @@ export function buildPersistedEntryPayload(entry, primarySplit) {
     ownerName: entry.ownerName,
     note: entry.note ?? "",
     splitBasisPoints: primarySplit?.ratioBasisPoints,
-    externalReference: entry.externalReference || undefined
+    externalReference: entry.externalReference || undefined,
+    // Left out when the entry has no time field (the server then keeps the
+    // stored time, or on a new entry uses now for today); "" clears it.
+    time: entry.time === undefined ? undefined : (entry.time || null)
   };
 }

@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CategoryPickerHost } from "./category-picker-host";
 import { ResponsiveSelect } from "./responsive-select";
 import { DetailRow } from "./ui/lead-support-detail";
+import { formatEntryTime } from "../lib/entry-time";
 
 // Detail rows that change one field, shared by the entry edit card and the
 // split expense card (design.md, "Lead · Support · Detail"):
@@ -138,6 +139,49 @@ export function DateRow({ isSheet, rowKey, label, value, valueLabel, onValueChan
         onChange={(event) => onValueChange(event.target.value)}
       />
     </DetailRow>
+  );
+}
+
+// The time of day an entry was made (src/lib/entry-time.ts), optional: a
+// native time field like the date's, and a quiet "Clear time" line under the
+// row while one is set (a phone's time picker cannot be emptied).
+/**
+ * @param {{ isSheet: boolean, rowKey: string, label: string, value: string | undefined,
+ *   onValueChange: (value: string) => void, clearLabel: string, notSetLabel: string }} props
+ */
+export function TimeRow({ isSheet, rowKey, label, value, onValueChange, clearLabel, notSetLabel }) {
+  const clock = formatEntryTime(value);
+  const field = isSheet ? (
+    <DetailRow label={label} value={clock || notSetLabel} state={clock ? undefined : "empty"} data-row={rowKey}>
+      <input
+        className="lsd-row-native"
+        type="time"
+        aria-label={label}
+        value={value ?? ""}
+        onChange={(event) => onValueChange(event.target.value)}
+      />
+    </DetailRow>
+  ) : (
+    <DetailRow label={label} data-row={rowKey}>
+      <input
+        className="lsd-row-input lsd-row-date"
+        type="time"
+        aria-label={label}
+        value={value ?? ""}
+        enterKeyHint="next"
+        onChange={(event) => onValueChange(event.target.value)}
+      />
+    </DetailRow>
+  );
+  return (
+    <>
+      {field}
+      {clock ? (
+        <button type="button" className="lsd-quiet lsd-row-clear" data-row-clear={rowKey} onClick={() => onValueChange("")}>
+          {clearLabel}
+        </button>
+      ) : null}
+    </>
   );
 }
 

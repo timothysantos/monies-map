@@ -431,6 +431,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   -- the account's currency at an estimated rate (foreign-currency.ts).
   original_amount_minor INTEGER,
   original_currency TEXT,
+  -- The household's local clock time ("HH:MM", Asia/Singapore) an Apple Pay
+  -- or hand-made entry was made on its own day. NULL for bank rows and
+  -- backdated entries. A label only (src/lib/entry-time.ts); no matching,
+  -- totals or dedupe read it.
+  transaction_time TEXT,
   bank_certification_status TEXT NOT NULL DEFAULT 'provisional' CHECK (
     bank_certification_status IN ('provisional', 'statement_certified')
   ),

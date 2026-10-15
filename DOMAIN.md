@@ -979,6 +979,26 @@ not drift when the bank clears later:
 * **Posted Date (`post_date`):** The bank-cleared date used for statement
   verification, balance checkpoints, and other reconciliation-only workflows.
 
+* **Transaction Time (`transaction_time`):** The household's local clock time
+  ("HH:MM", 24 hours, Asia/Singapore, stored as written so showing it needs no
+  conversion) an Apple Pay or hand-made entry was made, on its own day. It is a
+  label for telling one day's purchases apart and matching them to the bank or
+  the phone, never an input to matching, duplicate checks, month totals or
+  planning. Null for a bank-imported row (bank files carry no time), for an
+  entry dated another day than the day it was made (a backdated entry has no
+  honest time) and for every entry that predates the column. Source: the
+  Apple Pay Shortcut gets the time the server received the request, converted
+  to Singapore time (the Shortcut runs when the Wallet transaction happens;
+  the installed Shortcut sends only a date); an entry typed in the form gets
+  the time in its Time field, which starts at now when the date is today; an
+  Ask-saved entry gets now when it is dated today. Both only when the entry's
+  date is today in Singapore. An edit keeps the time (also when the date
+  changes) unless the Time field is changed or cleared; a statement that
+  certifies the entry keeps it. The Entries page is the only page that sends
+  it (`EntryDto.time`, absent when none); the Entries list orders a day's
+  timed entries first, latest on top, then the rest in their usual order.
+  Code: `src/lib/entry-time.ts`.
+
 **Why this matters:**
 An April 30 expense must stay in April for budgets and split math even if the
 bank posts it on May 3. Reconciliation still needs the May 3 date, but it must

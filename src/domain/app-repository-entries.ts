@@ -3,17 +3,23 @@ import { offsetsCategory } from "./category-offset";
 import { entryAddedByFromReference } from "./entry-source";
 import { getMonthBounds, groupSplits } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
+import { readEntryTime } from "../lib/entry-time";
 import { homeCurrencyShareAmounts } from "./split-allocation";
 import { isCurrencyMatch } from "./split-currency";
 import { selectTransferCandidates, transferCandidateWindow } from "./transfer-candidates";
 import type { EntryDto, LinkedTransferDto } from "../types/dto";
 
-export async function loadEntries(db: D1Database, month = getCurrentMonthKey()): Promise<EntryDto[]> {
+// Only the Entries page reads an entry's time of day (`withTime`); every other
+// page's entries stay as they were, so no response grows for a field its
+// screen never shows.
+export type EntryLoadOptions = { withTime?: boolean };
+
+export async function loadEntries(db: D1Database, month = getCurrentMonthKey(), options: EntryLoadOptions = {}): Promise<EntryDto[]> {
   const [monthStart, nextMonth] = getMonthBounds(month);
-  return loadEntriesForDateRange(db, monthStart, nextMonth);
+  return loadEntriesForDateRange(db, monthStart, nextMonth, options);
 }
 
-export async function loadEntriesForMonths(db: D1Database, months: string[]): Promise<EntryDto[]> {
+export async function loadEntriesForMonths(db: D1Database, months: string[], options: EntryLoadOptions = {}): Promise<EntryDto[]> {
   if (!months.length) {
     return [];
   }
@@ -21,7 +27,7 @@ export async function loadEntriesForMonths(db: D1Database, months: string[]): Pr
   const sortedMonths = [...months].sort();
   const [monthStart] = getMonthBounds(sortedMonths[0]);
   const [, monthEnd] = getMonthBounds(sortedMonths[sortedMonths.length - 1]);
-  return loadEntriesForDateRange(db, monthStart, monthEnd);
+  return loadEntriesForDateRange(db, monthStart, monthEnd, options);
 }
 
 // The other-side candidates the Entries transfer dialog shows
@@ -125,13 +131,14 @@ export async function loadInvestmentAccountIds(db: D1Database): Promise<Set<stri
 
 // The ledger stays event-first. We still project post_date so the UI can show
 // when the bank cleared a row without moving it out of its planning month.
-export async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {
+export async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string, options: EntryLoadOptions = {}): Promise<EntryDto[]> {
   const entries = await db
     .prepare(`
       SELECT
         transactions.id,
         transactions.transaction_date,
         transactions.post_date,
+        transactions.transaction_time,
         transactions.description,
         transactions.entry_type,
         transactions.transfer_direction,
@@ -187,6 +194,7 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       id: string;
       transaction_date: string;
       post_date: string | null;
+      transaction_time: string | null;
       description: string;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
@@ -282,6 +290,8 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       id: row.id,
       // Event date drives sorting, planning, and split attribution.
       date: row.transaction_date,
+      // The local clock time, only where one was recorded.
+      ...(options.withTime && readEntryTime(row.transaction_time) ? { time: readEntryTime(row.transaction_time) } : {}),
       // postDate is bank clearance evidence for reconciliation UI.
       postDate: row.post_date ?? undefined,
       description: row.description,

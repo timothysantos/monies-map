@@ -153,6 +153,18 @@ behind that figure, the lead shows its total ("Invested · Jun 2025 – May
 `entry_figure`, `entry_from` and `entry_to`. The money check-in keeps
 reading the page's own month.
 
+Each row of that page carries the entry's `time` ("HH:MM", the household's
+local clock time) only when one was recorded: an Apple Pay entry (the time the
+server received the Shortcut's request), a hand-made entry (its Time field,
+now by default when dated today) or an Ask-saved one. Bank-imported and
+backdated entries have none. The row shows it beside the wallet line ("2:32
+pm"), the Edit entry card on its date chip ("Today · 2:32 pm") and in a Time
+row under More details (clearable), and a day lists its timed entries latest
+first, then the rest in their usual order. `/api/entries/create` and
+`/api/entries/update` take an optional `time`: left out keeps the stored time
+(on a create: now when the date is today), null or empty clears it, anything
+that is not `HH:MM` is refused (400). No other page's entries carry it.
+
 Entries mutations may also refresh:
 
 - `month`

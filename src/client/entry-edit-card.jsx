@@ -3,13 +3,13 @@ import { CalendarDays, CreditCard, Lock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { formatCardDate } from "./copy/ask-copy";
+import { formatCardDate, formatCardDateTime } from "./copy/ask-copy";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { BANK_FACTS_LOCK_LINE, getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
-import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
+import { DateRow, GrowingTextarea, PickerRow, TimeRow } from "./detail-field-rows";
 import { addedByLabel, bankStateChipLabel, moreDetailsSummary } from "./entry-source";
 import { CategoryGlyph } from "./ui-components";
 import { ChipDateField, ChipSelectField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
@@ -262,6 +262,17 @@ export function EntryEditCard({
       options: walletOptions,
       onValueChange: changeWallet
     }),
+    // The time of day, optional. Not a bank fact, so a certified entry keeps it editable.
+    <TimeRow
+      key="time"
+      rowKey="time"
+      isSheet={isSheet}
+      label={copy.editTime}
+      value={entry.time}
+      clearLabel={copy.editCard.clearTime}
+      notSetLabel={copy.editCard.notSet}
+      onValueChange={(time) => onChange({ time })}
+    />,
     dateRow({ key: "postDate", label: copy.editPostDate, value: entry.postDate, onValueChange: (postDate) => onChange({ postDate: postDate || undefined }), locked: bankFactsLocked }),
     pickerRow({
       key: "type",
@@ -337,12 +348,12 @@ export function EntryEditCard({
               control={(
                 <ChipDateField
                   value={entry.date}
-                  label={messages.common.changeChip(copy.editDate, formatCardDate(entry.date, today))}
+                  label={messages.common.changeChip(copy.editDate, formatCardDateTime(entry.date, today, entry.time))}
                   onValueChange={(date) => onChange({ date })}
                 />
               )}
             >
-              {formatCardDate(entry.date, today)}
+              {formatCardDateTime(entry.date, today, entry.time)}
             </MetaChip>,
             // A wide screen has no Wallet row, so its chip shows even with no
             // wallet set; a phone's row is under More details.

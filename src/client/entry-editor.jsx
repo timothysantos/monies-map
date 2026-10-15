@@ -20,6 +20,7 @@ import { entryAmountTone } from "../domain/money-tone";
 import { getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { paletteColour } from "./palette-colour";
 import { LimitHint } from "./limit-hint";
+import { defaultEntryTime } from "../lib/entry-time";
 import { ENTRY_DESCRIPTION_MAX, ENTRY_NOTE_MAX } from "./input-limits";
 import { limitsCopy } from "./copy/limits-copy";
 
@@ -201,6 +202,18 @@ export function EntryEditorFields({
             disabled={bankFactsLocked}
             enterKeyHint="next"
             onChange={(event) => onChange({ date: event.target.value })}
+          />
+        </label>
+        <label>
+          <span>{messages.entries.editTime}</span>
+          {/* A new entry made today starts at the time now, as the server would
+              save it; clearing the field saves no time. */}
+          <input
+            className="table-edit-input"
+            type="time"
+            value={entry.time ?? defaultEntryTime(entry.date) ?? ""}
+            enterKeyHint="next"
+            onChange={(event) => onChange({ time: event.target.value })}
           />
         </label>
         <label>
