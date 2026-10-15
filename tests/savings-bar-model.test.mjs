@@ -101,8 +101,8 @@ test("overspent beyond income: no kept part, an income tick, and the hatched par
   ]);
   assert.equal(rounded(model.tickPercent), 81.823);
   assert.deepEqual(legends(model), [
-    ["Spent", "$301,871", 122],
-    ["From savings", "$54,871", 22]
+    ["Spent", "$301,871", null],
+    ["From savings", "$54,871", null]
   ]);
   // The tick says what it marks in plain words, with the figure; the bar part keeps its full name for readers.
   // The legend names the tick, so no label covers the bar; a phone says the word alone.
@@ -124,9 +124,9 @@ test("overspent and invested: the investing after the hatched part, and the sent
   ]);
   assert.equal(rounded(model.tickPercent), 66.6667);
   assert.deepEqual(legends(model), [
-    ["Spent", "$1,300", 130],
-    ["From savings", "$300", 30],
-    ["Invested", "$200", 20]
+    ["Spent", "$1,300", null],
+    ["From savings", "$300", null],
+    ["Invested", "$200", null]
   ]);
   assert.equal(model.sentence, "You spent $300 more than you earned, and invested $200");
   assert.equal(model.shortSentence, "Spent $300 over income · invested $200");
@@ -181,7 +181,8 @@ test("hidden money keeps the percentages and drops every amount and every sign w
   assert.equal(model.planLegend, null);
 
   const over = build({ incomeMinor: 100_000, spentMinor: 125_000 }, { hidden: true, formatMoney: noFormatting });
-  assert.deepEqual(legends(over), [["Spent", null, 125], ["From savings", null, 25]]);
+  // More went out than came in: no share would be meaningful, so none shows.
+  assert.deepEqual(legends(over), [["Spent", null, null], ["From savings", null, null]]);
   // The tick's words stay, without the figure.
   assert.equal(over.tickLegend, "All you earned");
   assert.equal(over.sentence, "Spent and kept, as a share of what you earned");
@@ -192,4 +193,36 @@ test("hidden money keeps the percentages and drops every amount and every sign w
   assert.equal(invested.sentence, "Spent, invested and kept, as shares of income");
   assert.equal(invested.shortSentence, invested.sentence);
   assert.doesNotMatch(JSON.stringify(invested), /\$|more than|from savings/);
+});
+
+// The legend's share is a share of what was earned, so it only means
+// something when everything that went out fits inside it (the shares then add
+// to at most 100). When spending plus investing is more than the income, or
+// there is no income, every share is left out: the amounts and the bar tell
+// the story ("Spent $2,666 · 26347%" when only $10 had come in was nonsense).
+test("shares of income show only when spent plus invested fit inside the income", () => {
+  const percents = (model) => model.segments.map(({ key, legend }) => [key, legend.percent]);
+
+  const fits = build({ incomeMinor: 600_000, spentMinor: 300_000, investedMinor: 50_000 });
+  assert.deepEqual(percents(fits), [["spent", 42], ["invested", 8], ["kept", 50]]);
+  assert.equal(fits.segments.reduce((sum, { legend }) => sum + legend.percent, 0), 100);
+
+  // Only $10.12 earned so far (salary not landed), $2,666 spent: no percentages at all.
+  const salaryNotLanded = build({ incomeMinor: 1_012, spentMinor: 266_628, investedMinor: 35_000 });
+  assert.deepEqual(percents(salaryNotLanded), [["spent", null], ["savings", null], ["invested", null]]);
+  assert.doesNotMatch(JSON.stringify(salaryNotLanded.segments.map(({ legend }) => legend)), /\d{3,}%|26347/);
+
+  // Zero income: nothing to be a share of.
+  assert.deepEqual(percents(build({ incomeMinor: 0, spentMinor: 5_000 })), [["savings", null]]);
+
+  // Spent (which includes the invested) exactly the income is the edge that still fits: 100%, nothing past it.
+  assert.deepEqual(percents(build({ incomeMinor: 50_000, spentMinor: 50_000, investedMinor: 20_000 })), [["spent", 60], ["invested", 40]]);
+  // One cent more than the income drops every share, the ones that would have fit too.
+  assert.deepEqual(percents(build({ incomeMinor: 50_000, spentMinor: 50_001, investedMinor: 20_001 })), [["spent", null], ["invested", null]]);
+
+  // Hidden money shows shares (and no amounts) under the same rule.
+  const hiddenFits = build({ incomeMinor: 600_000, spentMinor: 300_000, investedMinor: 50_000 }, { hidden: true, formatMoney: noFormatting });
+  assert.deepEqual(percents(hiddenFits), [["spent", 42], ["invested", 8], ["kept", 50]]);
+  const hiddenOver = build({ incomeMinor: 1_012, spentMinor: 266_628 }, { hidden: true, formatMoney: noFormatting });
+  assert.deepEqual(percents(hiddenOver), [["spent", null], ["savings", null]]);
 });
