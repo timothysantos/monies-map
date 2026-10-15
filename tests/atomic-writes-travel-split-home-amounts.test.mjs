@@ -240,7 +240,7 @@ test("a same-currency SGD split keeps its stored share amounts exactly, includin
 });
 
 test("a JPY group charts its own open expenses in JPY and never touches the SGD ones", async (t) => {
-  const { db, api } = await openSeededDatabase(t, template);
+  const { api } = await openSeededDatabase(t, template);
   const splitsPage = (view) => get(api, `/api/splits-page?view=${view}&month=${MONTH}`);
   const before = await splitsPage("person-tim");
   // The page sends activity only: the donut is built on the page from it (split-open-period.ts).
