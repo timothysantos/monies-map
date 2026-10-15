@@ -603,11 +603,59 @@ export async function unmatchSplitSettlementCheckpoint(db: D1Database, input: { 
   return { checkpointId: input.checkpointId, status, matchedAmountMinor: totalMatchedMinor, remainingMinor: Math.max(0, checkpoint.amount_minor - totalMatchedMinor) };
 }
 
+// The widest date gap split-matching.ts accepts (settle-ups: 7 days), plus a
+// day of margin so a window edge never drops a real candidate.
+const SPLIT_MATCH_WINDOW_DAYS = 8;
+const SPLIT_MATCH_MAX_WINDOWS = 40;
+
+// Merges the unlinked records' dates into the fewest date ranges that cover
+// every possible candidate. Past a cap, one range spans them all.
+export function buildSplitMatchDateWindows(dates: string[]): { from: string; to: string }[] {
+  const shift = (date: string, days: number) => {
+    const moved = new Date(`${date}T00:00:00Z`);
+    moved.setUTCDate(moved.getUTCDate() + days);
+    return moved.toISOString().slice(0, 10);
+  };
+  const sorted = Array.from(new Set(dates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)))).sort();
+  const windows: { from: string; to: string }[] = [];
+  for (const date of sorted) {
+    const from = shift(date, -SPLIT_MATCH_WINDOW_DAYS);
+    const to = shift(date, SPLIT_MATCH_WINDOW_DAYS);
+    const last = windows[windows.length - 1];
+    if (last && from <= last.to) {
+      last.to = to;
+    } else {
+      windows.push({ from, to });
+    }
+  }
+  if (windows.length > SPLIT_MATCH_MAX_WINDOWS) {
+    return [{ from: windows[0].from, to: windows[windows.length - 1].to }];
+  }
+  return windows;
+}
+
 export async function loadSplitMatchCandidates(db: D1Database, month = getCurrentMonthKey()): Promise<SplitMatchCandidateDto[]> {
   const [expenses, settlements] = await Promise.all([
     loadSplitExpenses(db, month),
     loadSplitSettlements(db, month)
   ]);
+  const unlinkedDates = [
+    ...expenses.filter((item) => !item.linkedTransactionId).map((item) => item.date),
+    ...settlements.filter((item) => !item.linkedTransactionId).map((item) => item.date)
+  ];
+  // Nothing waits for a match, so no imported row can be a candidate: skip
+  // reading the whole imported ledger (every page that counts matches paid
+  // for it).
+  if (!unlinkedDates.length) {
+    return [];
+  }
+  // A candidate lies within a week of an unlinked record's date
+  // (split-matching.ts), so only those date windows are read.
+  const windows = buildSplitMatchDateWindows(unlinkedDates);
+  if (!windows.length) {
+    return [];
+  }
+  const windowPredicate = windows.map(() => "transactions.transaction_date BETWEEN ? AND ?").join(" OR ");
   const transactionRows = await db
     .prepare(`
       SELECT
@@ -623,9 +671,10 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       WHERE transactions.household_id = ?
         AND transactions.import_id IS NOT NULL
         AND imports.status = 'completed'
+        AND (${windowPredicate})
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...windows.flatMap((window) => [window.from, window.to]))
     .all<{
       id: string;
       transaction_date: string;

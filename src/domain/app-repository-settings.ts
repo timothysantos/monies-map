@@ -75,33 +75,86 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       is_active: number;
     }>();
 
-  const transactionRows = await db
-    .prepare(`
-      SELECT
-        transactions.account_id,
-        transactions.transaction_date,
-        COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
-        transactions.amount_minor,
-        transactions.entry_type,
-        transactions.transfer_direction,
-        transactions.transfer_group_id,
-        imports.imported_at
-      FROM transactions
-      LEFT JOIN imports ON imports.id = transactions.import_id
-      WHERE transactions.household_id = ?
-        AND (transactions.import_id IS NULL OR imports.status = 'completed')
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{
-      account_id: string;
-      transaction_date: string;
-      cleared_date: string;
-      amount_minor: number;
-      entry_type: "expense" | "income" | "transfer";
-      transfer_direction: "in" | "out" | null;
-      transfer_group_id: string | null;
-      imported_at: string | null;
-    }>();
+  // The ledger is folded in D1, not in the Worker: the per-row read this
+  // replaced moved every transaction (7,000+ rows, 1.7 MB in production) on
+  // each Imports, Settings and Summary-pills load. Rows count when they are
+  // manual or belong to a completed import. A signed amount is money in
+  // (income, or a transfer in) as plus, everything else as minus.
+  const [accountLedgerRows, clearedDayRows] = await Promise.all([
+    db
+      .prepare(`
+        WITH counted AS (
+          SELECT
+            transactions.account_id,
+            transactions.transaction_date,
+            transactions.entry_type,
+            transactions.transfer_group_id,
+            CASE
+              WHEN transactions.entry_type = 'income'
+                OR (transactions.entry_type = 'transfer' AND transactions.transfer_direction = 'in')
+              THEN transactions.amount_minor
+              ELSE -transactions.amount_minor
+            END AS signed_amount_minor,
+            imports.imported_at
+          FROM transactions
+          LEFT JOIN imports ON imports.id = transactions.import_id
+          WHERE transactions.household_id = ?
+            AND (transactions.import_id IS NULL OR imports.status = 'completed')
+        ),
+        transfer_group_sizes AS (
+          SELECT transfer_group_id, COUNT(*) AS group_size
+          FROM counted
+          WHERE transfer_group_id IS NOT NULL
+          GROUP BY transfer_group_id
+        )
+        SELECT
+          counted.account_id,
+          SUM(counted.signed_amount_minor) AS balance_minor,
+          MAX(counted.transaction_date) AS latest_transaction_date,
+          MAX(counted.imported_at) AS latest_imported_at,
+          SUM(
+            CASE
+              WHEN counted.entry_type = 'transfer'
+                AND (counted.transfer_group_id IS NULL OR COALESCE(transfer_group_sizes.group_size, 0) < 2)
+              THEN 1 ELSE 0
+            END
+          ) AS unresolved_transfer_count
+        FROM counted
+        LEFT JOIN transfer_group_sizes ON transfer_group_sizes.transfer_group_id = counted.transfer_group_id
+        GROUP BY counted.account_id
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{
+        account_id: string;
+        balance_minor: number;
+        latest_transaction_date: string;
+        latest_imported_at: string | null;
+        unresolved_transfer_count: number;
+      }>(),
+    // Net movement per account and cleared day: all a statement checkpoint
+    // needs to total an account up to its statement end date.
+    db
+      .prepare(`
+        SELECT
+          transactions.account_id,
+          COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
+          SUM(
+            CASE
+              WHEN transactions.entry_type = 'income'
+                OR (transactions.entry_type = 'transfer' AND transactions.transfer_direction = 'in')
+              THEN transactions.amount_minor
+              ELSE -transactions.amount_minor
+            END
+          ) AS net_minor
+        FROM transactions
+        LEFT JOIN imports ON imports.id = transactions.import_id
+        WHERE transactions.household_id = ?
+          AND (transactions.import_id IS NULL OR imports.status = 'completed')
+        GROUP BY transactions.account_id, cleared_date
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ account_id: string; cleared_date: string; net_minor: number }>()
+  ]);
 
   const latestCheckpointRows = await db
     .prepare(`
@@ -164,15 +217,6 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
     latestCheckpointRows.results.map((row) => [row.account_id, row])
   );
 
-  const transferGroupSizes = new Map<string, number>();
-  for (const row of transactionRows.results) {
-    if (!row.transfer_group_id) {
-      continue;
-    }
-
-    transferGroupSizes.set(row.transfer_group_id, (transferGroupSizes.get(row.transfer_group_id) ?? 0) + 1);
-  }
-
   const balanceByAccountId = new Map<string, number>();
   const latestTransactionDateByAccountId = new Map<string, string>();
   const latestImportAtByAccountId = new Map<string, string>();
@@ -189,29 +233,37 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
     result.results.map((account) => [account.id, account.account_kind])
   );
 
-  for (const row of transactionRows.results) {
-    const signedAmount = row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")
-      ? Number(row.amount_minor)
-      : -Number(row.amount_minor);
-    balanceByAccountId.set(row.account_id, (balanceByAccountId.get(row.account_id) ?? 0) + signedAmount);
-
-    const currentLatestDate = latestTransactionDateByAccountId.get(row.account_id);
-    if (!currentLatestDate || row.transaction_date > currentLatestDate) {
-      latestTransactionDateByAccountId.set(row.account_id, row.transaction_date);
+  for (const row of accountLedgerRows.results) {
+    balanceByAccountId.set(row.account_id, Number(row.balance_minor ?? 0));
+    latestTransactionDateByAccountId.set(row.account_id, row.latest_transaction_date);
+    if (row.latest_imported_at) {
+      latestImportAtByAccountId.set(row.account_id, row.latest_imported_at);
     }
+    unresolvedTransferCountByAccountId.set(row.account_id, Number(row.unresolved_transfer_count ?? 0));
+  }
 
-    if (row.imported_at) {
-      const currentLatestImport = latestImportAtByAccountId.get(row.account_id);
-      if (!currentLatestImport || row.imported_at > currentLatestImport) {
-        latestImportAtByAccountId.set(row.account_id, row.imported_at);
-      }
-    }
-
-    if (row.entry_type === "transfer" && (!row.transfer_group_id || (transferGroupSizes.get(row.transfer_group_id) ?? 0) < 2)) {
-      unresolvedTransferCountByAccountId.set(
-        row.account_id,
-        (unresolvedTransferCountByAccountId.get(row.account_id) ?? 0) + 1
-      );
+  // Each checkpoint totals only its own account's days. A day's net is
+  // carried as one signed "income" row, which the balance helper adds as is.
+  const transactionRowsByAccountId = new Map<string, {
+    account_id: string;
+    cleared_date: string;
+    entry_type: "income";
+    transfer_direction: null;
+    amount_minor: number;
+  }[]>();
+  for (const row of clearedDayRows.results) {
+    const dayRow = {
+      account_id: row.account_id,
+      cleared_date: row.cleared_date,
+      entry_type: "income" as const,
+      transfer_direction: null,
+      amount_minor: Number(row.net_minor ?? 0)
+    };
+    const accountRows = transactionRowsByAccountId.get(row.account_id);
+    if (accountRows) {
+      accountRows.push(dayRow);
+    } else {
+      transactionRowsByAccountId.set(row.account_id, [dayRow]);
     }
   }
 
@@ -221,7 +273,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       computeCheckpointLedgerBalanceMinor({
         openingBalanceMinor: openingBalanceByAccountId.get(checkpoint.account_id) ?? 0,
         checkpoint,
-        rows: transactionRows.results
+        rows: transactionRowsByAccountId.get(checkpoint.account_id) ?? []
       })
     );
   }
@@ -230,7 +282,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
     const computedBalanceMinor = computeCheckpointLedgerBalanceMinor({
       openingBalanceMinor: openingBalanceByAccountId.get(checkpoint.account_id) ?? 0,
       checkpoint,
-      rows: transactionRows.results
+      rows: transactionRowsByAccountId.get(checkpoint.account_id) ?? []
     });
     const statementBalanceMinor = normalizeStoredStatementBalanceMinor(
       Number(checkpoint.statement_balance_minor ?? 0),

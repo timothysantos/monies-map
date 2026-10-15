@@ -56,6 +56,42 @@ This refactor should reduce that risk by:
 - keeping warmup cancellable and low priority
 - invalidating narrowly instead of reloading the world after each write
 
+## Cold Start And Page Read Budgets
+
+Found 2026-10-15: `GET /api/imports-page` took 15 s and 52 s in production
+(Settings ~3.8 s, Summary pills ~2.5 s) on a ~7.4k-transaction database whose
+probes answered in milliseconds. Measured on a copy of production:
+
+- A cold Worker isolate ran ~384 sequential D1 statements before its first
+  request answered: 131 default category rules checked and inserted one at a
+  time (262 statements), 31 category inserts, ~35 `CREATE ... IF NOT EXISTS`.
+  Each statement is a network round trip to D1, so the first page after every
+  idle spell paid for all of them. It is now ~51 (`ensureDefaultCategoryMatchRules`
+  reads once and batches only what is missing; `seedEmptyStateReferenceData`
+  does the same for categories; `ensureDemoSchema` reads `sqlite_master` once
+  and skips creates for objects that exist).
+- Every page that builds account health (`loadAccounts`: Imports, Settings,
+  Summary pills) moved every transaction (7k rows, 1.7 MB) to the Worker and
+  folded it in JS. The fold is now two grouped SQL reads (per account, and per
+  account and cleared day: ~150 KB).
+- `loadSplitMatchCandidates` (Imports counts possible split links) read every
+  imported transaction. It now reads none when no split record is waiting for
+  a match, and otherwise only the date windows within a week of those records.
+
+Rules that keep it so:
+
+- Cold-path code (`ensureDemoSchema`, the seeders, `ensureAppData`) reads once
+  and writes only what is missing, in one `db.batch()`. Never a statement per
+  default row. `tests/cold-start-statement-budget.test.mjs` caps a cold
+  isolate at 60 round trips and the up-to-date seeding at its two upkeep writes.
+- A page read never moves a whole table to the Worker to aggregate it: group
+  in SQL, bound by date window or `LIMIT`, and select only the columns the
+  screen reads. Stored previews (`import_rows.raw_row_json`) and diagnostics
+  bodies are never read by a page except Settings' latest 50 diagnostics.
+  `tests/page-load-scale-guard.test.mjs` pins statements, rows read, row bytes,
+  response bytes and node CPU for Imports, Settings and Summary pills on a
+  10k-transaction household with heavy previews and diagnostics.
+
 ## Performance Budgets
 
 These are target budgets, not platform guarantees.

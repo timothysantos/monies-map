@@ -204,6 +204,13 @@ Details and the reasons are in `docs/code-spec.md` and
   converted: "Persistence Atomicity Contract" in `docs/code-spec.md`.
 - Keep `Server-Timing` as `app, init, total` with `app` first; budget checks
   read the first `dur`.
+- A cold isolate must stay at a few dozen D1 round trips: cold-path code
+  (`ensureDemoSchema`, seeders) reads once and batches only what is missing,
+  never one statement per default row. A page read never pulls a whole table
+  into the Worker to aggregate it (group in SQL, bound by date window or
+  `LIMIT`). `tests/cold-start-statement-budget.test.mjs` and
+  `tests/page-load-scale-guard.test.mjs` enforce it (`docs/code-spec.md`,
+  "Cold Start And Page Read Budgets").
 - Work in three passes: tests first, then runtime and failure behaviour in a
   real browser or Worker, then review and gates. A bug-fix test must fail on
   the old code before the fix counts.
