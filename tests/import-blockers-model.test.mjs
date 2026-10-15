@@ -596,6 +596,32 @@ test("a statement saved before only for some cards, or never, saves its balance 
   assert.equal(blockersFor(never).commitQuestion, null);
 });
 
+// An investment statement has no balance to check: with nothing new to add
+// (a month with no contribution) it commits straight away, and an edit never
+// asks to "refresh the check".
+test("an investment statement's value alone is committable, with no statement check to refresh", () => {
+  const IFAST = { id: "acct-ifast", name: "Alex iFAST" };
+  const valueOnly = {
+    accounts: [IFAST],
+    previewRows: [],
+    statementCheckpoints: [{
+      detectedAccountName: IFAST.name,
+      accountName: IFAST.name,
+      accountId: IFAST.id,
+      checkpointMonth: "2026-09",
+      investmentValue: { accountReference: "P0000194", currency: "SGD", totalAssetsMinor: 202_390, marketValueMinor: 202_390, cashMinor: 0, incomeMinor: 0 }
+    }]
+  };
+  const clean = blockersFor(valueOnly);
+  assert.deepEqual(clean.blockers, []);
+  assert.equal(clean.isCommitDisabled, false);
+  assert.equal(clean.commitQuestion, null);
+  // Even after the user edited something, there is no check to go stale.
+  const edited = blockersFor(valueOnly, { isPreviewDirty: true });
+  assert.deepEqual(edited.blockers, []);
+  assert.equal(edited.commitQuestion, null);
+});
+
 test("a statement saved before that does not balance asks about the difference first", () => {
   const result = blockersFor({
     previewRows: [certifiedRow("a")],

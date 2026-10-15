@@ -17,6 +17,7 @@ import { countRowsToImport } from "./import-preview-model";
 export function ImportCommitBar({
   previewRows,
   statementCheckpointCount = 0,
+  investmentValueCount = 0,
   ledgerMatchedStatement = null,
   reconciledExistingRowCount = 0,
   removedEntryCount = 0,
@@ -43,9 +44,10 @@ export function ImportCommitBar({
   const summaryItems = ledgerMatchedStatement ? [
     { text: importMessages.noRowsToImportAllInLedger(ledgerMatchedStatement.matchedCount, ledgerMatchedStatement.toCertifyCount) }
   ] : [
-    newImportCount || !statementCheckpointCount ? { text: importMessages.willImportRows(newImportCount) } : null,
+    newImportCount || (!statementCheckpointCount && !investmentValueCount) ? { text: importMessages.willImportRows(newImportCount) } : null,
     reconciledExistingRowCount ? { text: importMessages.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType) } : null,
     statementCheckpointCount ? { text: importMessages.willSaveStatementCheckpoints(statementCheckpointCount) } : null,
+    investmentValueCount ? { text: importMessages.willSaveInvestmentValues(investmentValueCount) } : null,
     skippedCount ? { text: importMessages.willSkipRows(skippedCount) } : null,
     removedEntryCount ? { text: importMessages.willRemoveEntries(removedEntryCount) } : null,
     reopenedEstimateCount ? { text: importMessages.willReopenEstimates(reopenedEstimateCount) } : null,

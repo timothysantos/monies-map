@@ -303,6 +303,13 @@ over plan.
   under it, and **Details** opens the income, spending and savings figures.
 - **Wallets in view**: one list with each wallet's current balance and
   whether a statement has confirmed it. Select a wallet to open its entries.
+  An investment account you have imported an iFAST statement for says what
+  its latest statement said it was worth, with the statement's date ("Worth
+  $2,023.90 on 30 Sep 2026, from its statement"). That is the statement's
+  figure on that day, not a forecast and not money you can spend; the
+  balance beside it is still what you moved in
+  ([Import an investment statement](#import-an-investment-statement-ifast)).
+  Hide money totals and both the figure and the sentence go.
 
 ![Spending Mix: the donut beside the ranked categories, with Intent vs Outcome below](/faq/guide/desktop/thumbs/summary-charts.webp)
 
@@ -1421,6 +1428,53 @@ split matches** (or **Later**).
 Select **Start over** at any time to clear the draft. Your original file is
 never stored; only the rows you commit are saved.
 
+## Import an investment statement (iFAST)
+
+An iFAST monthly statement (the "Wrap" PDF) does two things when you import
+it: it records the money you put in, and it saves what the statement says the
+account was worth on its last day.
+
+1. **Import the bank statement first.** Your bank's own row for the payment
+   (for OCBC, "IBG GIRO … IFAST FINANCIAL PL-" with your iFAST account
+   number) should already be in the app. Then the import can see it.
+2. On **Imports**, drop the iFAST PDF. Download it from iFAST as the whole
+   monthly statement; a file with its pages cut off is refused and says so.
+3. If the app has no account for it yet, the review says the account is
+   unknown. Select **Create account**: the name is filled in from the
+   statement (for example "Joyce iFAST"), the type is **Investment**, and you
+   only choose the owner. The next statement finds the account by the last
+   four digits of its number, so you will not be asked again.
+4. Read the **Investment statement** box. It says what the account was worth
+   on the statement's last day, and for each amount you put in whether it is
+   the same money as a bank payment already in the app ("$500.00 put in on 8
+   Jul 2026 is the OCBC 360 payment of 3 Jul 2026. They are saved as one
+   transfer, not two."). If there is no matching bank payment it says so and
+   saves the amount on its own; you can link the two later in Entries.
+5. Select **Commit import to ledger** (**Save statement value** for a month
+   when you put nothing in).
+
+What it does and does not do:
+
+- A payment you made into iFAST shows once, as a move of money into your
+  investments. The bank's payment and iFAST's record of it become one
+  transfer, so the same $500 is not counted twice.
+- Switching between funds inside iFAST, buying units each month and dividends
+  that iFAST reinvests are not money moving to or from your bank, so they do
+  not appear in your entries.
+- **What it was worth** is the statement's own figure for that day (the
+  market value of everything in the account plus any cash in iFAST). It is
+  kept for reference. It is not a bank balance, it is never checked against
+  your entries, and it is not a prediction. It appears on **Summary** under
+  **Wallets in view**, with the statement's date.
+- Importing the same statement again adds nothing. A corrected statement for
+  the same month replaces the figure saved for that month, and says so before
+  you save.
+- If you roll the import back ([Undo an import](#undo-an-import)), the amount
+  you put in is removed, the bank's row goes back to how it was, and the
+  worth it saved is removed (or put back to the earlier statement's).
+- Only Singapore dollar statements are read. Another currency is refused with
+  its name.
+
 ## Which file do I download from my bank?
 
 The Import inbox names each file. In general, download statement PDFs first
@@ -1452,6 +1506,12 @@ June belongs to June's statement.
 - **During the month**: the card activity `.csv`. Choose the Citibank card as
   the Default account before dropping it; the file has no headings, so the
   account tells the app how to read it.
+
+### iFAST (investments)
+
+- **Statements**: the monthly "Wrap" statement PDF for each iFAST account,
+  the whole file ([Import an investment statement](#import-an-investment-statement-ifast)).
+  Each account has its own number and its own statements; import each.
 
 ### HSBC
 

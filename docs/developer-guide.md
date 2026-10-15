@@ -1580,6 +1580,35 @@ comparison use `post_date`.
   the import creates a statement checkpoint with zero rows so the account can
   still be certified.
 
+- iFAST Wrap monthly statement PDFs (`src/lib/statement-import/ifast.ts`,
+  `parserKey` `ifast_wrap_pdf`) are an investment account's statement. The
+  parser reads the raw pdf.js item view (the visual-line views split the
+  account summary row), merges a split "SGD" and amount, and gives:
+  the period from `STATEMENT FOR <MONTH> <YEAR> (P<number>)`, the account
+  number (its last four digits become `accountLast4`), the currency (only SGD
+  imports), Total Assets (kept as `statementBalanceMinor` and
+  `investmentValue.totalAssetsMinor`, with market value, cash solutions and
+  the income summary beside it), and the plan-level table of INVESTMENT
+  TRANSACTION as transfer rows (a contribution is income + `transfer`, a
+  Redemption/Withdrawal is expense + `transfer`). The tables of underlying
+  unit rows (switches, per-fund RSP buys, reinvested dividends) and the
+  fund-level P/L are ignored. A file with no INVESTMENT TRANSACTION heading
+  is refused as cut short. The checkpoint is saved as an
+  `investment_statement_values` row, never as an
+  `account_balance_checkpoints` row, so the certify and reconcile logic never
+  sees it; rows land certified on the investment account and pair with the
+  bank's GIRO row through `pickReferencedTransferCandidate` (the account
+  number in the bank text is the strong signal). Fixtures are four real
+  statements, masked item by item (`tests/fixtures/pdf-statement-text/README.md`);
+  `tests/ifast-statement-parser.test.mjs`, `ifast-statement-import.test.mjs`,
+  `atomic-writes-ifast-import.test.mjs` and
+  `tests/e2e/ifast-statement-import.spec.js` cover it. Migration: the two
+  tables (`investment_statement_values`, `import_transfer_links`) are
+  `CREATE TABLE IF NOT EXISTS` in `schema.sql` (apply with `db:migrate:remote`
+  and `db:migrate:demo` before the code is deployed; running it again is safe)
+  and are also created by the runtime schema check; every reader tolerates a
+  database without them.
+
 For supported PDFs, the browser extracts statement text locally and turns it
 into reviewable rows. If the PDF creates statement checkpoints, those fields are
 editable before commit.

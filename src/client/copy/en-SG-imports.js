@@ -628,6 +628,7 @@ export const importMessages = {
     ? `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`
     : `${countOf(count, "existing entry", "existing entries")} will be updated`,
   willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will refresh`,
+  willSaveInvestmentValues: (count) => `${count} statement value${count === 1 ? "" : "s"} will be saved`,
   willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
   willRemoveEntries: (count) => `${countOf(count, "entry", "entries")} will be removed`,
   needsReviewRows: (count) => `${countOf(count, "row")} ${count === 1 ? "needs" : "need"} review`,

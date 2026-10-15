@@ -339,6 +339,46 @@ write routes that resolve each candidate (`/api/transfers/link`,
 `/api/entries/update-classification`, `/api/splits/checkpoints/match`,
 `/api/splits/settlements/create`); it never calls them. No AI is involved.
 
+### Investment statements (current, 2026-10)
+
+An iFAST "Wrap" monthly statement PDF is an investment account's statement,
+imported through the same Imports flow as a bank statement, deterministically
+(no AI):
+
+```text
+browser: extractPdfText (pdf.js, unchanged) -> parseStatementText
+  lib/statement-import/ifast.ts   pure parser: period, account number, currency,
+                                  total assets, income, plan-level cash rows
+                                  (reads the raw item view, not visual lines)
+POST /api/imports/preview
+  app-repository-import-preview.ts   splits value checkpoints from bank ones
+  import-investment-statement.ts     pairs each row with a bank entry
+                                     (transfer-candidates.ts, account number
+                                     as the strong signal)
+  import-investment-values.ts        what the statement will save / replace
+POST /api/imports/commit (one db.batch, with the rows)
+  import-transfer-links.ts           transfer group over statement row + bank
+                                     entry, bank entry's old classification kept
+  import-investment-values.ts        investment_statement_values upsert, the
+                                     replaced value kept for rollback
+POST /api/imports/rollback           restores bank entry, value, drops the group
+GET  /api/summary-account-pills      investmentValue on an investment account's
+                                     pill (the one place the value is shown)
+```
+
+Decisions: the market value is not a `statement checkpoint`. Checkpoints are
+bank balances with certificates, chain breaks and a ledger difference; a
+market value includes gains, so it has its own table
+(`investment_statement_values`, additive, `CREATE TABLE IF NOT EXISTS`) and no
+balance reader can mistake it for one. Contribution rows are certified
+transfers in on the investment account (owner follows the account); the pair
+with the bank's GIRO row is one `transfer group` made inside the import batch,
+so Invested counts it once (`investment-moves.ts`). Placement: the Summary's
+"Wallets in view" row for the investment account carries a plain sentence
+("Worth $x on 30 Sep 2026, from its statement"), read from the account-pills
+slice Summary already loads, so no page payload grows for a household with no
+investment statement.
+
 ### Shortcut integration boundary
 
 The Apple Pay integration uses a dedicated direct-create route rather than the

@@ -64,12 +64,14 @@ export function buildImportBlockers({
     return { blockers, remainingCount: blockers.length, isCommitDisabled: true, commitQuestion: null, matched: null };
   }
 
-  const isStatement = sourceType === "pdf" && statementCheckpointCount > 0;
+  // An investment statement saves what the account was worth: no balance to
+  // check, so no card to match and no check to refresh.
+  const isStatement = sourceType === "pdf" && statementCheckpointCount > 0 && !previewModel.isInvestmentStatement;
   const reconciliations = previewModel.statementReconciliations ?? [];
   const openCards = reconciliations.filter((item) => item.status !== "matched");
   // A statement saved without rows needs every card to match first; a
   // statement with rows asks before saving a difference.
-  const isCheckpointOnlyOpen = previewModel.hasCheckpointOnlyCommit && !previewModel.hasMatchedCheckpointOnlyCommit;
+  const isCheckpointOnlyOpen = previewModel.hasCheckpointOnlyCommit && !previewModel.hasMatchedCheckpointOnlyCommit && !previewModel.isInvestmentStatement;
   const cardEffect = isCheckpointOnlyOpen ? "disable" : isStatement ? "ask" : null;
   const blockers = [];
 

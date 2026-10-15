@@ -9,7 +9,7 @@ import path from "node:path";
 
 import { expect, test } from "@playwright/test";
 
-import { postJson, reseedDemo } from "./helpers.js";
+import { loadEntriesPage, postJson, reseedDemo } from "./helpers.js";
 
 const GIRO = "IBG GIRO COLL P0000194 IFAST FINANCIAL PL- P0000194";
 // Set to a folder to also save the before/after screenshots (docs/audits/ifast-import).
@@ -73,21 +73,29 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
     await page.setViewportSize({ width: device.width, height: device.height });
     await showMoney(page);
     await seedHousehold(page);
+    if (SHOT_DIR) {
+      await page.goto("/summary?view=household");
+      await expect(page.locator(".summary-wallet-row").filter({ hasText: "Alex iFAST" })).toBeVisible({ timeout: 60_000 });
+      await shot(page, `before-summary-${device.label}`);
+    }
 
     const card = await openStatement(page, testInfo, "ifast-wrap-jul-2026-real");
     await expect(card).toBeVisible({ timeout: 60_000 });
     await expect(card).toContainText("Alex iFAST was worth $1,374.67 on 31 Jul 2026, from the statement");
     await expect(card).toContainText("$685.00 put in on 8 Jul 2026 is the OCBC 360 payment of 3 Jul 2026. They are saved as one transfer, not two.");
     await shot(page, `after-import-preview-${device.label}`);
+    if (SHOT_DIR) {
+      await card.screenshot({ path: path.join(SHOT_DIR, `after-investment-statement-box-${device.label}.png`) });
+    }
+    await expect(page.locator(".import-commit-bar-summary")).toHaveText("1 row will import · 1 statement value will be saved");
 
     await expect(commitButton(page)).toHaveText("Commit import to ledger");
     await commitButton(page).click();
     await expect(page.locator(".import-done-card")).toBeVisible({ timeout: 60_000 });
 
     // One transfer: the investment account's entry and the bank's GIRO row share a group.
-    const entries = await page.request.get("/api/entries-page?view=household&month=2026-07&scope=direct_plus_shared");
-    expect(entries.ok()).toBeTruthy();
-    const { entries: july } = await entries.json();
+    const julyPage = await loadEntriesPage(page, { view: "household", month: "2026-07" });
+    const july = julyPage.monthPage.entries;
     const pair = july.filter((entry) => entry.accountName === "Alex iFAST" || entry.description === GIRO);
     expect(pair.map((entry) => [entry.accountName, entry.entryType, entry.transferDirection]).sort()).toEqual([
       ["Alex iFAST", "transfer", "in"],
@@ -103,8 +111,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
     await shot(page, `after-summary-${device.label}`);
 
     // Hidden money: no figure and no words that carry it.
-    await page.evaluate(() => window.localStorage.setItem("monies-map:money-totals-visible", "false"));
-    await page.reload();
+    await page.getByRole("button", { name: "Hide money totals" }).click();
     const hiddenRow = page.locator(".summary-wallet-row").filter({ hasText: "Alex iFAST" });
     await expect(hiddenRow).toBeVisible({ timeout: 60_000 });
     await expect(hiddenRow.locator(".summary-wallet-health")).toHaveCount(0);

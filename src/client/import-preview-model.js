@@ -180,6 +180,8 @@ export function buildImportPreviewModel({
     reopenedEstimates,
     hasCheckpointOnlyCommit,
     hasMatchedCheckpointOnlyCommit,
+    // Every checkpoint is an investment statement's value: nothing to balance.
+    isInvestmentStatement: isInvestmentStatementOnly,
     ledgerMatchedStatement,
     matchedPreviewRowCount,
     certifiedConflictRows,

@@ -427,6 +427,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     [statementReconciliation, previewRows]
   );
   const hasUnbalancedStatement = Boolean(statementRecovery && !statementRecovery.isBalanced);
+  // An investment statement's value is saved apart from bank checkpoints, so
+  // the commit bar counts it on its own.
+  const investmentValueCount = statementCheckpoints.filter((checkpoint) => checkpoint.investmentValue).length;
   // What blocks a clean commit: the bar's chips, the commit bar's count
   // and the commit rules all read this one list.
   const importBlockers = useMemo(
@@ -2551,7 +2554,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           {preview ? (
             <ImportCommitBar
               previewRows={previewRows}
-              statementCheckpointCount={statementCheckpoints.length}
+              statementCheckpointCount={statementCheckpoints.length - investmentValueCount}
+              investmentValueCount={investmentValueCount}
               ledgerMatchedStatement={ledgerMatchedStatement}
               reconciledExistingRowCount={reconciledExistingRowCount}
               removedEntryCount={statementImportMeta.sourceType === "pdf"
@@ -2689,8 +2693,9 @@ function buildOptimisticRecentImportBatch({
     accountNames,
     overlapImportCount: 0,
     overlapImports: [],
-    statementCertificateCount: statementCheckpoints.length,
-    statementCertificateStatus: statementCheckpoints.length ? "certified" : undefined,
+    // An investment statement's value is not a certificate.
+    statementCertificateCount: statementCheckpoints.filter((checkpoint) => !checkpoint.investmentValue).length,
+    statementCertificateStatus: statementCheckpoints.some((checkpoint) => !checkpoint.investmentValue) ? "certified" : undefined,
     rollbackProtected: false,
     note: importNote?.trim() || undefined
   };

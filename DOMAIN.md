@@ -144,7 +144,10 @@ Important distinctions:
   stores them (never overwriting, never giving two accounts the same digits),
   and later statements match a section whose printed name matches no account
   by those digits. Rolling the statement back keeps them: they identify the
-  card, they are not a ledger fact.
+  card, they are not a ledger fact. An investment account (kind `investment`)
+  remembers the digits of its provider account number the same way, and its
+  statements save an `investment statement value`, never a statement
+  checkpoint.
 
 ### Savings Target
 
@@ -329,6 +332,62 @@ Important distinctions:
   the notices the app knows how to say (`src/domain/statement-notices.ts`).
   The check-in reads the latest statement's notices while it closed within
   62 days; a later statement without the notice ends it.
+
+### Investment Statement Value
+
+What an investment provider's statement says an investment account was worth at
+the end of its period (`src/lib/statement-import/ifast.ts`,
+`src/domain/import-investment-values.ts`). Today the source is the iFAST
+"Wrap" monthly statement PDF: its Total Assets (market value plus cash
+solutions) on the statement's last day.
+
+Storage:
+- `investment_statement_values` (one row per account and month; a revised
+  statement replaces it and keeps the replaced values in `previous_value_json`
+  for the import's rollback)
+- DTO `StatementInvestmentValueDto` on the statement's checkpoint draft,
+  `ImportPreviewInvestmentValueDto` in the import preview, and
+  `SummaryAccountPillDto.investmentValue` on Summary
+
+Canonical term:
+- `investment statement value`; in the UI "worth" ("Worth $x on 30 Sep, from
+  its statement"). Never "balance", "checkpoint" or "cash".
+
+Important distinctions:
+- It is not a `statement checkpoint`. A checkpoint is a bank balance the ledger
+  must reconcile to; a market value includes gains and losses, so it is never
+  compared with ledger activity, never certified, never part of the statement
+  chain and never touches `account_balance_checkpoints`. It lives in its own
+  table so no balance reader can mistake it for one.
+- It is a reading of the statement, not a forecast, not spendable cash and not
+  the money put in: the account's ledger balance is still what was moved into
+  it, and the value is shown beside it with its date. Hidden money shows
+  neither the figure nor the sentence.
+- The statement's rows are only its plan-level cash movements ("INVESTMENT
+  TRANSACTION": a contribution paid by eGIRO, RSP or cash, or a redemption
+  back to the bank). Switches between funds, unit-level buys and reinvested
+  dividends move no cash across the bank, so they are never rows. The income
+  summary is kept on the value (`income_minor`) and is never a row.
+- A contribution lands on the investment account as a transfer in (a
+  redemption as a transfer out), certified by the statement. When the bank's
+  own row for it is already in the ledger, the import links the two as one
+  `transfer group` in the same batch (`src/domain/import-investment-statement.ts`
+  and `import-transfer-links.ts`), using the one transfer-candidate ranking
+  with the statement's account number as the strong signal: the bank row names
+  the number ("IBG GIRO COLL P0000194 IFAST FINANCIAL PL-"), and a bank row
+  naming a different number is never offered. Without the number only a lone
+  same-amount row within ten days is offered; two plausible rows are never
+  guessed between. The bank row becomes a transfer and its earlier
+  classification is kept (`import_transfer_links`) so a rollback restores it.
+  An investment account's own transfer in is what Invested counts, so the
+  pair counts once.
+- The statement's last four digits of its account number are kept on the
+  account (`accounts.last4`, never overwriting) so the next statement finds the
+  account even when it was renamed. A statement for an account the app does not
+  know is created through the same account dialog as a bank statement's (kind
+  Investment, no opening balance).
+- Only Singapore dollar statements are imported; another currency is refused
+  with its currency named.
 
 ### Bank Charge
 
@@ -1452,6 +1511,11 @@ Relationships:
 - belongs to one `household`
 - has many `ledger entries`, usually two matched transfer entries
 
+An investment statement import can create a group itself: its contribution
+and the bank's GIRO row that paid it, in the import's own batch, recorded in
+`import_transfer_links` so the import's rollback dissolves the group and puts
+the bank row back as it was (see "Investment Statement Value").
+
 ### Split Workspace
 
 The shared-expense settle-up subsystem. It is intentionally separate from the
@@ -2422,6 +2486,8 @@ Use these terms consistently in future work:
   talking about the `transactions` table or compatibility code.
 - Say `statement checkpoint`, not `balance snapshot`, for
   `account_balance_checkpoints`.
+- Say `investment statement value` (UI: "worth") for what an investment
+  statement says an account was worth, never `balance` or `checkpoint`.
 - Say `import batch`, not just `import`, when the batch boundary matters.
 - Say `import row`, not `raw transaction`, for source rows before normalization.
 - Say `entry reconciliation`, not only `duplicate detection`, when the task is
@@ -2461,6 +2527,9 @@ These boundaries are important enough to preserve explicitly:
   `month plan row` != `ledger entry`
 - Proof vs balance anchor:
   `statement reconciliation certificate` != `statement checkpoint`
+- Balance anchor vs market value:
+  `statement checkpoint` != `investment statement value`: the first is
+  reconciled to ledger activity, the second never is
 - AI assistance vs financial fact:
   an `AI suggestion` is an optional, non-authoritative draft or ranking. It is
   never a ledger entry, category rule, statement checkpoint, reconciliation

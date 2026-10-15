@@ -165,6 +165,22 @@ Imports owns:
   post-bank-files lane. Multi-file intake is browser-only: it may keep parsed
   rows, checkpoints, and generic CSV text in transient UI state, but it must not
   persist original PDFs, CSVs, XLS files, OCR images, or raw bank files
+- investment statements (an iFAST "Wrap" PDF, `parserKey` `ifast_wrap_pdf`):
+  read by the same browser pipeline as a bank PDF, but its checkpoint carries
+  an `investmentValue`, so the preview keeps it out of the statement balance
+  check (no reconciliation card, no certificate) and shows an "Investment
+  statement" box instead: what the account was worth on its last day (a
+  statement figure, never a balance), the value it replaces when the month
+  was saved before, and for each contribution whether it is the same money as
+  a bank payment already in the ledger. Each contribution row lands on the
+  investment account as a transfer in (`transferMatch` names the bank entry,
+  chosen by `pickReferencedTransferCandidate` with the statement's account
+  number as the strong signal); the commit links the pair as one transfer in
+  its own batch and the rollback restores the bank entry. The account is
+  mapped or created exactly as a bank statement's is (kind Investment, no
+  opening balance). With nothing new to add the commit reads "Save statement
+  value" ("and open next" while another file waits). Driven in
+  `ifast-statement-import.spec.js`
 - file upload and preview
 - account mapping
 - commit and rollback

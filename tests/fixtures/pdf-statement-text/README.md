@@ -60,6 +60,17 @@ Each fixture parses to the same rows, dates and descriptions as its original
 (docs/audits/real-statement-imports.md). The hand-written fixtures above did
 not match real OCBC card and Citi layouts, so prefer real extracted text.
 
+`ifast-wrap-{jun,jul,aug,sep}-2026-real-sanitized.pdf-text.txt` are four real
+iFAST Wrap monthly statements (one account, June to September 2026), extracted
+with pdf.js 4.10.38 and masked item by item before the three views were built:
+the holder's name and address, the adviser's name and contact, and the account
+number are replaced by placeholders (`P0000194`, `Alex TOP Account`), and every
+two-decimal amount is multiplied by one undisclosed factor (unit prices and
+quantities are left). The July file keeps the plan's RSP row, a Switch Sell, a
+Switch Buy and nine unit RSP rows; September has no contribution and a
+reinvested dividend; the holdings tables print negative P/L. The parser reads
+only the raw item view, so the visual-line views are kept for contract parity.
+
 pdf.js item boundaries are part of the parser contract: pdf.js 6 merges words
 into phrases and breaks the Citi and OCBC card parsers. Upgrade pdf.js only
 with new fixtures extracted from real statements with that version.

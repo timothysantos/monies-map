@@ -642,6 +642,16 @@ A persistence command is all-or-nothing:
   then saves it to `import_no_longer_listed_entries` and deletes it in the
   import's own final batch; the rollback re-creates it in the rollback's
   batch (`tests/atomic-writes-no-longer-listed.test.mjs`)
+- an investment statement import (`src/domain/import-investment-values.ts`,
+  `import-transfer-links.ts`) re-checks, before the batch, that each paired
+  bank entry is still unlinked, on another account, for the same amount and on
+  the opposite side, and that the value's account is an investment account in
+  SGD (a refusal throws before anything is written). The value upsert (which
+  keeps the replaced value in `previous_value_json`), the transfer group, the
+  bank entry's reclassification, its `import_transfer_links` record and the
+  rows are all in the import's own batch; the rollback puts the bank entry and
+  the replaced value back in the rollback's batch
+  (`tests/atomic-writes-ifast-import.test.mjs`)
 - statement corrections from Settings
   (`src/domain/app-repository-statement-corrections.ts`) apply or undo every
   move and removal with its `statement_corrections` row and audit event in

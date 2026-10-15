@@ -96,7 +96,13 @@ and bar; the top five, then "Show all N") carries them, and a row's main tap
 hides the slice, its bubble edits the category and its arrow opens Entries
 (`design.md`, "Summary body"; `tests/e2e/summary-body-lsd.spec.js`). Wallets in
 view is one `DetailRows` group of wallet rows (name, freshness, balance) from
-`/api/summary-account-pills`; a row opens Entries for the wallet. The month sheet and the desktop month row read the same
+`/api/summary-account-pills`; a row opens Entries for the wallet. An
+investment account with an imported iFAST statement carries `investmentValue`
+(`{ valueMinor, asOfDate }`, only when it has one, so a household without any
+adds nothing to the payload) and its freshness line reads "Worth $x on 30 Sep
+2026, from its statement" (`describeAccountHealth`); it is a statement
+figure, never a balance or a forecast, and hidden money drops the whole line
+(`tests/e2e/ifast-statement-import.spec.js`). The month sheet and the desktop month row read the same
 DTO's `rangeMonths` and `months` (`realExpensesMinor` against
 `estimatedExpensesMinor`); they add no request.
 

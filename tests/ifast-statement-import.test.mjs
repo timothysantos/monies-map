@@ -136,6 +136,13 @@ test("committing saves the contribution, links it to the GIRO row as one transfe
     account_id: investmentId, value_month: "2026-07", as_of_date: "2026-07-31", total_assets_minor: 137_467, market_value_minor: 137_467,
     cash_minor: 0, income_minor: 0, currency: "SGD", account_reference: "P0000194", previous_value_json: null
   }]);
+  // Invested counts the pair once: money moved into the investment account,
+  // and the GIRO row (now a transfer) is no longer also spending under Investments.
+  const summary = await api("/api/summary-page?view=household&month=2026-07&scope=direct_plus_shared");
+  assert.equal(summary.status, 200, JSON.stringify(summary.payload));
+  assert.deepEqual(summary.payload.summaryPage?.investmentMoves ?? summary.payload.investmentMoves, { intoMinor: 68_500, outOfMinor: 0 });
+  const julyShare = (summary.payload.summaryPage ?? summary.payload).categoryShareByMonth.find((entry) => entry.month === "2026-07");
+  assert.equal(julyShare?.data.find((slice) => slice.label === "Investments")?.valueMinor ?? 0, 0);
   // The market value is not a bank balance: no checkpoint, no certificate, and
   // the card remembers the account number's digits for the next statement.
   assert.deepEqual(await rows(db, "SELECT id FROM account_balance_checkpoints WHERE account_id = ?", investmentId), []);
