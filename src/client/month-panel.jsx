@@ -1,7 +1,7 @@
 // First, so these rules load before the stylesheets the modules below import.
 import "./month-route.css";
 import { spendingMinor } from "../domain/category-offset";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -44,6 +44,14 @@ import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
 import "./month-mid-width.css";
 import "./month-plan-rows.css";
+
+// Plan Studio (design.md "Plan Studio") is its own chunk, fetched when the
+// page is in Plan view; Simple view never loads it. Until it arrives an empty
+// block of the studio's size holds its place, so the page below does not jump.
+const PlanStudio = lazy(() => import("./plan-studio.jsx"));
+function PlanStudioReserve() {
+  return <div className="plan-studio-reserve" aria-hidden="true" data-plan-studio-reserve />;
+}
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const {
@@ -413,6 +421,37 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       actualMinor: Math.max(0, actualMinor)
     };
   }, [view.id, view.monthPage.month, view.monthPage.selectedScope]);
+
+  // Plan Studio's "Save plan": every changed row in one all-or-nothing
+  // request (409 when the plan changed underneath, nothing written). The
+  // rows then show what was saved while the month reloads in the background.
+  async function savePlanStudio({ changes, updates }) {
+    const response = await fetch("/api/month-plan/apply-changes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month: view.monthPage.month, changes })
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw Object.assign(new Error(payload?.error || "Failed to save the plan."), { status: response.status });
+    }
+    const byKey = new Map(updates.map((update) => [update.key, update]));
+    setIncomeRows((current) => current.map((row) => (
+      byKey.has(row.id) ? { ...row, plannedMinor: byKey.get(row.id).plannedMinor, isPendingDerived: true } : row
+    )));
+    setPlanSections((current) => current.map((section) => ({
+      ...section,
+      rows: section.rows.map((row) => {
+        const update = byKey.get(row.id);
+        if (!update) return row;
+        const saved = update.ids.length === 1
+          ? buildSavedMonthPlanFields({ plannedMinor: update.plannedMinor })
+          : { plannedMinor: update.plannedMinor, sourcePlannedMinors: update.sourceMinors };
+        return { ...row, ...saved, isPendingDerived: true };
+      })
+    })));
+    refreshMonthDataInBackground(buildMonthMutationRefreshPlan({ kind: "plan-row-edit" }));
+  }
 
   async function persistMonthRow(sectionKey, row, nextPlannedMinor) {
     // The save API expects the canonical plan-row shape, even when the UI is
@@ -1553,7 +1592,20 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           onOpenEntries={(entryIds) => handleOpenEntriesForActual({ entryIds })}
           onPlanThisMonth={() => monthLead.setLeadView("plan")}
         />
-      ) : <MonthPlanStack
+      ) : <>
+      <Suspense fallback={<PlanStudioReserve />}>
+        <PlanStudio
+          month={view.monthPage.month}
+          monthLabel={formatService.formatMonthLabel(view.monthPage.month)}
+          categories={categories}
+          incomeRows={incomeRows}
+          planSections={planSections}
+          figures={monthLead.model?.figures ?? null}
+          today={checkInClock.today}
+          onSave={savePlanStudio}
+        />
+      </Suspense>
+      <MonthPlanStack
         view={view}
         categories={categories}
         categorySelectOptions={categorySelectOptions}
@@ -1589,7 +1641,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         onSortChange={handleSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         saveErrorMessage={monthRowError}
-      />}
+      /></>}
 
       <MonthNotesAndAccounts
         monthNote={view.monthPage.monthNote}

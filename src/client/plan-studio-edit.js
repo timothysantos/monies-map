@@ -217,22 +217,31 @@ export function splitAcrossSources(sourceMinors, totalMinor) {
 }
 
 /**
- * "Save plan": one update per stored row that changed, each carrying what the
- * row must still hold on the server (the request fails whole if the plan
- * changed underneath). A combined row is saved as each person's row.
+ * What "Save plan" changes: each editable row whose held amount differs from
+ * the saved one, with the amount each stored row it is made of will hold (a
+ * combined household row is saved as each person's row).
  */
-export function buildChanges(rows, plan) {
-  const changes = [];
+export function buildRowUpdates(rows, plan) {
+  const updates = [];
   for (const row of rows) {
     if (!row.editable || plan[row.key] === undefined || plan[row.key] === row.savedMinor) continue;
-    const parts = row.ids.length === 1 ? [plan[row.key]] : splitAcrossSources(row.sourceMinors, plan[row.key]);
-    row.ids.forEach((rowId, index) => {
-      if (parts[index] !== row.sourceMinors[index]) {
-        changes.push({ action: "update", rowId, expectedMinor: row.sourceMinors[index], plannedMinor: parts[index] });
-      }
-    });
+    const sourceMinors = row.ids.length === 1 ? [plan[row.key]] : splitAcrossSources(row.sourceMinors, plan[row.key]);
+    updates.push({ key: row.key, section: row.section, ids: row.ids, plannedMinor: plan[row.key], sourceMinors, expectedMinors: row.sourceMinors });
   }
-  return changes;
+  return updates;
+}
+
+/**
+ * The request body's changes: one update per stored row that changed, each
+ * carrying what the row must still hold on the server (the request fails
+ * whole if the plan changed underneath).
+ */
+export function buildChanges(rows, plan) {
+  return buildRowUpdates(rows, plan).flatMap((update) => update.ids.flatMap((rowId, index) => (
+    update.sourceMinors[index] === update.expectedMinors[index]
+      ? []
+      : [{ action: "update", rowId, expectedMinor: update.expectedMinors[index], plannedMinor: update.sourceMinors[index] }]
+  )));
 }
 
 export function createEditState() {
@@ -267,7 +276,8 @@ function commitPlan(state, rows, result) {
 export function studioReducer(state, action) {
   const { rows } = action;
   const plan = currentPlan(rows, state.overrides);
-  const ctx = { rows, locks: state.locks, takeFrom: state.takeFrom };
+  // A one-tap fix names where its money comes from (left over), whatever Take from says.
+  const ctx = { rows, locks: state.locks, takeFrom: action.takeFrom ?? state.takeFrom };
   switch (action.type) {
     case "set":
       return commitPlan(state, rows, setAmount(ctx, plan, action.key, action.minor));

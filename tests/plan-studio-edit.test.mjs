@@ -9,6 +9,7 @@ import { buildStudioRows, planTotals } from "../src/client/plan-studio-model.js"
 import {
   adjustJob,
   buildChanges,
+  buildRowUpdates,
   buildSegments,
   changedKeys,
   createEditState,
@@ -234,6 +235,17 @@ test("a combined household row is saved as each person's row, in proportion, add
     { action: "update", rowId: "tim-save", expectedMinor: d(700), plannedMinor: d(875) },
     { action: "update", rowId: "joy-save", expectedMinor: d(500), plannedMinor: d(625) }
   ]);
+});
+
+test("the screen learns what each saved row now holds from the same split the request uses", () => {
+  const updates = buildRowUpdates(rows, plan({ food: 1400 }));
+  assert.deepEqual(updates.map((update) => [update.key, update.section, update.plannedMinor, update.sourceMinors]), [["food", "budget_buckets", d(1400), [d(1400)]]]);
+});
+
+test("a one-tap fix takes from left over even when Take from names a category", () => {
+  const state = studioReducer({ ...createEditState(), takeFrom: "fun" }, { rows, type: "set", key: "food", minor: d(1250), takeFrom: "left" });
+  assert.equal(currentPlan(rows, state.overrides).food, d(1250));
+  assert.equal(currentPlan(rows, state.overrides).fun, d(300), "the take-from category is untouched");
 });
 
 test("rows are never sent when they cannot be edited", () => {

@@ -327,6 +327,9 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
       splits: [...existing.splits, ...row.splits],
       isDerived: true,
       sourceRowIds: [...(existing.sourceRowIds ?? [existing.id]), ...(row.sourceRowIds ?? [row.id])],
+      // What each stored row holds, in source order, so Plan Studio can save a
+      // new total for the combined line as each person's row.
+      sourcePlannedMinors: [...sourceAmounts(existing), ...sourceAmounts(row)],
       sourcePlannedMinor: undefined,
       sourceNote: undefined,
       linkedEntryIds: [...(existing.linkedEntryIds ?? []), ...(row.linkedEntryIds ?? [])],
@@ -337,6 +340,10 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
   }
 
   return [...grouped.values()];
+}
+
+function sourceAmounts(row: MonthPlanRowDto) {
+  return row.sourcePlannedMinors ?? [row.sourcePlannedMinor ?? row.plannedMinor];
 }
 
 function mergeNotes(left?: string, right?: string) {

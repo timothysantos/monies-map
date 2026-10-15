@@ -542,3 +542,17 @@
   justify-self: start;
   min-height: 44px;
 }
+
+/* Where Plan Studio will be, until its chunk arrives (month-panel.jsx): empty
+   and invisible, about as tall as the studio's first cards, so the plan list
+   below does not jump when it loads. */
+.plan-studio-reserve {
+  min-height: 640px;
+  margin-top: 16px;
+}
+
+@media (min-width: 861px) {
+  .plan-studio-reserve {
+    min-height: 560px;
+  }
+}

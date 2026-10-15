@@ -1,0 +1,120 @@
+import { Lock, LockOpen, MoreHorizontal } from "lucide-react";
+
+import { planStudioCopy } from "./copy/plan-studio-copy";
+import { AmountEditor } from "./plan-studio-amount";
+import { RollingMoney } from "./plan-studio-parts";
+import { getPersonColourVars } from "./person-colour";
+import { StudioSlider } from "./plan-studio-slider-control";
+import { sliderValueText } from "./plan-studio-slider";
+import { moneyToneClass } from "./money-tone-class";
+
+const copy = planStudioCopy;
+
+// The owner chip: one person's colour, or Shared with each person's part.
+function OwnerChip({ row, halves, fmt }) {
+  if (row.ownershipType === "shared") {
+    const equal = halves.length > 0 && halves.every((half) => half.amountMinor === halves[0].amountMinor);
+    let text = copy.row.shared;
+    if (equal) text = copy.row.sharedEqual(fmt.money(halves[0].amountMinor));
+    else if (halves.length) text = copy.row.sharedSplit(halves.map((half) => ({ name: half.personName, amount: fmt.money(half.amountMinor) })));
+    return <span className="ps-owner" style={getPersonColourVars("shared")}>{text}</span>;
+  }
+  return row.ownerName ? <span className="ps-owner" style={getPersonColourVars(row.ownerName)}>{row.ownerName}</span> : null;
+}
+
+/**
+ * One plan row in Plan Studio: its name and planned amount (tap to type an
+ * exact one), a lock, the slider with nudge buttons of one step, and one line
+ * about where it stands. Every control is a native button or a slider, 44px
+ * tall; hidden money turns the amount to dots and drops the line.
+ */
+export function StudioRow({
+  row, plannedMinor, savedMinor, locked, fmt, status, paceMinor, scale, halves, dotColour, readOnlyReason,
+  onSet, onNudge, onGestureStart, onGestureEnd, onToggleLock
+}) {
+  const changed = plannedMinor !== savedMinor;
+  const disabled = !row.editable || locked;
+  const spendLike = row.job === "spend";
+  const stepText = String(scale.stepMinor / 100);
+  const describedBy = "ps-slider-hint";
+  const figureProps = row.actualEntryIds.length
+    ? row.job === "income"
+      ? { "data-fig": "earned", "data-fig-ids": row.actualEntryIds.join(" ") }
+      : { "data-fig": "spent", "data-fig-ids": row.actualEntryIds.join(" "), "data-fig-arg": row.categoryName, "data-fig-ask": row.categoryName ? "category" : undefined }
+    : null;
+  return (
+    <div className={`ps-row${changed ? " is-changed" : ""}${locked ? " is-locked" : ""}`} data-ps-row={row.key} data-job={row.job}>
+      <div className="ps-row-top">
+        <span className="ps-dot" style={{ "--ps-dot": dotColour }} aria-hidden="true" />
+        <span className="ps-row-name">{row.label}</span>
+        {row.editable ? (
+          <AmountEditor
+            label={row.label}
+            valueMinor={plannedMinor}
+            savedMinor={savedMinor}
+            fmt={fmt}
+            disabled={locked}
+            display={<RollingMoney minor={plannedMinor} fmt={fmt} />}
+            onApply={(minor) => onSet(row.key, minor)}
+          />
+        ) : (
+          <span className="ps-amount is-static"><RollingMoney minor={plannedMinor} fmt={fmt} /></span>
+        )}
+        {row.editable ? (
+          <button
+            type="button"
+            className="ps-icon-button"
+            aria-pressed={locked}
+            aria-label={locked ? copy.row.unlock(row.label) : copy.row.lock(row.label)}
+            onClick={() => onToggleLock(row.key)}
+          >
+            {locked ? <Lock size={18} aria-hidden="true" /> : <LockOpen size={18} aria-hidden="true" />}
+          </button>
+        ) : null}
+        {figureProps ? (
+          <button type="button" className="ps-icon-button" aria-label={copy.row.viewEntries(row.label)} {...figureProps}>
+            <MoreHorizontal size={18} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+      {row.editable ? (
+        <div className="ps-row-ctl">
+          <button type="button" className="ps-nudge" disabled={disabled || plannedMinor <= 0} aria-label={copy.row.lower(row.label, `${stepText} dollars`)} onClick={() => onNudge(row.key, -1)}>
+            −{stepText}
+          </button>
+          <StudioSlider
+            label={copy.row.sliderLabel(row.label)}
+            valueMinor={plannedMinor}
+            savedMinor={savedMinor}
+            actualMinor={row.actualMinor}
+            paceMinor={paceMinor}
+            maxMinor={scale.maxMinor}
+            stepMinor={scale.stepMinor}
+            disabled={disabled}
+            valueText={sliderValueText({ valueMinor: plannedMinor, hidden: fmt.hidden, format: fmt.money })}
+            spendLike={spendLike}
+            hidden={fmt.hidden}
+            describedBy={describedBy}
+            onChange={(minor) => onSet(row.key, minor)}
+            onGestureStart={onGestureStart}
+            onGestureEnd={onGestureEnd}
+          />
+          <button type="button" className="ps-nudge" disabled={disabled} aria-label={copy.row.raise(row.label, `${stepText} dollars`)} onClick={() => onNudge(row.key, 1)}>
+            +{stepText}
+          </button>
+        </div>
+      ) : (
+        <p className="ps-row-readonly">{readOnlyReason}</p>
+      )}
+      <div className="ps-row-foot">
+        <span className={`ps-row-status ${fmt.hidden ? "" : moneyToneClass(status.tone)}`}>
+          {fmt.hidden ? "" : copy.status[status.kind](fmt.money(status.amountMinor))}
+        </span>
+        <span className="ps-row-extra">
+          {changed ? <span className="ps-delta">{copy.row.fromSaved(fmt.signed(plannedMinor - savedMinor))}</span> : null}
+          <OwnerChip row={row} halves={halves} fmt={fmt} />
+        </span>
+      </div>
+    </div>
+  );
+}

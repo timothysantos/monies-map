@@ -595,6 +595,9 @@ export interface MonthPlanRowDto {
   isDerived?: boolean;
   sourceRowIds?: string[];
   sourcePlannedMinor?: number;
+  // A combined household line only: what each of `sourceRowIds` holds, in the
+  // same order (Plan Studio saves a new total as each person's row).
+  sourcePlannedMinors?: number[];
   sourceNote?: string;
   splits: EntrySplitDto[];
 }
