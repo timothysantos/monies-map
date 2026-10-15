@@ -112,6 +112,32 @@ async function expectSimple(page, { summary, earned, spent }) {
   }
 }
 
+async function expectFlatMonthRows(page) {
+  // The month name is a flat row link, not a native grey button: no fill,
+  // no border, and every row lines up in two columns (name left, result right).
+  const rows = await page.locator("[data-earned-spent] .earned-spent-row").evaluateAll((items) => items.map((item) => {
+    const button = item.querySelector(".summary-month-link");
+    const result = item.querySelector(".earned-spent-result");
+    const style = getComputedStyle(button);
+    return {
+      background: style.backgroundColor,
+      borderWidth: style.borderTopWidth,
+      appearance: style.appearance,
+      left: Math.round(button.getBoundingClientRect().left),
+      height: button.getBoundingClientRect().height,
+      resultRight: Math.round(result.getBoundingClientRect().right)
+    };
+  }));
+  expect(rows.length).toBeGreaterThan(1);
+  for (const row of rows) {
+    expect(row.background).toBe("rgba(0, 0, 0, 0)");
+    expect(row.borderWidth).toBe("0px");
+    expect(row.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(new Set(rows.map((row) => row.left)).size, "month names share one left edge").toBe(1);
+  expect(new Set(rows.map((row) => row.resultRight)).size, "results share one right edge").toBe(1);
+}
+
 async function recordBareMonth(page) {
   for (const entry of [
     { description: "Simple view salary", categoryName: "Salary", amountMinor: 50_000, entryType: "income" },
@@ -402,6 +428,7 @@ test.describe("phone", () => {
     // Each month's name is a 44px target.
     const link = await page.locator("[data-earned-spent] .summary-month-link").first().boundingBox();
     expect(link.height).toBeGreaterThanOrEqual(44);
+    await expectFlatMonthRows(page);
 
     // Month in Plan with the switch in its head stays within the 215px card.
     await page.evaluate((key) => window.localStorage.setItem(key, "plan"), STORAGE_KEY);
@@ -414,6 +441,15 @@ test.describe("phone", () => {
     await expectSimple(page, { summary: false, earned: may.earned, spent: may.spent });
     const simpleCard = await page.locator(".month-lead").boundingBox();
     expect(simpleCard.height, "Month lead height in Simple").toBeLessThanOrEqual(card.height);
+  });
+
+  test("a fresh Simple visit draws the month names as flat row links, not grey buttons", async ({ page }) => {
+    await revealMoney(page);
+    // No Plan first: the Intent vs Outcome stylesheet is never loaded, so the
+    // Simple view must style the month name itself.
+    await page.goto(SUMMARY_URL);
+    await expect(page.locator("[data-earned-spent] .earned-spent-row").first()).toBeVisible();
+    await expectFlatMonthRows(page);
   });
 
   test("hidden money in Simple: shares and shapes only, no amount and no kept or overspent word", async ({ page }) => {
