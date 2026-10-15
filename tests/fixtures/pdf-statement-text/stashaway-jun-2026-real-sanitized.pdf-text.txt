@@ -1,0 +1,3914 @@
+StashAway (Asia Wealth Platform Pte Ltd)
+
+GST Registration No: 201624878Z
+
+175
+A Bencoolen Street
+
+Burlington Square #07-04
+
+Singapore 189650
+
+Statement of Account
+
+01
+ 
+Jun 2026
+ 
+-
+ 
+30 Jun 2026
+
+Account Owner:
+
+Alex Sample Holder
+
+Account Reference Code:
+
+00
+XYZ00X
+
+Address:
+
+1
+ 
+Sample Avenue
+
+#00-00
+
+Singapore 000000
+
+Statement Date:
+
+03
+ 
+Jul 2026
+
+ACCOUNT SUMMARY
+
+Reporting Currency:
+ 
+SGD
+
+Opening Balance
+
+(
+01
+ 
+Jun 2026
+)
+
+Cashflow
+
+(
+Deposits - Withdrawals)
+
+Total Returns
+
+(
+Incl. Dividends)
+
+Fees
+
+(
+Previous Month)
+
+Closing Balance
+
+(
+30
+ 
+Jun 2026
+)
+
+Investment
+
+Portfolios
+
+$15,774.66
+ 
+$0.00
+ 
+$99.81
+ 
+-$11.13
+ 
+$15,863.34
+
+Total
+ 
+$15,774.66
+ 
+$0.00
+ 
+$99.81
+ 
+-$11.13
+ 
+$15,863.34
+
+Opening balance is based on closing rates of security prices and exchange rates as of
+ 
+31 May 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2766
+ 
+SGD
+).
+
+Closing balance is based on closing rates of security prices and exchange rates as of
+ 
+30 Jun 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2938
+ 
+SGD
+).
+
+Total Returns are converted based on closing balance exchange rate.
+
+1
+PORTFOLIO SUMMARY
+ 
+/
+ 
+JUN 2026
+
+Investment Portfolios
+
+Reporting Currency:
+ 
+SGD
+
+Opening Balance
+
+(
+01
+ 
+Jun 2026
+)
+
+Cashflow
+
+(
+Deposits - Withdrawals)
+
+Total Returns
+
+(
+Incl. Dividends)
+
+Fees
+
+(
+Previous Month)
+
+Closing Balance
+
+(
+30
+ 
+Jun 2026
+)
+
+General Investing
+ 
+$15,774.66
+ 
+-
+ 
+$99.81
+ 
+-$11.13
+ 
+$15,863.34
+
+Opening balance is based on closing rates of security prices and exchange rates as of
+ 
+31 May 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2766
+ 
+SGD
+).
+
+Closing balance is based on closing rates of security prices and exchange rates as of
+ 
+30 Jun 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2938
+ 
+SGD
+).
+
+Total Returns are converted based on closing balance exchange rate.
+
+ETF portfolios fees are charged based on the previous month's AUM.
+
+2
+PORTFOLIO DETAILS
+ 
+/
+ 
+JUN 2026
+
+General Investing
+
+Reporting Currency:
+ 
+USD
+
+Opening Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Bought
+ 
+Sold
+ 
+Dividends
+
+(
+Paid and
+
+Reinvested)
+
+Closing Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Profit/Loss %
+ 
+Total
+
+Outstanding
+
+Units
+
+iShares MSCI ACWI UCITS ETF
+
+(ISAC)
+
+$743.44
+ 
+$3.08
+ 
+$126.46
+ 
+-
+ 
+$615.06
+ 
+-0.8%
+ 
+11.6238
+
+iShares Global High Yield Corp
+
+Bond UCITS ETF (HYLD)
+
+$397.92
+ 
+$14.03
+ 
+-
+ 
+-
+ 
+$403.87
+ 
+-2.0%
+ 
+10.398
+
+Health Care Select Sector SPDR
+
+Fund (XLV)
+
+$195.21
+ 
+$1.43
+ 
+-
+ 
+$0.60
+ 
+$208.77
+ 
+6.5%
+ 
+3.0063
+
+iShares Global Govt Bond UCITS
+
+ETF (IGLO)
+
+$1,130.19
+ 
+$37.49
+ 
+-
+ 
+-
+ 
+$1,160.96
+ 
+-0.6%
+ 
+29.888
+
+Technology Select Sector SPDR
+
+Fund (XLK)
+
+$334.86
+ 
+$0.90
+ 
+-
+ 
+$0.28
+ 
+$334.92
+ 
+-0.2%
+ 
+4.0163
+
+Vanguard Total International
+
+Bond ETF (BNDX)
+
+$1,358.38
+ 
+$36.65
+ 
+-
+ 
+$2.25
+ 
+$1,398.00
+ 
+0.4%
+ 
+65.9503
+
+iShares Core Global Aggregate
+
+Bond UCITS ETF (AGGG)
+
+$1,285.08
+ 
+$35.12
+ 
+-
+ 
+-
+ 
+$1,312.81
+ 
+-0.6%
+ 
+682.5192
+
+Vanguard FTSE All World ex-US
+
+ETF (VEU)
+
+$845.29
+ 
+-
+ 
+-
+ 
+$2.77
+ 
+$842.77
+ 
+0.0%
+ 
+22.9906
+
+Consumer Staples Select Sector
+
+SPDR Fund (XLP)
+
+$456.22
+ 
+$2.28
+ 
+-
+ 
+$2.22
+ 
+$459.41
+ 
+0.7%
+ 
+12.6352
+
+3
+Opening Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Bought
+ 
+Sold
+ 
+Dividends
+
+(
+Paid and
+
+Reinvested)
+
+Closing Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Profit/Loss %
+ 
+Total
+
+Outstanding
+
+Units
+
+BetaBuilders US Treasury Bond
+
+0-3 Months UCITS ETF (BB3M)
+
+$808.48
+ 
+$9.74
+ 
+-
+ 
+-
+ 
+$821.12
+ 
+0.4%
+ 
+15.8177
+
+The Industrial Select Sector
+
+SPDR®
+ 
+Fund (XLI)
+
+$512.39
+ 
+$1.42
+ 
+$94.50
+ 
+$0.92
+ 
+$453.66
+ 
+8.4%
+ 
+5.5956
+
+iShares $ High Yield Corporate
+
+Bond UCITS ETF (IHYU)
+
+$347.10
+ 
+$9.61
+ 
+-
+ 
+-
+ 
+$357.31
+ 
+0.2%
+ 
+8.6238
+
+Franklin FTSE India ETF (FLIN)
+ 
+$257.00
+ 
+$18.65
+ 
+-
+ 
+-
+ 
+$280.87
+ 
+1.9%
+ 
+18.0406
+
+Invesco Aerospace & Defense ETF
+
+(PPA)
+
+$400.67
+ 
+-
+ 
+-
+ 
+$0.21
+ 
+$398.55
+ 
+-0.5%
+ 
+5.1546
+
+iShares J.P. Morgan USD
+
+Emerging Markets Bond ETF
+
+(EMB)
+
+$675.98
+ 
+$12.44
+ 
+-
+ 
+$2.00
+ 
+$688.51
+ 
+0.3%
+ 
+16.3108
+
+SPDR Gold MiniShares Trust
+
+(GLDM)
+
+$1,032.25
+ 
+$37.48
+ 
+-
+ 
+-
+ 
+$947.79
+ 
+-11.4%
+ 
+27.265
+
+SPDR FTSE International
+
+Government Inflation-Protected
+
+Bond ETF (WIP)
+
+$459.68
+ 
+$8.46
+ 
+-
+ 
+$3.10
+ 
+$453.37
+ 
+-2.5%
+ 
+26.2958
+
+WisdomTree Japan Hedged Equity
+
+Fund (DXJ)
+
+$401.69
+ 
+-
+ 
+-
+ 
+$1.90
+ 
+$406.38
+ 
+1.6%
+ 
+5.3506
+
+iShares Core S&P 500 ETF (IVV)
+ 
+$237.23
+ 
+-
+ 
+-
+ 
+$0.44
+ 
+$233.74
+ 
+-1.3%
+ 
+0.7131
+
+iShares $ TIPS UCITS ETF (IDTP)
+ 
+$344.96
+ 
+$4.62
+ 
+-
+ 
+-
+ 
+$349.11
+ 
+-0.1%
+ 
+3.0795
+
+Cash USD
+ 
+$132.74
+ 
+-
+ 
+-
+ 
+-
+ 
+$128.29
+
+Total
+ 
+$12,356.77
+ 
+-
+ 
+-
+ 
+$16.69
+ 
+$12,255.28
+
+4
+TRANSACTIONS
+ 
+/
+ 
+JUN 2026
+
+General Investing
+
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+01
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.7750
+ 
+$1.93
+ 
+$1.49
+ 
+$1.49
+
+01
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0114
+ 
+$51.72
+ 
+$0.59
+ 
+$0.59
+
+01
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0122
+ 
+$39.26
+ 
+$0.48
+ 
+$0.48
+
+01
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0021
+ 
+$113.69
+ 
+$0.24
+ 
+$0.24
+
+01
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0419
+ 
+$38.97
+ 
+$1.63
+ 
+$1.63
+
+01
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0109
+ 
+$41.25
+ 
+$0.45
+ 
+$0.45
+
+01
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0385
+ 
+$21.03
+ 
+$0.81
+ 
+$0.81
+
+01
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0068
+ 
+$41.97
+ 
+$0.28
+ 
+$0.28
+
+01
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0253
+ 
+$15.04
+ 
+$0.38
+ 
+$0.38
+
+01
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0057
+ 
+$38.71
+ 
+$0.22
+ 
+$0.22
+
+01
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0055
+ 
+$17.57
+ 
+$0.10
+ 
+$0.10
+
+02
+ 
+Jun 2026
+ 
+Sell ISAC
+ 
+2.3607
+ 
+$53.57
+ 
+$126.46
+ 
+$126.46
+
+02
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.2539
+ 
+$1.93
+ 
+$0.49
+ 
+$0.49
+
+02
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0031
+ 
+$51.74
+ 
+$0.16
+ 
+$0.16
+
+02
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0041
+ 
+$39.61
+ 
+$0.16
+ 
+$0.16
+
+02
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0006
+ 
+$113.80
+ 
+$0.07
+ 
+$0.07
+
+02
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0140
+ 
+$39.06
+ 
+$0.55
+ 
+$0.55
+
+5
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+02
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0034
+ 
+$41.42
+ 
+$0.14
+ 
+$0.14
+
+02
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+1.0902
+ 
+$21.09
+ 
+$23.00
+ 
+$23.00
+
+02
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.1921
+ 
+$42.10
+ 
+$8.09
+ 
+$8.09
+
+02
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.7644
+ 
+$15.12
+ 
+$11.56
+ 
+$11.56
+
+02
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.2311
+ 
+$38.94
+ 
+$9.00
+ 
+$9.00
+
+02
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.2052
+ 
+$17.64
+ 
+$3.62
+ 
+$3.62
+
+02
+ 
+Jun 2026
+ 
+Buy XLP
+ 
+0.0476
+ 
+$35.83
+ 
+$1.71
+ 
+$1.71
+
+02
+ 
+Jun 2026
+ 
+Buy XLV
+ 
+0.0158
+ 
+$64.11
+ 
+$1.01
+ 
+$1.01
+
+03
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+6.3894
+ 
+$1.92
+ 
+$12.29
+ 
+$12.29
+
+03
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0879
+ 
+$51.74
+ 
+$4.55
+ 
+$4.55
+
+03
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.1036
+ 
+$39.49
+ 
+$4.09
+ 
+$4.09
+
+03
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0153
+ 
+$113.82
+ 
+$1.74
+ 
+$1.74
+
+03
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.3445
+ 
+$38.88
+ 
+$13.39
+ 
+$13.39
+
+03
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0881
+ 
+$41.33
+ 
+$3.64
+ 
+$3.64
+
+03
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.2338
+ 
+$21.04
+ 
+$4.92
+ 
+$4.92
+
+03
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0407
+ 
+$42.02
+ 
+$1.71
+ 
+$1.71
+
+03
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.1660
+ 
+$14.93
+ 
+$2.48
+ 
+$2.48
+
+03
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0528
+ 
+$38.49
+ 
+$2.03
+ 
+$2.03
+
+03
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0449
+ 
+$17.56
+ 
+$0.79
+ 
+$0.79
+
+6
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+03
+ 
+Jun 2026
+ 
+Buy XLP
+ 
+0.0160
+ 
+$36.00
+ 
+$0.58
+ 
+$0.58
+
+03
+ 
+Jun 2026
+ 
+Buy XLV
+ 
+0.0066
+ 
+$63.97
+ 
+$0.42
+ 
+$0.42
+
+04
+ 
+Jun 2026
+ 
+Dividend received BNDX
+ 
+64.2139
+ 
+$2.25
+ 
+$2.25
+
+04
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+1.7448
+ 
+$1.93
+ 
+$3.36
+ 
+$3.36
+
+04
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0194
+ 
+$51.75
+ 
+$1.00
+ 
+$1.00
+
+04
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0285
+ 
+$39.65
+ 
+$1.13
+ 
+$1.13
+
+04
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0041
+ 
+$113.27
+ 
+$0.46
+ 
+$0.46
+
+04
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0951
+ 
+$39.04
+ 
+$3.71
+ 
+$3.71
+
+04
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0230
+ 
+$41.51
+ 
+$0.95
+ 
+$0.95
+
+04
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0040
+ 
+$21.04
+ 
+$0.08
+ 
+$0.08
+
+04
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0032
+ 
+$15.08
+ 
+$0.05
+ 
+$0.05
+
+05
+ 
+Jun 2026
+ 
+Dividend received EMB
+ 
+16.0157
+ 
+$2.00
+ 
+$2.00
+
+05
+ 
+Jun 2026
+ 
+Dividend received WIP
+ 
+25.8103
+ 
+$3.10
+ 
+$3.10
+
+05
+ 
+Jun 2026
+ 
+Currency Conversion to SGD
+
+($8.66, FX rate: 1.2825)
+
+-
+ 
+$11.11
+
+05
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.4556
+ 
+$1.92
+ 
+$0.88
+ 
+$0.88
+
+05
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0054
+ 
+$51.77
+ 
+$0.28
+ 
+$0.28
+
+05
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0072
+ 
+$39.44
+ 
+$0.28
+ 
+$0.28
+
+05
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0012
+ 
+$113.45
+ 
+$0.13
+ 
+$0.13
+
+05
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0240
+ 
+$38.88
+ 
+$0.93
+ 
+$0.93
+
+7
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+05
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0060
+ 
+$41.32
+ 
+$0.25
+ 
+$0.25
+
+05
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0190
+ 
+$21.02
+ 
+$0.40
+ 
+$0.40
+
+05
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0032
+ 
+$41.91
+ 
+$0.14
+ 
+$0.14
+
+05
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0132
+ 
+$14.94
+ 
+$0.20
+ 
+$0.20
+
+05
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0042
+ 
+$37.66
+ 
+$0.16
+ 
+$0.16
+
+05
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0040
+ 
+$17.51
+ 
+$0.07
+ 
+$0.07
+
+08
+ 
+Jun 2026
+ 
+Currency Conversion to SGD
+
+($0.01, FX rate: 1.3333)
+
+-
+ 
+$0.02
+
+08
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.2403
+ 
+$1.91
+ 
+$0.46
+ 
+$0.46
+
+08
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0014
+ 
+$51.76
+ 
+$0.07
+ 
+$0.07
+
+08
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0036
+ 
+$39.14
+ 
+$0.14
+ 
+$0.14
+
+08
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0004
+ 
+$112.77
+ 
+$0.05
+ 
+$0.05
+
+08
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0132
+ 
+$38.40
+ 
+$0.51
+ 
+$0.51
+
+08
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0029
+ 
+$41.03
+ 
+$0.12
+ 
+$0.12
+
+08
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0102
+ 
+$21.00
+ 
+$0.21
+ 
+$0.21
+
+08
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0020
+ 
+$41.78
+ 
+$0.08
+ 
+$0.08
+
+08
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0103
+ 
+$14.87
+ 
+$0.15
+ 
+$0.15
+
+08
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0069
+ 
+$37.51
+ 
+$0.26
+ 
+$0.26
+
+08
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0030
+ 
+$17.35
+ 
+$0.05
+ 
+$0.05
+
+09
+ 
+Jun 2026
+ 
+Management fee (May 2026)
+ 
+-
+ 
+$11.13
+
+8
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+09
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.0663
+ 
+$1.91
+ 
+$0.13
+ 
+$0.13
+
+09
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0037
+ 
+$38.69
+ 
+$0.14
+ 
+$0.14
+
+09
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0038
+ 
+$21.01
+ 
+$0.08
+ 
+$0.08
+
+09
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0035
+ 
+$14.96
+ 
+$0.05
+ 
+$0.05
+
+09
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0021
+ 
+$37.13
+ 
+$0.08
+ 
+$0.08
+
+11
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.0778
+ 
+$1.91
+ 
+$0.15
+ 
+$0.15
+
+11
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0013
+ 
+$39.22
+ 
+$0.05
+ 
+$0.05
+
+11
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0047
+ 
+$38.58
+ 
+$0.18
+ 
+$0.18
+
+11
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0048
+ 
+$21.04
+ 
+$0.10
+ 
+$0.10
+
+11
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0056
+ 
+$14.80
+ 
+$0.08
+ 
+$0.08
+
+11
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0084
+ 
+$35.58
+ 
+$0.30
+ 
+$0.30
+
+19
+ 
+Jun 2026
+ 
+Dividend received IVV
+ 
+0.7131
+ 
+$0.44
+ 
+$0.44
+
+24
+ 
+Jun 2026
+ 
+Dividend received VEU
+ 
+22.9906
+ 
+$2.77
+ 
+$2.77
+
+24
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.1853
+ 
+$1.91
+ 
+$0.35
+ 
+$0.35
+
+24
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0009
+ 
+$51.85
+ 
+$0.05
+ 
+$0.05
+
+24
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0042
+ 
+$38.70
+ 
+$0.16
+ 
+$0.16
+
+24
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0004
+ 
+$112.45
+ 
+$0.05
+ 
+$0.05
+
+24
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0100
+ 
+$38.80
+ 
+$0.39
+ 
+$0.39
+
+24
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0020
+ 
+$41.34
+ 
+$0.08
+ 
+$0.08
+
+9
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+24
+ 
+Jun 2026
+ 
+Buy ISAC
+ 
+0.0010
+ 
+$52.28
+ 
+$0.05
+ 
+$0.05
+
+24
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0058
+ 
+$21.21
+ 
+$0.12
+ 
+$0.12
+
+24
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0045
+ 
+$15.63
+ 
+$0.07
+ 
+$0.07
+
+24
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0110
+ 
+$34.64
+ 
+$0.38
+ 
+$0.38
+
+24
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0038
+ 
+$17.22
+ 
+$0.07
+ 
+$0.07
+
+25
+ 
+Jun 2026
+ 
+Dividend received XLI
+ 
+6.7617
+ 
+$0.92
+ 
+$0.92
+
+25
+ 
+Jun 2026
+ 
+Dividend received XLV
+ 
+3.0063
+ 
+$0.60
+ 
+$0.60
+
+25
+ 
+Jun 2026
+ 
+Dividend received XLK
+ 
+4.0051
+ 
+$0.28
+ 
+$0.28
+
+25
+ 
+Jun 2026
+ 
+Dividend received XLP
+ 
+12.6352
+ 
+$2.22
+ 
+$2.22
+
+25
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.3171
+ 
+$1.92
+ 
+$0.61
+ 
+$0.61
+
+25
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0017
+ 
+$51.87
+ 
+$0.09
+ 
+$0.09
+
+25
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0075
+ 
+$38.72
+ 
+$0.29
+ 
+$0.29
+
+25
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0007
+ 
+$112.90
+ 
+$0.08
+ 
+$0.08
+
+25
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0169
+ 
+$38.82
+ 
+$0.66
+ 
+$0.66
+
+25
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0035
+ 
+$41.42
+ 
+$0.14
+ 
+$0.14
+
+25
+ 
+Jun 2026
+ 
+Buy ISAC
+ 
+0.0013
+ 
+$52.54
+ 
+$0.07
+ 
+$0.07
+
+25
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0101
+ 
+$21.25
+ 
+$0.21
+ 
+$0.21
+
+25
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0014
+ 
+$42.37
+ 
+$0.06
+ 
+$0.06
+
+25
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0076
+ 
+$15.60
+ 
+$0.12
+ 
+$0.12
+
+10
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+25
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0296
+ 
+$34.85
+ 
+$1.03
+ 
+$1.03
+
+25
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0076
+ 
+$17.21
+ 
+$0.13
+ 
+$0.13
+
+26
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+0.0592
+ 
+$1.92
+ 
+$0.11
+ 
+$0.11
+
+26
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0015
+ 
+$38.74
+ 
+$0.06
+ 
+$0.06
+
+26
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0031
+ 
+$39.08
+ 
+$0.12
+ 
+$0.12
+
+26
+ 
+Jun 2026
+ 
+Sell XLI
+ 
+1.1839
+ 
+$79.82
+ 
+$94.50
+ 
+$94.50
+
+26
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0025
+ 
+$21.23
+ 
+$0.05
+ 
+$0.05
+
+26
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.0058
+ 
+$35.30
+ 
+$0.21
+ 
+$0.21
+
+27
+ 
+Jun 2026
+ 
+Dividend received PPA
+ 
+5.1546
+ 
+$0.21
+ 
+$0.21
+
+29
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+6.2692
+ 
+$1.92
+ 
+$12.05
+ 
+$12.05
+
+29
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0458
+ 
+$51.88
+ 
+$2.38
+ 
+$2.38
+
+29
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.1533
+ 
+$38.71
+ 
+$5.94
+ 
+$5.94
+
+29
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0133
+ 
+$113.28
+ 
+$1.51
+ 
+$1.51
+
+29
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.3194
+ 
+$38.93
+ 
+$12.44
+ 
+$12.44
+
+29
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0752
+ 
+$41.43
+ 
+$3.12
+ 
+$3.12
+
+29
+ 
+Jun 2026
+ 
+Buy ISAC
+ 
+0.0464
+ 
+$52.31
+ 
+$2.42
+ 
+$2.42
+
+29
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.2500
+ 
+$21.24
+ 
+$5.31
+ 
+$5.31
+
+29
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0406
+ 
+$42.34
+ 
+$1.72
+ 
+$1.72
+
+29
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.1757
+ 
+$15.47
+ 
+$2.72
+ 
+$2.72
+
+11
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+29
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.5299
+ 
+$34.85
+ 
+$18.47
+ 
+$18.47
+
+29
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.1699
+ 
+$17.18
+ 
+$2.92
+ 
+$2.92
+
+29
+ 
+Jun 2026
+ 
+Buy XLI
+ 
+0.0161
+ 
+$79.55
+ 
+$1.28
+ 
+$1.28
+
+29
+ 
+Jun 2026
+ 
+Buy XLK
+ 
+0.0112
+ 
+$80.15
+ 
+$0.90
+ 
+$0.90
+
+30
+ 
+Jun 2026
+ 
+Dividend received DXJ
+ 
+5.3506
+ 
+$1.90
+ 
+$1.90
+
+30
+ 
+Jun 2026
+ 
+Buy AGGG
+ 
+1.4332
+ 
+$1.92
+ 
+$2.75
+ 
+$2.75
+
+30
+ 
+Jun 2026
+ 
+Buy BB3M
+ 
+0.0111
+ 
+$51.90
+ 
+$0.58
+ 
+$0.58
+
+30
+ 
+Jun 2026
+ 
+Buy HYLD
+ 
+0.0321
+ 
+$38.86
+ 
+$1.25
+ 
+$1.25
+
+30
+ 
+Jun 2026
+ 
+Buy IDTP
+ 
+0.0026
+ 
+$113.56
+ 
+$0.29
+ 
+$0.29
+
+30
+ 
+Jun 2026
+ 
+Buy IGLO
+ 
+0.0729
+ 
+$38.96
+ 
+$2.84
+ 
+$2.84
+
+30
+ 
+Jun 2026
+ 
+Buy IHYU
+ 
+0.0172
+ 
+$41.43
+ 
+$0.71
+ 
+$0.71
+
+30
+ 
+Jun 2026
+ 
+Buy ISAC
+ 
+0.0101
+ 
+$52.75
+ 
+$0.53
+ 
+$0.53
+
+30
+ 
+Jun 2026
+ 
+Buy BNDX
+ 
+0.0637
+ 
+$21.23
+ 
+$1.35
+ 
+$1.35
+
+30
+ 
+Jun 2026
+ 
+Buy EMB
+ 
+0.0083
+ 
+$42.34
+ 
+$0.35
+ 
+$0.35
+
+30
+ 
+Jun 2026
+ 
+Buy FLIN
+ 
+0.0514
+ 
+$15.50
+ 
+$0.80
+ 
+$0.80
+
+30
+ 
+Jun 2026
+ 
+Buy GLDM
+ 
+0.1533
+ 
+$34.90
+ 
+$5.35
+ 
+$5.35
+
+30
+ 
+Jun 2026
+ 
+Buy WIP
+ 
+0.0416
+ 
+$17.24
+ 
+$0.72
+ 
+$0.72
+
+30
+ 
+Jun 2026
+ 
+Buy XLI
+ 
+0.0017
+ 
+$80.24
+ 
+$0.14
+ 
+$0.14
+
+12
+FEE CALCULATIONS
+ 
+/
+ 
+JUN 2026
+
+Fee Transactions (
+SGD
+)
+
+(
+01
+ 
+Jun 2026
+ 
+-
+ 
+30 Jun 2026
+)
+
+Amount
+
+(
+SGD
+)
+
+Fee
+
+(
+SGD
+)
+
+Monthly-averaged assets
+ 
+$15,775.62
+
+Total chargeable amount
+ 
+$15,775.62
+ 
+$9.98
+
+GST 9.0%
+ 
+$0.90
+
+Final Fee
+ 
+(
+SGD
+, incl. GST
+)
+ 
+$10.87
+
+The final fee for the month of
+ 
+June
+ 
+will be charged in the beginning of
+ 
+July
+, and will be reflected as a transaction in the following statement.
+
+Monthly-averaged assets are calculated based on daily asset values and currency exchange rates from all investment portfolios
+.
+
+13
+APPENDIX A
+ 
+/ EXPLANATIONS
+
+General
+
+NAV
+
+Net Asset Value of all securities, cash, and expected dividend payouts (dividend
+
+entitlements) as of a particular day. Securities and cash are valued using closing prices
+
+from the previous trading day.
+
+Deposits
+
+Money that you have transferred into your StashAway account.
+
+The recorded date of deposit is the date when all transfer-related assessments
+
+(
+such as anti-money laundering checks) have been performed successfully
+
+and the deposited amount has been allocated into your portfolio(s).
+
+Withdrawals
+
+Money that you have withdrawn from your StashAway account.
+
+The recorded date of the withdrawal will be the date when the transfer to your
+
+bank account
+
+has been initiated from our side.
+
+Account Summary and Portfolio Summary
+
+Opening Balance
+
+NAV of your account and NAV of your portfolios as of the first day of the statement month.
+
+Cashflow
+
+The sum of all deposits minus the sum of all withdrawals within the statement month.
+
+Total Returns
+
+Sum of returns that the securities (ETFs) in your portfolios have generated, including
+
+paid-out dividends and expected dividend payouts.
+
+Fees
+
+Amount charged by StashAway for the provision of our services for the month preceding
+
+the statement month. Note that ETF management fees are not part of this fee, as they
+
+are implicitly charged by the ETF provider and factored into the NAV.
+ 
+Similarly, currency
+
+conversion fees will be reflected inside the NAV already.
+
+Closing Balance
+
+NAV of your account and NAV of your portfolios as of the last day of the statement month.
+
+Portfolio Details
+
+Opening Balance
+
+Value of each security as of the first day of the statement month, using the preceding
+
+trading day's closing prices.
+
+Bought
+
+Amount spent on buy-orders of this security within the statement month, including
+
+potential re-invested dividends.
+
+Sold
+
+Amount received from sell-orders of this security within the statement month.
+
+Dividends
+
+Total dividends paid out by the security (ETF) within the statement month. Part of these
+
+dividends may have been re-invested within the same month already.
+
+Rebates
+
+For StashAway Simple™
+ 
+and Simple Plus funds, we receive a rebate from the Unit Trust
+
+manager on a quarterly basis. We return these rebates back to you on a quarterly basis,
+
+and this rebate will be reflected in the monthly statements for the month following
+
+a quarter-end (April for Q1, July for Q2, October for Q3, and January for Q4). Rebate
+
+payments are calculated based on the units that you have held in the underlying fund
+
+for each day of the quarter.
+
+Closing Balance
+
+Value of each security as of the last day of the statement month, using the preceding
+
+month's final trading day's closing prices.
+
+Profit/Loss %
+
+The closing balance plus dividends divided by the opening balance plus net cash flows for
+
+a given security.
+
+Total Outstanding Units
+
+Total units owned for a given security.
+
+14
+NOTICE AND DISCLAIMER
+
+This statement of account is provided to you by Asia Wealth Platform Pte. Ltd. ("StashAway"). StashAway is a holder of a capital markets services licence to carry on
+
+fund management issued by the Monetary Authority of Singapore.
+
+This statement of account sets out an overview of the assets held in your StashAway Account as well as the transactions undertaken on your Account for the indicated
+
+month.
+
+The statement of account, including but not limited to the Explanation in Appendix A, is subject to the disclaimer available at the following link:
+
+www.stashaway.sg/legal
+
+StashAway has opened a securities brokerage account to buy and sell investments on behalf of its customers with Saxo Capital Markets Pte. Ltd. and/or such other
+
+third party brokers as StashAway may select from time to time ("Saxo"). For certain investments, StashAway may buy and sell investments on behalf of its customers
+
+with or through fund managers and/or other third party intermediaries ("Intermediaries"). In the event that up-to-date information from Saxo or the Intermediary
+
+(as the case may be) is not available at the time of printing of the statement of account, StashAway will report to you the applicable exchange rates, NAV, values of
+
+securities bought and sold, and dividends based on the last available information provided to StashAway by Saxo or the Intermediary. In such a case, StashAway
+
+will inform you accordingly. StashAway does not assume responsibility for the accuracy, timeliness and completeness of the information as reported by Saxo, the
+
+Intermediary and StashAway will not accept liability for any loss arising from your use of, or reliance on, such information.
+
+Subject to the above paragraph, the net asset value, or NAV of each security for any particular day is valued using the closing prices of the relevant exchange where
+
+the security is listed from the previous trading day. For example, the prices of the security indicated in the Opening Balance of the Portfolio Balance is calculated
+
+based on the closing prices of the relevant exchange where the security is listed from the trading day before the first day of the statement month. The information
+
+stated in the statement of account are reported to you in the reporting currency indicated in the statement rounded to the nearest two decimal places, and where
+
+applicable, based on the stated exchange rate which is based on the closing exchange rate of the trading day before the day of the Opening or Closing balance, as
+
+applicable.
+
+This statement is made available to you for viewing on the Platform, and therefore, you may download, save or print the statement for your subsequent reference.
+
+If you have any queries in relation to the statement, please contact our Customer Support at
+ 
+support@stashaway.com
+
+Registered address:
+
+175
+A Bencoolen Street
+
+Burlington Square #07-04
+
+Singapore 189650
+
+www.stashaway.sg
+
+15
+__PDF_LAYOUT_TEXT__
+StashAway (Asia Wealth Platform Pte Ltd)
+GST Registration No: 201624878Z
+175A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+Statement of Account
+01Jun 2026-30 Jun 2026
+Account Owner:Address:Statement Date:
+Alex Sample Holder1Sample Avenue03Jul 2026
+#00-00
+Account Reference Code:Singapore 000000
+00XYZ00X
+ACCOUNT SUMMARY
+Reporting Currency:SGD
+Opening BalanceCashflowTotal ReturnsFeesClosing Balance
+(01Jun 2026)(Deposits - Withdrawals)(Incl. Dividends)(Previous Month)(30Jun 2026)
+Investment$15,774.66$0.00$99.81-$11.13$15,863.34
+Portfolios
+Total$15,774.66$0.00$99.81-$11.13$15,863.34
+Opening balance is based on closing rates of security prices and exchange rates as of31 May 2026(1USD=1.2766SGD).
+Closing balance is based on closing rates of security prices and exchange rates as of30 Jun 2026(1USD=1.2938SGD).
+Total Returns are converted based on closing balance exchange rate.
+1
+PORTFOLIO SUMMARY/JUN 2026
+Investment Portfolios
+Reporting Currency:SGD
+Opening BalanceCashflowTotal ReturnsFeesClosing Balance
+(01Jun 2026)(Deposits - Withdrawals)(Incl. Dividends)(Previous Month)(30Jun 2026)
+General Investing$15,774.66-$99.81-$11.13$15,863.34
+Opening balance is based on closing rates of security prices and exchange rates as of31 May 2026(1USD=1.2766SGD).
+Closing balance is based on closing rates of security prices and exchange rates as of30 Jun 2026(1USD=1.2938SGD).
+Total Returns are converted based on closing balance exchange rate.
+ETF portfolios fees are charged based on the previous month's AUM.
+2
+PORTFOLIO DETAILS/JUN 2026
+General Investing
+Reporting Currency:USD
+Opening BalanceBoughtSoldDividendsClosing BalanceProfit/Loss %Total
+(Incl. Dividend(Paid and(Incl. DividendOutstanding
+Entitlements)Reinvested)Entitlements)Units
+iShares MSCI ACWI UCITS ETF$743.44$3.08$126.46-$615.06-0.8%11.6238
+(ISAC)
+iShares Global High Yield Corp$397.92$14.03--$403.87-2.0%10.398
+Bond UCITS ETF (HYLD)
+Health Care Select Sector SPDR$195.21$1.43-$0.60$208.776.5%3.0063
+Fund (XLV)
+iShares Global Govt Bond UCITS$1,130.19$37.49--$1,160.96-0.6%29.888
+ETF (IGLO)
+Technology Select Sector SPDR$334.86$0.90-$0.28$334.92-0.2%4.0163
+Fund (XLK)
+Vanguard Total International$1,358.38$36.65-$2.25$1,398.000.4%65.9503
+Bond ETF (BNDX)
+iShares Core Global Aggregate$1,285.08$35.12--$1,312.81-0.6%682.5192
+Bond UCITS ETF (AGGG)
+Vanguard FTSE All World ex-US$845.29--$2.77$842.770.0%22.9906
+ETF (VEU)
+Consumer Staples Select Sector$456.22$2.28-$2.22$459.410.7%12.6352
+SPDR Fund (XLP)
+3
+Opening BalanceBoughtSoldDividendsClosing BalanceProfit/Loss %Total
+(Incl. Dividend(Paid and(Incl. DividendOutstanding
+Entitlements)Reinvested)Entitlements)Units
+BetaBuilders US Treasury Bond$808.48$9.74--$821.120.4%15.8177
+0-3 Months UCITS ETF (BB3M)
+The Industrial Select Sector$512.39$1.42$94.50$0.92$453.668.4%5.5956
+SPDR®Fund (XLI)
+iShares $ High Yield Corporate$347.10$9.61--$357.310.2%8.6238
+Bond UCITS ETF (IHYU)
+Franklin FTSE India ETF (FLIN)$257.00$18.65--$280.871.9%18.0406
+Invesco Aerospace & Defense ETF$400.67--$0.21$398.55-0.5%5.1546
+(PPA)
+iShares J.P. Morgan USD$675.98$12.44-$2.00$688.510.3%16.3108
+Emerging Markets Bond ETF
+(EMB)
+SPDR Gold MiniShares Trust$1,032.25$37.48--$947.79-11.4%27.265
+(GLDM)
+SPDR FTSE International$459.68$8.46-$3.10$453.37-2.5%26.2958
+Government Inflation-Protected
+Bond ETF (WIP)
+WisdomTree Japan Hedged Equity$401.69--$1.90$406.381.6%5.3506
+Fund (DXJ)
+iShares Core S&P 500 ETF (IVV)$237.23--$0.44$233.74-1.3%0.7131
+iShares $ TIPS UCITS ETF (IDTP)$344.96$4.62--$349.11-0.1%3.0795
+Cash USD$132.74---$128.29
+Total$12,356.77--$16.69$12,255.28
+4
+TRANSACTIONS/JUN 2026
+General Investing
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+01Jun 2026Buy AGGG0.7750$1.93$1.49$1.49
+01Jun 2026Buy BB3M0.0114$51.72$0.59$0.59
+01Jun 2026Buy HYLD0.0122$39.26$0.48$0.48
+01Jun 2026Buy IDTP0.0021$113.69$0.24$0.24
+01Jun 2026Buy IGLO0.0419$38.97$1.63$1.63
+01Jun 2026Buy IHYU0.0109$41.25$0.45$0.45
+01Jun 2026Buy BNDX0.0385$21.03$0.81$0.81
+01Jun 2026Buy EMB0.0068$41.97$0.28$0.28
+01Jun 2026Buy FLIN0.0253$15.04$0.38$0.38
+01Jun 2026Buy GLDM0.0057$38.71$0.22$0.22
+01Jun 2026Buy WIP0.0055$17.57$0.10$0.10
+02Jun 2026Sell ISAC2.3607$53.57$126.46$126.46
+02Jun 2026Buy AGGG0.2539$1.93$0.49$0.49
+02Jun 2026Buy BB3M0.0031$51.74$0.16$0.16
+02Jun 2026Buy HYLD0.0041$39.61$0.16$0.16
+02Jun 2026Buy IDTP0.0006$113.80$0.07$0.07
+02Jun 2026Buy IGLO0.0140$39.06$0.55$0.55
+5
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+02Jun 2026Buy IHYU0.0034$41.42$0.14$0.14
+02Jun 2026Buy BNDX1.0902$21.09$23.00$23.00
+02Jun 2026Buy EMB0.1921$42.10$8.09$8.09
+02Jun 2026Buy FLIN0.7644$15.12$11.56$11.56
+02Jun 2026Buy GLDM0.2311$38.94$9.00$9.00
+02Jun 2026Buy WIP0.2052$17.64$3.62$3.62
+02Jun 2026Buy XLP0.0476$35.83$1.71$1.71
+02Jun 2026Buy XLV0.0158$64.11$1.01$1.01
+03Jun 2026Buy AGGG6.3894$1.92$12.29$12.29
+03Jun 2026Buy BB3M0.0879$51.74$4.55$4.55
+03Jun 2026Buy HYLD0.1036$39.49$4.09$4.09
+03Jun 2026Buy IDTP0.0153$113.82$1.74$1.74
+03Jun 2026Buy IGLO0.3445$38.88$13.39$13.39
+03Jun 2026Buy IHYU0.0881$41.33$3.64$3.64
+03Jun 2026Buy BNDX0.2338$21.04$4.92$4.92
+03Jun 2026Buy EMB0.0407$42.02$1.71$1.71
+03Jun 2026Buy FLIN0.1660$14.93$2.48$2.48
+03Jun 2026Buy GLDM0.0528$38.49$2.03$2.03
+03Jun 2026Buy WIP0.0449$17.56$0.79$0.79
+6
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+03Jun 2026Buy XLP0.0160$36.00$0.58$0.58
+03Jun 2026Buy XLV0.0066$63.97$0.42$0.42
+04Jun 2026Dividend received BNDX64.2139$2.25$2.25
+04Jun 2026Buy AGGG1.7448$1.93$3.36$3.36
+04Jun 2026Buy BB3M0.0194$51.75$1.00$1.00
+04Jun 2026Buy HYLD0.0285$39.65$1.13$1.13
+04Jun 2026Buy IDTP0.0041$113.27$0.46$0.46
+04Jun 2026Buy IGLO0.0951$39.04$3.71$3.71
+04Jun 2026Buy IHYU0.0230$41.51$0.95$0.95
+04Jun 2026Buy BNDX0.0040$21.04$0.08$0.08
+04Jun 2026Buy FLIN0.0032$15.08$0.05$0.05
+05Jun 2026Dividend received EMB16.0157$2.00$2.00
+05Jun 2026Dividend received WIP25.8103$3.10$3.10
+05Jun 2026Currency Conversion to SGD-$11.11
+($8.66, FX rate: 1.2825)
+05Jun 2026Buy AGGG0.4556$1.92$0.88$0.88
+05Jun 2026Buy BB3M0.0054$51.77$0.28$0.28
+05Jun 2026Buy HYLD0.0072$39.44$0.28$0.28
+05Jun 2026Buy IDTP0.0012$113.45$0.13$0.13
+05Jun 2026Buy IGLO0.0240$38.88$0.93$0.93
+7
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+05Jun 2026Buy IHYU0.0060$41.32$0.25$0.25
+05Jun 2026Buy BNDX0.0190$21.02$0.40$0.40
+05Jun 2026Buy EMB0.0032$41.91$0.14$0.14
+05Jun 2026Buy FLIN0.0132$14.94$0.20$0.20
+05Jun 2026Buy GLDM0.0042$37.66$0.16$0.16
+05Jun 2026Buy WIP0.0040$17.51$0.07$0.07
+08Jun 2026Currency Conversion to SGD-$0.02
+($0.01, FX rate: 1.3333)
+08Jun 2026Buy AGGG0.2403$1.91$0.46$0.46
+08Jun 2026Buy BB3M0.0014$51.76$0.07$0.07
+08Jun 2026Buy HYLD0.0036$39.14$0.14$0.14
+08Jun 2026Buy IDTP0.0004$112.77$0.05$0.05
+08Jun 2026Buy IGLO0.0132$38.40$0.51$0.51
+08Jun 2026Buy IHYU0.0029$41.03$0.12$0.12
+08Jun 2026Buy BNDX0.0102$21.00$0.21$0.21
+08Jun 2026Buy EMB0.0020$41.78$0.08$0.08
+08Jun 2026Buy FLIN0.0103$14.87$0.15$0.15
+08Jun 2026Buy GLDM0.0069$37.51$0.26$0.26
+08Jun 2026Buy WIP0.0030$17.35$0.05$0.05
+09Jun 2026Management fee (May 2026)-$11.13
+8
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+09Jun 2026Buy AGGG0.0663$1.91$0.13$0.13
+09Jun 2026Buy IGLO0.0037$38.69$0.14$0.14
+09Jun 2026Buy BNDX0.0038$21.01$0.08$0.08
+09Jun 2026Buy FLIN0.0035$14.96$0.05$0.05
+09Jun 2026Buy GLDM0.0021$37.13$0.08$0.08
+11Jun 2026Buy AGGG0.0778$1.91$0.15$0.15
+11Jun 2026Buy HYLD0.0013$39.22$0.05$0.05
+11Jun 2026Buy IGLO0.0047$38.58$0.18$0.18
+11Jun 2026Buy BNDX0.0048$21.04$0.10$0.10
+11Jun 2026Buy FLIN0.0056$14.80$0.08$0.08
+11Jun 2026Buy GLDM0.0084$35.58$0.30$0.30
+19Jun 2026Dividend received IVV0.7131$0.44$0.44
+24Jun 2026Dividend received VEU22.9906$2.77$2.77
+24Jun 2026Buy AGGG0.1853$1.91$0.35$0.35
+24Jun 2026Buy BB3M0.0009$51.85$0.05$0.05
+24Jun 2026Buy HYLD0.0042$38.70$0.16$0.16
+24Jun 2026Buy IDTP0.0004$112.45$0.05$0.05
+24Jun 2026Buy IGLO0.0100$38.80$0.39$0.39
+24Jun 2026Buy IHYU0.0020$41.34$0.08$0.08
+9
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+24Jun 2026Buy ISAC0.0010$52.28$0.05$0.05
+24Jun 2026Buy BNDX0.0058$21.21$0.12$0.12
+24Jun 2026Buy FLIN0.0045$15.63$0.07$0.07
+24Jun 2026Buy GLDM0.0110$34.64$0.38$0.38
+24Jun 2026Buy WIP0.0038$17.22$0.07$0.07
+25Jun 2026Dividend received XLI6.7617$0.92$0.92
+25Jun 2026Dividend received XLV3.0063$0.60$0.60
+25Jun 2026Dividend received XLK4.0051$0.28$0.28
+25Jun 2026Dividend received XLP12.6352$2.22$2.22
+25Jun 2026Buy AGGG0.3171$1.92$0.61$0.61
+25Jun 2026Buy BB3M0.0017$51.87$0.09$0.09
+25Jun 2026Buy HYLD0.0075$38.72$0.29$0.29
+25Jun 2026Buy IDTP0.0007$112.90$0.08$0.08
+25Jun 2026Buy IGLO0.0169$38.82$0.66$0.66
+25Jun 2026Buy IHYU0.0035$41.42$0.14$0.14
+25Jun 2026Buy ISAC0.0013$52.54$0.07$0.07
+25Jun 2026Buy BNDX0.0101$21.25$0.21$0.21
+25Jun 2026Buy EMB0.0014$42.37$0.06$0.06
+25Jun 2026Buy FLIN0.0076$15.60$0.12$0.12
+10
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+25Jun 2026Buy GLDM0.0296$34.85$1.03$1.03
+25Jun 2026Buy WIP0.0076$17.21$0.13$0.13
+26Jun 2026Buy AGGG0.0592$1.92$0.11$0.11
+26Jun 2026Buy HYLD0.0015$38.74$0.06$0.06
+26Jun 2026Buy IGLO0.0031$39.08$0.12$0.12
+26Jun 2026Sell XLI1.1839$79.82$94.50$94.50
+26Jun 2026Buy BNDX0.0025$21.23$0.05$0.05
+26Jun 2026Buy GLDM0.0058$35.30$0.21$0.21
+27Jun 2026Dividend received PPA5.1546$0.21$0.21
+29Jun 2026Buy AGGG6.2692$1.92$12.05$12.05
+29Jun 2026Buy BB3M0.0458$51.88$2.38$2.38
+29Jun 2026Buy HYLD0.1533$38.71$5.94$5.94
+29Jun 2026Buy IDTP0.0133$113.28$1.51$1.51
+29Jun 2026Buy IGLO0.3194$38.93$12.44$12.44
+29Jun 2026Buy IHYU0.0752$41.43$3.12$3.12
+29Jun 2026Buy ISAC0.0464$52.31$2.42$2.42
+29Jun 2026Buy BNDX0.2500$21.24$5.31$5.31
+29Jun 2026Buy EMB0.0406$42.34$1.72$1.72
+29Jun 2026Buy FLIN0.1757$15.47$2.72$2.72
+11
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+29Jun 2026Buy GLDM0.5299$34.85$18.47$18.47
+29Jun 2026Buy WIP0.1699$17.18$2.92$2.92
+29Jun 2026Buy XLI0.0161$79.55$1.28$1.28
+29Jun 2026Buy XLK0.0112$80.15$0.90$0.90
+30Jun 2026Dividend received DXJ5.3506$1.90$1.90
+30Jun 2026Buy AGGG1.4332$1.92$2.75$2.75
+30Jun 2026Buy BB3M0.0111$51.90$0.58$0.58
+30Jun 2026Buy HYLD0.0321$38.86$1.25$1.25
+30Jun 2026Buy IDTP0.0026$113.56$0.29$0.29
+30Jun 2026Buy IGLO0.0729$38.96$2.84$2.84
+30Jun 2026Buy IHYU0.0172$41.43$0.71$0.71
+30Jun 2026Buy ISAC0.0101$52.75$0.53$0.53
+30Jun 2026Buy BNDX0.0637$21.23$1.35$1.35
+30Jun 2026Buy EMB0.0083$42.34$0.35$0.35
+30Jun 2026Buy FLIN0.0514$15.50$0.80$0.80
+30Jun 2026Buy GLDM0.1533$34.90$5.35$5.35
+30Jun 2026Buy WIP0.0416$17.24$0.72$0.72
+30Jun 2026Buy XLI0.0017$80.24$0.14$0.14
+12
+FEE CALCULATIONS/JUN 2026
+Fee Transactions (SGD)AmountFee
+(01Jun 2026-30 Jun 2026)(SGD)(SGD)
+Monthly-averaged assets$15,775.62
+Total chargeable amount$15,775.62$9.98
+GST 9.0%$0.90
+Final Fee(SGD, incl. GST)$10.87
+The final fee for the month ofJunewill be charged in the beginning ofJuly, and will be reflected as a transaction in the following statement.
+Monthly-averaged assets are calculated based on daily asset values and currency exchange rates from all investment portfolios.
+13
+APPENDIX A/ EXPLANATIONS
+Closing Balance
+General
+NAV of your account and NAV of your portfolios as of the last day of the statement month.
+NAV
+Net Asset Value of all securities, cash, and expected dividend payouts (dividendPortfolio Details
+entitlements) as of a particular day. Securities and cash are valued using closing prices
+from the previous trading day.
+Opening Balance
+Value of each security as of the first day of the statement month, using the preceding
+Deposits
+trading day's closing prices.
+Money that you have transferred into your StashAway account.
+The recorded date of deposit is the date when all transfer-related assessments
+Bought
+(such as anti-money laundering checks) have been performed successfully
+Amount spent on buy-orders of this security within the statement month, including
+and the deposited amount has been allocated into your portfolio(s).
+potential re-invested dividends.
+Withdrawals
+Sold
+Money that you have withdrawn from your StashAway account.
+Amount received from sell-orders of this security within the statement month.
+The recorded date of the withdrawal will be the date when the transfer to your
+Dividends
+bank account
+Total dividends paid out by the security (ETF) within the statement month. Part of these
+has been initiated from our side.
+dividends may have been re-invested within the same month already.
+Rebates
+Account Summary and Portfolio Summary
+For StashAway Simple™and Simple Plus funds, we receive a rebate from the Unit Trust
+manager on a quarterly basis. We return these rebates back to you on a quarterly basis,
+Opening Balance
+and this rebate will be reflected in the monthly statements for the month following
+NAV of your account and NAV of your portfolios as of the first day of the statement month.
+a quarter-end (April for Q1, July for Q2, October for Q3, and January for Q4). Rebate
+Cashflowpayments are calculated based on the units that you have held in the underlying fund
+The sum of all deposits minus the sum of all withdrawals within the statement month.for each day of the quarter.
+Total ReturnsClosing Balance
+Sum of returns that the securities (ETFs) in your portfolios have generated, includingValue of each security as of the last day of the statement month, using the preceding
+paid-out dividends and expected dividend payouts.month's final trading day's closing prices.
+FeesProfit/Loss %
+Amount charged by StashAway for the provision of our services for the month precedingThe closing balance plus dividends divided by the opening balance plus net cash flows for
+the statement month. Note that ETF management fees are not part of this fee, as theya given security.
+are implicitly charged by the ETF provider and factored into the NAV.Similarly, currency
+Total Outstanding Units
+conversion fees will be reflected inside the NAV already.
+Total units owned for a given security.
+14
+NOTICE AND DISCLAIMER
+This statement of account is provided to you by Asia Wealth Platform Pte. Ltd. ("StashAway"). StashAway is a holder of a capital markets services licence to carry on
+fund management issued by the Monetary Authority of Singapore.
+This statement of account sets out an overview of the assets held in your StashAway Account as well as the transactions undertaken on your Account for the indicated
+month.
+The statement of account, including but not limited to the Explanation in Appendix A, is subject to the disclaimer available at the following link:
+www.stashaway.sg/legal
+StashAway has opened a securities brokerage account to buy and sell investments on behalf of its customers with Saxo Capital Markets Pte. Ltd. and/or such other
+third party brokers as StashAway may select from time to time ("Saxo"). For certain investments, StashAway may buy and sell investments on behalf of its customers
+with or through fund managers and/or other third party intermediaries ("Intermediaries"). In the event that up-to-date information from Saxo or the Intermediary
+(as the case may be) is not available at the time of printing of the statement of account, StashAway will report to you the applicable exchange rates, NAV, values of
+securities bought and sold, and dividends based on the last available information provided to StashAway by Saxo or the Intermediary. In such a case, StashAway
+will inform you accordingly. StashAway does not assume responsibility for the accuracy, timeliness and completeness of the information as reported by Saxo, the
+Intermediary and StashAway will not accept liability for any loss arising from your use of, or reliance on, such information.
+Subject to the above paragraph, the net asset value, or NAV of each security for any particular day is valued using the closing prices of the relevant exchange where
+the security is listed from the previous trading day. For example, the prices of the security indicated in the Opening Balance of the Portfolio Balance is calculated
+based on the closing prices of the relevant exchange where the security is listed from the trading day before the first day of the statement month. The information
+stated in the statement of account are reported to you in the reporting currency indicated in the statement rounded to the nearest two decimal places, and where
+applicable, based on the stated exchange rate which is based on the closing exchange rate of the trading day before the day of the Opening or Closing balance, as
+applicable.
+This statement is made available to you for viewing on the Platform, and therefore, you may download, save or print the statement for your subsequent reference.
+If you have any queries in relation to the statement, please contact our Customer Support atsupport@stashaway.com
+Registered address:
+175A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+www.stashaway.sg
+15
+__PDF_SPACED_LAYOUT_TEXT__
+StashAway (Asia Wealth Platform Pte Ltd)
+GST Registration No: 201624878Z
+175 A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+Statement of Account
+01 Jun 2026 - 30 Jun 2026
+Account Owner: Address: Statement Date:
+Alex Sample Holder 1 Sample Avenue 03 Jul 2026
+#00-00
+Account Reference Code: Singapore 000000
+00 XYZ00X
+ACCOUNT SUMMARY
+Reporting Currency: SGD
+Opening Balance Cashflow Total Returns Fees Closing Balance
+( 01 Jun 2026 ) ( Deposits - Withdrawals) ( Incl. Dividends) ( Previous Month) ( 30 Jun 2026 )
+Investment $15,774.66 $0.00 $99.81 -$11.13 $15,863.34
+Portfolios
+Total $15,774.66 $0.00 $99.81 -$11.13 $15,863.34
+Opening balance is based on closing rates of security prices and exchange rates as of 31 May 2026 (1 USD = 1.2766 SGD ).
+Closing balance is based on closing rates of security prices and exchange rates as of 30 Jun 2026 (1 USD = 1.2938 SGD ).
+Total Returns are converted based on closing balance exchange rate.
+1
+PORTFOLIO SUMMARY / JUN 2026
+Investment Portfolios
+Reporting Currency: SGD
+Opening Balance Cashflow Total Returns Fees Closing Balance
+( 01 Jun 2026 ) ( Deposits - Withdrawals) ( Incl. Dividends) ( Previous Month) ( 30 Jun 2026 )
+General Investing $15,774.66 - $99.81 -$11.13 $15,863.34
+Opening balance is based on closing rates of security prices and exchange rates as of 31 May 2026 (1 USD = 1.2766 SGD ).
+Closing balance is based on closing rates of security prices and exchange rates as of 30 Jun 2026 (1 USD = 1.2938 SGD ).
+Total Returns are converted based on closing balance exchange rate.
+ETF portfolios fees are charged based on the previous month's AUM.
+2
+PORTFOLIO DETAILS / JUN 2026
+General Investing
+Reporting Currency: USD
+Opening Balance Bought Sold Dividends Closing Balance Profit/Loss % Total
+( Incl. Dividend ( Paid and ( Incl. Dividend Outstanding
+Entitlements) Reinvested) Entitlements) Units
+iShares MSCI ACWI UCITS ETF $743.44 $3.08 $126.46 - $615.06 -0.8% 11.6238
+(ISAC)
+iShares Global High Yield Corp $397.92 $14.03 - - $403.87 -2.0% 10.398
+Bond UCITS ETF (HYLD)
+Health Care Select Sector SPDR $195.21 $1.43 - $0.60 $208.77 6.5% 3.0063
+Fund (XLV)
+iShares Global Govt Bond UCITS $1,130.19 $37.49 - - $1,160.96 -0.6% 29.888
+ETF (IGLO)
+Technology Select Sector SPDR $334.86 $0.90 - $0.28 $334.92 -0.2% 4.0163
+Fund (XLK)
+Vanguard Total International $1,358.38 $36.65 - $2.25 $1,398.00 0.4% 65.9503
+Bond ETF (BNDX)
+iShares Core Global Aggregate $1,285.08 $35.12 - - $1,312.81 -0.6% 682.5192
+Bond UCITS ETF (AGGG)
+Vanguard FTSE All World ex-US $845.29 - - $2.77 $842.77 0.0% 22.9906
+ETF (VEU)
+Consumer Staples Select Sector $456.22 $2.28 - $2.22 $459.41 0.7% 12.6352
+SPDR Fund (XLP)
+3
+Opening Balance Bought Sold Dividends Closing Balance Profit/Loss % Total
+( Incl. Dividend ( Paid and ( Incl. Dividend Outstanding
+Entitlements) Reinvested) Entitlements) Units
+BetaBuilders US Treasury Bond $808.48 $9.74 - - $821.12 0.4% 15.8177
+0-3 Months UCITS ETF (BB3M)
+The Industrial Select Sector $512.39 $1.42 $94.50 $0.92 $453.66 8.4% 5.5956
+SPDR® Fund (XLI)
+iShares $ High Yield Corporate $347.10 $9.61 - - $357.31 0.2% 8.6238
+Bond UCITS ETF (IHYU)
+Franklin FTSE India ETF (FLIN) $257.00 $18.65 - - $280.87 1.9% 18.0406
+Invesco Aerospace & Defense ETF $400.67 - - $0.21 $398.55 -0.5% 5.1546
+(PPA)
+iShares J.P. Morgan USD $675.98 $12.44 - $2.00 $688.51 0.3% 16.3108
+Emerging Markets Bond ETF
+(EMB)
+SPDR Gold MiniShares Trust $1,032.25 $37.48 - - $947.79 -11.4% 27.265
+(GLDM)
+SPDR FTSE International $459.68 $8.46 - $3.10 $453.37 -2.5% 26.2958
+Government Inflation-Protected
+Bond ETF (WIP)
+WisdomTree Japan Hedged Equity $401.69 - - $1.90 $406.38 1.6% 5.3506
+Fund (DXJ)
+iShares Core S&P 500 ETF (IVV) $237.23 - - $0.44 $233.74 -1.3% 0.7131
+iShares $ TIPS UCITS ETF (IDTP) $344.96 $4.62 - - $349.11 -0.1% 3.0795
+Cash USD $132.74 - - - $128.29
+Total $12,356.77 - - $16.69 $12,255.28
+4
+TRANSACTIONS / JUN 2026
+General Investing
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+01 Jun 2026 Buy AGGG 0.7750 $1.93 $1.49 $1.49
+01 Jun 2026 Buy BB3M 0.0114 $51.72 $0.59 $0.59
+01 Jun 2026 Buy HYLD 0.0122 $39.26 $0.48 $0.48
+01 Jun 2026 Buy IDTP 0.0021 $113.69 $0.24 $0.24
+01 Jun 2026 Buy IGLO 0.0419 $38.97 $1.63 $1.63
+01 Jun 2026 Buy IHYU 0.0109 $41.25 $0.45 $0.45
+01 Jun 2026 Buy BNDX 0.0385 $21.03 $0.81 $0.81
+01 Jun 2026 Buy EMB 0.0068 $41.97 $0.28 $0.28
+01 Jun 2026 Buy FLIN 0.0253 $15.04 $0.38 $0.38
+01 Jun 2026 Buy GLDM 0.0057 $38.71 $0.22 $0.22
+01 Jun 2026 Buy WIP 0.0055 $17.57 $0.10 $0.10
+02 Jun 2026 Sell ISAC 2.3607 $53.57 $126.46 $126.46
+02 Jun 2026 Buy AGGG 0.2539 $1.93 $0.49 $0.49
+02 Jun 2026 Buy BB3M 0.0031 $51.74 $0.16 $0.16
+02 Jun 2026 Buy HYLD 0.0041 $39.61 $0.16 $0.16
+02 Jun 2026 Buy IDTP 0.0006 $113.80 $0.07 $0.07
+02 Jun 2026 Buy IGLO 0.0140 $39.06 $0.55 $0.55
+5
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+02 Jun 2026 Buy IHYU 0.0034 $41.42 $0.14 $0.14
+02 Jun 2026 Buy BNDX 1.0902 $21.09 $23.00 $23.00
+02 Jun 2026 Buy EMB 0.1921 $42.10 $8.09 $8.09
+02 Jun 2026 Buy FLIN 0.7644 $15.12 $11.56 $11.56
+02 Jun 2026 Buy GLDM 0.2311 $38.94 $9.00 $9.00
+02 Jun 2026 Buy WIP 0.2052 $17.64 $3.62 $3.62
+02 Jun 2026 Buy XLP 0.0476 $35.83 $1.71 $1.71
+02 Jun 2026 Buy XLV 0.0158 $64.11 $1.01 $1.01
+03 Jun 2026 Buy AGGG 6.3894 $1.92 $12.29 $12.29
+03 Jun 2026 Buy BB3M 0.0879 $51.74 $4.55 $4.55
+03 Jun 2026 Buy HYLD 0.1036 $39.49 $4.09 $4.09
+03 Jun 2026 Buy IDTP 0.0153 $113.82 $1.74 $1.74
+03 Jun 2026 Buy IGLO 0.3445 $38.88 $13.39 $13.39
+03 Jun 2026 Buy IHYU 0.0881 $41.33 $3.64 $3.64
+03 Jun 2026 Buy BNDX 0.2338 $21.04 $4.92 $4.92
+03 Jun 2026 Buy EMB 0.0407 $42.02 $1.71 $1.71
+03 Jun 2026 Buy FLIN 0.1660 $14.93 $2.48 $2.48
+03 Jun 2026 Buy GLDM 0.0528 $38.49 $2.03 $2.03
+03 Jun 2026 Buy WIP 0.0449 $17.56 $0.79 $0.79
+6
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+03 Jun 2026 Buy XLP 0.0160 $36.00 $0.58 $0.58
+03 Jun 2026 Buy XLV 0.0066 $63.97 $0.42 $0.42
+04 Jun 2026 Dividend received BNDX 64.2139 $2.25 $2.25
+04 Jun 2026 Buy AGGG 1.7448 $1.93 $3.36 $3.36
+04 Jun 2026 Buy BB3M 0.0194 $51.75 $1.00 $1.00
+04 Jun 2026 Buy HYLD 0.0285 $39.65 $1.13 $1.13
+04 Jun 2026 Buy IDTP 0.0041 $113.27 $0.46 $0.46
+04 Jun 2026 Buy IGLO 0.0951 $39.04 $3.71 $3.71
+04 Jun 2026 Buy IHYU 0.0230 $41.51 $0.95 $0.95
+04 Jun 2026 Buy BNDX 0.0040 $21.04 $0.08 $0.08
+04 Jun 2026 Buy FLIN 0.0032 $15.08 $0.05 $0.05
+05 Jun 2026 Dividend received EMB 16.0157 $2.00 $2.00
+05 Jun 2026 Dividend received WIP 25.8103 $3.10 $3.10
+05 Jun 2026 Currency Conversion to SGD - $11.11
+($8.66, FX rate: 1.2825)
+05 Jun 2026 Buy AGGG 0.4556 $1.92 $0.88 $0.88
+05 Jun 2026 Buy BB3M 0.0054 $51.77 $0.28 $0.28
+05 Jun 2026 Buy HYLD 0.0072 $39.44 $0.28 $0.28
+05 Jun 2026 Buy IDTP 0.0012 $113.45 $0.13 $0.13
+05 Jun 2026 Buy IGLO 0.0240 $38.88 $0.93 $0.93
+7
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+05 Jun 2026 Buy IHYU 0.0060 $41.32 $0.25 $0.25
+05 Jun 2026 Buy BNDX 0.0190 $21.02 $0.40 $0.40
+05 Jun 2026 Buy EMB 0.0032 $41.91 $0.14 $0.14
+05 Jun 2026 Buy FLIN 0.0132 $14.94 $0.20 $0.20
+05 Jun 2026 Buy GLDM 0.0042 $37.66 $0.16 $0.16
+05 Jun 2026 Buy WIP 0.0040 $17.51 $0.07 $0.07
+08 Jun 2026 Currency Conversion to SGD - $0.02
+($0.01, FX rate: 1.3333)
+08 Jun 2026 Buy AGGG 0.2403 $1.91 $0.46 $0.46
+08 Jun 2026 Buy BB3M 0.0014 $51.76 $0.07 $0.07
+08 Jun 2026 Buy HYLD 0.0036 $39.14 $0.14 $0.14
+08 Jun 2026 Buy IDTP 0.0004 $112.77 $0.05 $0.05
+08 Jun 2026 Buy IGLO 0.0132 $38.40 $0.51 $0.51
+08 Jun 2026 Buy IHYU 0.0029 $41.03 $0.12 $0.12
+08 Jun 2026 Buy BNDX 0.0102 $21.00 $0.21 $0.21
+08 Jun 2026 Buy EMB 0.0020 $41.78 $0.08 $0.08
+08 Jun 2026 Buy FLIN 0.0103 $14.87 $0.15 $0.15
+08 Jun 2026 Buy GLDM 0.0069 $37.51 $0.26 $0.26
+08 Jun 2026 Buy WIP 0.0030 $17.35 $0.05 $0.05
+09 Jun 2026 Management fee (May 2026) - $11.13
+8
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+09 Jun 2026 Buy AGGG 0.0663 $1.91 $0.13 $0.13
+09 Jun 2026 Buy IGLO 0.0037 $38.69 $0.14 $0.14
+09 Jun 2026 Buy BNDX 0.0038 $21.01 $0.08 $0.08
+09 Jun 2026 Buy FLIN 0.0035 $14.96 $0.05 $0.05
+09 Jun 2026 Buy GLDM 0.0021 $37.13 $0.08 $0.08
+11 Jun 2026 Buy AGGG 0.0778 $1.91 $0.15 $0.15
+11 Jun 2026 Buy HYLD 0.0013 $39.22 $0.05 $0.05
+11 Jun 2026 Buy IGLO 0.0047 $38.58 $0.18 $0.18
+11 Jun 2026 Buy BNDX 0.0048 $21.04 $0.10 $0.10
+11 Jun 2026 Buy FLIN 0.0056 $14.80 $0.08 $0.08
+11 Jun 2026 Buy GLDM 0.0084 $35.58 $0.30 $0.30
+19 Jun 2026 Dividend received IVV 0.7131 $0.44 $0.44
+24 Jun 2026 Dividend received VEU 22.9906 $2.77 $2.77
+24 Jun 2026 Buy AGGG 0.1853 $1.91 $0.35 $0.35
+24 Jun 2026 Buy BB3M 0.0009 $51.85 $0.05 $0.05
+24 Jun 2026 Buy HYLD 0.0042 $38.70 $0.16 $0.16
+24 Jun 2026 Buy IDTP 0.0004 $112.45 $0.05 $0.05
+24 Jun 2026 Buy IGLO 0.0100 $38.80 $0.39 $0.39
+24 Jun 2026 Buy IHYU 0.0020 $41.34 $0.08 $0.08
+9
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+24 Jun 2026 Buy ISAC 0.0010 $52.28 $0.05 $0.05
+24 Jun 2026 Buy BNDX 0.0058 $21.21 $0.12 $0.12
+24 Jun 2026 Buy FLIN 0.0045 $15.63 $0.07 $0.07
+24 Jun 2026 Buy GLDM 0.0110 $34.64 $0.38 $0.38
+24 Jun 2026 Buy WIP 0.0038 $17.22 $0.07 $0.07
+25 Jun 2026 Dividend received XLI 6.7617 $0.92 $0.92
+25 Jun 2026 Dividend received XLV 3.0063 $0.60 $0.60
+25 Jun 2026 Dividend received XLK 4.0051 $0.28 $0.28
+25 Jun 2026 Dividend received XLP 12.6352 $2.22 $2.22
+25 Jun 2026 Buy AGGG 0.3171 $1.92 $0.61 $0.61
+25 Jun 2026 Buy BB3M 0.0017 $51.87 $0.09 $0.09
+25 Jun 2026 Buy HYLD 0.0075 $38.72 $0.29 $0.29
+25 Jun 2026 Buy IDTP 0.0007 $112.90 $0.08 $0.08
+25 Jun 2026 Buy IGLO 0.0169 $38.82 $0.66 $0.66
+25 Jun 2026 Buy IHYU 0.0035 $41.42 $0.14 $0.14
+25 Jun 2026 Buy ISAC 0.0013 $52.54 $0.07 $0.07
+25 Jun 2026 Buy BNDX 0.0101 $21.25 $0.21 $0.21
+25 Jun 2026 Buy EMB 0.0014 $42.37 $0.06 $0.06
+25 Jun 2026 Buy FLIN 0.0076 $15.60 $0.12 $0.12
+10
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+25 Jun 2026 Buy GLDM 0.0296 $34.85 $1.03 $1.03
+25 Jun 2026 Buy WIP 0.0076 $17.21 $0.13 $0.13
+26 Jun 2026 Buy AGGG 0.0592 $1.92 $0.11 $0.11
+26 Jun 2026 Buy HYLD 0.0015 $38.74 $0.06 $0.06
+26 Jun 2026 Buy IGLO 0.0031 $39.08 $0.12 $0.12
+26 Jun 2026 Sell XLI 1.1839 $79.82 $94.50 $94.50
+26 Jun 2026 Buy BNDX 0.0025 $21.23 $0.05 $0.05
+26 Jun 2026 Buy GLDM 0.0058 $35.30 $0.21 $0.21
+27 Jun 2026 Dividend received PPA 5.1546 $0.21 $0.21
+29 Jun 2026 Buy AGGG 6.2692 $1.92 $12.05 $12.05
+29 Jun 2026 Buy BB3M 0.0458 $51.88 $2.38 $2.38
+29 Jun 2026 Buy HYLD 0.1533 $38.71 $5.94 $5.94
+29 Jun 2026 Buy IDTP 0.0133 $113.28 $1.51 $1.51
+29 Jun 2026 Buy IGLO 0.3194 $38.93 $12.44 $12.44
+29 Jun 2026 Buy IHYU 0.0752 $41.43 $3.12 $3.12
+29 Jun 2026 Buy ISAC 0.0464 $52.31 $2.42 $2.42
+29 Jun 2026 Buy BNDX 0.2500 $21.24 $5.31 $5.31
+29 Jun 2026 Buy EMB 0.0406 $42.34 $1.72 $1.72
+29 Jun 2026 Buy FLIN 0.1757 $15.47 $2.72 $2.72
+11
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+29 Jun 2026 Buy GLDM 0.5299 $34.85 $18.47 $18.47
+29 Jun 2026 Buy WIP 0.1699 $17.18 $2.92 $2.92
+29 Jun 2026 Buy XLI 0.0161 $79.55 $1.28 $1.28
+29 Jun 2026 Buy XLK 0.0112 $80.15 $0.90 $0.90
+30 Jun 2026 Dividend received DXJ 5.3506 $1.90 $1.90
+30 Jun 2026 Buy AGGG 1.4332 $1.92 $2.75 $2.75
+30 Jun 2026 Buy BB3M 0.0111 $51.90 $0.58 $0.58
+30 Jun 2026 Buy HYLD 0.0321 $38.86 $1.25 $1.25
+30 Jun 2026 Buy IDTP 0.0026 $113.56 $0.29 $0.29
+30 Jun 2026 Buy IGLO 0.0729 $38.96 $2.84 $2.84
+30 Jun 2026 Buy IHYU 0.0172 $41.43 $0.71 $0.71
+30 Jun 2026 Buy ISAC 0.0101 $52.75 $0.53 $0.53
+30 Jun 2026 Buy BNDX 0.0637 $21.23 $1.35 $1.35
+30 Jun 2026 Buy EMB 0.0083 $42.34 $0.35 $0.35
+30 Jun 2026 Buy FLIN 0.0514 $15.50 $0.80 $0.80
+30 Jun 2026 Buy GLDM 0.1533 $34.90 $5.35 $5.35
+30 Jun 2026 Buy WIP 0.0416 $17.24 $0.72 $0.72
+30 Jun 2026 Buy XLI 0.0017 $80.24 $0.14 $0.14
+12
+FEE CALCULATIONS / JUN 2026
+Fee Transactions ( SGD ) Amount Fee
+( 01 Jun 2026 - 30 Jun 2026 ) ( SGD ) ( SGD )
+Monthly-averaged assets $15,775.62
+Total chargeable amount $15,775.62 $9.98
+GST 9.0% $0.90
+Final Fee ( SGD , incl. GST ) $10.87
+The final fee for the month of June will be charged in the beginning of July , and will be reflected as a transaction in the following statement.
+Monthly-averaged assets are calculated based on daily asset values and currency exchange rates from all investment portfolios .
+13
+APPENDIX A / EXPLANATIONS
+Closing Balance
+General
+NAV of your account and NAV of your portfolios as of the last day of the statement month.
+NAV
+Net Asset Value of all securities, cash, and expected dividend payouts (dividend Portfolio Details
+entitlements) as of a particular day. Securities and cash are valued using closing prices
+from the previous trading day.
+Opening Balance
+Value of each security as of the first day of the statement month, using the preceding
+Deposits
+trading day's closing prices.
+Money that you have transferred into your StashAway account.
+The recorded date of deposit is the date when all transfer-related assessments
+Bought
+( such as anti-money laundering checks) have been performed successfully
+Amount spent on buy-orders of this security within the statement month, including
+and the deposited amount has been allocated into your portfolio(s).
+potential re-invested dividends.
+Withdrawals
+Sold
+Money that you have withdrawn from your StashAway account.
+Amount received from sell-orders of this security within the statement month.
+The recorded date of the withdrawal will be the date when the transfer to your
+Dividends
+bank account
+Total dividends paid out by the security (ETF) within the statement month. Part of these
+has been initiated from our side.
+dividends may have been re-invested within the same month already.
+Rebates
+Account Summary and Portfolio Summary
+For StashAway Simple™ and Simple Plus funds, we receive a rebate from the Unit Trust
+manager on a quarterly basis. We return these rebates back to you on a quarterly basis,
+Opening Balance
+and this rebate will be reflected in the monthly statements for the month following
+NAV of your account and NAV of your portfolios as of the first day of the statement month.
+a quarter-end (April for Q1, July for Q2, October for Q3, and January for Q4). Rebate
+Cashflow payments are calculated based on the units that you have held in the underlying fund
+The sum of all deposits minus the sum of all withdrawals within the statement month. for each day of the quarter.
+Total Returns Closing Balance
+Sum of returns that the securities (ETFs) in your portfolios have generated, including Value of each security as of the last day of the statement month, using the preceding
+paid-out dividends and expected dividend payouts. month's final trading day's closing prices.
+Fees Profit/Loss %
+Amount charged by StashAway for the provision of our services for the month preceding The closing balance plus dividends divided by the opening balance plus net cash flows for
+the statement month. Note that ETF management fees are not part of this fee, as they a given security.
+are implicitly charged by the ETF provider and factored into the NAV. Similarly, currency
+Total Outstanding Units
+conversion fees will be reflected inside the NAV already.
+Total units owned for a given security.
+14
+NOTICE AND DISCLAIMER
+This statement of account is provided to you by Asia Wealth Platform Pte. Ltd. ("StashAway"). StashAway is a holder of a capital markets services licence to carry on
+fund management issued by the Monetary Authority of Singapore.
+This statement of account sets out an overview of the assets held in your StashAway Account as well as the transactions undertaken on your Account for the indicated
+month.
+The statement of account, including but not limited to the Explanation in Appendix A, is subject to the disclaimer available at the following link:
+www.stashaway.sg/legal
+StashAway has opened a securities brokerage account to buy and sell investments on behalf of its customers with Saxo Capital Markets Pte. Ltd. and/or such other
+third party brokers as StashAway may select from time to time ("Saxo"). For certain investments, StashAway may buy and sell investments on behalf of its customers
+with or through fund managers and/or other third party intermediaries ("Intermediaries"). In the event that up-to-date information from Saxo or the Intermediary
+(as the case may be) is not available at the time of printing of the statement of account, StashAway will report to you the applicable exchange rates, NAV, values of
+securities bought and sold, and dividends based on the last available information provided to StashAway by Saxo or the Intermediary. In such a case, StashAway
+will inform you accordingly. StashAway does not assume responsibility for the accuracy, timeliness and completeness of the information as reported by Saxo, the
+Intermediary and StashAway will not accept liability for any loss arising from your use of, or reliance on, such information.
+Subject to the above paragraph, the net asset value, or NAV of each security for any particular day is valued using the closing prices of the relevant exchange where
+the security is listed from the previous trading day. For example, the prices of the security indicated in the Opening Balance of the Portfolio Balance is calculated
+based on the closing prices of the relevant exchange where the security is listed from the trading day before the first day of the statement month. The information
+stated in the statement of account are reported to you in the reporting currency indicated in the statement rounded to the nearest two decimal places, and where
+applicable, based on the stated exchange rate which is based on the closing exchange rate of the trading day before the day of the Opening or Closing balance, as
+applicable.
+This statement is made available to you for viewing on the Platform, and therefore, you may download, save or print the statement for your subsequent reference.
+If you have any queries in relation to the statement, please contact our Customer Support at support@stashaway.com
+Registered address:
+175 A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+www.stashaway.sg
+15

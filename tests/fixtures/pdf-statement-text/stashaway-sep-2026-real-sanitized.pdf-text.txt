@@ -1,0 +1,2444 @@
+StashAway (Asia Wealth Platform Pte Ltd)
+
+GST Registration No: 201624878Z
+
+175
+A Bencoolen Street
+
+Burlington Square #07-04
+
+Singapore 189650
+
+Statement of Account
+
+01
+ 
+Sep 2026
+ 
+-
+ 
+30 Sep 2026
+
+Account Owner:
+
+Alex Sample Holder
+
+Account Reference Code:
+
+00
+XYZ00X
+
+Address:
+
+1
+ 
+Sample Avenue
+
+#00-00
+
+Singapore 000000
+
+Statement Date:
+
+06
+ 
+Oct 2026
+
+ACCOUNT SUMMARY
+
+Reporting Currency:
+ 
+SGD
+
+Opening Balance
+
+(
+01
+ 
+Sep 2026
+)
+
+Cashflow
+
+(
+Deposits - Withdrawals)
+
+Total Returns
+
+(
+Incl. Dividends)
+
+Fees
+
+(
+Previous Month)
+
+Closing Balance
+
+(
+30
+ 
+Sep 2026
+)
+
+Investment
+
+Portfolios
+
+$15,706.59
+ 
+$0.00
+ 
+-$337.62
+ 
+-$11.26
+ 
+$15,357.71
+
+Total
+ 
+$15,706.59
+ 
+$0.00
+ 
+-$337.62
+ 
+-$11.26
+ 
+$15,357.71
+
+Opening balance is based on closing rates of security prices and exchange rates as of
+ 
+31 Aug 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2709
+ 
+SGD
+).
+
+Closing balance is based on closing rates of security prices and exchange rates as of
+ 
+30 Sep 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2772
+ 
+SGD
+).
+
+Total Returns are converted based on closing balance exchange rate.
+
+1
+PORTFOLIO SUMMARY
+ 
+/
+ 
+SEP 2026
+
+Investment Portfolios
+
+Reporting Currency:
+ 
+SGD
+
+Opening Balance
+
+(
+01
+ 
+Sep 2026
+)
+
+Cashflow
+
+(
+Deposits - Withdrawals)
+
+Total Returns
+
+(
+Incl. Dividends)
+
+Fees
+
+(
+Previous Month)
+
+Closing Balance
+
+(
+30
+ 
+Sep 2026
+)
+
+General Investing
+ 
+$15,706.59
+ 
+-
+ 
+-$337.62
+ 
+-$11.26
+ 
+$15,357.71
+
+Opening balance is based on closing rates of security prices and exchange rates as of
+ 
+31 Aug 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2709
+ 
+SGD
+).
+
+Closing balance is based on closing rates of security prices and exchange rates as of
+ 
+30 Sep 2026
+ 
+(1
+ 
+USD
+ 
+=
+ 
+1.2772
+ 
+SGD
+).
+
+Total Returns are converted based on closing balance exchange rate.
+
+ETF portfolios fees are charged based on the previous month's AUM.
+
+2
+PORTFOLIO DETAILS
+ 
+/
+ 
+SEP 2026
+
+General Investing
+
+Reporting Currency:
+ 
+USD
+
+Opening Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Bought
+ 
+Sold
+ 
+Dividends
+
+(
+Paid and
+
+Reinvested)
+
+Closing Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Profit/Loss %
+ 
+Total
+
+Outstanding
+
+Units
+
+iShares MSCI ACWI UCITS ETF
+
+(ISAC)
+
+$637.96
+ 
+-
+ 
+-
+ 
+-
+ 
+$628.69
+ 
+-1.5%
+ 
+11.637
+
+iShares Global High Yield Corp
+
+Bond UCITS ETF (HYLD)
+
+$410.40
+ 
+$0.45
+ 
+-
+ 
+-
+ 
+$391.56
+ 
+-4.7%
+ 
+10.4728
+
+Health Care Select Sector SPDR
+
+Fund (XLV)
+
+$224.40
+ 
+-
+ 
+-
+ 
+$0.59
+ 
+$221.62
+ 
+-1.0%
+ 
+3.0063
+
+iShares Global Govt Bond UCITS
+
+ETF (IGLO)
+
+$1,146.88
+ 
+$2.16
+ 
+-
+ 
+-
+ 
+$1,118.91
+ 
+-2.6%
+ 
+30.2239
+
+Technology Select Sector SPDR
+
+Fund (XLK)
+
+$330.41
+ 
+-
+ 
+-
+ 
+$0.28
+ 
+$346.80
+ 
+5.0%
+ 
+4.0476
+
+Vanguard Total International
+
+Bond ETF (BNDX)
+
+$1,376.62
+ 
+$1.01
+ 
+-
+ 
+$2.44
+ 
+$1,357.94
+ 
+-1.3%
+ 
+66.1925
+
+iShares Core Global Aggregate
+
+Bond UCITS ETF (AGGG)
+
+$1,298.73
+ 
+$1.93
+ 
+-
+ 
+-
+ 
+$1,268.58
+ 
+-2.5%
+ 
+688.9186
+
+Vanguard FTSE All World ex-US
+
+ETF (VEU)
+
+$857.87
+ 
+-
+ 
+-
+ 
+$1.39
+ 
+$834.93
+ 
+-2.5%
+ 
+22.9906
+
+Consumer Staples Select Sector
+
+SPDR Fund (XLP)
+
+$469.98
+ 
+-
+ 
+-
+ 
+$2.09
+ 
+$445.75
+ 
+-4.7%
+ 
+12.6352
+
+3
+Opening Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Bought
+ 
+Sold
+ 
+Dividends
+
+(
+Paid and
+
+Reinvested)
+
+Closing Balance
+
+(
+Incl. Dividend
+
+Entitlements)
+
+Profit/Loss %
+ 
+Total
+
+Outstanding
+
+Units
+
+BetaBuilders US Treasury Bond
+
+0-3 Months UCITS ETF (BB3M)
+
+$826.09
+ 
+$0.06
+ 
+-
+ 
+-
+ 
+$828.78
+ 
+0.3%
+ 
+15.8266
+
+The Industrial Select Sector
+
+SPDR®
+ 
+Fund (XLI)
+
+$430.08
+ 
+$0.52
+ 
+-
+ 
+$0.78
+ 
+$410.57
+ 
+-4.5%
+ 
+5.6175
+
+iShares $ High Yield Corporate
+
+Bond UCITS ETF (IHYU)
+
+$361.26
+ 
+$0.38
+ 
+-
+ 
+$5.56
+ 
+$347.63
+ 
+-2.3%
+ 
+8.664
+
+Franklin FTSE India ETF (FLIN)
+ 
+$283.23
+ 
+$0.15
+ 
+-
+ 
+-
+ 
+$266.06
+ 
+-6.1%
+ 
+18.1509
+
+Invesco Aerospace & Defense ETF
+
+(PPA)
+
+$377.66
+ 
+-
+ 
+-
+ 
+$0.76
+ 
+$348.85
+ 
+-7.4%
+ 
+5.1546
+
+iShares J.P. Morgan USD
+
+Emerging Markets Bond ETF
+
+(EMB)
+
+$678.48
+ 
+$0.53
+ 
+-
+ 
+$2.07
+ 
+$650.87
+ 
+-3.8%
+ 
+16.3697
+
+SPDR Gold MiniShares Trust
+
+(GLDM)
+
+$1,063.19
+ 
+$0.20
+ 
+-
+ 
+-
+ 
+$991.83
+ 
+-6.7%
+ 
+27.5738
+
+SPDR FTSE International
+
+Government Inflation-Protected
+
+Bond ETF (WIP)
+
+$456.91
+ 
+$0.11
+ 
+-
+ 
+$0.98
+ 
+$440.73
+ 
+-3.3%
+ 
+26.3939
+
+WisdomTree Japan Hedged Equity
+
+Fund (DXJ)
+
+$420.64
+ 
+-
+ 
+-
+ 
+$0.13
+ 
+$422.84
+ 
+0.6%
+ 
+5.3506
+
+iShares Core S&P 500 ETF (IVV)
+ 
+$240.56
+ 
+-
+ 
+-
+ 
+$0.48
+ 
+$239.04
+ 
+-0.4%
+ 
+0.7131
+
+iShares $ TIPS UCITS ETF (IDTP)
+ 
+$347.51
+ 
+$0.17
+ 
+-
+ 
+-
+ 
+$337.27
+ 
+-3.0%
+ 
+3.0884
+
+Cash USD
+ 
+$119.76
+ 
+-
+ 
+-
+ 
+-
+ 
+$120.76
+
+Total
+ 
+$12,358.64
+ 
+-
+ 
+-
+ 
+$17.56
+ 
+$12,020.01
+
+4
+TRANSACTIONS
+ 
+/
+ 
+SEP 2026
+
+General Investing
+
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+01
+ 
+Sep 2026
+ 
+Dividend received IHYU
+ 
+8.6546
+ 
+$5.56
+ 
+$5.56
+
+01
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.1721
+ 
+$1.88
+ 
+$0.32
+ 
+$0.32
+
+01
+ 
+Sep 2026
+ 
+Buy BB3M
+ 
+0.0011
+ 
+$52.20
+ 
+$0.06
+ 
+$0.06
+
+01
+ 
+Sep 2026
+ 
+Buy HYLD
+ 
+0.0015
+ 
+$39.13
+ 
+$0.06
+ 
+$0.06
+
+01
+ 
+Sep 2026
+ 
+Buy IDTP
+ 
+0.0004
+ 
+$112.03
+ 
+$0.05
+ 
+$0.05
+
+01
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0091
+ 
+$37.86
+ 
+$0.35
+ 
+$0.35
+
+01
+ 
+Sep 2026
+ 
+Buy IHYU
+ 
+0.0018
+ 
+$41.01
+ 
+$0.07
+ 
+$0.07
+
+01
+ 
+Sep 2026
+ 
+Buy BNDX
+ 
+0.0082
+ 
+$20.72
+ 
+$0.17
+ 
+$0.17
+
+01
+ 
+Sep 2026
+ 
+Buy EMB
+ 
+0.0018
+ 
+$41.22
+ 
+$0.07
+ 
+$0.07
+
+01
+ 
+Sep 2026
+ 
+Buy XLI
+ 
+0.0008
+ 
+$75.82
+ 
+$0.06
+ 
+$0.06
+
+02
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.1235
+ 
+$1.88
+ 
+$0.23
+ 
+$0.23
+
+02
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0069
+ 
+$37.83
+ 
+$0.26
+ 
+$0.26
+
+02
+ 
+Sep 2026
+ 
+Buy IHYU
+ 
+0.0013
+ 
+$40.90
+ 
+$0.05
+ 
+$0.05
+
+02
+ 
+Sep 2026
+ 
+Buy BNDX
+ 
+0.0083
+ 
+$20.68
+ 
+$0.17
+ 
+$0.17
+
+02
+ 
+Sep 2026
+ 
+Buy EMB
+ 
+0.0018
+ 
+$41.21
+ 
+$0.07
+ 
+$0.07
+
+02
+ 
+Sep 2026
+ 
+Buy XLI
+ 
+0.0011
+ 
+$75.87
+ 
+$0.08
+ 
+$0.08
+
+04
+ 
+Sep 2026
+ 
+Dividend received BNDX
+ 
+66.1436
+ 
+$2.44
+ 
+$2.44
+
+5
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+04
+ 
+Sep 2026
+ 
+Currency Conversion to SGD
+
+($8.89, FX rate: 1.2645)
+
+-
+ 
+$11.24
+
+05
+ 
+Sep 2026
+ 
+Dividend received EMB
+ 
+16.3566
+ 
+$2.07
+ 
+$2.07
+
+05
+ 
+Sep 2026
+ 
+Dividend received WIP
+ 
+26.3875
+ 
+$0.98
+ 
+$0.98
+
+07
+ 
+Sep 2026
+ 
+Management fee (Aug 2026)
+ 
+-
+ 
+$11.26
+
+07
+ 
+Sep 2026
+ 
+Currency Conversion to SGD
+
+($0.02, FX rate: 1.25)
+
+-
+ 
+$0.02
+
+19
+ 
+Sep 2026
+ 
+Dividend received IVV
+ 
+0.7131
+ 
+$0.48
+ 
+$0.48
+
+23
+ 
+Sep 2026
+ 
+Dividend received VEU
+ 
+22.9906
+ 
+$1.39
+ 
+$1.39
+
+24
+ 
+Sep 2026
+ 
+Dividend received XLV
+ 
+3.0063
+ 
+$0.59
+ 
+$0.59
+
+24
+ 
+Sep 2026
+ 
+Dividend received XLP
+ 
+12.6352
+ 
+$2.09
+ 
+$2.09
+
+24
+ 
+Sep 2026
+ 
+Dividend received XLK
+ 
+4.0476
+ 
+$0.28
+ 
+$0.28
+
+24
+ 
+Sep 2026
+ 
+Dividend received XLI
+ 
+5.6125
+ 
+$0.78
+ 
+$0.78
+
+24
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.3714
+ 
+$1.85
+ 
+$0.69
+ 
+$0.69
+
+24
+ 
+Sep 2026
+ 
+Buy HYLD
+ 
+0.0052
+ 
+$37.87
+ 
+$0.20
+ 
+$0.20
+
+24
+ 
+Sep 2026
+ 
+Buy IDTP
+ 
+0.0011
+ 
+$110.02
+ 
+$0.12
+ 
+$0.12
+
+24
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0211
+ 
+$37.18
+ 
+$0.78
+ 
+$0.78
+
+24
+ 
+Sep 2026
+ 
+Buy IHYU
+ 
+0.0037
+ 
+$40.44
+ 
+$0.15
+ 
+$0.15
+
+24
+ 
+Sep 2026
+ 
+Buy BNDX
+ 
+0.0173
+ 
+$20.55
+ 
+$0.35
+ 
+$0.35
+
+24
+ 
+Sep 2026
+ 
+Buy EMB
+ 
+0.0046
+ 
+$40.58
+ 
+$0.19
+ 
+$0.19
+
+6
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+24
+ 
+Sep 2026
+ 
+Buy FLIN
+ 
+0.0067
+ 
+$15.00
+ 
+$0.10
+ 
+$0.10
+
+24
+ 
+Sep 2026
+ 
+Buy GLDM
+ 
+0.0026
+ 
+$36.92
+ 
+$0.10
+ 
+$0.10
+
+24
+ 
+Sep 2026
+ 
+Buy WIP
+ 
+0.0064
+ 
+$16.97
+ 
+$0.11
+ 
+$0.11
+
+24
+ 
+Sep 2026
+ 
+Buy XLI
+ 
+0.0025
+ 
+$73.86
+ 
+$0.19
+ 
+$0.19
+
+25
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.1327
+ 
+$1.85
+ 
+$0.25
+ 
+$0.25
+
+25
+ 
+Sep 2026
+ 
+Buy HYLD
+ 
+0.0021
+ 
+$37.80
+ 
+$0.08
+ 
+$0.08
+
+25
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0075
+ 
+$37.22
+ 
+$0.28
+ 
+$0.28
+
+25
+ 
+Sep 2026
+ 
+Buy IHYU
+ 
+0.0014
+ 
+$40.33
+ 
+$0.06
+ 
+$0.06
+
+25
+ 
+Sep 2026
+ 
+Buy BNDX
+ 
+0.0062
+ 
+$20.51
+ 
+$0.13
+ 
+$0.13
+
+25
+ 
+Sep 2026
+ 
+Buy EMB
+ 
+0.0018
+ 
+$40.36
+ 
+$0.07
+ 
+$0.07
+
+25
+ 
+Sep 2026
+ 
+Buy XLI
+ 
+0.0010
+ 
+$74.20
+ 
+$0.07
+ 
+$0.07
+
+26
+ 
+Sep 2026
+ 
+Dividend received PPA
+ 
+5.1546
+ 
+$0.76
+ 
+$0.76
+
+28
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.0832
+ 
+$1.84
+ 
+$0.15
+ 
+$0.15
+
+28
+ 
+Sep 2026
+ 
+Buy HYLD
+ 
+0.0014
+ 
+$37.69
+ 
+$0.05
+ 
+$0.05
+
+28
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0045
+ 
+$37.08
+ 
+$0.17
+ 
+$0.17
+
+28
+ 
+Sep 2026
+ 
+Buy BNDX
+ 
+0.0038
+ 
+$20.49
+ 
+$0.08
+ 
+$0.08
+
+28
+ 
+Sep 2026
+ 
+Buy EMB
+ 
+0.0012
+ 
+$40.05
+ 
+$0.05
+ 
+$0.05
+
+28
+ 
+Sep 2026
+ 
+Buy XLI
+ 
+0.0006
+ 
+$74.13
+ 
+$0.05
+ 
+$0.05
+
+29
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.1070
+ 
+$1.84
+ 
+$0.20
+ 
+$0.20
+
+7
+Date
+ 
+Transaction
+ 
+Units
+ 
+Value Per Unit
+
+(
+USD
+)
+
+Total Value
+
+(
+USD
+)
+
+Total Value
+
+(
+SGD
+)
+
+29
+ 
+Sep 2026
+ 
+Buy HYLD
+ 
+0.0016
+ 
+$37.45
+ 
+$0.06
+ 
+$0.06
+
+29
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0059
+ 
+$37.06
+ 
+$0.22
+ 
+$0.22
+
+29
+ 
+Sep 2026
+ 
+Buy IHYU
+ 
+0.0012
+ 
+$40.07
+ 
+$0.05
+ 
+$0.05
+
+29
+ 
+Sep 2026
+ 
+Buy BNDX
+ 
+0.0051
+ 
+$20.51
+ 
+$0.11
+ 
+$0.11
+
+29
+ 
+Sep 2026
+ 
+Buy EMB
+ 
+0.0019
+ 
+$40.06
+ 
+$0.07
+ 
+$0.07
+
+29
+ 
+Sep 2026
+ 
+Buy FLIN
+ 
+0.0033
+ 
+$14.74
+ 
+$0.05
+ 
+$0.05
+
+29
+ 
+Sep 2026
+ 
+Buy GLDM
+ 
+0.0029
+ 
+$36.04
+ 
+$0.11
+ 
+$0.11
+
+29
+ 
+Sep 2026
+ 
+Buy XLI
+ 
+0.0009
+ 
+$74.02
+ 
+$0.07
+ 
+$0.07
+
+30
+ 
+Sep 2026
+ 
+Dividend received DXJ
+ 
+5.3506
+ 
+$0.13
+ 
+$0.13
+
+30
+ 
+Sep 2026
+ 
+Buy AGGG
+ 
+0.0499
+ 
+$1.84
+ 
+$0.09
+ 
+$0.09
+
+30
+ 
+Sep 2026
+ 
+Buy IGLO
+ 
+0.0027
+ 
+$37.10
+ 
+$0.10
+ 
+$0.10
+
+8
+FEE CALCULATIONS
+ 
+/
+ 
+SEP 2026
+
+Fee Transactions (
+SGD
+)
+
+(
+01
+ 
+Sep 2026
+ 
+-
+ 
+30 Sep 2026
+)
+
+Amount
+
+(
+SGD
+)
+
+Fee
+
+(
+SGD
+)
+
+Monthly-averaged assets
+ 
+$15,533.69
+
+Total chargeable amount
+ 
+$15,533.69
+ 
+$9.84
+
+GST 9.0%
+ 
+$0.89
+
+Final Fee
+ 
+(
+SGD
+, incl. GST
+)
+ 
+$10.72
+
+The final fee for the month of
+ 
+September
+ 
+will be charged in the beginning of
+ 
+October
+, and will be reflected as a transaction in the following statement.
+
+Monthly-averaged assets are calculated based on daily asset values and currency exchange rates from all investment portfolios
+.
+
+9
+APPENDIX A
+ 
+/ EXPLANATIONS
+
+General
+
+NAV
+
+Net Asset Value of all securities, cash, and expected dividend payouts (dividend
+
+entitlements) as of a particular day. Securities and cash are valued using closing prices
+
+from the previous trading day.
+
+Deposits
+
+Money that you have transferred into your StashAway account.
+
+The recorded date of deposit is the date when all transfer-related assessments
+
+(
+such as anti-money laundering checks) have been performed successfully
+
+and the deposited amount has been allocated into your portfolio(s).
+
+Withdrawals
+
+Money that you have withdrawn from your StashAway account.
+
+The recorded date of the withdrawal will be the date when the transfer to your
+
+bank account
+
+has been initiated from our side.
+
+Account Summary and Portfolio Summary
+
+Opening Balance
+
+NAV of your account and NAV of your portfolios as of the first day of the statement month.
+
+Cashflow
+
+The sum of all deposits minus the sum of all withdrawals within the statement month.
+
+Total Returns
+
+Sum of returns that the securities (ETFs) in your portfolios have generated, including
+
+paid-out dividends and expected dividend payouts.
+
+Fees
+
+Amount charged by StashAway for the provision of our services for the month preceding
+
+the statement month. Note that ETF management fees are not part of this fee, as they
+
+are implicitly charged by the ETF provider and factored into the NAV.
+ 
+Similarly, currency
+
+conversion fees will be reflected inside the NAV already.
+
+Closing Balance
+
+NAV of your account and NAV of your portfolios as of the last day of the statement month.
+
+Portfolio Details
+
+Opening Balance
+
+Value of each security as of the first day of the statement month, using the preceding
+
+trading day's closing prices.
+
+Bought
+
+Amount spent on buy-orders of this security within the statement month, including
+
+potential re-invested dividends.
+
+Sold
+
+Amount received from sell-orders of this security within the statement month.
+
+Dividends
+
+Total dividends paid out by the security (ETF) within the statement month. Part of these
+
+dividends may have been re-invested within the same month already.
+
+Rebates
+
+For StashAway Simple™
+ 
+and Simple Plus funds, we receive a rebate from the Unit Trust
+
+manager on a quarterly basis. We return these rebates back to you on a quarterly basis,
+
+and this rebate will be reflected in the monthly statements for the month following
+
+a quarter-end (April for Q1, July for Q2, October for Q3, and January for Q4). Rebate
+
+payments are calculated based on the units that you have held in the underlying fund
+
+for each day of the quarter.
+
+Closing Balance
+
+Value of each security as of the last day of the statement month, using the preceding
+
+month's final trading day's closing prices.
+
+Profit/Loss %
+
+The closing balance plus dividends divided by the opening balance plus net cash flows for
+
+a given security.
+
+Total Outstanding Units
+
+Total units owned for a given security.
+
+10
+NOTICE AND DISCLAIMER
+
+This statement of account is provided to you by Asia Wealth Platform Pte. Ltd. ("StashAway"). StashAway is a holder of a capital markets services licence to carry on
+
+fund management issued by the Monetary Authority of Singapore.
+
+This statement of account sets out an overview of the assets held in your StashAway Account as well as the transactions undertaken on your Account for the indicated
+
+month.
+
+The statement of account, including but not limited to the Explanation in Appendix A, is subject to the disclaimer available at the following link:
+
+www.stashaway.sg/legal
+
+StashAway has opened a securities brokerage account to buy and sell investments on behalf of its customers with Saxo Capital Markets Pte. Ltd. and/or such other
+
+third party brokers as StashAway may select from time to time ("Saxo"). For certain investments, StashAway may buy and sell investments on behalf of its customers
+
+with or through fund managers and/or other third party intermediaries ("Intermediaries"). In the event that up-to-date information from Saxo or the Intermediary
+
+(as the case may be) is not available at the time of printing of the statement of account, StashAway will report to you the applicable exchange rates, NAV, values of
+
+securities bought and sold, and dividends based on the last available information provided to StashAway by Saxo or the Intermediary. In such a case, StashAway
+
+will inform you accordingly. StashAway does not assume responsibility for the accuracy, timeliness and completeness of the information as reported by Saxo, the
+
+Intermediary and StashAway will not accept liability for any loss arising from your use of, or reliance on, such information.
+
+Subject to the above paragraph, the net asset value, or NAV of each security for any particular day is valued using the closing prices of the relevant exchange where
+
+the security is listed from the previous trading day. For example, the prices of the security indicated in the Opening Balance of the Portfolio Balance is calculated
+
+based on the closing prices of the relevant exchange where the security is listed from the trading day before the first day of the statement month. The information
+
+stated in the statement of account are reported to you in the reporting currency indicated in the statement rounded to the nearest two decimal places, and where
+
+applicable, based on the stated exchange rate which is based on the closing exchange rate of the trading day before the day of the Opening or Closing balance, as
+
+applicable.
+
+This statement is made available to you for viewing on the Platform, and therefore, you may download, save or print the statement for your subsequent reference.
+
+If you have any queries in relation to the statement, please contact our Customer Support at
+ 
+support@stashaway.com
+
+Registered address:
+
+175
+A Bencoolen Street
+
+Burlington Square #07-04
+
+Singapore 189650
+
+www.stashaway.sg
+
+11
+__PDF_LAYOUT_TEXT__
+StashAway (Asia Wealth Platform Pte Ltd)
+GST Registration No: 201624878Z
+175A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+Statement of Account
+01Sep 2026-30 Sep 2026
+Account Owner:Address:Statement Date:
+Alex Sample Holder1Sample Avenue06Oct 2026
+#00-00
+Account Reference Code:Singapore 000000
+00XYZ00X
+ACCOUNT SUMMARY
+Reporting Currency:SGD
+Opening BalanceCashflowTotal ReturnsFeesClosing Balance
+(01Sep 2026)(Deposits - Withdrawals)(Incl. Dividends)(Previous Month)(30Sep 2026)
+Investment$15,706.59$0.00-$337.62-$11.26$15,357.71
+Portfolios
+Total$15,706.59$0.00-$337.62-$11.26$15,357.71
+Opening balance is based on closing rates of security prices and exchange rates as of31 Aug 2026(1USD=1.2709SGD).
+Closing balance is based on closing rates of security prices and exchange rates as of30 Sep 2026(1USD=1.2772SGD).
+Total Returns are converted based on closing balance exchange rate.
+1
+PORTFOLIO SUMMARY/SEP 2026
+Investment Portfolios
+Reporting Currency:SGD
+Opening BalanceCashflowTotal ReturnsFeesClosing Balance
+(01Sep 2026)(Deposits - Withdrawals)(Incl. Dividends)(Previous Month)(30Sep 2026)
+General Investing$15,706.59--$337.62-$11.26$15,357.71
+Opening balance is based on closing rates of security prices and exchange rates as of31 Aug 2026(1USD=1.2709SGD).
+Closing balance is based on closing rates of security prices and exchange rates as of30 Sep 2026(1USD=1.2772SGD).
+Total Returns are converted based on closing balance exchange rate.
+ETF portfolios fees are charged based on the previous month's AUM.
+2
+PORTFOLIO DETAILS/SEP 2026
+General Investing
+Reporting Currency:USD
+Opening BalanceBoughtSoldDividendsClosing BalanceProfit/Loss %Total
+(Incl. Dividend(Paid and(Incl. DividendOutstanding
+Entitlements)Reinvested)Entitlements)Units
+iShares MSCI ACWI UCITS ETF$637.96---$628.69-1.5%11.637
+(ISAC)
+iShares Global High Yield Corp$410.40$0.45--$391.56-4.7%10.4728
+Bond UCITS ETF (HYLD)
+Health Care Select Sector SPDR$224.40--$0.59$221.62-1.0%3.0063
+Fund (XLV)
+iShares Global Govt Bond UCITS$1,146.88$2.16--$1,118.91-2.6%30.2239
+ETF (IGLO)
+Technology Select Sector SPDR$330.41--$0.28$346.805.0%4.0476
+Fund (XLK)
+Vanguard Total International$1,376.62$1.01-$2.44$1,357.94-1.3%66.1925
+Bond ETF (BNDX)
+iShares Core Global Aggregate$1,298.73$1.93--$1,268.58-2.5%688.9186
+Bond UCITS ETF (AGGG)
+Vanguard FTSE All World ex-US$857.87--$1.39$834.93-2.5%22.9906
+ETF (VEU)
+Consumer Staples Select Sector$469.98--$2.09$445.75-4.7%12.6352
+SPDR Fund (XLP)
+3
+Opening BalanceBoughtSoldDividendsClosing BalanceProfit/Loss %Total
+(Incl. Dividend(Paid and(Incl. DividendOutstanding
+Entitlements)Reinvested)Entitlements)Units
+BetaBuilders US Treasury Bond$826.09$0.06--$828.780.3%15.8266
+0-3 Months UCITS ETF (BB3M)
+The Industrial Select Sector$430.08$0.52-$0.78$410.57-4.5%5.6175
+SPDR®Fund (XLI)
+iShares $ High Yield Corporate$361.26$0.38-$5.56$347.63-2.3%8.664
+Bond UCITS ETF (IHYU)
+Franklin FTSE India ETF (FLIN)$283.23$0.15--$266.06-6.1%18.1509
+Invesco Aerospace & Defense ETF$377.66--$0.76$348.85-7.4%5.1546
+(PPA)
+iShares J.P. Morgan USD$678.48$0.53-$2.07$650.87-3.8%16.3697
+Emerging Markets Bond ETF
+(EMB)
+SPDR Gold MiniShares Trust$1,063.19$0.20--$991.83-6.7%27.5738
+(GLDM)
+SPDR FTSE International$456.91$0.11-$0.98$440.73-3.3%26.3939
+Government Inflation-Protected
+Bond ETF (WIP)
+WisdomTree Japan Hedged Equity$420.64--$0.13$422.840.6%5.3506
+Fund (DXJ)
+iShares Core S&P 500 ETF (IVV)$240.56--$0.48$239.04-0.4%0.7131
+iShares $ TIPS UCITS ETF (IDTP)$347.51$0.17--$337.27-3.0%3.0884
+Cash USD$119.76---$120.76
+Total$12,358.64--$17.56$12,020.01
+4
+TRANSACTIONS/SEP 2026
+General Investing
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+01Sep 2026Dividend received IHYU8.6546$5.56$5.56
+01Sep 2026Buy AGGG0.1721$1.88$0.32$0.32
+01Sep 2026Buy BB3M0.0011$52.20$0.06$0.06
+01Sep 2026Buy HYLD0.0015$39.13$0.06$0.06
+01Sep 2026Buy IDTP0.0004$112.03$0.05$0.05
+01Sep 2026Buy IGLO0.0091$37.86$0.35$0.35
+01Sep 2026Buy IHYU0.0018$41.01$0.07$0.07
+01Sep 2026Buy BNDX0.0082$20.72$0.17$0.17
+01Sep 2026Buy EMB0.0018$41.22$0.07$0.07
+01Sep 2026Buy XLI0.0008$75.82$0.06$0.06
+02Sep 2026Buy AGGG0.1235$1.88$0.23$0.23
+02Sep 2026Buy IGLO0.0069$37.83$0.26$0.26
+02Sep 2026Buy IHYU0.0013$40.90$0.05$0.05
+02Sep 2026Buy BNDX0.0083$20.68$0.17$0.17
+02Sep 2026Buy EMB0.0018$41.21$0.07$0.07
+02Sep 2026Buy XLI0.0011$75.87$0.08$0.08
+04Sep 2026Dividend received BNDX66.1436$2.44$2.44
+5
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+04Sep 2026Currency Conversion to SGD-$11.24
+($8.89, FX rate: 1.2645)
+05Sep 2026Dividend received EMB16.3566$2.07$2.07
+05Sep 2026Dividend received WIP26.3875$0.98$0.98
+07Sep 2026Management fee (Aug 2026)-$11.26
+07Sep 2026Currency Conversion to SGD-$0.02
+($0.02, FX rate: 1.25)
+19Sep 2026Dividend received IVV0.7131$0.48$0.48
+23Sep 2026Dividend received VEU22.9906$1.39$1.39
+24Sep 2026Dividend received XLV3.0063$0.59$0.59
+24Sep 2026Dividend received XLP12.6352$2.09$2.09
+24Sep 2026Dividend received XLK4.0476$0.28$0.28
+24Sep 2026Dividend received XLI5.6125$0.78$0.78
+24Sep 2026Buy AGGG0.3714$1.85$0.69$0.69
+24Sep 2026Buy HYLD0.0052$37.87$0.20$0.20
+24Sep 2026Buy IDTP0.0011$110.02$0.12$0.12
+24Sep 2026Buy IGLO0.0211$37.18$0.78$0.78
+24Sep 2026Buy IHYU0.0037$40.44$0.15$0.15
+24Sep 2026Buy BNDX0.0173$20.55$0.35$0.35
+24Sep 2026Buy EMB0.0046$40.58$0.19$0.19
+6
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+24Sep 2026Buy FLIN0.0067$15.00$0.10$0.10
+24Sep 2026Buy GLDM0.0026$36.92$0.10$0.10
+24Sep 2026Buy WIP0.0064$16.97$0.11$0.11
+24Sep 2026Buy XLI0.0025$73.86$0.19$0.19
+25Sep 2026Buy AGGG0.1327$1.85$0.25$0.25
+25Sep 2026Buy HYLD0.0021$37.80$0.08$0.08
+25Sep 2026Buy IGLO0.0075$37.22$0.28$0.28
+25Sep 2026Buy IHYU0.0014$40.33$0.06$0.06
+25Sep 2026Buy BNDX0.0062$20.51$0.13$0.13
+25Sep 2026Buy EMB0.0018$40.36$0.07$0.07
+25Sep 2026Buy XLI0.0010$74.20$0.07$0.07
+26Sep 2026Dividend received PPA5.1546$0.76$0.76
+28Sep 2026Buy AGGG0.0832$1.84$0.15$0.15
+28Sep 2026Buy HYLD0.0014$37.69$0.05$0.05
+28Sep 2026Buy IGLO0.0045$37.08$0.17$0.17
+28Sep 2026Buy BNDX0.0038$20.49$0.08$0.08
+28Sep 2026Buy EMB0.0012$40.05$0.05$0.05
+28Sep 2026Buy XLI0.0006$74.13$0.05$0.05
+29Sep 2026Buy AGGG0.1070$1.84$0.20$0.20
+7
+DateTransactionUnitsValue Per UnitTotal ValueTotal Value
+(USD)(USD)(SGD)
+29Sep 2026Buy HYLD0.0016$37.45$0.06$0.06
+29Sep 2026Buy IGLO0.0059$37.06$0.22$0.22
+29Sep 2026Buy IHYU0.0012$40.07$0.05$0.05
+29Sep 2026Buy BNDX0.0051$20.51$0.11$0.11
+29Sep 2026Buy EMB0.0019$40.06$0.07$0.07
+29Sep 2026Buy FLIN0.0033$14.74$0.05$0.05
+29Sep 2026Buy GLDM0.0029$36.04$0.11$0.11
+29Sep 2026Buy XLI0.0009$74.02$0.07$0.07
+30Sep 2026Dividend received DXJ5.3506$0.13$0.13
+30Sep 2026Buy AGGG0.0499$1.84$0.09$0.09
+30Sep 2026Buy IGLO0.0027$37.10$0.10$0.10
+8
+FEE CALCULATIONS/SEP 2026
+Fee Transactions (SGD)AmountFee
+(01Sep 2026-30 Sep 2026)(SGD)(SGD)
+Monthly-averaged assets$15,533.69
+Total chargeable amount$15,533.69$9.84
+GST 9.0%$0.89
+Final Fee(SGD, incl. GST)$10.72
+The final fee for the month ofSeptemberwill be charged in the beginning ofOctober, and will be reflected as a transaction in the following statement.
+Monthly-averaged assets are calculated based on daily asset values and currency exchange rates from all investment portfolios.
+9
+APPENDIX A/ EXPLANATIONS
+Closing Balance
+General
+NAV of your account and NAV of your portfolios as of the last day of the statement month.
+NAV
+Net Asset Value of all securities, cash, and expected dividend payouts (dividendPortfolio Details
+entitlements) as of a particular day. Securities and cash are valued using closing prices
+from the previous trading day.
+Opening Balance
+Value of each security as of the first day of the statement month, using the preceding
+Deposits
+trading day's closing prices.
+Money that you have transferred into your StashAway account.
+The recorded date of deposit is the date when all transfer-related assessments
+Bought
+(such as anti-money laundering checks) have been performed successfully
+Amount spent on buy-orders of this security within the statement month, including
+and the deposited amount has been allocated into your portfolio(s).
+potential re-invested dividends.
+Withdrawals
+Sold
+Money that you have withdrawn from your StashAway account.
+Amount received from sell-orders of this security within the statement month.
+The recorded date of the withdrawal will be the date when the transfer to your
+Dividends
+bank account
+Total dividends paid out by the security (ETF) within the statement month. Part of these
+has been initiated from our side.
+dividends may have been re-invested within the same month already.
+Rebates
+Account Summary and Portfolio Summary
+For StashAway Simple™and Simple Plus funds, we receive a rebate from the Unit Trust
+manager on a quarterly basis. We return these rebates back to you on a quarterly basis,
+Opening Balance
+and this rebate will be reflected in the monthly statements for the month following
+NAV of your account and NAV of your portfolios as of the first day of the statement month.
+a quarter-end (April for Q1, July for Q2, October for Q3, and January for Q4). Rebate
+Cashflowpayments are calculated based on the units that you have held in the underlying fund
+The sum of all deposits minus the sum of all withdrawals within the statement month.for each day of the quarter.
+Total ReturnsClosing Balance
+Sum of returns that the securities (ETFs) in your portfolios have generated, includingValue of each security as of the last day of the statement month, using the preceding
+paid-out dividends and expected dividend payouts.month's final trading day's closing prices.
+FeesProfit/Loss %
+Amount charged by StashAway for the provision of our services for the month precedingThe closing balance plus dividends divided by the opening balance plus net cash flows for
+the statement month. Note that ETF management fees are not part of this fee, as theya given security.
+are implicitly charged by the ETF provider and factored into the NAV.Similarly, currency
+Total Outstanding Units
+conversion fees will be reflected inside the NAV already.
+Total units owned for a given security.
+10
+NOTICE AND DISCLAIMER
+This statement of account is provided to you by Asia Wealth Platform Pte. Ltd. ("StashAway"). StashAway is a holder of a capital markets services licence to carry on
+fund management issued by the Monetary Authority of Singapore.
+This statement of account sets out an overview of the assets held in your StashAway Account as well as the transactions undertaken on your Account for the indicated
+month.
+The statement of account, including but not limited to the Explanation in Appendix A, is subject to the disclaimer available at the following link:
+www.stashaway.sg/legal
+StashAway has opened a securities brokerage account to buy and sell investments on behalf of its customers with Saxo Capital Markets Pte. Ltd. and/or such other
+third party brokers as StashAway may select from time to time ("Saxo"). For certain investments, StashAway may buy and sell investments on behalf of its customers
+with or through fund managers and/or other third party intermediaries ("Intermediaries"). In the event that up-to-date information from Saxo or the Intermediary
+(as the case may be) is not available at the time of printing of the statement of account, StashAway will report to you the applicable exchange rates, NAV, values of
+securities bought and sold, and dividends based on the last available information provided to StashAway by Saxo or the Intermediary. In such a case, StashAway
+will inform you accordingly. StashAway does not assume responsibility for the accuracy, timeliness and completeness of the information as reported by Saxo, the
+Intermediary and StashAway will not accept liability for any loss arising from your use of, or reliance on, such information.
+Subject to the above paragraph, the net asset value, or NAV of each security for any particular day is valued using the closing prices of the relevant exchange where
+the security is listed from the previous trading day. For example, the prices of the security indicated in the Opening Balance of the Portfolio Balance is calculated
+based on the closing prices of the relevant exchange where the security is listed from the trading day before the first day of the statement month. The information
+stated in the statement of account are reported to you in the reporting currency indicated in the statement rounded to the nearest two decimal places, and where
+applicable, based on the stated exchange rate which is based on the closing exchange rate of the trading day before the day of the Opening or Closing balance, as
+applicable.
+This statement is made available to you for viewing on the Platform, and therefore, you may download, save or print the statement for your subsequent reference.
+If you have any queries in relation to the statement, please contact our Customer Support atsupport@stashaway.com
+Registered address:
+175A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+www.stashaway.sg
+11
+__PDF_SPACED_LAYOUT_TEXT__
+StashAway (Asia Wealth Platform Pte Ltd)
+GST Registration No: 201624878Z
+175 A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+Statement of Account
+01 Sep 2026 - 30 Sep 2026
+Account Owner: Address: Statement Date:
+Alex Sample Holder 1 Sample Avenue 06 Oct 2026
+#00-00
+Account Reference Code: Singapore 000000
+00 XYZ00X
+ACCOUNT SUMMARY
+Reporting Currency: SGD
+Opening Balance Cashflow Total Returns Fees Closing Balance
+( 01 Sep 2026 ) ( Deposits - Withdrawals) ( Incl. Dividends) ( Previous Month) ( 30 Sep 2026 )
+Investment $15,706.59 $0.00 -$337.62 -$11.26 $15,357.71
+Portfolios
+Total $15,706.59 $0.00 -$337.62 -$11.26 $15,357.71
+Opening balance is based on closing rates of security prices and exchange rates as of 31 Aug 2026 (1 USD = 1.2709 SGD ).
+Closing balance is based on closing rates of security prices and exchange rates as of 30 Sep 2026 (1 USD = 1.2772 SGD ).
+Total Returns are converted based on closing balance exchange rate.
+1
+PORTFOLIO SUMMARY / SEP 2026
+Investment Portfolios
+Reporting Currency: SGD
+Opening Balance Cashflow Total Returns Fees Closing Balance
+( 01 Sep 2026 ) ( Deposits - Withdrawals) ( Incl. Dividends) ( Previous Month) ( 30 Sep 2026 )
+General Investing $15,706.59 - -$337.62 -$11.26 $15,357.71
+Opening balance is based on closing rates of security prices and exchange rates as of 31 Aug 2026 (1 USD = 1.2709 SGD ).
+Closing balance is based on closing rates of security prices and exchange rates as of 30 Sep 2026 (1 USD = 1.2772 SGD ).
+Total Returns are converted based on closing balance exchange rate.
+ETF portfolios fees are charged based on the previous month's AUM.
+2
+PORTFOLIO DETAILS / SEP 2026
+General Investing
+Reporting Currency: USD
+Opening Balance Bought Sold Dividends Closing Balance Profit/Loss % Total
+( Incl. Dividend ( Paid and ( Incl. Dividend Outstanding
+Entitlements) Reinvested) Entitlements) Units
+iShares MSCI ACWI UCITS ETF $637.96 - - - $628.69 -1.5% 11.637
+(ISAC)
+iShares Global High Yield Corp $410.40 $0.45 - - $391.56 -4.7% 10.4728
+Bond UCITS ETF (HYLD)
+Health Care Select Sector SPDR $224.40 - - $0.59 $221.62 -1.0% 3.0063
+Fund (XLV)
+iShares Global Govt Bond UCITS $1,146.88 $2.16 - - $1,118.91 -2.6% 30.2239
+ETF (IGLO)
+Technology Select Sector SPDR $330.41 - - $0.28 $346.80 5.0% 4.0476
+Fund (XLK)
+Vanguard Total International $1,376.62 $1.01 - $2.44 $1,357.94 -1.3% 66.1925
+Bond ETF (BNDX)
+iShares Core Global Aggregate $1,298.73 $1.93 - - $1,268.58 -2.5% 688.9186
+Bond UCITS ETF (AGGG)
+Vanguard FTSE All World ex-US $857.87 - - $1.39 $834.93 -2.5% 22.9906
+ETF (VEU)
+Consumer Staples Select Sector $469.98 - - $2.09 $445.75 -4.7% 12.6352
+SPDR Fund (XLP)
+3
+Opening Balance Bought Sold Dividends Closing Balance Profit/Loss % Total
+( Incl. Dividend ( Paid and ( Incl. Dividend Outstanding
+Entitlements) Reinvested) Entitlements) Units
+BetaBuilders US Treasury Bond $826.09 $0.06 - - $828.78 0.3% 15.8266
+0-3 Months UCITS ETF (BB3M)
+The Industrial Select Sector $430.08 $0.52 - $0.78 $410.57 -4.5% 5.6175
+SPDR® Fund (XLI)
+iShares $ High Yield Corporate $361.26 $0.38 - $5.56 $347.63 -2.3% 8.664
+Bond UCITS ETF (IHYU)
+Franklin FTSE India ETF (FLIN) $283.23 $0.15 - - $266.06 -6.1% 18.1509
+Invesco Aerospace & Defense ETF $377.66 - - $0.76 $348.85 -7.4% 5.1546
+(PPA)
+iShares J.P. Morgan USD $678.48 $0.53 - $2.07 $650.87 -3.8% 16.3697
+Emerging Markets Bond ETF
+(EMB)
+SPDR Gold MiniShares Trust $1,063.19 $0.20 - - $991.83 -6.7% 27.5738
+(GLDM)
+SPDR FTSE International $456.91 $0.11 - $0.98 $440.73 -3.3% 26.3939
+Government Inflation-Protected
+Bond ETF (WIP)
+WisdomTree Japan Hedged Equity $420.64 - - $0.13 $422.84 0.6% 5.3506
+Fund (DXJ)
+iShares Core S&P 500 ETF (IVV) $240.56 - - $0.48 $239.04 -0.4% 0.7131
+iShares $ TIPS UCITS ETF (IDTP) $347.51 $0.17 - - $337.27 -3.0% 3.0884
+Cash USD $119.76 - - - $120.76
+Total $12,358.64 - - $17.56 $12,020.01
+4
+TRANSACTIONS / SEP 2026
+General Investing
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+01 Sep 2026 Dividend received IHYU 8.6546 $5.56 $5.56
+01 Sep 2026 Buy AGGG 0.1721 $1.88 $0.32 $0.32
+01 Sep 2026 Buy BB3M 0.0011 $52.20 $0.06 $0.06
+01 Sep 2026 Buy HYLD 0.0015 $39.13 $0.06 $0.06
+01 Sep 2026 Buy IDTP 0.0004 $112.03 $0.05 $0.05
+01 Sep 2026 Buy IGLO 0.0091 $37.86 $0.35 $0.35
+01 Sep 2026 Buy IHYU 0.0018 $41.01 $0.07 $0.07
+01 Sep 2026 Buy BNDX 0.0082 $20.72 $0.17 $0.17
+01 Sep 2026 Buy EMB 0.0018 $41.22 $0.07 $0.07
+01 Sep 2026 Buy XLI 0.0008 $75.82 $0.06 $0.06
+02 Sep 2026 Buy AGGG 0.1235 $1.88 $0.23 $0.23
+02 Sep 2026 Buy IGLO 0.0069 $37.83 $0.26 $0.26
+02 Sep 2026 Buy IHYU 0.0013 $40.90 $0.05 $0.05
+02 Sep 2026 Buy BNDX 0.0083 $20.68 $0.17 $0.17
+02 Sep 2026 Buy EMB 0.0018 $41.21 $0.07 $0.07
+02 Sep 2026 Buy XLI 0.0011 $75.87 $0.08 $0.08
+04 Sep 2026 Dividend received BNDX 66.1436 $2.44 $2.44
+5
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+04 Sep 2026 Currency Conversion to SGD - $11.24
+($8.89, FX rate: 1.2645)
+05 Sep 2026 Dividend received EMB 16.3566 $2.07 $2.07
+05 Sep 2026 Dividend received WIP 26.3875 $0.98 $0.98
+07 Sep 2026 Management fee (Aug 2026) - $11.26
+07 Sep 2026 Currency Conversion to SGD - $0.02
+($0.02, FX rate: 1.25)
+19 Sep 2026 Dividend received IVV 0.7131 $0.48 $0.48
+23 Sep 2026 Dividend received VEU 22.9906 $1.39 $1.39
+24 Sep 2026 Dividend received XLV 3.0063 $0.59 $0.59
+24 Sep 2026 Dividend received XLP 12.6352 $2.09 $2.09
+24 Sep 2026 Dividend received XLK 4.0476 $0.28 $0.28
+24 Sep 2026 Dividend received XLI 5.6125 $0.78 $0.78
+24 Sep 2026 Buy AGGG 0.3714 $1.85 $0.69 $0.69
+24 Sep 2026 Buy HYLD 0.0052 $37.87 $0.20 $0.20
+24 Sep 2026 Buy IDTP 0.0011 $110.02 $0.12 $0.12
+24 Sep 2026 Buy IGLO 0.0211 $37.18 $0.78 $0.78
+24 Sep 2026 Buy IHYU 0.0037 $40.44 $0.15 $0.15
+24 Sep 2026 Buy BNDX 0.0173 $20.55 $0.35 $0.35
+24 Sep 2026 Buy EMB 0.0046 $40.58 $0.19 $0.19
+6
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+24 Sep 2026 Buy FLIN 0.0067 $15.00 $0.10 $0.10
+24 Sep 2026 Buy GLDM 0.0026 $36.92 $0.10 $0.10
+24 Sep 2026 Buy WIP 0.0064 $16.97 $0.11 $0.11
+24 Sep 2026 Buy XLI 0.0025 $73.86 $0.19 $0.19
+25 Sep 2026 Buy AGGG 0.1327 $1.85 $0.25 $0.25
+25 Sep 2026 Buy HYLD 0.0021 $37.80 $0.08 $0.08
+25 Sep 2026 Buy IGLO 0.0075 $37.22 $0.28 $0.28
+25 Sep 2026 Buy IHYU 0.0014 $40.33 $0.06 $0.06
+25 Sep 2026 Buy BNDX 0.0062 $20.51 $0.13 $0.13
+25 Sep 2026 Buy EMB 0.0018 $40.36 $0.07 $0.07
+25 Sep 2026 Buy XLI 0.0010 $74.20 $0.07 $0.07
+26 Sep 2026 Dividend received PPA 5.1546 $0.76 $0.76
+28 Sep 2026 Buy AGGG 0.0832 $1.84 $0.15 $0.15
+28 Sep 2026 Buy HYLD 0.0014 $37.69 $0.05 $0.05
+28 Sep 2026 Buy IGLO 0.0045 $37.08 $0.17 $0.17
+28 Sep 2026 Buy BNDX 0.0038 $20.49 $0.08 $0.08
+28 Sep 2026 Buy EMB 0.0012 $40.05 $0.05 $0.05
+28 Sep 2026 Buy XLI 0.0006 $74.13 $0.05 $0.05
+29 Sep 2026 Buy AGGG 0.1070 $1.84 $0.20 $0.20
+7
+Date Transaction Units Value Per Unit Total Value Total Value
+( USD ) ( USD ) ( SGD )
+29 Sep 2026 Buy HYLD 0.0016 $37.45 $0.06 $0.06
+29 Sep 2026 Buy IGLO 0.0059 $37.06 $0.22 $0.22
+29 Sep 2026 Buy IHYU 0.0012 $40.07 $0.05 $0.05
+29 Sep 2026 Buy BNDX 0.0051 $20.51 $0.11 $0.11
+29 Sep 2026 Buy EMB 0.0019 $40.06 $0.07 $0.07
+29 Sep 2026 Buy FLIN 0.0033 $14.74 $0.05 $0.05
+29 Sep 2026 Buy GLDM 0.0029 $36.04 $0.11 $0.11
+29 Sep 2026 Buy XLI 0.0009 $74.02 $0.07 $0.07
+30 Sep 2026 Dividend received DXJ 5.3506 $0.13 $0.13
+30 Sep 2026 Buy AGGG 0.0499 $1.84 $0.09 $0.09
+30 Sep 2026 Buy IGLO 0.0027 $37.10 $0.10 $0.10
+8
+FEE CALCULATIONS / SEP 2026
+Fee Transactions ( SGD ) Amount Fee
+( 01 Sep 2026 - 30 Sep 2026 ) ( SGD ) ( SGD )
+Monthly-averaged assets $15,533.69
+Total chargeable amount $15,533.69 $9.84
+GST 9.0% $0.89
+Final Fee ( SGD , incl. GST ) $10.72
+The final fee for the month of September will be charged in the beginning of October , and will be reflected as a transaction in the following statement.
+Monthly-averaged assets are calculated based on daily asset values and currency exchange rates from all investment portfolios .
+9
+APPENDIX A / EXPLANATIONS
+Closing Balance
+General
+NAV of your account and NAV of your portfolios as of the last day of the statement month.
+NAV
+Net Asset Value of all securities, cash, and expected dividend payouts (dividend Portfolio Details
+entitlements) as of a particular day. Securities and cash are valued using closing prices
+from the previous trading day.
+Opening Balance
+Value of each security as of the first day of the statement month, using the preceding
+Deposits
+trading day's closing prices.
+Money that you have transferred into your StashAway account.
+The recorded date of deposit is the date when all transfer-related assessments
+Bought
+( such as anti-money laundering checks) have been performed successfully
+Amount spent on buy-orders of this security within the statement month, including
+and the deposited amount has been allocated into your portfolio(s).
+potential re-invested dividends.
+Withdrawals
+Sold
+Money that you have withdrawn from your StashAway account.
+Amount received from sell-orders of this security within the statement month.
+The recorded date of the withdrawal will be the date when the transfer to your
+Dividends
+bank account
+Total dividends paid out by the security (ETF) within the statement month. Part of these
+has been initiated from our side.
+dividends may have been re-invested within the same month already.
+Rebates
+Account Summary and Portfolio Summary
+For StashAway Simple™ and Simple Plus funds, we receive a rebate from the Unit Trust
+manager on a quarterly basis. We return these rebates back to you on a quarterly basis,
+Opening Balance
+and this rebate will be reflected in the monthly statements for the month following
+NAV of your account and NAV of your portfolios as of the first day of the statement month.
+a quarter-end (April for Q1, July for Q2, October for Q3, and January for Q4). Rebate
+Cashflow payments are calculated based on the units that you have held in the underlying fund
+The sum of all deposits minus the sum of all withdrawals within the statement month. for each day of the quarter.
+Total Returns Closing Balance
+Sum of returns that the securities (ETFs) in your portfolios have generated, including Value of each security as of the last day of the statement month, using the preceding
+paid-out dividends and expected dividend payouts. month's final trading day's closing prices.
+Fees Profit/Loss %
+Amount charged by StashAway for the provision of our services for the month preceding The closing balance plus dividends divided by the opening balance plus net cash flows for
+the statement month. Note that ETF management fees are not part of this fee, as they a given security.
+are implicitly charged by the ETF provider and factored into the NAV. Similarly, currency
+Total Outstanding Units
+conversion fees will be reflected inside the NAV already.
+Total units owned for a given security.
+10
+NOTICE AND DISCLAIMER
+This statement of account is provided to you by Asia Wealth Platform Pte. Ltd. ("StashAway"). StashAway is a holder of a capital markets services licence to carry on
+fund management issued by the Monetary Authority of Singapore.
+This statement of account sets out an overview of the assets held in your StashAway Account as well as the transactions undertaken on your Account for the indicated
+month.
+The statement of account, including but not limited to the Explanation in Appendix A, is subject to the disclaimer available at the following link:
+www.stashaway.sg/legal
+StashAway has opened a securities brokerage account to buy and sell investments on behalf of its customers with Saxo Capital Markets Pte. Ltd. and/or such other
+third party brokers as StashAway may select from time to time ("Saxo"). For certain investments, StashAway may buy and sell investments on behalf of its customers
+with or through fund managers and/or other third party intermediaries ("Intermediaries"). In the event that up-to-date information from Saxo or the Intermediary
+(as the case may be) is not available at the time of printing of the statement of account, StashAway will report to you the applicable exchange rates, NAV, values of
+securities bought and sold, and dividends based on the last available information provided to StashAway by Saxo or the Intermediary. In such a case, StashAway
+will inform you accordingly. StashAway does not assume responsibility for the accuracy, timeliness and completeness of the information as reported by Saxo, the
+Intermediary and StashAway will not accept liability for any loss arising from your use of, or reliance on, such information.
+Subject to the above paragraph, the net asset value, or NAV of each security for any particular day is valued using the closing prices of the relevant exchange where
+the security is listed from the previous trading day. For example, the prices of the security indicated in the Opening Balance of the Portfolio Balance is calculated
+based on the closing prices of the relevant exchange where the security is listed from the trading day before the first day of the statement month. The information
+stated in the statement of account are reported to you in the reporting currency indicated in the statement rounded to the nearest two decimal places, and where
+applicable, based on the stated exchange rate which is based on the closing exchange rate of the trading day before the day of the Opening or Closing balance, as
+applicable.
+This statement is made available to you for viewing on the Platform, and therefore, you may download, save or print the statement for your subsequent reference.
+If you have any queries in relation to the statement, please contact our Customer Support at support@stashaway.com
+Registered address:
+175 A Bencoolen Street
+Burlington Square #07-04
+Singapore 189650
+www.stashaway.sg
+11

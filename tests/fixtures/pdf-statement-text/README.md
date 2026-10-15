@@ -71,6 +71,20 @@ Switch Buy and nine unit RSP rows; September has no contribution and a
 reinvested dividend; the holdings tables print negative P/L. The parser reads
 only the raw item view, so the visual-line views are kept for contract parity.
 
+`stashaway-{jan..sep}-2026-real-sanitized.pdf-text.txt` are nine real StashAway
+monthly statements (one account, January to September 2026), extracted with
+pdf.js 4.10.38 and masked item by item before the three views were built: the
+owner, the address and the account reference code are replaced by placeholders
+(`Alex Sample Holder`, `00 XYZ00X`), every two-decimal dollar amount is
+multiplied by one undisclosed factor (unit counts and exchange rates are left),
+and the returns cell of the two summary rows is recomputed so opening plus
+cashflow plus returns plus fees still equals closing and each month opens at
+the previous month's closing. The holdings and transactions pages keep their
+scaled cells and are not re-footed. Every month has a cashflow of $0.00, so
+the layout of a deposit or withdrawal row is not in any fixture: the parser
+tests rewrite September's raw items to add such rows (the same cells as the
+management fee row), and say so. The parser reads only the raw item view.
+
 pdf.js item boundaries are part of the parser contract: pdf.js 6 merges words
 into phrases and breaks the Citi and OCBC card parsers. Upgrade pdf.js only
 with new fixtures extracted from real statements with that version.

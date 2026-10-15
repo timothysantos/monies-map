@@ -10,6 +10,7 @@ import {
   parseOcbcActivityCsv
 } from "./statement-import/ocbc-activity-csv";
 import { canParseIfastStatement, parseIfastWrapStatement } from "./statement-import/ifast";
+import { canParseStashawayStatement, parseStashawayStatement } from "./statement-import/stashaway";
 import { parseOcbc360Statement, parseOcbcCreditCardStatement, parseOcbcDepositStatement } from "./statement-import/ocbc";
 import { parseHsbcVisaRevolutionOcrTsv } from "./statement-import/hsbc-ocr";
 import { joinOcrTsvPasses } from "./statement-import/ocr";
@@ -50,6 +51,10 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseIfastWrapStatement(rawText, fileName);
   }
 
+  if (canParseStashawayStatement(rawText)) {
+    return parseStashawayStatement(rawText, fileName);
+  }
+
   if (layoutLines.some((line) => /^TRANSACTIONSFORCITI/i.test(line))) {
     return parseCitibankCreditCardStatement(layoutLines, fileName);
   }
@@ -74,5 +79,5 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseUobSavingsStatement(rawText, fileName);
   }
 
-  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, OCBC Infinity Cashback, OCBC 360, OCBC CDA statement text, iFAST Wrap statement text, and local-OCR HSBC Visa Revolution statement text.");
+  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, OCBC Infinity Cashback, OCBC 360, OCBC CDA statement text, iFAST Wrap statement text, StashAway statement text, and local-OCR HSBC Visa Revolution statement text.");
 }

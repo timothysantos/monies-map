@@ -51,6 +51,13 @@ export interface StatementInvestmentValue {
   marketValueMinor: number;
   cashMinor: number;
   incomeMinor: number;
+  // StashAway's summary row, kept for the preview and not saved: where the
+  // statement starts, the month's net deposits less withdrawals, its returns
+  // (negative in a loss) and the fees it charged (negative).
+  openingMinor?: number;
+  cashflowMinor?: number;
+  returnsMinor?: number;
+  feesMinor?: number;
 }
 
 export type StatementNotice =

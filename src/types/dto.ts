@@ -956,6 +956,11 @@ export interface StatementInvestmentValueDto {
   marketValueMinor: number;
   cashMinor: number;
   incomeMinor: number;
+  // A StashAway summary row, used by the preview and never saved.
+  openingMinor?: number;
+  cashflowMinor?: number;
+  returnsMinor?: number;
+  feesMinor?: number;
 }
 
 // The bank entry a statement movement pairs with as one transfer.
@@ -983,6 +988,9 @@ export interface ImportPreviewInvestmentValueDto {
   currency: string;
   // A value already saved for the month, which this statement replaces.
   replaces?: { asOfDate: string; totalAssetsMinor: number };
+  // The statement opens somewhere other than where the saved statement of the
+  // month before it ended (more than a cent apart): said, never blocking.
+  startsAfter?: { openingMinor: number; earlierValueMinor: number; earlierAsOfDate: string };
 }
 
 // The bank's own notice about a card, printed on its statement.
