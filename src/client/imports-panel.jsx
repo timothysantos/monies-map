@@ -2674,10 +2674,18 @@ function buildOptimisticRecentImportBatch({
     ...previewRows.map(labelFor).filter(Boolean),
     ...statementCheckpoints.map(labelFor).filter(Boolean)
   ])).sort();
-  const dateValues = rowsToCommit
+  // A statement with no rows is dated by its saved value, as the server
+  // dates it once saved.
+  const rowDates = rowsToCommit
     .map((row) => row.date)
     .filter((date) => typeof date === "string" && date.length >= 10)
     .sort();
+  const valueDates = statementCheckpoints
+    .map((checkpoint) => checkpoint.investmentValue?.asOfDate)
+    .filter(Boolean)
+    .sort();
+  const dateValues = rowDates.length ? rowDates : valueDates;
+  const investmentValueCount = statementCheckpoints.filter((checkpoint) => checkpoint.investmentValue).length;
   const startDate = dateValues[0] ?? undefined;
   const endDate = dateValues[dateValues.length - 1] ?? undefined;
 
@@ -2692,6 +2700,7 @@ function buildOptimisticRecentImportBatch({
     startDate,
     endDate,
     accountNames,
+    ...(investmentValueCount ? { investmentValueCount } : {}),
     overlapImportCount: 0,
     overlapImports: [],
     // An investment statement's value is not a certificate.

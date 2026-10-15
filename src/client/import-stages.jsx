@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 
 import { importMessages } from "./copy/en-SG-imports";
-import { money } from "./formatters";
+import { formatDateOnly, money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { ImportRollbackConfirm } from "./import-rollback-confirm";
 import "./import-review.css";
@@ -79,7 +79,9 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
         <div className="import-done-head">
           <h3>{summary.title}</h3>
           {summary.statusLabel ? <span className={`pill ${summary.statusTone}`}>{summary.statusLabel}</span> : null}
-          <span className="import-done-compact-detail">{importMessages.doneRowsDetail(totalDoneCounts(summary))}</span>
+          <span className="import-done-compact-detail">
+            {summary.investmentSaves ? investmentDoneLines(summary).join(" · ") : importMessages.doneRowsDetail(totalDoneCounts(summary))}
+          </span>
           {rollback}
         </div>
       </section>
@@ -114,6 +116,18 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
             </article>
           ))}
         </div>
+      ) : summary.investmentSaves ? (
+        <div className="import-done-cards">
+          {summary.investmentSaves.map((save) => (
+            <article key={save.accountLabel} className="import-card import-done-account">
+              <strong>{save.accountLabel}</strong>
+              <span>{investmentSavedLine(save)}</span>
+              {importMessages.doneInvestmentPayments(summary.counts) ? (
+                <span className="import-history-inline">{importMessages.doneInvestmentPayments(summary.counts)}</span>
+              ) : null}
+            </article>
+          ))}
+        </div>
       ) : (
         <p className="lede compact">{importMessages.doneRowsDetail(summary.counts)}</p>
       )}
@@ -123,6 +137,19 @@ export function ImportDoneCard({ summary, nextItem = undefined, onReviewNext = u
       </div>
     </section>
   );
+}
+
+// "Saved Tim StashAway's value: $15,357.71 on 31 Mar 2026". The amount is
+// formatted here so hidden money stays hidden and revealing updates it.
+function investmentSavedLine(save) {
+  return importMessages.doneInvestmentSaved(save.accountName, money(save.valueMinor), formatDateOnly(save.asOfDate));
+}
+
+function investmentDoneLines(summary) {
+  return [
+    ...summary.investmentSaves.map(investmentSavedLine),
+    importMessages.doneInvestmentPayments(summary.counts)
+  ].filter(Boolean);
 }
 
 // Rows added and entries confirmed across every card of a statement, or of

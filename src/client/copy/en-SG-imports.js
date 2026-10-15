@@ -5,6 +5,8 @@ import { countOf, listOf } from "./wording";
 export const importMessages = {
   viewing: (label) => `Viewing imports for ${label}`,
   transactionCount: (count) => countOf(count, "transaction"),
+  // An investment statement import that added no rows of its own.
+  recentValueSaved: (count) => `${countOf(count, "statement value")} saved`,
   inboxTitle: "Import inbox",
   inboxDetail: "The app plans the bank run. Log into one bank, collect the listed files, then drop them here. No renaming needed.",
   inboxSummaryLabel: "Import inbox status",
@@ -341,6 +343,19 @@ export const importMessages = {
         : `The import of ${fileName}${into}${forPeriod} is done. No further action needed.`;
     }
     return `The import of ${fileName}${into}${period ? `, covering ${period},` : ""} is done. No further action needed.`;
+  },
+  // An investment statement saves what the account was worth, and maybe some
+  // payments into it; the amount arrives already formatted (or hidden).
+  doneInvestmentSaved: (accountName, amount, date) => `Saved ${accountName}'s value: ${amount} on ${date}`,
+  doneInvestmentPayments: ({ added, paired }) => {
+    if (!added) {
+      return "";
+    }
+    const transfers = (count) => count === 1 ? "a bank transfer" : "bank transfers";
+    if (paired === added) {
+      return `${countOf(added, "payment")} added and paired with ${transfers(added)}`;
+    }
+    return `${countOf(added, "payment")} added${paired ? `, ${paired} paired with ${transfers(paired)}` : ""}`;
   },
   donePeriod: (start, end) => `${start} – ${end}`,
   doneRollback: "Roll back this import",

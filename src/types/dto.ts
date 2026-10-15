@@ -640,6 +640,10 @@ export interface ImportBatchDto {
   startDate?: string;
   endDate?: string;
   accountNames: string[];
+  // Investment statements: how many statement values this import saved. Such
+  // an import may have no transactions at all; its account and its dates
+  // then come from the saved value.
+  investmentValueCount?: number;
   overlapImportCount?: number;
   overlapImports?: ImportOverlapDto[];
   statementCertificateCount?: number;

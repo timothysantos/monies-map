@@ -110,7 +110,9 @@ export function ImportRecentHistorySection({
                         {messages.common.triplet(
                           getImportBatchKindLabel(item),
                           formatService.formatDate(item.importedAt),
-                          importMessages.transactionCount(item.transactionCount)
+                          item.investmentValueCount && !item.transactionCount
+                            ? importMessages.recentValueSaved(item.investmentValueCount)
+                            : importMessages.transactionCount(item.transactionCount)
                         )}
                       </span>
                       {item.startDate && item.endDate ? (

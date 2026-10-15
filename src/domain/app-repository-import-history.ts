@@ -72,6 +72,7 @@ export async function loadImportBatches(
 
   const accountRows = await loadImportAccountRows(db, result.results.map((row) => row.id));
   const certificateRows = await loadImportStatementCertificateRows(db, result.results.map((row) => row.id));
+  const valueRows = await loadImportInvestmentValueRows(db, result.results.map((row) => row.id));
 
   const accountIdsByImportId = new Map<string, Set<string>>();
   const accountNamesByImportId = new Map<string, Set<string>>();
@@ -87,6 +88,21 @@ export async function loadImportBatches(
       currentNames.add(formatImportAccountLabel(row.account_name, row.owner_name));
       accountNamesByImportId.set(row.import_id, currentNames);
     }
+  }
+  // An investment statement may save only a value, so no transaction names
+  // its account. The saved value does, at read time: older imports need no
+  // backfill. Overlap checks keep to ledger rows, so these ids stay apart.
+  const valueDatesByImportId = new Map<string, { start: string; end: string; count: number }>();
+  for (const row of valueRows) {
+    const currentNames = accountNamesByImportId.get(row.import_id) ?? new Set<string>();
+    currentNames.add(formatImportAccountLabel(row.account_name, row.owner_name));
+    accountNamesByImportId.set(row.import_id, currentNames);
+    const dates = valueDatesByImportId.get(row.import_id);
+    valueDatesByImportId.set(row.import_id, {
+      start: dates && dates.start < row.as_of_date ? dates.start : row.as_of_date,
+      end: dates && dates.end > row.as_of_date ? dates.end : row.as_of_date,
+      count: (dates?.count ?? 0) + 1
+    });
   }
   const certificateSummaryByImportId = new Map(certificateRows.map((row) => [row.import_id, row]));
 
@@ -127,6 +143,7 @@ export async function loadImportBatches(
     const certificateSummary = certificateSummaryByImportId.get(row.id);
     const transactionCount = Number(row.transaction_count ?? 0);
     const rollbackProtected = row.source_type === "pdf" && Number(certificateSummary?.later_statement_count ?? 0) > 0;
+    const valueDates = valueDatesByImportId.get(row.id);
 
     return {
       id: row.id,
@@ -136,9 +153,11 @@ export async function loadImportBatches(
       importedAt: row.imported_at,
       status: row.status,
       transactionCount,
-      startDate: row.start_date ?? undefined,
-      endDate: row.end_date ?? undefined,
+      // A statement with no ledger rows is dated by its saved value.
+      startDate: row.start_date ?? valueDates?.start,
+      endDate: row.end_date ?? valueDates?.end,
       accountNames: Array.from(accountNamesByImportId.get(row.id) ?? []).sort(),
+      ...(valueDates ? { investmentValueCount: valueDates.count } : {}),
       overlapImportCount: includeOverlapDetails ? overlapCandidates.length : 0,
       overlapImports,
       statementCertificateCount: Number(certificateSummary?.certificate_count ?? 0),
@@ -242,6 +261,37 @@ async function loadImportAccountRows(db: D1Database, importIds: string[]) {
       .all<{ import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }>();
 
     rows.push(...accountRows.results);
+  }
+
+  return rows;
+}
+
+async function loadImportInvestmentValueRows(db: D1Database, importIds: string[]) {
+  const rows: { import_id: string; as_of_date: string; account_name: string; owner_name: string | null }[] = [];
+
+  for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
+    const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
+    const importIdPlaceholders = chunk.map(() => "?").join(", ");
+    const valueRows = await db
+      .prepare(`
+        SELECT
+          investment_statement_values.import_id,
+          investment_statement_values.as_of_date,
+          accounts.account_name,
+          CASE
+            WHEN accounts.is_joint = 1 THEN 'Shared'
+            ELSE people.display_name
+          END AS owner_name
+        FROM investment_statement_values
+        JOIN accounts ON accounts.id = investment_statement_values.account_id
+        LEFT JOIN people ON people.id = accounts.owner_person_id
+        WHERE investment_statement_values.household_id = ?
+          AND investment_statement_values.import_id IN (${importIdPlaceholders})
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<{ import_id: string; as_of_date: string; account_name: string; owner_name: string | null }>();
+
+    rows.push(...valueRows.results);
   }
 
   return rows;

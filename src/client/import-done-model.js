@@ -23,20 +23,38 @@ export function buildImportDoneSummary({ importId, title, sourceLabel, fileName 
     return account ? formatAccountSelectLabel(account) : accountName;
   };
   if (!isStatement) {
-    const dates = committedRows.map((row) => row.date).filter(Boolean).sort();
+    const rowDates = committedRows.map((row) => row.date).filter(Boolean).sort();
+    // An investment statement saves the account's value on its last day and
+    // may add no rows at all. Its rows' dates name the period when it has
+    // any, as Recent imports does; otherwise the value's date does.
+    const investmentSaves = (preview?.investmentValues ?? []).map((value) => ({
+      accountName: value.accountName,
+      accountLabel: accountLabel(value.accountId, value.accountName),
+      valueMinor: value.totalAssetsMinor,
+      asOfDate: value.asOfDate
+    }));
+    const dates = rowDates.length ? rowDates : investmentSaves.map((save) => save.asOfDate).filter(Boolean).sort();
     return {
       importId,
       sourceLabel,
       title: importMessages.doneTitle(title),
       confirmation: importMessages.doneConfirmation({
         fileName: shownFileName,
-        accountNames: uniqueNames(committedRows.map((row) => accountLabel(row.accountId, row.accountName))),
+        accountNames: uniqueNames([
+          ...committedRows.map((row) => accountLabel(row.accountId, row.accountName)),
+          ...investmentSaves.map((save) => save.accountLabel)
+        ]),
         period: dates.length ? formatPeriod(dates[0], dates[dates.length - 1]) : "",
         isStatement: false,
         unbalancedCount: 0
       }),
       cards: [],
-      counts: { ...count(committedRows), removed: removedEntryCount }
+      ...(investmentSaves.length ? { investmentSaves } : {}),
+      counts: {
+        ...count(committedRows),
+        removed: removedEntryCount,
+        ...(investmentSaves.length ? { paired: committedRows.filter((row) => row.transferMatch).length } : {})
+      }
     };
   }
 

@@ -1451,7 +1451,13 @@ account was worth on its last day.
    transfer, not two."). If there is no matching bank payment it says so and
    saves the amount on its own; you can link the two later in Entries.
 5. Select **Commit import to ledger** (**Save statement value** for a month
-   when you put nothing in).
+   when you put nothing in). The **Done** box names the account and what was
+   saved, for example "Saved Tim StashAway's value: $15,357.71 on 31 Mar 2026"
+   (the amount stays hidden while money is hidden), and, when you put money in,
+   how many payments were added and paired with bank transfers. **Recent
+   imports** lists the statement under the same account and date, so its **By
+   account** filter finds it, and **Roll back this import** removes the saved
+   value and any payments.
 
 What it does and does not do:
 

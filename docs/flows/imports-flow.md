@@ -187,7 +187,20 @@ Imports owns:
   the saved statement of the month before by more than a cent, one plain
   notice in the box ("A statement may be missing in between"; never a
   blocker). Driven in `ifast-statement-import.spec.js` and
-  `stashaway-statement-import.spec.js`
+  `stashaway-statement-import.spec.js`. An investment statement often saves
+  only a value, so no transaction names its account: `loadImportBatches`
+  also reads `investment_statement_values` (by `import_id`) at read time, so
+  the batch's `accountNames` carry the account ("Account - Owner"), its
+  `startDate`/`endDate` fall back to the value's as-of date when the batch has
+  no rows, and `investmentValueCount` says how many values it saved. Older
+  imports need no backfill and no migration; overlap checks keep to ledger
+  rows. The Done card then reads "Saved <account>'s value: <amount> on <date>"
+  (amount hidden with money) plus "N payments added and paired with bank
+  transfers" when it has rows; Recent imports shows "1 statement value saved"
+  for a batch with no rows; the commit notice and "Imported before it" lines
+  name the account and date as for any import. Driven in
+  `investment-import-labels.spec.js`; rollback removes the value and the
+  payments as before (`tests/investment-import-labels.test.mjs`)
 - file upload and preview
 - account mapping
 - commit and rollback

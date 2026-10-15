@@ -165,3 +165,76 @@ test("the Done card counts the entries the bank no longer lists that the import 
   }).cards[0].counts.removed;
   assert.deepEqual([statement("matched"), statement("mismatch")], [1, 0]);
 });
+
+const stashawayAccounts = [{ id: "acct-sa", name: "Tim StashAway", ownerLabel: "Tim" }];
+const investmentValue = (overrides = {}) => ({
+  accountId: "acct-sa",
+  accountName: "Tim StashAway",
+  detectedAccountName: "Tim StashAway",
+  accountKind: "investment",
+  checkpointMonth: "2026-03",
+  asOfDate: "2026-03-31",
+  totalAssetsMinor: 1535771,
+  cashMinor: 0,
+  currency: "SGD",
+  ...overrides
+});
+
+test("a value-only investment statement's Done card names the account, the saved value and its date, not rows", () => {
+  const summary = buildImportDoneSummary({
+    importId: "import-sa",
+    title: "mar_tim_stashaway_2026",
+    sourceLabel: "mar_tim_stashaway_2026",
+    fileName: "mar_tim_stashaway_2026.pdf",
+    accounts: stashawayAccounts,
+    preview: { investmentValues: [investmentValue()] },
+    previewRows: [],
+    statementReconciliations: [],
+    isStatement: false
+  });
+
+  assert.equal(
+    summary.confirmation,
+    "The import of mar_tim_stashaway_2026.pdf into Tim StashAway - Tim, covering 31 Mar 2026, is done. No further action needed."
+  );
+  assert.deepEqual(summary.investmentSaves, [{ accountName: "Tim StashAway", accountLabel: "Tim StashAway - Tim", valueMinor: 1535771, asOfDate: "2026-03-31" }]);
+  assert.deepEqual(summary.counts, { added: 0, confirmed: 0, removed: 0, paired: 0 });
+  assert.equal(importMessages.doneInvestmentSaved("Tim StashAway", "$15,357.71", "31 Mar 2026"), "Saved Tim StashAway's value: $15,357.71 on 31 Mar 2026");
+  assert.equal(importMessages.doneInvestmentPayments({ added: 0, paired: 0 }), "");
+});
+
+test("an investment statement with payments says how many were added and paired with bank transfers", () => {
+  const paired = row({ accountId: "acct-sa", accountName: "Tim StashAway", date: "2026-09-02", transferMatch: { transactionId: "txn-bank" } });
+  const summary = buildImportDoneSummary({
+    importId: "import-sa-2",
+    title: "sep_tim_stashaway_2026",
+    sourceLabel: "sep_tim_stashaway_2026",
+    accounts: stashawayAccounts,
+    preview: { investmentValues: [investmentValue({ checkpointMonth: "2026-09", asOfDate: "2026-09-30" })] },
+    previewRows: [paired, row({ accountId: "acct-sa", accountName: "Tim StashAway", date: "2026-09-03", transferMatch: { transactionId: "txn-bank-2" } })],
+    statementReconciliations: [],
+    isStatement: false
+  });
+
+  assert.deepEqual(summary.counts, { added: 2, confirmed: 0, removed: 0, paired: 2 });
+  assert.equal(importMessages.doneInvestmentPayments(summary.counts), "2 payments added and paired with bank transfers");
+  assert.equal(importMessages.doneInvestmentPayments({ added: 1, paired: 1 }), "1 payment added and paired with a bank transfer");
+  assert.equal(importMessages.doneInvestmentPayments({ added: 3, paired: 1 }), "3 payments added, 1 paired with a bank transfer");
+  assert.equal(importMessages.doneInvestmentPayments({ added: 2, paired: 0 }), "2 payments added");
+  // The payments' own dates name the period, as Recent imports does.
+  assert.match(summary.confirmation, /into Tim StashAway - Tim, covering 2 Sep 2026 – 3 Sep 2026, is done/);
+});
+
+test("a statement with no investment value keeps the row counts and no investment lines", () => {
+  const summary = buildImportDoneSummary({
+    importId: "import-plain",
+    title: "ACCT_349",
+    sourceLabel: "ACCT_349",
+    preview: {},
+    previewRows: [row()],
+    statementReconciliations: [],
+    isStatement: false
+  });
+  assert.equal(summary.investmentSaves, undefined);
+  assert.equal(importMessages.doneRowsDetail(summary.counts), "1 row added · 0 entries confirmed");
+});
