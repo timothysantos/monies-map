@@ -1,0 +1,234 @@
+/* The category list (category-pick-list.jsx, category-popover-content.jsx).
+   It loads when a category list opens, so none of this is in the first-screen
+   stylesheet. Colours are the page tokens only. */
+
+.category-pick {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+
+.category-pick.is-sheet {
+  flex: 1 1 auto;
+}
+
+.category-pick-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--muted);
+}
+
+.category-pick-search:focus-within {
+  border-color: rgb(var(--accent-strong-rgb) / 0.5);
+  box-shadow: 0 0 0 3px rgb(var(--accent-strong-rgb) / 0.14);
+}
+
+.category-pick-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 42px;
+  padding: 0 8px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  /* 16px keeps iOS from zooming the page when the field is tapped. */
+  font: inherit;
+  font-size: 16px;
+}
+
+.category-pick-clear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.category-pick-options {
+  display: block;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.category-pick.is-popover .category-pick-options {
+  max-height: min(340px, 52vh);
+}
+
+/* While the best guess is on its way the list holds its place, so a row
+   never moves under a finger. */
+.category-pick[aria-busy="true"] .category-pick-options:empty {
+  min-height: 160px;
+}
+
+.category-pick-listbox {
+  display: grid;
+  gap: 2px;
+}
+
+.category-pick.is-sheet .category-pick-listbox {
+  gap: 8px;
+}
+
+.category-pick-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-pick-row.is-active {
+  background: rgb(var(--accent-strong-rgb) / 0.08);
+}
+
+.category-pick-row.is-selected {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.category-pick-row:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.category-pick-row-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.category-pick-row-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-pick-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--category-color, var(--muted)) 16%, var(--paper));
+  color: color-mix(in srgb, var(--category-color, var(--muted)) 70%, var(--text));
+}
+
+.category-pick-tag {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--pastel-sky);
+  color: var(--pastel-sky-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.category-pick-error {
+  margin: 0;
+  color: var(--pastel-rose-ink);
+  font-size: 0.9rem;
+}
+
+.category-pick-empty {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 10px 6px;
+  color: var(--muted);
+}
+
+.category-pick-empty p {
+  margin: 0;
+}
+
+.category-pick-empty .subtle-action {
+  min-height: 44px;
+}
+
+/* The sheet's rows are the picker sheet's rows: 52px, bordered. */
+.category-pick.is-sheet .category-pick-row {
+  min-height: 52px;
+  padding: 10px 12px;
+  border-color: rgb(var(--accent-strong-rgb) / 0.12);
+  background: rgb(var(--paper-rgb) / 0.96);
+}
+
+.category-pick.is-sheet .category-pick-row.is-selected {
+  border-color: rgb(var(--accent-strong-rgb) / 0.24);
+  background: rgb(var(--blush-rgb, 250 239 230) / 0.72);
+}
+
+/* A touch device that shows the popover (a tablet) gets 44px rows. */
+@media (pointer: coarse) {
+  .category-pick-row {
+    min-height: 44px;
+  }
+}
+
+.category-popover {
+  display: flex;
+  flex-direction: column;
+  width: min(320px, calc(100vw - 32px));
+  max-height: min(440px, var(--radix-popover-content-available-height, 440px));
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 18px 40px rgba(27, 24, 21, 0.14);
+  z-index: 80;
+}
+
+.category-popover:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-pick-search,
+  .category-pick-row {
+    transition: none;
+  }
+}
+
+.category-popover-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.category-popover-actions .subtle-action {
+  min-height: 44px;
+}

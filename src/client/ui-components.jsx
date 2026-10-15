@@ -1,8 +1,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown, Receipt } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 
+import { CategoryPickerHost } from "./category-picker-host";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 import { useIsMobileLayout } from "./use-viewport";
@@ -40,10 +41,14 @@ export function FilterMultiSelect({
   options,
   emptyLabel,
   onChange,
-  selectionLabel
+  selectionLabel,
+  // A list of categories: the shared category list (search, alphabetical)
+  // with several checked, instead of the checkbox popover and the plain sheet.
+  categoryPick = false
 }) {
   const useMobilePicker = useIsMobileLayout();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
   const selectedValues = Array.isArray(values) ? values : [];
   const normalizedOptions = options.map((option) => (
     typeof option === "string"
@@ -60,6 +65,38 @@ export function FilterMultiSelect({
       ? selectedValues.filter((value) => value !== nextValue)
       : [...selectedValues, nextValue];
     onChange(nextValues);
+  }
+
+  if (categoryPick) {
+    return (
+      <label className="entries-filter">
+        <span className="entries-filter-label">{label}</span>
+        <CategoryPickerHost
+          open={open}
+          onOpenChange={setOpen}
+          returnFocusRef={triggerRef}
+          title={label}
+          options={normalizedOptions}
+          value={selectedValues}
+          multiple
+          onChoose={toggleValue}
+          onClear={() => onChange([])}
+          anchor={(
+            <button
+              ref={triggerRef}
+              type="button"
+              className={`table-edit-input entries-filter-multiselect-trigger ${useMobilePicker ? "responsive-select-trigger" : ""}`}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              onClick={() => setOpen(true)}
+            >
+              <span className={`entries-filter-multiselect-value ${useMobilePicker ? "responsive-select-value" : ""}`}>{triggerLabel}</span>
+              {useMobilePicker ? <ChevronDown size={18} /> : null}
+            </button>
+          )}
+        />
+      </label>
+    );
   }
 
   if (useMobilePicker) {

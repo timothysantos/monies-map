@@ -160,6 +160,7 @@ export function MonthPlanSheet({
               title={table.category}
               value={dialog.categoryValue ?? ""}
               options={categoryOptions}
+              categoryPick={{}}
               onValueChange={onCategoryChange}
             />
           </DetailRow>

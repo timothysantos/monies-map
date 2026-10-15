@@ -5,7 +5,7 @@
 import { expect, test } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 
-import { postJson, reseedDemo } from "./helpers.js";
+import { pickCategory, postJson, reseedDemo } from "./helpers.js";
 
 const UOB_ACTIVITY = fileURLToPath(new URL("../fixtures/uob-current-transactions/CC_TXN_History_06052026211223-onecard-tim-06-may.xls", import.meta.url));
 const ACCOUNT = "UOB One Card (new)";
@@ -70,7 +70,7 @@ test("on a phone a preview row opens the Edit row sheet; edits apply, Exclude ro
     await expect(sheet.getByLabel(label, { exact: true })).toBeVisible();
   }
   await sheet.getByLabel("Note", { exact: true }).fill("Bus fare to work");
-  await sheet.getByLabel("Category", { exact: true }).selectOption({ label: "Groceries" });
+  await pickCategory(page, sheet.locator("[data-row='category']"), "Groceries");
   await sheet.getByRole("button", { name: "Done" }).click();
   await expect(sheet).toHaveCount(0);
   await expect(rows.first()).toContainText("Groceries");
@@ -91,7 +91,7 @@ test("on a phone a preview row opens the Edit row sheet; edits apply, Exclude ro
   const skippedSheet = page.getByRole("dialog", { name: "Edit row" });
   // An excluded row is read-only until it is included again.
   await expect(skippedSheet.getByLabel("Note", { exact: true })).toHaveAttribute("readonly", "");
-  await expect(skippedSheet.getByLabel("Category", { exact: true })).toBeDisabled();
+  await expect(skippedSheet.locator("[data-row='category']")).toBeDisabled();
   await skippedSheet.getByRole("button", { name: "Include row" }).click();
   await expect(rows).toHaveCount(89);
   await expect(page.locator(".import-file-card .lsd-amount")).toHaveText("89");

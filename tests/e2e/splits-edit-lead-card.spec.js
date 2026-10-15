@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { loadSplitsPage, postJson, reseedDemo, pickCategory } from "./helpers";
 
 // Editing and viewing a saved split expense in the Lead · Support · Detail
 // style (design.md), the card New split expense already uses: the total in
@@ -408,7 +408,7 @@ test.describe("Edit split on a wide screen", () => {
     await dialog.getByLabel("Tim share amount").fill("60");
     await dialog.getByLabel("Tim share amount").blur();
     await expect(dialog.getByLabel("Tim share %")).toHaveValue("50");
-    await dialog.getByLabel("Category").selectOption("Home");
+    await pickCategory(page, dialog.locator("[data-row='category']"), "Home");
     await dialog.getByRole("textbox", { name: "Note", exact: true }).fill("Desktop note");
 
     const update = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/update"));
@@ -501,7 +501,7 @@ test.describe("Selecting a split row on a wide screen", () => {
     await dialog.getByLabel("Tim share %").fill("40");
     await dialog.getByLabel("Tim share %").blur();
     await expect(dialog.getByLabel("Tim share amount")).toHaveValue("48.00");
-    await dialog.getByLabel("Category").selectOption("Home");
+    await pickCategory(page, dialog.locator("[data-row='category']"), "Home");
     const update = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/update"));
     await dialog.getByRole("button", { name: "Save expense" }).click();
     expect((await update).postDataJSON()).toEqual({

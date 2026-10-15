@@ -2397,6 +2397,43 @@ Important distinctions:
 - "No" is kept on the card only; nothing is learned from it. It is a separate
   term from `ask habit` and `split suggestion`.
 
+### Category Guess
+
+The one category the category list puts first for an entry, tagged "Best
+guess": the pick most likely to be right for that description. Deterministic
+and read-only (no AI): it only orders the list, and the category changes only on
+the person's pick, through the ordinary category change.
+
+Canonical terms:
+- `category guess` (the answer: a category name and where it came from)
+- `category list` (the search, the best guess, then every other category
+  alphabetically; one component wherever a category is chosen)
+
+Code:
+- `src/domain/category-guess.ts` (the rule, `CATEGORY_GUESS_POLICY`)
+- `src/domain/pages/category-guess.ts` (one batched read: categories, rules,
+  the shop's Ask habit, a bounded history read)
+- `POST /api/entries/category-guess`
+- `src/domain/category-everyday-words.ts` (the everyday-word map, also the
+  aliases the list's search matches)
+- `src/client/category-pick-model.js`, `category-pick-list.jsx`,
+  `category-picker-host.jsx`
+
+Important distinctions:
+- The first layer with an answer wins: the household's category rules (first
+  active match by priority), then an Ask habit for the shop (high or suggest
+  confidence), then the household's own entries at the same shop over the last
+  12 months (the most used category, at least 2 entries, the newest wins a
+  tie), then the everyday-word map. No answer means no tag.
+- Other, Other - Income and Transfer are never a guess, and a rule that files
+  into Other is skipped. A category the household does not have is skipped.
+- It is asked for once when a list opens, and only where an entry or its
+  description is in hand (an Entries row, the entry forms, Ask drafts, import
+  rows, a split expense). A list with no description (a category rule, a
+  filter, a plan line) is just the search and the alphabetical categories.
+- It is a separate term from `ask habit` (what Ask applies by itself) and
+  `card suggestion`: it never writes anything.
+
 ### Shortcut Connection
 
 One person's Apple Pay Shortcut connection: its own private key, Default

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
-import { expectImportRowsReady, fillImportField, openRecentImports, selectImportField } from "./helpers";
+import { expectImportRowsReady, fillImportField, openRecentImports, selectImportField, pickCategory } from "./helpers";
 
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const HSBC_2026_CASES = [
@@ -1086,7 +1086,7 @@ test.describe("import flow", () => {
     await entryRow.getByText("Playwright groceries import", { exact: true }).click();
     const entryEditor = page.locator(".entry-edit-card").first();
     await expect(entryEditor).toBeVisible();
-    await entryEditor.locator("[data-row='category'] select").selectOption("Food & Drinks");
+    await pickCategory(page, entryEditor.locator("[data-row='category']"), "Food & Drinks");
     await page.getByRole("button", { name: "Done editing entry" }).click();
 
     await expect(page.locator(".entry-row").filter({ hasText: "Playwright groceries import" }).first()).toBeVisible({ timeout: 30_000 });

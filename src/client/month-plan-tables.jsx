@@ -1,4 +1,6 @@
 import { Fragment } from "react";
+import { ResponsiveSelect } from "./responsive-select";
+import { categoryPickOptions } from "./category-pick-options";
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight, SquarePen, X } from "lucide-react";
 
@@ -271,16 +273,16 @@ function IncomePlanSection({
                             onChange={onCategoryAppearanceChange}
                           />
                           {isEditing ? (
-                            <select
-                              className="table-edit-input"
-                              value={categoryService.getSelectValue(categories, row)}
-                              onChange={(event) => onIncomeRowChange(row.id, categoryService.buildPatch(categories, event.target.value))}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {categorySelectOptions.map((category) => (
-                                <option key={category.id} value={category.id}>{category.name}</option>
-                              ))}
-                            </select>
+                            <span onClick={(event) => event.stopPropagation()}>
+                              <ResponsiveSelect
+                                className="table-edit-input"
+                                title={messages.month.table.category}
+                                value={categoryService.getSelectValue(categories, row)}
+                                options={categoryPickOptions(categorySelectOptions, { valueKey: "id" })}
+                                categoryPick={{}}
+                                onValueChange={(categoryId) => onIncomeRowChange(row.id, categoryService.buildPatch(categories, categoryId))}
+                              />
+                            </span>
                           ) : <span className={row.categoryName === row.label ? "is-same-as-item" : undefined}>{row.categoryName}</span>}
                         </div>
                       </td>
@@ -557,23 +559,23 @@ function PlanningRow({
               onChange={onCategoryAppearanceChange}
             />
             {isEditing ? (
-              <select
-                className="table-edit-input"
-                value={categoryService.getSelectValue(categories, row)}
-                onChange={(event) => {
-                  if (isDraftBudgetBucket) {
-                    void onBudgetBucketCategoryChange(row.id, event.target.value);
-                    return;
-                  }
+              <span onClick={(event) => event.stopPropagation()}>
+                <ResponsiveSelect
+                  className="table-edit-input"
+                  title={messages.month.table.category}
+                  value={categoryService.getSelectValue(categories, row)}
+                  options={categoryPickOptions(categorySelectOptions, { valueKey: "id" })}
+                  categoryPick={{}}
+                  onValueChange={(categoryId) => {
+                    if (isDraftBudgetBucket) {
+                      void onBudgetBucketCategoryChange(row.id, categoryId);
+                      return;
+                    }
 
-                  onPlanRowChange(section.key, row.id, categoryService.buildPatch(categories, event.target.value));
-                }}
-                onClick={(event) => event.stopPropagation()}
-              >
-                {categorySelectOptions.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
+                    onPlanRowChange(section.key, row.id, categoryService.buildPatch(categories, categoryId));
+                  }}
+                />
+              </span>
             ) : <span className={row.categoryName === row.label ? "is-same-as-item" : undefined}>{row.categoryName}</span>}
           </div>
         </td>

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadSplitsPage, reseedDemo } from "./helpers";
+import { loadSplitsPage, reseedDemo, pickCategory } from "./helpers";
 
 // A group's tile in the strip under the person switcher.
 function groupTile(page, name) {
@@ -49,7 +49,7 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
 
   await expenseDialog.getByLabel("Date", { exact: true }).fill("2025-10-14");
   await expenseDialog.getByLabel("Paid by", { exact: true }).selectOption("Joyce");
-  await expenseDialog.getByLabel("Category").selectOption("Food & Drinks");
+  await pickCategory(page, expenseDialog.locator("[data-row='category']"), "Food & Drinks");
   // An amount with an odd stored hundredth offers the extra step in yen.
   await expenseDialog.getByLabel("Expense total").fill("12000.01");
   const oddCentChoice = expenseDialog.getByRole("group", { name: "Choose odd cent recipient" });

@@ -7,7 +7,7 @@ import { buildPersistedEntryPayload, createEntryFromDraft } from "./entry-create
 import { buildRequestErrorMessage } from "./request-errors";
 import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 
-const { entries: entryService } = moniesClient;
+const { entries: entryService, categories: categoryService } = moniesClient;
 
 // This hook is the Entries page "write side".
 // It owns draft/edit state, optimistic updates, and the mutation calls that
@@ -197,7 +197,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     });
   }
 
-  async function persistExistingEntry(entryId, { closeEditor = undefined, patch = undefined } = {}) {
+  async function persistExistingEntry(entryId, { closeEditor = undefined, patch = undefined, previousEntry = undefined } = {}) {
     if (!entryId) {
       return { ok: false };
     }
@@ -259,11 +259,11 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         setEntrySnapshot(savedEntrySnapshot);
       }
       const refreshPlan = buildEntryMutationRefreshPlan({
-        kind: hasLedgerAffectingEntryChange(currentEntry, entrySnapshot ?? currentEntry)
+        kind: hasLedgerAffectingEntryChange(currentEntry, previousEntry ?? entrySnapshot ?? currentEntry)
           ? "entry-edit"
           : "note-only-edit",
         nextEntry: currentEntry,
-        previousEntry: entrySnapshot ?? currentEntry
+        previousEntry: previousEntry ?? entrySnapshot ?? currentEntry
       });
       if (refreshPlan.invalidateEntries || refreshPlan.invalidateMonth || refreshPlan.invalidateSummary) {
         onEntryMutation?.({
@@ -397,6 +397,33 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   async function finishEntryEdit(patch) {
     const result = await persistExistingEntry(editingEntryId, { closeEditor: true, patch });
     return result.ok;
+  }
+
+  // A category picked from a closed row's category list (design.md "Category
+  // list"). It saves through the same command as the editor's "Save category"
+  // (persistExistingEntry: one /api/entries/update, the same refresh plan with
+  // the row as it was as the previous state, then the background refresh), so
+  // the audit event, habit learning and rule suggestions are the editor's.
+  // The list reads the answer: a refused save keeps it open with the message.
+  // A row linked to Splits opens its editor with the new category instead, so
+  // the connected split's own question is asked before anything is saved.
+  async function changeEntryCategory(entry, categoryName) {
+    if (!categoryName || categoryName === entry.categoryName) {
+      return { ok: true };
+    }
+    const patch = categoryService.buildPatch(categories, categoryName);
+    if (entry.linkedSplitExpenseId) {
+      beginEntryEdit(entry);
+      updateEntry(entry.id, patch);
+      return { ok: true };
+    }
+    const result = await persistExistingEntry(entry.id, { patch, previousEntry: entry });
+    if (result.ok) {
+      return { ok: true };
+    }
+    setEntrySubmitError("");
+    setEntrySettlementLock(null);
+    return { ok: false, error: result.error };
   }
 
   function cancelEntryEdit() {
@@ -799,6 +826,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     beginEntryEdit,
     resumeEntryEdit,
     finishEntryEdit,
+    changeEntryCategory,
     cancelEntryEdit,
     linkTransferCandidate,
     refreshTransferCandidates,

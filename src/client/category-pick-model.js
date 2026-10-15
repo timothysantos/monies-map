@@ -53,6 +53,9 @@ function matchRank(option, tokens) {
  */
 export function buildCategoryList({ options, value = "", bestGuess = null, query = "", pinned = [] }) {
   const current = new Set(Array.isArray(value) ? value : [value]);
+  // A pinned row (All categories) is shown above the list, never twice.
+  const pinnedValues = new Set(pinned.map((option) => option.value));
+  options = options.filter((option) => !pinnedValues.has(option.value));
   const mark = (option) => ({ ...option, isCurrent: current.has(option.value) });
   const tokens = foldForSearch(query).split(" ").filter(Boolean);
 

@@ -1,6 +1,7 @@
 import "./picker-sheet.css";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { paletteColour } from "./palette-colour";
 import { SheetSwipeDismiss } from "./sheet-swipe";
@@ -16,6 +17,11 @@ import { BottomActions } from "./ui-components";
 //
 // - Single choice: tapping an option chooses it and closes; the bar has Close.
 // - Several choices (`multiple`): options toggle; the bar has Clear and Done.
+// - A category list (`categoryPick`): the same sheet holds the shared category
+//   list (search, best guess first) in place of the plain options. The list is
+//   its own chunk, fetched only when a category list opens.
+const CategoryPickList = lazy(() => import("./category-pick-list"));
+
 export default function PickerSheet({
   title,
   description,
@@ -23,6 +29,7 @@ export default function PickerSheet({
   options,
   selectedValues,
   multiple = false,
+  categoryPick = undefined,
   onChoose,
   onClear = undefined,
   onClose
@@ -47,6 +54,20 @@ export default function PickerSheet({
             <X size={16} />
           </button>
         </div>
+        {categoryPick ? (
+          <Suspense fallback={<div className="mobile-select-options" data-sheet-body aria-busy="true" />}>
+            <CategoryPickList
+              variant="sheet"
+              options={options}
+              value={multiple ? selectedValues : selectedValues[0]}
+              multiple={multiple}
+              pinned={categoryPick.pinned}
+              description={categoryPick.description}
+              onChoose={onChoose}
+              onClose={onClose}
+            />
+          </Suspense>
+        ) : (
         <div className="mobile-select-options" data-sheet-body>
           {options.map((option) => {
             const isSelected = selectedValues.includes(option.value);
@@ -75,6 +96,7 @@ export default function PickerSheet({
             );
           })}
         </div>
+        )}
         {multiple ? (
           <BottomActions
             className="is-sheet-bar"

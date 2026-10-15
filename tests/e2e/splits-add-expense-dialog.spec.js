@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadSplitsPage, reseedDemo } from "./helpers";
+import { loadSplitsPage, reseedDemo, pickCategory } from "./helpers";
 
 const SPLITS_URL = "/splits?view=person-tim&month=2025-10&split_group=split-group-none";
 
@@ -28,7 +28,7 @@ test("a split expense added through the dialog is listed with its shares and per
   await expect(dialog.getByLabel("Paid by", { exact: true })).toHaveValue("Tim");
 
   await dialog.getByLabel("Date", { exact: true }).fill("2025-10-14");
-  await dialog.getByLabel("Category").selectOption("Home");
+  await pickCategory(page, dialog.locator("[data-row='category']"), "Home");
   await dialog.getByLabel("Expense total").fill("86.40");
   await dialog.getByLabel("Tim share %").fill("25");
   await dialog.getByLabel("Tim share %").blur();

@@ -6,6 +6,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { EntryTransferTools } from "./entry-editor";
 import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
+import { EntryCategoryQuickPick } from "./entry-category-quick-pick";
 import { BottomActions } from "./ui/lead-support-detail";
 import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { addedByGlyph } from "./entry-source";
@@ -81,6 +82,7 @@ export function EntriesDateGroups({
   refreshingTransferCandidatesEntryId,
   transferCandidateErrors,
   onBeginEntryEdit,
+  onChangeEntryCategory,
   onCategoryAppearanceChange,
   onUpdateEntry,
   onUpdateEntryAmount,
@@ -218,6 +220,7 @@ export function EntriesDateGroups({
   }
 
   const beginEntryEdit = useStableHandler(onBeginEntryEdit);
+  const changeEntryCategory = useStableHandler(onChangeEntryCategory);
   const changeCategoryAppearance = useStableHandler(onCategoryAppearanceChange);
 
   // Only the open inline editor reads these, so they are built for that one
@@ -297,6 +300,7 @@ export function EntriesDateGroups({
                   renderInlineEditor={renderInlineEditor}
                   createdSplitExpenseId={createdSplitAction?.entryId === entry.id ? createdSplitAction.splitExpenseId : undefined}
                   onBeginEntryEdit={beginEntryEdit}
+                  onChangeEntryCategory={changeEntryCategory}
                   onCategoryAppearanceChange={changeCategoryAppearance}
                   editor={isEditing && renderInlineEditor ? buildEditor(entry) : null}
                 />
@@ -388,10 +392,15 @@ function EntryRow({
   renderInlineEditor,
   createdSplitExpenseId,
   onBeginEntryEdit,
+  onChangeEntryCategory,
   onCategoryAppearanceChange,
   editor
 }) {
   const rowRef = useRef(null);
+  // The category label opens the shared category list. It mounts after the
+  // first use and stays, so closing returns focus to the label.
+  const categoryLabelRef = useRef(null);
+  const [categoryPickState, setCategoryPickState] = useState({ mounted: false, open: false });
   const inlineEditorRef = useRef(null);
   const category = categoryService.get(categories, entry);
   // A split just created from this row shows as linked before the page
@@ -468,7 +477,21 @@ function EntryRow({
           </div>
           <div className="entry-row-description">
             <div className="entry-row-category-label">
-              <strong>{category?.name ?? entry.categoryName}</strong>
+              {entry.entryType === "transfer" ? (
+                <strong>{category?.name ?? entry.categoryName}</strong>
+              ) : (
+                <button
+                  ref={categoryLabelRef}
+                  type="button"
+                  className="entry-row-category-button"
+                  aria-haspopup="dialog"
+                  aria-expanded={categoryPickState.open}
+                  aria-label={`${messages.entries.editCategory}: ${category?.name ?? entry.categoryName}`}
+                  onClick={() => setCategoryPickState({ mounted: true, open: true })}
+                >
+                  <strong>{category?.name ?? entry.categoryName}</strong>
+                </button>
+              )}
             </div>
             <strong>{entry.description}</strong>
             {entry.note ? <p>{entry.note}</p> : null}
@@ -519,6 +542,17 @@ function EntryRow({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {categoryPickState.mounted ? (
+        <EntryCategoryQuickPick
+          entry={entry}
+          categories={categories}
+          open={categoryPickState.open}
+          onOpenChange={(open) => setCategoryPickState((current) => ({ ...current, open }))}
+          anchorRef={categoryLabelRef}
+          onChange={onChangeEntryCategory}
+        />
       ) : null}
 
       {editor ? (

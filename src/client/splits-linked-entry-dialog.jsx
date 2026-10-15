@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { ResponsiveSelect } from "./responsive-select";
 
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
@@ -42,11 +43,14 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
                 </label>
                 <label className="split-dialog-field">
                   <span>{messages.entries.editCategory}</span>
-                  <select className="table-edit-input" value={dialog?.categoryName ?? ""} onChange={(event) => onChange((current) => current ? { ...current, categoryName: event.target.value } : current)}>
-                    {categoryOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+                  <ResponsiveSelect
+                    className="table-edit-input"
+                    title={messages.entries.editCategory}
+                    value={dialog?.categoryName ?? ""}
+                    options={categoryOptions.map((option) => ({ value: option, label: option }))}
+                    categoryPick={{ description: dialog?.description }}
+                    onValueChange={(categoryName) => onChange((current) => current ? { ...current, categoryName } : current)}
+                  />
                 </label>
               </div>
             </div>

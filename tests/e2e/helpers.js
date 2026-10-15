@@ -315,3 +315,16 @@ export async function openEntryComposer(page) {
   await page.getByRole("button", { name: "Edit in form" }).click();
   await expect(page.locator(".entry-composer")).toBeVisible();
 }
+
+// The shared category list (design.md "Category list"): open it from its
+// trigger (an Entries row's label, a Category Detail row, a filter) and pick
+// a category by name, on a wide screen (popover) and on a phone (sheet).
+export const categoryList = (page) => page.getByRole("listbox", { name: "Categories" });
+export const categoryOption = (page, name) => page.locator(`[data-category-option="${name}"]`);
+export const categorySearch = (page) => page.getByRole("combobox", { name: "Search categories" });
+
+export async function pickCategory(page, trigger, name) {
+  await trigger.click();
+  await expect(categoryList(page)).toBeVisible();
+  await categoryOption(page, name).click();
+}

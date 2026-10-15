@@ -8,6 +8,7 @@ import { bankStateChipLabel } from "./entry-source";
 import { moneyWithCurrency } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
+import { CategoryPickerHost } from "./category-picker-host";
 import { ResponsiveSelect } from "./responsive-select";
 import { getIconComponent } from "./ui-components";
 import { messages } from "./copy/en-SG";
@@ -294,8 +295,30 @@ function rowValue(valueLabel, filled) {
 
 // One quiet detail row that opens the app's own picker: the mobile picker
 // sheet on a phone, a native select over the row on a desktop.
-function PickerRow({ label, valueLabel, filled, title, value, options, onValueChange, open, onOpenChange, rowKey }) {
+function PickerRow({ label, valueLabel, filled, title, value, options, onValueChange, open, onOpenChange, rowKey, categoryPick = undefined }) {
   const isMobile = useIsMobileLayout();
+  const rowRef = useRef(null);
+  // A category row opens the shared category list (search, best guess first).
+  if (categoryPick) {
+    return (
+      <CategoryPickerHost
+        open={open}
+        onOpenChange={onOpenChange}
+        returnFocusRef={rowRef}
+        title={title}
+        options={options}
+        value={value}
+        pinned={categoryPick.pinned}
+        description={categoryPick.description}
+        onChoose={onValueChange}
+        anchor={(
+          <span className="lsd-row-group" ref={rowRef}>
+            <DetailRow label={label} value={rowValue(valueLabel, filled)} data-ask-row={rowKey} aria-haspopup="dialog" aria-expanded={open} onClick={() => onOpenChange(true)} />
+          </span>
+        )}
+      />
+    );
+  }
   if (isMobile) {
     return (
       <>
@@ -444,6 +467,7 @@ export function AskCardRows({
               filled={Boolean(filled.categoryName)}
               value={card.fields.categoryName}
               options={categoryOptions}
+              categoryPick={{ description: card.fields.description }}
               onValueChange={(categoryName) => onChange({ categoryName })}
             />
             <PickerRow

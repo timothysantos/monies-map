@@ -1,4 +1,5 @@
 import { ChevronRight, Sparkles } from "lucide-react";
+import { categoryPickOptions } from "./category-pick-options";
 import { useCallback, useEffect, useId, useState } from "react";
 
 import { forgetEverything, requestHabitsOverview, saveHandlesSafeThings, stopHabit, updateHabit } from "./ask-habits-api";
@@ -211,7 +212,8 @@ function HabitEditDialog({ editing, categories, people, saving, onChange, onClos
             label={copy.categoryField}
             valueLabel={editing.categoryName}
             value={editing.categoryName}
-            options={categories.map((category) => ({ value: category.name, label: category.name }))}
+            options={categoryPickOptions(categories)}
+            categoryPick={{}}
             onValueChange={(next) => set({ categoryName: next })}
             {...rowOpenProps("category")}
           />

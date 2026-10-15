@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ResponsiveSelect } from "./responsive-select";
+import { categoryPickOptions } from "./category-pick-options";
 import * as Popover from "@radix-ui/react-popover";
 
 import { messages } from "./copy/en-SG";
@@ -251,11 +253,14 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
                 ) : (
                   <label className="table-edit-field">
                     <span>{importMessages.table.category}</span>
-                    <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
-                      {categorySelectOptions.map((category) => (
-                        <option key={category.id} value={category.name}>{category.name}</option>
-                      ))}
-                    </select>
+                    <ResponsiveSelect
+                      className="table-edit-input"
+                      title={importMessages.table.category}
+                      value={draft.categoryName}
+                      options={categoryPickOptions(categorySelectOptions)}
+                      categoryPick={{ description: candidate.statementRow.description }}
+                      onValueChange={(categoryName) => updateDraft({ categoryName })}
+                    />
                   </label>
                 )}
               </div>
@@ -425,11 +430,14 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                 ) : (
                   <label className="table-edit-field">
                     <span>{importMessages.table.category}</span>
-                    <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
-                      {categorySelectOptions.map((category) => (
-                        <option key={category.id} value={category.name}>{category.name}</option>
-                      ))}
-                    </select>
+                    <ResponsiveSelect
+                      className="table-edit-input"
+                      title={importMessages.table.category}
+                      value={draft.categoryName}
+                      options={categoryPickOptions(categorySelectOptions)}
+                      categoryPick={{ description: draft.description }}
+                      onValueChange={(categoryName) => updateDraft({ categoryName })}
+                    />
                   </label>
                 )}
                 <label className="table-edit-field">

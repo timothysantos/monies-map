@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
+import { CategoryPickerHost } from "./category-picker-host";
 import { ResponsiveSelect } from "./responsive-select";
 import { DetailRow } from "./ui/lead-support-detail";
 
@@ -14,12 +15,33 @@ import { DetailRow } from "./ui/lead-support-detail";
  * @param {{
  *   isSheet: boolean, rowKey: string, label: string, valueLabel: string, value: string,
  *   options: { value: string, label: string }[], onValueChange: (value: string) => void,
- *   open?: boolean, onOpenChange?: (open: boolean) => void, locked?: boolean, disabled?: boolean
+ *   open?: boolean, onOpenChange?: (open: boolean) => void, locked?: boolean, disabled?: boolean,
+ *   categoryPick?: { description?: string, pinned?: Array<{ value: string, label: string }> }
  * }} props
+ *
+ * A row for a category passes `categoryPick`: the row opens the shared
+ * category list (search, best guess first) in a popover on a wide screen and
+ * the picker sheet on a phone, in place of the native select.
  */
-export function PickerRow({ isSheet, rowKey, label, valueLabel, value, options, onValueChange, open = false, onOpenChange = () => {}, locked = false, disabled = false }) {
+export function PickerRow({ isSheet, rowKey, label, valueLabel, value, options, onValueChange, open = false, onOpenChange = () => {}, locked = false, disabled = false, categoryPick = undefined }) {
   if (locked) {
     return <DetailRow label={label} value={valueLabel} state="locked" data-row={rowKey} />;
+  }
+  if (categoryPick) {
+    return (
+      <CategoryRowPicker
+        label={label}
+        rowKey={rowKey}
+        valueLabel={valueLabel}
+        value={value}
+        options={options}
+        onValueChange={onValueChange}
+        categoryPick={categoryPick}
+        disabled={disabled}
+        externalOpen={open}
+        onExternalOpenChange={onOpenChange}
+      />
+    );
   }
   if (isSheet) {
     return (
@@ -48,6 +70,35 @@ export function PickerRow({ isSheet, rowKey, label, valueLabel, value, options, 
         ))}
       </select>
     </DetailRow>
+  );
+}
+
+function CategoryRowPicker({ label, rowKey, valueLabel, value, options, onValueChange, categoryPick, disabled, externalOpen, onExternalOpenChange }) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const rowRef = useRef(null);
+  // Open from the row itself, or from the caller's own open state.
+  const open = ownOpen || externalOpen;
+  const setOpen = (next) => {
+    setOwnOpen(next);
+    onExternalOpenChange(next);
+  };
+  return (
+    <CategoryPickerHost
+      open={open}
+      onOpenChange={setOpen}
+      returnFocusRef={rowRef}
+      title={label}
+      options={options}
+      value={value}
+      pinned={categoryPick.pinned}
+      description={categoryPick.description}
+      onChoose={onValueChange}
+      anchor={(
+        <span className="lsd-row-group" ref={rowRef}>
+          <DetailRow label={label} value={valueLabel} data-row={rowKey} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen(true)} />
+        </span>
+      )}
+    />
   );
 }
 

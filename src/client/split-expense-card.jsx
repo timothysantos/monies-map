@@ -168,6 +168,7 @@ export function SplitExpenseCard({ dialog, groupOptions, people, categoryOptions
           icon: optionCategory ? <CategoryGlyph iconKey={optionCategory.iconKey} /> : null
         };
       })}
+      categoryPick={{ description: dialog?.description }}
       onValueChange={(categoryName) => update({ categoryName })}
     />
   ));

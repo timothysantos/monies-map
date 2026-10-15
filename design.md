@@ -2793,6 +2793,51 @@ the plan-table redesign.
   edge. The More pages popover uses the chrome radius and lift and 44 px
   rows. Proof: `tests/e2e/mobile-chrome.spec.js`.
 
+## Category list
+
+Every place a category is chosen opens one list (`category-pick-list.jsx`,
+opened by `category-picker-host.jsx`; docs/audits/category-quick-pick.md
+has the inventory): a popover under the trigger on a wide screen, the picker
+sheet on a phone. It replaces the native select, whose list cannot be
+searched.
+
+- A search field sits on top. It filters as you type, ignoring case and
+  accents, over the category's name and its everyday words (`kopi` or
+  `coffee` finds Food & Drinks; `category-everyday-words.ts`). A name match
+  ranks above a word match, then alphabetical. No match shows `No category
+  matches "x"` and a Clear search button.
+- Order: the best guess first with a small sky "Best guess" tag, then every
+  other category alphabetically (locale-aware, numbers in order). The current
+  category is checked wherever it sits; if it is the best guess it stays first
+  with its check. With no best guess there is no tag, only the alphabetical
+  list. A pinned row (the Imports "All categories" no-category choice) stays
+  above everything and survives a search.
+- Best guess (DOMAIN.md "Category Guess") is asked for once when the list opens,
+  only where a description is in hand. The list waits for the answer for up to
+  350 ms before it draws, so no row ever moves under a finger; a late answer
+  is dropped for that opening. With no answer the list is plain.
+- Focus decision: a device with hover and a fine pointer (a mouse or trackpad)
+  focuses the search when the list opens, so typing just works. A touch device
+  does not: the keyboard would cover the list and the person may want to scroll
+  it first. The field is visible at the top and a tap on it focuses it and
+  raises the keyboard. Decided by `(hover: hover) and (pointer: fine)`, not by
+  screen width, so a touch tablet showing the popover also waits for a tap.
+- Keys with the search focused: Up and Down move through the results, Enter
+  picks the highlighted one (typing highlights the first result), Escape closes
+  with focus back on the trigger (the row's category label).
+- Rows are 44 px on a touch device (52 px in the sheet), the sheet's list
+  scrolls under the fixed search, a filter (several choices) toggles and keeps
+  the popover open with Clear and Done.
+- A pick may save (an Entries row): the list shows the rows busy, and a refused
+  save keeps the list open with the message in an alert. It saves through the
+  Edit entry card's own command (`persistExistingEntry`: one update, one audit
+  event, the same refresh and habit learning); a row linked to Splits opens its
+  editor with the new category instead, so the connected split is asked about.
+- The Entries row's label is a button that looks like the quiet label it was
+  (underline on hover, focus ring, a hit area that reaches above the text).
+- It lives in lazy chunks (list, popover, styles, copy, guess request); the
+  first screen carries only the host and the trigger.
+
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the

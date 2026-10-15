@@ -71,6 +71,7 @@ export function EntriesFilterStack({
           values={entryFilters.categories}
           options={entryCategoryOptions}
           emptyLabel={messages.entries.allCategories}
+          categoryPick
           selectionLabel={(selectedOptions) => {
             if (selectedOptions.length === 1) {
               return selectedOptions[0].label;

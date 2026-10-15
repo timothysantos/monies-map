@@ -114,6 +114,7 @@ export function EntryEditorFields({
           icon: optionCategory ? <CategoryGlyph iconKey={optionCategory.iconKey} /> : null
         };
       })}
+      categoryPick={{ description: entry.description }}
       onValueChange={handleCategoryChange}
     />
   );
@@ -599,6 +600,7 @@ export function EntryTransferTools({
                 valueLabel={settlementDraft?.currentCategoryName ?? "Other"}
                 value={settlementDraft?.currentCategoryName ?? "Other"}
                 options={settlementCategories}
+                categoryPick={{ description: entry.description }}
                 onValueChange={(currentCategoryName) => onSettlementDraftChange(entry.id, { currentCategoryName })}
                 {...rowOpenProps("current-category")}
               />
@@ -610,6 +612,7 @@ export function EntryTransferTools({
                   valueLabel={settlementDraft?.counterpartCategoryName ?? "Other"}
                   value={settlementDraft?.counterpartCategoryName ?? "Other"}
                   options={settlementCategories}
+                  categoryPick={{ description: entry.description }}
                   onValueChange={(counterpartCategoryName) => onSettlementDraftChange(entry.id, { counterpartCategoryName })}
                   {...rowOpenProps("counterpart-category")}
                 />

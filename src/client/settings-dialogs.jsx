@@ -1,4 +1,5 @@
 import { Tag, UserRound } from "lucide-react";
+import { categoryPickOptions } from "./category-pick-options";
 import { useState } from "react";
 
 import { CategoryEditDialog } from "./category-edit-dialog";
@@ -124,7 +125,8 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
           label={settingsMessages.categoryRuleCategory}
           valueLabel={category?.name ?? ""}
           value={categoryId}
-          options={categories.map((item) => ({ value: item.id, label: item.name }))}
+          options={categoryPickOptions(categories, { valueKey: "id" })}
+          categoryPick={{}}
           onValueChange={(value) => set({ categoryId: value })}
           {...rowOpenProps("category")}
         />

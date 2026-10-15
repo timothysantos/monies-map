@@ -140,7 +140,8 @@ export function EntryEditCard({
 
   /**
    * @param {{ key: string, label: string, valueLabel: string, value: string,
-   *   options: { value: string, label: string }[], onValueChange: (value: string) => void, locked?: boolean }} props
+   *   options: { value: string, label: string }[], onValueChange: (value: string) => void, locked?: boolean,
+   *   categoryPick?: { description?: string } }} props
    */
   function pickerRow({ key, ...props }) {
     return (
@@ -180,6 +181,7 @@ export function EntryEditCard({
         valueLabel: entry.categoryName || copy.editCard.notSet,
         value: entry.categoryName,
         options: categorySelectOptions,
+        categoryPick: { description: entry.description },
         onValueChange: changeCategory
       });
 

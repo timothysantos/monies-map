@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo, pickCategory } from "./helpers";
 
 test("editing an existing split expense keeps the row in place and persists the change", async ({ page }) => {
   const updatedNote = `Updated split note ${Date.now()}`;
@@ -157,7 +157,7 @@ test("editing a linked split category can update the connected entry category", 
   await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
   const editDialog = page.locator(".split-inline-editor-card");
   await expect(editDialog).toBeVisible();
-  await editDialog.getByLabel("Category").selectOption("Groceries");
+  await pickCategory(page, editDialog.locator("[data-row='category']"), "Groceries");
   await editDialog.getByRole("button", { name: "Save expense" }).click();
 
   const syncDialog = page.getByRole("dialog", { name: "Update connected entry category?" });

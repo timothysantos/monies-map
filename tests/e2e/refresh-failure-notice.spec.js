@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { reseedDemo } from "./helpers";
+import { reseedDemo, pickCategory } from "./helpers";
 
 // A refresh after a save runs in the background. When it fails, the saved
 // result stays on screen and a non-blocking notice offers a retry; the page
@@ -152,7 +152,7 @@ test("an entry edit whose refresh fails stays saved and raises the notice instea
   await entryRow.first().locator(".entry-row-main").click();
   const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
-  await entryEditor.locator("[data-row='category'] select").selectOption("Groceries");
+  await pickCategory(page, entryEditor.locator("[data-row='category']"), "Groceries");
 
   await page.route("**/api/entries-page**", failJson);
   const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());

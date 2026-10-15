@@ -270,7 +270,7 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
 
     await filter("By category").getByRole("button").click();
     const categoryPicker = page.getByRole("dialog", { name: "By category" });
-    await categoryPicker.locator(".mobile-select-option").filter({ hasText: /^Groceries$/ }).click();
+    await categoryPicker.locator("[data-category-option='Groceries']").click();
     await categoryPicker.getByRole("button", { name: "Done" }).click();
     await expect(categoryPicker).toHaveCount(0);
 

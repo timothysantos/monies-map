@@ -65,7 +65,7 @@ async function openEditSheet(page, entryId) {
 function pickerParts(page, title) {
   const dialog = page.locator(".mobile-select-dialog").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
   const list = dialog.locator(".mobile-select-options");
-  return { dialog, list, options: list.locator(".mobile-select-option") };
+  return { dialog, list, options: list.locator(".mobile-select-option, .category-pick-row") };
 }
 
 // The touch sequence a finger makes swiping up a scroller, dispatched on its

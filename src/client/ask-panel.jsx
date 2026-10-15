@@ -84,10 +84,9 @@ import { rememberAlias } from "./ask-habits-api";
 import { AskDoneForYou, AskDoneInline, AskSuggestionRow } from "./ask-habits-ui";
 import { patchCardAfterAuto, patchCardAfterUndo } from "./ask-habits-card";
 import { useAskTransferMatch } from "./use-ask-transfer-match";
+import { CategoryPickerHost } from "./category-picker-host";
 import { AskTransferMatchRows } from "./ask-transfer-choices";
 import { NO_OTHER_SIDE, transferLinkBody } from "./ask-transfer-match";
-import { useIsMobileLayout } from "./use-viewport";
-import { ResponsiveSelect } from "./responsive-select";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
@@ -224,7 +223,6 @@ function AskConversation({
   }
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isMobile = useIsMobileLayout();
   const [today] = useState(() => todayInAppTimeZone());
   const context = useMemo(() => ({
     accounts,
@@ -2295,10 +2293,10 @@ function AskConversation({
       </div>
       {card?.status === "saved" ? (
         <SavedCategoryPicker
-          isMobile={isMobile}
           open={savedPicker}
           onOpenChange={setSavedPicker}
           value={card.fields.categoryName}
+          description={card.fields.description}
           categories={categories}
           onValueChange={(categoryName) => {
             setSavedPicker(false);
@@ -2311,28 +2309,23 @@ function AskConversation({
 }
 
 // The category picker behind the saved card's "Choose category" chip: the
-// mobile picker sheet on a phone, a native select dialog on a desktop.
-function SavedCategoryPicker({ isMobile, open, onOpenChange, value, categories, onValueChange }) {
+// shared category list (search, best guess first), a popover under the card
+// on a desktop and the picker sheet on a phone.
+function SavedCategoryPicker({ open, onOpenChange, value, description, categories, onValueChange }) {
   const options = categories
     .filter((category) => category.name !== "Transfer")
-    .slice()
-    .sort((left, right) => left.name.localeCompare(right.name))
     .map((category) => ({ value: category.name, label: category.name }));
-  if (!open) {
-    return null;
-  }
-  if (isMobile) {
-    return <ResponsiveSelect hideMobileTrigger title={askCopy.card.rows.category} value={value} options={options} open={open} onOpenChange={onOpenChange} onValueChange={onValueChange} />;
-  }
   return (
-    <div className="ask-saved-picker">
-      <label>
-        <span>{askCopy.card.rows.category}</span>
-        <select autoFocus value={value} onChange={(event) => onValueChange(event.target.value)} onBlur={() => onOpenChange(false)}>
-          {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </label>
-    </div>
+    <CategoryPickerHost
+      open={open}
+      onOpenChange={onOpenChange}
+      anchor={<span className="ask-saved-picker" />}
+      title={askCopy.card.rows.category}
+      options={options}
+      value={value}
+      description={description}
+      onChoose={onValueChange}
+    />
   );
 }
 

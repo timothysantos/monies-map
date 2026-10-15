@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, postJson, reseedDemo, pickCategory } from "./helpers";
 
 test("category-filtered entry remains visible until the category edit is explicitly saved", async ({ page }) => {
   const description = `Playwright reclassify entry ${Date.now()}`;
@@ -31,7 +31,7 @@ test("category-filtered entry remains visible until the category edit is explici
   await entryRow.first().click();
   const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
-  await entryEditor.locator("[data-row='category'] select").selectOption("Groceries");
+  await pickCategory(page, entryEditor.locator("[data-row='category']"), "Groceries");
 
   await expect(page.getByText("Save this category?")).toBeVisible();
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(1);
@@ -78,7 +78,7 @@ test("category quick-save keeps the collapsed row on the saved category without 
   await entryRow.first().click();
   const entryEditor = page.locator(".entry-edit-card").first();
   await expect(entryEditor).toBeVisible();
-  await entryEditor.locator("[data-row='category'] select").selectOption("Travel");
+  await pickCategory(page, entryEditor.locator("[data-row='category']"), "Travel");
 
   await expect(page.getByText("Save this category?")).toBeVisible();
   const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());

@@ -925,22 +925,12 @@
   pointer-events: none;
 }
 
+/* The saved card's category list opens from here (a popover on a desktop). */
 .ask-saved-picker {
-  position: sticky;
-  bottom: 140px;
+  display: block;
   justify-self: center;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--paper);
-  box-shadow: 0 12px 30px rgba(27, 24, 21, 0.14);
-}
-
-.ask-saved-picker label {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 0.86rem;
+  width: 1px;
+  height: 1px;
 }
 
 .ask-sr-only {

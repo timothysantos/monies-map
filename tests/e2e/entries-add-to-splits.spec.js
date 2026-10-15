@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, postJson, reseedDemo, pickCategory } from "./helpers";
 
 test("entries can add a direct expense to splits and jump into the created split", async ({ page }) => {
   const description = `Playwright add to splits ${Date.now()}`;
@@ -131,7 +131,7 @@ test("linked entry category save preserves ledger amount and can update the conn
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel("Amount")).toHaveValue("22.00");
 
-  await editor.locator("[data-row='category'] select").selectOption("Entertainment");
+  await pickCategory(page, editor.locator("[data-row='category']"), "Entertainment");
   await editor.getByRole("button", { name: "Done editing entry" }).click();
 
   const syncDialog = page.getByRole("dialog", { name: "Update connected split category?" });

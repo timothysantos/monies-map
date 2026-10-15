@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
+import { ResponsiveSelect } from "./responsive-select";
+import { categoryPickOptions } from "./category-pick-options";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
@@ -152,6 +154,9 @@ function PreviewRowsTable({
 }) {
   const [restoreTarget, setRestoreTarget] = useState(null);
   const inferredAmountKeys = useInferredAmountKeys();
+  // "No category yet" stays pinned above the searchable list.
+  const noCategory = { value: "", label: messages.entries.allCategories };
+  const categoryChoices = [noCategory, ...categoryPickOptions(categorySelectOptions)];
   return (
     <div className="table-wrap import-table-wrap">
       <table className="summary-table import-preview-table">
@@ -268,12 +273,15 @@ function PreviewRowsTable({
                     </select>
                   </td>
                   <td>
-                    <select className="table-edit-input" value={row.categoryName ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })} disabled={isSkippedTable}>
-                      <option value="">{messages.entries.allCategories}</option>
-                      {categorySelectOptions.map((category) => (
-                        <option key={category.id} value={category.name}>{category.name}</option>
-                      ))}
-                    </select>
+                    <ResponsiveSelect
+                      className="table-edit-input"
+                      title={messages.entries.category}
+                      value={row.categoryName ?? ""}
+                      options={categoryChoices}
+                      categoryPick={{ description: row.description, pinned: [noCategory] }}
+                      onValueChange={(categoryName) => onUpdatePreviewRow(row.rowId, { categoryName: categoryName || undefined })}
+                      disabled={isSkippedTable}
+                    />
                   </td>
                   <td>
                     <select

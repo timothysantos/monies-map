@@ -122,6 +122,21 @@ form. List rows show a quiet category line, the wallet as a quiet line and a
 right-aligned amount, with the person's colour edge; the day header is a
 hairline divider with the daily net (design.md "Entries list").
 
+## Category list
+
+The category label on a row is a button that opens the shared category list
+(design.md "Category list"): a popover on a wide screen, the picker sheet on a
+phone, with a search, the best guess first and the other categories
+alphabetically. Picking saves through `changeEntryCategory`
+(`entry-actions.js`), which is `persistExistingEntry` with the row as it was as
+the previous state, so the refresh plan, the audit event and the habit and
+rule-suggestion learning are the Edit entry card's. A refused save keeps the
+list open with the message; a row linked to Splits opens its editor with the
+new category so the connected split's question is asked first. The best guess
+is `POST /api/entries/category-guess`, asked once when the list opens
+(DOMAIN.md "Category Guess"). The Category row of the Edit entry card and the
+form, and the Entries category filter, open the same list.
+
 ## Data Flow
 
 Entries data comes from:

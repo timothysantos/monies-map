@@ -208,6 +208,7 @@ export function EntriesPanel({
     beginEntryEdit,
     resumeEntryEdit,
     finishEntryEdit,
+    changeEntryCategory,
     cancelEntryEdit,
     linkTransferCandidate,
     refreshTransferCandidates,
@@ -1497,6 +1498,7 @@ export function EntriesPanel({
           refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
           transferCandidateErrors={transferCandidateErrors}
           onBeginEntryEdit={beginEntryEdit}
+          onChangeEntryCategory={changeEntryCategory}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
           onUpdateEntry={updateEntry}
           onUpdateEntryAmount={updateEntryAmount}

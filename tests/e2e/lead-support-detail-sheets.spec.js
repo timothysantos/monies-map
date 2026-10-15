@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo, pickCategory } from "./helpers";
 
 // The Entries edit sheet and New split expense in the Lead · Support ·
 // Detail style (design.md): one lead card, Support chips, quiet Detail rows
@@ -573,7 +573,7 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");
-  await editor.getByLabel("Category").selectOption("Home");
+  await pickCategory(page, editor.locator("[data-row='category']"), "Home");
   const update = page.waitForRequest((request) => request.url().includes("/api/entries/update"));
   await page.getByRole("button", { name: "Done editing entry" }).click();
   // A category change asks first whether to save it now (as before).

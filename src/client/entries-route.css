@@ -914,3 +914,48 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   background: none;
   color: var(--muted);
 }
+
+/* The category label opens the category list (entry-category-quick-pick.jsx).
+   It looks like the quiet label it was; the hover underline and the focus ring
+   say it can be pressed, and its hit area reaches above the text (the row's own
+   padding) so a thumb finds it, while the description under it keeps its own
+   line (design.md "Category list"). */
+.entry-row-category-button {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  vertical-align: top;
+  cursor: pointer;
+}
+
+.entry-row-category-button::after {
+  content: "";
+  position: absolute;
+  inset: -16px -10px -2px;
+}
+
+.entry-row-category-button:hover strong,
+.entry-row-category-button[aria-expanded="true"] strong {
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+
+.entry-row-category-button:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.entry-row-description > strong,
+.entry-row-description > p {
+  position: relative;
+  z-index: 1;
+}

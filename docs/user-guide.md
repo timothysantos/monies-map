@@ -575,6 +575,14 @@ bar on the left is the owner's colour.
   it). Under the card are rows for **Category**, **Splits**, **Note**,
   **Posted date** and **Type** (expense, income or transfer).
   ![Selecting an entry opens it as a card with rows for each field, and Delete entry, Cancel and Save under them](/faq/guide/desktop/thumbs/entries-edit.webp)
+- **Category** on a row: select the category name above the description to
+  change it without opening the entry. A list opens with a search at the top:
+  type to narrow it (a word like "kopi" finds Food & Drinks), or look down the
+  list, which is in alphabetical order. The category Monie's Map thinks is
+  most likely is at the top, marked **Best guess**, based on your category
+  rules, what you usually pick for that shop and everyday words. On a
+  computer you can start typing straight away and press Enter to pick; on a
+  phone, tap the search box to type.
 - **Splits** row: **Add to splits** shares this entry ([Split an expense](#split-an-expense));
   once it is shared, **View split** opens it on Splits.
 - **Delete entry**: asks you to confirm first. An entry a bank statement

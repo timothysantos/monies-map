@@ -1,10 +1,11 @@
 import { CalendarDays, ChevronRight } from "lucide-react";
+import { categoryPickOptions } from "./category-pick-options";
 import { useState } from "react";
 
 import { entryAmountTone } from "../domain/money-tone";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
-import { GrowingTextarea } from "./detail-field-rows";
+import { GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { selectAllOnFocus } from "./focus-utils";
 import { isInferredAmountRow, useInferredAmountKeys } from "./import-inferred-amounts";
@@ -160,6 +161,8 @@ function PreviewRowSheet({
   onClose
 }) {
   const inferredAmountKeys = useInferredAmountKeys();
+  // "No category yet" stays pinned above the searchable list.
+  const noCategory = { value: "", label: messages.entries.allCategories };
   const category = categories.find((item) => item.name === row.categoryName);
   const theme = { ...FALLBACK_THEME, ...(category ? { colorHex: category.colorHex, iconKey: category.iconKey } : {}) };
   const duplicateMatch = row.reconciliationMatches?.[0] ?? row.reconciliationMatch;
@@ -317,18 +320,17 @@ function PreviewRowSheet({
               {ENTRY_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </DetailRow>
-          <DetailRow label={importMessages.rowFieldCategory} value={row.categoryName} emptyLabel={importMessages.rowFieldChooseCategory}>
-            <select
-              className="lsd-row-native"
-              aria-label={importMessages.rowFieldCategory}
-              value={row.categoryName ?? ""}
-              disabled={isSkipped}
-              onChange={(event) => onUpdatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })}
-            >
-              <option value="">{messages.entries.allCategories}</option>
-              {categorySelectOptions.map((option) => <option key={option.id} value={option.name}>{option.name}</option>)}
-            </select>
-          </DetailRow>
+          <PickerRow
+            isSheet
+            rowKey="category"
+            label={importMessages.rowFieldCategory}
+            valueLabel={row.categoryName || importMessages.rowFieldChooseCategory}
+            value={row.categoryName ?? ""}
+            options={[noCategory, ...categoryPickOptions(categorySelectOptions)]}
+            categoryPick={{ description: row.description, pinned: [noCategory] }}
+            onValueChange={(categoryName) => onUpdatePreviewRow(row.rowId, { categoryName: categoryName || undefined })}
+            disabled={isSkipped}
+          />
           <DetailRow label={importMessages.rowFieldAccount} value={accountLabel} emptyLabel={importMessages.chooseAccount}>
             <select
               className="lsd-row-native"
