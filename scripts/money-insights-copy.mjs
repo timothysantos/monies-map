@@ -21,6 +21,7 @@ import { ACCOUNT_COPY } from "../src/domain/money-signals/account-signals.ts";
 import { TRIP_COPY } from "../src/domain/money-signals/trip-signal.ts";
 import { SPLITS_CALM_LINE, SPLITS_COPY, SPLITS_TRIVIA_ROTATION } from "../src/domain/money-signals/splits-signals.ts";
 import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_CALM_PLACE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
+import { RETIRED_NAMES } from "../src/domain/retired-names.ts";
 import { APP_JARGON, AVOID_WORDS, FILLER_PHRASES } from "../src/domain/money-signals/tone.ts";
 import { SIGNAL_KIND_LABELS } from "../src/domain/money-signals/types.ts";
 
@@ -326,6 +327,8 @@ export function renderCheckInCopyMarkdown() {
     "to the money, not the finance term: the gap was paid from savings, or put",
     "on a credit card that isn't paid off yet, never \"went onto a card\".",
     `App and finance words the lint rejects: ${APP_JARGON.join(", ")}.`,
+    "",
+    `Retired names the lint rejects, with what to say instead (owner, 2026-10-15): ${RETIRED_NAMES.map(({ retired, use }) => `${retired} -> ${use}`).join("; ")}.`,
     "",
     `Words the tone lint rejects: ${AVOID_WORDS.join(", ")}.`,
     "",

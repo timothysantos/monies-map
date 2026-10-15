@@ -79,13 +79,13 @@ export function buildMonthPage(
     planSections: [
       {
         key: "planned_items",
-        label: "Planned Items",
+        label: "Bills and dated payments",
         description: "Intentional commitments and recurring obligations for the month.",
         rows: visiblePlanRows.filter((row) => row.section === "planned_items")
       },
       {
         key: "budget_buckets",
-        label: "Budget Buckets",
+        label: "Monthly budget",
         description: "Flexible categories where the plan is a budget, not a merchant-by-merchant script.",
         rows: visiblePlanRows.filter((row) => row.section === "budget_buckets")
       }

@@ -209,7 +209,7 @@ test.describe("phone pickers scroll by touch", { tag: "@webkit" }, () => {
     // The row opens from its item name: the category line under it is hidden
     // when it repeats the item's own name ("Savings"), so it is no target.
     await page.locator("tr").filter({ hasText: "Savings" }).first().getByRole("button", { name: "Edit Savings row" }).tap();
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await expect(sheet).toBeVisible();
     const categoryRow = sheet.locator("label").filter({ hasText: "Category" });
     await categoryRow.locator(".responsive-select-trigger").tap();

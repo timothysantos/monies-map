@@ -129,11 +129,11 @@ test.describe("route work status on mobile", () => {
 
     await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     await waitForRouteWork(page, { routeKey: "month|person-tim|2026-05|direct_plus_shared||", usable: true });
-    await page.getByRole("button", { name: "+ Add planned item" }).click();
-    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    await page.getByRole("button", { name: "+ Add bill or dated payment" }).click();
+    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
     await expect(addSheet).toBeVisible();
     await waitForRouteWork(page, { busy: true, usable: false, reason: "busy" });
-    await addSheet.getByRole("button", { name: "Close + add planned item" }).click();
+    await addSheet.getByRole("button", { name: "Close + add bill or dated payment" }).click();
     await expect(addSheet).toHaveCount(0);
     await waitForRouteWork(page, { busy: false, usable: true });
 

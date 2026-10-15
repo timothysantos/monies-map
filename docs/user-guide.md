@@ -36,7 +36,7 @@ appear in this order:
    **Simple** until you choose (see **Plan | Simple** under
    [Summary](#summary)).
    Pick one month of the range to see its plan (the **Month** page): income,
-   budget buckets and planned items next to what was actually spent, and
+   monthly budgets and bills and dated payments next to what was actually spent, and
    where that month's money went ([Pick a month](#pick-a-month)).
    ![Month shows the month's totals, money insights and Spending Mix, with the plan rows below](/faq/guide/desktop/thumbs/month-person.webp)
 2. **Entries**: every transaction for the month, grouped by day, with search
@@ -70,7 +70,7 @@ depend on a month, so they show no month or range controls there.
 Monie's Map works best as a monthly loop:
 
 1. **Plan**: on Month (pick the month on Summary), set what you expect to earn, your fixed commitments
-   (planned items) and flexible budgets (budget buckets).
+   (bills and dated payments) and flexible budgets (monthly budgets).
 2. **Record**: as you spend, add entries on Entries, or let Apple Pay create
    them for you.
 3. **Import**: during the month, import your bank's activity export to catch
@@ -131,7 +131,7 @@ scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
 Totals start hidden on every new browser, so you can open the app around other
 people. Every amount shows as `••••`: totals, transactions, splits, charts and
 plan amounts, without its colour or any words that say whether it is up or
-down (such as "Overplanned" or "You owe"). Amount fields you type into are
+down (such as "Planned more than you earn" or "You owe"). Amount fields you type into are
 masked too.
 
 ![With totals hidden, every amount shows as dots](/faq/guide/desktop/thumbs/money-hidden.webp)
@@ -145,7 +145,7 @@ cleared browser starts hidden again. Money insights stay hidden while
 totals are hidden, because their sentences would reveal the same figures;
 they appear with the real figures as soon as you reveal totals. The earned,
 spent and kept bar keeps its shape and its key shows only the names and
-percentages (no amounts, and no plan) while totals are hidden, and each money job shows only ✓ or the share of its plan
+percentages (no amounts, and no plan) while totals are hidden, and each line under **Where your money goes** shows only ✓ or the share of its plan
 reached. Edit
 forms also have a small eye button next to an amount, so you can check a
 single figure without revealing the whole page.
@@ -253,7 +253,7 @@ over plan.
   (green) or over (red) plan. Money you put into **Investments** or
   **Savings** is not counted as spending here, and your savings target and
   investment plan are not part of the spending plan, so this always agrees
-  with the "Spend within" money job below.
+  with the "Spend within" line under **Where your money goes** below.
 - **Earned, spent and kept**: under the Spent figure, one bar stands for all
   the money you earned over the range. The red part is what you spent, the
   plum part is what you invested (entries in the **Investments** category,
@@ -278,12 +278,12 @@ over plan.
   $247,000"). Click a part of the bar, a line of the key or the sentence (on
   a phone, tap it) to see where it came from ([Dig into any
   figure](#dig-into-any-figure)).
-- **Money jobs**: each line of your plan has a job: spend within the
+- **Where your money goes**: each line of your plan has a purpose: spend within the
   budget, save the savings target, invest what you planned to invest, and
-  the income you expected. One line says how many were done ("3 of 4 money
-  jobs done"); open it (on a phone, tap it) to see each job with **✓ done**,
+  the income you expected. One line says how many were on track ("3 of 4
+  things on track"); open it (on a phone, tap it) to see each one with **✓ done**,
   **short by** or **over by** an amount. While the month is still going it
-  says "so far". Select a job for **View entries**, **Open plan** and **Ask
+  says "so far". Select a line for **View entries**, **Open plan** and **Ask
   about this**. It only looks back at what happened against your own plan;
   it never guesses what is still to come.
 - **Income** and **Saved**: the income that came in, with the planned income
@@ -301,11 +301,10 @@ over plan.
   what you spent against what you planned, with a bar, the percent of plan
   and how far under or over you are. Your planned and actual income sit
   under it, and **Details** opens the income, spending and savings figures.
-- **Wallets in view**: one list with each wallet's current balance and
-  whether a statement has confirmed it. Select a wallet to open its entries.
+- **The accounts shown**: one list with each account's current balance and
+  whether a statement has confirmed it. Select an account to open its entries.
   An investment account you have imported an iFAST or StashAway statement for says what
-  its latest statement said it was worth, with the statement's date ("Worth
-  $2,023.90 on 30 Sep 2026, from its statement"). That is the statement's
+  its latest statement said it was worth, with the statement's date ("$2,023.90 on 30 Sep 2026, as the statement says"). That is the statement's
   figure on that day, not a forecast and not money you can spend; the
   balance beside it is still what you moved in
   ([Import an investment statement](#import-an-investment-statement-ifast-and-stashaway)).
@@ -388,7 +387,7 @@ over plan.
   actual and variance figures (the latest month starts open). The **Note** row
   there edits that month's note. The month's name opens that month.
 
-![Wallets in view shows current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
+![The accounts shown, with current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
 
 ### Common tasks
 
@@ -426,7 +425,7 @@ only percentages, and nothing turns red or says "under" or "over".
 
 Every amount and money line on a card can be opened to see where it came
 from: Spent and its plan, each part of the earned, spent and kept bar and
-each line of its key, the sentence under it, the money jobs, Income and
+each line of its key, the sentence under it, Where your money goes, Income and
 Saved, Daily spend and Top spending, each month in Intent vs Outcome and in
 Earned vs spent by month, the Spending Mix categories, the Month plan's
 actual amounts, the Entries totals and the Splits balance. Nothing looks
@@ -442,7 +441,7 @@ a small menu opens under it with what applies:
   investment account, less what you took back out. A line at the top of the
   list names what it shows; select **✕** on it to see the whole month again.
 - **Open plan** opens that month's plan on the Month page (for plan
-  figures and the money jobs).
+  figures and Where your money goes).
 - **Open Splits** opens that group on Splits (for a split balance).
 - **Ask about this** opens Ask, asks a question about it for you and shows
   the answer.
@@ -477,10 +476,10 @@ stays highlighted, and the range at the top stays as it was.
   planned to spend, with the percent of plan and how much you are under or
   over plan (investing and saving are not spending, as on Summary).
   Under that is the same earned, spent and kept bar as on
-  [Summary](#summary), for this month, and its money jobs line ("2 of 3
-  money jobs done", folded on a phone). Under it, in the same card, are **Income** (received, with
-  the plan), **Saved** (with the savings target) and **To allocate**
-  (planned income minus planned spend; it says Overplanned when negative).
+  [Summary](#summary), for this month, and its Where your money goes line ("2 of 3
+  things on track", folded on a phone). Under it, in the same card, are **Income** (received, with
+  the plan), **Saved** (with the savings target) and **Not planned yet**
+  (planned income minus planned spend; it says **Planned more than you earn** when negative).
   Select it to see what it means, with **Open plan** and **Ask about this**.
 - **Money insights** for the month.
 - **Spending Mix**: the month's spending by category, the same donut and
@@ -490,9 +489,9 @@ stays highlighted, and the range at the top stays as it was.
 - **Income**: planned income sources. On every plan row a thin bar shows how
   much of the plan you have used. On a phone each row is a small card; tap it
   to change it.
-- **Budget Buckets**: flexible budgets by category, such as Groceries or Taxi.
+- **Monthly budget**: flexible budgets by category, such as Groceries or Taxi.
   Their actual comes from all entries in that category.
-- **Planned Items**: fixed commitments such as savings, insurance, loans and
+- **Bills and dated payments**: fixed commitments such as savings, insurance, loans and
   subscriptions. Their actual comes from the entries you link to them.
 - **Monthly Note**: why the month looked the way it did.
 - **Accounts**: the tracked accounts.
@@ -503,8 +502,8 @@ stays highlighted, and the range at the top stays as it was.
   [Summary](#summary). Simple shows what you earned and spent this month,
   with the bar and the same few facts; in place of the plan rows it lists
   **Money in** (what came in, one row per source; select one to see its
-  entries), and **Plan this month** switches back to Plan to set budgets
-  and planned items. Spending Mix shows where the money went in both.
+  entries), and **Plan this month** switches back to Plan to set monthly budgets
+  and dated payments. Spending Mix shows where the money went in both.
   Month opens in Simple until you choose Plan.
 - **Month**: the row of months under the top bar (on a phone, **‹**, the
   month's name and **›** beside the View and scope bar) moves to another
@@ -512,11 +511,11 @@ stays highlighted, and the range at the top stays as it was.
 - **Select a row** (anywhere outside its buttons) to edit it in place:
   category, item name, planned amount and note. **Save** keeps it, **Cancel**
   discards, **Delete** removes the row.
-  ![Selecting a budget bucket opens it for editing in the table](/faq/guide/desktop/thumbs/month-edit-row.webp)
-- **+ Add income source**, **+ Add budget bucket**, **+ Add planned item**:
+  ![Selecting a monthly budget opens it for editing in the table](/faq/guide/desktop/thumbs/month-edit-row.webp)
+- **+ Add income source**, **+ Add monthly budget**, **+ Add bill or dated payment**:
   add a row to that section.
-- **Link entries** (under a planned item's actual): choose which entries pay
-  for that planned item ([Link planned items to entries](#link-planned-items-to-entries)).
+- **Link entries** (under a bill or dated payment's actual): choose which entries pay
+  for it ([Link bills and dated payments to entries](#link-bills-and-dated-payments-to-entries)).
 - **Actions**: Duplicate month, Reset month, Delete month
   ([Duplicate, reset or delete a month](#duplicate-reset-or-delete-a-month)).
 - **Draft a summary** (Monthly Note): drafts a note for you to edit when the
@@ -917,7 +916,7 @@ Ask also answers questions about your money in plain words:
 Questions about spending, the plan, income, investing and saving also
 work for a stretch of months, such as "from October 2025 to September
 2026" (up to 12 months) or "in Q3". The questions
-**Ask about this** asks for the bar and the money jobs are these same
+**Ask about this** asks for the bar and Where your money goes are these same
 questions.
 
 The answer is a card with the figure you asked about (and the plan bar when
@@ -1364,18 +1363,18 @@ Good to know:
    read-only) and pick the month ([Pick a month](#pick-a-month)).
 2. Under **Income**, select **+ Add income source** and enter each expected
    income.
-3. Under **Planned Items**, select **+ Add planned item** for each fixed
+3. Under **Bills and dated payments**, select **+ Add bill or dated payment** for each fixed
    commitment: savings, loan, insurance, subscriptions. Give each a
    category, date, name, planned amount and optionally an account.
-   ![A new planned item opens as an editable row](/faq/guide/desktop/thumbs/month-add-planned.webp)
-4. Under **Budget Buckets**, select **+ Add budget bucket** for flexible
+   ![A new bill or dated payment opens as an editable row](/faq/guide/desktop/thumbs/month-add-planned.webp)
+4. Under **Monthly budget**, select **+ Add monthly budget** for flexible
    spending such as Food, Groceries, Transport and Shopping.
 5. Select **Save** on each row.
-6. Check the top of the page: it should say **To allocate**, not Overplanned,
+6. Check the top of the page: it should not say **Planned more than you earn**,
    and the **Saved** target should be what you want to put aside.
 
-> Tip: keep budget buckets broad. One Food bucket works better than a row for
-> every restaurant. Plan only what is stable as planned items.
+> Tip: keep monthly budgets broad. One Food budget works better than a row for
+> every restaurant. Plan only what is stable as bills and dated payments.
 
 Next month, use **Actions → Duplicate month** to copy the plan and adjust it,
 or type it on Ask: "plan November like October but Groceries $700"
@@ -1383,7 +1382,7 @@ or type it on Ask: "plan November like October but Groceries $700"
 
 ### See where every planned dollar goes
 
-In Plan view, **Plan Studio** shows your whole month plan as money jobs: what
+In Plan view, **Plan Studio** shows your whole month plan by where your money goes: what
 comes in, **Spend**, **Save**, **Invest** and what is **left over**. The big
 picture across the top is as wide as the page; under it, how the month is
 going and **What if I save more?** sit side by side (stacked on a phone).
@@ -1444,21 +1443,21 @@ going and **What if I save more?** sit side by side (stacked on a phone).
 In the Household view Plan Studio is read-only, like the tables.
 Switch to your own name to change the plan.
 
-## Link planned items to entries
+## Link bills and dated payments to entries
 
-A budget bucket's actual comes from every entry in its category. A planned
-item's actual comes only from the entries you link, because several planned
-items can share a category (for example Bills).
+A monthly budget's actual comes from every entry in its category. A bill or
+dated payment's actual comes only from the entries you link, because several of
+them can share a category (for example Bills).
 
 1. On **Summary**, pick the month in your person view.
-2. In **Planned Items**, select **Link entries** under the item's actual.
+2. In **Bills and dated payments**, select **Link entries** under the item's actual.
 3. The list starts narrowed to likely matches. Use the chips **Linked**,
    **Same category**, **Same account** and **This month only**, or type in
    **Description filter**, to narrow it further.
 4. Tick the entries that pay for this item.
 5. Select **Save matches**. The actual and variance update.
 
-![Match planned item: tick the entries that pay for this planned item](/faq/guide/desktop/thumbs/month-link-entries.webp)
+![Match bill or dated payment: tick the entries that pay for it](/faq/guide/desktop/thumbs/month-link-entries.webp)
 
 The app remembers what you linked so it can suggest the same kind of entries
 next month. It never links them without you.
@@ -1568,7 +1567,7 @@ What it does and does not do:
   market value of everything in the account plus any cash in iFAST). It is
   kept for reference. It is not a bank balance, it is never checked against
   your entries, and it is not a prediction. It appears on **Summary** under
-  **Wallets in view**, with the statement's date.
+  **The accounts shown**, with the statement's date.
 - Importing the same statement again adds nothing. A corrected statement for
   the same month replaces the figure saved for that month, and says so before
   you save.
@@ -2579,9 +2578,9 @@ saves every row or none of them.
 - **Planned**: what you intended, from the Month plan.
 - **Variance**, or the **under plan** and **over plan** amount at the top:
   planned minus actual. Under plan means you spent less than planned.
-- **Planned item**: a fixed commitment (savings, loan, subscription) whose
+- **Bill or dated payment**: a fixed commitment (savings, loan, subscription) whose
   actual comes from the entries you link to it.
-- **Budget bucket**: a flexible category budget whose actual comes from all
+- **Monthly budget**: a flexible category budget whose actual comes from all
   entries in that category.
 - **Entry**: one transaction in your ledger (the list on Entries).
 - **Wallet** or **account**: a bank account or card you track.

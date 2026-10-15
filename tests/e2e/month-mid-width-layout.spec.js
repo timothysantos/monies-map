@@ -4,7 +4,7 @@ import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 // Between the phone layout (760 px) and the width the desktop Month tables
 // need (about 1,100 px), the Month page must fit its width: the page never
-// scrolls sideways, and "+ Add planned item", the row open buttons and the
+// scrolls sideways, and "+ Add bill or dated payment", the row open buttons and the
 // edit sheet stay inside the part of the page the person can see.
 //
 // The portrait tablet uses full mobile emulation (isMobile), as a real
@@ -101,7 +101,7 @@ for (const size of MID_WIDTHS) {
         page,
         "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
         "/api/month-page",
-        () => page.getByRole("button", { name: "+ Add planned item" })
+        () => page.getByRole("button", { name: "+ Add bill or dated payment" })
       );
     });
 
@@ -166,15 +166,15 @@ for (const size of MID_WIDTHS) {
       }
     });
 
-    test("+ Add planned item is on screen and opens the new item", async ({ page }) => {
-      const add = page.getByRole("button", { name: "+ Add planned item" });
+    test("+ Add bill or dated payment is on screen and opens the new item", async ({ page }) => {
+      const add = page.getByRole("button", { name: "+ Add bill or dated payment" });
       await scrollToVertically(add);
       const placement = await readControlPlacement(add);
       expectInsideVisibleWidth(placement);
 
       await pressAt(page, placement.center, touch);
       if (size.layout === "sheet") {
-        const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+        const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
         await expect(sheet).toBeVisible();
         await sheet.getByRole("button", { name: "Cancel", exact: true }).click();
         await expect(sheet).toHaveCount(0);
@@ -202,7 +202,7 @@ for (const size of MID_WIDTHS) {
 
       await pressAt(page, placement.center, touch);
       if (size.layout === "sheet") {
-        await expect(page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]')).toBeVisible();
+        await expect(page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]')).toBeVisible();
         return;
       }
       // Desktop editing: the inputs widen the row, but the page still fits
@@ -228,7 +228,7 @@ for (const size of MID_WIDTHS) {
         const opener = page.getByRole("button", { name: "Edit Netflix row" });
         await scrollToVertically(opener);
         await pressAt(page, (await readControlPlacement(opener)).center, touch);
-        const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+        const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
         await expect(sheet).toBeVisible();
 
         const placement = await sheet.evaluate((element) => {
@@ -292,7 +292,7 @@ test.describe("Month outside the mid-width range", () => {
 
   test("a 1280 px desktop keeps full-size cells, one-line notes and a one-row header", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("button", { name: "+ Add planned item" }));
+    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("button", { name: "+ Add bill or dated payment" }));
     expect(await readOutOfRangeLayout(page)).toEqual({
       cellPadding: "10px",
       noteWhiteSpace: "nowrap",
@@ -303,7 +303,7 @@ test.describe("Month outside the mid-width range", () => {
 
   test("a 390 px phone keeps its own header grid and one-line notes", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("button", { name: "+ Add planned item" }));
+    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("button", { name: "+ Add bill or dated payment" }));
     const layout = await readOutOfRangeLayout(page);
     expect(layout.periodInlineDisplay).toBe("grid");
     expect(layout.noteWhiteSpace).toBe("nowrap");

@@ -9,14 +9,14 @@ import { describeAccountHealth } from "../src/client/account-display.js";
 test("an investment account says what its statement says it was worth, and when", () => {
   assert.equal(
     describeAccountHealth({ investmentValue: { valueMinor: 202_390, asOfDate: "2026-09-30" }, reconciliationStatus: undefined }),
-    "Worth $2,023.90 on 30 Sep 2026, from its statement"
+    "$2,023.90 on 30 Sep 2026, as the statement says"
   );
 });
 
 test("the statement figure wins over a reconciliation status the account never had", () => {
   assert.equal(
     describeAccountHealth({ investmentValue: { valueMinor: 100, asOfDate: "2026-01-31" }, reconciliationStatus: "matched", latestCheckpointMonth: "2026-01" }),
-    "Worth $1.00 on 31 Jan 2026, from its statement"
+    "$1.00 on 31 Jan 2026, as the statement says"
   );
 });
 

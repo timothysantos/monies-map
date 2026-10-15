@@ -299,14 +299,14 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   border-radius: 8px;
 }
 
+/* A label wraps instead of cutting: "Planned more than you earn" is two lines
+   in a phone column, and that column has no third line, so the card keeps its
+   height. */
 .lead-column-label {
-  overflow: hidden;
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .lead-column strong {

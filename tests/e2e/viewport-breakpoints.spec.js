@@ -35,7 +35,7 @@ test.describe("layout breakpoint switching", () => {
       page,
       "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
       "/api/month-page",
-      () => page.getByRole("button", { name: "+ Add planned item" })
+      () => page.getByRole("button", { name: "+ Add bill or dated payment" })
     );
     await markPage(page);
 
@@ -64,7 +64,7 @@ test.describe("layout breakpoint switching", () => {
     // Month hook, not only the open handler's fresh read.
     const savingsRow = page.locator("tr").filter({ hasText: "Savings" }).first();
     const matchDialog = page.locator(".planned-link-dialog");
-    const matchSheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+    const matchSheet = page.locator('.entry-mobile-sheet[aria-label="Match bill or dated payment"]');
     const expectMatchPicker = async (kind) => {
       await savingsRow.getByRole("button", { name: "Link entries" }).click();
       if (kind === "sheet") {

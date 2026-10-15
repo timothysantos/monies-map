@@ -226,7 +226,7 @@ test.describe("@webkit phone: confirmations are bottom sheets with the destructi
   });
 });
 
-test.describe("@webkit phone: note and Match planned item sheets", () => {
+test.describe("@webkit phone: note and Match bill or dated payment sheets", () => {
   test("Monthly Note: Cancel keeps the note, Done saves it", async ({ page }) => {
     await phone(page);
     await page.goto(`/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`);
@@ -251,7 +251,7 @@ test.describe("@webkit phone: note and Match planned item sheets", () => {
     await expect.poll(async () => (await loadMonthPage(page, { month: MONTH })).monthPage.monthNote).toBe(note);
   });
 
-  test("Match planned item: the lead is the planned item, its filters and rows are tap targets, Cancel links nothing", async ({ page }) => {
+  test("Match bill or dated payment: the lead is the planned item, its filters and rows are tap targets, Cancel links nothing", async ({ page }) => {
     await phone(page);
     const label = `Dialog planned ${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
@@ -271,7 +271,7 @@ test.describe("@webkit phone: note and Match planned item sheets", () => {
     await createExpense(page, description, { categoryName: "Entertainment", date: `${MONTH}-18`, amountMinor: 1600 });
     await page.goto(`/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`);
     await page.locator("tr").filter({ hasText: label }).first().getByRole("button", { name: "Link entries" }).click({ timeout: 60_000 });
-    const surface = sheet(page, "Match planned item");
+    const surface = sheet(page, "Match bill or dated payment");
     await expect(surface).toBeVisible();
     await expect(surface.locator(".lsd-title")).toHaveText(label);
     await expect(surface.locator(".lsd-amount")).toContainText("$50.00");
@@ -287,7 +287,7 @@ test.describe("@webkit phone: note and Match planned item sheets", () => {
     expect(row.linkedEntryIds ?? []).toEqual([]);
   });
 
-  test("hidden money: Match planned item shows the planned amount as dots", async ({ page }) => {
+  test("hidden money: Match bill or dated payment shows the planned amount as dots", async ({ page }) => {
     await phone(page, { hidden: true });
     const label = `Dialog hidden planned ${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
@@ -296,7 +296,7 @@ test.describe("@webkit phone: note and Match planned item sheets", () => {
     });
     await page.goto(`/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`);
     await page.locator("tr").filter({ hasText: label }).first().getByRole("button", { name: "Link entries" }).click({ timeout: 60_000 });
-    const surface = sheet(page, "Match planned item");
+    const surface = sheet(page, "Match bill or dated payment");
     await expect(surface).toBeVisible();
     expect(await surface.locator(".lsd-amount").innerText()).not.toMatch(/\d/);
   });

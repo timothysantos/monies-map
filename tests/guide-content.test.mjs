@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+import { findRetiredNames } from "../src/domain/retired-names.ts";
 import {
   classifyGuideHref,
   collectGuideAnchors,
@@ -93,6 +94,17 @@ function developerTermHits(markdown) {
 
 test("the user guide has no developer-only terms", () => {
   assert.deepEqual(developerTermHits(readFileSync("docs/user-guide.md", "utf8")), []);
+});
+
+// A guide that quotes a screen must use its current name (retired-names.ts).
+function retiredNameHits(markdown) {
+  return markdown.split("\n").flatMap((line, index) => findRetiredNames(line).map((problem) => `line ${index + 1}: ${problem}`));
+}
+
+test("neither guide uses a retired name, and the check catches one", () => {
+  assert.deepEqual(retiredNameHits(readFileSync("docs/user-guide.md", "utf8")), []);
+  assert.deepEqual(retiredNameHits(readFileSync("docs/developer-guide.md", "utf8")), []);
+  assert.equal(retiredNameHits("Open Money jobs\nThe Planned items list\nThe Where your money goes list").length, 2);
 });
 
 test("the developer guide keeps setup, testing and deploy material", () => {

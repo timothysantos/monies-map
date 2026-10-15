@@ -107,7 +107,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
     await page.goto("/summary?view=household");
     const row = page.locator(".summary-wallet-row").filter({ hasText: "Alex iFAST" });
     await expect(row).toBeVisible({ timeout: 60_000 });
-    await expect(row.locator(".summary-wallet-health")).toHaveText("Worth $1,374.67 on 31 Jul 2026, from its statement");
+    await expect(row.locator(".summary-wallet-health")).toHaveText("$1,374.67 on 31 Jul 2026, as the statement says");
     await shot(page, `after-summary-${device.label}`);
 
     // Hidden money: no figure and no words that carry it.

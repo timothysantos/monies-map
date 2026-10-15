@@ -896,8 +896,7 @@ Where it is used:
   plan) is the card's own figure. Remaining budget is an openable figure
   (see "Openable figures"): the whole column opens its menu, whose first line
   is the explanation the old popover held, then Open plan and Ask about this;
-  its label is "To
-  allocate" or "Overplanned", and "Remaining budget" with the money hidden. The six sideways
+  its label is "Not planned yet" or "Planned more than you earn", and "Remaining budget" with the money hidden. The six sideways
   tiles are gone; nothing scrolls sideways at 390 px.
 - Savings bar (`ui/savings-bar.jsx`, `savings-bar-model.js`, CSS in
   `summary-lead.css`; inside `SpendLeadGroup`, so on both the Summary top and
@@ -998,10 +997,10 @@ Where it is used:
   no share shows, in any view, because "26347%" says nothing the amounts
   and the bar do not. The lead's old compact gaps (2 px) made the card
   215 px on a phone; this is 270 px at most.
-- Money jobs (`ui/money-jobs.jsx`, `money-jobs-model.js`, CSS in
+- Money jobs, named "Where your money goes" on screen (`ui/money-jobs.jsx`, `money-jobs-model.js`, CSS in
   `summary-lead.css`; inside `SpendLeadGroup` under the savings bar, DOMAIN.md
   "Money job"): a `<details>` Detail whose summary is one muted line, "3 of
-  4 money jobs done" ("… so far" while the period's last month is the
+  4 things on track" ("… so far" while the period's last month is the
   current month), folded on a phone (it takes the old plan line's place and
   height, a 4 px line gap under the sentence, so the Month card stays at most 270 px;
   a phone shows the sentences that name investing in a one-line form, "Kept
@@ -1033,7 +1032,7 @@ Where it is used:
 - The menu a bar part, a job and every other figure opens is the one
   described under "Openable figures" below (`figure-menu.js`).
 - Month plan tables (`month-plan-tables.jsx`, `month-plan-rows.css`, in the
-  Month route chunk): Income, Budget Buckets and Planned Items keep their
+  Month route chunk): Income, Monthly budget and Bills and dated payments keep their
   `<table>` markup (inline editing, sorting, row opening and the tests'
   hooks are unchanged); only the hierarchy changes. Every layout: the item
   is the heavy lead, Planned, Actual and Variance are right-aligned and
@@ -1141,7 +1140,7 @@ Where it is used:
   under plan, plan short or left, over plan, planned bills, savings on
   plan, plan pace, fixed costs; the check-in's context key gains "|simple"
   so its memory is per mode), Spending Mix, "Earned vs spent by month" in
-  Intent vs Outcome's place, and Wallets in view. "Earned vs spent by month"
+  Intent vs Outcome's place, and The accounts shown. "Earned vs spent by month"
   (`summary-earned-spent.js`, model `summary-earned-spent-model.js`): flat
   rows split by hairlines, newest first; the month name (44 px) opens the
   month, beside it "Kept $x" (mint) or "Overspent $x" (rose), under it
@@ -1253,7 +1252,7 @@ Where it is used:
   against the previous period is left out: neither page loads it. The
   coloured sectors take no pointer events, so Recharts never swaps a sector
   for its "active" copy under the pointer.
-  Wallets in view is one group of `DetailRow`s (a `DetailRows` group, from
+  The accounts shown is one group of `DetailRow`s (a `DetailRows` group, from
   1,024 px the heading on the left and the group on the right): the wallet
   name with its statement freshness under it ("Reconciled to Sep 2026
   statement", in the money tone's ink: mint when matched, rose when off,
@@ -1499,7 +1498,7 @@ actions; it gives them the layout:
   entry or Break connection apart at the start), Delete entry and Delete
   split, Delete split row, Reset and Delete month, Clear unresolved transfers,
   the row, month and Summary notes (`note-sheet-dialog.jsx`, one
-  `MonthNoteDialog` that Summary loads on demand), Match planned item
+  `MonthNoteDialog` that Summary loads on demand), Match bill or dated payment
   (`month-plan-link-dialog.jsx`), the Settings account, person, category and
   match rule editors, Statement checkpoint (fits a phone), Set up this login,
   Reload app data and Empty state, Restore preview row, Set diagnostic post
@@ -1507,7 +1506,7 @@ actions; it gives them the layout:
   Month Actions list (a sheet of Detail rows on a phone; the popover stays on
   a wide screen), "I've topped up" and the import progress sheet (Close in
   its bar). The Month plan-row sheet already served Add income source, Add
-  budget bucket and Add planned item on a phone; wide screens keep the inline
+  monthly budget and Add bill or dated payment on a phone; wide screens keep the inline
   add rows.
 - The phone picker sheet (`picker-sheet.jsx`, lazy-loaded by
   `ResponsiveSelect` and the Entries multi-select because both are
@@ -1556,7 +1555,7 @@ How it is built. A figure carries `data-fig` (what it is: a money figure,
 category or the group), `data-fig-ids` (a Month plan row's entries),
 `data-fig-plan` (its part of the plan), `data-fig-ask` (its question when
 not its own) and `data-fig-note` (a line that explains it, first in the
-menu: To allocate's old popover). The period is `data-fig-period`
+menu: Not planned yet's old popover). The period is `data-fig-period`
 ("YYYY-MM:YYYY-MM") on the figure or a parent (the lead group, a month's
 card or row); without one it is the page's month. A text figure is
 `role="button"` with `tabIndex=0`; parts and rows that are buttons already
@@ -1586,7 +1585,7 @@ make room).
 Where: the Summary and Month lead in Plan and Simple (Spent and its plan,
 the plan line, Earned and Spent in Simple, every savings bar part, legend
 line and the sentence, the money jobs, the Income and Saved pills or
-columns, To allocate), Simple's Daily spend and Top spending, Intent vs
+columns, Not planned yet), Simple's Daily spend and Top spending, Intent vs
 Outcome, Earned vs spent by month, Spending Mix (each slice and each row's `›`), the Month
 plan rows' actuals, the Entries lead and pills, the Splits lead's balance
 and the open group's strip tile (another tile still opens its group).
@@ -2184,7 +2183,7 @@ when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures. Hiding money also hides its
 sign, in colour and in words: every money tone (below) turns neutral, and
 wording that says which side of zero a hidden figure is on goes too. Month's
-Remaining budget drops its "To allocate" / "Overplanned" line (the Month
+Remaining budget drops its "Not planned yet" / "Planned more than you earn" line (the Month
 lead's pill hides it with the amount), the Summary lead and the Month plan sheet drop
 "under / over plan", "% of plan", "left", "over" and "to come" and keep only
 their bar's empty track, wallet pills and Settings drop the statement health
@@ -2683,7 +2682,7 @@ request yet means the error panel, while this request's own rows on screen
 mean the refresh notice.
 
 Dialogs and sheets that write keep their draft until the write succeeds.
-The Month "Match planned item" dialog (desktop) and sheet (mobile) show
+The Month "Match bill or dated payment" dialog (desktop) and sheet (mobile) show
 "Saving...", take one submit (a ref guards double clicks), and check the
 response. Escape, Cancel and the close button are ignored while the save
 is in flight. A failure keeps the dialog or sheet open with its draft and an

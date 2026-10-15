@@ -35,7 +35,7 @@ async function bucketWithEntries(page) {
 }
 
 async function openMonth(page) {
-  await gotoPageAfterApi(page, MONTH_URL, "/api/month-page", () => page.getByRole("button", { name: "+ Add planned item" }));
+  await gotoPageAfterApi(page, MONTH_URL, "/api/month-page", () => page.getByRole("button", { name: "+ Add bill or dated payment" }));
 }
 
 // The phone opens a row by tapping it (the row's own button is for wider
@@ -67,7 +67,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     const savings = (await monthRows(page)).find((row) => row.sectionKey === "planned_items" && row.label === "Savings");
     expect(savings).toBeTruthy();
     await openMonth(page);
-    const sheet = await openRowSheet(page, "Savings", "Edit planned item");
+    const sheet = await openRowSheet(page, "Savings", "Edit bill or dated payment");
 
     // Lead: the planned amount as a decimal-keypad input in the plan tone,
     // labelled "planned", under the row's name and kind.
@@ -78,7 +78,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     expect(await planned.evaluate((input) => Boolean(input.closest(".lsd-amount.is-editable")))).toBe(true);
     expect(await planned.evaluate((input) => getComputedStyle(input).color)).toBe(INK.plan);
     await expect(lead.locator(".lsd-title")).toHaveText("Savings");
-    await expect(lead.locator(".lsd-subtitle")).toHaveText("Planned item");
+    await expect(lead.locator(".lsd-subtitle")).toHaveText("Bill or dated payment");
     await expect(lead.locator(".lsd-amount-caption")).toHaveText("planned");
     // Support: month and owner chips; the owner chip is Tim's colour, handed
     // to the page as its palette token (paletteColour) so a preset re-colours it.
@@ -110,7 +110,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
   test("a budget bucket shows actual against its plan, and the Actual row opens its entries", async ({ page }) => {
     const bucket = await bucketWithEntries(page);
     await openMonth(page);
-    const sheet = await openRowSheet(page, bucket.label, "Edit budget bucket");
+    const sheet = await openRowSheet(page, bucket.label, "Edit monthly budget");
     const lead = sheet.locator(".lsd-card");
 
     const headroom = bucket.plannedMinor - bucket.actualMinor;
@@ -142,7 +142,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     await openMonth(page);
     let saves = 0;
     page.on("request", (request) => { if (request.url().includes("/api/month-plan/save")) saves += 1; });
-    const sheet = await openRowSheet(page, "Savings", "Edit planned item");
+    const sheet = await openRowSheet(page, "Savings", "Edit bill or dated payment");
     const viewport = page.viewportSize();
     const bar = await box(sheet.locator(".lsd-bottom"));
     const cancel = sheet.locator(".lsd-bottom").getByRole("button", { name: "Cancel" });
@@ -157,7 +157,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     expect(doneBox.bottom).toBeGreaterThan(viewport.height * 0.85);
 
     const targets = {
-      close: sheet.getByRole("button", { name: "Close edit planned item" }),
+      close: sheet.getByRole("button", { name: "Close edit bill or dated payment" }),
       cancel,
       done,
       bubble: sheet.getByRole("button", { name: "Edit Savings" }),
@@ -184,13 +184,13 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     await cancel.click();
     await expect(sheet).toHaveCount(0);
     expect(saves).toBe(0);
-    const reopened = await openRowSheet(page, "Savings", "Edit planned item");
+    const reopened = await openRowSheet(page, "Savings", "Edit bill or dated payment");
     await expect(reopened.getByRole("textbox", { name: "Planned" })).toHaveValue("1800.00");
   });
 
   test("a failed save keeps the sheet, the draft and the inline error, and Done stays in reach", async ({ page }) => {
     await openMonth(page);
-    const sheet = await openRowSheet(page, "Savings", "Edit planned item");
+    const sheet = await openRowSheet(page, "Savings", "Edit bill or dated payment");
     await page.route("**/api/month-plan/save", (route) => route.fulfill({
       status: 500,
       contentType: "application/json",
@@ -216,7 +216,7 @@ test.describe("Month plan-row sheet on a phone", { tag: "@webkit" }, () => {
     const bucket = await bucketWithEntries(page);
     await openMonth(page);
     await expect(page.getByRole("button", { name: "Show money totals" }).first()).toBeAttached();
-    const sheet = await openRowSheet(page, bucket.label, "Edit budget bucket");
+    const sheet = await openRowSheet(page, bucket.label, "Edit monthly budget");
     const lead = sheet.locator(".lsd-card");
     const planned = sheet.getByRole("textbox", { name: "Planned" });
 

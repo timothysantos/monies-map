@@ -135,7 +135,7 @@ async function swipeDown(page, sheet, sheetSelector, { distance = 260 } = {}) {
   });
 }
 
-// The Month "Match planned item" sheet with a candidate list long enough to
+// The Month "Match bill or dated payment" sheet with a candidate list long enough to
 // scroll inside the sheet (its own scroll box, a nested scroller).
 async function openPlanLinkSheet(page) {
   const label = `Swipe list night ${Date.now()}`;
@@ -166,7 +166,7 @@ async function openPlanLinkSheet(page) {
   }
   await page.goto(`/month?view=person-tim&month=${MONTH}&scope=direct_plus_shared`);
   await page.locator("tr").filter({ hasText: label }).first().getByRole("button", { name: "Link entries" }).click();
-  const sheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+  const sheet = page.locator('.entry-mobile-sheet[aria-label="Match bill or dated payment"]');
   await expect(sheet).toBeVisible({ timeout: 60_000 });
   const list = sheet.locator(".planned-link-list");
   await expect(list).toContainText("Swipe list candidate 14");
@@ -389,13 +389,13 @@ test.describe("Swipe down to close a phone sheet", { tag: "@webkit" }, () => {
       moves: down(260),
       stepMs: 20,
       restMs: 140,
-      sheetSelector: '.entry-mobile-sheet[aria-label="Match planned item"]'
+      sheetSelector: '.entry-mobile-sheet[aria-label="Match bill or dated payment"]'
     });
     expect(onList.prevented.some(Boolean)).toBe(false);
     expect(onList.transformDuringDrag).toBe("");
     await expect(sheet).toBeVisible();
     // From the sheet's top it still swipes closed (nothing ticked: clean).
-    await swipeDown(page, sheet, '.entry-mobile-sheet[aria-label="Match planned item"]');
+    await swipeDown(page, sheet, '.entry-mobile-sheet[aria-label="Match bill or dated payment"]');
     await expect(sheet).toBeHidden();
   });
 

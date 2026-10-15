@@ -48,7 +48,7 @@ is at most 270 px tall on an iPhone 13 (the groups have room between them,
 design.md "Lead rhythm") so Money insights still start above the fold. The
 figures are the month page DTO's metric cards plus the month's Summary row
 (`buildMonthLeadModel`), so they equal what the six tiles showed; the
-Remaining budget column (labelled "To allocate" or "Overplanned", "Remaining budget" when money is hidden) opens its explanation. Nothing scrolls sideways at
+Remaining budget column (labelled "Not planned yet" or "Planned more than you earn", "Remaining budget" when money is hidden) opens its explanation. Nothing scrolls sideways at
 390 px (`tests/e2e/summary-month-lsd.spec.js`).
 
 The card's Plan | Simple switch (`lead-view.js`, DOMAIN.md "Lead View")
@@ -88,7 +88,7 @@ if; the plan tables' own hint says to switch to a person view). Simple view does
 `tests/e2e/plan-studio.spec.js`, `tests/e2e/plan-studio-v2.spec.js`,
 `tests/e2e/plan-studio-layout.spec.js`.
 
-The plan tables (Income, Budget Buckets, Planned Items) keep their table
+The plan tables (Income, Monthly budget, Bills and dated payments) keep their table
 markup on every layout and add hierarchy: the item leads, the money columns
 are right-aligned, and a thin bar under each actual shows actual against
 plan. On the sheet layout each row is a compact card (bubble, item and
@@ -128,7 +128,7 @@ iPhone keyboard.
 The mobile edit, add and match sheets are modal dialogs (`EntryMobileSheet`).
 Focus moves into the sheet on open and stays inside it. Escape or a backdrop
 tap closes it and discards the draft, as the desktop dialogs do. Focus then
-returns to the row button or "+ Add planned item". While a save is in flight,
+returns to the row button or "+ Add bill or dated payment". While a save is in flight,
 Escape is ignored, so a failed save keeps the sheet and its draft.
 
 "Mobile" here means the Month sheet layout (`MONTH_SHEET_LAYOUT_QUERY`): a
@@ -144,7 +144,7 @@ From 761 to 1,099 px wide (tablets in either orientation, small laptops)
 the Month page fits the screen and never scrolls sideways. The plan tables
 fit whole from about 900 px (notes wrap to two lines); narrower than that,
 the Account and Note columns scroll inside the table while Category, Item,
-Planned, Actual and Variance stay on screen. "+ Add planned item", the row
+Planned, Actual and Variance stay on screen. "+ Add bill or dated payment", the row
 open buttons, the header tabs and the period controls stay on screen and
 uncovered, and inline Save and Cancel stay at the visible edge of the table.
 From 1,100 to 1,199 px the plan tables tighten a
@@ -188,7 +188,7 @@ Month data comes from:
 - `GET /api/summary-account-pills` for the view, fetched beside it: the
   Accounts section's balances and statement health and the money check-in's
   statement-gap Quick fix (a statement that does not match). The query and
-  its cache are shared with Summary's "Wallets in view".
+  its cache are shared with Summary's "The accounts shown".
 - `GET /api/summary-page` for the range, through the Summary owner
   (`loadSummaryRangeContext` in `App.jsx`): the header's range, the month
   arrows and the month sheet's figures. Coming from All months it is

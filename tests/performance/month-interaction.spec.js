@@ -10,7 +10,7 @@ import {
   writeInteractionReport
 } from "./interaction-probe.mjs";
 
-// Month page "Match planned item" picker on the 2,000-row month
+// Month page "Match bill or dated payment" picker on the 2,000-row month
 // (scale-10k, 2026-05). The picker scores every expense in the month
 // against the planned item (981 Groceries rows match its category) and
 // lists the best 80 (buildPlanLinkCandidates). Records timing and render
@@ -64,8 +64,8 @@ test("Month plan-link picker on the 2,000-row month", async ({ browser }, testIn
   await page.evaluate(() => window.__reactCommitCounter.trackRows(["planned-link-row"]));
 
   // Desktop uses a dialog, mobile a bottom sheet with the same content.
-  const picker = mobile ? page.locator('.entry-mobile-sheet[aria-label="Match planned item"]') : page.locator(".planned-link-dialog");
-  const pickerSelector = mobile ? '.entry-mobile-sheet[aria-label="Match planned item"]' : ".planned-link-dialog";
+  const picker = mobile ? page.locator('.entry-mobile-sheet[aria-label="Match bill or dated payment"]') : page.locator(".planned-link-dialog");
+  const pickerSelector = mobile ? '.entry-mobile-sheet[aria-label="Match bill or dated payment"]' : ".planned-link-dialog";
   const filter = picker.getByPlaceholder("Filter descriptions in this list");
   let candidateCount = 0;
 

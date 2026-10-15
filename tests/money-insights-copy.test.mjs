@@ -122,14 +122,28 @@ test("the plain-words lint catches app-centred phrases and lets everyday ones th
     "Your cushion would last about 2 months.",
     "At this runway you are fine.",
     "A drawdown of savings paid for it.",
-    "The numbers are skewed, so check the basis."
+    "The numbers are skewed, so check the basis.",
+    // Names the owner retired (src/domain/retired-names.ts).
+    "Your plan is Overplanned by $200.",
+    "$200 is still To allocate.",
+    "Open your Money jobs to see why.",
+    "The Wallets in view show the gap.",
+    "Your budget bucket for Food is over.",
+    "Two Planned items are still unpaid.",
+    "Worth $5 on 1 Jan, from its statement."
   ]) {
     assert.ok(findAppJargon(bad).length > 0, bad);
   }
   for (const fine of [
     "19 purchases in August don't have a category yet.",
     "Matching each to its payment (\"linking\") shows which.",
-    "Happy charting the year ahead."
+    "Happy charting the year ahead.",
+    "You planned more than you earn by $200.",
+    "$200 is not planned yet.",
+    "Where your money goes shows the gap.",
+    "Your monthly budget for Food is over.",
+    "Two bills and dated payments are still unpaid.",
+    "$5 on 1 Jan, as the statement says."
   ]) {
     assert.deepEqual(findAppJargon(fine), [], fine);
   }

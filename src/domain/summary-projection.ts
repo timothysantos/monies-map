@@ -123,7 +123,7 @@ export function buildSummaryPage(
       personId === "household"
         ? [
             "This app is not only asking what got spent. It is trying to show what was intended, what happened, and which assumption broke.",
-            "Planned rows are meant for recurring or intentional commitments. Budget buckets are the flexible layer for categories that should stay broad."
+            "Planned rows are meant for recurring or intentional commitments. Monthly budgets are the flexible layer for categories that should stay broad."
           ]
         : [
             `This view is filtered to ${personNameById[personId] ?? personId}. Shared actuals are weighted to this person's split share.`,

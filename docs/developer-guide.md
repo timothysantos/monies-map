@@ -2241,7 +2241,7 @@ candidate's suggested actions through `resolveSkewCandidate` (an allowlist
 of the existing routes) and ask again. Tests: `tests/ask-answer-*.test.mjs`
 (intent table, showcase figures against the page DTOs, skew first, AI
 validation and fallbacks), `tests/ask-money-jobs-answers.test.mjs` (the
-money jobs' questions against the Month and Summary lead's own split),
+"where your money goes" questions against the Month and Summary lead's own split),
 `tests/ask-money-answer.test.mjs` and
 `tests/e2e/ask-money-answers.spec.js`; audit
 `docs/audits/ask-answers-audit.md`.
@@ -2420,36 +2420,36 @@ out of date.
 
 The app separates a month into two layers:
 
-- planned items
-- budget buckets
+- bills and dated payments (stored as `planned_items`)
+- monthly budgets (stored as `budget_buckets`)
 
-Planned items are intentional commitments or recurring obligations. These are
+Bills and dated payments are intentional commitments or recurring obligations. These are
 the rows near the top of the month, such as savings, tax, subscriptions, house
 loan, insurance, and other known items.
 
-Budget buckets are flexible categories, such as food, groceries, transport, and
+Monthly budgets are flexible categories, such as food, groceries, transport, and
 shopping. These are not supposed to predict every single merchant in advance.
 
-Planned items and budget buckets match actuals differently. Planned items are
-matched explicitly to one or more ledger entries, because several planned items
-can share a category such as `Bills`. Budget buckets remain category-driven and
+Bills and dated payments and monthly budgets match actuals differently. A bill or dated payment is
+matched explicitly to one or more ledger entries, because several of them
+can share a category such as `Bills`. Monthly budgets remain category-driven and
 roll up the remaining actual expense entries for that category.
 
-When a planned item has many possible ledger matches, the matching dialog does
+When a bill or dated payment has many possible ledger matches, the matching dialog does
 not run a full ledger search first. It starts with lightweight narrowing:
 `Linked`, `Same category`, `Same account`, `This month only`, and a description
 contains filter over the ranked candidate list. This keeps the flow faster than
 global search while still making long categories such as `Food & Drinks` easier
 to narrow down.
 
-On mobile, this planned-item matching flow uses the same bottom-sheet pattern as
+On mobile, this bill and dated payment matching flow uses the same bottom-sheet pattern as
 the other month add and edit forms instead of a centered modal.
 
-After a planned item is matched, the app remembers lightweight matching hints
+After a bill or dated payment is matched, the app remembers lightweight matching hints
 from the linked ledger entries so future months can suggest likely matches. It
 does not auto-link them yet; the user still confirms the matches.
 
-Budget buckets are reduced by money in under the same spending category, such
+Monthly budgets are reduced by money in under the same spending category, such
 as a refund or a friend paying back their share (`src/domain/category-offset.ts`,
 "Category offset" in `DOMAIN.md`). The same rule lowers spending on Summary,
 the Month totals, the Entries totals and breakdown, and the check-ins, and keeps
@@ -2615,8 +2615,8 @@ Examples of over-granular planning:
 - creating many rows that change name or meaning every month
 
 Based on the June to October sheets, the current approach already looks fairly
-flexible. The top portion behaves like planned items, and the highlighted lower
-section behaves like budget buckets. That is a reasonable structure to carry
+flexible. The top portion behaves like bills and dated payments, and the highlighted lower
+section behaves like monthly budgets. That is a reasonable structure to carry
 into the app.
 
 ## What is still in progress?

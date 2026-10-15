@@ -88,7 +88,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
 
     await importMonth(page, testInfo, "aug", "Alex Sample Holder StashAway was worth $15,706.59 on 31 Aug 2026, from the statement");
     await page.goto("/summary?view=household");
-    await expect(page.locator(".summary-wallet-row").filter({ hasText: ACCOUNT }).locator(".summary-wallet-health")).toHaveText("Worth $15,706.59 on 31 Aug 2026, from its statement", { timeout: 60_000 });
+    await expect(page.locator(".summary-wallet-row").filter({ hasText: ACCOUNT }).locator(".summary-wallet-health")).toHaveText("$15,706.59 on 31 Aug 2026, as the statement says", { timeout: 60_000 });
 
     const card = await openStatement(page, testInfo, "sep");
     await expect(card).toContainText("Alex Sample Holder StashAway was worth $15,357.71 on 30 Sep 2026, from the statement", { timeout: 60_000 });
@@ -105,7 +105,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
 
     await page.goto("/summary?view=household");
     const row = page.locator(".summary-wallet-row").filter({ hasText: ACCOUNT });
-    await expect(row.locator(".summary-wallet-health")).toHaveText("Worth $15,357.71 on 30 Sep 2026, from its statement", { timeout: 60_000 });
+    await expect(row.locator(".summary-wallet-health")).toHaveText("$15,357.71 on 30 Sep 2026, as the statement says", { timeout: 60_000 });
     await shot(page, `after-summary-${device.label}`);
 
     // Hidden money: no figure and no words that carry it.

@@ -211,7 +211,7 @@ test("mobile: a plan row reopened before the reload shows the amount and note ju
   // The phone layout opens a row by tapping it; the row's own open button is
   // for wider layouts.
   const rowOpener = page.locator("tr").filter({ hasText: label }).first().getByText(label, { exact: true });
-  const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+  const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
 
   await rowOpener.click();
   await sheet.locator('input[value="43.21"]').fill("45.67");
@@ -283,7 +283,7 @@ for (const layout of layouts) {
 
     if (layout.name === "mobile") {
       await row.getByText(label, { exact: true }).click();
-      const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+      const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
       await expect(sheet.locator("textarea")).toHaveValue(draft);
     } else {
       await row.getByRole("button", { name: `Edit ${label} row` }).click();

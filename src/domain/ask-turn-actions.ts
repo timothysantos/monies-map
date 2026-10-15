@@ -1098,7 +1098,7 @@ export const ACTION_COPY = {
   pickColour: "Pick the colour in Settings: it shows every colour a category can have.",
   whichPlanLine: "Which plan line should the entries link to?",
   whichEntriesForPlan: (line: string) => `Which entries count towards ${scrubName(line)}? Name the shop as the bank shows it.`,
-  onlyPlannedItems: (line: string) => `Only a planned item can link to entries, and ${scrubName(line)} isn't one.`,
+  onlyPlannedItems: (line: string) => `Only a bill or dated payment can link to entries, and ${scrubName(line)} isn't one.`,
   noPlanLine: (line: string, month: string) => `${month} has no plan line called ${scrubName(line)}.`,
   noneToLink: (words: string, month: string) => `No unlinked expenses with "${scrubName(words)}" in ${month}.`
 };

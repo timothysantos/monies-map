@@ -8,6 +8,7 @@ import test from "node:test";
 
 import { planStudioAddCopy } from "../src/client/copy/plan-studio-add-copy.js";
 import { planStudioCopy } from "../src/client/copy/plan-studio-copy.js";
+import { findRetiredNames, RETIRED_NAMES } from "../src/domain/retired-names.ts";
 
 // "Tables" is rejected as a name; "studio" as a name; internal nouns always.
 const BANNED = [
@@ -57,6 +58,7 @@ test("no Plan Studio string uses a product-internal or designer word", () => {
     for (const [pattern, name] of BANNED) {
       if (pattern.test(text)) offences.push(`${path}: "${text}" (${name})`);
     }
+    for (const problem of findRetiredNames(text)) offences.push(`${path}: "${text}" (${problem})`);
   }
   assert.deepEqual(offences, []);
 });
@@ -77,4 +79,20 @@ test("the switch is Sliders | List, named 'How to show the plan'", () => {
 test("the Add to Savings dialog says what it does in plain words", () => {
   assert.equal(planStudioCopy.extraIncome.confirmTitle("$500"), "Add $500 to Savings?");
   assert.equal(planStudioCopy.extraIncome.confirmText("$500"), "This adds $500 to your Savings and counts it as extra money in, so the plan still adds up.");
+});
+
+test("the retired names are rejected in plan copy, and their replacements pass", () => {
+  for (const [old, now] of [
+    ["Overplanned", "Planned more than you earn"],
+    ["To allocate", "Not planned yet"],
+    ["Money jobs", "Where your money goes"],
+    ["Wallets in view", "The accounts shown"],
+    ["Add a budget bucket", "Add a monthly budget"],
+    ["Planned items", "Bills and dated payments"],
+    ["Worth $5 on 1 Jan, from its statement", "$5 on 1 Jan, as the statement says"]
+  ]) {
+    assert.equal(findRetiredNames(old).length, 1, old);
+    assert.deepEqual(findRetiredNames(now), [], now);
+  }
+  assert.equal(RETIRED_NAMES.length, 7);
 });

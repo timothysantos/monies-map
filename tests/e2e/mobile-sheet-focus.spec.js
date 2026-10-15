@@ -14,7 +14,7 @@ async function gotoMobileMonth(page) {
     page,
     "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
     "/api/month-page",
-    () => page.getByRole("button", { name: "+ Add planned item" })
+    () => page.getByRole("button", { name: "+ Add bill or dated payment" })
   );
 }
 
@@ -39,8 +39,8 @@ test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
 
   test("the add planned item sheet takes focus, keeps it inside, closes on Escape and returns focus", async ({ page }) => {
     await gotoMobileMonth(page);
-    const opener = page.getByRole("button", { name: "+ Add planned item" });
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    const opener = page.getByRole("button", { name: "+ Add bill or dated payment" });
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
 
     await opener.click();
     await expect(sheet).toBeVisible();
@@ -63,11 +63,11 @@ test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
     await expect(opener).toBeFocused();
   });
 
-  test("the edit planned item sheet opens from the keyboard, Escape discards the draft and focus returns to the row", async ({ page }) => {
+  test("the edit bill or dated payment sheet opens from the keyboard, Escape discards the draft and focus returns to the row", async ({ page }) => {
     await gotoMobileMonth(page);
     const row = page.locator("tr").filter({ hasText: "Savings" }).first();
     const rowOpener = row.getByRole("button", { name: "Edit Savings row" });
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
 
     await rowOpener.focus();
     await page.keyboard.press("Enter");
@@ -91,7 +91,7 @@ test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
   test("Escape during a save keeps the sheet and its draft until the save answers", async ({ page }) => {
     await gotoMobileMonth(page);
     const row = page.locator("tr").filter({ hasText: "Savings" }).first();
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
 
     await row.getByRole("button", { name: "Edit Savings row" }).focus();
     await page.keyboard.press("Enter");
@@ -123,8 +123,8 @@ test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
 
   test("Escape inside a nested picker closes only the picker, not the sheet", async ({ page }) => {
     await gotoMobileMonth(page);
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
-    await page.getByRole("button", { name: "+ Add planned item" }).click();
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
+    await page.getByRole("button", { name: "+ Add bill or dated payment" }).click();
     await expect(sheet).toBeVisible();
 
     await sheet.getByRole("button", { name: "Edit Savings" }).click();
@@ -206,8 +206,8 @@ test.describe("mobile sheet focus after a tap", { tag: "@webkit" }, () => {
 
   test("Month sheets return focus to the tapped button that opened them", async ({ page }) => {
     await gotoMobileMonth(page);
-    const addOpener = page.getByRole("button", { name: "+ Add planned item" });
-    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    const addOpener = page.getByRole("button", { name: "+ Add bill or dated payment" });
+    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
 
     await addOpener.tap();
     await expect(addSheet).toBeVisible();
@@ -219,11 +219,11 @@ test.describe("mobile sheet focus after a tap", { tag: "@webkit" }, () => {
     // A second tap on a different control makes that control the opener,
     // not the one that last had focus.
     const rowOpener = page.locator("tr").filter({ hasText: "Savings" }).first().getByRole("button", { name: "Edit Savings row" });
-    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await rowOpener.tap();
     await expect(editSheet).toBeVisible();
     await expect.poll(() => focusIsInside(editSheet)).toBe(true);
-    await editSheet.getByRole("button", { name: "Close edit planned item" }).tap();
+    await editSheet.getByRole("button", { name: "Close edit bill or dated payment" }).tap();
     await expect(editSheet).toHaveCount(0);
     await expect(rowOpener).toBeFocused();
     await expect(addOpener).not.toBeFocused();
@@ -339,13 +339,13 @@ for (const tablet of PORTRAIT_TABLETS) {
         page,
         "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
         "/api/month-page",
-        () => page.getByRole("button", { name: "+ Add planned item" })
+        () => page.getByRole("button", { name: "+ Add bill or dated payment" })
       );
     });
 
     test("the add planned item sheet opens on screen and saves from its own Save button", async ({ page }) => {
-      const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
-      const opener = page.getByRole("button", { name: "+ Add planned item" });
+      const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
+      const opener = page.getByRole("button", { name: "+ Add bill or dated payment" });
       await opener.scrollIntoViewIfNeeded();
       const scrollBefore = await page.evaluate(() => window.scrollY);
       await (tablet.touch ? opener.tap() : opener.click());
@@ -392,7 +392,7 @@ for (const tablet of PORTRAIT_TABLETS) {
 
     test("an existing plan row opens its edit sheet on screen and saves the change", async ({ page }) => {
       const rowOpener = page.locator("tr").filter({ hasText: "Savings" }).first().getByRole("button", { name: "Edit Savings row" });
-      const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+      const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
       await (tablet.touch ? rowOpener.tap() : rowOpener.click());
       await expect(sheet).toBeVisible();
       await expect.poll(() => focusIsInside(sheet)).toBe(true);
@@ -487,8 +487,8 @@ test.describe("mobile sheet background", () => {
       return page.evaluate(() => window.__lastTouchMoveCancelled);
     };
     await page.evaluate(() => window.scrollTo({ top: 400, behavior: "instant" }));
-    const opener = page.getByRole("button", { name: "+ Add planned item" });
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    const opener = page.getByRole("button", { name: "+ Add bill or dated payment" });
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
     await opener.click();
     await expect(sheet).toBeVisible();
     await expect.poll(() => focusIsInside(sheet)).toBe(true);
@@ -503,7 +503,7 @@ test.describe("mobile sheet background", () => {
     expect(movedOutside).toBe(true);
     await expect.poll(() => focusIsInside(sheet)).toBe(true);
 
-    await expect(page.getByRole("button", { name: "+ Add planned item", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "+ Add bill or dated payment", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Edit Savings row" })).toHaveCount(0);
     expect(await hiddenFromScreenReaders(page.locator("tr").filter({ hasText: "Savings" }).first())).toBe(true);
     expect(await hiddenFromScreenReaders(sheet)).toBe(false);

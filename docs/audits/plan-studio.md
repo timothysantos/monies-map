@@ -248,7 +248,7 @@ DTO, job and plan line / plan row. Screenshots: `toolbar-before-desktop|phone.pn
 Kept as clear enough: Left over, Lock, Undo, Save plan, Remove line, On track,
 Over plan.
 
-Other screens' unclear names, proposed only (not changed):
+Other screens' unclear names (owner approved 2026-10-15 and renamed; see docs/audits/plain-names/README.md):
 
 | Where | Now | Proposal |
 | --- | --- | --- |

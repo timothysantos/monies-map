@@ -9,7 +9,7 @@ import { gotoPageAfterApi, loadSummaryAccountPills, loadSummaryPage, postJson, r
 // lean ranked list beside or under it (a colour dot, name, amount and share
 // on one line; the top 5 on a desktop and 3 on a phone, then "Show all N"),
 // which "Hide list" folds away for a bigger donut. Every slice opens its
-// figure menu. Wallets in view is one
+// figure menu. The accounts shown is one
 // group of compact rows (wallet, balance, how fresh its statement is);
 // everything tappable is at least 44px each way; nothing scrolls sideways.
 // Hidden money shows no amounts and no wallet health, but keeps the shares.
@@ -456,13 +456,13 @@ for (const device of [
       expect([url.searchParams.get("entry_figure"), url.searchParams.get("entry_to")]).toEqual(["spent", url.searchParams.get("month")]);
     });
 
-    test("Wallets in view: one group of compact rows, the DTO's wallet, balance and freshness, no sideways scroll", async ({ page }) => {
+    test("The accounts shown: one group of compact rows, the DTO's wallet, balance and freshness, no sideways scroll", async ({ page }) => {
       await setMoney(page, true);
       await openSummary(page);
       const { accountPills } = await loadSummaryAccountPills(page, { view: pageParams(page).view });
       expect(accountPills.length).toBeGreaterThan(1);
       const card = walletsCard(page);
-      await expect(card.getByRole("heading", { name: "Wallets in view" })).toBeVisible();
+      await expect(card.getByRole("heading", { name: "The accounts shown" })).toBeVisible();
       await expect(card.locator(".lsd-rows")).toHaveCount(1);
       const rows = card.locator(".summary-wallet-row");
       await expect(rows).toHaveCount(accountPills.length);

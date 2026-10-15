@@ -69,6 +69,24 @@ copy, or docs:
   between one person's own accounts) yet still counted as spending or income.
   It is never a link itself; linking stays an explicit existing action.
 
+### Names people read (owner decision, 2026-10-15)
+
+The canonical and storage terms in this file stay as written (`money job`,
+`planned_items`, `budget_buckets`, route and test ids). What a person reads on
+screen uses these plain names instead, and the retired ones never return in a
+visible string (`src/domain/retired-names.ts`, linted in
+`tests/retired-names.test.mjs`, the Money insights copy lint, the Plan Studio
+copy lint and `tests/guide-content.test.mjs`):
+
+| Canonical or storage term | What people read |
+| --- | --- |
+| `money job` (list and line) | Where your money goes; "3 of 4 things on track" |
+| remaining budget, positive / negative | Not planned yet / Planned more than you earn |
+| `planned_items` section, `planned item` | Bills and dated payments; a bill or dated payment |
+| `budget_buckets` section, `budget bucket` | Monthly budget |
+| Summary "wallets" row group | The accounts shown |
+| investment statement figure | "$X on <date>, as the statement says" |
+
 ## Core Entities
 
 ### Household
@@ -1217,7 +1235,7 @@ Definitions:
   view and the savings bar ("All you earned"). It is recorded money, never
   a forecast.
 - The view is the whole page's mode on Summary and Month, not only the lead.
-  In `Simple`, Summary keeps Spending Mix, Wallets in view and Money insights
+  In `Simple`, Summary keeps Spending Mix, The accounts shown and Money insights
   (without the insights about the plan, `plan-signals.ts`); Month keeps its
   Spending Mix, notes and accounts and shows `Money in` (what came in, one
   row per source) where the plan tables are, with "Plan this month" to go
@@ -1874,7 +1892,7 @@ Canonical terms:
 - `job`: a money job (see Money Job) as the studio draws it: `Money in`,
   `Spend`, `Save` (the `Savings` plan row), `Invest` (rows in the Investments
   category). `Left over` is planned money in less everything planned out,
-  the same number as the lead's To allocate
+  the same number as the lead's Not planned yet
 - `plan balance`: left over below zero is `The plan doesn't add up`: the
   bar spills past its `Planned in` line, and a one-tap fix lowers the
   flexible category with the most room by what is over (rounded up to $10,

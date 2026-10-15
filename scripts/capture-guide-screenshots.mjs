@@ -218,7 +218,7 @@ const SHOTS = [
     name: "summary-wallets", device: "desktop",
     run: async (page) => {
       await open(page, `/summary?view=household&month=${MONTH}`);
-      await scrollToLocator(page, page.getByText("Wallets in view", { exact: true }), 120);
+      await scrollToLocator(page, page.getByText("The accounts shown", { exact: true }), 120);
     }
   },
   // Month
@@ -737,7 +737,7 @@ const SHOTS = [
     name: "month-add-planned", device: "desktop", reseed: true,
     run: async (page) => {
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
-      const add = page.getByRole("button", { name: "+ Add planned item" });
+      const add = page.getByRole("button", { name: "+ Add bill or dated payment" });
       await scrollToLocator(page, add, 200);
       await add.click();
       await page.locator(".month-inline-action-row").first().waitFor();

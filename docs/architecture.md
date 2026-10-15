@@ -411,8 +411,8 @@ balance reader can mistake it for one. Contribution rows are certified
 transfers in on the investment account (owner follows the account); the pair
 with the bank's GIRO row is one `transfer group` made inside the import batch,
 so Invested counts it once (`investment-moves.ts`). Placement: the Summary's
-"Wallets in view" row for the investment account carries a plain sentence
-("Worth $x on 30 Sep 2026, from its statement"), read from the account-pills
+"The accounts shown" row for the investment account carries a plain sentence
+("$x on 30 Sep 2026, as the statement says"), read from the account-pills
 slice Summary already loads, so no page payload grows for a household with no
 investment statement.
 
