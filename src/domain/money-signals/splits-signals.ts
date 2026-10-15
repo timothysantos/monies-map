@@ -16,7 +16,7 @@ import type { Audience, MoneySignal } from "./types";
 const TRIP_THINKS = [
   "Paying back the balance (\"settling up\") while the trip is fresh keeps it easy for both of you.",
   "The balance is simplest to clear while everyone still remembers who paid for what.",
-  "Once the balance is paid back, only the memories are left to share.",
+  "Once the balance is paid back, nothing is left to chase.",
   "Clearing the balance now means the next trip starts from zero."
 ];
 const SPLIT_SORTED = { fact: "Sorted: nothing is left to pay back {groupFrom}.", think: "Neither of you owes the other anything here." };
@@ -133,7 +133,7 @@ export const SPLITS_COPY = {
       "Nothing to fix here. It can start a friendly chat about who pays for what.",
       "Who pays often evens out over time. This shows where it stands now.",
       "Uneven stretches are normal. Over a longer time it tends to balance.",
-      "Whatever share feels fair to both of you is the right one."
+      "If one of you earns more, a share above half can still be fair."
     ]
   },
   tripInNumbers: {

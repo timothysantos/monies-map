@@ -11,7 +11,7 @@ import { insightQuestionText } from "../domain/ask-insight";
 import { askCopy, formatShortMonth } from "./copy/ask-copy";
 import { formatMonthYear } from "./copy/ask-plan-copy";
 
-const KINDS = new Set(["quick_fix", "bigger_question", "worth_a_look", "going_well"]);
+const KINDS = new Set(["quick_fix", "bigger_question", "worth_a_look", "going_well", "long_view", "just_for_fun"]);
 const MAX_LINES = 12;
 const MAX_ENTRY_IDS = 50;
 const MONTH = /^\d{4}-\d{2}$/;

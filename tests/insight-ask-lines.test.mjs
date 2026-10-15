@@ -14,7 +14,9 @@ import test from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { statementGapSignal } from "../src/domain/money-signals/shared-signals.ts";
+import { phrase } from "../src/domain/money-signals/format.ts";
+import { statementGapSignal, triviaSignal } from "../src/domain/money-signals/shared-signals.ts";
+import { SUMMARY_COPY } from "../src/domain/money-signals/summary-signals.ts";
 import { uncategorizedSignal } from "../src/domain/money-signals/entries-signals.ts";
 import { formatCurrencyMinor } from "../src/domain/split-currency.ts";
 import { ASK_INSIGHT_EVENT, askAboutInsight } from "../src/client/insight-ask-event.js";
@@ -45,7 +47,21 @@ const other = uncategorizedSignal({
   formatMoney: sgd
 });
 
-function checkIn(signals) {
+// A Fun fact (the average month) and the Big picture runway, each with no
+// headline signal beside them being needed.
+const funFact = triviaSignal("average-month", "2026-09", SUMMARY_COPY.averageMonth, { amount: "$8,020", span: "November 2025 to September 2026" });
+const runway = {
+  key: "cushion",
+  kind: "long_view",
+  weight: 1_200_000,
+  numbers: { primaryMinor: 1_200_000, count: 1 },
+  phrasings: phrase(SUMMARY_COPY.cushion, { months: "1 month", usual: "$8,020", balance: "$9,000" }),
+  basis: { lines: [{ label: "Bank balances", amountMinor: 900_000 }, { label: "Usual spending a month", amountMinor: 802_000 }, { label: "Months it would cover", text: "1" }] },
+  topic: "enough"
+};
+const FUN_ROTATION = { columns: [["average-month"]] };
+
+function checkIn(signals, extra = {}) {
   return {
     memoryKey: "summary|household",
     contextKey: "2026-10|direct_plus_shared",
@@ -53,16 +69,17 @@ function checkIn(signals) {
     page: "summary",
     period: "2026-10",
     calmLines: ["Nothing needs a look this month."],
+    ...extra,
     clock: { nowMs: Date.parse("2026-10-13T10:00:00+08:00"), today: "2026-10-13" }
   };
 }
 
-function render(signals, { visible = true, open = true } = {}) {
+function render(signals, { visible = true, open = true, extra = {} } = {}) {
   const stored = { "monies-map:money-totals-visible": String(visible), "monies-map:money-insights-desktop": String(open) };
   globalThis.window = { localStorage: { getItem: (key) => stored[key] ?? null, setItem() {} } };
   globalThis.document = { documentElement: { dataset: {} } };
   try {
-    return renderToStaticMarkup(React.createElement(MoneyPrivacyProvider, null, React.createElement(FinancialInsight, { checkIn: checkIn(signals) })));
+    return renderToStaticMarkup(React.createElement(MoneyPrivacyProvider, null, React.createElement(FinancialInsight, { checkIn: checkIn(signals, extra) })));
   } finally {
     delete globalThis.window;
     delete globalThis.document;
@@ -99,6 +116,57 @@ test("hidden money, or a calm line with no signal behind it: no Ask about this",
   assert.deepEqual(askButtons(render([gap], { visible: false, open: false })), []);
   assert.doesNotMatch(render([], { open: true }), /Ask about this/);
   assert.doesNotMatch(render([], { open: false }), /Ask about this/);
+});
+
+test("the Fun fact and Big picture lines each have Ask about this, named for their line; none with money hidden", () => {
+  const markup = render([gap, funFact, runway], { extra: { triviaRotation: FUN_ROTATION } });
+  const buttons = askButtons(markup);
+  assert.deepEqual(buttons.map((button) => button.variant), ["", "is-line", "is-line"]);
+  const fun = "From November 2025 to September 2026, spending averaged about $8,020 a month.";
+  assert.equal(buttons[1].label, `Ask about this: ${fun}`);
+  // The Big picture is the runway's own wording, with no caveat after it.
+  const shown = runway.phrasings.map((phrasing) => phrasing.fact).find((fact) => markup.includes(fact.replace(/'/g, "&#x27;")));
+  assert.ok(shown, "the runway line is on the page");
+  assert.equal(buttons[2].label, `Ask about this: ${shown}`);
+  assert.match(markup, /<p class="checkin-long-view"><span class="checkin-line-label">Big picture<\/span>[^<]*<button/);
+  assert.doesNotMatch(markup, /useful part|depends on your life/);
+  // Hidden money: no figure, no Ask about this on any of them.
+  const hidden = render([gap, funFact, runway], { visible: false, extra: { triviaRotation: FUN_ROTATION } });
+  assert.deepEqual(askButtons(hidden), []);
+  assert.doesNotMatch(hidden, /\$8,020|\$9,000|1 month/);
+  // No runway data (no signal): no Big picture line and no link for it.
+  const none = render([gap, funFact], { extra: { triviaRotation: FUN_ROTATION } });
+  assert.deepEqual(askButtons(none).map((button) => button.variant), ["", "is-line"]);
+  assert.doesNotMatch(none, /Big picture/);
+});
+
+test("the tap hands the shell a Fun fact or Big picture line with its basis, or an empty one", () => {
+  const target = new EventTarget();
+  const seen = [];
+  target.addEventListener(ASK_INSIGHT_EVENT, (event) => seen.push(event.detail));
+  globalThis.window = target;
+  try {
+    askAboutInsight(runway, { fact: runway.phrasings[0].fact, think: "" });
+    askAboutInsight(funFact, { fact: funFact.phrasings[0].fact, think: "" });
+  } finally {
+    delete globalThis.window;
+  }
+  assert.equal(seen[0].insight.kind, "long_view");
+  assert.equal(seen[0].insight.think, "");
+  assert.deepEqual(seen[0].insight.basis, runway.basis);
+  assert.equal(seen[1].insight.kind, "just_for_fun");
+  assert.deepEqual(seen[1].insight.basis, { lines: [] });
+  // Ask reads both, and builds a card with a line and no basis list for the fun fact.
+  const handoff = (detail) => ({ ...detail.insight, context: { viewId: "household", scope: "direct_plus_shared", month: "2026-10" } });
+  const long = readInsightHandoff(handoff(seen[0]));
+  const fun = readInsightHandoff(handoff(seen[1]));
+  assert.equal(long.kind, "long_view");
+  assert.equal(fun.kind, "just_for_fun");
+  assert.deepEqual(buildInsightAnswer(fun, { today: "2026-10-13" }).lines, []);
+  assert.equal(buildInsightAnswer(long, { today: "2026-10-13" }).lines.length, 3);
+  assert.equal(buildInsightAnswer(long, { today: "2026-10-13" }).question, `Explain: ${runway.phrasings[0].fact.replace(/[.!]+$/, "")}`);
+  // A kind that is not an insight kind is still refused.
+  assert.equal(readInsightHandoff({ ...handoff(seen[0]), kind: "calm" }), null);
 });
 
 test("the tap hands the shell the line and its signal's basis, nothing more", () => {

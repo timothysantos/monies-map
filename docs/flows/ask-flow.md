@@ -815,12 +815,14 @@ with the words.
 ### Insight questions
 
 Each Money insights line with a signal behind it (the headline, each Also
-line, and the folded teaser's top line) has "Ask about this"
+line, the Fun fact, the Big picture line and the folded teaser's top line)
+has "Ask about this"
 (`financial-insight.jsx`; design.md "Money insights fold", DOMAIN.md
 "Insight Question"). The tap sends the `monies:ask-insight` window event
 (`insight-ask-event.js`) with the line as shown, its think line, the
 signal's primary figure and its `basis` (the figures the signal already
-worked out, with plain labels, and the entries behind it). The shell
+worked out, with plain labels, and the entries behind it; a Fun fact has
+none, so its card is the line alone). The shell
 (`use-insight-ask-launcher.js`, App.jsx) adds the view, scope and month
 the page was showing and opens:
 

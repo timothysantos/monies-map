@@ -21,7 +21,7 @@ import { ACCOUNT_COPY } from "../src/domain/money-signals/account-signals.ts";
 import { TRIP_COPY } from "../src/domain/money-signals/trip-signal.ts";
 import { SPLITS_CALM_LINE, SPLITS_COPY, SPLITS_TRIVIA_ROTATION } from "../src/domain/money-signals/splits-signals.ts";
 import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_CALM_PLACE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
-import { AVOID_WORDS } from "../src/domain/money-signals/tone.ts";
+import { AVOID_WORDS, FILLER_PHRASES } from "../src/domain/money-signals/tone.ts";
 import { SIGNAL_KIND_LABELS } from "../src/domain/money-signals/types.ts";
 
 export const DOC_PATH = "docs/money-insights-copy.md";
@@ -313,7 +313,16 @@ export function renderCheckInCopyMarkdown() {
     "aloud like a calm friend. The headline is shown exactly as written here:",
     "there is no AI rewording.",
     "",
+    "No filler (owner, 2026-10-15): every sentence states a computed fact or",
+    "gives a next step. A caveat or platitude that does neither (\"Knowing the",
+    "number is the useful part.\") is cut, and a line with nothing useful to add",
+    "after its fact has no think line at all (the Big picture runway is a fact",
+    "with its basis). Every shown line, including Fun fact and Big picture,",
+    "has Ask about this; the explanation happens only when it is tapped.",
+    "",
     `Words the tone lint rejects: ${AVOID_WORDS.join(", ")}.`,
+    "",
+    `Filler phrases the lint rejects: ${FILLER_PHRASES.join(", ")}.`,
     "",
     "## Kinds and order",
     "",
@@ -368,7 +377,10 @@ export function renderCheckInCopyMarkdown() {
     "  so they never say the same thing for a month.",
     "- A signal's wording: every phrasing with every think line it may pair",
     "  with, taken in turn by month (12 or more pairs per signal), all with the",
-    "  same numbers. The \"also\" list uses each signal's first phrasing.",
+    "  same numbers. The \"also\" list uses each signal's first phrasing. A",
+    "  fact-only line (no think line, today the Big picture runway) is never",
+    "  padded with filler to reach twelve: it has 3 or more phrasings of one",
+    "  fact whose numbers change, and may repeat within a year.",
     "- Big picture: a seasonal moment leads; otherwise the long views that fire",
     "  take turns by month, each in its own wording turn.",
     `- Quote: the library is in ${YEAR_MONTHS} columns (a quote's place in the list, mod ${YEAR_MONTHS}); each page reads a`,

@@ -213,13 +213,14 @@ as is and the code is kept small (`composeCheckInHeadline` moved to
 
 Insight questions: "Ask about this" (docs/flows/ask-flow.md "Insight
 questions"). A quiet underlined link in the accent ink: after the headline
-(beside its action, 18px apart), at the end of each Also line (smaller),
-and on the folded teaser at the right of the eyebrow row, a 44px-tall
+(beside its action, 18px apart), at the end of each Also line, the Fun fact and the Big picture line
+(smaller, inline after the text), and on the folded teaser at the right of the eyebrow row, a 44px-tall
 target above the card, never on it, so the fold's own tap stays whole
 (the eyebrow row grows to 44px when it is there). Its name for a screen
 reader is "Ask about this: <the line>". Only a line with a signal behind
-it has one (not the calm, quiet or Sorted line, the Fun fact or the Big
-picture), and none shows while money is hidden. The tap sends a window
+it has one (not the calm, quiet or Sorted line; the Fun fact and the Big
+picture have one with no figures of their own, the Big picture runway with
+its three basis lines), and none shows while money is hidden. The tap sends a window
 event (`insight-ask-event.js`, `monies:ask-insight`) with the line, its
 think line and the signal's `basis`; the shell (`use-insight-ask-launcher.js`)
 opens the Ask page on a phone (the insight rides in history state) or the

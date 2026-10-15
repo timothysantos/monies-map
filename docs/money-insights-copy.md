@@ -23,7 +23,16 @@ is explained once in the same line, in quotes. Short sentences, read
 aloud like a calm friend. The headline is shown exactly as written here:
 there is no AI rewording.
 
+No filler (owner, 2026-10-15): every sentence states a computed fact or
+gives a next step. A caveat or platitude that does neither ("Knowing the
+number is the useful part.") is cut, and a line with nothing useful to add
+after its fact has no think line at all (the Big picture runway is a fact
+with its basis). Every shown line, including Fun fact and Big picture,
+has Ask about this; the explanation happens only when it is tapped.
+
 Words the tone lint rejects: overspent, overspend, overspending, blew, blown, bad month, cut back, cutting back, should, shouldn't, non-essential, nonessential, guilty, guilt, sacrifice, deny yourself, warning, alert, problem, problems.
+
+Filler phrases the lint rejects: depends on your life, the useful part, is your call, is yours to decide, feels right, is the right one, worth noticing, worth a moment of credit, future you, room to live, earn its place, good rhythm, only the memories, fits your life, money well spent, quiet win, good homes.
 
 ## Kinds and order
 
@@ -78,7 +87,10 @@ periods before or after it:
   so they never say the same thing for a month.
 - A signal's wording: every phrasing with every think line it may pair
   with, taken in turn by month (12 or more pairs per signal), all with the
-  same numbers. The "also" list uses each signal's first phrasing.
+  same numbers. The "also" list uses each signal's first phrasing. A
+  fact-only line (no think line, today the Big picture runway) is never
+  padded with filler to reach twelve: it has 3 or more phrasings of one
+  fact whose numbers change, and may repeat within a year.
 - Big picture: a seasonal moment leads; otherwise the long views that fire
   take turns by month, each in its own wording turn.
 - Quote: the library is in 12 columns (a quote's place in the list, mod 12); each page reads a
@@ -452,7 +464,7 @@ Phrasings:
 Way to think about it, in turn:
 
 - Rises like this often happen without anyone choosing them. If it's spending you enjoy, it can stay. It just helps to choose it.
-- Slow rises are easy to miss from one month to the next. Seeing them side by side is the useful part.
+- Slow rises are easy to miss from one month to the next.
 - Some rises simply follow a change in life, like a new job or a new baby. It's worth asking whether this one does.
 - A rise like this is worth one question: is this still the amount you'd choose?
 
@@ -468,14 +480,14 @@ Phrasings:
     - Automatic payments are easy to stop noticing.
     - The ones used every week are easy to keep.
     - A quick look once a year keeps the list current.
-    - Each one only needs to earn its place.
+    - Cancelling one you have stopped using saves its yearly cost.
 - Your subscriptions cost about {daily} a day.
 
 Way to think about it, in turn:
 
 - Automatic payments are easy to stop noticing. Looking at each one's yearly cost makes it easier to judge.
-- A subscription you still use is money well spent. The yearly cost makes that easy to judge.
-- Once a year is a good rhythm for checking which ones you still use.
+- The yearly cost makes each one easy to judge against how often you use it.
+- Checking once a year which ones you still use catches the ones you have stopped using.
 - Small monthly amounts look different at their yearly cost. That makes each one easier to judge.
 
 ### monthsUnderPlan (Going well)
@@ -491,8 +503,8 @@ Phrasings:
 Way to think about it, in turn:
 
 - Keeping to the plan most months matters more than any single month. It means your plans fit how you really spend.
-- Months like these mean your plans are realistic. That's worth noticing.
-- A plan that holds most months is a plan that fits your life.
+- Months like these mean your plans are realistic.
+- A plan that holds most months is close to how you actually spend.
 - Spending less than planned this often leaves room for the things you care about.
 
 ### keepRate (Big picture)
@@ -524,16 +536,10 @@ Bank account balances (never cards) against the range's average monthly spend; s
 
 Phrasings:
 
-- Bank balances would cover about {months} of your usual spending, which averages about {usual} a month.
-- At your average spending of about {usual} a month, the money in your bank accounts would last about {months}.
-- {balance} in your bank accounts is about {months} of spending, at your average of {usual} a month.
-
-Way to think about it, in turn:
-
-- Money you can reach quickly (a "cushion") turns surprises into inconveniences. How big feels right is your call.
-- Money set aside like this lets you handle the unexpected calmly. How much is enough is yours to decide.
-- Counting it in months of spending is a simple way to see how much room you have.
-- Knowing the number is the useful part. The right amount depends on your life.
+- Your bank balances would cover about {months} of what you usually spend (about {usual} a month).
+- At your usual spending of about {usual} a month, the money in your bank accounts would last about {months}.
+- {balance} in your bank accounts is about {months} of spending, at your usual {usual} a month.
+- Your bank accounts hold {balance}. At about {usual} a month of spending, that is about {months}.
 
 ### sameSeason (Big picture)
 
@@ -890,7 +896,7 @@ Way to think about it, in turn:
 
 - Big one-offs happen. Was it truly a one-off, or something to plan for next year?
 - One big cost can make a whole month look different. The rest of the month may be right on track.
-- Worth a quick question: a rare treat, or a cost that comes round each year?
+- A rare treat, or a cost that comes round each year?
 - Big costs often have a season. Planning for the next one makes it feel lighter.
 
 Action: Show these costs
@@ -927,7 +933,7 @@ Phrasings:
 Way to think about it, in turn:
 
 - Extra money blends into everyday spending quickly. Deciding early how much to put aside leaves the rest to enjoy on purpose.
-- Extra income is a good moment to decide on purpose: some for later, some to enjoy.
+- Decide where extra income goes: some for later, some to enjoy.
 - A bonus month is the easiest time to move some money toward a goal.
 - Deciding early where extra money goes makes it feel like more.
 
@@ -989,8 +995,8 @@ Phrasings:
 
 Way to think about it, in turn:
 
-- That money isn't set aside for anything yet. Savings or next month are both good homes.
-- Spending less than planned is a quiet win. Deciding where the difference goes makes it count.
+- That money isn't set aside for anything yet. It can go to savings or carry into next month.
+- Spending less than planned leaves a difference. Deciding where it goes makes it count.
 - Months like this give the next one a head start.
 - If the difference is still in your account, moving it to savings keeps it from being spent by accident.
 
@@ -1008,8 +1014,8 @@ Way to think about it, in turn:
 
 - With savings covered, spending on what you enjoy is part of the plan, not a slip from it.
 - Saving first makes everything else simpler.
-- Future you is covered this month. The rest is room to live.
-- Saving what you planned is the part that builds up over time. Worth a moment of credit.
+- Savings are covered this month, so the rest of the plan is for spending.
+- Saving what you planned is the part that builds up over time.
 
 ### upcomingBills (Worth knowing)
 
@@ -1595,7 +1601,7 @@ Way to think about it, in turn:
 
 - Paying back the balance ("settling up") while the trip is fresh keeps it easy for both of you.
 - The balance is simplest to clear while everyone still remembers who paid for what.
-- Once the balance is paid back, only the memories are left to share.
+- Once the balance is paid back, nothing is left to chase.
 - Clearing the balance now means the next trip starts from zero.
 
 Said once when it clears (Going well): Sorted: nothing is left to pay back {groupFrom}. / Neither of you owes the other anything here.
@@ -1616,7 +1622,7 @@ Way to think about it, in turn:
 
 - Paying back the balance ("settling up") while the trip is fresh keeps it easy for both of you.
 - The balance is simplest to clear while everyone still remembers who paid for what.
-- Once the balance is paid back, only the memories are left to share.
+- Once the balance is paid back, nothing is left to chase.
 - Clearing the balance now means the next trip starts from zero.
 
 Said once when it clears (Going well): Sorted: nothing is left to pay back {groupFrom}. / Neither of you owes the other anything here.
@@ -1637,7 +1643,7 @@ Way to think about it, in turn:
 
 - Paying back the balance ("settling up") while the trip is fresh keeps it easy for both of you.
 - The balance is simplest to clear while everyone still remembers who paid for what.
-- Once the balance is paid back, only the memories are left to share.
+- Once the balance is paid back, nothing is left to chase.
 - Clearing the balance now means the next trip starts from zero.
 
 Said once when it clears (Going well): Sorted: nothing is left to pay back {groupFrom}. / Neither of you owes the other anything here.
@@ -1746,7 +1752,7 @@ Way to think about it, in turn:
 - Nothing to fix here. It can start a friendly chat about who pays for what.
 - Who pays often evens out over time. This shows where it stands now.
 - Uneven stretches are normal. Over a longer time it tends to balance.
-- Whatever share feels fair to both of you is the right one.
+- If one of you earns more, a share above half can still be fair.
 
 ### tripInNumbers (Fun fact)
 

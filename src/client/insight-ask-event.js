@@ -22,7 +22,7 @@ export function askAboutInsight(signal, line) {
         fact: line.fact,
         think: line.think ?? signal.phrasings?.[0]?.think ?? "",
         primaryMinor: signal.numbers?.primaryMinor ?? null,
-        basis: signal.basis
+        basis: signal.basis ?? { lines: [] }
       }
     }
   }));

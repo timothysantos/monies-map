@@ -38,7 +38,8 @@ import "./money-checkin.css";
 // pressing it would change nothing (Entries, already filtered to those
 // records).
 //
-// "Ask about this" (the headline, each Also line, and on the folded teaser a
+// "Ask about this" (the headline, each Also line, the Fun fact and the Big
+// picture line, and on the folded teaser a
 // link on the eyebrow row, away from the fold's own tap) opens Ask with the
 // line and what its signal is based on (insight-ask-event.js). Only a line
 // with a signal behind it has one, and none shows while money is hidden.
@@ -123,7 +124,9 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   const signalByKey = useMemo(() => new Map(signals.map((signal) => [signal.key, signal])), [signals]);
   // The headline's signal: none for a sorted, quiet or calm line.
   const headlineSignal = view.mode === "signal" ? signalByKey.get(headline.key) : undefined;
-  const askButton = (signal, line, className = "") => (signal?.basis && areTotalsVisible ? (
+  // A headline or Also line needs a basis behind it; the Fun fact and Big
+  // picture lines have none to show, and still hand Ask their line.
+  const askButton = (signal, line, className = "") => (signal && (signal.basis || signal.kind === "just_for_fun" || signal.kind === "long_view") && areTotalsVisible ? (
     <button
       type="button"
       className={`checkin-ask${className ? ` ${className}` : ""}`}
@@ -226,6 +229,7 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
           <p className="checkin-fun" data-trivia-type={view.fun.type}>
             <span className="checkin-line-label">{SIGNAL_KIND_LABELS.just_for_fun}</span>
             {view.fun.text}
+            {askButton(signalByKey.get(view.fun.key), { fact: view.fun.text }, "is-line")}
           </p>
         ) : null}
         {isExpanded && quote ? (
@@ -237,7 +241,8 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
         {view.longView ? (
           <p className="checkin-long-view">
             <span className="checkin-line-label">{SIGNAL_KIND_LABELS.long_view}</span>
-            {view.longView.fact} {view.longView.think}
+            {view.longView.think ? `${view.longView.fact} ${view.longView.think}` : view.longView.fact}
+            {askButton(signalByKey.get(view.longView.key), view.longView, "is-line")}
           </p>
         ) : null}
         <button

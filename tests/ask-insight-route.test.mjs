@@ -122,7 +122,7 @@ test("AI off, not configured or failing: no explanation, and nothing spent or wr
 test("a body that is not an insight is a 400 before any AI; a GET is a 405; an oversized body a 413", async (t) => {
   const { db } = await openSeededDatabase(t, showcase);
   const ai = stubAi({ text: "The gap is $42.80." });
-  for (const body of ["not json", "[]", { ...INSIGHT, kind: "just_for_fun" }, { ...INSIGHT, fact: "" }, { ...INSIGHT, lines: Array.from({ length: 13 }, () => INSIGHT.lines[0]) }, { ...INSIGHT, lines: [{ label: "x", amountMinor: 1.5 }] }]) {
+  for (const body of ["not json", "[]", { ...INSIGHT, kind: "calm" }, { ...INSIGHT, fact: "" }, { ...INSIGHT, lines: Array.from({ length: 13 }, () => INSIGHT.lines[0]) }, { ...INSIGHT, lines: [{ label: "x", amountMinor: 1.5 }] }]) {
     const { status, payload } = await explain(db, ai, body);
     assert.equal(status, 400, JSON.stringify(body).slice(0, 60));
     assert.equal(payload.ok, false);

@@ -127,6 +127,12 @@ function repeatsWithinAYear(series) {
 
 const WALK = consecutiveMonths("2025-01", 24);
 
+// Fact-only lines (no think line) are not padded with filler to reach twelve
+// wordings (owner, 2026-10-15): the Big picture runway keeps 3 or more
+// phrasings of one fact whose numbers change, and may repeat within a year.
+const FACT_ONLY_FAMILIES = new Set(["cushion"]);
+const unlessFactOnly = (value) => (value !== null && FACT_ONLY_FAMILIES.has(value.split("#")[0]) ? null : value);
+
 // What makes a headline notable on its own facts, restated from the
 // thresholds (docs/developer-guide.md, "Notability"). A quick fix or a
 // bigger question needs attention every time it fires. Anything else that
@@ -187,7 +193,8 @@ for (const [page, variants] of [
         const views = WALK.map((period) => viewFor(page, period, { ...options, flat }));
         const walk = views.map(rotatingItems);
         for (const field of ["trivia", "triviaText", "quote", "longView", "longViewText", "headline", "headlineText", "calm"]) {
-          assert.deepEqual(repeatsWithinAYear(walk.map((item) => item[field])), [], `${label} ${field}`);
+          const series = walk.map((item) => (field === "longView" ? unlessFactOnly(item[field]) : field === "longViewText" ? (item.longView && unlessFactOnly(item.longView) === null ? null : item[field]) : item[field]));
+          assert.deepEqual(repeatsWithinAYear(series), [], `${label} ${field}`);
         }
         // The rule is not met by showing nothing: trivia and quotes show
         // in almost every month.
@@ -226,7 +233,7 @@ test("every recurring signal the pages build over two years has at least 12 word
     for (const period of WALK) {
       for (const flat of [false, true]) {
         for (const signal of viewFor(page, period, { flat }).signals) {
-          if (signal.kind !== "just_for_fun" && wordingsOf(signal).length < YEAR_MONTHS) {
+          if (signal.kind !== "just_for_fun" && !FACT_ONLY_FAMILIES.has(signal.key) && wordingsOf(signal).length < YEAR_MONTHS) {
             short.add(`${page} ${signal.key}: ${wordingsOf(signal).length}`);
           }
         }

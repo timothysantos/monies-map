@@ -79,6 +79,38 @@ export const APP_JARGON = [
 
 const APP_JARGON_PATTERN = new RegExp(`\\b(?:${APP_JARGON.join("|")})\\b`, "i");
 
+// Filler the plain-words rule retires (owner, 2026-10-15): a sentence that
+// states no fact and gives no next step, only a platitude ("Knowing the
+// number is the useful part."). A line either says what happened to the
+// reader's money or what to do about it; it never fills space.
+export const FILLER_PHRASES = [
+  "depends on your life",
+  "the useful part",
+  "is your call",
+  "is yours to decide",
+  "feels right",
+  "is the right one",
+  "worth noticing",
+  "worth a moment of credit",
+  "future you",
+  "room to live",
+  "earn its place",
+  "good rhythm",
+  "only the memories",
+  "fits your life",
+  "money well spent",
+  "quiet win",
+  "good homes"
+];
+
+const FILLER_PATTERN = new RegExp(`(?:${FILLER_PHRASES.join("|")})`, "i");
+
+// Returns the filler phrase a line uses, if any.
+export function findFiller(text: string): string[] {
+  const match = text.match(FILLER_PATTERN);
+  return match ? [`uses filler "${match[0]}"`] : [];
+}
+
 // Returns the app-centred phrase a line uses, if any.
 export function findAppJargon(text: string): string[] {
   const match = text.match(APP_JARGON_PATTERN);

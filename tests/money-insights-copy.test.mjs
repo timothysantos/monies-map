@@ -15,7 +15,7 @@ import { QUOTES } from "../src/domain/money-signals/quotes.ts";
 import { YEAR_MONTHS } from "../src/domain/money-signals/rotation.ts";
 import { SPLITS_CALM_LINES, SPLITS_COPY } from "../src/domain/money-signals/splits-signals.ts";
 import { SUMMARY_CALM_LINES } from "../src/domain/money-signals/summary-signals.ts";
-import { findAppJargon, findPercentWithoutMoney, findToneProblems } from "../src/domain/money-signals/tone.ts";
+import { FILLER_PHRASES, findAppJargon, findFiller, findPercentWithoutMoney, findToneProblems } from "../src/domain/money-signals/tone.ts";
 
 function catalogueLines() {
   const lines = [];
@@ -75,9 +75,38 @@ test("every approved phrasing, think line, sorted line, trivia, quiet and calm l
   const problems = lines.flatMap(([where, text]) => [
     ...findToneProblems(text).map((problem) => `${where}: "${text}" ${problem}`),
     ...findPercentWithoutMoney(text).map((sentence) => `${where}: "${sentence}" shows a percentage without the money amount`),
-    ...findAppJargon(text).map((problem) => `${where}: "${text}" ${problem}`)
+    ...findAppJargon(text).map((problem) => `${where}: "${text}" ${problem}`),
+    ...findFiller(text).map((problem) => `${where}: "${text}" ${problem}`)
   ]);
   assert.deepEqual(problems, []);
+});
+
+test("the filler lint rejects platitude sentences and lets sentences with a fact or a next step through", () => {
+  for (const bad of [
+    "Bank balances would cover about 1 month of your usual spending. Knowing the number is the useful part.",
+    "The right amount depends on your life.",
+    "How big feels right is your call.",
+    "Saving what you planned is the part that builds up over time. Worth a moment of credit.",
+    "Each one only needs to earn its place.",
+    "Whatever share feels fair to both of you is the right one."
+  ]) {
+    assert.ok(findFiller(bad).length > 0, bad);
+  }
+  for (const fine of [
+    "Your bank balances would cover about 1 month of what you usually spend (about $8,020 a month).",
+    "From November 2025 to September 2026, spending averaged about $8,020 a month.",
+    "Cancelling one you've stopped using saves its yearly cost."
+  ]) {
+    assert.deepEqual(findFiller(fine), [], fine);
+  }
+  assert.ok(FILLER_PHRASES.length >= 10);
+});
+
+test("the Big picture runway line states its fact and basis with no think line", () => {
+  const cushion = CATALOGUES.find((catalogue) => catalogue.title === "Summary").copy.cushion;
+  assert.deepEqual(thinkLines(cushion.think), []);
+  assert.equal(cushion.phrasings[0], "Your bank balances would cover about {months} of what you usually spend (about {usual} a month).");
+  assert.ok(cushion.phrasings.every((phrasing) => typeof phrasing === "string" && phrasing.includes("{months}") && phrasing.includes("{usual}")));
 });
 
 test("the plain-words lint catches app-centred phrases and lets everyday ones through", () => {
@@ -119,6 +148,8 @@ test("every signal has 3 to 5 phrasings with the same numbers; trivia has one li
   }
 });
 
+const FACT_ONLY = new Set(["Summary/cushion"]);
+
 // The year rule for a recurring signal: its fact and think pairs rotate by
 // month, so 12 or more of them never repeat a sentence within a year.
 test("every signal that can recur has at least 12 wordings, for a count of 1 and for a group that is not a trip too", () => {
@@ -127,6 +158,13 @@ test("every signal that can recur has at least 12 wordings, for a count of 1 and
     for (const [name, entry] of Object.entries(catalogue.copy)) {
       const [kind] = catalogue.entries[name];
       if (kind === "just_for_fun" || !entry.phrasings.length) {
+        continue;
+      }
+      // A fact-only line (no think line at all) is not padded with filler to
+      // reach twelve: it needs 3 or more phrasings and may repeat after them.
+      if (FACT_ONLY.has(`${catalogue.title}/${name}`)) {
+        assert.deepEqual(thinkLines(entry.think), [], name);
+        assert.ok(entry.phrasings.length >= 3, name);
         continue;
       }
       const counts = [["phrasings", wordingCount(entry.phrasings, entry.think)]];

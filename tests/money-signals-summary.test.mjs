@@ -184,11 +184,18 @@ test("cushion: bank accounts only, against the range's usual spending", () => {
   const signal = cushionSignal(input({ accountPills: pills, accountKinds: kinds }));
   assert.equal(signal.kind, "long_view");
   assert.deepEqual(facts(signal), [
-    "Bank balances would cover about 21 months of your usual spending, which averages about $6,000 a month.",
-    "At your average spending of about $6,000 a month, the money in your bank accounts would last about 21 months.",
-    "$126,000 in your bank accounts is about 21 months of spending, at your average of $6,000 a month."
+    "Your bank balances would cover about 21 months of what you usually spend (about $6,000 a month).",
+    "At your usual spending of about $6,000 a month, the money in your bank accounts would last about 21 months.",
+    "$126,000 in your bank accounts is about 21 months of spending, at your usual $6,000 a month.",
+    "Your bank accounts hold $126,000. At about $6,000 a month of spending, that is about 21 months."
   ]);
-  assert.equal(signal.phrasings[0].think, "Money you can reach quickly (a \"cushion\") turns surprises into inconveniences. How big feels right is your call.");
+  // A plain fact: no think line, no caveat sentence after it.
+  assert.ok(signal.phrasings.every((phrasing) => phrasing.think === "" && phrasing.thinks.length === 0));
+  assert.deepEqual(signal.basis.lines, [
+    { label: "Bank balances", amountMinor: 12_600_000 },
+    { label: "Usual spending a month", amountMinor: 600_000 },
+    { label: "Months it would cover", text: "21" }
+  ]);
   // No bank balance, only cards, or no spending: silent.
   assert.equal(cushionSignal(input({ accountPills: [pills[2]], accountKinds: kinds })), null);
   assert.equal(cushionSignal(input({ accountPills: pills, accountKinds: {} })), null);

@@ -365,7 +365,7 @@ test("a hand-off that is not an insight is refused; an odd context falls back to
   const signal = statementGapSignal({ accountPills: statementPills, audience: "household", viewLabel: "Household", formatMoney: sgd });
   const good = handoff(signal);
   assert.equal(readInsightHandoff(null), null);
-  assert.equal(readInsightHandoff({ ...good, kind: "just_for_fun" }), null);
+  assert.equal(readInsightHandoff({ ...good, kind: "calm" }), null);
   assert.equal(readInsightHandoff({ ...good, fact: "   " }), null);
   assert.equal(readInsightHandoff({ ...good, key: 42 }), null);
   const odd = readInsightHandoff({ ...good, context: { viewId: "", scope: "everyone", month: "September" }, basis: { lines: [{ label: "", text: "x" }, { label: "Bad", amountMinor: 1.5 }, ...good.basis.lines], entries: { entryIds: [7] }, month: "2026-9" } });
@@ -403,10 +403,14 @@ test("the route reads only a bounded insight: a known kind, a short line, at mos
   const line = { label: "Bill", amountMinor: 120_000 };
   const base = { kind: "quick_fix", fact: "Your bill is due.", think: "", lines: [line] };
   assert.deepEqual(readInsightExplainRequest(base), { kind: "quick_fix", fact: "Your bill is due.", think: "", lines: [line] });
+  // The Fun fact and Big picture lines have Ask about this too (owner, 2026-10-15).
+  for (const kind of ["long_view", "just_for_fun"]) {
+    assert.equal(readInsightExplainRequest({ ...base, kind, lines: [] })?.kind, kind);
+  }
   for (const bad of [
     null,
     [],
-    { ...base, kind: "just_for_fun" },
+    { ...base, kind: "calm" },
     { ...base, fact: "" },
     { ...base, fact: "x".repeat(401) },
     { ...base, lines: "Bill" },

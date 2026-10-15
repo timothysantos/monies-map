@@ -48,7 +48,7 @@ export const SUMMARY_COPY = {
     ],
     think: [
       "Rises like this often happen without anyone choosing them. If it's spending you enjoy, it can stay. It just helps to choose it.",
-      "Slow rises are easy to miss from one month to the next. Seeing them side by side is the useful part.",
+      "Slow rises are easy to miss from one month to the next.",
       "Some rises simply follow a change in life, like a new job or a new baby. It's worth asking whether this one does.",
       "A rise like this is worth one question: is this still the amount you'd choose?"
     ]
@@ -62,15 +62,15 @@ export const SUMMARY_COPY = {
           "Automatic payments are easy to stop noticing.",
           "The ones used every week are easy to keep.",
           "A quick look once a year keeps the list current.",
-          "Each one only needs to earn its place."
+          "Cancelling one you have stopped using saves its yearly cost."
         ]
       },
       "Your subscriptions cost about {daily} a day."
     ],
     think: [
       "Automatic payments are easy to stop noticing. Looking at each one's yearly cost makes it easier to judge.",
-      "A subscription you still use is money well spent. The yearly cost makes that easy to judge.",
-      "Once a year is a good rhythm for checking which ones you still use.",
+      "The yearly cost makes each one easy to judge against how often you use it.",
+      "Checking once a year which ones you still use catches the ones you have stopped using.",
       "Small monthly amounts look different at their yearly cost. That makes each one easier to judge."
     ]
   },
@@ -82,8 +82,8 @@ export const SUMMARY_COPY = {
     ],
     think: [
       "Keeping to the plan most months matters more than any single month. It means your plans fit how you really spend.",
-      "Months like these mean your plans are realistic. That's worth noticing.",
-      "A plan that holds most months is a plan that fits your life.",
+      "Months like these mean your plans are realistic.",
+      "A plan that holds most months is close to how you actually spend.",
       "Spending less than planned this often leaves room for the things you care about."
     ]
   },
@@ -111,16 +111,13 @@ export const SUMMARY_COPY = {
   },
   cushion: {
     phrasings: [
-      "Bank balances would cover about {months} of your usual spending, which averages about {usual} a month.",
-      "At your average spending of about {usual} a month, the money in your bank accounts would last about {months}.",
-      "{balance} in your bank accounts is about {months} of spending, at your average of {usual} a month."
+      "Your bank balances would cover about {months} of what you usually spend (about {usual} a month).",
+      "At your usual spending of about {usual} a month, the money in your bank accounts would last about {months}.",
+      "{balance} in your bank accounts is about {months} of spending, at your usual {usual} a month.",
+      "Your bank accounts hold {balance}. At about {usual} a month of spending, that is about {months}."
     ],
-    think: [
-      "Money you can reach quickly (a \"cushion\") turns surprises into inconveniences. How big feels right is your call.",
-      "Money set aside like this lets you handle the unexpected calmly. How much is enough is yours to decide.",
-      "Counting it in months of spending is a simple way to see how much room you have.",
-      "Knowing the number is the useful part. The right amount depends on your life."
-    ]
+    // A plain fact with its basis; no think line (owner, 2026-10-15).
+    think: []
   },
   sameSeason: {
     phrasings: [
@@ -603,6 +600,13 @@ export function cushionSignal(input: SummarySignalInput): MoneySignal | null {
       usual: approxMoney(input.formatMoney, usualMinor),
       balance: approxMoney(input.formatMoney, balanceMinor)
     }),
+    basis: {
+      lines: [
+        amountLine("Bank balances", balanceMinor),
+        amountLine("Usual spending a month", usualMinor),
+        textLine("Months it would cover", count)
+      ]
+    },
     topic: "enough"
   };
 }

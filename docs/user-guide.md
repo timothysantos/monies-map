@@ -2119,8 +2119,9 @@ back a shared balance ("settling up").
    shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
-4. Select **Ask about this** under a line (or, on the folded card, at the
-   right of its title) to have it explained on [Ask](#ask): the question
+4. Select **Ask about this** under a line, beside the **Fun fact** or
+   **Big picture** line (or, on the folded card, at the right of its title)
+   to have it explained on [Ask](#ask): the question
    "Explain: …" and a card with what the line is based on (the amounts,
    wallets, months and dates it used), the entries behind it, and the
    line under it. Its buttons open the right place: **Open in Entries**

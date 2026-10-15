@@ -19,7 +19,7 @@ export const MAX_INSIGHT_LINES = 12;
 const MAX_LABEL_CHARS = 90;
 const MAX_TEXT_CHARS = 120;
 const MAX_AMOUNT_MINOR = 1_000_000_000_000;
-const KINDS: SignalKind[] = ["quick_fix", "bigger_question", "worth_a_look", "going_well"];
+const KINDS: SignalKind[] = ["quick_fix", "bigger_question", "worth_a_look", "going_well", "long_view", "just_for_fun"];
 
 // What the page sends: the line as it reads, its think line, and the basis.
 export interface InsightExplainRequest {

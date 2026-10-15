@@ -107,7 +107,7 @@ export const MONTH_COPY = {
     think: [
       "Big one-offs happen. Was it truly a one-off, or something to plan for next year?",
       "One big cost can make a whole month look different. The rest of the month may be right on track.",
-      "Worth a quick question: a rare treat, or a cost that comes round each year?",
+      "A rare treat, or a cost that comes round each year?",
       "Big costs often have a season. Planning for the next one makes it feel lighter."
     ],
     action: "Show these costs"
@@ -134,7 +134,7 @@ export const MONTH_COPY = {
     ],
     think: [
       "Extra money blends into everyday spending quickly. Deciding early how much to put aside leaves the rest to enjoy on purpose.",
-      "Extra income is a good moment to decide on purpose: some for later, some to enjoy.",
+      "Decide where extra income goes: some for later, some to enjoy.",
       "A bonus month is the easiest time to move some money toward a goal.",
       "Deciding early where extra money goes makes it feel like more."
     ]
@@ -172,8 +172,8 @@ export const MONTH_COPY = {
       "{month} came in {left} under your plan."
     ],
     think: [
-      "That money isn't set aside for anything yet. Savings or next month are both good homes.",
-      "Spending less than planned is a quiet win. Deciding where the difference goes makes it count.",
+      "That money isn't set aside for anything yet. It can go to savings or carry into next month.",
+      "Spending less than planned leaves a difference. Deciding where it goes makes it count.",
       "Months like this give the next one a head start.",
       "If the difference is still in your account, moving it to savings keeps it from being spent by accident."
     ]
@@ -187,8 +187,8 @@ export const MONTH_COPY = {
     think: [
       "With savings covered, spending on what you enjoy is part of the plan, not a slip from it.",
       "Saving first makes everything else simpler.",
-      "Future you is covered this month. The rest is room to live.",
-      "Saving what you planned is the part that builds up over time. Worth a moment of credit."
+      "Savings are covered this month, so the rest of the plan is for spending.",
+      "Saving what you planned is the part that builds up over time."
     ]
   },
   upcomingBills: {

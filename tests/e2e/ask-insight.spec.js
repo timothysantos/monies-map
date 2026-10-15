@@ -75,6 +75,34 @@ test.describe("Ask about this on a phone", () => {
     await expect(card(page)).toHaveCount(1);
   });
 
+  // The Fun fact and the Big picture line each end with Ask about this
+  // (owner, 2026-10-15); it opens Ask with that line's own text, once.
+  for (const [label, selector] of [["Fun fact", ".checkin-fun"], ["Big picture", ".checkin-long-view"]]) {
+    test(`the ${label} line's Ask about this opens Ask with that line, with no filler after it`, async ({ page }) => {
+      await gotoPageAfterApi(page, "/month?view=household&month=2025-09&scope=direct_plus_shared", "/api/month-page", () => page.locator(".financial-insight").first());
+      await page.locator(".financial-insight-fold").click();
+      const line = page.locator(`.financial-insight-content ${selector}`);
+      await expect(line).toBeVisible();
+      const ask = line.getByRole("button", { name: /^Ask about this/ });
+      await expect(ask).toHaveCount(1);
+      const whole = (await line.evaluate((node) => [...node.childNodes].filter((child) => child.nodeType === 3).map((child) => child.textContent).join(""))).trim();
+      expect(whole.length).toBeGreaterThan(20);
+      expect(whole).not.toMatch(/useful part|depends on your life|your call|yours to decide/);
+      // Ask gets the line's fact (a Big picture line's think line stays with the page).
+      const text = (await ask.getAttribute("aria-label")).replace(/^Ask about this: /, "");
+      expect(whole.startsWith(text)).toBe(true);
+      await ask.click();
+      await expect(page).toHaveURL(/\/ask\?/);
+      await expect(page.locator(".ask-me").last()).toHaveText(question(text));
+      await expect(card(page)).toBeVisible();
+      await expect(card(page).locator(".ask-insight-fact")).toHaveText(text);
+      await expect(card(page).locator(".checkin-chip")).toHaveText(label);
+      // Asked once: a reload keeps the one question.
+      await page.reload();
+      await expect(page.locator(".ask-me", { hasText: question(text) })).toHaveCount(1);
+    });
+  }
+
   test("Open in Entries shows the insight's entries with the From Ask chip; with money hidden nothing shows a figure", async ({ page }) => {
     await openMonth(page);
     // Every insight with entries behind it: try the headline, then Also lines.

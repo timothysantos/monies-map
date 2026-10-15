@@ -67,7 +67,7 @@
 }
 
 /* "Ask about this" (insight-ask-event.js): a quiet link after the
-   headline (beside its action), at the end of each Also line, and on the
+   headline (beside its action), at the end of each Also line, the Fun fact and Big picture lines, and on the
    folded teaser at the right of the eyebrow row, apart from the fold's
    own tap. */
 .checkin-ask {
@@ -99,6 +99,11 @@
   min-height: 0;
   margin: 0;
   font-size: 0.8rem;
+}
+
+.checkin-fun .checkin-ask.is-line,
+.checkin-long-view .checkin-ask.is-line {
+  margin-left: 8px;
 }
 
 .financial-insight:has(> .checkin-ask.is-teaser) {
