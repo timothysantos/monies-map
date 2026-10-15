@@ -173,6 +173,10 @@ test.describe("desktop", () => {
     await editor.locator("[data-row='category']").click();
     await expect(categorySearch(page)).toBeFocused();
     await expect(page.locator(".category-pick-tag")).toContainText("Best guess");
+    // The popover hangs from the row it was opened from, not from the page corner.
+    const [rowBox, popoverBox] = await Promise.all([editor.locator("[data-row='category']").boundingBox(), page.locator(".category-popover").boundingBox()]);
+    expect(Math.abs((popoverBox?.x ?? -999) - (rowBox?.x ?? 0))).toBeLessThan(24);
+    expect(Math.abs((popoverBox?.y ?? -999) - (rowBox?.y ?? 0))).toBeLessThan(500);
     await categorySearch(page).fill("groc");
     await categorySearch(page).press("Enter");
     await expect(page.getByText("Save this category?")).toBeVisible();
@@ -182,17 +186,17 @@ test.describe("desktop", () => {
   test("the Entries category filter is searchable and keeps several checked", async ({ page }) => {
     await reseedDemo(page);
     await page.goto(`/entries?view=person-tim&month=${MONTH}`);
-    await page.getByRole("button", { name: "By category" }).click();
+    await page.getByRole("button", { name: "By category", exact: true }).click();
     await expect(categorySearch(page)).toBeFocused();
     await categorySearch(page).fill("gro");
     expect(await optionLabels(page)).toEqual(["Groceries"]);
     await categoryOption(page, "Groceries").click();
     await categorySearch(page).fill("tra");
-    await categoryOption(page, "Travel").click();
-    await expect(categoryOption(page, "Travel")).toHaveAttribute("aria-selected", "true");
+    await categoryOption(page, "Transfer").click();
+    await expect(categoryOption(page, "Transfer")).toHaveAttribute("aria-selected", "true");
     await page.getByRole("button", { name: "Done" }).click();
     await expect(page).toHaveURL(/entry_category=Groceries/);
-    await expect(page).toHaveURL(/entry_category=Travel/);
+    await expect(page).toHaveURL(/entry_category=Transfer/);
   });
 });
 
@@ -290,7 +294,7 @@ for (const scheme of ["light", "dark"]) {
       await page.keyboard.press("Escape");
 
       await page.goto(`/entries?view=person-tim&month=${MONTH}`);
-      await page.getByRole("button", { name: "By category" }).click();
+      await page.getByRole("button", { name: "By category", exact: true }).click();
       await expect(categoryList(page)).toBeVisible();
       await categoryOption(page, "Groceries").click();
       await shoot(page, `desktop-${scheme}-filter`);

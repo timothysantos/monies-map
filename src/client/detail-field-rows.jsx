@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { CategoryPickerHost } from "./category-picker-host";
 import { ResponsiveSelect } from "./responsive-select";
@@ -82,23 +82,25 @@ function CategoryRowPicker({ label, rowKey, valueLabel, value, options, onValueC
     setOwnOpen(next);
     onExternalOpenChange(next);
   };
+  const buttonRef = useMemo(() => ({ get current() { return rowRef.current?.querySelector("button") ?? null; } }), []);
   return (
-    <CategoryPickerHost
-      open={open}
-      onOpenChange={setOpen}
-      returnFocusRef={rowRef}
-      title={label}
-      options={options}
-      value={value}
-      pinned={categoryPick.pinned}
-      description={categoryPick.description}
-      onChoose={onValueChange}
-      anchor={(
-        <span className="lsd-row-group" ref={rowRef}>
-          <DetailRow label={label} value={valueLabel} data-row={rowKey} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen(true)} />
-        </span>
-      )}
-    />
+    <>
+      <span className="lsd-row-group" ref={rowRef}>
+        <DetailRow label={label} value={valueLabel} data-row={rowKey} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen(true)} />
+      </span>
+      <CategoryPickerHost
+        open={open}
+        onOpenChange={setOpen}
+        anchorRef={buttonRef}
+        returnFocusRef={buttonRef}
+        title={label}
+        options={options}
+        value={value}
+        pinned={categoryPick.pinned}
+        description={categoryPick.description}
+        onChoose={onValueChange}
+      />
+    </>
   );
 }
 

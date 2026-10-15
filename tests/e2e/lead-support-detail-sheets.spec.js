@@ -217,7 +217,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
 
     await sheet.locator("[data-row='category']").click();
     const categoryPicker = page.getByRole("dialog", { name: "Category" });
-    await categoryPicker.getByRole("button", { name: "Home", exact: true }).click();
+    await categoryPicker.locator("[data-category-option='Home']").click();
     await expect(categoryPicker).toHaveCount(0);
     await expect(lead.locator(".lsd-subtitle")).toHaveText("Home");
 
@@ -569,7 +569,7 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   }
   expect(order.slice(0, 9)).toEqual([
     "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
-    "Category", "SplitsAdd to splits", "Note", "Posted date"
+    "CategoryGroceries", "SplitsAdd to splits", "Note", "Posted date"
   ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");

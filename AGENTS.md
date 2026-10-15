@@ -426,6 +426,12 @@ Details and the reasons are in `docs/code-spec.md` and
   `tests/openable-figures.test.mjs`), Open plan for plan figures, Open
   Splits for split balances, and Ask about this. The menu stays in the lazy
   `figure-menu.js`; the first screen carries only the attributes.
+- Every place a category is chosen opens the one category list (design.md
+  "Category list": a search, the best guess first, then A to Z; `ResponsiveSelect`
+  or `PickerRow` with `categoryPick`, `FilterMultiSelect` for a filter). Never
+  add a native select of categories (`tests/category-list-guard.test.mjs`),
+  and keep its code in the lazy chunks: the first screen carries only
+  `category-picker-host.jsx`.
 - Write user-facing copy in plain words. Say what happened to the
   person's money, then the number; never describe the app's own state
   ("in the app", "unlinked", "every chart"). An app term a line needs

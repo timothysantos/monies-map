@@ -738,6 +738,13 @@ A persistence command is all-or-nothing:
   budget of three reads and no writes: the saved entry (by id; none for a
   draft), the accounts, and one history read on `idx_transactions_household_date`
   limited to 500 rows (`tests/card-suggestion-route.test.mjs`)
+- the category guess read (`POST /api/entries/category-guess`, the category
+  list's "Best guess") has no writes and one batched round trip of four
+  statements: the household's categories, its active category rules, the shop's
+  Ask habit by primary key, and one history read on
+  `idx_transactions_household_date` limited to 500 rows
+  (`tests/category-guess.test.mjs`). It is asked once when a list opens and
+  only with a description; no page response carries it.
 - a login's Plan | Simple choice (`src/domain/app-repository-viewer-preferences.ts`)
   is one upsert in one batch, merged with `json_patch`, under a hashed key.
   It is a display preference, not household data, so it writes no audit

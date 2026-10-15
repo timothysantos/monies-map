@@ -1,5 +1,5 @@
 import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Sparkles } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
@@ -298,25 +298,28 @@ function rowValue(valueLabel, filled) {
 function PickerRow({ label, valueLabel, filled, title, value, options, onValueChange, open, onOpenChange, rowKey, categoryPick = undefined }) {
   const isMobile = useIsMobileLayout();
   const rowRef = useRef(null);
+  const buttonRef = useMemo(() => ({ get current() { return rowRef.current?.querySelector("button") ?? null; } }), []);
   // A category row opens the shared category list (search, best guess first).
   if (categoryPick) {
+    // The wrapper has no box of its own, so the popover anchors to the row's button.
     return (
-      <CategoryPickerHost
-        open={open}
-        onOpenChange={onOpenChange}
-        returnFocusRef={rowRef}
-        title={title}
-        options={options}
-        value={value}
-        pinned={categoryPick.pinned}
-        description={categoryPick.description}
-        onChoose={onValueChange}
-        anchor={(
-          <span className="lsd-row-group" ref={rowRef}>
-            <DetailRow label={label} value={rowValue(valueLabel, filled)} data-ask-row={rowKey} aria-haspopup="dialog" aria-expanded={open} onClick={() => onOpenChange(true)} />
-          </span>
-        )}
-      />
+      <>
+        <span className="lsd-row-group" ref={rowRef}>
+          <DetailRow label={label} value={rowValue(valueLabel, filled)} data-ask-row={rowKey} aria-haspopup="dialog" aria-expanded={open} onClick={() => onOpenChange(true)} />
+        </span>
+        <CategoryPickerHost
+          open={open}
+          onOpenChange={onOpenChange}
+          anchorRef={buttonRef}
+          returnFocusRef={buttonRef}
+          title={title}
+          options={options}
+          value={value}
+          pinned={categoryPick.pinned}
+          description={categoryPick.description}
+          onChoose={onValueChange}
+        />
+      </>
     );
   }
   if (isMobile) {

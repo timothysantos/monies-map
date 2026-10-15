@@ -66,9 +66,11 @@ test("on a phone a preview row opens the Edit row sheet; edits apply, Exclude ro
   const sheet = page.getByRole("dialog", { name: "Edit row" });
   await expect(sheet).toBeVisible();
   // The same fields the table has, as Detail rows.
-  for (const label of ["Type", "Category", "Account", "Owner", "Note"]) {
+  for (const label of ["Type", "Account", "Owner", "Note"]) {
     await expect(sheet.getByLabel(label, { exact: true })).toBeVisible();
   }
+  // Category is the shared category list's row, not a native select.
+  await expect(sheet.locator("[data-row='category']")).toBeVisible();
   await sheet.getByLabel("Note", { exact: true }).fill("Bus fare to work");
   await pickCategory(page, sheet.locator("[data-row='category']"), "Groceries");
   await sheet.getByRole("button", { name: "Done" }).click();

@@ -208,7 +208,7 @@ test.describe("Edit split on a phone", { tag: "@webkit" }, () => {
 
     await dialog.locator("[data-row='category']").click();
     const categoryPicker = page.getByRole("dialog", { name: "Category" });
-    await categoryPicker.getByRole("button", { name: "Home", exact: true }).click();
+    await categoryPicker.locator("[data-category-option='Home']").click();
     await expect(categoryPicker).toHaveCount(0);
     await dialog.getByRole("button", { name: /More details/ }).click();
     await dialog.getByRole("textbox", { name: "Note", exact: true }).fill("After");
