@@ -24,7 +24,7 @@ import {
   shouldPreserveStatementPreviewOnRefreshError
 } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
-import { buildImportPreviewModel, countRowsToImport } from "./import-preview-model";
+import { buildImportPreviewModel, countRowsToImport, getImportRowsOwnerName } from "./import-preview-model";
 import { ImportFileCard } from "./import-file-card";
 import { buildStatementTitle, ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
@@ -2427,7 +2427,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               showAccountState={showStatementAccountMapping}
               // The same count the "Map N accounts" blocker on the import bar says.
               unknownAccountCount={importPreviewModel.hasUnmappedAccounts ? Math.max(1, importPreviewModel.unmappedCommitAccountNames?.length ?? 1) : 0}
-              ownerName={ownerName}
+              ownerName={getImportRowsOwnerName(previewRows)}
             />
           ) : null}
           {isStatementReview ? null : (

@@ -46,6 +46,12 @@ when the import changes shared ledger evidence or reference data.
 
 Imports owns:
 
+- the owner a preview names. A direct account's rows carry that account's
+  owner (the server sets it from the account the rows land on, whoever the
+  form's default owner is); a joint or unknown account keeps the form's owner
+  and a person's own pick on a row wins. The file card's owner chip reads the
+  previewed rows (`getImportRowsOwnerName`): one owner when every added row
+  has the same one, no chip when they differ.
 - the three import steps (Bring files, Review, Done; design.md, "Import Page
   Stages"). A statement is reviewed card by card under one header (a card
   whose account and month a completed import already confirmed reads
