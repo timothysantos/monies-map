@@ -187,6 +187,28 @@ CREATE TABLE IF NOT EXISTS import_no_longer_listed_entries (
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
 );
 
+-- Apple Pay entries an activity export removed because the same purchase
+-- is a bank row on another card (wrong-card Apple Pay duplicates), saved
+-- whole for the export's rollback.
+CREATE TABLE IF NOT EXISTS import_wrong_card_duplicates (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  import_id TEXT NOT NULL,
+  transaction_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  -- The other card's bank row: a ledger entry, or a row of this same import
+  -- (then its preview row id).
+  twin_kind TEXT NOT NULL CHECK (twin_kind IN ('ledger', 'this_file')),
+  twin_id TEXT NOT NULL,
+  entry_snapshot_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_wrong_card_duplicates_import
+  ON import_wrong_card_duplicates (household_id, import_id);
+
 -- Corrections applied from a Settings statement comparison after the
 -- statement was saved, for their undo. A removed entry keeps its row here.
 CREATE TABLE IF NOT EXISTS statement_corrections (

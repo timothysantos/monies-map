@@ -561,6 +561,33 @@ async function ensureDemoSchemaOnce(rawDb: D1Database) {
     await db.prepare("ALTER TABLE import_no_longer_listed_entries ADD COLUMN kind TEXT NOT NULL DEFAULT 'removed' CHECK (kind IN ('removed', 'estimate_reopened'))").run();
   }
 
+  // Apple Pay entries an activity export removed as wrong-card duplicates
+  // (the same purchase is a bank row on another card), saved whole for the
+  // export's rollback.
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS import_wrong_card_duplicates (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        import_id TEXT NOT NULL,
+        transaction_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        twin_kind TEXT NOT NULL CHECK (twin_kind IN ('ledger', 'this_file')),
+        twin_id TEXT NOT NULL,
+        entry_snapshot_json TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+      )
+    `)
+    .run();
+  await db
+    .prepare(`
+      CREATE INDEX IF NOT EXISTS idx_import_wrong_card_duplicates_import
+      ON import_wrong_card_duplicates (household_id, import_id)
+    `)
+    .run();
+
   // Corrections applied from a Settings statement comparison after the
   // statement was saved, for their undo. A removed entry keeps its row here.
   await db

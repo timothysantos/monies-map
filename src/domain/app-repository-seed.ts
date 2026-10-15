@@ -351,6 +351,7 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM investment_statement_values",
     "DELETE FROM import_transfer_links",
     "DELETE FROM import_no_longer_listed_entries",
+    "DELETE FROM import_wrong_card_duplicates",
     "DELETE FROM statement_corrections",
     "DELETE FROM import_rows",
     "DELETE FROM imports",
