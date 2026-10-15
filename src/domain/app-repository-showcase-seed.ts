@@ -62,6 +62,7 @@ const SHOWCASE_CLEAR_TABLES = [
   "investment_statement_values",
   "import_transfer_links",
   "import_no_longer_listed_entries",
+  "import_wrong_card_duplicates",
   "statement_corrections",
   "import_rows",
   "imports",

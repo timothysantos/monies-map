@@ -44,6 +44,7 @@ import {
   type TransferLinkPlan
 } from "./import-transfer-links";
 import { buildEstimateReopen, buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, findLaterNoLongerListedChange } from "./import-no-longer-listed-entries";
+import { buildWrongCardDuplicateRemoval, buildWrongCardDuplicateRestore, hasLaterWrongCardRemovalCovering, type WrongCardRemovalRequest } from "./import-wrong-card-duplicates";
 import {
   assertStatementFixesMatchCertification,
   buildStatementFixCleanupStatement,
@@ -448,6 +449,12 @@ export async function commitImportBatch(
     // Activity exports: the estimates whose row the bank no longer lists that
     // the user did not link to a row (preview's unlistedEstimates).
     reopenedEstimates?: Array<{ transactionId: string; importId: string }>;
+    // Activity exports: the Apple Pay entries the user confirmed removing
+    // because the same purchase is a bank row on another card (preview's
+    // wrongCardDuplicates), with every row of the file as previewed so the
+    // checks run again on the same facts.
+    wrongCardDuplicates?: WrongCardRemovalRequest[];
+    reviewedRows?: ImportPreviewRowDto[];
     note?: string;
   }
 ) {
@@ -613,6 +620,16 @@ export async function commitImportBatch(
 
   if (!isOfficialStatementImport && input.noLongerListedEntries?.length) {
     const removal = await buildNoLongerListedEntryRemoval(db, importId, input.noLongerListedEntries);
+    removal.statements.forEach(write);
+    removal.months.forEach((month) => monthsToRecalculate.add(month));
+  }
+  if (!isOfficialStatementImport && input.wrongCardDuplicates?.length) {
+    const removal = await buildWrongCardDuplicateRemoval(db, importId, {
+      requests: input.wrongCardDuplicates,
+      reviewedRows: input.reviewedRows ?? input.rows,
+      committedRows: input.rows,
+      sourceLabel: input.sourceLabel
+    });
     removal.statements.forEach(write);
     removal.months.forEach((month) => monthsToRecalculate.add(month));
   }
@@ -1130,6 +1147,7 @@ async function buildImportCommitId(input: {
   statementControlRows?: ImportPreviewRowDto[];
   statementReconciliations?: ImportPreviewStatementReconciliationDto[];
   statementCheckpoints?: StatementCheckpointDraftDto[];
+  wrongCardDuplicates?: WrongCardRemovalRequest[];
   note?: string;
 }) {
   const signature = JSON.stringify({
@@ -1140,7 +1158,9 @@ async function buildImportCommitId(input: {
     rows: input.rows.map((row) => buildImportRowHash(row)),
     statementControlRows: input.statementControlRows?.map((row) => buildImportRowHash(row)) ?? [],
     statementReconciliations: input.statementReconciliations ?? [],
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: input.statementCheckpoints ?? [],
+    // Only when there are any, so every other import keeps its id.
+    ...(input.wrongCardDuplicates?.length ? { wrongCardDuplicates: input.wrongCardDuplicates.map((request) => request.transactionId).sort() } : {})
   });
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature));
   const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -1487,6 +1507,11 @@ export async function rollbackImportBatch(
   if (coveredRemoval) {
     throw new Error("This import cannot be rolled back yet: a statement comparison removed a second copy of one of its entries. Undo that correction in Settings first.");
   }
+  // A later import removed an Apple Pay entry because a bank row of this
+  // one holds the same purchase; rolling this back first would lose both.
+  if (await hasLaterWrongCardRemovalCovering(db, input.importId)) {
+    throw new Error("This import cannot be rolled back yet: a later import removed an Apple Pay entry that one of its rows covers. Roll back the later import first.");
+  }
   const fixRestore = buildStatementFixRollbackStatements(db, { importId: input.importId, fixes: recordedFixes });
 
   // Every read happens here, before the single batch below.
@@ -1495,6 +1520,7 @@ export async function rollbackImportBatch(
     .map((fix) => [fix.transaction_id, fix.from_account_id])));
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
   const noLongerListedRestore = await buildNoLongerListedEntryRestore(db, input.importId);
+  const wrongCardRestore = await buildWrongCardDuplicateRestore(db, input.importId);
   // Bank entries this import paired with a statement row go back as they were;
   // a value it replaced is put back.
   const transferLinkRestore = await buildTransferLinkRollbackStatements(db, input.importId);
@@ -1537,6 +1563,7 @@ export async function rollbackImportBatch(
     ...certifiedRestore.months,
     ...supersededRestore.months,
     ...noLongerListedRestore.months,
+    ...wrongCardRestore.months,
     ...transferLinkRestore.months,
     ...promotedRestore.months,
     ...removedEntryMonths.results.flatMap((row) => [row.event_month, row.cleared_month])
@@ -1552,6 +1579,7 @@ export async function rollbackImportBatch(
     ...fixRestore.statements,
     ...supersededRestore.statements,
     ...noLongerListedRestore.statements,
+    ...wrongCardRestore.statements,
     ...transferLinkRestore.statements,
     ...investmentValueRestore,
     // Before the cleanup: a restored entry no longer carries this import's

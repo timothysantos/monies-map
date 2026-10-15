@@ -461,6 +461,27 @@ export const importMessages = {
   },
   statementFixUnexplained: (amount) => `${amount} is still unexplained after these fixes.`,
   statementFixLaterEntries: (count) => `${countOf(count, "entry", "entries")} after this statement ${count === 1 ? "stays" : "stay"} provisional for the next one:`,
+  // Wrong-card Apple Pay duplicates: an Apple Pay entry this card's file does
+  // not list, whose purchase is a bank row on another card. The user decides;
+  // nothing is removed until they confirm and commit.
+  wrongCardListLabel: "Apple Pay entries that may be on the wrong card",
+  wrongCardTitle: (count, accountName) => `${countOf(count, "Apple Pay entry", "Apple Pay entries")} on ${accountName} ${count === 1 ? "looks" : "look"} like ${count === 1 ? "a purchase" : "purchases"} paid with another card`,
+  wrongCardDetail: ({ count, entryAccountName, twinAccountName, amount, isEarlierFile, fileDate }) => {
+    const it = count === 1 ? "it" : "them";
+    const fileClause = isEarlierFile
+      ? `The file you imported for ${entryAccountName}${fileDate ? ` on ${fileDate}` : ""} doesn't list ${it}`
+      : `This file doesn't list ${it} for ${entryAccountName}`;
+    return `${fileClause}, but ${twinAccountName} does, so ${count === 1 ? "the purchase shows" : "the purchases show"} up twice. Removing ${it} takes ${amount} off ${entryAccountName} and leaves ${twinAccountName} as it is.`;
+  },
+  wrongCardEvidence: ({ twinAccountName, twinDescription, twinDate, isInThisFile, importedDate }) => isInThisFile
+    ? `${twinAccountName} has ${twinDescription} on ${twinDate} in this file.`
+    : `${twinAccountName} has ${twinDescription} on ${twinDate}${importedDate ? ` (imported ${importedDate})` : ""}.`,
+  wrongCardRemoveAction: (accountName) => `Remove from ${accountName}`,
+  wrongCardConfirmTitle: (count, accountName) => `Remove ${countOf(count, "entry", "entries")} from ${accountName}?`,
+  wrongCardConfirmDetail: ({ count, entryAccountName, twinAccountName, amount }) => `${count === 1 ? "This purchase is" : "These purchases are"} on ${twinAccountName} already. Removing ${count === 1 ? "it" : "them"} takes ${amount} off ${entryAccountName} and leaves ${twinAccountName} as it is. Nothing is saved until you commit the import, Undo on the card takes the removal back before then, and rolling the import back brings ${count === 1 ? "it" : "them"} back.`,
+  wrongCardConfirm: (count) => count === 1 ? "Remove entry" : "Remove entries",
+  wrongCardApplied: (count, accountName) => `${countOf(count, "entry", "entries")} will be removed from ${accountName} when you commit.`,
+  wrongCardCheckThisOne: ({ description, amount, entryAccountName, twinAccountName, twinDescription, twinDate, isLinked }) => `${description} ${amount} on ${entryAccountName} may be the same purchase as ${twinDescription} on ${twinAccountName} (${twinDate}). ${isLinked ? "It is linked to a split or a plan, so it stays until you unlink it." : "We aren't sure enough to offer removing it."}`,
   statementFixRejected: (reason) => `A fix you approved no longer applies, so it was left out: ${reason}`,
   commitStatementMismatchWarning: (accountNames) => `${accountNames} ${accountNames.includes(" and ") ? "don't" : "doesn't"} match the statement yet. Committing now saves the statement with a difference.`,
   commitStatementStaleWarning: "You changed rows after the statement check ran. Refresh the check before committing.",

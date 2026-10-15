@@ -7,7 +7,7 @@ import {
   invalidateAppDataCache,
   resetAppData
 } from "./domain/app-shell";
-import type { StatementFixDto, StatementNoticeDto } from "./types/dto";
+import type { ImportPreviewRowDto, StatementFixDto, StatementNoticeDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
@@ -2379,9 +2379,11 @@ export default {
         statementFixes?: StatementFixDto[];
         noLongerListedEntries?: { transactionId: string; importId: string }[];
         reopenedEstimates?: { transactionId: string; importId: string }[];
+        wrongCardDuplicates?: { transactionId: string; twinKind: string; twinId: string }[];
+        reviewedRows?: ImportPreviewRowDto[];
       }>();
 
-      if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length)) {
+      if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length && !body.wrongCardDuplicates?.length)) {
         return json({ ok: false, error: "Missing import payload" }, 400);
       }
 
@@ -2403,6 +2405,14 @@ export default {
             reopenedEstimates: Array.isArray(body.reopenedEstimates)
               ? body.reopenedEstimates.filter((entry) => typeof entry?.transactionId === "string" && typeof entry?.importId === "string")
               : [],
+            wrongCardDuplicates: Array.isArray(body.wrongCardDuplicates)
+              ? body.wrongCardDuplicates.flatMap((request) => (
+                typeof request?.transactionId === "string" && typeof request?.twinId === "string" && (request.twinKind === "ledger" || request.twinKind === "this_file")
+                  ? [{ transactionId: request.transactionId, twinKind: request.twinKind, twinId: request.twinId }]
+                  : []
+              ))
+              : [],
+            reviewedRows: Array.isArray(body.reviewedRows) ? body.reviewedRows : undefined,
             rows: body.rows ?? []
           }))
         });

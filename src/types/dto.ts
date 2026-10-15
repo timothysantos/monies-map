@@ -731,6 +731,31 @@ export interface ImportNoLongerListedEntryDto {
   entryType: EntryType;
 }
 
+// An Apple Pay entry this file's card should list and does not, whose
+// purchase is a bank row on another card: it was paid with the other card
+// and is counted twice. HIGH is offered for removal (the user confirms, the
+// commit checks every fact again); MEDIUM is only a note. The twin is the
+// other card's bank row, from the ledger or from this same file.
+export interface ImportWrongCardDuplicateDto {
+  transactionId: string;
+  confidence: "high" | "medium";
+  // The entry is linked to a split or a plan, so it cannot be removed here.
+  isLinked?: boolean;
+  // Which file did not list the entry: this one, or an earlier import of
+  // the same card (and when that was imported).
+  coverage: { kind: "this_file" | "earlier_import"; importedAt?: string };
+  entry: { accountId: string; accountName: string; date: string; description: string; amountMinor: number };
+  twin: {
+    kind: "ledger" | "this_file";
+    id: string;
+    accountId: string;
+    accountName: string;
+    date: string;
+    description: string;
+    importedAt?: string;
+  };
+}
+
 // A foreign currency estimate an earlier activity export updated from a row
 // this one, covering its date, no longer lists (usually a hold the bank
 // released). Its final charge may be a row of this file at another foreign
@@ -776,6 +801,8 @@ export interface ImportPreviewDto {
   // Activity exports only: entries the bank no longer lists.
   noLongerListedEntries?: ImportNoLongerListedEntryDto[];
   unlistedEstimates?: ImportUnlistedEstimateDto[];
+  // Activity exports only, and only when there is one to mention.
+  wrongCardDuplicates?: ImportWrongCardDuplicateDto[];
   statementAccountMatches?: {
     detectedAccountName: string;
     accountId: string;

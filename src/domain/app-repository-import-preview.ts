@@ -22,6 +22,7 @@ import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import { formatForeignAmount } from "./foreign-currency";
 import { findNoLongerListedEntries, loadUnlistedEstimates } from "./import-no-longer-listed-entries";
+import { loadWrongCardEvidence, toWrongCardDuplicateDtos } from "./import-wrong-card-duplicates";
 import {
   diagnoseStatementMismatches,
   getFixKey,
@@ -376,6 +377,7 @@ export async function buildImportPreview(
     appliedFixes,
     rejectedFixes
   });
+  const wrongCardDuplicates = toWrongCardDuplicateDtos(await loadWrongCardEvidence(db, { sourceType: input.sourceType, previewRows, accounts }));
   const exceptionSummary = buildImportPreviewExceptionSummary({
     unknownAccountCount: unknownAccounts.size,
     unknownCategoryCount: unknownCategories.size,
@@ -406,7 +408,8 @@ export async function buildImportPreview(
     ...(statementAccountMatches.length ? { statementAccountMatches } : {}),
     ...(input.sourceType !== "pdf" ? {
       noLongerListedEntries: findNoLongerListedEntries({ sourceType: input.sourceType, previewRows, ledgerRows }),
-      unlistedEstimates: await loadUnlistedEstimates(db, { sourceType: input.sourceType, previewRows, ledgerRows })
+      unlistedEstimates: await loadUnlistedEstimates(db, { sourceType: input.sourceType, previewRows, ledgerRows }),
+      ...(wrongCardDuplicates.length ? { wrongCardDuplicates } : {})
     } : {})
   };
 }
