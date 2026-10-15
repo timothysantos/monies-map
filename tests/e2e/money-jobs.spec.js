@@ -142,7 +142,7 @@ test.describe("phone", () => {
     const rows = jobRows(figures);
     const done = rows.filter(([, status]) => status === "✓ done").length;
     const jobs = lead.locator("[data-money-jobs]");
-    await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} money jobs done`);
+    await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} things on track`);
     await expect(jobs).not.toHaveAttribute("open", "");
     await expect(jobs.locator("[data-job]").first()).toBeHidden();
     // The jobs line takes the old plan line's place: the card stays compact.
@@ -257,7 +257,7 @@ test.describe("phone", () => {
     expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(270);
     const rows = jobRows(figures);
     const done = rows.filter(([, status]) => status === "✓ done").length;
-    await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} money jobs done`);
+    await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} things on track`);
     await lead.locator("[data-money-jobs-summary]").tap();
     // The rows load on the first open.
     await expect(lead.locator("[data-job]")).toHaveCount(rows.length);

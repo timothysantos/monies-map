@@ -118,6 +118,9 @@ a doc here in the same change.
   category list (search, best guess first, then A to Z): inventory of every
   place a category is chosen, the focus decision, the best-guess rules and
   their read cost, with before and after screenshots (15 October 2026).
+- [`audits/plain-names/README.md`](audits/plain-names/README.md): the six
+  screen names renamed to plain words, every string before and after, with
+  screenshots (15 October 2026).
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice, including the Claude-through-AI-Gateway
   provider and receipt reading (11 October 2026).

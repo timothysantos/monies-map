@@ -18,7 +18,7 @@ const RANGE = { start: "2025-06", end: MONTH };
 const MONTH_URL = `/month?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
 const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
 const INK = { in: "rgb(74, 92, 34)", short: "rgb(147, 54, 41)", plan: "rgb(45, 93, 94)", text: "rgb(53, 43, 36)", muted: "rgb(106, 95, 87)" };
-const SIGN_WORDING = /\b(To allocate|Overplanned|over plan|under plan|% of plan)\b|[-−]\s?••••/;
+const SIGN_WORDING = /\b(Not planned yet|Planned more than you earn|over plan|under plan|% of plan)\b|[-−]\s?••••/;
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 const monthLabel = (month) => new Intl.DateTimeFormat("en-SG", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`)).replace(/\bSept\b/, "Sep");
 // The phone the owner tests on; `npm run test:e2e:webkit` runs it in WebKit.
@@ -107,7 +107,7 @@ async function expectMonthLeadFigures(page) {
   await expect(pill("income").locator("small")).toHaveText(`plan ${money(figures.plannedIncome)}`);
   await expect(pill("saved").locator("strong")).toHaveText(money(figures.saved));
   await expect(pill("saved").locator("small")).toHaveText(`target ${money(figures.savingsTarget)}`);
-  await expect(pill("remaining").locator(".lead-column-label")).toHaveText(figures.remaining >= 0 ? "To allocate" : "Overplanned");
+  await expect(pill("remaining").locator(".lead-column-label")).toHaveText(figures.remaining >= 0 ? "Not planned yet" : "Planned more than you earn");
   await expect(pill("remaining").locator("strong")).toHaveText(money(figures.remaining));
   // The six tiles are gone; their figures are all above.
   await expect(page.locator(".month-panel .metric")).toHaveCount(0);

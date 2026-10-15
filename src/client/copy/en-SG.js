@@ -93,7 +93,7 @@ export const messages = {
     needsCheckpoint: "No statement checkpoint yet",
     // An investment account's latest statement: what it was worth, as the
     // statement says, never a promise of what it will be.
-    investmentWorth: (amount, date) => `Worth ${amount} on ${date}, from its statement`
+    investmentWorth: (amount, date) => `${amount} on ${date}, as the statement says`
   },
   // The desktop Ask field and the panel or popup it opens (ask-dock.jsx).
   askDock: {
@@ -184,12 +184,12 @@ export const messages = {
           spentMoreAndInvested: (more, invested) => `Spent ${more} over income · invested ${invested}`
         }
       },
-      // The money jobs line under the savings bar (ui/money-jobs.jsx,
-      // design.md "Money jobs"): how many of the plan's jobs were done. The
+      // The where-your-money-goes line under the savings bar (ui/money-jobs.jsx,
+      // design.md "Money jobs"): how many of the plan's four things are on track. The
       // opened rows and their menu are worded in copy/money-jobs-copy.js,
       // which loads with them, out of the first screen.
       moneyJobs: {
-        summary: (done, total, soFar) => `${done} of ${total} money ${total === 1 ? "job" : "jobs"} done${soFar ? " so far" : ""}`
+        summary: (done, total, soFar) => `${done} of ${total} ${total === 1 ? "thing" : "things"} on track${soFar ? " so far" : ""}`
       }
     },
     fromMonth: "From",
@@ -253,19 +253,19 @@ export const messages = {
     editIncomeSource: "Edit income source",
     incomeRowNote: "Main planned income source for the month.",
     extraIncomeNote: "Additional planned income source.",
-    addPlannedItem: "+ Add planned item",
-    editPlannedItem: "Edit planned item",
-    addBudgetBucket: "+ Add budget bucket",
-    editBudgetBucket: "Edit budget bucket",
-    newPlannedItemNote: "New planned item.",
-    newBudgetBucketNote: "New budget bucket.",
+    addPlannedItem: "+ Add bill or dated payment",
+    editPlannedItem: "Edit bill or dated payment",
+    addBudgetBucket: "+ Add monthly budget",
+    editBudgetBucket: "Edit monthly budget",
+    newPlannedItemNote: "New bill or dated payment.",
+    newBudgetBucketNote: "New monthly budget.",
     doneEdit: "Done",
     cancelEdit: "Cancel",
     // The plan-row sheet (month-plan-sheet.jsx, design.md "Lead · Support ·
     // Detail"): the planned amount leads, actual against it under the bar.
     planSheet: {
       context: (personLabel, monthLabel) => [personLabel, monthLabel].filter(Boolean).join(" · "),
-      kind: { income: "Income", planned_items: "Planned item", budget_buckets: "Budget bucket" },
+      kind: { income: "Income", planned_items: "Bill or dated payment", budget_buckets: "Monthly budget" },
       plannedCaption: "planned",
       spent: "spent",
       received: "received",

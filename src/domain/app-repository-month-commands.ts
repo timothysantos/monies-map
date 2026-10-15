@@ -428,7 +428,7 @@ export async function saveMonthPlanEntryLinks(
     }>();
 
   if (!row || row.section_key !== "planned_items") {
-    throw new Error("Only planned items can be linked to entries.");
+    throw new Error("Only bills and dated payments can be linked to entries.");
   }
 
   const uniqueTransactionIds = [...new Set(input.transactionIds.filter(Boolean))];

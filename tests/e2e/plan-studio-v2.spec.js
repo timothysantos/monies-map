@@ -75,7 +75,7 @@ test.describe("Plan Studio v2 on desktop", () => {
     await expect(row(page, "Food").locator("[data-ps-due]")).toHaveCount(0);
     await expect(page.locator('[data-ps-group="save"] [data-ps-row]').filter({ hasText: "Savings" })).toBeVisible();
     // Neither storage section name is a heading anywhere in Studio.
-    await expect(studio(page)).not.toContainText(/Planned Items|Budget Buckets/);
+    await expect(studio(page)).not.toContainText(/Planned Items|Budget Buckets|Bills and dated payments|Monthly budget/);
     // The tables are hidden until asked for.
     await expect(tables(page)).toHaveCount(0);
   });
@@ -175,7 +175,7 @@ test.describe("Plan Studio v2 on desktop", () => {
     await page.reload();
     await expect(tables(page)).toBeVisible();
     await expect(modeSwitch(page).getByRole("radio", { name: "List" })).toBeChecked();
-    await expect(page.getByRole("button", { name: /Add (budget|planned|income)/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /Add (monthly budget|bill|income)/i }).first()).toBeVisible();
     await expect(studio(page)).toHaveCount(0);
   });
 

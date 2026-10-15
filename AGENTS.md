@@ -442,7 +442,12 @@ Details and the reasons are in `docs/code-spec.md` and
   of a grandparent): no product-internal or designer words (studio, tables,
   bucket, mode, DTO), name controls by what they do or show, and check new
   labels against this before shipping. Plan Studio's copy is linted for it
-  (`tests/plan-studio-copy-lint.test.mjs`).
+  (`tests/plan-studio-copy-lint.test.mjs`). Names the owner retired
+  (Overplanned, To allocate, Money jobs, Wallets in view, budget bucket,
+  Planned items, "from its statement") live in `src/domain/retired-names.ts` and
+  are rejected in every visible string, the Money insights copy and both
+  guides (`tests/retired-names.test.mjs`, `tests/guide-content.test.mjs`);
+  add a retired name there when a name is renamed.
 - Colour is a calm 1970s print (an oat page, near-neutral cards, soft
   chocolate ink; the token
   names stay `--pastel-*`: mint is avocado, rose brick red, sky dusty teal,

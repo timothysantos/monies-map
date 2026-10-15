@@ -2,7 +2,7 @@ import { devices, expect, test } from "@playwright/test";
 
 import { loadMonthPage, postJson, reseedDemo } from "./helpers";
 
-// Saving "Match planned item" is a real write. While it is in flight the
+// Saving "Match bill or dated payment" is a real write. While it is in flight the
 // dialog (desktop) or sheet (mobile) shows it is saving, takes one submit
 // only and ignores Escape and Cancel. A failed save keeps it open with the
 // draft and an inline error; only a successful save closes it.
@@ -44,7 +44,7 @@ async function readLinkedEntryIds(page, label) {
 
 const layouts = [
   { name: "desktop", context: {}, surface: (page) => page.locator(".planned-link-dialog") },
-  { name: "mobile", context: devices["iPhone 12 Pro"], surface: (page) => page.locator('.entry-mobile-sheet[aria-label="Match planned item"]') }
+  { name: "mobile", context: devices["iPhone 12 Pro"], surface: (page) => page.locator('.entry-mobile-sheet[aria-label="Match bill or dated payment"]') }
 ];
 
 for (const layout of layouts) {

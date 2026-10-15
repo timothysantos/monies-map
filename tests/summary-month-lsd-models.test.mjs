@@ -52,13 +52,13 @@ test("Month lead: spend against the spend plan, the savings target, remaining bu
       label: "Remaining budget",
       amountMinor: 100_000,
       tone: "in",
-      detail: "To allocate",
-      detailPopover: "Money is still unassigned. Add more planned rows to give the remaining budget a job."
+      detail: "Not planned yet",
+      detailPopover: "Money is still unassigned. Add more planned rows to say where the rest should go."
     }
   });
 });
 
-test("Month lead over plan and overplanned: rose spend, over headroom, a rose Overplanned remaining budget", () => {
+test("Month lead over plan and overplanned: rose spend, over headroom, a rose Planned more than you earn remaining budget", () => {
   const model = buildMonthLeadModel(monthCards({ plannedIncome: 0, actual: 610_000 }), { actualIncomeMinor: 0, realizedSavingsMinor: -610_000 });
   assert.equal(model.spent.tone, "short");
   assert.deepEqual(model.headroom, { amountMinor: 290_000, isOver: true, tone: "short" });
@@ -66,7 +66,7 @@ test("Month lead over plan and overplanned: rose spend, over headroom, a rose Ov
   assert.deepEqual(model.saved, { amountMinor: -610_000, tone: "short", planMinor: 180_000 });
   assert.equal(model.remaining.amountMinor, -500_000);
   assert.equal(model.remaining.tone, "short");
-  assert.equal(model.remaining.detail, "Overplanned");
+  assert.equal(model.remaining.detail, "Planned more than you earn");
 });
 
 test("Month lead waits for the cards: no lead from missing or partial cards", () => {

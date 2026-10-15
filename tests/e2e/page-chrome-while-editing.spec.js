@@ -60,13 +60,13 @@ test.describe("page chrome while editing on a phone", () => {
       page,
       "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
       "/api/month-page",
-      () => page.getByRole("button", { name: "+ Add planned item" })
+      () => page.getByRole("button", { name: "+ Add bill or dated payment" })
     );
     const tabStrip = page.locator("nav.tab-strip");
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
     await expect(tabStrip).toBeVisible();
 
-    await page.getByRole("button", { name: "+ Add planned item" }).click();
+    await page.getByRole("button", { name: "+ Add bill or dated payment" }).click();
     await expect(sheet).toBeVisible();
     await expect(tabStrip).toBeHidden();
 

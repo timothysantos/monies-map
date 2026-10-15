@@ -319,7 +319,7 @@ test("hidden money shows no tone", async ({ page }) => {
 
 // Hiding money hides its sign in words too: no line may say a hidden figure
 // is over or under, owed or owing, or off.
-const SIGN_WORDING = /\b(To allocate|Overplanned|Over plan|Under plan|over plan|under plan|% of plan|You owe|You are owed|owes you|Settled up|you lent|you borrowed|you received|you paid|is off by)\b|[-−]\s?••••/;
+const SIGN_WORDING = /\b(Not planned yet|Planned more than you earn|Over plan|Under plan|over plan|under plan|% of plan|You owe|You are owed|owes you|Settled up|you lent|you borrowed|you received|you paid|is off by)\b|[-−]\s?••••/;
 
 test("hidden money shows no sign or outcome in words", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });

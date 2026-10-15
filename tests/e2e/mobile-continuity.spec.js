@@ -27,9 +27,9 @@ test.describe("mobile continuity", () => {
       page,
       "/month?view=person-tim&month=2026-04&scope=direct_plus_shared",
       "/api/month-page",
-      () => page.getByRole("heading", { name: "Month" })
+      () => page.getByRole("heading", { name: "Monthly Note" })
     );
-    await expect(page.getByRole("heading", { name: "Month" })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Monthly Note" })).toBeVisible({ timeout: 60_000 });
   });
 
   test("splits page stays readable on mobile", async ({ page }) => {

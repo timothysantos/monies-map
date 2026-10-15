@@ -17,7 +17,7 @@ const FILTERS = [
   ["filterCurrentMonthOnly", "This month only"]
 ];
 
-// "Match planned item": link exact ledger entries to a planned item. The lead
+// "Match bill or dated payment": link exact ledger entries to a bill or dated payment. The lead
 // is the planned item (its category bubble, name, planned amount) with what is
 // already linked as a chip; the filters narrow the list, the list holds the
 // checkboxes, and Save matches is the primary action. On a phone, and on a
@@ -39,7 +39,7 @@ export function MonthPlanLinkDialog({
   onToggleEntry,
   onSave
 }) {
-  const label = row?.label ?? "this planned item";
+  const label = row?.label ?? "this bill or dated payment";
   const hasPlan = typeof row?.plannedMinor === "number";
   return (
     <SheetDialog
@@ -48,10 +48,10 @@ export function MonthPlanLinkDialog({
       // Only the wide dialog carries the legacy dialog class: the tests that
       // tell a dialog from a sheet look for it.
       className={asSheet ? "planned-link-body" : "planned-link-body planned-link-dialog"}
-      title="Match planned item"
-      description={`Link exact ledger entries to ${label}. Budget buckets still use category totals.`}
+      title="Match bill or dated payment"
+      description={`Link exact ledger entries to ${label}. Monthly budgets still use category totals.`}
       descriptionHidden
-      closeLabel="Close planned item matching"
+      closeLabel="Close bill or dated payment matching"
       lead={(
         <LeadCard
           className="sheet-dialog-lead"
@@ -68,7 +68,7 @@ export function MonthPlanLinkDialog({
             </>
           )}
         >
-          <p className="lsd-note">Budget buckets still use category totals.</p>
+          <p className="lsd-note">Monthly budgets still use category totals.</p>
         </LeadCard>
       )}
       errorMessage={errorMessage}

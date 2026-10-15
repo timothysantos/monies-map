@@ -191,7 +191,7 @@
   flex: 1 1 60%;
 }
 
-/* Match planned item: its filter chips and list rows are real tap targets. */
+/* Match bill or dated payment: its filter chips and list rows are real tap targets. */
 .planned-link-body .planned-link-filter-chip {
   min-height: 44px;
   padding: 0 16px;

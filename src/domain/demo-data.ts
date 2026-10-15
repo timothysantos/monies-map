@@ -190,7 +190,7 @@ const summaryMonthSeeds: SummaryMonthSeed[] = [
     timEstimatedExpensesMinor: 382000,
     timRealExpensesMinor: 365000,
     timSavingsGoalMinor: 70000,
-    timNote: "Tim had a few larger planned items this month, but the rest of spending stayed measured.",
+    timNote: "Tim had a few larger dated payments this month, but the rest of spending stayed measured.",
     joyceEstimatedExpensesMinor: 206919,
     joyceRealExpensesMinor: 209282,
     joyceSavingsGoalMinor: 50000,
@@ -587,7 +587,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       ownershipType: "shared",
       amountMinor: fixedActual.family,
       offsetsCategory: false,
-      note: "Booked against the family support planned item.",
+      note: "Booked against the family support payment.",
       splits: planRows.find((row) => row.id === `plan-${monthPrefix}-family`)!.splits
     },
     {
@@ -600,7 +600,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       ownershipType: "shared",
       amountMinor: fixedActual.houseLoan,
       offsetsCategory: false,
-      note: "Booked against the recurring house loan planned item.",
+      note: "Booked against the recurring house loan payment.",
       splits: planRows.find((row) => row.id === `plan-${monthPrefix}-house-loan`)!.splits
     },
     {
@@ -613,7 +613,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       ownershipType: "shared",
       amountMinor: fixedActual.subscriptions,
       offsetsCategory: false,
-      note: "Booked against the grouped household subscriptions planned item.",
+      note: "Booked against the grouped household subscriptions payment.",
       splits: planRows.find((row) => row.id === `plan-${monthPrefix}-subscriptions`)!.splits
     },
     {
@@ -1179,7 +1179,7 @@ const octoberMonthEntries: EntryDto[] = [
     ownerName: "Tim",
     amountMinor: 180000,
     offsetsCategory: false,
-    note: "Booked against the monthly savings planned item.",
+    note: "Booked against the monthly savings payment.",
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 180000 }]
   },
   {

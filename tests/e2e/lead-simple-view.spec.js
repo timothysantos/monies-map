@@ -105,7 +105,7 @@ async function expectSimple(page, { summary, earned, spent }) {
   await expect(group.locator('[data-savings-legend] [data-legend="plan"]')).toHaveCount(0);
   await expect(group.locator(".money-jobs")).toHaveCount(0);
   await expect(group.locator(".summary-support-pill, .lead-column")).toHaveCount(0);
-  await expect(group).not.toContainText(/plan\b|target|money job/i);
+  await expect(group).not.toContainText(/plan\b|target|money job|where your money goes|on track/i);
   if (summary) {
     await expect(page.locator("[data-earned-spent]")).toBeVisible();
     await expect(page.locator(".summary-intent")).toHaveCount(0);

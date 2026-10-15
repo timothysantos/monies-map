@@ -6,5 +6,5 @@ export const monthSimpleCopy = {
   empty: "Nothing came in this month.",
   sources: (count) => `${count} entries`,
   planThisMonth: "Plan this month",
-  planThisMonthHint: "Switch to Plan to set budgets and planned items for this month."
+  planThisMonthHint: "Switch to Plan to set monthly budgets and dated payments for this month."
 };

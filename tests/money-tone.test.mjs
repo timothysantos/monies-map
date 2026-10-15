@@ -219,7 +219,7 @@ test("Month pills: remaining budget and spend gap are headroom, actual spend aga
   assert.equal(exact["Spend gap"], "in");
   assert.equal(exact["Actual spend"], "neutral");
 
-  // Overplanned and overspent.
+  // Planned more than you earn and overspent.
   const overPlan = buildMonthMetricCards({
     planSections: [{ rows: [planRow("Rent", 450_000, 470_000)] }],
     incomeRows,
@@ -228,7 +228,7 @@ test("Month pills: remaining budget and spend gap are headroom, actual spend aga
   const byLabel = Object.fromEntries(overPlan.map((card) => [card.label, card]));
   assert.equal(byLabel["Remaining budget"].amountMinor, -50_000);
   assert.equal(byLabel["Remaining budget"].tone, "short");
-  assert.equal(byLabel["Remaining budget"].detail, "Overplanned");
+  assert.equal(byLabel["Remaining budget"].detail, "Planned more than you earn");
   assert.equal(byLabel["Spend gap"].amountMinor, -20_000);
   assert.equal(byLabel["Spend gap"].tone, "short");
   assert.equal(byLabel["Actual spend"].tone, "short");

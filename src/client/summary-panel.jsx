@@ -310,10 +310,10 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
     <section className="summary-accounts">
       <div className="summary-accounts-body">
         <div className="summary-accounts-head">
-          <h3>Wallets in view</h3>
+          <h3>The accounts shown</h3>
           <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
         </div>
-        <DetailRows label="Wallets in view">
+        <DetailRows label="The accounts shown">
           {accountPills.map((account) => (
             <DetailRow
               key={account.accountId}

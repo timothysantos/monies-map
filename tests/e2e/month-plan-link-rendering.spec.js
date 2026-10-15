@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { installReactCommitCounter } from "../support/react-commit-counter.js";
 import { postJson, reseedDemo } from "./helpers";
 
-// The Month "Match planned item" picker memoizes its candidate rows: a
+// The Month "Match bill or dated payment" picker memoizes its candidate rows: a
 // checkbox or filter change re-renders only rows it changes, so a month
 // with a thousand candidates stays responsive.
 

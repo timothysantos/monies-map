@@ -136,7 +136,7 @@ test("each money job's question reads as its own answer, for a month and for the
     [menuQuestion("kept"), "How much did I save in Sep 2026?", { kind: "saved", month: "2026-09" }],
     [menuQuestion("difference"), "How much did I save in Sep 2026?", { kind: "saved", month: "2026-09" }],
     [menuQuestion("earned"), "How much did I earn in Sep 2026?", { kind: "income", month: "2026-09" }],
-    // A plan figure (the plan legend, "of $x plan", To allocate).
+    // A plan figure (the plan legend, "of $x plan", Not planned yet).
     [menuQuestion("plan"), "How did I do against the plan in Sep 2026?", { kind: "plan", month: "2026-09" }],
     // A split balance.
     [menuQuestion("splits", { arg: "split-group-japan" }), "Who owes whom?", { kind: "owed", personId: null }],

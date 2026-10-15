@@ -45,9 +45,9 @@ export function buildMonthMetricCards({ planSections, incomeRows, currentMonthSu
       tone: headroomTone(remainingBudgetMinor),
       // The detail says which side of zero the figure is, so it hides with it.
       detailFollowsAmount: true,
-      detail: remainingBudgetMinor >= 0 ? "To allocate" : "Overplanned",
+      detail: remainingBudgetMinor >= 0 ? "Not planned yet" : "Planned more than you earn",
       detailPopover: remainingBudgetMinor >= 0
-        ? "Money is still unassigned. Add more planned rows to give the remaining budget a job."
+        ? "Money is still unassigned. Add more planned rows to say where the rest should go."
         : "Planned spend is higher than planned income for this month. Add planned income or reduce planned rows to fully fund the month."
     },
     {

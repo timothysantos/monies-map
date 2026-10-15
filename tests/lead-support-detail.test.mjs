@@ -102,7 +102,7 @@ test("a lead without a tone or category keeps the plain ink and a neutral bubble
 test("a caller's bubble, accent colour, editable amount with caption, the bar and the chips (the Month plan sheet)", () => {
   const html = render(h(LeadCard, {
     title: "Food & Drinks",
-    subtitle: "Budget bucket",
+    subtitle: "Monthly budget",
     accentColor: "#B88A3D",
     bubble: h("span", { className: "probe-bubble" }),
     amount: h("input", { "aria-label": "Planned", defaultValue: "320.00" }),
@@ -116,7 +116,7 @@ test("a caller's bubble, accent colour, editable amount with caption, the bar an
   assert.match(html, /<span class="lsd-bubble-slot"><span class="probe-bubble"><\/span><\/span>/);
   assert.doesNotMatch(html, /class="lsd-bubble"/);
   assert.match(html, /<strong class="lsd-title">Food &amp; Drinks<\/strong>/);
-  assert.match(html, /<span class="lsd-subtitle" style="--cat:var\(--cat-b88a3d, #B88A3D\)">Budget bucket<\/span>/);
+  assert.match(html, /<span class="lsd-subtitle" style="--cat:var\(--cat-b88a3d, #B88A3D\)">Monthly budget<\/span>/);
   // The editable amount and its caption are one label.
   assert.match(html, /<label class="lsd-amount-column"><span class="lsd-amount is-editable"><input aria-label="Planned"/);
   assert.match(html, /<small class="lsd-amount-caption">planned<\/small><\/label>/);

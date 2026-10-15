@@ -66,19 +66,19 @@ test("a finished month: each job is done, or short or over by its amount", () =>
     { key: "income", label: "Income $250,000", status: "short by $3,000", tone: "short" }
   ]);
   assert.equal(model.doneCount, 1);
-  assert.equal(model.summary, "1 of 4 money jobs done");
+  assert.equal(model.summary, "1 of 4 things on track");
 });
 
 test("the month still going says so far, and forecasts nothing", () => {
   const model = buildMoneyJobs({ figures: splitMoneyUse(PERIOD), plannedIncomeMinor: 24_000_000, inProgress: true });
   assert.deepEqual(model.jobs.map((job) => job.status), ["over by $7,000 so far", "✓ so far", "short by $2,000 so far", "✓ so far"]);
-  assert.equal(model.summary, "2 of 4 money jobs done so far");
+  assert.equal(model.summary, "2 of 4 things on track so far");
 });
 
 test("spending its plan, or within the cents the row cannot show, is done; a dollar more is over", () => {
   const onPlan = buildMoneyJobs({ figures: splitMoneyUse({ incomeMinor: 100_000, spentMinor: 60_000, plannedSpendMinor: 60_000 }) });
   assert.deepEqual(rows(onPlan), [{ key: "spend", label: "Spend within $600", status: "✓ done", tone: "in" }]);
-  assert.equal(onPlan.summary, "1 of 1 money job done");
+  assert.equal(onPlan.summary, "1 of 1 thing on track");
 
   // 49 cents over would read "over by $0".
   const cents = buildMoneyJobs({ figures: splitMoneyUse({ incomeMinor: 100_000, spentMinor: 60_049, plannedSpendMinor: 60_000 }) });
@@ -96,7 +96,7 @@ test("saving when more went out than came in is short by the whole gap", () => {
     { key: "spend", label: "Spend within $1,300", status: "over by $200", tone: "short" },
     { key: "save", label: "Save $200", status: "short by $700", tone: "short" }
   ]);
-  assert.equal(model.summary, "0 of 2 money jobs done");
+  assert.equal(model.summary, "0 of 2 things on track");
 });
 
 test("a job is there only when its plan line is: no plan and no planned income sets no job", () => {
@@ -113,7 +113,7 @@ test("hidden money: ✓ for a done job, else the share of the plan reached, and 
     ["Invest", "80%"],
     ["Income", "99%"]
   ]);
-  assert.equal(model.summary, "1 of 4 money jobs done so far");
+  assert.equal(model.summary, "1 of 4 things on track so far");
   const words = [model.summary, ...model.jobs.flatMap((job) => [job.label, job.status])].join(" ");
   assert.doesNotMatch(words, /\$|short|over|under|left|\d+ more/);
 });

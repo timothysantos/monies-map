@@ -97,7 +97,7 @@ async function gotoMonthPage(page, {
     "/api/month-page",
     () => expectHeading
       ? page.getByRole("heading", { name: "Month", exact: true })
-      : page.getByRole("button", { name: "+ Add planned item" })
+      : page.getByRole("button", { name: "+ Add bill or dated payment" })
   );
   await expect(page).toHaveURL(new RegExp(`/month\\?[^#]*view=${view}[^#]*month=${month}[^#]*scope=${scope}`));
 }
@@ -413,10 +413,10 @@ test.describe("month page", () => {
   test("mobile month page supports add and edit sheets plus category editing above the sheet", async ({ page }) => {
     await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
     await gotoMonthPage(page, { expectHeading: false });
-    await expect(page.getByRole("button", { name: "+ Add planned item" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "+ Add bill or dated payment" })).toBeVisible({ timeout: 30_000 });
 
-    await page.getByRole("button", { name: "+ Add planned item" }).click();
-    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    await page.getByRole("button", { name: "+ Add bill or dated payment" }).click();
+    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
     await expect(addSheet).toBeVisible();
     // The category picker is the Category row's control, named by the row.
     await expect(addSheet.getByRole("button", { name: "Category Savings", exact: true })).toBeVisible();
@@ -426,11 +426,11 @@ test.describe("month page", () => {
     await expect(addSheet).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await addSheet.getByRole("button", { name: "Close + add planned item" }).click();
+    await addSheet.getByRole("button", { name: "Close + add bill or dated payment" }).click();
     await expect(addSheet).toHaveCount(0);
 
     await page.locator("tr").filter({ hasText: "Savings" }).first().click();
-    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await expect(editSheet).toBeVisible();
     await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
     await expect(editSheet.locator('input[value="1800.00"]')).toBeVisible();
@@ -449,7 +449,7 @@ test.describe("month page", () => {
     await page.unroute("**/api/month-plan/save", delayedMobileMonthPlanSave);
 
     await page.locator("tr").filter({ hasText: "Savings" }).first().click();
-    const failedSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const failedSheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await expect(failedSheet).toBeVisible();
     await failedSheet.locator('input[value="1805.00"]').fill("1810.00");
     const failedMobileMonthPlanSave = async (route) => {
@@ -543,7 +543,7 @@ test.describe("month page", () => {
     const row = page.locator("tr").filter({ hasText: "Mobile date night" }).first();
     await row.getByRole("button", { name: "Link entries" }).click();
 
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Match bill or dated payment"]');
     await expect(sheet).toBeVisible();
     await expect(page.locator(".planned-link-dialog")).toHaveCount(0);
     await expect(sheet).toContainText("Mobile dinner charge");
@@ -595,7 +595,7 @@ test.describe("month page", () => {
 
     await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     await page.locator("tr").filter({ hasText: label }).first().getByRole("button", { name: "Link entries" }).click();
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Match bill or dated payment"]');
     await expect(sheet).toBeVisible();
     await sheet.locator(".planned-link-row").filter({ hasText: "Mobile enter concert" }).getByRole("checkbox").check();
 
@@ -978,7 +978,7 @@ test.describe("month page", () => {
 
     await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     await page.locator("tr").filter({ hasText: "Mobile actual drilldown" }).first().click();
-    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await expect(sheet).toBeVisible();
     await sheet.locator(".month-actual-drilldown-mobile").click();
 
@@ -1083,7 +1083,7 @@ test.describe("month page", () => {
     const row = page.locator("tr").filter({ hasText: "Savings" }).first();
     const openButton = row.getByRole("button", { name: "Edit Savings row" });
     const sheets = page.locator(".entry-mobile-sheet");
-    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await row.getByRole("button", { name: "Edit Savings", exact: true }).focus();
     await page.keyboard.press("Tab");
     await expect(openButton).toBeFocused();
@@ -1095,7 +1095,7 @@ test.describe("month page", () => {
     await expect(sheets).toHaveCount(1);
     await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
     expect(await takeMonthRowOpenCount(page)).toBe(1);
-    await editSheet.getByRole("button", { name: "Close edit planned item" }).first().click();
+    await editSheet.getByRole("button", { name: "Close edit bill or dated payment" }).first().click();
     await expect(sheets).toHaveCount(0);
 
     // One tap must run the open handler once and leave exactly one sheet.
@@ -1125,7 +1125,7 @@ test.describe("month page", () => {
 
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit bill or dated payment"]');
     await expect(editSheet).toBeVisible();
     await expect(page.locator(".entry-mobile-sheet")).toHaveCount(1);
     await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();

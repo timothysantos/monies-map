@@ -1,3 +1,5 @@
+import { findRetiredNames } from "../retired-names";
+
 // The check-in's tone rules as code (docs/money-insights-copy.md, "Tone"). Every
 // approved line must pass:
 // no shame or alarm words, no exclamation marks, no emoji, and no
@@ -121,7 +123,8 @@ export function findFiller(text: string): string[] {
 }
 
 // Returns the app-centred phrase a line uses, if any.
+// Names the owner retired (retired-names.ts) count as jargon too.
 export function findAppJargon(text: string): string[] {
   const match = text.match(APP_JARGON_PATTERN);
-  return match ? [`uses "${match[0]}"`] : [];
+  return [...(match ? [`uses "${match[0]}"`] : []), ...findRetiredNames(text)];
 }

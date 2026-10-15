@@ -74,13 +74,13 @@ test("mobile: saving the category from the add planned item sheet saves only the
     page,
     "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
     "/api/month-page",
-    () => page.getByRole("button", { name: "+ Add planned item" })
+    () => page.getByRole("button", { name: "+ Add bill or dated payment" })
   );
   const planSaves = countRequests(page, "/api/month-plan/save");
   const categorySaves = countRequests(page, "/api/categories/update");
 
-  await page.getByRole("button", { name: "+ Add planned item" }).click();
-  const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+  await page.getByRole("button", { name: "+ Add bill or dated payment" }).click();
+  const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add bill or dated payment"]');
   await expect(sheet).toBeVisible();
   const label = sheet.getByLabel("Item name", { exact: true });
   const draft = `Unsaved plan draft ${Date.now()}`;
