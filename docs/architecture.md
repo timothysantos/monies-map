@@ -339,6 +339,39 @@ write routes that resolve each candidate (`/api/transfers/link`,
 `/api/entries/update-classification`, `/api/splits/checkpoints/match`,
 `/api/splits/settlements/create`); it never calls them. No AI is involved.
 
+### Wrong-card Apple Pay duplicates (current, 2026-10)
+
+An Apple Pay entry saved on the wrong card is counted twice once the right
+card's activity file arrives, and no existing check saw it (the "no longer
+listed" check removes only what an export created; a Shortcut entry counts
+as the user's own; the wrong-card diagnosis reads statements only). The
+import preview now flags it, deterministically and without AI:
+
+```text
+preview  import-wrong-card-duplicates.ts   loadWrongCardEvidence: 1 read when
+         |                                  no Apple Pay entry is in the file's
+         |                                  dates, else 4 (entries, same-amount
+         |                                  entries around them, each card's
+         |                                  earlier export dates, posting lag)
+         wrong-card-apple-pay-duplicate.ts  pure confidence rules (high /
+                                            medium / low, score, reasons)
+         -> ImportPreviewDto.wrongCardDuplicates (high and medium only)
+commit   buildWrongCardDuplicateRemoval    re-runs the same evidence on the
+         |                                  ledger as it is and the reviewed
+         |                                  rows, refuses anything short of
+         |                                  high; guarded INSERT (saved row),
+         |                                  INSERT (audit), DELETE per entry
+         |                                  in the import's one batch
+rollback buildWrongCardDuplicateRestore    puts each whole row back in the
+                                            rollback's batch
+```
+
+Nothing is automatic and there is no standing "do it for me" choice: a
+removal is offered, confirmed in a dialog and checked again at commit.
+Statement imports keep their own wrong-card path. Rules, false-positive
+analysis, measured reads and the real case:
+`docs/audits/wrong-card-apple-pay-duplicate.md`.
+
 ### Investment statements (current, 2026-10)
 
 An iFAST "Wrap" monthly statement PDF, and a StashAway "Statement of Account"

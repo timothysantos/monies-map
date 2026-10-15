@@ -1304,6 +1304,18 @@ back. `tests/no-longer-listed-entries-api.test.mjs` replays a real released
 Grab hold; `tests/atomic-writes-no-longer-listed.test.mjs` covers the batch
 failures.
 
+A second removal rides in the same commit: Apple Pay entries on the wrong
+card (DOMAIN.md, "Wrong-Card Apple Pay Duplicate"). The preview returns
+`wrongCardDuplicates` (high: offered, medium: a note); the client sends the
+confirmed ones as `wrongCardDuplicates` plus every previewed row as
+`reviewedRows`; `buildWrongCardDuplicateRemoval` judges them again and saves
+each whole row in `import_wrong_card_duplicates` for the rollback. Tests:
+`tests/wrong-card-apple-pay-duplicate.test.mjs` (the rules),
+`tests/wrong-card-apple-pay-duplicate-api.test.mjs` (preview, commit, rollback,
+both import orders), `tests/atomic-writes-wrong-card-duplicates.test.mjs`,
+`tests/wrong-card-duplicates-query-budget.test.mjs`,
+`tests/e2e/wrong-card-apple-pay-duplicate.spec.js`.
+
 An estimate is never removed that way. When the row that last updated a
 foreign currency estimate is gone, `loadUnlistedEstimates` returns it as
 `unlistedEstimates` with up to three rows that may be its final charge. The

@@ -1197,6 +1197,19 @@ leave Ask.
   the end of your files and opens the next one. Reopen it from its chip
   whenever you like; you don't need the file again. If you changed rows or
   approved fixes, the app asks first, because skipping drops those changes.
+- **Remove from** *card* (on a card in the review): appears when you bring a
+  card's activity file and an Apple Pay entry you saved on that card is not
+  in the file, while another card's bank rows show the same purchase (the
+  same shop and amount, within a couple of days). You most likely paid with
+  the other card, so the purchase is counted twice. The card names each entry
+  and the other card's row that matches it. Select **Remove from** *card*,
+  then confirm in the window: the entries come off that card when you commit,
+  and the purchase stays on the other card. **Keep as is** leaves them, and
+  **Undo** on the card takes your choice back before you commit. Rolling the
+  import back brings the entries back. When the app is less sure (the dates
+  are three days apart, or the entry is part of a split or a plan) it only
+  lists the entry under **Also check** and never offers to remove it. The
+  app never removes an entry on its own.
 - **Rollback import** on a batch: undo it ([Undo an import](#undo-an-import)).
 
 ### On a phone

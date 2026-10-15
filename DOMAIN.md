@@ -2489,6 +2489,82 @@ Important distinctions:
   statement's difference. The export check catches it weeks earlier and
   does not depend on the totals.
 
+### Wrong-Card Apple Pay Duplicate
+
+An Apple Pay entry (saved by the Shortcut) on a card whose own activity file
+should list it and does not, while the same purchase is a bank row on another
+card of the household. The purchase was paid with the other card; the entry is
+counted twice until it is removed. Real case: three entries dated 11 Oct on
+UOB Lady's Card (Cold Storage 1.80, CS Fresh 9.70, FairPrice 7.84) for
+purchases made with UOB One Card, whose 14 Oct export holds the same three
+rows; the Lady's Card export covering 11 Oct does not list them, so the card
+was overstated by 19.34.
+
+Canonical term:
+- `wrong-card Apple Pay duplicate`
+
+Code and storage:
+- `src/domain/wrong-card-apple-pay-duplicate.ts` (the confidence rules, pure)
+- `src/domain/import-wrong-card-duplicates.ts` (the bounded reads, the DTOs,
+  the commit's removal, the rollback's restore)
+- `ImportPreviewDto.wrongCardDuplicates` (`ImportWrongCardDuplicateDto`,
+  present only when there is one to mention); the commit takes the confirmed
+  ones as `wrongCardDuplicates` with every previewed row as `reviewedRows`
+- `import_wrong_card_duplicates` (one row per removed entry, the whole
+  `transactions` row in `entry_snapshot_json`)
+- audit events `entry_removed_as_wrong_card_duplicate` (at commit) and
+  `entry_restored_by_import_rollback` (at rollback)
+
+Confidence rule (fixed, never learned). The Apple Pay entry is a candidate
+when it is an expense the Shortcut saved (its reference starts `shortcut:`),
+still provisional, never matched to a bank row (no import), not a transfer,
+and no row of the file claims it. The twin is a bank row of another card (an
+export or statement row nothing else vouches for: not a promoted manual entry,
+not an Apple Pay or Ask entry, not an estimate, not a transfer) with the same
+amount and currency, a date within three days (the purchase day or the posted
+day), and a shop word in common (a word counts when it is the same or one cut
+short of the other, four letters at least: `Cold Storage-Star Vist` and
+`COLD STORAGE-STAR VISTA`). The twin is a row already in the ledger or a new
+row of the file being imported, so the check runs when the second of the two
+files lands, in either order.
+- `high` (offered for removal) needs all of: the card's file covers the entry's
+  day (this file's first to last row, or an earlier import's own rows); the
+  day is at least the card's posting lag behind (three days, longer when the
+  card's own Apple Pay entries took longer to post, never over seven); no
+  row of the same amount within three days on the entry's own card, in the
+  ledger or the file; exactly one twin; no other open Apple Pay entry that
+  could claim the twin (one-to-one); the dates at most two days apart; a strong
+  shop-name match (two shop words, or the only word of at least five letters);
+  no split, settlement or plan link; not a foreign currency estimate; the two
+  cards' owners compatible (the same person, or either card shared).
+- `medium` (a note, no removal) is only a near miss on a soft rule: dates
+  three days apart, a partial shop name, a link, an estimate, or another
+  person's card.
+- `low` (never shown) is any failure of the premise: the file lists the entry,
+  does not cover its day, the entry is newer than the posting lag, a
+  same-amount row sits on its own card, several twins (a daily repeat), a
+  contested twin, or no twin.
+- The score (0 to 100) and the reason codes are for tests and the audit event;
+  the tier decides. `high` never scores under 75.
+
+Important distinctions:
+- It is never automatic. The preview offers; "Remove from <card>" asks in a
+  dialog; only a confirmed removal is sent, and the commit judges every one
+  again from the ledger as it is then and the file as it is being committed.
+  Anything short of `high`, a different twin, an entry the same commit would
+  pair with a row, or a repeated entry stops the whole commit before anything
+  is written. There is no "do this for me next time".
+- Only activity files (CSV/XLS). A statement PDF is reviewed card by card
+  against its balance (statement mismatch diagnosis, `wrong_account` and
+  `not_on_statement`), and the Settings statement comparison removes a
+  provisional second copy it matched to another entry
+  (`remove_duplicate_entry`); neither reads these rules.
+- An entry saved without the Shortcut's request id carries no Apple Pay
+  marker and is never offered.
+- Rolling the import back restores each entry whole (same id, dates, note,
+  category, owner and reference). Rolling back the import whose bank row was
+  the twin is refused while the removal stands.
+
 ### Statement Correction
 
 A statement fix for data that is already saved, applied from the Settings

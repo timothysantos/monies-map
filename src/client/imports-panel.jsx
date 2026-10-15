@@ -210,6 +210,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // themselves live in statementFixesRef and the preview's appliedFixes.
   const [dismissedStatementFindingIds, setDismissedStatementFindingIds] = useState([]);
   const [keepsNoLongerListedEntries, setKeepsNoLongerListedEntries] = useState(false);
+  // Apple Pay entries on the wrong card (preview.wrongCardDuplicates): the
+  // ones the user confirmed removing and the ones they chose to keep.
+  const [wrongCardChoices, setWrongCardChoices] = useState({ confirmed: [], kept: [] });
   // A statement's rows are read-only in its card sections; this opens the
   // full row editor.
   const [isEditingStatementRows, setIsEditingStatementRows] = useState(false);
@@ -370,9 +373,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementImportMeta,
       dismissedOverlapIds,
       unknownCategoryMode,
-      keepsNoLongerListedEntries
+      keepsNoLongerListedEntries,
+      confirmedWrongCardIds: wrongCardChoices.confirmed
     }),
-    [accounts, dismissedOverlapIds, keepsNoLongerListedEntries, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
+    [accounts, dismissedOverlapIds, keepsNoLongerListedEntries, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode, wrongCardChoices.confirmed]
   );
   const currentPreviewSignature = useMemo(
     () => buildStatementPreviewSnapshot(previewRows, statementCheckpoints),
@@ -1262,7 +1266,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     const rowsToCommit = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
     const noLongerListedEntries = importPreviewModel.noLongerListedEntriesToRemove;
     const reopenedEstimates = importPreviewModel.reopenedEstimates;
-    if (!rowsToCommit.length && !statementCheckpoints.length && !noLongerListedEntries.length && !reopenedEstimates.length) {
+    const wrongCardDuplicates = importPreviewModel.wrongCardDuplicatesToRemove;
+    if (!rowsToCommit.length && !statementCheckpoints.length && !noLongerListedEntries.length && !reopenedEstimates.length && !wrongCardDuplicates.length) {
       return;
     }
 
@@ -1283,6 +1288,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementFixes: statementImportMeta.sourceType === "pdf" ? preview?.statementDiagnosis?.appliedFixes ?? [] : [],
         noLongerListedEntries,
         reopenedEstimates,
+        wrongCardDuplicates,
+        reviewedRows: previewRows,
         rows: rowsToCommit,
         diagnosticContext: {
           source: "import_commit",
@@ -1345,7 +1352,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       previewRows,
       statementReconciliations,
       isStatement: isStatementReview,
-      removedEntryCount: isStatementReview ? 0 : noLongerListedEntries.length
+      removedEntryCount: isStatementReview ? 0 : noLongerListedEntries.length + wrongCardDuplicates.length
     });
     const committedIntakeItemId = activeIntakeItemId;
     if (currentBatchFile) {
@@ -1506,6 +1513,27 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setDismissedStatementFindingIds([]);
     setIsEditingStatementRows(false);
     setKeepsNoLongerListedEntries(false);
+    setWrongCardChoices({ confirmed: [], kept: [] });
+  }
+
+  // The user's answer on the wrong-card Apple Pay cards: confirm the
+  // removal, keep the entries, or take a confirmation back before commit.
+  function confirmWrongCardRemoval(transactionIds) {
+    setWrongCardChoices((current) => ({
+      confirmed: Array.from(new Set([...current.confirmed, ...transactionIds])),
+      kept: current.kept.filter((id) => !transactionIds.includes(id))
+    }));
+  }
+
+  function keepWrongCardEntries(transactionIds) {
+    setWrongCardChoices((current) => ({
+      confirmed: current.confirmed.filter((id) => !transactionIds.includes(id)),
+      kept: Array.from(new Set([...current.kept, ...transactionIds]))
+    }));
+  }
+
+  function undoWrongCardRemoval(transactionIds) {
+    setWrongCardChoices((current) => ({ ...current, confirmed: current.confirmed.filter((id) => !transactionIds.includes(id)) }));
   }
 
   // `context` carries the file's source type and checkpoints when this runs
@@ -2527,6 +2555,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             keepsNoLongerListedEntries={keepsNoLongerListedEntries}
             onKeepsNoLongerListedEntriesChange={trackReviewChange(setKeepsNoLongerListedEntries)}
             onLinkUnlistedEstimate={trackReviewChange(linkUnlistedEstimate)}
+            confirmedWrongCardIds={wrongCardChoices.confirmed}
+            keptWrongCardIds={wrongCardChoices.kept}
+            onConfirmWrongCard={trackReviewChange(confirmWrongCardRemoval)}
+            onKeepWrongCard={trackReviewChange(keepWrongCardEntries)}
+            onUndoWrongCard={trackReviewChange(undoWrongCardRemoval)}
           />
 
           {isStatementReview ? null : optionalAiChecks}
@@ -2561,7 +2594,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               reconciledExistingRowCount={reconciledExistingRowCount}
               removedEntryCount={statementImportMeta.sourceType === "pdf"
                 ? statementReconciliations.reduce((total, reconciliation) => total + countRemovedByStatement(reconciliation), 0)
-                : importPreviewModel.noLongerListedEntriesToRemove.length}
+                : importPreviewModel.noLongerListedEntriesToRemove.length + importPreviewModel.wrongCardDuplicatesToRemove.length}
               reopenedEstimateCount={importPreviewModel.reopenedEstimates.length}
               statementImportSourceType={statementImportMeta.sourceType}
               isCommitDisabled={isCommitDisabled}

@@ -264,6 +264,22 @@ Imports owns:
   `import-ledger-flow.spec.js` by holding the new import out of the refreshed
   page until after the click)
 
+- the wrong-card Apple Pay cards (DOMAIN.md, "Wrong-Card Apple Pay
+  Duplicate"). On an activity file the preview may carry
+  `wrongCardDuplicates`: Apple Pay entries the card's own file does not list
+  whose purchase is a bank row on another card. A card per pair of cards
+  (same visual family as the statement fixes) names each entry with the other
+  card's row as proof. "Remove from {card}" opens an in-app dialog; Confirm
+  only marks the entries (`wrongCardChoices` in `imports-panel.jsx`: nothing
+  is sent, the commit bar counts "N entries will be removed", Undo takes it
+  back); "Keep as is" hides the card. The commit sends the confirmed ones as
+  `wrongCardDuplicates` with every previewed row as `reviewedRows`, and the
+  server judges them again before removing them in the import's batch. A
+  doubtful match is a quiet "Also check" note with no button. Statements do
+  not show these cards. Evidence:
+  `docs/audits/wrong-card-apple-pay-duplicate.md`,
+  `tests/e2e/wrong-card-apple-pay-duplicate.spec.js`.
+
 ## Audit Status
 
 Current status: aligned with tests and runtime behavior.

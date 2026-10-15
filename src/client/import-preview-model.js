@@ -62,7 +62,8 @@ export function buildImportPreviewModel({
   statementImportMeta,
   dismissedOverlapIds,
   unknownCategoryMode,
-  keepsNoLongerListedEntries = false
+  keepsNoLongerListedEntries = false,
+  confirmedWrongCardIds = []
 }) {
   const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict && row.commitStatus === "skipped");
   const knownAccountNames = new Set(accounts.map((account) => account.name));
@@ -166,8 +167,13 @@ export function buildImportPreviewModel({
   const reopenedEstimates = (preview?.unlistedEstimates ?? []).filter((estimate) => (
     !previewRows.some((row) => row.reconciliationTargetTransactionId === estimate.transactionId)
   ));
+  // Apple Pay entries on the wrong card that the user confirmed removing
+  // (only a clear one can be confirmed, and only while it is still offered).
+  const wrongCardDuplicatesToRemove = (preview?.wrongCardDuplicates ?? []).filter((item) => (
+    item.confidence === "high" && confirmedWrongCardIds.includes(item.transactionId)
+  ));
   const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0
-    || noLongerListedEntriesToRemove.length > 0 || reopenedEstimates.length > 0;
+    || noLongerListedEntriesToRemove.length > 0 || reopenedEstimates.length > 0 || wrongCardDuplicatesToRemove.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
 
   return {
@@ -181,6 +187,7 @@ export function buildImportPreviewModel({
     unmappedCommitAccountNames,
     hasCommitPayload,
     noLongerListedEntriesToRemove,
+    wrongCardDuplicatesToRemove,
     reopenedEstimates,
     hasCheckpointOnlyCommit,
     hasMatchedCheckpointOnlyCommit,

@@ -174,6 +174,8 @@ export function commitImportBatch({
   statementFixes = [],
   noLongerListedEntries = [],
   reopenedEstimates = [],
+  wrongCardDuplicates = [],
+  reviewedRows,
   rows,
   diagnosticContext
 }) {
@@ -193,6 +195,12 @@ export function commitImportBatch({
       statementFixes,
       noLongerListedEntries: noLongerListedEntries.map(({ transactionId, importId }) => ({ transactionId, importId })),
       reopenedEstimates: reopenedEstimates.map(({ transactionId, importId }) => ({ transactionId, importId })),
+      // The confirmed removals, with every previewed row so the server
+      // checks the same facts again; sent only when there are any.
+      ...(wrongCardDuplicates.length ? {
+        wrongCardDuplicates: wrongCardDuplicates.map((item) => ({ transactionId: item.transactionId, twinKind: item.twin.kind, twinId: item.twin.id })),
+        reviewedRows: reviewedRows?.map((row) => ({ ...row, splitBasisPoints: Number(row.splitBasisPoints ?? 10000) }))
+      } : {}),
       rows: rows.map((row) => ({
         ...row,
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)

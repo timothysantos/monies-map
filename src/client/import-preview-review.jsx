@@ -14,6 +14,7 @@ import { importMessages } from "./copy/en-SG-imports";
 import { entryTypeLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
 import { StatementFixSuggestions } from "./statement-fix-suggestions";
+import { WrongCardDuplicates } from "./wrong-card-duplicates";
 import { addDaysToIsoDate } from "./app-dates";
 import { InlineError } from "./ui-states";
 import { moneyToneClass } from "./money-tone-class";
@@ -87,7 +88,12 @@ export function ImportPreviewReview({
   onAutomaticStatementFixesChange,
   keepsNoLongerListedEntries = false,
   onKeepsNoLongerListedEntriesChange,
-  onLinkUnlistedEstimate
+  onLinkUnlistedEstimate,
+  confirmedWrongCardIds = [],
+  keptWrongCardIds = [],
+  onConfirmWrongCard,
+  onKeepWrongCard,
+  onUndoWrongCard
 }) {
   if (!preview) {
     return null;
@@ -237,6 +243,19 @@ export function ImportPreviewReview({
           isKept={keepsNoLongerListedEntries}
           isSubmitting={isSubmitting}
           onKeptChange={onKeepsNoLongerListedEntriesChange}
+        />
+      ) : null}
+
+      {/* Apple Pay entries this card's file does not list although the same purchase is a bank row on another card. */}
+      {preview.wrongCardDuplicates?.length ? (
+        <WrongCardDuplicates
+          items={preview.wrongCardDuplicates}
+          confirmedIds={confirmedWrongCardIds}
+          keptIds={keptWrongCardIds}
+          isSubmitting={isSubmitting}
+          onConfirm={onConfirmWrongCard}
+          onKeep={onKeepWrongCard}
+          onUndo={onUndoWrongCard}
         />
       ) : null}
 

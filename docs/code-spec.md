@@ -686,6 +686,18 @@ A persistence command is all-or-nothing:
   then saves it to `import_no_longer_listed_entries` and deletes it in the
   import's own final batch; the rollback re-creates it in the rollback's
   batch (`tests/atomic-writes-no-longer-listed.test.mjs`)
+- an activity export's removal of wrong-card Apple Pay duplicates
+  (`src/domain/import-wrong-card-duplicates.ts`) judges each confirmed entry
+  again before the batch (a refusal throws before anything is written), then
+  per entry runs three statements guarded by the entry still being the
+  provisional Apple Pay entry that was checked: the saved copy in
+  `import_wrong_card_duplicates`, the audit event, and the `DELETE`; the
+  rollback restores each whole row in the rollback's batch
+  (`tests/atomic-writes-wrong-card-duplicates.test.mjs`). Its reads are
+  budgeted: one when no Apple Pay entry lies in the file's dates, four when
+  one does, each answered from `idx_transactions_household_date` or
+  `idx_transactions_account_date`
+  (`tests/wrong-card-duplicates-query-budget.test.mjs`)
 - an investment statement import (`src/domain/import-investment-values.ts`,
   `import-transfer-links.ts`) re-checks, before the batch, that each paired
   bank entry is still unlinked, on another account, for the same amount and on
