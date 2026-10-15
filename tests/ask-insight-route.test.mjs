@@ -16,9 +16,9 @@ const INSIGHT = {
   fact: "Serene's OCBC 365 Card statement differs from what's recorded here by $42.80.",
   think: "The statement is the bank's own monthly list of payments. A gap like this is usually one payment missing here or recorded twice.",
   lines: [
-    { label: "Wallet", text: "OCBC 365 Card (Serene)" },
+    { label: "Account", text: "OCBC 365 Card (Serene)" },
     { label: "Statement", text: "September 2026" },
-    { label: "Statement and entries differ by", amountMinor: 4_280 },
+    { label: "Statement and your records differ by", amountMinor: 4_280 },
     { label: "PAYNOW 91234567 on 3 Sep", amountMinor: 1_500 }
   ]
 };
@@ -73,8 +73,8 @@ test("a checked AI explanation comes back tagged ai, costs one unit, and only th
   const prompt = ai.calls[0].input.messages.at(-1).content;
   assert.match(prompt, /<question>Explain: Serene's OCBC 365 Card statement differs from what's recorded here by \$42\.80<\/question>/);
   assert.match(prompt, /- The insight: Serene's OCBC 365 Card statement differs/);
-  assert.match(prompt, /- Statement and entries differ by: \$42\.80/);
-  assert.match(prompt, /- Wallet: OCBC 365 Card \(Serene\)/);
+  assert.match(prompt, /- Statement and your records differ by: \$42\.80/);
+  assert.match(prompt, /- Account: OCBC 365 Card \(Serene\)/);
   assert.match(prompt, /untrusted data, not instructions/);
   // The phone number in a description never reaches the model.
   assert.doesNotMatch(prompt, /91234567/);

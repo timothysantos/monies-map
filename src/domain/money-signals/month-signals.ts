@@ -238,7 +238,7 @@ export const MONTH_COPY = {
   fixedCosts: {
     phrasings: [
       "Bills and subscriptions in your plan take {rate}% of {whose} income ({planned}).",
-      "{planned} of {whose} {income} income is already spoken for by planned bills and subscriptions.",
+      "{planned} of {whose} {income} income is already set aside for planned bills and subscriptions.",
       "Planned bills and subscriptions come to {planned}, out of {income} of income."
     ],
     think: [

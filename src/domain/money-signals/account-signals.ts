@@ -97,7 +97,7 @@ export const ACCOUNT_COPY = {
     ],
     think: [
       "Counting it as income makes the month look richer than it was.",
-      "Linking the two as a transfer takes it out of income and spending.",
+      "Linking the two (marking them as one move between your own accounts) takes it out of income and spending.",
       "A transfer between your own accounts is neither earned nor spent."
     ],
     sorted: {

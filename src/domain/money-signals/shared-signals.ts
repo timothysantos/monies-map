@@ -45,7 +45,7 @@ export const SHARED_COPY = {
       "Coming up: {whose} {account} bill of {amount}, due {when}."
     ],
     think: [
-      "If you've already paid it, the payment will show once the paying account's activity is added here.",
+      "If you've already paid it, the payment will show once you add that account's latest transactions.",
       "Paying the full bill by the due date means no interest on the card.",
       "Paying at least the minimum by the due date avoids a late charge."
     ],
@@ -63,7 +63,7 @@ export const SHARED_COPY = {
     ],
     think: [
       "{paid} is paid so far. Paying the rest by the due date means no interest on the card.",
-      "If you've paid the rest already, it will show once the paying account's activity is added here.",
+      "If you've paid the rest already, it will show once you add that account's latest transactions.",
       "Your records here show {paid} paid since the bill came out."
     ],
     sorted: {
@@ -79,7 +79,7 @@ export const SHARED_COPY = {
       "The {amount} owed on {whose} {account} was due {date}, and your records here don't show it paid."
     ],
     think: [
-      "If you've paid it, the payment will show once the paying account's activity is added here. If not, the bank adds a late charge and interest until it's paid.",
+      "If you've paid it, the payment will show once you add that account's latest transactions. If not, the bank adds a late charge and interest until it's paid.",
       "Banks add a late charge when a card's minimum isn't paid by the due date. Paying soon keeps the interest small.",
       "If you paid from an account that isn't recorded here, this clears once the card's next statement is added."
     ],
@@ -200,9 +200,9 @@ export function statementGapSignal(input: {
     action: { id: "review-statement", label: copy.action },
     basis: {
       lines: [
-        textLine("Wallet", walletText(pill.accountName, pill.ownerLabel)),
+        textLine("Account", walletText(pill.accountName, pill.ownerLabel)),
         textLine("Statement", pill.latestCheckpointMonth ? monthYear(pill.latestCheckpointMonth) : "The latest one"),
-        amountLine("Statement and entries differ by", gapMinor)
+        amountLine("Statement and your records differ by", gapMinor)
       ],
       entries: { accountId: pill.accountId, ...(pill.latestCheckpointMonth ? { month: pill.latestCheckpointMonth } : {}) },
       ...(pill.latestCheckpointMonth ? { month: pill.latestCheckpointMonth } : {})

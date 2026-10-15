@@ -37,7 +37,7 @@ export const SUMMARY_COPY = {
       "Changing one category is easier than changing everything. Which one matters least to you?",
       "Runs like this often come from one or two big costs. Finding them makes the next step clearer.",
       "A few months like this can happen for good reasons, like a holiday or a big repair. It's worth checking whether this was planned.",
-      "The extra money came from savings or went onto a card. Usually one category explains most of it, so that's a simple place to start."
+      "The gap was paid from savings, or put on a credit card that isn't paid off yet. One category usually explains most of it, so that's the easiest place to look."
     ]
   },
   categoryCreep: {

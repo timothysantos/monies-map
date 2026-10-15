@@ -229,7 +229,7 @@ test("fixed costs: the long view, with the amount beside the percentage", () => 
   assert.equal(signal.kind, "long_view");
   assert.deepEqual(facts(signal), [
     "Bills and subscriptions in your plan take 31% of this month's income ($2,480.00).",
-    "$2,480.00 of this month's $8,000.00 income is already spoken for by planned bills and subscriptions.",
+    "$2,480.00 of this month's $8,000.00 income is already set aside for planned bills and subscriptions.",
     "Planned bills and subscriptions come to $2,480.00, out of $8,000.00 of income."
   ]);
   assert.equal(signal.phrasings[0].think, "\"Fixed costs\", the bills and subscriptions that come every month, set how much room is left. The lower they are, the more freedom for everything else.");

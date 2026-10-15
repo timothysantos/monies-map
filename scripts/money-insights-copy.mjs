@@ -21,7 +21,7 @@ import { ACCOUNT_COPY } from "../src/domain/money-signals/account-signals.ts";
 import { TRIP_COPY } from "../src/domain/money-signals/trip-signal.ts";
 import { SPLITS_CALM_LINE, SPLITS_COPY, SPLITS_TRIVIA_ROTATION } from "../src/domain/money-signals/splits-signals.ts";
 import { SUBSCRIPTIONS_CHANGE_MINOR, SUBSCRIPTIONS_CHANGE_RATIO, SUMMARY_CALM_LINE, SUMMARY_CALM_PLACE, SUMMARY_COPY, SUMMARY_TRIVIA_ROTATION } from "../src/domain/money-signals/summary-signals.ts";
-import { AVOID_WORDS, FILLER_PHRASES } from "../src/domain/money-signals/tone.ts";
+import { APP_JARGON, AVOID_WORDS, FILLER_PHRASES } from "../src/domain/money-signals/tone.ts";
 import { SIGNAL_KIND_LABELS } from "../src/domain/money-signals/types.ts";
 
 export const DOC_PATH = "docs/money-insights-copy.md";
@@ -316,9 +316,16 @@ export function renderCheckInCopyMarkdown() {
     "No filler (owner, 2026-10-15): every sentence states a computed fact or",
     "gives a next step. A caveat or platitude that does neither (\"Knowing the",
     "number is the useful part.\") is cut, and a line with nothing useful to add",
-    "after its fact has no think line at all (the Big picture runway is a fact",
+    "after its fact has no think line at all (the Big picture line is a fact",
     "with its basis). Every shown line, including Fun fact and Big picture,",
-    "has Ask about this; the explanation happens only when it is tapped.",
+    "is itself tappable: it opens a small menu whose one item is Ask about this,",
+    "and the explanation happens only when that is chosen. There is no visible",
+    "Ask link.",
+    "",
+    "Money words a normal reader stops on (owner, 2026-10-15): say what happened",
+    "to the money, not the finance term: the gap was paid from savings, or put",
+    "on a credit card that isn't paid off yet, never \"went onto a card\".",
+    `App and finance words the lint rejects: ${APP_JARGON.join(", ")}.`,
     "",
     `Words the tone lint rejects: ${AVOID_WORDS.join(", ")}.`,
     "",

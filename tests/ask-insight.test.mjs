@@ -58,9 +58,9 @@ test("statement mismatch: the wallet, the statement and the gap; Open in Entries
   const signal = statementGapSignal({ accountPills: statementPills, audience: "household", viewLabel: "Household", formatMoney: sgd });
   assert.deepEqual(signal.basis, {
     lines: [
-      { label: "Wallet", text: "OCBC 365 Card (Serene)" },
+      { label: "Account", text: "OCBC 365 Card (Serene)" },
       { label: "Statement", text: "September 2026" },
-      { label: "Statement and entries differ by", amountMinor: 4_280 }
+      { label: "Statement and your records differ by", amountMinor: 4_280 }
     ],
     entries: { accountId: "acct-ocbc-365", month: "2026-09" },
     month: "2026-09"
@@ -71,7 +71,7 @@ test("statement mismatch: the wallet, the statement and the gap; Open in Entries
   assert.equal(answer.kind, "quick_fix");
   assert.equal(answer.fact, "Serene's OCBC 365 Card statement differs from what's recorded here by $42.80.");
   assert.equal(answer.think, "The statement is the bank's own monthly list of payments. A gap like this is usually one payment missing here or recorded twice.");
-  assert.deepEqual(answer.lead, { label: "Statement and entries differ by", amountMinor: 4_280, currency: "SGD" });
+  assert.deepEqual(answer.lead, { label: "Statement and your records differ by", amountMinor: 4_280, currency: "SGD" });
   const filter = { month: "2026-09", viewId: "household", scope: "direct_plus_shared", search: "", categories: [], wallets: ["acct-ocbc-365"], type: "", minAmountMinor: null, maxAmountMinor: null, entryIds: [] };
   assert.deepEqual(answer.entries, filter);
   assert.deepEqual(answer.links, [

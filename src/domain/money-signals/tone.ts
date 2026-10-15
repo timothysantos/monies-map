@@ -74,7 +74,16 @@ export const APP_JARGON = [
   "trustworthy",
   "whole story",
   "same story",
-  "checkpoint"
+  "checkpoint",
+  // Money words a normal reader would stop on (owner, 2026-10-15).
+  "onto a card",
+  "went onto",
+  "spoken for",
+  "runway",
+  "cushion",
+  "drawdown",
+  "skew",
+  "basis"
 ];
 
 const APP_JARGON_PATTERN = new RegExp(`\\b(?:${APP_JARGON.join("|")})\\b`, "i");

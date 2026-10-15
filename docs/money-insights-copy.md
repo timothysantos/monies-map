@@ -26,9 +26,16 @@ there is no AI rewording.
 No filler (owner, 2026-10-15): every sentence states a computed fact or
 gives a next step. A caveat or platitude that does neither ("Knowing the
 number is the useful part.") is cut, and a line with nothing useful to add
-after its fact has no think line at all (the Big picture runway is a fact
+after its fact has no think line at all (the Big picture line is a fact
 with its basis). Every shown line, including Fun fact and Big picture,
-has Ask about this; the explanation happens only when it is tapped.
+is itself tappable: it opens a small menu whose one item is Ask about this,
+and the explanation happens only when that is chosen. There is no visible
+Ask link.
+
+Money words a normal reader stops on (owner, 2026-10-15): say what happened
+to the money, not the finance term: the gap was paid from savings, or put
+on a credit card that isn't paid off yet, never "went onto a card".
+App and finance words the lint rejects: the app, chart, charts, unlinked, ledger, trustworthy, whole story, same story, checkpoint, onto a card, went onto, spoken for, runway, cushion, drawdown, skew, basis.
 
 Words the tone lint rejects: overspent, overspend, overspending, blew, blown, bad month, cut back, cutting back, should, shouldn't, non-essential, nonessential, guilty, guilt, sacrifice, deny yourself, warning, alert, problem, problems.
 
@@ -179,7 +186,7 @@ Phrasings:
 
 Way to think about it, in turn:
 
-- If you've already paid it, the payment will show once the paying account's activity is added here.
+- If you've already paid it, the payment will show once you add that account's latest transactions.
 - Paying the full bill by the due date means no interest on the card.
 - Paying at least the minimum by the due date avoids a late charge.
 
@@ -199,7 +206,7 @@ Phrasings:
 Way to think about it, in turn:
 
 - {paid} is paid so far. Paying the rest by the due date means no interest on the card.
-- If you've paid the rest already, it will show once the paying account's activity is added here.
+- If you've paid the rest already, it will show once you add that account's latest transactions.
 - Your records here show {paid} paid since the bill came out.
 
 Said once when it clears (Going well): Paid: {whose} {account} bill. / Its payment now shows in your records.
@@ -217,7 +224,7 @@ Phrasings:
 
 Way to think about it, in turn:
 
-- If you've paid it, the payment will show once the paying account's activity is added here. If not, the bank adds a late charge and interest until it's paid.
+- If you've paid it, the payment will show once you add that account's latest transactions. If not, the bank adds a late charge and interest until it's paid.
 - Banks add a late charge when a card's minimum isn't paid by the due date. Paying soon keeps the interest small.
 - If you paid from an account that isn't recorded here, this clears once the card's next statement is added.
 
@@ -366,7 +373,7 @@ When the count is 1:
 Way to think about it, in turn:
 
 - Counting it as income makes the month look richer than it was.
-- Linking the two as a transfer takes it out of income and spending.
+- Linking the two (marking them as one move between your own accounts) takes it out of income and spending.
 - A transfer between your own accounts is neither earned nor spent.
 
 Said once when it clears (Going well): Sorted: money moved between {whose} own accounts no longer counts as income. / Income now shows only what was earned.
@@ -449,7 +456,7 @@ Way to think about it, in turn:
 - Changing one category is easier than changing everything. Which one matters least to you?
 - Runs like this often come from one or two big costs. Finding them makes the next step clearer.
 - A few months like this can happen for good reasons, like a holiday or a big repair. It's worth checking whether this was planned.
-- The extra money came from savings or went onto a card. Usually one category explains most of it, so that's a simple place to start.
+- The gap was paid from savings, or put on a credit card that isn't paid off yet. One category usually explains most of it, so that's the easiest place to look.
 
 ### categoryCreep (Worth knowing)
 
@@ -1081,7 +1088,7 @@ Planned bills and subscriptions against the month's income (actual, or planned b
 Phrasings:
 
 - Bills and subscriptions in your plan take {rate}% of {whose} income ({planned}).
-- {planned} of {whose} {income} income is already spoken for by planned bills and subscriptions.
+- {planned} of {whose} {income} income is already set aside for planned bills and subscriptions.
 - Planned bills and subscriptions come to {planned}, out of {income} of income.
 
 Way to think about it, in turn:

@@ -115,7 +115,14 @@ test("the plain-words lint catches app-centred phrases and lets everyday ones th
     "Once sorted, these show up in the right place on every chart.",
     "Still unlinked: 3 planned bills.",
     "That keeps every total here trustworthy.",
-    "The plan and the entries tell the same story."
+    "The plan and the entries tell the same story.",
+    // Money words a normal reader stops on (owner, 2026-10-15).
+    "The extra money came from savings or went onto a card.",
+    "That is {planned} of income already spoken for.",
+    "Your cushion would last about 2 months.",
+    "At this runway you are fine.",
+    "A drawdown of savings paid for it.",
+    "The numbers are skewed, so check the basis."
   ]) {
     assert.ok(findAppJargon(bad).length > 0, bad);
   }
@@ -126,6 +133,12 @@ test("the plain-words lint catches app-centred phrases and lets everyday ones th
   ]) {
     assert.deepEqual(findAppJargon(fine), [], fine);
   }
+});
+
+test("the spending-above-income think lines say what happened to the money, with no card jargon", () => {
+  const { think } = CATALOGUES.find((catalogue) => catalogue.title === "Summary").copy.spendingAboveIncome;
+  assert.ok(think.includes("The gap was paid from savings, or put on a credit card that isn't paid off yet. One category usually explains most of it, so that's the easiest place to look."));
+  assert.ok(!think.some((line) => /went onto a card|extra money came/i.test(line)));
 });
 
 test("every signal has 3 to 5 phrasings with the same numbers; trivia has one line", () => {
