@@ -18,35 +18,58 @@ export function keyboardInsetFor({ layoutHeight, viewportHeight, viewportOffsetT
 }
 
 /**
+ * The inset plus the height the keyboard leaves visible (0 with no keyboard).
+ * A sheet that must not follow its content (the category list) sizes itself
+ * to the visible height, anchored to the top of the visible area.
+ */
+export function keyboardFrameFor(viewport) {
+  const inset = keyboardInsetFor(viewport);
+  return { inset, visibleHeight: inset > 0 ? Math.round(viewport.viewportHeight) : 0 };
+}
+
+/**
  * Keeps `--keyboard-inset` on `element` in step with the phone keyboard
- * until the returned function detaches it. `win` is the window (a stand-in
- * in tests). Without an element or a visual viewport it does nothing.
+ * until the returned function detaches it, with `--keyboard-visible-height`
+ * and a `data-keyboard` flag while the keyboard is up. `win` is the window (a
+ * stand-in in tests). Without an element or a visual viewport it does
+ * nothing. `scrollFocused: false` is for a sheet already sized to the visible
+ * area: scrolling its field into view would only shift the sheet's own head
+ * out of sight.
  * @param {HTMLElement | null} element
  * @param {any} [win]
+ * @param {{ scrollFocused?: boolean }} [options]
  * @returns {() => void}
  */
-export function attachKeyboardInset(element, win = typeof window === "undefined" ? null : window) {
+export function attachKeyboardInset(element, win = typeof window === "undefined" ? null : window, { scrollFocused = true } = {}) {
   const viewport = win?.visualViewport ?? null;
   if (!element || !viewport) {
     return () => {};
   }
   let lastInset = -1;
+  let lastVisible = -1;
   let frame = 0;
   const update = () => {
     frame = 0;
-    const inset = keyboardInsetFor({
+    const { inset, visibleHeight } = keyboardFrameFor({
       layoutHeight: win.innerHeight,
       viewportHeight: viewport.height,
       viewportOffsetTop: viewport.offsetTop,
       scale: viewport.scale ?? 1
     });
-    if (inset === lastInset) {
+    if (inset === lastInset && visibleHeight === lastVisible) {
       return;
     }
     lastInset = inset;
+    lastVisible = visibleHeight;
     element.style.setProperty("--keyboard-inset", `${inset}px`);
+    if (inset > 0) {
+      element.style.setProperty("--keyboard-visible-height", `${visibleHeight}px`);
+    } else {
+      element.style.removeProperty("--keyboard-visible-height");
+    }
+    element.toggleAttribute?.("data-keyboard", inset > 0);
     const focused = win.document.activeElement;
-    if (inset > 0 && focused instanceof win.HTMLElement && element.contains(focused)) {
+    if (scrollFocused && inset > 0 && focused instanceof win.HTMLElement && element.contains(focused)) {
       focused.scrollIntoView({ block: "nearest" });
     }
   };
@@ -65,6 +88,8 @@ export function attachKeyboardInset(element, win = typeof window === "undefined"
       win.cancelAnimationFrame(frame);
     }
     element.style.removeProperty("--keyboard-inset");
+    element.style.removeProperty("--keyboard-visible-height");
+    element.toggleAttribute?.("data-keyboard", false);
   };
 }
 
@@ -73,7 +98,9 @@ export function attachKeyboardInset(element, win = typeof window === "undefined"
  * Splits expense dialog on a phone), so the bar and the focused field stay
  * above the keyboard.
  * @param {HTMLElement | null} element
+ * @param {{ scrollFocused?: boolean }} [options]
  */
-export function useKeyboardInset(element) {
-  useEffect(() => attachKeyboardInset(element), [element]);
+export function useKeyboardInset(element, options = undefined) {
+  const scrollFocused = options?.scrollFocused;
+  useEffect(() => attachKeyboardInset(element, undefined, { scrollFocused }), [element, scrollFocused]);
 }

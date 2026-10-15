@@ -2823,6 +2823,15 @@ searched.
   it first. The field is visible at the top and a tap on it focuses it and
   raises the keyboard. Decided by `(hover: hover) and (pointer: fine)`, not by
   screen width, so a touch tablet showing the popover also waits for a tap.
+- Sheets and the keyboard: on a phone the category sheet is one stable box,
+  never sized by its result count. Keyboard down it is `min(70dvh, 640px)`;
+  with the keyboard up (`use-keyboard-inset.js`: `--keyboard-visible-height`,
+  `data-keyboard`) it is the visible area above the keyboard minus 12px,
+  anchored to its top, the bottom bar hidden (the head's close button closes
+  it), rows 44px, the list filling the rest and scrolling inside. The search
+  is 16px so iOS does not zoom. Any new sheet with a search field must lift
+  above the keyboard (`useKeyboardInset`) and not change height as results
+  change.
 - Keys with the search focused: Up and Down move through the results, Enter
   picks the highlighted one (typing highlights the first result), Escape closes
   with focus back on the trigger (the row's category label).
