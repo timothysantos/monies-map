@@ -9,9 +9,8 @@ import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSpl
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
 import { assertSplitSettlementUnchanged, type SplitSettlementFacts } from "./split-settlement-lock";
 import {
-  findBestCrossCurrencySplitExpenseLedgerCandidate,
   findBestCrossCurrencySplitSettlementLedgerCandidate,
-  findBestSplitExpenseLedgerCandidate,
+  findBestSplitExpenseMatch,
   findBestSplitSettlementLedgerCandidate
 } from "./split-matching";
 import { rebalanceSplitSharesForTotal, splitAmountMinorWithRoundedRemainder } from "./split-allocation";
@@ -665,6 +664,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
         transactions.amount_minor,
         transactions.currency,
         transactions.entry_type,
+        transactions.owner_person_id,
         transactions.import_id
       FROM transactions
       INNER JOIN imports ON imports.id = transactions.import_id
@@ -672,6 +672,11 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
         AND transactions.import_id IS NOT NULL
         AND imports.status = 'completed'
         AND (${windowPredicate})
+        -- A row another split record already holds is refused at link time
+        -- (linkSplitExpenseMatch), so it is never suggested.
+        AND NOT EXISTS (SELECT 1 FROM split_expenses WHERE split_expenses.linked_transaction_id = transactions.id AND split_expenses.deleted_at IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM split_settlements WHERE split_settlements.linked_transaction_id = transactions.id AND split_settlements.deleted_at IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM split_settlement_checkpoint_matches WHERE split_settlement_checkpoint_matches.transaction_id = transactions.id)
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, ...windows.flatMap((window) => [window.from, window.to]))
@@ -682,18 +687,14 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       amount_minor: number;
       currency: string;
       entry_type: "expense" | "income" | "transfer";
+      owner_person_id: string | null;
       import_id: string;
     }>();
 
   const matches: SplitMatchCandidateDto[] = [];
 
   for (const expense of expenses.filter((item) => !item.linkedTransactionId)) {
-    const sameCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(expense.currency));
-    const crossCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) !== normalizeSplitCurrency(expense.currency));
-    const candidate = findBestSplitExpenseLedgerCandidate(
-      expense,
-      sameCurrencyRows
-    ) ?? findBestCrossCurrencySplitExpenseLedgerCandidate(expense, crossCurrencyRows);
+    const candidate = findBestSplitExpenseMatch(expense, transactionRows.results);
 
     if (!candidate) {
       continue;
@@ -717,7 +718,9 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       amountDeltaMinor: candidate.amountDelta,
       dateDeltaDays: candidate.dateDelta,
       confidenceLabel: normalizeSplitCurrency(candidate.row.currency) === normalizeSplitCurrency(expense.currency) && candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
-      reviewLabel: "Imported transaction could match this split expense",
+      reviewLabel: candidate.reason === "exact-amount-and-date"
+        ? "Same amount and date as this split expense"
+        : "Imported transaction could match this split expense",
       requiresFxReview: normalizeSplitCurrency(candidate.row.currency) !== normalizeSplitCurrency(expense.currency),
       fxRateBasisPoints: normalizeSplitCurrency(candidate.row.currency) !== normalizeSplitCurrency(expense.currency)
         ? calculateFxRateBasisPoints(Math.abs(expense.totalAmountMinor), Math.abs(candidate.row.amount_minor))
