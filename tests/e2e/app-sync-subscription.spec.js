@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openEntryComposer, postJson, reseedDemo } from "./helpers";
+import { categoryNamesInForm, openEntryComposer, postJson, reseedDemo } from "./helpers";
 
 // H12d: cross-tab sync lives in useAppSyncSubscription. Both transports reach
 // the same handlers: a BroadcastChannel shell refresh and a storage-event
@@ -30,7 +30,7 @@ test("a shell refresh sent over BroadcastChannel updates reference data in the o
     channel.close();
   });
 
-  await expect.poll(() => other.locator("select option").allTextContents(), { timeout: 15_000 }).toContain(renamed);
+  await expect.poll(() => categoryNamesInForm(other), { timeout: 15_000 }).toContain(renamed);
   expect(await other.evaluate(() => window.__notReloaded)).toBe(true);
   await other.close();
 });

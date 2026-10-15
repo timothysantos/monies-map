@@ -114,6 +114,10 @@ a doc here in the same change.
 - [`audits/month-lead-spacing/README.md`](audits/month-lead-spacing/README.md):
   the Month and Summary lead's vertical rhythm and the legend share rule,
   with before and after screenshots (15 October 2026).
+- [`audits/category-quick-pick.md`](audits/category-quick-pick.md): the one
+  category list (search, best guess first, then A to Z): inventory of every
+  place a category is chosen, the focus decision, the best-guess rules and
+  their read cost, with before and after screenshots (15 October 2026).
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice, including the Claude-through-AI-Gateway
   provider and receipt reading (11 October 2026).

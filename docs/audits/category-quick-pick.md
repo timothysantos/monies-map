@@ -81,6 +81,24 @@ skipped), a category the household lacks is skipped. No AI.
 - No page response changed: the entries-page payload is unchanged.
 - Nothing is sent but the entry's own description (at most 240 characters).
 
+## Screenshots
+
+In `docs/audits/category-quick-pick/` (demo data only; the spec
+`tests/e2e/category-quick-pick.spec.js` takes them when
+`CATEGORY_PICK_SHOT_DIR` is set):
+
+- Before: `before-desktop-light-label-click-opens-editor` (the label opened the
+  row's editor, there was no list to search) and
+  `before-phone-light-category-picker` (the plain phone list).
+- After, wide screen, light and dark: `desktop-*-entries-row-best-guess`,
+  `-search-kopi`, `-no-match`, `desktop-*-edit-card`, `desktop-*-filter`.
+- After, phone, light and dark: `phone-*-entries-row-best-guess`,
+  `phone-*-entries-row-search-coffee`.
+
+The other families (Ask, Month plan, Settings, Imports, Splits) draw the same
+list from the same component; `tests/category-pick-list-dom.test.mjs` and the
+browser specs for each cover them.
+
 ## Not covered
 
 - Rule words in the search ("any category rule words if cheap"): the page does

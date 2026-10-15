@@ -323,6 +323,17 @@ export const categoryList = (page) => page.getByRole("listbox", { name: "Categor
 export const categoryOption = (page, name) => page.locator(`[data-category-option="${name}"]`);
 export const categorySearch = (page) => page.getByRole("combobox", { name: "Search categories" });
 
+// The category names the entry form offers: opens its category list, reads the
+// names and closes it again (the form's own category control, not a filter).
+export async function categoryNamesInForm(page) {
+  await page.getByRole("button", { name: /^Category,/ }).first().click();
+  await expect(categoryList(page)).toBeVisible();
+  const names = await categoryList(page).locator(".category-pick-row-label").allTextContents();
+  await page.keyboard.press("Escape");
+  await expect(categoryList(page)).toHaveCount(0);
+  return names;
+}
+
 export async function pickCategory(page, trigger, name) {
   await trigger.click();
   await expect(categoryList(page)).toBeVisible();

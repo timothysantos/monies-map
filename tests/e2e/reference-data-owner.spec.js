@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openEntryComposer, postJson, reseedDemo } from "./helpers";
+import { categoryNamesInForm, openEntryComposer, postJson, reseedDemo } from "./helpers";
 
 // H12a: reference data (accounts, categories) has one owner. A cross-tab
 // refresh keeps the last good data on screen, never blanks the shell or
@@ -32,7 +32,7 @@ function broadcastShellRefresh(page) {
 }
 
 async function categoryOptions(page) {
-  return page.locator("select option").allTextContents();
+  return categoryNamesInForm(page);
 }
 
 test("a cross-tab refresh updates reference data without blanking the shell or dropping a draft", async ({ page }) => {
