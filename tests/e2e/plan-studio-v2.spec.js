@@ -145,18 +145,18 @@ test.describe("Plan Studio v2 on desktop", () => {
   test("Studio is the default, Tables is a switch away, and held changes survive the trip", async ({ page }) => {
     await seed(page);
     await open(page);
-    await expect(modeSwitch(page).getByRole("radio", { name: "Studio" })).toBeChecked();
+    await expect(modeSwitch(page).getByRole("radio", { name: "Sliders" })).toBeChecked();
     await expect(page.locator("[data-plan-mode-dirty]")).toHaveCount(0);
     await typeAmount(page, "Food", "137");
     await expect(saveButton(page)).toBeEnabled();
     await expect(page.locator("[data-plan-mode-dirty]")).toHaveCount(1);
 
-    await modeSwitch(page).getByText("Tables").click();
+    await modeSwitch(page).getByText("List").click();
     await expect(tables(page)).toBeVisible();
     await expect(studio(page)).toBeHidden();
     await expect(page.locator("[data-plan-mode-dirty]")).toHaveCount(1);
 
-    await modeSwitch(page).getByText("Studio").click();
+    await modeSwitch(page).getByText("Sliders").click();
     await expect(studio(page)).toBeVisible();
     await expect(tables(page)).toHaveCount(0);
     await expect(planned(page, "Food")).toHaveText("$137");
@@ -170,11 +170,11 @@ test.describe("Plan Studio v2 on desktop", () => {
   test("the mode is remembered: Tables stays Tables after a reload, and the plan tables do everything they did", async ({ page }) => {
     await seed(page);
     await open(page);
-    await modeSwitch(page).getByText("Tables").click();
+    await modeSwitch(page).getByText("List").click();
     await expect(tables(page)).toBeVisible();
     await page.reload();
     await expect(tables(page)).toBeVisible();
-    await expect(modeSwitch(page).getByRole("radio", { name: "Tables" })).toBeChecked();
+    await expect(modeSwitch(page).getByRole("radio", { name: "List" })).toBeChecked();
     await expect(page.getByRole("button", { name: /Add (budget|planned|income)/i }).first()).toBeVisible();
     await expect(studio(page)).toHaveCount(0);
   });
@@ -227,7 +227,7 @@ test.describe("Plan Studio v2 on desktop", () => {
     const food = row(page, "Food");
     await food.getByRole("button", { name: "More for Food" }).click();
     const items = await page.getByRole("menuitem").allInnerTexts();
-    expect(items).toEqual(["Edit note", "Edit details", "Remove line"]);
+    expect(items).toEqual(["Edit note", "Edit name, date or category", "Remove line"]);
     await page.getByRole("menuitem", { name: "Edit note" }).click();
     const note = page.getByRole("dialog").filter({ hasText: "Edit note" });
     await note.locator("textarea").fill("Studio note");
@@ -238,8 +238,8 @@ test.describe("Plan Studio v2 on desktop", () => {
     // A dated line can also match entries.
     const loan = page.locator('[data-ps-group="spend"] [data-ps-row]').filter({ hasText: "House loan" });
     await loan.getByRole("button", { name: "More for House loan" }).click();
-    await expect(page.getByRole("menuitem", { name: "Match entries" })).toBeVisible();
-    await page.getByRole("menuitem", { name: "Match entries" }).click();
+    await expect(page.getByRole("menuitem", { name: "Pick matching entries" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Pick matching entries" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
 
@@ -267,7 +267,7 @@ test.describe("Plan Studio v2 on desktop", () => {
     await open(page);
     await expect(page.locator("[data-ps-income-seg]")).toHaveCount(2);
     await expect(page.locator("[data-ps-income-legend] [data-ps-income-part]")).toHaveText([/Salary\s*\$6,000/, /Bonus\s*\$1,000/]);
-    await expect(page.locator("[data-ps-flag]")).toContainText("Planned in $7,000");
+    await expect(page.locator("[data-ps-flag]")).toContainText("Planned money in $7,000");
   });
 
   test("money that arrived beyond the plan: a quiet line, and Add to Savings asks, then saves through Save plan", async ({ page }) => {
@@ -280,25 +280,94 @@ test.describe("Plan Studio v2 on desktop", () => {
     // Cancel does nothing.
     let writes = 0;
     page.on("request", (request) => { if (request.url().includes("/api/month-plan/apply-changes")) writes += 1; });
+    const balanceBefore = await page.locator("[data-ps-balance]").textContent();
+    const plannedInBefore = await page.locator("[data-ps-flag]").innerText();
     await line.getByRole("button", { name: "Add to Savings" }).click();
     const ask = page.getByRole("dialog");
-    await expect(ask).toContainText("Add $500 to your Savings plan?");
-    await expect(ask).toContainText(/It goes from \$[\d,]+ to \$[\d,]+/);
+    await expect(ask).toContainText("Add $500 to Savings?");
+    await expect(ask).toContainText("This adds $500 to your Savings and counts it as extra money in, so the plan still adds up.");
+    await expect(ask).not.toContainText("Left over");
     await ask.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     expect(writes).toBe(0);
     expect((await allRows(page)).find((item) => item.label === "Savings").plannedMinor).toBe(before);
     await expect(saveButton(page)).toBeDisabled();
+    await expect(page.locator("[data-ps-flag]")).toHaveText(plannedInBefore);
 
-    // Confirm adds the amount to the Savings row through the one Save plan request.
+    // Confirm raises Savings AND adds the amount as planned money in, in the one Save plan request.
     await line.getByRole("button", { name: "Add to Savings" }).click();
     const saved = page.waitForResponse((response) => response.url().includes("/api/month-plan/apply-changes") && response.ok());
     await page.getByRole("dialog").getByRole("button", { name: "Add to Savings" }).click();
     const request = (await saved).request().postDataJSON();
-    expect(request.changes).toHaveLength(1);
+    expect(request.changes).toHaveLength(2);
     expect(request.changes[0]).toMatchObject({ action: "update", expectedMinor: before, plannedMinor: before + 50_000 });
+    expect(request.changes[1]).toMatchObject({
+      action: "create", sectionKey: "income", categoryName: "Income", label: "Extra income", plannedMinor: 50_000, ownershipType: "direct", ownerName: "Tim"
+    });
     await expect(page.locator("[data-ps-notice]")).toHaveText("Added to Savings and saved.");
     expect((await allRows(page)).find((item) => item.label === "Savings").plannedMinor).toBe(before + 50_000);
+    // Planned money in rose by the same $500, Left over did not move, and the line is gone.
+    await expect(page.locator("[data-ps-flag]")).toContainText("Planned money in $6,500");
+    expect(plannedInBefore).toContain("Planned money in $6,000");
+    await expect(page.locator("[data-ps-balance]")).toHaveText(balanceBefore);
+    await expect(page.locator("[data-ps-extra]")).toHaveCount(0);
+    await expect(row(page, "Extra income").locator("[data-ps-amount]")).toHaveText("$500");
+    // After the reload the stored plan agrees: one Extra income line of $500 for Tim.
+    const month = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    expect(month.monthPage.incomeRows.filter((item) => item.label === "Extra income").map((item) => item.plannedMinor)).toEqual([50_000]);
+  });
+
+  test("a second Add to Savings raises the Extra income line instead of adding another", async ({ page }) => {
+    await seed(page, { extraIncome: 50_000 });
+    await postJson(page, "/api/month-plan/save", {
+      rowId: "plan-studio-v2-extra", month: MONTH, sectionKey: "income", categoryName: "Income", label: "Extra income",
+      planDate: null, accountName: "", plannedMinor: 20_000, note: "", ownershipType: "direct", ownerName: "Tim"
+    });
+    await open(page);
+    // $6,500 arrived against $6,200 planned: $300 is not in the plan.
+    await expect(page.locator("[data-ps-extra]")).toContainText("You got $300 that isn't in the plan");
+    const saved = page.waitForResponse((response) => response.url().includes("/api/month-plan/apply-changes") && response.ok());
+    await page.locator("[data-ps-extra-add]").click();
+    await page.getByRole("dialog").getByRole("button", { name: "Add to Savings" }).click();
+    const request = (await saved).request().postDataJSON();
+    expect(request.changes.map((change) => change.action)).toEqual(["update", "update"]);
+    expect(request.changes.find((change) => change.rowId === "plan-studio-v2-extra")).toMatchObject({ expectedMinor: 20_000, plannedMinor: 50_000 });
+    await expect(page.locator("[data-ps-extra]")).toHaveCount(0);
+    const month = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    expect(month.monthPage.incomeRows.filter((item) => item.label === "Extra income").map((item) => item.plannedMinor)).toEqual([50_000]);
+  });
+
+  test("when the plan changed underneath, Add to Savings says so and changes nothing", async ({ page }) => {
+    await seed(page, { extraIncome: 50_000 });
+    await open(page);
+    const data = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    const section = data.monthPage.planSections.find((item) => item.rows.some((candidate) => candidate.label === "Savings"));
+    const savings = section.rows.find((candidate) => candidate.label === "Savings");
+    await postJson(page, "/api/month-plan/save", {
+      rowId: savings.id, month: MONTH, sectionKey: section.key, categoryName: "Savings", label: "Savings",
+      planDate: null, accountName: "", plannedMinor: savings.plannedMinor + 100, note: "", ownershipType: savings.ownershipType, ownerName: "Tim"
+    });
+    await page.locator("[data-ps-extra-add]").click();
+    await page.getByRole("dialog").getByRole("button", { name: "Add to Savings" }).click();
+    await expect(page.locator("[data-ps-save-error]")).toBeVisible();
+    const month = await loadMonthPage(page, { view: VIEW, month: MONTH });
+    expect(month.monthPage.incomeRows.filter((item) => item.label === "Extra income")).toHaveLength(0);
+  });
+
+  test("the switch sits in the toolbar's row beside Save plan: no row of its own, 44px tall", async ({ page }) => {
+    await seed(page);
+    await open(page);
+    const toolbar = await page.locator(".ps-toolbar").first().boundingBox();
+    const switchBox = await modeSwitch(page).boundingBox();
+    expect(switchBox.y).toBeGreaterThanOrEqual(toolbar.y - 1);
+    expect(switchBox.y + switchBox.height).toBeLessThanOrEqual(toolbar.y + toolbar.height + 1);
+    await expect(modeSwitch(page)).toHaveAttribute("aria-label", "How to show the plan");
+    await expect(page.locator("[data-plan-mode-bar]")).toHaveCount(0);
+    const target = await modeSwitch(page).locator("input").first().boundingBox();
+    expect(target.height).toBeGreaterThanOrEqual(43.5);
+    // In the list view there is no toolbar, so the switch has a row of its own.
+    await modeSwitch(page).getByText("List").click();
+    await expect(page.locator("[data-plan-mode-bar]")).toHaveCount(1);
   });
 
   test("the confirm says when other held changes are saved with it", async ({ page }) => {
@@ -316,6 +385,25 @@ test.describe("Plan Studio v2 on desktop", () => {
     await open(page);
     await expect(page.locator("[data-ps-extra]")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Add to Savings" })).toHaveCount(0);
+  });
+
+  test("with money hidden there is no extra-income line, no figures and no action", async ({ page }) => {
+    await seed(page, { reveal: false, extraIncome: 50_000 });
+    await open(page);
+    await expect(page.locator("[data-ps-extra]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add to Savings" })).toHaveCount(0);
+  });
+
+  test("another person's plan is untouched: the action applies to the person viewed", async ({ page }) => {
+    await seed(page, { extraIncome: 50_000 });
+    await open(page);
+    const before = (await loadMonthPage(page, { view: "person-joyce", month: MONTH })).monthPage.incomeRows.length;
+    await page.locator("[data-ps-extra-add]").click();
+    await page.getByRole("dialog").getByRole("button", { name: "Add to Savings" }).click();
+    await expect(page.locator("[data-ps-extra]")).toHaveCount(0);
+    const joyce = (await loadMonthPage(page, { view: "person-joyce", month: MONTH })).monthPage.incomeRows;
+    expect(joyce).toHaveLength(before);
+    expect(joyce.some((item) => item.label === "Extra income")).toBe(false);
   });
 
   test("the household view is read only: no add, no menu, and the extra-income line has no button", async ({ page }) => {
@@ -359,13 +447,43 @@ test.describe("Plan Studio v2 on a phone", () => {
     await expect(popover(page)).toHaveCount(0);
   });
 
-  test("Studio | Tables switches on a phone and Tables keeps the tap-to-edit row sheet", async ({ page }) => {
+  test("Add to Savings on a phone: Cancel changes nothing, confirm raises Savings and Planned money in together", async ({ page }) => {
+    await seed(page, { extraIncome: 50_000 });
+    await open(page);
+    const extra = page.locator("[data-ps-extra]");
+    await extra.scrollIntoViewIfNeeded();
+    const plannedInBefore = await page.locator("[data-ps-flag]").innerText();
+    await extra.getByRole("button", { name: "Add to Savings" }).tap();
+    await expect(page.getByRole("dialog")).toContainText("Add $500 to Savings?");
+    await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).tap();
+    await expect(page.locator("[data-ps-flag]")).toHaveText(plannedInBefore);
+    await extra.getByRole("button", { name: "Add to Savings" }).tap();
+    const saved = page.waitForResponse((response) => response.url().includes("/api/month-plan/apply-changes") && response.ok());
+    await page.getByRole("dialog").getByRole("button", { name: "Add to Savings" }).tap();
+    expect((await saved).request().postDataJSON().changes.map((change) => change.action)).toEqual(["update", "create"]);
+    await expect(page.locator("[data-ps-flag]")).toContainText("Planned money in $6,500");
+    await expect(page.locator("[data-ps-extra]")).toHaveCount(0);
+  });
+
+  test("the switch shares the toolbar's row on a phone, with nothing scrolling sideways", async ({ page }) => {
     await seed(page);
     await open(page);
-    await modeSwitch(page).getByText("Tables").tap();
+    // First row with Undo and Discard changes; Save plan keeps its own row. No row is spent on the switch.
+    const undo = await page.locator("[data-ps-undo]").boundingBox();
+    const switchBox = await modeSwitch(page).boundingBox();
+    expect(Math.abs((switchBox.y + switchBox.height / 2) - (undo.y + undo.height / 2))).toBeLessThan(6);
+    const toolbar = await page.locator(".ps-toolbar").first().boundingBox();
+    expect(switchBox.y + switchBox.height).toBeLessThanOrEqual(toolbar.y + toolbar.height + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test("Sliders | List switches on a phone and List keeps the tap-to-edit row sheet", async ({ page }) => {
+    await seed(page);
+    await open(page);
+    await modeSwitch(page).getByText("List").tap();
     await expect(tables(page)).toBeVisible();
     await expect(studio(page)).toBeHidden();
-    await modeSwitch(page).getByText("Studio").tap();
+    await modeSwitch(page).getByText("Sliders").tap();
     await expect(studio(page)).toBeVisible();
   });
 
@@ -373,7 +491,7 @@ test.describe("Plan Studio v2 on a phone", () => {
     await seed(page);
     await open(page);
     await row(page, "Food").getByRole("button", { name: "More for Food" }).tap();
-    await page.getByRole("menuitem", { name: "Edit details" }).tap();
+    await page.getByRole("menuitem", { name: "Edit name, date or category" }).tap();
     await expect(page.getByRole("dialog")).toContainText("Food");
     await page.keyboard.press("Escape");
     await page.locator('[data-ps-add="spend"]').tap();

@@ -15,12 +15,12 @@ export const planStudioCopy = {
   monthLine: (monthLabel, day, daysInMonth) => (day ? `${monthLabel} · day ${day} of ${daysInMonth}` : monthLabel),
   barTitle: "Where planned money in goes",
   barTitleJob: (jobName) => `${jobName}: one slice per category`,
-  barHint: "Drag a line to move money between jobs. Tap a job to resize its categories.",
-  barHintJob: "Drag a line to move money between neighbours. The last line takes from left over.",
-  barHintReadOnly: "Tap a job to see its categories.",
-  allJobs: "All jobs",
+  barHint: "Drag a line to move money between Spend, Save and Invest. Tap one to resize its categories.",
+  barHintJob: "Drag a line to move money between the categories next to it. The last line takes from left over.",
+  barHintReadOnly: "Tap Spend, Save or Invest to see its categories.",
+  allJobs: "Whole plan",
   resizeCategories: (jobName) => `Resize categories in ${jobName}`,
-  plannedIn: (amount) => `Planned in ${amount}`,
+  plannedIn: (amount) => `Planned money in ${amount}`,
   over: (amount) => `${amount} over`,
   moveLine: (from, to) => `Move the line between ${from} and ${to}`,
   moveLineValue: (amount) => `${amount} planned so far`,
@@ -28,9 +28,9 @@ export const planStudioCopy = {
   // The plan balance, in plain words, with its one-tap fix.
   balance: {
     covered: { title: "Your plan covers everything.", text: (amount) => `${amount} is left over.` },
-    exact: { title: "Every planned dollar has a job.", text: () => "Money in and money out match exactly." },
+    exact: { title: "Every planned dollar is accounted for.", text: () => "Money in and money out match exactly." },
     over: { title: "The plan doesn't add up.", text: (amount) => `${amount} more goes out than comes in.` },
-    empty: { title: "No money in is planned yet.", text: () => "Add your salary first, then give each dollar a job." },
+    empty: { title: "No money in is planned yet.", text: () => "Add your salary first, then decide where each dollar goes." },
     // With money hidden the headline must not say which side of zero it is.
     hidden: { title: "Plan balance", text: () => "Show money to see how the plan adds up." },
     addToSavings: (amount) => `Add ${amount} to savings`,
@@ -45,7 +45,7 @@ export const planStudioCopy = {
     ofPlanned: (amount) => `of ${amount} planned`,
     today: "Today",
     usualByToday: "Usual by today",
-    verdict: { on_track: "On track", ahead: "A bit ahead of pace", over: "Over plan" },
+    verdict: { on_track: "On track", ahead: "Spending a bit fast", over: "Over plan" },
     hiddenVerdict: "Spending so far",
     onTrack: (spent, expected) => `Spent ${spent} so far. The plan expects about ${expected} by today.`,
     ahead: (spent, by) => `Spent ${spent} so far, ${by} more than the plan expects by today.`,
@@ -68,7 +68,7 @@ export const planStudioCopy = {
     spend_nothing: () => "Nothing yet",
     spend_to_pay: (amount) => `${amount} still to pay`,
     spend_on_track: () => "On track",
-    spend_ahead: () => "Ahead of pace",
+    spend_ahead: () => "Spending a bit fast",
     spend_left: (amount) => `On track, ${amount} left`
   },
   planned: "planned",
@@ -84,18 +84,18 @@ export const planStudioCopy = {
     raise: (label, step) => `Raise ${label} by ${step}`,
     sliderLabel: (label) => `Planned amount for ${label}`,
     sliderHint: "Arrow keys change it by one step. Hold Shift for five steps, Alt for one dollar.",
-    fineHint: "On a touch screen, press and hold, then drag for fine control.",
-    fine: "Fine control",
+    fineHint: "On a touch screen, press and hold, then drag for small steps.",
+    fine: "Small steps",
     shared: "Shared",
     sharedEqual: (amount) => `Shared · ${amount} each`,
     sharedSplit: (parts) => `Shared · ${parts.map((part) => `${part.name} ${part.amount}`).join(" · ")}`,
     fromSaved: (signedAmount) => `${signedAmount} from saved`,
     viewEntries: (label) => `View the entries behind ${label}`,
-    readOnly: "Change this one in Tables.",
+    readOnly: "To change this one, choose List.",
     locked: (label) => `${label} is locked. Unlock it to change it.`
   },
 
-  // The Studio | Tables switch on the Month plan view (the same segmented
+  // The Sliders | List switch on the Month plan view (the same segmented
   // control as Summary's Plan | Simple).
   modes: planStudioAddCopy.modes,
 
@@ -116,8 +116,8 @@ export const planStudioCopy = {
   menu: {
     open: (label) => `More for ${label}`,
     editNote: "Edit note",
-    editDetails: "Edit details",
-    matchEntries: "Match entries",
+    editDetails: "Edit name, date or category",
+    matchEntries: "Pick matching entries",
     remove: "Remove line"
   },
   removeLine: {
@@ -145,25 +145,24 @@ export const planStudioCopy = {
     toCome: (amount) => `${amount} still to come`,
     toKeep: (amount) => `${amount} still to keep`,
     toMove: (amount) => `${amount} still to move`,
-    pace: "Pace",
-    paceOn: "On pace",
-    paceAhead: (amount) => `Ahead of pace, ${amount} more than expected by today`,
-    paceBehind: (amount) => `Behind pace, ${amount} less than expected by today`,
+    pace: "Against the plan",
+    paceOn: "On track",
+    paceAhead: (amount) => `Spending fast, ${amount} more than expected by today`,
+    paceBehind: (amount) => `Spending slowly, ${amount} less than expected by today`,
     paceDueBehind: (amount) => `Past its due date, ${amount} not paid yet`,
     change: "If you save this",
     effect: (signedChange, leftOver) => `${signedChange} → Left over ${leftOver}`
   },
 
   // Planned in, by source, under the big bar.
-  incomeStrip: { label: "Planned in", hiddenLabel: "Planned in by source" },
+  incomeStrip: { label: "Planned money in", hiddenLabel: "Planned money in, by source" },
 
   // Money that arrived beyond the plan (actual income beyond planned income).
   extraIncome: {
     line: (amount) => `You got ${amount} that isn't in the plan`,
     add: "Add to Savings",
-    confirmTitle: "Add to Savings",
-    confirmText: (amount, from, to) => `Add ${amount} to your Savings plan? It goes from ${from} to ${to}.`,
-    confirmLeft: (leftOver) => `Left over would be ${leftOver}, since planned money in stays as it is.`,
+    confirmTitle: (amount) => `Add ${amount} to Savings?`,
+    confirmText: (amount) => `This adds ${amount} to your Savings and counts it as extra money in, so the plan still adds up.`,
     alsoSaves: (count) => (count === 1 ? "This also saves your 1 other change to the plan." : `This also saves your ${count} other changes to the plan.`),
     confirm: "Add to Savings",
     cancel: "Cancel",
@@ -174,10 +173,10 @@ export const planStudioCopy = {
   // The toolbar.
   toolbar: {
     undo: "Undo",
-    reset: "Reset to saved",
+    reset: "Discard changes",
     save: "Save plan",
     saving: "Saving…",
-    takeFrom: "Take from",
+    takeFrom: "Take money from",
     leftOver: "Left over",
     takeFromLabel: "When I change a number, take the money from"
   },
@@ -203,13 +202,13 @@ export const planStudioCopy = {
     noChange: "Same as saved",
     set: "Set amount",
     cancel: "Cancel",
-    resetRow: "Reset to saved",
+    resetRow: "Use the saved amount",
     chips: ["+$5", "+$10", "+$50", "−$5", "−$10", "−$50"],
     errors: {
       empty: "Type an amount.",
       not_a_number: "Use numbers only, like 137 or 137.50.",
       too_many_decimals: "Use dollars and cents, like 137.50.",
-      too_big: "That is more than a plan line can hold."
+      too_big: "That is more than one line can hold."
     }
   },
 

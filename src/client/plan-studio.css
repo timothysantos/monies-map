@@ -103,6 +103,10 @@
   font-weight: 600;
 }
 
+.is-readonly-bar .ps-notice {
+  flex: 1 1 200px;
+}
+
 .ps-notice.is-readonly {
   color: var(--text);
 }

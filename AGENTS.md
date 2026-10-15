@@ -432,6 +432,11 @@ Details and the reasons are in `docs/code-spec.md` and
   (Other, linking, settle up) is explained once in the same sentence.
   Money insights copy is linted for this (`findAppJargon`,
   `docs/money-insights-copy.md`, "Tone").
+- Every visible name must be understandable to a non-technical person (think
+  of a grandparent): no product-internal or designer words (studio, tables,
+  bucket, mode, DTO), name controls by what they do or show, and check new
+  labels against this before shipping. Plan Studio's copy is linted for it
+  (`tests/plan-studio-copy-lint.test.mjs`).
 - Colour is a calm 1970s print (an oat page, near-neutral cards, soft
   chocolate ink; the token
   names stay `--pastel-*`: mint is avocado, rose brick red, sky dusty teal,

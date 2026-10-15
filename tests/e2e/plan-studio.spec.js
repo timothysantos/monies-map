@@ -50,7 +50,7 @@ test.describe("Plan Studio on desktop", () => {
     await expect(balance(page)).toHaveAttribute("data-kind", "covered");
     await expect(balance(page)).toContainText("Your plan covers everything.");
     await expect(balance(page)).toContainText("is left over.");
-    await expect(page.locator("[data-ps-flag]")).toContainText("Planned in $6,000");
+    await expect(page.locator("[data-ps-flag]")).toContainText("Planned money in $6,000");
     for (const id of ["spend", "save", "invest", "left"]) {
       await expect(page.locator(`[data-ps-seg="${id}"]`)).toBeAttached();
     }
@@ -109,7 +109,7 @@ test.describe("Plan Studio on desktop", () => {
     await planned(page, "Food").click();
     await page.getByRole("button", { name: "+$50" }).click();
     await expect(page.getByRole("textbox", { name: "Planned amount" })).toHaveValue("700");
-    await page.locator(".ps-pop").getByRole("button", { name: "Reset to saved" }).click();
+    await page.locator(".ps-pop").getByRole("button", { name: "Use the saved amount" }).click();
     await expect(page.getByRole("textbox", { name: "Planned amount" })).toHaveValue("650");
   });
 

@@ -3,13 +3,16 @@
 // and due date field). Kept apart
 // from plan-studio-copy.js, which ships only with the studio's own chunk.
 export const planStudioAddCopy = {
-  // The Studio | Tables switch above the plan.
+  // The Sliders | List switch beside the plan's buttons (stored values stay
+  // "studio" and "tables"; only these words are shown).
   modes: {
-    label: "Plan view",
-    studio: "Studio",
-    tables: "Tables",
-    unsavedStudio: "Studio, with changes not saved yet"
+    label: "How to show the plan",
+    studio: "Sliders",
+    tables: "List",
+    unsavedStudio: "Sliders, with changes not saved yet"
   },
+  // The planned line "Add to Savings" counts extra money in on.
+  extraIncomeLabel: "Extra income",
   addLine: "Add a line",
   newLineSubtitle: "Spend, save or invest",
   dueDate: "Due date (optional)"

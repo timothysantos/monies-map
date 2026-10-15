@@ -135,7 +135,7 @@ function bar(plan, fmt = shown) {
 test("the bar has a slice per job, a Planned in line and a draggable line between neighbours", () => {
   const html = bar({ sal: d(9200), food: d(6000), save: d(1500) });
   assert.equal(count(html, /data-ps-seg="/g), 4);
-  assert.match(html, /Planned in \$9,200/);
+  assert.match(html, /Planned money in \$9,200/);
   assert.equal(count(html, /role="slider"[^>]*class="ps-divider"/g), 3);
   assert.match(html, /aria-label="Move the line between Spend and Save"/);
   assert.match(html, /aria-label="Move the line between Invest and Left over"/);
@@ -163,7 +163,7 @@ test("the amount popover's field takes decimals, names its error and offers six 
   assert.match(ok, /Saved: \$650/);
   assert.equal(count(ok, /class="ps-chip"/g), 6);
   for (const label of ["+$5", "+$10", "+$50", "−$5", "−$10", "−$50"]) assert.ok(ok.includes(`>${label}<`), label);
-  assert.match(ok, /Reset to saved/);
+  assert.match(ok, /Use the saved amount/);
   assert.doesNotMatch(ok, /role="alert"/);
   const bad = body({ text: "abc", error: "not_a_number", parsed: { ok: false, reason: "not_a_number" } });
   assert.match(bad, /role="alert"[^>]*>Use numbers only, like 137 or 137\.50\./);

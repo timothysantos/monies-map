@@ -176,9 +176,89 @@ spans the row.
   and one income read per month, in parallel): about 28 ms against 12 ms
   warm on the demo for a month with history. Real-data handler time grows with
   the month's entry count; `test:performance` was not run (see below).
-- Writes: unchanged for plans (the one `applyMonthPlanChanges`, extra income
-  included). The only new write is the display preference
+- Writes: unchanged for plans (the one `applyMonthPlanChanges`; extra income
+  now sends an update and a create or update in the same request). The only new write is the display preference
   (`app_settings`, one batch statement, `failingStatement` tested).
+
+### Decision changed (2026-10-15): Add to Savings counts the money in too
+
+The first v2 action raised only Savings, so Planned in stayed the same and the
+plan then read "The plan doesn't add up". Owner decision: the same tap does
+both in the one Save plan request: Savings rises by $X (created when the
+person has none) and the person's `Extra income` line (income, category
+Income, the note and owner defaults of "Add income") rises by $X, or is
+created at $X when there is none, never a second one. Planned in and Savings
+both rise, Left over does not move, and the line goes because the unplanned
+amount is actual income less planned money in (totals, never labels; an
+Extra income row covers money that arrived under Salary). No server change:
+`applyMonthPlanChanges` already takes `create` and `update` in one batch
+(`tests/atomic-writes-extra-income.test.mjs`: both written, an existing line
+raised, `failingStatement` on the split and on the row, a 409 refusing both,
+an over-allocated month). Plan saves write no audit event (as for every Save
+plan); the month refresh marker and snapshot refresh are the same. The action
+is refused (no button) when every Savings line is locked or read only, or the
+Extra income line cannot be edited; with hidden money and in the household
+view there is no button, as before. Other held changes are saved with it.
+
+Strings: title "Add $X to Savings?"; body "This adds $X to your Savings and
+counts it as extra money in, so the plan still adds up."; buttons "Add to
+Savings", "Cancel" (replaced: "Add to Savings" title, "Add $x to your Savings
+plan? It goes from $a to $b.", "Left over would be $x, since planned money in
+stays as it is."). Screenshots: `extra-before-confirm-desktop.png`,
+`extra-after-confirm-desktop|phone.png`, `extra-after-result-desktop|phone.png`.
+
+### Plain names (2026-10-15)
+
+The Studio | Tables switch took a row of its own and its names meant nothing to
+most people. It is now **Sliders | List**, named "How to show the plan", inside
+the toolbar's row (after Undo and Discard changes on a phone, at the far right
+on a wide screen; 44 px target). The stored values stay `studio` and `tables`,
+so nobody's saved choice breaks. New rule in AGENTS.md (every visible name
+understandable to a grandparent) and `tests/plan-studio-copy-lint.test.mjs`,
+which walks every Plan Studio string and rejects studio, tables, bucket, mode,
+DTO, job and plan line / plan row. Screenshots: `toolbar-before-desktop|phone.png`,
+`toolbar-after-desktop|phone.png`.
+
+| Before | After |
+| --- | --- |
+| Studio, Tables (label "Plan view") | Sliders, List (label "How to show the plan") |
+| Studio, with changes not saved yet | Sliders, with changes not saved yet |
+| Reset to saved (toolbar) | Discard changes |
+| Reset to saved (amount popover) | Use the saved amount |
+| Take from | Take money from |
+| Planned in | Planned money in (also "Planned in, by source" became "Planned money in, by source") |
+| Drag a line to move money between jobs. Tap a job to resize its categories. | Drag a line to move money between Spend, Save and Invest. Tap one to resize its categories. |
+| ...between neighbours. | ...between the categories next to it. |
+| Tap a job to see its categories. | Tap Spend, Save or Invest to see its categories. |
+| All jobs | Whole plan |
+| Every planned dollar has a job. | Every planned dollar is accounted for. |
+| ...then give each dollar a job. | ...then decide where each dollar goes. |
+| A bit ahead of pace / Ahead of pace (verdict, row status) | Spending a bit fast |
+| Pace (popover heading) | Against the plan |
+| On pace | On track |
+| Ahead of pace, $x more than expected by today | Spending fast, $x more than expected by today |
+| Behind pace, $x less than expected by today | Spending slowly, $x less than expected by today |
+| Fine control | Small steps (hint: "...drag for small steps.") |
+| Change this one in Tables. | To change this one, choose List. |
+| Edit details | Edit name, date or category |
+| Match entries | Pick matching entries |
+| That is more than a plan line can hold. | That is more than one line can hold. |
+| API error "Choose Studio or Tables." | "Choose Sliders or List." |
+
+Kept as clear enough: Left over, Lock, Undo, Save plan, Remove line, On track,
+Over plan.
+
+Other screens' unclear names, proposed only (not changed):
+
+| Where | Now | Proposal |
+| --- | --- | --- |
+| Month lead | Overplanned / To allocate | Planned more than you earn / Not planned yet |
+| Month lead and Summary | Money jobs | Where your money goes |
+| Month plan list | + Add budget bucket, Edit budget bucket, Budget bucket (kind), New bucket | + Add monthly budget, Edit monthly budget, Monthly budget, New budget |
+| Plan line link dialog | Budget buckets still use category totals. | Monthly budgets still use category totals. |
+| Investment statement | Worth $X on <date>, from its statement | $X on <date>, as the statement says |
+| Wallets in view | Wallets in view | The accounts shown |
+| Plan list sections | Planned items | Bills and dated payments |
 
 ### Tests
 

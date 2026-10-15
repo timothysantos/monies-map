@@ -90,7 +90,7 @@ test("the popover body: last month, the average, so far, pace, and the live effe
   assert.match(html, /Last month<\/dt><dd>Planned \$1,200, spent \$1,180<\/dd>/);
   assert.match(html, /Average<\/dt><dd>spent \$1,100 a month over 3 months<\/dd>/);
   assert.match(html, /So far<\/dt><dd>spent \$910, \$390 left<\/dd>/);
-  assert.match(html, /Ahead of pace, \$113 more than expected by today/);
+  assert.match(html, /Spending fast, \$113 more than expected by today/);
   assert.match(html, /\+\$40 → Left over \$/);
 });
 
@@ -123,13 +123,20 @@ test("planned in shows one strip segment and one legend item per income row; non
   assert.doesNotMatch(hiddenHtml, /\$5,400/);
 });
 
-test("Studio | Tables is a two-option radio group that marks held changes with a dot on Studio only", () => {
+test("Sliders | List is a two-option radio group that marks held changes with a dot on Sliders only, and says nothing technical", () => {
   const html = render(h(PlanModeSwitch, { mode: "studio", onChange: noop, studioDirty: false }));
-  assert.match(html, /role="radiogroup"[^>]*aria-label="Plan view"/);
+  assert.match(html, /role="radiogroup"[^>]*aria-label="How to show the plan"/);
+  assert.match(html, /data-plan-mode="studio"[^>]*\/>Sliders<\/label>/);
+  assert.match(html, /data-plan-mode="tables"[^>]*\/>List<\/label>/);
+  assert.doesNotMatch(html, /Studio|Tables/, "the stored values stay in data attributes, never in the words shown");
+  assert.match(html, /data-plan-mode-bar/, "on its own row by default");
+  const inline = render(h(PlanModeSwitch, { mode: "studio", onChange: noop, inline: true }));
+  assert.doesNotMatch(inline, /data-plan-mode-bar/, "in the toolbar's row it is the switch alone");
+  assert.match(inline, /plan-mode-inline/);
   assert.match(html, /data-plan-mode="studio"[^>]*checked=""/);
   assert.equal((html.match(/type="radio"/g) ?? []).length, 2);
   assert.doesNotMatch(html, /data-plan-mode-dirty/);
   const dirty = render(h(PlanModeSwitch, { mode: "tables", onChange: noop, studioDirty: true }));
   assert.equal((dirty.match(/data-plan-mode-dirty/g) ?? []).length, 1);
-  assert.match(dirty, /Studio<i[^>]*aria-label="Studio, with changes not saved yet"/);
+  assert.match(dirty, /Sliders<i[^>]*aria-label="Sliders, with changes not saved yet"/);
 });

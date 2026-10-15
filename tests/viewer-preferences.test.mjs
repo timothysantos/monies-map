@@ -173,7 +173,7 @@ test("a plan mode write is refused without a login, with an unknown mode, or fro
   assert.equal((await chooseMode(workspace, null, "tables")).status, 401);
   const unknown = await chooseMode(workspace, TIM, "grid");
   assert.equal(unknown.status, 400);
-  assert.deepEqual(await unknown.json(), { ok: false, error: "Choose Studio or Tables." });
+  assert.deepEqual(await unknown.json(), { ok: false, error: "Choose Sliders or List." });
   assert.equal((await chooseMode(workspace, TIM, "plan")).status, 400, "a lead view word is not a plan mode");
   assert.equal((await chooseMode(workspace, TIM, "tables", { "Sec-Fetch-Site": "cross-site" })).status, 403);
   assertSameDatabase(await dumpDatabase(workspace.db), before);
@@ -187,5 +187,5 @@ test("a plan mode save that fails leaves the stored choices as they were", async
   await assert.rejects(savePlanModePreference(faulty.db, TIM, "tables"), /injected_failure_missing_table/);
   assert.equal(faulty.state.fired, true);
   assertSameDatabase(await dumpDatabase(db), before);
-  await assert.rejects(savePlanModePreference(db, TIM, "grid"), /Choose Studio or Tables/);
+  await assert.rejects(savePlanModePreference(db, TIM, "grid"), /Choose Sliders or List/);
 });

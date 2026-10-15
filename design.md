@@ -3128,7 +3128,7 @@ The Month page's Plan view as money jobs (owner decision, 2026-10-15; DOMAIN.md
 plus C's "What if I save more?"). It sits above the plan tables, which stay
 the place for sorting and the sections (Studio's row menu reaches notes,
 details, matching entries and removing a line; "Add a line" adds one). Since v2
-the tables show only in Tables mode (Studio | Tables), and Studio stays mounted
+the tables show only in the List view (Sliders | List), and the sliders stay mounted
 (hidden) while they do. Simple view never loads it.
 
 - Loading: `plan-studio.jsx` is its own chunk, imported by `month-panel.jsx`
@@ -3191,15 +3191,21 @@ the tables show only in Tables mode (Studio | Tables), and Studio stays mounted
     its status line, as every figure does. This is the least-clutter way to
     keep every table feature reachable; the Tables view still holds the rest
     (sorting, bulk look at the sections).
-  - Studio | Tables (`plan-mode-switch.jsx`): the Plan | Simple control's
-    look (`lead-view-switch`). Studio stays mounted, hidden, once shown, so
-    held changes survive a visit to Tables (a dot on Studio says they are
-    held). Remembered per login (`plan-mode.js`, `viewer-preference-store.js`;
+  - Sliders | List (`plan-mode-switch.jsx`; named "How to show the plan"; the
+    stored values stay `studio` and `tables`): the Plan | Simple control's
+    look (`lead-view-switch`). It is drawn inside the toolbar's row, after
+    Undo and Discard changes on a phone and at the far right after Save plan
+    on a wide screen (`inline`), so it takes no row of its own; over the List
+    view, which has no toolbar, it has a row to itself. The sliders stay
+    mounted, hidden, once shown, so held changes survive a visit to List (a
+    dot on Sliders says they are held). Remembered per login (`plan-mode.js`, `viewer-preference-store.js`;
     the shell reaches it through `app-shell-watch.js`, so the first screen
     carries only `publishAppShell`).
   - Extra income: a quiet line in the pace card with Add to Savings (a
-    confirm dialog; Cancel writes nothing); saved through the one Save plan
-    request.
+    confirm dialog; Cancel writes nothing); one Save plan request raises
+    Savings and adds the same amount to planned money in (the person's Extra
+    income line, created or raised: `planExtraIncomeToSavings`,
+    `createChangeForRow`).
 - Not in the studio: Room to spend per day (the mockup's third what-if
   figure): a per-day figure reads as a safe-to-spend promise, which money
   insights never give. No haptics beyond a short vibration when a touch press

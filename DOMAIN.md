@@ -1929,10 +1929,13 @@ Plan Studio v2 (owner decision, 2026-10-15; docs/audits/plan-studio.md "v2"):
   budget bucket (an Investments category or the label `Savings` lands in
   Invest or Save by the same rule); existing data and the add-row commands
   are unchanged
-- `plan view`: how the Month plan reads, `Studio` (the one list of sliders,
-  the default) or `Tables` (the plan tables: notes, accounts, matching
-  entries, adding and removing lines). Held Studio changes are kept while
-  Tables shows (a dot on Studio says so). The choice is remembered per login
+- `plan view`: how the Month plan reads, shown to people as `Sliders` (the
+  one list of sliders, the default; stored as `studio`) or `List` (the plan
+  tables: notes, accounts, matching entries, adding and removing lines;
+  stored as `tables`). The switch is named "How to show the plan" and sits in
+  the toolbar's row beside Undo and Discard changes. The stored values never
+  changed, so a saved choice keeps working. Held changes are kept while List
+  shows (a dot on Sliders says so). The choice is remembered per login
   on the app shell like the lead view (`planMode`,
   `POST /api/viewer-preferences/plan-mode`, a device cache without a login).
   A month with nothing planned shows only the tables
@@ -1955,9 +1958,15 @@ Plan Studio v2 (owner decision, 2026-10-15; docs/audits/plan-studio.md "v2"):
   income row (a stripe on the bar and a legend), in each person's colour
 - `extra income`: money that arrived beyond the plan, the month's actual
   income less planned money in. A quiet line, `You got $X that isn't in the
-  plan`, with `Add to Savings`, which asks (the amount, the Savings plan's
-  before and after, what Left over would be, any other held changes it also
-  saves) and then saves through the same Save plan request. Never a
+  plan`, with `Add to Savings`, which asks ("Add $X to Savings?": it adds the
+  amount to Savings and counts it as extra money in, so the plan still adds
+  up; any other held changes are saved with it) and then does both in the
+  one Save plan request: the Savings line rises by $X (a Savings line is
+  created when the person has none) and the person's `Extra income` line
+  (income, category Income) rises by $X, or is created at $X when there is
+  none, never a second one. Planned in and Savings both rise by $X, Left over
+  does not move, and the line goes away because the amount is worked out
+  from totals, not labels (actual income less planned money in). Never a
   forecast; absent when nothing arrived beyond the plan or money is hidden
 
 ### Monthly Note
