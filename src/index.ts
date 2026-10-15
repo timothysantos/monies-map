@@ -14,6 +14,7 @@ import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
 import { updateEntryAccountRecord } from "./domain/app-repository-entry-account";
+import { buildCategoryGuess, readCategoryGuessRequest } from "./domain/pages/category-guess";
 import { buildCardSuggestion,CardSuggestionEntryNotFound, readCardSuggestionRequest } from "./domain/pages/card-suggestion";
 import { buildSplitSuggestionDto,readSplitSuggestionRequest, SplitSuggestionEntryNotFound } from "./domain/pages/split-suggestion";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
@@ -427,6 +428,25 @@ export default {
         }
         console.error("Card suggestion failed", { path: url.pathname, error: describeError(error) });
         return json({ ok: false, error: "Card suggestion failed" }, 500);
+      }
+    }
+
+    // Read-only best-guess category for one description (DOMAIN.md
+    // "Category Guess"): rules, then Ask habits, then the household's own
+    // history, then everyday words. No AI, nothing written.
+    if (url.pathname === "/api/entries/category-guess") {
+      if (request.method !== "POST") {
+        return json({ ok: false, error: "Category guesses only answer POST." }, 405, { Allow: "POST" });
+      }
+      const guessRequest = readCategoryGuessRequest(await request.json().catch(() => null));
+      if (!guessRequest) {
+        return json({ ok: false, error: "Invalid category guess fields" }, 400);
+      }
+      try {
+        return json({ ok: true, guess: await buildCategoryGuess(env.DB, guessRequest) });
+      } catch (error) {
+        console.error("Category guess failed", { path: url.pathname, error: describeError(error) });
+        return json({ ok: false, error: "Category guess failed" }, 500);
       }
     }
 
