@@ -25,13 +25,28 @@ export function isLedgerMatchedPreviewRow(row) {
 // The rows a commit would add as new ledger entries: the visible rows still
 // included and not paired with an entry the ledger already has. The commit
 // bar says it in words and the file card shows it as its figure.
-export function countRowsToImport(previewRows) {
-  return previewRows.filter((row) => (
-    !row.isStatementMatchResolved
+function isRowToImport(row) {
+  return !row.isStatementMatchResolved
     && !(row.isCertifiedConflict && row.commitStatus === "skipped")
     && (row.commitStatus === "included" || !row.commitStatus)
-    && !row.reconciliationTargetTransactionId
-  )).length;
+    && !row.reconciliationTargetTransactionId;
+}
+
+export function countRowsToImport(previewRows) {
+  return previewRows.filter(isRowToImport).length;
+}
+
+// The one person who owns every row a commit would add, as the previewed rows
+// say it: a direct account's rows carry that account's owner (the server
+// sets it), a person's own pick on a row wins. Named for the file card so it
+// never shows the form's default owner for rows that belong to someone else.
+// Undefined when the rows have several owners, are shared, or none are added.
+export function getImportRowsOwnerName(previewRows) {
+  const owners = new Set(previewRows.filter(isRowToImport).map((row) => (
+    row.ownershipType === "shared" ? undefined : row.ownerName
+  )));
+  const [owner] = owners;
+  return owners.size === 1 && owner ? owner : undefined;
 }
 
 export function buildImportPreviewModel({
