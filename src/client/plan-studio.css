@@ -669,7 +669,7 @@
 }
 
 .ps-amount:hover:not(:disabled, .is-static) {
-  background: rgb(var(--accent-rgb) / 0.1);
+  background: rgb(var(--accent-strong-rgb) / 0.1);
 }
 
 .ps-amount.is-static {
@@ -693,12 +693,12 @@
 }
 
 .ps-icon-button:hover {
-  background: rgb(var(--accent-rgb) / 0.1);
+  background: rgb(var(--accent-strong-rgb) / 0.1);
   color: var(--text);
 }
 
 .ps-icon-button[aria-pressed="true"] {
-  background: rgb(var(--accent-rgb) / 0.1);
+  background: rgb(var(--accent-strong-rgb) / 0.1);
   color: var(--accent);
 }
 
@@ -721,7 +721,7 @@
 }
 
 .ps-nudge:hover:not(:disabled) {
-  background: rgb(var(--accent-rgb) / 0.1);
+  background: rgb(var(--accent-strong-rgb) / 0.1);
   color: var(--text);
 }
 
@@ -884,7 +884,7 @@
 .ps-delta {
   padding: 0 8px;
   border-radius: 999px;
-  background: rgb(var(--accent-rgb) / 0.1);
+  background: rgb(var(--accent-strong-rgb) / 0.1);
   color: var(--accent);
   font-size: 0.7rem;
   font-weight: 700;
@@ -994,7 +994,7 @@
 }
 
 .ps-chip:hover {
-  background: rgb(var(--accent-rgb) / 0.1);
+  background: rgb(var(--accent-strong-rgb) / 0.1);
 }
 
 .ps-amount-reset {
