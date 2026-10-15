@@ -790,9 +790,32 @@ demo seed. Convert a module the next time its writes change.
   keep it out of the first screen and out of Simple view. Its copy is
   `copy/plan-studio-copy.js`, its CSS `plan-studio.css`; the reserve block is
   in `month-route.css`.
-- Layout: two CSS columns balanced by the browser; keep every card and row
-  `break-inside: avoid` and keep heights independent of the amounts
-  (fixed footers, reserved lines) or rows will hop columns while editing.
+- Layout: the big picture is full width, the two cards under it share a
+  row (`.ps-cards`), and the one list of lines is two CSS columns balanced by
+  the browser; keep every row `break-inside: avoid` and keep heights
+  independent of the amounts (fixed footers, reserved lines) or rows will hop
+  columns while editing.
+- v2 model: `plan-studio-v2-model.js` (the groups, the popover's facts, income
+  by source, extra income, where a new line is stored) is pure and takes the
+  one `planJob` rule from `plan-studio-model.js`; never classify a line a
+  second way. The Month page imports only `plan-line-section.js` and
+  `copy/plan-studio-add-copy.js` from the studio's side (the add-line sheet),
+  so Simple view loads no studio code.
+- Plan history: `history` on plan and income rows comes from
+  `src/domain/month-plan-history.ts`, built in `pages/month-page.ts` from at
+  most three tracked months before the page's month (one `loadEntriesForMonths`
+  range read plus one plan-row and one income read per month, in parallel;
+  untracked months are skipped). It reuses each past month's own row and
+  actual rules, so it equals that month's page. The payload cost is a four
+  number tuple per row that has a past (about 330 bytes on the demo's
+  September 2025); `tests/month-plan-history.test.mjs` proves it equals last
+  month's page.
+- Studio | Tables: `plan-mode.js` (a `viewer-preference-store.js` store, the
+  `lead-view.js` pattern) is loaded with the Month route and reaches the app
+  shell through `app-shell-watch.js` (`publishAppShell` is all the first screen
+  carries). Studio stays mounted, hidden, once shown, so held changes survive
+  Tables; the suite starts on Tables (`playwright.config.js`) and Plan Studio
+  specs call `chooseStudio`.
 
 ## Data Flow Pseudocode
 

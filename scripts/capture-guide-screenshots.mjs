@@ -234,13 +234,27 @@ const SHOTS = [
     }
   },
   {
-    // Plan Studio above the plan lists: the bar, how the month is going and
-    // the money jobs' rows with their sliders.
-    name: "month-plan-studio", device: "desktop",
+    // Plan Studio: the full-width bar, how the month is going beside What if
+    // I save more?, and the one list of lines grouped by money job.
+    name: "month-plan-studio", device: "desktop", planMode: "studio",
     run: async (page) => {
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
       await scrollToLocator(page, page.locator("[data-plan-studio]"), 20);
       await page.waitForTimeout(800);
+    }
+  },
+  {
+    // The card a slider shows about its line: last month, the average, so far
+    // and what a change does to Left over. The showcase month has months before it.
+    name: "month-plan-studio-info", device: "desktop", planMode: "studio",
+    run: async (page) => {
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      const slider = page.locator('[data-ps-group="spend"] [data-ps-row]').nth(2).getByRole("slider");
+      await scrollToLocator(page, slider, 320);
+      await slider.focus();
+      await page.keyboard.press("ArrowRight");
+      await page.locator("[data-ps-info]").waitFor();
+      await page.waitForTimeout(500);
     }
   },
   {
@@ -487,7 +501,7 @@ const SHOTS = [
   },
   {
     // Tapping a row's amount in Plan Studio: the amount sheet.
-    name: "phone-month-plan-studio", device: "phone",
+    name: "phone-month-plan-studio", device: "phone", planMode: "studio",
     run: async (page) => {
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
       const amount = page.locator("[data-ps-row] [data-ps-amount]").first();
@@ -838,7 +852,7 @@ function parseArgs(argv) {
 // guide's text and shots explain the plan, so every shot pins the saved Plan
 // choice (once per tab, so a switch inside a shot sticks) unless it sets
 // `leadView: "default"` to show what a new account sees.
-async function newContext(browser, device, baseURL, { hidden = false, leadView = "plan" } = {}) {
+async function newContext(browser, device, baseURL, { hidden = false, leadView = "plan", planMode = "tables" } = {}) {
   const context = await browser.newContext(device === "phone"
     ? { ...devices["iPhone 13"], baseURL, locale: "en-SG", timezoneId: "Asia/Singapore" }
     : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, baseURL, locale: "en-SG", timezoneId: "Asia/Singapore" });
@@ -852,6 +866,13 @@ async function newContext(browser, device, baseURL, { hidden = false, leadView =
       window.localStorage.setItem("monies-map:lead-view", "plan");
     });
   }
+  // The Month plan opens in Studio (plan-mode.js), but most Month shots are of
+  // the plan tables, so a shot pins Tables unless it is of Studio.
+  await context.addInitScript((mode) => {
+    if (window.sessionStorage.getItem("guide-pinned-plan-mode")) return;
+    window.sessionStorage.setItem("guide-pinned-plan-mode", "1");
+    window.localStorage.setItem("monies-map:plan-mode", mode);
+  }, planMode);
   return context;
 }
 
@@ -890,7 +911,7 @@ async function main() {
     await reseed(setupPage);
     for (const shot of selected) {
       if (shot.reseed) await reseed(setupPage);
-      const context = await newContext(await browserFor(shot.device), shot.device, baseURL, { hidden: shot.hidden, leadView: shot.leadView });
+      const context = await newContext(await browserFor(shot.device), shot.device, baseURL, { hidden: shot.hidden, leadView: shot.leadView, planMode: shot.planMode });
       const page = await context.newPage();
       const captured = new Set();
       // `kind` picks the output folder and size when it differs from the

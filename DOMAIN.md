@@ -1915,6 +1915,51 @@ with the amount it must still hold on the server, one `db.batch()` with the
 month's refresh marker; 409 when a row changed underneath, and nothing is
 written.
 
+Plan Studio v2 (owner decision, 2026-10-15; docs/audits/plan-studio.md "v2"):
+- `one list`: the plan lines are one list grouped by what the money does:
+  `Money in` (income rows), `Spend` (budget buckets and dated spending
+  planned items such as House loan, dated lines first, by date, each with a
+  small `due 2 Oct` tag), `Save` (every Savings row, whichever section it
+  is stored in) and `Invest` (Investments rows). The group is the
+  `job` above, from the one rule the lead uses (`planJob`,
+  `src/domain/money-job-plan.ts`); the stored section (`planned_items`,
+  `budget_buckets`, `income`) is a storage term that never appears as a
+  heading in Studio. A line added from Studio defaults to Spend with an
+  optional due date and is stored by it: dated is a planned item, undated a
+  budget bucket (an Investments category or the label `Savings` lands in
+  Invest or Save by the same rule); existing data and the add-row commands
+  are unchanged
+- `plan view`: how the Month plan reads, `Studio` (the one list of sliders,
+  the default) or `Tables` (the plan tables: notes, accounts, matching
+  entries, adding and removing lines). Held Studio changes are kept while
+  Tables shows (a dot on Studio says so). The choice is remembered per login
+  on the app shell like the lead view (`planMode`,
+  `POST /api/viewer-preferences/plan-mode`, a device cache without a login).
+  A month with nothing planned shows only the tables
+- `plan history`: what a row's slider popover knows of its past, one
+  `history` tuple on a plan or income row of the Month page DTO: last
+  month's plan, last month's actual, the average actual of the previous three
+  months that had the row, and how many months that counts. A row is matched
+  to a past row by category and name; a past month is read with the rules of
+  its own Month page, so last month's figures equal what that page shows;
+  untracked months are never read; the Savings line carries only its plan
+  (its actual is money kept, not entries). The popover also says what has
+  been spent (or received, kept, moved) and what is left or over, the row's
+  pace (`ahead`, `on pace`, `behind`; due date for a dated line, a straight
+  line otherwise; none for income, saving or a month that is not the current
+  one) and, while a change is pending, its effect on `Left over`
+  (`+$40 → Left over $X`). It is shown on hover or focus (wide screens), by
+  the info button (phones) and while a slider moves; never while money is
+  hidden
+- `planned in by source`: the Planned in line is drawn as one segment per
+  income row (a stripe on the bar and a legend), in each person's colour
+- `extra income`: money that arrived beyond the plan, the month's actual
+  income less planned money in. A quiet line, `You got $X that isn't in the
+  plan`, with `Add to Savings`, which asks (the amount, the Savings plan's
+  before and after, what Left over would be, any other held changes it also
+  saves) and then saves through the same Save plan request. Never a
+  forecast; absent when nothing arrived beyond the plan or money is hidden
+
 ### Monthly Note
 
 A note attached either to a summary scope or a specific month. Notes preserve

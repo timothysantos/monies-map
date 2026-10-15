@@ -61,8 +61,17 @@ month" replaces the plan tables, which Plan keeps for editing. Month
 opens in Simple, with a plan or without, until a choice is made
 (`tests/e2e/lead-simple-view.spec.js`).
 
-Plan view opens with Plan Studio above the plan tables (`plan-studio.jsx`,
-design.md "Plan Studio", DOMAIN.md "Plan Studio"). It reads the page's income
+Plan view opens with Plan Studio (`plan-studio.jsx`, design.md "Plan
+Studio", DOMAIN.md "Plan Studio") in place of the plan tables: a Studio | Tables
+switch above it (`plan-mode-switch.jsx`, remembered per login, Studio by
+default) shows one or the other. Studio stays mounted while Tables shows, so
+held changes survive the switch; a month with nothing planned shows only the
+tables. A row's menu reaches the note, the details sheet, matching entries and
+removing; "Add a line" and "Add income" open the plan-row sheet (a line with a
+due date is stored as a planned item, any other as a budget bucket). The Month
+page DTO carries a small `history` tuple per plan and income row (last month's
+plan and actual, the three-month average actual; DOMAIN.md "Plan history") for
+the slider popover. It reads the page's income
 rows, plan sections and the lead's figures, holds its changes locally (one
 Undo stack, Reset to saved) and saves them with one request,
 `POST /api/month-plan/apply-changes`, naming each changed row and the amount
@@ -72,7 +81,8 @@ again. After a save the page shows the saved amounts (`isPendingDerived`)
 while `runBackgroundRefresh` reloads the month, exactly as after a row edit.
 The combined household view is read only (no sliders, Save plan or What
 if; the plan tables' own hint says to switch to a person view). Simple view does not load the studio. Proof:
-`tests/e2e/plan-studio.spec.js`, `tests/e2e/plan-studio-layout.spec.js`.
+`tests/e2e/plan-studio.spec.js`, `tests/e2e/plan-studio-v2.spec.js`,
+`tests/e2e/plan-studio-layout.spec.js`.
 
 The plan tables (Income, Budget Buckets, Planned Items) keep their table
 markup on every layout and add hierarchy: the item leads, the money columns

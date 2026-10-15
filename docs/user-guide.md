@@ -1370,18 +1370,29 @@ or type it on Ask: "plan November like October but Groceries $700"
 
 ### See where every planned dollar goes
 
-In Plan view, above the plan lists, **Plan Studio** shows your whole month
-plan as money jobs: what comes in, **Spend**, **Save**, **Invest** and what is
-**left over**.
+In Plan view, **Plan Studio** shows your whole month plan as money jobs: what
+comes in, **Spend**, **Save**, **Invest** and what is **left over**. The big
+picture across the top is as wide as the page; under it, how the month is
+going and **What if I save more?** sit side by side (stacked on a phone).
 
 - **The bar** is your planned money in. Drag a line to move money from one
   job to the next (the arrow keys work too). Tap a job's name under the bar to
   see and resize its categories. If the plan puts out more than comes in, the
   bar goes past the dashed **Planned in** line and the top says **The plan
   doesn't add up**, with a button that fixes it in one tap.
-- **Every row has a slider.** Drag it, or use the **−** and **+** buttons for
+- **One list, grouped by what the money does.** **Money in**, **Spend**,
+  **Save** and **Invest**. Your bills with a due date sit in **Spend** with the
+  budgets, with a small tag such as *due 2 Oct*, earliest first.
+- **Every line has a slider.** Drag it, or use the **−** and **+** buttons for
   one step. For a finer amount, hold **Shift** while you drag (on a phone,
-  press and hold, then drag). The lock keeps a row from changing.
+  press and hold, then drag). The lock keeps a line from changing.
+- **A small card tells you about the line** while you hover or focus its
+  slider (on a phone, tap the **i** button) and while you drag: what you
+  planned and spent last month, the average of the last three months, what you
+  have spent so far and what is left, whether you are ahead of or behind where
+  the line usually is today, and what your change does to **Left over**
+  (for example, *+$40 → Left over $310*). It shows nothing while your money is
+  hidden.
 - **To type an exact amount, tap the amount.** A small box opens: type
   something like 137 or 137.50 and press Enter (Esc cancels). It shows the
   change from what is saved, and has quick **+$5, +$10, +$50** buttons.
@@ -1390,14 +1401,32 @@ plan as money jobs: what comes in, **Spend**, **Save**, **Invest** and what is
 - **What if I save more?** Slide or type a bigger savings target to see where
   the money would come from, then **Apply to plan** or **Cancel**. It only
   changes the plan; it does not guess what you will spend.
+- **Planned in** under the bar is split by where the money comes from (each
+  salary, bonus or other line).
+- **Money that came in but is not in the plan.** If more arrived than you
+  planned, a quiet line says so, for example *You got $500 that isn't in the
+  plan*. **Add to Savings** asks first (it says how much and what your Savings
+  plan becomes); **Cancel** changes nothing. It does not guess what is still to
+  come.
 - Nothing is kept until you tap **Save plan**. **Undo** steps back,
   **Reset to saved** drops every change. If saving fails your changes stay.
+- **A line's ⋯ menu** is where you edit its note, change its details (name,
+  category, date, account), match it to entries (for a line with a due date) or
+  remove it (it asks first). **Add a line** (in Spend) and **Add income** add
+  new ones; a new line is Spend unless its category is Investments, and it can
+  have an optional due date.
+- **Studio | Tables.** The switch above the plan changes how the plan reads.
+  **Tables** is the plan tables, where you can see and sort everything. Changes
+  you have not saved in Studio are kept while you look at Tables (a dot on
+  Studio says so). The page remembers your choice.
 
 ![Plan Studio: the bar of planned money in, how the month is going and a slider for every row](/faq/guide/desktop/thumbs/month-plan-studio.webp)
 
+![The card a slider shows: last month, the average, so far, pace and what the change does to Left over](/faq/guide/desktop/thumbs/month-plan-studio-info.webp)
+
 ![Tapping a row's amount on a phone opens a sheet to type an exact amount](/faq/guide/phone/thumbs/phone-month-plan-studio.webp)
 
-In the Household view Plan Studio is read-only, like the lists under it.
+In the Household view Plan Studio is read-only, like the tables.
 Switch to your own name to change the plan.
 
 ## Link planned items to entries

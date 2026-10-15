@@ -117,3 +117,129 @@ mockup's lanes. Screenshots: `docs/audits/plan-studio/layout-before-*.png`,
 WebKit e2e (`test:e2e:webkit`), `test:performance`, the full e2e suite (targeted
 specs plus the smoke bundle only), a real iPhone for the touch long-press and
 vibration.
+
+## v2 (2026-10-15)
+
+Owner feedback on v1, approved to build and deploy without a review round:
+(a) a useful-info popover on every slider, (b) the big picture full width with
+the two cards side by side under it, (c) the sliders and the plan tables
+merged into one list with a Studio | Tables switch, (d) one list grouped by
+what the money does instead of "planned items" and "budget buckets", (e)
+Planned in by income row and a quiet line for money that arrived beyond the
+plan. In October the demo and prod plan reads "The plan doesn't add up" because
+the owner changed a bill: that is genuine and unchanged (f).
+
+### Decisions
+
+| Question | Decision |
+| --- | --- |
+| Reaching notes, details, matching and removing from Studio | A row menu (the `...` button), not a jump to Tables: Edit note, Edit details (the plan-row sheet: name, category, date, account, note), Match entries (dated lines), Remove line (asks first). Least clutter: one 44px button per row, nothing else added to it. Adding is a button in the Money in and Spend group headers (Add income, Add a line). The entries behind a line open from its status line, as every figure does. Tables stays for sorting and a look at everything at once |
+| Studio to Tables with unsaved edits | Kept, not asked: Studio stays mounted (hidden) once shown, so the held changes, Undo stack and locks survive, and a dot on Studio says changes are held. Save plan still lives in Studio. Tested |
+| Where the mode is remembered | Per login on the app shell (`planMode`, `POST /api/viewer-preferences/plan-mode`), stored beside the lead view in the same hashed-email settings row, with the device's storage as the first-paint cache and as the store without a login (demo, local dev). Studio is the default |
+| New line's section | Dated is a planned item, undated a budget bucket (`plan-line-section.js`); an Investments category or the label Savings lands in Invest or Save by the existing `planJob` rule. Add a line opens the existing plan-row sheet, narrowed to the middle of a wide screen |
+| Empty month | Only the tables (nothing for Studio to show; its first line is added there) |
+| Extra income | Actual income less planned money in, from the lead's figures. Add to Savings raises the largest unlocked Savings row by that amount through the one Save plan request. Planned money in is not raised, so Left over falls by the amount: the confirm says so. The line and the button are absent when nothing arrived beyond the plan, with money hidden, and (the button) in the household view |
+| Pace in the popover | `ahead`, `on pace`, `behind` against the row's own pace (due date for a dated line, a straight line otherwise), margin the larger of $40 and 8% of the plan; none for income, saving or a month that is not the current one |
+
+### Layout (measured, px; studio width 1,122 at 1280, 1440 and 1920 as the page is capped)
+
+| Width | Big picture | Cards (pace / what if) | List columns, left / right |
+| --- | --- | --- | --- |
+| 1280, 1440, 1920, demo rows | 1122 (full) | 554 x 415 and 554 x 415, same top | 2564 / 2556 (8 px) |
+| 1280, 1440, 1920, 16 more rows | 1122 | the same | 3876 / 3868 (8 px) |
+| 390 (phone) | 366 (full) | 366 x 313, then 366 x 415 under it | one column |
+
+`tests/e2e/plan-studio-layout.spec.js` asserts, at 1280, 1440 and 1920 px: the
+big picture spans the studio, the two cards start together, are as tall and as
+wide as each other and together as wide as the studio, the list sits under
+them, and its two columns end within 20% of each other (the v1 checks, still
+red on the mockup's lanes); at 390 px: the cards stack, every row spans one
+column and nothing scrolls sideways; in the household view the lone card
+spans the row.
+
+### Loading and data
+
+- First screen: `check:bundle` unchanged in kind and never raised. The entry
+  chunk grew by 115 B gzip (`publishAppShell`, `app-shell-watch.js`): the
+  Month route's own mode store listens for the shell instead of the shell
+  reaching it. Month's code for the switch and for adding a line (the Studio |
+  Tables copy, `plan-line-section.js`) is small and separate from the studio:
+  Simple view still loads no studio code (`plan-studio.spec.js` fails on any
+  `plan-studio` request except the add-line copy).
+- Plan Studio chunk: JS 45.5 kB (14.3 kB gzip), CSS 16.5 kB (3.7 kB gzip).
+- Payload: the Month page DTO gains `history` on plan and income rows that an
+  earlier month also had. Demo September 2025 (12 rows): +331 B (15,168 to
+  15,499 B), person view +265 B. May 2026 (no tracked months before it) is
+  unchanged at 32,280 B against the 32,259 B budget, and
+  `api-payload-budget.json` is untouched. The handler reads at most three
+  tracked months before the page's month (one entries range read, one plan-row
+  and one income read per month, in parallel): about 28 ms against 12 ms
+  warm on the demo for a month with history. Real-data handler time grows with
+  the month's entry count; `test:performance` was not run (see below).
+- Writes: unchanged for plans (the one `applyMonthPlanChanges`, extra income
+  included). The only new write is the display preference
+  (`app_settings`, one batch statement, `failingStatement` tested).
+
+### Tests
+
+- `tests/month-plan-history.test.mjs` (the tuple, matching, the Savings line,
+  untracked months, equals last month's own page), `plan-studio-v2-model.test.mjs`
+  (groups incl. dated spending and Savings or Investments from either section,
+  due tag, popover facts, pace, effect on Left over, income segments, extra
+  income, where a new line is stored), `plan-studio-v2-dom.test.mjs` (popover
+  body, hidden money, due tag, menu, income strip and legend, the switch),
+  `plan-mode.test.mjs`, `viewer-preferences.test.mjs` (plan mode per login,
+  refusals, atomic).
+- `tests/e2e/plan-studio-v2.spec.js` on desktop and a phone: the grouped list
+  and due tag, popover on hover, focus, Escape, drag and the info button, no
+  popover with money hidden, Studio to Tables keeps held changes, the mode is
+  remembered, an empty month shows tables only, add a line (undated and dated)
+  and where each is stored, the row menu (note, matching, remove with Cancel),
+  Planned in by source, Add to Savings with Cancel and with confirm through
+  one Save plan request, no line when nothing arrived beyond the plan, the
+  household view read only, 44px targets.
+- Updated: `plan-studio.spec.js` and `plan-studio-layout.spec.js` (Studio is
+  chosen with `chooseStudio`; the row name is `.ps-row-label`; the Simple-view
+  load check names the studio chunk), `playwright.config.js` (every test starts
+  on Tables, like the Plan choice) and `helpers.js`.
+
+### Strings (new or changed)
+
+`copy/plan-studio-copy.js` and `copy/plan-studio-add-copy.js`:
+Plan view, Studio, Tables, "Studio, with changes not saved yet"; group heads
+"Money in", "Spend", "Save", "Invest" (unchanged) with "Add income", "Add a
+line", "Add a line to Money in", "Add a spending, saving or investing line";
+"due 2 Oct" (day and short month); menu "More for {line}", "Edit note", "Edit
+details", "Match entries", "Remove line"; "Remove {line}", "Remove {line} from
+this month's plan? The entries you have recorded stay where they are.",
+"Remove line", "That line could not be removed. Nothing changed."; popover
+"Details for {line}", "Last month", "Planned $x, spent $y", "Average", "spent
+$x a month over 3 months", "No earlier month had this line.", "So far",
+"spent $x, $y left" (or over, still to come, still to keep, still to move,
+with received, kept, moved), "Pace", "On pace", "Ahead of pace, $x more than
+expected by today", "Behind pace, $x less than expected by today", "Past its
+due date, $x not paid yet", "If you save this", "+$40 → Left over $x"; "Planned
+in", "Planned in by source"; extra income "You got $x that isn't in the plan",
+"Add to Savings", "Add $x to your Savings plan? It goes from $a to $b.", "Left
+over would be $x, since planned money in stays as it is.", "This also saves
+your N other changes to the plan.", "Cancel", "Added to Savings and saved.",
+"That could not be saved. Nothing changed."; the add-line sheet "Add a line",
+"Spend, save or invest", "Due date (optional)"; changed: "Change this one in
+Tables." (was "...in the plan list below."). Removed: the per-row "view the
+entries behind" icon button (the status line opens them).
+
+### Screenshots
+
+`docs/audits/plan-studio-v2/`: `before-*` are v1 (desktop and phone, light and
+dark); `after-desktop-studio-light|dark.png`, `after-phone-studio-light|dark.png`,
+`after-desktop-popover.png`, `after-phone-popover.png`,
+`after-desktop-tables.png`, `after-desktop-extra-income.png` (the confirm),
+`after-desktop-row-menu.png`, `after-desktop-add-line.png`,
+`after-phone-add-line.png`. In the Studio shots the extra Bonus line shares the
+Salary category, so both income lines count the same entries; that is the demo
+data, not the feature.
+
+### Not run
+
+WebKit e2e, `test:performance`, a real iPhone, the full e2e suite (targeted
+specs, the Month-affected specs and the smoke bundle only).

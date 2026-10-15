@@ -3101,8 +3101,10 @@ The Month page's Plan view as money jobs (owner decision, 2026-10-15; DOMAIN.md
 "Plan Studio"; approved mockups
 `docs/proposals/plan-studio/plan-studio-mockups.html`, direction A, Waterfall,
 plus C's "What if I save more?"). It sits above the plan tables, which stay
-the place for notes, accounts, matching entries and adding or removing a line.
-Simple view never loads it.
+the place for sorting and the sections (Studio's row menu reaches notes,
+details, matching entries and removing a line; "Add a line" adds one). Since v2
+the tables show only in Tables mode (Studio | Tables), and Studio stays mounted
+(hidden) while they do. Simple view never loads it.
 
 - Loading: `plan-studio.jsx` is its own chunk, imported by `month-panel.jsx`
   when Plan view renders; until it arrives an empty, invisible block
@@ -3140,6 +3142,39 @@ Simple view never loads it.
   headline's sign and every status line, and gives screen readers "Amount
   hidden". Motion (rolling numbers, bar flow) is off under
   `prefers-reduced-motion`.
+- Plan Studio v2 (2026-10-15, `docs/audits/plan-studio.md` "v2"):
+  - Layout: the big picture (headline, bar, Planned in by source) takes the
+    full width; the two cards under it (how the month is going, What if I
+    save more?) share one row from a 860 px studio width and stack below it
+    (a lone card, the household view's, spans the row); the one list under
+    them stays in balanced columns. `plan-studio-layout.spec.js` measures
+    1280, 1440, 1920 px and a phone.
+  - One list grouped by money job (`studioGroups`,
+    `plan-studio-v2-model.js`): Money in, Spend (dated lines first with a
+    "due 2 Oct" tag), Save, Invest. Planned items and budget buckets are
+    storage and are not named in Studio. "Add a line" (Spend) and "Add
+    income" open the plan-row sheet; a dated line is stored as a planned
+    item, an undated one as a budget bucket (`plan-line-section.js`).
+  - Slider popover (`plan-studio-info.jsx`): the same Radix popover as the
+    amount editor, anchored to the row's controls; hover or focus on a wide
+    screen, the 44px info button on a touch screen (pinned until tapped
+    again) and while a slider moves. It reads the row's `history` and the held
+    plan; hidden money draws no popover and no info button.
+  - Row menu (`plan-studio-menu.jsx`): Edit note, Edit details (the plan-row
+    sheet: label, category, date, account, note), Match entries (dated
+    lines) and Remove line (asks first). The entries behind a line open from
+    its status line, as every figure does. This is the least-clutter way to
+    keep every table feature reachable; the Tables view still holds the rest
+    (sorting, bulk look at the sections).
+  - Studio | Tables (`plan-mode-switch.jsx`): the Plan | Simple control's
+    look (`lead-view-switch`). Studio stays mounted, hidden, once shown, so
+    held changes survive a visit to Tables (a dot on Studio says they are
+    held). Remembered per login (`plan-mode.js`, `viewer-preference-store.js`;
+    the shell reaches it through `app-shell-watch.js`, so the first screen
+    carries only `publishAppShell`).
+  - Extra income: a quiet line in the pace card with Add to Savings (a
+    confirm dialog; Cancel writes nothing); saved through the one Save plan
+    request.
 - Not in the studio: Room to spend per day (the mockup's third what-if
   figure): a per-day figure reads as a safe-to-spend promise, which money
   insights never give. No haptics beyond a short vibration when a touch press
