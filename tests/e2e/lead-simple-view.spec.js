@@ -433,12 +433,12 @@ test.describe("phone", () => {
     expect(link.height).toBeGreaterThanOrEqual(44);
     await expectFlatMonthRows(page);
 
-    // Month in Plan with the switch in its head stays within the 215px card.
+    // Month in Plan with the switch in its head stays within the 270px card.
     await page.evaluate((key) => window.localStorage.setItem(key, "plan"), STORAGE_KEY);
     await page.goto(MONTH_URL);
     await expectPlan(page, { summary: false });
     const card = await page.locator(".month-lead").boundingBox();
-    expect(card.height, "Month lead height in Plan").toBeLessThanOrEqual(215);
+    expect(card.height, "Month lead height in Plan").toBeLessThanOrEqual(270);
     await option(page, "Simple").tap();
     const may = await expectedMonth(page, MONTH);
     await expectSimple(page, { summary: false, earned: may.earned, spent: may.spent });

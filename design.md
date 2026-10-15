@@ -885,9 +885,10 @@ Where it is used:
   (received, with "plan $x"), Saved (kept, with "target $x") and
   Remaining budget are one row of three equal columns inside the lead
   card under the savings bar (`SpendLeadGroup` `inline`, `LeadColumn`; hairlines, text
-  colour only, 52 px tall, at most 215 px for the whole card on an iPhone 13
-  with the savings bar and its legend (about 214 px; the card's gaps and
-  padding are tight in `month-route.css` for that), the same row on desktop; the Summary top keeps its pills). Income is the month's own
+  colour only, at least 56 px tall, at most 270 px for the whole card on an iPhone 13
+  with the savings bar and its legend (the card's gaps follow "Lead rhythm"
+  below; it was 215 px before the owner asked for room between the groups),
+  the same row on desktop; the Summary top keeps its pills). Income is the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
   spend, plan and savings target start from the Month metric cards and go
   through the split with the month's plan rows and category share, Saved
@@ -965,7 +966,8 @@ Where it is used:
   library: plain flex boxes with percentage widths. Hidden money: the shape
   stays, the colours go neutral grey (three greys when invested is there),
   the legend has the names and percentages only on a phone too ("Spent ·
-  85%", "Kept · 15%"), with no plan item (the plan bar is not drawn), the
+  85%", "Kept · 15%"; no percentages when they are left out, see "Lead
+  rhythm"), with no plan item (the plan bar is not drawn), the
   tick's legend line reads "All you earned" ("Earned" on a phone) without an
   amount, the sentence is "Spent and
   kept, as a share of what you earned" (or "Spent, invested and kept, as
@@ -973,16 +975,39 @@ Where it is used:
   kept, sky plan) plus faded plum (`--pastel-lavender-ink`) for invested:
   money put to work, a good outcome like kept (its model tone is `in`), but
   a part of its own, and never sky, which is a plan.
+- Lead rhythm (owner decision, 2026-10-15: "rethink the spacings, like line
+  spacing"; `summary-lead.css`, "The lead's vertical rhythm"; proof:
+  `expectLeadRhythm` in `tests/e2e/savings-bar.spec.js`). The Summary lead,
+  the Month lead and the Ask bar share one vertical scale, set as three
+  custom properties on `.lsd-card`, `.savings-bar` and `.lead-column` (there
+  are no spacing tokens in `:root`, and `styles.css` stays unchanged for the
+  first-screen budget): `--lead-gap-line` 4 px between lines of one group,
+  `--lead-gap-item` 8 px from an item to what it names, `--lead-gap-group`
+  12 px between groups and 16 px from 761 px wide. The groups are the head
+  (eyebrow, figure, progress line, 4 px apart), the bar (track, 4 px, plan
+  bar, 8 px, legend), the sentence with its money jobs line (4 px apart) and
+  the stat strip; a group gap separates them (a card's padding is 16 px on
+  desktop, 12 px by 16 px on a phone). Every text role has a line-height
+  (eyebrow 1.3, figure 1.15, progress line, legend and sentence 1.35, money
+  jobs line 1.4, stat label, figure and plan line 1.25 to 1.3), so no line
+  is glued to the next, and the legend wraps in rows a 4 px gap apart with
+  12 px between items. The legend's share of income is shown only when
+  everything that went out fits inside what was earned (spent plus
+  invested at most the income, so the shares add to 100); with no income,
+  or more out than in (for example a month whose salary has not landed),
+  no share shows, in any view, because "26347%" says nothing the amounts
+  and the bar do not. The lead's old compact gaps (2 px) made the card
+  215 px on a phone; this is 270 px at most.
 - Money jobs (`ui/money-jobs.jsx`, `money-jobs-model.js`, CSS in
   `summary-lead.css`; inside `SpendLeadGroup` under the savings bar, DOMAIN.md
   "Money job"): a `<details>` Detail whose summary is one muted line, "3 of
   4 money jobs done" ("… so far" while the period's last month is the
   current month), folded on a phone (it takes the old plan line's place and
-  height, 3 px under the sentence, so the Month card stays at most 215 px;
+  height, a 4 px line gap under the sentence, so the Month card stays at most 270 px;
   a phone shows the sentences that name investing in a one-line form, "Kept
   $12,000 · invested $8,000 of $247,000" or "Spent $300 over income ·
-  invested $200", so the card stays at most 215 px with investments too;
-  wider screens keep the full sentence) and open from 761 px. The line's tap target is 40 px: its
+  invested $200", so the card stays at most 270 px with investments too;
+  wider screens keep the full sentence) and open from 761 px. The line's tap target is 44 px: its
   padding reaches into the gaps above and below and a negative margin gives
   the space back; the bar's segments sit above it where the two reach
   overlap (a pseudo-element target covered the bar in Chrome). Open, it
@@ -1052,7 +1077,7 @@ Where it is used:
   period" of two native radio inputs (`name="lead-view"`), so the browser
   gives the arrow keys and the tab order. It is drawn 30 px tall as a pill
   on `--chip` with the chosen option on `--card`; negative margins keep the
-  eyebrow line's height (the Month card stays at most 215 px on a phone),
+  eyebrow line's height (the Month card stays at most 270 px on a phone),
   and each invisible input covers its label and 9 px above and below, a
   44 px target. Plan is the pages as they were. Without a choice
   a page opens in Simple, with a plan or without, and while the figures

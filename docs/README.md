@@ -111,6 +111,9 @@ a doc here in the same change.
 - [`audits/wrong-card-apple-pay-duplicate.md`](audits/wrong-card-apple-pay-duplicate.md):
   Apple Pay entries on the wrong card: confidence rules, false-positive
   analysis, measured reads and the real case.
+- [`audits/month-lead-spacing/README.md`](audits/month-lead-spacing/README.md):
+  the Month and Summary lead's vertical rhythm and the legend share rule,
+  with before and after screenshots (15 October 2026).
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice, including the Claude-through-AI-Gateway
   provider and receipt reading (11 October 2026).

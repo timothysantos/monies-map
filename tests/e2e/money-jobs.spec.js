@@ -146,7 +146,7 @@ test.describe("phone", () => {
     await expect(jobs).not.toHaveAttribute("open", "");
     await expect(jobs.locator("[data-job]").first()).toBeHidden();
     // The jobs line takes the old plan line's place: the card stays compact.
-    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(215);
+    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(270);
     expect((await page.locator(".financial-insight").first().boundingBox()).y, "Money insights above the fold").toBeLessThan(664);
     // The rows' and the menu's words are not in the first screen: they load on the first open.
     const detailLoaded = () => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("money-jobs-detail")));
@@ -254,7 +254,7 @@ test.describe("phone", () => {
     const figures = await monthFigures(page);
     await expect(lead.locator(".summary-lead-spent")).toHaveText("••••");
     await expect(lead.locator("[data-savings-sentence]")).toHaveText("Spent, invested and kept, as shares of income");
-    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(215);
+    expect((await lead.boundingBox()).height, "Month lead card height").toBeLessThanOrEqual(270);
     const rows = jobRows(figures);
     const done = rows.filter(([, status]) => status === "✓ done").length;
     await expect(lead.locator("[data-money-jobs-summary]")).toHaveText(`${done} of ${rows.length} money jobs done`);
