@@ -44,8 +44,8 @@ spend "of" its planned spend, the bar, the percent of plan and how far under
 or over plan. Income (received, with "plan $x"), Saved (with "target $x") and
 Remaining budget are one row of three equal columns inside the card, under
 the bar, split by hairlines, in text colour only (no tinted boxes); the card
-is at most 190 px tall on an iPhone 13 so Money insights start above the
-fold. The
+is at most 270 px tall on an iPhone 13 (the groups have room between them,
+design.md "Lead rhythm") so Money insights still start above the fold. The
 figures are the month page DTO's metric cards plus the month's Summary row
 (`buildMonthLeadModel`), so they equal what the six tiles showed; the
 Remaining budget column (labelled "To allocate" or "Overplanned", "Remaining budget" when money is hidden) opens its explanation. Nothing scrolls sideways at

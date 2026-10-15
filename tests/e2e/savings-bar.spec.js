@@ -52,8 +52,77 @@ const POPOVER = ".savings-bar-popover, .savings-bar-float";
 const isPhone = (page) => page.viewportSize().width < 761;
 // A phone has no room for the share beside the figure; a wider screen has.
 const legendText = (page, label, percent) => (isPhone(page) || percent === null ? label : `${label} · ${percent}%`);
-// The Month card's phone cap: 205 px before the legend, 215 with it.
-const MONTH_CARD_CAP = 215;
+// The Month card's phone cap: 270 px (was 215 before the lead rhythm gave every group room; design.md "Lead rhythm").
+const MONTH_CARD_CAP = 270;
+
+// The lead's vertical rhythm (summary-lead.css, "The lead's vertical rhythm"):
+// 4 px between lines of one group, 8 px from the bar to its legend, 12 px
+// between groups (16 px from 761 px wide), and a line-height on every text
+// role. The gaps are measured between the rendered boxes, so a rule that
+// glues the legend to the bar or the sentence to the legend fails here. Runs on
+// the Month and Summary leads (the Summary card has no stat strip).
+const SPACING_SCALE = [4, 8, 12, 16];
+async function expectLeadRhythm(page, lead) {
+  const group = isPhone(page) ? 12 : 16;
+  const bar = lead.locator("[data-savings-bar]");
+  const gap = async (above, below) => (await box(below)).y - (await box(above)).bottom;
+  const near = (value, expected, message) => expect(Math.abs(value - expected), `${message}: ${value}px, expected ${expected}px`).toBeLessThanOrEqual(1);
+
+  const figure = lead.locator(".lsd-figure");
+  const progress = lead.locator(".summary-lead-line");
+  const track = bar.locator(".savings-bar-track");
+  const plan = bar.locator(".savings-bar-plan");
+  const legend = bar.locator("[data-savings-legend]");
+  const sentence = bar.locator("[data-savings-sentence]");
+  const jobs = lead.locator("[data-money-jobs]");
+
+  // Within a group: a line gap (4) between the eyebrow, the figure and the progress line.
+  near(await gap(lead.locator(".lsd-eyebrow"), figure), 4, "eyebrow to headline");
+  near(await gap(figure, progress), 4, "headline to progress line");
+  // Between groups: head, then the bar and its legend, then the sentence and the money jobs.
+  near(await gap(progress, track), group, "progress line to bar");
+  near(await gap(track, plan), 4, "bar to plan bar");
+  near(await gap(plan, legend), 8, "plan bar to legend");
+  expect(await gap(track, legend), "the legend never touches the bar").toBeGreaterThanOrEqual(8);
+  near(await gap(legend, sentence), group, "legend to sentence");
+  near(await gap(sentence, jobs), 4, "sentence to money jobs line");
+  const columns = lead.locator(".lead-columns");
+  if (await columns.count()) {
+    near(await gap(jobs, columns), group, "money jobs to the stat strip");
+    // A stat's label, figure and plan line sit a line gap apart.
+    const first = lead.locator('[data-metric="income"]');
+    near(await gap(first.locator(".lead-column-label"), first.locator("strong")), 4, "stat label to figure");
+    near(await gap(first.locator("strong"), first.locator("small")), 4, "stat figure to plan line");
+  }
+  for (const value of [4, 8, group]) {
+    expect(SPACING_SCALE, `${value}px is on the scale`).toContain(value);
+  }
+
+  // A line-height on every text role: none is glued (ratio under 1.15) to the next.
+  const roles = [".lsd-eyebrow", ".lsd-figure .lsd-amount", ".summary-lead-line", "[data-savings-legend]", "[data-savings-sentence]", "[data-money-jobs-summary]", ".lead-column-label", ".lead-column strong", ".lead-column small"];
+  for (const selector of roles) {
+    const target = lead.locator(selector).first();
+    if (!(await target.count())) continue;
+    const ratio = await target.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return Number.parseFloat(style.lineHeight) / Number.parseFloat(style.fontSize);
+    });
+    expect(ratio, `${selector} line-height ratio`).toBeGreaterThanOrEqual(selector === ".lsd-figure .lsd-amount" ? 1.1 : 1.2);
+  }
+
+  // The legend wraps cleanly: inside the card, rows a line gap apart, never touching.
+  const card = await box(lead);
+  const items = await legend.locator("li").evaluateAll((nodes) => nodes.map((node) => {
+    const rect = node.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, right: rect.right };
+  }));
+  for (const item of items) expect(item.right, "legend item inside the card").toBeLessThanOrEqual(card.right);
+  const rows = [...new Set(items.map((item) => Math.round(item.top)))].sort((left, right) => left - right);
+  for (let index = 1; index < rows.length; index += 1) {
+    const rowBottom = Math.max(...items.filter((item) => Math.round(item.top) === rows[index - 1]).map((item) => item.bottom));
+    expect(rows[index] - rowBottom, "legend rows keep a line gap").toBeGreaterThanOrEqual(3);
+  }
+}
 
 async function recordSalary(page, amountMinor) {
   await postJson(page, "/api/entries/create", {
@@ -176,8 +245,10 @@ async function expectOverBar(page, lead, figures) {
   expect(await savingsSegment.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("repeating-linear-gradient");
   await expect(savingsSegment).toHaveClass(/money-short/);
   await expect(bar.locator("[data-savings-sentence]")).toHaveText(`You spent ${dollars(figures.spent - figures.income)} more than you earned`);
-  await expect(legendItem(bar, "spent")).toHaveText(legendText(page, `Spent ${dollars(figures.spent)}`, Math.round((figures.spent * 100) / figures.income)));
-  await expect(legendItem(bar, "savings")).toHaveText(legendText(page, `From savings ${dollars(figures.spent - figures.income)}`, Math.round(((figures.spent - figures.income) * 100) / figures.income)));
+  await expect(legendItem(bar, "spent")).toHaveText(legendText(page, `Spent ${dollars(figures.spent)}`, null));
+  await expect(legendItem(bar, "savings")).toHaveText(legendText(page, `From savings ${dollars(figures.spent - figures.income)}`, null));
+  // More out than in: no share of income is meaningful, so the legend shows none.
+  await expect(bar.locator("[data-savings-legend] .savings-bar-legend-share")).toHaveCount(0);
   // The striped swatch matches the striped part.
   expect(await legendItem(bar, "savings").locator(".savings-bar-swatch").evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("repeating-linear-gradient");
   await expect(bar.locator('[data-legend="kept"]')).toHaveCount(0);
@@ -222,7 +293,7 @@ test.describe("phone", () => {
     await reseedDemo(page);
   });
 
-  test("Month lead: the bar, the legend and the plan name are in the page without a tap, a tap opens the menu, the card stays near 215px", async ({ page }) => {
+  test("Month lead: the bar, the legend and the plan name are in the page without a tap, a tap opens the menu, the card stays within 270px", async ({ page }) => {
     await recordSalary(page, 6_500_000);
     await revealMoney(page);
     const figures = await expectedFigures(page, "month");
@@ -237,11 +308,12 @@ test.describe("phone", () => {
     expect(legend.y, "legend under the plan bar").toBeGreaterThanOrEqual((await box(bar.locator(".savings-bar-plan"))).bottom);
     expect(legend.right).toBeLessThanOrEqual(390);
     expect((await box(bar.locator("[data-savings-sentence]"))).y, "legend above the sentence").toBeGreaterThanOrEqual(legend.bottom);
-    // One line of text each (the card is compact), the card ≤ 215px, and the
+    // One line of text each (the card is compact), the card ≤ 270px, and the
     // Money insights still start above the fold.
     expect((await box(bar.locator("[data-savings-sentence]"))).height, "sentence on one line").toBeLessThan(22);
     expect((await box(lead.locator("[data-money-jobs]"))).height, "money jobs line on one line").toBeLessThan(18);
     expect((await box(lead.locator("[data-money-jobs-summary]"))).height, "money jobs line tap target").toBeGreaterThanOrEqual(40);
+    await expectLeadRhythm(page, lead);
     const card = await box(lead);
     expect(card.height, "Month lead card height").toBeLessThanOrEqual(MONTH_CARD_CAP);
     expect((await box(page.locator(".financial-insight").first())).y, "Money insights above the fold").toBeLessThan(664);
@@ -277,6 +349,7 @@ test.describe("phone", () => {
     expect(figures.over, "the fixture month overspends the small salary").toBe(true);
     const lead = await openLead(page, "month");
     await expectOverBar(page, lead, figures);
+    await expectLeadRhythm(page, lead);
     expect((await box(lead)).height, "Month lead card height").toBeLessThanOrEqual(MONTH_CARD_CAP);
     expect((await box(lead.locator("[data-savings-legend]"))).height, "legend on one line").toBeLessThan(18);
     await expect(lead.locator('[data-segment="savings"]')).toHaveAccessibleName("Came out of savings");
@@ -366,6 +439,28 @@ test.describe("desktop", () => {
     await expect(lead.locator(".lsd-bar")).toHaveCount(0);
   });
 
+  test("Month lead at desktop width: the same rhythm, shares of income beside a saving and none when more went out than came in", async ({ page }) => {
+    await recordSalary(page, 6_500_000);
+    await revealMoney(page);
+    const figures = await expectedFigures(page, "month");
+    const lead = await openLead(page, "month");
+    await expectKeptBar(page, lead, figures);
+    await expectLeadRhythm(page, lead);
+    await expect(legendItem(lead.locator("[data-savings-bar]"), "spent")).toContainText(`${100 - figures.keptShare}%`);
+
+    // Salary not landed yet ($10 earned): spending is a share of nothing, so
+    // the legend shows no percentage (it read "26347%").
+    await reseedDemo(page);
+    await recordSalary(page, 1_012);
+    const over = await expectedFigures(page, "month");
+    expect(over.over, "the month now spends more than it earned").toBe(true);
+    const overLead = await openLead(page, "month");
+    await expect(overLead.locator('[data-segment="savings"]')).toBeVisible();
+    await expect(overLead.locator("[data-savings-legend] .savings-bar-legend-share")).toHaveCount(0);
+    expect(await overLead.locator("[data-savings-legend]").innerText()).not.toMatch(/\d%/);
+    await expectLeadRhythm(page, overLead);
+  });
+
   test("Summary lead, spending more than was earned: the tick says \"All you earned\" with the figure, the striped part is \"From savings\" in the legend", async ({ page }) => {
     await recordSalary(page, 100_000);
     await revealMoney(page);
@@ -373,6 +468,7 @@ test.describe("desktop", () => {
     expect(figures.over, "the range overspends the small salary").toBe(true);
     const lead = await openLead(page, "summary");
     await expectOverBar(page, lead, figures);
+    await expectLeadRhythm(page, lead);
     // Nothing is drawn over the bar: the tick's name is in the legend, under
     // the bars.
     const track = await box(lead.locator(".savings-bar-track"));

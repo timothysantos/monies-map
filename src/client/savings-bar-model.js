@@ -20,7 +20,8 @@ const earnedWord = messages.summary.lead.earned;
 // the lead already has, with money filed under Investments and Savings
 // taken out of the spend. It only describes what already happened and the
 // household's own plan: no forecast, no limit. Hidden money keeps the
-// percentages and drops every amount.
+// percentages and drops every amount. A legend share is left out (null) when
+// there is no income or more went out than came in.
 //
 // Invested is net of money taken back out of investment accounts and never
 // below zero (splitMoneyUse). A period that took more out than it put in
@@ -44,8 +45,12 @@ export function buildSavingsBarModel({ figures, hidden = false, withPlan = true,
     return null;
   }
   const amount = (minor) => (hidden ? null : formatMoney(minor));
-  const share = (minor) => (income > 0 ? Math.round((minor * 100) / income) : null);
   const isOver = outMinor > income;
+  // A share of what was earned means something only when everything that went
+  // out fits inside it (the shares then add to at most 100). With no income,
+  // or more out than in (salary not landed yet: "$2,666 · 26347%"), no share
+  // is shown; the amounts and the bar already say it.
+  const share = (minor) => (income > 0 && !isOver ? Math.round((minor * 100) / income) : null);
   // The bar is the income, or what went out when that is longer.
   const scaleMinor = isOver ? outMinor : income;
   const width = (minor) => (minor / scaleMinor) * 100;
