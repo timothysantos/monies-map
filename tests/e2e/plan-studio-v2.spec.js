@@ -175,7 +175,7 @@ test.describe("Plan Studio v2 on desktop", () => {
     await page.reload();
     await expect(tables(page)).toBeVisible();
     await expect(modeSwitch(page).getByRole("radio", { name: "List" })).toBeChecked();
-    await expect(page.getByRole("button", { name: /Add (budget|planned|income)/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /Add (monthly budget|bill|income)/i }).first()).toBeVisible();
     await expect(studio(page)).toHaveCount(0);
   });
 
