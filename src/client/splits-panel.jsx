@@ -149,6 +149,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groupBalanceMinor,
     groups,
     groupOptions,
+    hasSettledBefore,
     openGroupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
@@ -159,9 +160,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const { areTotalsVisible } = useMoneyPrivacy();
   const lead = useMemo(
     () => (activeGroup
-      ? buildSplitsLead({ group: activeGroup, viewId: view.id, people, areTotalsVisible, spendMinor: totalExpenseMinor })
+      ? buildSplitsLead({ group: activeGroup, viewId: view.id, people, areTotalsVisible, spendMinor: totalExpenseMinor, hasSettledBefore })
       : null),
-    [activeGroup, areTotalsVisible, people, totalExpenseMinor, view.id]
+    [activeGroup, areTotalsVisible, hasSettledBefore, people, totalExpenseMinor, view.id]
   );
   // A balance's "Open Splits" (figure-menu.js) lands on the group's list.
   useHashTarget(Boolean(activeGroup));

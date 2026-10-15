@@ -1726,6 +1726,23 @@ Relationships:
 - has one `to person`
 - may link to one `ledger entry`
 
+### Group Spend (open period)
+
+The spend a group's lead card shows is the spend of its open period, not of
+everything ever recorded: the group's live expenses that no settle-up has
+covered. An expense is covered when it is in a closed batch (Settle group) or
+in a settlement checkpoint whose status is not `reopened` or `voided`
+(`open`, `partially_matched`, `matched` and `internally_offset` all cover
+their items, the same rule as the settlement lock below). It is the same open
+set the entry count under the group's name and the group balance describe
+(`settlementStatus` of the activity item; `splits-projection.ts`). The amount
+is the expense total in the group's own currency, never converted. Deleted
+expenses are never counted. A reopened or voided checkpoint puts its
+expenses back into the open period. The chip says "Spent since last
+settle-up" once any record of the group was ever settled and "Group spend"
+while the group never was; the donut behind it says "Since last settle-up"
+or "Group spend" and charts the same open expenses.
+
 ### Settlement Checkpoint
 
 A person-level snapshot that simplifies open balances across multiple split

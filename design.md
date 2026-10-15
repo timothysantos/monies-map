@@ -102,8 +102,10 @@ decided by `splits-lead-model.js`, styles in `splits-lead.css`): the group
 bubble (its icon, the Splits terracotta), the name, "JPY · 10 entries" and the
 balance as the one figure with the plain words under it ("Serene owes you",
 "You owe Serene", "Settled up"; hidden: "Balance with Serene" and dots). Support
-chips: the other person in their colour and "Group spend <amount>", which is
-the old summary strip's category breakdown toggle (it keeps the name "Toggle
+chips: the other person in their colour and "Spent since last settle-up
+<amount>" (the open period: expenses no settle-up has covered; "Group spend
+<amount>" while the group was never settled; DOMAIN.md, "Group Spend (open
+period)"), which is the old summary strip's category breakdown toggle (it keeps the name "Toggle
 split donut" and `aria-expanded`). History (the `lsd-quiet` action, named
 "Activity history") and Settle group (the one `lsd-primary`; off at zero) share
 the bottom row; a wide screen adds "+ Add expense" between them, in a column

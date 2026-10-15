@@ -75,7 +75,7 @@ export function SplitsBreakdownSection({
                   data={visibleDonutChart}
                   categories={categories}
                   totalMinor={visibleTotalMinor}
-                  totalLabel={messages.entries.totalSpend}
+                  totalLabel={lead?.donutLabel ?? messages.entries.totalSpend}
                   currency={currency}
                   compact
                   height={300}

@@ -1,6 +1,7 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { selectSplitDonutChart } from "./split-helpers";
+import { summariseGroupSpend } from "./splits-lead-model";
 import {
   filterSplitActivityForSearch,
   filterSplitMatchesForSearch,
@@ -68,9 +69,11 @@ export function buildSplitsPanelModel({
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,
-    totalExpenseMinor: currentGroupActivity
-      .filter((item) => item.kind === "expense")
-      .reduce((sum, item) => sum + item.totalAmountMinor, 0),
+    // Spend of the open period (what no settle-up has covered), narrowed by
+    // the search like the list under it; the label follows whether the group
+    // was ever settled, which a search must not change.
+    totalExpenseMinor: summariseGroupSpend(currentGroupActivity).spendMinor,
+    hasSettledBefore: summariseGroupSpend(activeGroupActivity).hasSettledBefore,
     visibleMatches: unresolvedMatches,
     searchSuggestions: getSplitSearchSuggestions(activeGroupActivity, splitsPage.matches, searchQuery)
   };

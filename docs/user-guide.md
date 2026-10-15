@@ -647,8 +647,11 @@ always know you are working on shared money rather than your bank ledger.
   group's name, its currency and how many entries it has, then the balance as
   one figure with who owes whom in words under it ("Serene owes you" in
   green, "You owe Serene" in red, or "Settled up"). Under that are a chip for
-  the other person and a **Group spend** chip (select it to show or hide the
-  spending-by-category chart). **History** is quiet and **Settle group** is
+  the other person and a spending chip (select it to show or hide the
+  spending-by-category chart). It reads **Spent since last settle-up** and adds
+  up only what the group has spent since you last settled up, so it matches the
+  entry count and the balance; a group you have never settled up reads **Group
+  spend** and adds up everything. **History** is quiet and **Settle group** is
   the one main button; on a computer **+ Add expense** sits between them. When
   money is hidden the figure is dots and the words say "Balance with Serene",
   so nothing shows who owes whom.

@@ -74,7 +74,7 @@ export function SplitsLeadCard({
             aria-expanded={showBreakdown}
             onClick={onToggleBreakdown}
           >
-            {copy.groupSpend} <span className="splits-lead-spend">{spend}</span>
+            {lead.spendLabel} <span className="splits-lead-spend">{spend}</span>
           </MetaChip>
         )
       ]}

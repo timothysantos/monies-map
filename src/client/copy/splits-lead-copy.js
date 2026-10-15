@@ -7,6 +7,10 @@ export const splitsLeadCopy = {
   youOweName: (name) => `You owe ${name}`,
   balanceWith: (name) => `Balance with ${name}`,
   groupSpend: "Group spend",
+  // The open period only: expenses no settle-up has covered yet.
+  spentSinceSettleUp: "Spent since last settle-up",
+  // The same words short enough for the middle of the donut.
+  sinceSettleUp: "Since last settle-up",
   history: "History",
   searchGroup: (groupName) => `Search ${groupName}`
 };

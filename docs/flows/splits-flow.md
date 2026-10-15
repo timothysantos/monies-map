@@ -37,8 +37,12 @@ The open group's lead card (see design.md, "Splits page: lead card, search,
 activity list") is also a presentation of the page DTO: `buildSplitsLead`
 (`splits-lead-model.js`) turns the open group, the viewer and the money
 privacy state into the figure, its tone, the plain words and who it is with,
-and the group's spend is the search-filtered open expenses already used for
-the breakdown. Its buttons call the same handlers the old summary strip and
+and the group's spend is the spend of its open period: the search-filtered
+expenses that no settle-up has covered (`summariseGroupSpend`, the same
+`settlementStatus` the entry count and balance use), labelled "Spent since
+last settle-up" once the group was ever settled and "Group spend" while it
+never was; the breakdown donut charts the same open expenses and carries the
+same words ("Since last settle-up" or "Group spend"). Its buttons call the same handlers the old summary strip and
 page head did (Settle group, Activity history, + Add expense, Simplify
 settlement, the category breakdown); the page head keeps Review matches and,
 on a wide screen, Simplify settlement. In the bank-match review
