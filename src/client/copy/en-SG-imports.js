@@ -653,12 +653,13 @@ export const importMessages = {
   promoteExistingPreviewRow: "Promote existing row",
   importAsNewPreviewRow: "Import as new row",
   skippedRowsTitle: (count) => `Already covered rows (${count})`,
-  // An investment statement (iFAST): what it says the account was worth, and
+  // An investment statement (iFAST, StashAway): what it says the account was worth, and
   // which bank payment each contribution is the same money as.
   investmentStatementTitle: "Investment statement",
   investmentStatementWorth: (account, amount, date) => `${account} was worth ${amount} on ${date}, from the statement. It is saved for reference, not as a balance, and is not checked against your entries.`,
   investmentStatementReplaces: (amount, date) => `This replaces the ${amount} saved for that month (statement of ${date}).`,
-  investmentStatementPaired: (amount, date, account, bankDate, direction = "in") => `${amount} ${direction === "in" ? "put in" : "taken out"} on ${date} is the ${account} ${direction === "in" ? "payment" : "deposit"} of ${bankDate}. They are saved as one transfer, not two.`,
+  investmentStatementStartsAfter: (opening, earlier, earlierDate) => `This statement starts at ${opening}, but the earlier statement ended at ${earlier} on ${earlierDate}. A statement may be missing in between.`,
+  investmentStatementPaired:(amount, date, account, bankDate, direction = "in") => `${amount} ${direction === "in" ? "put in" : "taken out"} on ${date} is the ${account} ${direction === "in" ? "payment" : "deposit"} of ${bankDate}. They are saved as one transfer, not two.`,
   investmentStatementUnpaired: (amount, date, direction = "in") => `${amount} ${direction === "in" ? "put in" : "taken out"} on ${date} has no matching bank ${direction === "in" ? "payment" : "deposit"} yet. It is saved on its own. Import the bank statement first to pair them, or link them later in Entries.`,
   statementCheckpointsTitle: (count) => count === 1 ? "Statement checkpoint" : "Statement checkpoints",
   statementCheckpointsDetail: (count) => count === 1

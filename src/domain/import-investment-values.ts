@@ -65,6 +65,12 @@ export function readInvestmentValueSave(accountId: string, checkpoint: Statement
   };
 }
 
+function previousMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 async function loadStoredValue(db: D1Database, accountId: string, month: string) {
   return db
     .prepare(`
@@ -90,6 +96,15 @@ export async function buildImportPreviewInvestmentValues(
     }
     const account = checkpoint.accountId ? accountsById.get(checkpoint.accountId) : undefined;
     const existing = account ? await loadStoredValue(db, account.id, checkpoint.checkpointMonth).catch(() => null) : null;
+    // A statement that opens somewhere other than where the month before it
+    // closed (more than a cent apart) is a missing or revised statement in
+    // between. It is only said, never blocked.
+    const earlier = account && value.openingMinor !== undefined
+      ? await loadStoredValue(db, account.id, previousMonth(checkpoint.checkpointMonth)).catch(() => null)
+      : null;
+    const startsAfter = earlier && value.openingMinor !== undefined && Math.abs(value.openingMinor - earlier.total_assets_minor) > 1
+      ? { openingMinor: value.openingMinor, earlierValueMinor: earlier.total_assets_minor, earlierAsOfDate: earlier.as_of_date }
+      : undefined;
     previews.push({
       ...(account ? { accountId: account.id } : {}),
       accountName: account?.name ?? checkpoint.accountName,
@@ -100,7 +115,8 @@ export async function buildImportPreviewInvestmentValues(
       totalAssetsMinor: value.totalAssetsMinor,
       cashMinor: value.cashMinor,
       currency: value.currency,
-      ...(existing ? { replaces: { asOfDate: existing.as_of_date, totalAssetsMinor: existing.total_assets_minor } } : {})
+      ...(existing ? { replaces: { asOfDate: existing.as_of_date, totalAssetsMinor: existing.total_assets_minor } } : {}),
+      ...(startsAfter ? { startsAfter } : {})
     });
   }
   return previews;

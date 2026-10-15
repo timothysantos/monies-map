@@ -935,11 +935,12 @@ export async function commitImportBatch(
   for (const statement of await buildInvestmentValueSaveStatements(db, importId, investmentValueSaves)) {
     write(statement);
   }
-  // The digits of an investment account's number identify it for the next
-  // statement, as a card's last four do.
+  // The last four characters of an investment account's number identify it for
+  // the next statement, as a card's last four digits do. iFAST numbers end in
+  // digits; a StashAway reference code ("00 XYZ00X") ends in letters too.
   for (const checkpoint of valueCheckpoints) {
     const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
-    if (account && isOfficialStatementImport && checkpoint.accountLast4 && /^\d{4}$/.test(checkpoint.accountLast4)) {
+    if (account && isOfficialStatementImport && checkpoint.accountLast4 && /^[0-9A-Z]{4}$/.test(checkpoint.accountLast4)) {
       write(db
         .prepare(`
           UPDATE accounts

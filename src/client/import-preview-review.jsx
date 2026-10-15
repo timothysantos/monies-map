@@ -1565,6 +1565,7 @@ function InvestmentStatementValues({ values, previewRows }) {
         <p key={`${value.detectedAccountName}-${value.checkpointMonth}`} className="lede compact">
           {importMessages.investmentStatementWorth(value.accountName, formatService.money(value.totalAssetsMinor), formatService.formatDateOnly(value.asOfDate))}
           {value.replaces ? ` ${importMessages.investmentStatementReplaces(formatService.money(value.replaces.totalAssetsMinor), formatService.formatDateOnly(value.replaces.asOfDate))}` : ""}
+          {value.startsAfter ? ` ${importMessages.investmentStatementStartsAfter(formatService.money(value.startsAfter.openingMinor), formatService.money(value.startsAfter.earlierValueMinor), formatService.formatDateOnly(value.startsAfter.earlierAsOfDate))}` : ""}
         </p>
       ))}
       {movements.map((row) => (

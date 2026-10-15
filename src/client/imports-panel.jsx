@@ -58,6 +58,7 @@ import { buildInferredAmountKeys, InferredAmountsContext } from "./import-inferr
 import { buildRecoveryImportRow, buildStatementRecovery } from "./import-statement-recovery-model";
 import { moniesClient } from "./monies-client-service";
 import { AccountDialog } from "./account-dialog";
+import { inferStatementAccountKind, inferStatementInstitution } from "./statement-account-hints";
 import { formatAccountSelectLabel } from "./account-display";
 import { saveAccount } from "./accounts-api";
 import { inspectCsv } from "../lib/csv";
@@ -2699,32 +2700,6 @@ function buildOptimisticRecentImportBatch({
     rollbackProtected: false,
     note: importNote?.trim() || undefined
   };
-}
-
-function inferStatementAccountKind(accountName, parserKey) {
-  // An iFAST statement is an investment account's, whatever its name says.
-  if (/ifast/i.test(parserKey)) {
-    return "investment";
-  }
-  return /credit_card|cashback|rewards|miles|card/i.test(parserKey) || /card|cashback|rewards|miles/i.test(accountName)
-    ? "credit_card"
-    : "bank";
-}
-
-function inferStatementInstitution(accountName, parserKey) {
-  if (/citibank|citi/i.test(parserKey) || /citi/i.test(accountName)) {
-    return "Citibank";
-  }
-  if (/ocbc/i.test(parserKey) || /ocbc/i.test(accountName)) {
-    return "OCBC";
-  }
-  if (/uob/i.test(parserKey) || /uob/i.test(accountName)) {
-    return "UOB";
-  }
-  if (/ifast/i.test(parserKey) || /ifast/i.test(accountName)) {
-    return "iFAST";
-  }
-  return "";
 }
 
 function inferOpeningBalanceInputMinor({ checkpoint, kind, previewRows }) {
