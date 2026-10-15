@@ -38,6 +38,18 @@ and choose Replace.
 The older iCloud share remains a superseded v1 snapshot. The current Settings
 button does not use it.
 
+## Entry time
+
+The Shortcut sends only `date` (`yyyy-MM-dd`), so the entry's time of day is
+the moment the server received the request, converted to Singapore time and
+saved as `transaction_time` ("HH:MM"), but only when `date` is today in
+Singapore (a purchase dated another day has no time). The response adds
+`time` for a new entry. The Shortcut runs when the Wallet transaction happens,
+so that moment is the purchase time to the minute. A reinstall is not needed:
+the contract has no new field. (`requestId` carries the phone's own
+timestamp, but in the phone's time zone, so the server's receive time is used
+instead.)
+
 ## Release Procedure
 
 1. Change the secret-free plist source and keep its setup Text action blank.

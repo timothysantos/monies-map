@@ -16,6 +16,7 @@ import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildLinkedSplitMirrorStatements, buildLinkedSplitUpsertStatements, isActiveSplitLinkConflict } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { defaultEntryTime, parseEntryTime } from "../lib/entry-time";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
 
 async function assertUnlockedBankFactsForEntryUpdate(
@@ -133,6 +134,8 @@ export async function updateEntryRecord(
     note?: string;
     splitBasisPoints?: number;
     postDate?: string | null;
+    // The time of day: left out keeps the stored time, null clears it.
+    time?: string | null;
   }
 ) {
   // An update may leave the amount out to keep the stored one, but an amount
@@ -142,6 +145,7 @@ export async function updateEntryRecord(
   if (input.amountMinor !== undefined) {
     assertPositiveAmount(input.amountMinor);
   }
+  const resolvedTime = input.time === undefined ? null : parseEntryTime(input.time);
 
   type EntryAccount = { id: string; account_name: string; owner_person_id: string | null; account_kind: LinkedAccountKind };
   const account = input.accountId
@@ -340,6 +344,7 @@ export async function updateEntryRecord(
         owner_person_id = ?,
         offsets_category = ?,
         note = ?,
+        transaction_time = CASE WHEN ? = 1 THEN ? ELSE transaction_time END,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND household_id = ?
     `)
@@ -356,6 +361,9 @@ export async function updateEntryRecord(
       ownerPersonId,
       input.offsetsCategory ? 1 : 0,
       input.note ?? null,
+      // Only an update that names a time (or null to clear it) writes one.
+      input.time === undefined ? 0 : 1,
+      resolvedTime,
       input.entryId,
       DEFAULT_HOUSEHOLD_ID
     )
@@ -862,9 +870,12 @@ export async function createEntryRecord(
     // A Wallet amount in another currency behind an estimated amountMinor.
     originalAmountMinor?: number;
     originalCurrency?: string;
+    // Local "HH:MM". Left out: now, when the entry is dated today. null: none.
+    time?: string | null;
   }
 ) {
   assertPositiveAmount(input.amountMinor);
+  const entryTime = input.time === undefined ? defaultEntryTime(input.date) : parseEntryTime(input.time);
 
   const accountId = input.accountId ?? await resolveAccountId(db, input.accountName);
   if (!accountId) {
@@ -946,8 +957,8 @@ export async function createEntryRecord(
           id, household_id, account_id, transaction_date, post_date,
           description, amount_minor, currency, entry_type, transfer_direction,
           category_id, owner_person_id, offsets_category, note, external_reference,
-          original_amount_minor, original_currency
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          original_amount_minor, original_currency, transaction_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         entryId,
@@ -966,7 +977,8 @@ export async function createEntryRecord(
         input.note ?? null,
         externalReference,
         input.originalAmountMinor ?? null,
-        input.originalCurrency ?? null
+        input.originalCurrency ?? null,
+        entryTime
       ),
       ...(sharedSplit?.statements ?? []),
       buildAuditEventStatement(db, {
@@ -1004,7 +1016,7 @@ export async function createEntryRecord(
 
   await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
-  return { entryId, created: true, accountId, accountName, currency };
+  return { entryId, created: true, accountId, accountName, currency, ...(entryTime ? { time: entryTime } : {}) };
 }
 
 // A repeat create returns the entry it already made, with the split

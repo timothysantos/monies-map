@@ -811,8 +811,8 @@ provisional", on the Edit entry card and Ask's saved card; a certified
 entry says "Statement certified" and other entries keep "Manual
 provisional" or "Import provisional". More details then has a read-only
 "Added by" row (Apple Pay shortcut, Ask), and its folded hint names it
-("Date, wallet, posted date, type, added by"; certified: "Posted date,
-type, added by"; `moreDetailsSummary`), and an Entries row shows a small
+("Date, wallet, time, posted date, type, added by"; certified: "Time, posted
+date, type, added by"; `moreDetailsSummary`), and an Entries row shows a small
 muted glyph inside its amount's line (a contactless mark, "Added with Apple
 Pay"; a sparkle, "Added in Ask") that keeps the row's height and is the
 same with money hidden. The words come from `entry-source.js`, from the

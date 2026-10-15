@@ -405,7 +405,7 @@ test.describe("Entries inline editor: the lead chips edit date, wallet and owner
     for (const key of ["date", "wallet", "owner"]) {
       await expect(card.locator(`[data-row='${key}']`), key).toHaveCount(0);
     }
-    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Posted date", "Type"]);
+    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Time", "Posted date", "Type"]);
     await expect(card.locator(".lsd-card .lsd-chip")).toHaveText(["Sun 24 May", "UOB One", "Tim", "Manual provisional"]);
   });
 
@@ -482,7 +482,7 @@ test.describe("Entries inline editor: the lead chips edit date, wallet and owner
     await expect(lead.getByRole("textbox", { name: "Amount" })).toHaveCount(0);
     // The owner is not a bank fact.
     await expect(lead.getByLabel("Change owner, Tim")).toBeVisible();
-    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Posted date", "Type"]);
+    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Time", "Posted date", "Type"]);
   });
 
   test("the inline card stays compact at 1280 px (height cap)", async ({ page }) => {

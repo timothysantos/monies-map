@@ -128,7 +128,7 @@ import {
   parseShortcutCreateBody,
   SHORTCUT_NOTE_MAX_LENGTH
 } from "./domain/shortcut-entry-contract";
-import { validateEntryCreateFields } from "./domain/entry-create-validation";
+import { entryTimeFieldError, validateEntryCreateFields } from "./domain/entry-create-validation";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
@@ -1032,10 +1032,15 @@ export default {
         offsetsCategory?: boolean;
         note?: string;
         splitBasisPoints?: number;
+        time?: unknown;
       }>();
 
       if (!body.entryId || !body.date || !body.description || (!body.accountId && !body.accountName) || !body.categoryName || !body.ownershipType) {
         return json({ ok: false, error: "Missing entry update fields" }, 400);
+      }
+      const updateTimeError = entryTimeFieldError(body.time);
+      if (updateTimeError) {
+        return json({ ok: false, error: updateTimeError }, 400);
       }
 
       try {
@@ -1056,7 +1061,8 @@ export default {
             ownerName: body.ownerName,
             offsetsCategory: body.offsetsCategory,
             note: body.note,
-            splitBasisPoints: body.splitBasisPoints
+            splitBasisPoints: body.splitBasisPoints,
+            time: body.time as string | null | undefined
           }))
         });
       } catch (error) {
@@ -1226,6 +1232,7 @@ export default {
         note?: string;
         splitBasisPoints?: number;
         externalReference?: unknown;
+        time?: unknown;
       }>();
 
       if (
@@ -1266,7 +1273,8 @@ export default {
           offsetsCategory: body.offsetsCategory,
           note: body.note,
           splitBasisPoints: body.splitBasisPoints,
-          externalReference: body.externalReference
+          externalReference: body.externalReference,
+          time: body.time as string | null | undefined
         });
         // A new hand-made expense: its category is the person's own choice
         // (a habit confirmation), then Ask handles what the habits allow
@@ -1436,6 +1444,8 @@ export default {
           entryId: created.entryId,
           created: created.created,
           date: shortcutDate,
+          // The Singapore clock time saved with a new entry dated today.
+          ...("time" in created && created.time ? { time: created.time } : {}),
           description: shortcutDescription,
           amountMinor: savedAmountMinor,
           currency: account.currency,

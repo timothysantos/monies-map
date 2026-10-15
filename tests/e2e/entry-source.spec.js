@@ -91,9 +91,9 @@ test.describe("entry source", { tag: "@webkit" }, () => {
   test("the edit sheet names the tool in the state chip and in an Added by row", async ({ page }) => {
     const { shortcutId, askId, manualId } = await seedSources(page);
     const cases = [
-      { id: shortcutId, chip: "Apple Pay · provisional", addedBy: "Apple Pay shortcut", hint: "Date, wallet, posted date, type, added by" },
-      { id: askId, chip: "Ask · provisional", addedBy: "Ask", hint: "Date, wallet, posted date, type, added by" },
-      { id: manualId, chip: "Manual provisional", addedBy: null, hint: "Date, wallet, posted date, type" }
+      { id: shortcutId, chip: "Apple Pay · provisional", addedBy: "Apple Pay shortcut", hint: "Date, wallet, time, posted date, type, added by" },
+      { id: askId, chip: "Ask · provisional", addedBy: "Ask", hint: "Date, wallet, time, posted date, type, added by" },
+      { id: manualId, chip: "Manual provisional", addedBy: null, hint: "Date, wallet, time, posted date, type" }
     ];
     for (const { id, chip, addedBy, hint } of cases) {
       const sheet = await openEditSheet(page, id);
@@ -148,7 +148,7 @@ test.describe("entry source", { tag: "@webkit" }, () => {
 
     const sheet = await openEditSheet(page, entryId);
     await expect(sheet.locator('.lsd-card [data-chip="state"]')).toHaveText("Statement certified");
-    await expect(sheet.locator(".lsd-row-more .lsd-row-hint")).toHaveText("Posted date, type, added by");
+    await expect(sheet.locator(".lsd-row-more .lsd-row-hint")).toHaveText("Time, posted date, type, added by");
     await sheet.getByRole("button", { name: /More details/ }).tap();
     await expect(sheet.locator('[data-row="addedBy"] .lsd-row-value')).toHaveText("Apple Pay shortcut");
   });

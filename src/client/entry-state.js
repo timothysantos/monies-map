@@ -106,6 +106,7 @@ export function buildComparableEntryState(entry) {
   return {
     date: entry.date,
     postDate: entry.postDate ?? null,
+    time: entry.time || "",
     description: entry.description,
     accountId: entry.accountId ?? null,
     accountName: entry.accountName ?? "",

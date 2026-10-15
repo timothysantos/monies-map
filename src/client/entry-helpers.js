@@ -2,6 +2,7 @@ import { rebalanceSplitSharesForTotal } from "../domain/split-allocation";
 import { daysBetween, selectTransferCandidates } from "../domain/transfer-candidates";
 import { formatEditableMinorInput } from "./formatters";
 import { todayInAppTimeZone } from "./app-dates";
+import { orderEntriesWithinDay } from "../lib/entry-time";
 
 export function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
@@ -281,7 +282,11 @@ export function groupEntriesByDate(entries) {
     grouped.set(entry.date, current);
   }
 
-  return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
+  // Days newest first; inside a day the entries with a time come first, the
+  // latest on top, then the rest in the order they arrived (orderEntriesWithinDay).
+  return [...grouped.values()]
+    .map((group) => ({ ...group, entries: orderEntriesWithinDay(group.entries) }))
+    .sort((left, right) => right.date.localeCompare(left.date));
 }
 
 export function getDailyNetAmountMinor(entry, visibleEntryIds = new Set()) {

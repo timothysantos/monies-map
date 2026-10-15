@@ -2,6 +2,8 @@
 // first screen (en-SG.js holds the tab label alone). Plain words, no app
 // jargon: AGENTS.md "Readability".
 
+import { formatEntryTime } from "../../lib/entry-time";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -33,6 +35,14 @@ export function formatCardDate(isoDate, today, { withYear = false } = {}) {
   }
   const showYear = withYear || (todayParts && todayParts.year !== date.year);
   return `${WEEKDAYS[date.weekday]} ${date.day} ${MONTHS[date.month - 1]}${showYear ? ` ${date.year}` : ""}`;
+}
+
+// The card date with the time an entry was made after it: "Today · 2:32 pm".
+// No time (a bank row, an entry for an earlier day) is the date alone.
+export function formatCardDateTime(isoDate, today, time, options = {}) {
+  const date = formatCardDate(isoDate, today, options);
+  const clock = formatEntryTime(time);
+  return clock ? `${date} · ${clock}` : date;
 }
 
 // "16 May 2026": day, short month, year, no weekday.

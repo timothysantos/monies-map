@@ -194,7 +194,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     // Detail rows in the agreed order, the bank facts folded with a hint.
     await expect(sheet.locator(".lsd-rows > .lsd-row, .lsd-rows > .lsd-row-group > .lsd-row").locator(".lsd-row-label"))
       .toHaveText(["Category", "Owner", "Splits", "Note", "More details"]);
-    await expect(sheet.locator(".lsd-row-more")).toContainText("Date, wallet, posted date, type");
+    await expect(sheet.locator(".lsd-row-more")).toContainText("Date, wallet, time, posted date, type");
     await expect(sheet.locator("[data-row='splits']")).toContainText("Add to splits");
 
     // Nothing changed yet: Save is disabled, and sits at the bottom.
@@ -553,7 +553,7 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   const columnXs = await editor.locator(".lsd-rows .lsd-row").evaluateAll((rows) => [...new Set(rows.map((row) => Math.round(row.getBoundingClientRect().x)))]);
   expect(columnXs).toHaveLength(2);
   // Date, Wallet and Owner are the lead's chips: no row repeats them.
-  await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Posted date", "Type"]);
+  await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Time", "Posted date", "Type"]);
 
   // Tab walks description, amount, then the rows in order (a date field's
   // day, month and year parts are one stop here).
@@ -569,7 +569,7 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   }
   expect(order.slice(0, 9)).toEqual([
     "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
-    "CategoryGroceries", "SplitsAdd to splits", "Note", "Posted date"
+    "CategoryGroceries", "SplitsAdd to splits", "Note", "Time"
   ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");

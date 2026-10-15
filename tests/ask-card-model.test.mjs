@@ -283,14 +283,16 @@ test("save: saving -> saved keeps the entry ids; a failure goes back to a draft 
   const failed = markCardSaveFailed(saving, "Missing entry create fields");
   assert.equal(failed.status, "draft");
   assert.equal(failed.saveError, "Missing entry create fields");
-  const saved = markCardSaved(saving, { entryId: "txn-1", splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners" });
+  const saved = markCardSaved(saving, { entryId: "txn-1", splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners", time: "14:32" });
   assert.equal(saved.status, "saved");
   // Saved by Ask: provisional until a statement certifies it (the saved
   // card's bank state chip reads "Ask · provisional").
   assert.deepEqual(saved.saved, {
-    entryId: "txn-1", addedBy: "ask", bankCertificationStatus: "manual_provisional",
+    entryId: "txn-1", addedBy: "ask", bankCertificationStatus: "manual_provisional", time: "14:32",
     splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners", splitAddError: ""
   });
+  // No time came back (an entry for another day): the saved card has none.
+  assert.equal(markCardSaved(saving, { entryId: "txn-2" }).saved.time, null);
   assert.equal(validateCard(saved).canSave, false);
   assert.equal(setCardField(saved, { amountInput: "99" }, context), saved, "a saved card does not change");
   const undone = markCardUndone(saved);

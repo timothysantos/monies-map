@@ -315,6 +315,9 @@ export type EntryAddedBy = "apple_pay_shortcut" | "ask";
 export interface EntryDto {
   id: string;
   date: string;
+  // Local "HH:MM" (Asia/Singapore) an Apple Pay or hand-made entry was made on
+  // its day; absent for a bank row or a backdated entry (src/lib/entry-time.ts).
+  time?: string;
   postDate?: string;
   description: string;
   accountId?: string;

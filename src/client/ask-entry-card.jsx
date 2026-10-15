@@ -2,7 +2,7 @@ import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Sparkles } from 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
-import { askCopy, formatCardDate } from "./copy/ask-copy";
+import { askCopy, formatCardDate, formatCardDateTime } from "./copy/ask-copy";
 import { entryAmountTone } from "../domain/money-tone";
 import { bankStateChipLabel } from "./entry-source";
 import { moneyWithCurrency } from "./formatters";
@@ -179,12 +179,13 @@ export function AskEntryCard({
             control={isEditable ? (
               <ChipDateField
                 value={card.fields.date}
-                label={messages.common.changeChip(askCopy.card.rows.date, formatCardDate(card.fields.date, today))}
+                label={messages.common.changeChip(askCopy.card.rows.date, formatCardDateTime(card.fields.date, today, card.saved?.time))}
                 onValueChange={(date) => onChange({ date })}
               />
             ) : null}
           >
-            {formatCardDate(card.fields.date, today)}
+            {/* A saved card shows the time the entry was saved with. */}
+            {formatCardDateTime(card.fields.date, today, card.saved?.time)}
           </MetaChip>
           {!isTransfer && card.fields.accountName ? (
             <MetaChip
