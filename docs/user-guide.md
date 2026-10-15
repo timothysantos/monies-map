@@ -326,6 +326,8 @@ over plan.
   **Earned vs spent by month** takes the place of Intent vs Outcome: one row
   per month, newest first, with what you kept (or overspent), what you
   earned and spent, and a thin bar; the month's name opens that month.
+  When Summary covers two or more months, a chart sits above those rows (see
+  **The chart above the months** below).
   Money insights leave out the ones about your plan. Until you choose,
   Summary and Month open in **Simple**, as in the picture below; the other
   pictures in this guide show **Plan**. Your choice is remembered for your
@@ -334,6 +336,25 @@ over plan.
   [Settings](#settings) under **Summary view**.
 
   ![Summary in Simple: what you earned and spent, the bar, and a few facts](/faq/guide/desktop/thumbs/summary-simple.webp)
+
+- **The chart above the months**: when Summary covers two or more months,
+  the card with the month-by-month list (**Earned vs spent by month** in
+  Simple, **Intent vs Outcome** in Plan) starts with a chart. Each month
+  has two columns, **Earned** and **Spent**, and a line runs across the
+  months. In Simple the line is what you **Kept**; it drops below the zero
+  line in a month you spent more than you earned. In Plan the line is your
+  **Planned spending**, so a month where the Spent column rises above the
+  line went over plan; a month with no plan has no point on the line. The
+  columns grow up and the line draws itself the first time you scroll to
+  it (not at all if your phone is set to reduce motion). Select a column or
+  a point, or on a computer rest the pointer on it, to see that month's
+  figure with a few facts, then choose **View entries** for the entries
+  behind it, **Open plan** (Plan only) or **Ask about this**. The arrow keys
+  move between them. Select a name above the chart (**Earned**, **Spent**,
+  **Kept** or **Planned spending**) to hide or show it. Hide money totals
+  and the chart goes away, and with a single month there is no chart.
+
+  ![Earned vs spent by month starts with a chart of each month's earned and spent and a line for what was kept](/faq/guide/desktop/thumbs/summary-month-chart.webp)
 
 - **Range** (top right): the months included, 12 by default. Use **‹** and
   **›** to move the whole range, or select the start or end month to pick one.

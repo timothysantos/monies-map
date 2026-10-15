@@ -160,6 +160,14 @@ Budget rules:
   pool in a first-screen file, run by `npm run verify`) and
   the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
   `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
+- a new lazy chunk can still cost the first screen a file: when it imports a
+  module the first screen shares (React, `react/jsx-runtime`, `money-privacy`)
+  the bundler splits that module into its own chunk, which `check:bundle`
+  counts. Check the first-screen file list before and after. The Summary
+  month chart (`earned-spent-chart.js`) avoids it by using `createElement`,
+  importing neither React nor `money-privacy`, and being handed React by
+  `summary-panel.jsx` (`createEarnedSpentChart`), as `simple-detail.js` is
+  handed `h`
 - App loads the active route's code as soon as the route is known, beside
   its data (the panel renders only once its data is here); it never loads
   another route's code this way (that is warmup, and waits for `usable`)

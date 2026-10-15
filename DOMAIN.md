@@ -1205,6 +1205,12 @@ Definitions:
   income) and spent (the spend job's spending, the same figure as Plan's
   "Spent"), the same savings bar without its plan bar, and nothing about a
   plan; on Summary, "Earned vs spent by month" replaces Intent vs Outcome.
+- The `month chart` is the column + line chart that opens Summary's
+  month-by-month card (Simple's "Earned vs spent by month" and Plan's Intent
+  vs Outcome) when a range has two or more months: per month an Earned and a
+  Spent column, and a line that is Kept in Simple and Planned spending in
+  Plan. It draws only recorded figures the card's list already shows and is
+  never a forecast; with money hidden it is not drawn.
   Both views read one split of the period's money (`splitMoneyUse`), so
   they always agree. Month's plan tables stay in both views.
 - `earned` is the UI word for the period's recorded income in the Simple

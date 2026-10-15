@@ -1,0 +1,248 @@
+/* The column + line chart above Summary's month-by-month list
+   (earned-spent-chart.js). Colours are tokens only: the columns and the
+   line take the money tones (Earned and Kept mint, Spent rose, Planned
+   spending sky), as the savings bar does, so every colour preset and dark
+   mode reads. Labels are the page's ink tokens. */
+.earned-spent-chart {
+  --ec-earned: color-mix(in srgb, var(--pastel-mint-ink) 78%, var(--paper));
+  --ec-spent: color-mix(in srgb, var(--pastel-rose-ink) 78%, var(--paper));
+  --ec-kept: var(--pastel-mint-ink);
+  --ec-plan: var(--pastel-sky-ink);
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 270px;
+  margin-bottom: 14px;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The legend is the filter: each chip shows or hides its series, in the
+   look of the other chips (Simple's top categories). */
+.ec-legend {
+  display: flex;
+  flex-wrap: wrap;
+  /* The chips are 44 px targets around a 28 px pill; the legend pulls in so
+     the card does not look taller for it. */
+  margin: -8px 0 -6px;
+}
+
+.earned-spent-chart .ec-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 3px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ec-chip-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.earned-spent-chart .ec-chip:hover .ec-chip-face,
+.earned-spent-chart .ec-chip:focus-visible .ec-chip-face {
+  border-color: var(--accent-strong);
+}
+
+.earned-spent-chart .ec-chip:focus-visible {
+  outline: none;
+}
+
+.earned-spent-chart .ec-chip.is-off {
+  color: var(--muted);
+}
+
+.ec-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ec-colour);
+}
+
+.ec-swatch.is-line {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.ec-chip.is-off .ec-swatch {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ec-colour);
+}
+
+[data-series="earned"] { --ec-colour: var(--ec-earned); }
+[data-series="spent"] { --ec-colour: var(--ec-spent); }
+[data-series="kept"] { --ec-colour: var(--ec-kept); }
+[data-series="plan"] { --ec-colour: var(--ec-plan); }
+
+/* The y axis stays put; the plot beside it scrolls sideways only when more
+   than twelve months do not fit. */
+.ec-frame {
+  display: flex;
+  min-width: 0;
+  height: var(--ec-height);
+}
+
+.ec-axis {
+  flex: none;
+}
+
+.ec-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ec-scroll.is-scrolling {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.ec-plot {
+  display: block;
+  max-width: none;
+}
+
+.ec-axis-label,
+.ec-month-label,
+.ec-year-label {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-axis-label,
+.ec-year-label {
+  fill: var(--muted);
+}
+
+.ec-month-label {
+  fill: var(--text);
+  font-weight: 600;
+}
+
+.ec-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.ec-zero {
+  stroke: color-mix(in srgb, var(--text) 45%, var(--paper));
+  stroke-width: 1.25;
+}
+
+.ec-bar.is-earned { fill: var(--ec-earned); }
+.ec-bar.is-spent { fill: var(--ec-spent); }
+
+.ec-line {
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ec-line.is-kept { stroke: var(--ec-kept); }
+.ec-line.is-plan { stroke: var(--ec-plan); }
+
+.ec-dot {
+  fill: var(--paper);
+  stroke-width: 2.5;
+}
+
+.ec-dot.is-kept { stroke: var(--ec-kept); }
+.ec-dot.is-plan { stroke: var(--ec-plan); }
+.ec-dot.is-negative { stroke: var(--pastel-rose-ink); }
+
+/* A column or point is an openable figure: a clear target over it takes the
+   tap, the hover and the focus. */
+.ec-point {
+  cursor: pointer;
+  outline: none;
+}
+
+.ec-hit {
+  fill: transparent;
+}
+
+.ec-point:hover .ec-hit,
+.ec-point[aria-expanded="true"] .ec-hit {
+  fill: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.ec-point:focus-visible .ec-hit {
+  stroke: var(--text);
+  stroke-width: 2px;
+}
+
+/* The month the pointer or focus is on is marked in the list below. */
+.earned-spent-row.is-chart-active,
+.summary-intent-month.is-chart-active {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 45%, transparent);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+/* First view: the columns grow from the baseline and the line draws on.
+   The shapes wait at their start while the chart is off screen
+   (data-chart-motion="armed") and play once it is seen ("playing"). Reduced
+   motion never arms them (the component) and the media query is the second
+   guard. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-chart-motion="armed"] .ec-bar {
+    transform: scaleY(0);
+  }
+
+  [data-chart-motion="armed"] .ec-line,
+  [data-chart-motion="playing"] .ec-line {
+    stroke-dasharray: 1;
+  }
+
+  [data-chart-motion="armed"] .ec-line {
+    stroke-dashoffset: 1;
+  }
+
+  [data-chart-motion="armed"] .ec-dot {
+    opacity: 0;
+  }
+
+  [data-chart-motion="playing"] .ec-bar {
+    animation: ec-grow 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--ec-i, 0) * 28ms);
+  }
+
+  [data-chart-motion="playing"] .ec-line {
+    animation: ec-draw 800ms ease-out 200ms both;
+  }
+
+  [data-chart-motion="playing"] .ec-dot {
+    animation: ec-pop 300ms ease-out both;
+    animation-delay: calc(450ms + var(--ec-i, 0) * 30ms);
+  }
+}
+
+@keyframes ec-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes ec-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ec-pop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

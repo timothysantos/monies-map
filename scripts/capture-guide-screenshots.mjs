@@ -175,6 +175,16 @@ const SHOTS = [
     run: (page) => open(page, `/summary?view=person-ethan&month=${MONTH}`)
   },
   {
+    // The column + line chart above "Earned vs spent by month" (Simple), a
+    // range of months, after it has grown in.
+    name: "summary-month-chart", device: "desktop", leadView: "default",
+    run: async (page) => {
+      await open(page, `/summary?view=household&month=${MONTH}`);
+      await scrollToLocator(page, page.getByRole("heading", { name: "Earned vs spent by month" }), 20);
+      await page.locator('[data-earned-spent-chart][data-chart-motion="done"]').waitFor({ timeout: 15_000 });
+    }
+  },
+  {
     name: "money-hidden", device: "desktop", hidden: true,
     run: (page) => open(page, `/summary?view=household&month=${MONTH}`)
   },

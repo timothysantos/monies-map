@@ -40,7 +40,7 @@ const open = (fig, plan = null, ask = "") => ({
 // month name opens the month. Every figure is openable (design.md "Openable
 // figures": View entries for that month, Open plan, Ask about this). Nothing
 // is wider than the card, so a phone never scrolls sideways.
-export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote }) {
+export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote, chart = null }) {
   const sortedMonths = [...months].sort((left, right) => right.month.localeCompare(left.month));
   return (
     <section className="chart-card summary-intent">
@@ -48,6 +48,8 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote 
         <h3>{messages.summary.intentVsOutcome}</h3>
         <p>{messages.summary.intentVsOutcomeDetail}</p>
       </div>
+      {/* The column + line chart (earned-spent-chart.js): earned, spent and the plan, month by month. */}
+      {chart}
       <div className="summary-intent-months">
         {sortedMonths.map((month, index) => (
           <IntentMonthCard

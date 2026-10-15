@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { createElement, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useLocation,
   useNavigate,
@@ -29,6 +29,13 @@ const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
 const SpendingMixSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SpendingMixSection })));
 // Intent vs Outcome sits below the fold, under Spending Mix: it loads beside
 // the first screen, which keeps the lead's openable figures in budget.
+// The column + line chart at the top of the month-by-month card (Plan and
+// Simple), in its own chunk like Spending Mix.
+// It is handed React rather than importing it, so the bundler adds no shared
+// chunk to the first screen (earned-spent-chart.js).
+const EarnedSpentChart = lazy(() => import("./earned-spent-chart.js").then((module) => ({
+  default: module.createEarnedSpentChart({ createElement, useEffect, useLayoutEffect, useMemo, useRef, useState })
+})));
 const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcome").then((module) => ({ default: module.SummaryIntentVsOutcomeSection })));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
@@ -63,6 +70,14 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     accountPills: [],
     ...view.summaryPage
   }), [view.summaryPage]);
+  // The column + line chart above the month-by-month list: only for two or
+  // more months, and never while money is hidden (it would show the money).
+  const { areTotalsVisible: isMoneyShown } = useMoneyPrivacy();
+  const monthChart = safeSummaryPage.months.length > 1 && isMoneyShown ? (
+    <Suspense fallback={<div className="earned-spent-chart-reserve" aria-hidden="true" />}>
+      <EarnedSpentChart key={leadView} mode={leadView} page={safeSummaryPage} />
+    </Suspense>
+  ) : null;
 
   // Summary is the Summary tab's "All months": its Spending Mix covers the
   // whole range. One month of it is the Month page, picked with the tab's
@@ -204,6 +219,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
               categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
               investmentMovesByMonth={safeSummaryPage.investmentMovesByMonth}
               onOpenMonth={onOpenMonth}
+              chart={monthChart}
             />
           </Suspense>
         ) : (
@@ -211,6 +227,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
             <SummaryIntentVsOutcomeSection
               months={safeSummaryPage.months}
               onOpenMonth={onOpenMonth}
+              chart={monthChart}
               onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
             />
           </Suspense>

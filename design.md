@@ -1126,6 +1126,29 @@ Where it is used:
   `splitMoneyUse` with its own category share and its own investment moves
   (the Summary page's `investmentMovesByMonth`, only the months where
   something moved), so its spent, invested and kept are the Month lead's.
+  **The month chart.** Above the rows (and above Intent vs Outcome's cards in
+  Plan), when the range has two or more months, a column + line chart
+  (`earned-spent-chart.js`, hand-drawn SVG, its own lazy chunk behind an
+  invisible `.earned-spent-chart-reserve`, so the cards under it do not move).
+  Simple: Earned (mint) and Spent (rose) columns, in the savings bar's
+  colours, and a Kept line (mint ink; a point below zero is rose ink), with
+  the zero line marked. Plan: the same columns and a Planned spending line
+  (sky ink) that breaks where a month has no plan. Months run oldest to
+  newest with short labels and the year on the first and each January; 12
+  months fit a phone by narrowing the columns, and only past 12 does the
+  plot scroll sideways while the y axis stays put. A few gridlines carry
+  compact labels ($8k). The legend chips (Earned, Spent, Kept or Planned
+  spending) show and hide a series; the last one showing stays, and the
+  scale is of every series so hiding one never rescales the rest. Each
+  column and point is an openable figure whose menu is titled with the series
+  and the month ("Spent · Oct 2026"), with quick facts first, then View
+  entries (that month's money behind the figure), Open plan on the plan
+  figures and Ask about this. Pointing, focus or the menu marks the month's
+  row in the list. Columns grow from the baseline and the line draws on once
+  when first seen (700-800 ms ease-out); reduced motion starts the chart at
+  rest. Hidden money draws no chart at all. The chunk imports neither React
+  nor money-privacy (the panel hands it React): either would split a shared
+  module out of the first screen's chunks (`npm run check:bundle`).
   Each row carries its month as the period, and Earned, Spent, Invested and
   Kept / Overspent are openable figures (`earned`, `spending`, `invested`,
   `kept`; with money hidden the "Spent · 85% of earned" line opens

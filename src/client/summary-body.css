@@ -263,6 +263,13 @@
   min-height: 480px;
 }
 
+/* The same for the column + line chart above the month-by-month list: the
+   height of its legend and plot (earned-spent-chart.css). */
+.earned-spent-chart-reserve {
+  min-height: 270px;
+  margin-bottom: 14px;
+}
+
 @media (max-width: 760px) {
   .spending-mix-reserve {
     min-height: 420px;

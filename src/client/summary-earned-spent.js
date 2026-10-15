@@ -15,14 +15,18 @@ import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 // amount and the kept or overspent word.
 //
 // It loads only when Simple is shown, and imports no React (`h` is the
-// page's createElement, `MonthIcon` its chevron), so its chunk leans only
+// page's createElement, `MonthIcon` its chevron, `chart` the column +
+// line chart above the rows), so its chunk leans only
 // on the first screen's own chunks, as money-jobs-detail.js does.
-export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentMovesByMonth, hidden, onOpenMonth, MonthIcon }) {
+export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentMovesByMonth, hidden, onOpenMonth, MonthIcon, chart = null }) {
   const rows = buildEarnedSpentMonths(months, categoryShareByMonth, investmentMovesByMonth);
   return h(
     "section",
     { className: "chart-card summary-earned-spent", "data-earned-spent": "" },
     h("div", { className: "chart-head" }, h("h3", null, copy.title), h("p", null, copy.detail)),
+    // The column + line chart (earned-spent-chart.js), handed in by the
+    // page, which owns its lazy chunk; nothing when there is one month.
+    chart,
     h("ul", { className: "earned-spent-months" }, rows.map((row) => h(
       "li",
       { key: row.month, className: "earned-spent-row", "data-month": row.month, "data-fig-period": `${row.month}:${row.month}` },
