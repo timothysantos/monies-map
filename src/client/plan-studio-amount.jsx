@@ -17,7 +17,7 @@ function changeLine(parsed, savedMinor, fmt) {
   return copy.change(fmt.signed(parsed.minor - savedMinor));
 }
 
-function AmountBody({ inputId, text, error, parsed, savedMinor, fmt, onText, onSubmit, onChip, onResetToSaved, inputRef }) {
+export function AmountBody({ inputId, text, error, parsed, savedMinor, fmt, onText, onSubmit, onChip, onResetToSaved, inputRef }) {
   return (
     <div className="ps-amount-body">
       <label className="ps-amount-field" htmlFor={inputId}>
