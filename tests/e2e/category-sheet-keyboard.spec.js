@@ -114,7 +114,7 @@ for (const phone of PHONES) {
       const down = heights[0];
       await page.evaluate((height) => window.__setKeyboard(height), phone.keyboard);
       await page.evaluate(() => window.__setKeyboard(0));
-      expect(Math.abs((await sheetBox(page)).height - down)).toBeLessThanOrEqual(2);
+      await expect.poll(async () => Math.abs((await sheetBox(page)).height - down)).toBeLessThanOrEqual(2);
       expect(down).toBeLessThanOrEqual(phone.height * 0.7 + 2);
     });
   });
