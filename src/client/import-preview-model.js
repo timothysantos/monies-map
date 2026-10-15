@@ -37,13 +37,17 @@ export function countRowsToImport(previewRows) {
   return previewRows.filter(isRowToImport).length;
 }
 
-// The one person who owns every row a commit would add, as the previewed rows
-// say it: a direct account's rows carry that account's owner (the server
-// sets it), a person's own pick on a row wins. Named for the file card so it
-// never shows the form's default owner for rows that belong to someone else.
-// Undefined when the rows have several owners, are shared, or none are added.
+// Whose file this is, for the file card's owner chip, as the previewed rows
+// say it: every row carries its account's owner when the account is direct
+// (the server sets it, whoever the form defaults to), the import's own owner
+// on a joint account, and a person's own pick on a row wins. The rows a
+// commit would add decide it; when none would (every row is already in the
+// ledger, or only updates an entry there), all the file's rows do, so a
+// re-imported file still names its account's owner. Undefined when those
+// rows have several owners or are shared.
 export function getImportRowsOwnerName(previewRows) {
-  const owners = new Set(previewRows.filter(isRowToImport).map((row) => (
+  const rowsToImport = previewRows.filter(isRowToImport);
+  const owners = new Set((rowsToImport.length ? rowsToImport : previewRows).map((row) => (
     row.ownershipType === "shared" ? undefined : row.ownerName
   )));
   const [owner] = owners;

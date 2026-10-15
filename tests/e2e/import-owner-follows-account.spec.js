@@ -69,3 +69,26 @@ test("an owner picked on a row beats the account's owner, and the header chip st
   await expect(page.locator(".import-file-card .lsd-chip.is-person", { hasText: /^(Tim|Joyce)$/ })).toHaveCount(0);
   expect((await rowOwners(page)).filter((value) => value === "Tim")).toHaveLength(1);
 });
+
+// Owner report (2026-10-15): a file whose rows are all already in the ledger
+// lost its owner chip, because the chip read only the rows still to add.
+// Re-opening Joyce's committed export must still name Joyce, on desktop and
+// on a phone.
+for (const width of [1440, 390]) {
+  test(`a re-opened export with nothing new to import still names its account's owner at ${width}px`, async ({ page }) => {
+    await openJoyceExportAs(page, "person-tim");
+    await page.getByRole("button", { name: "Commit import to ledger" }).first().click();
+    await expect(page.locator(".import-file-card")).toHaveCount(0, { timeout: 60_000 });
+
+    await page.setViewportSize({ width, height: width < 768 ? 844 : 1000 });
+    await page.goto("/imports?view=person-tim", { waitUntil: "domcontentloaded" });
+    await page.locator("input[type=file]").setInputFiles(JOYCE_OCBC_360.pathname);
+    const card = page.locator(".import-file-card");
+    await expect(card).toBeVisible({ timeout: 60_000 });
+    // Nothing is left to add: every row is already in the ledger.
+    await expect(card.locator(".lsd-amount")).toHaveText("0");
+    await expect(card).toContainText("OCBC 360");
+    await expect(card.locator(".lsd-chip.is-person", { hasText: "Joyce" })).toHaveCount(1);
+    await expect(card.locator(".lsd-chip.is-person", { hasText: "Tim" })).toHaveCount(0);
+  });
+}
