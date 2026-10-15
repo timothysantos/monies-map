@@ -6,6 +6,7 @@ import { accountRoutineWindowStart, buildAccountRoutineFacts, type RoutineEntryR
 import { buildCardBillFacts, cardBillWindowStart } from "../card-bill-projection";
 import { accountsForSummary } from "../summary-projection";
 import { loadRoutePageContext } from "../route-context";
+import { loadLatestInvestmentValues } from "../import-investment-values";
 
 // Summary account pills are a separate slice query so note edits and range
 // changes do not force the wallet metadata to reload with the main page DTO.
@@ -23,13 +24,24 @@ export async function buildSummaryAccountPillsDto(
   const cardWindowStart = cardBillWindowStart(today);
   const routineWindowStart = accountRoutineWindowStart(today);
   const entries = await loadAccountEntries(db, cardWindowStart, routineWindowStart);
+  // An investment account's latest statement value (investment statements
+  // only; a household without any adds nothing to the payload).
+  const investmentValues = await loadLatestInvestmentValues(db);
   const cardFacts = buildCardBillFacts({ accounts, transactions: entries.filter((row) => row.account_kind === "credit_card" && row.transaction_date >= cardWindowStart), today });
   const routineFacts = buildAccountRoutineFacts({ accounts, transactions: entries.filter((row) => row.account_kind === "bank"), today });
 
   return {
     viewId,
     label,
-    accountPills: accountsForSummary(viewId, accounts).map((pill) => ({ ...pill, ...cardFacts.get(pill.accountId), ...routineFacts.get(pill.accountId) }))
+    accountPills: accountsForSummary(viewId, accounts).map((pill) => {
+      const investmentValue = investmentValues.get(pill.accountId);
+      return {
+        ...pill,
+        ...cardFacts.get(pill.accountId),
+        ...routineFacts.get(pill.accountId),
+        ...(investmentValue ? { investmentValue } : {})
+      };
+    })
   };
 }
 

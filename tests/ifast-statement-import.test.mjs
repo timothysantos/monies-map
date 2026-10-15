@@ -143,6 +143,34 @@ test("committing saves the contribution, links it to the GIRO row as one transfe
   assert.deepEqual(await rows(db, "SELECT last4 FROM accounts WHERE id = ?", investmentId), [{ last4: "0194" }]);
 });
 
+test("the Summary's account rows carry the latest statement value of an investment account, as a statement figure with its date", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { investmentId, bankId } = await createAccounts(api);
+  const pillFor = async (view, accountId) => {
+    const { status, payload } = await api(`/api/summary-account-pills?view=${view}`);
+    assert.equal(status, 200, JSON.stringify(payload));
+    return payload.accountPills.find((pill) => pill.accountId === accountId);
+  };
+  // Before any statement: no value, and no key at all (the payload does not grow).
+  assert.equal("investmentValue" in (await pillFor("household", investmentId)), false);
+
+  for (const name of ["ifast-wrap-aug-2026-real", "ifast-wrap-sep-2026-real"]) {
+    const parsed = parseFixture(name);
+    const preview = await previewStatement(api, parsed);
+    const commit = await api("/api/imports/commit", commitBody(parsed, preview));
+    assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  }
+
+  // The newest month wins, the ledger balance is untouched, and a bank
+  // account never carries a value.
+  assert.deepEqual((await pillFor("household", investmentId)).investmentValue, { valueMinor: 202_390, asOfDate: "2026-09-30" });
+  assert.deepEqual((await pillFor("person-joyce", investmentId)).investmentValue, { valueMinor: 202_390, asOfDate: "2026-09-30" });
+  assert.equal((await pillFor("household", investmentId)).balanceMinor, 68_500);
+  assert.equal("investmentValue" in (await pillFor("household", bankId)), false);
+  // Another person's view does not list the account.
+  assert.equal(await pillFor("person-tim", investmentId), undefined);
+});
+
 test("a month with no contribution saves only the value, and an account found by its number's digits needs no mapping", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const { investmentId } = await createAccounts(api);

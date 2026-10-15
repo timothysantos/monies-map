@@ -90,7 +90,10 @@ export const messages = {
   accountHealth: {
     matched: (month) => `Reconciled to ${month} statement`,
     mismatch: (month, delta) => `${month} statement is off by ${delta}`,
-    needsCheckpoint: "No statement checkpoint yet"
+    needsCheckpoint: "No statement checkpoint yet",
+    // An investment account's latest statement: what it was worth, as the
+    // statement says, never a promise of what it will be.
+    investmentWorth: (amount, date) => `Worth ${amount} on ${date}, from its statement`
   },
   // The desktop Ask field and the panel or popup it opens (ask-dock.jsx).
   askDock: {

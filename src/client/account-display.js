@@ -1,7 +1,13 @@
 import { messages } from "./copy/en-SG";
-import { formatMonthLabel, money } from "./formatters";
+import { formatDateOnly, formatMonthLabel, money } from "./formatters";
 
 export function describeAccountHealth(account) {
+  // An investment account has no bank balance to reconcile: its health line is
+  // what its latest statement says it was worth.
+  if (account.investmentValue) {
+    return messages.accountHealth.investmentWorth(money(account.investmentValue.valueMinor), formatDateOnly(account.investmentValue.asOfDate));
+  }
+
   if (account.reconciliationStatus === "matched" && account.latestCheckpointMonth) {
     return messages.accountHealth.matched(formatMonthLabel(account.latestCheckpointMonth));
   }

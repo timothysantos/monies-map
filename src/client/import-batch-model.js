@@ -75,7 +75,8 @@ export function skipIntakeItem(queue, itemId) {
 const OPEN_NEXT_LABELS = {
   rows: importMessages.commitAndOpenNext,
   certify_rows: importMessages.certifyAndOpenNext,
-  covered_checkpoint: importMessages.saveStatementBalanceAndOpenNext
+  covered_checkpoint: importMessages.saveStatementBalanceAndOpenNext,
+  investment_value: importMessages.saveInvestmentValueAndOpenNext
 };
 
 /**

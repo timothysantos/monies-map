@@ -2697,6 +2697,10 @@ function buildOptimisticRecentImportBatch({
 }
 
 function inferStatementAccountKind(accountName, parserKey) {
+  // An iFAST statement is an investment account's, whatever its name says.
+  if (/ifast/i.test(parserKey)) {
+    return "investment";
+  }
   return /credit_card|cashback|rewards|miles|card/i.test(parserKey) || /card|cashback|rewards|miles/i.test(accountName)
     ? "credit_card"
     : "bank";
@@ -2712,11 +2716,16 @@ function inferStatementInstitution(accountName, parserKey) {
   if (/uob/i.test(parserKey) || /uob/i.test(accountName)) {
     return "UOB";
   }
+  if (/ifast/i.test(parserKey) || /ifast/i.test(accountName)) {
+    return "iFAST";
+  }
   return "";
 }
 
 function inferOpeningBalanceInputMinor({ checkpoint, kind, previewRows }) {
-  if (!checkpoint) {
+  // An investment statement's value is what the account is worth, not money
+  // the ledger started with: the account starts from nothing.
+  if (!checkpoint || kind === "investment") {
     return 0;
   }
 

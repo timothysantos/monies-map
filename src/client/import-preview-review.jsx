@@ -199,6 +199,11 @@ export function ImportPreviewReview({
         />
       ) : null}
 
+      {/* An investment statement: what it says the account was worth, and which bank payments its contributions pair with. */}
+      {preview.investmentValues?.length ? (
+        <InvestmentStatementValues values={preview.investmentValues} previewRows={previewRows} />
+      ) : null}
+
       {/* Unknown categories are informational unless policy says they block commit. */}
       {preview.unknownCategories?.length ? (
         <UnknownCategories
@@ -1547,6 +1552,32 @@ function buildDiagnosticEntryHref({ row, viewId, accountId }) {
   return `/entries?${params.toString()}`;
 }
 
+// What an investment statement will save: the worth it states for its date
+// (a statement figure, not a balance and never checked against entries) and,
+// for each contribution or withdrawal, the bank payment it is the same money
+// as. Money follows the privacy setting (money() hides it).
+function InvestmentStatementValues({ values, previewRows }) {
+  const movements = previewRows.filter((row) => row.entryType === "transfer" && row.commitStatus !== "skipped");
+  return (
+    <div className="import-warning import-warning-review" data-import-target="investment-statement">
+      <strong>{importMessages.investmentStatementTitle}</strong>
+      {values.map((value) => (
+        <p key={`${value.detectedAccountName}-${value.checkpointMonth}`} className="lede compact">
+          {importMessages.investmentStatementWorth(value.accountName, formatService.money(value.totalAssetsMinor), formatService.formatDateOnly(value.asOfDate))}
+          {value.replaces ? ` ${importMessages.investmentStatementReplaces(formatService.money(value.replaces.totalAssetsMinor), formatService.formatDateOnly(value.replaces.asOfDate))}` : ""}
+        </p>
+      ))}
+      {movements.map((row) => (
+        <p key={row.rowId} className="lede compact">
+          {row.transferMatch
+            ? importMessages.investmentStatementPaired(formatService.money(row.amountMinor), formatService.formatDateOnly(row.date), row.transferMatch.accountName, formatService.formatDateOnly(row.transferMatch.date), row.transferDirection)
+            : importMessages.investmentStatementUnpaired(formatService.money(row.amountMinor), formatService.formatDateOnly(row.date), row.transferDirection)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function StatementCheckpointDrafts({
   accounts,
   knownAccountNames,
@@ -1556,16 +1587,22 @@ function StatementCheckpointDrafts({
   onUpdateStatementCheckpoint
 }) {
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
+  // An investment statement's value has its own card above: it is not an
+  // editable balance. The rest keep their index in the full list.
+  const editable = statementCheckpoints.map((checkpoint, index) => ({ checkpoint, index })).filter(({ checkpoint }) => !checkpoint.investmentValue);
+  if (!editable.length) {
+    return null;
+  }
 
   return (
     <div className="import-warning import-warning-review" data-import-target="statement-details">
-      <strong>{importMessages.statementCheckpointsTitle(statementCheckpoints.length)}</strong>
-      <p className="lede compact">{importMessages.statementCheckpointsDetail(statementCheckpoints.length)}</p>
+      <strong>{importMessages.statementCheckpointsTitle(editable.length)}</strong>
+      <p className="lede compact">{importMessages.statementCheckpointsDetail(editable.length)}</p>
       {hasDuplicateCheckpointAccounts ? (
         <p className="form-error">{importMessages.duplicateCheckpointAccounts(duplicateCheckpointAccounts.join(", "))}</p>
       ) : null}
       <div className="statement-checkpoint-grid">
-        {statementCheckpoints.map((checkpoint, index) => (
+        {editable.map(({ checkpoint, index }) => (
           <div key={`${checkpoint.accountName}-${index}`} className="statement-checkpoint-row">
             <label className="entries-filter">
               <span className="entries-filter-label">{importMessages.statementCheckpointAccount}</span>

@@ -11,6 +11,7 @@ const COMMIT_LABELS = {
   covered_checkpoint: () => importMessages.saveStatementBalance,
   saved_again: () => importMessages.saveStatementAgain,
   empty_checkpoint: () => importMessages.saveEmptyStatementCheckpoint,
+  investment_value: () => importMessages.saveInvestmentValue,
   rows: () => importMessages.commit
 };
 
@@ -134,7 +135,12 @@ export function buildImportPreviewModel({
     : null;
   // What the commit saves, which names its button (describeCommitLabel
   // adds "and open next" while another file waits).
-  const commitKind = hasAlreadyCoveredCheckpointRefresh
+  // An investment statement saves what the account was worth, which is not a
+  // balance to certify: with no new rows it has its own words.
+  const isInvestmentStatementOnly = statementCheckpoints.length > 0 && statementCheckpoints.every((checkpoint) => checkpoint.investmentValue);
+  const commitKind = isInvestmentStatementOnly && hasCheckpointOnlyCommit
+    ? "investment_value"
+    : hasAlreadyCoveredCheckpointRefresh
     ? previousStatementImport ? "saved_again" : "covered_checkpoint"
     : hasEmptyStatementCheckpointOnly
       ? "empty_checkpoint"
