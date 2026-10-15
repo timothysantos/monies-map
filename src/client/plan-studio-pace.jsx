@@ -23,7 +23,7 @@ function PaceBar({ actualMinor, planMinor, scaleMinor, todayMinor, hidden, over 
  * due date, flexible budgets in a straight line), and a plain verdict. It only
  * reads what was recorded against the plan: nothing is predicted.
  */
-export function PaceCard({ fmt, incomeMinor, plannedInMinor, spentMinor, plannedSpendMinor, expectedMinor, isCurrent, verdict, moneyInText }) {
+export function PaceCard({ fmt, incomeMinor, plannedInMinor, spentMinor, plannedSpendMinor, expectedMinor, isCurrent, verdict, moneyInText, extra = null }) {
   const scaleMinor = Math.max(plannedInMinor, plannedSpendMinor, incomeMinor, spentMinor, 1);
   const text = fmt.hidden
     ? copy.hiddenText
@@ -41,6 +41,7 @@ export function PaceCard({ fmt, incomeMinor, plannedInMinor, spentMinor, planned
           <span><b><RollingMoney minor={incomeMinor} fmt={fmt} /></b> <span className="ps-muted">{copy.ofPlanned(fmt.money(plannedInMinor))}</span></span>
         </div>
         <PaceBar actualMinor={incomeMinor} planMinor={plannedInMinor} scaleMinor={scaleMinor} todayMinor={null} hidden={fmt.hidden} good />
+        {extra}
       </div>
       <div className="ps-mini">
         <div className="ps-mini-label">

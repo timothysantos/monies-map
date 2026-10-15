@@ -26,6 +26,7 @@ import {
   expectedSpendByToday,
   paceVerdict,
   planTotals,
+  primarySaveRow,
   rowStatus,
   sharedHalves,
   suggestFix
@@ -33,13 +34,15 @@ import {
 import { PaceCard } from "./plan-studio-pace";
 import { StudioRow } from "./plan-studio-row";
 import { sliderMaxMinor, stepMinorFor } from "./plan-studio-slider";
+import { incomeSegments, rowInfo, studioGroups, unplannedIncome } from "./plan-studio-v2-model";
 import { WhatIfCard } from "./plan-studio-whatif";
 import { ResponsiveSelect } from "./responsive-select";
+import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { PiggyBank } from "lucide-react";
 
 const { categories: categoryService } = moniesClient;
 const copy = planStudioCopy;
-const JOB_GROUPS = ["income", "spend", "save", "invest"];
 const NOTICE_MS = 4500;
 
 // The money jobs' colours are 1970s palette picks (design.md "Plan Studio"),
@@ -72,6 +75,7 @@ function noticeText(notice, fmt) {
     case "line_locked": return text.lineLocked(notice.label);
     case "partial": return text.partial(fmt.money(notice.amountMinor), notice.label);
     case "what_if_applied": return copy.whatIf.applied;
+    case "extra_saved": return copy.extraIncome.done;
     default: return "";
   }
 }
@@ -93,13 +97,25 @@ function noticeText(notice, fmt) {
  * same picture with no sliders, lines, Save plan or What if, and a line that
  * says to switch to a person view.
  *
+ * The list is one list grouped by what the money does (Money in, Spend, Save,
+ * Invest; src/client/plan-studio-v2-model.js), whichever stored section a line
+ * lives in. The Month page hands in what its dialogs and commands do for a
+ * line (`menuActionsFor`) and for adding one (`onAddLine`); `onDirtyChange`
+ * tells it whether changes are held, and `visible` false keeps the held
+ * changes while the Tables view is showing.
+ *
  * @param {{
  *   month: string, monthLabel: string, categories: any[], incomeRows: any[], planSections: any[],
  *   readOnly?: boolean, readOnlyHint?: string, figures: null | { income: number, spending: number, invested: number, kept: number },
- *   today: string, onSave: (request: { changes: any[], updates: any[] }) => Promise<void>
+ *   today: string, onSave: (request: { changes: any[], updates: any[] }) => Promise<void>,
+ *   menuActionsFor?: (row: any) => any, onAddLine?: (kind: "income" | "line") => void,
+ *   onDirtyChange?: (dirty: boolean) => void, visible?: boolean
  * }} props
  */
-export default function PlanStudio({ month, monthLabel, categories, incomeRows, planSections, figures, today, onSave, readOnly = false, readOnlyHint = "" }) {
+export default function PlanStudio({
+  month, monthLabel, categories, incomeRows, planSections, figures, today, onSave, readOnly = false, readOnlyHint = "",
+  menuActionsFor = () => ({}), onAddLine = undefined, onDirtyChange = undefined, visible = true
+}) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const fmt = useMemo(() => makeStudioFormat(!areTotalsVisible), [areTotalsVisible]);
   const keptMinor = figures?.kept ?? 0;
@@ -123,6 +139,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
   const [save, setSave] = useState({ phase: "idle", error: "" });
   const savingRef = useRef(false);
   const [noticeShown, setNoticeShown] = useState(null);
+  const [extraAsk, setExtraAsk] = useState(false);
 
   const plan = useMemo(() => currentPlan(rows, state.overrides), [rows, state.overrides]);
   const totals = useMemo(() => planTotals(rows, plan), [rows, plan]);
@@ -130,6 +147,8 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
   const spentMinor = figures?.spending ?? 0;
   const incomeMinor = figures?.income ?? 0;
   const changed = changedKeys(rows, plan);
+  const dirtyNow = changed.length > 0;
+  useEffect(() => { onDirtyChange?.(dirtyNow); }, [dirtyNow, onDirtyChange]);
   // Held changes, an open what-if and a save in flight hold back optional
   // background work, as every other open editor on the page does.
   useRouteWorkBusy(changed.length > 0 || Boolean(state.whatIf) || save.phase === "saving");
@@ -202,26 +221,53 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
     send({ type: "set", key, minor: current + direction * stepMinor });
   }, [send]);
 
-  async function handleSave() {
-    const changes = buildChanges(rows, plan);
-    if (!changes.length || savingRef.current) return;
+  // Save plan: every held change in one request. Adding extra income to
+  // Savings goes through the same path with that one change put on top.
+  async function handleSave(planToSave = plan) {
+    const changes = buildChanges(rows, planToSave);
+    if (!changes.length || savingRef.current) return false;
     savingRef.current = true;
     setSave({ phase: "saving", error: "" });
     try {
-      await onSave({ changes, updates: buildRowUpdates(rows, plan) });
+      await onSave({ changes, updates: buildRowUpdates(rows, planToSave) });
       send({ type: "saved" });
       setSave({ phase: "idle", error: "" });
+      return true;
     } catch (error) {
       setSave({ phase: "error", error: error?.status === 409 ? copy.notices.saveConflict : copy.notices.saveFailed });
+      return false;
     } finally {
       savingRef.current = false;
     }
   }
 
+  // Money that arrived beyond the plan. Never shown with money hidden (it
+  // would say which side of the plan the month is on).
+  const extraMinor = unplannedIncome({ receivedMinor: incomeMinor, plannedInMinor: totals.income });
+  const extraSaveRow = primarySaveRow(rows, state.locks, plan);
+  const extraTarget = extraSaveRow ? plan[extraSaveRow.key] + extraMinor : 0;
+  const incomeParts = incomeSegments(rows, plan);
+
+  async function confirmExtra() {
+    if (!extraSaveRow || !extraMinor) return;
+    const saved = await handleSave({ ...plan, [extraSaveRow.key]: plan[extraSaveRow.key] + extraMinor });
+    setExtraAsk(false);
+    if (saved) send({ type: "notify", notice: { kind: "extra_saved" } });
+  }
+
   if (!rows.length) return null;
   const saving = save.phase === "saving";
   const dirty = changed.length > 0;
-  const groups = JOB_GROUPS.map((job) => ({ job, rows: rows.filter((row) => row.job === job) })).filter((group) => group.rows.length);
+  const groups = studioGroups(rows);
+
+  const extra = !fmt.hidden && extraMinor > 0 ? (
+    <p className="ps-extra" data-ps-extra>
+      <span>{copy.extraIncome.line(fmt.money(extraMinor))}</span>
+      {!readOnly && extraSaveRow ? (
+        <button type="button" className="ps-quiet ps-extra-add" onClick={() => setExtraAsk(true)} data-ps-extra-add>{copy.extraIncome.add}</button>
+      ) : null}
+    </p>
+  ) : null;
 
   return (
     <section
@@ -229,9 +275,11 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
       style={{ "--ps-job-income": JOB_COLOURS.income, "--ps-job-spend": JOB_COLOURS.spend, "--ps-job-save": JOB_COLOURS.save, "--ps-job-invest": JOB_COLOURS.invest }}
       aria-label={copy.region}
       aria-busy={saving || undefined}
+      id={visible ? "month-plan" : undefined}
       data-plan-studio
       data-fig-period={`${month}:${month}`}
-      inert={saving || undefined}
+      hidden={!visible || undefined}
+      inert={saving || !visible || undefined}
     >
       {readOnly ? <p className="ps-notice is-readonly" data-ps-readonly>{readOnlyHint}</p> : (
       <>
@@ -248,7 +296,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
             onValueChange={(value) => send({ type: "takeFrom", value })}
           />
         </label>
-        <button type="button" className="ps-primary" disabled={!dirty || saving} onClick={handleSave} data-ps-save>
+        <button type="button" className="ps-primary" disabled={!dirty || saving} onClick={() => handleSave()} data-ps-save>
           {saving ? copy.toolbar.saving : copy.toolbar.save}
         </button>
       </div>
@@ -258,34 +306,35 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
       {save.phase === "error" ? (
         <div className="ps-save-error" role="alert" data-ps-save-error>
           <span>{save.error}</span>
-          <button type="button" className="ps-quiet" onClick={handleSave}>{copy.notices.retry}</button>
+          <button type="button" className="ps-quiet" onClick={() => handleSave()}>{copy.notices.retry}</button>
         </div>
       ) : null}
-      <div className="ps-columns" data-ps-columns>
-        <BigPicture
-          monthLine={copy.monthLine(monthLabel, when.isCurrent ? when.day : 0, when.daysInMonth)}
-          paceChip={paceChip}
-          balance={balance}
-          fix={fix}
-          onFix={() => fixPlan && send({
-            type: "set",
-            key: fixPlan.rowKey,
-            minor: plan[fixPlan.rowKey] + (fixPlan.kind === "lower" ? -fixPlan.byMinor : fixPlan.byMinor),
-            takeFrom: "left"
-          })}
-          segments={segments}
-          totals={totals}
-          zoom={zoomJob}
-          onZoom={setZoom}
-          fmt={fmt}
-          dotColours={dotColours}
-          jobColours={JOB_COLOURS}
-          onMoveLine={onMoveLine}
-          onGestureStart={onGestureStart}
-          onGestureEnd={onGestureEnd}
-          dragging={state.gesture}
-          readOnly={readOnly}
-        />
+      <BigPicture
+        monthLine={copy.monthLine(monthLabel, when.isCurrent ? when.day : 0, when.daysInMonth)}
+        paceChip={paceChip}
+        balance={balance}
+        fix={fix}
+        onFix={() => fixPlan && send({
+          type: "set",
+          key: fixPlan.rowKey,
+          minor: plan[fixPlan.rowKey] + (fixPlan.kind === "lower" ? -fixPlan.byMinor : fixPlan.byMinor),
+          takeFrom: "left"
+        })}
+        segments={segments}
+        totals={totals}
+        zoom={zoomJob}
+        onZoom={setZoom}
+        fmt={fmt}
+        dotColours={dotColours}
+        jobColours={JOB_COLOURS}
+        incomeParts={incomeParts}
+        onMoveLine={onMoveLine}
+        onGestureStart={onGestureStart}
+        onGestureEnd={onGestureEnd}
+        dragging={state.gesture}
+        readOnly={readOnly}
+      />
+      <div className="ps-cards" data-ps-cards>
         <PaceCard
           fmt={fmt}
           incomeMinor={incomeMinor}
@@ -296,6 +345,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
           isCurrent={when.isCurrent}
           verdict={verdict}
           moneyInText={moneyInText}
+          extra={extra}
         />
         {readOnly ? null : <WhatIfCard
           fmt={fmt}
@@ -313,11 +363,24 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
           onApply={() => send({ type: "whatIfApply" })}
           onCancel={() => send({ type: "whatIfCancel" })}
         />}
+      </div>
+      <div className="ps-columns" data-ps-columns>
         {groups.map((group) => (
-          <div className="ps-group" key={group.job} data-ps-group={group.job}>
+          <div className="ps-group" key={group.job} id={group.job === "income" && visible ? "month-plan-income" : undefined} data-ps-group={group.job}>
             <div className="ps-group-head">
               <b>{copy.jobs[group.job]}</b>
               <span className="ps-muted">{copy.groupPlanned(fmt.money(totals[group.job]))}</span>
+              {!readOnly && onAddLine && (group.job === "income" || group.job === "spend") ? (
+                <button
+                  type="button"
+                  className="ps-quiet ps-group-add"
+                  aria-label={group.job === "income" ? copy.group.addIncomeLabel : copy.group.addLineLabel}
+                  onClick={() => onAddLine(group.job === "income" ? "income" : "line")}
+                  data-ps-add={group.job}
+                >
+                  {group.job === "income" ? copy.group.addIncome : copy.group.addLine}
+                </button>
+              ) : null}
             </div>
             {group.rows.map((row) => {
               const planned = plan[row.key];
@@ -336,6 +399,8 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
                   halves={sharedHalves(row, planned)}
                   dotColour={dotColours[row.key]}
                   readOnlyReason={readOnly ? "" : copy.row.readOnly}
+                  info={rowInfo({ row, plannedMinor: planned, totals, when })}
+                  menuActions={readOnly ? {} : menuActionsFor(row)}
                   onSet={onSet}
                   onNudge={onNudge}
                   onGestureStart={onGestureStart}
@@ -347,6 +412,27 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
           </div>
         ))}
       </div>
+      {extraAsk && extraSaveRow ? (
+        <SheetDialog
+          className="ps-extra-dialog"
+          title={copy.extraIncome.confirmTitle}
+          description={copy.extraIncome.confirmText(fmt.money(extraMinor), fmt.money(plan[extraSaveRow.key]), fmt.money(extraTarget))}
+          descriptionHidden
+          lead={(
+            <ConfirmLead neutral icon={PiggyBank} title={copy.extraIncome.confirmTitle}>
+              <p className="lsd-note">{copy.extraIncome.confirmText(fmt.money(extraMinor), fmt.money(plan[extraSaveRow.key]), fmt.money(extraTarget))}</p>
+              <p className="lsd-note">{copy.extraIncome.confirmLeft(fmt.money(totals.left - extraMinor))}</p>
+              {changed.length ? <p className="lsd-note">{copy.extraIncome.alsoSaves(changed.length)}</p> : null}
+            </ConfirmLead>
+          )}
+          primaryLabel={copy.extraIncome.confirm}
+          primaryDisabled={saving}
+          isSubmitting={saving}
+          quietLabel={copy.extraIncome.cancel}
+          onSubmit={confirmExtra}
+          onClose={() => setExtraAsk(false)}
+        />
+      ) : null}
     </section>
   );
 }

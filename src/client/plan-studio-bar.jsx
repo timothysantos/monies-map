@@ -117,7 +117,7 @@ function Divider({ index, leftMinor, scaleMinor, before, after, fmt, onMove, onG
  * category.
  */
 export function BigPicture({
-  monthLine, paceChip, balance, fix, onFix, segments, totals, zoom, onZoom, fmt, dotColours, jobColours,
+  monthLine, paceChip, balance, fix, onFix, segments, totals, zoom, onZoom, fmt, dotColours, jobColours, incomeParts = [],
   onMoveLine, onGestureStart, onGestureEnd, dragging, readOnly = false
 }) {
   const barRef = useRef(null);
@@ -179,6 +179,13 @@ export function BigPicture({
             <i>{copy.plannedIn(fmt.money(totals.income))}</i>
           </div>
         ) : null}
+        {!zoom && incomeParts.length ? (
+          <div className="ps-income-strip" style={{ width: `${(totals.income / scale) * 100}%` }} data-ps-income-strip aria-hidden="true">
+            {incomeParts.map((part) => (
+              <i key={part.key} style={{ flexGrow: part.amountMinor, "--ps-seg": fmt.hidden ? "var(--ps-neutral)" : dotColours[part.key] }} data-ps-income-seg={part.key} />
+            ))}
+          </div>
+        ) : null}
         {readOnly ? null : segments.slice(0, -1).map((segment, index) => (
           <Divider
             key={segment.id}
@@ -214,6 +221,18 @@ export function BigPicture({
           );
         })}
       </div>
+      {!zoom && incomeParts.length ? (
+        <div className="ps-legend ps-legend-income" data-ps-income-legend role="group" aria-label={copy.incomeStrip.hiddenLabel}>
+          <span className="ps-legend-title">{copy.incomeStrip.label}</span>
+          {incomeParts.map((part) => (
+            <span key={part.key} className="ps-legend-item is-static" data-ps-income-part={part.key}>
+              <i style={{ "--ps-seg": fmt.hidden ? "var(--ps-neutral)" : dotColours[part.key] }} />
+              <span>{part.label}</span>
+              <b><RollingMoney minor={part.amountMinor} fmt={fmt} /></b>
+            </span>
+          ))}
+        </div>
+      ) : null}
       <p className="ps-hint">{readOnly ? copy.barHintReadOnly : zoom ? copy.barHintJob : copy.barHint}</p>
     </section>
   );

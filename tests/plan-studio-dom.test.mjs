@@ -111,7 +111,7 @@ test("with money hidden the amount is dots, the track draws no spending and noth
   assert.match(html, /aria-valuetext="Amount hidden"/);
   assert.doesNotMatch(html, /\$/);
   assert.equal(count(html, /ps-track-actual|ps-track-over|ps-track-pace/g), 0);
-  assert.match(html, /<span class="ps-row-status ">\s*<\/span>/);
+  assert.match(html, /<button type="button" class="ps-row-status\s+ps-row-figure"[^>]*><\/button>/, "the status says nothing, though it still opens the entries");
   assert.match(html, /••••/);
 });
 

@@ -121,7 +121,23 @@
   font-weight: 600;
 }
 
-/* ---- the columns: a job's rows flow from one column to the next ---- */
+/* ---- layout ----
+   The big picture takes the full width. Under it the two cards (how the month
+   is going, What if I save more?) share a row from 860 px of studio width and
+   stack below it. The list under them is one list grouped by what the money
+   does; from the same width it is laid out in two balanced columns. */
+
+.plan-studio[hidden] {
+  display: none;
+}
+
+.ps-cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+}
 
 .ps-columns {
   display: grid;
@@ -135,12 +151,21 @@
   align-content: start;
 }
 
-/* From this width the cards and the jobs' rows are laid out in two balanced
-   columns: each card and each row is whole, a job's rows may continue in the
-   next column, and the browser balances the two by height, so one column
-   never runs long while the other has room. Heights hold still while a row
-   is edited (fixed footers, reserved lines), so nothing jumps columns. */
+/* From this width each job's rows are laid out in two balanced columns: each
+   row is whole, a job's rows may continue in the next column, and the browser
+   balances the two by height, so one column never runs long while the other
+   has room. Heights hold still while a row is edited (fixed footers, reserved
+   lines), so nothing jumps columns. */
 @container plan-studio (min-width: 860px) {
+  .ps-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .ps-cards > :only-child {
+    grid-column: 1 / -1;
+  }
+
   .ps-columns {
     display: block;
     column-count: 2;
@@ -148,15 +173,9 @@
     column-fill: balance;
   }
 
-  .ps-columns > * {
-    break-inside: avoid;
-    margin-bottom: 12px;
-  }
-
   .ps-columns > .ps-group {
     display: block;
     break-inside: auto;
-    margin-bottom: 0;
   }
 
   .ps-group > * {
@@ -601,10 +620,21 @@
 
 .ps-group-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 8px;
+  min-height: 44px;
   padding: 4px 2px 0;
+}
+
+.ps-group-head .ps-muted {
+  flex: 1 1 auto;
+}
+
+.ps-group-add {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.8rem;
 }
 
 .ps-group-head b {
@@ -651,12 +681,26 @@
 }
 
 .ps-row-name {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
-  overflow: hidden;
   font-weight: 700;
+}
+
+.ps-row-label {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A dated line's "due 2 Oct", small and quiet under its name. */
+.ps-due {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .ps-amount {
@@ -704,6 +748,14 @@
 .ps-icon-button[aria-pressed="true"] {
   background: rgb(var(--accent-strong-rgb) / 0.1);
   color: var(--accent);
+}
+
+/* The info button is the phone's way to the popover; a wide screen with a
+   pointer opens it on hover or focus instead. */
+@media (hover: hover) and (pointer: fine) {
+  .ps-info-button {
+    display: none;
+  }
 }
 
 .ps-row-ctl {
@@ -869,13 +921,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 2px 10px;
-  min-height: 24px;
+  min-height: 44px;
   font-size: 0.75rem;
 }
 
 .ps-row-status {
   min-height: 1.2em;
   font-weight: 700;
+}
+
+/* A status line that opens the entries behind it (an openable figure) is a
+   quiet button: no button look, a 44px target. */
+.ps-row-status.ps-row-figure {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
 }
 
 .ps-row-extra {
@@ -913,6 +977,130 @@
   height: 7px;
   border-radius: 50%;
   background: var(--person-colour);
+}
+
+/* ---- Planned in, by source ---- */
+
+.ps-income-strip {
+  position: absolute;
+  top: -9px;
+  left: 0;
+  display: flex;
+  gap: 2px;
+  height: 5px;
+  pointer-events: none;
+  transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ps-income-strip i {
+  min-width: 2px;
+  border-radius: 3px;
+  background: var(--ps-seg, var(--ps-neutral));
+}
+
+.ps-legend-income {
+  margin-top: 0;
+  align-items: center;
+}
+
+.ps-legend-title {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Money that arrived beyond the plan: one quiet line, never an alert. */
+.ps-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+}
+
+.ps-extra-add {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.8rem;
+}
+
+/* ---- the row popover and menu ---- */
+
+.ps-info-pop {
+  width: min(340px, calc(100vw - 24px));
+  gap: 0;
+  padding: 10px 14px;
+  pointer-events: none;
+}
+
+.ps-info {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.ps-info > div {
+  display: grid;
+  gap: 1px;
+}
+
+.ps-info dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ps-info dd {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-info [data-kind="effect"] dd {
+  color: var(--pastel-sky-ink);
+}
+
+.ps-info [data-kind="ahead"] dd,
+.ps-info [data-kind="behind"] dd {
+  color: var(--pastel-butter-ink);
+}
+
+.ps-menu {
+  width: min(240px, calc(100vw - 24px));
+  gap: 2px;
+  padding: 6px;
+}
+
+.ps-menu-item {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ps-menu-item:hover,
+.ps-menu-item:focus-visible {
+  background: rgb(var(--accent-strong-rgb) / 0.1);
+}
+
+.ps-menu-item.is-danger {
+  color: var(--pastel-rose-ink);
 }
 
 /* ---- the amount popover and its sheet ---- */

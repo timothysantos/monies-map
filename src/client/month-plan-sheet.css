@@ -56,3 +56,13 @@
 html[data-money-privacy="hidden"] .month-plan-lead-currency {
   display: none;
 }
+
+/* Opened from Plan Studio on a wide screen the sheet is a narrow bottom sheet
+   in the middle, not the width of the screen. */
+@media (min-width: 1100px) {
+  .entry-composer.entry-mobile-sheet.month-plan-sheet-dialog {
+    left: calc(50% - 320px);
+    right: auto;
+    width: 640px;
+  }
+}

@@ -3,6 +3,8 @@
 // first screen. Plain words: what happened to the person's money, then the
 // number. Each function takes amounts already formatted (and masked when money
 // is hidden), so the copy never decides how a figure looks.
+import { planStudioAddCopy } from "./plan-studio-add-copy";
+
 export const planStudioCopy = {
   region: "Plan the month",
   placeholder: "Loading the plan",
@@ -89,8 +91,84 @@ export const planStudioCopy = {
     sharedSplit: (parts) => `Shared · ${parts.map((part) => `${part.name} ${part.amount}`).join(" · ")}`,
     fromSaved: (signedAmount) => `${signedAmount} from saved`,
     viewEntries: (label) => `View the entries behind ${label}`,
-    readOnly: "Change this one in the plan list below.",
+    readOnly: "Change this one in Tables.",
     locked: (label) => `${label} is locked. Unlock it to change it.`
+  },
+
+  // The Studio | Tables switch on the Month plan view (the same segmented
+  // control as Summary's Plan | Simple).
+  modes: planStudioAddCopy.modes,
+
+  // One list grouped by what the money does; a dated spending line carries
+  // its due date.
+  group: {
+    addIncome: "Add income",
+    addIncomeLabel: "Add a line to Money in",
+    addLineLabel: "Add a spending, saving or investing line",
+    addLine: planStudioAddCopy.addLine,
+    newLineSubtitle: planStudioAddCopy.newLineSubtitle,
+    dueDate: planStudioAddCopy.dueDate
+  },
+  due: (day, monthName) => `due ${day} ${monthName}`,
+  monthNames: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+
+  // A row's menu: what the tables do that the sliders cannot.
+  menu: {
+    open: (label) => `More for ${label}`,
+    editNote: "Edit note",
+    editDetails: "Edit details",
+    matchEntries: "Match entries",
+    remove: "Remove line"
+  },
+  removeLine: {
+    title: (label) => `Remove ${label}`,
+    text: (label) => `Remove ${label} from this month's plan? The entries you have recorded stay where they are.`,
+    confirm: "Remove line",
+    failed: "That line could not be removed. Nothing changed."
+  },
+
+  // The slider popover (hover or focus on a wide screen, the info button or
+  // a press on a phone, and while a slider moves). Plain words; no figures
+  // at all while money is hidden.
+  info: {
+    button: (label) => `Details for ${label}`,
+    spent: { spend: "spent", income: "received", save: "kept", invest: "moved" },
+    lastMonth: "Last month",
+    lastMonthValue: (planned, actual, verb) => (actual === null ? `Planned ${planned}` : `Planned ${planned}, ${verb} ${actual}`),
+    average: "Average",
+    averageValue: (amount, months, verb) => `${verb} ${amount} a month over ${months === 1 ? "1 month" : `${months} months`}`,
+    noPast: "No earlier month had this line.",
+    soFar: "So far",
+    soFarValue: (amount, verb) => `${verb} ${amount}`,
+    left: (amount) => `${amount} left`,
+    over: (amount) => `${amount} over`,
+    toCome: (amount) => `${amount} still to come`,
+    toKeep: (amount) => `${amount} still to keep`,
+    toMove: (amount) => `${amount} still to move`,
+    pace: "Pace",
+    paceOn: "On pace",
+    paceAhead: (amount) => `Ahead of pace, ${amount} more than expected by today`,
+    paceBehind: (amount) => `Behind pace, ${amount} less than expected by today`,
+    paceDueBehind: (amount) => `Past its due date, ${amount} not paid yet`,
+    change: "If you save this",
+    effect: (signedChange, leftOver) => `${signedChange} → Left over ${leftOver}`
+  },
+
+  // Planned in, by source, under the big bar.
+  incomeStrip: { label: "Planned in", hiddenLabel: "Planned in by source" },
+
+  // Money that arrived beyond the plan (actual income beyond planned income).
+  extraIncome: {
+    line: (amount) => `You got ${amount} that isn't in the plan`,
+    add: "Add to Savings",
+    confirmTitle: "Add to Savings",
+    confirmText: (amount, from, to) => `Add ${amount} to your Savings plan? It goes from ${from} to ${to}.`,
+    confirmLeft: (leftOver) => `Left over would be ${leftOver}, since planned money in stays as it is.`,
+    alsoSaves: (count) => (count === 1 ? "This also saves your 1 other change to the plan." : `This also saves your ${count} other changes to the plan.`),
+    confirm: "Add to Savings",
+    cancel: "Cancel",
+    done: "Added to Savings and saved.",
+    failed: "That could not be saved. Nothing changed."
   },
 
   // The toolbar.

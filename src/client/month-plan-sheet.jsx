@@ -4,6 +4,7 @@ import { useId } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { planStudioAddCopy } from "./copy/plan-studio-add-copy";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { selectAllOnFocus } from "./focus-utils";
 import { formatMonthLabel } from "./formatters";
@@ -48,7 +49,10 @@ export function MonthPlanSheet({
   onClose,
   onSave
 }) {
-  const isPlannedItem = dialog.kind === "plan" && dialog.sectionKey === "planned_items";
+  // A line added from Plan Studio has an optional due date: it is a planned
+  // item once it has one and a budget bucket without (month-panel.jsx).
+  const isStudioAdd = dialog.kind === "plan" && Boolean(dialog.studioAdd);
+  const isPlannedItem = dialog.kind === "plan" && (dialog.sectionKey === "planned_items" || isStudioAdd);
   const isBudgetBucket = dialog.kind === "plan" && dialog.sectionKey === "budget_buckets";
   const category = categoryService.get(categories, { categoryId: dialog.categoryValue, categoryName: dialog.categoryValue });
   const entryCount = dialog.actualEntryIds?.length ?? 0;
@@ -94,7 +98,7 @@ export function MonthPlanSheet({
           bubble={<CategoryAppearancePopover category={category} onChange={onCategoryAppearanceChange} />}
           accentColor={category?.colorHex}
           title={dialog.label || category?.name || copy.kind[dialog.sectionKey ?? "income"]}
-          subtitle={copy.kind[dialog.kind === "income" ? "income" : dialog.sectionKey]}
+          subtitle={isStudioAdd ? dialog.studioSubtitle : copy.kind[dialog.kind === "income" ? "income" : dialog.sectionKey]}
           editable
           amount={(
             <>
@@ -160,7 +164,7 @@ export function MonthPlanSheet({
             />
           </DetailRow>
           {isPlannedItem ? (
-            <DetailRow label={table.day}>
+            <DetailRow label={isStudioAdd ? planStudioAddCopy.dueDate : table.day}>
               <input
                 type="date"
                 value={dialog.planDate ?? ""}
@@ -168,7 +172,7 @@ export function MonthPlanSheet({
               />
             </DetailRow>
           ) : null}
-          {isPlannedItem ? (
+          {isPlannedItem && (!isStudioAdd || dialog.planDate) ? (
             <DetailRow label={table.account} labelId={accountLabelId}>
               <ResponsiveSelect
                 className="table-edit-input"

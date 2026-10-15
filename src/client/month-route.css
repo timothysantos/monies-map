@@ -556,3 +556,21 @@
     min-height: 560px;
   }
 }
+
+/* The Studio | Tables switch above the Month plan (plan-mode-switch.jsx): the
+   Plan | Simple control's look, held to the right on its own line. */
+.plan-mode-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-block: 9px;
+}
+
+.plan-mode-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}

@@ -240,7 +240,7 @@ function commitPlan(state, rows, result) {
  * The studio's reducer. Every action carries the current `rows`.
  * Actions: set, adjustJob, moveLine, gestureStart, gestureEnd, undo, reset,
  * toggleLock, takeFrom, whatIfTry, whatIfTakeFrom, whatIfApply, whatIfCancel,
- * saved, clearNotice.
+ * saved, notify, clearNotice.
  */
 export function studioReducer(state, action) {
   const { rows } = action;
@@ -289,6 +289,8 @@ export function studioReducer(state, action) {
       return { ...state, whatIf: null };
     case "saved":
       return withNotice({ ...state, overrides: {}, history: [], whatIf: null, gesture: false }, { kind: "saved" });
+    case "notify":
+      return withNotice(state, action.notice);
     case "clearNotice":
       return { ...state, notice: null };
     default:

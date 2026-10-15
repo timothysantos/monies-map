@@ -10,10 +10,13 @@ const shouldStartWebServer = !process.env.PLAYWRIGHT_USE_EXISTING_SERVER && !iso
 // most specs are about Plan, so every test starts on a device that has chosen
 // Plan. A spec about the default or the choice itself opts out with
 // `test.use({ storageState: { cookies: [], origins: [] } })`
-// (lead-simple-view, settings summary view).
+// (lead-simple-view, settings summary view). The Month plan opens in Studio
+// (plan-mode.js), but most Month specs are about the plan tables, so every
+// test also starts on a device that has chosen Tables; the Plan Studio specs
+// choose Studio with `chooseStudio` (helpers.js).
 const PLAN_CHOSEN = {
   cookies: [],
-  origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: "monies-map:lead-view", value: "plan" }] }]
+  origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: "monies-map:lead-view", value: "plan" }, { name: "monies-map:plan-mode", value: "tables" }] }]
 };
 
 export default defineConfig({

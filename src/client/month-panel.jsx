@@ -5,6 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { planStudioAddCopy } from "./copy/plan-studio-add-copy";
 import MonthNoteDialog from "./month-note-dialog";
 import { MonthPlanLinkDialog } from "./month-plan-link-dialog";
 import { NoteSheetDialog } from "./note-sheet-dialog";
@@ -25,6 +26,9 @@ import {
   getMonthRowOwnerLabel
 } from "./month-row-editing";
 import { MonthPlanStack } from "./month-plan-tables";
+import { sectionForNewLine } from "./plan-line-section";
+import { PlanModeSwitch } from "./plan-mode-switch";
+import { usePlanMode } from "./plan-mode";
 import {
   buildSavedMonthPlanFields,
   getMonthPlanEditSource,
@@ -105,6 +109,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [isSavingMonthRow, setIsSavingMonthRow] = useState(false);
   const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
+  // Studio | Tables (plan-mode.js). Studio stays mounted, hidden, once it has
+  // been shown, so changes held there survive a look at Tables.
+  const [planMode, setPlanMode] = usePlanMode();
+  const [studioDirty, setStudioDirty] = useState(false);
+  const studioShownRef = useRef(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const useMobileMonthSheet = useIsMonthSheetLayout();
   const [isMonthDataRefreshing, setIsMonthDataRefreshing] = useState(false);
@@ -255,6 +264,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   // A month with no plan rows and no income has nothing for Plan Studio to
   // show: it neither loads nor holds space.
   const hasPlanStudioRows = (incomeRows?.length ?? 0) > 0 || (planSections ?? []).some((section) => (section.rows?.length ?? 0) > 0);
+  // A month with nothing planned has only the tables, where its first line is
+  // added; otherwise the person's mode (Studio by default).
+  const effectivePlanMode = hasPlanStudioRows ? planMode : "tables";
+  if (effectivePlanMode === "studio") studioShownRef.current = true;
   // A Spending Mix slice's plan and merchants, from what the page holds.
   const monthSliceFacts = useMemo(
     () => buildMonthSliceFacts({ planRows: planSections.flatMap((section) => section.rows ?? []), entries: insightEntries }),
@@ -424,6 +437,48 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       actualMinor: Math.max(0, actualMinor)
     };
   }, [view.id, view.monthPage.month, view.monthPage.selectedScope]);
+
+  // What a Plan Studio row's menu can do, through the dialogs and commands the
+  // plan tables use: the note, the line's details (the plan-row sheet), the
+  // entries it matches, and removing it. A line made of several stored rows
+  // (the household view) has none.
+  function studioMenuActionsFor(row) {
+    if (isCombinedHouseholdView || !row.editable) return {};
+    const isIncome = row.section === "income";
+    const source = isIncome
+      ? incomeRows.find((item) => item.id === row.key)
+      : planSections.find((section) => section.key === row.section)?.rows.find((item) => item.id === row.key);
+    if (!source) return {};
+    const kind = isIncome ? "income" : "plan";
+    return {
+      editNote: () => openNoteDialog(kind, source.id, row.section, source.note),
+      editDetails: () => setMobileAddDialog(isIncome
+        ? buildMobileMonthIncomeDialog(source)
+        : buildMobileMonthPlanDialog({ monthKey: view.monthPage.month, row: source, sectionKey: row.section, viewId: view.id, viewLabel: view.label })),
+      matchEntries: row.section === "planned_items" ? () => void openPlanLinkDialog(source) : undefined,
+      remove: isIncome
+        ? (incomeRows.length > 1 ? () => handleRemoveIncomeRow(source.id) : undefined)
+        : () => handleRemovePlanRow(row.section, source.id)
+    };
+  }
+
+  // "Add a line" in Studio: a dated line is a planned item and an undated one
+  // a budget bucket (sectionForNewLine), decided when it is saved; income is its
+  // own section. The same plan-row sheet the tables use on a phone.
+  function handleStudioAddLine(kind) {
+    if (kind === "income") {
+      setMobileAddDialog(buildCreateMobileIncomeDialog());
+      return;
+    }
+    const nextRow = buildPlanRow("budget_buckets");
+    setMobileAddDialog({
+      ...buildCreateMobilePlanDialog("budget_buckets"),
+      studioAdd: true,
+      title: planStudioAddCopy.addLine,
+      studioSubtitle: planStudioAddCopy.newLineSubtitle
+    });
+    void applyBudgetBucketDefaultsToMobileDialog(nextRow.categoryId ?? nextRow.categoryName);
+  }
 
   // Plan Studio's "Save plan": every changed row in one all-or-nothing
   // request (409 when the plan changed underneath, nothing written). The
@@ -1205,16 +1260,20 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       return;
     }
 
-    const currentDialog = mobileAddDialog;
+    const selectedCategoryName = categoryService.buildPatch(categories, mobileAddDialog.categoryValue).categoryName ?? "";
+    // A line added from Studio is stored by its date: dated is a planned item,
+    // undated a budget bucket (classifyNewLine).
+    const currentDialog = mobileAddDialog.studioAdd
+      ? { ...mobileAddDialog, sectionKey: sectionForNewLine(mobileAddDialog.planDate) }
+      : mobileAddDialog;
     setIsSavingMonthRow(true);
     setMonthRowError("");
     const plannedMinor = formatService.parseDraftMoneyInput(mobileAddDialog.plannedMinor);
-    const selectedCategoryName = categoryService.buildPatch(categories, mobileAddDialog.categoryValue).categoryName ?? "";
     const basePatch = {
       ...categoryService.buildPatch(categories, mobileAddDialog.categoryValue),
       label: mobileAddDialog.label.trim() || (mobileAddDialog.kind === "income"
         ? "Other income"
-        : mobileAddDialog.sectionKey === "planned_items"
+        : currentDialog.sectionKey === "planned_items"
           ? "New item"
           : selectedCategoryName || "New bucket"),
       plannedMinor,
@@ -1276,7 +1335,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         openMonthSection(sectionKey);
       }
 
-      if (currentDialog.mode === "create") {
+      if (currentDialog.mode === "create" && currentDialog.studioAdd) {
+        // Studio adds one line at a time: back to the list, where it appears.
+        setMobileAddDialog(null);
+      } else if (currentDialog.mode === "create") {
         if (currentDialog.kind === "income") {
           setMobileAddDialog(buildCreateMobileIncomeDialog());
         } else {
@@ -1595,8 +1657,15 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         />
       ) : <>
       {hasPlanStudioRows ? (
+        <PlanModeSwitch mode={planMode} onChange={setPlanMode} studioDirty={studioDirty} />
+      ) : null}
+      {hasPlanStudioRows && studioShownRef.current ? (
       <Suspense fallback={<PlanStudioReserve />}>
         <PlanStudio
+          visible={effectivePlanMode === "studio"}
+          menuActionsFor={studioMenuActionsFor}
+          onAddLine={handleStudioAddLine}
+          onDirtyChange={setStudioDirty}
           month={view.monthPage.month}
           monthLabel={formatService.formatMonthLabel(view.monthPage.month)}
           categories={categories}
@@ -1610,6 +1679,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         />
       </Suspense>
       ) : null}
+      {effectivePlanMode === "tables" ? (
       <MonthPlanStack
         view={view}
         categories={categories}
@@ -1646,7 +1716,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         onSortChange={handleSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         saveErrorMessage={monthRowError}
-      /></>}
+      />
+      ) : null}</>}
 
       <MonthNotesAndAccounts
         monthNote={view.monthPage.monthNote}

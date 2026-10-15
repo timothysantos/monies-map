@@ -23,10 +23,24 @@ function dueDayOf(row, month) {
   return day;
 }
 
-function planJob(row) {
+export function planJob(row) {
   if (isSavingsTargetRow(row)) return "save";
   if (isInvestmentPlanRow(row)) return "invest";
   return "spend";
+}
+
+// A row's past (month-plan-history.ts) as named figures, or null when no
+// earlier month had the row.
+function readHistory(history) {
+  if (!Array.isArray(history)) return null;
+  const [lastPlannedMinor, lastActualMinor, averageActualMinor, months] = history;
+  return { lastPlannedMinor, lastActualMinor, averageActualMinor, months };
+}
+
+// The date a dated line is due in the month shown (a date from another month
+// is not a due date for this one).
+function dueDateIn(row, dueDay) {
+  return dueDay !== null && dueDay >= 1 && dueDay <= 31 ? row.planDate : null;
 }
 
 // What a plan line is saved through: its one stored row. A line made of
@@ -59,6 +73,8 @@ export function buildStudioRows({ incomeRows = [], planSections = [], month }) {
       actualMinor: row.actualMinor ?? 0,
       actualEntryIds: row.actualEntryIds ?? [],
       dueDay: null,
+      dueDate: null,
+      history: readHistory(row.history),
       splits: [],
       editable: source.editable && !row.isDerived
     });
@@ -66,6 +82,7 @@ export function buildStudioRows({ incomeRows = [], planSections = [], month }) {
   for (const section of planSections) {
     for (const row of section.rows ?? []) {
       const source = sourcesOf(row, row.plannedMinor);
+      const dueDay = dueDayOf({ ...row, section: section.key }, month);
       rows.push({
         key: row.id,
         ids: source.ids,
@@ -79,7 +96,9 @@ export function buildStudioRows({ incomeRows = [], planSections = [], month }) {
         savedMinor: row.plannedMinor,
         actualMinor: row.actualMinor ?? 0,
         actualEntryIds: row.actualEntryIds ?? [],
-        dueDay: dueDayOf({ ...row, section: section.key }, month),
+        dueDay,
+        dueDate: dueDateIn(row, dueDay),
+        history: readHistory(row.history),
         splits: row.splits ?? [],
         editable: source.editable
       });

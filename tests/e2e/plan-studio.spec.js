@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadMonthPage, postJson, reseedDemo } from "./helpers";
+import { chooseStudio, gotoPageAfterApi, loadMonthPage, postJson, reseedDemo } from "./helpers";
 
 // Plan Studio (DOMAIN.md "Plan Studio", design.md "Plan Studio"): the Month
 // plan view as money jobs. Tim's May 2026 in the demo household has plan rows
@@ -13,6 +13,7 @@ const URL = `/month?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared`;
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 
 async function seed(page, { reveal = true } = {}) {
+  await chooseStudio(page);
   await reseedDemo(page);
   await postJson(page, "/api/month-plan/save", {
     rowId: "plan-studio-e2e-salary", month: MONTH, sectionKey: "income", categoryName: "Salary", label: "Salary",
@@ -28,7 +29,7 @@ async function open(page) {
 }
 
 const studio = (page) => page.locator("[data-plan-studio]");
-const row = (page, name) => page.locator("[data-ps-row]").filter({ has: page.locator(".ps-row-name", { hasText: new RegExp(`^${name}$`) }) });
+const row = (page, name) => page.locator("[data-ps-row]").filter({ has: page.locator(".ps-row-label", { hasText: new RegExp(`^${name}$`) }) });
 const balance = (page) => page.locator("[data-ps-balance]");
 const saveButton = (page) => page.locator("[data-ps-save]");
 const planned = (page, name) => row(page, name).locator("[data-ps-amount]");
@@ -302,7 +303,7 @@ test.describe("Plan Studio on desktop", () => {
   test("Simple view does not load Plan Studio at all", async ({ page }) => {
     await seed(page);
     const chunks = [];
-    page.on("request", (request) => { if (/plan-studio/.test(request.url())) chunks.push(request.url()); });
+    page.on("request", (request) => { if (/plan-studio(?!-add-copy)/.test(request.url())) chunks.push(request.url()); });
     await page.addInitScript(() => window.localStorage.setItem("monies-map:lead-view", "simple"));
     await gotoPageAfterApi(page, URL, "/api/month-page", () => page.locator("[data-money-in]"));
     await expect(page.locator("[data-plan-studio]")).toHaveCount(0);

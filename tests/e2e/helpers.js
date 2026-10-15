@@ -22,6 +22,22 @@ export async function gotoPageAfterApi(page, path, apiPath, readyLocator) {
   throw lastError ?? new Error(`${path} did not become ready.`);
 }
 
+// The Month plan opens in Studio by default, but the suite starts every test on
+// a device that chose Tables (playwright.config.js). A Plan Studio spec calls
+// this before it visits: Studio is chosen once per browser tab, so a spec can
+// still switch to Tables and reload to see that the choice is remembered.
+export async function chooseStudio(page) {
+  await page.addInitScript(() => {
+    try {
+      if (window.sessionStorage.getItem("chose-studio")) return;
+      window.sessionStorage.setItem("chose-studio", "1");
+      window.localStorage.setItem("monies-map:plan-mode", "studio");
+    } catch {
+      // Storage blocked: the default (Studio) applies.
+    }
+  });
+}
+
 export async function reseedDemo(page) {
   let lastText = "";
   let lastOk = false;
