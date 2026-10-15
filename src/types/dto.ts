@@ -571,6 +571,11 @@ export interface SplitActivityHistoryDto {
   canRestore: boolean;
 }
 
+// What a row's past says (src/domain/month-plan-history.ts): [last month's
+// plan, last month's actual, the previous three months' average actual, how
+// many of those months had the row]. Absent when no earlier month had the row.
+export type PlanRowHistoryDto = [lastPlannedMinor: number | null, lastActualMinor: number | null, averageActualMinor: number | null, monthsCounted: number];
+
 export interface MonthPlanRowDto {
   id: string;
   section: PlanSectionKey;
@@ -596,6 +601,7 @@ export interface MonthPlanRowDto {
   sourceRowIds?: string[];
   sourcePlannedMinor?: number;
   sourceNote?: string;
+  history?: PlanRowHistoryDto;
   splits: EntrySplitDto[];
 }
 
@@ -627,6 +633,7 @@ export interface MonthIncomeRowDto {
   isDerived?: boolean;
   sourceRowIds?: string[];
   actualEntryIds?: string[];
+  history?: PlanRowHistoryDto;
 }
 
 export interface ImportBatchDto {
@@ -1335,6 +1342,9 @@ export interface AppShellDto {
   // The signed-in login's Plan | Simple choice (DOMAIN.md "Lead View"); absent
   // without a login or a choice.
   leadView?: "plan" | "simple";
+  // The login's Studio | Tables choice for the Month plan (DOMAIN.md "Plan
+  // view"); absent without a login or a choice.
+  planMode?: "studio" | "tables";
   appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
   availableViewIds: string[];
