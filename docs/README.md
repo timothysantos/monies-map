@@ -35,6 +35,9 @@ a doc here in the same change.
 - [`proposals/colour-directions/README.md`](proposals/colour-directions/README.md):
   the shipped 1970s colour tokens beside the 60s mod and 80s pop
   alternatives, as tables with their contrast.
+- [`proposals/plan-studio/plan-studio-mockups.html`](proposals/plan-studio/plan-studio-mockups.html):
+  three interactive Month planning mockups (waterfall, rings, plan vs actual)
+  with before screenshots, awaiting owner approval; nothing is built.
 - [`macro-performance-plan.md`](macro-performance-plan.md): macro architecture
   and performance plan, budgets, and task sequence.
 - [`macro-performance-implementation.md`](macro-performance-implementation.md):
