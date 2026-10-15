@@ -1700,11 +1700,11 @@ Home share of a travel split:
   only in Splits, in its own currency
 
 Split currency in charts:
-- the Splits category donut sums open expenses per split currency. The SGD
-  chart holds SGD expenses only, and each other currency with open expenses
-  has its own chart in that currency (`donutChartsByCurrency`); the panel
-  shows the chart for the active group's currency. Converting per group to
-  SGD is not possible, because a cash travel expense has no FX evidence
+- the Splits category donut charts one group's open expenses (see "Group
+  Spend (open period)"), in that group's own currency. It is built on the
+  page from the page's activity, so a yen group never charts dollars and a
+  group never charts another group's expenses. Converting per group to SGD
+  is not possible, because a cash travel expense has no FX evidence
 
 Relationships:
 - belongs to one `split expense`
@@ -1740,8 +1740,55 @@ is the expense total in the group's own currency, never converted. Deleted
 expenses are never counted. A reopened or voided checkpoint puts its
 expenses back into the open period. The chip says "Spent since last
 settle-up" once any record of the group was ever settled and "Group spend"
-while the group never was; the donut behind it says "Since last settle-up"
-or "Group spend" and charts the same open expenses.
+while the group never was.
+
+Every Splits figure for a group reads this one set
+(`src/domain/split-open-period.ts`; `summariseOpenPeriod`):
+
+- the lead chip, the entry count, the balance and the household lead figure
+  (named by the chip's words: "Spent since last settle-up" or "Group spend");
+- the category donut, built from the same activity the chip adds up (search
+  narrows both). Everyone's view charts the full expense amounts, so its
+  centre equals the chip ("Since last settle-up" or "Group spend"). A person
+  view charts that person's own share of each expense, whoever paid, and says
+  so: "Your share since last settle-up" or "Your share" while never settled,
+  so its centre cannot be read as the chip's figure;
+- the money insight "You paid for N% of shared costs": only open expenses
+  count, over the last 3 months of the open period, or "since the last
+  settle-up" (a group never settled: "in this group"), so its total is the
+  chip's figure or a stated slice of it;
+- Ask's group balances (`get_split_balances`, who owes whom) are open
+  balances already.
+
+The Just for fun lines about a group (the trip in numbers, what shared costs
+add up to, the busiest day and the rest) are deliberately about the whole
+group, settled or not. Once anything in the group was settled each says so:
+"... (settled or not, since 2 Apr)", with the day of the first cost (and
+its year when that is not this year). A group
+never settled has one set and says nothing extra. These lines are never
+forecasts and never promise anything.
+
+### Split Match Suggestion
+
+For an unlinked split expense, the Splits match review suggests at most one
+imported bank row (`findBestSplitExpenseMatch`, `split-matching.ts`; read by
+`loadSplitMatchCandidates`). Best first:
+
+1. a row with the exact amount, within a day of the date, that also shares a
+   description word (confidence High);
+2. a row with the exact amount within a day of the date and no shared word,
+   only when it is the one such row (two equal rows are a tie and suggest
+   nothing). The card reads "Same amount and date as this split expense". A
+   foreign-currency expense compares its home amount with a home-currency row
+   and, like the linker, needs a card or bank expense awaiting its statement;
+   the row must be on the payer's own account or a shared one (an owner on
+   another person's account is not offered by amount and date alone);
+3. a word match a few cents or days off, as before.
+
+Only expense rows are candidates (never a transfer or income row). A row any
+other split expense, settlement or settlement checkpoint already holds is
+never offered, because linking it is refused ("already linked"). A suggestion
+never links by itself: the person confirms with Match, as before.
 
 ### Settlement Checkpoint
 

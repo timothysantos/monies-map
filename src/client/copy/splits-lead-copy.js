@@ -11,6 +11,9 @@ export const splitsLeadCopy = {
   spentSinceSettleUp: "Spent since last settle-up",
   // The same words short enough for the middle of the donut.
   sinceSettleUp: "Since last settle-up",
+  // A person view's donut charts that person's own share of the same expenses.
+  yourShareSinceSettleUp: "Your share since last settle-up",
+  yourShare: "Your share",
   history: "History",
   searchGroup: (groupName) => `Search ${groupName}`
 };

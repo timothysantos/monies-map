@@ -7,6 +7,7 @@
 import { addMonths, amountLine, approxMoney, daysBetween, joinWithAnd, monthYear, phrase, shortDay, sortedLine, sum, textLine, tidyName, timesWord, weekdayIndex, weekdayNameOf, type CopyCatalogue, type FormatMoney } from "./format";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
+import { isCoveredBySettleUp, isOpenExpense } from "../split-open-period";
 import { triviaSignal } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
@@ -137,16 +138,20 @@ export const SPLITS_COPY = {
     ]
   },
   tripInNumbers: {
-    phrasings: ["The trip in numbers: {count} shared costs, and the priciest was the {name} ({amount})."],
+    phrasings: ["The trip in numbers{scope}: {count} shared costs, and the priciest was the {name} ({amount})."],
     think: ""
   },
   groupInNumbers: {
-    phrasings: ["This group in numbers: {count} shared costs, and the priciest was the {name} ({amount})."],
+    phrasings: ["This group in numbers{scope}: {count} shared costs, and the priciest was the {name} ({amount})."],
     think: ""
   },
   // Every line below puts {groupIn} right after "shared cost(s)", so it
   // reads for a trip ("on the Japan trip"), a group ("in the Home group")
-  // and costs outside any group ("outside a group").
+  // and costs outside any group ("outside a group"). These Just for fun
+  // lines are about the whole group, settled or not: once anything in the
+  // group was settled, {groupIn} says so and since when ("on the Japan trip
+  // (settled or not, since 2 Apr)"), so none reads as the Splits chip's
+  // open-period figure. A group never settled has one set, so says nothing.
   payerCount: {
     phrasings: ["You paid for {count} of the {total} shared costs {groupIn}, {amount} in all."],
     think: ""
@@ -250,6 +255,9 @@ export const SPLITS_TRIVIA_ROTATION: TriviaRotation = {
 
 export interface SplitsSignalActivity {
   kind: string;
+  // "settled" once a settle-up covers it (split-open-period.ts); a missing
+  // status reads as open.
+  settlementStatus?: string;
   date: string;
   description?: string;
   totalAmountMinor: number;
@@ -265,7 +273,8 @@ export interface SplitsSignalInput {
   viewLabel: string;
   people: Array<{ id: string; name: string }>;
   group: { id: string; name: string; balanceMinor: number; currency?: string } | null;
-  // The group's current (not archived) activity.
+  // All of the group's activity, settled or not. Figures about "now" read the
+  // open period from it; the Just for fun lines read it all and say so.
   activity: SplitsSignalActivity[];
   pendingMatchCount: number;
   // The household's settlements, for one waiting on its bank payment.
@@ -310,11 +319,23 @@ function groupFrom(group: NonNullable<SplitsSignalInput["group"]>) {
 
 // After "shared costs": "on the Japan trip", "in the Home group", or
 // "outside a group".
-function groupIn(group: NonNullable<SplitsSignalInput["group"]>) {
-  if (isNonGroup(group)) {
-    return "outside a group";
+function groupIn(group: NonNullable<SplitsSignalInput["group"]>, input?: SplitsSignalInput) {
+  const base = isNonGroup(group) ? "outside a group" : isTrip(group) ? `on the ${group.name}` : groupFrom(group);
+  return `${base}${input ? wholeGroupScope(input) : ""}`;
+}
+
+// What a whole-group line adds once part of the group is settled: it counts
+// everything since the first cost, so it never reads as the open period.
+function wholeGroupScope(input: SplitsSignalInput) {
+  if (!input.activity.some(isCoveredBySettleUp)) {
+    return "";
   }
-  return isTrip(group) ? `on the ${group.name}` : groupFrom(group);
+  const first = input.activity.filter((item) => item.kind === "expense").map((item) => item.date).sort()[0];
+  // The year only when it is not this year, so "since 3 Oct 2025" is never
+  // read as last month.
+  const year = first && first.slice(0, 4) !== input.today.slice(0, 4) ? ` ${first.slice(0, 4)}` : "";
+  const since = first ? `${shortDay(first).replace(/^\w{3} /, "")}${year}` : "";
+  return since ? ` (settled or not, since ${since})` : " (settled or not)";
 }
 
 // "the {name}": a description that already starts with "The" drops it.
@@ -455,15 +476,18 @@ export function settlementPaymentSignal(input: SplitsSignalInput): MoneySignal |
 }
 
 // Long view, person views only: the share of the group's costs this person
-// paid, over the last 3 months (or the whole open batch of a quieter group).
+// paid, over the last 3 months of the open period (or the whole open period of
+// a quieter group). Only expenses no settle-up has covered count, so the total
+// is the Splits chip's own figure (split-open-period.ts) or a stated slice of it.
 export function shareOfCostsSignal(input: SplitsSignalInput): MoneySignal | null {
   if (input.audience !== "person" || !input.group) {
     return null;
   }
-  const expenses = groupExpenses(input);
+  const expenses = groupExpenses(input).filter(isOpenExpense);
   const since = `${addMonths(input.today.slice(0, 7), -3)}${input.today.slice(7, 10)}`;
   const recent = expenses.filter((item) => item.date >= since);
-  const [counted, period] = recent.length >= 2 ? [recent, "over the last 3 months"] : [expenses, "in this group"];
+  const wholeOpenPeriod = input.activity.some(isCoveredBySettleUp) ? "since the last settle-up" : "in this group";
+  const [counted, period] = recent.length >= 2 ? [recent, "over the last 3 months"] : [expenses, wholeOpenPeriod];
   const totalMinor = sum(counted.map((item) => item.totalAmountMinor));
   const paidMinor = sum(counted.filter((item) => item.paidByPersonName === input.viewLabel).map((item) => item.totalAmountMinor));
   if (counted.length < 2 || totalMinor <= 0) {
@@ -492,6 +516,7 @@ export function groupInNumbersTrivia(input: SplitsSignalInput): MoneySignal | nu
   }
   const priciest = [...expenses].sort((left, right) => right.totalAmountMinor - left.totalAmountMinor || left.date.localeCompare(right.date))[0];
   return triviaSignal("in-numbers", input.group.id, isTrip(input.group) ? SPLITS_COPY.tripInNumbers : SPLITS_COPY.groupInNumbers, {
+    scope: wholeGroupScope(input),
     count: groupExpenses(input).length,
     name: costName(priciest) || "shared cost",
     amount: input.formatMoney(priciest.totalAmountMinor)
@@ -510,7 +535,7 @@ export function payerTrivia(input: SplitsSignalInput): MoneySignal | null {
     count: paid.length,
     total: expenses.length,
     amount: input.formatMoney(sum(paid.map((item) => item.totalAmountMinor))),
-    groupIn: groupIn(input.group)
+    groupIn: groupIn(input.group, input)
   });
 }
 
@@ -520,7 +545,7 @@ export function busiestDayTrivia(input: SplitsSignalInput): MoneySignal | null {
   if (!input.group || !top || top[1] < 2) {
     return null;
   }
-  return triviaSignal("busiest-day", top[0], SPLITS_COPY.busiestDay, { day: shortDay(top[0]), count: top[1], groupIn: groupIn(input.group) });
+  return triviaSignal("busiest-day", top[0], SPLITS_COPY.busiestDay, { day: shortDay(top[0]), count: top[1], groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the weekday with the most shared costs (no tie).
@@ -530,7 +555,7 @@ export function weekdayMostTrivia(input: SplitsSignalInput): MoneySignal | null 
   if (!input.group || !top || expenses.length < 3 || top[0] < 0) {
     return null;
   }
-  return triviaSignal("weekday-most", String(top[0]), SPLITS_COPY.weekdayMost, { weekday: weekdayNameOf(top[0]), groupIn: groupIn(input.group) });
+  return triviaSignal("weekday-most", String(top[0]), SPLITS_COPY.weekdayMost, { weekday: weekdayNameOf(top[0]), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the month with the most shared costs (no tie).
@@ -540,7 +565,7 @@ export function busiestMonthTrivia(input: SplitsSignalInput): MoneySignal | null
   if (!input.group || !top || counts.size < 2) {
     return null;
   }
-  return triviaSignal("busiest-month", top[0], SPLITS_COPY.busiestMonth, { month: monthYear(top[0]), count: top[1], groupIn: groupIn(input.group) });
+  return triviaSignal("busiest-month", top[0], SPLITS_COPY.busiestMonth, { month: monthYear(top[0]), count: top[1], groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: what the shared costs add up to.
@@ -549,7 +574,7 @@ export function sharedTotalTrivia(input: SplitsSignalInput): MoneySignal | null 
   if (!input.group || expenses.length < 2) {
     return null;
   }
-  return triviaSignal("total", input.group.id, SPLITS_COPY.sharedTotal, { amount: input.formatMoney(sum(expenses.map((item) => item.totalAmountMinor))), groupIn: groupIn(input.group) });
+  return triviaSignal("total", input.group.id, SPLITS_COPY.sharedTotal, { amount: input.formatMoney(sum(expenses.map((item) => item.totalAmountMinor))), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the average shared cost.
@@ -560,7 +585,7 @@ export function averageCostTrivia(input: SplitsSignalInput): MoneySignal | null 
   }
   return triviaSignal("average-cost", input.group.id, SPLITS_COPY.averageCost, {
     amount: approxMoney(input.formatMoney, sum(expenses.map((item) => item.totalAmountMinor)) / expenses.length),
-    groupIn: groupIn(input.group)
+    groupIn: groupIn(input.group, input)
   });
 }
 
@@ -571,7 +596,7 @@ export function smallestCostTrivia(input: SplitsSignalInput): MoneySignal | null
   if (!input.group || !smallest || expenses.length < 3) {
     return null;
   }
-  return triviaSignal("smallest-cost", `${smallest.date}:${smallest.totalAmountMinor}`, SPLITS_COPY.smallestCost, { name: costName(smallest), amount: input.formatMoney(smallest.totalAmountMinor), groupIn: groupIn(input.group) });
+  return triviaSignal("smallest-cost", `${smallest.date}:${smallest.totalAmountMinor}`, SPLITS_COPY.smallestCost, { name: costName(smallest), amount: input.formatMoney(smallest.totalAmountMinor), groupIn: groupIn(input.group, input) });
 }
 
 function byDate(items: SplitsSignalActivity[]) {
@@ -588,9 +613,9 @@ export function firstCostTrivia(input: SplitsSignalInput): MoneySignal | null {
   }
   const sameDay = expenses.filter((item) => item.date === first.date).length;
   if (sameDay > 1) {
-    return triviaSignal("first-cost", first.date, SPLITS_COPY.firstDay, { day: shortDay(first.date), count: sameDay, groupIn: groupIn(input.group) });
+    return triviaSignal("first-cost", first.date, SPLITS_COPY.firstDay, { day: shortDay(first.date), count: sameDay, groupIn: groupIn(input.group, input) });
   }
-  return costName(first) ? triviaSignal("first-cost", first.date, SPLITS_COPY.firstCost, { name: costName(first), day: shortDay(first.date), groupIn: groupIn(input.group) }) : null;
+  return costName(first) ? triviaSignal("first-cost", first.date, SPLITS_COPY.firstCost, { name: costName(first), day: shortDay(first.date), groupIn: groupIn(input.group, input) }) : null;
 }
 
 // Just for fun: the date with the most money in shared costs (no tie).
@@ -603,7 +628,7 @@ export function priciestDayTrivia(input: SplitsSignalInput): MoneySignal | null 
   if (!input.group || !top || totals.size < 2) {
     return null;
   }
-  return triviaSignal("priciest-day", top[0], SPLITS_COPY.priciestDay, { day: shortDay(top[0]), amount: input.formatMoney(top[1]), groupIn: groupIn(input.group) });
+  return triviaSignal("priciest-day", top[0], SPLITS_COPY.priciestDay, { day: shortDay(top[0]), amount: input.formatMoney(top[1]), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the group's latest expense (alone on its date).
@@ -613,7 +638,7 @@ export function latestCostTrivia(input: SplitsSignalInput): MoneySignal | null {
   if (!input.group || !latest || !before || latest.date === before.date || !costName(latest)) {
     return null;
   }
-  return triviaSignal("latest-cost", latest.date, SPLITS_COPY.latestCost, { name: costName(latest), amount: input.formatMoney(latest.totalAmountMinor), day: shortDay(latest.date), groupIn: groupIn(input.group) });
+  return triviaSignal("latest-cost", latest.date, SPLITS_COPY.latestCost, { name: costName(latest), amount: input.formatMoney(latest.totalAmountMinor), day: shortDay(latest.date), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the cost entered most often (twice or more, no tie).
@@ -622,7 +647,7 @@ export function repeatedCostTrivia(input: SplitsSignalInput): MoneySignal | null
   if (!input.group || !top || top[1] < 2) {
     return null;
   }
-  return triviaSignal("repeated-cost", top[0], SPLITS_COPY.repeatedCost, { name: top[0], times: timesWord(top[1]), groupIn: groupIn(input.group) });
+  return triviaSignal("repeated-cost", top[0], SPLITS_COPY.repeatedCost, { name: top[0], times: timesWord(top[1]), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the days from the first shared cost to the last.
@@ -635,7 +660,7 @@ export function costSpanTrivia(input: SplitsSignalInput): MoneySignal | null {
     count: daysBetween(dates[0], dates.at(-1)!) + 1,
     first: shortDay(dates[0]),
     last: shortDay(dates.at(-1)!),
-    groupIn: groupIn(input.group)
+    groupIn: groupIn(input.group, input)
   });
 }
 
@@ -645,7 +670,7 @@ export function currenciesTrivia(input: SplitsSignalInput): MoneySignal | null {
   if (!input.group || currencies.length < 2) {
     return null;
   }
-  return triviaSignal("currencies", input.group.id, SPLITS_COPY.currencies, { count: currencies.length, list: joinWithAnd(currencies), groupIn: groupIn(input.group) });
+  return triviaSignal("currencies", input.group.id, SPLITS_COPY.currencies, { count: currencies.length, list: joinWithAnd(currencies), groupIn: groupIn(input.group, input) });
 }
 
 function categoryTotals(input: SplitsSignalInput) {
@@ -666,13 +691,13 @@ export function topCategoryTrivia(input: SplitsSignalInput): MoneySignal | null 
   if (!input.group || !top || totals.size < 2) {
     return null;
   }
-  return triviaSignal("top-category", top[0], SPLITS_COPY.topCategory, { category: top[0], amount: input.formatMoney(top[1]), groupIn: groupIn(input.group) });
+  return triviaSignal("top-category", top[0], SPLITS_COPY.topCategory, { category: top[0], amount: input.formatMoney(top[1]), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: how many categories the shared costs spread across.
 export function categoriesCountTrivia(input: SplitsSignalInput): MoneySignal | null {
   const count = categoryTotals(input).size;
-  return input.group && count >= 2 ? triviaSignal("categories", input.group.id, SPLITS_COPY.categoriesCount, { count, groupIn: groupIn(input.group) }) : null;
+  return input.group && count >= 2 ? triviaSignal("categories", input.group.id, SPLITS_COPY.categoriesCount, { count, groupIn: groupIn(input.group, input) }) : null;
 }
 
 // Just for fun: how the shared costs were paid (two or more ways).
@@ -684,7 +709,7 @@ export function paymentMixTrivia(input: SplitsSignalInput): MoneySignal | null {
   }
   return triviaSignal("payment-mix", input.group.id, SPLITS_COPY.paymentMix, {
     parts: joinWithAnd(counts.map(([method, count]) => `${count} ${PAYMENT_WAYS[String(method)]}`)),
-    groupIn: groupIn(input.group)
+    groupIn: groupIn(input.group, input)
   });
 }
 
@@ -698,13 +723,13 @@ export function largestSettlementTrivia(input: SplitsSignalInput): MoneySignal |
   if (!input.group || !largest) {
     return null;
   }
-  return triviaSignal("largest-settlement", largest.date, SPLITS_COPY.largestSettlement, { amount: input.formatMoney(largest.totalAmountMinor), day: shortDay(largest.date), groupIn: groupIn(input.group) });
+  return triviaSignal("largest-settlement", largest.date, SPLITS_COPY.largestSettlement, { amount: input.formatMoney(largest.totalAmountMinor), day: shortDay(largest.date), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: how many settle-ups there have been (two or more).
 export function settleCountTrivia(input: SplitsSignalInput): MoneySignal | null {
   const count = settlements(input).length;
-  return input.group && count >= 2 ? triviaSignal("settle-count", input.group.id, SPLITS_COPY.settleCount, { count, groupIn: groupIn(input.group) }) : null;
+  return input.group && count >= 2 ? triviaSignal("settle-count", input.group.id, SPLITS_COPY.settleCount, { count, groupIn: groupIn(input.group, input) }) : null;
 }
 
 export function buildSplitsSignals(input: SplitsSignalInput): MoneySignal[] {

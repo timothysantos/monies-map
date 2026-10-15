@@ -651,7 +651,12 @@ always know you are working on shared money rather than your bank ledger.
   spending-by-category chart). It reads **Spent since last settle-up** and adds
   up only what the group has spent since you last settled up, so it matches the
   entry count and the balance; a group you have never settled up reads **Group
-  spend** and adds up everything. **History** is quiet and **Settle group** is
+  spend** and adds up everything. The chart behind it shows your own share of
+  that same spending and says so in its middle ("Your share since last
+  settle-up"), so it is half of a 50/50 chip, not a different total. The
+  insights follow the same rule: what they say about "now" counts only what has
+  not been settled up, and a fun fact about the whole group says "(settled or
+  not, since 2 Apr)". **History** is quiet and **Settle group** is
   the one main button; on a computer **+ Add expense** sits between them. When
   money is hidden the figure is dots and the words say "Balance with Serene",
   so nothing shows who owes whom.
@@ -2031,6 +2036,10 @@ undo the same card turns editable and you can change and save it.
 3. Each white card has the **Existing split** and the **Imported ledger row**
    as two rows, a chip for how likely the match is, and how far apart the
    dates and amounts are.
+   When a bank row has exactly the same amount on the same day (or a day either side) as your split, it is offered even if the two names have nothing in
+   common, and the card says "Same amount and date as this split expense". If
+   two bank rows fit equally well, none is offered, and a bank row another
+   split already uses is never offered.
 4. Select **Match** to link them, or **Keep separate** if they are different
    purchases.
 5. Select **Back** when you are done.

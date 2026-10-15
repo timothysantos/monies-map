@@ -2540,8 +2540,9 @@ that shows a group or record amount passes that currency: the group pill, the
 totals strip, the expense dialog's share preview, activity cards, history
 rows, archived settle-up summaries, same-currency match deltas, checkpoints,
 the Splits financial insight facts and the category donut (`SpendingMixChart`
-takes an optional `currency`; `selectSplitDonutChart` picks the active group
-currency's chart from `donutChart` / `donutChartsByCurrency`). `moneyStep(currency)` names the
+takes an optional `currency`; the donut is built on the page from the open
+group's activity by `deriveGroupFigures`, `split-open-period.ts`, so it is
+always in the group's currency). `moneyStep(currency)` names the
 smallest stored step for the odd-cent choice and is not masked, because it is
 a unit label rather than a balance. A home-currency (SGD) ledger amount shown
 next to a foreign split amount keeps its own SGD formatting. An entry's

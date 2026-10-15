@@ -1,7 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { selectSplitDonutChart } from "./split-helpers";
-import { summariseGroupSpend } from "./splits-lead-model";
+import { deriveGroupFigures } from "../domain/split-open-period";
 import {
   filterSplitActivityForSearch,
   filterSplitMatchesForSearch,
@@ -32,8 +31,7 @@ export function buildSplitsPanelModel({
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
-    matches: [],
-    donutChart: []
+    matches: []
   };
   const groups = splitsPage.groups;
   const groupOptions = [{ id: "split-group-none", name: messages.splits.nonGroup, currency: "SGD", expenseSource: "mixed" }, ...groups.filter((group) => group.id !== "split-group-none")];
@@ -49,16 +47,23 @@ export function buildSplitsPanelModel({
     : null;
   const unresolvedMatches = filterSplitMatchesForSearch(splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id)), searchQuery);
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
-  const donutChart = selectSplitDonutChart(splitsPage, activeGroup?.currency);
+  // The chip, the donut and the label all read the one open period (the
+  // search narrows them like the list under them).
+  const { spendMinor, hasSettledBefore, donutChart } = deriveGroupFigures({
+    groupActivity: activeGroupActivity,
+    shownActivity: currentGroupActivity,
+    categories,
+    viewId: view.id
+  });
 
   return {
     activeGroup,
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
     currentGroupActivity,
-    // The group's open (not archived) activity before any search: what the
-    // money check-in reads.
-    openGroupActivity: activeGroupActivity.filter((item) => !item.isArchived),
+    // All of the group's activity before any search, settled or not: the
+    // money check-in reads it and says which of its figures are all-time.
+    groupActivity: activeGroupActivity,
     donutChart,
     donutRows: buildDonutRows(donutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
@@ -69,11 +74,10 @@ export function buildSplitsPanelModel({
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,
-    // Spend of the open period (what no settle-up has covered), narrowed by
-    // the search like the list under it; the label follows whether the group
-    // was ever settled, which a search must not change.
-    totalExpenseMinor: summariseGroupSpend(currentGroupActivity).spendMinor,
-    hasSettledBefore: summariseGroupSpend(activeGroupActivity).hasSettledBefore,
+    // Spend of the open period (what no settle-up has covered); the label
+    // follows whether the group was ever settled, which a search must not change.
+    totalExpenseMinor: spendMinor,
+    hasSettledBefore,
     visibleMatches: unresolvedMatches,
     searchSuggestions: getSplitSearchSuggestions(activeGroupActivity, splitsPage.matches, searchQuery)
   };

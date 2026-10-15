@@ -15,6 +15,7 @@ import {
   snapshotTotals
 } from "./support/d1-workspace.mjs";
 import { recalculateMonthlySnapshots } from "../src/domain/app-repository-snapshots.ts";
+import { buildOpenPeriodDonut } from "../src/domain/split-open-period.ts";
 
 let template;
 test.before(async () => {
@@ -238,12 +239,13 @@ test("a same-currency SGD split keeps its stored share amounts exactly, includin
   assert.equal(joyce.amountMinor, 5_000);
 });
 
-test("the Splits category donut never adds a JPY expense to the SGD chart; JPY open expenses chart on their own in JPY", async (t) => {
+test("a JPY group charts its own open expenses in JPY and never touches the SGD ones", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const splitsPage = (view) => get(api, `/api/splits-page?view=${view}&month=${MONTH}`);
   const before = await splitsPage("person-tim");
-  const beforeHousehold = await splitsPage("household");
-  assert.equal(before.splitsPage.donutChartsByCurrency, undefined);
+  // The page sends activity only: the donut is built on the page from it (split-open-period.ts).
+  assert.equal("donutChart" in before.splitsPage, false);
+  const sgdBefore = before.splitsPage.activity.filter((item) => item.currency === "SGD");
 
   const created = await api("/api/splits/groups/create", { name: "Tokyo trip", currency: "JPY" });
   assert.equal(created.status, 200, JSON.stringify(created.payload));
@@ -253,15 +255,12 @@ test("the Splits category donut never adds a JPY expense to the SGD chart; JPY o
 
   const after = await splitsPage("person-tim");
   const afterHousehold = await splitsPage("household");
-  // The SGD donut is unchanged: no yen counted as dollars.
-  assert.deepEqual(after.splitsPage.donutChart, before.splitsPage.donutChart);
-  assert.deepEqual(afterHousehold.splitsPage.donutChart, beforeHousehold.splitsPage.donutChart);
-  const [food] = await rows(db, "SELECT id FROM categories WHERE name = 'Food & Drinks'");
-  // Tim paid both: he is owed Joyce's shares, ¥5,000 and ¥1,000.
-  assert.deepEqual(after.splitsPage.donutChartsByCurrency, {
-    JPY: [{ key: "Food & Drinks", categoryId: food.id, label: "Food & Drinks", valueMinor: 600_000, entryCount: 2 }]
-  });
-  assert.deepEqual(afterHousehold.splitsPage.donutChartsByCurrency, {
-    JPY: [{ key: "Food & Drinks", categoryId: food.id, label: "Food & Drinks", valueMinor: 1_250_000, entryCount: 2 }]
-  });
+  const chart = (page, viewId) => buildOpenPeriodDonut(page.splitsPage.activity.filter((item) => item.groupId === groupId), [], viewId)
+    .map(({ label, valueMinor, entryCount }) => ({ label, valueMinor, entryCount }));
+  // The SGD activity is unchanged: no yen counted as dollars.
+  assert.deepEqual(after.splitsPage.activity.filter((item) => item.currency === "SGD"), sgdBefore);
+  // Tim's own shares of the two yen expenses, and the household's full amounts.
+  const [first, second] = [JPY_TOTAL, 250_000];
+  assert.deepEqual(chart(after, "person-tim"), [{ label: "Food & Drinks", valueMinor: first / 2 + second * 0.6, entryCount: 2 }]);
+  assert.deepEqual(chart(afterHousehold, "household"), [{ label: "Food & Drinks", valueMinor: first + second, entryCount: 2 }]);
 });

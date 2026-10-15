@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildSplitsPage } from "../src/domain/splits-projection.ts";
-import { getArchivedBatchSummary, selectSplitDonutChart } from "../src/client/split-helpers.js";
+import { getArchivedBatchSummary } from "../src/client/split-helpers.js";
+import { buildOpenPeriodDonut } from "../src/domain/split-open-period.ts";
 
 const people = { "person-tim": "Tim", "person-joyce": "Joyce" };
 
@@ -93,35 +94,18 @@ test("an archived travel batch names its settle-up in the group currency", () =>
   assert.equal(getArchivedBatchSummary({ ...batch, items: [{ ...settlement, currency: undefined }] }, "household").subtitle, "Tim paid Joyce $6,000.00");
 });
 
-test("the Splits category donut charts each currency on its own and never counts yen or dinars as dollars", () => {
+test("the Splits category donut charts one group's open expenses in that group's own currency, never converted", () => {
   const page = buildPage("person-tim");
-  // Joyce paid each: Tim's view charts his half, in the expense's currency.
-  assert.deepEqual(page.donutChart.map(({ label, valueMinor, entryCount }) => ({ label, valueMinor, entryCount })), [
-    { label: "Food & Drinks", valueMinor: 600_000, entryCount: 1 }
-  ]);
-  assert.deepEqual(Object.keys(page.donutChartsByCurrency), ["JPY", "KWD"]);
-  assert.equal(page.donutChartsByCurrency.JPY[0].valueMinor, 600_000);
-  assert.equal(page.donutChartsByCurrency.KWD[0].valueMinor, 1_000);
-
-  // The Splits panel shows the chart for the active group's currency.
-  assert.equal(selectSplitDonutChart(page, "JPY"), page.donutChartsByCurrency.JPY);
-  assert.equal(selectSplitDonutChart(page, "KWD"), page.donutChartsByCurrency.KWD);
-  assert.equal(selectSplitDonutChart(page, "SGD"), page.donutChart);
-  assert.equal(selectSplitDonutChart(page, undefined), page.donutChart);
-
-  // Negative: an SGD-only page has no per-currency charts, and a travel
-  // group without open expenses shows an empty chart, never the SGD one.
-  const sgdOnly = buildSplitsPage(
-    "person-tim",
-    [{ id: "split-group-tokyo", name: "Tokyo trip", sortOrder: 1, currency: "JPY", expenseSource: "cash" }],
-    [expense({ id: "split-expense-sgd", groupId: undefined, groupName: "Non-group expenses", currency: "SGD", totalAmountMinor: 1_000 })],
-    [],
-    [],
-    [],
-    "2025-10",
-    people
-  );
-  assert.equal("donutChartsByCurrency" in sgdOnly, false);
-  assert.equal(sgdOnly.donutChart[0].valueMinor, 500);
-  assert.deepEqual(selectSplitDonutChart(sgdOnly, "JPY"), []);
+  const chartFor = (groupId, viewId = "person-tim") => buildOpenPeriodDonut(page.activity.filter((item) => item.groupId === groupId), [], viewId)
+    .map(({ label, valueMinor, entryCount }) => ({ label, valueMinor, entryCount }));
+  // Joyce paid each: Tim's view charts his own half, in the expense's currency.
+  assert.deepEqual(chartFor("split-group-tokyo"), [{ label: "Food & Drinks", valueMinor: 600_000, entryCount: 1 }]);
+  assert.deepEqual(chartFor("split-group-kuwait"), [{ label: "Food & Drinks", valueMinor: 1_000, entryCount: 1 }]);
+  assert.deepEqual(chartFor("split-group-home"), [{ label: "Food & Drinks", valueMinor: 600_000, entryCount: 1 }]);
+  assert.deepEqual(chartFor("split-group-tokyo", "household"), [{ label: "Food & Drinks", valueMinor: 1_200_000, entryCount: 1 }]);
+  // Negative: the page no longer sends a second, page-wide donut copy, and a
+  // group never charts another group's expenses (yen are not dollars).
+  assert.equal("donutChart" in page, false);
+  assert.equal("donutChartsByCurrency" in page, false);
+  assert.deepEqual(chartFor("split-group-empty"), []);
 });

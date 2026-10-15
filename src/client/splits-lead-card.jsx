@@ -46,7 +46,8 @@ export function SplitsLeadCard({
   // The household has no balance: the spend is the figure.
   const amount = formatService.moneyWithCurrency(isHousehold ? lead.spendMinor : lead.amountMinor, currency);
   const spend = formatService.moneyWithCurrency(lead.spendMinor, currency);
-  const caption = isHousehold ? messages.entries.totalSpend : lead.caption;
+  // The household's figure is the open-period spend, named as the chip names it.
+  const caption = isHousehold ? lead.spendLabel : lead.caption;
 
   return (
     <LeadCard

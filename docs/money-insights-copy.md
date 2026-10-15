@@ -1748,7 +1748,7 @@ Action: Review matches
 
 ### shareOfCosts (Big picture)
 
-Person views only: the share of the group's costs you paid (last 3 months, or the open batch).
+Person views only: the share of the open period's costs you paid (last 3 months of it, or all of it since the last settle-up).
 
 Phrasings:
 
@@ -1765,13 +1765,13 @@ Way to think about it, in turn:
 
 ### tripInNumbers (Fun fact)
 
-A trip group's costs and its priciest.
+A trip group's costs and its priciest. Every Just for fun line below counts the whole group; once anything in it was settled, the line adds "(settled or not, since 2 Apr)" (the first cost's day) so it never reads as the Splits chip, which counts the open period only.
 
 Trivia type: `in-numbers`.
 
 Line:
 
-- The trip in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
+- The trip in numbers{scope}: {count} shared costs, and the priciest was the {name} ({amount}).
 
 ### groupInNumbers (Fun fact)
 
@@ -1781,7 +1781,7 @@ Trivia type: `in-numbers`.
 
 Line:
 
-- This group in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
+- This group in numbers{scope}: {count} shared costs, and the priciest was the {name} ({amount}).
 
 ### payerCount (Fun fact)
 

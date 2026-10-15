@@ -177,7 +177,6 @@ export function buildEntriesContextView(
       groups: buildEntriesSplitShellGroups(splitGroups),
       activity: [],
       matches: [],
-      donutChart: [],
       settlementCheckpoints: [],
       activityHistory: []
     }

@@ -5,7 +5,8 @@ import { gotoPageAfterApi, loadSplitsPage, postJson, reseedDemo } from "./helper
 // The lead card's spend chip describes the open period only: the group's
 // expenses no settle-up has covered. A settled group says "Spent since last
 // settle-up"; a group that was never settled keeps "Group spend". The entry
-// count under the title, the balance and the donut describe the same set.
+// count under the title, the balance and the donut describe the same set
+// (tests/e2e/splits-figures-agree.spec.js checks every figure against it).
 
 const month = "2026-05";
 const PHONE = { width: 390, height: 844 };
@@ -76,7 +77,7 @@ for (const [name, size] of [["desktop", { width: 1280, height: 800 }], ["phone",
       await chip.click();
       const panel = page.locator(".split-donut-panel");
       await expect(panel).toBeVisible();
-      await expect(panel).toContainText("Since last settle-up");
+      await expect(panel).toContainText("Your share since last settle-up");
       await expect(panel.locator(".entries-breakdown-list")).toContainText("2 entries");
       await expect(panel.locator(".entries-breakdown-list")).toContainText("$37.50");
       // Negative: the old centre words are gone and the settled $300.00 is not charted.
@@ -98,7 +99,8 @@ for (const [name, size] of [["desktop", { width: 1280, height: 800 }], ["phone",
       await expect(chip.locator(".splits-lead-spend")).toHaveText("$300.00");
       await expect(lead.locator(".lsd-subtitle")).toHaveText("SGD · 2 entries");
       await chip.click();
-      await expect(page.locator(".split-donut-panel")).toContainText("Group spend");
+      await expect(page.locator(".split-donut-panel")).toContainText("Your share");
+      await expect(page.locator(".split-donut-panel .donut-center > span")).not.toContainText("since last settle-up");
     });
 
     test("hidden money hides the open-period figure and keeps the label", async ({ page }) => {

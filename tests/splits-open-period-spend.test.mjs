@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { buildSplitsPage } from "../src/domain/splits-projection.ts";
 import { buildSplitsLead, summariseGroupSpend } from "../src/client/splits-lead-model.js";
+import { buildOpenPeriodDonut } from "../src/domain/split-open-period.ts";
 
 // The group spend chip describes the open period only: the expenses no
 // settle-up has covered, the same set the entry count and the balance use.
@@ -82,7 +83,7 @@ function build(expenses, checkpoints, viewId = "person-tim") {
     groupBalanceMinor: activeGroup.balanceMinor,
     totalExpenseMinor: spendMinor,
     hasSettledBefore,
-    donutChart: page.donutChart
+    donutChart: buildOpenPeriodDonut(page.activity.filter((item) => item.groupId === groupId), [], viewId)
   };
   const lead = buildSplitsLead({
     group: model.activeGroup,
@@ -100,7 +101,7 @@ test("a group that was never settled keeps Group spend and counts every expense"
   assert.equal(model.totalExpenseMinor, 255_185);
   assert.equal(lead.spendMinor, 255_185);
   assert.equal(lead.spendLabel, "Group spend");
-  assert.equal(lead.donutLabel, "Group spend");
+  assert.equal(lead.donutLabel, "Your share");
   assert.equal(model.activeGroup.entryCount, 5);
 });
 
@@ -108,7 +109,7 @@ test("one matched checkpoint: the spend is only what came after, and it agrees w
   const { model, lead } = build([...older, ...newer], [checkpoint("cp-1", "matched", OLDER_IDS)]);
   assert.equal(lead.spendMinor, 30_000);
   assert.equal(lead.spendLabel, "Spent since last settle-up");
-  assert.equal(lead.donutLabel, "Since last settle-up");
+  assert.equal(lead.donutLabel, "Your share since last settle-up");
   assert.equal(model.activeGroup.entryCount, 2);
   // The balance describes the same two expenses: Joyce paid, Tim owes half.
   assert.equal(model.groupBalanceMinor, -15_000);
@@ -148,12 +149,12 @@ test("a checkpoint whose records are all in the group leaves a zero spend that s
 });
 
 test("the donut charts the same open expenses the chip adds up (household view: the full amounts)", () => {
-  const { page, model, lead } = build([...older, ...newer], [checkpoint("cp-1", "matched", OLDER_IDS)], "household");
+  const { model, lead } = build([...older, ...newer], [checkpoint("cp-1", "matched", OLDER_IDS)], "household");
   const donutTotal = model.donutChart.reduce((sum, item) => sum + item.valueMinor, 0);
   const donutEntries = model.donutChart.reduce((sum, item) => sum + item.entryCount, 0);
   assert.equal(donutTotal, lead.spendMinor);
   assert.equal(donutEntries, model.activeGroup.entryCount);
-  assert.equal(page.donutChart.length, 1);
+  assert.equal(model.donutChart.length, 1);
   // Negative: never settled, the donut and the chip both take in all five.
   const never = build([...older, ...newer], [], "household");
   assert.equal(never.model.donutChart.reduce((sum, item) => sum + item.valueMinor, 0), never.lead.spendMinor);

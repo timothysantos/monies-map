@@ -81,7 +81,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groups: [],
     activity: [],
     matches: [],
-    donutChart: [],
     month: view.monthPage?.month ?? ""
   };
   const navigate = useNavigate();
@@ -150,7 +149,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groups,
     groupOptions,
     hasSettledBefore,
-    openGroupActivity,
+    groupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
     searchSuggestions,
@@ -176,7 +175,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       viewLabel: view.label,
       people,
       group: activeGroup ? { id: activeGroup.id, name: activeGroup.name, balanceMinor: groupBalanceMinor, currency: activeGroup.currency } : null,
-      activity: openGroupActivity,
+      activity: groupActivity,
       pendingMatchCount,
       settlementCheckpoints: splitsPage.settlementCheckpoints ?? [],
       today: checkInClock.today,
@@ -190,7 +189,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     calmLines: SPLITS_CALM_LINES,
     alsoLabel: "Also in this group",
     clock: checkInClock
-  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, openGroupActivity, pendingMatchCount, people, splitsPage.settlementCheckpoints, view.id, view.label]);
+  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, groupActivity, pendingMatchCount, people, splitsPage.settlementCheckpoints, view.id, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()

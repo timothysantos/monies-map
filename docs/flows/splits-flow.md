@@ -41,8 +41,14 @@ and the group's spend is the spend of its open period: the search-filtered
 expenses that no settle-up has covered (`summariseGroupSpend`, the same
 `settlementStatus` the entry count and balance use), labelled "Spent since
 last settle-up" once the group was ever settled and "Group spend" while it
-never was; the breakdown donut charts the same open expenses and carries the
-same words ("Since last settle-up" or "Group spend"). Its buttons call the same handlers the old summary strip and
+never was. The household view shows that spend as its figure, captioned with
+the same words. The breakdown donut is built on the page from the same
+activity (`buildOpenPeriodDonut`, `split-open-period.ts`); a person view charts
+that person's own share and says "Your share since last settle-up" ("Your
+share" while never settled). Every figure on the page reads the one open set
+(DOMAIN.md, "Group Spend (open period)"); the Just for fun lines count the
+whole group and, once anything was settled, say "(settled or not, since 2
+Apr)". Its buttons call the same handlers the old summary strip and
 page head did (Settle group, Activity history, + Add expense, Simplify
 settlement, the category breakdown); the page head keeps Review matches and,
 on a wide screen, Simplify settlement. In the bank-match review
@@ -181,13 +187,19 @@ Watch area:
   `design.md`, Split Currency Display Contract);
   `splits-travel-group.spec.js` and `currency-money-format.test.mjs` cover it,
   including money privacy masking
-- the category breakdown donut is per currency: the page sends the SGD chart
-  as `donutChart` and one chart per other currency with open expenses in
-  `donutChartsByCurrency` (left out when there are none), and the panel shows
-  the active group's currency through `selectSplitDonutChart`, formatted in
-  that currency. Yen are never added to dollars (DOMAIN.md, "Split currency
-  in charts"); `split-currency-display.test.mjs` and
-  `atomic-writes-travel-split-home-amounts.test.mjs` cover it
+- the category breakdown donut is built on the page from the open group's
+  open expenses (`deriveGroupFigures` in `splits-selectors.js`), formatted in
+  that group's currency. The page sends no donut of its own, so there is no
+  second copy to disagree with the chip. Yen are never added to dollars
+  (DOMAIN.md, "Split currency in charts"); `split-currency-display.test.mjs`,
+  `atomic-writes-travel-split-home-amounts.test.mjs` and
+  `splits-figures-agree.test.mjs` cover it
+- bank-match suggestions (`split_mode=matches`): besides rows that share a
+  description word, a row with the exact amount and date is suggested when it
+  is the only one ("Same amount and date as this split expense"); a row
+  another split already holds is never suggested. Rules in DOMAIN.md, "Split
+  Match Suggestion"; `split-match-exact-suggestion.test.mjs` and
+  `splits-exact-match-suggestion.spec.js` prove them
 - a travel split's shares stay in its currency in Splits; Entries, Month,
   Summary and the stored month totals count each person's SGD share of the
   linked ledger row instead (DOMAIN.md, "Home share of a travel split")
