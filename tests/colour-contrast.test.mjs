@@ -25,26 +25,6 @@ function assertAA(ink, surface, label, min = AA) {
   assert.ok(ratio >= min, `${label} is ${ratio.toFixed(2)}:1`);
 }
 
-// A rule's `color` as the stylesheet writes it.
-function ruleColour(file, selector) {
-  const css = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-  const start = css.indexOf(`${selector} {`);
-  if (start === -1) return null;
-  return css.slice(start, css.indexOf("}", start)).match(/\n\s*color:\s*([^;]+);/)?.[1].trim() ?? null;
-}
-
-// "var(--accent-strong)" or "rgb(var(--on-strong-rgb))" as the preset's colour.
-function cssColour(value, rgb) {
-  const token = value.match(/var\((--[a-z0-9-]+)/)?.[1];
-  assert.ok(token, `${value} is a token`);
-  return rgb(token);
-}
-
-// The Splits check-in's "Ask about this": the Splits sheet's own rule, else
-// the shared one it would inherit.
-const SPLITS_ASK_COLOUR = ruleColour("src/client/splits-panel.css", ".panel-splits .checkin-ask")
-  ?? ruleColour("src/client/money-checkin.css", ".checkin-ask");
-
 test("every preset is checked in a light and a dark mode", () => {
   assert.equal(PRESETS.length, 18);
   assert.equal(DEFAULT.id, "70s-light");
@@ -236,17 +216,6 @@ for (const preset of PRESETS) {
     const secondary = (surface) => contrast(mix(ON, 0.78, surface), surface);
     const worstEnd = Math.min(secondary(light), secondary(SPLITS_DEEP));
     assert.ok(secondary(flat) >= worstEnd - 0.001, `78% on-strong is ${secondary(flat).toFixed(2)}:1 on the flat colour, ${worstEnd.toFixed(2)}:1 at the wash's worst end`);
-  });
-
-  // The small "Ask about this" link under the Splits money check-in sits on
-  // the Splits colour, so it reads AA there (the accent it uses elsewhere
-  // is the Splits colour itself in several presets).
-  test(`${id}: the Splits check-in's Ask about this reads AA on the Splits colour`, () => {
-    const ink = cssColour(SPLITS_ASK_COLOUR, rgb);
-    const light = rgb("--splits-rgb");
-    assertAA(ink, mix(light, 0.5, SPLITS_DEEP), "Ask about this on the flat Splits colour");
-    assertAA(ink, light, "Ask about this on the Splits colour's light end");
-    assertAA(ink, SPLITS_DEEP, "Ask about this on the Splits colour's deep end");
   });
 
   test(`${id}: fills stay ${isDark ? "dark" : "soft"}`, () => {

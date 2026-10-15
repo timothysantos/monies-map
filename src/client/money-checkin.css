@@ -66,67 +66,52 @@
   outline-offset: 3px;
 }
 
-/* "Ask about this" (insight-ask-event.js): a quiet link after the
-   headline (beside its action), at the end of each Also line, the Fun fact and Big picture lines, and on the
-   folded teaser at the right of the eyebrow row, apart from the fold's
-   own tap. */
-.checkin-ask {
-  min-height: 32px;
-  margin-top: 6px;
-  padding: 0;
+/* A Money insights line is one quiet button (financial-insight.jsx,
+   InsightLine): its text stays as it is, with a faint dotted underline that
+   firms on hover, focus and while its menu (Ask about this) is open. The
+   44px phone target is padding, drawn outward by an equal negative margin on
+   the lead so the layout is unchanged. Text stays selectable. */
+.checkin-line-btn {
+  display: block;
+  width: 100%;
+  margin: -12px 0;
+  padding: 12px 0;
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: inherit;
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: rgb(var(--accent-strong-rgb) / 0.45);
-  text-underline-offset: 3px;
+  line-height: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-decoration-color: rgb(var(--accent-strong-rgb) / 0.35);
+  text-underline-offset: 4px;
   cursor: pointer;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.checkin-action + .checkin-ask {
-  margin-left: 18px;
+.checkin-line-btn:hover,
+.checkin-line-btn[aria-expanded="true"] {
+  text-decoration-color: rgb(var(--accent-strong-rgb) / 0.75);
 }
 
-.checkin-ask:focus-visible {
+.checkin-line-btn:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-.checkin-ask.is-line {
-  min-height: 0;
-  margin: 0;
-  font-size: 0.8rem;
-}
-
-.checkin-fun .checkin-ask.is-line,
-.checkin-long-view .checkin-ask.is-line {
-  margin-left: 8px;
-}
-
-.financial-insight:has(> .checkin-ask.is-teaser) {
-  position: relative;
-}
-
-.financial-insight:has(> .checkin-ask.is-teaser) > .financial-insight-label {
+.checkin-also .checkin-line-btn {
   display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 128px 0 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
 }
 
-.checkin-ask.is-teaser {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  margin: 0;
-  padding: 0 2px 0 12px;
-  font-size: 0.8rem;
+.checkin-fun .checkin-line-btn,
+.checkin-long-view .checkin-line-btn {
+  margin: -4px 0;
 }
 
 .financial-insight .checkin-fun,
@@ -156,7 +141,7 @@
 
 .checkin-also ul {
   display: grid;
-  gap: 6px;
+  gap: 0;
   margin: 6px 0 0;
   padding: 0;
   list-style: none;

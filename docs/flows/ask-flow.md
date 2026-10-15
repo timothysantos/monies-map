@@ -815,10 +815,15 @@ with the words.
 ### Insight questions
 
 Each Money insights line with a signal behind it (the headline, each Also
-line, the Fun fact, the Big picture line and the folded teaser's top line)
-has "Ask about this"
-(`financial-insight.jsx`; design.md "Money insights fold", DOMAIN.md
-"Insight Question"). The tap sends the `monies:ask-insight` window event
+line, the Fun fact and the Big picture line) is itself one button
+(`InsightLine` in `financial-insight.jsx`, `data-fig="insight"`) with no
+visible Ask link: a click (never a press, so holding to select text opens
+nothing) opens the shell's figure menu (`figure-menu.js`, one item, "Ask
+about this"); Escape or a tap outside closes it and the line keeps focus.
+The folded teaser stays the fold's own tap; open it to tap the line
+(design.md "Money insights fold", DOMAIN.md "Insight Question"). Choosing the
+item fires `monies:insight-line-ask` on the line, and its `bindInsightLine`
+listener sends the `monies:ask-insight` window event
 (`insight-ask-event.js`) with the line as shown, its think line, the
 signal's primary figure and its `basis` (the figures the signal already
 worked out, with plain labels, and the entries behind it; a Fun fact has
@@ -876,7 +881,7 @@ tag; AI off, out of allowance, failing or a phrasing that fails the check
 changes nothing, and the card is complete without it. No forecast and no
 safe-to-spend: the card holds only the insight's own figures.
 
-Hidden money: no "Ask about this" shows. An insight already in the
+Hidden money: the lines are plain text, with no button and no menu. An insight already in the
 conversation reads "Explain this money insight", its title "A money
 insight", its amount masked and its Detail "Reveal money totals to read
 these insights."

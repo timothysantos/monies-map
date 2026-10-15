@@ -436,10 +436,10 @@ test("every page's headline is the computed fact and think line, and no page ask
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await waitUsable(page);
     const narrative = page.locator(`${className} .financial-insight-narrative`);
-    const fact = narrative.locator(":scope > strong.checkin-fact");
+    const fact = narrative.locator("strong.checkin-fact");
     await expect(fact, heading).not.toBeEmpty();
     if (thinks) {
-      const think = (await narrative.locator(":scope > .checkin-think").innerText()).trim();
+      const think = (await narrative.locator(".checkin-think").innerText()).trim();
       expect(thinks, heading).toContain(think);
     }
     const computed = await narrative.innerText();

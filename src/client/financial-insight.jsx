@@ -1,10 +1,10 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { composeCheckIn, pickQuote, recordVisit } from "../domain/money-signals/checkin";
 import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { checkInMemoryKey, readVisitMemory, useCheckInClock, writeVisitMemory } from "./checkin-visit-memory";
-import { askAboutInsight } from "./insight-ask-event";
+import { bindInsightLine } from "./insight-ask-event";
 import { useMoneyPrivacy } from "./money-privacy";
 import { useIsMobileLayout } from "./use-viewport";
 // The check-in's own styles ship with the route that shows it, not with
@@ -38,11 +38,12 @@ import "./money-checkin.css";
 // pressing it would change nothing (Entries, already filtered to those
 // records).
 //
-// "Ask about this" (the headline, each Also line, the Fun fact and the Big
-// picture line, and on the folded teaser a
-// link on the eyebrow row, away from the fold's own tap) opens Ask with the
-// line and what its signal is based on (insight-ask-event.js). Only a line
-// with a signal behind it has one, and none shows while money is hidden.
+// Each line (the headline, each Also line, the Fun fact and the Big picture
+// line) is itself one button that opens the figure menu, whose one item,
+// "Ask about this", opens Ask with the line and what its signal is based on
+// (insight-ask-event.js). Only a line with a signal behind it is a button,
+// and none is while money is hidden. The folded teaser stays the fold's
+// own tap.
 export function FinancialInsight(props) {
   return props.checkIn ? <FinancialInsightCheckIn {...props} /> : <FinancialInsightFrame {...props} />;
 }
@@ -125,17 +126,9 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   // The headline's signal: none for a sorted, quiet or calm line.
   const headlineSignal = view.mode === "signal" ? signalByKey.get(headline.key) : undefined;
   // A headline or Also line needs a basis behind it; the Fun fact and Big
-  // picture lines have none to show, and still hand Ask their line.
-  const askButton = (signal, line, className = "") => (signal && (signal.basis || signal.kind === "just_for_fun" || signal.kind === "long_view") && areTotalsVisible ? (
-    <button
-      type="button"
-      className={`checkin-ask${className ? ` ${className}` : ""}`}
-      aria-label={`Ask about this: ${line.fact}`}
-      onClick={() => askAboutInsight(signal, line)}
-    >
-      Ask about this
-    </button>
-  ) : null);
+  // picture lines have none to show, and still hand Ask their line. A line
+  // with no signal (calm, quiet, sorted) is plain text.
+  const lineSignal = (signal) => (signal && (signal.basis || signal.kind === "just_for_fun" || signal.kind === "long_view") && areTotalsVisible ? signal : undefined);
   const label = <span className="financial-insight-label">{insightLabel}</span>;
   const foldRow = (
     <>
@@ -151,7 +144,6 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
         </>}
         <ChevronDown />
       </button>
-      {isOpenNow ? null : askButton(headlineSignal, headline, "is-teaser")}
     </>
   );
 
@@ -200,15 +192,16 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
         {areTotalsVisible ? <>
         {headline.kind ? <CheckInChip kind={headline.kind} /> : null}
         <p className="financial-insight-narrative" aria-live="polite">
-          <strong className="checkin-fact">{headline.fact}</strong>
-          {headline.think ? <span className="checkin-think"> {headline.think}</span> : null}
+          <InsightLine signal={lineSignal(headlineSignal)} fact={headline.fact} think={headline.think}>
+            <strong className="checkin-fact">{headline.fact}</strong>
+            {headline.think ? <span className="checkin-think"> {headline.think}</span> : null}
+          </InsightLine>
         </p>
         {headline.action && onCheckInAction && (!isCheckInActionShown || isCheckInActionShown(headline.action)) ? (
           <button type="button" className="checkin-action" onClick={() => onCheckInAction(headline.action)}>
             {headline.action.label}
           </button>
         ) : null}
-        {askButton(headlineSignal, headline)}
         <div id={alsoId} hidden={!isExpanded || !view.also.length}>
           {isExpanded && view.also.length ? (
             <div className="checkin-also">
@@ -216,9 +209,10 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
               <ul>
                 {view.also.map((line) => (
                   <li key={line.key}>
-                    <CheckInChip kind={line.kind} />
-                    <span>{line.fact}</span>
-                    {askButton(signalByKey.get(line.key), line, "is-line")}
+                    <InsightLine signal={lineSignal(signalByKey.get(line.key))} fact={line.fact}>
+                      <CheckInChip kind={line.kind} />
+                      <span>{line.fact}</span>
+                    </InsightLine>
                   </li>
                 ))}
               </ul>
@@ -227,9 +221,10 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
         </div>
         {view.fun ? (
           <p className="checkin-fun" data-trivia-type={view.fun.type}>
-            <span className="checkin-line-label">{SIGNAL_KIND_LABELS.just_for_fun}</span>
-            {view.fun.text}
-            {askButton(signalByKey.get(view.fun.key), { fact: view.fun.text }, "is-line")}
+            <InsightLine signal={lineSignal(signalByKey.get(view.fun.key))} fact={view.fun.text}>
+              <span className="checkin-line-label">{SIGNAL_KIND_LABELS.just_for_fun}</span>
+              {view.fun.text}
+            </InsightLine>
           </p>
         ) : null}
         {isExpanded && quote ? (
@@ -240,9 +235,10 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
         ) : null}
         {view.longView ? (
           <p className="checkin-long-view">
-            <span className="checkin-line-label">{SIGNAL_KIND_LABELS.long_view}</span>
-            {view.longView.think ? `${view.longView.fact} ${view.longView.think}` : view.longView.fact}
-            {askButton(signalByKey.get(view.longView.key), view.longView, "is-line")}
+            <InsightLine signal={lineSignal(signalByKey.get(view.longView.key))} fact={view.longView.fact} think={view.longView.think}>
+              <span className="checkin-line-label">{SIGNAL_KIND_LABELS.long_view}</span>
+              {view.longView.think ? `${view.longView.fact} ${view.longView.think}` : view.longView.fact}
+            </InsightLine>
           </p>
         ) : null}
         <button
@@ -276,4 +272,22 @@ export { checkInMemoryKey, useCheckInClock };
 
 export function CheckInChip({ kind }) {
   return <span className={`checkin-chip is-${kind.replace(/_/g, "-")}`}>{SIGNAL_KIND_LABELS[kind]}</span>;
+}
+
+// One Money insights line. When Ask can explain it, the whole line is a real
+// button that opens the figure menu (figure-menu.js, fig "insight"), whose
+// one item is Ask about this; a click, not a press, so holding to select the
+// text never opens it. With no signal behind it, or money hidden, it is its
+// children as plain text.
+function InsightLine({ signal, fact, think = undefined, children }) {
+  const ref = useRef(/** @type {HTMLButtonElement | null} */ (null));
+  useEffect(() => (signal && ref.current ? bindInsightLine(ref.current, signal, { fact, think }) : undefined), [signal, fact, think]);
+  if (!signal) {
+    return <>{children}</>;
+  }
+  return (
+    <button ref={ref} type="button" className="checkin-line-btn" data-fig="insight" data-insight-key={signal.key} aria-haspopup="true" aria-expanded="false">
+      {children}
+    </button>
+  );
 }

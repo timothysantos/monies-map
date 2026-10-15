@@ -1,8 +1,9 @@
 // "Ask about this" on the Money insights (financial-insight.jsx,
-// insight-ask-event.js): the headline and each Also line with a signal
-// behind it get one, the folded teaser gets one on its eyebrow row (apart
-// from the fold's own button), and none shows while money is hidden or on
-// a line with no signal (calm, quiet, sorted). The tap hands the shell the
+// insight-ask-event.js): the headline, each Also line, the Fun fact and the
+// Big picture line with a signal behind it is itself one button that opens
+// the figure menu (Ask about this is its one item). No visible link, none
+// on the folded teaser, and no button while money is hidden or on a line
+// with no signal (calm, quiet, sorted). Choosing it hands the shell the
 // line and its signal's basis, nothing else of the page. Also pins the
 // Ask-side pieces that keep it: the conversation store keeps an insight
 // answer across a reload, and an insight's entries by id round-trip
@@ -19,7 +20,7 @@ import { statementGapSignal, triviaSignal } from "../src/domain/money-signals/sh
 import { SUMMARY_COPY } from "../src/domain/money-signals/summary-signals.ts";
 import { uncategorizedSignal } from "../src/domain/money-signals/entries-signals.ts";
 import { formatCurrencyMinor } from "../src/domain/split-currency.ts";
-import { ASK_INSIGHT_EVENT, askAboutInsight } from "../src/client/insight-ask-event.js";
+import { ASK_INSIGHT_EVENT, INSIGHT_LINE_ASK_EVENT, askAboutInsight, bindInsightLine } from "../src/client/insight-ask-event.js";
 import { createAskConversationStore } from "../src/client/ask-conversation-store.js";
 import { buildEntriesFilterSearch, clearAskFilterParams, hasAskFilterChip, readAskFilterFromParams } from "../src/client/entry-filter-params.js";
 import { describeFilterParts } from "../src/client/copy/entry-filter-copy.js";
@@ -86,58 +87,85 @@ function render(signals, { visible = true, open = true, extra = {} } = {}) {
   }
 }
 
-const askButtons = (markup) => [...markup.matchAll(/<button[^>]*class="checkin-ask([^"]*)"[^>]*aria-label="([^"]*)"[^>]*>Ask about this<\/button>/g)]
-  .map((match) => ({ variant: match[1].trim(), label: match[2].replace(/&#x27;/g, "'") }));
+// Each insight line is one tappable button (data-fig="insight", the figure
+// menu's trigger); its text is the line it asks about.
+const decode = (text) => text.replace(/<[^>]*>/g, "").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+const lineButtons = (markup) => [...markup.matchAll(/<button([^>]*data-fig="insight"[^>]*)>([\s\S]*?)<\/button>/g)]
+  .map((match) => ({ attrs: match[1], key: match[1].match(/data-insight-key="([^"]*)"/)?.[1], text: decode(match[2]) }));
 
-test("the open insights: the headline has Ask about this, named for its line; no teaser link", () => {
+test("the open insights: the headline is one button that names its signal; no visible Ask about this link anywhere", () => {
   const markup = render([gap, other]);
-  const buttons = askButtons(markup);
-  assert.deepEqual(buttons.map((button) => button.variant), [""]);
-  // The headline's wording rotates by period: the link names the one shown.
+  const buttons = lineButtons(markup);
+  assert.equal(buttons.length, 1);
+  assert.equal(buttons[0].key, gap.key);
+  assert.match(buttons[0].attrs, /type="button"/);
+  assert.match(buttons[0].attrs, /aria-haspopup="true"/);
+  assert.match(buttons[0].attrs, /aria-expanded="false"/);
+  assert.match(buttons[0].attrs, /class="checkin-line-btn"/);
+  // The headline's wording rotates by period: the button holds the one shown, fact and think line.
   const shown = gap.phrasings.map((phrasing) => phrasing.fact).find((fact) => markup.includes(fact.replace(/'/g, "&#x27;")));
   assert.ok(shown);
-  assert.equal(buttons[0].label, `Ask about this: ${shown}`);
-  // Also lines render only once See all insights is open (client state);
-  // their link is in the component, pinned by the e2e spec.
+  assert.ok(buttons[0].text.startsWith(shown));
+  assert.doesNotMatch(markup, /Ask about this|checkin-ask/);
 });
 
-test("folded, the teaser's link sits beside the fold button, not inside it", () => {
+test("folded, the teaser has no Ask link; the fold button is still just the fold", () => {
   const markup = render([gap, other], { open: false });
-  // The teaser's, then the headline's inside the folded (hidden) content.
-  assert.deepEqual(askButtons(markup).map((button) => button.variant), ["is-teaser", ""]);
+  assert.doesNotMatch(markup, /Ask about this|checkin-ask/);
   assert.match(markup, /class="financial-insight-content" hidden=""/);
   const fold = markup.match(/<button[^>]*class="financial-insight-fold"[\s\S]*?<\/button>/)[0];
-  assert.doesNotMatch(fold, /Ask about this/);
-  assert.ok(markup.indexOf("checkin-ask is-teaser") > markup.indexOf("financial-insight-fold"));
+  assert.doesNotMatch(fold, /data-fig/);
 });
 
-test("hidden money, or a calm line with no signal behind it: no Ask about this", () => {
-  assert.deepEqual(askButtons(render([gap], { visible: false })), []);
-  assert.deepEqual(askButtons(render([gap], { visible: false, open: false })), []);
-  assert.doesNotMatch(render([], { open: true }), /Ask about this/);
-  assert.doesNotMatch(render([], { open: false }), /Ask about this/);
+test("hidden money, or a calm line with no signal behind it: no line button at all", () => {
+  assert.deepEqual(lineButtons(render([gap], { visible: false })), []);
+  assert.deepEqual(lineButtons(render([gap], { visible: false, open: false })), []);
+  assert.doesNotMatch(render([gap], { visible: false }), /data-fig/);
+  assert.deepEqual(lineButtons(render([], { open: true })), []);
+  assert.deepEqual(lineButtons(render([], { open: false })), []);
 });
 
-test("the Fun fact and Big picture lines each have Ask about this, named for their line; none with money hidden", () => {
+test("the Fun fact and Big picture lines are each one button holding their line; none with money hidden", () => {
   const markup = render([gap, funFact, runway], { extra: { triviaRotation: FUN_ROTATION } });
-  const buttons = askButtons(markup);
-  assert.deepEqual(buttons.map((button) => button.variant), ["", "is-line", "is-line"]);
-  const fun = "From November 2025 to September 2026, spending averaged about $8,020 a month.";
-  assert.equal(buttons[1].label, `Ask about this: ${fun}`);
+  const buttons = lineButtons(markup);
+  assert.deepEqual(buttons.map((button) => button.key), [gap.key, funFact.key, runway.key]);
+  assert.equal(buttons[1].text, "Fun factFrom November 2025 to September 2026, spending averaged about $8,020 a month.");
   // The Big picture is the runway's own wording, with no caveat after it.
   const shown = runway.phrasings.map((phrasing) => phrasing.fact).find((fact) => markup.includes(fact.replace(/'/g, "&#x27;")));
   assert.ok(shown, "the runway line is on the page");
-  assert.equal(buttons[2].label, `Ask about this: ${shown}`);
-  assert.match(markup, /<p class="checkin-long-view"><span class="checkin-line-label">Big picture<\/span>[^<]*<button/);
-  assert.doesNotMatch(markup, /useful part|depends on your life/);
-  // Hidden money: no figure, no Ask about this on any of them.
+  assert.equal(buttons[2].text, `Big picture${shown}`);
+  assert.match(markup, /<p class="checkin-long-view"><button[^>]*data-fig="insight"[^>]*><span class="checkin-line-label">Big picture<\/span>/);
+  assert.doesNotMatch(markup, /useful part|depends on your life|Ask about this/);
+  // Hidden money: no figure, no button on any of them.
   const hidden = render([gap, funFact, runway], { visible: false, extra: { triviaRotation: FUN_ROTATION } });
-  assert.deepEqual(askButtons(hidden), []);
+  assert.deepEqual(lineButtons(hidden), []);
   assert.doesNotMatch(hidden, /\$8,020|\$9,000|1 month/);
-  // No runway data (no signal): no Big picture line and no link for it.
+  // No runway data (no signal): no Big picture line and no button for it.
   const none = render([gap, funFact], { extra: { triviaRotation: FUN_ROTATION } });
-  assert.deepEqual(askButtons(none).map((button) => button.variant), ["", "is-line"]);
+  assert.deepEqual(lineButtons(none).map((button) => button.key), [gap.key, funFact.key]);
   assert.doesNotMatch(none, /Big picture/);
+});
+
+test("choosing Ask about this in a line's menu runs the Ask hand-off once, with that line and its basis; unbinding stops it", () => {
+  const trigger = new EventTarget();
+  const target = new EventTarget();
+  const seen = [];
+  target.addEventListener(ASK_INSIGHT_EVENT, (event) => seen.push(event.detail));
+  globalThis.window = target;
+  try {
+    const unbind = bindInsightLine(trigger, gap, { fact: "Serene's statement differs.", think: "Worth a look." });
+    trigger.dispatchEvent(new CustomEvent(INSIGHT_LINE_ASK_EVENT));
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].insight.key, gap.key);
+    assert.equal(seen[0].insight.fact, "Serene's statement differs.");
+    assert.equal(seen[0].insight.think, "Worth a look.");
+    assert.deepEqual(seen[0].insight.basis, gap.basis);
+    unbind();
+    trigger.dispatchEvent(new CustomEvent(INSIGHT_LINE_ASK_EVENT));
+    assert.equal(seen.length, 1);
+  } finally {
+    delete globalThis.window;
+  }
 });
 
 test("the tap hands the shell a Fun fact or Big picture line with its basis, or an empty one", () => {

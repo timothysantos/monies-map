@@ -27,3 +27,21 @@ export function askAboutInsight(signal, line) {
     }
   }));
 }
+
+// An insight line is itself the trigger of the figure menu (figure-menu.js,
+// fig "insight"): choosing its Ask about this fires this event on the line,
+// and the line asks Ask as the removed "Ask about this" link did.
+export const INSIGHT_LINE_ASK_EVENT = "monies:insight-line-ask";
+
+/**
+ * Makes a line's menu choice run the Ask hand-off for its signal and line.
+ * Returns the unbind function (an effect's cleanup).
+ * @param {EventTarget} node
+ * @param {Parameters<typeof askAboutInsight>[0]} signal
+ * @param {Parameters<typeof askAboutInsight>[1]} line
+ */
+export function bindInsightLine(node, signal, line) {
+  const onAsk = () => askAboutInsight(signal, line);
+  node.addEventListener(INSIGHT_LINE_ASK_EVENT, onAsk);
+  return () => node.removeEventListener(INSIGHT_LINE_ASK_EVENT, onAsk);
+}

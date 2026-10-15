@@ -3,12 +3,15 @@ import { devices, expect, test } from "@playwright/test";
 import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 // "Ask about this" on a Money insights line (docs/flows/ask-flow.md
-// "Insight questions"). The line opens Ask with "Explain: <the line>" and a
+// "Insight questions"). Each insight line (the headline, each Also line, the
+// Fun fact and the Big picture line) is itself one quiet button that opens
+// the figure menu, whose one item is Ask about this; there is no visible Ask
+// link. Choosing it opens Ask with "Explain: <the line>" and a
 // card built from the insight's own facts: what it's based on, the entries
 // behind it and the line's think line, with its links as chips. AI is off on
 // every test stack, so the card is the facts alone; the AI explanation is
 // stubbed at the route once, to see its tag. Hidden money shows no figure
-// and no Ask about this. Real Worker for everything else.
+// and no line button. Real Worker for everything else.
 
 const iPhone = devices["iPhone 12 Pro"].viewport;
 const MONTH_PATH = "/month?view=person-tim&month=2026-05&scope=direct_plus_shared";
@@ -16,6 +19,15 @@ const MONTH_PATH = "/month?view=person-tim&month=2026-05&scope=direct_plus_share
 const suggestions = (page) => page.getByRole("group", { name: "Suggestions" }).getByRole("button");
 const card = (page) => page.locator("[data-ask-insight]");
 const question = (fact) => `Explain: ${fact.replace(/[.!]+$/, "")}`;
+const lineMenu = (page) => page.locator('.figure-menu[data-figure-menu="insight"]');
+
+// Taps a line, then chooses Ask about this in the one-item menu it opens.
+async function askVia(page, line) {
+  await line.click();
+  await expect(lineMenu(page)).toBeVisible();
+  await expect(lineMenu(page).getByRole("button")).toHaveText(["Ask about this"]);
+  await lineMenu(page).getByRole("button", { name: "Ask about this" }).click();
+}
 
 async function openMonth(page) {
   await gotoPageAfterApi(page, MONTH_PATH, "/api/month-page", () => page.locator(".financial-insight").first());
@@ -35,22 +47,51 @@ test.describe("Ask about this on a phone", () => {
     await reseedDemo(page);
   });
 
-  test("the teaser's Ask about this opens Ask with the question and the insight's facts, once, with AI off", async ({ page }) => {
+  test("tapping the headline opens a one-item menu; Ask about this opens Ask with the question and the insight's facts, once, with AI off", async ({ page }) => {
     await openMonth(page);
     const fold = page.locator(".financial-insight-fold");
     await expect(fold).toHaveAttribute("aria-expanded", "false");
     const fact = (await fold.locator("strong").textContent()).trim();
     const think = (await fold.locator(".financial-insight-think").textContent()).trim();
-    const ask = page.locator(".checkin-ask.is-teaser");
-    await expect(ask).toBeVisible();
-    // A separate target from the fold: its box is above the card, not on it.
-    const [askBox, foldBox] = [await ask.boundingBox(), await fold.boundingBox()];
-    expect(askBox.y + askBox.height).toBeLessThanOrEqual(foldBox.y + 1);
-    expect(askBox.height).toBeGreaterThanOrEqual(44);
+    // The folded teaser has no Ask link of its own; the fold is just the fold.
+    await expect(page.locator(".checkin-ask")).toHaveCount(0);
+    await expect(page.locator(".financial-insight").getByText("Ask about this", { exact: true })).toHaveCount(0);
+    await fold.click();
+    const line = page.locator(".financial-insight-content .checkin-line-btn").first();
+    await expect(line).toBeVisible();
+    await expect(line).toContainText(fact);
+    // A real button, 44px tall on a phone by padding, with text still selectable.
+    await expect(line).toHaveAttribute("aria-haspopup", "true");
+    expect((await line.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    expect(await line.evaluate((node) => getComputedStyle(node).userSelect)).toBe("text");
+    // No visible Ask about this link anywhere on the card.
+    await expect(page.locator(".financial-insight .checkin-ask")).toHaveCount(0);
+    await expect(page.locator(".financial-insight").getByRole("button", { name: /^Ask about this/ })).toHaveCount(0);
+
+    // A press alone (the start of holding to select text) opens nothing; the click does.
+    const box = await line.boundingBox();
+    await page.mouse.move(box.x + 20, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(lineMenu(page)).toHaveCount(0);
+    await page.mouse.up();
+    await expect(lineMenu(page)).toBeVisible();
+    await expect(line).toHaveAttribute("aria-expanded", "true");
+    await expect(lineMenu(page).getByRole("button")).toHaveText(["Ask about this"]);
+    expect((await lineMenu(page).getByRole("button").boundingBox()).height).toBeGreaterThanOrEqual(44);
+
+    // Escape closes it and the line has the focus back; so does a tap outside.
+    await page.keyboard.press("Escape");
+    await expect(lineMenu(page)).toHaveCount(0);
+    await expect(line).toBeFocused();
+    await expect(line).toHaveAttribute("aria-expanded", "false");
+    await line.click();
+    await expect(lineMenu(page)).toBeVisible();
+    await page.mouse.click(4, 4);
+    await expect(lineMenu(page)).toHaveCount(0);
 
     // Ask opens for the view, month and scope the page was showing.
     const shown = new URL(page.url()).searchParams;
-    await ask.click();
+    await askVia(page, line);
     await expect(page).toHaveURL(new RegExp(`/ask\\?view=${shown.get("view")}&month=${shown.get("month")}&scope=${shown.get("scope")}$`));
     await expect(page.locator(".ask-me").last()).toHaveText(question(fact));
     await expect(card(page)).toBeVisible();
@@ -75,27 +116,29 @@ test.describe("Ask about this on a phone", () => {
     await expect(card(page)).toHaveCount(1);
   });
 
-  // The Fun fact and the Big picture line each end with Ask about this
-  // (owner, 2026-10-15); it opens Ask with that line's own text, once.
+  // The Fun fact and the Big picture line are each one tappable line
+  // (owner, 2026-10-15); its menu's Ask about this opens Ask with that
+  // line's own text, once.
   for (const [label, selector] of [["Fun fact", ".checkin-fun"], ["Big picture", ".checkin-long-view"]]) {
-    test(`the ${label} line's Ask about this opens Ask with that line, with no filler after it`, async ({ page }) => {
+    test(`the ${label} line is one button whose menu opens Ask with that line, with no filler after it`, async ({ page }) => {
       await gotoPageAfterApi(page, "/month?view=household&month=2025-09&scope=direct_plus_shared", "/api/month-page", () => page.locator(".financial-insight").first());
       await page.locator(".financial-insight-fold").click();
-      const line = page.locator(`.financial-insight-content ${selector}`);
-      await expect(line).toBeVisible();
-      const ask = line.getByRole("button", { name: /^Ask about this/ });
-      await expect(ask).toHaveCount(1);
+      const container = page.locator(`.financial-insight-content ${selector}`);
+      await expect(container).toBeVisible();
+      const line = container.locator(".checkin-line-btn");
+      await expect(line).toHaveCount(1);
+      expect((await line.boundingBox()).height).toBeGreaterThanOrEqual(44);
+      await expect(container.getByRole("button", { name: /^Ask about this/ })).toHaveCount(0);
       const whole = (await line.evaluate((node) => [...node.childNodes].filter((child) => child.nodeType === 3).map((child) => child.textContent).join(""))).trim();
       expect(whole.length).toBeGreaterThan(20);
       expect(whole).not.toMatch(/useful part|depends on your life|your call|yours to decide/);
-      // Ask gets the line's fact (a Big picture line's think line stays with the page).
-      const text = (await ask.getAttribute("aria-label")).replace(/^Ask about this: /, "");
-      expect(whole.startsWith(text)).toBe(true);
-      await ask.click();
+      await askVia(page, line);
       await expect(page).toHaveURL(/\/ask\?/);
-      await expect(page.locator(".ask-me").last()).toHaveText(question(text));
       await expect(card(page)).toBeVisible();
-      await expect(card(page).locator(".ask-insight-fact")).toHaveText(text);
+      // Ask gets the line's fact (a Big picture line's think line stays with the page).
+      const text = (await card(page).locator(".ask-insight-fact").textContent()).trim();
+      expect(whole.startsWith(text)).toBe(true);
+      await expect(page.locator(".ask-me").last()).toHaveText(question(text));
       await expect(card(page).locator(".checkin-chip")).toHaveText(label);
       // Asked once: a reload keeps the one question.
       await page.reload();
@@ -108,8 +151,8 @@ test.describe("Ask about this on a phone", () => {
     // Every insight with entries behind it: try the headline, then Also lines.
     await page.locator(".financial-insight-fold").click();
     await page.getByRole("button", { name: "See all insights" }).click();
-    const asks = page.locator(".financial-insight-content .checkin-ask");
-    const count = await asks.count();
+    const lines = page.locator(".financial-insight-content .checkin-line-btn");
+    const count = await lines.count();
     expect(count).toBeGreaterThan(0);
     let withEntries = false;
     for (let index = 0; index < count && !withEntries; index += 1) {
@@ -117,7 +160,7 @@ test.describe("Ask about this on a phone", () => {
         await openMonth(page);
         await page.getByRole("button", { name: "See all insights" }).click();
       }
-      await page.locator(".financial-insight-content .checkin-ask").nth(index).click();
+      await askVia(page, page.locator(".financial-insight-content .checkin-line-btn").nth(index));
       await expect(card(page).last()).toBeVisible();
       withEntries = await card(page).last().getByText("The entries").isVisible();
     }
@@ -141,9 +184,11 @@ test.describe("Ask about this on a phone", () => {
     await expect(card(page).last()).not.toContainText("$");
     await expect(card(page).last().locator(".ask-insight-basis")).toHaveCount(0);
 
-    // And the insights themselves offer no Ask about this.
+    // And the insights themselves have no tappable line and no Ask about this.
     await openMonth(page);
     await expect(page.locator(".checkin-ask")).toHaveCount(0);
+    await expect(page.locator(".checkin-line-btn")).toHaveCount(0);
+    await expect(page.locator('.financial-insight [data-fig="insight"]')).toHaveCount(0);
   });
 });
 
@@ -159,7 +204,7 @@ test.describe("Ask about this on a wide screen", () => {
     await reseedDemo(page);
   });
 
-  test("the headline opens the Ask panel beside Month; a checked AI explanation carries Worded by AI", async ({ page }) => {
+  test("the headline's menu opens the Ask panel beside Month; Escape closes the menu and the line keeps focus; a checked AI explanation carries Worded by AI", async ({ page }) => {
     let sent = null;
     await page.route("**/api/ai-assist/insight-explain", async (route) => {
       sent = route.request().postDataJSON();
@@ -169,7 +214,24 @@ test.describe("Ask about this on a wide screen", () => {
     const headline = page.locator(".financial-insight-content .checkin-fact");
     await expect(headline).toBeVisible();
     const fact = (await headline.textContent()).trim();
-    await page.locator(".financial-insight-content > .checkin-ask").click();
+    const line = page.locator(".financial-insight-content .checkin-line-btn").first();
+    await expect(page.locator(".checkin-ask")).toHaveCount(0);
+    await expect(page.locator(".financial-insight").getByRole("button", { name: /^Ask about this/ })).toHaveCount(0);
+
+    // Click opens the same menu; Escape closes it and the line has the focus.
+    await line.click();
+    await expect(lineMenu(page)).toBeVisible();
+    await expect(lineMenu(page).getByRole("button")).toHaveText(["Ask about this"]);
+    await page.keyboard.press("Escape");
+    await expect(lineMenu(page)).toHaveCount(0);
+    await expect(line).toBeFocused();
+    // The keyboard works too: Enter on the focused line opens it again.
+    await page.keyboard.press("Enter");
+    await expect(lineMenu(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(lineMenu(page)).toHaveCount(0);
+
+    await askVia(page, line);
 
     const dock = page.locator(".ask-dock");
     await expect(dock).toBeVisible();
@@ -187,10 +249,10 @@ test.describe("Ask about this on a wide screen", () => {
     // A second insight, asked while the panel is open, joins the same chat.
     const more = page.getByRole("button", { name: "See all insights" });
     await more.click();
-    const alsoAsk = page.locator(".checkin-also .checkin-ask");
-    if (await alsoAsk.count()) {
+    const alsoLine = page.locator(".checkin-also .checkin-line-btn");
+    if (await alsoLine.count()) {
       const alsoFact = (await page.locator(".checkin-also li").first().locator("span").nth(1).textContent()).trim();
-      await alsoAsk.first().click();
+      await askVia(page, alsoLine.first());
       await expect(dock.locator(".ask-me").last()).toHaveText(question(alsoFact));
       await expect(dock.locator("[data-ask-insight]")).toHaveCount(2);
     }

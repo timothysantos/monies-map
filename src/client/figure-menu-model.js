@@ -35,6 +35,13 @@ const HIDDEN_QUESTION = { spentOverPlan: "spentVsPlan", spentMore: "spentVsIncom
  * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean }} figure
  */
 export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search = "", pathname = "", hidden = false }) {
+  // A Money insights line: Ask about this is its only item (the line
+  // carries its own signal; figure-menu.js fires it back at the line).
+  if (fig === "insight") {
+    /** @type {Array<{ action: string, label: string, location?: any, question?: string }>} */
+    const askOnly = [{ action: "ask-insight", label: copy.ask }];
+    return { label: copy.menuLabel(copy.names.insight), title: { name: "", period: "" }, items: askOnly };
+  }
   const current = new URLSearchParams(search);
   const viewId = current.get("view") || "household";
   const scope = current.get("entries_scope") || current.get("scope") || "direct_plus_shared";

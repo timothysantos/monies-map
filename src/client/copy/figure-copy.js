@@ -17,7 +17,9 @@ const names = {
   outflow: "Outflow",
   difference: "Difference",
   plan: "Plan",
-  splits: "Splits"
+  splits: "Splits",
+  // A Money insights line (its menu has no title; this names it for screen readers).
+  insight: "Insight"
 };
 
 export const figureCopy = {

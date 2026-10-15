@@ -1,5 +1,6 @@
 import "./figure-menu.css";
 import { figureMenu } from "./figure-menu-model";
+import { INSIGHT_LINE_ASK_EVENT } from "./insight-ask-event";
 
 // Openable figures (design.md "Openable figures"): every figure on a card
 // can be opened. The figure keeps its text; it carries `data-fig` and a few
@@ -9,7 +10,9 @@ import { figureMenu } from "./figure-menu-model";
 // it: "View entries" (Entries narrowed to exactly the money behind the
 // figure, so its total is the figure), "Open plan" (the Month page's plan),
 // "Open Splits" (the group) and "Ask about this" (the question asked and
-// answered at once). It imports no React (the menu is a few DOM nodes), so
+// answered at once). A Money insights line (`data-fig="insight"`, a real
+// button) opens a one-item menu, "Ask about this", which fires back at the
+// line so it can hand Ask its own signal (insight-ask-event.js). It imports no React (the menu is a few DOM nodes), so
 // it adds no first-screen file.
 //
 // A figure's attributes:
@@ -184,7 +187,10 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
     period.textContent = ` · ${view.title.period}`;
     title.appendChild(period);
   }
-  menu.appendChild(title);
+  // A Money insights line's menu has no title: the line above it is the subject.
+  if (view.title.name) {
+    menu.appendChild(title);
+  }
   markListRow(trigger);
   // The figure's explanation or quick facts, one per line.
   const note = trigger.getAttribute("data-fig-note");
@@ -209,6 +215,11 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
     }
     button.addEventListener("click", () => {
       close();
+      if (item.action === "ask-insight") {
+        // The insight line asks Ask itself (insight-ask-event.js).
+        trigger.dispatchEvent(new CustomEvent(INSIGHT_LINE_ASK_EVENT));
+        return;
+      }
       window.dispatchEvent(new CustomEvent(MONEY_ACTION_EVENT, { detail: item.location ? { entries: item.location } : { askText: item.question } }));
     });
     menu.appendChild(button);

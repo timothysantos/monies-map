@@ -922,9 +922,9 @@ mark. Nothing you ask is kept once you close the tab.
 Other questions, such as "should I buy a car?", aren't answered; Ask says
 so.
 
-To have a Money insights line explained, select **Ask about this** under it
-([Use Money insights](#use-money-insights)). On a phone Ask opens; on a
-computer it opens beside the page you are on.
+To have a Money insights line explained, tap the line itself and choose
+**Ask about this** ([Use Money insights](#use-money-insights)). On a phone Ask
+opens; on a computer it opens beside the page you are on.
 
 ### Change your plan by asking
 
@@ -2119,9 +2119,9 @@ back a shared balance ("settling up").
    shows just those records.
 3. Select **See all insights** for up to three more things worth knowing
    and now and then a short quote.
-4. Select **Ask about this** under a line, beside the **Fun fact** or
-   **Big picture** line (or, on the folded card, at the right of its title)
-   to have it explained on [Ask](#ask): the question
+4. Tap any insight (the bold line, a line under **See all insights**, the
+   **Fun fact** or the **Big picture**) and choose **Ask about this** in the
+   small menu that opens, to have it explained on [Ask](#ask): the question
    "Explain: …" and a card with what the line is based on (the amounts,
    wallets, months and dates it used), the entries behind it, and the
    line under it. Its buttons open the right place: **Open in Entries**
@@ -2130,7 +2130,7 @@ back a shared balance ("settling up").
    already answers, such as "How am I doing against the plan?". When
    Claude is set up it may add a sentence or two in its own words, using
    only those figures, marked **Worded by AI**. With money totals hidden
-   there is no **Ask about this**, and an answer already on Ask hides its
+   the lines can't be tapped, and an answer already on Ask hides its
    figures and words.
 
 Money insights can be folded. Under the title, a card shows the

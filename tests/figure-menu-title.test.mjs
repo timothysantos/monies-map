@@ -42,6 +42,16 @@ test("hidden money keeps the title and the question never holds an amount", () =
   assert.doesNotMatch(JSON.stringify(menu), /\$\d/);
 });
 
+test("an insight line's menu offers only Ask about this, with no title, and says nothing of its money", () => {
+  for (const hidden of [false, true]) {
+    const menu = figureMenu({ fig: "insight", period: null, search: "?month=2026-05", hidden });
+    assert.deepEqual(menu.items, [{ action: "ask-insight", label: "Ask about this" }]);
+    assert.deepEqual(menu.title, { name: "", period: "" });
+    assert.equal(menu.label, "Insight: what next");
+    assert.doesNotMatch(JSON.stringify(menu), /\$\d|entries|plan/i);
+  }
+});
+
 test("a long category name is passed through whole (the menu wraps it)", () => {
   const name = "Childcare, education and after-school enrichment classes for the children";
   assert.equal(figureMenu({ fig: "category", arg: name, period: MONTH }).title.name, name);
