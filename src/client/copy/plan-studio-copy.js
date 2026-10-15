@@ -15,6 +15,7 @@ export const planStudioCopy = {
   barTitleJob: (jobName) => `${jobName}: one slice per category`,
   barHint: "Drag a line to move money between jobs. Tap a job to resize its categories.",
   barHintJob: "Drag a line to move money between neighbours. The last line takes from left over.",
+  barHintReadOnly: "Tap a job to see its categories.",
   allJobs: "All jobs",
   resizeCategories: (jobName) => `Resize categories in ${jobName}`,
   plannedIn: (amount) => `Planned in ${amount}`,

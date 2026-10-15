@@ -1368,6 +1368,38 @@ Next month, use **Actions → Duplicate month** to copy the plan and adjust it,
 or type it on Ask: "plan November like October but Groceries $700"
 ([Change your plan by asking](#change-your-plan-by-asking)).
 
+### See where every planned dollar goes
+
+In Plan view, above the plan lists, **Plan Studio** shows your whole month
+plan as money jobs: what comes in, **Spend**, **Save**, **Invest** and what is
+**left over**.
+
+- **The bar** is your planned money in. Drag a line to move money from one
+  job to the next (the arrow keys work too). Tap a job's name under the bar to
+  see and resize its categories. If the plan puts out more than comes in, the
+  bar goes past the dashed **Planned in** line and the top says **The plan
+  doesn't add up**, with a button that fixes it in one tap.
+- **Every row has a slider.** Drag it, or use the **−** and **+** buttons for
+  one step. For a finer amount, hold **Shift** while you drag (on a phone,
+  press and hold, then drag). The lock keeps a row from changing.
+- **To type an exact amount, tap the amount.** A small box opens: type
+  something like 137 or 137.50 and press Enter (Esc cancels). It shows the
+  change from what is saved, and has quick **+$5, +$10, +$50** buttons.
+- **Take from** says where the money for a change comes from. Left over by
+  default; pick a category and the two trade instead.
+- **What if I save more?** Slide or type a bigger savings target to see where
+  the money would come from, then **Apply to plan** or **Cancel**. It only
+  changes the plan; it does not guess what you will spend.
+- Nothing is kept until you tap **Save plan**. **Undo** steps back,
+  **Reset to saved** drops every change. If saving fails your changes stay.
+
+![Plan Studio: the bar of planned money in, how the month is going and a slider for every row](/faq/guide/desktop/thumbs/month-plan-studio.webp)
+
+![Tapping a row's amount on a phone opens a sheet to type an exact amount](/faq/guide/phone/thumbs/phone-month-plan-studio.webp)
+
+In the Household view Plan Studio is read-only, like the lists under it.
+Switch to your own name to change the plan.
+
 ## Link planned items to entries
 
 A budget bucket's actual comes from every entry in its category. A planned

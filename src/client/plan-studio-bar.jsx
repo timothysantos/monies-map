@@ -118,7 +118,7 @@ function Divider({ index, leftMinor, scaleMinor, before, after, fmt, onMove, onG
  */
 export function BigPicture({
   monthLine, paceChip, balance, fix, onFix, segments, totals, zoom, onZoom, fmt, dotColours, jobColours,
-  onMoveLine, onGestureStart, onGestureEnd, dragging
+  onMoveLine, onGestureStart, onGestureEnd, dragging, readOnly = false
 }) {
   const barRef = useRef(null);
   const barWidth = useWidth(barRef);
@@ -179,7 +179,7 @@ export function BigPicture({
             <i>{copy.plannedIn(fmt.money(totals.income))}</i>
           </div>
         ) : null}
-        {segments.slice(0, -1).map((segment, index) => (
+        {readOnly ? null : segments.slice(0, -1).map((segment, index) => (
           <Divider
             key={segment.id}
             index={index}
@@ -214,7 +214,7 @@ export function BigPicture({
           );
         })}
       </div>
-      <p className="ps-hint">{zoom ? copy.barHintJob : copy.barHint}</p>
+      <p className="ps-hint">{readOnly ? copy.barHintReadOnly : zoom ? copy.barHintJob : copy.barHint}</p>
     </section>
   );
 }

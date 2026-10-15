@@ -104,7 +104,7 @@ export function StudioRow({
           </button>
         </div>
       ) : (
-        <p className="ps-row-readonly">{readOnlyReason}</p>
+        readOnlyReason ? <p className="ps-row-readonly">{readOnlyReason}</p> : null
       )}
       <div className="ps-row-foot">
         <span className={`ps-row-status ${fmt.hidden ? "" : moneyToneClass(status.tone)}`}>

@@ -195,53 +195,22 @@ export function previewSaveTarget({ rows, locks, plan, targetMinor, takeFromKey 
 }
 
 /**
- * Split a combined row's new total over the rows it was made of, in
- * proportion to what each held (largest remainder, so the parts add up
- * exactly). All zero: the first row takes it.
- */
-export function splitAcrossSources(sourceMinors, totalMinor) {
-  const base = sum(sourceMinors);
-  if (base === 0) return sourceMinors.map((_, index) => (index === 0 ? totalMinor : 0));
-  const exact = sourceMinors.map((minor) => (totalMinor * minor) / base);
-  const parts = exact.map(Math.floor);
-  let left = totalMinor - sum(parts);
-  const order = exact
-    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
-    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
-  for (const { index } of order) {
-    if (left <= 0) break;
-    parts[index] += 1;
-    left -= 1;
-  }
-  return parts;
-}
-
-/**
  * What "Save plan" changes: each editable row whose held amount differs from
- * the saved one, with the amount each stored row it is made of will hold (a
- * combined household row is saved as each person's row).
+ * the saved one, and what its stored row must still hold on the server (the
+ * request fails whole if the plan changed underneath).
  */
 export function buildRowUpdates(rows, plan) {
   const updates = [];
   for (const row of rows) {
     if (!row.editable || plan[row.key] === undefined || plan[row.key] === row.savedMinor) continue;
-    const sourceMinors = row.ids.length === 1 ? [plan[row.key]] : splitAcrossSources(row.sourceMinors, plan[row.key]);
-    updates.push({ key: row.key, section: row.section, ids: row.ids, plannedMinor: plan[row.key], sourceMinors, expectedMinors: row.sourceMinors });
+    updates.push({ key: row.key, section: row.section, rowId: row.ids[0], plannedMinor: plan[row.key], expectedMinor: row.sourceMinors[0] });
   }
   return updates;
 }
 
-/**
- * The request body's changes: one update per stored row that changed, each
- * carrying what the row must still hold on the server (the request fails
- * whole if the plan changed underneath).
- */
+/** The request body's changes: one update per stored row that changed. */
 export function buildChanges(rows, plan) {
-  return buildRowUpdates(rows, plan).flatMap((update) => update.ids.flatMap((rowId, index) => (
-    update.sourceMinors[index] === update.expectedMinors[index]
-      ? []
-      : [{ action: "update", rowId, expectedMinor: update.expectedMinors[index], plannedMinor: update.sourceMinors[index] }]
-  )));
+  return buildRowUpdates(rows, plan).map(({ rowId, expectedMinor, plannedMinor }) => ({ action: "update", rowId, expectedMinor, plannedMinor }));
 }
 
 export function createEditState() {

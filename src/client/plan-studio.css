@@ -103,6 +103,10 @@
   font-weight: 600;
 }
 
+.ps-notice.is-readonly {
+  color: var(--text);
+}
+
 .ps-save-error {
   display: flex;
   flex-wrap: wrap;

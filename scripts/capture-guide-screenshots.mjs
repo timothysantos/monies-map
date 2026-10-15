@@ -234,6 +234,16 @@ const SHOTS = [
     }
   },
   {
+    // Plan Studio above the plan lists: the bar, how the month is going and
+    // the money jobs' rows with their sliders.
+    name: "month-plan-studio", device: "desktop",
+    run: async (page) => {
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      await scrollToLocator(page, page.locator("[data-plan-studio]"), 20);
+      await page.waitForTimeout(800);
+    }
+  },
+  {
     name: "month-edit-row", device: "desktop",
     run: async (page) => {
       await open(page, `/month?view=person-ethan&month=${MONTH}`);
@@ -473,6 +483,19 @@ const SHOTS = [
       await page.locator(".mobile-month-choice-open").click();
       await page.getByRole("dialog", { name: "Pick a month" }).waitFor();
       await page.waitForTimeout(600);
+    }
+  },
+  {
+    // Tapping a row's amount in Plan Studio: the amount sheet.
+    name: "phone-month-plan-studio", device: "phone",
+    run: async (page) => {
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      const amount = page.locator("[data-ps-row] [data-ps-amount]").first();
+      await scrollToLocator(page, amount, 260);
+      await amount.tap();
+      await page.getByRole("dialog").first().waitFor();
+      await page.waitForTimeout(600);
+      await hideCaret(page);
     }
   },
   {

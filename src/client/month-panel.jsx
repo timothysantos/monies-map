@@ -252,6 +252,9 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     investmentMoves: view.monthPage.investmentMoves ?? null
   });
   const isSimple = monthLead.leadView === "simple";
+  // A month with no plan rows and no income has nothing for Plan Studio to
+  // show: it neither loads nor holds space.
+  const hasPlanStudioRows = (incomeRows?.length ?? 0) > 0 || (planSections ?? []).some((section) => (section.rows?.length ?? 0) > 0);
   // A Spending Mix slice's plan and merchants, from what the page holds.
   const monthSliceFacts = useMemo(
     () => buildMonthSliceFacts({ planRows: planSections.flatMap((section) => section.rows ?? []), entries: insightEntries }),
@@ -444,9 +447,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       rows: section.rows.map((row) => {
         const update = byKey.get(row.id);
         if (!update) return row;
-        const saved = update.ids.length === 1
-          ? buildSavedMonthPlanFields({ plannedMinor: update.plannedMinor })
-          : { plannedMinor: update.plannedMinor, sourcePlannedMinors: update.sourceMinors };
+        const saved = buildSavedMonthPlanFields({ plannedMinor: update.plannedMinor });
         return { ...row, ...saved, isPendingDerived: true };
       })
     })));
@@ -1593,6 +1594,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           onPlanThisMonth={() => monthLead.setLeadView("plan")}
         />
       ) : <>
+      {hasPlanStudioRows ? (
       <Suspense fallback={<PlanStudioReserve />}>
         <PlanStudio
           month={view.monthPage.month}
@@ -1603,8 +1605,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           figures={monthLead.model?.figures ?? null}
           today={checkInClock.today}
           onSave={savePlanStudio}
+          readOnly={isCombinedHouseholdView}
+          readOnlyHint={messages.month.readOnlyCombinedHint}
         />
       </Suspense>
+      ) : null}
       <MonthPlanStack
         view={view}
         categories={categories}

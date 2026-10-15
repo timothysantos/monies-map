@@ -61,6 +61,19 @@ month" replaces the plan tables, which Plan keeps for editing. Month
 opens in Simple, with a plan or without, until a choice is made
 (`tests/e2e/lead-simple-view.spec.js`).
 
+Plan view opens with Plan Studio above the plan tables (`plan-studio.jsx`,
+design.md "Plan Studio", DOMAIN.md "Plan Studio"). It reads the page's income
+rows, plan sections and the lead's figures, holds its changes locally (one
+Undo stack, Reset to saved) and saves them with one request,
+`POST /api/month-plan/apply-changes`, naming each changed row and the amount
+it must still hold: all or nothing, 409 when a row changed underneath (the
+studio keeps the edits and says so), a failed save keeps them and offers Try
+again. After a save the page shows the saved amounts (`isPendingDerived`)
+while `runBackgroundRefresh` reloads the month, exactly as after a row edit.
+The combined household view is read only (no sliders, Save plan or What
+if; the plan tables' own hint says to switch to a person view). Simple view does not load the studio. Proof:
+`tests/e2e/plan-studio.spec.js`, `tests/e2e/plan-studio-layout.spec.js`.
+
 The plan tables (Income, Budget Buckets, Planned Items) keep their table
 markup on every layout and add hierarchy: the item leads, the money columns
 are right-aligned, and a thin bar under each actual shows actual against

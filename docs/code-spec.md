@@ -771,6 +771,29 @@ settings, categories,
 statement checkpoint edits, Shortcut requests (parked on purpose) and the
 demo seed. Convert a module the next time its writes change.
 
+## Plan Studio Contract
+
+- The studio is pure model plus thin components: `plan-studio-model.js` (rows,
+  jobs, totals, verdicts, pace), `plan-studio-edit.js` (set, take from, jobs,
+  lines, what-if, one Undo reducer, the save changes), `plan-studio-slider.js`
+  (step, snap, fine drag, keys, typed amounts). Components never recompute a
+  figure; they call these. Every function takes and returns minor units.
+- The held plan is `overrides` over the saved rows, never a copy of them, so
+  a refresh reaches rows nobody touched; an override equal to the saved
+  amount is dropped.
+- Save is one `applyMonthPlanChanges` request (no per-row loop), with each
+  row's `expectedMinor`; its atomicity tests are
+  `tests/atomic-writes-plan-studio.test.mjs` and
+  `tests/atomic-writes-plan-draft.test.mjs`. The client refreshes through
+  `runBackgroundRefresh` after the saved amounts show.
+- Loading: `plan-studio.jsx` is only imported by `month-panel.jsx`'s `lazy`;
+  keep it out of the first screen and out of Simple view. Its copy is
+  `copy/plan-studio-copy.js`, its CSS `plan-studio.css`; the reserve block is
+  in `month-route.css`.
+- Layout: two CSS columns balanced by the browser; keep every card and row
+  `break-inside: avoid` and keep heights independent of the amounts
+  (fixed footers, reserved lines) or rows will hop columns while editing.
+
 ## Data Flow Pseudocode
 
 Keep slice code close to this shape:

@@ -17,7 +17,6 @@ import {
   moveLine,
   previewSaveTarget,
   setAmount,
-  splitAcrossSources,
   studioReducer
 } from "../src/client/plan-studio-edit.js";
 
@@ -221,25 +220,9 @@ test("Save plan sends only the rows that changed, each with what it must still h
   assert.deepEqual(buildChanges(rows, plan()), []);
 });
 
-test("a combined household row is saved as each person's row, in proportion, adding up exactly", () => {
-  assert.deepEqual(splitAcrossSources([d(700), d(500)], d(1200)), [d(700), d(500)]);
-  assert.deepEqual(splitAcrossSources([d(700), d(500)], d(1500)), [d(875), d(625)]);
-  assert.deepEqual(splitAcrossSources([d(700), d(500)], 100), [58, 42]);
-  assert.deepEqual(splitAcrossSources([1, 1, 1], 100), [34, 33, 33]);
-  assert.deepEqual(splitAcrossSources([0, 0], d(40)), [d(40), 0]);
-  const combined = buildStudioRows({
-    month: "2026-10", incomeRows: [],
-    planSections: [{ key: "planned_items", rows: [planned("combined:s", "Savings", "planned_items", 1200, 0, { categoryName: "Savings", sourceRowIds: ["tim-save", "joy-save"], sourcePlannedMinors: [d(700), d(500)] })] }]
-  });
-  assert.deepEqual(buildChanges(combined, { "combined:s": d(1500) }), [
-    { action: "update", rowId: "tim-save", expectedMinor: d(700), plannedMinor: d(875) },
-    { action: "update", rowId: "joy-save", expectedMinor: d(500), plannedMinor: d(625) }
-  ]);
-});
-
-test("the screen learns what each saved row now holds from the same split the request uses", () => {
+test("the screen learns what each saved row now holds from the same list the request uses", () => {
   const updates = buildRowUpdates(rows, plan({ food: 1400 }));
-  assert.deepEqual(updates.map((update) => [update.key, update.section, update.plannedMinor, update.sourceMinors]), [["food", "budget_buckets", d(1400), [d(1400)]]]);
+  assert.deepEqual(updates, [{ key: "food", section: "budget_buckets", rowId: "food", plannedMinor: d(1400), expectedMinor: d(1300) }]);
 });
 
 test("a one-tap fix takes from left over even when Take from names a category", () => {

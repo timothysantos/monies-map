@@ -1861,6 +1861,60 @@ Storage:
   `GET /api/skew-candidates?view=&month=&scope=&include=medium`
   (`SkewCandidatesDto`, `include` optional), never part of a page DTO
 
+### Plan Studio
+
+The Month page's Plan view as money jobs (owner decision, 2026-10-15;
+design.md "Plan Studio"): one place to see where planned money in goes, to
+move money between jobs and to resize every plan row with a slider or an
+exact amount, saved together. It reads only the Month page DTO (planned
+income rows, planned items, budget buckets) and the lead's figures; it adds
+no table and no request except the save.
+
+Canonical terms:
+- `job`: a money job (see Money Job) as the studio draws it: `Money in`,
+  `Spend`, `Save` (the `Savings` plan row), `Invest` (rows in the Investments
+  category). `Left over` is planned money in less everything planned out,
+  the same number as the lead's To allocate
+- `plan balance`: left over below zero is `The plan doesn't add up`: the
+  bar spills past its `Planned in` line, and a one-tap fix lowers the
+  flexible category with the most room by what is over (rounded up to $10,
+  never past the row's plan; a locked row is never chosen), or, with money
+  left over, adds it to savings
+- `pace`: what the plan usually expects spent by today: all of a row once
+  its due date has passed (bills, rent: a planned item with a date), none
+  before; a row with no date follows a straight line across the month. The
+  `Usual by today` mark and the verdict (`On track`, `A bit ahead of pace`,
+  `Over plan`) only compare recorded spending with the plan; nothing is
+  predicted. A past month expects all of it, a future month none
+- `held changes`: edits made in the studio are held in the page until
+  `Save plan` (one Undo stack, `Reset to saved`); the held plan is the saved
+  plan plus the rows changed, so a refresh reaches every row nobody touched
+- `take from`: where the money for a change comes from. Default `Left over`
+  (only the changed row moves); or another category (the two rows trade, the
+  total holds, and a category with less than asked gives what it has and
+  says so). A locked row never changes, and income never takes from a category
+- `fine control`: a row's slider steps by an amount that grows with the
+  row ($5, $10, $50, $100); Shift or Alt while dragging, or a press-and-hold
+  on a touch screen, moves a tenth as far in $1 steps; keys: arrows one
+  step, Shift five, Alt one dollar, Page keys ten, Home and End the ends. The
+  amount is also a button: a popover (a bottom sheet on a phone) takes an
+  exact amount in dollars and cents
+- `what if`: "What if I save more?" previews a new savings target (left
+  over pays first, then the flexible categories in proportion or the one the
+  person picks; a lower target gives money back) and applies it as ordinary
+  held changes. It changes the plan only and is never a forecast or a
+  safe-to-spend figure
+- shared rows are edited as a whole and show each person's part from their
+  own split. The combined household view is read only, as its plan tables
+  are: the studio shows the same picture with no sliders, Save plan or What
+  if, and says to switch to a person view to edit
+
+Saving: `POST /api/month-plan/apply-changes` (the same all-or-nothing
+command Ask's plan draft uses, `applyMonthPlanChanges`): every changed row
+with the amount it must still hold on the server, one `db.batch()` with the
+month's refresh marker; 409 when a row changed underneath, and nothing is
+written.
+
 ### Monthly Note
 
 A note attached either to a summary scope or a specific month. Notes preserve

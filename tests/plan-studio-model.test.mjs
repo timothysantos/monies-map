@@ -98,27 +98,23 @@ test("planned money in less what is planned out is what is left over", () => {
   });
 });
 
-test("a combined household row is edited through its source rows, and only when it knows them", () => {
+test("a combined household line (several stored rows) is read only, as the household view's plan is", () => {
   const combined = buildStudioRows({
     incomeRows: [],
     planSections: [{
       key: "planned_items",
       rows: [
         plannedRow("combined:x", "Savings", "planned_items", 1200, 0, {
-          categoryName: "Savings", isDerived: true, ownershipType: "direct",
-          sourceRowIds: ["tim-save", "joy-save"], sourcePlannedMinors: [d(700), d(500)]
+          categoryName: "Savings", isDerived: true, ownershipType: "direct", sourceRowIds: ["tim-save", "joy-save"]
         }),
-        plannedRow("combined:y", "Gym", "planned_items", 100, 0, {
-          isDerived: true, sourceRowIds: ["a", "b"]
-        })
+        plannedRow("tim-gym", "Gym", "planned_items", 100, 0, {})
       ]
     }],
     month: "2026-10"
   });
-  assert.deepEqual(combined[0].ids, ["tim-save", "joy-save"]);
-  assert.deepEqual(combined[0].sourceMinors, [d(700), d(500)]);
-  assert.equal(combined[0].editable, true);
-  assert.equal(combined[1].editable, false, "no source amounts: it cannot be saved safely");
+  assert.equal(combined[0].editable, false, "it is made of two stored rows");
+  assert.equal(combined[1].editable, true);
+  assert.deepEqual(combined[1].ids, ["tim-gym"]);
 });
 
 test("a plan that spends more than comes in does not add up, and says by how much", () => {

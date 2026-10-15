@@ -89,21 +89,29 @@ function noticeText(notice, fmt) {
  * It reads only the Month page's rows and the lead's figures (no request of
  * its own besides the save), so the numbers agree with the lead above.
  *
+ * The combined household view is read only (as its plan tables are): the
+ * same picture with no sliders, lines, Save plan or What if, and a line that
+ * says to switch to a person view.
+ *
  * @param {{
  *   month: string, monthLabel: string, categories: any[], incomeRows: any[], planSections: any[],
- *   figures: null | { income: number, spending: number, invested: number, kept: number },
+ *   readOnly?: boolean, readOnlyHint?: string, figures: null | { income: number, spending: number, invested: number, kept: number },
  *   today: string, onSave: (request: { changes: any[], updates: any[] }) => Promise<void>
  * }} props
  */
-export default function PlanStudio({ month, monthLabel, categories, incomeRows, planSections, figures, today, onSave }) {
+export default function PlanStudio({ month, monthLabel, categories, incomeRows, planSections, figures, today, onSave, readOnly = false, readOnlyHint = "" }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const fmt = useMemo(() => makeStudioFormat(!areTotalsVisible), [areTotalsVisible]);
   const keptMinor = figures?.kept ?? 0;
   // The savings row's "actual" is the money kept so far (the Month lead's
   // Saved), as the money jobs measure it.
   const rows = useMemo(
-    () => buildStudioRows({ incomeRows, planSections, month }).map((row) => (row.job === "save" ? { ...row, actualMinor: Math.max(0, keptMinor) } : row)),
-    [incomeRows, planSections, month, keptMinor]
+    () => buildStudioRows({ incomeRows, planSections, month }).map((row) => ({
+      ...row,
+      ...(row.job === "save" ? { actualMinor: Math.max(0, keptMinor) } : {}),
+      ...(readOnly ? { editable: false } : {})
+    })),
+    [incomeRows, planSections, month, keptMinor, readOnly]
   );
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
@@ -158,7 +166,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
   }, [totals, fmt]);
 
   const fixPlan = useMemo(() => suggestFix({ rows, plan, locks: state.locks, totals }), [rows, plan, state.locks, totals]);
-  const fix = fixPlan && (fixPlan.kind === "lower" || fixPlan.kind === "save")
+  const fix = !readOnly && fixPlan && (fixPlan.kind === "lower" || fixPlan.kind === "save")
     ? { ...fixPlan, label: fixPlan.kind === "lower" ? copy.balance.lower(fixPlan.label, fmt.money(fixPlan.byMinor)) : copy.balance.addToSavings(fmt.money(fixPlan.byMinor)) }
     : null;
 
@@ -225,6 +233,8 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
       data-fig-period={`${month}:${month}`}
       inert={saving || undefined}
     >
+      {readOnly ? <p className="ps-notice is-readonly" data-ps-readonly>{readOnlyHint}</p> : (
+      <>
       <div className="ps-toolbar" role="toolbar" aria-label={copy.region}>
         <button type="button" className="ps-quiet" disabled={!state.history.length} onClick={() => send({ type: "undo" })} data-ps-undo>{copy.toolbar.undo}</button>
         <button type="button" className="ps-quiet" disabled={!dirty} onClick={() => send({ type: "reset" })} data-ps-reset>{copy.toolbar.reset}</button>
@@ -243,6 +253,8 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
         </button>
       </div>
       <p className="ps-notice" role="status" aria-live="polite" data-ps-notice>{noticeText(noticeShown, fmt)}</p>
+      </>
+      )}
       {save.phase === "error" ? (
         <div className="ps-save-error" role="alert" data-ps-save-error>
           <span>{save.error}</span>
@@ -272,6 +284,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
           onGestureStart={onGestureStart}
           onGestureEnd={onGestureEnd}
           dragging={state.gesture}
+          readOnly={readOnly}
         />
         <PaceCard
           fmt={fmt}
@@ -284,7 +297,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
           verdict={verdict}
           moneyInText={moneyInText}
         />
-        <WhatIfCard
+        {readOnly ? null : <WhatIfCard
           fmt={fmt}
           hasSaveRow={Boolean(saveRow)}
           saveTotalMinor={totals.save}
@@ -299,7 +312,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
           onTakeFrom={(value) => send({ type: "whatIfTakeFrom", value })}
           onApply={() => send({ type: "whatIfApply" })}
           onCancel={() => send({ type: "whatIfCancel" })}
-        />
+        />}
         {groups.map((group) => (
           <div className="ps-group" key={group.job} data-ps-group={group.job}>
             <div className="ps-group-head">
@@ -322,7 +335,7 @@ export default function PlanStudio({ month, monthLabel, categories, incomeRows, 
                   scale={rowScale(row, planned)}
                   halves={sharedHalves(row, planned)}
                   dotColour={dotColours[row.key]}
-                  readOnlyReason={copy.row.readOnly}
+                  readOnlyReason={readOnly ? "" : copy.row.readOnly}
                   onSet={onSet}
                   onNudge={onNudge}
                   onGestureStart={onGestureStart}

@@ -289,6 +289,16 @@ test.describe("Plan Studio on desktop", () => {
     expect(duration).toBe("0s");
   });
 
+  test("the combined household view is read only: the picture, no sliders, lines, Save plan or What if", async ({ page }) => {
+    await seed(page);
+    await gotoPageAfterApi(page, `/month?view=household&month=${MONTH}&scope=direct_plus_shared`, "/api/month-page", () => page.locator("[data-plan-studio]"));
+    await expect(page.locator("[data-ps-readonly]")).toContainText("Combined household view is read-only.");
+    await expect(studio(page).locator("[data-ps-row]").first()).toBeVisible();
+    await expect(studio(page).getByRole("slider")).toHaveCount(0);
+    await expect(page.locator("[data-ps-save], [data-ps-whatif], [data-ps-fix], [data-ps-amount]")).toHaveCount(0);
+    await expect(page.locator("[data-ps-seg]").first()).toBeAttached();
+  });
+
   test("Simple view does not load Plan Studio at all", async ({ page }) => {
     await seed(page);
     const chunks = [];

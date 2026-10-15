@@ -3095,6 +3095,56 @@ but its mode also needs `(pointer: coarse)` and stays in
 `tests/e2e/viewport-breakpoints.spec.js` resizes one page across both
 widths.
 
+## Plan Studio
+
+The Month page's Plan view as money jobs (owner decision, 2026-10-15; DOMAIN.md
+"Plan Studio"; approved mockups
+`docs/proposals/plan-studio/plan-studio-mockups.html`, direction A, Waterfall,
+plus C's "What if I save more?"). It sits above the plan tables, which stay
+the place for notes, accounts, matching entries and adding or removing a line.
+Simple view never loads it.
+
+- Loading: `plan-studio.jsx` is its own chunk, imported by `month-panel.jsx`
+  when Plan view renders; until it arrives an empty, invisible block
+  (`.plan-studio-reserve`, 560 to 640 px) holds its place. Nothing is in the
+  first screen (`check:bundle` unchanged) and the studio makes no request of
+  its own: it reads the Month page rows and the lead's figures.
+- Parts: the big picture card (plan balance banner with its one-tap fix, the
+  bar, its legend and hint), how the month is going (money in and spent bars
+  with the plan line and "Usual by today"), What if I save more?, then each
+  job's rows (Money in, Spend, Save, Invest).
+- The bar: Spend, Save, Invest and Left over on one scale; an over-allocation
+  is a hatched rose slice past the dashed "Planned in" line; the lines between
+  slices are 44px sliders (drag, or arrows, Shift for five steps) that move
+  money between neighbours (the last line takes from left over); a job opens
+  to one slice per category. Dragging is one Undo step.
+- Rows: name, amount (tap for the popover), lock, "view entries" through the
+  shared figure menu, a slider with nudge buttons of one step, one line of
+  status, and chips (the change from saved, the owner or Shared with each
+  person's part). Savings are measured by money kept so far, as the lead's
+  Saved is.
+- Controls: Undo, Reset to saved, Take from, Save plan (disabled until
+  something changed). Notices are an inline status line, never a browser
+  dialog. A failed save keeps every edit and offers Try again; a 409 says the
+  plan changed and keeps the edits.
+- Balanced columns: from a 860 px studio width the cards and each job's rows
+  are CSS columns (`column-count: 2`, `break-inside: avoid` on every card and
+  row, a job's rows may continue in the second column), so the browser
+  balances the two by height and neither runs long beside unused space. Row
+  and card heights do not change while editing (fixed footers, reserved
+  lines), so nothing jumps between columns. One column on a phone and below
+  860 px. `tests/e2e/plan-studio-layout.spec.js` measures it.
+- Colour: pastel tokens and money tones only; jobs are palette picks
+  (`paletteColour`), rows take a person's colour (income), the category colour
+  (spend) or the job colour; hidden money turns every fill grey, drops the
+  headline's sign and every status line, and gives screen readers "Amount
+  hidden". Motion (rolling numbers, bar flow) is off under
+  `prefers-reduced-motion`.
+- Not in the studio: Room to spend per day (the mockup's third what-if
+  figure): a per-day figure reads as a safe-to-spend promise, which money
+  insights never give. No haptics beyond a short vibration when a touch press
+  enters fine control.
+
 ## Route Warmup Boundary
 
 Optional work (route code and speculative page data) starts only

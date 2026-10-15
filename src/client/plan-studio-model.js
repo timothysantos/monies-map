@@ -29,21 +29,12 @@ function planJob(row) {
   return "spend";
 }
 
-// What a plan line is edited through: one stored row, or, in the household
-// view's combined row, each person's row (the DTO's source rows and their
-// amounts). A line with no way to tell what it was made of cannot be saved
-// safely, so it is read only.
+// What a plan line is saved through: its one stored row. A line made of
+// several stored rows (the household view's combined line) is read only, as
+// the household view's plan tables are.
 function sourcesOf(row, fallbackMinor) {
   const ids = row.sourceRowIds?.length ? row.sourceRowIds : [row.id];
-  if (ids.length === 1) {
-    return { ids, minors: [row.sourcePlannedMinor ?? fallbackMinor], editable: !row.isDraft };
-  }
-  const minors = row.sourcePlannedMinors;
-  return {
-    ids,
-    minors: Array.isArray(minors) && minors.length === ids.length ? minors : [],
-    editable: Array.isArray(minors) && minors.length === ids.length && !row.isDraft
-  };
+  return { ids, minors: [row.sourcePlannedMinor ?? fallbackMinor], editable: ids.length === 1 && !row.isDraft };
 }
 
 /**

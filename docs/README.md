@@ -125,6 +125,10 @@ a doc here in the same change.
   Ask's three principles (the server completes what the model reports, drafts
   show their assumptions, one repair before a question) and the eval bank
   (privacy, cost, writes, no-AI behaviour).
+- [`audits/plan-studio.md`](audits/plan-studio.md): Plan Studio (the Month plan
+  as money jobs): decisions, measured numbers, the balanced-columns proof and
+  before/after screenshots in `audits/plan-studio/`. The approved mockups are
+  on branch `origin/plan-studio-mockups` under `docs/proposals/plan-studio/`.
 - [`audits/ask-planning-audit.md`](audits/ask-planning-audit.md):
   planning by chat (plan drafts saved in one batch) and Intent vs Outcome
   answers on Ask: rules first, the optional AI reading only into the same

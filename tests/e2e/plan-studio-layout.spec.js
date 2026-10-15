@@ -36,11 +36,11 @@ async function seed(page, { manyRows }) {
 
 // Each column's height and the blocks it holds, from where the browser put
 // every card, job header and row.
-async function measureColumns(page) {
-  return page.locator("[data-ps-columns]").evaluate((container) => {
+async function measureColumns(page, selector = "[data-ps-columns]") {
+  return page.locator(selector).evaluate((container) => {
     const box = container.getBoundingClientRect();
     const middle = box.left + box.width / 2;
-    const blocks = [...container.querySelectorAll(":scope > :not(.ps-group), :scope > .ps-group > *")].map((element) => {
+    const blocks = [...container.querySelectorAll(".ps-card, .ps-row, .ps-group-head")].map((element) => {
       const rect = element.getBoundingClientRect();
       return { left: rect.left < middle ? "left" : "right", top: rect.top - box.top, bottom: rect.bottom - box.top, height: rect.height };
     });
@@ -91,4 +91,27 @@ test("the cards and rows stay whole: no card or row is split across the two colu
     }).length;
   });
   expect(split).toBe(0);
+});
+
+test("the check catches the mockup's two lanes: cards on the left, every row on the right", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await seed(page, { manyRows: true });
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+  await gotoPageAfterApi(page, URL, "/api/month-page", () => page.locator("[data-ps-columns]"));
+  await page.locator("[data-ps-columns]").evaluate((columns) => {
+    const lanes = document.createElement("div");
+    lanes.setAttribute("data-before-lanes", "");
+    lanes.style.cssText = "display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start";
+    const left = document.createElement("div");
+    const right = document.createElement("div");
+    for (const child of [...columns.children]) {
+      if (child.classList.contains("ps-group")) right.append(...child.children);
+      else left.append(child);
+    }
+    lanes.append(left, right);
+    columns.replaceWith(lanes);
+  });
+  const lanes = await measureColumns(page, "[data-before-lanes]");
+  const taller = Math.max(lanes.left, lanes.right);
+  expect(taller - Math.min(lanes.left, lanes.right), "the old layout leaves the left lane short").toBeGreaterThan(TOLERANCE * taller);
 });

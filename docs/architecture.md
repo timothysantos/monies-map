@@ -464,6 +464,17 @@ Rules:
 - optional planned savings movements may still exist as matchable `month plan
   rows`, but those are not the same concept as the top-level `savings target`
 
+### Plan Studio (current, 2026-10)
+
+The Month page's Plan view is a set of money jobs (DOMAIN.md "Plan Studio"):
+where planned money in goes, how the month is going against the plan (pace by
+due date, never a forecast), What if I save more? and every plan row with a
+slider and an exact amount. It is a lazy chunk of the Month route, reads only
+the Month page DTO (no new field) and saves through the existing all-or-nothing
+`applyMonthPlanChanges` command, so there is no new write path. Held changes
+live in the page until Save plan. The model is pure and tested
+(`plan-studio-model.js`, `plan-studio-edit.js`, `plan-studio-slider.js`).
+
 ## Documentation Standard
 
 When changing architecture:

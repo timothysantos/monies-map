@@ -341,11 +341,14 @@ test.describe("desktop", () => {
     await expect(salary).toContainText("Simple view salary");
     await expect(salary).toContainText(money(50_000));
     await expect(moneyIn.locator("[data-source]")).toHaveCount(1);
-    // "Plan this month" switches the page to Plan, with the plan tables in view.
+    // "Plan this month" switches the page to Plan, with the plan tables in view
+    // (this month has no plan rows yet, so Plan Studio has nothing to show and
+    // holds no space).
     const planLink = moneyIn.getByRole("button", { name: "Plan this month" });
     await planLink.scrollIntoViewIfNeeded();
     await planLink.click();
     await expectPlan(page, { summary: false, jobs: false });
+    await expect(page.locator("[data-plan-studio], [data-plan-studio-reserve]")).toHaveCount(0);
     const stack = await page.locator(".month-plan-stack").boundingBox();
     expect(stack.y).toBeLessThan(page.viewportSize().height);
     await expect(page.locator("[data-money-in]")).toHaveCount(0);
