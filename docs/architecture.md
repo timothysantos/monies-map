@@ -341,15 +341,19 @@ write routes that resolve each candidate (`/api/transfers/link`,
 
 ### Investment statements (current, 2026-10)
 
-An iFAST "Wrap" monthly statement PDF is an investment account's statement,
-imported through the same Imports flow as a bank statement, deterministically
-(no AI):
+An iFAST "Wrap" monthly statement PDF, and a StashAway "Statement of Account"
+PDF, are an investment account's statement, imported through the same Imports
+flow as a bank statement, deterministically (no AI):
 
 ```text
 browser: extractPdfText (pdf.js, unchanged) -> parseStatementText
   lib/statement-import/ifast.ts   pure parser: period, account number, currency,
                                   total assets, income, plan-level cash rows
                                   (reads the raw item view, not visual lines)
+  lib/statement-import/stashaway.ts  same shape for StashAway: period, reference
+                                  code, SGD, summary "Total" row (opening,
+                                  cashflow, returns, fees, closing), deposit and
+                                  withdrawal rows or one net-cashflow row
 POST /api/imports/preview
   app-repository-import-preview.ts   splits value checkpoints from bank ones
   import-investment-statement.ts     pairs each row with a bank entry

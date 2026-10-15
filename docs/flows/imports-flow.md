@@ -165,7 +165,8 @@ Imports owns:
   post-bank-files lane. Multi-file intake is browser-only: it may keep parsed
   rows, checkpoints, and generic CSV text in transient UI state, but it must not
   persist original PDFs, CSVs, XLS files, OCR images, or raw bank files
-- investment statements (an iFAST "Wrap" PDF, `parserKey` `ifast_wrap_pdf`):
+- investment statements (an iFAST "Wrap" PDF, `parserKey` `ifast_wrap_pdf`, or
+  a StashAway "Statement of Account" PDF, `parserKey` `stashaway_pdf`):
   read by the same browser pipeline as a bank PDF, but its checkpoint carries
   an `investmentValue`, so the preview keeps it out of the statement balance
   check (no reconciliation card, no certificate) and shows an "Investment
@@ -179,8 +180,14 @@ Imports owns:
   its own batch and the rollback restores the bank entry. The account is
   mapped or created exactly as a bank statement's is (kind Investment, no
   opening balance). With nothing new to add the commit reads "Save statement
-  value" ("and open next" while another file waits). Driven in
-  `ifast-statement-import.spec.js`
+  value" ("and open next" while another file waits). A StashAway statement
+  is the same flow with its closing balance as the value, its deposits and
+  withdrawals as the rows (none in most months, so any import order works and
+  no bank file is needed first), and, when its opening balance differs from
+  the saved statement of the month before by more than a cent, one plain
+  notice in the box ("A statement may be missing in between"; never a
+  blocker). Driven in `ifast-statement-import.spec.js` and
+  `stashaway-statement-import.spec.js`
 - file upload and preview
 - account mapping
 - commit and rollback

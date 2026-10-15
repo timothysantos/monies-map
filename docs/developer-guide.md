@@ -1609,6 +1609,40 @@ comparison use `post_date`.
   and are also created by the runtime schema check; every reader tolerates a
   database without them.
 
+- StashAway "Statement of Account" PDFs (`src/lib/statement-import/stashaway.ts`,
+  `parserKey` `stashaway_pdf`) take the same path. Detection needs the
+  "Asia Wealth Platform" company name plus the statement's own labels
+  ("Account Reference Code:", a PORTFOLIO heading), because a bank row can
+  name StashAway as a payee. The parser reads the raw item view: the period
+  (one calendar month), the owner (the account name is "<owner> StashAway"),
+  the reference code (`accountReference`, e.g. "00 XYZ00X"; its last four
+  characters become `accountLast4`, which the commit remembers on the account
+  when they are four letters or digits, so the next statement finds a renamed
+  account), the reporting currency (only SGD imports), and the account
+  summary's "Total" row: opening, cashflow (deposits less withdrawals), total
+  returns, fees and closing balance. The closing balance is the value
+  (`totalAssetsMinor`, `marketValueMinor`; `cashMinor` and `incomeMinor` are 0
+  because the portfolio's cash and dividends are in USD inside it). Opening,
+  cashflow, returns and fees ride on the value as `openingMinor`,
+  `cashflowMinor`, `returnsMinor` and `feesMinor`: the preview uses them and
+  nothing saves them (no schema change). Rows: dated "Deposit" and
+  "Withdrawal" lines of the TRANSACTIONS page when they add up to the printed
+  cashflow, otherwise one entry for the net cashflow dated the last day of the
+  period, with a warning that says so. Buys, dividends, currency
+  conversions and the management fee are inside the portfolio and never rows.
+  The layout of a deposit or withdrawal row is inferred (the nine real
+  statements all have a cashflow of $0.00): date, transaction word, "-" for
+  units, the SGD amount as the last amount cell. A statement with no
+  ACCOUNT SUMMARY or no "Total" row is refused as cut short; portfolios whose
+  closing balances do not add up to the total, or a summary that does not add
+  up, warn and use the printed total. The preview adds `startsAfter` to the
+  investment value when the opening balance is more than a cent from the saved
+  value of the month before. Tests: `tests/stashaway-statement-parser.test.mjs`
+  (nine real sanitized months), `stashaway-statement-import.test.mjs`,
+  `atomic-writes-stashaway-import.test.mjs`, `statement-account-hints.test.mjs`,
+  `investment-statement-copy.test.mjs` and
+  `tests/e2e/stashaway-statement-import.spec.js`.
+
 For supported PDFs, the browser extracts statement text locally and turns it
 into reviewable rows. If the PDF creates statement checkpoints, those fields are
 editable before commit.

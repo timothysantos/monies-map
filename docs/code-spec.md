@@ -651,7 +651,8 @@ A persistence command is all-or-nothing:
   bank entry's reclassification, its `import_transfer_links` record and the
   rows are all in the import's own batch; the rollback puts the bank entry and
   the replaced value back in the rollback's batch
-  (`tests/atomic-writes-ifast-import.test.mjs`)
+  (`tests/atomic-writes-ifast-import.test.mjs`,
+  `tests/atomic-writes-stashaway-import.test.mjs`)
 - statement corrections from Settings
   (`src/domain/app-repository-statement-corrections.ts`) apply or undo every
   move and removal with its `statement_corrections` row and audit event in

@@ -336,10 +336,11 @@ Important distinctions:
 ### Investment Statement Value
 
 What an investment provider's statement says an investment account was worth at
-the end of its period (`src/lib/statement-import/ifast.ts`,
-`src/domain/import-investment-values.ts`). Today the source is the iFAST
-"Wrap" monthly statement PDF: its Total Assets (market value plus cash
-solutions) on the statement's last day.
+the end of its period (`src/lib/statement-import/ifast.ts`, `stashaway.ts`,
+`src/domain/import-investment-values.ts`). Two sources today: the iFAST "Wrap"
+monthly statement PDF (its Total Assets, market value plus cash solutions, on
+the statement's last day) and the StashAway "Statement of Account" PDF (its
+closing balance in the SGD reporting currency on the period's last day).
 
 Storage:
 - `investment_statement_values` (one row per account and month; a revised
@@ -388,6 +389,22 @@ Important distinctions:
   Investment, no opening balance).
 - Only Singapore dollar statements are imported; another currency is refused
   with its currency named.
+- StashAway: the value is the account summary's closing balance (the portfolios'
+  USD funds, cash and dividends are already inside it, converted at the
+  statement's own closing rate, which is not stored). Its summary row also
+  gives opening, cashflow (deposits less withdrawals), total returns and fees;
+  they ride on the parsed value for the preview and are not saved. Fees and
+  returns are inside the portfolio, so they are never rows. A deposit or
+  withdrawal is a transfer in or out on the investment account (the dated rows
+  of the TRANSACTIONS page when they add up to the cashflow, otherwise one
+  entry for the net amount dated the period's last day, and the import says
+  so). Every real statement so far has a cashflow of $0.00, so a month is
+  normally only a value. The reference code ("00 XYZ00X") is the account
+  number: its last four characters (letters allowed) are kept in
+  `accounts.last4` for the next statement, and the bank row that paid in
+  names it or is the lone same-amount row within ten days. When a statement
+  opens more than a cent away from the saved value of the month before, the
+  preview says a statement may be missing and does not block.
 
 ### Bank Charge
 

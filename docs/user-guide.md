@@ -303,12 +303,12 @@ over plan.
   under it, and **Details** opens the income, spending and savings figures.
 - **Wallets in view**: one list with each wallet's current balance and
   whether a statement has confirmed it. Select a wallet to open its entries.
-  An investment account you have imported an iFAST statement for says what
+  An investment account you have imported an iFAST or StashAway statement for says what
   its latest statement said it was worth, with the statement's date ("Worth
   $2,023.90 on 30 Sep 2026, from its statement"). That is the statement's
   figure on that day, not a forecast and not money you can spend; the
   balance beside it is still what you moved in
-  ([Import an investment statement](#import-an-investment-statement-ifast)).
+  ([Import an investment statement](#import-an-investment-statement-ifast-and-stashaway)).
   Hide money totals and both the figure and the sentence go.
 
 ![Spending Mix: the donut beside the ranked categories, with Intent vs Outcome below](/faq/guide/desktop/thumbs/summary-charts.webp)
@@ -1428,7 +1428,7 @@ split matches** (or **Later**).
 Select **Start over** at any time to clear the draft. Your original file is
 never stored; only the rows you commit are saved.
 
-## Import an investment statement (iFAST)
+## Import an investment statement (iFAST and StashAway)
 
 An iFAST monthly statement (the "Wrap" PDF) does two things when you import
 it: it records the money you put in, and it saves what the statement says the
@@ -1475,6 +1475,28 @@ What it does and does not do:
 - Only Singapore dollar statements are read. Another currency is refused with
   its name.
 
+### StashAway statements
+
+A StashAway monthly "Statement of Account" PDF is imported the same way, in
+any order and without importing a bank statement first. Drop the whole PDF on
+**Imports**; if the app has no account for it yet, select **Create account**
+(the name is filled in from the statement's owner, so you may want to rename
+it, for example "Tim StashAway"; the type is **Investment** and the
+institution **StashAway**). The **Investment statement** box then says what
+the portfolio was worth on the statement's last day: StashAway's closing
+balance in Singapore dollars, after the month's gains or losses and its fee,
+which are inside the portfolio and not money moving to or from your bank. That
+figure is saved for reference and shown on **Summary** with its date, like an
+iFAST one. Most months you put nothing in, so **Save statement value** is the
+only step. If you did deposit or withdraw, the amount is saved as money moved
+into or out of your investments and matched with your bank's payment when it
+is already in the app; when the statement lists only the month's net amount,
+the entry is dated the last day of the month and the review says so. If a
+statement starts at a different amount from where the earlier one ended, the
+box tells you a statement may be missing, and you can still save it. A
+statement in another currency, or with its first page cut off, is refused
+and says why.
+
 ## Which file do I download from my bank?
 
 The Import inbox names each file. In general, download statement PDFs first
@@ -1510,8 +1532,13 @@ June belongs to June's statement.
 ### iFAST (investments)
 
 - **Statements**: the monthly "Wrap" statement PDF for each iFAST account,
-  the whole file ([Import an investment statement](#import-an-investment-statement-ifast)).
+  the whole file ([Import an investment statement](#import-an-investment-statement-ifast-and-stashaway)).
   Each account has its own number and its own statements; import each.
+
+### StashAway (investments)
+
+- **Statements**: the monthly "Statement of Account" PDF, the whole file
+  ([StashAway statements](#stashaway-statements)). Import each month you have.
 
 ### HSBC
 
